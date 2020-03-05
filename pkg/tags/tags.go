@@ -14,24 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+// This file contains the tags that are used to store additional information in objects created
+// in AWS.
 
-import (
-	"github.com/spf13/cobra"
+package tags
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/create"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/dlt"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/list"
-)
+// Prefix used by all the tag names:
+const prefix = "moa_"
 
-var Cmd = &cobra.Command{
-	Use:   "cluster COMMAND",
-	Short: "Perform cluster operations",
-	Long:  "Perform cluster operations.",
-}
+// ClusterName is the name of the tag that will contain the name of the cluster.
+const ClusterName = prefix + "cluster_name"
 
-func init() {
-	Cmd.AddCommand(create.Cmd)
-	Cmd.AddCommand(list.Cmd)
-	Cmd.AddCommand(dlt.Cmd)
-}
+// ClusterID is the name of the tag that will contain the identifier of the cluster.
+const ClusterID = prefix + "cluster_id"

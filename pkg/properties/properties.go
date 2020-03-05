@@ -14,24 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+// This file contains the OCM properties that are used to store additional information about crated
+// clusters.
 
-import (
-	"github.com/spf13/cobra"
+package properties
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/create"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/dlt"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/list"
-)
+// Prefix used by all the property names:
+const prefix = "moa_"
 
-var Cmd = &cobra.Command{
-	Use:   "cluster COMMAND",
-	Short: "Perform cluster operations",
-	Long:  "Perform cluster operations.",
-}
-
-func init() {
-	Cmd.AddCommand(create.Cmd)
-	Cmd.AddCommand(list.Cmd)
-	Cmd.AddCommand(dlt.Cmd)
-}
+// CreatorARN is the name of the label that will contain the ARN of the user that created the
+// cluster:
+const CreatorARN = prefix + "creator_arn"
