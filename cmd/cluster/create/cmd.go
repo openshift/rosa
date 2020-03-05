@@ -21,20 +21,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
 	"gitlab.cee.redhat.com/service/moactl/pkg/properties"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
-	"gitlab.cee.redhat.com/service/moactl/pkg/tags"
 )
 
 var Cmd = &cobra.Command{
@@ -80,110 +74,35 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Create the AWS session:
-	awsSession, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
+	awsClient, err := aws.NewClient()
 	if err != nil {
-		reporter.Errorf("Can't create AWS session: %v", err)
+		reporter.Errorf("Can't create AWS client: %v", err)
 		os.Exit(1)
 	}
 
-	// Check that the session is set:
-	awsRegion := aws.StringValue(awsSession.Config.Region)
-	if awsRegion == "" {
-		reporter.Errorf("Region is not set")
-		os.Exit(1)
-	}
-
-	// Check that the AWS credentials are available:
-	_, err = awsSession.Config.Credentials.Get()
+	awsRegion := awsClient.GetRegion()
+	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
-		reporter.Errorf("Can't find AWS credentials: %v", err)
+		reporter.Errorf("Can't get AWS creator: %v", err)
 		os.Exit(1)
 	}
-
-	// Get the clients for the AWS services that we will be using:
-	awsSts := sts.New(awsSession)
-	awsIam := iam.New(awsSession)
-
-	// Get the details of the current user:
-	getCallerIdentityOutput, err := awsSts.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-	if err != nil {
-		reporter.Errorf("Can't get caller identity: %v", err)
-		os.Exit(1)
-	}
-	awsCreatorARN := aws.StringValue(getCallerIdentityOutput.Arn)
-	reporter.Infof("ARN of current user is '%s'", awsCreatorARN)
-
-	// Extract the account identifier from the ARN of the user:
-	awsCreatorParsedARN, err := arn.Parse(awsCreatorARN)
-	if err != nil {
-		reporter.Infof("Can't parse user ARN '%s': %v", awsCreatorARN, err)
-		os.Exit(1)
-	}
-	awsCreatorAccountID := awsCreatorParsedARN.AccountID
-	reporter.Infof("Account identifier of current user is '%s'", awsCreatorAccountID)
 
 	// Create the AWS user that will be used to create all the resources needed by the cluster:
 	reporter.Infof("Creating cluster administrator user '%s'", awsAdminName)
-	createUserOutput, err := awsIam.CreateUser(&iam.CreateUserInput{
-		UserName: aws.String(awsAdminName),
-		Tags: []*iam.Tag{
-			{
-				Key:   aws.String(tags.ClusterName),
-				Value: aws.String(clusterName),
-			},
-		},
-	})
+	err = awsClient.CreateUser(awsAdminName, clusterName)
 	if err != nil {
-		switch typed := err.(type) {
-		case awserr.Error:
-			if typed.Code() == iam.ErrCodeEntityAlreadyExistsException {
-				reporter.Errorf(
-					"User '%s' already exists, which means that there is "+
-						"already a cluster created in the account",
-					awsAdminName,
-				)
-			} else {
-				reporter.Errorf("Can't create user '%s': %v", awsAdminName, err)
-			}
-		default:
-			reporter.Errorf("Can't create user '%s': %v", awsAdminName, err)
-		}
-		os.Exit(1)
-	}
-	awsAdmin := createUserOutput.User
-	awsAdminID := aws.StringValue(awsAdmin.UserId)
-	awsAdminARN := aws.StringValue(awsAdmin.Arn)
-	reporter.Infof("User identifier is '%s'", awsAdminID)
-	reporter.Infof("User ARN is '%s'", awsAdminARN)
-
-	// Make the AWS user an administrator:
-	reporter.Infof("Attaching administrator policy to user '%s'", awsAdminName)
-	_, err = awsIam.AttachUserPolicy(&iam.AttachUserPolicyInput{
-		PolicyArn: aws.String("arn:aws:iam::aws:policy/AdministratorAccess"),
-		UserName:  aws.String(awsAdminName),
-	})
-	if err != nil {
-		reporter.Errorf("Can't attach administrator policy to user '%s'", awsAdminName)
+		reporter.Errorf("Can't create user '%s': %v", awsAdminName, err)
 		os.Exit(1)
 	}
 
 	// Create the access key for the AWS user:
-	reporter.Infof("Creating access key for user '%s'", awsAdminName)
-	createAccessKeyOutput, err := awsIam.CreateAccessKey(&iam.CreateAccessKeyInput{
-		UserName: aws.String(awsAdminName),
-	})
+	awsAccessKey, err := awsClient.CreateAccessKey(awsAdminName)
 	if err != nil {
-		reporter.Errorf("Can't create access key for user '%s': %v", awsAdminName, err)
+		reporter.Errorf("Can't create access keys for user '%s'", awsAdminName)
 		os.Exit(1)
 	}
-	awsAccessKey := createAccessKeyOutput.AccessKey
-	awsAccessKeyID := aws.StringValue(awsAccessKey.AccessKeyId)
-	awsSecretAccessKey := aws.StringValue(awsAccessKey.SecretAccessKey)
-	reporter.Infof("Access key identifier is '%s'", awsAccessKeyID)
-	reporter.Infof("Secret access key is '%s'", awsSecretAccessKey)
+	reporter.Infof("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
+	reporter.Infof("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
 
 	// The created access key isn't immediately active, so we need to wait a bit till it is:
 	reporter.Infof("Waiting for access key to be active")
@@ -220,12 +139,12 @@ func run(cmd *cobra.Command, argv []string) {
 		).
 		AWS(
 			cmv1.NewAWS().
-				AccountID(awsCreatorAccountID).
-				AccessKeyID(awsAccessKeyID).
-				SecretAccessKey(awsSecretAccessKey),
+				AccountID(awsCreator.AccountID).
+				AccessKeyID(awsAccessKey.AccessKeyID).
+				SecretAccessKey(awsAccessKey.SecretAccessKey),
 		).
 		Properties(map[string]string{
-			properties.CreatorARN: awsCreatorARN,
+			properties.CreatorARN: awsCreator.ARN,
 		}).
 		Build()
 	if err != nil {
@@ -248,15 +167,7 @@ func run(cmd *cobra.Command, argv []string) {
 	)
 
 	// Add a tag to the AWS administrator user containing the identifier of the cluster:
-	_, err = awsIam.TagUser(&iam.TagUserInput{
-		UserName: aws.String(awsAdminName),
-		Tags: []*iam.Tag{
-			{
-				Key:   aws.String(tags.ClusterID),
-				Value: aws.String(ocmClusterID),
-			},
-		},
-	})
+	err = awsClient.TagUser(awsAdminName, ocmClusterID)
 	if err != nil {
 		reporter.Infof(
 			"Can't add cluster identifier tag to user '%s'",

@@ -50,13 +50,6 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	fmt.Fprintf(os.Stdout, "[SUCCESS] AWS credentials are valid!\n")
 
-	ok, err = client.EnsureAdminUser()
-	if !ok || err != nil {
-		fmt.Fprintf(os.Stderr, "[ERR] Error ensuring admin user: %s\n", err)
-		os.Exit(1)
-	}
-	fmt.Fprintf(os.Stdout, "[SUCCESS] Admin user is valid!\n")
-
 	ok, err = client.ValidateSCP()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[ERR] Error validating SCP policies: %s\n", err)
@@ -67,11 +60,4 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	fmt.Fprintf(os.Stdout, "[SUCCESS] SCP policies are valid!\n")
-
-	ok, err = client.EnsurePermissions()
-	if !ok || err != nil {
-		fmt.Fprintf(os.Stderr, "[ERR] Error ensuring account permissions: %s\n", err)
-		os.Exit(1)
-	}
-	fmt.Fprintf(os.Stdout, "[SUCCESS] Account permissions are valid!\n")
 }

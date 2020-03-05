@@ -22,30 +22,35 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/organizations"
 	"github.com/aws/aws-sdk-go/service/organizations/organizationsiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+
+	"gitlab.cee.redhat.com/service/moactl/pkg/tags"
 )
 
 type Client interface {
+	GetRegion() string
 	ValidateCredentials() (bool, error)
-	EnsureAdminUser() (bool, error)
+	CreateUser(username string, clusterName string) error
+	CreateAccessKey(username string) (*AWSAccessKey, error)
+	GetCreator() (*AWSCreator, error)
+	TagUser(username string, clusterID string) error
 	ValidateSCP() (bool, error)
-	EnsurePermissions() (bool, error)
 }
 
 type awsClient struct {
-	cloudformationClient cloudformationiface.CloudFormationAPI
-	iamClient            iamiface.IAMAPI
-	orgClient            organizationsiface.OrganizationsAPI
-	stsClient            stsiface.STSAPI
+	// cloudformationClient cloudformationiface.CloudFormationAPI
+	iamClient  iamiface.IAMAPI
+	orgClient  organizationsiface.OrganizationsAPI
+	stsClient  stsiface.STSAPI
+	awsSession *session.Session
 }
 
 func NewClient() (Client, error) {
@@ -70,10 +75,37 @@ func NewClient() (Client, error) {
 	}
 
 	return &awsClient{
-		cloudformationClient: cloudformation.New(sess),
-		iamClient:            iam.New(sess),
-		orgClient:            organizations.New(sess),
-		stsClient:            sts.New(sess),
+		iamClient:  iam.New(sess),
+		orgClient:  organizations.New(sess),
+		stsClient:  sts.New(sess),
+		awsSession: sess,
+	}, nil
+}
+
+func (c *awsClient) GetRegion() string {
+	return aws.StringValue(c.awsSession.Config.Region)
+}
+
+type AWSCreator struct {
+	ARN       string
+	AccountID string
+}
+
+func (c *awsClient) GetCreator() (*AWSCreator, error) {
+	getCallerIdentityOutput, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	if err != nil {
+		return nil, err
+	}
+	creatorARN := aws.StringValue(getCallerIdentityOutput.Arn)
+
+	// Extract the account identifier from the ARN of the user:
+	creatorParsedARN, err := arn.Parse(creatorARN)
+	if err != nil {
+		return nil, err
+	}
+	return &AWSCreator{
+		ARN:       creatorARN,
+		AccountID: creatorParsedARN.AccountID,
 	}, nil
 }
 
@@ -87,76 +119,75 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 }
 
 // Ensure osdCcsAdmin account
-func (c *awsClient) EnsureAdminUser() (bool, error) {
-	username := aws.String("osdCcsAdmin")
-
-	exists, err := c.userExists(username)
-	if !exists {
-		user, err := c.iamClient.CreateUser(&iam.CreateUserInput{
-			UserName: username,
-		})
-		if err != nil {
-			return false, err
-		}
-		fmt.Fprintf(os.Stdout, "[DEBUG] EnsureAdminUser::CreateUser\n%+v\n", user)
-	}
-	if err != nil {
-		return false, err
-	}
-
-	hasPolicy, err := c.userHasPolicy(username, aws.String("AdministratorAccess"))
-	if !hasPolicy {
-		policy, err := c.iamClient.AttachUserPolicy(&iam.AttachUserPolicyInput{
-			PolicyArn: aws.String("arn:aws:iam::aws:policy/AdministratorAccess"),
-			UserName:  username,
-		})
-		if err != nil {
-			return false, err
-		}
-		fmt.Fprintf(os.Stdout, "[DEBUG] EnsureAdminUser::AttachUserPolicy\n%+v\n", policy)
-	}
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
-func (c *awsClient) userExists(username *string) (bool, error) {
-	_, err := c.iamClient.GetUser(&iam.GetUserInput{
-		UserName: username,
+func (c *awsClient) CreateUser(username string, clusterName string) error {
+	user, err := c.iamClient.CreateUser(&iam.CreateUserInput{
+		UserName: aws.String(username),
+		Tags: []*iam.Tag{
+			{
+				Key:   aws.String(tags.ClusterName),
+				Value: aws.String(clusterName),
+			},
+		},
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return false, nil
-			default:
-				return false, err
+		switch typed := err.(type) {
+		case awserr.Error:
+			if typed.Code() == iam.ErrCodeEntityAlreadyExistsException {
+				return errors.New(fmt.Sprintf(
+					"User '%s' already exists, which means that there is already a cluster created in the account",
+					username,
+				))
 			}
 		}
-		return false, err
+		return err
 	}
-	return true, nil
-}
+	fmt.Fprintf(os.Stdout, "[DEBUG] CreateUser::CreateUser\n%+v\n", user)
 
-func (c *awsClient) userHasPolicy(username *string, policy *string) (bool, error) {
-	_, err := c.iamClient.GetUserPolicy(&iam.GetUserPolicyInput{
-		PolicyName: policy,
-		UserName:   username,
+	policy, err := c.iamClient.AttachUserPolicy(&iam.AttachUserPolicyInput{
+		PolicyArn: aws.String("arn:aws:iam::aws:policy/AdministratorAccess"),
+		UserName:  aws.String(username),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return false, nil
-			default:
-				return false, err
-			}
-		}
-		return false, err
+		return err
 	}
-	return true, nil
+	fmt.Fprintf(os.Stdout, "[DEBUG] CreateUser::AttachUserPolicy\n%+v\n", policy)
+
+	return nil
+}
+
+func (c *awsClient) TagUser(username string, clusterID string) error {
+	_, err := c.iamClient.TagUser(&iam.TagUserInput{
+		UserName: aws.String(username),
+		Tags: []*iam.Tag{
+			{
+				Key:   aws.String(tags.ClusterID),
+				Value: aws.String(clusterID),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type AWSAccessKey struct {
+	AccessKeyID     string
+	SecretAccessKey string
+}
+
+func (c *awsClient) CreateAccessKey(username string) (*AWSAccessKey, error) {
+	createAccessKeyOutput, err := c.iamClient.CreateAccessKey(&iam.CreateAccessKeyInput{
+		UserName: aws.String(username),
+	})
+	if err != nil {
+		return nil, err
+	}
+	accessKey := createAccessKeyOutput.AccessKey
+	return &AWSAccessKey{
+		AccessKeyID:     aws.StringValue(accessKey.AccessKeyId),
+		SecretAccessKey: aws.StringValue(accessKey.SecretAccessKey),
+	}, nil
 }
 
 // Validate SCP...
@@ -169,15 +200,5 @@ func (c *awsClient) ValidateSCP() (bool, error) {
 		return false, err
 	}
 	fmt.Fprintf(os.Stdout, "[DEBUG] ValidateSCP::ListPolicies\n%+v\n", policies)
-	return true, nil
-}
-
-// Ensure correct permissions on account
-func (c *awsClient) EnsurePermissions() (bool, error) {
-	// stack, err := c.cloudformationClient.CreateStack(&cloudformation.CreateStackInput{})
-	// if err != nil {
-	// 	return false, err
-	// }
-	// fmt.Fprintf(os.Stdout, "[DEBUG] EnsurePermissions::CreateStack\n%+v\n", stack)
 	return true, nil
 }
