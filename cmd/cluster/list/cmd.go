@@ -29,7 +29,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
+	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/properties"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
@@ -50,6 +50,13 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	// Create the logger:
+	logger, err := logging.NewLogger().Build()
+	if err != nil {
+		reporter.Errorf("Can't create logger: %v", err)
+		os.Exit(1)
+	}
+
 	// Check command line arguments:
 	if len(argv) != 0 {
 		reporter.Errorf("Expected exactly zero command line parameters")
@@ -61,15 +68,6 @@ func run(_ *cobra.Command, argv []string) {
 	ocmToken := os.Getenv("OCM_TOKEN")
 	if ocmToken == "" {
 		reporter.Errorf("Environment variable 'OCM_TOKEN' is not set")
-		os.Exit(1)
-	}
-
-	// Create the logger that will be used by the OCM connection:
-	ocmLogger, err := sdk.NewStdLoggerBuilder().
-		Debug(debug.Enabled()).
-		Build()
-	if err != nil {
-		reporter.Errorf("Can't create OCM logger: %v", err)
 		os.Exit(1)
 	}
 
@@ -111,6 +109,13 @@ func run(_ *cobra.Command, argv []string) {
 	reporter.Infof("Account identifier is '%s'", awsCreatorAccountID)
 
 	// Create the client for the OCM API:
+	ocmLogger, err := logging.NewOCMLogger().
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Can't create OCM logger: %v", err)
+		os.Exit(1)
+	}
 	ocmConnection, err := sdk.NewConnectionBuilder().
 		Logger(ocmLogger).
 		Tokens(ocmToken).

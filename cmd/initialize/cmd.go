@@ -20,11 +20,10 @@ import (
 	"fmt"
 	"os"
 
-	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
-	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
+	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
@@ -45,9 +44,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Create the logger:
-	logger, err := sdk.NewStdLoggerBuilder().
-		Debug(debug.Enabled()).
-		Build()
+	logger, err := logging.NewLogger().Build()
 	if err != nil {
 		reporter.Errorf("Can't create logger: %v", err)
 		os.Exit(1)

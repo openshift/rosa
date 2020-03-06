@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
-	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
+	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/properties"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
@@ -48,9 +48,7 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Create the logger:
-	logger, err := sdk.NewStdLoggerBuilder().
-		Debug(debug.Enabled()).
-		Build()
+	logger, err := logging.NewLogger().Build()
 	if err != nil {
 		reporter.Errorf("Can't create logger: %v", err)
 		os.Exit(1)
@@ -112,8 +110,15 @@ func run(_ *cobra.Command, argv []string) {
 	time.Sleep(10 * time.Second)
 
 	// Create the client for the OCM API:
-	ocmConnection, err := sdk.NewConnectionBuilder().
+	ocmLogger, err := logging.NewOCMLogger().
 		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Can't create OCM logger: %v", err)
+		os.Exit(1)
+	}
+	ocmConnection, err := sdk.NewConnectionBuilder().
+		Logger(ocmLogger).
 		Tokens(ocmToken).
 		URL("https://api.stage.openshift.com").
 		Build()
