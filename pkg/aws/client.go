@@ -19,7 +19,6 @@ package aws
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -31,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/organizations/organizationsiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+	sdk "github.com/openshift-online/ocm-sdk-go"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/tags"
 )
@@ -45,7 +45,13 @@ type Client interface {
 	ValidateSCP() (bool, error)
 }
 
+// ClientBuilder contains the information and logic needed to build a new AWS client.
+type ClientBuilder struct {
+	logger sdk.Logger
+}
+
 type awsClient struct {
+	logger sdk.Logger
 	// cloudformationClient cloudformationiface.CloudFormationAPI
 	iamClient  iamiface.IAMAPI
 	orgClient  organizationsiface.OrganizationsAPI
@@ -53,33 +59,51 @@ type awsClient struct {
 	awsSession *session.Session
 }
 
-func NewClient() (Client, error) {
+// NewClient creates a builder that can then be used to configure and build a new AWS client.
+func NewClient() *ClientBuilder {
+	return &ClientBuilder{}
+}
+
+// Logger sets the logger that the AWS client will use to send messages to the log.
+func (b *ClientBuilder) Logger(value sdk.Logger) *ClientBuilder {
+	b.logger = value
+	return b
+}
+
+// Build uses the information stored in the builder to build a new AWS client.
+func (b *ClientBuilder) Build() (result Client, err error) {
 	// Create the AWS session:
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	// Check that the session is set:
+	// Check that the region is set:
 	region := aws.StringValue(sess.Config.Region)
 	if region == "" {
-		return nil, errors.New("Region is not set")
+		err = fmt.Errorf("region is not set")
+		return
 	}
 
 	// Check that the AWS credentials are available:
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Can't find AWS credentials: %v", err))
+		err = fmt.Errorf("can't find credentials: %v", err)
+		return
 	}
 
-	return &awsClient{
+	// Create and populate the object:
+	result = &awsClient{
+		logger:     b.logger,
 		iamClient:  iam.New(sess),
 		orgClient:  organizations.New(sess),
 		stsClient:  sts.New(sess),
 		awsSession: sess,
-	}, nil
+	}
+
+	return
 }
 
 func (c *awsClient) GetRegion() string {
@@ -141,7 +165,7 @@ func (c *awsClient) CreateUser(username string, clusterName string) error {
 		}
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "[DEBUG] CreateUser::CreateUser\n%+v\n", user)
+	c.logger.Debug(nil, "CreateUser::CreateUser\n%+v\n", user)
 
 	policy, err := c.iamClient.AttachUserPolicy(&iam.AttachUserPolicyInput{
 		PolicyArn: aws.String("arn:aws:iam::aws:policy/AdministratorAccess"),
@@ -150,7 +174,7 @@ func (c *awsClient) CreateUser(username string, clusterName string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "[DEBUG] CreateUser::AttachUserPolicy\n%+v\n", policy)
+	c.logger.Debug(nil, "CreateUser::AttachUserPolicy\n%+v\n", policy)
 
 	return nil
 }
@@ -199,6 +223,6 @@ func (c *awsClient) ValidateSCP() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	fmt.Fprintf(os.Stdout, "[DEBUG] ValidateSCP::ListPolicies\n%+v\n", policies)
+	c.logger.Debug(nil, "ValidateSCP::ListPolicies\n%+v\n", policies)
 	return true, nil
 }

@@ -20,9 +20,12 @@ import (
 	"fmt"
 	"os"
 
+	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
+	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
+	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
 var Cmd = &cobra.Command{
@@ -33,31 +36,51 @@ var Cmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	client, err := aws.NewClient()
+	// Create the reporter:
+	reporter, err := rprtr.New().
+		Build()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERR] Error creating AWS client: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Can't create reporter: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create the logger:
+	logger, err := sdk.NewStdLoggerBuilder().
+		Debug(debug.Enabled()).
+		Build()
+	if err != nil {
+		reporter.Errorf("Can't create logger: %v", err)
+		os.Exit(1)
+	}
+
+	// Create the AWS client:
+	client, err := aws.NewClient().
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Error creating AWS client: %s", err)
 		os.Exit(1)
 	}
 
 	ok, err := client.ValidateCredentials()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERR] Error validating AWS credentials: %s\n", err)
+		reporter.Errorf("Error validating AWS credentials: %s", err)
 		os.Exit(1)
 	}
 	if !ok {
-		fmt.Fprintf(os.Stderr, "[ERR] AWS credentials are invalid\n")
+		reporter.Errorf("AWS credentials are invalid")
 		os.Exit(1)
 	}
-	fmt.Fprintf(os.Stdout, "[SUCCESS] AWS credentials are valid!\n")
+	reporter.Infof("AWS credentials are valid!")
 
 	ok, err = client.ValidateSCP()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERR] Error validating SCP policies: %s\n", err)
+		reporter.Errorf("Error validating SCP policies: %s", err)
 		os.Exit(1)
 	}
 	if !ok {
-		fmt.Fprintf(os.Stderr, "[ERR] SCP policies are invalid\n")
+		reporter.Errorf("SCP policies are invalid")
 		os.Exit(1)
 	}
-	fmt.Fprintf(os.Stdout, "[SUCCESS] SCP policies are valid!\n")
+	reporter.Errorf("SCP policies are valid!")
 }

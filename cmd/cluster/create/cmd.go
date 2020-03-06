@@ -38,12 +38,21 @@ var Cmd = &cobra.Command{
 	Run:   run,
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(_ *cobra.Command, argv []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
 	if err != nil {
-		fmt.Errorf("Can't create reporter: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Can't create reporter: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create the logger:
+	logger, err := sdk.NewStdLoggerBuilder().
+		Debug(debug.Enabled()).
+		Build()
+	if err != nil {
+		reporter.Errorf("Can't create logger: %v", err)
 		os.Exit(1)
 	}
 
@@ -65,16 +74,10 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Create the logger that will be used by the OCM connection:
-	ocmLogger, err := sdk.NewStdLoggerBuilder().
-		Debug(debug.Enabled()).
+	// Create the AWS client:
+	awsClient, err := aws.NewClient().
+		Logger(logger).
 		Build()
-	if err != nil {
-		reporter.Errorf("Can't create OCM logger: %v", err)
-		os.Exit(1)
-	}
-
-	awsClient, err := aws.NewClient()
 	if err != nil {
 		reporter.Errorf("Can't create AWS client: %v", err)
 		os.Exit(1)
@@ -110,7 +113,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Create the client for the OCM API:
 	ocmConnection, err := sdk.NewConnectionBuilder().
-		Logger(ocmLogger).
+		Logger(logger).
 		Tokens(ocmToken).
 		URL("https://api.stage.openshift.com").
 		Build()

@@ -40,12 +40,12 @@ var Cmd = &cobra.Command{
 	Run:   run,
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(_ *cobra.Command, argv []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
 	if err != nil {
-		fmt.Errorf("Can't create reporter: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Can't create reporter: %v\n", err)
 		os.Exit(1)
 	}
 
