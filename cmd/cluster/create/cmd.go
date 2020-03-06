@@ -21,12 +21,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
+	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	"gitlab.cee.redhat.com/service/moactl/pkg/properties"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
@@ -63,14 +63,6 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	clusterName := argv[0]
-
-	// Check that there is an OCM token in the environment. This will not be needed once we are
-	// able to derive OCM credentials from AWS credentials.
-	ocmToken := os.Getenv("OCM_TOKEN")
-	if ocmToken == "" {
-		reporter.Errorf("Environment variable 'OCM_TOKEN' is not set")
-		os.Exit(1)
-	}
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
@@ -110,17 +102,8 @@ func run(_ *cobra.Command, argv []string) {
 	time.Sleep(10 * time.Second)
 
 	// Create the client for the OCM API:
-	ocmLogger, err := logging.NewOCMLogger().
+	ocmConnection, err := ocm.NewConnection().
 		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Can't create OCM logger: %v", err)
-		os.Exit(1)
-	}
-	ocmConnection, err := sdk.NewConnectionBuilder().
-		Logger(ocmLogger).
-		Tokens(ocmToken).
-		URL("https://api.stage.openshift.com").
 		Build()
 	if err != nil {
 		reporter.Errorf("Can't create OCM connection: %v", err)
