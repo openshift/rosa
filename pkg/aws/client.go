@@ -33,8 +33,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 	"github.com/sirupsen/logrus"
 
+	"gitlab.cee.redhat.com/service/moactl/pkg/aws/tags"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
-	"gitlab.cee.redhat.com/service/moactl/pkg/tags"
 )
 
 type Client interface {

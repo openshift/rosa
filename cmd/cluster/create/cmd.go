@@ -27,7 +27,7 @@ import (
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
-	"gitlab.cee.redhat.com/service/moactl/pkg/properties"
+	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/properties"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
