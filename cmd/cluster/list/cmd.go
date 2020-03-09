@@ -21,13 +21,10 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/properties"
@@ -63,42 +60,20 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Create the AWS session:
-	awsSession, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
+	// Create the AWS client:
+	awsClient, err := aws.NewClient().
+		Logger(logger).
+		Build()
 	if err != nil {
-		reporter.Errorf("Can't create AWS session: %v", err)
+		reporter.Errorf("Can't create AWS client: %v", err)
 		os.Exit(1)
 	}
 
-	// Check that the AWS credentials are available:
-	_, err = awsSession.Config.Credentials.Get()
+	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
-		reporter.Errorf("Can't find AWS credentials: %v", err)
+		reporter.Errorf("Can't get AWS creator: %v", err)
 		os.Exit(1)
 	}
-
-	// Get the clients for the AWS services that we will be using:
-	awsSts := sts.New(awsSession)
-
-	// Get the details of the current user:
-	getCallerIdentityOutput, err := awsSts.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-	if err != nil {
-		reporter.Errorf("Can't get caller identity: %v", err)
-		os.Exit(1)
-	}
-	awsCreatorARN := aws.StringValue(getCallerIdentityOutput.Arn)
-	reporter.Infof("ARN of current user is '%s'", awsCreatorARN)
-
-	// Extract the account identifier from the ARN of the user:
-	awsCreatorParsedARN, err := arn.Parse(awsCreatorARN)
-	if err != nil {
-		reporter.Infof("Can't parse user ARN '%s': %v", awsCreatorARN, err)
-		os.Exit(1)
-	}
-	awsCreatorAccountID := awsCreatorParsedARN.AccountID
-	reporter.Infof("Account identifier is '%s'", awsCreatorAccountID)
 
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().
@@ -120,7 +95,7 @@ func run(_ *cobra.Command, argv []string) {
 	fmt.Fprintf(writer, "ID\tNAME\n")
 
 	// Retrieve the list of clusters:
-	ocmQuery := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, awsCreatorARN)
+	ocmQuery := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, awsCreator.ARN)
 	ocmRequest := ocmConnection.ClustersMgmt().V1().Clusters().List().
 		Search(ocmQuery)
 	page := 1
