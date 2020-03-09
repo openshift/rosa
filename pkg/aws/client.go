@@ -17,7 +17,6 @@ limitations under the License.
 package aws
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -37,13 +36,16 @@ import (
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 )
 
+// Name of the AWS user that will be used to create all the resources of the cluster:
+const AdminUserName = "osdCcsAdmin"
+
 type Client interface {
 	GetRegion() string
 	ValidateCredentials() (bool, error)
-	CreateUser(username string, clusterName string) error
+	EnsureUser(username string) (bool, error)
 	CreateAccessKey(username string) (*AWSAccessKey, error)
 	GetCreator() (*AWSCreator, error)
-	TagUser(username string, clusterID string) error
+	TagUser(username string, clusterID string, clusterName string) error
 	ValidateSCP() (bool, error)
 }
 
@@ -174,49 +176,44 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 }
 
 // Ensure osdCcsAdmin account
-func (c *awsClient) CreateUser(username string, clusterName string) error {
-	user, err := c.iamClient.CreateUser(&iam.CreateUserInput{
+func (c *awsClient) EnsureUser(username string) (bool, error) {
+	_, err := c.iamClient.CreateUser(&iam.CreateUserInput{
 		UserName: aws.String(username),
-		Tags: []*iam.Tag{
-			{
-				Key:   aws.String(tags.ClusterName),
-				Value: aws.String(clusterName),
-			},
-		},
 	})
 	if err != nil {
 		switch typed := err.(type) {
 		case awserr.Error:
 			if typed.Code() == iam.ErrCodeEntityAlreadyExistsException {
-				return errors.New(fmt.Sprintf(
-					"User '%s' already exists, which means that there is already a cluster created in the account",
-					username,
-				))
+				return false, nil
 			}
 		}
-		return err
+		return false, err
 	}
-	c.logger.Debugf("CreateUser::CreateUser\n%+v\n", user)
 
-	policy, err := c.iamClient.AttachUserPolicy(&iam.AttachUserPolicyInput{
+	_, err = c.iamClient.AttachUserPolicy(&iam.AttachUserPolicyInput{
 		PolicyArn: aws.String("arn:aws:iam::aws:policy/AdministratorAccess"),
 		UserName:  aws.String(username),
 	})
 	if err != nil {
-		return err
+		return true, err
 	}
-	c.logger.Debugf("CreateUser::AttachUserPolicy\n%+v\n", policy)
 
-	return nil
+	return true, nil
 }
 
-func (c *awsClient) TagUser(username string, clusterID string) error {
+// FIXME: Since we support multiple clusters per user, we need to find a better way to
+// tag the user so that the tags don't overwrite each other with each new cluster.
+func (c *awsClient) TagUser(username string, clusterID string, clusterName string) error {
 	_, err := c.iamClient.TagUser(&iam.TagUserInput{
 		UserName: aws.String(username),
 		Tags: []*iam.Tag{
 			{
 				Key:   aws.String(tags.ClusterID),
 				Value: aws.String(clusterID),
+			},
+			{
+				Key:   aws.String(tags.ClusterName),
+				Value: aws.String(clusterName),
 			},
 		},
 	})
@@ -247,13 +244,32 @@ func (c *awsClient) CreateAccessKey(username string) (*AWSAccessKey, error) {
 
 // Validate SCP...
 func (c *awsClient) ValidateSCP() (bool, error) {
+	hasScpAccess := true
 	policyType := aws.String("SERVICE_CONTROL_POLICY")
-	policies, err := c.orgClient.ListPolicies(&organizations.ListPoliciesInput{
+
+	_, err := c.orgClient.ListPolicies(&organizations.ListPoliciesInput{
 		Filter: policyType,
 	})
 	if err != nil {
-		return false, err
+		switch typed := err.(type) {
+		case awserr.Error:
+			// Current user does not have access to SCP policies. This is normal for most
+			// users, so we should find other ways of validating proper account permissions
+			if typed.Code() == organizations.ErrCodeAccessDeniedException {
+				hasScpAccess = false
+				err = nil
+			} else {
+				return false, err
+			}
+		default:
+			return false, err
+		}
 	}
-	c.logger.Debugf("ValidateSCP::ListPolicies\n%+v\n", policies)
+
+	// TODO: Find another way to verify permissions
+	if !hasScpAccess {
+		return false, nil
+	}
+
 	return true, nil
 }

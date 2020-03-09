@@ -80,18 +80,10 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Create the AWS user that will be used to create all the resources needed by the cluster:
-	reporter.Infof("Creating cluster administrator user '%s'", awsAdminName)
-	err = awsClient.CreateUser(awsAdminName, clusterName)
-	if err != nil {
-		reporter.Errorf("Can't create user '%s': %v", awsAdminName, err)
-		os.Exit(1)
-	}
-
 	// Create the access key for the AWS user:
-	awsAccessKey, err := awsClient.CreateAccessKey(awsAdminName)
+	awsAccessKey, err := awsClient.CreateAccessKey(aws.AdminUserName)
 	if err != nil {
-		reporter.Errorf("Can't create access keys for user '%s'", awsAdminName)
+		reporter.Errorf("Can't create access keys for user '%s'", aws.AdminUserName)
 		os.Exit(1)
 	}
 	reporter.Infof("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
@@ -157,15 +149,12 @@ func run(_ *cobra.Command, argv []string) {
 		ocmClusterID, ocmClusterName,
 	)
 
-	// Add a tag to the AWS administrator user containing the identifier of the cluster:
-	err = awsClient.TagUser(awsAdminName, ocmClusterID)
+	// Add tags to the AWS administrator user containing the identifier and name of the cluster:
+	err = awsClient.TagUser(aws.AdminUserName, ocmClusterID, ocmClusterName)
 	if err != nil {
 		reporter.Infof(
-			"Can't add cluster identifier tag to user '%s'",
-			awsAdminName,
+			"Can't add cluster tags to user '%s'",
+			aws.AdminUserName,
 		)
 	}
 }
-
-// Name of the AWS user that will be used to create all the resources of the cluster:
-const awsAdminName = "osdCcsAdmin"

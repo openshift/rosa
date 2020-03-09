@@ -55,13 +55,15 @@ func run(cmd *cobra.Command, argv []string) {
 		Logger(logger).
 		Build()
 	if err != nil {
-		reporter.Errorf("Error creating AWS client: %s", err)
+		reporter.Errorf("Error creating AWS client: %v", err)
 		os.Exit(1)
 	}
 
+	// Validate AWS credentials for current user
+	reporter.Infof("Validating AWS credentials...")
 	ok, err := client.ValidateCredentials()
 	if err != nil {
-		reporter.Errorf("Error validating AWS credentials: %s", err)
+		reporter.Errorf("Error validating AWS credentials: %v", err)
 		os.Exit(1)
 	}
 	if !ok {
@@ -70,14 +72,27 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	reporter.Infof("AWS credentials are valid!")
 
+	// Validate SCP policies for current user's account
+	reporter.Infof("Validating SCP policies...")
 	ok, err = client.ValidateSCP()
 	if err != nil {
-		reporter.Errorf("Error validating SCP policies: %s", err)
+		reporter.Errorf("Error validating SCP policies: %v", err)
 		os.Exit(1)
 	}
 	if !ok {
-		reporter.Errorf("SCP policies are invalid")
+		reporter.Infof("Failed to validate SCP policies. Will try to continue anyway...")
+	}
+
+	// Ensure that there is an AWS user to create all the resources needed by the cluster:
+	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
+	created, err := client.EnsureUser(aws.AdminUserName)
+	if err != nil {
+		reporter.Errorf("Failed to create user '%s': %v", aws.AdminUserName, err)
 		os.Exit(1)
 	}
-	reporter.Errorf("SCP policies are valid!")
+	if created {
+		reporter.Infof("Admin user '%s' created successfuly!", aws.AdminUserName)
+	} else {
+		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
+	}
 }
