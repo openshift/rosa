@@ -19,6 +19,7 @@ package ocm
 import (
 	"fmt"
 	"os"
+	"net/url"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/sirupsen/logrus"
@@ -30,6 +31,7 @@ import (
 // create instances of this type directly; use the NewConnection function instead.
 type ConnectionBuilder struct {
 	logger *logrus.Logger
+	env    string
 }
 
 // NewConnection creates a builder that can then be used to configure and build an OCM connection.
@@ -45,11 +47,48 @@ func (b *ConnectionBuilder) Logger(value *logrus.Logger) *ConnectionBuilder {
 	return b
 }
 
+func (b *ConnectionBuilder) SetEnv(value string) *ConnectionBuilder {
+	b.env = value
+	return b
+}
+
+func (b *ConnectionBuilder) getEnvURL() (string, error) {
+	switch b.env {
+	case "integration":
+		return "https://api-integration.6943.hive-integration.openshiftapps.com", nil
+	case "int":
+		return "https://api-integration.6943.hive-integration.openshiftapps.com", nil
+	case "staging":
+		return "https://api.stage.openshift.com", nil
+	case "stage":
+		return "https://api.stage.openshift.com", nil
+	case "production":
+		return "https://api.openshift.com", nil
+	case "prod":
+		return "https://api.openshift.com", nil
+	default:
+		envURL, err := url.ParseRequestURI(b.env)
+		if err != nil {
+			return "", err
+		}
+		return envURL.String(), nil
+	}
+}
+
 // Build uses the information stored in the builder to create a new OCM connection.
 func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 	// Check parameters:
 	if b.logger == nil {
 		err = fmt.Errorf("logger is mandatory")
+		return
+	}
+
+	envURL, err := b.getEnvURL()
+	if err != nil {
+		return
+	}
+	if envURL == "" {
+		err = fmt.Errorf("env is mandatory")
 		return
 	}
 
@@ -73,7 +112,7 @@ func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 	result, err = sdk.NewConnectionBuilder().
 		Logger(logger).
 		Tokens(token).
-		URL("https://api.stage.openshift.com").
+		URL(envURL).
 		Build()
 
 	return
