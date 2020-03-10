@@ -26,7 +26,6 @@ import (
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/properties"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
@@ -105,45 +104,29 @@ func run(_ *cobra.Command, argv []string) {
 	}()
 
 	// Get the client for the OCM collection of clusters:
-	ocmClustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
+	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	// Try to find the cluster:
 	reporter.Infof("Loading cluster '%s'", clusterKey)
-	ocmQuery := fmt.Sprintf(
-		"(id = '%s' or name = '%s') and properties.%s = '%s'",
-		clusterKey, clusterKey, properties.CreatorARN, awsCreator.ARN,
-	)
-	ocmListResponse, err := ocmClustersCollection.List().
-		Search(ocmQuery).
-		Page(1).
-		Size(1).
-		Send()
+	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
-		reporter.Errorf("Can't locate cluster '%s': %v", err)
+		reporter.Errorf(fmt.Sprintf("Failed to get cluster '%s': %v", clusterKey, err))
 		os.Exit(1)
 	}
-	switch ocmListResponse.Total() {
-	case 0:
-		reporter.Errorf("There is no cluster with identifier or name '%s'", clusterKey)
-		os.Exit(1)
-	case 1:
-		ocmCluster := ocmListResponse.Items().Slice()[0]
-		ocmClusterID := ocmCluster.ID()
-		ocmClusterName := ocmCluster.ID()
-		reporter.Infof(
-			"Deleting cluster with identifier '%s' and name '%s'",
-			ocmClusterID, ocmClusterName,
+
+	clusterID := cluster.ID()
+	clusterName := cluster.Name()
+
+	reporter.Infof(
+		"Deleting cluster with identifier '%s' and name '%s'",
+		clusterID, clusterName,
+	)
+	_, err = clustersCollection.Cluster(clusterID).Delete().Send()
+	if err != nil {
+		reporter.Errorf(
+			"Can't delete cluster with identifier '%s' and name '%s'",
+			clusterID, clusterName,
 		)
-		_, err = ocmClustersCollection.Cluster(ocmClusterID).Delete().Send()
-		if err != nil {
-			reporter.Errorf(
-				"Can't delete cluster with identifier '%s' and name '%s'",
-				ocmClusterID, ocmClusterName,
-			)
-		}
-	default:
-		reporter.Errorf("There are %d clusters with identifier or name '%s'", clusterKey)
-		os.Exit(1)
 	}
 }
 
