@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/create"
+	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/describe"
 	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/dlt"
 	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/idp"
 	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/list"
@@ -40,6 +41,7 @@ func init() {
 
 	Cmd.AddCommand(create.Cmd)
 	Cmd.AddCommand(list.Cmd)
+	Cmd.AddCommand(describe.Cmd)
 	Cmd.AddCommand(dlt.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 }
