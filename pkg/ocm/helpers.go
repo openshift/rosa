@@ -19,11 +19,20 @@ package ocm
 import (
 	"errors"
 	"fmt"
+	"regexp"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/properties"
 )
+
+// Regular expression to used to make sure that the identifier or name given by the user is
+// safe and that it there is no risk of SQL injection:
+var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
+
+func IsValidClusterKey(clusterKey string) bool {
+	return clusterKeyRE.MatchString(clusterKey)
+}
 
 func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
 	query := fmt.Sprintf(

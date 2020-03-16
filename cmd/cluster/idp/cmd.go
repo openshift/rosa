@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -108,7 +107,7 @@ func run(_ *cobra.Command, argv []string) {
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := argv[0]
-	if !clusterKeyRE.MatchString(clusterKey) {
+	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -278,10 +277,6 @@ func run(_ *cobra.Command, argv []string) {
 
 	reporter.Infof("Successfully created IDP. To login into the console, click on %s", consoleURL)
 }
-
-// Regular expression to used to make sure that the identifier or name given by the user is
-// safe and that it there is no risk of SQL injection:
-var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
 
 // Gets user input from the command line
 func getInput(r *bufio.Reader, q string) (a string, err error) {

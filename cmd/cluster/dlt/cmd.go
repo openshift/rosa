@@ -19,7 +19,6 @@ package dlt
 import (
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/spf13/cobra"
 
@@ -69,7 +68,7 @@ func run(_ *cobra.Command, argv []string) {
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := argv[0]
-	if !clusterKeyRE.MatchString(clusterKey) {
+	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -135,7 +134,3 @@ func run(_ *cobra.Command, argv []string) {
 		)
 	}
 }
-
-// Regular expression to used to make sure that the identifier or name given by the user is
-// safe and that it there is no risk of SQL injection:
-var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
