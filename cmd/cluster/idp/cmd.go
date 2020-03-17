@@ -19,7 +19,6 @@ package idp
 import (
 	"bufio"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 
@@ -33,6 +32,7 @@ import (
 )
 
 var args struct {
+	idpType         string
 	clientID        string
 	clientSecret    string
 	organization    string
@@ -40,6 +40,8 @@ var args struct {
 }
 
 var env string
+
+var validIdps []string = []string{"github", "google", "ldap", "openid"}
 
 var Cmd = &cobra.Command{
 	Use:   "idp [ID|NAME]",
@@ -53,6 +55,12 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+	flags.StringVar(
+		&args.idpType,
+		"type",
+		"",
+		fmt.Sprintf("Type of identity provider. Options are %s", validIdps),
+	)
 	flags.StringVar(
 		&args.clientID,
 		"client-id",
@@ -165,56 +173,40 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Grab all the IDP information interactively if necessary
 	reader := bufio.NewReader(os.Stdin)
-	organization := args.organization
-	clientID := args.clientID
-	clientSecret := args.clientSecret
-	consoleURL := cluster.Console().URL()
+	idpType := args.idpType
 
-	if organization == "" || clientID == "" || clientSecret == "" {
-		fmt.Println("To use GitHub as an identity provider, you must first register the application:")
-
-		if organization == "" {
-			organization, err = getInput(reader, "\t* Enter the name of your GitHub organization")
-			if err != nil {
-				reporter.Errorf("Expected a GitHub organization name")
-				os.Exit(1)
-			}
-		}
-
-		// Create the full URL to automatically generate the GitHub app info
-		registerURLBase := fmt.Sprintf("https://github.com/organizations/%s/settings/applications/new", organization)
-		registerURL, err := url.Parse(registerURLBase)
+	if idpType == "" {
+		idpType, err = getInput(reader, fmt.Sprintf("\t* Enter a valid IDP type. Options are %s", validIdps))
 		if err != nil {
-			reporter.Errorf("Error parsing URL: %v", err)
+			reporter.Errorf("Expected a valid IDP type. Options are %s", validIdps)
 			os.Exit(1)
 		}
+	}
 
-		urlParams := url.Values{}
-		urlParams.Add("oauth_application[name]", cluster.Name())
-		urlParams.Add("oauth_application[url]", consoleURL)
-		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
-		urlParams.Add("oauth_application[callback_url]", oauthURL+"/oauth2callback/GitHub")
-
-		registerURL.RawQuery = urlParams.Encode()
-
-		fmt.Println("\t* Open the following URL:", registerURL.String())
-		fmt.Println("\t* Click on 'Register application'")
-
-		if clientID == "" {
-			clientID, err = getInput(reader, "\t* Copy the Client ID provided by GitHub")
-			if err != nil {
-				reporter.Errorf("Expected a GitHub application Client ID")
-				os.Exit(1)
+	if idpType != "" {
+		isValidIdp := false
+		for _, idp := range validIdps {
+			if idp == idpType {
+				isValidIdp = true
 			}
 		}
-
-		if clientSecret == "" {
-			clientSecret, err = getInput(reader, "\t* Copy the Client Secret provided by GitHub")
-			if err != nil {
-				reporter.Errorf("Expected a GitHub application Client Secret")
-				os.Exit(1)
-			}
+		if !isValidIdp {
+			reporter.Errorf("Expected a valid IDP type. Options are %s", validIdps)
+			os.Exit(1)
 		}
+	}
+
+	idpBuilder := cmv1.NewIdentityProvider()
+	switch idpType {
+	case "github":
+		err = buildGithubIdp(idpBuilder, cluster)
+	case "google":
+	case "ldap":
+	case "openid":
+	}
+	if err != nil {
+		reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
 	}
 
 	dedicatedAdmins := args.dedicatedAdmins
@@ -227,22 +219,10 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	reporter.Infof("Configuring IDP for cluster '%s'", clusterKey)
-
-	// Create GitHub IDP
-	githubIDP := cmv1.NewGithubIdentityProvider().
-		ClientID(clientID).
-		ClientSecret(clientSecret).
-		Organizations(organization)
-
-	// Create new IDP with GitHub provider
-	idp, err := cmv1.NewIdentityProvider().
-		Name("GitHub").
-		Type("GithubIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
-		MappingMethod(cmv1.IdentityProviderMappingMethodClaim).
-		Github(githubIDP).
-		Build()
+	idp, err := idpBuilder.Build()
 	if err != nil {
-		reporter.Errorf("Failed to create IDP for cluster '%s'", clusterKey)
+		reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
 	}
 
 	_, err = clustersCollection.Cluster(cluster.ID()).
@@ -275,7 +255,7 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}
 
-	reporter.Infof("Successfully created IDP. To login into the console, click on %s", consoleURL)
+	reporter.Infof("Successfully created IDP. To login into the console, click on %s", cluster.Console().URL())
 }
 
 // Gets user input from the command line
