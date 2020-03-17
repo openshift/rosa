@@ -18,12 +18,16 @@ package aws
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/organizations"
@@ -37,12 +41,14 @@ import (
 )
 
 // Name of the AWS user that will be used to create all the resources of the cluster:
-const AdminUserName = "osdCcsAdmin"
+const (
+	AdminUserName = "osdCcsAdmin"
+)
 
 type Client interface {
 	GetRegion() string
 	ValidateCredentials() (bool, error)
-	EnsureUser(username string) (bool, error)
+	EnsureOsdCcsAdminUser() (bool, error)
 	CreateAccessKey(username string) (*AWSAccessKey, error)
 	GetCreator() (*AWSCreator, error)
 	TagUser(username string, clusterID string, clusterName string) error
@@ -55,11 +61,11 @@ type ClientBuilder struct {
 }
 
 type awsClient struct {
-	logger *logrus.Logger
-	// cloudformationClient cloudformationiface.CloudFormationAPI
+	logger     *logrus.Logger
 	iamClient  iamiface.IAMAPI
 	orgClient  organizationsiface.OrganizationsAPI
 	stsClient  stsiface.STSAPI
+	cfClient   cloudformationiface.CloudFormationAPI
 	awsSession *session.Session
 }
 
@@ -133,6 +139,7 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 		iamClient:  iam.New(sess),
 		orgClient:  organizations.New(sess),
 		stsClient:  sts.New(sess),
+		cfClient:   cloudformation.New(sess),
 		awsSession: sess,
 	}
 
@@ -175,27 +182,51 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 	return true, nil
 }
 
-// Ensure osdCcsAdmin account
-func (c *awsClient) EnsureUser(username string) (bool, error) {
-	_, err := c.iamClient.CreateUser(&iam.CreateUserInput{
-		UserName: aws.String(username),
+// Ensure osdCcsAdmin IAM user is created
+func (c *awsClient) EnsureOsdCcsAdminUser() (bool, error) {
+
+	var cfTemplateBody string
+	stackName := "osdCcsAdminIAMUser"
+	cfTemplateCabilityIAM := "CAPABILITY_IAM"
+	cfTemplateCapabilities := []*string{&cfTemplateCabilityIAM}
+	cfTemplateBodyPath := "templates/iam_user_osdCcsAdmin.json"
+
+	data, err := ioutil.ReadFile(cfTemplateBodyPath)
+	if err != nil {
+		return false, err
+	}
+
+	cfTemplateBody = string(data)
+
+	_, err = c.cfClient.CreateStack(&cloudformation.CreateStackInput{
+		Capabilities: cfTemplateCapabilities,
+		StackName:    aws.String(stackName),
+		TemplateBody: aws.String(cfTemplateBody),
 	})
 	if err != nil {
 		switch typed := err.(type) {
 		case awserr.Error:
-			if typed.Code() == iam.ErrCodeEntityAlreadyExistsException {
+			if typed.Code() == cloudformation.ErrCodeAlreadyExistsException {
 				return false, nil
 			}
 		}
 		return false, err
 	}
 
-	_, err = c.iamClient.AttachUserPolicy(&iam.AttachUserPolicyInput{
-		PolicyArn: aws.String("arn:aws:iam::aws:policy/AdministratorAccess"),
-		UserName:  aws.String(username),
+	// Wait until cloudformation stack creates
+	err = c.cfClient.WaitUntilStackCreateComplete(&cloudformation.DescribeStacksInput{
+		StackName: aws.String(stackName),
 	})
 	if err != nil {
-		return true, err
+		switch typed := err.(type) {
+		case awserr.Error:
+			// Waiter reached maximum attempts waiting for the resource to be ready
+			if typed.Code() == request.WaiterResourceNotReadyErrorCode {
+				c.logger.Errorf("Max retries reached waiting for stack to create")
+				return false, err
+			}
+		}
+		return false, err
 	}
 
 	return true, nil

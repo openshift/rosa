@@ -1,0 +1,37 @@
+{
+  "Resources": {
+    "osdCcsAdmin": {
+      "Type": "AWS::IAM::User",
+      "Properties": {
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/AdministratorAccess"
+        ]
+      }
+    },
+    "osdCcsAdminAccessKeys": {
+      "Type": "AWS::IAM::AccessKey",
+      "Properties": {
+        "UserName": {
+          "Ref": "osdCcsAdmin"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "AccessKey": {
+      "Value": {
+        "Ref": "osdCcsAdminAccessKeys"
+      },
+      "Description": "Access Key ID for osdCcsAdmin IAM User"
+    },
+    "SecretKey": {
+      "Value": {
+        "Fn::GetAtt": [
+          "osdCcsAdminAccessKeys",
+          "SecretAccessKey"
+        ]
+      },
+      "Description": "Secret Access Key for osdCcsAdmin IAM User"
+    }
+  }
+}
