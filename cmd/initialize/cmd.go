@@ -88,6 +88,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate SCP policies for current user's account
 	reporter.Infof("Validating SCP policies...")
+
 	ok, err = client.ValidateSCP()
 	if err != nil {
 		reporter.Errorf("Error validating SCP policies: %v", err)
@@ -96,6 +97,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if !ok {
 		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
 	}
+	reporter.Infof("SCP/IAM permissions validated...")
 
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
 	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)

@@ -18,7 +18,6 @@ package aws
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -43,6 +42,7 @@ import (
 // Name of the AWS user that will be used to create all the resources of the cluster:
 const (
 	AdminUserName = "osdCcsAdmin"
+	stackName = "osdCcsAdminIAMUser"
 )
 
 type Client interface {
@@ -185,25 +185,14 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 // Ensure osdCcsAdmin IAM user is created
 func (c *awsClient) EnsureOsdCcsAdminUser() (bool, error) {
 
-	var cfTemplateBody string
-	stackName := "osdCcsAdminIAMUser"
-	cfCapabilityIAM := "CAPABILITY_IAM"
-	cfCapabilityNamedIAM := "CAPABILITY_NAMED_IAM"
-	cfTemplateCapabilities := []*string{&cfCapabilityIAM, &cfCapabilityNamedIAM}
-	cfTemplateBodyPath := "templates/iam_user_osdCcsAdmin.json"
-
-	data, err := ioutil.ReadFile(cfTemplateBodyPath)
+	// Read cloudformation template
+	cfTemplateBody, err := readCFTemplate()
 	if err != nil {
 		return false, err
 	}
 
-	cfTemplateBody = string(data)
-
-	_, err = c.cfClient.CreateStack(&cloudformation.CreateStackInput{
-		Capabilities: cfTemplateCapabilities,
-		StackName:    aws.String(stackName),
-		TemplateBody: aws.String(cfTemplateBody),
-	})
+	// Create cloudformation stack
+	_, err = c.cfClient.CreateStack(buildStackInput(cfTemplateBody, stackName))
 	if err != nil {
 		switch typed := err.(type) {
 		case awserr.Error:
@@ -276,31 +265,29 @@ func (c *awsClient) CreateAccessKey(username string) (*AWSAccessKey, error) {
 
 // Validate SCP...
 func (c *awsClient) ValidateSCP() (bool, error) {
-	hasScpAccess := true
-	policyType := aws.String("SERVICE_CONTROL_POLICY")
-
-	_, err := c.orgClient.ListPolicies(&organizations.ListPoliciesInput{
-		Filter: policyType,
-	})
-	if err != nil {
-		switch typed := err.(type) {
-		case awserr.Error:
-			// Current user does not have access to SCP policies. This is normal for most
-			// users, so we should find other ways of validating proper account permissions
-			if typed.Code() == organizations.ErrCodeAccessDeniedException {
-				hasScpAccess = false
-				err = nil
-			} else {
-				return false, err
-			}
-		default:
-			return false, err
-		}
+	hasPermissions := true
+	scpPolicyPath := "templates/policies/osd_scp_policy.json"
+	requiredPermissions := []string{}
+	sParams := &SimulateParams{
+		Region: region,
 	}
 
-	// TODO: Find another way to verify permissions
-	if !hasScpAccess {
-		return false, nil
+	for group := range permissions {
+		requiredPermissions = append(requiredPermissions, permissions[group]...)
+	}
+
+	// Read installer permissions and OSD SCP Policy permissions
+	installerPolicyDocument := generatePolicyDocument(requiredPermissions, aws.String("Installer IAM Policy Document"))
+	osdPolicyDocument := readSCPPolicy(scpPolicyPath)
+	policyDocuments := []PolicyDocument{installerPolicyDocument, osdPolicyDocument}
+
+	// Validate permissions
+	hasPermissions, err := validatePolicyDocuments(c, c, policyDocuments, sParams)
+	if err != nil {
+		return false, err
+	}
+	if !hasPermissions {
+		return false, err
 	}
 
 	return true, nil
