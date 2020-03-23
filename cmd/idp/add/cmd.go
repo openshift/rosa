@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package idp
+package add
 
 import (
-	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -27,16 +27,40 @@ import (
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
+	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
 var args struct {
-	idpType         string
-	clientID        string
-	clientSecret    string
-	organization    string
-	dedicatedAdmins string
+	idpType       string
+
+	clientID      string
+	clientSecret  string
+	mappingMethod string
+
+	// GitHub
+	githubHostname      string
+	githubOrganizations string
+	githubTeams         string
+
+	// Google
+	googleHostedDomain string
+
+	// LDAP
+	ldapURL          string
+	ldapBindDN       string
+	ldapBindPassword string
+	ldapIDs          string
+	ldapUsernames    string
+	ldapDisplayNames string
+	ldapEmails       string
+
+	// OpenID
+	openidIssuerURL string
+	openidEmail     string
+	openidName      string
+	openidUsername  string
 }
 
 var env string
@@ -44,9 +68,9 @@ var env string
 var validIdps []string = []string{"github", "google", "ldap", "openid"}
 
 var Cmd = &cobra.Command{
-	Use:   "idp [ID|NAME]",
-	Short: "Configure IDP for cluster",
-	Long:  "Identity providers determine how users log into the cluster.",
+	Use:   "add [ID|NAME]",
+	Short: "Add IDP for cluster",
+	Long:  "Add an Identity providers to determine how users log into the cluster.",
 	PreRun: func(cmd *cobra.Command, argv []string) {
 		env = cmd.Flags().Lookup("env").Value.String()
 	},
@@ -55,35 +79,130 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+	flags.SortFlags = false
+
 	flags.StringVar(
 		&args.idpType,
 		"type",
 		"",
-		fmt.Sprintf("Type of identity provider. Options are %s", validIdps),
+		fmt.Sprintf("Type of identity provider. Options are %s\n", validIdps),
+	)
+
+	flags.StringVar(
+		&args.mappingMethod,
+		"mapping-method",
+		"claim",
+		"Specifies how new identities are mapped to users when they log in",
 	)
 	flags.StringVar(
 		&args.clientID,
 		"client-id",
 		"",
-		"Client ID from GitHub application.",
+		"Client ID from the registered application.",
 	)
 	flags.StringVar(
 		&args.clientSecret,
 		"client-secret",
 		"",
-		"Client Secret from GitHub application.",
+		"Client Secret from the registered application.\n",
+	)
+
+	// GitHub
+	flags.StringVar(
+		&args.githubHostname,
+		"hostname",
+		"",
+		"GitHub: Optional domain to use with a hosted instance of GitHub Enterprise.",
 	)
 	flags.StringVar(
-		&args.organization,
-		"organization",
+		&args.githubOrganizations,
+		"organizations",
 		"",
-		"Only users that are members of this GitHub organization will be allowed to log in.",
+		"GitHub: Only users that are members of at least one of the listed organizations will be allowed to log in.",
 	)
 	flags.StringVar(
-		&args.dedicatedAdmins,
-		"dedicated-admins",
+		&args.githubTeams,
+		"teams",
 		"",
-		"Grant permission to manage this cluster to these GitHub users.",
+		"GitHub: Only users that are members of at least one of the listed teams will be allowed to log in. The format is <org>/<team>.\n",
+	)
+
+	// Google
+	flags.StringVar(
+		&args.googleHostedDomain,
+		"hosted-domain",
+		"",
+		"Google: Restrict users to a Google Apps domain.\n",
+	)
+
+	// LDAP
+	flags.StringVar(
+		&args.ldapURL,
+		"url",
+		"",
+		"LDAP: An RFC 2255 URL which specifies the LDAP search parameters to use.",
+	)
+	flags.StringVar(
+		&args.ldapBindDN,
+		"bind-dn",
+		"",
+		"LDAP: DN to bind with during the search phase.",
+	)
+	flags.StringVar(
+		&args.ldapBindPassword,
+		"bind-password",
+		"",
+		"LDAP: Password to bind with during the search phase.",
+	)
+	flags.StringVar(
+		&args.ldapIDs,
+		"id-attributes",
+		"dn",
+		"LDAP: The list of attributes whose values should be used as the user ID.",
+	)
+	flags.StringVar(
+		&args.ldapUsernames,
+		"username-attributes",
+		"uid",
+		"LDAP: The list of attributes whose values should be used as the preferred username.",
+	)
+	flags.StringVar(
+		&args.ldapDisplayNames,
+		"name-attributes",
+		"cn",
+		"LDAP: The list of attributes whose values should be used as the display name.",
+	)
+	flags.StringVar(
+		&args.ldapEmails,
+		"email-attributes",
+		"",
+		"LDAP: The list of attributes whose values should be used as the email address.\n",
+	)
+
+	// OpenID
+	flags.StringVar(
+		&args.openidIssuerURL,
+		"issuer-url",
+		"",
+		"OpenID: The URL that the OpenID Provider asserts as the Issuer Identifier. It must use the https scheme with no URL query parameters or fragment.",
+	)
+	flags.StringVar(
+		&args.openidEmail,
+		"email-claims",
+		"",
+		"OpenID: List of claims to use as the email address.",
+	)
+	flags.StringVar(
+		&args.openidName,
+		"name-claims",
+		"",
+		"OpenID: List of claims to use as the display name.",
+	)
+	flags.StringVar(
+		&args.openidUsername,
+		"username-claims",
+		"",
+		"OpenID: List of claims to use as the preferred username when provisioning a user.\n",
 	)
 }
 
@@ -171,12 +290,19 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	// Load any existing IDPs for this cluster
+	reporter.Infof("Loading identity providers for cluster '%s'", clusterKey)
+	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
+	if err != nil {
+		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
 	// Grab all the IDP information interactively if necessary
-	reader := bufio.NewReader(os.Stdin)
 	idpType := args.idpType
 
 	if idpType == "" {
-		idpType, err = getInput(reader, fmt.Sprintf("\t* Enter a valid IDP type. Options are %s", validIdps))
+		idpType, err = interactive.GetInput(fmt.Sprintf("Enter a valid IDP type. Options are %s", validIdps))
 		if err != nil {
 			reporter.Errorf("Expected a valid IDP type. Options are %s", validIdps)
 			os.Exit(1)
@@ -196,29 +322,25 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}
 
-	idpBuilder := cmv1.NewIdentityProvider()
+	var idpBuilder cmv1.IdentityProviderBuilder
+	idpName := getNextName(idpType, idps)
 	switch idpType {
 	case "github":
-		err = buildGithubIdp(idpBuilder, cluster)
+		idpBuilder, err = buildGithubIdp(cluster, idpName)
 	case "google":
+		idpBuilder, err = buildGoogleIdp(cluster, idpName)
 	case "ldap":
+		idpBuilder, err = buildLdapIdp(cluster, idpName)
 	case "openid":
+		idpBuilder, err = buildOpenidIdp(cluster, idpName)
 	}
 	if err != nil {
 		reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	dedicatedAdmins := args.dedicatedAdmins
-	if dedicatedAdmins == "" {
-		dedicatedAdmins, err = getInput(reader, "\t* Enter a comma-separated list of GitHub usernames to grant dedicated-admin rights to your cluster")
-		if err != nil {
-			reporter.Errorf("Expected a commad-separated list of GitHub usernames")
-			os.Exit(1)
-		}
-	}
-
 	reporter.Infof("Configuring IDP for cluster '%s'", clusterKey)
+
 	idp, err := idpBuilder.Build()
 	if err != nil {
 		reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)
@@ -235,36 +357,21 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	reporter.Infof("Adding dedicated-admin users to cluster '%s'", clusterKey)
-	for _, username := range strings.Split(dedicatedAdmins, ",") {
-		user, err := cmv1.NewUser().ID(username).Build()
-		if err != nil {
-			reporter.Errorf("Failed to create dedicated-admin user '%s' for cluster '%s'", username, clusterKey)
-			continue
-		}
-		_, err = clustersCollection.Cluster(cluster.ID()).
-			Groups().
-			Group("dedicated-admins").
-			Users().
-			Add().
-			Body(user).
-			Send()
-		if err != nil {
-			reporter.Errorf("Failed to add dedicated-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
-			continue
-		}
-	}
-
-	reporter.Infof("Successfully created IDP. To login into the console, click on %s", cluster.Console().URL())
+	reporter.Infof("Successfully created IDP. To login into the console, click on %s and select %s", cluster.Console().URL(), idpName)
 }
 
-// Gets user input from the command line
-func getInput(r *bufio.Reader, q string) (a string, err error) {
-	fmt.Print(q+": ")
-	text, err := r.ReadString('\n')
-	if err != nil {
-		return
+func getNextName(idpType string, idps []*cmv1.IdentityProvider) string {
+	nextSuffix := 0
+	for _, idp := range idps {
+		if strings.Contains(idp.Name(), idpType) {
+			lastSuffix, err := strconv.Atoi(strings.Split(idp.Name(), "-")[1])
+			if err != nil {
+				continue
+			}
+			if lastSuffix >= nextSuffix {
+				nextSuffix = lastSuffix
+			}
+		}
 	}
-	a = strings.Trim(text, "\n")
-	return
+	return fmt.Sprintf("%s-%d", idpType, nextSuffix+1)
 }

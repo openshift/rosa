@@ -25,7 +25,9 @@ import (
 	"github.com/spf13/pflag"
 
 	"gitlab.cee.redhat.com/service/moactl/cmd/cluster"
+	"gitlab.cee.redhat.com/service/moactl/cmd/idp"
 	"gitlab.cee.redhat.com/service/moactl/cmd/initialize"
+	"gitlab.cee.redhat.com/service/moactl/cmd/user"
 	"gitlab.cee.redhat.com/service/moactl/cmd/version"
 	"gitlab.cee.redhat.com/service/moactl/pkg/arguments"
 )
@@ -46,6 +48,8 @@ func init() {
 
 	// Register the subcommands:
 	root.AddCommand(cluster.Cmd)
+	root.AddCommand(idp.Cmd)
+	root.AddCommand(user.Cmd)
 	root.AddCommand(version.Cmd)
 	root.AddCommand(initialize.Cmd)
 }

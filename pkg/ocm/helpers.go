@@ -57,3 +57,29 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 		return nil, errors.New(fmt.Sprintf("There are %d clusters with identifier or name '%s'", response.Total(), clusterKey))
 	}
 }
+
+func GetIdentityProviders(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.IdentityProvider, error) {
+	idpClient := client.Cluster(clusterID).IdentityProviders()
+	response, err := idpClient.List().
+		Page(1).
+		Size(-1).
+		Send()
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to get identity providers for cluster '%s': %v", clusterID, err))
+	}
+
+	return response.Items().Slice(), nil
+}
+
+func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*cmv1.User, error) {
+	usersClient := client.Cluster(clusterID).Groups().Group(group).Users()
+	response, err := usersClient.List().
+		Page(1).
+		Size(-1).
+		Send()
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to get %s users for cluster '%s': %v", group, clusterID, err))
+	}
+
+	return response.Items().Slice(), nil
+}

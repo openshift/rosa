@@ -88,6 +88,10 @@ github.com/openshift-online/ocm-sdk-go v0.1.90 h1:k8hmTEI063juMneJIx3QuUI+M2S7Jc
 github.com/openshift-online/ocm-sdk-go v0.1.90/go.mod h1:2MWkLNfXrj92r3VOYYcu5RfpTj9o98RYD228HJ09WiI=
 github.com/openshift-online/ocm-sdk-go v0.1.92 h1:UWgsfCrSBWowHZzUBbwhFC8a9zBdIQGetAOyaMMm04E=
 github.com/openshift-online/ocm-sdk-go v0.1.92/go.mod h1:2MWkLNfXrj92r3VOYYcu5RfpTj9o98RYD228HJ09WiI=
+github.com/openshift-online/ocm-sdk-go v0.1.94 h1:zJxW6MYvrolHMdylGVtOyjuu6JNykQNchHi59PAdeUo=
+github.com/openshift-online/ocm-sdk-go v0.1.94/go.mod h1:2MWkLNfXrj92r3VOYYcu5RfpTj9o98RYD228HJ09WiI=
+github.com/openshift-online/ocm-sdk-go v0.1.95 h1:6iV7AQS0uzV7EWPea4a19t3UTb9KCxxUcaqw5Up6/JA=
+github.com/openshift-online/ocm-sdk-go v0.1.95/go.mod h1:2MWkLNfXrj92r3VOYYcu5RfpTj9o98RYD228HJ09WiI=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

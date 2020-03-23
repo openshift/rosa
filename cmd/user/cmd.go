@@ -14,21 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package user
 
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/create"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/describe"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/dlt"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/list"
+	"gitlab.cee.redhat.com/service/moactl/cmd/user/add"
+	"gitlab.cee.redhat.com/service/moactl/cmd/user/dlt"
+	"gitlab.cee.redhat.com/service/moactl/cmd/user/list"
 )
 
 var Cmd = &cobra.Command{
-	Use:   "cluster COMMAND",
-	Short: "Perform cluster operations",
-	Long:  "Perform cluster operations.",
+	Use:   "user COMMAND",
+	Short: "Configure identity provider users for cluster",
+	Long:  "Grant permission to manage this cluster to users defined in your identity provider.",
 }
 
 func init() {
@@ -38,8 +37,8 @@ func init() {
 		"Environment in which to run the OpenShift API. Options are 'integration', 'staging', 'production', or a valid URL.",
 	)
 
-	Cmd.AddCommand(create.Cmd)
-	Cmd.AddCommand(list.Cmd)
-	Cmd.AddCommand(describe.Cmd)
+	Cmd.AddCommand(add.Cmd)
 	Cmd.AddCommand(dlt.Cmd)
+	Cmd.AddCommand(list.Cmd)
 }
+
