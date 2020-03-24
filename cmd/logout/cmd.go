@@ -14,26 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package logout
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/create"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/describe"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/dlt"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/list"
+	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/config"
 )
 
 var Cmd = &cobra.Command{
-	Use:   "cluster COMMAND",
-	Short: "Perform cluster operations",
-	Long:  "Perform cluster operations.",
+	Use:   "logout",
+	Short: "Log out",
+	Long:  "Log out, removing the configuration file.",
+	RunE:  run,
 }
 
-func init() {
-	Cmd.AddCommand(create.Cmd)
-	Cmd.AddCommand(list.Cmd)
-	Cmd.AddCommand(describe.Cmd)
-	Cmd.AddCommand(dlt.Cmd)
+func run(cmd *cobra.Command, argv []string) error {
+	// Remove the configuration file:
+	err := config.Remove()
+	if err != nil {
+		return fmt.Errorf("Can't remove config file: %v", err)
+	}
+
+	return nil
 }

@@ -29,15 +29,10 @@ import (
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
-var env string
-
 var Cmd = &cobra.Command{
 	Use:   "delete [CLUSTER ID|NAME] [IDP NAME]",
 	Short: "Delete cluster IDPs",
 	Long:  "Delete a specific identity provider for a cluster.",
-	PreRun: func(cmd *cobra.Command, argv[] string) {
-		env = cmd.Flags().Lookup("env").Value.String()
-	},
 	Run:   run,
 }
 
@@ -61,7 +56,7 @@ func run(_ *cobra.Command, argv []string) {
 	if len(argv) != 2 {
 		reporter.Errorf(
 			"Expected exactly two command line parameters containing the name " +
-			"or identifier of the cluster and the name of the Identity provider.",
+				"or identifier of the cluster and the name of the Identity provider.",
 		)
 		os.Exit(1)
 	}
@@ -101,7 +96,6 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().
-		SetEnv(env).
 		Logger(logger).
 		Build()
 	if err != nil {

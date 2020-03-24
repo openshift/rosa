@@ -31,12 +31,6 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	Cmd.PersistentFlags().String(
-		"env",
-		"staging",
-		"Environment in which to run the OpenShift API. Options are 'integration', 'staging', 'production', or a valid URL.",
-	)
-
 	Cmd.AddCommand(add.Cmd)
 	Cmd.AddCommand(dlt.Cmd)
 	Cmd.AddCommand(list.Cmd)

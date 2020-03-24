@@ -30,16 +30,11 @@ import (
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
-var env string
-
 var Cmd = &cobra.Command{
 	Use:   "list [ID|NAME]",
 	Short: "List cluster users",
 	Long:  "List administrative cluster users.",
-	PreRun: func(cmd *cobra.Command, argv []string) {
-		env = cmd.Flags().Lookup("env").Value.String()
-	},
-	Run: run,
+	Run:   run,
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -96,7 +91,6 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().
-		SetEnv(env).
 		Logger(logger).
 		Build()
 	if err != nil {

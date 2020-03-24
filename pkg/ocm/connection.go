@@ -18,20 +18,19 @@ package ocm
 
 import (
 	"fmt"
-	"os"
-	"net/url"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
+	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/config"
 )
 
 // ConnectionBuilder contains the information and logic needed to build a connection to OCM. Don't
 // create instances of this type directly; use the NewConnection function instead.
 type ConnectionBuilder struct {
 	logger *logrus.Logger
-	env    string
+	token  string
 }
 
 // NewConnection creates a builder that can then be used to configure and build an OCM connection.
@@ -47,56 +46,33 @@ func (b *ConnectionBuilder) Logger(value *logrus.Logger) *ConnectionBuilder {
 	return b
 }
 
-func (b *ConnectionBuilder) SetEnv(value string) *ConnectionBuilder {
-	b.env = value
+// Token sets the token that the connection will use to authenticate the user
+func (b *ConnectionBuilder) Token(value string) *ConnectionBuilder {
+	b.token = value
 	return b
-}
-
-func (b *ConnectionBuilder) getEnvURL() (string, error) {
-	switch b.env {
-	case "integration":
-		return "https://api-integration.6943.hive-integration.openshiftapps.com", nil
-	case "int":
-		return "https://api-integration.6943.hive-integration.openshiftapps.com", nil
-	case "staging":
-		return "https://api.stage.openshift.com", nil
-	case "stage":
-		return "https://api.stage.openshift.com", nil
-	case "production":
-		return "https://api.openshift.com", nil
-	case "prod":
-		return "https://api.openshift.com", nil
-	default:
-		envURL, err := url.ParseRequestURI(b.env)
-		if err != nil {
-			return "", err
-		}
-		return envURL.String(), nil
-	}
 }
 
 // Build uses the information stored in the builder to create a new OCM connection.
 func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
+	// Load the configuration file:
+	cfg, err := config.Load()
+	if err != nil {
+		err = fmt.Errorf("Failed to load config file: %v", err)
+		return
+	}
+	if cfg == nil {
+		if b.token != "" {
+			cfg = new(config.Config)
+			cfg.AccessToken = b.token
+		} else {
+			err = fmt.Errorf("Not logged in, run the 'moactl login' command")
+			return
+		}
+	}
+
 	// Check parameters:
 	if b.logger == nil {
 		err = fmt.Errorf("logger is mandatory")
-		return
-	}
-
-	envURL, err := b.getEnvURL()
-	if err != nil {
-		return
-	}
-	if envURL == "" {
-		err = fmt.Errorf("env is mandatory")
-		return
-	}
-
-	// Check that there is an OCM token in the environment. This will not be needed once we are
-	// able to derive OCM credentials from AWS credentials.
-	token := os.Getenv("OCM_TOKEN")
-	if token == "" {
-		err = fmt.Errorf("environment variable 'OCM_TOKEN' isn't set")
 		return
 	}
 
@@ -108,12 +84,39 @@ func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 		return
 	}
 
-	// Create and populate the object:
-	result, err = sdk.NewConnectionBuilder().
-		Logger(logger).
-		Tokens(token).
-		URL(envURL).
-		Build()
+	// Prepare the builder for the connection adding only the properties that have explicit
+	// values in the configuration, so that default values won't be overridden:
+	builder := sdk.NewConnectionBuilder()
+	builder.Logger(logger)
+	if cfg.TokenURL != "" {
+		builder.TokenURL(cfg.TokenURL)
+	}
+	if cfg.ClientID != "" || cfg.ClientSecret != "" {
+		builder.Client(cfg.ClientID, cfg.ClientSecret)
+	}
+	if cfg.Scopes != nil {
+		builder.Scopes(cfg.Scopes...)
+	}
+	if cfg.URL != "" {
+		builder.URL(cfg.URL)
+	}
+	tokens := make([]string, 0, 2)
+	if cfg.AccessToken != "" {
+		tokens = append(tokens, cfg.AccessToken)
+	}
+	if cfg.RefreshToken != "" {
+		tokens = append(tokens, cfg.RefreshToken)
+	}
+	if len(tokens) > 0 {
+		builder.Tokens(tokens...)
+	}
+	builder.Insecure(cfg.Insecure)
+
+	// Create the connection:
+	result, err = builder.Build()
+	if err != nil {
+		return
+	}
 
 	return
 }

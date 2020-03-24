@@ -26,14 +26,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
-	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
+	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
 var args struct {
-	idpType       string
+	idpType string
 
 	clientID      string
 	clientSecret  string
@@ -63,18 +63,13 @@ var args struct {
 	openidUsername  string
 }
 
-var env string
-
 var validIdps []string = []string{"github", "google", "ldap", "openid"}
 
 var Cmd = &cobra.Command{
 	Use:   "add [ID|NAME]",
 	Short: "Add IDP for cluster",
 	Long:  "Add an Identity providers to determine how users log into the cluster.",
-	PreRun: func(cmd *cobra.Command, argv []string) {
-		env = cmd.Flags().Lookup("env").Value.String()
-	},
-	Run: run,
+	Run:   run,
 }
 
 func init() {
@@ -260,7 +255,6 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().
-		SetEnv(env).
 		Logger(logger).
 		Build()
 	if err != nil {
