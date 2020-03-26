@@ -35,6 +35,14 @@ import (
 	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
 )
 
+// When the value of the `--env` option is one of the keys of this map it will be replaced by the
+// corresponding value.
+var UrlAliases = map[string]string{
+	"production":  "https://api.openshift.com",
+	"staging":     "https://api.stage.openshift.com",
+	"integration": "https://api-integration.6943.hive-integration.openshiftapps.com",
+}
+
 // Config is the type used to store the configuration of the client.
 type Config struct {
 	AccessToken  string   `json:"access_token,omitempty"`
@@ -127,9 +135,48 @@ func Location() (path string, err error) {
 	return path, nil
 }
 
+func (c *Config) UserName() (username string, err error) {
+	if c.AccessToken == "" {
+		return
+	}
+
+	parser := new(jwt.Parser)
+	token, _, err := parser.ParseUnverified(c.AccessToken, jwt.MapClaims{})
+	if err != nil {
+		err = fmt.Errorf("cant parse token: %v", err)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		err = fmt.Errorf("expected map claims bug got %T", claims)
+		return
+	}
+	claim, ok := claims["username"]
+	if !ok {
+		err = fmt.Errorf("token doesn't contain the 'username' claim")
+		return
+	}
+	username, ok = claim.(string)
+	if !ok {
+		err = fmt.Errorf("expected string 'username' but got %T", claim)
+		return
+	}
+
+	return
+}
+
 // Armed checks if the configuration contains either credentials or tokens that haven't expired, so
 // that it can be used to perform authenticated requests.
-func (c *Config) Armed() (armed bool, err error) {
+func (c *Config) Armed(env string) (armed bool, err error) {
+	gatewayURL, ok := UrlAliases[env]
+	if !ok {
+		gatewayURL = env
+	}
+	if c.URL != gatewayURL {
+		armed = false
+		return
+	}
+
 	if c.ClientID != "" && c.ClientSecret != "" {
 		armed = true
 		return

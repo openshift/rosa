@@ -31,14 +31,6 @@ import (
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
-// When the value of the `--env` option is one of the keys of this map it will be replaced by the
-// corresponding value.
-var urlAliases = map[string]string{
-	"production":  "https://api.openshift.com",
-	"staging":     "https://api.stage.openshift.com",
-	"integration": "https://api-integration.6943.hive-integration.openshiftapps.com",
-}
-
 // #nosec G101
 const uiTokenPage = "https://cloud.redhat.com/openshift/token"
 
@@ -168,7 +160,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// If the value of the `--env` is any of the aliases then replace it with the corresponding
 	// real URL:
-	gatewayURL, ok := urlAliases[args.env]
+	gatewayURL, ok := config.UrlAliases[args.env]
 	if !ok {
 		gatewayURL = args.env
 	}
@@ -241,6 +233,14 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Failed to save config file: %v", err)
 		os.Exit(1)
 	}
+
+	username, err := cfg.UserName()
+	if err != nil {
+		reporter.Errorf("Failed to get username: %v", err)
+		os.Exit(1)
+	}
+
+	reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
 }
 
 // tokenType extracts the value of the `typ` claim. It returns the value as a string, or the empty
