@@ -22,6 +22,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"gitlab.cee.redhat.com/service/moactl/cmd/login"
+
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
@@ -32,6 +34,11 @@ var Cmd = &cobra.Command{
 	Short: "Applies templates to support Managed OpenShift on AWS clusters",
 	Long:  "Applies templates to support Managed OpenShift on AWS clusters",
 	Run:   run,
+}
+
+func init() {
+	// Force-load all flags from `login` into `init`
+	Cmd.Flags().AddFlagSet(login.Cmd.Flags())
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -58,6 +65,10 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Error creating AWS client: %v", err)
 		os.Exit(1)
 	}
+
+	// Call `login` as part of `init`. We do this before other validations
+	// to get the prompt out of the way before performing longer checks.
+	login.Cmd.Run(cmd, argv)
 
 	// Validate AWS credentials for current user
 	reporter.Infof("Validating AWS credentials...")

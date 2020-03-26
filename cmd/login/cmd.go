@@ -54,8 +54,8 @@ var args struct {
 
 var Cmd = &cobra.Command{
 	Use:   "login",
-	Short: "Log in",
-	Long: "Log in, saving the credentials to the configuration file.\n" +
+	Short: "Log in to Red Hat",
+	Long: "Log in to your Red Hat account, saving the credentials to the configuration file.\n" +
 		"The recommend way is using '--token', which you can obtain at: " + uiTokenPage,
 	Run: run,
 }
@@ -140,8 +140,8 @@ func run(cmd *cobra.Command, argv []string) {
 	token := args.token
 
 	if token == "" {
-		fmt.Println("To login, get an offline access token at", uiTokenPage)
-		token, err = interactive.GetInput("Copy token and paste here")
+		fmt.Println("To login to your Red Hat account, get an offline access token at", uiTokenPage)
+		token, err = interactive.GetInput("Copy the token and paste it here")
 		if err != nil {
 			reporter.Errorf("Failed to parse token: %v", err)
 			os.Exit(1)
