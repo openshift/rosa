@@ -19,6 +19,9 @@ package initialize
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"regexp"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -91,7 +94,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if !ok {
-		reporter.Infof("Failed to validate SCP policies. Will try to continue anyway...")
+		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
 	}
 
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
@@ -106,4 +109,32 @@ func run(cmd *cobra.Command, argv []string) {
 	} else {
 		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
 	}
+
+	// Verify whether `oc` is installed
+	reporter.Infof("Verifying whether OpenShift command-line tool is available...")
+	ocDownloadURL := "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/"
+
+	output, err := exec.Command("oc", "version", "--client").Output()
+	if err != nil {
+		reporter.Errorf("OpenShift command-line tool is not installed.\n"+
+			"Go to %s to download the OpenShift client and add it to your PATH.", ocDownloadURL)
+		os.Exit(1)
+	}
+
+	// Parse the version for the OpenShift Client
+	version := strings.Replace(string(output), "\n", "", 1)
+	isCorrectVersion, err := regexp.Match(` openshift-clients-4.*`, output)
+	if err != nil {
+		reporter.Errorf("Failed to parse OpenShift Client version: %v", err)
+		os.Exit(1)
+	}
+
+	if !isCorrectVersion {
+		reporter.Warnf("Current OpenShift %s", version)
+		reporter.Warnf("Your version of the OpenShift command-line tool is not supported.")
+		fmt.Printf("Go to %s to download the latest version.\n", ocDownloadURL)
+		os.Exit(1)
+	}
+
+	reporter.Infof("Current OpenShift %s", version)
 }
