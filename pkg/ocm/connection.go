@@ -30,7 +30,7 @@ import (
 // create instances of this type directly; use the NewConnection function instead.
 type ConnectionBuilder struct {
 	logger *logrus.Logger
-	token  string
+	cfg    *config.Config
 }
 
 // NewConnection creates a builder that can then be used to configure and build an OCM connection.
@@ -46,27 +46,24 @@ func (b *ConnectionBuilder) Logger(value *logrus.Logger) *ConnectionBuilder {
 	return b
 }
 
-// Token sets the token that the connection will use to authenticate the user
-func (b *ConnectionBuilder) Token(value string) *ConnectionBuilder {
-	b.token = value
+// Config sets the configuration that the connection will use to authenticate the user
+func (b *ConnectionBuilder) Config(value *config.Config) *ConnectionBuilder {
+	b.cfg = value
 	return b
 }
 
 // Build uses the information stored in the builder to create a new OCM connection.
 func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
-	// Load the configuration file:
-	cfg, err := config.Load()
-	if err != nil {
-		err = fmt.Errorf("Failed to load config file: %v", err)
-		return
-	}
-	if cfg == nil {
-		if b.token != "" {
-			cfg = new(config.Config)
-			cfg.AccessToken = b.token
-		} else {
+	if b.cfg == nil {
+		// Load the configuration file:
+		b.cfg, err = config.Load()
+		if err != nil {
+			err = fmt.Errorf("Failed to load config file: %v", err)
+			return result, err
+		}
+		if b.cfg == nil {
 			err = fmt.Errorf("Not logged in, run the 'moactl login' command")
-			return
+			return result, err
 		}
 	}
 
@@ -88,29 +85,29 @@ func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 	// values in the configuration, so that default values won't be overridden:
 	builder := sdk.NewConnectionBuilder()
 	builder.Logger(logger)
-	if cfg.TokenURL != "" {
-		builder.TokenURL(cfg.TokenURL)
+	if b.cfg.TokenURL != "" {
+		builder.TokenURL(b.cfg.TokenURL)
 	}
-	if cfg.ClientID != "" || cfg.ClientSecret != "" {
-		builder.Client(cfg.ClientID, cfg.ClientSecret)
+	if b.cfg.ClientID != "" || b.cfg.ClientSecret != "" {
+		builder.Client(b.cfg.ClientID, b.cfg.ClientSecret)
 	}
-	if cfg.Scopes != nil {
-		builder.Scopes(cfg.Scopes...)
+	if b.cfg.Scopes != nil {
+		builder.Scopes(b.cfg.Scopes...)
 	}
-	if cfg.URL != "" {
-		builder.URL(cfg.URL)
+	if b.cfg.URL != "" {
+		builder.URL(b.cfg.URL)
 	}
 	tokens := make([]string, 0, 2)
-	if cfg.AccessToken != "" {
-		tokens = append(tokens, cfg.AccessToken)
+	if b.cfg.AccessToken != "" {
+		tokens = append(tokens, b.cfg.AccessToken)
 	}
-	if cfg.RefreshToken != "" {
-		tokens = append(tokens, cfg.RefreshToken)
+	if b.cfg.RefreshToken != "" {
+		tokens = append(tokens, b.cfg.RefreshToken)
 	}
 	if len(tokens) > 0 {
 		builder.Tokens(tokens...)
 	}
-	builder.Insecure(cfg.Insecure)
+	builder.Insecure(b.cfg.Insecure)
 
 	// Create the connection:
 	result, err = builder.Build()

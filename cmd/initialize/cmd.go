@@ -26,7 +26,6 @@ import (
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/config"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
@@ -67,44 +66,9 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Load the OCM configuration file:
-	cfg, err := config.Load()
-	if err != nil {
-		reporter.Errorf("Failed to load config file: %v", err)
-		os.Exit(1)
-	}
-
-	// Verify if user is already logged to the correct environment in OCM
-	// and if the tokens are still valid
-	var armed bool
-	if cfg != nil {
-		env := cmd.Flag("env").Value.String()
-		armed, err = cfg.Armed(env)
-		if err != nil {
-			reporter.Errorf("Failed to verify configuration: %v", err)
-			os.Exit(1)
-		}
-	}
-
-	// If the user gave us a token, or the OCM configuration is empty or invalid, we call `login`.
-	token := cmd.Flag("token").Value.String()
-	if cfg == nil || !armed || token != "" {
-		login.Cmd.Run(cmd, argv)
-
-		cfg, err = config.Load()
-		if err != nil {
-			reporter.Errorf("Failed to load config file: %v", err)
-			os.Exit(1)
-		}
-	} else {
-		username, err := cfg.UserName()
-		if err != nil {
-			reporter.Errorf("Failed to get username: %v", err)
-			os.Exit(1)
-		}
-
-		reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
-	}
+	// Call `login` as part of `init`. We do this before other validations
+	// to get the prompt out of the way before performing longer checks.
+	login.Cmd.Run(cmd, argv)
 
 	// Validate AWS credentials for current user
 	reporter.Infof("Validating AWS credentials...")

@@ -46,9 +46,14 @@ var args struct {
 
 var Cmd = &cobra.Command{
 	Use:   "login",
-	Short: "Log in to Red Hat",
-	Long: "Log in to your Red Hat account, saving the credentials to the configuration file.\n" +
-		"The recommend way is using '--token', which you can obtain at: " + uiTokenPage,
+	Short: "Log in to your Red Hat account",
+	Long: fmt.Sprintf("Log in to your Red Hat account, saving the credentials to the configuration file.\n" +
+		"The supported mechanism is by using a token, which can be obtained at: %s\n\n" +
+		"The application looks for the token in the following order, stopping when it finds it:\n" +
+		"\t1. Command-line flags\n" +
+		"\t2. Environment variable (MOA_TOKEN)\n" +
+		"\t3. Configuration file\n" +
+		"\t4. Command-line prompt\n", uiTokenPage),
 	Run: run,
 }
 
@@ -129,22 +134,48 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	token := args.token
+	// Load the configuration file:
+	cfg, err := config.Load()
+	if err != nil {
+		reporter.Errorf("Failed to load config file: %v", err)
+		os.Exit(1)
+	}
+	if cfg == nil {
+		cfg = new(config.Config)
+	}
 
-	if token == "" {
+	token := args.token
+	haveReqs := token != ""
+
+	// Verify environment variables:
+	if !haveReqs {
+		token = os.Getenv("MOA_TOKEN")
+		haveReqs = token != ""
+	}
+
+	// Verify configuration file:
+	if !haveReqs {
+		armed, err := cfg.Armed()
+		if err != nil {
+			reporter.Errorf("Failed to verify configuration: %v", err)
+			os.Exit(1)
+		}
+		haveReqs = armed
+	}
+
+	// Prompt the user for token:
+	if !haveReqs {
 		fmt.Println("To login to your Red Hat account, get an offline access token at", uiTokenPage)
 		token, err = interactive.GetInput("Copy the token and paste it here")
 		if err != nil {
 			reporter.Errorf("Failed to parse token: %v", err)
 			os.Exit(1)
 		}
+		haveReqs = token != ""
 	}
 
-	// If a token has been provided parse it:
-	parser := new(jwt.Parser)
-	jwtToken, _, err := parser.ParseUnverified(token, jwt.MapClaims{})
-	if err != nil {
-		reporter.Errorf("Failed to parse token '%s': %v", token, err)
+	if !haveReqs {
+		reporter.Errorf("Failed to login to OCM. See `moactl login --help` for information.")
 		os.Exit(1)
 	}
 
@@ -165,16 +196,6 @@ func run(cmd *cobra.Command, argv []string) {
 		gatewayURL = args.env
 	}
 
-	// Load the configuration file:
-	cfg, err := config.Load()
-	if err != nil {
-		reporter.Errorf("Failed to load config file: %v", err)
-		os.Exit(1)
-	}
-	if cfg == nil {
-		cfg = new(config.Config)
-	}
-
 	// Update the configuration with the values given in the command line:
 	cfg.TokenURL = tokenURL
 	cfg.ClientID = clientID
@@ -182,31 +203,41 @@ func run(cmd *cobra.Command, argv []string) {
 	cfg.Scopes = args.scopes
 	cfg.URL = gatewayURL
 	cfg.Insecure = args.insecure
-	cfg.AccessToken = ""
-	cfg.RefreshToken = ""
 
-	// Put the token in the place of the configuration that corresponds to its type:
-	typ, err := tokenType(jwtToken)
-	if err != nil {
-		reporter.Errorf("Failed to extract type from 'typ' claim of token '%s': %v", token, err)
-		os.Exit(1)
-	}
-	switch typ {
-	case "Bearer":
-		cfg.AccessToken = token
-	case "Refresh", "Offline":
-		cfg.RefreshToken = token
-	case "":
-		reporter.Errorf("Don't know how to handle empty type in token '%s'", token)
-		os.Exit(1)
-	default:
-		reporter.Errorf("Don't know how to handle token type '%s' in token '%s'", typ, token)
-		os.Exit(1)
+	if token != "" {
+		// If a token has been provided parse it:
+		parser := new(jwt.Parser)
+		jwtToken, _, err := parser.ParseUnverified(token, jwt.MapClaims{})
+		if err != nil {
+			reporter.Errorf("Failed to parse token '%s': %v", token, err)
+			os.Exit(1)
+		}
+
+		// Put the token in the place of the configuration that corresponds to its type:
+		typ, err := tokenType(jwtToken)
+		if err != nil {
+			reporter.Errorf("Failed to extract type from 'typ' claim of token '%s': %v", token, err)
+			os.Exit(1)
+		}
+		switch typ {
+		case "Bearer":
+			cfg.AccessToken = token
+			cfg.RefreshToken = ""
+		case "Refresh", "Offline":
+			cfg.AccessToken = ""
+			cfg.RefreshToken = token
+		case "":
+			reporter.Errorf("Don't know how to handle empty type in token '%s'", token)
+			os.Exit(1)
+		default:
+			reporter.Errorf("Don't know how to handle token type '%s' in token '%s'", typ, token)
+			os.Exit(1)
+		}
 	}
 
 	// Create a connection and get the token to verify that the crendentials are correct:
 	connection, err := ocm.NewConnection().
-		Token(token).
+		Config(cfg).
 		Logger(logger).
 		Build()
 	if err != nil {

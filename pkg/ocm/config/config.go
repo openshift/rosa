@@ -167,16 +167,7 @@ func (c *Config) UserName() (username string, err error) {
 
 // Armed checks if the configuration contains either credentials or tokens that haven't expired, so
 // that it can be used to perform authenticated requests.
-func (c *Config) Armed(env string) (armed bool, err error) {
-	gatewayURL, ok := UrlAliases[env]
-	if !ok {
-		gatewayURL = env
-	}
-	if c.URL != gatewayURL {
-		armed = false
-		return
-	}
-
+func (c *Config) Armed() (armed bool, err error) {
 	if c.ClientID != "" && c.ClientSecret != "" {
 		armed = true
 		return
