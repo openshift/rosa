@@ -19,7 +19,6 @@ package create
 import (
 	"fmt"
 	"os"
-	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -81,17 +80,13 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Create the access key for the AWS user:
-	awsAccessKey, err := awsClient.CreateAccessKey(aws.AdminUserName)
+	awsAccessKey, err := awsClient.GetAccessKeyFromStack(aws.OsdCcsAdminStackName)
 	if err != nil {
 		reporter.Errorf("Can't create access keys for user '%s'", aws.AdminUserName)
 		os.Exit(1)
 	}
 	reporter.Infof("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
 	reporter.Infof("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
-
-	// The created access key isn't immediately active, so we need to wait a bit till it is:
-	reporter.Infof("Waiting for access key to be active")
-	time.Sleep(10 * time.Second)
 
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().

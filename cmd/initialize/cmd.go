@@ -101,7 +101,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
 	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
-	created, err := client.EnsureOsdCcsAdminUser()
+	created, err := client.EnsureOsdCcsAdminUser(aws.OsdCcsAdminStackName)
 	if err != nil {
 		reporter.Errorf("Failed to create user '%s': %v", aws.AdminUserName, err)
 		os.Exit(1)

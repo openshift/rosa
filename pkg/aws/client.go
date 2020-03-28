@@ -42,16 +42,17 @@ import (
 // Name of the AWS user that will be used to create all the resources of the cluster:
 const (
 	AdminUserName = "osdCcsAdmin"
-	stackName = "osdCcsAdminIAMUser"
+	OsdCcsAdminStackName = "osdCcsAdminIAMUser"
 )
 
 type Client interface {
 	GetRegion() string
 	ValidateCredentials() (bool, error)
-	EnsureOsdCcsAdminUser() (bool, error)
-	CreateAccessKey(username string) (*AWSAccessKey, error)
+	EnsureOsdCcsAdminUser(stackName string) (bool, error)
+	GetAccessKeyFromStack(stackName string) (*AWSAccessKey, error)
 	GetCreator() (*AWSCreator, error)
 	TagUser(username string, clusterID string, clusterName string) error
+
 	ValidateSCP() (bool, error)
 }
 
@@ -183,7 +184,7 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 }
 
 // Ensure osdCcsAdmin IAM user is created
-func (c *awsClient) EnsureOsdCcsAdminUser() (bool, error) {
+func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
 
 	// Read cloudformation template
 	cfTemplateBody, err := readCFTemplate()
@@ -249,18 +250,28 @@ type AWSAccessKey struct {
 	SecretAccessKey string
 }
 
-func (c *awsClient) CreateAccessKey(username string) (*AWSAccessKey, error) {
-	createAccessKeyOutput, err := c.iamClient.CreateAccessKey(&iam.CreateAccessKeyInput{
-		UserName: aws.String(username),
-	})
-	if err != nil {
-		return nil, err
+func (c *awsClient) GetAccessKeyFromStack(stackName string) (*AWSAccessKey, error) {
+
+	outputKeySecretKey := "SecretKey"
+	outputKeyAccessKey := "AccessKey"
+	keys := AWSAccessKey{}
+
+	stackOutput, err := c.cfClient.DescribeStacks(&cloudformation.DescribeStacksInput{StackName: &stackName})
+
+	for _, stack := range stackOutput.Stacks {
+		if *stack.StackName == stackName {
+			for _, output := range stack.Outputs {
+				if *output.OutputKey == outputKeyAccessKey {
+					keys.AccessKeyID = aws.StringValue(output.OutputValue)
+				}
+				if *output.OutputKey == outputKeySecretKey {
+					keys.SecretAccessKey = aws.StringValue(output.OutputValue)
+				}
+			}
+		}
 	}
-	accessKey := createAccessKeyOutput.AccessKey
-	return &AWSAccessKey{
-		AccessKeyID:     aws.StringValue(accessKey.AccessKeyId),
-		SecretAccessKey: aws.StringValue(accessKey.SecretAccessKey),
-	}, nil
+
+	return &keys, err
 }
 
 // Validate SCP...
