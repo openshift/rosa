@@ -5,7 +5,8 @@
       "Properties": {
         "ManagedPolicyArns": [
           "arn:aws:iam::aws:policy/AdministratorAccess"
-        ]
+        ],
+        "UserName": "osdCcsAdmin"
       }
     },
     "osdCcsAdminAccessKeys": {

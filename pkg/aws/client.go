@@ -187,8 +187,9 @@ func (c *awsClient) EnsureOsdCcsAdminUser() (bool, error) {
 
 	var cfTemplateBody string
 	stackName := "osdCcsAdminIAMUser"
-	cfTemplateCabilityIAM := "CAPABILITY_IAM"
-	cfTemplateCapabilities := []*string{&cfTemplateCabilityIAM}
+	cfCapabilityIAM := "CAPABILITY_IAM"
+	cfCapabilityNamedIAM := "CAPABILITY_NAMED_IAM"
+	cfTemplateCapabilities := []*string{&cfCapabilityIAM, &cfCapabilityNamedIAM}
 	cfTemplateBodyPath := "templates/iam_user_osdCcsAdmin.json"
 
 	data, err := ioutil.ReadFile(cfTemplateBodyPath)
