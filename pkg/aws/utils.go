@@ -149,8 +149,10 @@ func readSCPPolicy(policyDocumentPath string) PolicyDocument {
 // Build cloudformation stack input
 func buildStackInput(cfTemplateBody, stackName string) *cloudformation.CreateStackInput {
 	// Special cloudformation capabilities are required to craete IAM resources in AWS
-	cfTemplateCabilityIAM := "CAPABILITY_IAM"
-	cfTemplateCapabilities := []*string{&cfTemplateCabilityIAM}
+	cfCapabilityIAM := "CAPABILITY_IAM"
+	cfCapabilityNamedIAM := "CAPABILITY_NAMED_IAM"
+	cfTemplateCapabilities := []*string{&cfCapabilityIAM, &cfCapabilityNamedIAM}
+
 
 	return &cloudformation.CreateStackInput{
 		Capabilities: cfTemplateCapabilities,
