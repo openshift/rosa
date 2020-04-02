@@ -104,7 +104,7 @@ func templatesCloudformationIam_user_osdccsadminJson() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/cloudformation/iam_user_osdCcsAdmin.json", size: 801, mode: os.FileMode(420), modTime: time.Unix(1585842962, 0)}
+	info := bindataFileInfo{name: "templates/cloudformation/iam_user_osdCcsAdmin.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -298,7 +298,7 @@ func templatesPoliciesOsd_scp_policyJson() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/policies/osd_scp_policy.json", size: 3889, mode: os.FileMode(420), modTime: time.Unix(1585842962, 0)}
+	info := bindataFileInfo{name: "templates/policies/osd_scp_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
