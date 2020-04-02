@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/aws/aws-sdk-go v1.29.17
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openshift-online/ocm-sdk-go v0.1.95

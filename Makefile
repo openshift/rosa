@@ -22,7 +22,7 @@ export GOPROXY=https://proxy.golang.org
 export CGO_ENABLED=0
 
 .PHONY: moactl
-moactl:
+moactl: generate
 	go build .
 
 .PHONY: test
@@ -46,3 +46,7 @@ clean:
 		*-windows-amd64 \
 		*.sha256 \
 		$(NULL)
+
+.PHONY: generate
+generate:
+	go-bindata -nocompress -pkg assets -o ./pkg/assets/bindata.go ./templates/...

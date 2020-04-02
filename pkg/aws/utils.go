@@ -3,13 +3,14 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"gitlab.cee.redhat.com/service/moactl/pkg/assets"
 )
+
 
 // SimulateParams captures any additional details that should be used
 // when simulating permissions.
@@ -130,11 +131,14 @@ func generatePolicyDocument(actions []string, id *string) PolicyDocument {
 // IAM Policy Statements
 func readSCPPolicy(policyDocumentPath string) PolicyDocument {
 
-	policyDocumentFile, _ := ioutil.ReadFile(policyDocumentPath)
+	policyDocumentFile, err := assets.Asset(policyDocumentPath)
+	if err != nil {
+		fmt.Errorf("Unable to load file: %s", policyDocumentPath)
+	}
 
 	policyDocument := PolicyDocument{}
 
-	err := json.Unmarshal([]byte(policyDocumentFile), &policyDocument)
+	err = json.Unmarshal([]byte(policyDocumentFile), &policyDocument)
 	if err != nil {
 		fmt.Println("Error unmarshalling statement: %v", err)
 	}
@@ -160,7 +164,7 @@ func buildStackInput(cfTemplateBody, stackName string) *cloudformation.CreateSta
 func readCFTemplate() (string, error) {
 	cfTemplateBodyPath := "templates/cloudformation/iam_user_osdCcsAdmin.json"
 
-	cfTemplate, err := ioutil.ReadFile(cfTemplateBodyPath)
+	cfTemplate, err := assets.Asset(cfTemplateBodyPath)
 	if err != nil {
 		return "", fmt.Errorf("unable to read cloudformation template: %s", err)
 	}
