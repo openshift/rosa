@@ -106,10 +106,9 @@ func run(_ *cobra.Command, argv []string) {
 	// Create the cluster:
 	ocmCluster, err := cmv1.NewCluster().
 		Name(clusterName).
-		BYOC(true).
-		CloudProvider(
-			cmv1.NewCloudProvider().
-				ID("aws"),
+		Product(
+			cmv1.NewProduct().
+				ID("moa"),
 		).
 		Region(
 			cmv1.NewCloudRegion().
