@@ -32,12 +32,12 @@ import (
 )
 
 var args struct {
+	clusterAdmins   string
 	dedicatedAdmins string
-	// clusterAdmins   string
 }
 
 var Cmd = &cobra.Command{
-	Use:   "add [CLUSTER ID|NAME] [--dedicated-admins=USER1,USER2]",
+	Use:   "add [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2|--dedicated-admins=USER1,USER2]",
 	Short: "Configure user access for cluster",
 	Long:  "Configure user access for cluster",
 	Run:   run,
@@ -46,17 +46,17 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 	flags.StringVar(
+		&args.clusterAdmins,
+		"cluster-admins",
+		"",
+		"Grant cluster-admin permission to these users.",
+	)
+	flags.StringVar(
 		&args.dedicatedAdmins,
 		"dedicated-admins",
 		"",
 		"Grant dedicated-admin permission to these users.",
 	)
-	// flags.StringVar(
-	// 	&args.clusterAdmins,
-	// 	"cluster-admins",
-	// 	"",
-	// 	"Grant cluster-admin permission to these users.",
-	// )
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -142,6 +142,15 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	clusterAdmins := args.clusterAdmins
+	if clusterAdmins == "" {
+		clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant cluster-admin rights to your cluster")
+		if err != nil {
+			reporter.Errorf("Expected a commad-separated list of usernames")
+			os.Exit(1)
+		}
+	}
+
 	dedicatedAdmins := args.dedicatedAdmins
 	if dedicatedAdmins == "" {
 		dedicatedAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant dedicated-admin rights to your cluster")
@@ -151,52 +160,52 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}
 
-	// clusterAdmins := args.clusterAdmins
-	// if clusterAdmins == "" {
-	// 	clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant cluster-admin rights to your cluster")
-	// 	if err != nil {
-	// 		reporter.Errorf("Expected a commad-separated list of usernames")
-	// 		os.Exit(1)
-	// 	}
-	// }
+	if clusterAdmins == "" && dedicatedAdmins == "" {
+		reporter.Errorf("Expected at least one of 'cluster-admins' or 'dedicated-admins'")
+		os.Exit(1)
+	}
 
-	reporter.Infof("Adding dedicated-admin users to cluster '%s'", clusterKey)
-	for _, username := range strings.Split(dedicatedAdmins, ",") {
-		user, err := cmv1.NewUser().ID(username).Build()
-		if err != nil {
-			reporter.Errorf("Failed to create dedicated-admin user '%s' for cluster '%s'", username, clusterKey)
-			continue
-		}
-		_, err = clustersCollection.Cluster(cluster.ID()).
-			Groups().
-			Group("dedicated-admins").
-			Users().
-			Add().
-			Body(user).
-			Send()
-		if err != nil {
-			reporter.Errorf("Failed to add dedicated-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
-			continue
+	if clusterAdmins != "" {
+		reporter.Infof("Adding cluster-admin users to cluster '%s'", clusterKey)
+		for _, username := range strings.Split(clusterAdmins, ",") {
+			user, err := cmv1.NewUser().ID(username).Build()
+			if err != nil {
+				reporter.Errorf("Failed to create cluster-admin user '%s' for cluster '%s'", username, clusterKey)
+				continue
+			}
+			_, err = clustersCollection.Cluster(cluster.ID()).
+				Groups().
+				Group("cluster-admins").
+				Users().
+				Add().
+				Body(user).
+				Send()
+			if err != nil {
+				reporter.Errorf("Failed to add cluster-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
+				continue
+			}
 		}
 	}
 
-	// reporter.Infof("Adding cluster-admin users to cluster '%s'", clusterKey)
-	// for _, username := range strings.Split(clusterAdmins, ",") {
-	// 	user, err := cmv1.NewUser().ID(username).Build()
-	// 	if err != nil {
-	// 		reporter.Errorf("Failed to create cluster-admin user '%s' for cluster '%s'", username, clusterKey)
-	// 		continue
-	// 	}
-	// 	_, err = clustersCollection.Cluster(cluster.ID()).
-	// 		Groups().
-	// 		Group("cluster-admins").
-	// 		Users().
-	// 		Add().
-	// 		Body(user).
-	// 		Send()
-	// 	if err != nil {
-	// 		reporter.Errorf("Failed to add cluster-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
-	// 		continue
-	// 	}
-	// }
+	if dedicatedAdmins != "" {
+		reporter.Infof("Adding dedicated-admin users to cluster '%s'", clusterKey)
+		for _, username := range strings.Split(dedicatedAdmins, ",") {
+			user, err := cmv1.NewUser().ID(username).Build()
+			if err != nil {
+				reporter.Errorf("Failed to create dedicated-admin user '%s' for cluster '%s'", username, clusterKey)
+				continue
+			}
+			_, err = clustersCollection.Cluster(cluster.ID()).
+				Groups().
+				Group("dedicated-admins").
+				Users().
+				Add().
+				Body(user).
+				Send()
+			if err != nil {
+				reporter.Errorf("Failed to add dedicated-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
+				continue
+			}
+		}
+	}
 }

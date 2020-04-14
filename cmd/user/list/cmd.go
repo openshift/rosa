@@ -120,41 +120,38 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Load any existing users for this cluster
-	reporter.Infof("Loading dedicated-admin users for cluster '%s'", clusterKey)
+	reporter.Infof("Loading users for cluster '%s'", clusterKey)
+
+	// Load cluster-admins for this cluster
+	clusterAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
+	if err != nil {
+		reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	// Load dedicated-admins for this cluster
 	dedicatedAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "dedicated-admins")
 	if err != nil {
 		reporter.Errorf("Failed to get dedicated-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	if len(dedicatedAdmins) == 0 {
-		reporter.Infof("There are no dedicated-admin users configured for cluster '%s'", clusterKey)
+	if len(clusterAdmins) == 0 && len(dedicatedAdmins) == 0 {
+		reporter.Warnf("There are no users configured for cluster '%s'", clusterKey)
+		os.Exit(1)
 	}
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "GROUP\tNAME\n")
+	fmt.Fprintf(writer, "GROUP\t\tNAME\n")
 
-	for _, user := range dedicatedAdmins {
-		fmt.Fprintf(writer, "%s\t%s\n", "dedicated-admin", user.ID())
+	for _, user := range clusterAdmins {
+		fmt.Fprintf(writer, "%s\t\t%s\n", "cluster-admins", user.ID())
 		writer.Flush()
 	}
 
-	// Load any existing users for this cluster
-	// reporter.Infof("Loading cluster-admin users for cluster '%s'", clusterKey)
-	// clusterAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
-	// if err != nil {
-	// 	reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
-	// 	os.Exit(1)
-	// }
-	//
-	// if len(clusterAdmins) == 0 {
-	// 	reporter.Infof("There are no cluster-admin users configured for cluster '%s'", clusterKey)
-	// }
-	//
-	// for _, user := range clusterAdmins {
-	// 	fmt.Fprintf(writer, "%s\t%s\n", "cluster-admin", user.ID())
-	// 	writer.Flush()
-	// }
+	for _, user := range dedicatedAdmins {
+		fmt.Fprintf(writer, "%s\t%s\n", "dedicated-admins", user.ID())
+		writer.Flush()
+	}
 }
