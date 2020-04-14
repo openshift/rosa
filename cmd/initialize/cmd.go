@@ -125,7 +125,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Parse the version for the OpenShift Client
 	version := strings.Replace(string(output), "\n", "", 1)
-	isCorrectVersion, err := regexp.Match(` openshift-clients-4.*`, output)
+	isCorrectVersion, err := regexp.Match(`\W4.\d*`, output)
 	if err != nil {
 		reporter.Errorf("Failed to parse OpenShift Client version: %v", err)
 		os.Exit(1)
