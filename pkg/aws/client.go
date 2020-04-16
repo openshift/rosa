@@ -41,7 +41,7 @@ import (
 
 // Name of the AWS user that will be used to create all the resources of the cluster:
 const (
-	AdminUserName = "osdCcsAdmin"
+	AdminUserName        = "osdCcsAdmin"
 	OsdCcsAdminStackName = "osdCcsAdminIAMUser"
 )
 
@@ -276,7 +276,6 @@ func (c *awsClient) GetAccessKeyFromStack(stackName string) (*AWSAccessKey, erro
 
 // Validate SCP...
 func (c *awsClient) ValidateSCP() (bool, error) {
-	hasPermissions := true
 	scpPolicyPath := "templates/policies/osd_scp_policy.json"
 	requiredPermissions := []string{}
 	sParams := &SimulateParams{

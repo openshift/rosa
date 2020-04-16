@@ -96,7 +96,7 @@ func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 
 	parsedIssuerURL, err := url.ParseRequestURI(issuerURL)
 	if err != nil {
-		return idpBuilder, errors.New(fmt.Sprintf("Expected a valid OpenID issuer URL: %v", err))
+		return idpBuilder, fmt.Errorf("Expected a valid OpenID issuer URL: %v", err)
 	}
 	if parsedIssuerURL.Scheme != "https" {
 		return idpBuilder, errors.New("Expected OpenID issuer URL to use an https:// scheme.")

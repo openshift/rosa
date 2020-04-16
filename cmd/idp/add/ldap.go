@@ -56,7 +56,7 @@ func buildLdapIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Identi
 
 	parsedLdapURL, err := url.ParseRequestURI(ldapURL)
 	if err != nil {
-		return idpBuilder, errors.New(fmt.Sprintf("Expected a valid LDAP URL: %v", err))
+		return idpBuilder, fmt.Errorf("Expected a valid LDAP URL: %v", err)
 	}
 	if parsedLdapURL.Scheme != "ldap" && parsedLdapURL.Scheme != "ldaps" {
 		return idpBuilder, errors.New("Expected LDAP URL to have an ldap:// or ldaps:// scheme.")

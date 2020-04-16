@@ -6,11 +6,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"gitlab.cee.redhat.com/service/moactl/pkg/assets"
 )
-
 
 // SimulateParams captures any additional details that should be used
 // when simulating permissions.
@@ -31,7 +30,7 @@ func CheckPermissionsUsingQueryClient(queryClient, targetClient *awsClient, poli
 	}
 
 	allowList := []*string{}
-	for _, statement := range policyDocument.Statement{
+	for _, statement := range policyDocument.Statement {
 		for _, action := range statement.Action {
 			allowList = append(allowList, aws.String(action))
 		}
@@ -105,7 +104,6 @@ func getClientDetails(awsClient *awsClient) (*iam.User, bool, error) {
 	return user.User, rootUser, nil
 }
 
-
 // generatePolicyDocument generates an IAM policy Document from a list of actions
 func generatePolicyDocument(actions []string, id *string) PolicyDocument {
 	policyDocument := PolicyDocument{}
@@ -114,10 +112,10 @@ func generatePolicyDocument(actions []string, id *string) PolicyDocument {
 		policyDocument.ID = aws.StringValue(id)
 	}
 
-	for _, action := range actions{
+	for _, action := range actions {
 		policyStatement := PolicyStatement{
-			Effect: "Allow",
-			Action: []string{action},
+			Effect:   "Allow",
+			Action:   []string{action},
 			Resource: []string{"*"},
 		}
 		policyDocument.Statement = append(policyDocument.Statement, policyStatement)
@@ -133,14 +131,14 @@ func readSCPPolicy(policyDocumentPath string) PolicyDocument {
 
 	policyDocumentFile, err := assets.Asset(policyDocumentPath)
 	if err != nil {
-		fmt.Errorf("Unable to load file: %s", policyDocumentPath)
+		fmt.Println(fmt.Errorf("Unable to load file: %s", policyDocumentPath))
 	}
 
 	policyDocument := PolicyDocument{}
 
 	err = json.Unmarshal([]byte(policyDocumentFile), &policyDocument)
 	if err != nil {
-		fmt.Println("Error unmarshalling statement: %v", err)
+		fmt.Println(fmt.Errorf("Error unmarshalling statement: %v", err))
 	}
 
 	return policyDocument
@@ -152,7 +150,6 @@ func buildStackInput(cfTemplateBody, stackName string) *cloudformation.CreateSta
 	cfCapabilityIAM := "CAPABILITY_IAM"
 	cfCapabilityNamedIAM := "CAPABILITY_NAMED_IAM"
 	cfTemplateCapabilities := []*string{&cfCapabilityIAM, &cfCapabilityNamedIAM}
-
 
 	return &cloudformation.CreateStackInput{
 		Capabilities: cfTemplateCapabilities,

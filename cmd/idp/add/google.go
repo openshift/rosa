@@ -77,7 +77,7 @@ func buildGoogleIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 	if hostedDomain != "" {
 		_, err = url.ParseRequestURI(hostedDomain)
 		if err != nil {
-			return idpBuilder, errors.New(fmt.Sprintf("Expected a valid Hosted Domain: %v", err))
+			return idpBuilder, fmt.Errorf("Expected a valid Hosted Domain: %v", err)
 		}
 		// Set the hosted domain, if any
 		googleIDP = googleIDP.HostedDomain(hostedDomain)

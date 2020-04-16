@@ -70,7 +70,7 @@ func buildGithubIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 
 		registerURL, err := url.Parse(registerURLBase)
 		if err != nil {
-			return idpBuilder, errors.New(fmt.Sprintf("Error parsing URL: %v", err))
+			return idpBuilder, fmt.Errorf("Error parsing URL: %v", err)
 		}
 
 		// Populate fields in the GitHub registration form
@@ -109,7 +109,7 @@ func buildGithubIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 	if args.githubHostname != "" {
 		_, err = url.ParseRequestURI(args.githubHostname)
 		if err != nil {
-			return idpBuilder, errors.New(fmt.Sprintf("Expected a valid Hostname: %v", err))
+			return idpBuilder, fmt.Errorf("Expected a valid Hostname: %v", err)
 		}
 		// Set the hostname, if any
 		githubIDP = githubIDP.Hostname(args.githubHostname)

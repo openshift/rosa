@@ -16,9 +16,9 @@ type PolicyStatement struct {
 
 // PolicyDocument models an AWS IAM policy document
 type PolicyDocument struct {
-	Version     string            `json:version,omitempty`
-	ID          string            `json:id,omitempty`	
-	Statement 	[]PolicyStatement `json:"statement"`
+	Version   string            `json:version,omitempty`
+	ID        string            `json:id,omitempty`
+	Statement []PolicyStatement `json:"statement"`
 }
 
 const (

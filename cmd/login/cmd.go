@@ -47,12 +47,12 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in to your Red Hat account",
-	Long: fmt.Sprintf("Log in to your Red Hat account, saving the credentials to the configuration file.\n" +
-		"The supported mechanism is by using a token, which can be obtained at: %s\n\n" +
-		"The application looks for the token in the following order, stopping when it finds it:\n" +
-		"\t1. Command-line flags\n" +
-		"\t2. Environment variable (MOA_TOKEN)\n" +
-		"\t3. Configuration file\n" +
+	Long: fmt.Sprintf("Log in to your Red Hat account, saving the credentials to the configuration file.\n"+
+		"The supported mechanism is by using a token, which can be obtained at: %s\n\n"+
+		"The application looks for the token in the following order, stopping when it finds it:\n"+
+		"\t1. Command-line flags\n"+
+		"\t2. Environment variable (MOA_TOKEN)\n"+
+		"\t3. Configuration file\n"+
 		"\t4. Command-line prompt\n", uiTokenPage),
 	Run: run,
 }
