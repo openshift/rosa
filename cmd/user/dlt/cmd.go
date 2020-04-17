@@ -31,12 +31,12 @@ import (
 )
 
 var args struct {
+	clusterAdmins   string
 	dedicatedAdmins string
-	// clusterAdmins   string
 }
 
 var Cmd = &cobra.Command{
-	Use:   "delete [CLUSTER ID|NAME] [--dedicated-admins=USER1,USER2]",
+	Use:   "delete [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2--dedicated-admins=USER1,USER2]",
 	Short: "Delete cluster users",
 	Long:  "Delete administrative cluster users.",
 	Run:   run,
@@ -45,17 +45,17 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 	flags.StringVar(
+		&args.clusterAdmins,
+		"cluster-admins",
+		"",
+		"Grant cluster-admin permission to these users.",
+	)
+	flags.StringVar(
 		&args.dedicatedAdmins,
 		"dedicated-admins",
 		"",
 		"Delete dedicated-admin users.",
 	)
-	// flags.StringVar(
-	// 	&args.clusterAdmins,
-	// 	"cluster-admins",
-	// 	"",
-	// 	"Grant cluster-admin permission to these users.",
-	// )
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -136,8 +136,16 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	clusterAdmins := args.clusterAdmins
 	dedicatedAdmins := args.dedicatedAdmins
-	if dedicatedAdmins == "" {
+
+	if clusterAdmins == "" && dedicatedAdmins == "" {
+		clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of cluster-admin usernames to delete")
+		if err != nil {
+			reporter.Errorf("Expected a commad-separated list of usernames")
+			os.Exit(1)
+		}
+
 		dedicatedAdmins, err = interactive.GetInput("Enter a comma-separated list of dedicated-admin usernames to delete")
 		if err != nil {
 			reporter.Errorf("Expected a commad-separated list of usernames")
@@ -145,42 +153,42 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}
 
-	// clusterAdmins := args.clusterAdmins
-	// if clusterAdmins == "" {
-	// 	clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of cluster-admin usernames to delete")
-	// 	if err != nil {
-	// 		reporter.Errorf("Expected a commad-separated list of usernames")
-	// 		os.Exit(1)
-	// 	}
-	// }
+	if clusterAdmins == "" && dedicatedAdmins == "" {
+		reporter.Errorf("Expected at least one of 'cluster-admins' or 'dedicated-admins'")
+		os.Exit(1)
+	}
 
-	reporter.Infof("Deleting dedicated-admin users from cluster '%s'", clusterKey)
-	for _, username := range strings.Split(dedicatedAdmins, ",") {
-		_, err = clustersCollection.Cluster(cluster.ID()).
-			Groups().
-			Group("dedicated-admins").
-			Users().
-			User(username).
-			Delete().
-			Send()
-		if err != nil {
-			reporter.Errorf("Failed to delete dedicated-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
-			continue
+	if clusterAdmins != "" {
+		reporter.Infof("Deleting cluster-admin users from cluster '%s'", clusterKey)
+		for _, username := range strings.Split(clusterAdmins, ",") {
+			_, err = clustersCollection.Cluster(cluster.ID()).
+				Groups().
+				Group("cluster-admins").
+				Users().
+				User(username).
+				Delete().
+				Send()
+			if err != nil {
+				reporter.Errorf("Failed to delete cluster-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
+				continue
+			}
 		}
 	}
 
-	// reporter.Infof("Deleting cluster-admin users from cluster '%s'", clusterKey)
-	// for _, username := range strings.Split(clusterAdmins, ",") {
-	// 	_, err = clustersCollection.Cluster(cluster.ID()).
-	// 		Groups().
-	// 		Group("cluster-admins").
-	// 		Users().
-	// 		User(username).
-	// 		Delete().
-	// 		Send()
-	// 	if err != nil {
-	// 		reporter.Errorf("Failed to delete cluster-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
-	// 		continue
-	// 	}
-	// }
+	if dedicatedAdmins != "" {
+		reporter.Infof("Deleting dedicated-admin users from cluster '%s'", clusterKey)
+		for _, username := range strings.Split(dedicatedAdmins, ",") {
+			_, err = clustersCollection.Cluster(cluster.ID()).
+				Groups().
+				Group("dedicated-admins").
+				Users().
+				User(username).
+				Delete().
+				Send()
+			if err != nil {
+				reporter.Errorf("Failed to delete dedicated-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
+				continue
+			}
+		}
+	}
 }

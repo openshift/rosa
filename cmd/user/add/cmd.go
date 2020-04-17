@@ -143,16 +143,15 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	clusterAdmins := args.clusterAdmins
-	if clusterAdmins == "" {
+	dedicatedAdmins := args.dedicatedAdmins
+
+	if clusterAdmins == "" && dedicatedAdmins == "" {
 		clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant cluster-admin rights to your cluster")
 		if err != nil {
 			reporter.Errorf("Expected a commad-separated list of usernames")
 			os.Exit(1)
 		}
-	}
 
-	dedicatedAdmins := args.dedicatedAdmins
-	if dedicatedAdmins == "" {
 		dedicatedAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant dedicated-admin rights to your cluster")
 		if err != nil {
 			reporter.Errorf("Expected a commad-separated list of usernames")
