@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Gets user input from the command line
@@ -32,5 +35,16 @@ func GetInput(q string) (a string, err error) {
 		return
 	}
 	a = strings.Trim(text, "\n")
+	return
+}
+
+func GetPassword(q string) (a string, err error) {
+	fmt.Print("* " + q + ": ")
+	text, err := terminal.ReadPassword(syscall.Stdin)
+	fmt.Println("")
+	if err != nil {
+		return
+	}
+	a = string(text)
 	return
 }
