@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package describe
+package cluster
 
 import (
 	"fmt"
@@ -29,9 +29,9 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "describe [ID|NAME]",
-	Short: "Describe cluster",
-	Long:  "Describe cluster.",
+	Use:   "cluster [ID|NAME]",
+	Short: "Show details of a cluster",
+	Long:  "Show details of a cluster",
 	Run:   run,
 }
 

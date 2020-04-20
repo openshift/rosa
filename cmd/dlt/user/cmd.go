@@ -14,26 +14,48 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dlt
+package user
 
 import (
 	"fmt"
 	"os"
+	"strings"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
+	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
+var args struct {
+	clusterAdmins   string
+	dedicatedAdmins string
+}
+
 var Cmd = &cobra.Command{
-	Use:   "delete [CLUSTER ID|NAME] [IDP NAME]",
-	Short: "Delete cluster IDPs",
-	Long:  "Delete a specific identity provider for a cluster.",
+	Use:   "user [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2--dedicated-admins=USER1,USER2]",
+	Short: "Delete cluster users",
+	Long:  "Delete administrative cluster users.",
 	Run:   run,
+}
+
+func init() {
+	flags := Cmd.Flags()
+	flags.StringVar(
+		&args.clusterAdmins,
+		"cluster-admins",
+		"",
+		"Grant cluster-admin permission to these users.",
+	)
+	flags.StringVar(
+		&args.dedicatedAdmins,
+		"dedicated-admins",
+		"",
+		"Delete dedicated-admin users.",
+	)
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -53,10 +75,10 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Check command line arguments:
-	if len(argv) != 2 {
+	if len(argv) < 1 {
 		reporter.Errorf(
-			"Expected exactly two command line parameters containing the name " +
-				"or identifier of the cluster and the name of the Identity provider.",
+			"Expected exactly one command line parameter containing the name " +
+				"or identifier of the cluster",
 		)
 		os.Exit(1)
 	}
@@ -70,12 +92,6 @@ func run(_ *cobra.Command, argv []string) {
 				"must contain only letters, digits, dashes and underscores",
 			clusterKey,
 		)
-		os.Exit(1)
-	}
-
-	idpName := argv[1]
-	if idpName == "" {
-		reporter.Errorf("Identity provider name is required.")
 		os.Exit(1)
 	}
 
@@ -120,35 +136,59 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Try to find the identity provider:
-	reporter.Infof("Loading identity provider '%s'", idpName)
-	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
-	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
+	clusterAdmins := args.clusterAdmins
+	dedicatedAdmins := args.dedicatedAdmins
 
-	var idp *cmv1.IdentityProvider
-	for _, item := range idps {
-		if item.Name() == idpName {
-			idp = item
+	if clusterAdmins == "" && dedicatedAdmins == "" {
+		clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of cluster-admin usernames to delete")
+		if err != nil {
+			reporter.Errorf("Expected a commad-separated list of usernames")
+			os.Exit(1)
+		}
+
+		dedicatedAdmins, err = interactive.GetInput("Enter a comma-separated list of dedicated-admin usernames to delete")
+		if err != nil {
+			reporter.Errorf("Expected a commad-separated list of usernames")
+			os.Exit(1)
 		}
 	}
-	if idp == nil {
-		reporter.Errorf("Failed to get identity provider '%s' for cluster '%s'", idpName, clusterKey)
+
+	if clusterAdmins == "" && dedicatedAdmins == "" {
+		reporter.Errorf("Expected at least one of 'cluster-admins' or 'dedicated-admins'")
 		os.Exit(1)
 	}
 
-	// Load any existing IDPs for this cluster
-	reporter.Infof("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
-	_, err = clustersCollection.
-		Cluster(cluster.ID()).
-		IdentityProviders().
-		IdentityProvider(idp.ID()).
-		Delete().
-		Send()
-	if err != nil {
-		reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s'", idpName, clusterKey)
-		os.Exit(1)
+	if clusterAdmins != "" {
+		reporter.Infof("Deleting cluster-admin users from cluster '%s'", clusterKey)
+		for _, username := range strings.Split(clusterAdmins, ",") {
+			_, err = clustersCollection.Cluster(cluster.ID()).
+				Groups().
+				Group("cluster-admins").
+				Users().
+				User(username).
+				Delete().
+				Send()
+			if err != nil {
+				reporter.Errorf("Failed to delete cluster-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
+				continue
+			}
+		}
+	}
+
+	if dedicatedAdmins != "" {
+		reporter.Infof("Deleting dedicated-admin users from cluster '%s'", clusterKey)
+		for _, username := range strings.Split(dedicatedAdmins, ",") {
+			_, err = clustersCollection.Cluster(cluster.ID()).
+				Groups().
+				Group("dedicated-admins").
+				Users().
+				User(username).
+				Delete().
+				Send()
+			if err != nil {
+				reporter.Errorf("Failed to delete dedicated-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
+				continue
+			}
+		}
 	}
 }

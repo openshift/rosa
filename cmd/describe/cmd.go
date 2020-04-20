@@ -14,26 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package describe
 
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/create"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/describe"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/dlt"
-	"gitlab.cee.redhat.com/service/moactl/cmd/cluster/list"
+	"gitlab.cee.redhat.com/service/moactl/cmd/describe/cluster"
+	// "gitlab.cee.redhat.com/service/moactl/cmd/describe/idp"
+	// "gitlab.cee.redhat.com/service/moactl/cmd/describe/user"
 )
 
 var Cmd = &cobra.Command{
-	Use:   "cluster COMMAND",
-	Short: "Perform cluster operations",
-	Long:  "Perform cluster operations.",
+	Use:   "describe RESOURCE [flags]",
+	Short: "Show details of a specific resource",
+	Long:  "Show details of a specific resource",
 }
 
 func init() {
-	Cmd.AddCommand(create.Cmd)
-	Cmd.AddCommand(list.Cmd)
-	Cmd.AddCommand(describe.Cmd)
-	Cmd.AddCommand(dlt.Cmd)
+	Cmd.AddCommand(cluster.Cmd)
+	// Cmd.AddCommand(idp.Cmd)
+	// Cmd.AddCommand(user.Cmd)
 }

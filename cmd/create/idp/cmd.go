@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package add
+package idp
 
 import (
 	"fmt"
@@ -66,7 +66,7 @@ var args struct {
 var validIdps []string = []string{"github", "google", "ldap", "openid"}
 
 var Cmd = &cobra.Command{
-	Use:   "add [ID|NAME]",
+	Use:   "idp [ID|NAME]",
 	Short: "Add IDP for cluster",
 	Long:  "Add an Identity providers to determine how users log into the cluster.",
 	Run:   run,

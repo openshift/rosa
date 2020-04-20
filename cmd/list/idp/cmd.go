@@ -14,49 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package add
+package idp
 
 import (
 	"fmt"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
-	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
-var args struct {
-	clusterAdmins   string
-	dedicatedAdmins string
-}
-
 var Cmd = &cobra.Command{
-	Use:   "add [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2|--dedicated-admins=USER1,USER2]",
-	Short: "Configure user access for cluster",
-	Long:  "Configure user access for cluster",
+	Use:   "idps [CLUSTER ID|NAME]",
+	Short: "List cluster IDPs",
+	Long:  "List identity providers for a cluster.",
 	Run:   run,
-}
-
-func init() {
-	flags := Cmd.Flags()
-	flags.StringVar(
-		&args.clusterAdmins,
-		"cluster-admins",
-		"",
-		"Grant cluster-admin permission to these users.",
-	)
-	flags.StringVar(
-		&args.dedicatedAdmins,
-		"dedicated-admins",
-		"",
-		"Grant dedicated-admin permission to these users.",
-	)
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -142,69 +121,44 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	clusterAdmins := args.clusterAdmins
-	dedicatedAdmins := args.dedicatedAdmins
-
-	if clusterAdmins == "" && dedicatedAdmins == "" {
-		clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant cluster-admin rights to your cluster")
-		if err != nil {
-			reporter.Errorf("Expected a commad-separated list of usernames")
-			os.Exit(1)
-		}
-
-		dedicatedAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant dedicated-admin rights to your cluster")
-		if err != nil {
-			reporter.Errorf("Expected a commad-separated list of usernames")
-			os.Exit(1)
-		}
-	}
-
-	if clusterAdmins == "" && dedicatedAdmins == "" {
-		reporter.Errorf("Expected at least one of 'cluster-admins' or 'dedicated-admins'")
+	// Load any existing IDPs for this cluster
+	reporter.Infof("Loading identity providers for cluster '%s'", clusterKey)
+	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
+	if err != nil {
+		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	if clusterAdmins != "" {
-		reporter.Infof("Adding cluster-admin users to cluster '%s'", clusterKey)
-		for _, username := range strings.Split(clusterAdmins, ",") {
-			user, err := cmv1.NewUser().ID(username).Build()
-			if err != nil {
-				reporter.Errorf("Failed to create cluster-admin user '%s' for cluster '%s'", username, clusterKey)
-				continue
-			}
-			_, err = clustersCollection.Cluster(cluster.ID()).
-				Groups().
-				Group("cluster-admins").
-				Users().
-				Add().
-				Body(user).
-				Send()
-			if err != nil {
-				reporter.Errorf("Failed to add cluster-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
-				continue
-			}
-		}
+	if len(idps) == 0 {
+		reporter.Infof("There are no identity providers configured for cluster '%s'", clusterKey)
 	}
 
-	if dedicatedAdmins != "" {
-		reporter.Infof("Adding dedicated-admin users to cluster '%s'", clusterKey)
-		for _, username := range strings.Split(dedicatedAdmins, ",") {
-			user, err := cmv1.NewUser().ID(username).Build()
-			if err != nil {
-				reporter.Errorf("Failed to create dedicated-admin user '%s' for cluster '%s'", username, clusterKey)
-				continue
-			}
-			_, err = clustersCollection.Cluster(cluster.ID()).
-				Groups().
-				Group("dedicated-admins").
-				Users().
-				Add().
-				Body(user).
-				Send()
-			if err != nil {
-				reporter.Errorf("Failed to add dedicated-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
-				continue
-			}
-		}
+	// Create the writer that will be used to print the tabulated results:
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
+
+	for _, idp := range idps {
+		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), getType(idp), getAuthURL(cluster, idp.Name()))
+		writer.Flush()
 	}
+}
+
+func getType(idp *cmv1.IdentityProvider) string {
+	switch idp.Type() {
+	case "GithubIdentityProvider":
+		return "GitHub"
+	case "GoogleIdentityProvider":
+		return "Google"
+	case "LDAPIdentityProvider":
+		return "LDAP"
+	case "OpenIDIdentityProvider":
+		return "OpenID"
+	}
+
+	return ""
+}
+
+func getAuthURL(cluster *cmv1.Cluster, idpName string) string {
+	oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
+	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idpName)
 }

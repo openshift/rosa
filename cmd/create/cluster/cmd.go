@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package create
+package cluster
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "create NAME",
+	Use:   "cluster NAME",
 	Short: "Create cluster",
 	Long:  "Create cluster.",
 	Run:   run,

@@ -14,48 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dlt
+package user
 
 import (
 	"fmt"
 	"os"
-	"strings"
+	"text/tabwriter"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
-	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
-var args struct {
-	clusterAdmins   string
-	dedicatedAdmins string
-}
-
 var Cmd = &cobra.Command{
-	Use:   "delete [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2--dedicated-admins=USER1,USER2]",
-	Short: "Delete cluster users",
-	Long:  "Delete administrative cluster users.",
+	Use:   "users [CLUSTER ID|NAME]",
+	Short: "List cluster users",
+	Long:  "List administrative cluster users.",
 	Run:   run,
-}
-
-func init() {
-	flags := Cmd.Flags()
-	flags.StringVar(
-		&args.clusterAdmins,
-		"cluster-admins",
-		"",
-		"Grant cluster-admin permission to these users.",
-	)
-	flags.StringVar(
-		&args.dedicatedAdmins,
-		"dedicated-admins",
-		"",
-		"Delete dedicated-admin users.",
-	)
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -136,59 +115,43 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	clusterAdmins := args.clusterAdmins
-	dedicatedAdmins := args.dedicatedAdmins
-
-	if clusterAdmins == "" && dedicatedAdmins == "" {
-		clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of cluster-admin usernames to delete")
-		if err != nil {
-			reporter.Errorf("Expected a commad-separated list of usernames")
-			os.Exit(1)
-		}
-
-		dedicatedAdmins, err = interactive.GetInput("Enter a comma-separated list of dedicated-admin usernames to delete")
-		if err != nil {
-			reporter.Errorf("Expected a commad-separated list of usernames")
-			os.Exit(1)
-		}
-	}
-
-	if clusterAdmins == "" && dedicatedAdmins == "" {
-		reporter.Errorf("Expected at least one of 'cluster-admins' or 'dedicated-admins'")
+	if cluster.State() != cmv1.ClusterStateReady {
+		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
-	if clusterAdmins != "" {
-		reporter.Infof("Deleting cluster-admin users from cluster '%s'", clusterKey)
-		for _, username := range strings.Split(clusterAdmins, ",") {
-			_, err = clustersCollection.Cluster(cluster.ID()).
-				Groups().
-				Group("cluster-admins").
-				Users().
-				User(username).
-				Delete().
-				Send()
-			if err != nil {
-				reporter.Errorf("Failed to delete cluster-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
-				continue
-			}
-		}
+	reporter.Infof("Loading users for cluster '%s'", clusterKey)
+
+	// Load cluster-admins for this cluster
+	clusterAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
+	if err != nil {
+		reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
 	}
 
-	if dedicatedAdmins != "" {
-		reporter.Infof("Deleting dedicated-admin users from cluster '%s'", clusterKey)
-		for _, username := range strings.Split(dedicatedAdmins, ",") {
-			_, err = clustersCollection.Cluster(cluster.ID()).
-				Groups().
-				Group("dedicated-admins").
-				Users().
-				User(username).
-				Delete().
-				Send()
-			if err != nil {
-				reporter.Errorf("Failed to delete dedicated-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
-				continue
-			}
-		}
+	// Load dedicated-admins for this cluster
+	dedicatedAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "dedicated-admins")
+	if err != nil {
+		reporter.Errorf("Failed to get dedicated-admins for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	if len(clusterAdmins) == 0 && len(dedicatedAdmins) == 0 {
+		reporter.Warnf("There are no users configured for cluster '%s'", clusterKey)
+		os.Exit(1)
+	}
+
+	// Create the writer that will be used to print the tabulated results:
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(writer, "GROUP\t\tNAME\n")
+
+	for _, user := range clusterAdmins {
+		fmt.Fprintf(writer, "%s\t\t%s\n", "cluster-admins", user.ID())
+		writer.Flush()
+	}
+
+	for _, user := range dedicatedAdmins {
+		fmt.Fprintf(writer, "%s\t%s\n", "dedicated-admins", user.ID())
+		writer.Flush()
 	}
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dlt
+package cluster
 
 import (
 	"fmt"
@@ -29,7 +29,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "delete [ID|NAME]",
+	Use:   "cluster [ID|NAME]",
 	Short: "Delete cluster",
 	Long:  "Delete cluster.",
 	Run:   run,

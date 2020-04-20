@@ -14,24 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package user
+package dlt
 
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/user/add"
-	"gitlab.cee.redhat.com/service/moactl/cmd/user/dlt"
-	"gitlab.cee.redhat.com/service/moactl/cmd/user/list"
+	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/cluster"
+	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/idp"
+	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/user"
 )
 
 var Cmd = &cobra.Command{
-	Use:   "user COMMAND",
-	Short: "Configure identity provider users for cluster",
-	Long:  "Grant permission to manage this cluster to users defined in your identity provider.",
+	Use:   "delete RESOURCE [flags]",
+	Short: "Delete a specific resource",
+	Long:  "Delete a specific resource",
 }
 
 func init() {
-	Cmd.AddCommand(add.Cmd)
-	Cmd.AddCommand(dlt.Cmd)
-	Cmd.AddCommand(list.Cmd)
+	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(idp.Cmd)
+	Cmd.AddCommand(user.Cmd)
 }

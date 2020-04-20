@@ -14,12 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package list
+package idp
 
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -31,9 +30,9 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "list [ID|NAME]",
-	Short: "List cluster users",
-	Long:  "List administrative cluster users.",
+	Use:   "idp [CLUSTER ID|NAME] [IDP NAME]",
+	Short: "Delete cluster IDPs",
+	Long:  "Delete a specific identity provider for a cluster.",
 	Run:   run,
 }
 
@@ -54,10 +53,10 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Check command line arguments:
-	if len(argv) < 1 {
+	if len(argv) != 2 {
 		reporter.Errorf(
-			"Expected exactly one command line parameter containing the name " +
-				"or identifier of the cluster",
+			"Expected exactly two command line parameters containing the name " +
+				"or identifier of the cluster and the name of the Identity provider.",
 		)
 		os.Exit(1)
 	}
@@ -71,6 +70,12 @@ func run(_ *cobra.Command, argv []string) {
 				"must contain only letters, digits, dashes and underscores",
 			clusterKey,
 		)
+		os.Exit(1)
+	}
+
+	idpName := argv[1]
+	if idpName == "" {
+		reporter.Errorf("Identity provider name is required.")
 		os.Exit(1)
 	}
 
@@ -115,43 +120,35 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
-		os.Exit(1)
-	}
-
-	reporter.Infof("Loading users for cluster '%s'", clusterKey)
-
-	// Load cluster-admins for this cluster
-	clusterAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
+	// Try to find the identity provider:
+	reporter.Infof("Loading identity provider '%s'", idpName)
+	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
+		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	// Load dedicated-admins for this cluster
-	dedicatedAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "dedicated-admins")
+	var idp *cmv1.IdentityProvider
+	for _, item := range idps {
+		if item.Name() == idpName {
+			idp = item
+		}
+	}
+	if idp == nil {
+		reporter.Errorf("Failed to get identity provider '%s' for cluster '%s'", idpName, clusterKey)
+		os.Exit(1)
+	}
+
+	// Load any existing IDPs for this cluster
+	reporter.Infof("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
+	_, err = clustersCollection.
+		Cluster(cluster.ID()).
+		IdentityProviders().
+		IdentityProvider(idp.ID()).
+		Delete().
+		Send()
 	if err != nil {
-		reporter.Errorf("Failed to get dedicated-admins for cluster '%s': %v", clusterKey, err)
+		reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s'", idpName, clusterKey)
 		os.Exit(1)
-	}
-
-	if len(clusterAdmins) == 0 && len(dedicatedAdmins) == 0 {
-		reporter.Warnf("There are no users configured for cluster '%s'", clusterKey)
-		os.Exit(1)
-	}
-
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "GROUP\t\tNAME\n")
-
-	for _, user := range clusterAdmins {
-		fmt.Fprintf(writer, "%s\t\t%s\n", "cluster-admins", user.ID())
-		writer.Flush()
-	}
-
-	for _, user := range dedicatedAdmins {
-		fmt.Fprintf(writer, "%s\t%s\n", "dedicated-admins", user.ID())
-		writer.Flush()
 	}
 }

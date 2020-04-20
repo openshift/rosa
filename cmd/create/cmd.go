@@ -14,24 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package idp
+package create
 
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/idp/add"
-	"gitlab.cee.redhat.com/service/moactl/cmd/idp/dlt"
-	"gitlab.cee.redhat.com/service/moactl/cmd/idp/list"
+	"gitlab.cee.redhat.com/service/moactl/cmd/create/cluster"
+	"gitlab.cee.redhat.com/service/moactl/cmd/create/idp"
+	"gitlab.cee.redhat.com/service/moactl/cmd/create/user"
 )
 
 var Cmd = &cobra.Command{
-	Use:   "idp COMMAND",
-	Short: "Configure IDP for cluster",
-	Long:  "Identity providers determine how users log into the cluster.",
+	Use:   "create RESOURCE [flags]",
+	Short: "Create a resource from stdin",
+	Long:  "Create a resource from stdin",
 }
 
 func init() {
-	Cmd.AddCommand(add.Cmd)
-	Cmd.AddCommand(dlt.Cmd)
-	Cmd.AddCommand(list.Cmd)
+	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(idp.Cmd)
+	Cmd.AddCommand(user.Cmd)
 }
