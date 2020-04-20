@@ -92,7 +92,7 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tNAME\n")
+	fmt.Fprintf(writer, "ID\tNAME\tSTATE\n")
 
 	// Retrieve the list of clusters:
 	ocmQuery := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, awsCreator.ARN)
@@ -109,9 +109,10 @@ func run(_ *cobra.Command, argv []string) {
 		ocmResponse.Items().Each(func(ocmCluster *cmv1.Cluster) bool {
 			fmt.Fprintf(
 				writer,
-				"%s\t%s\n",
+				"%s\t%s\t%s\n",
 				ocmCluster.ID(),
 				ocmCluster.Name(),
+				ocmCluster.State(),
 			)
 			return true
 		})

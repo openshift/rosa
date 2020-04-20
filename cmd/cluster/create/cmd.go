@@ -142,6 +142,7 @@ func run(_ *cobra.Command, argv []string) {
 		"Creating cluster with identifier '%s' and name '%s'",
 		ocmClusterID, ocmClusterName,
 	)
+	reporter.Infof("To view list of clusters and their status, run `moactl cluster list`")
 
 	// Add tags to the AWS administrator user containing the identifier and name of the cluster:
 	err = awsClient.TagUser(aws.AdminUserName, ocmClusterID, ocmClusterName)

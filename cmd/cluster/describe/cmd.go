@@ -122,6 +122,7 @@ func run(_ *cobra.Command, argv []string) {
 		"Console URL: %s\n"+
 		"Nodes:       Master: %d, Infra: %d, Compute: %d\n"+
 		"Region:      %s\n"+
+		"State:       %s\n"+
 		"Created:     %s\n",
 		cluster.Name(),
 		cluster.ID(),
@@ -130,6 +131,7 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Console().URL(),
 		cluster.Nodes().Master(), cluster.Nodes().Infra(), cluster.Nodes().Compute(),
 		cluster.Region().ID(),
+		cluster.State(),
 		cluster.CreationTimestamp().Format("Jan _2, 2006"),
 	)
 	fmt.Println()
