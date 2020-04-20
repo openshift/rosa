@@ -26,10 +26,12 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+const inputPrefix = "\033[0;36m?\033[m "
+
 // Gets user input from the command line
 func GetInput(q string) (a string, err error) {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("* " + q + ": ")
+	fmt.Printf("%s%s: ", inputPrefix, q)
 	text, err := reader.ReadString('\n')
 	if err != nil {
 		return
@@ -39,7 +41,7 @@ func GetInput(q string) (a string, err error) {
 }
 
 func GetPassword(q string) (a string, err error) {
-	fmt.Print("* " + q + ": ")
+	fmt.Printf("%s%s: ", inputPrefix, q)
 	text, err := terminal.ReadPassword(syscall.Stdin)
 	fmt.Println("")
 	if err != nil {

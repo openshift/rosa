@@ -85,8 +85,8 @@ func run(_ *cobra.Command, argv []string) {
 		reporter.Errorf("Can't create access keys for user '%s'", aws.AdminUserName)
 		os.Exit(1)
 	}
-	reporter.Infof("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
-	reporter.Infof("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
+	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
+	reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
 
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().

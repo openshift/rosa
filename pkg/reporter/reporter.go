@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
 )
 
 // Builder contains the information and logic needed to create a new reporter.
@@ -44,6 +46,14 @@ func (b *Builder) Build() (result *Object, err error) {
 	result = &Object{}
 
 	return
+}
+
+// Debugf prints a debug message with the given format and arguments.
+func (r *Object) Debugf(format string, args ...interface{}) {
+	if !debug.Enabled() {
+		return
+	}
+	r.Infof(format, args...)
 }
 
 // Infof prints an informative message with the given format and arguments.
@@ -75,7 +85,7 @@ func (r *Object) Errors() int {
 
 // Message prefix using ANSI scape sequences to set colors:
 const (
-	infoPrefix  = "\033[0;32mI:\033[m "
+	infoPrefix  = "\033[0;36mI:\033[m "
 	warnPrefix  = "\033[0;33mW:\033[m "
 	errorPrefix = "\033[0;31mE:\033[m "
 )
