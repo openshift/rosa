@@ -32,10 +32,11 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "idps [CLUSTER ID|NAME]",
-	Short: "List cluster IDPs",
-	Long:  "List identity providers for a cluster.",
-	Run:   run,
+	Use:     "idps [CLUSTER ID|NAME]",
+	Aliases: []string{"idp"},
+	Short:   "List cluster IDPs",
+	Long:    "List identity providers for a cluster.",
+	Run:     run,
 }
 
 func run(_ *cobra.Command, argv []string) {

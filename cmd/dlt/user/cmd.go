@@ -36,10 +36,11 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:   "user [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2--dedicated-admins=USER1,USER2]",
-	Short: "Delete cluster users",
-	Long:  "Delete administrative cluster users.",
-	Run:   run,
+	Use:     "user [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2--dedicated-admins=USER1,USER2]",
+	Aliases: []string{"users"},
+	Short:   "Delete cluster users",
+	Long:    "Delete administrative cluster users.",
+	Run:     run,
 }
 
 func init() {

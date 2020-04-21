@@ -31,10 +31,11 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "users [CLUSTER ID|NAME]",
-	Short: "List cluster users",
-	Long:  "List administrative cluster users.",
-	Run:   run,
+	Use:     "users [CLUSTER ID|NAME]",
+	Aliases: []string{"user"},
+	Short:   "List cluster users",
+	Long:    "List administrative cluster users.",
+	Run:     run,
 }
 
 func run(_ *cobra.Command, argv []string) {

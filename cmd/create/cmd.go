@@ -25,9 +25,10 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "create RESOURCE [flags]",
-	Short: "Create a resource from stdin",
-	Long:  "Create a resource from stdin",
+	Use:     "create RESOURCE [flags]",
+	Aliases: []string{"add"},
+	Short:   "Create a resource from stdin",
+	Long:    "Create a resource from stdin",
 }
 
 func init() {

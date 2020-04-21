@@ -37,10 +37,11 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:   "user [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2|--dedicated-admins=USER1,USER2]",
-	Short: "Configure user access for cluster",
-	Long:  "Configure user access for cluster",
-	Run:   run,
+	Use:     "user [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2|--dedicated-admins=USER1,USER2]",
+	Aliases: []string{"users"},
+	Short:   "Configure user access for cluster",
+	Long:    "Configure user access for cluster",
+	Run:     run,
 }
 
 func init() {

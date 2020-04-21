@@ -32,10 +32,11 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "clusters",
-	Short: "List clusters",
-	Long:  "List clusters.",
-	Run:   run,
+	Use:     "clusters",
+	Aliases: []string{"cluster"},
+	Short:   "List clusters",
+	Long:    "List clusters.",
+	Run:     run,
 }
 
 func run(_ *cobra.Command, argv []string) {

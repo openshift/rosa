@@ -30,10 +30,11 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "idp [CLUSTER ID|NAME] [IDP NAME]",
-	Short: "Delete cluster IDPs",
-	Long:  "Delete a specific identity provider for a cluster.",
-	Run:   run,
+	Use:     "idp [CLUSTER ID|NAME] [IDP NAME]",
+	Aliases: []string{"idps"},
+	Short:   "Delete cluster IDPs",
+	Long:    "Delete a specific identity provider for a cluster.",
+	Run:     run,
 }
 
 func run(_ *cobra.Command, argv []string) {
