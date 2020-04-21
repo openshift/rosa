@@ -40,14 +40,14 @@ func buildLdapIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Identi
 		fmt.Println("* Follow the instructions to register your application")
 
 		if ldapURL == "" {
-			ldapURL, err = interactive.GetInput("Enter the URL which specifies the LDAP search parameters to use")
+			ldapURL, err = interactive.GetInput("URL which specifies the LDAP search parameters to use")
 			if err != nil {
 				return idpBuilder, errors.New("Expected a valid LDAP URL")
 			}
 		}
 
 		if ldapIDs == "" {
-			ldapIDs, err = interactive.GetInput("Enter the list of attributes whose values should be used as the user ID")
+			ldapIDs, err = interactive.GetInput("List of attributes whose values should be used as the user ID")
 			if err != nil {
 				return idpBuilder, errors.New("Expected a valid comma-separated list of attributes")
 			}

@@ -44,7 +44,7 @@ func buildGithubIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 		fmt.Println("To use GitHub as an identity provider, you must first register the application:")
 
 		if organizations == "" && teams == "" {
-			teamsOrOrgs, err = interactive.GetInput("Enter a list of GitHub organizations or teams that will have access to this cluster")
+			teamsOrOrgs, err = interactive.GetInput("List of GitHub organizations or teams that will have access to this cluster")
 			if err != nil {
 				return idpBuilder, errors.New("Expected a GitHub organization or team name")
 			}

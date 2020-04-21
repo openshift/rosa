@@ -24,20 +24,46 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
+	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/properties"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
+var args struct {
+	name   string
+	region string
+}
+
 var Cmd = &cobra.Command{
-	Use:   "cluster NAME",
+	Use:   "cluster",
 	Short: "Create cluster",
 	Long:  "Create cluster.",
 	Run:   run,
 }
 
-func run(_ *cobra.Command, argv []string) {
+func init() {
+	flags := Cmd.Flags()
+
+	flags.StringVarP(
+		&args.name,
+		"name",
+		"n",
+		"",
+		"The name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
+	)
+
+	flags.StringVarP(
+		&args.region,
+		"region",
+		"r",
+		"",
+		"AWS region. The data center where your worker pool will be located. (overrides the AWS_REGION environment variable)",
+	)
+}
+
+func run(_ *cobra.Command, _ []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
@@ -53,15 +79,15 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the name " +
-				"of the cluster",
-		)
-		os.Exit(1)
+	// Get cluster name
+	name := args.name
+	if name == "" {
+		name, err = interactive.GetInput("Cluster name")
+		if err != nil {
+			reporter.Errorf("Expected a valid cluster name")
+			os.Exit(1)
+		}
 	}
-	clusterName := argv[0]
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
@@ -72,7 +98,19 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	awsRegion := awsClient.GetRegion()
+	// Get AWS region
+	region := args.region
+	if region == "" {
+		region = awsClient.GetRegion()
+	}
+	if region == "" {
+		region, err = interactive.GetInput("AWS region")
+		if err != nil {
+			reporter.Errorf("Expected a valid AWS region")
+			os.Exit(1)
+		}
+	}
+
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
 		reporter.Errorf("Can't get AWS creator: %v", err)
@@ -105,14 +143,14 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Create the cluster:
 	ocmCluster, err := cmv1.NewCluster().
-		Name(clusterName).
+		Name(name).
 		Product(
 			cmv1.NewProduct().
 				ID("moa"),
 		).
 		Region(
 			cmv1.NewCloudRegion().
-				ID(awsRegion),
+				ID(region),
 		).
 		AWS(
 			cmv1.NewAWS().

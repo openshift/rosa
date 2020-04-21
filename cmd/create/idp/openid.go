@@ -62,28 +62,28 @@ func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 		}
 
 		if issuerURL == "" {
-			issuerURL, err = interactive.GetInput("Enter the URL that the OpenID Provider asserts as the Issuer Identifier")
+			issuerURL, err = interactive.GetInput("URL that the OpenID Provider asserts as the Issuer Identifier")
 			if err != nil {
 				return idpBuilder, errors.New("Expected a valid OpenID Issuer URL")
 			}
 		}
 
 		if email == "" {
-			email, err = interactive.GetInput("Enter claim mappings to use as the email address")
+			email, err = interactive.GetInput("Claim mappings to use as the email address")
 			if err != nil {
 				return idpBuilder, errors.New("Expected a list of claims to use as the email address.")
 			}
 		}
 
 		if name == "" {
-			name, err = interactive.GetInput("Enter claim mappings to use as the display name")
+			name, err = interactive.GetInput("Claim mappings to use as the display name")
 			if err != nil {
 				return idpBuilder, errors.New("Expected a list of claims to use as the display name.")
 			}
 		}
 
 		if username == "" {
-			username, err = interactive.GetInput("Enter claim mappings to use as the preferred username")
+			username, err = interactive.GetInput("Claim mappings to use as the preferred username")
 			if err != nil {
 				return idpBuilder, errors.New("Expected a list of claims to use as the preferred username.")
 			}

@@ -30,15 +30,32 @@ import (
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
+var args struct {
+	clusterKey string
+}
+
 var Cmd = &cobra.Command{
-	Use:     "users [CLUSTER ID|NAME]",
+	Use:     "users",
 	Aliases: []string{"user"},
 	Short:   "List cluster users",
 	Long:    "List administrative cluster users.",
 	Run:     run,
 }
 
-func run(_ *cobra.Command, argv []string) {
+func init() {
+	flags := Cmd.Flags()
+
+	flags.StringVarP(
+		&args.clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster to list the users of (required).",
+	)
+	Cmd.MarkFlagRequired("cluster")
+}
+
+func run(_ *cobra.Command, _ []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
@@ -54,18 +71,9 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Check command line arguments:
-	if len(argv) < 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the name " +
-				"or identifier of the cluster",
-		)
-		os.Exit(1)
-	}
-
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := argv[0]
+	clusterKey := args.clusterKey
 	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+

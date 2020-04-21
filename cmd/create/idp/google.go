@@ -62,7 +62,7 @@ func buildGoogleIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 		}
 
 		if args.mappingMethod != "lookup" && hostedDomain == "" {
-			hostedDomain, err = interactive.GetInput("Enter the Hosted Domain to restrict users")
+			hostedDomain, err = interactive.GetInput("Hosted Domain to restrict users")
 			if err != nil {
 				return idpBuilder, errors.New("Expected a valid Hosted Domain")
 			}

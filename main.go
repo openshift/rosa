@@ -68,7 +68,7 @@ func main() {
 	root.SetArgs(os.Args[1:])
 	err := root.Execute()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Can't execute root command: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to execute root command: %s\n", err)
 		os.Exit(1)
 	}
 }

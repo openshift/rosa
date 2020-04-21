@@ -32,12 +32,13 @@ import (
 )
 
 var args struct {
+	clusterKey      string
 	clusterAdmins   string
 	dedicatedAdmins string
 }
 
 var Cmd = &cobra.Command{
-	Use:     "user [CLUSTER ID|NAME] [--cluster-admins=USER1,USER2|--dedicated-admins=USER1,USER2]",
+	Use:     "user",
 	Aliases: []string{"users"},
 	Short:   "Configure user access for cluster",
 	Long:    "Configure user access for cluster",
@@ -46,12 +47,23 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+
+	flags.StringVarP(
+		&args.clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster to add the IdP to (required).",
+	)
+	Cmd.MarkFlagRequired("cluster")
+
 	flags.StringVar(
 		&args.clusterAdmins,
 		"cluster-admins",
 		"",
 		"Grant cluster-admin permission to these users.",
 	)
+
 	flags.StringVar(
 		&args.dedicatedAdmins,
 		"dedicated-admins",
@@ -60,7 +72,7 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(_ *cobra.Command, _ []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
@@ -76,18 +88,9 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Check command line arguments:
-	if len(argv) < 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the name " +
-				"or identifier of the cluster",
-		)
-		os.Exit(1)
-	}
-
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := argv[0]
+	clusterKey := args.clusterKey
 	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
@@ -147,13 +150,13 @@ func run(_ *cobra.Command, argv []string) {
 	dedicatedAdmins := args.dedicatedAdmins
 
 	if clusterAdmins == "" && dedicatedAdmins == "" {
-		clusterAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant cluster-admin rights to your cluster")
+		clusterAdmins, err = interactive.GetInput("Comma-separated list of cluster-admins to add to your cluster")
 		if err != nil {
 			reporter.Errorf("Expected a commad-separated list of usernames")
 			os.Exit(1)
 		}
 
-		dedicatedAdmins, err = interactive.GetInput("Enter a comma-separated list of usernames to grant dedicated-admin rights to your cluster")
+		dedicatedAdmins, err = interactive.GetInput("Comma-separated list of dedicated-admins to add to your cluster")
 		if err != nil {
 			reporter.Errorf("Expected a commad-separated list of usernames")
 			os.Exit(1)

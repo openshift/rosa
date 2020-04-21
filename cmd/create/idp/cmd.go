@@ -33,6 +33,8 @@ import (
 )
 
 var args struct {
+	clusterKey string
+
 	idpType string
 
 	clientID      string
@@ -66,7 +68,7 @@ var args struct {
 var validIdps []string = []string{"github", "google", "ldap", "openid"}
 
 var Cmd = &cobra.Command{
-	Use:   "idp [ID|NAME]",
+	Use:   "idp",
 	Short: "Add IDP for cluster",
 	Long:  "Add an Identity providers to determine how users log into the cluster.",
 	Run:   run,
@@ -76,9 +78,19 @@ func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVar(
+	flags.StringVarP(
+		&args.clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster to add the IdP to (required).",
+	)
+	Cmd.MarkFlagRequired("cluster")
+
+	flags.StringVarP(
 		&args.idpType,
 		"type",
+		"t",
 		"",
 		fmt.Sprintf("Type of identity provider. Options are %s\n", validIdps),
 	)
@@ -201,7 +213,7 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(_ *cobra.Command, _ []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
@@ -217,18 +229,9 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Check command line arguments:
-	if len(argv) < 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the name " +
-				"or identifier of the cluster",
-		)
-		os.Exit(1)
-	}
-
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := argv[0]
+	clusterKey := args.clusterKey
 	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
@@ -296,7 +299,7 @@ func run(_ *cobra.Command, argv []string) {
 	idpType := args.idpType
 
 	if idpType == "" {
-		idpType, err = interactive.GetInput(fmt.Sprintf("Enter a valid IDP type. Options are %s", validIdps))
+		idpType, err = interactive.GetInput(fmt.Sprintf("Type of identity provider. Options are %s", validIdps))
 		if err != nil {
 			reporter.Errorf("Expected a valid IDP type. Options are %s", validIdps)
 			os.Exit(1)

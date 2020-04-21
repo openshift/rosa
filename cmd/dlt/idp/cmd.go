@@ -29,12 +29,29 @@ import (
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
+var args struct {
+	clusterKey string
+}
+
 var Cmd = &cobra.Command{
-	Use:     "idp [CLUSTER ID|NAME] [IDP NAME]",
+	Use:     "idp [IDP NAME]",
 	Aliases: []string{"idps"},
 	Short:   "Delete cluster IDPs",
 	Long:    "Delete a specific identity provider for a cluster.",
 	Run:     run,
+}
+
+func init() {
+	flags := Cmd.Flags()
+
+	flags.StringVarP(
+		&args.clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster to delete the IdP from (required).",
+	)
+	Cmd.MarkFlagRequired("cluster")
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -54,29 +71,29 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Check command line arguments:
-	if len(argv) != 2 {
+	if len(argv) != 1 {
 		reporter.Errorf(
-			"Expected exactly two command line parameters containing the name " +
-				"or identifier of the cluster and the name of the Identity provider.",
+			"Expected exactly one command line parameters containing the name " +
+				"of the Identity provider.",
 		)
+		os.Exit(1)
+	}
+
+	idpName := argv[0]
+	if idpName == "" {
+		reporter.Errorf("Identity provider name is required.")
 		os.Exit(1)
 	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := argv[0]
+	clusterKey := args.clusterKey
 	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
 			clusterKey,
 		)
-		os.Exit(1)
-	}
-
-	idpName := argv[1]
-	if idpName == "" {
-		reporter.Errorf("Identity provider name is required.")
 		os.Exit(1)
 	}
 
