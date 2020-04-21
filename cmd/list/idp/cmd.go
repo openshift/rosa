@@ -40,7 +40,9 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"idp"},
 	Short:   "List cluster IDPs",
 	Long:    "List identity providers for a cluster.",
-	Run:     run,
+	Example: `  # List all identity providers on a cluster named "mycluster"
+  moactl list idps --cluster=mycluster`,
+	Run: run,
 }
 
 func init() {

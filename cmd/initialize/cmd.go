@@ -36,7 +36,12 @@ var Cmd = &cobra.Command{
 	Use:   "init",
 	Short: "Applies templates to support Managed OpenShift on AWS clusters",
 	Long:  "Applies templates to support Managed OpenShift on AWS clusters",
-	Run:   run,
+	Example: `  # Configure your AWS account to allow MOA clusters
+  moactl init
+
+  # Configure a new AWS account using pre-existing OCM credentials
+  moactl init --token=$OFFLINE_ACCESS_TOKEN`,
+	Run: run,
 }
 
 func init() {

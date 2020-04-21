@@ -32,7 +32,9 @@ var Cmd = &cobra.Command{
 	Use:   "cluster [ID|NAME]",
 	Short: "Show details of a cluster",
 	Long:  "Show details of a cluster",
-	Run:   run,
+	Example: `  # Describe a cluster named "mycluster"
+  moactl describe cluster mycluster`,
+	Run: run,
 }
 
 func run(_ *cobra.Command, argv []string) {

@@ -71,7 +71,12 @@ var Cmd = &cobra.Command{
 	Use:   "idp",
 	Short: "Add IDP for cluster",
 	Long:  "Add an Identity providers to determine how users log into the cluster.",
-	Run:   run,
+	Example: `  # Add a GitHub identity provider to a cluster named "mycluster"
+  moactl create idp --type=github --cluster=mycluster
+
+  # Add an identity provider following interactive prompts
+  moactl create idp --cluster=mycluster`,
+	Run: run,
 }
 
 func init() {

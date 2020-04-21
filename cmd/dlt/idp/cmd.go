@@ -38,7 +38,9 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"idps"},
 	Short:   "Delete cluster IDPs",
 	Long:    "Delete a specific identity provider for a cluster.",
-	Run:     run,
+	Example: `  # Delete an identity provider named github-1
+  moactl delete idp github-1 --cluster=mycluster`,
+	Run: run,
 }
 
 func init() {

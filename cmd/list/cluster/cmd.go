@@ -36,7 +36,9 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"cluster"},
 	Short:   "List clusters",
 	Long:    "List clusters.",
-	Run:     run,
+	Example: `  # List all clusters
+  moactl list clusters`,
+	Run: run,
 }
 
 func run(_ *cobra.Command, argv []string) {

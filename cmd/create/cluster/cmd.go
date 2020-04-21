@@ -40,7 +40,12 @@ var Cmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Create cluster",
 	Long:  "Create cluster.",
-	Run:   run,
+	Example: `  # Create a cluster named "mycluster"
+  moactl create cluster --name=mycluster
+
+  # Create a cluster in the us-east-2 region
+  moactl create cluster --name=mycluster --region=us-east-2`,
+	Run: run,
 }
 
 func init() {

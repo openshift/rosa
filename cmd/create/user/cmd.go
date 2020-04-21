@@ -42,7 +42,15 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"users"},
 	Short:   "Configure user access for cluster",
 	Long:    "Configure user access for cluster",
-	Run:     run,
+	Example: `  # Add a user to the cluster-admins group
+  moactl create user --cluster=mycluster --cluster-admins=myusername
+
+  # Add a user to the dedicated-admins group
+  moactl create user --cluster=mycluster --dedicated-admins=myusername
+
+  # Add a user following interactive prompts
+  moactl create user --cluster=mycluster`,
+	Run: run,
 }
 
 func init() {

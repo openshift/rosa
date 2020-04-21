@@ -54,6 +54,11 @@ var Cmd = &cobra.Command{
 		"\t2. Environment variable (MOA_TOKEN)\n"+
 		"\t3. Configuration file\n"+
 		"\t4. Command-line prompt\n", uiTokenPage),
+	Example: `  # Login to the OpenShift staging API with an existing token
+  moactl login --env staging --token=$OFFLINE_ACCESS_TOKEN
+
+  # Switch environments with an already logged-in account
+  moactl login --env production`,
 	Run: run,
 }
 
@@ -97,9 +102,10 @@ func init() {
 		"Environment of the API gateway. The value can be the complete URL or an alias. "+
 			"The valid aliases are 'production', 'staging' and 'integration'.",
 	)
-	flags.StringVar(
+	flags.StringVarP(
 		&args.token,
 		"token",
+		"t",
 		"",
 		"Access or refresh token.",
 	)

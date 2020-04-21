@@ -39,7 +39,9 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"user"},
 	Short:   "List cluster users",
 	Long:    "List administrative cluster users.",
-	Run:     run,
+	Example: `  # List all users on a cluster named "mycluster"
+  moactl list users --cluster=mycluster`,
+	Run: run,
 }
 
 func init() {

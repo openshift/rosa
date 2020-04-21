@@ -32,7 +32,9 @@ var Cmd = &cobra.Command{
 	Use:   "cluster [ID|NAME]",
 	Short: "Delete cluster",
 	Long:  "Delete cluster.",
-	Run:   run,
+	Example: `  # Delete a cluster named "mycluster"
+  moactl delete cluster mycluster`,
+	Run: run,
 }
 
 func run(_ *cobra.Command, argv []string) {

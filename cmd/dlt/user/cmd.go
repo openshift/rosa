@@ -41,7 +41,15 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"users"},
 	Short:   "Delete cluster users",
 	Long:    "Delete administrative cluster users.",
-	Run:     run,
+	Example: `  # Delete a user from the cluster-admins group
+  moactl delete user --cluster=mycluster --cluster-admins=myusername
+
+  # Delete a user from the dedicated-admins group
+  moactl delete user --cluster=mycluster --dedicated-admins=myusername
+
+  # Delete a user following interactive prompts
+  moactl delete user --cluster=mycluster`,
+	Run: run,
 }
 
 func init() {
