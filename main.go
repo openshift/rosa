@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"gitlab.cee.redhat.com/service/moactl/cmd/completion"
 	"gitlab.cee.redhat.com/service/moactl/cmd/create"
 	"gitlab.cee.redhat.com/service/moactl/cmd/describe"
 	"gitlab.cee.redhat.com/service/moactl/cmd/dlt"
@@ -51,6 +52,7 @@ func init() {
 	arguments.AddDebugFlag(fs)
 
 	// Register the subcommands:
+	root.AddCommand(completion.Cmd)
 	root.AddCommand(create.Cmd)
 	root.AddCommand(describe.Cmd)
 	root.AddCommand(dlt.Cmd)
