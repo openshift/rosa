@@ -50,3 +50,8 @@ clean:
 .PHONY: generate
 generate:
 	go-bindata -nometadata -nocompress -pkg assets -o ./pkg/assets/bindata.go ./templates/...
+
+.PHONY: docs
+docs: moactl
+	rm -rf docs && mkdir docs
+	./moactl docs -d ./docs -f markdown

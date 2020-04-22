@@ -28,6 +28,7 @@ import (
 	"gitlab.cee.redhat.com/service/moactl/cmd/create"
 	"gitlab.cee.redhat.com/service/moactl/cmd/describe"
 	"gitlab.cee.redhat.com/service/moactl/cmd/dlt"
+	"gitlab.cee.redhat.com/service/moactl/cmd/docs"
 	"gitlab.cee.redhat.com/service/moactl/cmd/initialize"
 	"gitlab.cee.redhat.com/service/moactl/cmd/list"
 	"gitlab.cee.redhat.com/service/moactl/cmd/login"
@@ -56,6 +57,7 @@ func init() {
 	root.AddCommand(create.Cmd)
 	root.AddCommand(describe.Cmd)
 	root.AddCommand(dlt.Cmd)
+	root.AddCommand(docs.Cmd)
 	root.AddCommand(list.Cmd)
 	root.AddCommand(initialize.Cmd)
 	root.AddCommand(login.Cmd)
