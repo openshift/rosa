@@ -56,11 +56,12 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) (err error) {
+	cmd.Root().DisableAutoGenTag = true
+
 	switch args.format {
 	case "markdown":
 		err = doc.GenMarkdownTree(cmd.Root(), args.dir)
 	case "man":
-		cmd.Root().DisableAutoGenTag = true
 		header := &doc.GenManHeader{
 			Title:   "MOACTL",
 			Section: "1",
