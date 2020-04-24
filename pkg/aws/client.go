@@ -130,7 +130,7 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 	// Check that the AWS credentials are available:
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
-		err = fmt.Errorf("can't find credentials: %v", err)
+		err = fmt.Errorf("Failed to find credentials: %v", err)
 		return
 	}
 

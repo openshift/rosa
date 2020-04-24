@@ -54,14 +54,14 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter, err := rprtr.New().
 		Build()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Can't create reporter: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to create reporter: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Create the logger:
 	logger, err := logging.NewLogger().Build()
 	if err != nil {
-		reporter.Errorf("Can't create logger: %v", err)
+		reporter.Errorf("Failed to create logger: %v", err)
 		os.Exit(1)
 	}
 

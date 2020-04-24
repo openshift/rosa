@@ -46,14 +46,14 @@ func run(_ *cobra.Command, argv []string) {
 	reporter, err := rprtr.New().
 		Build()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Can't create reporter: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to create reporter: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Create the logger:
 	logger, err := logging.NewLogger().Build()
 	if err != nil {
-		reporter.Errorf("Can't create logger: %v", err)
+		reporter.Errorf("Failed to create logger: %v", err)
 		os.Exit(1)
 	}
 
@@ -68,13 +68,13 @@ func run(_ *cobra.Command, argv []string) {
 		Logger(logger).
 		Build()
 	if err != nil {
-		reporter.Errorf("Can't create AWS client: %v", err)
+		reporter.Errorf("Failed to create AWS client: %v", err)
 		os.Exit(1)
 	}
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
-		reporter.Errorf("Can't get AWS creator: %v", err)
+		reporter.Errorf("Failed to get AWS creator: %v", err)
 		os.Exit(1)
 	}
 
@@ -83,13 +83,13 @@ func run(_ *cobra.Command, argv []string) {
 		Logger(logger).
 		Build()
 	if err != nil {
-		reporter.Errorf("Can't create OCM connection: %v", err)
+		reporter.Errorf("Failed to create OCM connection: %v", err)
 		os.Exit(1)
 	}
 	defer func() {
 		err = ocmConnection.Close()
 		if err != nil {
-			reporter.Errorf("Can't close OCM connection: %v", err)
+			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
@@ -106,7 +106,7 @@ func run(_ *cobra.Command, argv []string) {
 	for {
 		ocmResponse, err := ocmRequest.Page(page).Size(size).Send()
 		if err != nil {
-			reporter.Errorf("Can't retrieve clusters: %v", err)
+			reporter.Errorf("Failed to retrieve clusters: %v", err)
 			os.Exit(1)
 		}
 		ocmResponse.Items().Each(func(ocmCluster *cmv1.Cluster) bool {

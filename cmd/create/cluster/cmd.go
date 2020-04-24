@@ -181,14 +181,14 @@ func run(_ *cobra.Command, _ []string) {
 	reporter, err := rprtr.New().
 		Build()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Can't create reporter: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to create reporter: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Create the logger:
 	logger, err := logging.NewLogger().Build()
 	if err != nil {
-		reporter.Errorf("Can't create logger: %v", err)
+		reporter.Errorf("Failed to create logger: %v", err)
 		os.Exit(1)
 	}
 
@@ -207,7 +207,7 @@ func run(_ *cobra.Command, _ []string) {
 		Logger(logger).
 		Build()
 	if err != nil {
-		reporter.Errorf("Can't create AWS client: %v", err)
+		reporter.Errorf("Failed to create AWS client: %v", err)
 		os.Exit(1)
 	}
 
@@ -226,14 +226,14 @@ func run(_ *cobra.Command, _ []string) {
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
-		reporter.Errorf("Can't get AWS creator: %v", err)
+		reporter.Errorf("Failed to get AWS creator: %v", err)
 		os.Exit(1)
 	}
 
 	// Create the access key for the AWS user:
 	awsAccessKey, err := awsClient.GetAccessKeyFromStack(aws.OsdCcsAdminStackName)
 	if err != nil {
-		reporter.Errorf("Can't create access keys for user '%s'", aws.AdminUserName)
+		reporter.Errorf("Failed to create access keys for user '%s'", aws.AdminUserName)
 		os.Exit(1)
 	}
 	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
@@ -244,13 +244,13 @@ func run(_ *cobra.Command, _ []string) {
 		Logger(logger).
 		Build()
 	if err != nil {
-		reporter.Errorf("Can't create OCM connection: %v", err)
+		reporter.Errorf("Failed to create OCM connection: %v", err)
 		os.Exit(1)
 	}
 	defer func() {
 		err = ocmConnection.Close()
 		if err != nil {
-			reporter.Errorf("Can't close OCM connection: %v", err)
+			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 	ocmClient := ocmConnection.ClustersMgmt().V1()
@@ -347,14 +347,17 @@ func run(_ *cobra.Command, _ []string) {
 
 	cluster, err := clusterBuilder.Build()
 	if err != nil {
-		reporter.Errorf("Can't create description of cluster: %v", err)
+		reporter.Errorf("Failed to create description of cluster: %v", err)
 		os.Exit(1)
 	}
 	createClusterResponse, err := ocmClient.Clusters().Add().
 		Body(cluster).
 		Send()
 	if err != nil {
-		reporter.Errorf("Can't create cluster: %v", err)
+		// Unwrap and clean up API errors:
+		wrapped := strings.Split(err.Error(), ": ")
+		errorMessage := wrapped[len(wrapped)-1]
+		reporter.Errorf("Failed to create cluster: %v", errorMessage)
 		os.Exit(1)
 	}
 

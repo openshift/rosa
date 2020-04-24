@@ -218,7 +218,7 @@ func (d *RoundTripper) dumpBody(what string, header http.Header, body []byte) {
 		var err error
 		mediaType, _, err = mime.ParseMediaType(contentType)
 		if err != nil {
-			d.logger.Errorf("Can't parse content type '%s': %v", contentType, err)
+			d.logger.Errorf("Failed to parse content type '%s': %v", contentType, err)
 		}
 	} else {
 		mediaType = contentType

@@ -35,7 +35,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	// Remove the configuration file:
 	err := config.Remove()
 	if err != nil {
-		return fmt.Errorf("Can't remove config file: %v", err)
+		return fmt.Errorf("Failed to remove config file: %v", err)
 	}
 
 	return nil
