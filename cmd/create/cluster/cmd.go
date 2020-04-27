@@ -218,7 +218,7 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the access key for the AWS user:
 	awsAccessKey, err := awsClient.GetAccessKeyFromStack(aws.OsdCcsAdminStackName)
 	if err != nil {
-		reporter.Errorf("Failed to create access keys for user '%s'", aws.AdminUserName)
+		reporter.Errorf("Failed to get access keys for user '%s'", aws.AdminUserName)
 		os.Exit(1)
 	}
 	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
