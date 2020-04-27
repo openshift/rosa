@@ -32,8 +32,6 @@ moactl create cluster [flags]
                                       
       --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
       --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.
-      --storage-quota int             Storage quota, in GiB, set on the deployed cluster.
-      --load-balancer-quota int       Load balancer quota set on the deployed cluster.
                                       
       --machine-cidr ipNet            Block of IP addresses used by OpenShift while installing the cluster, for example "10.0.0.0/16".
       --service-cidr ipNet            Block of IP addresses for services, for example "172.30.0.0/16".

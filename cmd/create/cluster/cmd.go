@@ -50,9 +50,6 @@ var args struct {
 	// Scaling options
 	computeMachineType string
 	computeNodes       int
-	// FIXME: storage and LB quota are not available for BYOC clusters
-	storageQuota      int
-	loadBalancerQuota int
 
 	// Networking options
 	machineCIDR net.IPNet
@@ -129,19 +126,7 @@ func init() {
 		&args.computeNodes,
 		"compute-nodes",
 		0,
-		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.",
-	)
-	flags.IntVar(
-		&args.storageQuota,
-		"storage-quota",
-		0,
-		"Storage quota, in GiB, set on the deployed cluster.",
-	)
-	flags.IntVar(
-		&args.loadBalancerQuota,
-		"load-balancer-quota",
-		0,
-		"Load balancer quota set on the deployed cluster.\n",
+		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.\n",
 	)
 
 	flags.IPNetVar(
