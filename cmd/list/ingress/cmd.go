@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package idp
+package ingress
 
 import (
 	"fmt"
@@ -36,12 +36,12 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "idps",
-	Aliases: []string{"idp"},
-	Short:   "List cluster IDPs",
-	Long:    "List identity providers for a cluster.",
-	Example: `  # List all identity providers on a cluster named "mycluster"
-  moactl list idps --cluster=mycluster`,
+	Use:     "ingresses",
+	Aliases: []string{"route", "routes", "ingress"},
+	Short:   "List cluster Ingresses",
+	Long:    "List API and ingress endpoints for a cluster.",
+	Example: `  # List all routes on a cluster named "mycluster"
+  moactl list ingresses --cluster=mycluster`,
 	Run: run,
 }
 
@@ -53,7 +53,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to list the IdP of (required).",
+		"Name or ID of the cluster to list the routes of (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }
@@ -132,43 +132,60 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Load any existing IDPs for this cluster
-	reporter.Infof("Loading identity providers for cluster '%s'", clusterKey)
-	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
+	// Load any existing ingresses for this cluster
+	reporter.Infof("Loading ingresses for cluster '%s'", clusterKey)
+	ingresses, err := ocm.GetIngresses(clustersCollection, cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
+		reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	if len(idps) == 0 {
-		reporter.Infof("There are no identity providers configured for cluster '%s'", clusterKey)
+	if len(ingresses) == 0 {
+		reporter.Infof("There are no ingresses configured for cluster '%s'", clusterKey)
 	}
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
-	for _, idp := range idps {
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), getType(idp), getAuthURL(cluster, idp.Name()))
+
+	// Include API endpoint in routes table
+	fmt.Fprintf(writer, "API ENDPOINT\t\tPRIVATE\n")
+	fmt.Fprintf(writer, "%s\t\t%s\n", cluster.API().URL(), isPrivate(cluster.API().Listening()))
+	fmt.Fprintf(writer, "\n")
+	fmt.Fprintf(writer, "APPLICATION ROUTER\t\t\tPRIVATE\t\tDEFAULT\t\tROUTE SELECTORS\n")
+	for _, ingress := range ingresses {
+		fmt.Fprintf(writer, "https://%s\t\t\t%s\t\t%s\t\t%s\n",
+			ingress.DNSName(),
+			isPrivate(ingress.Listening()),
+			isDefault(ingress),
+			printRouteSelectors(ingress),
+		)
 	}
 	writer.Flush()
 }
 
-func getType(idp *cmv1.IdentityProvider) string {
-	switch idp.Type() {
-	case "GithubIdentityProvider":
-		return "GitHub"
-	case "GoogleIdentityProvider":
-		return "Google"
-	case "LDAPIdentityProvider":
-		return "LDAP"
-	case "OpenIDIdentityProvider":
-		return "OpenID"
+func isPrivate(listeningMethod cmv1.ListeningMethod) string {
+	if listeningMethod == cmv1.ListeningMethodInternal {
+		return "yes"
 	}
-
-	return ""
+	return "no"
 }
 
-func getAuthURL(cluster *cmv1.Cluster, idpName string) string {
-	oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
-	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idpName)
+func isDefault(ingress *cmv1.Ingress) string {
+	if ingress.Default() {
+		return "yes"
+	}
+	return "no"
+}
+
+func printRouteSelectors(ingress *cmv1.Ingress) string {
+	routeSelectors := ingress.RouteSelectors()
+	if len(routeSelectors) == 0 {
+		return ""
+	}
+	output := []string{}
+	for k, v := range routeSelectors {
+		output = append(output, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return strings.Join(output, ", ")
 }

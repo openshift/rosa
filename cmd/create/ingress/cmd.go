@@ -14,13 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package idp
+package ingress
 
 import (
 	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -33,15 +32,23 @@ import (
 
 var args struct {
 	clusterKey string
+	private    bool
+	labelMatch string
 }
 
 var Cmd = &cobra.Command{
-	Use:     "idps",
-	Aliases: []string{"idp"},
-	Short:   "List cluster IDPs",
-	Long:    "List identity providers for a cluster.",
-	Example: `  # List all identity providers on a cluster named "mycluster"
-  moactl list idps --cluster=mycluster`,
+	Use:     "ingress",
+	Aliases: []string{"route", "routes", "ingresses"},
+	Short:   "Add Ingress to cluster",
+	Long:    "Add an Ingress endpoint to determine API access to the cluster.",
+	Example: `  # Add an internal ingress to a cluster named "mycluster"
+  moactl create ingress --private --cluster=mycluster
+
+  # Add a public ingress to a cluster
+  moactl create ingress --cluster=mycluster
+
+  # Add an ingress with route selector label match
+  moactl create ingress -c mycluster --label-match="foo=bar,bar=baz"`,
 	Run: run,
 }
 
@@ -53,9 +60,23 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to list the IdP of (required).",
+		"Name or ID of the cluster to add the ingress to (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
+
+	flags.BoolVar(
+		&args.private,
+		"private",
+		false,
+		"Restrict application route to direct, private connectivity.",
+	)
+
+	flags.StringVar(
+		&args.labelMatch,
+		"label-match",
+		"",
+		"Label match for ingress. Format should be a comma-separated list of 'key=value'. If no label is specified, all routes will be exposed on both routers.",
+	)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -84,6 +105,18 @@ func run(_ *cobra.Command, _ []string) {
 			clusterKey,
 		)
 		os.Exit(1)
+	}
+
+	routeSelectors := make(map[string]string)
+	if args.labelMatch != "" {
+		for _, labelMatch := range strings.Split(args.labelMatch, ",") {
+			if !strings.Contains(labelMatch, "=") {
+				reporter.Errorf("Expected key=value format for label-match")
+				os.Exit(1)
+			}
+			tokens := strings.Split(labelMatch, "=")
+			routeSelectors[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+		}
 	}
 
 	// Create the AWS client:
@@ -132,43 +165,29 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Load any existing IDPs for this cluster
-	reporter.Infof("Loading identity providers for cluster '%s'", clusterKey)
-	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
+	ingressBuilder := cmv1.NewIngress()
+	if args.private {
+		ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodInternal)
+	}
+	if len(routeSelectors) > 0 {
+		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
+	}
+	ingress, err := ingressBuilder.Build()
 	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
+		reporter.Errorf("Failed to create ingress for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	if len(idps) == 0 {
-		reporter.Infof("There are no identity providers configured for cluster '%s'", clusterKey)
+	_, err = clustersCollection.Cluster(cluster.ID()).
+		Ingresses().
+		Add().
+		Body(ingress).
+		Send()
+	if err != nil {
+		// Unwrap and clean up API errors:
+		wrapped := strings.Split(err.Error(), ": ")
+		errorMessage := wrapped[len(wrapped)-1]
+		reporter.Errorf("Failed to add ingress to cluster '%s': %v", clusterKey, errorMessage)
+		os.Exit(1)
 	}
-
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
-	for _, idp := range idps {
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), getType(idp), getAuthURL(cluster, idp.Name()))
-	}
-	writer.Flush()
-}
-
-func getType(idp *cmv1.IdentityProvider) string {
-	switch idp.Type() {
-	case "GithubIdentityProvider":
-		return "GitHub"
-	case "GoogleIdentityProvider":
-		return "Google"
-	case "LDAPIdentityProvider":
-		return "LDAP"
-	case "OpenIDIdentityProvider":
-		return "OpenID"
-	}
-
-	return ""
-}
-
-func getAuthURL(cluster *cmv1.Cluster, idpName string) string {
-	oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
-	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idpName)
 }

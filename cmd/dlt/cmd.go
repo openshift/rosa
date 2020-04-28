@@ -21,6 +21,7 @@ import (
 
 	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/cluster"
 	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/idp"
+	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/ingress"
 	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/user"
 )
 
@@ -34,5 +35,6 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
+	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(user.Cmd)
 }

@@ -20,8 +20,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.cee.redhat.com/service/moactl/cmd/describe/cluster"
-	// "gitlab.cee.redhat.com/service/moactl/cmd/describe/idp"
-	// "gitlab.cee.redhat.com/service/moactl/cmd/describe/user"
 )
 
 var Cmd = &cobra.Command{
@@ -32,6 +30,4 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(cluster.Cmd)
-	// Cmd.AddCommand(idp.Cmd)
-	// Cmd.AddCommand(user.Cmd)
 }

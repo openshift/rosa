@@ -14,13 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package idp
+package ingress
 
 import (
 	"fmt"
 	"os"
-	"strings"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -36,12 +34,12 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "idps",
-	Aliases: []string{"idp"},
-	Short:   "List cluster IDPs",
-	Long:    "List identity providers for a cluster.",
-	Example: `  # List all identity providers on a cluster named "mycluster"
-  moactl list idps --cluster=mycluster`,
+	Use:     "ingress",
+	Aliases: []string{"ingresses", "route", "routes"},
+	Short:   "Delete the additional cluster ingress",
+	Long:    "Delete the additional non-default application router for a cluster.",
+	Example: `  # Delete ingress for a cluster named 'mycluster'
+  moactl delete ingress --cluster=mycluster`,
 	Run: run,
 }
 
@@ -53,7 +51,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to list the IdP of (required).",
+		"Name or ID of the cluster to delete the ingress from (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }
@@ -127,48 +125,35 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
-		os.Exit(1)
-	}
-
-	// Load any existing IDPs for this cluster
-	reporter.Infof("Loading identity providers for cluster '%s'", clusterKey)
-	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
+	// Try to find the ingress:
+	reporter.Infof("Loading ingresses for cluster '%s'", clusterKey)
+	ingresses, err := ocm.GetIngresses(clustersCollection, cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
+		reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	if len(idps) == 0 {
-		reporter.Infof("There are no identity providers configured for cluster '%s'", clusterKey)
+	var ingress *cmv1.Ingress
+	for _, item := range ingresses {
+		if !item.Default() {
+			ingress = item
+		}
+	}
+	if ingress == nil {
+		reporter.Errorf("Failed to get additional ingress for cluster '%s'", clusterKey)
+		os.Exit(1)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
-	for _, idp := range idps {
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), getType(idp), getAuthURL(cluster, idp.Name()))
+	// Load any existing ingresses for this cluster
+	reporter.Infof("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+	_, err = clustersCollection.
+		Cluster(cluster.ID()).
+		Ingresses().
+		Ingress(ingress.ID()).
+		Delete().
+		Send()
+	if err != nil {
+		reporter.Errorf("Failed to delete ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+		os.Exit(1)
 	}
-	writer.Flush()
-}
-
-func getType(idp *cmv1.IdentityProvider) string {
-	switch idp.Type() {
-	case "GithubIdentityProvider":
-		return "GitHub"
-	case "GoogleIdentityProvider":
-		return "Google"
-	case "LDAPIdentityProvider":
-		return "LDAP"
-	case "OpenIDIdentityProvider":
-		return "OpenID"
-	}
-
-	return ""
-}
-
-func getAuthURL(cluster *cmv1.Cluster, idpName string) string {
-	oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
-	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idpName)
 }

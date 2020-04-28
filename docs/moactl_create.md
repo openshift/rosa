@@ -24,5 +24,6 @@ Create a resource from stdin
 * [moactl](moactl.md)	 - 
 * [moactl create cluster](moactl_create_cluster.md)	 - Create cluster
 * [moactl create idp](moactl_create_idp.md)	 - Add IDP for cluster
+* [moactl create ingress](moactl_create_ingress.md)	 - Add Ingress to cluster
 * [moactl create user](moactl_create_user.md)	 - Configure user access for cluster
 
