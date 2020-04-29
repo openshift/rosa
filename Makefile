@@ -49,7 +49,7 @@ clean:
 
 .PHONY: generate
 generate:
-	go-bindata -nometadata -nocompress -pkg assets -o ./pkg/assets/bindata.go ./templates/...
+	go-bindata -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 
 .PHONY: docs
 docs: moactl
