@@ -118,7 +118,7 @@ func run(_ *cobra.Command, _ []string) {
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	// Try to find the cluster:
-	reporter.Infof("Loading cluster '%s'", clusterKey)
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
@@ -126,7 +126,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Try to find the ingress:
-	reporter.Infof("Loading ingresses for cluster '%s'", clusterKey)
+	reporter.Debugf("Loading ingresses for cluster '%s'", clusterKey)
 	ingresses, err := ocm.GetIngresses(clustersCollection, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
@@ -145,7 +145,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Load any existing ingresses for this cluster
-	reporter.Infof("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+	reporter.Debugf("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
 	_, err = clustersCollection.
 		Cluster(cluster.ID()).
 		Ingresses().

@@ -108,7 +108,7 @@ func run(_ *cobra.Command, argv []string) {
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	// Try to find the cluster:
-	reporter.Infof("Loading cluster '%s'", clusterKey)
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("Failed to get cluster '%s': %v", clusterKey, err))
@@ -118,10 +118,7 @@ func run(_ *cobra.Command, argv []string) {
 	clusterID := cluster.ID()
 	clusterName := cluster.Name()
 
-	reporter.Infof(
-		"Deleting cluster with identifier '%s' and name '%s'",
-		clusterID, clusterName,
-	)
+	reporter.Debugf("Deleting cluster with identifier '%s' and name '%s'", clusterID, clusterName)
 	_, err = clustersCollection.Cluster(clusterID).Delete().Send()
 	if err != nil {
 		reporter.Errorf(

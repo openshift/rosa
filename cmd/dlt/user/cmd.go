@@ -141,7 +141,7 @@ func run(_ *cobra.Command, _ []string) {
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	// Try to find the cluster:
-	reporter.Infof("Loading cluster '%s'", clusterKey)
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
@@ -171,7 +171,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	if clusterAdmins != "" {
-		reporter.Infof("Deleting cluster-admin users from cluster '%s'", clusterKey)
+		reporter.Debugf("Deleting cluster-admin users from cluster '%s'", clusterKey)
 		for _, username := range strings.Split(clusterAdmins, ",") {
 			_, err = clustersCollection.Cluster(cluster.ID()).
 				Groups().
@@ -188,7 +188,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	if dedicatedAdmins != "" {
-		reporter.Infof("Deleting dedicated-admin users from cluster '%s'", clusterKey)
+		reporter.Debugf("Deleting dedicated-admin users from cluster '%s'", clusterKey)
 		for _, username := range strings.Split(dedicatedAdmins, ",") {
 			_, err = clustersCollection.Cluster(cluster.ID()).
 				Groups().

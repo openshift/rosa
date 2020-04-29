@@ -120,7 +120,7 @@ func run(_ *cobra.Command, _ []string) {
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	// Try to find the cluster:
-	reporter.Infof("Loading cluster '%s'", clusterKey)
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
@@ -133,7 +133,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Load any existing IDPs for this cluster
-	reporter.Infof("Loading identity providers for cluster '%s'", clusterKey)
+	reporter.Debugf("Loading identity providers for cluster '%s'", clusterKey)
 	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)

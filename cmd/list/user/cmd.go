@@ -119,7 +119,7 @@ func run(_ *cobra.Command, _ []string) {
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	// Try to find the cluster:
-	reporter.Infof("Loading cluster '%s'", clusterKey)
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
@@ -131,8 +131,7 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	reporter.Infof("Loading users for cluster '%s'", clusterKey)
-
+	reporter.Debugf("Loading users for cluster '%s'", clusterKey)
 	// Load cluster-admins for this cluster
 	clusterAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
 	if err != nil {
