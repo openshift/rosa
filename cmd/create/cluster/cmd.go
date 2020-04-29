@@ -364,7 +364,7 @@ func run(_ *cobra.Command, _ []string) {
 			"and define the list of cluster administrators. See `moactl idp add --help` " +
 			"and `moactl user add --help` for more information.")
 	reporter.Infof(
-		"To determine when your cluster is Ready, run `moactl cluster describe %s`.",
+		"To determine when your cluster is Ready, run `moactl describe cluster %s`.",
 		clusterName,
 	)
 }
