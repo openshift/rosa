@@ -361,8 +361,8 @@ func run(_ *cobra.Command, _ []string) {
 	reporter.Infof("Cluster '%s' has been created.", clusterName)
 	reporter.Infof(
 		"Once the cluster is 'Ready' you will need to add an Identity Provider " +
-			"and define the list of cluster administrators. See `moactl idp add --help` " +
-			"and `moactl user add --help` for more information.")
+			"and define the list of cluster administrators. See `moactl create idp --help` " +
+			"and `moactl create user --help` for more information.")
 	reporter.Infof(
 		"To determine when your cluster is Ready, run `moactl describe cluster %s`.",
 		clusterName,
