@@ -33,6 +33,20 @@ func IsValidClusterKey(clusterKey string) bool {
 	return clusterKeyRE.MatchString(clusterKey)
 }
 
+func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
+	query := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, creatorARN)
+	response, err := client.List().
+		Search(query).
+		Page(1).
+		Size(1).
+		Send()
+	if err != nil {
+		return false, fmt.Errorf("Failed to list clusters: %v", err)
+	}
+
+	return response.Total() > 0, nil
+}
+
 func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
 	query := fmt.Sprintf(
 		"(id = '%s' or name = '%s') and properties.%s = '%s'",

@@ -49,6 +49,7 @@ type Client interface {
 	GetRegion() string
 	ValidateCredentials() (bool, error)
 	EnsureOsdCcsAdminUser(stackName string) (bool, error)
+	DeleteOsdCcsAdminUser(stackName string) error
 	GetAccessKeyFromStack(stackName string) (*AWSAccessKey, error)
 	GetCreator() (*AWSCreator, error)
 	TagUser(username string, clusterID string, clusterName string) error
@@ -185,7 +186,6 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 
 // Ensure osdCcsAdmin IAM user is created
 func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
-
 	// Read cloudformation template
 	cfTemplateBody, err := readCFTemplate()
 	if err != nil {
@@ -221,6 +221,42 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (c *awsClient) DeleteOsdCcsAdminUser(stackName string) error {
+	deleteStackInput := &cloudformation.DeleteStackInput{
+		StackName: aws.String(stackName),
+	}
+
+	// Delete cloudformation stack
+	_, err := c.cfClient.DeleteStack(deleteStackInput)
+	if err != nil {
+		switch typed := err.(type) {
+		case awserr.Error:
+			if typed.Code() == cloudformation.ErrCodeTokenAlreadyExistsException {
+				return nil
+			}
+		}
+		return err
+	}
+
+	// Wait until cloudformation stack deletes
+	err = c.cfClient.WaitUntilStackDeleteComplete(&cloudformation.DescribeStacksInput{
+		StackName: aws.String(stackName),
+	})
+	if err != nil {
+		switch typed := err.(type) {
+		case awserr.Error:
+			// Waiter reached maximum attempts waiting for the resource to be ready
+			if typed.Code() == request.WaiterResourceNotReadyErrorCode {
+				c.logger.Errorf("Max retries reached waiting for stack to delete")
+				return err
+			}
+		}
+		return err
+	}
+
+	return nil
 }
 
 // FIXME: Since we support multiple clusters per user, we need to find a better way to

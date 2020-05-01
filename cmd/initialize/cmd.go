@@ -29,9 +29,14 @@ import (
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
+	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
 	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/config"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
+
+var args struct {
+	deleteStack bool
+}
 
 var Cmd = &cobra.Command{
 	Use:   "init",
@@ -47,8 +52,18 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	flags := Cmd.Flags()
+	flags.SortFlags = false
+
+	flags.BoolVar(
+		&args.deleteStack,
+		"delete-stack",
+		false,
+		"Deletes stack template applied to your AWS account during the 'init' command.\n",
+	)
+
 	// Force-load all flags from `login` into `init`
-	Cmd.Flags().AddFlagSet(login.Cmd.Flags())
+	flags.AddFlagSet(login.Cmd.Flags())
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -79,10 +94,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// If necessary, call `login` as part of `init`. We do this before
 	// other validations to get the prompt out of the way before performing
 	// longer checks.
-	if cmd.Flags().NFlag() > 0 {
-		// Always force login if user sets flags
-		login.Cmd.Run(cmd, argv)
-	} else {
+	if cmd.Flags().NFlag() == 0 || (args.deleteStack && cmd.Flags().NFlag() == 1) {
 		// Verify if user is already logged in:
 		isLoggedIn := false
 		cfg, err := config.Load()
@@ -106,6 +118,9 @@ func run(cmd *cobra.Command, argv []string) {
 		} else {
 			login.Cmd.Run(cmd, argv)
 		}
+	} else {
+		// Always force login if user sets login flags
+		login.Cmd.Run(cmd, argv)
 	}
 
 	// Validate AWS credentials for current user
@@ -121,9 +136,60 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	reporter.Infof("AWS credentials are valid!")
 
+	// Delete CloudFormation stack and exit
+	if args.deleteStack {
+		reporter.Infof("Deleting cluster administrator user '%s'...", aws.AdminUserName)
+
+		// Create the client for the OCM API:
+		ocmConnection, err := ocm.NewConnection().
+			Logger(logger).
+			Build()
+		if err != nil {
+			reporter.Errorf("Failed to create OCM connection: %v", err)
+			os.Exit(1)
+		}
+		defer func() {
+			err = ocmConnection.Close()
+			if err != nil {
+				reporter.Errorf("Failed to close OCM connection: %v", err)
+			}
+		}()
+
+		// Get creator ARN to determine existing clusters:
+		awsCreator, err := client.GetCreator()
+		if err != nil {
+			reporter.Errorf("Failed to get AWS creator: %v", err)
+			os.Exit(1)
+		}
+
+		// Check whether the account has clusters:
+		clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
+		hasClusters, err := ocm.HasClusters(clustersCollection, awsCreator.ARN)
+		if err != nil {
+			reporter.Errorf("Failed to check for clusters: %v", err)
+			os.Exit(1)
+		}
+
+		if hasClusters {
+			reporter.Errorf(
+				"Failed to delete '%s': User still has clusters.",
+				aws.AdminUserName)
+			os.Exit(1)
+		}
+
+		// Delete the CloudFormation stack
+		err = client.DeleteOsdCcsAdminUser(aws.OsdCcsAdminStackName)
+		if err != nil {
+			reporter.Errorf("Failed to delete user '%s': %v", aws.AdminUserName, err)
+			os.Exit(1)
+		}
+
+		reporter.Infof("Admin user '%s' deleted successfuly!", aws.AdminUserName)
+		os.Exit(0)
+	}
+
 	// Validate SCP policies for current user's account
 	reporter.Infof("Validating SCP policies...")
-
 	ok, err = client.ValidateSCP()
 	if err != nil {
 		reporter.Errorf("Error validating SCP policies: %v", err)
