@@ -29,13 +29,15 @@ import (
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
 	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
+	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/config"
 	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
 )
 
 var Cmd = &cobra.Command{
 	Use:   "init",
 	Short: "Applies templates to support Managed OpenShift on AWS clusters",
-	Long:  "Applies templates to support Managed OpenShift on AWS clusters",
+	Long: "Applies templates to support Managed OpenShift on AWS clusters. If you are not\n" +
+		"yet logged in to OCM, it will prompt you for credentials.",
 	Example: `  # Configure your AWS account to allow MOA clusters
   moactl init
 
@@ -74,9 +76,37 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Call `login` as part of `init`. We do this before other validations
-	// to get the prompt out of the way before performing longer checks.
-	login.Cmd.Run(cmd, argv)
+	// If necessary, call `login` as part of `init`. We do this before
+	// other validations to get the prompt out of the way before performing
+	// longer checks.
+	if cmd.Flags().NFlag() > 0 {
+		// Always force login if user sets flags
+		login.Cmd.Run(cmd, argv)
+	} else {
+		// Verify if user is already logged in:
+		isLoggedIn := false
+		cfg, err := config.Load()
+		if err != nil {
+			reporter.Errorf("Failed to load config file: %v", err)
+			os.Exit(1)
+		}
+		if cfg != nil {
+			// Check that credentials in the config file are valid
+			isLoggedIn, err = cfg.Armed()
+		}
+
+		if isLoggedIn {
+			username, err := cfg.UserName()
+			if err != nil {
+				reporter.Errorf("Failed to get username: %v", err)
+				os.Exit(1)
+			}
+
+			reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
+		} else {
+			login.Cmd.Run(cmd, argv)
+		}
+	}
 
 	// Validate AWS credentials for current user
 	reporter.Infof("Validating AWS credentials...")

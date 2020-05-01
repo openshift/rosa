@@ -4,7 +4,8 @@ Applies templates to support Managed OpenShift on AWS clusters
 
 ### Synopsis
 
-Applies templates to support Managed OpenShift on AWS clusters
+Applies templates to support Managed OpenShift on AWS clusters. If you are not
+yet logged in to OCM, it will prompt you for credentials.
 
 ```
 moactl init [flags]
