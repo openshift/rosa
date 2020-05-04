@@ -33,6 +33,7 @@ import (
 	"gitlab.cee.redhat.com/service/moactl/cmd/list"
 	"gitlab.cee.redhat.com/service/moactl/cmd/login"
 	"gitlab.cee.redhat.com/service/moactl/cmd/logout"
+	"gitlab.cee.redhat.com/service/moactl/cmd/logs"
 	"gitlab.cee.redhat.com/service/moactl/cmd/version"
 
 	"gitlab.cee.redhat.com/service/moactl/pkg/arguments"
@@ -62,6 +63,7 @@ func init() {
 	root.AddCommand(initialize.Cmd)
 	root.AddCommand(login.Cmd)
 	root.AddCommand(logout.Cmd)
+	root.AddCommand(logs.Cmd)
 	root.AddCommand(version.Cmd)
 }
 

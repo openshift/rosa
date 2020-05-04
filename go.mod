@@ -12,6 +12,7 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.5
+	github.com/zgalor/weberr v0.6.0
 	gitlab.com/c0b/go-ordered-json v0.0.0-20171130231205-49bbdab258c2
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	k8s.io/apimachinery v0.18.2

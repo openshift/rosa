@@ -24,5 +24,6 @@ Command line tool for MOA.
 * [moactl list](moactl_list.md)	 - List all resources of a specific type
 * [moactl login](moactl_login.md)	 - Log in to your Red Hat account
 * [moactl logout](moactl_logout.md)	 - Log out
+* [moactl logs](moactl_logs.md)	 - Show logs of a specific resource
 * [moactl version](moactl_version.md)	 - Prints the version of the tool
 
