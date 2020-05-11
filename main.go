@@ -24,19 +24,19 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/completion"
-	"gitlab.cee.redhat.com/service/moactl/cmd/create"
-	"gitlab.cee.redhat.com/service/moactl/cmd/describe"
-	"gitlab.cee.redhat.com/service/moactl/cmd/dlt"
-	"gitlab.cee.redhat.com/service/moactl/cmd/docs"
-	"gitlab.cee.redhat.com/service/moactl/cmd/initialize"
-	"gitlab.cee.redhat.com/service/moactl/cmd/list"
-	"gitlab.cee.redhat.com/service/moactl/cmd/login"
-	"gitlab.cee.redhat.com/service/moactl/cmd/logout"
-	"gitlab.cee.redhat.com/service/moactl/cmd/logs"
-	"gitlab.cee.redhat.com/service/moactl/cmd/version"
+	"github.com/openshift/moactl/cmd/completion"
+	"github.com/openshift/moactl/cmd/create"
+	"github.com/openshift/moactl/cmd/describe"
+	"github.com/openshift/moactl/cmd/dlt"
+	"github.com/openshift/moactl/cmd/docs"
+	"github.com/openshift/moactl/cmd/initialize"
+	"github.com/openshift/moactl/cmd/list"
+	"github.com/openshift/moactl/cmd/login"
+	"github.com/openshift/moactl/cmd/logout"
+	"github.com/openshift/moactl/cmd/logs"
+	"github.com/openshift/moactl/cmd/version"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/arguments"
+	"github.com/openshift/moactl/pkg/arguments"
 )
 
 var root = &cobra.Command{

@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/iam"
-	"gitlab.cee.redhat.com/service/moactl/assets"
+	"github.com/openshift/moactl/assets"
 )
 
 // SimulateParams captures any additional details that should be used

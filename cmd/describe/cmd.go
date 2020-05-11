@@ -19,7 +19,7 @@ package describe
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/describe/cluster"
+	"github.com/openshift/moactl/cmd/describe/cluster"
 )
 
 var Cmd = &cobra.Command{

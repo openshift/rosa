@@ -22,8 +22,8 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/sirupsen/logrus"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/config"
+	"github.com/openshift/moactl/pkg/logging"
+	"github.com/openshift/moactl/pkg/ocm/config"
 )
 
 // ConnectionBuilder contains the information and logic needed to build a connection to OCM. Don't

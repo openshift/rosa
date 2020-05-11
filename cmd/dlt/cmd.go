@@ -19,10 +19,10 @@ package dlt
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/cluster"
-	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/idp"
-	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/ingress"
-	"gitlab.cee.redhat.com/service/moactl/cmd/dlt/user"
+	"github.com/openshift/moactl/cmd/dlt/cluster"
+	"github.com/openshift/moactl/cmd/dlt/idp"
+	"github.com/openshift/moactl/cmd/dlt/ingress"
+	"github.com/openshift/moactl/cmd/dlt/user"
 )
 
 var Cmd = &cobra.Command{

@@ -25,13 +25,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/login"
+	"github.com/openshift/moactl/cmd/login"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
-	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/config"
-	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
+	"github.com/openshift/moactl/pkg/aws"
+	"github.com/openshift/moactl/pkg/logging"
+	"github.com/openshift/moactl/pkg/ocm"
+	"github.com/openshift/moactl/pkg/ocm/config"
+	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
 var args struct {

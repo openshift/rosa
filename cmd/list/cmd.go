@@ -19,10 +19,10 @@ package list
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/list/cluster"
-	"gitlab.cee.redhat.com/service/moactl/cmd/list/idp"
-	"gitlab.cee.redhat.com/service/moactl/cmd/list/ingress"
-	"gitlab.cee.redhat.com/service/moactl/cmd/list/user"
+	"github.com/openshift/moactl/cmd/list/cluster"
+	"github.com/openshift/moactl/cmd/list/idp"
+	"github.com/openshift/moactl/cmd/list/ingress"
+	"github.com/openshift/moactl/cmd/list/user"
 )
 
 var Cmd = &cobra.Command{

@@ -21,7 +21,7 @@ package arguments
 import (
 	"github.com/spf13/pflag"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
+	"github.com/openshift/moactl/pkg/debug"
 )
 
 // AddDebugFlag adds the '--debug' flag to the given set of command line flags.

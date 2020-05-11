@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
+	"github.com/openshift/moactl/pkg/debug"
 )
 
 // Builder contains the information and logic needed to create a new reporter.

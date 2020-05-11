@@ -1,4 +1,4 @@
-module gitlab.cee.redhat.com/service/moactl
+module github.com/openshift/moactl
 
 go 1.13
 

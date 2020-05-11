@@ -19,7 +19,7 @@ package logs
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/logs/cluster"
+	"github.com/openshift/moactl/cmd/logs/cluster"
 )
 
 var Cmd = &cobra.Command{

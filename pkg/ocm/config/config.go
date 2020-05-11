@@ -32,7 +32,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/openshift-online/ocm-sdk-go"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
+	"github.com/openshift/moactl/pkg/debug"
 )
 
 // When the value of the `--env` option is one of the keys of this map it will be replaced by the

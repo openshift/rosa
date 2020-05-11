@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/info"
+	"github.com/openshift/moactl/pkg/info"
 )
 
 var Cmd = &cobra.Command{

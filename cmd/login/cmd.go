@@ -24,11 +24,11 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
-	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/config"
-	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
+	"github.com/openshift/moactl/pkg/interactive"
+	"github.com/openshift/moactl/pkg/logging"
+	"github.com/openshift/moactl/pkg/ocm"
+	"github.com/openshift/moactl/pkg/ocm/config"
+	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
 // #nosec G101

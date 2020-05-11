@@ -21,7 +21,7 @@ package logging
 import (
 	"github.com/sirupsen/logrus"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/debug"
+	"github.com/openshift/moactl/pkg/debug"
 )
 
 // LoggerBuilder contains the information and logic needed to create the default loggers used by

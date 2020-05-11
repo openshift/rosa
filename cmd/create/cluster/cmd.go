@@ -28,14 +28,14 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/aws"
-	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
-	"gitlab.cee.redhat.com/service/moactl/pkg/logging"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/machines"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/properties"
-	"gitlab.cee.redhat.com/service/moactl/pkg/ocm/versions"
-	rprtr "gitlab.cee.redhat.com/service/moactl/pkg/reporter"
+	"github.com/openshift/moactl/pkg/aws"
+	"github.com/openshift/moactl/pkg/interactive"
+	"github.com/openshift/moactl/pkg/logging"
+	"github.com/openshift/moactl/pkg/ocm"
+	"github.com/openshift/moactl/pkg/ocm/machines"
+	"github.com/openshift/moactl/pkg/ocm/properties"
+	"github.com/openshift/moactl/pkg/ocm/versions"
+	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
 var args struct {

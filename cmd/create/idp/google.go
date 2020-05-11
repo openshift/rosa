@@ -24,7 +24,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
-	"gitlab.cee.redhat.com/service/moactl/pkg/interactive"
+	"github.com/openshift/moactl/pkg/interactive"
 )
 
 func buildGoogleIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {

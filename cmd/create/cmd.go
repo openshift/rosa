@@ -19,10 +19,10 @@ package create
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.cee.redhat.com/service/moactl/cmd/create/cluster"
-	"gitlab.cee.redhat.com/service/moactl/cmd/create/idp"
-	"gitlab.cee.redhat.com/service/moactl/cmd/create/ingress"
-	"gitlab.cee.redhat.com/service/moactl/cmd/create/user"
+	"github.com/openshift/moactl/cmd/create/cluster"
+	"github.com/openshift/moactl/cmd/create/idp"
+	"github.com/openshift/moactl/cmd/create/ingress"
+	"github.com/openshift/moactl/cmd/create/user"
 )
 
 var Cmd = &cobra.Command{
