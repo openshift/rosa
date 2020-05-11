@@ -20,7 +20,8 @@ moactl list clusters [flags]
 ### Options
 
 ```
-  -h, --help   help for clusters
+      --count int   Number of clusters to display. (default 100)
+  -h, --help        help for clusters
 ```
 
 ### Options inherited from parent commands

@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
+	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -65,7 +66,7 @@ func run(_ *cobra.Command, argv []string) {
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := argv[0]
-	if !ocm.IsValidClusterKey(clusterKey) {
+	if !clusterprovider.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -107,23 +108,9 @@ func run(_ *cobra.Command, argv []string) {
 	// Get the client for the OCM collection of clusters:
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
-	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	reporter.Debugf("Deleting cluster '%s'", clusterKey)
+	err = clusterprovider.DeleteCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
-		reporter.Errorf(fmt.Sprintf("Failed to get cluster '%s': %v", clusterKey, err))
-		os.Exit(1)
-	}
-
-	clusterID := cluster.ID()
-	clusterName := cluster.Name()
-
-	reporter.Debugf("Deleting cluster with identifier '%s' and name '%s'", clusterID, clusterName)
-	_, err = clustersCollection.Cluster(clusterID).Delete().Send()
-	if err != nil {
-		reporter.Errorf(
-			"Failed to delete cluster with identifier '%s' and name '%s'",
-			clusterID, clusterName,
-		)
+		reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 	}
 }
