@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/moactl/pkg/aws"
+	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/interactive"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
@@ -330,14 +331,12 @@ func run(_ *cobra.Command, _ []string) {
 		)
 	}
 
-	cluster, err := clusterBuilder.Build()
+	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
 		reporter.Errorf("Failed to create description of cluster: %v", err)
 		os.Exit(1)
 	}
-	createClusterResponse, err := ocmClient.Clusters().Add().
-		Body(cluster).
-		Send()
+	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterSpec)
 	if err != nil {
 		// Unwrap and clean up API errors:
 		wrapped := strings.Split(err.Error(), ": ")
@@ -346,7 +345,6 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	cluster = createClusterResponse.Body()
 	clusterID := cluster.ID()
 	clusterName := cluster.Name()
 	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", clusterID, clusterName)

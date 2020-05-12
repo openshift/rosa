@@ -21,15 +21,18 @@ import (
 	"os"
 	"text/tabwriter"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
+	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
-	"github.com/openshift/moactl/pkg/ocm/properties"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
+
+var args struct {
+	count int
+}
 
 var Cmd = &cobra.Command{
 	Use:     "clusters",
@@ -39,6 +42,19 @@ var Cmd = &cobra.Command{
 	Example: `  # List all clusters
   moactl list clusters`,
 	Run: run,
+}
+
+func init() {
+	flags := Cmd.Flags()
+	flags.SortFlags = false
+
+	// Basic options
+	flags.IntVar(
+		&args.count,
+		"count",
+		100,
+		"Number of clusters to display.",
+	)
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -93,36 +109,30 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}()
 
+	// Retrieve the list of clusters:
+	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
+	clusters, err := clusterprovider.GetClusters(clustersCollection, awsCreator.ARN, args.count)
+	if err != nil {
+		reporter.Errorf("Failed to get clusters: %v", err)
+		os.Exit(1)
+	}
+
+	if len(clusters) == 0 {
+		reporter.Infof("No clusters available")
+		os.Exit(0)
+	}
+
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "ID\tNAME\tSTATE\n")
-
-	// Retrieve the list of clusters:
-	ocmQuery := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, awsCreator.ARN)
-	ocmRequest := ocmConnection.ClustersMgmt().V1().Clusters().List().
-		Search(ocmQuery)
-	page := 1
-	size := 100
-	for {
-		ocmResponse, err := ocmRequest.Page(page).Size(size).Send()
-		if err != nil {
-			reporter.Errorf("Failed to retrieve clusters: %v", err)
-			os.Exit(1)
-		}
-		ocmResponse.Items().Each(func(ocmCluster *cmv1.Cluster) bool {
-			fmt.Fprintf(
-				writer,
-				"%s\t%s\t%s\n",
-				ocmCluster.ID(),
-				ocmCluster.Name(),
-				ocmCluster.State(),
-			)
-			return true
-		})
-		writer.Flush()
-		if ocmResponse.Size() != size {
-			break
-		}
-		page++
+	for _, cluster := range clusters {
+		fmt.Fprintf(
+			writer,
+			"%s\t%s\t%s\n",
+			cluster.ID(),
+			cluster.Name(),
+			cluster.State(),
+		)
 	}
+	writer.Flush()
 }
