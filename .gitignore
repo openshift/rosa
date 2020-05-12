@@ -1,0 +1,4 @@
+.idea/
+/moactl
+docs/*.1
+docs/*.rst

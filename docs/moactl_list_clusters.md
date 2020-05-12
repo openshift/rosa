@@ -1,0 +1,36 @@
+## moactl list clusters
+
+List clusters
+
+### Synopsis
+
+List clusters.
+
+```
+moactl list clusters [flags]
+```
+
+### Examples
+
+```
+  # List all clusters
+  moactl list clusters
+```
+
+### Options
+
+```
+  -h, --help   help for clusters
+```
+
+### Options inherited from parent commands
+
+```
+      --debug     Enable debug mode.
+  -v, --v Level   log level for V logs
+```
+
+### SEE ALSO
+
+* [moactl list](moactl_list.md)	 - List all resources of a specific type
+
