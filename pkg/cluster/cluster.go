@@ -19,16 +19,40 @@ package cluster
 import (
 	"errors"
 	"fmt"
+	"net"
 	"regexp"
+	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
+	"github.com/openshift/moactl/pkg/aws"
+	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm/properties"
+	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
 // safe and that it there is no risk of SQL injection:
 var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
+
+// ClusterSpec is the configuration for a cluster spec.
+type ClusterSpec struct {
+	// Basic configs
+	Name               string
+	Region             string
+	MultiAZ            bool
+	Version            string
+	Expiration         time.Time
+	ComputeMachineType string
+	ComputeNodes       int
+
+	MachineCIDR net.IPNet
+	ServiceCIDR net.IPNet
+	PodCIDR     net.IPNet
+	HostPrefix  int
+
+	Private bool
+}
 
 func IsValidClusterKey(clusterKey string) bool {
 	return clusterKeyRE.MatchString(clusterKey)
@@ -48,12 +72,46 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 	return response.Total() > 0, nil
 }
 
-func CreateCluster(client *cmv1.ClustersClient, spec *cmv1.Cluster) (*cmv1.Cluster, error) {
+func CreateCluster(client *cmv1.ClustersClient, config ClusterSpec) (*cmv1.Cluster, error) {
+	reporter, err := rprtr.New().
+		Build()
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to create reporter: %v", err)
+	}
+
+	logger, err := logging.NewLogger().
+		Build()
+	if err != nil {
+		return nil, fmt.Errorf("unable to create AWS logger: %v", err)
+	}
+
+	// Create the AWS client:
+	awsClient, err := aws.NewClient().
+		Logger(logger).
+		Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS client: %v", err)
+	}
+
+	spec, err := createClusterSpec(config, awsClient)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create cluster spec: %v", err)
+	}
+
 	cluster, err := client.Add().Body(spec).Send()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating cluster in OCM: %v", err)
 	}
-	return cluster.Body(), nil
+
+	clusterObject := cluster.Body()
+
+	// Add tags to the AWS administrator user containing the identifier and name of the cluster:
+	err = awsClient.TagUser(aws.AdminUserName, clusterObject.ID(), clusterObject.Name())
+	if err != nil {
+		reporter.Warnf("Failed to add cluster tags to user '%s'", aws.AdminUserName)
+	}
+	return clusterObject, nil
 }
 
 func GetClusters(client *cmv1.ClustersClient, creatorARN string, count int) (clusters []*cmv1.Cluster, err error) {
@@ -117,4 +175,112 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	}
 
 	return nil
+}
+
+func createClusterSpec(config ClusterSpec, awsClient aws.Client) (*cmv1.Cluster, error) {
+	reporter, err := rprtr.New().
+		Build()
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating cluster reporter: %v", err)
+	}
+
+	awsCreator, err := awsClient.GetCreator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get AWS creator: %v", err)
+	}
+
+	// Create the access key for the AWS user:
+	awsAccessKey, err := awsClient.GetAccessKeyFromStack(aws.OsdCcsAdminStackName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get access keys for user '%s': %v", aws.AdminUserName, err)
+	}
+	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
+	reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
+
+	// Create the cluster:
+	clusterBuilder := cmv1.NewCluster().
+		Name(config.Name).
+		DisplayName(config.Name).
+		MultiAZ(config.MultiAZ).
+		Product(
+			cmv1.NewProduct().
+				ID("moa"),
+		).
+		Region(
+			cmv1.NewCloudRegion().
+				ID(config.Region),
+		).
+		AWS(
+			cmv1.NewAWS().
+				AccountID(awsCreator.AccountID).
+				AccessKeyID(awsAccessKey.AccessKeyID).
+				SecretAccessKey(awsAccessKey.SecretAccessKey),
+		).
+		Properties(map[string]string{
+			properties.CreatorARN: awsCreator.ARN,
+		})
+
+	if config.Version != "" {
+		clusterBuilder = clusterBuilder.Version(
+			cmv1.NewVersion().
+				ID(config.Version),
+		)
+
+		reporter.Debugf("Using OpenShift version '%s'", config.Version)
+	}
+
+	if !config.Expiration.IsZero() {
+		clusterBuilder = clusterBuilder.ExpirationTimestamp(config.Expiration)
+	}
+
+	if config.ComputeMachineType != "" || config.ComputeNodes != 0 {
+		clusterNodesBuilder := cmv1.NewClusterNodes()
+		if config.ComputeMachineType != "" {
+			clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
+				cmv1.NewMachineType().ID(config.ComputeMachineType),
+			)
+
+			reporter.Debugf("Using machine type '%s'", config.ComputeMachineType)
+		}
+		if config.ComputeNodes != 0 {
+			clusterNodesBuilder = clusterNodesBuilder.Compute(config.ComputeNodes)
+		}
+		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
+	}
+
+	if !cidrIsEmpty(config.MachineCIDR) || !cidrIsEmpty(config.ServiceCIDR) || !cidrIsEmpty(config.PodCIDR) || config.HostPrefix != 0 {
+		networkBuilder := cmv1.NewNetwork()
+		if !cidrIsEmpty(config.MachineCIDR) {
+			networkBuilder = networkBuilder.MachineCIDR(config.MachineCIDR.String())
+		}
+		if !cidrIsEmpty(config.ServiceCIDR) {
+			networkBuilder = networkBuilder.ServiceCIDR(config.ServiceCIDR.String())
+		}
+		if !cidrIsEmpty(config.PodCIDR) {
+			networkBuilder = networkBuilder.PodCIDR(config.PodCIDR.String())
+		}
+		if config.HostPrefix != 0 {
+			networkBuilder = networkBuilder.HostPrefix(config.HostPrefix)
+		}
+		clusterBuilder = clusterBuilder.Network(networkBuilder)
+	}
+
+	if config.Private {
+		clusterBuilder = clusterBuilder.API(
+			cmv1.NewClusterAPI().
+				Listening(cmv1.ListeningMethodInternal),
+		)
+	}
+
+	clusterSpec, err := clusterBuilder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create description of cluster: %v", err)
+	}
+
+	return clusterSpec, nil
+}
+
+func cidrIsEmpty(cidr net.IPNet) bool {
+	return cidr.String() == "<nil>"
 }
