@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/openshift/moactl/assets"
+	"github.com/openshift/moactl/pkg/logging"
 )
 
 // SimulateParams captures any additional details that should be used
@@ -98,6 +99,34 @@ func GetRegion(region string) (string, error) {
 		region = *defaultSession.Config.Region
 	}
 	return region, nil
+}
+
+// ValidateCredentials will return true if the AWS credentials are valid.
+func ValidateCredentials() (bool, error) {
+	// Create the reporter/logger
+	logger, err := logging.NewLogger().
+		Build()
+	if err != nil {
+		return false, fmt.Errorf("unable to create logger: %v", err)
+	}
+
+	// Create the AWS client:
+	client, err := NewClient().
+		Logger(logger).
+		Build()
+	if err != nil {
+		return false, fmt.Errorf("error creating AWS client: %v", err)
+	}
+	ok, err := client.ValidateCredentials()
+	if err != nil {
+		return false, fmt.Errorf("Error validating AWS credentials: %v", err)
+	}
+
+	if !ok {
+		return false, fmt.Errorf("AWS credentials are invalid")
+	}
+
+	return true, nil
 }
 
 // getClientDetails will return the *iam.User associated with the provided client's credentials,

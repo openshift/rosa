@@ -26,9 +26,9 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/moactl/pkg/aws"
-	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm/properties"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
+	"github.com/openshift/moactl/pkg/utils"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
@@ -73,17 +73,9 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 }
 
 func CreateCluster(client *cmv1.ClustersClient, config ClusterSpec) (*cmv1.Cluster, error) {
-	reporter, err := rprtr.New().
-		Build()
-
+	reporter, logger, err := utils.CreateReporterAndLogger()
 	if err != nil {
-		return nil, fmt.Errorf("unable to create reporter: %v", err)
-	}
-
-	logger, err := logging.NewLogger().
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("unable to create AWS logger: %v", err)
+		return nil, fmt.Errorf("unable to create reporter/logger: %v", err)
 	}
 
 	// Create the AWS client:
@@ -94,7 +86,7 @@ func CreateCluster(client *cmv1.ClustersClient, config ClusterSpec) (*cmv1.Clust
 		return nil, fmt.Errorf("failed to create AWS client: %v", err)
 	}
 
-	spec, err := createClusterSpec(config, awsClient)
+	spec, err := createClusterSpec(config, reporter, awsClient)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create cluster spec: %v", err)
 	}
@@ -177,14 +169,7 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	return nil
 }
 
-func createClusterSpec(config ClusterSpec, awsClient aws.Client) (*cmv1.Cluster, error) {
-	reporter, err := rprtr.New().
-		Build()
-
-	if err != nil {
-		return nil, fmt.Errorf("error creating cluster reporter: %v", err)
-	}
-
+func createClusterSpec(config ClusterSpec, reporter *rprtr.Object, awsClient aws.Client) (*cmv1.Cluster, error) {
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AWS creator: %v", err)

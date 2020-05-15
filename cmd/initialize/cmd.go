@@ -75,22 +75,6 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Create the logger:
-	logger, err := logging.NewLogger().Build()
-	if err != nil {
-		reporter.Errorf("Failed to create logger: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the AWS client:
-	client, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Error creating AWS client: %v", err)
-		os.Exit(1)
-	}
-
 	// If necessary, call `login` as part of `init`. We do this before
 	// other validations to get the prompt out of the way before performing
 	// longer checks.
@@ -125,7 +109,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate AWS credentials for current user
 	reporter.Infof("Validating AWS credentials...")
-	ok, err := client.ValidateCredentials()
+	ok, err := aws.ValidateCredentials()
 	if err != nil {
 		reporter.Errorf("Error validating AWS credentials: %v", err)
 		os.Exit(1)
@@ -138,15 +122,18 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Delete CloudFormation stack and exit
 	if args.deleteStack {
-		reporter.Infof("Deleting cluster administrator user '%s'...", aws.AdminUserName)
+		// Create the logger:
+		logger, err := logging.NewLogger().Build()
+		if err != nil {
+			reporter.Errorf("Failed to create logger: %v", err)
+			os.Exit(1)
+		}
 
-		// Create the client for the OCM API:
 		ocmConnection, err := ocm.NewConnection().
 			Logger(logger).
 			Build()
 		if err != nil {
 			reporter.Errorf("Failed to create OCM connection: %v", err)
-			os.Exit(1)
 		}
 		defer func() {
 			err = ocmConnection.Close()
@@ -155,62 +142,17 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 		}()
 
-		// Get creator ARN to determine existing clusters:
-		awsCreator, err := client.GetCreator()
-		if err != nil {
-			reporter.Errorf("Failed to get AWS creator: %v", err)
+		if err = aws.DeleteStack(ocmConnection.ClustersMgmt().V1().Clusters()); err != nil {
+			reporter.Errorf("Error while deleting stack: %v", err)
 			os.Exit(1)
 		}
 
-		// Check whether the account has clusters:
-		clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-		hasClusters, err := ocm.HasClusters(clustersCollection, awsCreator.ARN)
-		if err != nil {
-			reporter.Errorf("Failed to check for clusters: %v", err)
-			os.Exit(1)
-		}
-
-		if hasClusters {
-			reporter.Errorf(
-				"Failed to delete '%s': User still has clusters.",
-				aws.AdminUserName)
-			os.Exit(1)
-		}
-
-		// Delete the CloudFormation stack
-		err = client.DeleteOsdCcsAdminUser(aws.OsdCcsAdminStackName)
-		if err != nil {
-			reporter.Errorf("Failed to delete user '%s': %v", aws.AdminUserName, err)
-			os.Exit(1)
-		}
-
-		reporter.Infof("Admin user '%s' deleted successfuly!", aws.AdminUserName)
 		os.Exit(0)
 	}
 
-	// Validate SCP policies for current user's account
-	reporter.Infof("Validating SCP policies...")
-	ok, err = client.ValidateSCP()
-	if err != nil {
-		reporter.Errorf("Error validating SCP policies: %v", err)
+	if err = aws.CreateStack(); err != nil {
+		reporter.Errorf("Error while creating stack: %v", err)
 		os.Exit(1)
-	}
-	if !ok {
-		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
-	}
-	reporter.Infof("SCP/IAM permissions validated...")
-
-	// Ensure that there is an AWS user to create all the resources needed by the cluster:
-	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
-	created, err := client.EnsureOsdCcsAdminUser(aws.OsdCcsAdminStackName)
-	if err != nil {
-		reporter.Errorf("Failed to create user '%s': %v", aws.AdminUserName, err)
-		os.Exit(1)
-	}
-	if created {
-		reporter.Infof("Admin user '%s' created successfuly!", aws.AdminUserName)
-	} else {
-		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
 	}
 
 	// Verify whether `oc` is installed
