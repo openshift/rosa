@@ -34,7 +34,6 @@ import (
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	"github.com/openshift/moactl/pkg/ocm/machines"
-	"github.com/openshift/moactl/pkg/ocm/properties"
 	"github.com/openshift/moactl/pkg/ocm/versions"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
@@ -188,42 +187,20 @@ func run(_ *cobra.Command, _ []string) {
 		}
 	}
 
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
 	// Get AWS region
-	region := args.region
-	if region == "" {
-		region = awsClient.GetRegion()
+	region, err := aws.GetRegion(args.region)
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
 	}
 	if region == "" {
 		region, err = interactive.GetInput("AWS region")
 		if err != nil {
-			reporter.Errorf("Expected a valid AWS region")
+			reporter.Errorf("expected a valid AWS region: %v", err)
 			os.Exit(1)
 		}
-	}
 
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
 	}
-
-	// Create the access key for the AWS user:
-	awsAccessKey, err := awsClient.GetAccessKeyFromStack(aws.OsdCcsAdminStackName)
-	if err != nil {
-		reporter.Errorf("Failed to get access keys for user '%s'", aws.AdminUserName)
-		os.Exit(1)
-	}
-	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
-	reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
 
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().
@@ -258,85 +235,22 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Create the cluster:
-	clusterBuilder := cmv1.NewCluster().
-		Name(name).
-		DisplayName(name).
-		MultiAZ(args.multiAZ).
-		Product(
-			cmv1.NewProduct().
-				ID("moa"),
-		).
-		Region(
-			cmv1.NewCloudRegion().
-				ID(region),
-		).
-		AWS(
-			cmv1.NewAWS().
-				AccountID(awsCreator.AccountID).
-				AccessKeyID(awsAccessKey.AccessKeyID).
-				SecretAccessKey(awsAccessKey.SecretAccessKey),
-		).
-		Properties(map[string]string{
-			properties.CreatorARN: awsCreator.ARN,
-		})
-
-	if version != "" {
-		clusterBuilder = clusterBuilder.Version(
-			cmv1.NewVersion().
-				ID(version),
-		)
-		reporter.Debugf("Using OpenShift version '%s'", version)
+	clusterConfig := clusterprovider.ClusterSpec{
+		Name:               name,
+		Region:             region,
+		MultiAZ:            args.multiAZ,
+		Version:            version,
+		Expiration:         expiration,
+		ComputeMachineType: computeMachineType,
+		ComputeNodes:       args.computeNodes,
+		MachineCIDR:        args.machineCIDR,
+		ServiceCIDR:        args.serviceCIDR,
+		PodCIDR:            args.podCIDR,
+		HostPrefix:         args.hostPrefix,
+		Private:            args.private,
 	}
 
-	if !expiration.IsZero() {
-		clusterBuilder = clusterBuilder.ExpirationTimestamp(expiration)
-	}
-
-	if computeMachineType != "" || args.computeNodes != 0 {
-		clusterNodesBuilder := cmv1.NewClusterNodes()
-		if computeMachineType != "" {
-			clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
-				cmv1.NewMachineType().ID(computeMachineType),
-			)
-			reporter.Debugf("Using machine type '%s'", computeMachineType)
-		}
-		if args.computeNodes != 0 {
-			clusterNodesBuilder = clusterNodesBuilder.Compute(args.computeNodes)
-		}
-		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
-	}
-
-	if !cidrIsEmpty(args.machineCIDR) || !cidrIsEmpty(args.serviceCIDR) || !cidrIsEmpty(args.podCIDR) || args.hostPrefix != 0 {
-		networkBuilder := cmv1.NewNetwork()
-		if !cidrIsEmpty(args.machineCIDR) {
-			networkBuilder = networkBuilder.MachineCIDR(args.machineCIDR.String())
-		}
-		if !cidrIsEmpty(args.serviceCIDR) {
-			networkBuilder = networkBuilder.ServiceCIDR(args.serviceCIDR.String())
-		}
-		if !cidrIsEmpty(args.podCIDR) {
-			networkBuilder = networkBuilder.PodCIDR(args.podCIDR.String())
-		}
-		if args.hostPrefix != 0 {
-			networkBuilder = networkBuilder.HostPrefix(args.hostPrefix)
-		}
-		clusterBuilder = clusterBuilder.Network(networkBuilder)
-	}
-
-	if args.private {
-		clusterBuilder = clusterBuilder.API(
-			cmv1.NewClusterAPI().
-				Listening(cmv1.ListeningMethodInternal),
-		)
-	}
-
-	clusterSpec, err := clusterBuilder.Build()
-	if err != nil {
-		reporter.Errorf("Failed to create description of cluster: %v", err)
-		os.Exit(1)
-	}
-	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterSpec)
+	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
 	if err != nil {
 		// Unwrap and clean up API errors:
 		wrapped := strings.Split(err.Error(), ": ")
@@ -349,12 +263,6 @@ func run(_ *cobra.Command, _ []string) {
 	clusterName := cluster.Name()
 	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", clusterID, clusterName)
 	reporter.Infof("To view list of clusters and their status, run `moactl list clusters`")
-
-	// Add tags to the AWS administrator user containing the identifier and name of the cluster:
-	err = awsClient.TagUser(aws.AdminUserName, clusterID, clusterName)
-	if err != nil {
-		reporter.Warnf("Failed to add cluster tags to user '%s'", aws.AdminUserName)
-	}
 
 	reporter.Infof("Cluster '%s' has been created.", clusterName)
 	reporter.Infof(

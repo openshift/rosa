@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/openshift/moactl/assets"
@@ -79,6 +80,24 @@ func CheckPermissionsUsingQueryClient(queryClient, targetClient *awsClient, poli
 
 	return true, nil
 
+}
+
+// GetRegion will return a region selected by the user or given as a default to the AWS client.
+// If the region given is empty, it will first attempt to use the default, and, failing that, will
+// prompt for user input.
+func GetRegion(region string) (string, error) {
+	if region == "" {
+		defaultSession, err := session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		})
+
+		if err != nil {
+			return "", fmt.Errorf("error creating default session for AWS client: %v", err)
+		}
+
+		region = *defaultSession.Config.Region
+	}
+	return region, nil
 }
 
 // getClientDetails will return the *iam.User associated with the provided client's credentials,
