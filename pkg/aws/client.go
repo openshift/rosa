@@ -31,6 +31,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/organizations"
 	"github.com/aws/aws-sdk-go/service/organizations/organizationsiface"
+	"github.com/aws/aws-sdk-go/service/servicequotas"
+	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 	"github.com/sirupsen/logrus"
@@ -53,8 +55,8 @@ type Client interface {
 	GetAccessKeyFromStack(stackName string) (*AWSAccessKey, error)
 	GetCreator() (*AWSCreator, error)
 	TagUser(username string, clusterID string, clusterName string) error
-
 	ValidateSCP() (bool, error)
+	ValidateQuota() (bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -63,12 +65,13 @@ type ClientBuilder struct {
 }
 
 type awsClient struct {
-	logger     *logrus.Logger
-	iamClient  iamiface.IAMAPI
-	orgClient  organizationsiface.OrganizationsAPI
-	stsClient  stsiface.STSAPI
-	cfClient   cloudformationiface.CloudFormationAPI
-	awsSession *session.Session
+	logger              *logrus.Logger
+	iamClient           iamiface.IAMAPI
+	orgClient           organizationsiface.OrganizationsAPI
+	stsClient           stsiface.STSAPI
+	cfClient            cloudformationiface.CloudFormationAPI
+	servicequotasClient servicequotasiface.ServiceQuotasAPI
+	awsSession          *session.Session
 }
 
 // NewClient creates a builder that can then be used to configure and build a new AWS client.
@@ -137,12 +140,13 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 
 	// Create and populate the object:
 	result = &awsClient{
-		logger:     b.logger,
-		iamClient:  iam.New(sess),
-		orgClient:  organizations.New(sess),
-		stsClient:  sts.New(sess),
-		cfClient:   cloudformation.New(sess),
-		awsSession: sess,
+		logger:              b.logger,
+		iamClient:           iam.New(sess),
+		orgClient:           organizations.New(sess),
+		stsClient:           sts.New(sess),
+		cfClient:            cloudformation.New(sess),
+		servicequotasClient: servicequotas.New(sess),
+		awsSession:          sess,
 	}
 
 	return
@@ -337,4 +341,22 @@ func (c *awsClient) ValidateSCP() (bool, error) {
 	}
 
 	return true, nil
+}
+
+// ValidateQuota
+func (c *awsClient) ValidateQuota() (bool, error) {
+	quotaValid := true
+	for _, quota := range serviceQuotaServices {
+		ok, err := CheckQuota(c, quota)
+		if err != nil {
+			return false, fmt.Errorf("Error validating AWS quota: %s %v", quota.ServiceCode, err)
+		}
+		if !ok {
+			quotaValid = false
+			return false, fmt.Errorf("Service %s quota code %s %s not valid", quota.ServiceCode, quota.QuotaCode, quota.QuotaName)
+		}
+		c.logger.Debug(fmt.Sprintf("Service %s quota code %s is ok", quota.ServiceCode, quota.QuotaCode))
+	}
+
+	return quotaValid, nil
 }

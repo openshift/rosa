@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/cmd/login"
+	"github.com/openshift/moactl/cmd/verify/quota"
 
 	"github.com/openshift/moactl/pkg/aws"
 	"github.com/openshift/moactl/pkg/logging"
@@ -64,6 +65,8 @@ func init() {
 
 	// Force-load all flags from `login` into `init`
 	flags.AddFlagSet(login.Cmd.Flags())
+	// Force-load all flags from `verify` into `init`
+	flags.AddFlagSet(quota.Cmd.Flags())
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -199,6 +202,10 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
 	}
 	reporter.Infof("SCP/IAM permissions validated...")
+
+	// Validate AWS quota
+	// Call `verify quota` as part of init
+	quota.Cmd.Run(cmd, argv)
 
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
 	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)

@@ -34,6 +34,7 @@ import (
 	"github.com/openshift/moactl/cmd/login"
 	"github.com/openshift/moactl/cmd/logout"
 	"github.com/openshift/moactl/cmd/logs"
+	"github.com/openshift/moactl/cmd/verify"
 	"github.com/openshift/moactl/cmd/version"
 
 	"github.com/openshift/moactl/pkg/arguments"
@@ -64,6 +65,7 @@ func init() {
 	root.AddCommand(login.Cmd)
 	root.AddCommand(logout.Cmd)
 	root.AddCommand(logs.Cmd)
+	root.AddCommand(verify.Cmd)
 	root.AddCommand(version.Cmd)
 }
 
