@@ -19,6 +19,7 @@ package verify
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/moactl/cmd/verify/permissions"
 	"github.com/openshift/moactl/cmd/verify/quota"
 )
 
@@ -30,4 +31,5 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(quota.Cmd)
+	Cmd.AddCommand(permissions.Cmd)
 }

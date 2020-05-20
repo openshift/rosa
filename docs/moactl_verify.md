@@ -22,5 +22,6 @@ Verify resources are configured correctly for cluster install
 ### SEE ALSO
 
 * [moactl](moactl.md)	 - 
+* [moactl verify permissions](moactl_verify_permissions.md)	 - Verify AWS permissions are ok for cluster install
 * [moactl verify quota](moactl_verify_quota.md)	 - Verify AWS quota is ok for cluster install
 
