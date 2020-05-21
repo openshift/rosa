@@ -24,6 +24,6 @@ Delete a specific resource
 * [moactl](moactl.md)	 - 
 * [moactl delete cluster](moactl_delete_cluster.md)	 - Delete cluster
 * [moactl delete idp](moactl_delete_idp.md)	 - Delete cluster IDPs
-* [moactl delete ingress](moactl_delete_ingress.md)	 - Delete the additional cluster ingress
+* [moactl delete ingress](moactl_delete_ingress.md)	 - Delete cluster ingress
 * [moactl delete user](moactl_delete_user.md)	 - Delete cluster users
 

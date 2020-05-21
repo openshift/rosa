@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/moactl/cmd/describe"
 	"github.com/openshift/moactl/cmd/dlt"
 	"github.com/openshift/moactl/cmd/docs"
+	"github.com/openshift/moactl/cmd/edit"
 	"github.com/openshift/moactl/cmd/initialize"
 	"github.com/openshift/moactl/cmd/list"
 	"github.com/openshift/moactl/cmd/login"
@@ -60,6 +61,7 @@ func init() {
 	root.AddCommand(describe.Cmd)
 	root.AddCommand(dlt.Cmd)
 	root.AddCommand(docs.Cmd)
+	root.AddCommand(edit.Cmd)
 	root.AddCommand(list.Cmd)
 	root.AddCommand(initialize.Cmd)
 	root.AddCommand(login.Cmd)

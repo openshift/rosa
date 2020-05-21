@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
+	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -32,19 +34,24 @@ import (
 
 // Regular expression to used to make sure that the identifier given by the
 // user is safe and that it there is no risk of SQL injection:
-var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{4}$`)
+var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{3,4}$`)
 
 var args struct {
 	clusterKey string
+	private    bool
+	labelMatch string
 }
 
 var Cmd = &cobra.Command{
 	Use:     "ingress",
-	Aliases: []string{"ingresses", "route", "routes"},
-	Short:   "Delete cluster ingress",
-	Long:    "Delete the additional non-default application router for a cluster.",
-	Example: `  # Delete ingress with ID a1b2 from a cluster named 'mycluster'
-  moactl delete ingress --cluster=mycluster a1b2`,
+	Aliases: []string{"route"},
+	Short:   "Edit the additional cluster ingress",
+	Long:    "Edit the additional non-default application router for a cluster.",
+	Example: `  # Make additional ingress private on a cluster named 'mycluster'
+  moactl edit ingress --private --cluster=mycluster
+
+  # Update the router selectors for the additional ingress
+  moactl edit ingress --label-match=foo=bar --cluster=mycluster`,
 	Run: run,
 }
 
@@ -56,12 +63,26 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to delete the ingress from (required).",
+		"Name or ID of the cluster to add the ingress to (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
+
+	flags.BoolVar(
+		&args.private,
+		"private",
+		false,
+		"Restrict application route to direct, private connectivity.",
+	)
+
+	flags.StringVar(
+		&args.labelMatch,
+		"label-match",
+		"",
+		"Label match for ingress. Format should be a comma-separated list of 'key=value'. If no label is specified, all routes will be exposed on both routers.",
+	)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, argv []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
@@ -88,7 +109,7 @@ func run(_ *cobra.Command, argv []string) {
 	ingressID := argv[0]
 	if !ingressKeyRE.MatchString(ingressID) {
 		reporter.Errorf(
-			"Ingress  identifier '%s' isn't valid: it must contain only four letters or digits",
+			"Ingress  identifier '%s' isn't valid: it must contain only letters or digits",
 			ingressID,
 		)
 		os.Exit(1)
@@ -104,6 +125,23 @@ func run(_ *cobra.Command, argv []string) {
 			clusterKey,
 		)
 		os.Exit(1)
+	}
+
+	var private *bool
+	if cmd.Flags().Changed("private") {
+		private = &args.private
+	}
+
+	routeSelectors := make(map[string]string)
+	if args.labelMatch != "" {
+		for _, labelMatch := range strings.Split(args.labelMatch, ",") {
+			if !strings.Contains(labelMatch, "=") {
+				reporter.Errorf("Expected key=value format for label-match")
+				os.Exit(1)
+			}
+			tokens := strings.Split(labelMatch, "=")
+			routeSelectors[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+		}
 	}
 
 	// Create the AWS client:
@@ -147,6 +185,21 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	// Edit API endpoint instead of ingresses
+	if ingressID == "api" {
+		clusterConfig := clusterprovider.ClusterSpec{
+			Private: private,
+		}
+
+		err = clusterprovider.UpdateCluster(clustersCollection, clusterKey, awsCreator.ARN, clusterConfig)
+		if err != nil {
+			reporter.Errorf("Failed to update cluster API on cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+
+		os.Exit(0)
+	}
+
 	// Try to find the ingress:
 	reporter.Debugf("Loading ingresses for cluster '%s'", clusterKey)
 	ingresses, err := ocm.GetIngresses(clustersCollection, cluster.ID())
@@ -166,16 +219,39 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Load any existing ingresses for this cluster
-	reporter.Debugf("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+	ingressBuilder := cmv1.NewIngress().ID(ingress.ID())
+
+	// Toggle private mode
+	if private != nil {
+		if *private {
+			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodInternal)
+		} else {
+			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodExternal)
+		}
+	}
+
+	// Add route selectors
+	if cmd.Flags().Changed("label-match") || len(routeSelectors) > 0 {
+		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
+	}
+
+	ingress, err = ingressBuilder.Build()
+	if err != nil {
+		reporter.Errorf("Failed to create ingress for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	reporter.Debugf("Updating ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
 	_, err = clustersCollection.
 		Cluster(cluster.ID()).
 		Ingresses().
 		Ingress(ingress.ID()).
-		Delete().
+		Update().
+		Body(ingress).
 		Send()
 	if err != nil {
-		reporter.Errorf("Failed to delete ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+		reporter.Errorf("Failed to update ingress '%s' on cluster '%s': %v",
+			ingress.ID(), clusterKey, err)
 		os.Exit(1)
 	}
 }

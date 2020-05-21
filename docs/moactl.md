@@ -20,6 +20,7 @@ Command line tool for MOA.
 * [moactl create](moactl_create.md)	 - Create a resource from stdin
 * [moactl delete](moactl_delete.md)	 - Delete a specific resource
 * [moactl describe](moactl_describe.md)	 - Show details of a specific resource
+* [moactl edit](moactl_edit.md)	 - Edit a specific resource
 * [moactl init](moactl_init.md)	 - Applies templates to support Managed OpenShift on AWS clusters
 * [moactl list](moactl_list.md)	 - List all resources of a specific type
 * [moactl login](moactl_login.md)	 - Log in to your Red Hat account
