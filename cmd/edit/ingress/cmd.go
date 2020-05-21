@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
+	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -186,32 +187,13 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Edit API endpoint instead of ingresses
 	if ingressID == "api" {
-		clusterBuilder := cmv1.NewCluster()
-
-		// Toggle private mode
-		if private != nil {
-			if *private {
-				clusterBuilder = clusterBuilder.API(
-					cmv1.NewClusterAPI().
-						Listening(cmv1.ListeningMethodInternal),
-				)
-			} else {
-				clusterBuilder = clusterBuilder.API(
-					cmv1.NewClusterAPI().
-						Listening(cmv1.ListeningMethodExternal),
-				)
-			}
+		clusterConfig := clusterprovider.ClusterSpec{
+			Private: private,
 		}
 
-		clusterSpec, err := clusterBuilder.Build()
-		_, err = clustersCollection.
-			Cluster(cluster.ID()).
-			Update().
-			Body(clusterSpec).
-			Send()
+		err = clusterprovider.UpdateCluster(clustersCollection, clusterKey, awsCreator.ARN, clusterConfig)
 		if err != nil {
-			reporter.Errorf("Failed to update cluster API on cluster '%s': %v",
-				clusterKey, err)
+			reporter.Errorf("Failed to update cluster API on cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 

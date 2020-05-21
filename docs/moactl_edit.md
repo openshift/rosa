@@ -22,5 +22,6 @@ Edit a specific resource
 ### SEE ALSO
 
 * [moactl](moactl.md)	 - 
+* [moactl edit cluster](moactl_edit_cluster.md)	 - Edit cluster
 * [moactl edit ingress](moactl_edit_ingress.md)	 - Edit the additional cluster ingress
 

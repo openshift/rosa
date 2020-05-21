@@ -161,7 +161,7 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, _ []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
@@ -235,6 +235,11 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	var private *bool
+	if cmd.Flags().Changed("private") {
+		private = &args.private
+	}
+
 	clusterConfig := clusterprovider.ClusterSpec{
 		Name:               name,
 		Region:             region,
@@ -247,7 +252,7 @@ func run(_ *cobra.Command, _ []string) {
 		ServiceCIDR:        args.serviceCIDR,
 		PodCIDR:            args.podCIDR,
 		HostPrefix:         args.hostPrefix,
-		Private:            args.private,
+		Private:            private,
 	}
 
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)

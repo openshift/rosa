@@ -19,6 +19,7 @@ package edit
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/moactl/cmd/edit/cluster"
 	"github.com/openshift/moactl/cmd/edit/ingress"
 )
 
@@ -30,5 +31,6 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 }

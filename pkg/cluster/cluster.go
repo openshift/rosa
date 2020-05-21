@@ -38,20 +38,25 @@ var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
 // ClusterSpec is the configuration for a cluster spec.
 type ClusterSpec struct {
 	// Basic configs
-	Name               string
-	Region             string
-	MultiAZ            bool
-	Version            string
-	Expiration         time.Time
+	Name       string
+	Region     string
+	MultiAZ    bool
+	Version    string
+	Expiration time.Time
+
+	// Scaling config
 	ComputeMachineType string
 	ComputeNodes       int
 
+	// Network config
 	MachineCIDR net.IPNet
 	ServiceCIDR net.IPNet
 	PodCIDR     net.IPNet
 	HostPrefix  int
+	Private     *bool
 
-	Private bool
+	// Access control config
+	ClusterAdmins *bool
 }
 
 func IsValidClusterKey(clusterKey string) bool {
@@ -163,6 +168,60 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 	}
 }
 
+func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string, config ClusterSpec) error {
+	cluster, err := GetCluster(client, clusterKey, creatorARN)
+	if err != nil {
+		return err
+	}
+
+	clusterBuilder := cmv1.NewCluster()
+
+	// Update expiration timestamp
+	if !config.Expiration.IsZero() {
+		clusterBuilder = clusterBuilder.ExpirationTimestamp(config.Expiration)
+	}
+
+	// Scale cluster
+	if config.ComputeNodes != 0 {
+		clusterBuilder = clusterBuilder.Nodes(
+			cmv1.NewClusterNodes().
+				Compute(config.ComputeNodes),
+		)
+	}
+
+	// Toggle private mode
+	if config.Private != nil {
+		if *config.Private {
+			clusterBuilder = clusterBuilder.API(
+				cmv1.NewClusterAPI().
+					Listening(cmv1.ListeningMethodInternal),
+			)
+		} else {
+			clusterBuilder = clusterBuilder.API(
+				cmv1.NewClusterAPI().
+					Listening(cmv1.ListeningMethodExternal),
+			)
+		}
+	}
+
+	// Toggle cluster-admins group
+	if config.ClusterAdmins != nil {
+		clusterBuilder = clusterBuilder.ClusterAdminEnabled(*config.ClusterAdmins)
+	}
+
+	clusterSpec, err := clusterBuilder.Build()
+	if err != nil {
+		return err
+	}
+
+	_, err = client.Cluster(cluster.ID()).Update().Body(clusterSpec).Send()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string) error {
 	cluster, err := GetCluster(client, clusterKey, creatorARN)
 	if err != nil {
@@ -266,11 +325,18 @@ func createClusterSpec(config ClusterSpec, awsClient aws.Client) (*cmv1.Cluster,
 		clusterBuilder = clusterBuilder.Network(networkBuilder)
 	}
 
-	if config.Private {
-		clusterBuilder = clusterBuilder.API(
-			cmv1.NewClusterAPI().
-				Listening(cmv1.ListeningMethodInternal),
-		)
+	if config.Private != nil {
+		if *config.Private {
+			clusterBuilder = clusterBuilder.API(
+				cmv1.NewClusterAPI().
+					Listening(cmv1.ListeningMethodInternal),
+			)
+		} else {
+			clusterBuilder = clusterBuilder.API(
+				cmv1.NewClusterAPI().
+					Listening(cmv1.ListeningMethodExternal),
+			)
+		}
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
