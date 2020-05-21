@@ -1,6 +1,6 @@
 ## moactl delete ingress
 
-Delete the additional cluster ingress
+Delete cluster ingress
 
 ### Synopsis
 
@@ -13,8 +13,8 @@ moactl delete ingress [flags]
 ### Examples
 
 ```
-  # Delete ingress for a cluster named 'mycluster'
-  moactl delete ingress --cluster=mycluster
+  # Delete ingress with ID a1b2 from a cluster named 'mycluster'
+  moactl delete ingress --cluster=mycluster a1b2
 ```
 
 ### Options

@@ -148,12 +148,13 @@ func run(_ *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	// Include API endpoint in routes table
-	fmt.Fprintf(writer, "API ENDPOINT\t\tPRIVATE\n")
-	fmt.Fprintf(writer, "%s\t\t%s\n", cluster.API().URL(), isPrivate(cluster.API().Listening()))
+	fmt.Fprintf(writer, "ID\tAPI ENDPOINT\t\tPRIVATE\n")
+	fmt.Fprintf(writer, "api\t%s\t\t%s\n", cluster.API().URL(), isPrivate(cluster.API().Listening()))
 	fmt.Fprintf(writer, "\n")
-	fmt.Fprintf(writer, "APPLICATION ROUTER\t\t\tPRIVATE\t\tDEFAULT\t\tROUTE SELECTORS\n")
+	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\t\t\tPRIVATE\t\tDEFAULT\t\tROUTE SELECTORS\n")
 	for _, ingress := range ingresses {
-		fmt.Fprintf(writer, "https://%s\t\t\t%s\t\t%s\t\t%s\n",
+		fmt.Fprintf(writer, "%s\thttps://%s\t\t\t%s\t\t%s\t\t%s\n",
+			ingress.ID(),
 			ingress.DNSName(),
 			isPrivate(ingress.Listening()),
 			isDefault(ingress),

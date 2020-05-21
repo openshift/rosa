@@ -79,7 +79,7 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, _ []string) {
 	// Create the reporter:
 	reporter, err := rprtr.New().
 		Build()
@@ -153,7 +153,7 @@ func run(_ *cobra.Command, _ []string) {
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	// Try to find the cluster:
-	reporter.Infof("Loading cluster '%s'", clusterKey)
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
@@ -166,8 +166,12 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	ingressBuilder := cmv1.NewIngress()
-	if args.private {
-		ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodInternal)
+	if cmd.Flags().Changed("private") {
+		if args.private {
+			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodInternal)
+		} else {
+			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodExternal)
+		}
 	}
 	if len(routeSelectors) > 0 {
 		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
