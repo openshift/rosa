@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/cmd/login"
+	"github.com/openshift/moactl/cmd/verify/permissions"
 	"github.com/openshift/moactl/cmd/verify/quota"
 
 	"github.com/openshift/moactl/pkg/aws"
@@ -67,6 +68,8 @@ func init() {
 	flags.AddFlagSet(login.Cmd.Flags())
 	// Force-load all flags from `verify` into `init`
 	flags.AddFlagSet(quota.Cmd.Flags())
+	// Force-load all flags from `permissions` into `init`
+	flags.AddFlagSet(permissions.Cmd.Flags())
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -191,17 +194,9 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	// Validate SCP policies for current user's account
-	reporter.Infof("Validating SCP policies...")
-	ok, err = client.ValidateSCP()
-	if err != nil {
-		reporter.Errorf("Error validating SCP policies: %v", err)
-		os.Exit(1)
-	}
-	if !ok {
-		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
-	}
-	reporter.Infof("SCP/IAM permissions validated...")
+	// Validate AWS SCP/IAM Permissions
+	// Call `verify permisisons` as partof init
+	permissions.Cmd.Run(cmd, argv)
 
 	// Validate AWS quota
 	// Call `verify quota` as part of init

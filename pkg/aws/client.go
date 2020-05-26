@@ -47,6 +47,7 @@ const (
 	OsdCcsAdminStackName = "osdCcsAdminIAMUser"
 )
 
+// Client defines a client interface
 type Client interface {
 	GetRegion() string
 	ValidateCredentials() (bool, error)
@@ -314,7 +315,25 @@ func (c *awsClient) GetAccessKeyFromStack(stackName string) (*AWSAccessKey, erro
 	return &keys, err
 }
 
-// Validate SCP...
+// ValidateQuota
+func (c *awsClient) ValidateQuota() (bool, error) {
+	quotaValid := true
+	for _, quota := range serviceQuotaServices {
+		ok, err := CheckQuota(c, quota)
+		if err != nil {
+			return false, fmt.Errorf("Error validating AWS quota: %s %v", quota.ServiceCode, err)
+		}
+		if !ok {
+			quotaValid = false
+			return false, fmt.Errorf("Service %s quota code %s %s not valid", quota.ServiceCode, quota.QuotaCode, quota.QuotaName)
+		}
+		c.logger.Debug(fmt.Sprintf("Service %s quota code %s is ok", quota.ServiceCode, quota.QuotaCode))
+	}
+
+	return quotaValid, nil
+}
+
+// ValidateSCP attempts to validate SCP policies by ensuring we have the correct permissions
 func (c *awsClient) ValidateSCP() (bool, error) {
 	scpPolicyPath := "templates/policies/osd_scp_policy.json"
 	requiredPermissions := []string{}
@@ -341,22 +360,4 @@ func (c *awsClient) ValidateSCP() (bool, error) {
 	}
 
 	return true, nil
-}
-
-// ValidateQuota
-func (c *awsClient) ValidateQuota() (bool, error) {
-	quotaValid := true
-	for _, quota := range serviceQuotaServices {
-		ok, err := CheckQuota(c, quota)
-		if err != nil {
-			return false, fmt.Errorf("Error validating AWS quota: %s %v", quota.ServiceCode, err)
-		}
-		if !ok {
-			quotaValid = false
-			return false, fmt.Errorf("Service %s quota code %s %s not valid", quota.ServiceCode, quota.QuotaCode, quota.QuotaName)
-		}
-		c.logger.Debug(fmt.Sprintf("Service %s quota code %s is ok", quota.ServiceCode, quota.QuotaCode))
-	}
-
-	return quotaValid, nil
 }
