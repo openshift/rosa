@@ -34,7 +34,7 @@ import (
 
 // Regular expression to used to make sure that the identifier given by the
 // user is safe and that it there is no risk of SQL injection:
-var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{3,4}$`)
+var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{3,5}$`)
 
 var args struct {
 	clusterKey string
@@ -47,11 +47,14 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"route"},
 	Short:   "Edit the additional cluster ingress",
 	Long:    "Edit the additional non-default application router for a cluster.",
-	Example: `  # Make additional ingress private on a cluster named 'mycluster'
-  moactl edit ingress --private --cluster=mycluster
+	Example: `  # Make additional ingress with ID 'a1b2' private on a cluster named 'mycluster'
+  moactl edit ingress --private --cluster=mycluster a1b2
 
-  # Update the router selectors for the additional ingress
-  moactl edit ingress --label-match=foo=bar --cluster=mycluster`,
+  # Update the router selectors for the additional ingress with ID 'a1b2'
+  moactl edit ingress --label-match=foo=bar --cluster=mycluster a1b2
+
+  # Update the default ingress using the sub-domain identifier
+  moactl edit ingress --private=false --cluster=mycluster apps`,
 	Run: run,
 }
 
@@ -210,6 +213,12 @@ func run(cmd *cobra.Command, argv []string) {
 
 	var ingress *cmv1.Ingress
 	for _, item := range ingresses {
+		if ingressID == "apps" && item.Default() {
+			ingress = item
+		}
+		if ingressID == "apps2" && !item.Default() {
+			ingress = item
+		}
 		if item.ID() == ingressID {
 			ingress = item
 		}

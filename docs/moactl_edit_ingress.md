@@ -13,11 +13,14 @@ moactl edit ingress [flags]
 ### Examples
 
 ```
-  # Make additional ingress private on a cluster named 'mycluster'
-  moactl edit ingress --private --cluster=mycluster
+  # Make additional ingress with ID 'a1b2' private on a cluster named 'mycluster'
+  moactl edit ingress --private --cluster=mycluster a1b2
 
-  # Update the router selectors for the additional ingress
-  moactl edit ingress --label-match=foo=bar --cluster=mycluster
+  # Update the router selectors for the additional ingress with ID 'a1b2'
+  moactl edit ingress --label-match=foo=bar --cluster=mycluster a1b2
+
+  # Update the default ingress using the sub-domain identifier
+  moactl edit ingress --private=false --cluster=mycluster apps
 ```
 
 ### Options
