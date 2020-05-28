@@ -15,6 +15,9 @@ moactl delete ingress [flags]
 ```
   # Delete ingress with ID a1b2 from a cluster named 'mycluster'
   moactl delete ingress --cluster=mycluster a1b2
+
+  # Delete secondary ingress using the sub-domain name
+  moactl delete ingress --cluster=mycluster apps2
 ```
 
 ### Options

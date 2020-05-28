@@ -32,7 +32,7 @@ import (
 
 // Regular expression to used to make sure that the identifier given by the
 // user is safe and that it there is no risk of SQL injection:
-var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{4}$`)
+var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{3,5}$`)
 
 var args struct {
 	clusterKey string
@@ -44,7 +44,10 @@ var Cmd = &cobra.Command{
 	Short:   "Delete cluster ingress",
 	Long:    "Delete the additional non-default application router for a cluster.",
 	Example: `  # Delete ingress with ID a1b2 from a cluster named 'mycluster'
-  moactl delete ingress --cluster=mycluster a1b2`,
+  moactl delete ingress --cluster=mycluster a1b2
+
+  # Delete secondary ingress using the sub-domain name
+  moactl delete ingress --cluster=mycluster apps2`,
 	Run: run,
 }
 
@@ -157,6 +160,12 @@ func run(_ *cobra.Command, argv []string) {
 
 	var ingress *cmv1.Ingress
 	for _, item := range ingresses {
+		if ingressID == "apps" && item.Default() {
+			ingress = item
+		}
+		if ingressID == "apps2" && !item.Default() {
+			ingress = item
+		}
 		if item.ID() == ingressID {
 			ingress = item
 		}
