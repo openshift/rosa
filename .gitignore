@@ -1,4 +1,8 @@
 .idea/
-/moactl
 docs/*.1
 docs/*.rst
+/moactl
+/moactl-darwin-amd64
+/moactl-darwin-amd64.sha256
+/moactl-linux-amd64
+/moactl-linux-amd64.sha256
