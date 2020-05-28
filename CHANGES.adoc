@@ -2,3 +2,22 @@
 
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
+
+== 0.0.1 May 27 2020
+
+Initial pre-release of moactl. Contains the following commands:
+
+- completion  Generates bash completion scripts
+- create      Create a resource from stdin
+- delete      Delete a specific resource
+- describe    Show details of a specific resource
+- edit        Edit a specific resource
+- help        Help about any command
+- init        Applies templates to support Managed OpenShift on AWS clusters
+- list        List all resources of a specific type
+- login       Log in to your Red Hat account
+- logout      Log out
+- logs        Show logs of a specific resource
+- verify      Verify resources are configured correctly for cluster install
+- version     Prints the version of the tool
+
