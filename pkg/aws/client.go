@@ -19,10 +19,12 @@ package aws
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
@@ -106,10 +108,21 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
-	sess.Config.Logger = logger
-	sess.Config.HTTPClient = &http.Client{
-		Transport: http.DefaultTransport,
-	}
+
+	// Update session config
+	sess.Copy(&aws.Config{
+		// MaxRetries to limit the number of attempts on failed API calls
+		MaxRetries: aws.Int(25),
+		// Set MinThrottleDelay to 1 second
+		Retryer: client.DefaultRetryer{
+			MinThrottleDelay: time.Duration(1 * time.Second),
+		},
+		Logger: logger,
+		HTTPClient: &http.Client{
+			Transport: http.DefaultTransport,
+		},
+	})
+
 	if b.logger.IsLevelEnabled(logrus.DebugLevel) {
 		var dumper http.RoundTripper
 		dumper, err = logging.NewRoundTripper().
