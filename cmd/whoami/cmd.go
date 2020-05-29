@@ -18,8 +18,10 @@ package whoami
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
+	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
@@ -116,12 +118,27 @@ func run(_ *cobra.Command, _ []string) {
 	}()
 
 	// Get current OCM account:
+	useTokenData := false
 	response, err := connection.AccountsMgmt().V1().CurrentAccount().Get().Send()
 	if err != nil {
-		reporter.Errorf("Failed to get current account: %v", err)
-		os.Exit(1)
+		if response.Status() == http.StatusNotFound {
+			useTokenData = true
+		} else {
+			reporter.Errorf("Failed to get current account: %v", err)
+			os.Exit(1)
+		}
 	}
-	account := response.Body()
+
+	var account *amsv1.Account
+	if useTokenData {
+		account, err = getAccountDataFromToken(cfg)
+		if err != nil {
+			reporter.Errorf("Failed to get account data from token: %v", err)
+			os.Exit(1)
+		}
+	} else {
+		account = response.Body()
+	}
 	fmt.Printf(""+
 		"AWS Account ID:           %s\n"+
 		"AWS Default Region:       %s\n"+
@@ -147,4 +164,36 @@ func run(_ *cobra.Command, _ []string) {
 		account.Organization().ExternalID(),
 	)
 	fmt.Println()
+}
+
+func getAccountDataFromToken(cfg *config.Config) (*amsv1.Account, error) {
+	firstName, err := cfg.GetData("first_name")
+	if err != nil {
+		return nil, err
+	}
+	lastName, err := cfg.GetData("last_name")
+	if err != nil {
+		return nil, err
+	}
+	username, err := cfg.GetData("username")
+	if err != nil {
+		return nil, err
+	}
+	email, err := cfg.GetData("email")
+	if err != nil {
+		return nil, err
+	}
+	orgID, err := cfg.GetData("org_id")
+	if err != nil {
+		return nil, err
+	}
+	return amsv1.NewAccount().
+		FirstName(firstName).
+		LastName(lastName).
+		Username(username).
+		Email(email).
+		Organization(amsv1.NewOrganization().
+			ExternalID(orgID),
+		).
+		Build()
 }
