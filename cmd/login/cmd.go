@@ -271,7 +271,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	username, err := cfg.UserName()
+	username, err := cfg.GetData("username")
 	if err != nil {
 		reporter.Errorf("Failed to get username: %v", err)
 		os.Exit(1)

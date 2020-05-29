@@ -134,7 +134,7 @@ func Location() (path string, err error) {
 	return path, nil
 }
 
-func (c *Config) UserName() (username string, err error) {
+func (c *Config) GetData(key string) (value string, err error) {
 	if c.AccessToken == "" {
 		return
 	}
@@ -150,14 +150,14 @@ func (c *Config) UserName() (username string, err error) {
 		err = fmt.Errorf("Expected map claims but got %T", claims)
 		return
 	}
-	claim, ok := claims["username"]
+	claim, ok := claims[key]
 	if !ok {
-		err = fmt.Errorf("Token does not contain the 'username' claim")
+		err = fmt.Errorf("Token does not contain the '%s' claim", key)
 		return
 	}
-	username, ok = claim.(string)
+	value, ok = claim.(string)
 	if !ok {
-		err = fmt.Errorf("Expected string 'username' but got %T", claim)
+		err = fmt.Errorf("Expected string '%s' but got %T", key, claim)
 		return
 	}
 
