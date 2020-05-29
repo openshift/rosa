@@ -28,4 +28,5 @@ Command line tool for MOA.
 * [moactl logs](moactl_logs.md)	 - Show logs of a specific resource
 * [moactl verify](moactl_verify.md)	 - Verify resources are configured correctly for cluster install
 * [moactl version](moactl_version.md)	 - Prints the version of the tool
+* [moactl whoami](moactl_whoami.md)	 - Displays user account information
 
