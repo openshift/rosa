@@ -33,6 +33,8 @@ import (
 )
 
 var args struct {
+	clusterKey string
+
 	// Basic options
 	expirationTime     string
 	expirationDuration time.Duration
@@ -52,13 +54,24 @@ var Cmd = &cobra.Command{
 	Short: "Edit cluster",
 	Long:  "Edit cluster.",
 	Example: `  # Edit a cluster named "mycluster" to make it private
-  moactl edit cluster --cluster=mycluster --private`,
+  moactl edit cluster mycluster --private
+
+  # Enable the cluster-admins group using the --cluster flag
+  moactl edit cluster --cluster=mycluster --enable-cluster-admins`,
 	Run: run,
 }
 
 func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
+
+	flags.StringVarP(
+		&args.clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster to edit.",
+	)
 
 	// Basic options
 	flags.StringVar(
@@ -109,17 +122,20 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the name " +
-				"or identifier of the cluster",
-		)
-		os.Exit(1)
+	clusterKey := args.clusterKey
+	if clusterKey == "" {
+		if len(argv) != 1 {
+			reporter.Errorf(
+				"Expected exactly one command line argument or flag containing the name " +
+					"or identifier of the cluster",
+			)
+			os.Exit(1)
+		}
+		clusterKey = argv[0]
 	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := argv[0]
 	if !clusterprovider.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+

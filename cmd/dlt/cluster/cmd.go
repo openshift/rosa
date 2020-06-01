@@ -29,13 +29,32 @@ import (
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
+var args struct {
+	clusterKey string
+}
+
 var Cmd = &cobra.Command{
 	Use:   "cluster [ID|NAME]",
 	Short: "Delete cluster",
 	Long:  "Delete cluster.",
 	Example: `  # Delete a cluster named "mycluster"
-  moactl delete cluster mycluster`,
+  moactl delete cluster mycluster
+
+  # Delete a cluster using the --cluster flag
+  moactl delete cluster --cluster=mycluster`,
 	Run: run,
+}
+
+func init() {
+	flags := Cmd.Flags()
+
+	flags.StringVarP(
+		&args.clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster to delete.",
+	)
 }
 
 func run(_ *cobra.Command, argv []string) {
@@ -55,17 +74,20 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the name " +
-				"or identifier of the cluster",
-		)
-		os.Exit(1)
+	clusterKey := args.clusterKey
+	if clusterKey == "" {
+		if len(argv) != 1 {
+			reporter.Errorf(
+				"Expected exactly one command line argument or flag containing the name " +
+					"or identifier of the cluster",
+			)
+			os.Exit(1)
+		}
+		clusterKey = argv[0]
 	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := argv[0]
 	if !clusterprovider.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+

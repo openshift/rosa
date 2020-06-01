@@ -15,12 +15,16 @@ moactl delete cluster [ID|NAME] [flags]
 ```
   # Delete a cluster named "mycluster"
   moactl delete cluster mycluster
+
+  # Delete a cluster using the --cluster flag
+  moactl delete cluster --cluster=mycluster
 ```
 
 ### Options
 
 ```
-  -h, --help   help for cluster
+  -c, --cluster string   Name or ID of the cluster to delete.
+  -h, --help             help for cluster
 ```
 
 ### Options inherited from parent commands

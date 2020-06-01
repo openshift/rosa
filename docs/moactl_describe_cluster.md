@@ -15,12 +15,16 @@ moactl describe cluster [ID|NAME] [flags]
 ```
   # Describe a cluster named "mycluster"
   moactl describe cluster mycluster
+
+  # Describe a cluster using the --cluster flag
+  moactl describe cluster --cluster=mycluster
 ```
 
 ### Options
 
 ```
-  -h, --help   help for cluster
+  -c, --cluster string   Name or ID of the cluster to describe.
+  -h, --help             help for cluster
 ```
 
 ### Options inherited from parent commands
