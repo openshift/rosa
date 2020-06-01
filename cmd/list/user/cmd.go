@@ -131,12 +131,15 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	reporter.Debugf("Loading users for cluster '%s'", clusterKey)
-	// Load cluster-admins for this cluster
-	clusterAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
-	if err != nil {
-		reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+	var clusterAdmins []*cmv1.User
+	if cluster.ClusterAdminEnabled() {
+		reporter.Debugf("Loading users for cluster '%s'", clusterKey)
+		// Load cluster-admins for this cluster
+		clusterAdmins, err = ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
+		if err != nil {
+			reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
 	}
 
 	// Load dedicated-admins for this cluster
