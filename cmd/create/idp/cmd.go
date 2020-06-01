@@ -361,7 +361,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	reporter.Infof(
 		"Identity Provider '%s' has been created. You need to ensure that there is a list "+
-			"of cluster administrators defined. See `moactl user add --help` for more "+
+			"of cluster administrators defined. See `moactl create user --help` for more "+
 			"information. To login into the console, open %s and click on %s",
 		idpName, cluster.Console().URL(), idpName,
 	)
