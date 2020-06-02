@@ -38,14 +38,14 @@ func buildGoogleIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 
 	if isInteractive {
 		fmt.Println("To use Google as an identity provider, you must first register the application:")
-		// instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/identity_providers/configuring-google-identity-provider.html"
 		instructionsURL := "https://console.developers.google.com/projectcreate"
 		fmt.Println("* Open the following URL:", instructionsURL)
 		fmt.Println("* Follow the instructions to register your application")
 
 		consoleURL := cluster.Console().URL()
 		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
-		fmt.Println("* When creating the OAuth client ID, use the following URL for the Authorized redirect URI:", oauthURL+"/oauth2callback/"+idpName)
+		fmt.Println("* When creating the OAuth client ID, use the following URL for the Authorized redirect URI: ",
+			oauthURL+"/oauth2callback/"+idpName)
 
 		if clientID == "" {
 			clientID, err = interactive.GetInput("Copy the Client ID provided by Google")

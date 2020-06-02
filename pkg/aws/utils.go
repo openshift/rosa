@@ -21,7 +21,7 @@ func GetRegion(region string) (string, error) {
 		})
 
 		if err != nil {
-			return "", fmt.Errorf("error creating default session for AWS client: %v", err)
+			return "", fmt.Errorf("Error creating default session for AWS client: %v", err)
 		}
 
 		region = *defaultSession.Config.Region
@@ -37,13 +37,13 @@ func getClientDetails(awsClient *awsClient) (*iam.User, bool, error) {
 
 	user, err := awsClient.iamClient.GetUser(nil)
 	if err != nil {
-		return nil, rootUser, fmt.Errorf("error querying username: %v", err)
+		return nil, rootUser, fmt.Errorf("Error querying username: %v", err)
 	}
 
 	// Detect whether the AWS account's root user is being used
 	parsed, err := arn.Parse(*user.User.Arn)
 	if err != nil {
-		return nil, rootUser, fmt.Errorf("error parsing user's ARN: %v", err)
+		return nil, rootUser, fmt.Errorf("Error parsing user's ARN: %v", err)
 	}
 	if parsed.AccountID == *user.User.UserId {
 		rootUser = true
@@ -64,7 +64,6 @@ func buildStackInput(cfTemplateBody, stackName string) *cloudformation.CreateSta
 		StackName:    aws.String(stackName),
 		TemplateBody: aws.String(cfTemplateBody),
 	}
-
 }
 
 // Read cloudformation template
@@ -73,7 +72,7 @@ func readCFTemplate() (string, error) {
 
 	cfTemplate, err := assets.Asset(cfTemplateBodyPath)
 	if err != nil {
-		return "", fmt.Errorf("unable to read cloudformation template: %s", err)
+		return "", fmt.Errorf("Unable to read cloudformation template: %s", err)
 	}
 
 	return string(cfTemplate), nil

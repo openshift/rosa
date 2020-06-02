@@ -136,7 +136,8 @@ func init() {
 		&args.githubTeams,
 		"teams",
 		"",
-		"GitHub: Only users that are members of at least one of the listed teams will be allowed to log in. The format is <org>/<team>.\n",
+		"GitHub: Only users that are members of at least one of the listed teams will be allowed to log in. "+
+			"The format is <org>/<team>.\n",
 	)
 
 	// Google
@@ -196,7 +197,8 @@ func init() {
 		&args.openidIssuerURL,
 		"issuer-url",
 		"",
-		"OpenID: The URL that the OpenID Provider asserts as the Issuer Identifier. It must use the https scheme with no URL query parameters or fragment.",
+		"OpenID: The URL that the OpenID Provider asserts as the Issuer Identifier. "+
+			"It must use the https scheme with no URL query parameters or fragment.",
 	)
 	flags.StringVar(
 		&args.openidEmail,
@@ -361,7 +363,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	reporter.Infof(
 		"Identity Provider '%s' has been created. You need to ensure that there is a list "+
-			"of cluster administrators defined. See `moactl create user --help` for more "+
+			"of cluster administrators defined. See 'moactl create user --help' for more "+
 			"information. To login into the console, open %s and click on %s",
 		idpName, cluster.Console().URL(), idpName,
 	)

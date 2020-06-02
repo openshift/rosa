@@ -69,7 +69,7 @@ func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 
 	// Check parameters:
 	if b.logger == nil {
-		err = fmt.Errorf("logger is mandatory")
+		err = fmt.Errorf("Logger is mandatory")
 		return
 	}
 

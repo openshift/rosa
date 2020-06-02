@@ -81,7 +81,8 @@ func init() {
 		&args.labelMatch,
 		"label-match",
 		"",
-		"Label match for ingress. Format should be a comma-separated list of 'key=value'. If no label is specified, all routes will be exposed on both routers.",
+		"Label match for ingress. Format should be a comma-separated list of 'key=value'. "+
+			"If no label is specified, all routes will be exposed on both routers.",
 	)
 }
 
@@ -190,7 +191,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Edit API endpoint instead of ingresses
 	if ingressID == "api" {
-		clusterConfig := clusterprovider.ClusterSpec{
+		clusterConfig := clusterprovider.Spec{
 			Private: private,
 		}
 

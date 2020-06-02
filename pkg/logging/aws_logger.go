@@ -59,7 +59,7 @@ func (b *AWSLoggerBuilder) Logger(value *logrus.Logger) *AWSLoggerBuilder {
 func (b *AWSLoggerBuilder) Build() (result *AWSLogger, err error) {
 	// Check parameters:
 	if b.logger == nil {
-		err = fmt.Errorf("logger is mandatory")
+		err = fmt.Errorf("Logger is mandatory")
 		return
 	}
 

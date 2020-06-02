@@ -14,10 +14,11 @@ type PermissionGroup string
 
 // PolicyStatement models an AWS policy statement entry.
 type PolicyStatement struct {
-	Sid string `json:sid,omitempty`
+	Sid string `json:"sid,omitempty"`
 	// Effect indicates if this policy statement is to Allow or Deny.
 	Effect string `json:"effect"`
-	// Action describes the particular AWS service actions that should be allowed or denied. (i.e. ec2:StartInstances, iam:ChangePassword)
+	// Action describes the particular AWS service actions that should be allowed or denied.
+	// (i.e. ec2:StartInstances, iam:ChangePassword)
 	Action []string `json:"action"`
 	// Resource specifies the object(s) this statement should apply to. (or "*" for all)
 	Resource interface{} `json:"resource"`
@@ -25,8 +26,8 @@ type PolicyStatement struct {
 
 // PolicyDocument models an AWS IAM policy document
 type PolicyDocument struct {
-	Version   string            `json:version,omitempty`
-	ID        string            `json:id,omitempty`
+	Version   string            `json:"version,omitempty"`
+	ID        string            `json:"id,omitempty"`
 	Statement []PolicyStatement `json:"statement"`
 }
 
@@ -43,7 +44,8 @@ const (
 	// PermissionDeleteBase is a base set of permissions required in all installs where the installer deletes resources.
 	PermissionDeleteBase PermissionGroup = "delete-base"
 
-	// PermissionCreateNetworking is an additional set of permissions required when the installer creates networking resources.
+	// PermissionCreateNetworking is an additional set of permissions required when the installer creates networking
+	// resources.
 	PermissionCreateNetworking PermissionGroup = "create-networking"
 
 	// PermissionDeleteNetworking is a set of permissions required when the installer destroys networking resources.
@@ -242,16 +244,15 @@ var permissions = map[PermissionGroup][]string{
 	},
 }
 
-// checkPermissionsUsingQueryClient will use queryClient to query whether the credentials in targetClient can perform the actions
-// listed in the statementEntries. queryClient will need iam:GetUser and iam:SimulatePrincipalPolicy
+// checkPermissionsUsingQueryClient will use queryClient to query whether the credentials in targetClient can perform
+// the actions listed in the statementEntries. queryClient will need iam:GetUser and iam:SimulatePrincipalPolicy
 func checkPermissionsUsingQueryClient(queryClient, targetClient *awsClient, policyDocument PolicyDocument,
 	params *SimulateParams) (bool, error) {
-
-	// Ignoring isRoot here since we only warn the user that its not best pratice to use it.
-	// TODO: Add a check for isRoot in the initalizer
+	// Ignoring isRoot here since we only warn the user that its not best practice to use it.
+	// TODO: Add a check for isRoot in the initializer
 	targetUser, _, err := getClientDetails(targetClient)
 	if err != nil {
-		return false, fmt.Errorf("error gathering AWS credentials details: %v", err)
+		return false, fmt.Errorf("Error gathering AWS credentials details: %v", err)
 	}
 
 	allowList := []*string{}
@@ -282,31 +283,31 @@ func checkPermissionsUsingQueryClient(queryClient, targetClient *awsClient, poli
 	// Collect all failed actions
 	var failedActions []string
 
-	err = queryClient.iamClient.SimulatePrincipalPolicyPages(input, func(response *iam.SimulatePolicyResponse, lastPage bool) bool {
-
-		for _, result := range response.EvaluationResults {
-			if *result.EvalDecision != "allowed" {
-				// Don't bail out after the first failure, so we can log the full list
-				// of failed/denied actions
-				failedActions = append(failedActions, *result.EvalActionName)
-				allClear = false
+	err = queryClient.iamClient.SimulatePrincipalPolicyPages(input,
+		func(response *iam.SimulatePolicyResponse, lastPage bool) bool {
+			for _, result := range response.EvaluationResults {
+				if *result.EvalDecision != "allowed" {
+					// Don't bail out after the first failure, so we can log the full list
+					// of failed/denied actions
+					failedActions = append(failedActions, *result.EvalActionName)
+					allClear = false
+				}
 			}
-		}
-		return !lastPage
-	})
+			return !lastPage
+		})
 	if err != nil {
-		return false, fmt.Errorf("error simulating policy: %v", err)
+		return false, fmt.Errorf("Error simulating policy: %v", err)
 	}
 
 	if !allClear {
-		return false, fmt.Errorf("actions not allowed with tested credentials: %v", failedActions)
+		return false, fmt.Errorf("Actions not allowed with tested credentials: %v", failedActions)
 	}
 
 	return true, nil
-
 }
 
-func validatePolicyDocuments(queryClient, targetClient *awsClient, policyDocuments []PolicyDocument, sParams *SimulateParams) (bool, error) {
+func validatePolicyDocuments(queryClient, targetClient *awsClient, policyDocuments []PolicyDocument,
+	sParams *SimulateParams) (bool, error) {
 	permissionsOk := true
 
 	for _, policyDocument := range policyDocuments {
@@ -317,7 +318,6 @@ func validatePolicyDocuments(queryClient, targetClient *awsClient, policyDocumen
 		if !permissionsOk {
 			return false, fmt.Errorf("Unable to validate permissions in %s", policyDocument.ID)
 		}
-
 	}
 
 	return permissionsOk, nil
@@ -347,7 +347,6 @@ func generatePolicyDocument(actions []string, id *string) PolicyDocument {
 // SCP policies are structured the same as a IAM Policy Document the contain
 // IAM Policy Statements
 func readSCPPolicy(policyDocumentPath string) PolicyDocument {
-
 	policyDocumentFile, err := assets.Asset(policyDocumentPath)
 	if err != nil {
 		fmt.Println(fmt.Errorf("Unable to load file: %s", policyDocumentPath))
@@ -355,7 +354,7 @@ func readSCPPolicy(policyDocumentPath string) PolicyDocument {
 
 	policyDocument := PolicyDocument{}
 
-	err = json.Unmarshal([]byte(policyDocumentFile), &policyDocument)
+	err = json.Unmarshal(policyDocumentFile, &policyDocument)
 	if err != nil {
 		fmt.Println(fmt.Errorf("Error unmarshalling statement: %v", err))
 	}

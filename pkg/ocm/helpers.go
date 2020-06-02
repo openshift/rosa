@@ -122,7 +122,7 @@ func GetLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv
 	if err != nil {
 		err = fmt.Errorf("Failed to get logs for cluster '%s': %v", clusterID, err)
 		if response.Status() == http.StatusNotFound {
-			err = errors.NotFound.UserErrorf("Failed to get logs for cluster '%s'")
+			err = errors.NotFound.UserErrorf("Failed to get logs for cluster '%s'", clusterID)
 		}
 		return
 	}
@@ -133,6 +133,10 @@ func GetLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv
 func PollLogs(client *cmv1.ClustersClient, clusterID string,
 	cb func(*cmv1.LogGetResponse) bool) (logs *cmv1.Log, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer func() {
+		cancel()
+	}()
+
 	logsClient := client.Cluster(clusterID).Logs().Log("hive")
 	response, err := logsClient.Poll().
 		Parameter("tail", 100).
@@ -142,13 +146,10 @@ func PollLogs(client *cmv1.ClustersClient, clusterID string,
 	if err != nil {
 		err = fmt.Errorf("Failed to poll logs for cluster '%s': %v", clusterID, err)
 		if response.Status() == http.StatusNotFound {
-			err = errors.NotFound.UserErrorf("Failed to poll logs for cluster '%s'")
+			err = errors.NotFound.UserErrorf("Failed to poll logs for cluster '%s'", clusterID)
 		}
 		return
 	}
-	defer func() {
-		cancel()
-	}()
 
 	return response.Body(), nil
 }

@@ -1,4 +1,3 @@
-#!/bin/bash -ex
 #
 # Copyright (c) 2020 Red Hat, Inc.
 #
@@ -15,15 +14,26 @@
 # limitations under the License.
 #
 
-# This script is executed by a Jenkins job for each change request. If it
-# doesn't succeed the change won't be merged.
-
-# Set the `GOBIN` environment variable so that dependencies will be installed
-# always in the same place, regardless of the value of `GOPATH`:
-export GOBIN="${PWD}/.gobin"
-export PATH="${GOBIN}:${PATH}"
-
-# Run the checks:
-make \
-  moactl \
-  lint
+run:
+  skip-dirs: (assets|docs|templates)
+  issues-exit-code: 1
+linters:
+  disable-all: true
+  enable:
+  - deadcode
+  - gas
+  - goconst
+  - gofmt
+  - golint
+  - govet
+  - ineffassign
+  - interfacer
+  - lll
+  - maligned
+  - megacheck
+  - misspell
+  - structcheck
+  - unconvert
+  - unparam
+  - varcheck
+  - whitespace

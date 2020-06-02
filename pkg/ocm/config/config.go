@@ -30,14 +30,13 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/mitchellh/go-homedir"
-	"github.com/openshift-online/ocm-sdk-go"
+	sdk "github.com/openshift-online/ocm-sdk-go"
 
 	"github.com/openshift/moactl/pkg/debug"
 )
 
-// When the value of the `--env` option is one of the keys of this map it will be replaced by the
-// corresponding value.
-var UrlAliases = map[string]string{
+// URLAliases allows the value of the `--env` option to map to the various API URLs.
+var URLAliases = map[string]string{
 	"production":  "https://api.openshift.com",
 	"staging":     "https://api.stage.openshift.com",
 	"integration": "https://api-integration.6943.hive-integration.openshiftapps.com",
@@ -143,22 +142,22 @@ func (c *Config) UserName() (username string, err error) {
 	parser := new(jwt.Parser)
 	token, _, err := parser.ParseUnverified(c.AccessToken, jwt.MapClaims{})
 	if err != nil {
-		err = fmt.Errorf("cant parse token: %v", err)
+		err = fmt.Errorf("Failed to parse token: %v", err)
 		return
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		err = fmt.Errorf("expected map claims bug got %T", claims)
+		err = fmt.Errorf("Expected map claims but got %T", claims)
 		return
 	}
 	claim, ok := claims["username"]
 	if !ok {
-		err = fmt.Errorf("token doesn't contain the 'username' claim")
+		err = fmt.Errorf("Token does not contain the 'username' claim")
 		return
 	}
 	username, ok = claim.(string)
 	if !ok {
-		err = fmt.Errorf("expected string 'username' but got %T", claim)
+		err = fmt.Errorf("Expected string 'username' but got %T", claim)
 		return
 	}
 
@@ -257,22 +256,22 @@ func tokenExpiry(text string, now time.Time) (expires bool, left time.Duration, 
 	parser := new(jwt.Parser)
 	token, _, err := parser.ParseUnverified(text, jwt.MapClaims{})
 	if err != nil {
-		err = fmt.Errorf("cant parse token: %v", err)
+		err = fmt.Errorf("Failed to parse token: %v", err)
 		return
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		err = fmt.Errorf("expected map claims bug got %T", claims)
+		err = fmt.Errorf("Expected map claims but got %T", claims)
 		return
 	}
 	claim, ok := claims["exp"]
 	if !ok {
-		err = fmt.Errorf("token doesn't contain the 'exp' claim")
+		err = fmt.Errorf("Token does not contain the 'exp' claim")
 		return
 	}
 	exp, ok := claim.(float64)
 	if !ok {
-		err = fmt.Errorf("expected floating point 'exp' but got %T", claim)
+		err = fmt.Errorf("Expected floating point 'exp' but got %T", claim)
 		return
 	}
 	if exp == 0 {

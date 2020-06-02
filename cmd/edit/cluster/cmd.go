@@ -92,7 +92,8 @@ func init() {
 		&args.computeNodes,
 		"compute-nodes",
 		0,
-		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.",
+		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, "+
+			"while multizone clusters need at least 9 nodes (3 per zone) for resiliency.",
 	)
 
 	// Networking options
@@ -200,7 +201,7 @@ func run(cmd *cobra.Command, argv []string) {
 		clusterAdmins = &args.clusterAdmins
 	}
 
-	clusterConfig := clusterprovider.ClusterSpec{
+	clusterConfig := clusterprovider.Spec{
 		Expiration:    expiration,
 		ComputeNodes:  args.computeNodes,
 		Private:       private,
@@ -221,7 +222,7 @@ func run(cmd *cobra.Command, argv []string) {
 func validateExpiration() (expiration time.Time, err error) {
 	// Validate options
 	if len(args.expirationTime) > 0 && args.expirationDuration != 0 {
-		err = errors.New("At most one of `expiration-time` or `expiration` may be specified")
+		err = errors.New("At most one of 'expiration-time' or 'expiration' may be specified")
 		return
 	}
 
