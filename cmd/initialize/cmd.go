@@ -111,6 +111,10 @@ func run(cmd *cobra.Command, argv []string) {
 		if cfg != nil {
 			// Check that credentials in the config file are valid
 			isLoggedIn, err = cfg.Armed()
+			if err != nil {
+				reporter.Errorf("Failed to determine if user is logged in: %v", err)
+				os.Exit(1)
+			}
 		}
 
 		if isLoggedIn {
@@ -190,12 +194,12 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 
-		reporter.Infof("Admin user '%s' deleted successfuly!", aws.AdminUserName)
+		reporter.Infof("Admin user '%s' deleted successfully!", aws.AdminUserName)
 		os.Exit(0)
 	}
 
 	// Validate AWS SCP/IAM Permissions
-	// Call `verify permisisons` as partof init
+	// Call `verify permissions` as part of init
 	permissions.Cmd.Run(cmd, argv)
 
 	// Validate AWS quota
@@ -210,7 +214,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if created {
-		reporter.Infof("Admin user '%s' created successfuly!", aws.AdminUserName)
+		reporter.Infof("Admin user '%s' created successfully!", aws.AdminUserName)
 	} else {
 		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
 	}

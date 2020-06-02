@@ -60,7 +60,7 @@ func (b *OCMLoggerBuilder) Logger(value *logrus.Logger) *OCMLoggerBuilder {
 func (b *OCMLoggerBuilder) Build() (result *OCMLogger, err error) {
 	// Check parameters:
 	if b.logger == nil {
-		err = fmt.Errorf("logger is mandatory")
+		err = fmt.Errorf("Logger is mandatory")
 		return
 	}
 

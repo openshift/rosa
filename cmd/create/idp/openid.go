@@ -35,17 +35,20 @@ func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 	name := args.openidName
 	username := args.openidUsername
 
-	isInteractive := clientID == "" || clientSecret == "" || issuerURL == "" || (email == "" && name == "" && username == "")
+	isInteractive := clientID == "" || clientSecret == "" || issuerURL == "" ||
+		(email == "" && name == "" && username == "")
 
 	if isInteractive {
 		fmt.Println("To use OpenID as an identity provider, you must first register the application:")
-		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/identity_providers/configuring-oidc-identity-provider.html"
+		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/" +
+			"identity_providers/configuring-oidc-identity-provider.html"
 		fmt.Println("* Open the following URL:", instructionsURL)
 		fmt.Println("* Follow the instructions to register your application")
 
 		consoleURL := cluster.Console().URL()
 		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
-		fmt.Println("* When creating the OpenID, use the following URL for the Authorized redirect URI:", oauthURL+"/oauth2callback/"+idpName)
+		fmt.Println("* When creating the OpenID, use the following URL for the Authorized redirect URI: ",
+			oauthURL+"/oauth2callback/"+idpName)
 
 		if clientID == "" {
 			clientID, err = interactive.GetInput("Copy the Client ID provided by the OpenID Provider")
@@ -71,21 +74,21 @@ func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 		if email == "" {
 			email, err = interactive.GetInput("Claim mappings to use as the email address")
 			if err != nil {
-				return idpBuilder, errors.New("Expected a list of claims to use as the email address.")
+				return idpBuilder, errors.New("Expected a list of claims to use as the email address")
 			}
 		}
 
 		if name == "" {
 			name, err = interactive.GetInput("Claim mappings to use as the display name")
 			if err != nil {
-				return idpBuilder, errors.New("Expected a list of claims to use as the display name.")
+				return idpBuilder, errors.New("Expected a list of claims to use as the display name")
 			}
 		}
 
 		if username == "" {
 			username, err = interactive.GetInput("Claim mappings to use as the preferred username")
 			if err != nil {
-				return idpBuilder, errors.New("Expected a list of claims to use as the preferred username.")
+				return idpBuilder, errors.New("Expected a list of claims to use as the preferred username")
 			}
 		}
 	}
@@ -99,13 +102,13 @@ func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 		return idpBuilder, fmt.Errorf("Expected a valid OpenID issuer URL: %v", err)
 	}
 	if parsedIssuerURL.Scheme != "https" {
-		return idpBuilder, errors.New("Expected OpenID issuer URL to use an https:// scheme.")
+		return idpBuilder, errors.New("Expected OpenID issuer URL to use an https:// scheme")
 	}
 	if parsedIssuerURL.RawQuery != "" {
-		return idpBuilder, errors.New("OpenID issuer URL must not have query parameters.")
+		return idpBuilder, errors.New("OpenID issuer URL must not have query parameters")
 	}
 	if parsedIssuerURL.Fragment != "" {
-		return idpBuilder, errors.New("OpenID issuer URL must not have a fragment.")
+		return idpBuilder, errors.New("OpenID issuer URL must not have a fragment")
 	}
 
 	// Build OpenID Claims

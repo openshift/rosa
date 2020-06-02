@@ -13,7 +13,7 @@ type quota struct {
 	DesiredValue *float64
 }
 
-// List of sevice quotas we verify for cluster installs
+// List of service quotas we verify for cluster installs
 // to support 5 x multi zone clusters
 var serviceQuotaServices = []quota{
 	{
@@ -94,7 +94,8 @@ func ListServiceQuotas(client *awsClient, serviceCode string) ([]*servicequotas.
 	var serviceQuotas []*servicequotas.ServiceQuota
 
 	// Paginate through quota results
-	err := client.servicequotasClient.ListServiceQuotasPages(&servicequotas.ListServiceQuotasInput{ServiceCode: &serviceCode},
+	listServiceQuotasInput := &servicequotas.ListServiceQuotasInput{ServiceCode: &serviceCode}
+	err := client.servicequotasClient.ListServiceQuotasPages(listServiceQuotasInput,
 		func(page *servicequotas.ListServiceQuotasOutput, lastPage bool) bool {
 			serviceQuotas = append(serviceQuotas, page.Quotas...)
 			return page.NextToken != nil
@@ -104,18 +105,17 @@ func ListServiceQuotas(client *awsClient, serviceCode string) ([]*servicequotas.
 	}
 
 	return serviceQuotas, err
-
 }
 
 // GetServiceQuota extract service quota for the list of service quotas
-func GetServiceQuota(serviceQuotas []*servicequotas.ServiceQuota, quotaCode string) (*servicequotas.ServiceQuota, error) {
+func GetServiceQuota(serviceQuotas []*servicequotas.ServiceQuota,
+	quotaCode string) (*servicequotas.ServiceQuota, error) {
 	for _, serviceQuota := range serviceQuotas {
 		if *serviceQuota.QuotaCode == quotaCode {
 			return serviceQuota, nil
 		}
 	}
 	return nil, fmt.Errorf("Unable to find quota with service code: %s", quotaCode)
-
 }
 
 // CheckQuota return quota value for quota code
@@ -131,7 +131,6 @@ func CheckQuota(client *awsClient, quota quota) (bool, error) {
 	}
 
 	return HasQuota(serviceQuota, quota), nil
-
 }
 
 // HasQuota return a true if quota is equal or greater than our required value

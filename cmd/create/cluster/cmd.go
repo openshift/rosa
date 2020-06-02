@@ -40,23 +40,23 @@ import (
 
 var args struct {
 	// Basic options
+	private            bool
+	multiAZ            bool
+	expirationDuration time.Duration
+	expirationTime     string
 	name               string
 	region             string
-	multiAZ            bool
 	version            string
-	expirationTime     string
-	expirationDuration time.Duration
 
 	// Scaling options
 	computeMachineType string
 	computeNodes       int
 
 	// Networking options
+	hostPrefix  int
 	machineCIDR net.IPNet
 	serviceCIDR net.IPNet
 	podCIDR     net.IPNet
-	hostPrefix  int
-	private     bool
 }
 
 var Cmd = &cobra.Command{
@@ -126,7 +126,8 @@ func init() {
 		&args.computeNodes,
 		"compute-nodes",
 		0,
-		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.\n",
+		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, "+
+			"while multizone clusters need at least 9 nodes (3 per zone) for resiliency.\n",
 	)
 
 	flags.IPNetVar(
@@ -151,7 +152,8 @@ func init() {
 		&args.hostPrefix,
 		"host-prefix",
 		0,
-		"Subnet prefix length to assign to each individual node. For example, if host prefix is set to \"23\", then each node is assigned a /23 subnet out of the given CIDR.",
+		"Subnet prefix length to assign to each individual node. For example, if host prefix is set "+
+			"to \"23\", then each node is assigned a /23 subnet out of the given CIDR.",
 	)
 	flags.BoolVar(
 		&args.private,
@@ -196,10 +198,9 @@ func run(cmd *cobra.Command, _ []string) {
 	if region == "" {
 		region, err = interactive.GetInput("AWS region")
 		if err != nil {
-			reporter.Errorf("expected a valid AWS region: %v", err)
+			reporter.Errorf("Expected a valid AWS region: %v", err)
 			os.Exit(1)
 		}
-
 	}
 
 	// Create the client for the OCM API:
@@ -240,7 +241,7 @@ func run(cmd *cobra.Command, _ []string) {
 		private = &args.private
 	}
 
-	clusterConfig := clusterprovider.ClusterSpec{
+	clusterConfig := clusterprovider.Spec{
 		Name:               name,
 		Region:             region,
 		MultiAZ:            args.multiAZ,
@@ -267,15 +268,15 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterID := cluster.ID()
 	clusterName := cluster.Name()
 	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", clusterID, clusterName)
-	reporter.Infof("To view list of clusters and their status, run `moactl list clusters`")
+	reporter.Infof("To view list of clusters and their status, run 'moactl list clusters'")
 
 	reporter.Infof("Cluster '%s' has been created.", clusterName)
 	reporter.Infof(
 		"Once the cluster is 'Ready' you will need to add an Identity Provider " +
-			"and define the list of cluster administrators. See `moactl create idp --help` " +
-			"and `moactl create user --help` for more information.")
+			"and define the list of cluster administrators. See 'moactl create idp --help' " +
+			"and 'moactl create user --help' for more information.")
 	reporter.Infof(
-		"To determine when your cluster is Ready, run `moactl describe cluster %s`.",
+		"To determine when your cluster is Ready, run 'moactl describe cluster %s'.",
 		clusterName,
 	)
 }
@@ -311,7 +312,7 @@ func validateVersion(client *cmv1.Client) (version string, err error) {
 func validateExpiration() (expiration time.Time, err error) {
 	// Validate options
 	if len(args.expirationTime) > 0 && args.expirationDuration != 0 {
-		err = errors.New("At most one of `expiration-time` or `expiration` may be specified")
+		err = errors.New("At most one of 'expiration-time' or 'expiration' may be specified")
 		return
 	}
 
@@ -364,8 +365,4 @@ func parseRFC3339(s string) (time.Time, error) {
 		return t, nil
 	}
 	return time.Parse(time.RFC3339, s)
-}
-
-func cidrIsEmpty(cidr net.IPNet) bool {
-	return cidr.String() == "<nil>"
 }

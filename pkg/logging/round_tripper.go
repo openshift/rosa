@@ -88,11 +88,11 @@ func (b *RoundTripperBuilder) Next(value http.RoundTripper) *RoundTripperBuilder
 func (b *RoundTripperBuilder) Build() (result *RoundTripper, err error) {
 	// Check parameters:
 	if b.logger == nil {
-		err = fmt.Errorf("logger is mandatory")
+		err = fmt.Errorf("Logger is mandatory")
 		return
 	}
 	if b.next == nil {
-		err = fmt.Errorf("next handler is mandatory")
+		err = fmt.Errorf("Next handler is mandatory")
 		return
 	}
 

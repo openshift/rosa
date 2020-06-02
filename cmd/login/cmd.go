@@ -181,7 +181,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if !haveReqs {
-		reporter.Errorf("Failed to login to OCM. See `moactl login --help` for information.")
+		reporter.Errorf("Failed to login to OCM. See 'moactl login --help' for information.")
 		os.Exit(1)
 	}
 
@@ -197,7 +197,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// If the value of the `--env` is any of the aliases then replace it with the corresponding
 	// real URL:
-	gatewayURL, ok := config.UrlAliases[args.env]
+	gatewayURL, ok := config.URLAliases[args.env]
 	if !ok {
 		gatewayURL = args.env
 	}
@@ -285,7 +285,7 @@ func run(cmd *cobra.Command, argv []string) {
 func tokenType(jwtToken *jwt.Token) (typ string, err error) {
 	claims, ok := jwtToken.Claims.(jwt.MapClaims)
 	if !ok {
-		err = fmt.Errorf("expected map claims but got %T", claims)
+		err = fmt.Errorf("Expected map claims but got %T", claims)
 		return
 	}
 	claim, ok := claims["typ"]
@@ -294,7 +294,7 @@ func tokenType(jwtToken *jwt.Token) (typ string, err error) {
 	}
 	value, ok := claim.(string)
 	if !ok {
-		err = fmt.Errorf("expected string 'typ' but got %T", claim)
+		err = fmt.Errorf("Expected string 'typ' but got %T", claim)
 		return
 	}
 	typ = value

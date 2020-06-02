@@ -35,8 +35,8 @@ import (
 // safe and that it there is no risk of SQL injection:
 var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
 
-// ClusterSpec is the configuration for a cluster spec.
-type ClusterSpec struct {
+// Spec is the configuration for a cluster spec.
+type Spec struct {
 	// Basic configs
 	Name       string
 	Region     string
@@ -77,18 +77,18 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 	return response.Total() > 0, nil
 }
 
-func CreateCluster(client *cmv1.ClustersClient, config ClusterSpec) (*cmv1.Cluster, error) {
+func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, error) {
 	reporter, err := rprtr.New().
 		Build()
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to create reporter: %v", err)
+		return nil, fmt.Errorf("Unable to create reporter: %v", err)
 	}
 
 	logger, err := logging.NewLogger().
 		Build()
 	if err != nil {
-		return nil, fmt.Errorf("unable to create AWS logger: %v", err)
+		return nil, fmt.Errorf("Unable to create AWS logger: %v", err)
 	}
 
 	// Create the AWS client:
@@ -96,17 +96,17 @@ func CreateCluster(client *cmv1.ClustersClient, config ClusterSpec) (*cmv1.Clust
 		Logger(logger).
 		Build()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS client: %v", err)
+		return nil, fmt.Errorf("Failed to create AWS client: %v", err)
 	}
 
 	spec, err := createClusterSpec(config, awsClient)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create cluster spec: %v", err)
+		return nil, fmt.Errorf("Unable to create cluster spec: %v", err)
 	}
 
 	cluster, err := client.Add().Body(spec).Send()
 	if err != nil {
-		return nil, fmt.Errorf("error creating cluster in OCM: %v", err)
+		return nil, fmt.Errorf("Error creating cluster in OCM: %v", err)
 	}
 
 	clusterObject := cluster.Body()
@@ -168,7 +168,7 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 	}
 }
 
-func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string, config ClusterSpec) error {
+func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string, config Spec) error {
 	cluster, err := GetCluster(client, clusterKey, creatorARN)
 	if err != nil {
 		return err
@@ -236,23 +236,23 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	return nil
 }
 
-func createClusterSpec(config ClusterSpec, awsClient aws.Client) (*cmv1.Cluster, error) {
+func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
 	reporter, err := rprtr.New().
 		Build()
 
 	if err != nil {
-		return nil, fmt.Errorf("error creating cluster reporter: %v", err)
+		return nil, fmt.Errorf("Error creating cluster reporter: %v", err)
 	}
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get AWS creator: %v", err)
+		return nil, fmt.Errorf("Failed to get AWS creator: %v", err)
 	}
 
 	// Create the access key for the AWS user:
 	awsAccessKey, err := awsClient.GetAccessKeyFromStack(aws.OsdCcsAdminStackName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get access keys for user '%s': %v", aws.AdminUserName, err)
+		return nil, fmt.Errorf("Failed to get access keys for user '%s': %v", aws.AdminUserName, err)
 	}
 	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
 	reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
@@ -308,7 +308,10 @@ func createClusterSpec(config ClusterSpec, awsClient aws.Client) (*cmv1.Cluster,
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}
 
-	if !cidrIsEmpty(config.MachineCIDR) || !cidrIsEmpty(config.ServiceCIDR) || !cidrIsEmpty(config.PodCIDR) || config.HostPrefix != 0 {
+	if !cidrIsEmpty(config.MachineCIDR) ||
+		!cidrIsEmpty(config.ServiceCIDR) ||
+		!cidrIsEmpty(config.PodCIDR) ||
+		config.HostPrefix != 0 {
 		networkBuilder := cmv1.NewNetwork()
 		if !cidrIsEmpty(config.MachineCIDR) {
 			networkBuilder = networkBuilder.MachineCIDR(config.MachineCIDR.String())

@@ -27,7 +27,7 @@ import (
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildLdapIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
+func buildLdapIdp(_ *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	ldapURL := args.ldapURL
 	ldapIDs := args.ldapIDs
 
@@ -35,7 +35,8 @@ func buildLdapIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Identi
 
 	if isInteractive {
 		fmt.Println("To use LDAP as an identity provider, you must first register the application:")
-		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/identity_providers/configuring-ldap-identity-provider.html"
+		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/" +
+			"identity_providers/configuring-ldap-identity-provider.html"
 		fmt.Println("* Open the following URL:", instructionsURL)
 		fmt.Println("* Follow the instructions to register your application")
 
@@ -59,7 +60,7 @@ func buildLdapIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Identi
 		return idpBuilder, fmt.Errorf("Expected a valid LDAP URL: %v", err)
 	}
 	if parsedLdapURL.Scheme != "ldap" && parsedLdapURL.Scheme != "ldaps" {
-		return idpBuilder, errors.New("Expected LDAP URL to have an ldap:// or ldaps:// scheme.")
+		return idpBuilder, errors.New("Expected LDAP URL to have an ldap:// or ldaps:// scheme")
 	}
 
 	// Create LDAP attributes

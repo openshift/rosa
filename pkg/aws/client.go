@@ -53,8 +53,8 @@ type Client interface {
 	ValidateCredentials() (bool, error)
 	EnsureOsdCcsAdminUser(stackName string) (bool, error)
 	DeleteOsdCcsAdminUser(stackName string) error
-	GetAccessKeyFromStack(stackName string) (*AWSAccessKey, error)
-	GetCreator() (*AWSCreator, error)
+	GetAccessKeyFromStack(stackName string) (*AccessKey, error)
+	GetCreator() (*Creator, error)
 	TagUser(username string, clusterID string, clusterName string) error
 	ValidateSCP() (bool, error)
 	ValidateQuota() (bool, error)
@@ -90,7 +90,7 @@ func (b *ClientBuilder) Logger(value *logrus.Logger) *ClientBuilder {
 func (b *ClientBuilder) Build() (result Client, err error) {
 	// Check parameters:
 	if b.logger == nil {
-		err = fmt.Errorf("logger is mandatory")
+		err = fmt.Errorf("Logger is mandatory")
 		return
 	}
 
@@ -128,7 +128,7 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 	// Check that the region is set:
 	region := aws.StringValue(sess.Config.Region)
 	if region == "" {
-		err = fmt.Errorf("region is not set")
+		err = fmt.Errorf("Region is not set")
 		return
 	}
 
@@ -157,12 +157,12 @@ func (c *awsClient) GetRegion() string {
 	return aws.StringValue(c.awsSession.Config.Region)
 }
 
-type AWSCreator struct {
+type Creator struct {
 	ARN       string
 	AccountID string
 }
 
-func (c *awsClient) GetCreator() (*AWSCreator, error) {
+func (c *awsClient) GetCreator() (*Creator, error) {
 	getCallerIdentityOutput, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func (c *awsClient) GetCreator() (*AWSCreator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AWSCreator{
+	return &Creator{
 		ARN:       creatorARN,
 		AccountID: creatorParsedARN.AccountID,
 	}, nil
@@ -286,16 +286,15 @@ func (c *awsClient) TagUser(username string, clusterID string, clusterName strin
 	return nil
 }
 
-type AWSAccessKey struct {
+type AccessKey struct {
 	AccessKeyID     string
 	SecretAccessKey string
 }
 
-func (c *awsClient) GetAccessKeyFromStack(stackName string) (*AWSAccessKey, error) {
-
+func (c *awsClient) GetAccessKeyFromStack(stackName string) (*AccessKey, error) {
 	outputKeySecretKey := "SecretKey"
 	outputKeyAccessKey := "AccessKey"
-	keys := AWSAccessKey{}
+	keys := AccessKey{}
 
 	stackOutput, err := c.cfClient.DescribeStacks(&cloudformation.DescribeStacksInput{StackName: &stackName})
 
@@ -317,20 +316,19 @@ func (c *awsClient) GetAccessKeyFromStack(stackName string) (*AWSAccessKey, erro
 
 // ValidateQuota
 func (c *awsClient) ValidateQuota() (bool, error) {
-	quotaValid := true
 	for _, quota := range serviceQuotaServices {
 		ok, err := CheckQuota(c, quota)
 		if err != nil {
 			return false, fmt.Errorf("Error validating AWS quota: %s %v", quota.ServiceCode, err)
 		}
 		if !ok {
-			quotaValid = false
-			return false, fmt.Errorf("Service %s quota code %s %s not valid", quota.ServiceCode, quota.QuotaCode, quota.QuotaName)
+			return false, fmt.Errorf("Service %s quota code %s %s not valid",
+				quota.ServiceCode, quota.QuotaCode, quota.QuotaName)
 		}
 		c.logger.Debug(fmt.Sprintf("Service %s quota code %s is ok", quota.ServiceCode, quota.QuotaCode))
 	}
 
-	return quotaValid, nil
+	return true, nil
 }
 
 // ValidateSCP attempts to validate SCP policies by ensuring we have the correct permissions
