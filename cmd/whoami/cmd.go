@@ -140,17 +140,17 @@ func run(_ *cobra.Command, _ []string) {
 		account = response.Body()
 	}
 	fmt.Printf(""+
-		"AWS Account ID:           %s\n"+
-		"AWS Default Region:       %s\n"+
-		"AWS ARN:                  %s\n"+
-		"OpenShift API:            %s\n"+
-		"Account ID:               %s\n"+
-		"Account Name:             %s %s\n"+
-		"Account Username:         %s\n"+
-		"Account Email:            %s\n"+
-		"Organization ID:          %s\n"+
-		"Organization Name:        %s\n"+
-		"Organization External ID: %s\n",
+		"AWS Account ID:               %s\n"+
+		"AWS Default Region:           %s\n"+
+		"AWS ARN:                      %s\n"+
+		"OCM API:                      %s\n"+
+		"OCM Account ID:               %s\n"+
+		"OCM Account Name:             %s %s\n"+
+		"OCM Account Username:         %s\n"+
+		"OCM Account Email:            %s\n"+
+		"OCM Organization ID:          %s\n"+
+		"OCM Organization Name:        %s\n"+
+		"OCM Organization External ID: %s\n",
 		awsCreator.AccountID,
 		awsRegion,
 		awsCreator.ARN,
