@@ -17,7 +17,6 @@ limitations under the License.
 package idp
 
 import (
-	"fmt"
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -57,13 +56,7 @@ func init() {
 }
 
 func run(_ *cobra.Command, argv []string) {
-	// Create the reporter:
-	reporter, err := rprtr.New().
-		Build()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create reporter: %v\n", err)
-		os.Exit(1)
-	}
+	reporter := rprtr.CreateReporterOrExit()
 
 	// Create the logger:
 	logger, err := logging.NewLogger().Build()
