@@ -26,14 +26,16 @@ import (
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/moactl/pkg/aws"
+	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
 var args struct {
-	tail  int
-	watch bool
+	clusterKey string
+	tail       int
+	watch      bool
 }
 
 var Cmd = &cobra.Command{
@@ -41,12 +43,23 @@ var Cmd = &cobra.Command{
 	Short: "Show details of a cluster",
 	Long:  "Show details of a cluster",
 	Example: `  # Show last 100 log lines for a cluster named "mycluster"
-  moactl logs cluster mycluster --tail=100`,
+  moactl logs cluster mycluster --tail=100
+
+  # Show logs for a cluster using the --cluster flag
+  moactl logs cluster --cluster=mycluster`,
 	Run: run,
 }
 
 func init() {
 	flags := Cmd.Flags()
+
+	flags.StringVarP(
+		&args.clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster to get logs for.",
+	)
 
 	flags.IntVar(
 		&args.tail,
@@ -81,18 +94,21 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the name " +
-				"or identifier of the cluster",
-		)
-		os.Exit(1)
+	clusterKey := args.clusterKey
+	if clusterKey == "" {
+		if len(argv) != 1 {
+			reporter.Errorf(
+				"Expected exactly one command line argument or flag containing the name " +
+					"or identifier of the cluster",
+			)
+			os.Exit(1)
+		}
+		clusterKey = argv[0]
 	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := argv[0]
-	if !ocm.IsValidClusterKey(clusterKey) {
+	if !clusterprovider.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -136,14 +152,14 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	cluster, err := clusterprovider.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() == cmv1.ClusterStatePending && !args.watch {
-		reporter.Warnf("Logs for cluster '%s' are not available yet.", clusterKey)
+		reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
 		os.Exit(1)
 	}
 
@@ -151,8 +167,11 @@ func run(_ *cobra.Command, argv []string) {
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	logs, err := ocm.GetLogs(clustersCollection, cluster.ID(), args.tail)
 	if err != nil {
-		if args.watch && errors.GetType(err) == errors.NotFound {
-			reporter.Warnf("Logs for cluster '%s' are not available yet. Waiting...", clusterKey)
+		if errors.GetType(err) == errors.NotFound {
+			reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
+			if args.watch {
+				reporter.Warnf("Waiting...")
+			}
 		} else {
 			reporter.Errorf("Failed to get logs for cluster '%s': %v", clusterKey, err)
 			os.Exit(1)

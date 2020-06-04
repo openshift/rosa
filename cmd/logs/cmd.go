@@ -23,9 +23,10 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "logs RESOURCE [flags]",
-	Short: "Show logs of a specific resource",
-	Long:  "Show logs of a specific resource",
+	Use:     "logs RESOURCE [flags]",
+	Aliases: []string{"log"},
+	Short:   "Show logs of a specific resource",
+	Long:    "Show logs of a specific resource",
 }
 
 func init() {

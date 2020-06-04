@@ -15,14 +15,18 @@ moactl logs cluster [ID|NAME] [flags]
 ```
   # Show last 100 log lines for a cluster named "mycluster"
   moactl logs cluster mycluster --tail=100
+
+  # Show logs for a cluster using the --cluster flag
+  moactl logs cluster --cluster=mycluster
 ```
 
 ### Options
 
 ```
-  -h, --help       help for cluster
-      --tail int   Number of lines to get from the end of the log. (default 2000)
-  -w, --watch      After getting the logs, watch for changes.
+  -c, --cluster string   Name or ID of the cluster to get logs for.
+  -h, --help             help for cluster
+      --tail int         Number of lines to get from the end of the log. (default 2000)
+  -w, --watch            After getting the logs, watch for changes.
 ```
 
 ### Options inherited from parent commands
