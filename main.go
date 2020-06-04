@@ -37,6 +37,7 @@ import (
 	"github.com/openshift/moactl/cmd/logs"
 	"github.com/openshift/moactl/cmd/verify"
 	"github.com/openshift/moactl/cmd/version"
+	"github.com/openshift/moactl/cmd/whoami"
 
 	"github.com/openshift/moactl/pkg/arguments"
 )
@@ -69,6 +70,7 @@ func init() {
 	root.AddCommand(logs.Cmd)
 	root.AddCommand(verify.Cmd)
 	root.AddCommand(version.Cmd)
+	root.AddCommand(whoami.Cmd)
 }
 
 func main() {
