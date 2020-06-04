@@ -17,7 +17,6 @@ limitations under the License.
 package cluster
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -58,13 +57,7 @@ func init() {
 }
 
 func run(_ *cobra.Command, argv []string) {
-	// Create the reporter:
-	reporter, err := rprtr.New().
-		Build()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create reporter: %v\n", err)
-		os.Exit(1)
-	}
+	reporter := rprtr.CreateReporterOrExit()
 
 	// Create the logger:
 	logger, err := logging.NewLogger().Build()

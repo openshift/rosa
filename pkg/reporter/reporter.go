@@ -89,3 +89,16 @@ const (
 	warnPrefix  = "\033[0;33mW:\033[m "
 	errorPrefix = "\033[0;31mE:\033[m "
 )
+
+// CreateReporterOrExit creates the reportor instance or exits to the console
+// noting the error on failure.
+func CreateReporterOrExit() *Object {
+	// Create the reporter:
+	reporter, err := New().
+		Build()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create reporter: %v\n", err)
+		os.Exit(1)
+	}
+	return reporter
+}
