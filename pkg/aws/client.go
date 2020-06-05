@@ -115,7 +115,7 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 		MaxRetries: aws.Int(25),
 		// Set MinThrottleDelay to 1 second
 		Retryer: client.DefaultRetryer{
-			MinThrottleDelay: time.Duration(1 * time.Second),
+			MinThrottleDelay: 1 * time.Second,
 		},
 		Logger: logger,
 		HTTPClient: &http.Client{
