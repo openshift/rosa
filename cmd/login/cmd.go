@@ -32,7 +32,7 @@ import (
 )
 
 // #nosec G101
-const uiTokenPage = "https://cloud.redhat.com/openshift/token"
+const uiTokenPage = "https://cloud.redhat.com/openshift/token/moa"
 
 var args struct {
 	tokenURL     string
