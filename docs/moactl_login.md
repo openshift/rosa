@@ -5,7 +5,7 @@ Log in to your Red Hat account
 ### Synopsis
 
 Log in to your Red Hat account, saving the credentials to the configuration file.
-The supported mechanism is by using a token, which can be obtained at: https://cloud.redhat.com/openshift/token
+The supported mechanism is by using a token, which can be obtained at: https://cloud.redhat.com/openshift/token/moa
 
 The application looks for the token in the following order, stopping when it finds it:
 	1. Command-line flags
