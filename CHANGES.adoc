@@ -3,6 +3,25 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.2 Jun 5 2020
+
+- login: Update token URL
+- errors: Expand error messages
+- linter: Fix unnecessary conversion
+- create-cluster: Track version of moactl used for cluster creation
+- whoami: Prefix output with source API
+- logs: Allow the use of --cluster as identifier
+- cmd: Switch to use CreateReporterOrExit
+- reporter: Define CreateReporterOrExit
+- whoami: Fallback to JWT for account data
+- whoami: Add command to display account information
+- ocm: Get arbitrary token data
+- linter: Add golangci-lint configuration and fix all lint warnings
+- cluster: Allow the use of --cluster as identifier
+- list-user: Check cluster_admin_enabled before listing cluster-admins
+- idp: Fix command help after creating IdP
+- Limit API retires and set minimum throttle delay between reties
+
 == 0.0.1 May 27 2020
 
 Initial pre-release of moactl. Contains the following commands:
