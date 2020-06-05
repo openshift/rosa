@@ -182,10 +182,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Body(ingress).
 		Send()
 	if err != nil {
-		// Unwrap and clean up API errors:
-		wrapped := strings.Split(err.Error(), ": ")
-		errorMessage := wrapped[len(wrapped)-1]
-		reporter.Errorf("Failed to add ingress to cluster '%s': %v", clusterKey, errorMessage)
+		reporter.Errorf("Failed to add ingress to cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 }

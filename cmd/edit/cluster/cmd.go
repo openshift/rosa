@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -205,10 +204,7 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter.Debugf("Updating cluster '%s'", clusterKey)
 	err = clusterprovider.UpdateCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN, clusterConfig)
 	if err != nil {
-		// Unwrap and clean up API errors:
-		wrapped := strings.Split(err.Error(), ": ")
-		errorMessage := wrapped[len(wrapped)-1]
-		reporter.Errorf("Failed to update cluster: %v", errorMessage)
+		reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
 	}
 }
