@@ -252,10 +252,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
 	if err != nil {
-		// Unwrap and clean up API errors:
-		wrapped := strings.Split(err.Error(), ": ")
-		errorMessage := wrapped[len(wrapped)-1]
-		reporter.Errorf("Failed to create cluster: %v", errorMessage)
+		reporter.Errorf("Failed to create cluster: %v", err)
 		os.Exit(1)
 	}
 
