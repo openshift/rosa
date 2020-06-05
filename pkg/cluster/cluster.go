@@ -26,6 +26,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/moactl/pkg/aws"
+	"github.com/openshift/moactl/pkg/info"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm/properties"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -278,6 +279,7 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		).
 		Properties(map[string]string{
 			properties.CreatorARN: awsCreator.ARN,
+			properties.CLIVersion: info.Version,
 		})
 
 	if config.Version != "" {
