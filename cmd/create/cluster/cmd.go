@@ -165,16 +165,11 @@ func init() {
 
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
-
-	// Create the logger:
-	logger, err := logging.NewLogger().Build()
-	if err != nil {
-		reporter.Errorf("Failed to create logger: %v", err)
-		os.Exit(1)
-	}
+	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Get cluster name
 	name := args.name
+	var err error
 	if name == "" {
 		name, err = interactive.GetInput("Cluster name")
 		if err != nil {
