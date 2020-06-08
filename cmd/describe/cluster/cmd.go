@@ -59,13 +59,7 @@ func init() {
 
 func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-
-	// Create the logger:
-	logger, err := logging.NewLogger().Build()
-	if err != nil {
-		reporter.Errorf("Failed to create logger: %v", err)
-		os.Exit(1)
-	}
+	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Check command line arguments:
 	clusterKey := args.clusterKey

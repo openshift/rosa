@@ -60,13 +60,7 @@ func init() {
 
 func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
-
-	// Create the logger:
-	logger, err := logging.NewLogger().Build()
-	if err != nil {
-		reporter.Errorf("Failed to create logger: %v", err)
-		os.Exit(1)
-	}
+	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:

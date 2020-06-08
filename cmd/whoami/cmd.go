@@ -41,20 +41,8 @@ var Cmd = &cobra.Command{
 }
 
 func run(_ *cobra.Command, _ []string) {
-	// Create the reporter:
-	reporter, err := rprtr.New().
-		Build()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create reporter: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Create the logger:
-	logger, err := logging.NewLogger().Build()
-	if err != nil {
-		reporter.Errorf("Failed to create logger: %v", err)
-		os.Exit(1)
-	}
+	reporter := rprtr.CreateReporterOrExit()
+	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
