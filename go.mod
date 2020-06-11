@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.29.17
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v1.0.0
+	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/mock v1.4.3
 	github.com/mattn/go-colorable v0.1.7 // indirect

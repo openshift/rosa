@@ -21,7 +21,10 @@ export GOPROXY=https://proxy.golang.org
 # Disable CGO so that we always generate static binaries:
 export CGO_ENABLED=0
 
-.PHONY: moactl
+# Unset GOFLAG for CI and ensure we've got nothing accidently set
+unexport GOFLAGS
+
+.PHONY: build
 moactl: generate
 	go build .
 
@@ -49,6 +52,7 @@ clean:
 
 .PHONY: generate
 generate:
+	go get github.com/go-bindata/go-bindata/...
 	go-bindata -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 
 .PHONY: docs
