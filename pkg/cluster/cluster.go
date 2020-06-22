@@ -56,6 +56,9 @@ type Spec struct {
 	HostPrefix  int
 	Private     *bool
 
+	// Properties
+	CustomProperties map[string]string
+
 	// Access control config
 	ClusterAdmins *bool
 }
@@ -258,6 +261,26 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
 	reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
 
+	clusterProperties := map[string]string{}
+
+	if config.CustomProperties != nil {
+		for key, value := range config.CustomProperties {
+			clusterProperties[key] = value
+		}
+	}
+
+	// Make sure we don't have a custom properties collision
+	if _, present := clusterProperties[properties.CreatorARN]; present {
+		return nil, fmt.Errorf("Custom properties key %s collides with a property needed by moactl.", properties.CreatorARN)
+	}
+
+	if _, present := clusterProperties[properties.CLIVersion]; present {
+		return nil, fmt.Errorf("Custom properties key %s collides with a property needed by moactl.", properties.CLIVersion)
+	}
+
+	clusterProperties[properties.CreatorARN] = awsCreator.ARN
+	clusterProperties[properties.CLIVersion] = info.Version
+
 	// Create the cluster:
 	clusterBuilder := cmv1.NewCluster().
 		Name(config.Name).
@@ -277,10 +300,7 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 				AccessKeyID(awsAccessKey.AccessKeyID).
 				SecretAccessKey(awsAccessKey.SecretAccessKey),
 		).
-		Properties(map[string]string{
-			properties.CreatorARN: awsCreator.ARN,
-			properties.CLIVersion: info.Version,
-		})
+		Properties(clusterProperties)
 
 	if config.Version != "" {
 		clusterBuilder = clusterBuilder.Version(
