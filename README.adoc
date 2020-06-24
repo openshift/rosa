@@ -1,4 +1,0 @@
-= MOA Command Line Tool
-
-This project contains the `moactl` command line tool that simplifies the use of
-the _MOA_.
