@@ -65,6 +65,7 @@ type Client interface {
 // ClientBuilder contains the information and logic needed to build a new AWS client.
 type ClientBuilder struct {
 	logger *logrus.Logger
+	region *string
 }
 
 type awsClient struct {
@@ -88,6 +89,11 @@ func (b *ClientBuilder) Logger(value *logrus.Logger) *ClientBuilder {
 	return b
 }
 
+func (b *ClientBuilder) Region(value string) *ClientBuilder {
+	b.region = aws.String(value)
+	return b
+}
+
 // Build uses the information stored in the builder to build a new AWS client.
 func (b *ClientBuilder) Build() (result Client, err error) {
 	// Check parameters:
@@ -107,19 +113,18 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 	// Create the AWS session:
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
-	})
-
-	// Update session config
-	sess.Copy(&aws.Config{
-		// MaxRetries to limit the number of attempts on failed API calls
-		MaxRetries: aws.Int(25),
-		// Set MinThrottleDelay to 1 second
-		Retryer: client.DefaultRetryer{
-			MinThrottleDelay: 1 * time.Second,
-		},
-		Logger: logger,
-		HTTPClient: &http.Client{
-			Transport: http.DefaultTransport,
+		Config: aws.Config{
+			Region: b.region,
+			// MaxRetries to limit the number of attempts on failed API calls
+			MaxRetries: aws.Int(25),
+			// Set MinThrottleDelay to 1 second
+			Retryer: client.DefaultRetryer{
+				MinThrottleDelay: 1 * time.Second,
+			},
+			Logger: logger,
+			HTTPClient: &http.Client{
+				Transport: http.DefaultTransport,
+			},
 		},
 	})
 

@@ -37,6 +37,7 @@ import (
 )
 
 var args struct {
+	region      string
 	deleteStack bool
 }
 
@@ -57,6 +58,14 @@ func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
 
+	flags.StringVarP(
+		&args.region,
+		"region",
+		"r",
+		"",
+		"AWS region in which verify quota and permissions (overrides the AWS_REGION environment variable)",
+	)
+
 	flags.BoolVar(
 		&args.deleteStack,
 		"delete-stack",
@@ -66,19 +75,23 @@ func init() {
 
 	// Force-load all flags from `login` into `init`
 	flags.AddFlagSet(login.Cmd.Flags())
-	// Force-load all flags from `verify` into `init`
-	flags.AddFlagSet(quota.Cmd.Flags())
-	// Force-load all flags from `permissions` into `init`
-	flags.AddFlagSet(permissions.Cmd.Flags())
 }
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
+	// Get AWS region
+	region, err := aws.GetRegion(args.region)
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+
 	// Create the AWS client:
 	client, err := aws.NewClient().
 		Logger(logger).
+		Region(region).
 		Build()
 	if err != nil {
 		reporter.Errorf("Error creating AWS client: %v", err)

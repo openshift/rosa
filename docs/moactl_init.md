@@ -24,6 +24,7 @@ moactl init [flags]
 ### Options
 
 ```
+  -r, --region string          AWS region in which verify quota and permissions (overrides the AWS_REGION environment variable)
       --delete-stack           Deletes stack template applied to your AWS account during the 'init' command.
                                
       --client-id string       OpenID client identifier. The default value is 'cloud-services'.

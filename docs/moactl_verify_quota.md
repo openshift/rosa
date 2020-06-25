@@ -4,7 +4,7 @@ Verify AWS quota is ok for cluster install
 
 ### Synopsis
 
-Verify AWS quota is ok for cluster install
+Verify AWS quota needed to create a cluster is configured as expected
 
 ```
 moactl verify quota [flags]
@@ -13,10 +13,11 @@ moactl verify quota [flags]
 ### Examples
 
 ```
-  # Verify resources needed to create a cluster are configured as expected
-
   # Verify AWS quotas are configured correctly
   moactl verify quota
+
+  # Verify AWS quotas in a different region
+  moactl verify quota --region=us-west-2
 ```
 
 ### Options
@@ -28,8 +29,9 @@ moactl verify quota [flags]
 ### Options inherited from parent commands
 
 ```
-      --debug     Enable debug mode.
-  -v, --v Level   log level for V logs
+      --debug           Enable debug mode.
+  -r, --region string   AWS region in which to run (overrides the AWS_REGION environment variable)
+  -v, --v Level         log level for V logs
 ```
 
 ### SEE ALSO

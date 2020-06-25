@@ -9,7 +9,8 @@ Verify resources are configured correctly for cluster install
 ### Options
 
 ```
-  -h, --help   help for verify
+  -h, --help            help for verify
+  -r, --region string   AWS region in which to run (overrides the AWS_REGION environment variable)
 ```
 
 ### Options inherited from parent commands
