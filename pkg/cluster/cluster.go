@@ -271,11 +271,11 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 
 	// Make sure we don't have a custom properties collision
 	if _, present := clusterProperties[properties.CreatorARN]; present {
-		return nil, fmt.Errorf("Custom properties key %s collides with a property needed by moactl.", properties.CreatorARN)
+		return nil, fmt.Errorf("Custom properties key %s collides with a property needed by moactl", properties.CreatorARN)
 	}
 
 	if _, present := clusterProperties[properties.CLIVersion]; present {
-		return nil, fmt.Errorf("Custom properties key %s collides with a property needed by moactl.", properties.CLIVersion)
+		return nil, fmt.Errorf("Custom properties key %s collides with a property needed by moactl", properties.CLIVersion)
 	}
 
 	clusterProperties[properties.CreatorARN] = awsCreator.ARN
