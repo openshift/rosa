@@ -160,7 +160,9 @@ func run(cmd *cobra.Command, argv []string) {
 	// Prompt the user for token:
 	if !haveReqs {
 		fmt.Println("To login to your Red Hat account, get an offline access token at", uiTokenPage)
-		token, err = interactive.GetPassword("Copy the token and paste it here")
+		token, err = interactive.GetPassword(interactive.Input{
+			Question: "Copy the token and paste it here",
+		})
 		if err != nil {
 			reporter.Errorf("Failed to parse token: %v", err)
 			os.Exit(1)

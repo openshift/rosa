@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/moactl/cmd/create/idp"
 	"github.com/openshift/moactl/cmd/create/ingress"
 	"github.com/openshift/moactl/cmd/create/user"
+	"github.com/openshift/moactl/pkg/interactive"
 )
 
 var Cmd = &cobra.Command{
@@ -37,4 +38,7 @@ func init() {
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(user.Cmd)
+
+	flags := Cmd.PersistentFlags()
+	interactive.AddFlag(flags)
 }

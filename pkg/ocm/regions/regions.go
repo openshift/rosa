@@ -14,28 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package versions
+package regions
 
 import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func GetVersions(client *cmv1.Client) (versions []*cmv1.Version, err error) {
-	collection := client.Versions()
+func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
+	collection := client.CloudProviders().CloudProvider("aws").Regions()
 	page := 1
 	size := 100
 	for {
-		var response *cmv1.VersionsListResponse
+		var response *cmv1.CloudRegionsListResponse
 		response, err = collection.List().
-			Search("enabled = 'true'").
-			Order("default desc, id asc").
 			Page(page).
 			Size(size).
 			Send()
 		if err != nil {
 			return
 		}
-		versions = append(versions, response.Items().Slice()...)
+		regions = append(regions, response.Items().Slice()...)
 		if response.Size() < size {
 			break
 		}
