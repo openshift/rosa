@@ -22,10 +22,12 @@ import (
 	"os"
 	"time"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
+	"github.com/openshift/moactl/pkg/interactive"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -56,7 +58,10 @@ var Cmd = &cobra.Command{
   moactl edit cluster mycluster --private
 
   # Enable the cluster-admins group using the --cluster flag
-  moactl edit cluster --cluster=mycluster --enable-cluster-admins`,
+  moactl edit cluster --cluster=mycluster --enable-cluster-admins
+
+  # Edit all options interactively
+  moactl edit cluster -c mycluster --interactive`,
 	Run: run,
 }
 
@@ -85,6 +90,9 @@ func init() {
 		0,
 		"Expire cluster after a relative duration like 2h, 8h, 72h. Only one of expiration-time / expiration may be used.",
 	)
+	// Cluster expiration is not supported in production
+	flags.MarkHidden("expiration-time")
+	flags.MarkHidden("expiration")
 
 	// Scaling options
 	flags.IntVar(
@@ -172,6 +180,13 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := clusterprovider.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
+	if err != nil {
+		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
 	// Validate flags:
 	expiration, err := validateExpiration()
 	if err != nil {
@@ -179,19 +194,77 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if interactive.Enabled() {
+		reporter.Infof("Interactive mode enabled.\n" +
+			"Any optional fields can be ignored and will not be updated.")
+	}
+
 	var private *bool
+	var privateValue bool
 	if cmd.Flags().Changed("private") {
-		private = &args.private
+		privateValue = args.private
+		private = &privateValue
+	} else if interactive.Enabled() {
+		privateValue = cluster.API().Listening() == cmv1.ListeningMethodInternal
+	}
+
+	if interactive.Enabled() {
+		privateValue, err = interactive.GetBool(interactive.Input{
+			Question: "Private cluster",
+			Help:     cmd.Flags().Lookup("private").Usage,
+			Default:  privateValue,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid private value: %s", err)
+			os.Exit(1)
+		}
+		private = &privateValue
 	}
 
 	var clusterAdmins *bool
+	var clusterAdminsValue bool
 	if cmd.Flags().Changed("enable-cluster-admins") {
-		clusterAdmins = &args.clusterAdmins
+		clusterAdminsValue = args.clusterAdmins
+		clusterAdmins = &clusterAdminsValue
+	} else if interactive.Enabled() {
+		clusterAdminsValue = cluster.ClusterAdminEnabled()
+	}
+
+	if interactive.Enabled() {
+		clusterAdminsValue, err = interactive.GetBool(interactive.Input{
+			Question: "Enable cluster admins",
+			Help:     cmd.Flags().Lookup("enable-cluster-admins").Usage,
+			Default:  clusterAdminsValue,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid cluster-admins value: %s", err)
+			os.Exit(1)
+		}
+		clusterAdmins = &clusterAdminsValue
+	}
+
+	var computeNodes int
+	if cmd.Flags().Changed("compute-nodes") {
+		computeNodes = args.computeNodes
+	} else if interactive.Enabled() {
+		computeNodes = cluster.Nodes().Compute()
+	}
+
+	if interactive.Enabled() {
+		computeNodes, err = interactive.GetInt(interactive.Input{
+			Question: "Compute nodes",
+			Help:     cmd.Flags().Lookup("compute-nodes").Usage,
+			Default:  computeNodes,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid number of compute nodes: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	clusterConfig := clusterprovider.Spec{
 		Expiration:    expiration,
-		ComputeNodes:  args.computeNodes,
+		ComputeNodes:  computeNodes,
 		Private:       private,
 		ClusterAdmins: clusterAdmins,
 	}
