@@ -17,36 +17,166 @@ limitations under the License.
 package interactive
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
-	"syscall"
+	"net"
+	"strconv"
 
-	"golang.org/x/crypto/ssh/terminal"
+	"github.com/AlecAivazis/survey/v2"
 )
 
-const inputPrefix = "\033[0;36m?\033[m "
+type Input struct {
+	Question string
+	Help     string
+	Options  []string
+	Default  interface{}
+	Required bool
+}
 
 // Gets user input from the command line
 func GetInput(q string) (a string, err error) {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("%s%s: ", inputPrefix, q)
-	text, err := reader.ReadString('\n')
-	if err != nil {
-		return
+	prompt := &survey.Input{
+		Message: fmt.Sprintf("%s:", q),
 	}
-	a = strings.Trim(text, "\n")
+	survey.AskOne(prompt, &a)
 	return
 }
 
-func GetPassword(q string) (a string, err error) {
-	fmt.Printf("%s%s: ", inputPrefix, q)
-	text, err := terminal.ReadPassword(syscall.Stdin)
-	fmt.Println("")
+// Gets string input from the command line
+func GetString(input Input) (a string, err error) {
+	dflt, ok := input.Default.(string)
+	if !ok {
+		dflt = ""
+	}
+	prompt := &survey.Input{
+		Message: fmt.Sprintf("%s:", input.Question),
+		Help:    input.Help,
+		Default: dflt,
+	}
+	if input.Required {
+		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
+		return
+	}
+	err = survey.AskOne(prompt, &a)
+	return
+}
+
+// Gets int number input from the command line
+func GetInt(input Input) (a int, err error) {
+	dflt, ok := input.Default.(int)
+	if !ok {
+		dflt = 0
+	}
+	dfltStr := fmt.Sprintf("%d", dflt)
+	if dfltStr == "0" {
+		dfltStr = ""
+	}
+	prompt := &survey.Input{
+		Message: fmt.Sprintf("%s:", input.Question),
+		Help:    input.Help,
+		Default: dfltStr,
+	}
+	if input.Required {
+		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
+		return
+	}
+	var str string
+	err = survey.AskOne(prompt, &str)
 	if err != nil {
 		return
 	}
-	a = string(text)
+	if str == "" {
+		return
+	}
+	return parseInt(str)
+}
+
+func parseInt(str string) (num int, err error) {
+	return strconv.Atoi(str)
+}
+
+// Asks for option selection in the command line
+func GetOption(input Input) (a string, err error) {
+	dflt, ok := input.Default.(string)
+	if !ok {
+		dflt = ""
+	}
+	prompt := &survey.Select{
+		Message: fmt.Sprintf("%s:", input.Question),
+		Help:    input.Help,
+		Options: input.Options,
+		Default: dflt,
+	}
+	if input.Required {
+		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
+		return
+	}
+	err = survey.AskOne(prompt, &a)
+	return
+}
+
+// Asks for true/false value in the command line
+func GetBool(input Input) (a bool, err error) {
+	dflt, ok := input.Default.(bool)
+	if !ok {
+		dflt = false
+	}
+	prompt := &survey.Confirm{
+		Message: fmt.Sprintf("%s:", input.Question),
+		Help:    input.Help,
+		Default: dflt,
+	}
+	if input.Required {
+		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
+		return
+	}
+	err = survey.AskOne(prompt, &a)
+	return
+}
+
+// Asks for CIDR value in the command line
+func GetIPNet(input Input) (a net.IPNet, err error) {
+	dflt, ok := input.Default.(net.IPNet)
+	if !ok {
+		dflt = net.IPNet{}
+	}
+	dfltStr := dflt.String()
+	if dfltStr == "<nil>" {
+		dfltStr = ""
+	}
+	prompt := &survey.Input{
+		Message: fmt.Sprintf("%s:", input.Question),
+		Help:    input.Help,
+		Default: dfltStr,
+	}
+	if input.Required {
+		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
+		return
+	}
+	var str string
+	err = survey.AskOne(prompt, &str)
+	if err != nil {
+		return
+	}
+
+	if str == "" {
+		return
+	}
+	_, cidr, err := net.ParseCIDR(str)
+	if err != nil {
+		return
+	}
+	if cidr != nil {
+		a = *cidr
+	}
+	return
+}
+
+// Gets password input from the command line
+func GetPassword(input Input) (a string, err error) {
+	prompt := &survey.Password{
+		Message: fmt.Sprintf("%s:", input.Question),
+		Help:    input.Help,
+	}
+	err = survey.AskOne(prompt, &a)
 	return
 }

@@ -9,7 +9,8 @@ Create a resource from stdin
 ### Options
 
 ```
-  -h, --help   help for create
+  -h, --help          help for create
+  -i, --interactive   Enable interactive mode.
 ```
 
 ### Options inherited from parent commands

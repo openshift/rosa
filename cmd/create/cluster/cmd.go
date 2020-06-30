@@ -26,7 +26,6 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
@@ -34,6 +33,7 @@ import (
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	"github.com/openshift/moactl/pkg/ocm/machines"
+	"github.com/openshift/moactl/pkg/ocm/regions"
 	"github.com/openshift/moactl/pkg/ocm/versions"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
@@ -114,6 +114,9 @@ func init() {
 		0,
 		"Expire cluster after a relative duration like 2h, 8h, 72h. Only one of expiration-time / expiration may be used.\n",
 	)
+	// Cluster expiration is not supported in production
+	flags.MarkHidden("expiration-time")
+	flags.MarkHidden("expiration")
 
 	// Scaling options
 	flags.StringVar(
@@ -166,31 +169,7 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
-	// Get cluster name
-	name := args.name
 	var err error
-	if name == "" {
-		name, err = interactive.GetInput("Cluster name")
-		if err != nil {
-			reporter.Errorf("Expected a valid cluster name")
-			os.Exit(1)
-		}
-	}
-
-	// Get AWS region
-	region, err := aws.GetRegion(args.region)
-	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
-	}
-	if region == "" {
-		region, err = interactive.GetInput("AWS region")
-		if err != nil {
-			reporter.Errorf("Expected a valid AWS region: %v", err)
-			os.Exit(1)
-		}
-	}
 
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().
@@ -208,41 +187,227 @@ func run(cmd *cobra.Command, _ []string) {
 	}()
 	ocmClient := ocmConnection.ClustersMgmt().V1()
 
-	// Validate all remaining flags:
-	version, err := validateVersion(ocmClient)
+	if interactive.Enabled() {
+		reporter.Infof("Interactive mode enabled.\n" +
+			"Any optional fields can be left empty and a default will be selected.")
+	}
+
+	// Get cluster name
+	name := args.name
+	if interactive.Enabled() {
+		name, err = interactive.GetString(interactive.Input{
+			Question: "Cluster name",
+			Help:     cmd.Flags().Lookup("name").Usage,
+			Default:  name,
+			Required: true,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid cluster name: %s", err)
+			os.Exit(1)
+		}
+	}
+	if !clusterprovider.IsValidClusterKey(name) {
+		reporter.Errorf("Expected a valid cluster name")
+		os.Exit(1)
+	}
+
+	// Get AWS region
+	region, err := aws.GetRegion(args.region)
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+	regionList, err := getRegionList(ocmClient)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
+	if interactive.Enabled() {
+		region, err = interactive.GetOption(interactive.Input{
+			Question: "AWS region",
+			Help:     cmd.Flags().Lookup("region").Usage,
+			Options:  regionList,
+			Default:  region,
+			Required: true,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid AWS region: %s", err)
+			os.Exit(1)
+		}
+	}
+	if region == "" {
+		reporter.Errorf("Expected a valid AWS region")
+		os.Exit(1)
+	}
+
+	// OpenShift version:
+	version := args.version
+	versionList, err := getVersionList(ocmClient)
+	if err != nil {
+		reporter.Errorf(fmt.Sprintf("%s", err))
+		os.Exit(1)
+	}
+	if interactive.Enabled() {
+		version, err = interactive.GetOption(interactive.Input{
+			Question: "OpenShift version",
+			Help:     cmd.Flags().Lookup("version").Usage,
+			Options:  versionList,
+			Default:  version,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid OpenShift version: %s", err)
+			os.Exit(1)
+		}
+	}
+	version, err = validateVersion(version, versionList)
+	if err != nil {
+		reporter.Errorf("Expected a valid OpenShift version: %s", err)
+		os.Exit(1)
+	}
+
+	// Multi-AZ:
+	multiAZ := args.multiAZ
+	if interactive.Enabled() {
+		multiAZ, err = interactive.GetBool(interactive.Input{
+			Question: "Multiple availability zones",
+			Help:     cmd.Flags().Lookup("multi-az").Usage,
+			Default:  multiAZ,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid multi-AZ value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Compute node instance type:
+	computeMachineType := args.computeMachineType
+	computeMachineTypeList, err := getMachineTypeList(ocmClient)
+	if err != nil {
+		reporter.Errorf(fmt.Sprintf("%s", err))
+		os.Exit(1)
+	}
+	if interactive.Enabled() {
+		computeMachineType, err = interactive.GetOption(interactive.Input{
+			Question: "Compute nodes instance type",
+			Help:     cmd.Flags().Lookup("compute-machine-type").Usage,
+			Options:  computeMachineTypeList,
+			Default:  computeMachineType,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid machine type: %s", err)
+			os.Exit(1)
+		}
+	}
+	computeMachineType, err = validateMachineType(computeMachineType, computeMachineTypeList)
+	if err != nil {
+		reporter.Errorf("Expected a valid machine type: %s", err)
+		os.Exit(1)
+	}
+
+	// Compute nodes:
+	computeNodes := args.computeNodes
+	if interactive.Enabled() {
+		computeNodes, err = interactive.GetInt(interactive.Input{
+			Question: "Compute nodes",
+			Help:     cmd.Flags().Lookup("compute-nodes").Usage,
+			Default:  computeNodes,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid number of compute nodes: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Validate all remaining flags:
 	expiration, err := validateExpiration()
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
-	computeMachineType, err := validateMachineType(ocmClient)
-	if err != nil {
-		reporter.Errorf(fmt.Sprintf("%s", err))
-		os.Exit(1)
+
+	// Machine CIDR:
+	machineCIDR := args.machineCIDR
+	if interactive.Enabled() {
+		machineCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Machine CIDR",
+			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
+			Default:  machineCIDR,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
 	}
 
-	var private *bool
-	if cmd.Flags().Changed("private") {
-		private = &args.private
+	// Service CIDR:
+	serviceCIDR := args.serviceCIDR
+	if interactive.Enabled() {
+		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Service CIDR",
+			Help:     cmd.Flags().Lookup("service-cidr").Usage,
+			Default:  serviceCIDR,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Pod CIDR:
+	podCIDR := args.podCIDR
+	if interactive.Enabled() {
+		podCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Pod CIDR",
+			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
+			Default:  podCIDR,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Host prefix:
+	hostPrefix := args.hostPrefix
+	if interactive.Enabled() {
+		hostPrefix, err = interactive.GetInt(interactive.Input{
+			Question: "Host prefix",
+			Help:     cmd.Flags().Lookup("host-prefix").Usage,
+			Default:  hostPrefix,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid host prefix value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Cluster privacy:
+	private := args.private
+	if interactive.Enabled() {
+		private, err = interactive.GetBool(interactive.Input{
+			Question: "Private cluster",
+			Help:     cmd.Flags().Lookup("private").Usage,
+			Default:  private,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid private value: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	clusterConfig := clusterprovider.Spec{
 		Name:               name,
 		Region:             region,
-		MultiAZ:            args.multiAZ,
+		MultiAZ:            multiAZ,
 		Version:            version,
 		Expiration:         expiration,
 		ComputeMachineType: computeMachineType,
-		ComputeNodes:       args.computeNodes,
-		MachineCIDR:        args.machineCIDR,
-		ServiceCIDR:        args.serviceCIDR,
-		PodCIDR:            args.podCIDR,
-		HostPrefix:         args.hostPrefix,
-		Private:            private,
+		ComputeNodes:       computeNodes,
+		MachineCIDR:        machineCIDR,
+		ServiceCIDR:        serviceCIDR,
+		PodCIDR:            podCIDR,
+		HostPrefix:         hostPrefix,
+		Private:            &private,
 	}
 
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
@@ -267,29 +432,37 @@ func run(cmd *cobra.Command, _ []string) {
 	)
 }
 
-func validateVersion(client *cmv1.Client) (version string, err error) {
-	// Validate OpenShift versions
-	version = args.version
+// Validate OpenShift versions
+func validateVersion(version string, versionList []string) (string, error) {
 	if version != "" {
-		versionList := sets.NewString()
-		versions, err := versions.GetVersions(client)
-		if err != nil {
-			err = fmt.Errorf("Failed to retrieve versions: %s", err)
-			return version, err
-		}
-
-		for _, v := range versions {
-			versionList.Insert(v.ID())
-		}
-
 		// Check and set the cluster version
-		if !versionList.Has("openshift-v" + version) {
-			allVersions := strings.ReplaceAll(strings.Join(versionList.List(), " "), "openshift-v", "")
-			err = fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
+		hasVersion := false
+		for _, v := range versionList {
+			if v == version {
+				hasVersion = true
+			}
+		}
+		if !hasVersion {
+			allVersions := strings.Join(versionList, " ")
+			err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
 			return version, err
 		}
 
 		version = "openshift-v" + version
+	}
+
+	return version, nil
+}
+
+func getVersionList(client *cmv1.Client) (versionList []string, err error) {
+	versions, err := versions.GetVersions(client)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve versions: %s", err)
+		return
+	}
+
+	for _, v := range versions {
+		versionList = append(versionList, strings.Replace(v.ID(), "openshift-v", "", 1))
 	}
 
 	return
@@ -320,26 +493,49 @@ func validateExpiration() (expiration time.Time, err error) {
 	return
 }
 
-func validateMachineType(client *cmv1.Client) (machineType string, err error) {
-	// Validate AWS machine types
-	machineType = args.computeMachineType
+// Validate AWS machine types
+func validateMachineType(machineType string, machineTypeList []string) (string, error) {
 	if machineType != "" {
-		machineTypeList := sets.NewString()
-		machineTypes, err := machines.GetMachineTypes(client)
-		if err != nil {
-			err = fmt.Errorf("Failed to retrieve machine types: %s", err)
-			return machineType, err
-		}
-
-		for _, v := range machineTypes {
-			machineTypeList.Insert(v.ID())
-		}
-
 		// Check and set the cluster machineType
-		if !machineTypeList.Has(machineType) {
-			err = fmt.Errorf("A valid machine type must be specified\nValid types: %s", machineTypeList.List())
+		hasMachineType := false
+		for _, v := range machineTypeList {
+			if v == machineType {
+				hasMachineType = true
+			}
+		}
+		if !hasMachineType {
+			allMachineTypes := strings.Join(machineTypeList, " ")
+			err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
 			return machineType, err
 		}
+	}
+
+	return machineType, nil
+}
+
+func getMachineTypeList(client *cmv1.Client) (machineTypeList []string, err error) {
+	machineTypes, err := machines.GetMachineTypes(client)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve machine types: %s", err)
+		return
+	}
+
+	for _, v := range machineTypes {
+		machineTypeList = append(machineTypeList, v.ID())
+	}
+
+	return
+}
+
+func getRegionList(client *cmv1.Client) (regionList []string, err error) {
+	regions, err := regions.GetRegions(client)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
+		return
+	}
+
+	for _, v := range regions {
+		regionList = append(regionList, v.ID())
 	}
 
 	return

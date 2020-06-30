@@ -27,9 +27,6 @@ moactl create cluster [flags]
   -r, --region string                 AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)
       --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
       --multi-az                      Deploy to multiple data centers.
-      --expiration-time string        Specific time when cluster should expire (RFC3339). Only one of expiration-time / expiration may be used.
-      --expiration duration           Expire cluster after a relative duration like 2h, 8h, 72h. Only one of expiration-time / expiration may be used.
-                                      
       --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
       --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.
                                       
@@ -44,8 +41,9 @@ moactl create cluster [flags]
 ### Options inherited from parent commands
 
 ```
-      --debug     Enable debug mode.
-  -v, --v Level   log level for V logs
+      --debug         Enable debug mode.
+  -i, --interactive   Enable interactive mode.
+  -v, --v Level       log level for V logs
 ```
 
 ### SEE ALSO

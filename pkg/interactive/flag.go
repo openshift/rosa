@@ -14,32 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package versions
+// This file contains functions used to implement the '--interactive' command line option.
+
+package interactive
 
 import (
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/pflag"
 )
 
-func GetVersions(client *cmv1.Client) (versions []*cmv1.Version, err error) {
-	collection := client.Versions()
-	page := 1
-	size := 100
-	for {
-		var response *cmv1.VersionsListResponse
-		response, err = collection.List().
-			Search("enabled = 'true'").
-			Order("default desc, id asc").
-			Page(page).
-			Size(size).
-			Send()
-		if err != nil {
-			return
-		}
-		versions = append(versions, response.Items().Slice()...)
-		if response.Size() < size {
-			break
-		}
-		page++
-	}
-	return
+// AddFlag adds the interactive flag to the given set of command line flags.
+func AddFlag(flags *pflag.FlagSet) {
+	flags.BoolVarP(
+		&enabled,
+		"interactive",
+		"i",
+		false,
+		"Enable interactive mode.",
+	)
 }
+
+// Enabled retursn a boolean flag that indicates if the interactive mode is enabled.
+func Enabled() bool {
+	return enabled
+}
+
+// enabled is a boolean flag that indicates that the interactive mode is enabled.
+var enabled bool
