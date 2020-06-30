@@ -29,11 +29,12 @@ import (
 var Cmd = &cobra.Command{
 	Use:   "quota",
 	Short: "Verify AWS quota is ok for cluster install",
-	Long:  "Verify AWS quota is ok for cluster install",
-	Example: `  # Verify resources needed to create a cluster are configured as expected
+	Long:  "Verify AWS quota needed to create a cluster is configured as expected",
+	Example: `  # Verify AWS quotas are configured correctly
+  moactl verify quota
 
-  # Verify AWS quotas are configured correctly
-  moactl verify quota`,
+  # Verify AWS quotas in a different region
+  moactl verify quota --region=us-west-2`,
 	Run: run,
 }
 
@@ -41,9 +42,17 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
+	// Get AWS region
+	region, err := aws.GetRegion(cmd.Flags().Lookup("region").Value.String())
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+
 	// Create the AWS client:
 	client, err := aws.NewClient().
 		Logger(logger).
+		Region(region).
 		Build()
 	if err != nil {
 		reporter.Errorf("Error creating AWS client: %v", err)

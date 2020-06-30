@@ -29,11 +29,12 @@ import (
 var Cmd = &cobra.Command{
 	Use:   "permissions",
 	Short: "Verify AWS permissions are ok for cluster install",
-	Long:  "Verify AWS permissions are ok for cluster install",
-	Example: `  # Verify resources needed to create a cluster are configured as expected
+	Long:  "Verify AWS permissions needed to create a cluster are configured as expected",
+	Example: `  # Verify AWS permissions are configured correctly
+  moactl verify permissions
 
-  # Verify AWS permissions are configured correctly
-  moactl verify permissions`,
+  # Verify AWS permissions in a different region
+  moactl verify permissions --region=us-west-2`,
 	Run: run,
 }
 
@@ -41,9 +42,17 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
+	// Get AWS region
+	region, err := aws.GetRegion(cmd.Flags().Lookup("region").Value.String())
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+
 	// Create the AWS client:
 	client, err := aws.NewClient().
 		Logger(logger).
+		Region(region).
 		Build()
 	if err != nil {
 		reporter.Errorf("Error creating AWS client: %v", err)
