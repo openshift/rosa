@@ -23,41 +23,71 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildGithubIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
-	clientID := args.clientID
-	clientSecret := args.clientSecret
+func buildGithubIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	organizations := args.githubOrganizations
 	teams := args.githubTeams
-	teamsOrOrgs := ""
 
 	if organizations != "" && teams != "" {
 		return idpBuilder, errors.New("GitHub IDP only allows either organizations or teams, but not both")
 	}
 
-	isInteractive := clientID == "" || clientSecret == "" || (organizations == "" && teams == "")
+	var restrictType string
+	if organizations != "" {
+		restrictType = "organizations"
+	}
+	if teams != "" {
+		restrictType = "teams"
+	}
 
-	if isInteractive {
-		fmt.Println("To use GitHub as an identity provider, you must first register the application:")
+	if interactive.Enabled() && restrictType == "" {
+		restrictType, err = interactive.GetOption(interactive.Input{
+			Question: "Restrict to members of",
+			Help:     "GitHub authentication lets you use either GitHub organizations or GitHub teams to restrict access.",
+			Options:  []string{"organizations", "teams"},
+			Default:  "organizations",
+			Required: true,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid option: %s", err)
+		}
+	}
 
-		if organizations == "" && teams == "" {
-			teamsOrOrgs, err = interactive.GetInput("List of GitHub organizations or teams " +
-				"that will have access to this cluster")
+	if interactive.Enabled() {
+		if restrictType == "organizations" {
+			organizations, err = interactive.GetString(interactive.Input{
+				Question: "GitHub organizations",
+				Help:     cmd.Flags().Lookup("organizations").Usage,
+				Default:  organizations,
+				Required: true,
+			})
 			if err != nil {
-				return idpBuilder, errors.New("Expected a GitHub organization or team name")
+				return idpBuilder, fmt.Errorf("Expected a valid GitHub organization: %s", err)
+			}
+		} else if restrictType == "teams" {
+			teams, err = interactive.GetString(interactive.Input{
+				Question: "GitHub teams",
+				Help:     cmd.Flags().Lookup("teams").Usage,
+				Default:  teams,
+				Required: true,
+			})
+			if err != nil {
+				return idpBuilder, fmt.Errorf("Expected a valid GitHub organization: %s", err)
 			}
 		}
+	}
 
-		// Determine if the user entered teams or organizations
-		if strings.Contains(teamsOrOrgs, "/") {
-			teams = teamsOrOrgs
-		} else {
-			organizations = teamsOrOrgs
-		}
+	if organizations == "" && teams == "" {
+		return idpBuilder, errors.New("GitHub IdP requires either organizations or teams")
+	}
 
+	clientID := args.clientID
+	clientSecret := args.clientSecret
+	if interactive.Enabled() || clientID == "" || clientSecret == "" {
 		// Create the full URL to automatically generate the GitHub app info
 		registerURLBase := "https://github.com/settings/applications/new"
 
@@ -84,18 +114,34 @@ func buildGithubIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 
 		registerURL.RawQuery = urlParams.Encode()
 
-		fmt.Println("* Open the following URL:", registerURL.String())
-		fmt.Println("* Click on 'Register application'")
+		err = interactive.PrintHelp(interactive.Help{
+			Message: "To use GitHub as an identity provider, you must first register the application:",
+			Steps: []string{
+				fmt.Sprintf("Open the following URL: %s", registerURL.String()),
+				"Click on 'Register application'",
+			},
+		})
+		if err != nil {
+			return idpBuilder, err
+		}
 
 		if clientID == "" {
-			clientID, err = interactive.GetInput("Copy the Client ID provided by GitHub")
+			clientID, err = interactive.GetPassword(interactive.Input{
+				Question: "Client ID",
+				Help:     "Paste the Client ID provided by GitHub when registering your application.",
+				Required: true,
+			})
 			if err != nil {
 				return idpBuilder, errors.New("Expected a GitHub application Client ID")
 			}
 		}
 
 		if clientSecret == "" {
-			clientSecret, err = interactive.GetInput("Copy the Client Secret provided by GitHub")
+			clientSecret, err = interactive.GetPassword(interactive.Input{
+				Question: "Client Secret",
+				Help:     "Paste the Client Secret provided by GitHub when registering your application.",
+				Required: true,
+			})
 			if err != nil {
 				return idpBuilder, errors.New("Expected a GitHub application Client Secret")
 			}
@@ -107,13 +153,35 @@ func buildGithubIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 		ClientID(clientID).
 		ClientSecret(clientSecret)
 
-	if args.githubHostname != "" {
-		_, err = url.ParseRequestURI(args.githubHostname)
+	githubHostname := args.githubHostname
+	if interactive.Enabled() {
+		githubHostname, err = interactive.GetString(interactive.Input{
+			Question: "Hostname",
+			Help:     cmd.Flags().Lookup("hostname").Usage,
+			Default:  githubHostname,
+		})
 		if err != nil {
-			return idpBuilder, fmt.Errorf("Expected a valid Hostname: %v", err)
+			return idpBuilder, fmt.Errorf("Expected a valid Hostname: %s", err)
+		}
+	}
+	if githubHostname != "" {
+		_, err = url.ParseRequestURI(githubHostname)
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid Hostname: %s", err)
 		}
 		// Set the hostname, if any
-		githubIDP = githubIDP.Hostname(args.githubHostname)
+		githubIDP = githubIDP.Hostname(githubHostname)
+	}
+
+	mappingMethod := args.mappingMethod
+	if interactive.Enabled() {
+		mappingMethod, err = interactive.GetOption(interactive.Input{
+			Question: "Mapping method",
+			Help:     cmd.Flags().Lookup("mapping-method").Usage,
+			Options:  []string{"add", "claim", "generate", "lookup"},
+			Default:  mappingMethod,
+			Required: true,
+		})
 	}
 
 	// Set organizations or teams in the IDP object
@@ -127,7 +195,7 @@ func buildGithubIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 	idpBuilder.
 		Type("GithubIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
 		Name(idpName).
-		MappingMethod(cmv1.IdentityProviderMappingMethod(args.mappingMethod)).
+		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		Github(githubIDP)
 
 	return

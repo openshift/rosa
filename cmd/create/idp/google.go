@@ -23,56 +23,81 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildGoogleIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
+func buildGoogleIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	clientID := args.clientID
 	clientSecret := args.clientSecret
-	hostedDomain := args.googleHostedDomain
-
-	isInteractive := clientID == "" ||
-		clientSecret == "" ||
-		(args.mappingMethod != "lookup" && hostedDomain == "")
-
-	if isInteractive {
-		fmt.Println("To use Google as an identity provider, you must first register the application:")
+	if interactive.Enabled() || clientID == "" || clientSecret == "" {
 		instructionsURL := "https://console.developers.google.com/projectcreate"
-		fmt.Println("* Open the following URL:", instructionsURL)
-		fmt.Println("* Follow the instructions to register your application")
-
 		consoleURL := cluster.Console().URL()
 		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
-		fmt.Println("* When creating the OAuth client ID, use the following URL for the Authorized redirect URI: ",
-			oauthURL+"/oauth2callback/"+idpName)
+		err = interactive.PrintHelp(interactive.Help{
+			Message: "To use Google as an identity provider, you must first register the application:",
+			Steps: []string{
+				fmt.Sprintf("Open the following URL: %s", instructionsURL),
+				"Follow the instructions to register your application",
+				fmt.Sprintf("When creating the OAuth client ID, use the following URL for the Authorized redirect URI: %s/oauth2callback/%s", oauthURL, idpName),
+			},
+		})
+		if err != nil {
+			return idpBuilder, err
+		}
 
 		if clientID == "" {
-			clientID, err = interactive.GetInput("Copy the Client ID provided by Google")
+			clientID, err = interactive.GetPassword(interactive.Input{
+				Question: "Client ID",
+				Help:     "Paste the Client ID provided by Google when registering your application.",
+				Required: true,
+			})
 			if err != nil {
 				return idpBuilder, errors.New("Expected a Google application Client ID")
 			}
 		}
 
 		if clientSecret == "" {
-			clientSecret, err = interactive.GetInput("Copy the Client Secret provided by Google")
+			clientSecret, err = interactive.GetPassword(interactive.Input{
+				Question: "Client Secret",
+				Help:     "Paste the Client Secret provided by Google when registering your application.",
+				Required: true,
+			})
 			if err != nil {
 				return idpBuilder, errors.New("Expected a Google application Client Secret")
 			}
 		}
+	}
 
-		if args.mappingMethod != "lookup" && hostedDomain == "" {
-			hostedDomain, err = interactive.GetInput("Hosted Domain to restrict users")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a valid Hosted Domain")
-			}
-		}
+	mappingMethod := args.mappingMethod
+	if interactive.Enabled() {
+		mappingMethod, err = interactive.GetOption(interactive.Input{
+			Question: "Mapping method",
+			Help:     cmd.Flags().Lookup("mapping-method").Usage,
+			Options:  []string{"add", "claim", "generate", "lookup"},
+			Default:  mappingMethod,
+			Required: true,
+		})
 	}
 
 	// Create Google IDP
 	googleIDP := cmv1.NewGoogleIdentityProvider().
 		ClientID(clientID).
 		ClientSecret(clientSecret)
+
+	hostedDomain := args.googleHostedDomain
+	if interactive.Enabled() {
+		hostedDomain, err = interactive.GetString(interactive.Input{
+			Question: "Hosted domain",
+			Help:     cmd.Flags().Lookup("hosted-domain").Usage,
+			Default:  hostedDomain,
+			Required: mappingMethod != "lookup",
+		})
+		if err != nil {
+			return idpBuilder, errors.New("Expected a valid Hosted Domain")
+		}
+	}
 
 	if hostedDomain != "" {
 		_, err = url.ParseRequestURI(hostedDomain)
@@ -87,7 +112,7 @@ func buildGoogleIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 	idpBuilder.
 		Type("GoogleIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
 		Name(idpName).
-		MappingMethod(cmv1.IdentityProviderMappingMethod(args.mappingMethod)).
+		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		Google(googleIDP)
 
 	return

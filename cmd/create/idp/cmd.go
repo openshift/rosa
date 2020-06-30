@@ -65,6 +65,7 @@ var args struct {
 	openidUsername  string
 }
 
+// TODO: Add gitlab
 var validIdps []string = []string{"github", "google", "ldap", "openid"}
 
 var Cmd = &cobra.Command{
@@ -75,7 +76,7 @@ var Cmd = &cobra.Command{
   moactl create idp --type=github --cluster=mycluster
 
   # Add an identity provider following interactive prompts
-  moactl create idp --cluster=mycluster`,
+  moactl create idp --cluster=mycluster --interactive`,
 	Run: run,
 }
 
@@ -220,7 +221,7 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
@@ -270,7 +271,7 @@ func run(_ *cobra.Command, _ []string) {
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	// Try to find the cluster:
-	reporter.Infof("Loading cluster '%s'", clusterKey)
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
@@ -283,22 +284,38 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Load any existing IDPs for this cluster
-	reporter.Infof("Loading identity providers for cluster '%s'", clusterKey)
+	reporter.Debugf("Loading identity providers for cluster '%s'", clusterKey)
 	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
+	if interactive.Enabled() {
+		reporter.Infof("Interactive mode enabled.\n" +
+			"Any optional fields can be left empty and a default will be selected.")
+	}
+
 	// Grab all the IDP information interactively if necessary
 	idpType := args.idpType
-
-	if idpType == "" {
-		idpType, err = interactive.GetInput(fmt.Sprintf("Type of identity provider. Options are %s", validIdps))
+	if interactive.Enabled() {
+		if idpType == "" {
+			idpType = validIdps[0]
+		}
+		idpType, err = interactive.GetOption(interactive.Input{
+			Question: "Type of identity provider",
+			Options:  validIdps,
+			Required: true,
+			Default:  idpType,
+		})
 		if err != nil {
-			reporter.Errorf("Expected a valid IDP type. Options are %s", validIdps)
+			reporter.Errorf("Expected a valid IdP type: %s", err)
 			os.Exit(1)
 		}
+	}
+	if idpType == "" {
+		reporter.Errorf("Expected a valid IDP type. Options are: %s", strings.Join(validIdps, ","))
+		os.Exit(1)
 	}
 
 	if idpType != "" {
@@ -318,12 +335,14 @@ func run(_ *cobra.Command, _ []string) {
 	idpName := getNextName(idpType, idps)
 	switch idpType {
 	case "github":
-		idpBuilder, err = buildGithubIdp(cluster, idpName)
+		idpBuilder, err = buildGithubIdp(cmd, cluster, idpName)
 	case "google":
-		idpBuilder, err = buildGoogleIdp(cluster, idpName)
+		idpBuilder, err = buildGoogleIdp(cmd, cluster, idpName)
 	case "ldap":
+		// TODO: port to new interactive mode
 		idpBuilder, err = buildLdapIdp(cluster, idpName)
 	case "openid":
+		// TODO: port to new interactive mode
 		idpBuilder, err = buildOpenidIdp(cluster, idpName)
 	}
 	if err != nil {
