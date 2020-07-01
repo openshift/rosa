@@ -28,7 +28,9 @@ import (
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildGithubIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
+func buildGithubIdp(cmd *cobra.Command,
+	cluster *cmv1.Cluster,
+	idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	organizations := args.githubOrganizations
 	teams := args.githubTeams
 
@@ -117,7 +119,8 @@ func buildGithubIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use GitHub as an identity provider, you must first register the application:",
 			Steps: []string{
-				fmt.Sprintf("Open the following URL: %s", registerURL.String()),
+				fmt.Sprintf(`Open the following URL:
+    %s`, registerURL.String()),
 				"Click on 'Register application'",
 			},
 		})

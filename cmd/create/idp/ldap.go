@@ -28,7 +28,9 @@ import (
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildLdapIdp(cmd *cobra.Command, _ *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
+func buildLdapIdp(cmd *cobra.Command,
+	_ *cmv1.Cluster,
+	idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	ldapURL := args.ldapURL
 	ldapIDs := args.ldapIDs
 
@@ -38,7 +40,8 @@ func buildLdapIdp(cmd *cobra.Command, _ *cmv1.Cluster, idpName string) (idpBuild
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use LDAP as an identity provider, you must first register the application:",
 			Steps: []string{
-				fmt.Sprintf("Open the following URL: %s", instructionsURL),
+				fmt.Sprintf(`Open the following URL:
+    %s`, instructionsURL),
 				"Follow the instructions to register your application",
 			},
 		})
