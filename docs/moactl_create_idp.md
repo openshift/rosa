@@ -17,7 +17,7 @@ moactl create idp [flags]
   moactl create idp --type=github --cluster=mycluster
 
   # Add an identity provider following interactive prompts
-  moactl create idp --cluster=mycluster
+  moactl create idp --cluster=mycluster --interactive
 ```
 
 ### Options

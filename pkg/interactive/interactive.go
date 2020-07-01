@@ -19,9 +19,12 @@ package interactive
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/terminal"
 )
 
 type Input struct {
@@ -177,6 +180,28 @@ func GetPassword(input Input) (a string, err error) {
 		Message: fmt.Sprintf("%s:", input.Question),
 		Help:    input.Help,
 	}
+	if input.Required {
+		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
+		return
+	}
 	err = survey.AskOne(prompt, &a)
 	return
+}
+
+var helpTemplate = `{{color "cyan"}}? {{.Message}}
+{{range .Steps}}  - {{.}}{{"\n"}}{{end}}{{color "reset"}}`
+
+type Help struct {
+	Message string
+	Steps   []string
+}
+
+func PrintHelp(help Help) error {
+	out, err := core.RunTemplate(helpTemplate, help)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprint(terminal.NewAnsiStdout(os.Stdout), out)
+	return nil
 }
