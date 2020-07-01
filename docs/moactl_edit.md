@@ -9,7 +9,8 @@ Edit a specific resource
 ### Options
 
 ```
-  -h, --help   help for edit
+  -h, --help          help for edit
+  -i, --interactive   Enable interactive mode.
 ```
 
 ### Options inherited from parent commands
