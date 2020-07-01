@@ -23,38 +23,41 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildLdapIdp(_ *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
+func buildLdapIdp(cmd *cobra.Command, _ *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	ldapURL := args.ldapURL
 	ldapIDs := args.ldapIDs
 
-	isInteractive := ldapURL == "" || ldapIDs == ""
-
-	if isInteractive {
-		fmt.Println("To use LDAP as an identity provider, you must first register the application:")
+	if interactive.Enabled() || ldapURL == "" || ldapIDs == "" {
 		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/" +
 			"identity_providers/configuring-ldap-identity-provider.html"
-		fmt.Println("* Open the following URL:", instructionsURL)
-		fmt.Println("* Follow the instructions to register your application")
-
-		if ldapURL == "" {
-			ldapURL, err = interactive.GetInput("URL which specifies the LDAP search parameters to use")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a valid LDAP URL")
-			}
-		}
-
-		if ldapIDs == "" {
-			ldapIDs, err = interactive.GetInput("List of attributes whose values should be used as the user ID")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a valid comma-separated list of attributes")
-			}
+		err = interactive.PrintHelp(interactive.Help{
+			Message: "To use LDAP as an identity provider, you must first register the application:",
+			Steps: []string{
+				fmt.Sprintf("Open the following URL: %s", instructionsURL),
+				"Follow the instructions to register your application",
+			},
+		})
+		if err != nil {
+			return idpBuilder, err
 		}
 	}
 
+	if interactive.Enabled() || ldapURL == "" {
+		ldapURL, err = interactive.GetString(interactive.Input{
+			Question: "LDAP URL",
+			Help:     cmd.Flags().Lookup("url").Usage,
+			Default:  ldapURL,
+			Required: true,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid LDAP URL: %s", err)
+		}
+	}
 	parsedLdapURL, err := url.ParseRequestURI(ldapURL)
 	if err != nil {
 		return idpBuilder, fmt.Errorf("Expected a valid LDAP URL: %v", err)
@@ -63,18 +66,106 @@ func buildLdapIdp(_ *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProv
 		return idpBuilder, errors.New("Expected LDAP URL to have an ldap:// or ldaps:// scheme")
 	}
 
+	mappingMethod := args.mappingMethod
+	if interactive.Enabled() {
+		mappingMethod, err = interactive.GetOption(interactive.Input{
+			Question: "Mapping method",
+			Help:     cmd.Flags().Lookup("mapping-method").Usage,
+			Options:  []string{"add", "claim", "generate", "lookup"},
+			Default:  mappingMethod,
+			Required: true,
+		})
+	}
+
+	ldapBindDN := args.ldapBindDN
+	ldapBindPassword := args.ldapBindPassword
+	if interactive.Enabled() {
+		ldapBindDN, err = interactive.GetString(interactive.Input{
+			Question: "Bind DN",
+			Help:     cmd.Flags().Lookup("bind-dn").Usage,
+			Default:  ldapBindDN,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid DN to bind with: %s", err)
+		}
+
+		if ldapBindDN != "" {
+			ldapBindPassword, err = interactive.GetPassword(interactive.Input{
+				Question: "Bind password",
+				Help:     cmd.Flags().Lookup("bind-password").Usage,
+				Required: true,
+			})
+			if err != nil {
+				return idpBuilder, fmt.Errorf("Expected a valid password to bind with: %s", err)
+			}
+		}
+	}
+
+	if interactive.Enabled() {
+		err = interactive.PrintHelp(interactive.Help{
+			Message: "The following options map LDAP attributes to identities. Enter multiple values separated by commas.",
+		})
+		if err != nil {
+			return idpBuilder, err
+		}
+	}
+
+	if interactive.Enabled() || ldapIDs == "" {
+		ldapIDs, err = interactive.GetString(interactive.Input{
+			Question: "ID",
+			Help:     cmd.Flags().Lookup("id-attributes").Usage,
+			Default:  ldapIDs,
+			Required: true,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+		}
+	}
+
+	ldapUsernames := args.ldapUsernames
+	ldapDisplayNames := args.ldapDisplayNames
+	ldapEmails := args.ldapEmails
+	if interactive.Enabled() {
+		ldapUsernames, err = interactive.GetString(interactive.Input{
+			Question: "Preferred username",
+			Help:     cmd.Flags().Lookup("username-attributes").Usage,
+			Default:  ldapUsernames,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+		}
+
+		ldapDisplayNames, err = interactive.GetString(interactive.Input{
+			Question: "Name",
+			Help:     cmd.Flags().Lookup("name-attributes").Usage,
+			Default:  ldapDisplayNames,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+		}
+
+		ldapEmails, err = interactive.GetString(interactive.Input{
+			Question: "Email",
+			Help:     cmd.Flags().Lookup("email-attributes").Usage,
+			Default:  ldapEmails,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+		}
+	}
+
 	// Create LDAP attributes
 	ldapAttributes := cmv1.NewLDAPAttributes().
 		ID(strings.Split(ldapIDs, ",")...)
 
-	if args.ldapUsernames != "" {
-		ldapAttributes = ldapAttributes.PreferredUsername(strings.Split(args.ldapUsernames, ",")...)
+	if ldapUsernames != "" {
+		ldapAttributes = ldapAttributes.PreferredUsername(strings.Split(ldapUsernames, ",")...)
 	}
-	if args.ldapDisplayNames != "" {
-		ldapAttributes = ldapAttributes.Name(strings.Split(args.ldapDisplayNames, ",")...)
+	if ldapDisplayNames != "" {
+		ldapAttributes = ldapAttributes.Name(strings.Split(ldapDisplayNames, ",")...)
 	}
-	if args.ldapEmails != "" {
-		ldapAttributes = ldapAttributes.Email(strings.Split(args.ldapEmails, ",")...)
+	if ldapEmails != "" {
+		ldapAttributes = ldapAttributes.Email(strings.Split(ldapEmails, ",")...)
 	}
 
 	// Create LDAP IDP
@@ -82,10 +173,10 @@ func buildLdapIdp(_ *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProv
 		URL(ldapURL).
 		Attributes(ldapAttributes)
 
-	if args.ldapBindDN != "" {
-		ldapIDP = ldapIDP.BindDN(args.ldapBindDN)
-		if args.ldapBindPassword != "" {
-			ldapIDP = ldapIDP.BindPassword(args.ldapBindPassword)
+	if ldapBindDN != "" {
+		ldapIDP = ldapIDP.BindDN(ldapBindDN)
+		if ldapBindPassword != "" {
+			ldapIDP = ldapIDP.BindPassword(ldapBindPassword)
 		}
 	}
 
@@ -93,7 +184,7 @@ func buildLdapIdp(_ *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProv
 	idpBuilder.
 		Type("LDAPIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
 		Name(idpName).
-		MappingMethod(cmv1.IdentityProviderMappingMethod(args.mappingMethod)).
+		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		LDAP(ldapIDP)
 
 	return
