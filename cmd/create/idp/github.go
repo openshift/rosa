@@ -128,15 +128,14 @@ func buildGithubIdp(cmd *cobra.Command,
 			return idpBuilder, err
 		}
 
-		if clientID == "" {
-			clientID, err = interactive.GetPassword(interactive.Input{
-				Question: "Client ID",
-				Help:     "Paste the Client ID provided by GitHub when registering your application.",
-				Required: true,
-			})
-			if err != nil {
-				return idpBuilder, errors.New("Expected a GitHub application Client ID")
-			}
+		clientID, err = interactive.GetString(interactive.Input{
+			Question: "Client ID",
+			Help:     "Paste the Client ID provided by GitHub when registering your application.",
+			Default:  clientID,
+			Required: true,
+		})
+		if err != nil {
+			return idpBuilder, errors.New("Expected a GitHub application Client ID")
 		}
 
 		if clientSecret == "" {

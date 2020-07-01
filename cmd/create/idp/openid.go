@@ -64,15 +64,15 @@ func buildOpenidIdp(cmd *cobra.Command,
 		clientID, err = interactive.GetString(interactive.Input{
 			Question: "Client ID",
 			Help:     "Paste the Client ID provided by the OpenID provider when registering your application.",
-			Required: true,
 			Default:  clientID,
+			Required: true,
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid application Client ID: %s", err)
 		}
 	}
 
-	if isInteractive {
+	if isInteractive && clientSecret == "" {
 		clientSecret, err = interactive.GetPassword(interactive.Input{
 			Question: "Client Secret",
 			Help:     "Paste the Client Secret provided by the OpenID provider when registering your application.",
