@@ -23,11 +23,14 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
+func buildOpenidIdp(cmd *cobra.Command,
+	cluster *cmv1.Cluster,
+	idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	clientID := args.clientID
 	clientSecret := args.clientSecret
 	issuerURL := args.openidIssuerURL
@@ -39,64 +42,58 @@ func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 		(email == "" && name == "" && username == "")
 
 	if isInteractive {
-		fmt.Println("To use OpenID as an identity provider, you must first register the application:")
 		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/" +
 			"identity_providers/configuring-oidc-identity-provider.html"
-		fmt.Println("* Open the following URL:", instructionsURL)
-		fmt.Println("* Follow the instructions to register your application")
-
-		consoleURL := cluster.Console().URL()
-		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
-		fmt.Println("* When creating the OpenID, use the following URL for the Authorized redirect URI: ",
-			oauthURL+"/oauth2callback/"+idpName)
-
-		if clientID == "" {
-			clientID, err = interactive.GetInput("Copy the Client ID provided by the OpenID Provider")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a valid application Client ID")
-			}
-		}
-
-		if clientSecret == "" {
-			clientSecret, err = interactive.GetInput("Copy the Client Secret provided by the OpenID Provider")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a valid application Client Secret")
-			}
-		}
-
-		if issuerURL == "" {
-			issuerURL, err = interactive.GetInput("URL that the OpenID Provider asserts as the Issuer Identifier")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a valid OpenID Issuer URL")
-			}
-		}
-
-		if email == "" {
-			email, err = interactive.GetInput("Claim mappings to use as the email address")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a list of claims to use as the email address")
-			}
-		}
-
-		if name == "" {
-			name, err = interactive.GetInput("Claim mappings to use as the display name")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a list of claims to use as the display name")
-			}
-		}
-
-		if username == "" {
-			username, err = interactive.GetInput("Claim mappings to use as the preferred username")
-			if err != nil {
-				return idpBuilder, errors.New("Expected a list of claims to use as the preferred username")
-			}
+		oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
+		err = interactive.PrintHelp(interactive.Help{
+			Message: "To use OpenID as an identity provider, you must first register the application:",
+			Steps: []string{
+				fmt.Sprintf(`Open the following URL:
+    %s`, instructionsURL),
+				"Follow the instructions to register your application",
+				fmt.Sprintf(`When creating the OpenID, use the following URL for the Authorized redirect URI:
+    %s/oauth2callback/%s`, oauthURL, idpName),
+			},
+		})
+		if err != nil {
+			return idpBuilder, err
 		}
 	}
 
-	if email == "" && name == "" && username == "" {
-		return idpBuilder, errors.New("At least one claim is required: [email-claims name-claims username-claims]")
+	if isInteractive {
+		clientID, err = interactive.GetString(interactive.Input{
+			Question: "Client ID",
+			Help:     "Paste the Client ID provided by the OpenID provider when registering your application.",
+			Required: true,
+			Default:  clientID,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid application Client ID: %s", err)
+		}
 	}
 
+	if isInteractive {
+		clientSecret, err = interactive.GetPassword(interactive.Input{
+			Question: "Client Secret",
+			Help:     "Paste the Client Secret provided by the OpenID provider when registering your application.",
+			Required: true,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid application Client Secret: %s", err)
+		}
+	}
+
+	if isInteractive {
+		issuerURL, err = interactive.GetString(interactive.Input{
+			Question: "Issuer URL",
+			Help:     cmd.Flags().Lookup("issuer-url").Usage,
+			Default:  issuerURL,
+			Required: true,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid OpenID Issuer URL: %s", err)
+		}
+	}
 	parsedIssuerURL, err := url.ParseRequestURI(issuerURL)
 	if err != nil {
 		return idpBuilder, fmt.Errorf("Expected a valid OpenID issuer URL: %v", err)
@@ -109,6 +106,57 @@ func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 	}
 	if parsedIssuerURL.Fragment != "" {
 		return idpBuilder, errors.New("OpenID issuer URL must not have a fragment")
+	}
+
+	mappingMethod := args.mappingMethod
+	if interactive.Enabled() {
+		mappingMethod, err = interactive.GetOption(interactive.Input{
+			Question: "Mapping method",
+			Help:     cmd.Flags().Lookup("mapping-method").Usage,
+			Options:  []string{"add", "claim", "generate", "lookup"},
+			Default:  mappingMethod,
+			Required: true,
+		})
+	}
+
+	if isInteractive {
+		if interactive.Enabled() {
+			err = interactive.PrintHelp(interactive.Help{
+				Message: `You can indicate which claims to use as the user’s preferred user name, display name, and email address.
+  At least one claim must be configured to use as the user’s identity. Enter multiple values separated by commas.`,
+			})
+			if err != nil {
+				return idpBuilder, err
+			}
+		}
+
+		email, err = interactive.GetString(interactive.Input{
+			Question: "Email",
+			Help:     cmd.Flags().Lookup("email-claims").Usage,
+			Default:  email,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+		}
+		name, err = interactive.GetString(interactive.Input{
+			Question: "Name",
+			Help:     cmd.Flags().Lookup("name-claims").Usage,
+			Default:  name,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+		}
+		username, err = interactive.GetString(interactive.Input{
+			Question: "Preferred username",
+			Help:     cmd.Flags().Lookup("username-claims").Usage,
+			Default:  username,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+		}
+	}
+	if email == "" && name == "" && username == "" {
+		return idpBuilder, errors.New("At least one claim is required: [email-claims name-claims username-claims]")
 	}
 
 	// Build OpenID Claims
@@ -134,7 +182,7 @@ func buildOpenidIdp(cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.Iden
 	idpBuilder.
 		Type("OpenIDIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
 		Name(idpName).
-		MappingMethod(cmv1.IdentityProviderMappingMethod(args.mappingMethod)).
+		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		OpenID(openIDIDP)
 
 	return
