@@ -19,6 +19,7 @@ package create
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/moactl/cmd/create/addon"
 	"github.com/openshift/moactl/cmd/create/cluster"
 	"github.com/openshift/moactl/cmd/create/idp"
 	"github.com/openshift/moactl/cmd/create/ingress"
@@ -34,6 +35,7 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	Cmd.AddCommand(addon.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)

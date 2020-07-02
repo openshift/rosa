@@ -23,6 +23,7 @@ Create a resource from stdin
 ### SEE ALSO
 
 * [moactl](moactl.md)	 - 
+* [moactl create addon](moactl_create_addon.md)	 - Install add-ons on cluster
 * [moactl create cluster](moactl_create_cluster.md)	 - Create cluster
 * [moactl create idp](moactl_create_idp.md)	 - Add IDP for cluster
 * [moactl create ingress](moactl_create_ingress.md)	 - Add Ingress to cluster
