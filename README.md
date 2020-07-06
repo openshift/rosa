@@ -250,6 +250,11 @@ Created:     May 27, 2020
 
 If installation fails or the State does not change to `ready` after 40 minutes, check the [installation troubleshooting](install-troubleshooting.md) documentation for more details.
 
+You can follow the OpenShift installer logs to track the progress of your cluster:
+```
+moactl logs rh-moa-test-cluster1 --watch
+```
+
 ## Access your cluster
 
 To login to your cluster, you must configure an Identity Provider (IDP).
