@@ -50,14 +50,20 @@ function build_cmds {
   # Rename the generated binaries adding the operating system and architecture
   # name and generate a SHA256 sum:
   echo "Calculating SHA 256 sums"
-  mv "moactl" "moactl-${os}-${arch}"
-  sha256sum "moactl-${os}-${arch}" > "moactl-${os}-${arch}.sha256"
+  if [ -f "moactl.exe" ]
+  then
+    mv "moactl.exe" "moactl-${os}-${arch}.exe"
+    sha256sum "moactl-${os}-${arch}.exe" > "moactl-${os}-${arch}.sha256"
+  else
+    mv "moactl" "moactl-${os}-${arch}"
+    sha256sum "moactl-${os}-${arch}" > "moactl-${os}-${arch}.sha256"
+  fi
 }
 
 # Build for Linux and macOS:
 build_cmds linux amd64
 build_cmds darwin amd64
-# build_cmds windows amd64
+build_cmds windows amd64
 
 # Bye:
 exit 0
