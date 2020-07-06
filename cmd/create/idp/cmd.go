@@ -339,11 +339,9 @@ func run(cmd *cobra.Command, _ []string) {
 	case "google":
 		idpBuilder, err = buildGoogleIdp(cmd, cluster, idpName)
 	case "ldap":
-		// TODO: port to new interactive mode
-		idpBuilder, err = buildLdapIdp(cluster, idpName)
+		idpBuilder, err = buildLdapIdp(cmd, cluster, idpName)
 	case "openid":
-		// TODO: port to new interactive mode
-		idpBuilder, err = buildOpenidIdp(cluster, idpName)
+		idpBuilder, err = buildOpenidIdp(cmd, cluster, idpName)
 	}
 	if err != nil {
 		reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)

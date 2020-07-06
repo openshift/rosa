@@ -28,9 +28,12 @@ import (
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildGoogleIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
+func buildGoogleIdp(cmd *cobra.Command,
+	cluster *cmv1.Cluster,
+	idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	clientID := args.clientID
 	clientSecret := args.clientSecret
+
 	if interactive.Enabled() || clientID == "" || clientSecret == "" {
 		instructionsURL := "https://console.developers.google.com/projectcreate"
 		consoleURL := cluster.Console().URL()
@@ -38,24 +41,25 @@ func buildGoogleIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use Google as an identity provider, you must first register the application:",
 			Steps: []string{
-				fmt.Sprintf("Open the following URL: %s", instructionsURL),
+				fmt.Sprintf(`Open the following URL:
+    %s`, instructionsURL),
 				"Follow the instructions to register your application",
-				fmt.Sprintf("When creating the OAuth client ID, use the following URL for the Authorized redirect URI: %s/oauth2callback/%s", oauthURL, idpName),
+				fmt.Sprintf(`When creating the OAuth client ID, use the following URL for the Authorized redirect URI:
+    %s/oauth2callback/%s`, oauthURL, idpName),
 			},
 		})
 		if err != nil {
 			return idpBuilder, err
 		}
 
-		if clientID == "" {
-			clientID, err = interactive.GetPassword(interactive.Input{
-				Question: "Client ID",
-				Help:     "Paste the Client ID provided by Google when registering your application.",
-				Required: true,
-			})
-			if err != nil {
-				return idpBuilder, errors.New("Expected a Google application Client ID")
-			}
+		clientID, err = interactive.GetString(interactive.Input{
+			Question: "Client ID",
+			Help:     "Paste the Client ID provided by Google when registering your application.",
+			Default:  clientID,
+			Required: true,
+		})
+		if err != nil {
+			return idpBuilder, errors.New("Expected a Google application Client ID")
 		}
 
 		if clientSecret == "" {

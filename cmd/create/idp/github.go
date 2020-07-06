@@ -28,7 +28,9 @@ import (
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
-func buildGithubIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
+func buildGithubIdp(cmd *cobra.Command,
+	cluster *cmv1.Cluster,
+	idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	organizations := args.githubOrganizations
 	teams := args.githubTeams
 
@@ -117,7 +119,8 @@ func buildGithubIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use GitHub as an identity provider, you must first register the application:",
 			Steps: []string{
-				fmt.Sprintf("Open the following URL: %s", registerURL.String()),
+				fmt.Sprintf(`Open the following URL:
+    %s`, registerURL.String()),
 				"Click on 'Register application'",
 			},
 		})
@@ -125,15 +128,14 @@ func buildGithubIdp(cmd *cobra.Command, cluster *cmv1.Cluster, idpName string) (
 			return idpBuilder, err
 		}
 
-		if clientID == "" {
-			clientID, err = interactive.GetPassword(interactive.Input{
-				Question: "Client ID",
-				Help:     "Paste the Client ID provided by GitHub when registering your application.",
-				Required: true,
-			})
-			if err != nil {
-				return idpBuilder, errors.New("Expected a GitHub application Client ID")
-			}
+		clientID, err = interactive.GetString(interactive.Input{
+			Question: "Client ID",
+			Help:     "Paste the Client ID provided by GitHub when registering your application.",
+			Default:  clientID,
+			Required: true,
+		})
+		if err != nil {
+			return idpBuilder, errors.New("Expected a GitHub application Client ID")
 		}
 
 		if clientSecret == "" {
