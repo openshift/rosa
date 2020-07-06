@@ -240,6 +240,27 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	return nil
 }
 
+func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string) error {
+	cluster, err := GetCluster(client, clusterKey, creatorARN)
+	if err != nil {
+		return err
+	}
+
+	addOnInstallation, err := cmv1.NewAddOnInstallation().
+		Addon(cmv1.NewAddOn().ID(addOnID)).
+		Build()
+	if err != nil {
+		return err
+	}
+
+	_, err = client.Cluster(cluster.ID()).Addons().Add().Body(addOnInstallation).Send()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
 	reporter, err := rprtr.New().
 		Build()

@@ -19,6 +19,7 @@ package list
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/moactl/cmd/list/addon"
 	"github.com/openshift/moactl/cmd/list/cluster"
 	"github.com/openshift/moactl/cmd/list/idp"
 	"github.com/openshift/moactl/cmd/list/ingress"
@@ -32,6 +33,7 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	Cmd.AddCommand(addon.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
