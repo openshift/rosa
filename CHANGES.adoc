@@ -3,6 +3,26 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.3 Jul 6 2020
+
+- logger: Define CreateLoggerOrExit
+- cmd: Switch to use CreateLoggerOrExit
+- whoami: Use Create[Reporter|Logger]OrExit
+- Add golangci version for CI
+- Custom cluster properties.
+- AWS Region: Allow passing --region to verify and init commands
+- linter: Fix small linter issues
+- interactive: Add interactive flag to create
+- interactive: Add interactive mode to edit cluster
+- interactive: Add interactive flag to create idp
+- create-idp: Add interactive mode to LDAP
+- create-idp: Add interactive mode to OpenID
+- create-idp: Fix linter errors
+- create-idp: Make client-id a non-password field
+- addons: Add list and create commands for add-ons
+- adding quickstart
+- Add support for Windows binary build
+
 == 0.0.2 Jun 5 2020
 
 - login: Update token URL
