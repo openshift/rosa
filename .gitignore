@@ -6,3 +6,5 @@ docs/*.rst
 /moactl-darwin-amd64.sha256
 /moactl-linux-amd64
 /moactl-linux-amd64.sha256
+/moactl-windows-amd64.exe
+/moactl-windows-amd64.sha256
