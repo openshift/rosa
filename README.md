@@ -175,6 +175,25 @@ Run the following command to log in to your Red Hat account with moactl. Replace
 $ moactl login --token="<my-offline-access-token>"
 ```
 
+### Verify moactl login and aws-cli defaults
+
+Run the following command to verify your Red Hat and AWS credentials are setup correctly.  Check that your AWS Account ID, Default Region and ARN match what you expect.  You can safely ignore the rows beginning with OCM for now (OCM stands for OpenShift Cluster Manager).
+
+```
+$ moactl whoami
+AWS Account ID:               000000000000
+AWS Default Region:           us-east-2
+AWS ARN:                      arn:aws:iam::000000000000:user/hello
+OCM API:                      https://api.openshift.com
+OCM Account ID:               1DzGIdIhqEWyt8UUXQhSoWaaaaa
+OCM Account Name:             Your Name
+OCM Account Username:         you@domain.com
+OCM Account Email:            you@domain.com
+OCM Organization ID:          1HopHfA2hcmhup5gCr2uH5aaaaa
+OCM Organization Name:        Red Hat
+OCM Organization External ID: 0000000
+```
+
 ### Initialize your AWS account
 
 This step runs a CloudFormation template that prepares your AWS account for OpenShift deployment and management. This step typically takes 1-2 minutes to complete.
