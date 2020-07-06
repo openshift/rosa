@@ -176,6 +176,9 @@ $ moactl login --token="<my-offline-access-token>"
 ```
 
 ### Verify moactl login and aws-cli defaults
+
+Run the following command to verify your Red Hat and AWS credentials are setup correctly.  Check that your AWS Account ID, Default Region and ARN match what you expect.  You can safely ignore the rows beginning with OCM for now (OCM stands for OpenShift Cluster Manager).
+
 ```
 $ moactl whoami
 AWS Account ID:               000000000000
