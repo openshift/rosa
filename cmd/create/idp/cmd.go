@@ -298,7 +298,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Grab all the IDP information interactively if necessary
 	idpType := args.idpType
-	if interactive.Enabled() {
+	if interactive.Enabled() || idpType == "" {
 		if idpType == "" {
 			idpType = validIdps[0]
 		}

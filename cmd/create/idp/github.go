@@ -46,7 +46,7 @@ func buildGithubIdp(cmd *cobra.Command,
 		restrictType = "teams"
 	}
 
-	if interactive.Enabled() && restrictType == "" {
+	if interactive.Enabled() || restrictType == "" {
 		restrictType, err = interactive.GetOption(interactive.Input{
 			Question: "Restrict to members of",
 			Help:     "GitHub authentication lets you use either GitHub organizations or GitHub teams to restrict access.",
@@ -59,7 +59,7 @@ func buildGithubIdp(cmd *cobra.Command,
 		}
 	}
 
-	if interactive.Enabled() {
+	if interactive.Enabled() || (organizations == "" && teams == "") {
 		if restrictType == "organizations" {
 			organizations, err = interactive.GetString(interactive.Input{
 				Question: "GitHub organizations",
