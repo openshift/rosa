@@ -16,7 +16,7 @@ This includes the following steps:
 * Creating admin users to your cluster
 * Cleaning up
 
-By the end of this guide you will have a Amazon Red Hat OpenShift cluster running in your AWS account.
+By the end of this guide you will have an Amazon Red Hat OpenShift cluster running in your AWS account.
 
 ## Installation prerequisites
 
@@ -26,7 +26,9 @@ Complete the following prerequisites before creating your MOA cluster.
 
 Unless your just testing out MOA, we recommend using a dedicated AWS account to run any production clusters. If you are utilizing AWS Organizations, you can use an AWS account within your organization or [create a new one](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_create.html#orgs_manage_accounts_create-new).
 
-Next, you must not have a Service Control Policy applied to the AWS account you plan to use. As part of the cluster creation process, moactl will perform the following actions:
+If you are using AWS organizations and you need to have a Service Control Policy (SCP) applied to the AWS account you plan to use, see the [Red Hat Requirements for Customer Cloud Subscriptions](https://www.openshift.com/dedicated/ccs#scp) for details on the minimum required SCP.
+
+As part of the cluster creation process, `moactl` will perform the following actions:
 
 - Create an osdCcsAdmin IAM user:
   - This user will have Programmatic access enabled.
@@ -121,7 +123,7 @@ Flags:
 Use "moactl [command] --help" for more information about a command.
 ```
 
-You can run `moactl completion` to generate a bash completion file. Add this file to to the correct location for your operating system. For example, on a Linux machine run the following command to enable moactl bash completion:
+You can run `moactl completion` to generate a bash completion file. Add this file to the correct location for your operating system. For example, on a Linux machine run the following command to enable moactl bash completion:
 
 ```
 moactl completion > /etc/bash_completion.d/moactl
@@ -135,8 +137,6 @@ $ moactl verify permissions
 I: Validating SCP policies...
 I: AWS SCP policies ok
 ```
-
-If you encounter errors at this step, double check to ensure than an SCP is not applied to your AWS account. If you are required to use an SCP, see [Red Hat Requirements for Customer Cloud Subscriptions](https://www.openshift.com/dedicated/ccs#scp) for details on the minimum required SCP.
 
 Verify that your AWS account has the necessary quota to deploy an OpenShift cluster. Sometimes quota varies by region, which may prevent you from deploying:
 
@@ -160,7 +160,7 @@ Once both the permissions and quota checks pass, proceed to initializing your AW
 
 ## Initializing your AWS account
 
-In this step you log in to your Red Hat account using moactl, and then initialize your AWS account.
+In this step you log in to your Red Hat account using `moactl`, and then initialize your AWS account.
 
 ### Log in to your Red Hat account with moactl
 
@@ -220,7 +220,10 @@ Go to https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/ to downl
 
 ## Create your cluster
 
-Run the following command to create your cluster:
+Run the following command to create your cluster with the default cluster settings.
+
+> To view other options when creating a cluster run `moactl create cluster --help`.
+> To follow a set of interactive prompts run `moactl create cluster --interactive`.
 
 ```
 $ moactl create cluster --name=rh-moa-test-cluster1
@@ -252,7 +255,7 @@ If installation fails or the State does not change to `ready` after 40 minutes, 
 
 You can follow the OpenShift installer logs to track the progress of your cluster:
 ```
-moactl logs rh-moa-test-cluster1 --watch
+moactl logs cluster rh-moa-test-cluster1 --watch
 ```
 
 ## Access your cluster
