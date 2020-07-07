@@ -203,7 +203,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		// Only display add-ons for which the org has quota
 		resourceQuotas.Each(func(resourceQuota *amsv1.ResourceQuota) bool {
 			if addOn.ResourceName() == resourceQuota.ResourceName() {
-				clusterAddOn.Available = float64(resourceQuota.Allowed()) > addOn.ResourceCost()
+				clusterAddOn.Available = float64(resourceQuota.Allowed()) >= addOn.ResourceCost()
 			}
 			return true
 		})
