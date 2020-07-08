@@ -146,6 +146,11 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if cluster.State() == cmv1.ClusterStateReady {
+		reporter.Infof("Cluster '%s' has been successfully installed", clusterKey)
+		os.Exit(0)
+	}
+
 	if cluster.State() == cmv1.ClusterStatePending && !args.watch {
 		reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
 		os.Exit(1)
@@ -155,7 +160,13 @@ func run(_ *cobra.Command, argv []string) {
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	logs, err := ocm.GetLogs(clustersCollection, cluster.ID(), args.tail)
 	if err != nil {
-		if errors.GetType(err) == errors.NotFound {
+		if errors.GetType(err) == errors.Gone {
+			reporter.Infof(
+				"Cluster '%s' has been successfully installed and logs are no longer available",
+				clusterKey,
+			)
+			os.Exit(0)
+		} else if errors.GetType(err) == errors.NotFound {
 			reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
 			if args.watch {
 				reporter.Warnf("Waiting...")
@@ -171,8 +182,12 @@ func run(_ *cobra.Command, argv []string) {
 		// Poll for changing logs:
 		response, err := ocm.PollLogs(clustersCollection, cluster.ID(), printLogCallback)
 		if err != nil {
+			if errors.GetType(err) == errors.Gone {
+				reporter.Infof("Cluster '%s' has been successfully installed", clusterKey)
+				os.Exit(0)
+			}
 			if errors.GetType(err) != errors.NotFound {
-				reporter.Errorf(fmt.Sprintf("Failed to watch logs for cluster '%s': %v", clusterKey, err))
+				reporter.Errorf("Failed to watch logs for cluster '%s': %s", clusterKey, err)
 				os.Exit(1)
 			}
 		}
@@ -183,6 +198,9 @@ func run(_ *cobra.Command, argv []string) {
 var lastLine string
 
 func printLogCallback(logs *cmv1.LogGetResponse) bool {
+	if logs.Error() != nil {
+		return true
+	}
 	printLog(logs.Body())
 	return false
 }

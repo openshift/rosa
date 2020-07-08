@@ -116,22 +116,6 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 	return response.Items().Slice(), nil
 }
 
-func GetLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv1.Log, err error) {
-	logsClient := client.Cluster(clusterID).Logs().Log("hive")
-	response, err := logsClient.Get().
-		Parameter("tail", tail).
-		Send()
-	if err != nil {
-		err = fmt.Errorf("Failed to get logs for cluster '%s': %v", clusterID, err)
-		if response.Status() == http.StatusNotFound {
-			err = errors.NotFound.UserErrorf("Failed to get logs for cluster '%s'", clusterID)
-		}
-		return
-	}
-
-	return response.Body(), nil
-}
-
 type ClusterAddOn struct {
 	ID        string
 	Name      string
@@ -229,6 +213,26 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 	return clusterAddOns, nil
 }
 
+func GetLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv1.Log, err error) {
+	logsClient := client.Cluster(clusterID).Logs().Log("hive")
+	response, err := logsClient.Get().
+		Parameter("tail", tail).
+		Send()
+	if err != nil {
+		switch response.Status() {
+		case http.StatusGone:
+			err = errors.Gone.UserErrorf("Cluster '%s' has been successfully installed", clusterID)
+		case http.StatusNotFound:
+			err = errors.NotFound.UserErrorf("Failed to get logs for cluster '%s'", clusterID)
+		default:
+			err = fmt.Errorf("Failed to get logs for cluster '%s': %v", clusterID, err)
+		}
+		return
+	}
+
+	return response.Body(), nil
+}
+
 func PollLogs(client *cmv1.ClustersClient, clusterID string,
 	cb func(*cmv1.LogGetResponse) bool) (logs *cmv1.Log, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
@@ -240,12 +244,17 @@ func PollLogs(client *cmv1.ClustersClient, clusterID string,
 	response, err := logsClient.Poll().
 		Parameter("tail", 100).
 		Interval(5 * time.Second).
+		Status(http.StatusGone).
 		Predicate(cb).
 		StartContext(ctx)
 	if err != nil {
-		err = fmt.Errorf("Failed to poll logs for cluster '%s': %v", clusterID, err)
-		if response.Status() == http.StatusNotFound {
+		switch response.Status() {
+		case http.StatusGone:
+			err = errors.Gone.UserErrorf("Cluster '%s' has been successfully installed", clusterID)
+		case http.StatusNotFound:
 			err = errors.NotFound.UserErrorf("Failed to poll logs for cluster '%s'", clusterID)
+		default:
+			err = fmt.Errorf("Failed to poll logs for cluster '%s': %v", clusterID, err)
 		}
 		return
 	}
