@@ -77,9 +77,13 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	// Determine whether the user wants to watch logs streaming.
+	// We check the flag value this way to allow other commands to watch logs
+	watch := cmd.Flags().Lookup("watch").Value.String() == "true"
 
 	// Check command line arguments:
 	clusterKey := args.clusterKey
@@ -151,7 +155,7 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	if cluster.State() == cmv1.ClusterStatePending && !args.watch {
+	if cluster.State() == cmv1.ClusterStatePending && !watch {
 		reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
 		os.Exit(1)
 	}
@@ -168,7 +172,7 @@ func run(_ *cobra.Command, argv []string) {
 			os.Exit(0)
 		} else if errors.GetType(err) == errors.NotFound {
 			reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
-			if args.watch {
+			if watch {
 				reporter.Warnf("Waiting...")
 			}
 		} else {
@@ -178,7 +182,7 @@ func run(_ *cobra.Command, argv []string) {
 	}
 	printLog(logs)
 
-	if args.watch {
+	if watch {
 		// Poll for changing logs:
 		response, err := ocm.PollLogs(clustersCollection, cluster.ID(), printLogCallback)
 		if err != nil {

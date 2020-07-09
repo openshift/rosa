@@ -27,6 +27,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	clusterlogs "github.com/openshift/moactl/cmd/logs/cluster"
+
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/interactive"
@@ -39,6 +41,9 @@ import (
 )
 
 var args struct {
+	// Watch logs during cluster installation
+	watch bool
+
 	// Basic options
 	private            bool
 	multiAZ            bool
@@ -162,7 +167,14 @@ func init() {
 		&args.private,
 		"private",
 		false,
-		"Restrict master API endpoint and application routes to direct, private connectivity.",
+		"Restrict master API endpoint and application routes to direct, private connectivity.\n",
+	)
+
+	flags.BoolVar(
+		&args.watch,
+		"watch",
+		false,
+		"Watch cluster installation logs.",
 	)
 }
 
@@ -418,18 +430,24 @@ func run(cmd *cobra.Command, _ []string) {
 
 	clusterID := cluster.ID()
 	clusterName := cluster.Name()
-	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", clusterID, clusterName)
-	reporter.Infof("To view list of clusters and their status, run 'moactl list clusters'")
-
 	reporter.Infof("Cluster '%s' has been created.", clusterName)
 	reporter.Infof(
-		"Once the cluster is 'Ready' you will need to add an Identity Provider " +
-			"and define the list of cluster administrators. See 'moactl create idp --help' " +
-			"and 'moactl create user --help' for more information.")
-	reporter.Infof(
-		"To determine when your cluster is Ready, run 'moactl describe cluster %s'.",
-		clusterName,
-	)
+		"Once the cluster is installed you will need to add an Identity Provider " +
+			"before you can login into the cluster. See 'moactl create idp --help' " +
+			"for more information.")
+
+	if args.watch {
+		clusterlogs.Cmd.Run(cmd, []string{clusterID})
+	} else {
+		reporter.Infof(
+			"To determine when your cluster is Ready, run 'moactl describe cluster -c %s'.",
+			clusterName,
+		)
+		reporter.Infof(
+			"To watch your cluster installation logs, run 'moactl logs cluster -c %s --watch'.",
+			clusterName,
+		)
+	}
 }
 
 // Validate OpenShift versions
