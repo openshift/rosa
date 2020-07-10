@@ -27,6 +27,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	clusterdescribe "github.com/openshift/moactl/cmd/describe/cluster"
 	installLogs "github.com/openshift/moactl/cmd/logs/install"
 
 	"github.com/openshift/moactl/pkg/aws"
@@ -461,6 +462,8 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+
+	clusterdescribe.Cmd.Run(cmd, []string{cluster.ID()})
 }
 
 // Validate OpenShift versions
