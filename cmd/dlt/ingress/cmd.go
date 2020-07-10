@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
+	"github.com/openshift/moactl/pkg/confirm"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -162,16 +163,17 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Load any existing ingresses for this cluster
-	reporter.Debugf("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-	_, err = clustersCollection.
-		Cluster(cluster.ID()).
-		Ingresses().
-		Ingress(ingress.ID()).
-		Delete().
-		Send()
-	if err != nil {
-		reporter.Errorf("Failed to delete ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-		os.Exit(1)
+	if confirm.Confirm("delete ingress %s on cluster %s", ingressID, clusterKey) {
+		reporter.Debugf("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+		_, err = clustersCollection.
+			Cluster(cluster.ID()).
+			Ingresses().
+			Ingress(ingress.ID()).
+			Delete().
+			Send()
+		if err != nil {
+			reporter.Errorf("Failed to delete ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+			os.Exit(1)
+		}
 	}
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
+	"github.com/openshift/moactl/pkg/confirm"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -146,16 +147,17 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Load any existing IDPs for this cluster
-	reporter.Debugf("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
-	_, err = clustersCollection.
-		Cluster(cluster.ID()).
-		IdentityProviders().
-		IdentityProvider(idp.ID()).
-		Delete().
-		Send()
-	if err != nil {
-		reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s'", idpName, clusterKey)
-		os.Exit(1)
+	if confirm.Confirm("delete identity provider %s on cluster %s", idpName, clusterKey) {
+		reporter.Debugf("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
+		_, err = clustersCollection.
+			Cluster(cluster.ID()).
+			IdentityProviders().
+			IdentityProvider(idp.ID()).
+			Delete().
+			Send()
+		if err != nil {
+			reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s'", idpName, clusterKey)
+			os.Exit(1)
+		}
 	}
 }

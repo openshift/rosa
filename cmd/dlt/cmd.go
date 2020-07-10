@@ -23,6 +23,8 @@ import (
 	"github.com/openshift/moactl/cmd/dlt/idp"
 	"github.com/openshift/moactl/cmd/dlt/ingress"
 	"github.com/openshift/moactl/cmd/dlt/user"
+
+	"github.com/openshift/moactl/pkg/confirm"
 )
 
 var Cmd = &cobra.Command{
@@ -33,6 +35,9 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	flags := Cmd.PersistentFlags()
+	confirm.AddFlag(flags)
+
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
