@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
+	"github.com/openshift/moactl/pkg/confirm"
 	"github.com/openshift/moactl/pkg/interactive"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
@@ -155,6 +156,12 @@ func run(_ *cobra.Command, _ []string) {
 	if clusterAdmins == "" && dedicatedAdmins == "" {
 		reporter.Errorf("Expected at least one of 'cluster-admins' or 'dedicated-admins'")
 		os.Exit(1)
+	}
+
+	if !confirm.Confirm("delete users %s from cluster %s",
+		strings.Join([]string{clusterAdmins, dedicatedAdmins}, ","),
+		clusterKey) {
+		os.Exit(0)
 	}
 
 	if clusterAdmins != "" {

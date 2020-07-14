@@ -32,6 +32,7 @@ moactl delete cluster [ID|NAME] [flags]
 ```
       --debug     Enable debug mode.
   -v, --v Level   log level for V logs
+  -y, --yes       Automatically answer yes to confirm operation.
 ```
 
 ### SEE ALSO

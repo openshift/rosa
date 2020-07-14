@@ -23,6 +23,7 @@ import (
 
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
+	"github.com/openshift/moactl/pkg/confirm"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -117,9 +118,11 @@ func run(_ *cobra.Command, argv []string) {
 	// Get the client for the OCM collection of clusters:
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
-	reporter.Debugf("Deleting cluster '%s'", clusterKey)
-	err = clusterprovider.DeleteCluster(clustersCollection, clusterKey, awsCreator.ARN)
-	if err != nil {
-		reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
+	if confirm.Confirm("delete cluster %s", clusterKey) {
+		reporter.Debugf("Deleting cluster '%s'", clusterKey)
+		err = clusterprovider.DeleteCluster(clustersCollection, clusterKey, awsCreator.ARN)
+		if err != nil {
+			reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
+		}
 	}
 }

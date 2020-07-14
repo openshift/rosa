@@ -10,6 +10,7 @@ Delete a specific resource
 
 ```
   -h, --help   help for delete
+  -y, --yes    Automatically answer yes to confirm operation.
 ```
 
 ### Options inherited from parent commands
