@@ -158,7 +158,7 @@ func buildGithubIdp(cmd *cobra.Command,
 	githubHostname := args.githubHostname
 	if interactive.Enabled() {
 		githubHostname, err = interactive.GetString(interactive.Input{
-			Question: "Hostname",
+			Question: "GitHub Enterprise Hostname",
 			Help:     cmd.Flags().Lookup("hostname").Usage,
 			Default:  githubHostname,
 		})
