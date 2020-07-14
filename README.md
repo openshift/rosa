@@ -1,34 +1,34 @@
 # MOA Command Line Tool
 
-This project contains the `moactl` command line tool that simplifies the use of Amazon Red Hat OpenShift, also known as _MOA_.
+This project contains the `rosa` command line tool that simplifies the use of Amazon Red Hat OpenShift, also known as _MOA_.
 
 # Quickstart guide
 
-This guide walks through setting up your first Amazon Red Hat OpenShift cluster using `moactl`.
+This guide walks through setting up your first Amazon Red Hat OpenShift cluster using `rosa`.
 
-Before you can start working with `moactl` commands you have to have your AWS privileges set up correctly.
-To do this run the following command:
+Before you can start working with `rosa` commands, your AWS privileges must be set up correctly.
+
+To set up AWS privileges, run the following command:
 
 ```
 $ aws iam attach-user-policy --user-name <username> --policy-arn "arn:aws:iam::aws:policy/AdministratorAccess"
 ```
 
-This tool has a built in possibility to verify that the privileges have been set up correctly.
-To do so, run the following command:
+To verify that the privileges have been set up correctly, run the following command:
 
 ```
-$ moactl verify permissions
+$ rosa verify permissions
 ```
 
 After [installing the required prerequisites](#Installation-prerequisites) you can get started with these commands to create a cluster:
 
 ```
-$ moactl init        ## Configures your AWS account and ensures everything is setup correctly
-$ moactl create cluster --name <my-cluster-name>        ## Starts the cluster creation process (~30-40minutes)
-$ moactl logs cluster <my-cluster-name> --watch        ## Watch your logs as your cluster creates
-$ moactl create idp --cluster <my-cluster-name>  --interactive        ## Connect your IDP to your cluster
-$ moactl create user --cluster <my-cluster-name> --dedicated-admins <admin-username>        ## Promotes a user from your IDP to admin level
-$ moactl describe cluster <my-cluster-name>        ## Checks if your install is ready (look for State: Ready), and provides your Console URL to login to the web console.
+$ rosa init        ## Configures your AWS account and ensures everything is setup correctly
+$ rosa create cluster --name <my-cluster-name>        ## Starts the cluster creation process (~30-40minutes)
+$ rosa logs cluster <my-cluster-name> --watch        ## Watch your logs as your cluster creates
+$ rosa create idp --cluster <my-cluster-name>  --interactive        ## Connect your IDP to your cluster
+$ rosa create user --cluster <my-cluster-name> --dedicated-admins <admin-username>        ## Promotes a user from your IDP to admin level
+$ rosa describe cluster <my-cluster-name>        ## Checks if your install is ready (look for State: Ready), and provides your Console URL to login to the web console.
 ```
 
 If you get stuck or you are starting out and want more details, the rest of this guide includes the following steps:
@@ -53,7 +53,7 @@ Unless your just testing out MOA, we recommend using a dedicated AWS account to 
 
 If you are using AWS organizations and you need to have a Service Control Policy (SCP) applied to the AWS account you plan to use, see the [Red Hat Requirements for Customer Cloud Subscriptions](https://www.openshift.com/dedicated/ccs#scp) for details on the minimum required SCP.
 
-As part of the cluster creation process, `moactl` will perform the following actions:
+As part of the cluster creation process, `rosa` will perform the following actions:
 
 - Create an osdCcsAdmin IAM user:
   - This user will have Programmatic access enabled.
@@ -112,18 +112,18 @@ $ aws ec2 describe-regions
 
 ```
 
-### Install moactl
+### Install rosa
 
-Download the [latest release of moactl](https://github.com/openshift/moactl/releases/latest) and add it to your path.
+Download the [latest release of rosa](https://github.com/openshift/rosa/releases/latest) and add it to your path.
 
 Verify your installation by running the following command:
 
 ```
-$ moactl
+$ rosa
 Command line tool for MOA.
 
 Usage:
-  moactl [command]
+  rosa [command]
 
 Available Commands:
   completion  Generates bash completion scripts
@@ -142,23 +142,23 @@ Available Commands:
 
 Flags:
       --debug     Enable debug mode.
-  -h, --help      help for moactl
+  -h, --help      help for rosa
   -v, --v Level   log level for V logs
 
-Use "moactl [command] --help" for more information about a command.
+Use "rosa [command] --help" for more information about a command.
 ```
 
-You can run `moactl completion` to generate a bash completion file. Add this file to the correct location for your operating system. For example, on a Linux machine run the following command to enable moactl bash completion:
+You can run `rosa completion` to generate a bash completion file. Add this file to the correct location for your operating system. For example, on a Linux machine run the following command to enable rosa bash completion:
 
 ```
-moactl completion > /etc/bash_completion.d/moactl
-source /etc/bash_completion.d/moactl
+rosa completion > /etc/bash_completion.d/rosa
+source /etc/bash_completion.d/rosa
 ```
 
 Run the following command to verify that your AWS account has the necessary permissions:
 
 ```
-$ moactl verify permissions
+$ rosa verify permissions
 I: Validating SCP policies...
 I: AWS SCP policies ok
 ```
@@ -166,7 +166,7 @@ I: AWS SCP policies ok
 Verify that your AWS account has the necessary quota to deploy an OpenShift cluster. Sometimes quota varies by region, which may prevent you from deploying:
 
 ```
-$ export AWS_DEFAULT_REGION=us-west-2 && moactl verify quota
+$ export AWS_DEFAULT_REGION=us-west-2 && rosa verify quota
 I: Validating AWS quota...
 E: Insufficient AWS quotas
 E: Service ebs quota code L-FD252861 Provisioned IOPS SSD (io1) volume storage not valid
@@ -174,7 +174,7 @@ E: Service ebs quota code L-FD252861 Provisioned IOPS SSD (io1) volume storage n
 
 If needed, try another region:
 ```
-$ export AWS_DEFAULT_REGION=us-east-2 && moactl verify quota
+$ export AWS_DEFAULT_REGION=us-east-2 && rosa verify quota
 I: Validating AWS quota...
 I: AWS quota ok
 ```
@@ -185,27 +185,27 @@ Once both the permissions and quota checks pass, proceed to initializing your AW
 
 ## Initializing your AWS account
 
-In this step you log in to your Red Hat account using `moactl`, and then initialize your AWS account.
+In this step you log in to your Red Hat account using `rosa`, and then initialize your AWS account.
 
-### Log in to your Red Hat account with moactl
+### Log in to your Red Hat account with rosa
 
 If you do not already have a Red Hat account, [create one here](https://cloud.redhat.com/). Be sure to accept the required terms and conditions. Then, check your email for a verification link.  
 
 After creating your Red Hat account, follow this link to [get an offline access token](https://cloud.redhat.com/openshift/token/moa
 ).
 
-Run the following command to log in to your Red Hat account with moactl. Replace &lt;my-offline-access-token&gt; with your token:
+Run the following command to log in to your Red Hat account with rosa. Replace &lt;my-offline-access-token&gt; with your token:
 
 ```
-$ moactl login --token="<my-offline-access-token>"
+$ rosa login --token="<my-offline-access-token>"
 ```
 
-### Verify moactl login and aws-cli defaults
+### Verify rosa login and aws-cli defaults
 
 Run the following command to verify your Red Hat and AWS credentials are setup correctly.  Check that your AWS Account ID, Default Region and ARN match what you expect.  You can safely ignore the rows beginning with OCM for now (OCM stands for OpenShift Cluster Manager).
 
 ```
-$ moactl whoami
+$ rosa whoami
 AWS Account ID:               000000000000
 AWS Default Region:           us-east-2
 AWS ARN:                      arn:aws:iam::000000000000:user/hello
@@ -224,7 +224,7 @@ OCM Organization External ID: 0000000
 This step runs a CloudFormation template that prepares your AWS account for OpenShift deployment and management. This step typically takes 1-2 minutes to complete.
 
 ```
-$ moactl init
+$ rosa init
 I: Logged in as 'rh-moa-user' on 'https://api.openshift.com'
 I: Validating AWS credentials...
 I: AWS credentials are valid!
@@ -247,16 +247,16 @@ Go to https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/ to downl
 
 Run the following command to create your cluster with the default cluster settings.
 
-> To view other options when creating a cluster run `moactl create cluster --help`.
-> To follow a set of interactive prompts run `moactl create cluster --interactive`.
+> To view other options when creating a cluster run `rosa create cluster --help`.
+> To follow a set of interactive prompts run `rosa create cluster --interactive`.
 
 ```
-$ moactl create cluster --name=rh-moa-test-cluster1
+$ rosa create cluster --name=rh-moa-test-cluster1
 I: Creating cluster with identifier '1de87g7c30g75qechgh7l5b2bha6r04e' and name 'rh-moa-test-cluster1'
-I: To view list of clusters and their status, run `moactl list clusters`
+I: To view list of clusters and their status, run `rosa list clusters`
 I: Cluster 'rh-moa-test-cluster1' has been created.
-I: Once the cluster is 'Ready' you will need to add an Identity Provider and define the list of cluster administrators. See `moactl create idp --help` and `moactl create user --help` for more information.
-I: To determine when your cluster is Ready, run `moactl describe cluster rh-moa-test-cluster1`.
+I: Once the cluster is 'Ready' you will need to add an Identity Provider and define the list of cluster administrators. See `rosa create idp --help` and `rosa create user --help` for more information.
+I: To determine when your cluster is Ready, run `rosa describe cluster rh-moa-test-cluster1`.
 ```
 
 Creating a cluster can take up to 40 minutes, during which the State will transition from `pending` to `installing`, and finally to `ready`.
@@ -264,7 +264,7 @@ Creating a cluster can take up to 40 minutes, during which the State will transi
 Run the following command to check the status of your MOA cluster:
 
 ```
-$ moactl describe cluster rh-moa-test-cluster1
+$ rosa describe cluster rh-moa-test-cluster1
 Name:        rh-moa-test-cluster1
 ID:          1de87g7c30g75qechgh7l5b2bha6r04e
 External ID: 34322be7-b2a7-45c2-af39-2c684ce624e1
@@ -280,7 +280,7 @@ If installation fails or the State does not change to `ready` after 40 minutes, 
 
 You can follow the OpenShift installer logs to track the progress of your cluster:
 ```
-moactl logs cluster rh-moa-test-cluster1 --watch
+rosa logs cluster rh-moa-test-cluster1 --watch
 ```
 
 ## Access your cluster
@@ -289,14 +289,14 @@ To login to your cluster, you must configure an Identity Provider (IDP).
 
 For this guide we will use Github as an example IDP. 
 
-For other supported IDPs, run `moactl create idp --help`, and consult the OpenShift documentation on [configuring an IDP](https://docs.openshift.com/container-platform/latest/authentication/understanding-identity-provider.html#supported-identity-providers) for more information.
+For other supported IDPs, run `rosa create idp --help`, and consult the OpenShift documentation on [configuring an IDP](https://docs.openshift.com/container-platform/latest/authentication/understanding-identity-provider.html#supported-identity-providers) for more information.
 
 ### Add an IDP
 
 Run the following command to create an IDP backed by Github. Follow the prompts from the output to access your [Github developer settings](https://github.com/settings/developers) and configure a new OAuth application.
 
 ```
-$ moactl create idp --cluster rh-moa-test-cluster1 --type github                                                                                               
+$ rosa create idp --cluster rh-moa-test-cluster1 --type github                                                                                               
 I: Loading cluster 'rh-moa-test-cluster1'                                                                                                                                                               
 I: Loading identity providers for cluster 'rh-moa-test-cluster1'                                                                                                                                        
 To use GitHub as an identity provider, you must first register the application:                                                                                                                 
@@ -307,7 +307,7 @@ To use GitHub as an identity provider, you must first register the application:
 ? Copy the Client ID provided by GitHub: &lt;my-github-client-id&gt;                                                                                                                                   
 ? Copy the Client Secret provided by GitHub: &lt;my-github-client-secret&gt;                                                                                                           
 I: Configuring IDP for cluster 'rh-moa-test-cluster1'                                                                                                                                                   
-I: Identity Provider 'github-1' has been created. You need to ensure that there is a list of cluster administrators defined. See `moactl user add --help` for more information. To login into th
+I: Identity Provider 'github-1' has been created. You need to ensure that there is a list of cluster administrators defined. See `rosa user add --help` for more information. To login into th
 e console, open https://console-openshift-console.apps.rh-moa-test-cluster1.j9n4.s1.devshift.org and click on github-1
 ```
 
@@ -316,7 +316,7 @@ The IDP can take 1-2 minutes to be configured within your cluster.
 Run the following command to verify that your IDP has been configured correctly:
 
 ```
-$ moactl list idps --cluster rh-moa-test-cluster1
+$ rosa list idps --cluster rh-moa-test-cluster1
 NAME        TYPE      AUTH URL
 github-1    GitHub    https://oauth-openshift.apps.rh-moa-test-cluster1.j9n4.s1.devshift.org/oauth2callback/github-1
 ```
@@ -328,7 +328,7 @@ At this point you should be able to login to your cluster using your Github ID.
 First, run the following command to get the `Console URL` of your cluster:
 
 ```
-$ moactl describe cluster rh-moa-test-cluster1
+$ rosa describe cluster rh-moa-test-cluster1
 Name:        rh-moa-test-cluster1
 ID:          1de87g7c30g75qechgh7l5b2bha6r04e
 External ID: 34322be7-b2a7-45c2-af39-2c684ce624e1
@@ -374,7 +374,7 @@ Kubernetes Version: v1.16.2
 Run the following command to promote your Github user to dedicated-admin:
 
 ```
-$ moactl create user --cluster rh-moa-test-cluster1 --dedicated-admins=rh-moa-test-user
+$ rosa create user --cluster rh-moa-test-cluster1 --dedicated-admins=rh-moa-test-user
 ```
 
 Run the following command to verify your user now has dedicated-admin access. As a dedicated-admin you should receive some errors when running the following command:
@@ -402,14 +402,14 @@ Error from server (Forbidden): imagestreams.image.openshift.io is forbidden: Use
 To add a cluster-admin user, first enable cluster-admin capability on the cluster:
 
 ```
-$ moactl edit cluster rh-moa-test-cluster1 --enable-cluster-admins
+$ rosa edit cluster rh-moa-test-cluster1 --enable-cluster-admins
 ```
 
 Next give your user cluster-admin privileges:
 
 ```
-$ moactl create user --cluster rh-moa-test-cluster1 --cluster-admins rh-moa-test-user
-$ moactl list users --cluster rh-moa-test-cluster1
+$ rosa create user --cluster rh-moa-test-cluster1 --cluster-admins rh-moa-test-user
+$ rosa list users --cluster rh-moa-test-cluster1
 GROUP             NAME
 cluster-admins    rh-moa-test-user
 dedicated-admins  rh-moa-test-user
@@ -418,7 +418,7 @@ dedicated-admins  rh-moa-test-user
 Run the following command to verify your user now has cluster-admin access. As a cluster-admin you should be able to run the following command without errors.
 
 ```
-$ oc get all -n openshift-apiserver                       
+$ oc get all -n openshift-apiserver 
 NAME                  READY   STATUS    RESTARTS   AGE
 pod/apiserver-6ndg2   1/1     Running   0          17h
 pod/apiserver-lrmxs   1/1     Running   0          17h
@@ -438,15 +438,15 @@ After installing your cluster you can move on to installing an example app, or c
 Run the following command to delete your cluster, replacing &lt;my-cluster&gt; with the name of your cluster:
 
 ```
-moactl delete cluster -c <my-cluster>
+rosa delete cluster -c <my-cluster>
 ```
 
-To clean up your CloudFormation stack (this was created when you ran `moactl init`), run the following command:
+To clean up your CloudFormation stack (this was created when you ran `rosa init`), run the following command:
 
 ```
-moactl init --delete-stack
+rosa init --delete-stack
 ```
 
 ## Have you got feedback?
 
-We want to hear it. [Open and issue](https://github.com/openshift/moactl/issues/new) against the repo and someone from the team will be in touch.
+We want to hear it. [Open and issue](https://github.com/openshift/rosa/issues/new) against the repo and someone from the team will be in touch.
