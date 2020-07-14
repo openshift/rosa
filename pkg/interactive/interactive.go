@@ -50,8 +50,12 @@ func GetString(input Input) (a string, err error) {
 	if !ok {
 		dflt = ""
 	}
+	question := input.Question
+	if !input.Required && dflt == "" {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
 	prompt := &survey.Input{
-		Message: fmt.Sprintf("%s:", input.Question),
+		Message: fmt.Sprintf("%s:", question),
 		Help:    input.Help,
 		Default: dflt,
 	}
@@ -73,8 +77,12 @@ func GetInt(input Input) (a int, err error) {
 	if dfltStr == "0" {
 		dfltStr = ""
 	}
+	question := input.Question
+	if !input.Required && dfltStr == "" {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
 	prompt := &survey.Input{
-		Message: fmt.Sprintf("%s:", input.Question),
+		Message: fmt.Sprintf("%s:", question),
 		Help:    input.Help,
 		Default: dfltStr,
 	}
@@ -103,8 +111,12 @@ func GetOption(input Input) (a string, err error) {
 	if !ok {
 		dflt = ""
 	}
+	question := input.Question
+	if !input.Required && dflt == "" {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
 	prompt := &survey.Select{
-		Message: fmt.Sprintf("%s:", input.Question),
+		Message: fmt.Sprintf("%s:", question),
 		Help:    input.Help,
 		Options: input.Options,
 		Default: dflt,
@@ -123,8 +135,12 @@ func GetBool(input Input) (a bool, err error) {
 	if !ok {
 		dflt = false
 	}
+	question := input.Question
+	if !input.Required && !dflt {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
 	prompt := &survey.Confirm{
-		Message: fmt.Sprintf("%s:", input.Question),
+		Message: fmt.Sprintf("%s:", question),
 		Help:    input.Help,
 		Default: dflt,
 	}
@@ -146,8 +162,12 @@ func GetIPNet(input Input) (a net.IPNet, err error) {
 	if dfltStr == "<nil>" {
 		dfltStr = ""
 	}
+	question := input.Question
+	if !input.Required && dfltStr == "" {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
 	prompt := &survey.Input{
-		Message: fmt.Sprintf("%s:", input.Question),
+		Message: fmt.Sprintf("%s:", question),
 		Help:    input.Help,
 		Default: dfltStr,
 	}
@@ -176,8 +196,12 @@ func GetIPNet(input Input) (a net.IPNet, err error) {
 
 // Gets password input from the command line
 func GetPassword(input Input) (a string, err error) {
+	question := input.Question
+	if !input.Required {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
 	prompt := &survey.Password{
-		Message: fmt.Sprintf("%s:", input.Question),
+		Message: fmt.Sprintf("%s:", question),
 		Help:    input.Help,
 	}
 	if input.Required {
