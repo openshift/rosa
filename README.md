@@ -6,7 +6,21 @@ This project contains the `moactl` command line tool that simplifies the use of 
 
 This guide walks through setting up your first Amazon Red Hat OpenShift cluster using `moactl`.
 
-If you have already [installed the required prerequisites](#Installation-prerequisites), here are the commands you need to create a cluster.
+Before you can start working with `moactl` commands you have to have your AWS privileges set up correctly.
+To do this run the following command:
+
+```
+$ aws iam attach-user-policy --user-name <username> --policy-arn "arn:aws:iam::aws:policy/AdministratorAccess"
+```
+
+This tool has a built in possibility to verify that the privileges have been set up correctly.
+To do so, run the following command:
+
+```
+$ moactl verify permissions
+```
+
+After [installing the required prerequisites](#Installation-prerequisites) you can get started with these commands to create a cluster:
 
 ```
 $ moactl init        ## Configures your AWS account and ensures everything is setup correctly
