@@ -1,6 +1,6 @@
 # Installation troubleshooting
 
-Troubleshooting tips for installing an Amazon on Red Hat OpenShift cluster using `moactl`.
+Troubleshooting tips for installing an Amazon Red Hat OpenShift cluster using `moactl`.
 
 ## Inspect installation logs
 
@@ -17,7 +17,7 @@ Run the following command to verify your AWS account has the correct permissions
 ```
 moactl verify permissions
 ```
-If you receive any errors, double check to ensure than an SCP is not applied to your AWS account. If you are required to use an SCP, see [Red Hat Requirements for Customer Cloud Subscriptions](https://www.openshift.com/dedicated/ccs#scp) for details on the minimum required SCP.
+If you receive any errors, double check to ensure than an [SCP](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_type-auth.html#orgs_manage_policies_scp) is not applied to your AWS account. If you are required to use an SCP, see [Red Hat Requirements for Customer Cloud Subscriptions](https://www.openshift.com/dedicated/ccs#scp) for details on the minimum required SCP.
 
 ## Verify your AWS account and quota
 
