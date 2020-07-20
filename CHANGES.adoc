@@ -3,6 +3,21 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.4 Jul 20 2020
+
+- README: update adding IDP section
+- docs: link to aws scp doc
+- GitHub IdP: Change label name for Hostname
+- interactive: Display optional marker for non-required fields
+- delete: Confirm operation
+- README: adding a tldr section to quickstart
+- create-idp: Fallback to interactive mode
+- addons: Compare quota correctly to display available add-ons
+- README: updates to the quickstart
+- README: add moactl logs example
+- README: add sentence describing whoami
+- README: add whoami
+
 == 0.0.3 Jul 6 2020
 
 - logger: Define CreateLoggerOrExit
