@@ -19,13 +19,12 @@ $ moactl describe cluster <my-cluster-name>        ## Checks if your install is 
 
 If you get stuck or you are starting out and want more details, the rest of this guide includes the following steps:
 
-* Installation prerequisites
-* Initializing your AWS account
-* Creating your cluster
-* Accessing your cluster
-* Installing an addon to your cluster
-* Creating admin users to your cluster
-* Cleaning up
+* [Installation prerequisites](#Installation-prerequisites)
+* [Preparing your AWS account for cluster installation](Preparing-your-AWS-account-for-cluster-installation)
+* [Creating your cluster](#Creating-your-cluster))
+* [Installing an addon to your cluster](#optional-addons-example)
+* [Creating admin users for your cluster](#optional-create-dedicated-and-cluster-admins)
+* [Cleaning up](#next-steps)
 
 By the end of this guide you will have an Amazon Red Hat OpenShift cluster running in your AWS account.
 
@@ -39,13 +38,7 @@ Unless your just testing out MOA, we recommend using a dedicated AWS account to 
 
 If you are using AWS organizations and you need to have a Service Control Policy (SCP) applied to the AWS account you plan to use, see the [Red Hat Requirements for Customer Cloud Subscriptions](https://www.openshift.com/dedicated/ccs#scp) for details on the minimum required SCP.
 
-As part of the cluster creation process, `moactl` will perform the following actions:
-
-- Create an osdCcsAdmin IAM user:
-  - This user will have Programmatic access enabled.
-  - This user will have the AdministratorAccess policy attached to it.
-  - This user will leverage the IAM credentials you provide when configuring the AWS cli in the next section.
-
+As part of the cluster creation process, `moactl` will create an osdCcsAdmin IAM user. This user will have Programmatic access enabled and have the AdministratorAccess policy attached to it. The AWS credentials provided in the next section will be used to create this user.
 
 ### Install and configure the AWS cli
 
@@ -167,9 +160,9 @@ I: AWS quota ok
 
 If you need to increase your quota, navigate to your [AWS console](https://aws.amazon.com/console/), and request a quota increase for the service that failed.
 
-Once both the permissions and quota checks pass, proceed to initializing your AWS account.
+Once both the permissions and quota checks pass, proceed to preparing your AWS account for cluster installation.
 
-## Initializing your AWS account
+## Preparing your AWS account for cluster installation
 
 In this step you log in to your Red Hat account using `moactl`, and then initialize your AWS account.
 
@@ -229,7 +222,7 @@ Go to https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/ to downl
 > If you have not already installed the OpenShift Command Line Utility, also known as `oc`, follow the link in the output to install it now.
 
 
-## Create your cluster
+## Creating your cluster
 
 Run the following command to create your cluster with the default cluster settings.
 
@@ -273,28 +266,43 @@ moactl logs cluster rh-moa-test-cluster1 --watch
 
 To login to your cluster, you must configure an Identity Provider (IDP).
 
-For this guide we will use Github as an example IDP. 
+For this guide we will use GitHub as an example IDP.
 
 For other supported IDPs, run `moactl create idp --help`, and consult the OpenShift documentation on [configuring an IDP](https://docs.openshift.com/container-platform/latest/authentication/understanding-identity-provider.html#supported-identity-providers) for more information.
 
 ### Add an IDP
 
-Run the following command to create an IDP backed by Github. Follow the prompts from the output to access your [Github developer settings](https://github.com/settings/developers) and configure a new OAuth application.
+The following command to creates an IDP backed by GitHub. Follow the interactive prompts from the output to access your [Github developer settings](https://github.com/settings/developers) and configure a new OAuth application.
+
+Here are the options we will configure and the values to select:
+* Type of identity provider: github
+* Restrict to members of: organizations (if you do not have a GitHub Organization, you can [create one now]().)
+* GitHub organizations: rh-test-org (enter the name of your org)
+
+Follow the URL from the output. This will create a new OAuth application in the GitHub organization you specified. Click *Register applicaton* to access your Client ID and Client Secret.
+
+* Client ID: &lt;my-github-client-id&
+* Client Secret: [? for help] &lt;my-github-client-secret&
+* Hostname: (optional, you can leave it blank for now)
+* Mapping method: claim
 
 ```
-$ moactl create idp --cluster rh-moa-test-cluster1 --type github                                                                                               
-I: Loading cluster 'rh-moa-test-cluster1'                                                                                                                                                               
-I: Loading identity providers for cluster 'rh-moa-test-cluster1'                                                                                                                                        
-To use GitHub as an identity provider, you must first register the application:                                                                                                                 
-? List of GitHub organizations or teams that will have access to this cluster: openshift-online                                                                                                 
-* Open the following URL: https://github.com/organizations/openshift-online/settings/applications/new?oauth_application%5Bcallback_url%5D=https%3A%2F%2Foauth-openshift.apps.rh-moa-test-cluster1.j9n4.s
-1.devshift.org%2Foauth2callback%2Fgithub-1&oauth_application%5Bname%5D=rh-moa-test-cluster1&oauth_application%5Burl%5D=https%3A%2F%2Fconsole-openshift-console.apps.rh-moa-test-cluster1.j9n4.s1.devshift.org   
-* Click on 'Register application'                                                                                                                                                               
-? Copy the Client ID provided by GitHub: &lt;my-github-client-id&gt;                                                                                                                                   
-? Copy the Client Secret provided by GitHub: &lt;my-github-client-secret&gt;                                                                                                           
-I: Configuring IDP for cluster 'rh-moa-test-cluster1'                                                                                                                                                   
-I: Identity Provider 'github-1' has been created. You need to ensure that there is a list of cluster administrators defined. See `moactl user add --help` for more information. To login into th
-e console, open https://console-openshift-console.apps.rh-moa-test-cluster1.j9n4.s1.devshift.org and click on github-1
+$ moactl create idp --cluster=rh-moa-test-cluster1 --interactive
+I: Interactive mode enabled.
+Any optional fields can be left empty and a default will be selected.
+? Type of identity provider: github
+? Restrict to members of: organizations
+? GitHub organizations: rh-test-org
+? To use GitHub as an identity provider, you must first register the application:
+  - Open the following URL:
+    https://github.com/organizations/rh-moa-test-cluster1/settings/applications/new?oauth_application%5Bcallback_url%5D=https%3A%2F%2Foauth-openshift.apps.rh-moa-test-cluster1.z7v0.s1.devshift.org%2Foauth2callback%2Fgithub-1&oauth_application%5Bname%5D=rh-moa-test-cluster1-stage&oauth_application%5Burl%5D=https%3A%2F%2Fconsole-openshift-console.apps.rh-moa-test-cluster1.z7v0.s1.devshift.org
+  - Click on 'Register application'
+? Client ID: &lt;my-github-client-id&
+? Client Secret: [? for help] &lt;my-github-client-secret&
+? Hostname:
+? Mapping method: claim
+I: Configuring IDP for cluster 'rh-moa-test-cluster1'
+I: Identity Provider 'github-1' has been created. You need to ensure that there is a list of cluster administrators defined. See 'moactl create user --help' for more information. To login into the console, open https://console-openshift-console.apps.rh-test-org.z7v0.s1.devshift.org and click on github-1
 ```
 
 The IDP can take 1-2 minutes to be configured within your cluster.
@@ -309,7 +317,7 @@ github-1    GitHub    https://oauth-openshift.apps.rh-moa-test-cluster1.j9n4.s1.
 
 ### Log in to your cluster
 
-At this point you should be able to login to your cluster using your Github ID.
+At this point you should be able to login to your cluster. The follow examples continue to use GitHub as an example IDP.
 
 First, run the following command to get the `Console URL` of your cluster:
 
@@ -326,7 +334,7 @@ State:       ready
 Created:     May 27, 2020
 ```
 
-Navigate to the `Console URL` and log in using your Github credentials.
+Navigate to the `Console URL` and log in using your GitHub credentials (or the credentials for the IDP you added to your cluster).
 
 Once you are logged into your cluster, follow these steps to get your `oc` login command. In the top right of the OpenShift console, click your name and click **Copy Login Command**.  Click **github-1** and finally click **Display Token**. Copy and paste the `oc` login command into your terminal.
 
@@ -351,6 +359,10 @@ Kubernetes Version: v1.16.2
 ## (Optional) Addons example
 
 (coming soon)
+
+$moactl list addons -c lamek-moa-test-stage
+ID                      NAME                            STATE
+codeready-workspaces    Red Hat CodeReady Workspaces    not installed
 
 
 ## (Optional) Create dedicated and cluster admins
