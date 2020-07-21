@@ -20,9 +20,10 @@ $ moactl describe cluster <my-cluster-name>        ## Checks if your install is 
 If you get stuck or you are starting out and want more details, the rest of this guide includes the following steps:
 
 * [Installation prerequisites](#Installation-prerequisites)
-* [Preparing your AWS account for cluster installation](Preparing-your-AWS-account-for-cluster-installation)
-* [Creating your cluster](#Creating-your-cluster))
-* [Installing an addon to your cluster](#optional-addons-example)
+* [Preparing your AWS account for cluster installation](#preparing-your-aws-account-for-cluster-installation)
+* [Creating your cluster](#creating-your-cluster)
+* [Accessing your cluster](#accessing-your-cluster)
+* [Installing an addon to your cluster](#optional-installing-an-addon-to-your-cluster)
 * [Creating admin users for your cluster](#optional-create-dedicated-and-cluster-admins)
 * [Cleaning up](#next-steps)
 
@@ -48,6 +49,7 @@ Configure the `aws-cli` to use the AWS account that you would like to deploy you
 
 ```
 $ cat ~/.aws/credentials
+
 [default]
 aws_access_key_id = <my-aws-access-key-id>
 aws_secret_access_key = <my-aws-secret-access-key>
@@ -56,14 +58,20 @@ aws_secret_access_key = <my-aws-secret-access-key>
 Modify your `~/.aws/config` file to specify the AWS region you want to use.
 ```
 $ cat ~/.aws/config
+
 [default]
 output = table
 region = us-east-2
 ```
 
+> NOTE
+> If you are not using the default profile for your AWS credentials, run the following command to 
+export your profile settings to your shell, replacing `<my-profile>` with the name of your AWS profile: `export AWS_PROFILE=<my-profile>`
+
 To verify your configuration, run the following command to query the AWS api:
 ```
 $ aws ec2 describe-regions
+
 ---------------------------------------------------------------------------------
 |                                DescribeRegions                                |
 +-------------------------------------------------------------------------------+
@@ -99,6 +107,7 @@ Verify your installation by running the following command:
 
 ```
 $ moactl
+
 Command line tool for MOA.
 
 Usage:
@@ -127,17 +136,20 @@ Flags:
 Use "moactl [command] --help" for more information about a command.
 ```
 
-You can run `moactl completion` to generate a bash completion file. Add this file to the correct location for your operating system. For example, on a Linux machine run the following command to enable moactl bash completion:
+You can add moactl bash completion to your current terminal session by running the following commands:
 
 ```
-moactl completion > /etc/bash_completion.d/moactl
-source /etc/bash_completion.d/moactl
+$ moactl completion > ~/.moactl-completion.sh
+$ source ~/.moactl-completion.sh
 ```
+
+If you want to persist moactl bash completion on new terminal sessions, add the output from `moactl completion` to your `.bashrc` file, or to the appropriate location for your operating system.
 
 Run the following command to verify that your AWS account has the necessary permissions:
 
 ```
 $ moactl verify permissions
+
 I: Validating SCP policies...
 I: AWS SCP policies ok
 ```
@@ -146,6 +158,7 @@ Verify that your AWS account has the necessary quota to deploy an OpenShift clus
 
 ```
 $ export AWS_DEFAULT_REGION=us-west-2 && moactl verify quota
+
 I: Validating AWS quota...
 E: Insufficient AWS quotas
 E: Service ebs quota code L-FD252861 Provisioned IOPS SSD (io1) volume storage not valid
@@ -154,6 +167,7 @@ E: Service ebs quota code L-FD252861 Provisioned IOPS SSD (io1) volume storage n
 If needed, try another region:
 ```
 $ export AWS_DEFAULT_REGION=us-east-2 && moactl verify quota
+
 I: Validating AWS quota...
 I: AWS quota ok
 ```
@@ -181,10 +195,11 @@ $ moactl login --token="<my-offline-access-token>"
 
 ### Verify moactl login and aws-cli defaults
 
-Run the following command to verify your Red Hat and AWS credentials are setup correctly.  Check that your AWS Account ID, Default Region and ARN match what you expect.  You can safely ignore the rows beginning with OCM for now (OCM stands for OpenShift Cluster Manager).
+Run the following command to verify your Red Hat and AWS credentials are setup correctly.  Check that your AWS Account ID, Default Region, and ARN match what you expect.  You can safely ignore the rows beginning with OCM for now (OCM stands for OpenShift Cluster Manager).
 
 ```
 $ moactl whoami
+
 AWS Account ID:               000000000000
 AWS Default Region:           us-east-2
 AWS ARN:                      arn:aws:iam::000000000000:user/hello
@@ -204,6 +219,7 @@ This step runs a CloudFormation template that prepares your AWS account for Open
 
 ```
 $ moactl init
+
 I: Logged in as 'rh-moa-user' on 'https://api.openshift.com'
 I: Validating AWS credentials...
 I: AWS credentials are valid!
@@ -221,34 +237,93 @@ Go to https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/ to downl
 > NOTE
 > If you have not already installed the OpenShift Command Line Utility, also known as `oc`, follow the link in the output to install it now.
 
-
 ## Creating your cluster
 
-Run the following command to create your cluster with the default cluster settings.
-
-> To view other options when creating a cluster run `moactl create cluster --help`.
-> To follow a set of interactive prompts run `moactl create cluster --interactive`.
+To view all of the available options when creating a cluster, run the following command:
 
 ```
-$ moactl create cluster --name=rh-moa-test-cluster1
-I: Creating cluster with identifier '1de87g7c30g75qechgh7l5b2bha6r04e' and name 'rh-moa-test-cluster1'
+$ moactl create cluster --help
+
+Create cluster.
+
+Usage:
+  moactl create cluster [flags]
+
+Examples:
+  # Create a cluster named "mycluster"
+  moactl create cluster --name=mycluster
+
+  # Create a cluster in the us-east-2 region
+  moactl create cluster --name=mycluster --region=us-east-2
+
+Flags:
+  -n, --name string                   Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.
+  -r, --region string                 AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)
+      --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
+      --multi-az                      Deploy to multiple data centers.
+      --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
+      --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.
+                                      
+      --machine-cidr ipNet            Block of IP addresses used by OpenShift while installing the cluster, for example "10.0.0.0/16".
+      --service-cidr ipNet            Block of IP addresses for services, for example "172.30.0.0/16".
+      --pod-cidr ipNet                Block of IP addresses from which Pod IP addresses are allocated, for example "10.128.0.0/14".
+      --host-prefix int               Subnet prefix length to assign to each individual node. For example, if host prefix is set to "23", then each node is assigned a /23 subnet out of the given CIDR.
+      --private                       Restrict master API endpoint and application routes to direct, private connectivity.
+  -h, --help                          help for cluster
+
+Global Flags:
+      --debug         Enable debug mode.
+  -i, --interactive   Enable interactive mode.
+  -v, --v Level       log level for V logs
+```
+
+You can step through each of these options interactively by using the `--interactive` flag.
+
+```
+$ moactl create cluster --interactive
+```
+
+Otherwise, run the following command to create your cluster with the default cluster settings. The default settings are as follows:
+
+* The AWS region you have configured for the AWS CLI
+* The most recent version of OpenShift available to moactl
+* A single availability zone
+* Public cluster (Public API)
+* Master nodes: 3
+* Infra nodes: 3
+* Compute nodes: 4 (m5.xlarge instance types)
+
+```
+$ moactl create cluster --name=rh-moa-test-cluster
+
+I: Creating cluster with identifier '1de87g7c30g75qechgh7l5b2bha6r04e' and name 'rh-moa-test-cluster'
 I: To view list of clusters and their status, run `moactl list clusters`
-I: Cluster 'rh-moa-test-cluster1' has been created.
+I: Cluster 'rh-moa-test-cluster' has been created.
 I: Once the cluster is 'Ready' you will need to add an Identity Provider and define the list of cluster administrators. See `moactl create idp --help` and `moactl create user --help` for more information.
-I: To determine when your cluster is Ready, run `moactl describe cluster rh-moa-test-cluster1`.
+I: To determine when your cluster is Ready, run `moactl describe cluster rh-moa-test-cluster`.
 ```
 
 Creating a cluster can take up to 40 minutes, during which the State will transition from `pending` to `installing`, and finally to `ready`.
 
-Run the following command to check the status of your MOA cluster:
+After creating a cluster, run the following command to list all available clusters:
 
 ```
-$ moactl describe cluster rh-moa-test-cluster1
-Name:        rh-moa-test-cluster1
+$ moactl list clusters
+
+ID                                NAME                    STATE
+1eids212dg6tkkr231t1sl25reskq0q7  rh-moa-test-cluster     pending
+```
+
+Run the following command to see more details and check the status of a specific cluster. Replace `<my-cluster-name>` with the name of your cluster.
+
+```
+$ moactl describe cluster <my-cluster-name>
+
+Name:        rh-moa-test-cluster
 ID:          1de87g7c30g75qechgh7l5b2bha6r04e
 External ID: 34322be7-b2a7-45c2-af39-2c684ce624e1
-API URL:     https://api.rh-moa-test-cluster1.j9n4.s1.devshift.org:6443
-Console URL: https://console-openshift-console.apps.rh-moa-test-cluster1.j9n4.s1.devshift.org
+API URL:     https://api.rh-moa-test-cluster.j9n4.s1.devshift.org:6443
+Console URL: https://console-openshift-console.apps.rh-moa-test-cluster.j9n4.s1.devshift.org
 Nodes:       Master: 3, Infra: 3, Compute: 4
 Region:      us-east-2
 State:       ready
@@ -257,14 +332,15 @@ Created:     May 27, 2020
 
 If installation fails or the State does not change to `ready` after 40 minutes, check the [installation troubleshooting](install-troubleshooting.md) documentation for more details.
 
-You can follow the OpenShift installer logs to track the progress of your cluster:
+You can follow the installer logs to track the progress of your cluster:
+
 ```
-moactl logs cluster rh-moa-test-cluster1 --watch
+moactl logs cluster rh-moa-test-cluster --watch
 ```
 
-## Access your cluster
+## Accessing your cluster
 
-To login to your cluster, you must configure an Identity Provider (IDP).
+To log in to your cluster, you must configure an Identity Provider (IDP).
 
 For this guide we will use GitHub as an example IDP.
 
@@ -281,13 +357,13 @@ Here are the options we will configure and the values to select:
 
 Follow the URL from the output. This will create a new OAuth application in the GitHub organization you specified. Click *Register applicaton* to access your Client ID and Client Secret.
 
-* Client ID: &lt;my-github-client-id&
-* Client Secret: [? for help] &lt;my-github-client-secret&
+* Client ID: &lt;my-github-client-id&gt;
+* Client Secret: [? for help] &lt;my-github-client-secret&gt;
 * Hostname: (optional, you can leave it blank for now)
 * Mapping method: claim
 
 ```
-$ moactl create idp --cluster=rh-moa-test-cluster1 --interactive
+$ moactl create idp --cluster=rh-moa-test-cluster --interactive
 I: Interactive mode enabled.
 Any optional fields can be left empty and a default will be selected.
 ? Type of identity provider: github
@@ -295,13 +371,13 @@ Any optional fields can be left empty and a default will be selected.
 ? GitHub organizations: rh-test-org
 ? To use GitHub as an identity provider, you must first register the application:
   - Open the following URL:
-    https://github.com/organizations/rh-moa-test-cluster1/settings/applications/new?oauth_application%5Bcallback_url%5D=https%3A%2F%2Foauth-openshift.apps.rh-moa-test-cluster1.z7v0.s1.devshift.org%2Foauth2callback%2Fgithub-1&oauth_application%5Bname%5D=rh-moa-test-cluster1-stage&oauth_application%5Burl%5D=https%3A%2F%2Fconsole-openshift-console.apps.rh-moa-test-cluster1.z7v0.s1.devshift.org
+    https://github.com/organizations/rh-moa-test-cluster/settings/applications/new?oauth_application%5Bcallback_url%5D=https%3A%2F%2Foauth-openshift.apps.rh-moa-test-cluster.z7v0.s1.devshift.org%2Foauth2callback%2Fgithub-1&oauth_application%5Bname%5D=rh-moa-test-cluster-stage&oauth_application%5Burl%5D=https%3A%2F%2Fconsole-openshift-console.apps.rh-moa-test-cluster.z7v0.s1.devshift.org
   - Click on 'Register application'
 ? Client ID: &lt;my-github-client-id&
 ? Client Secret: [? for help] &lt;my-github-client-secret&
 ? Hostname:
 ? Mapping method: claim
-I: Configuring IDP for cluster 'rh-moa-test-cluster1'
+I: Configuring IDP for cluster 'rh-moa-test-cluster'
 I: Identity Provider 'github-1' has been created. You need to ensure that there is a list of cluster administrators defined. See 'moactl create user --help' for more information. To login into the console, open https://console-openshift-console.apps.rh-test-org.z7v0.s1.devshift.org and click on github-1
 ```
 
@@ -310,24 +386,24 @@ The IDP can take 1-2 minutes to be configured within your cluster.
 Run the following command to verify that your IDP has been configured correctly:
 
 ```
-$ moactl list idps --cluster rh-moa-test-cluster1
+$ moactl list idps --cluster rh-moa-test-cluster
 NAME        TYPE      AUTH URL
-github-1    GitHub    https://oauth-openshift.apps.rh-moa-test-cluster1.j9n4.s1.devshift.org/oauth2callback/github-1
+github-1    GitHub    https://oauth-openshift.apps.rh-moa-test-cluster.j9n4.s1.devshift.org/oauth2callback/github-1
 ```
 
 ### Log in to your cluster
 
-At this point you should be able to login to your cluster. The follow examples continue to use GitHub as an example IDP.
+At this point you should be able to log in to your cluster. The follow examples continue to use GitHub as an example IDP.
 
 First, run the following command to get the `Console URL` of your cluster:
 
 ```
-$ moactl describe cluster rh-moa-test-cluster1
-Name:        rh-moa-test-cluster1
+$ moactl describe cluster rh-moa-test-cluster
+Name:        rh-moa-test-cluster
 ID:          1de87g7c30g75qechgh7l5b2bha6r04e
 External ID: 34322be7-b2a7-45c2-af39-2c684ce624e1
-API URL:     https://api.rh-moa-test-cluster1.j9n4.s1.devshift.org:6443
-Console URL: https://console-openshift-console.apps.rh-moa-test-cluster1.j9n4.s1.devshift.org
+API URL:     https://api.rh-moa-test-cluster.j9n4.s1.devshift.org:6443
+Console URL: https://console-openshift-console.apps.rh-moa-test-cluster.j9n4.s1.devshift.org
 Nodes:       Master: 3, Infra: 3, Compute: 4
 Region:      us-east-2
 State:       ready
@@ -339,8 +415,8 @@ Navigate to the `Console URL` and log in using your GitHub credentials (or the c
 Once you are logged into your cluster, follow these steps to get your `oc` login command. In the top right of the OpenShift console, click your name and click **Copy Login Command**.  Click **github-1** and finally click **Display Token**. Copy and paste the `oc` login command into your terminal.
 
 ```
-$ oc login --token=z3sgOGVDk0k4vbqo_wFqBQQTnT-nA-nQLb8XEmWnw4X --server=https://api.rh-moa-test-cluster1.j9n4.s1.devshift.org:6443
-Logged into "https://api.rh-moa-test-cluster1.j9n4.s1.devshift.org:6443" as "rh-moa-test-user" using the token provided.
+$ oc login --token=z3sgOGVDk0k4vbqo_wFqBQQTnT-nA-nQLb8XEmWnw4X --server=https://api.rh-moa-test-cluster.j9n4.s1.devshift.org:6443
+Logged into "https://api.rh-moa-test-cluster.j9n4.s1.devshift.org:6443" as "rh-moa-test-user" using the token provided.
 
 You have access to 67 projects, the list has been suppressed. You can list all projects with 'oc projects'
 
@@ -356,14 +432,24 @@ Server Version: 4.3.18
 Kubernetes Version: v1.16.2
 ```
 
-## (Optional) Addons example
+## (Optional) Installing an addon to your cluster
 
 (coming soon)
 
-$moactl list addons -c lamek-moa-test-stage
+To view the available addons run the following command:
+
+```
+$moactl list addons --cluster rh-moa-test-cluster
+
 ID                      NAME                            STATE
 codeready-workspaces    Red Hat CodeReady Workspaces    not installed
+```
 
+Selet an addon from the list and run the following command to add it to your cluster:
+
+```
+$ moactl create addon --cluster=rh-moa-test-cluster codeready-workspaces
+```
 
 ## (Optional) Create dedicated and cluster admins
 
@@ -372,7 +458,7 @@ codeready-workspaces    Red Hat CodeReady Workspaces    not installed
 Run the following command to promote your Github user to dedicated-admin:
 
 ```
-$ moactl create user --cluster rh-moa-test-cluster1 --dedicated-admins=rh-moa-test-user
+$ moactl create user --cluster rh-moa-test-cluster --dedicated-admins=rh-moa-test-user
 ```
 
 Run the following command to verify your user now has dedicated-admin access. As a dedicated-admin you should receive some errors when running the following command:
@@ -400,14 +486,14 @@ Error from server (Forbidden): imagestreams.image.openshift.io is forbidden: Use
 To add a cluster-admin user, first enable cluster-admin capability on the cluster:
 
 ```
-$ moactl edit cluster rh-moa-test-cluster1 --enable-cluster-admins
+$ moactl edit cluster rh-moa-test-cluster --enable-cluster-admins
 ```
 
 Next give your user cluster-admin privileges:
 
 ```
-$ moactl create user --cluster rh-moa-test-cluster1 --cluster-admins rh-moa-test-user
-$ moactl list users --cluster rh-moa-test-cluster1
+$ moactl create user --cluster rh-moa-test-cluster --cluster-admins rh-moa-test-user
+$ moactl list users --cluster rh-moa-test-cluster
 GROUP             NAME
 cluster-admins    rh-moa-test-user
 dedicated-admins  rh-moa-test-user
@@ -433,7 +519,7 @@ After installing your cluster you can move on to installing an example app, or c
 
 ### Deleting your cluster
 
-Run the following command to delete your cluster, replacing &lt;my-cluster&gt; with the name of your cluster:
+Run the following command to delete your cluster, replacing `<my-cluster>` with the name of your cluster:
 
 ```
 moactl delete cluster -c <my-cluster>
