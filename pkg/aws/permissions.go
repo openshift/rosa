@@ -60,7 +60,6 @@ var permissions = map[PermissionGroup][]string{
 	// Base set of permissions required for cluster creation
 	PermissionCreateBase: {
 		// EC2 related perms
-		"organizations:ListPolicies",
 		"ec2:AllocateAddress",
 		"ec2:AssociateAddress",
 		"ec2:AuthorizeSecurityGroupEgress",
