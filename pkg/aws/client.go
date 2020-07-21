@@ -354,7 +354,7 @@ func (c *awsClient) ValidateSCP() (bool, error) {
 	scpPolicyPath := "templates/policies/osd_scp_policy.json"
 	requiredPermissions := []string{}
 	sParams := &SimulateParams{
-		Region: region,
+		Region: *c.awsSession.Config.Region,
 	}
 
 	for group := range permissions {
