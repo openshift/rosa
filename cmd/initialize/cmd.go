@@ -39,6 +39,7 @@ import (
 var args struct {
 	region      string
 	deleteStack bool
+	profile     string
 }
 
 var Cmd = &cobra.Command{
@@ -73,6 +74,14 @@ func init() {
 		"Deletes stack template applied to your AWS account during the 'init' command.\n",
 	)
 
+	flags.StringVarP(
+		&args.profile,
+		"profile",
+		 "p",
+		"default",
+		"AWS credentials profile to use",
+	)
+
 	// Force-load all flags from `login` into `init`
 	flags.AddFlagSet(login.Cmd.Flags())
 }
@@ -92,6 +101,7 @@ func run(cmd *cobra.Command, argv []string) {
 	client, err := aws.NewClient().
 		Logger(logger).
 		Region(region).
+		Profile(args.profile).
 		Build()
 	if err != nil {
 		reporter.Errorf("Error creating AWS client: %v", err)

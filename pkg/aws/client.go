@@ -66,6 +66,7 @@ type Client interface {
 type ClientBuilder struct {
 	logger *logrus.Logger
 	region *string
+	profile *string
 }
 
 type awsClient struct {
@@ -94,6 +95,11 @@ func (b *ClientBuilder) Region(value string) *ClientBuilder {
 	return b
 }
 
+func (b *ClientBuilder) Profile(value string) *ClientBuilder {
+	b.profile = aws.String(value)
+	return b
+}
+
 // Build uses the information stored in the builder to build a new AWS client.
 func (b *ClientBuilder) Build() (result Client, err error) {
 	// Check parameters:
@@ -113,6 +119,7 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 	// Create the AWS session:
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
+		Profile: *b.profile,
 		Config: aws.Config{
 			Region: b.region,
 			// MaxRetries to limit the number of attempts on failed API calls
