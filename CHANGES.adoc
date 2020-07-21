@@ -3,6 +3,13 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.5 Jul 21 2020
+
+- README: updates from second moa hackday
+- Don't validate AWS Organization List Policies
+- Validate permissions in the AWS client region
+- Validate only permissions in the OSD SCP policy document
+
 == 0.0.4 Jul 20 2020
 
 - README: update adding IDP section
