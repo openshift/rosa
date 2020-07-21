@@ -50,9 +50,6 @@ const (
 
 	// PermissionDeleteNetworking is a set of permissions required when the installer destroys networking resources.
 	PermissionDeleteNetworking PermissionGroup = "delete-networking"
-
-	// AWS Region
-	region = "eu-central-1"
 )
 
 // Permissions list of permissions required to install a cluster
