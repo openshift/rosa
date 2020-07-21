@@ -352,19 +352,14 @@ func (c *awsClient) ValidateQuota() (bool, error) {
 // ValidateSCP attempts to validate SCP policies by ensuring we have the correct permissions
 func (c *awsClient) ValidateSCP() (bool, error) {
 	scpPolicyPath := "templates/policies/osd_scp_policy.json"
-	requiredPermissions := []string{}
+
 	sParams := &SimulateParams{
 		Region: *c.awsSession.Config.Region,
 	}
 
-	for group := range permissions {
-		requiredPermissions = append(requiredPermissions, permissions[group]...)
-	}
-
 	// Read installer permissions and OSD SCP Policy permissions
-	installerPolicyDocument := generatePolicyDocument(requiredPermissions, aws.String("Installer IAM Policy Document"))
 	osdPolicyDocument := readSCPPolicy(scpPolicyPath)
-	policyDocuments := []PolicyDocument{installerPolicyDocument, osdPolicyDocument}
+	policyDocuments := []PolicyDocument{osdPolicyDocument}
 
 	// Validate permissions
 	hasPermissions, err := validatePolicyDocuments(c, c, policyDocuments, sParams)
