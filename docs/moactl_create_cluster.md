@@ -28,8 +28,7 @@ moactl create cluster [flags]
       --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
       --multi-az                      Deploy to multiple data centers.
       --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
-      --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.
-                                      
+      --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, multizone clusters need at least 9 nodes. (default 4)
       --machine-cidr ipNet            Block of IP addresses used by OpenShift while installing the cluster, for example "10.0.0.0/16".
       --service-cidr ipNet            Block of IP addresses for services, for example "172.30.0.0/16".
       --pod-cidr ipNet                Block of IP addresses from which Pod IP addresses are allocated, for example "10.128.0.0/14".
