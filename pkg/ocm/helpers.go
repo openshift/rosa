@@ -132,6 +132,26 @@ func GetLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv
 	return response.Body(), nil
 }
 
+func GetAddOns(client *cmv1.AddOnsClient) ([]*cmv1.AddOn, error) {
+	response, err := client.List().
+		Search("enabled='t'").
+		Page(1).
+		Size(-1).
+		Send()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get add-ons: %v", err)
+	}
+	return response.Items().Slice(), nil
+}
+
+func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
+	addOn, err := client.Addon(id).Get().Send()
+	if err != nil {
+		return nil, err
+	}
+	return addOn.Body(), nil
+}
+
 type ClusterAddOn struct {
 	ID        string
 	Name      string

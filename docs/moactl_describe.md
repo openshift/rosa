@@ -22,5 +22,6 @@ Show details of a specific resource
 ### SEE ALSO
 
 * [moactl](moactl.md)	 - 
+* [moactl describe addon](moactl_describe_addon.md)	 - Show details of an add-on
 * [moactl describe cluster](moactl_describe_cluster.md)	 - Show details of a cluster
 
