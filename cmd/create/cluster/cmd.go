@@ -112,7 +112,7 @@ func init() {
 		&args.expirationDuration,
 		"expiration",
 		0,
-		"Expire cluster after a relative duration like 2h, 8h, 72h. Only one of expiration-time / expiration may be used.\n",
+		"Expire cluster after a relative duration like 2h, 8h, 72h. Only one of expiration-time / expiration may be used.",
 	)
 	// Cluster expiration is not supported in production
 	flags.MarkHidden("expiration-time")
@@ -128,9 +128,9 @@ func init() {
 	flags.IntVar(
 		&args.computeNodes,
 		"compute-nodes",
-		0,
+		4,
 		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, "+
-			"while multizone clusters need at least 9 nodes (3 per zone) for resiliency.\n",
+			"multizone clusters need at least 9 nodes.",
 	)
 
 	flags.IPNetVar(
@@ -306,6 +306,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Compute nodes:
 	computeNodes := args.computeNodes
+	// Compute node requirements for multi-AZ clusters are higher
+	if multiAZ && !cmd.Flags().Changed("compute-nodes") {
+		computeNodes = 9
+	}
 	if interactive.Enabled() {
 		computeNodes, err = interactive.GetInt(interactive.Input{
 			Question: "Compute nodes",
