@@ -24,9 +24,10 @@ moactl create idp [flags]
 
 ```
   -c, --cluster string               Name or ID of the cluster to add the IdP to (required).
-  -t, --type string                  Type of identity provider. Options are [github google ldap openid]
+  -t, --type string                  Type of identity provider. Options are [github google ldap openid].
+      --name string                  Name for the identity provider.
                                      
-      --mapping-method string        Specifies how new identities are mapped to users when they log in (default "claim")
+      --mapping-method string        Specifies how new identities are mapped to users when they log in. (default "claim")
       --client-id string             Client ID from the registered application.
       --client-secret string         Client Secret from the registered application.
                                      

@@ -36,6 +36,7 @@ var args struct {
 	clusterKey string
 
 	idpType string
+	idpName string
 
 	clientID      string
 	clientSecret  string
@@ -98,14 +99,20 @@ func init() {
 		"type",
 		"t",
 		"",
-		fmt.Sprintf("Type of identity provider. Options are %s\n", validIdps),
+		fmt.Sprintf("Type of identity provider. Options are %s.", validIdps),
+	)
+	flags.StringVar(
+		&args.idpName,
+		"name",
+		"",
+		"Name for the identity provider.\n",
 	)
 
 	flags.StringVar(
 		&args.mappingMethod,
 		"mapping-method",
 		"claim",
-		"Specifies how new identities are mapped to users when they log in",
+		"Specifies how new identities are mapped to users when they log in.",
 	)
 	flags.StringVar(
 		&args.clientID,
@@ -331,8 +338,25 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	idpName := args.idpName
+	// Auto-generate a name if none provided
+	if !cmd.Flags().Changed("name") {
+		idpName = getNextName(idpType, idps)
+	}
+	if interactive.Enabled() {
+		idpName, err = interactive.GetString(interactive.Input{
+			Question: "Identity provider name",
+			Help:     cmd.Flags().Lookup("name").Usage,
+			Default:  idpName,
+			Required: true,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid name for the identity provider: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	var idpBuilder cmv1.IdentityProviderBuilder
-	idpName := getNextName(idpType, idps)
 	switch idpType {
 	case "github":
 		idpBuilder, err = buildGithubIdp(cmd, cluster, idpName)
