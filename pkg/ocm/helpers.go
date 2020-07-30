@@ -17,16 +17,12 @@ limitations under the License.
 package ocm
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"regexp"
-	"time"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/moactl/pkg/ocm/properties"
 )
@@ -114,22 +110,6 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 	}
 
 	return response.Items().Slice(), nil
-}
-
-func GetLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv1.Log, err error) {
-	logsClient := client.Cluster(clusterID).Logs().Install().Log("hive")
-	response, err := logsClient.Get().
-		Parameter("tail", tail).
-		Send()
-	if err != nil {
-		err = fmt.Errorf("Failed to get logs for cluster '%s': %v", clusterID, err)
-		if response.Status() == http.StatusNotFound {
-			err = errors.NotFound.UserErrorf("Failed to get logs for cluster '%s'", clusterID)
-		}
-		return
-	}
-
-	return response.Body(), nil
 }
 
 func GetAddOns(client *cmv1.AddOnsClient) ([]*cmv1.AddOn, error) {
@@ -247,28 +227,4 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 	})
 
 	return clusterAddOns, nil
-}
-
-func PollLogs(client *cmv1.ClustersClient, clusterID string,
-	cb func(*cmv1.LogGetResponse) bool) (logs *cmv1.Log, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-	defer func() {
-		cancel()
-	}()
-
-	logsClient := client.Cluster(clusterID).Logs().Install().Log("hive")
-	response, err := logsClient.Poll().
-		Parameter("tail", 100).
-		Interval(5 * time.Second).
-		Predicate(cb).
-		StartContext(ctx)
-	if err != nil {
-		err = fmt.Errorf("Failed to poll logs for cluster '%s': %v", clusterID, err)
-		if response.Status() == http.StatusNotFound {
-			err = errors.NotFound.UserErrorf("Failed to poll logs for cluster '%s'", clusterID)
-		}
-		return
-	}
-
-	return response.Body(), nil
 }

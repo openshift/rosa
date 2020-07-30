@@ -152,9 +152,13 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Get Hive logs for cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	logs, err := ocm.GetLogs(clustersCollection, cluster.ID(), args.tail)
+	var logs *cmv1.Log
+	// Get logs from Hive
+	if cluster.State() == cmv1.ClusterStateUninstalling {
+		logs, err = ocm.GetUninstallLogs(clustersCollection, cluster.ID(), args.tail)
+	} else {
+		logs, err = ocm.GetInstallLogs(clustersCollection, cluster.ID(), args.tail)
+	}
 	if err != nil {
 		if errors.GetType(err) == errors.NotFound {
 			reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
@@ -175,7 +179,12 @@ func run(_ *cobra.Command, argv []string) {
 		}
 
 		// Poll for changing logs:
-		response, err := ocm.PollLogs(clustersCollection, cluster.ID(), printLogCallback)
+		var response *cmv1.Log
+		if cluster.State() == cmv1.ClusterStateUninstalling {
+			response, err = ocm.PollUninstallLogs(clustersCollection, cluster.ID(), printUninstallLogCallback)
+		} else {
+			response, err = ocm.PollInstallLogs(clustersCollection, cluster.ID(), printInstallLogCallback)
+		}
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
 				reporter.Errorf(fmt.Sprintf("Failed to watch logs for cluster '%s': %v", clusterKey, err))
@@ -188,7 +197,12 @@ func run(_ *cobra.Command, argv []string) {
 
 var lastLine string
 
-func printLogCallback(logs *cmv1.LogGetResponse) bool {
+func printUninstallLogCallback(logs *cmv1.UninstallLogGetResponse) bool {
+	printLog(logs.Body())
+	return false
+}
+
+func printInstallLogCallback(logs *cmv1.LogGetResponse) bool {
 	printLog(logs.Body())
 	return false
 }
