@@ -169,6 +169,11 @@ func run(_ *cobra.Command, argv []string) {
 	printLog(logs)
 
 	if args.watch {
+		if cluster.State() == cmv1.ClusterStateReady {
+			reporter.Infof("Cluster '%s' is successfully installed", clusterKey)
+			os.Exit(0)
+		}
+
 		// Poll for changing logs:
 		response, err := ocm.PollLogs(clustersCollection, cluster.ID(), printLogCallback)
 		if err != nil {

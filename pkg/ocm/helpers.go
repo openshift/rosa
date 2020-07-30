@@ -117,7 +117,7 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 }
 
 func GetLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv1.Log, err error) {
-	logsClient := client.Cluster(clusterID).Logs().Log("hive")
+	logsClient := client.Cluster(clusterID).Logs().Install().Log("hive")
 	response, err := logsClient.Get().
 		Parameter("tail", tail).
 		Send()
@@ -256,7 +256,7 @@ func PollLogs(client *cmv1.ClustersClient, clusterID string,
 		cancel()
 	}()
 
-	logsClient := client.Cluster(clusterID).Logs().Log("hive")
+	logsClient := client.Cluster(clusterID).Logs().Install().Log("hive")
 	response, err := logsClient.Poll().
 		Parameter("tail", 100).
 		Interval(5 * time.Second).
