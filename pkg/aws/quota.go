@@ -117,23 +117,3 @@ func GetServiceQuota(serviceQuotas []*servicequotas.ServiceQuota,
 	}
 	return nil, fmt.Errorf("Unable to find quota with service code: %s", quotaCode)
 }
-
-// CheckQuota return quota value for quota code
-func CheckQuota(client *awsClient, quota quota) (bool, error) {
-	serviceQuotas, err := ListServiceQuotas(client, quota.ServiceCode)
-	if err != nil {
-		return false, err
-	}
-
-	serviceQuota, err := GetServiceQuota(serviceQuotas, quota.QuotaCode)
-	if err != nil {
-		return false, err
-	}
-
-	return HasQuota(serviceQuota, quota), nil
-}
-
-// HasQuota return a true if quota is equal or greater than our required value
-func HasQuota(serviceQuota *servicequotas.ServiceQuota, quota quota) bool {
-	return *serviceQuota.Value >= *quota.DesiredValue
-}

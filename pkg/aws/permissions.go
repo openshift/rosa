@@ -98,8 +98,6 @@ func checkPermissionsUsingQueryClient(queryClient, targetClient *awsClient, poli
 
 func validatePolicyDocuments(queryClient, targetClient *awsClient, policyDocuments []PolicyDocument,
 	sParams *SimulateParams) (bool, error) {
-	permissionsOk := true
-
 	for _, policyDocument := range policyDocuments {
 		permissionsOk, err := checkPermissionsUsingQueryClient(queryClient, targetClient, policyDocument, sParams)
 		if err != nil {
@@ -110,7 +108,7 @@ func validatePolicyDocuments(queryClient, targetClient *awsClient, policyDocumen
 		}
 	}
 
-	return permissionsOk, nil
+	return true, nil
 }
 
 // readSCPPolicy reads a SCP policy from file into a Policy Document

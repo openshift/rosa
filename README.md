@@ -161,7 +161,7 @@ $ export AWS_DEFAULT_REGION=us-west-2 && moactl verify quota
 
 I: Validating AWS quota...
 E: Insufficient AWS quotas
-E: Service ebs quota code L-FD252861 Provisioned IOPS SSD (io1) volume storage not valid
+E: Service ec2 quota code L-0263D0A3 Number of EIPs - VPC EIPs not valid, expected quota of at least 5, but got 2
 ```
 
 If needed, try another region:

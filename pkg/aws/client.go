@@ -342,14 +342,23 @@ func (c *awsClient) GetAccessKeyFromStack(stackName string) (*AccessKey, error) 
 // ValidateQuota
 func (c *awsClient) ValidateQuota() (bool, error) {
 	for _, quota := range serviceQuotaServices {
-		ok, err := CheckQuota(c, quota)
+		serviceQuotas, err := ListServiceQuotas(c, quota.ServiceCode)
 		if err != nil {
-			return false, fmt.Errorf("Error validating AWS quota: %s %v", quota.ServiceCode, err)
+			return false, fmt.Errorf("Error listing AWS service quotas: %s %v", quota.ServiceCode, err)
 		}
-		if !ok {
-			return false, fmt.Errorf("Service %s quota code %s %s not valid",
-				quota.ServiceCode, quota.QuotaCode, quota.QuotaName)
+
+		serviceQuota, err := GetServiceQuota(serviceQuotas, quota.QuotaCode)
+		if err != nil {
+			return false, fmt.Errorf("Error getting AWS service quota: %s %v", quota.ServiceCode, err)
 		}
+
+		if *serviceQuota.Value < *quota.DesiredValue {
+			return false, fmt.Errorf(
+				"Service %s quota code %s %s not valid, expected quota of at least %d, but got %d",
+				quota.ServiceCode, quota.QuotaCode, quota.QuotaName,
+				int(*quota.DesiredValue), int(*serviceQuota.Value))
+		}
+
 		c.logger.Debug(fmt.Sprintf("Service %s quota code %s is ok", quota.ServiceCode, quota.QuotaCode))
 	}
 
