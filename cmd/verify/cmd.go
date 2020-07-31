@@ -19,6 +19,7 @@ package verify
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/moactl/cmd/verify/oc"
 	"github.com/openshift/moactl/cmd/verify/permissions"
 	"github.com/openshift/moactl/cmd/verify/quota"
 )
@@ -44,6 +45,7 @@ func init() {
 		"AWS region in which to run (overrides the AWS_REGION environment variable)",
 	)
 
-	Cmd.AddCommand(quota.Cmd)
+	Cmd.AddCommand(oc.Cmd)
 	Cmd.AddCommand(permissions.Cmd)
+	Cmd.AddCommand(quota.Cmd)
 }

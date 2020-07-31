@@ -17,15 +17,12 @@ limitations under the License.
 package initialize
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
-	"regexp"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/cmd/login"
+	"github.com/openshift/moactl/cmd/verify/oc"
 	"github.com/openshift/moactl/cmd/verify/permissions"
 	"github.com/openshift/moactl/cmd/verify/quota"
 
@@ -220,31 +217,5 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
 	}
 
-	// Verify whether `oc` is installed
-	reporter.Infof("Verifying whether OpenShift command-line tool is available...")
-	ocDownloadURL := "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/"
-
-	output, err := exec.Command("oc", "version", "--client").Output()
-	if err != nil {
-		reporter.Errorf("OpenShift command-line tool is not installed.\n"+
-			"Go to %s to download the OpenShift client and add it to your PATH.", ocDownloadURL)
-		os.Exit(1)
-	}
-
-	// Parse the version for the OpenShift Client
-	version := strings.Replace(string(output), "\n", "", 1)
-	isCorrectVersion, err := regexp.Match(`\W4.\d*`, output)
-	if err != nil {
-		reporter.Errorf("Failed to parse OpenShift Client version: %v", err)
-		os.Exit(1)
-	}
-
-	if !isCorrectVersion {
-		reporter.Warnf("Current OpenShift %s", version)
-		reporter.Warnf("Your version of the OpenShift command-line tool is not supported.")
-		fmt.Printf("Go to %s to download the latest version.\n", ocDownloadURL)
-		os.Exit(1)
-	}
-
-	reporter.Infof("Current OpenShift %s", version)
+	oc.Cmd.Run(cmd, argv)
 }
