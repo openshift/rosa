@@ -13,6 +13,9 @@ moactl list addons [flags]
 ### Examples
 
 ```
+  # List all add-ons
+  moactl list addons
+
   # List all add-on installations on a cluster named "mycluster"
   moactl list addons --cluster=mycluster
 ```

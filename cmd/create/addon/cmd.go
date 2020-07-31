@@ -136,5 +136,6 @@ func run(_ *cobra.Command, argv []string) {
 		reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %s", addOnID, clusterKey, err)
 		os.Exit(1)
 	}
-	reporter.Debugf("Installed add-on '%s' on cluster '%s'", addOnID, clusterKey)
+	reporter.Infof("Add-on '%s' is now installing. To check the status run 'moactl list addons -c %s'",
+		addOnID, clusterKey)
 }

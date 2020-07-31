@@ -19,6 +19,7 @@ package describe
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/moactl/cmd/describe/addon"
 	"github.com/openshift/moactl/cmd/describe/cluster"
 )
 
@@ -29,5 +30,6 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	Cmd.AddCommand(addon.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 }
