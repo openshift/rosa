@@ -17,6 +17,7 @@ limitations under the License.
 package aws
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -95,11 +96,10 @@ func (b *ClientBuilder) Region(value string) *ClientBuilder {
 }
 
 // Build uses the information stored in the builder to build a new AWS client.
-func (b *ClientBuilder) Build() (result Client, err error) {
+func (b *ClientBuilder) Build() (Client, error) {
 	// Check parameters:
 	if b.logger == nil {
-		err = fmt.Errorf("Logger is mandatory")
-		return
+		return nil, fmt.Errorf("Logger is mandatory")
 	}
 
 	// Create the AWS logger:
@@ -107,7 +107,7 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 		Logger(b.logger).
 		Build()
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	// Create the AWS session:
@@ -127,6 +127,9 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 			},
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	if b.logger.IsLevelEnabled(logrus.DebugLevel) {
 		var dumper http.RoundTripper
@@ -135,30 +138,25 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 			Next(sess.Config.HTTPClient.Transport).
 			Build()
 		if err != nil {
-			return
+			return nil, err
 		}
 		sess.Config.HTTPClient.Transport = dumper
-	}
-	if err != nil {
-		return
 	}
 
 	// Check that the region is set:
 	region := aws.StringValue(sess.Config.Region)
 	if region == "" {
-		err = fmt.Errorf("Region is not set")
-		return
+		return nil, fmt.Errorf("Region is not set")
 	}
 
 	// Check that the AWS credentials are available:
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
-		err = fmt.Errorf("Failed to find credentials: %v", err)
-		return
+		return nil, fmt.Errorf("Failed to find credentials: %v", err)
 	}
 
 	// Create and populate the object:
-	result = &awsClient{
+	c := &awsClient{
 		logger:              b.logger,
 		iamClient:           iam.New(sess),
 		orgClient:           organizations.New(sess),
@@ -168,7 +166,16 @@ func (b *ClientBuilder) Build() (result Client, err error) {
 		awsSession:          sess,
 	}
 
-	return
+	_, root, err := getClientDetails(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client details: %v", err)
+	}
+
+	if root {
+		return nil, errors.New("using a root account is not supported, please use an IAM user instead")
+	}
+
+	return c, err
 }
 
 func (c *awsClient) GetRegion() string {
