@@ -216,6 +216,12 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 
 // Ensure osdCcsAdmin IAM user is created
 func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
+	// Check already existing cloudformation stack status
+	stackReady, err := c.checkStackReadyOrNotExisting(stackName)
+	if err != nil || stackReady {
+		return false, err
+	}
+
 	// Read cloudformation template
 	cfTemplateBody, err := readCFTemplate()
 	if err != nil {
@@ -225,12 +231,6 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
 	// Create cloudformation stack
 	_, err = c.cfClient.CreateStack(buildStackInput(cfTemplateBody, stackName))
 	if err != nil {
-		switch typed := err.(type) {
-		case awserr.Error:
-			if typed.Code() == cloudformation.ErrCodeAlreadyExistsException {
-				return false, nil
-			}
-		}
 		return false, err
 	}
 
@@ -251,6 +251,27 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (c *awsClient) checkStackReadyOrNotExisting(stackName string) (stackReady bool, err error) {
+	stackList, err := c.cfClient.ListStacks(&cloudformation.ListStacksInput{})
+	if err != nil {
+		return false, err
+	}
+
+	for _, summary := range stackList.StackSummaries {
+		if *summary.StackName == stackName {
+			if *summary.StackStatus == cloudformation.StackStatusCreateComplete {
+				return true, nil
+			}
+			if *summary.StackStatus != cloudformation.StackStatusDeleteComplete {
+				return false, fmt.Errorf("Error creating user: Cloudformation stack %s existing with status %s. Expected status %s.\n Ensure user osdCcsAdmin does not exist, then retry with\n moactl init --delete-stack; moactl init",
+					*summary.StackName, *summary.StackStatus, cloudformation.StackStatusCreateComplete)
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func (c *awsClient) DeleteOsdCcsAdminUser(stackName string) error {
