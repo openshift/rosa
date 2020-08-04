@@ -84,6 +84,27 @@ func NewClient() *ClientBuilder {
 	return &ClientBuilder{}
 }
 
+func New(
+	logger *logrus.Logger,
+	iamClient iamiface.IAMAPI,
+	orgClient organizationsiface.OrganizationsAPI,
+	stsClient stsiface.STSAPI,
+	cfClient cloudformationiface.CloudFormationAPI,
+	servicequotasClient servicequotasiface.ServiceQuotasAPI,
+	awsSession *session.Session,
+
+) Client {
+	return &awsClient{
+		logger,
+		iamClient,
+		orgClient,
+		stsClient,
+		cfClient,
+		servicequotasClient,
+		awsSession,
+	}
+}
+
 // Logger sets the logger that the AWS client will use to send messages to the log.
 func (b *ClientBuilder) Logger(value *logrus.Logger) *ClientBuilder {
 	b.logger = value
