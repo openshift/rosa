@@ -1,32 +1,15 @@
 ## moactl logs
 
-Show cluster installation logs
+Show installation logs for a cluster
 
 ### Synopsis
 
-Show cluster installation logs
-
-```
-moactl logs [ID|NAME] [flags]
-```
-
-### Examples
-
-```
-  # Show last 100 log lines for a cluster named "mycluster"
-  moactl logs mycluster --tail=100
-
-  # Show logs for a cluster using the --cluster flag
-  moactl logs --cluster=mycluster
-```
+Show installation logs for a cluster
 
 ### Options
 
 ```
-  -c, --cluster string   Name or ID of the cluster to get logs for.
-  -h, --help             help for logs
-      --tail int         Number of lines to get from the end of the log. (default 2000)
-  -w, --watch            After getting the logs, watch for changes.
+  -h, --help   help for logs
 ```
 
 ### Options inherited from parent commands
@@ -39,4 +22,6 @@ moactl logs [ID|NAME] [flags]
 ### SEE ALSO
 
 * [moactl](moactl.md)	 - 
+* [moactl logs install](moactl_logs_install.md)	 - Show cluster installation logs
+* [moactl logs uninstall](moactl_logs_uninstall.md)	 - Show cluster uninstallation logs
 
