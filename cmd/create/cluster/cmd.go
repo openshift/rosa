@@ -44,7 +44,7 @@ var args struct {
 	multiAZ            bool
 	expirationDuration time.Duration
 	expirationTime     string
-	name               string
+	clusterName        string
 	region             string
 	version            string
 
@@ -64,10 +64,10 @@ var Cmd = &cobra.Command{
 	Short: "Create cluster",
 	Long:  "Create cluster.",
 	Example: `  # Create a cluster named "mycluster"
-  moactl create cluster --name=mycluster
+  moactl create cluster --cluster-name=mycluster
 
   # Create a cluster in the us-east-2 region
-  moactl create cluster --name=mycluster --region=us-east-2`,
+  moactl create cluster --cluster-name=mycluster --region=us-east-2`,
 	Run: run,
 }
 
@@ -77,9 +77,17 @@ func init() {
 
 	// Basic options
 	flags.StringVarP(
-		&args.name,
+		&args.clusterName,
 		"name",
 		"n",
+		"",
+		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
+	)
+	flags.MarkDeprecated("name", "use --cluster-name instead")
+	flags.StringVarP(
+		&args.clusterName,
+		"cluster-name",
+		"c",
 		"",
 		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
 	)
@@ -193,12 +201,12 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Get cluster name
-	name := args.name
+	clusterName := args.clusterName
 	if interactive.Enabled() {
-		name, err = interactive.GetString(interactive.Input{
+		clusterName, err = interactive.GetString(interactive.Input{
 			Question: "Cluster name",
-			Help:     cmd.Flags().Lookup("name").Usage,
-			Default:  name,
+			Help:     cmd.Flags().Lookup("cluster-name").Usage,
+			Default:  clusterName,
 			Required: true,
 		})
 		if err != nil {
@@ -206,7 +214,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	if !clusterprovider.IsValidClusterKey(name) {
+	if !clusterprovider.IsValidClusterKey(clusterName) {
 		reporter.Errorf("Expected a valid cluster name")
 		os.Exit(1)
 	}
@@ -400,7 +408,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterConfig := clusterprovider.Spec{
-		Name:               name,
+		Name:               clusterName,
 		Region:             region,
 		MultiAZ:            multiAZ,
 		Version:            version,
@@ -420,9 +428,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	clusterID := cluster.ID()
-	clusterName := cluster.Name()
-	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", clusterID, clusterName)
+	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", cluster.ID(), clusterName)
 	reporter.Infof("To view list of clusters and their status, run 'moactl list clusters'")
 
 	reporter.Infof("Cluster '%s' has been created.", clusterName)

@@ -10,7 +10,7 @@ If you have already [installed the required prerequisites](#Installation-prerequ
 
 ```
 $ moactl init        ## Configures your AWS account and ensures everything is setup correctly
-$ moactl create cluster --name <my-cluster-name>        ## Starts the cluster creation process (~30-40minutes)
+$ moactl create cluster --cluster-name <my-cluster-name>        ## Starts the cluster creation process (~30-40minutes)
 $ moactl logs cluster <my-cluster-name> --watch        ## Watch your logs as your cluster creates
 $ moactl create idp --cluster <my-cluster-name>  --interactive        ## Connect your IDP to your cluster
 $ moactl create user --cluster <my-cluster-name> --dedicated-admins <admin-username>        ## Promotes a user from your IDP to admin level
@@ -251,13 +251,13 @@ Usage:
 
 Examples:
   # Create a cluster named "mycluster"
-  moactl create cluster --name=mycluster
+  moactl create cluster --cluster-name=mycluster
 
   # Create a cluster in the us-east-2 region
-  moactl create cluster --name=mycluster --region=us-east-2
+  moactl create cluster --cluster-name=mycluster --region=us-east-2
 
 Flags:
-  -n, --name string                   Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.
+  -c, --cluster-name string           Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.
   -r, --region string                 AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)
       --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
       --multi-az                      Deploy to multiple data centers.
@@ -294,7 +294,7 @@ Otherwise, run the following command to create your cluster with the default clu
 * Compute nodes: 4 (m5.xlarge instance types)
 
 ```
-$ moactl create cluster --name=rh-moa-test-cluster
+$ moactl create cluster --cluster-name=rh-moa-test-cluster
 
 I: Creating cluster with identifier '1de87g7c30g75qechgh7l5b2bha6r04e' and name 'rh-moa-test-cluster'
 I: To view list of clusters and their status, run `moactl list clusters`
