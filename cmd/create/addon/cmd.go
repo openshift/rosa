@@ -24,6 +24,7 @@ import (
 
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
+	"github.com/openshift/moactl/pkg/confirm"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -46,6 +47,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+	confirm.AddFlag(flags)
 
 	flags.StringVarP(
 		&args.clusterKey,
@@ -131,12 +133,15 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	reporter.Debugf("Installing add-on '%s' on cluster '%s'", addOnID, clusterKey)
-	err = clusterprovider.InstallAddOn(clustersCollection, clusterKey, awsCreator.ARN, addOnID)
-	if err != nil {
-		reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %s", addOnID, clusterKey, err)
-		os.Exit(1)
+	reporter.Warnf("Once installed, add-ons cannot be uninstalled")
+	if confirm.Confirm("install add-on '%s' on cluster '%s'", addOnID, clusterKey) {
+		reporter.Debugf("Installing add-on '%s' on cluster '%s'", addOnID, clusterKey)
+		err = clusterprovider.InstallAddOn(clustersCollection, clusterKey, awsCreator.ARN, addOnID)
+		if err != nil {
+			reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %s", addOnID, clusterKey, err)
+			os.Exit(1)
+		}
+		reporter.Infof("Add-on '%s' is now installing. To check the status run 'moactl list addons -c %s'",
+			addOnID, clusterKey)
 	}
-	reporter.Infof("Add-on '%s' is now installing. To check the status run 'moactl list addons -c %s'",
-		addOnID, clusterKey)
 }
