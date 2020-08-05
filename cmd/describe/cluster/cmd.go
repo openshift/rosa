@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
+	"github.com/openshift/moactl/pkg/ocm/properties"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
@@ -126,11 +128,18 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	creatorARN, err := arn.Parse(cluster.Properties()[properties.CreatorARN])
+	if err != nil {
+		reporter.Errorf("Failed to parse creator ARN for cluster '%s'", clusterKey)
+		os.Exit(1)
+	}
+
 	// Print short cluster description:
 	fmt.Printf(""+
 		"Name:        %s\n"+
 		"ID:          %s\n"+
 		"External ID: %s\n"+
+		"AWS Account: %s\n"+
 		"API URL:     %s\n"+
 		"Console URL: %s\n"+
 		"Nodes:       Master: %d, Infra: %d, Compute: %d\n"+
@@ -140,6 +149,7 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Name(),
 		cluster.ID(),
 		cluster.ExternalID(),
+		creatorARN.AccountID,
 		cluster.API().URL(),
 		cluster.Console().URL(),
 		cluster.Nodes().Master(), cluster.Nodes().Infra(), cluster.Nodes().Compute(),
