@@ -158,9 +158,8 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if !confirm.Confirm("delete users %s from cluster %s",
-		strings.Join([]string{clusterAdmins, dedicatedAdmins}, ","),
-		clusterKey) {
+	allUsers := strings.Join([]string{clusterAdmins, dedicatedAdmins}, ",")
+	if !confirm.Confirm("delete users %s from cluster %s", strings.Trim(allUsers, ","), clusterKey) {
 		os.Exit(0)
 	}
 
