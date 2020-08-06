@@ -27,7 +27,7 @@ import (
 )
 
 func GetInstallLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv1.Log, err error) {
-	logsClient := client.Cluster(clusterID).Logs().Install().Log("hive")
+	logsClient := client.Cluster(clusterID).Logs().Install()
 	response, err := logsClient.Get().
 		Parameter("tail", tail).
 		Send()
@@ -65,7 +65,7 @@ func PollInstallLogs(client *cmv1.ClustersClient, clusterID string,
 		cancel()
 	}()
 
-	logsClient := client.Cluster(clusterID).Logs().Install().Log("hive")
+	logsClient := client.Cluster(clusterID).Logs().Install()
 	response, err := logsClient.Poll().
 		Parameter("tail", 100).
 		Interval(5 * time.Second).
@@ -83,7 +83,7 @@ func PollInstallLogs(client *cmv1.ClustersClient, clusterID string,
 }
 
 func PollUninstallLogs(client *cmv1.ClustersClient, clusterID string,
-	cb func(*cmv1.UninstallLogGetResponse) bool) (logs *cmv1.Log, err error) {
+	cb func(*cmv1.LogGetResponse) bool) (logs *cmv1.Log, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 	defer func() {
 		cancel()

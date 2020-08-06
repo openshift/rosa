@@ -181,7 +181,7 @@ func run(_ *cobra.Command, argv []string) {
 
 var lastLine string
 
-func printUninstallLogCallback(logs *cmv1.UninstallLogGetResponse) bool {
+func printUninstallLogCallback(logs *cmv1.LogGetResponse) bool {
 	printLog(logs.Body())
 	return false
 }
