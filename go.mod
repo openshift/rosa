@@ -7,7 +7,10 @@ require (
 	github.com/aws/aws-sdk-go v1.29.17
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/golang/mock v1.4.3
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/onsi/ginkgo v1.11.0
+	github.com/onsi/gomega v1.7.0
 	github.com/openshift-online/ocm-sdk-go v0.1.114
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.6
