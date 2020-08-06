@@ -27,7 +27,7 @@ moactl: generate
 
 .PHONY: test
 test:
-	ginkgo -r cmd pkg
+	go test ./...
 
 .PHONY: fmt
 fmt:
