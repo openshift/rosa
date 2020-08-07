@@ -221,7 +221,7 @@ type Help struct {
 }
 
 func PrintHelp(help Help) error {
-	out, err := core.RunTemplate(helpTemplate, help)
+	out, _, err := core.RunTemplate(helpTemplate, help)
 	if err != nil {
 		return err
 	}
