@@ -1,10 +1,10 @@
 ## moactl logs
 
-Show logs of a specific resource
+Show installation logs for a cluster
 
 ### Synopsis
 
-Show logs of a specific resource
+Show installation logs for a cluster
 
 ### Options
 
@@ -22,5 +22,6 @@ Show logs of a specific resource
 ### SEE ALSO
 
 * [moactl](moactl.md)	 - 
-* [moactl logs cluster](moactl_logs_cluster.md)	 - Show details of a cluster
+* [moactl logs install](moactl_logs_install.md)	 - Show cluster installation logs
+* [moactl logs uninstall](moactl_logs_uninstall.md)	 - Show cluster uninstallation logs
 

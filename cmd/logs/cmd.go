@@ -19,16 +19,18 @@ package logs
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/logs/cluster"
+	"github.com/openshift/moactl/cmd/logs/install"
+	"github.com/openshift/moactl/cmd/logs/uninstall"
 )
 
 var Cmd = &cobra.Command{
-	Use:     "logs RESOURCE [flags]",
+	Use:     "logs RESOURCE",
 	Aliases: []string{"log"},
-	Short:   "Show logs of a specific resource",
-	Long:    "Show logs of a specific resource",
+	Short:   "Show installation logs for a cluster",
+	Long:    "Show installation logs for a cluster",
 }
 
 func init() {
-	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(install.Cmd)
+	Cmd.AddCommand(uninstall.Cmd)
 }

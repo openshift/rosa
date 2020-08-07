@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package uninstall
 
 import (
 	"fmt"
@@ -39,14 +39,14 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:   "cluster [ID|NAME]",
-	Short: "Show details of a cluster",
-	Long:  "Show details of a cluster",
-	Example: `  # Show last 100 log lines for a cluster named "mycluster"
-  moactl logs cluster mycluster --tail=100
+	Use:   "uninstall [ID|NAME]",
+	Short: "Show cluster uninstallation logs",
+	Long:  "Show cluster uninstallation logs",
+	Example: `  # Show last 100 uninstall log lines for a cluster named "mycluster"
+  moactl logs uninstall mycluster --tail=100
 
-  # Show logs for a cluster using the --cluster flag
-  moactl logs cluster --cluster=mycluster`,
+  # Show uninstall logs for a cluster using the --cluster flag
+  moactl logs uninstall --cluster=mycluster`,
 	Run: run,
 }
 
@@ -146,17 +146,16 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if cluster.State() == cmv1.ClusterStatePending && !args.watch {
-		reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
+	if cluster.State() != cmv1.ClusterStateUninstalling && !args.watch {
+		reporter.Warnf("Cluster '%s' is not currently uninstalling", clusterKey)
 		os.Exit(1)
 	}
 
-	// Get Hive logs for cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	logs, err := ocm.GetLogs(clustersCollection, cluster.ID(), args.tail)
+	// Get logs from Hive
+	logs, err := ocm.GetUninstallLogs(clustersCollection, cluster.ID(), args.tail)
 	if err != nil {
 		if errors.GetType(err) == errors.NotFound {
-			reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
+			reporter.Warnf("Logs for cluster '%s' are not available", clusterKey)
 			if args.watch {
 				reporter.Warnf("Waiting...")
 			}
@@ -169,7 +168,7 @@ func run(_ *cobra.Command, argv []string) {
 
 	if args.watch {
 		// Poll for changing logs:
-		response, err := ocm.PollLogs(clustersCollection, cluster.ID(), printLogCallback)
+		response, err := ocm.PollUninstallLogs(clustersCollection, cluster.ID(), printUninstallLogCallback)
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
 				reporter.Errorf(fmt.Sprintf("Failed to watch logs for cluster '%s': %v", clusterKey, err))
@@ -182,7 +181,7 @@ func run(_ *cobra.Command, argv []string) {
 
 var lastLine string
 
-func printLogCallback(logs *cmv1.LogGetResponse) bool {
+func printUninstallLogCallback(logs *cmv1.LogGetResponse) bool {
 	printLog(logs.Body())
 	return false
 }
