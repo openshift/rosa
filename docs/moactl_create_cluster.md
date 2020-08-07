@@ -14,16 +14,16 @@ moactl create cluster [flags]
 
 ```
   # Create a cluster named "mycluster"
-  moactl create cluster --name=mycluster
+  moactl create cluster --cluster-name=mycluster
 
   # Create a cluster in the us-east-2 region
-  moactl create cluster --name=mycluster --region=us-east-2
+  moactl create cluster --cluster-name=mycluster --region=us-east-2
 ```
 
 ### Options
 
 ```
-  -n, --name string                   Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.
+  -c, --cluster-name string           Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.
   -r, --region string                 AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)
       --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
       --multi-az                      Deploy to multiple data centers.
