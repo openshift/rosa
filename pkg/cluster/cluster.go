@@ -226,18 +226,18 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	return nil
 }
 
-func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string) error {
+func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
 	cluster, err := GetCluster(client, clusterKey, creatorARN)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = client.Cluster(cluster.ID()).Delete().Send()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return cluster, nil
 }
 
 func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string) error {

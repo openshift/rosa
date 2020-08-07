@@ -25,6 +25,7 @@ moactl delete cluster [ID|NAME] [flags]
 ```
   -c, --cluster string   Name or ID of the cluster to delete.
   -h, --help             help for cluster
+      --watch            Watch cluster uninstallation logs.
 ```
 
 ### Options inherited from parent commands
