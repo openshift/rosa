@@ -23,7 +23,6 @@ If you get stuck or you are starting out and want more details, the rest of this
 * [Preparing your AWS account for cluster installation](#preparing-your-aws-account-for-cluster-installation)
 * [Creating your cluster](#creating-your-cluster)
 * [Accessing your cluster](#accessing-your-cluster)
-* [Installing an addon to your cluster](#optional-installing-an-addon-to-your-cluster)
 * [Creating admin users for your cluster](#optional-create-dedicated-and-cluster-admins)
 * [Cleaning up](#next-steps)
 
@@ -430,25 +429,6 @@ $ oc version
 Client Version: 4.4.0-202005231254-4a4cd75
 Server Version: 4.3.18
 Kubernetes Version: v1.16.2
-```
-
-## (Optional) Installing an addon to your cluster
-
-(coming soon)
-
-To view the available addons run the following command:
-
-```
-$moactl list addons --cluster rh-moa-test-cluster
-
-ID                      NAME                            STATE
-codeready-workspaces    Red Hat CodeReady Workspaces    not installed
-```
-
-Selet an addon from the list and run the following command to add it to your cluster:
-
-```
-$ moactl create addon --cluster=rh-moa-test-cluster codeready-workspaces
 ```
 
 ## (Optional) Create dedicated and cluster admins

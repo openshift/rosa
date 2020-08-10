@@ -37,6 +37,7 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "addons",
 	Aliases: []string{"addon", "add-ons", "add-on"},
+	Hidden:  true,
 	Short:   "List add-on installations",
 	Long:    "List add-ons installed on a cluster.",
 	Example: `  # List all add-on installations on a cluster named "mycluster"
