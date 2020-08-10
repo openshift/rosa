@@ -182,7 +182,19 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		// Poll for changing logs:
-		response, err := ocm.PollInstallLogs(clustersCollection, cluster.ID(), printInstallLogCallback)
+		response, err := ocm.PollInstallLogs(clustersCollection, cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
+			state, _ := ocm.GetClusterState(clustersCollection, cluster.ID())
+			if state == cmv1.ClusterStateError {
+				reporter.Errorf("There was an error installing cluster '%s'", clusterKey)
+				return true
+			}
+			if state == cmv1.ClusterStateReady {
+				reporter.Infof("Cluster '%s' is now ready", clusterKey)
+				return true
+			}
+			printLog(logResponse.Body())
+			return false
+		})
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
 				reporter.Errorf(fmt.Sprintf("Failed to watch logs for cluster '%s': %v", clusterKey, err))
@@ -194,11 +206,6 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 var lastLine string
-
-func printInstallLogCallback(logs *cmv1.LogGetResponse) bool {
-	printLog(logs.Body())
-	return false
-}
 
 // Print next log lines
 func printLog(logs *cmv1.Log) {

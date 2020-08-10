@@ -26,6 +26,8 @@ import (
 	errors "github.com/zgalor/weberr"
 )
 
+const interval = 15 * time.Second
+
 func GetInstallLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv1.Log, err error) {
 	logsClient := client.Cluster(clusterID).Logs().Install()
 	response, err := logsClient.Get().
@@ -68,7 +70,7 @@ func PollInstallLogs(client *cmv1.ClustersClient, clusterID string,
 	logsClient := client.Cluster(clusterID).Logs().Install()
 	response, err := logsClient.Poll().
 		Parameter("tail", 100).
-		Interval(5 * time.Second).
+		Interval(interval).
 		Predicate(cb).
 		StartContext(ctx)
 	if err != nil {
@@ -92,7 +94,7 @@ func PollUninstallLogs(client *cmv1.ClustersClient, clusterID string,
 	logsClient := client.Cluster(clusterID).Logs().Uninstall()
 	response, err := logsClient.Poll().
 		Parameter("tail", 100).
-		Interval(5 * time.Second).
+		Interval(interval).
 		Predicate(cb).
 		StartContext(ctx)
 	if err != nil {

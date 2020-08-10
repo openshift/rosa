@@ -172,7 +172,14 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if watch {
 		// Poll for changing logs:
-		response, err := ocm.PollUninstallLogs(clustersCollection, cluster.ID(), printUninstallLogCallback)
+		response, err := ocm.PollUninstallLogs(clustersCollection, cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
+			state, err := ocm.GetClusterState(clustersCollection, cluster.ID())
+			if err != nil || state == cmv1.ClusterState("") {
+				return true
+			}
+			printLog(logResponse.Body())
+			return false
+		})
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
 				reporter.Errorf(fmt.Sprintf("Failed to watch logs for cluster '%s': %v", clusterKey, err))
@@ -184,11 +191,6 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 var lastLine string
-
-func printUninstallLogCallback(logs *cmv1.LogGetResponse) bool {
-	printLog(logs.Body())
-	return false
-}
 
 // Print next log lines
 func printLog(logs *cmv1.Log) {

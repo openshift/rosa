@@ -216,3 +216,11 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 
 	return clusterAddOns, nil
 }
+
+func GetClusterState(client *cmv1.ClustersClient, clusterID string) (cmv1.ClusterState, error) {
+	response, err := client.Cluster(clusterID).Status().Get().Send()
+	if err != nil || response.Body() == nil {
+		return cmv1.ClusterState(""), err
+	}
+	return response.Body().State(), nil
+}
