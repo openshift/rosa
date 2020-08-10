@@ -1,10 +1,10 @@
 ## moactl logs
 
-Show installation logs for a cluster
+Show installation or uninstallation logs for a cluster
 
 ### Synopsis
 
-Show installation logs for a cluster
+Show installation or uninstallation logs for a cluster
 
 ### Options
 
