@@ -38,5 +38,5 @@ moactl logs uninstall [ID|NAME] [flags]
 
 ### SEE ALSO
 
-* [moactl logs](moactl_logs.md)	 - Show installation logs for a cluster
+* [moactl logs](moactl_logs.md)	 - Show installation or uninstallation logs for a cluster
 
