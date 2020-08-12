@@ -18,6 +18,7 @@ package permissions
 
 import (
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -63,6 +64,10 @@ func run(cmd *cobra.Command, argv []string) {
 	ok, err := client.ValidateSCP()
 	if err != nil {
 		reporter.Errorf("Unable to validate SCP policies")
+		if strings.Contains(err.Error(), "Throttling: Rate exceeded") {
+			reporter.Errorf("Throttling: Rate exceeded. Please wait 3-5 minutes before retrying.")
+			os.Exit(1)
+		}
 		reporter.Errorf("%v", err)
 		os.Exit(1)
 	}
