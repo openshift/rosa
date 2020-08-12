@@ -77,9 +77,13 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	// Determine whether the user wants to watch logs streaming.
+	// We check the flag value this way to allow other commands to watch logs
+	watch := cmd.Flags().Lookup("watch").Value.String() == "true"
 
 	// Check command line arguments:
 	clusterKey := args.clusterKey
@@ -146,7 +150,7 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if cluster.State() != cmv1.ClusterStateUninstalling && !args.watch {
+	if cluster.State() != cmv1.ClusterStateUninstalling && !watch {
 		reporter.Warnf("Cluster '%s' is not currently uninstalling", clusterKey)
 		os.Exit(1)
 	}
@@ -156,7 +160,7 @@ func run(_ *cobra.Command, argv []string) {
 	if err != nil {
 		if errors.GetType(err) == errors.NotFound {
 			reporter.Warnf("Logs for cluster '%s' are not available", clusterKey)
-			if args.watch {
+			if watch {
 				reporter.Warnf("Waiting...")
 			}
 		} else {
@@ -166,9 +170,16 @@ func run(_ *cobra.Command, argv []string) {
 	}
 	printLog(logs)
 
-	if args.watch {
+	if watch {
 		// Poll for changing logs:
-		response, err := ocm.PollUninstallLogs(clustersCollection, cluster.ID(), printUninstallLogCallback)
+		response, err := ocm.PollUninstallLogs(clustersCollection, cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
+			state, err := ocm.GetClusterState(clustersCollection, cluster.ID())
+			if err != nil || state == cmv1.ClusterState("") {
+				return true
+			}
+			printLog(logResponse.Body())
+			return false
+		})
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
 				reporter.Errorf(fmt.Sprintf("Failed to watch logs for cluster '%s': %v", clusterKey, err))
@@ -180,11 +191,6 @@ func run(_ *cobra.Command, argv []string) {
 }
 
 var lastLine string
-
-func printUninstallLogCallback(logs *cmv1.LogGetResponse) bool {
-	printLog(logs.Body())
-	return false
-}
 
 // Print next log lines
 func printLog(logs *cmv1.Log) {

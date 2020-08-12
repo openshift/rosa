@@ -21,6 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	uninstallLogs "github.com/openshift/moactl/cmd/logs/uninstall"
+
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/confirm"
@@ -30,6 +32,8 @@ import (
 )
 
 var args struct {
+	// Watch logs during cluster uninstallation
+	watch      bool
 	clusterKey string
 }
 
@@ -55,9 +59,16 @@ func init() {
 		"",
 		"Name or ID of the cluster to delete.",
 	)
+
+	flags.BoolVar(
+		&args.watch,
+		"watch",
+		false,
+		"Watch cluster uninstallation logs.",
+	)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
@@ -118,11 +129,18 @@ func run(_ *cobra.Command, argv []string) {
 	// Get the client for the OCM collection of clusters:
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
-	if confirm.Confirm("delete cluster %s", clusterKey) {
-		reporter.Debugf("Deleting cluster '%s'", clusterKey)
-		err = clusterprovider.DeleteCluster(clustersCollection, clusterKey, awsCreator.ARN)
-		if err != nil {
-			reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
-		}
+	if !confirm.Confirm("delete cluster %s", clusterKey) {
+		os.Exit(0)
+	}
+
+	reporter.Debugf("Deleting cluster '%s'", clusterKey)
+	cluster, err := clusterprovider.DeleteCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	if err != nil {
+		reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	if args.watch {
+		uninstallLogs.Cmd.Run(cmd, []string{cluster.ID()})
 	}
 }
