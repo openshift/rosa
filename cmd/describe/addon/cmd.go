@@ -32,6 +32,7 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "addon [ID|NAME]",
 	Aliases: []string{"add-on"},
+	Hidden:  true,
 	Short:   "Show details of an add-on",
 	Long:    "Show details of an add-on",
 	Example: `  # Describe an add-on named "codeready-workspaces"
