@@ -14,38 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package verify
+package download
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/verify/oc"
-	"github.com/openshift/moactl/cmd/verify/permissions"
-	"github.com/openshift/moactl/cmd/verify/quota"
+	"github.com/openshift/moactl/cmd/download/oc"
 )
 
 var Cmd = &cobra.Command{
-	Use:   "verify RESOURCE [flags]",
-	Short: "Verify resources are configured correctly for cluster install",
-	Long:  "Verify resources are configured correctly for cluster install",
-}
-
-var args struct {
-	region string
+	Use:   "download RESOURCE [flags]",
+	Short: "Download necessary tools for using your cluster",
+	Long:  "Download necessary tools for using your cluster",
 }
 
 func init() {
-	flags := Cmd.PersistentFlags()
-
-	flags.StringVarP(
-		&args.region,
-		"region",
-		"r",
-		"",
-		"AWS region in which to run (overrides the AWS_REGION environment variable)",
-	)
-
 	Cmd.AddCommand(oc.Cmd)
-	Cmd.AddCommand(permissions.Cmd)
-	Cmd.AddCommand(quota.Cmd)
 }
