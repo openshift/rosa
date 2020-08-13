@@ -3,6 +3,39 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.6 Aug 13 2020
+
+- create-cluster: Set compute node defaults based on AZ
+- create-idp: Allow user to specify IdP name
+- addons: Add list and describe commands for add-ons
+- addons: Direct the user to check add-on status after install
+- aws: Return error if using root account
+- improve moactl verify quota error messages
+- Check cloudformation stack exists
+- Add tests for EnsureOsdCcsAdminUser
+- create-cluster: Deprecate --name in favor of --cluster-name
+- describe-cluster: Show AWS account ID used to create cluster
+- fix long line
+- Change from ginkgo to to go test
+- logs: Make command more intuitive
+- logs: Update SDK client
+- logs: Add uninstall logs
+- logs: Add separate install/uninstall logs
+- logs: Update API endpoints
+- interactive: Fix function call from broken dependency
+- addons: Remove global list of add-ons
+- delete-user: Fix confirmation output
+- verify: Add command to verify OpenShift client tools
+- download: Add command to download openshift-client tools
+- create-cluster: Allow user to watch cluster installation logs
+- delete-cluster: Allow user to watch cluster uninstallation logs
+- create-cluster: Describe cluster automatically after creation
+- logs: Detach logs once operation is complete
+- logs: Fix help text
+- addons: Hide addons until it's feature-complete
+- addons: Confirm add-on installation
+- Added Detailed Error Message for Throttling
+
 == 0.0.5 Jul 21 2020
 
 - README: updates from second moa hackday
