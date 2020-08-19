@@ -93,11 +93,11 @@ func (l *OCMLogger) Debug(ctx context.Context, format string, args ...interface{
 }
 
 func (l *OCMLogger) Info(ctx context.Context, format string, args ...interface{}) {
-	l.logger.Infof(format, args...)
+	l.logger.Debugf(format, args...)
 }
 
 func (l *OCMLogger) Warn(ctx context.Context, format string, args ...interface{}) {
-	l.logger.Warnf(format, args...)
+	l.logger.Debugf(format, args...)
 }
 
 func (l *OCMLogger) Error(ctx context.Context, format string, args ...interface{}) {
