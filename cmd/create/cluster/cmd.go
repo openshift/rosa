@@ -97,6 +97,12 @@ func init() {
 		"",
 		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
 	)
+	flags.BoolVar(
+		&args.multiAZ,
+		"multi-az",
+		false,
+		"Deploy to multiple data centers.",
+	)
 	flags.StringVarP(
 		&args.region,
 		"region",
@@ -109,12 +115,6 @@ func init() {
 		"version",
 		"",
 		"Version of OpenShift that will be used to install the cluster, for example \"4.3.10\"",
-	)
-	flags.BoolVar(
-		&args.multiAZ,
-		"multi-az",
-		false,
-		"Deploy to multiple data centers.",
 	)
 	flags.StringVar(
 		&args.expirationTime,
@@ -232,13 +232,27 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Multi-AZ:
+	multiAZ := args.multiAZ
+	if interactive.Enabled() {
+		multiAZ, err = interactive.GetBool(interactive.Input{
+			Question: "Multiple availability zones",
+			Help:     cmd.Flags().Lookup("multi-az").Usage,
+			Default:  multiAZ,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid multi-AZ value: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	// Get AWS region
 	region, err := aws.GetRegion(args.region)
 	if err != nil {
 		reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
-	regionList, err := getRegionList(ocmClient)
+	regionList, regionAZ, err := getRegionList(ocmClient, multiAZ)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -259,6 +273,16 @@ func run(cmd *cobra.Command, _ []string) {
 	if region == "" {
 		reporter.Errorf("Expected a valid AWS region")
 		os.Exit(1)
+	} else {
+		if supportsMultiAZ, found := regionAZ[region]; found {
+			if !supportsMultiAZ && multiAZ {
+				reporter.Errorf("Region '%s' does not support multiple availability zones", region)
+				os.Exit(1)
+			}
+		} else {
+			reporter.Errorf("Region '%s' is not supported for this AWS account", region)
+			os.Exit(1)
+		}
 	}
 
 	// OpenShift version:
@@ -284,20 +308,6 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
-	}
-
-	// Multi-AZ:
-	multiAZ := args.multiAZ
-	if interactive.Enabled() {
-		multiAZ, err = interactive.GetBool(interactive.Input{
-			Question: "Multiple availability zones",
-			Help:     cmd.Flags().Lookup("multi-az").Usage,
-			Default:  multiAZ,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid multi-AZ value: %s", err)
-			os.Exit(1)
-		}
 	}
 
 	// Compute node instance type:
@@ -561,15 +571,23 @@ func getMachineTypeList(client *cmv1.Client) (machineTypeList []string, err erro
 	return
 }
 
-func getRegionList(client *cmv1.Client) (regionList []string, err error) {
+func getRegionList(client *cmv1.Client, multiAZ bool) (regionList []string, regionAZ map[string]bool, err error) {
 	regions, err := regions.GetRegions(client)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
 		return
 	}
 
+	regionAZ = make(map[string]bool, len(regions))
+
 	for _, v := range regions {
-		regionList = append(regionList, v.ID())
+		if !v.Enabled() {
+			continue
+		}
+		if !multiAZ || v.SupportsMultiAZ() {
+			regionList = append(regionList, v.ID())
+		}
+		regionAZ[v.ID()] = v.SupportsMultiAZ()
 	}
 
 	return
