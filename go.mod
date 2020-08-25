@@ -5,19 +5,16 @@ go 1.13
 require (
 	github.com/AlecAivazis/survey/v2 v2.1.0
 	github.com/aws/aws-sdk-go v1.29.17
-	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/mock v1.4.3
-	github.com/json-iterator/go v1.1.10 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/mattn/go-colorable v0.1.7 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
-	github.com/openshift-online/ocm-sdk-go v0.1.117
+	github.com/openshift-online/ocm-sdk-go v0.1.123
 	github.com/prometheus/common v0.11.1 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
