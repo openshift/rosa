@@ -97,6 +97,7 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
+		Region(config.Region).
 		Logger(logger).
 		Build()
 	if err != nil {
