@@ -18,7 +18,6 @@ package oc
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -49,7 +48,7 @@ func run(_ *cobra.Command, _ []string) {
 	if err != nil {
 		reporter.Errorf("OpenShift command-line tool is not installed.\n"+
 			"Go to %s to download the OpenShift client and add it to your PATH.", ocDownloadURL)
-		os.Exit(1)
+		return
 	}
 
 	// Parse the version for the OpenShift Client
@@ -57,14 +56,14 @@ func run(_ *cobra.Command, _ []string) {
 	isCorrectVersion, err := regexp.Match(`\W4.\d*`, output)
 	if err != nil {
 		reporter.Errorf("Failed to parse OpenShift Client version: %v", err)
-		os.Exit(1)
+		return
 	}
 
 	if !isCorrectVersion {
 		reporter.Warnf("Current OpenShift %s", version)
 		reporter.Warnf("Your version of the OpenShift command-line tool is not supported.")
 		fmt.Printf("Go to %s to download the latest version.\n", ocDownloadURL)
-		os.Exit(1)
+		return
 	}
 
 	reporter.Infof("Current OpenShift %s", version)
