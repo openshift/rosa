@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.7 Aug 26 2020
+
+- create-cluster: List regions using user AWS creds
+- list-regions: Add command to list available regions
+- create-cluster: Ensure region is set when creating AWS client
+- logs: Change how SDK logs are propagated
+- verify-oc: Do not error out on invalid version
+
 == 0.0.6 Aug 13 2020
 
 - create-cluster: Set compute node defaults based on AZ
