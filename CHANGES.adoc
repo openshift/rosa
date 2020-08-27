@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.8 Aug 27 2020
+
+- verify-oc: Ensure no output on error
+
 == 0.0.7 Aug 26 2020
 
 - create-cluster: List regions using user AWS creds
