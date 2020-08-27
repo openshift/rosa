@@ -45,7 +45,7 @@ func run(_ *cobra.Command, _ []string) {
 	ocDownloadURL := "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest"
 
 	output, err := exec.Command("oc", "version").Output()
-	if err != nil {
+	if output == nil && err != nil {
 		reporter.Errorf("OpenShift command-line tool is not installed.\n"+
 			"Go to %s to download the OpenShift client and add it to your PATH.", ocDownloadURL)
 		return
