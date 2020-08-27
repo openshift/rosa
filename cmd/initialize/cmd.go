@@ -78,17 +78,10 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Get AWS region
-	region, err := aws.GetRegion(args.region)
-	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
-	}
-
 	// Create the AWS client:
 	client, err := aws.NewClient().
 		Logger(logger).
-		Region(region).
+		Region(aws.DefaultRegion).
 		Build()
 	if err != nil {
 		reporter.Errorf("Error creating AWS client: %v", err)
