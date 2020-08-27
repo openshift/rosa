@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
@@ -164,16 +166,13 @@ func run(cmd *cobra.Command, argv []string) {
 	logs, err := ocm.GetInstallLogs(clustersCollection, cluster.ID(), args.tail)
 	if err != nil {
 		if errors.GetType(err) == errors.NotFound {
-			reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
-			if watch {
-				reporter.Warnf("Waiting...")
-			}
+			reporter.Infof("Cluster '%s' installation beginning. Installation logs will show up within 5 minutes", clusterKey)
 		} else {
 			reporter.Errorf("Failed to get logs for cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 	}
-	printLog(logs)
+	printLog(logs, nil)
 
 	if watch {
 		if cluster.State() == cmv1.ClusterStateReady {
@@ -181,18 +180,21 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(0)
 		}
 
+		spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		spin.Start()
+
 		// Poll for changing logs:
 		response, err := ocm.PollInstallLogs(clustersCollection, cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
 			state, _ := ocm.GetClusterState(clustersCollection, cluster.ID())
 			if state == cmv1.ClusterStateError {
 				reporter.Errorf("There was an error installing cluster '%s'", clusterKey)
-				return true
+				os.Exit(1)
 			}
 			if state == cmv1.ClusterStateReady {
 				reporter.Infof("Cluster '%s' is now ready", clusterKey)
 				return true
 			}
-			printLog(logResponse.Body())
+			printLog(logResponse.Body(), spin)
 			return false
 		})
 		if err != nil {
@@ -201,17 +203,22 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 		}
-		printLog(response)
+		printLog(response, spin)
 	}
 }
 
 var lastLine string
 
 // Print next log lines
-func printLog(logs *cmv1.Log) {
+func printLog(logs *cmv1.Log, spin *spinner.Spinner) {
 	lines := findNextLines(logs)
 	if lines != "" {
 		fmt.Printf("%s\n", lines)
+		if spin != nil {
+			spin.Stop()
+		}
+	} else if spin != nil {
+		spin.Restart()
 	}
 }
 
