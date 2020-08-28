@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/openshift/moactl/pkg/debug"
 )
@@ -59,13 +60,21 @@ func (r *Object) Debugf(format string, args ...interface{}) {
 // Infof prints an informative message with the given format and arguments.
 func (r *Object) Infof(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
-	_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", infoPrefix, message)
+	if r.useColors() {
+		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", infoPrefix, message)
+	} else {
+		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "INFO: ", message)
+	}
 }
 
 // Warnf prints an warning message with the given format and arguments.
 func (r *Object) Warnf(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
-	_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", warnPrefix, message)
+	if r.useColors() {
+		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", warnPrefix, message)
+	} else {
+		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "WARN: ", message)
+	}
 }
 
 // Errorf prints an error message with the given format and arguments. It also return an error
@@ -73,7 +82,11 @@ func (r *Object) Warnf(format string, args ...interface{}) {
 // report the error and also return it.
 func (r *Object) Errorf(format string, args ...interface{}) error {
 	message := fmt.Sprintf(format, args...)
-	_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", errorPrefix, message)
+	if r.useColors() {
+		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", errorPrefix, message)
+	} else {
+		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "ERR: ", message)
+	}
 	r.errors++
 	return errors.New(message)
 }
@@ -89,6 +102,10 @@ const (
 	warnPrefix  = "\033[0;33mW:\033[m "
 	errorPrefix = "\033[0;31mE:\033[m "
 )
+
+func (r *Object) useColors() bool {
+	return runtime.GOOS != "windows"
+}
 
 // CreateReporterOrExit creates the reportor instance or exits to the console
 // noting the error on failure.
