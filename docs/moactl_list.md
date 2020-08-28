@@ -27,4 +27,5 @@ List all resources of a specific type
 * [moactl list ingresses](moactl_list_ingresses.md)	 - List cluster Ingresses
 * [moactl list regions](moactl_list_regions.md)	 - List available regions
 * [moactl list users](moactl_list_users.md)	 - List cluster users
+* [moactl list versions](moactl_list_versions.md)	 - List available versions
 
