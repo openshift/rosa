@@ -4,7 +4,7 @@
 
 ### Synopsis
 
-Command line tool for MOA.
+Command line tool for AMRO (formerly known as MOA).
 
 ### Options
 

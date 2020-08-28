@@ -44,7 +44,7 @@ import (
 
 var root = &cobra.Command{
 	Use:  "moactl",
-	Long: "Command line tool for MOA.",
+	Long: "Command line tool for AMRO (formerly known as MOA).",
 }
 
 func init() {

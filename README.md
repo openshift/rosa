@@ -1,6 +1,6 @@
 # MOA Command Line Tool
 
-This project contains the `moactl` command line tool that simplifies the use of Amazon Red Hat OpenShift, also known as _MOA_.
+This project contains the `moactl` command line tool that simplifies the use of Amazon Managed Red Hat OpenShift, formerly known as _MOA_.
 
 # Quickstart guide
 
