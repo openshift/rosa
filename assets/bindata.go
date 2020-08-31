@@ -278,7 +278,6 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             "Effect": "Allow",
             "Action": [
                 "aws-portal:ViewAccount",
-                "aws-portal:ViewBilling",
                 "aws-portal:ViewUsage"
             ],
             "Resource": [
@@ -286,7 +285,8 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         }
     ]
-}`)
+}
+`)
 
 func templatesPoliciesOsd_scp_policyJsonBytes() ([]byte, error) {
 	return _templatesPoliciesOsd_scp_policyJson, nil
