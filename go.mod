@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/AlecAivazis/survey/v2 v2.1.0
 	github.com/aws/aws-sdk-go v1.29.17
+	github.com/briandowns/spinner v1.11.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect

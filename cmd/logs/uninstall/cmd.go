@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
@@ -160,24 +162,24 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		if errors.GetType(err) == errors.NotFound {
 			reporter.Warnf("Logs for cluster '%s' are not available", clusterKey)
-			if watch {
-				reporter.Warnf("Waiting...")
-			}
 		} else {
 			reporter.Errorf("Failed to get logs for cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 	}
-	printLog(logs)
+	printLog(logs, nil)
 
 	if watch {
+		spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		spin.Start()
+
 		// Poll for changing logs:
 		response, err := ocm.PollUninstallLogs(clustersCollection, cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
 			state, err := ocm.GetClusterState(clustersCollection, cluster.ID())
 			if err != nil || state == cmv1.ClusterState("") {
 				return true
 			}
-			printLog(logResponse.Body())
+			printLog(logResponse.Body(), spin)
 			return false
 		})
 		if err != nil {
@@ -186,17 +188,22 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 		}
-		printLog(response)
+		printLog(response, spin)
 	}
 }
 
 var lastLine string
 
 // Print next log lines
-func printLog(logs *cmv1.Log) {
+func printLog(logs *cmv1.Log, spin *spinner.Spinner) {
 	lines := findNextLines(logs)
 	if lines != "" {
 		fmt.Printf("%s\n", lines)
+		if spin != nil {
+			spin.Stop()
+		}
+	} else if spin != nil {
+		spin.Restart()
 	}
 }
 
