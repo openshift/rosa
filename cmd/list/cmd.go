@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/moactl/cmd/list/ingress"
 	"github.com/openshift/moactl/cmd/list/region"
 	"github.com/openshift/moactl/cmd/list/user"
+	"github.com/openshift/moactl/cmd/list/version"
 )
 
 var Cmd = &cobra.Command{
@@ -40,4 +41,5 @@ func init() {
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(region.Cmd)
 	Cmd.AddCommand(user.Cmd)
+	Cmd.AddCommand(version.Cmd)
 }
