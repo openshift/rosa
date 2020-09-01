@@ -94,7 +94,8 @@ var _ = Describe("Client", func() {
 
 					Expect(stackCreated).To(BeFalse())
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("existing with status ROLLBACK_COMPLETE. Expected status CREATE_COMPLETE"))
+					Expect(err.Error()).To(ContainSubstring(
+						"exists with status ROLLBACK_COMPLETE. Expected status is CREATE_COMPLETE"))
 				})
 			})
 		})
