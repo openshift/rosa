@@ -136,16 +136,17 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Print short cluster description:
 	fmt.Printf(""+
-		"Name:        %s\n"+
-		"ID:          %s\n"+
-		"External ID: %s\n"+
-		"AWS Account: %s\n"+
-		"API URL:     %s\n"+
-		"Console URL: %s\n"+
-		"Nodes:       Master: %d, Infra: %d, Compute: %d\n"+
-		"Region:      %s\n"+
-		"State:       %s\n"+
-		"Created:     %s\n",
+		"Name:          %s\n"+
+		"ID:            %s\n"+
+		"External ID:   %s\n"+
+		"AWS Account:   %s\n"+
+		"API URL:       %s\n"+
+		"Console URL:   %s\n"+
+		"Nodes:         Master: %d, Infra: %d, Compute: %d\n"+
+		"Region:        %s\n"+
+		"State:         %s\n"+
+		"Channel Group: %s\n"+
+		"Created:       %s\n",
 		cluster.Name(),
 		cluster.ID(),
 		cluster.ExternalID(),
@@ -155,6 +156,7 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Nodes().Master(), cluster.Nodes().Infra(), cluster.Nodes().Compute(),
 		cluster.Region().ID(),
 		cluster.State(),
+		cluster.Version().ChannelGroup(),
 		cluster.CreationTimestamp().Format("Jan _2, 2006"),
 	)
 	fmt.Println()
