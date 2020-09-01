@@ -167,7 +167,6 @@
             "Effect": "Allow",
             "Action": [
                 "aws-portal:ViewAccount",
-                "aws-portal:ViewBilling",
                 "aws-portal:ViewUsage"
             ],
             "Resource": [
