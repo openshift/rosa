@@ -287,7 +287,7 @@ func (c *awsClient) checkStackReadyOrNotExisting(stackName string) (stackReady b
 				return true, nil
 			}
 			if *summary.StackStatus != cloudformation.StackStatusDeleteComplete {
-				return false, fmt.Errorf("Error creating user: Cloudformation stack %s existing with status %s."+
+				return false, fmt.Errorf("Error creating user: Cloudformation stack %s exists with status %s. "+
 					"Expected status is %s.\n"+
 					"Ensure user osdCcsAdmin does not exist, then retry with\n"+
 					"moactl init --delete-stack; moactl init",
