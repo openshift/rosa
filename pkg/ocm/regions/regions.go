@@ -33,7 +33,10 @@ func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
 	}
 
 	// Create the AWS client:
-	awsClient, err := aws.NewClient().Logger(logger).Build()
+	awsClient, err := aws.NewClient().
+		Logger(logger).
+		Region(aws.DefaultRegion).
+		Build()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create AWS client: %v", err)
 	}
