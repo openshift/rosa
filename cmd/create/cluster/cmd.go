@@ -252,6 +252,25 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
+
+	// Create the AWS client:
+	client, err := aws.NewClient().
+		Logger(logger).
+		Region(aws.DefaultRegion).
+		Build()
+	if err != nil {
+		reporter.Errorf("Error creating AWS client: %v", err)
+		os.Exit(1)
+	}
+
+	// Validate AWS credentials for current user
+	reporter.Infof("Validating AWS credentials for CFUser...")
+	if err = client.ValidateCFUserCredentials(); err != nil {
+		reporter.Errorf("Error validating AWS credentials: %v", err)
+		os.Exit(1)
+	}
+	reporter.Infof("AWS credentials are valid!")
+
 	regionList, regionAZ, err := getRegionList(ocmClient, multiAZ)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))

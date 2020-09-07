@@ -58,6 +58,7 @@ const (
 type Client interface {
 	GetRegion() string
 	ValidateCredentials() (bool, error)
+	ValidateCFUserCredentials() error
 	EnsureOsdCcsAdminUser(stackName string) (bool, error)
 	DeleteOsdCcsAdminUser(stackName string) error
 	GetAccessKeyFromStack(stackName string) (*AccessKey, error)
@@ -238,6 +239,45 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// ValidateCFUserCredentials checks if CF-IAM credentials are valid.
+// it gets stack's key and actual key and compares them
+// to get the stack credentials:
+// aws cloudformation describe-stack-resource \
+// --logical-resource-id osdCcsAdminAccessKeys --stack-name osdCcsAdminIAMUser
+func (c *awsClient) ValidateCFUserCredentials() error {
+	name := AdminUserName
+	accessKeyInput := &iam.ListAccessKeysInput{
+		UserName: &name,
+	}
+	accessKeyList, err := c.iamClient.ListAccessKeys(accessKeyInput)
+	if err != nil {
+		return err
+	}
+
+	OsdCcsAdminStackNamePtr := OsdCcsAdminStackName
+	LogicalResourceIDPtr := "osdCcsAdminAccessKeys"
+	stackResourceInput := &cloudformation.DescribeStackResourceInput{
+		StackName:         &OsdCcsAdminStackNamePtr,
+		LogicalResourceId: &LogicalResourceIDPtr,
+	}
+	resources, err := c.cfClient.DescribeStackResource(stackResourceInput)
+	if err != nil {
+		return err
+	}
+	cfAccessKey := resources.StackResourceDetail.PhysicalResourceId
+
+	for _, key := range accessKeyList.AccessKeyMetadata {
+		if *key.AccessKeyId == *cfAccessKey && *key.Status == "Active" {
+			return nil
+		}
+	}
+
+	return fmt.Errorf(
+		"Invalid CloudFormation stack credentials: %s is not valid \n"+
+			"you can recreate the CloudFormation stack with: \n"+
+			"moactl init --delete-stack && moactl init \n", name)
 }
 
 // Ensure osdCcsAdmin IAM user is created
