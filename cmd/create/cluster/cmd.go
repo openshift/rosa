@@ -36,6 +36,7 @@ import (
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	"github.com/openshift/moactl/pkg/ocm/machines"
+	"github.com/openshift/moactl/pkg/ocm/properties"
 	"github.com/openshift/moactl/pkg/ocm/regions"
 	"github.com/openshift/moactl/pkg/ocm/versions"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -44,6 +45,9 @@ import (
 var args struct {
 	// Watch logs during cluster installation
 	watch bool
+
+	// Whether to use the AMI image override from the AWS marketplace
+	usePaidAMI bool
 
 	// Basic options
 	private            bool
@@ -184,6 +188,13 @@ func init() {
 		"watch",
 		false,
 		"Watch cluster installation logs.",
+	)
+
+	flags.BoolVar(
+		&args.usePaidAMI,
+		"use-paid-ami",
+		false,
+		"Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.",
 	)
 }
 
@@ -462,6 +473,14 @@ func run(cmd *cobra.Command, _ []string) {
 		PodCIDR:            podCIDR,
 		HostPrefix:         hostPrefix,
 		Private:            &private,
+	}
+
+	// If the flag is explicitly set, OCM will tell the cluster provisioner
+	// to use the AMI ID from the AWS Marketplace.
+	if cmd.Flags().Changed("use-paid-ami") && args.usePaidAMI {
+		clusterConfig.CustomProperties = map[string]string{
+			properties.UseMarketplaceAMI: "true",
+		}
 	}
 
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
