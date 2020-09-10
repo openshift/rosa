@@ -3,6 +3,7 @@ package aws_test
 import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,15 +18,17 @@ var _ = Describe("Client", func() {
 		client   aws.Client
 		mockCtrl *gomock.Controller
 
-		mockCfAPI *mocks.MockCloudFormationAPI
+		mockCfAPI  *mocks.MockCloudFormationAPI
+		mockIamAPI *mocks.MockIAMAPI
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockCfAPI = mocks.NewMockCloudFormationAPI(mockCtrl)
+		mockIamAPI = mocks.NewMockIAMAPI(mockCtrl)
 		client = aws.New(
 			logrus.New(),
-			mocks.NewMockIAMAPI(mockCtrl),
+			mockIamAPI,
 			mocks.NewMockOrganizationsAPI(mockCtrl),
 			mocks.NewMockSTSAPI(mockCtrl),
 			mockCfAPI,
@@ -38,6 +41,59 @@ var _ = Describe("Client", func() {
 		mockCtrl.Finish()
 	})
 
+	Context("ValidateCFUserCredentials", func() {
+		var (
+			CFsecretID      = "sut"
+			IAMAccessKey    = "sut"
+			oddIAMAccessKey = "longtestkey"
+			status          = "Active"
+		)
+		Context("when creds are OK and matches", func() {
+			BeforeEach(func() {
+				mockCfAPI.EXPECT().DescribeStackResource(gomock.Any()).Return(&cloudformation.DescribeStackResourceOutput{
+					StackResourceDetail: &cloudformation.StackResourceDetail{
+						PhysicalResourceId: &CFsecretID,
+					},
+				}, nil)
+
+				mockIamAPI.EXPECT().ListAccessKeys(gomock.Any()).Return(&iam.ListAccessKeysOutput{
+					AccessKeyMetadata: []*iam.AccessKeyMetadata{
+						{
+							AccessKeyId: &IAMAccessKey,
+							Status:      &status,
+						},
+					},
+				}, nil)
+			})
+			It("should finish successfully and return nil", func() {
+				err := client.ValidateCFUserCredentials()
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("when the credentials don't match", func() {
+			BeforeEach(func() {
+				mockCfAPI.EXPECT().DescribeStackResource(gomock.Any()).Return(&cloudformation.DescribeStackResourceOutput{
+					StackResourceDetail: &cloudformation.StackResourceDetail{
+						PhysicalResourceId: &CFsecretID,
+					},
+				}, nil)
+
+				mockIamAPI.EXPECT().ListAccessKeys(gomock.Any()).Return(&iam.ListAccessKeysOutput{
+					AccessKeyMetadata: []*iam.AccessKeyMetadata{
+						{
+							AccessKeyId: &oddIAMAccessKey,
+						},
+					},
+				}, nil)
+			})
+			It("should return err", func() {
+				err := client.ValidateCFUserCredentials()
+				Expect(err.Error()).Should(ContainSubstring("Invalid CloudFormation stack credentials"))
+			})
+		})
+
+	})
 	Context("EnsureOsdCcsAdminUser", func() {
 		var (
 			stackName   string
