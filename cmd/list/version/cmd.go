@@ -30,7 +30,7 @@ import (
 )
 
 var args struct {
-	channel string
+	channelGroup string
 }
 
 var Cmd = &cobra.Command{
@@ -46,12 +46,12 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 	flags.StringVar(
-		&args.channel,
-		"channel",
-		"",
+		&args.channelGroup,
+		"channel-group",
+		"stable",
 		"List only versions from the specified channel group",
 	)
-	flags.MarkHidden("channel")
+	flags.MarkHidden("channel-group")
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -78,7 +78,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Fetching versions")
-	versions, err := versions.GetVersions(ocmClient)
+	versions, err := versions.GetVersions(ocmClient, args.channelGroup)
 	if err != nil {
 		reporter.Errorf("Failed to fetch versions: %v", err)
 		os.Exit(1)
@@ -96,11 +96,6 @@ func run(cmd *cobra.Command, _ []string) {
 	for _, version := range versions {
 		if !version.Enabled() {
 			continue
-		}
-		if cmd.Flags().Changed("channel") {
-			if args.channel != version.ChannelGroup() {
-				continue
-			}
 		}
 		fmt.Fprintf(writer,
 			"%s\t\t%t\n",

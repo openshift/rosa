@@ -17,17 +17,23 @@ limitations under the License.
 package versions
 
 import (
+	"fmt"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func GetVersions(client *cmv1.Client) (versions []*cmv1.Version, err error) {
+func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Version, err error) {
 	collection := client.Versions()
 	page := 1
 	size := 100
+	filter := "enabled = 'true'"
+	if channelGroup != "" {
+		filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
+	}
 	for {
 		var response *cmv1.VersionsListResponse
 		response, err = collection.List().
-			Search("enabled = 'true'").
+			Search(filter).
 			Order("default desc, id asc").
 			Page(page).
 			Size(size).

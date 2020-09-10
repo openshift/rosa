@@ -518,7 +518,7 @@ func validateVersion(version string, versionList []string) (string, error) {
 }
 
 func getVersionList(client *cmv1.Client) (versionList []string, err error) {
-	versions, err := versions.GetVersions(client)
+	versions, err := versions.GetVersions(client, "stable")
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return
