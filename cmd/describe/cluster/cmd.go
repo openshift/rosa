@@ -157,7 +157,7 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Region().ID(),
 		cluster.State(),
 		cluster.Version().ChannelGroup(),
-		cluster.CreationTimestamp().Format("Jan _2, 2006"),
+		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
 	)
 	fmt.Println()
 }
