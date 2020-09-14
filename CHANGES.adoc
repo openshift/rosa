@@ -3,6 +3,20 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.10 Sep 14 2020
+
+- reporter: Do not use colors on Windows
+- list-versions: Add command to list enabled versions
+- logs: Add progress indicator when waiting for logs
+- verify-permissions: Do not check ViewBilling policy
+- Add 'Channel Group' attribute to 'moactl describe cluster'
+- tests: Fix expected text comparison
+- Use default region for CloudFormation stack
+- login: Ensure token is required
+- refactor(create): add credential check for osdCcsAdmin when cluster starts to be created
+- Added Timestamp to created date
+- versions: Allow querying for channel-groups
+
 == 0.0.9 Aug 27 2020
 
 - AWS Rate limiting: Limit number of retries for API calls
