@@ -438,7 +438,7 @@ func (c *awsClient) ValidateQuota() (bool, error) {
 		}
 
 		serviceQuota, err := GetServiceQuota(serviceQuotas, quota.QuotaCode)
-		if err != nil {
+		if err != nil || serviceQuota == nil || (*serviceQuota).Value == nil {
 			return false, fmt.Errorf("Error getting AWS service quota: %s %v", quota.ServiceCode, err)
 		}
 
