@@ -39,11 +39,12 @@ var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
 // Spec is the configuration for a cluster spec.
 type Spec struct {
 	// Basic configs
-	Name       string
-	Region     string
-	MultiAZ    bool
-	Version    string
-	Expiration time.Time
+	Name         string
+	Region       string
+	MultiAZ      bool
+	Version      string
+	ChannelGroup string
+	Expiration   time.Time
 
 	// Scaling config
 	ComputeMachineType string
@@ -327,10 +328,13 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 	if config.Version != "" {
 		clusterBuilder = clusterBuilder.Version(
 			cmv1.NewVersion().
-				ID(config.Version),
+				ID(config.Version).
+				ChannelGroup(config.ChannelGroup),
 		)
 
-		reporter.Debugf("Using OpenShift version '%s'", config.Version)
+		reporter.Debugf(
+			"Using OpenShift version '%s' on channel group '%s'",
+			config.Version, config.ChannelGroup)
 	}
 
 	if !config.Expiration.IsZero() {

@@ -20,7 +20,8 @@ moactl list versions [flags]
 ### Options
 
 ```
-  -h, --help   help for versions
+      --channel-group string   List only versions from the specified channel group (default "stable")
+  -h, --help                   help for versions
 ```
 
 ### Options inherited from parent commands
