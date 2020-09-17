@@ -11,7 +11,7 @@ If you have already [installed the required prerequisites](#Installation-prerequ
 ```
 $ moactl init        ## Configures your AWS account and ensures everything is setup correctly
 $ moactl create cluster --cluster-name <my-cluster-name>        ## Starts the cluster creation process (~30-40minutes)
-$ moactl logs install cluster -c <my-cluster-name> --watch        ## Watch your logs as your cluster creates
+$ moactl logs install -c <my-cluster-name> --watch        ## Watch your logs as your cluster creates
 $ moactl create idp --cluster <my-cluster-name>  --interactive        ## Connect your IDP to your cluster
 $ moactl create user --cluster <my-cluster-name> --dedicated-admins <admin-username>        ## Promotes a user from your IDP to admin level
 $ moactl describe cluster <my-cluster-name>        ## Checks if your install is ready (look for State: Ready), and provides your Console URL to login to the web console.
@@ -334,7 +334,7 @@ If installation fails or the State does not change to `ready` after 40 minutes, 
 You can follow the installer logs to track the progress of your cluster:
 
 ```
-moactl logs install cluster -c rh-moa-test-cluster --watch
+moactl logs install -c rh-moa-test-cluster --watch
 ```
 
 ## Accessing your cluster
