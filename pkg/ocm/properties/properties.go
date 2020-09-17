@@ -27,3 +27,6 @@ const prefix = "moa_"
 const CreatorARN = prefix + "creator_arn"
 
 const CLIVersion = prefix + "cli_version"
+
+// UseMarketplaceAMI tells the cluster provisioner whether to use the AMRO AMI ID from the AWS marketplace.
+const UseMarketplaceAMI = prefix + "use_marketplace_ami"
