@@ -17,7 +17,6 @@ limitations under the License.
 package oc
 
 import (
-	"fmt"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -42,12 +41,11 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Verify whether `oc` is installed
 	reporter.Infof("Verifying whether OpenShift command-line tool is available...")
-	ocDownloadURL := "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest"
 
 	output, err := exec.Command("oc", "version").Output()
 	if output == nil && err != nil {
-		reporter.Warnf("OpenShift command-line tool is not installed.\n"+
-			"Go to %s to download the OpenShift client and add it to your PATH.", ocDownloadURL)
+		reporter.Warnf("OpenShift command-line tool is not installed.\n" +
+			"Run 'moactl download oc' to download the latest version, then add it to your PATH.")
 		return
 	}
 
@@ -61,8 +59,8 @@ func run(_ *cobra.Command, _ []string) {
 
 	if !isCorrectVersion {
 		reporter.Warnf("Current OpenShift %s", version)
-		reporter.Warnf("Your version of the OpenShift command-line tool is not supported.")
-		fmt.Printf("Go to %s to download the latest version.\n", ocDownloadURL)
+		reporter.Warnf("Your version of the OpenShift command-line tool is not supported.\n" +
+			"Run 'moactl download oc' to download the latest version, then add it to your PATH.")
 		return
 	}
 
