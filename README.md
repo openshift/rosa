@@ -11,7 +11,7 @@ If you have already [installed the required prerequisites](#Installation-prerequ
 ```
 $ moactl init        ## Configures your AWS account and ensures everything is setup correctly
 $ moactl create cluster --cluster-name <my-cluster-name>        ## Starts the cluster creation process (~30-40minutes)
-$ moactl logs cluster <my-cluster-name> --watch        ## Watch your logs as your cluster creates
+$ moactl logs install -c <my-cluster-name> --watch        ## Watch your logs as your cluster creates
 $ moactl create idp --cluster <my-cluster-name>  --interactive        ## Connect your IDP to your cluster
 $ moactl create user --cluster <my-cluster-name> --dedicated-admins <admin-username>        ## Promotes a user from your IDP to admin level
 $ moactl describe cluster <my-cluster-name>        ## Checks if your install is ready (look for State: Ready), and provides your Console URL to login to the web console.
@@ -34,7 +34,7 @@ Complete the following prerequisites before creating your MOA cluster.
 
 ### Select an AWS account to use
 
-Unless your just testing out MOA, we recommend using a dedicated AWS account to run any production clusters. If you are utilizing AWS Organizations, you can use an AWS account within your organization or [create a new one](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_create.html#orgs_manage_accounts_create-new).
+Unless you're just testing out MOA, we recommend using a dedicated AWS account to run any production clusters. If you are utilizing AWS Organizations, you can use an AWS account within your organization or [create a new one](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_create.html#orgs_manage_accounts_create-new).
 
 If you are using AWS organizations and you need to have a Service Control Policy (SCP) applied to the AWS account you plan to use, see the [Red Hat Requirements for Customer Cloud Subscriptions](https://www.openshift.com/dedicated/ccs#scp) for details on the minimum required SCP.
 
@@ -334,7 +334,7 @@ If installation fails or the State does not change to `ready` after 40 minutes, 
 You can follow the installer logs to track the progress of your cluster:
 
 ```
-moactl logs cluster rh-moa-test-cluster --watch
+moactl logs install -c rh-moa-test-cluster --watch
 ```
 
 ## Accessing your cluster
@@ -351,7 +351,7 @@ The following command to creates an IDP backed by GitHub. Follow the interactive
 
 Here are the options we will configure and the values to select:
 * Type of identity provider: github
-* Restrict to members of: organizations (if you do not have a GitHub Organization, you can [create one now]().)
+* Restrict to members of: organizations (if you do not have a GitHub Organization, you can [create one now](https://docs.github.com/en/github/setting-up-and-managing-organizations-and-teams/creating-a-new-organization-from-scratch).)
 * GitHub organizations: rh-test-org (enter the name of your org)
 
 Follow the URL from the output. This will create a new OAuth application in the GitHub organization you specified. Click *Register applicaton* to access your Client ID and Client Secret.
