@@ -57,6 +57,7 @@ var args struct {
 	clusterName        string
 	region             string
 	version            string
+	channelGroup       string
 
 	// Scaling options
 	computeMachineType string
@@ -119,6 +120,12 @@ func init() {
 		"version",
 		"",
 		"Version of OpenShift that will be used to install the cluster, for example \"4.3.10\"",
+	)
+	flags.StringVar(
+		&args.channelGroup,
+		"channel-group",
+		versions.DefaultChannelGroup,
+		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
 	)
 	flags.StringVar(
 		&args.expirationTime,
@@ -275,12 +282,12 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Validate AWS credentials for current user
-	reporter.Infof("Validating AWS credentials for CFUser...")
+	reporter.Debugf("Validating AWS credentials...")
 	if err = client.ValidateCFUserCredentials(); err != nil {
 		reporter.Errorf("Error validating AWS credentials: %v", err)
 		os.Exit(1)
 	}
-	reporter.Infof("AWS credentials are valid!")
+	reporter.Debugf("AWS credentials are valid!")
 
 	regionList, regionAZ, err := getRegionList(ocmClient, multiAZ)
 	if err != nil {
@@ -317,7 +324,8 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// OpenShift version:
 	version := args.version
-	versionList, err := getVersionList(ocmClient)
+	channelGroup := args.channelGroup
+	versionList, err := getVersionList(ocmClient, channelGroup)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -465,6 +473,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Region:             region,
 		MultiAZ:            multiAZ,
 		Version:            version,
+		ChannelGroup:       channelGroup,
 		Expiration:         expiration,
 		ComputeMachineType: computeMachineType,
 		ComputeNodes:       computeNodes,
@@ -536,8 +545,8 @@ func validateVersion(version string, versionList []string) (string, error) {
 	return version, nil
 }
 
-func getVersionList(client *cmv1.Client) (versionList []string, err error) {
-	versions, err := versions.GetVersions(client, "stable")
+func getVersionList(client *cmv1.Client, channelGroup string) (versionList []string, err error) {
+	versions, err := versions.GetVersions(client, channelGroup)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return

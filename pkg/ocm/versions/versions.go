@@ -22,6 +22,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
+const DefaultChannelGroup = "stable"
+
 func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Version, err error) {
 	collection := client.Versions()
 	page := 1

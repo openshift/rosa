@@ -48,10 +48,9 @@ func init() {
 	flags.StringVar(
 		&args.channelGroup,
 		"channel-group",
-		"stable",
+		versions.DefaultChannelGroup,
 		"List only versions from the specified channel group",
 	)
-	flags.MarkHidden("channel-group")
 }
 
 func run(cmd *cobra.Command, _ []string) {

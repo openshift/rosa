@@ -27,6 +27,7 @@ moactl create cluster [flags]
       --multi-az                      Deploy to multiple data centers.
   -r, --region string                 AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)
       --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
+      --channel-group string          Channel group is the name of the group where this image belongs, for example "stable" or "fast". (default "stable")
       --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
       --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, multizone clusters need at least 9 nodes. (default 4)
       --machine-cidr ipNet            Block of IP addresses used by OpenShift while installing the cluster, for example "10.0.0.0/16".
