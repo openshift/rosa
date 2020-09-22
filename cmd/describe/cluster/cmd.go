@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/logging"
@@ -133,6 +134,20 @@ func run(_ *cobra.Command, argv []string) {
 		reporter.Errorf("Failed to parse creator ARN for cluster '%s'", clusterKey)
 		os.Exit(1)
 	}
+	phase := ""
+
+	if cluster.State() == cmv1.ClusterStatePending {
+		phase = "(Preparing account)"
+	}
+
+	if cluster.State() == cmv1.ClusterStateInstalling {
+		if !cluster.Status().DNSReady() {
+			phase = "(DNS setup in progress)"
+		}
+		if cluster.Status().ProvisionErrorReason() != "" && cluster.Status().ProvisionErrorType() == "ProvisionFailed" {
+			phase = "(Install is taking longer than expected)"
+		}
+	}
 
 	// Print short cluster description:
 	fmt.Printf(""+
@@ -144,7 +159,7 @@ func run(_ *cobra.Command, argv []string) {
 		"Console URL:   %s\n"+
 		"Nodes:         Master: %d, Infra: %d, Compute: %d\n"+
 		"Region:        %s\n"+
-		"State:         %s\n"+
+		"State:         %s %s\n"+
 		"Channel Group: %s\n"+
 		"Created:       %s\n",
 		cluster.Name(),
@@ -155,7 +170,7 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Console().URL(),
 		cluster.Nodes().Master(), cluster.Nodes().Infra(), cluster.Nodes().Compute(),
 		cluster.Region().ID(),
-		cluster.State(),
+		cluster.State(), phase,
 		cluster.Version().ChannelGroup(),
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
 	)
