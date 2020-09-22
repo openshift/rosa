@@ -175,7 +175,12 @@ func (c *Config) Armed() (armed bool, err error) {
 	if c.AccessToken != "" {
 		var expires bool
 		var left time.Duration
-		expires, left, err = tokenExpiry(c.AccessToken, now)
+		var accessToken *jwt.Token
+		accessToken, err = parseToken(c.AccessToken)
+		if err != nil {
+			return
+		}
+		expires, left, err = sdk.GetTokenExpiry(accessToken, now)
 		if err != nil {
 			return
 		}
@@ -187,7 +192,12 @@ func (c *Config) Armed() (armed bool, err error) {
 	if c.RefreshToken != "" {
 		var expires bool
 		var left time.Duration
-		expires, left, err = tokenExpiry(c.RefreshToken, now)
+		var refreshToken *jwt.Token
+		refreshToken, err = parseToken(c.RefreshToken)
+		if err != nil {
+			return
+		}
+		expires, left, err = sdk.GetTokenExpiry(refreshToken, now)
 		if err != nil {
 			return
 		}
@@ -252,34 +262,12 @@ func (c *Config) Connection() (connection *sdk.Connection, err error) {
 	return
 }
 
-func tokenExpiry(text string, now time.Time) (expires bool, left time.Duration, err error) {
+func parseToken(textToken string) (token *jwt.Token, err error) {
 	parser := new(jwt.Parser)
-	token, _, err := parser.ParseUnverified(text, jwt.MapClaims{})
+	token, _, err = parser.ParseUnverified(textToken, jwt.MapClaims{})
 	if err != nil {
 		err = fmt.Errorf("Failed to parse token: %v", err)
 		return
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		err = fmt.Errorf("Expected map claims but got %T", claims)
-		return
-	}
-	claim, ok := claims["exp"]
-	if !ok {
-		err = fmt.Errorf("Token does not contain the 'exp' claim")
-		return
-	}
-	exp, ok := claim.(float64)
-	if !ok {
-		err = fmt.Errorf("Expected floating point 'exp' but got %T", claim)
-		return
-	}
-	if exp == 0 {
-		expires = false
-		left = 0
-	} else {
-		expires = true
-		left = time.Unix(int64(exp), 0).Sub(now)
-	}
-	return
+	return token, nil
 }
