@@ -3,6 +3,17 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.11 Sep 22 2020
+
+- verify-oc: Only warn when oc client missing
+- verify-quota: Avoid nil pointer dereferencing
+- versions: Use OpenShift versions that have MOA marketplace images
+- create-cluster: Allow selective override of the paid AMI
+- Correct typos and incorrect commands in README
+- Update README.md
+- versions: Expose channel-group
+- Use OCM SDK to get token expiration
+
 == 0.0.10 Sep 14 2020
 
 - reporter: Do not use colors on Windows
