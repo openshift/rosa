@@ -106,7 +106,6 @@ Verify your installation by running the following command:
 
 ```
 $ moactl
-
 Command line tool for MOA.
 
 Usage:
@@ -117,15 +116,17 @@ Available Commands:
   create      Create a resource from stdin
   delete      Delete a specific resource
   describe    Show details of a specific resource
+  download    Download necessary tools for using your cluster
   edit        Edit a specific resource
   help        Help about any command
   init        Applies templates to support Managed OpenShift on AWS clusters
   list        List all resources of a specific type
   login       Log in to your Red Hat account
   logout      Log out
-  logs        Show logs of a specific resource
+  logs        Show installation or uninstallation logs for a cluster
   verify      Verify resources are configured correctly for cluster install
   version     Prints the version of the tool
+  whoami      Displays user account information
 
 Flags:
       --debug     Enable debug mode.
@@ -156,7 +157,7 @@ I: AWS SCP policies ok
 Verify that your AWS account has the necessary quota to deploy an OpenShift cluster. Sometimes quota varies by region, which may prevent you from deploying:
 
 ```
-$ export AWS_DEFAULT_REGION=us-west-2 && moactl verify quota
+$ moactl verify quota --region=us-west-2
 
 I: Validating AWS quota...
 E: Insufficient AWS quotas
@@ -165,7 +166,7 @@ E: Service ec2 quota code L-0263D0A3 Number of EIPs - VPC EIPs not valid, expect
 
 If needed, try another region:
 ```
-$ export AWS_DEFAULT_REGION=us-east-2 && moactl verify quota
+$ moactl verify quota --region=us-east-2
 
 I: Validating AWS quota...
 I: AWS quota ok
@@ -229,12 +230,12 @@ I: AWS quota ok
 I: Ensuring cluster administrator user 'osdCcsAdmin'...
 I: Admin user 'osdCcsAdmin' created successfuly!
 I: Verifying whether OpenShift command-line tool is available...
-E: OpenShift command-line tool is not installed.
-Go to https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/ to download the OpenShift client and add it to your PATH.
+W: OpenShift command-line tool is not installed.
+Run 'moactl download oc' to download the latest version, then add it to your PATH.
 ```
 
 > NOTE
-> If you have not already installed the OpenShift Command Line Utility, also known as `oc`, follow the link in the output to install it now.
+> If you have not already installed the OpenShift Command Line Utility, also known as `oc`, run the command in the output to download it now.
 
 ## Creating your cluster
 
@@ -242,7 +243,6 @@ To view all of the available options when creating a cluster, run the following 
 
 ```
 $ moactl create cluster --help
-
 Create cluster.
 
 Usage:
@@ -257,17 +257,18 @@ Examples:
 
 Flags:
   -c, --cluster-name string           Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.
+      --multi-az                      Deploy to multiple data centers.
   -r, --region string                 AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)
       --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
-      --multi-az                      Deploy to multiple data centers.
       --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
-      --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.
-                                      
+      --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, multizone clusters need at least 9 nodes. (default 4)
       --machine-cidr ipNet            Block of IP addresses used by OpenShift while installing the cluster, for example "10.0.0.0/16".
       --service-cidr ipNet            Block of IP addresses for services, for example "172.30.0.0/16".
       --pod-cidr ipNet                Block of IP addresses from which Pod IP addresses are allocated, for example "10.128.0.0/14".
       --host-prefix int               Subnet prefix length to assign to each individual node. For example, if host prefix is set to "23", then each node is assigned a /23 subnet out of the given CIDR.
       --private                       Restrict master API endpoint and application routes to direct, private connectivity.
+      --watch                         Watch cluster installation logs.
+      --use-paid-ami                  Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.
   -h, --help                          help for cluster
 
 Global Flags:
@@ -505,7 +506,7 @@ Run the following command to delete your cluster, replacing `<my-cluster>` with 
 moactl delete cluster -c <my-cluster>
 ```
 
-To clean up your CloudFormation stack (this was created when you ran `moactl init`), run the following command:
+Once the cluster is uninstalled, you can clean up your CloudFormation stack (this was created when you ran `moactl init`) by running the following command:
 
 ```
 moactl init --delete-stack
