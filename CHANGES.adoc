@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.12 Sep 24 2020
+
+- README: Update based on output of newer commands
+- Added Detailed Granular Status to match with ocm UI
+- verify-quota: Check for only 100 vCPU
+
 == 0.0.11 Sep 22 2020
 
 - verify-oc: Only warn when oc client missing
