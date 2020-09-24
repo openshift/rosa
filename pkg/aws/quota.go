@@ -27,7 +27,7 @@ var serviceQuotaServices = []quota{
 		ServiceCode:  "ec2",
 		QuotaCode:    "L-1216C47A",
 		QuotaName:    "Running On-Demand Standard (A, C, D, H, I, M, R, T, Z) instances",
-		DesiredValue: aws.Float64(200.0),
+		DesiredValue: aws.Float64(100.0),
 	},
 	{
 		ServiceCode:  "vpc",
