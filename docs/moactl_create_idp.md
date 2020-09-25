@@ -24,7 +24,7 @@ moactl create idp [flags]
 
 ```
   -c, --cluster string               Name or ID of the cluster to add the IdP to (required).
-  -t, --type string                  Type of identity provider. Options are [github google ldap openid].
+  -t, --type string                  Type of identity provider. Options are [github gitlab google ldap openid].
       --name string                  Name for the identity provider.
                                      
       --mapping-method string        Specifies how new identities are mapped to users when they log in. (default "claim")
@@ -36,6 +36,7 @@ moactl create idp [flags]
       --organizations string         GitHub: Only users that are members of at least one of the listed organizations will be allowed to log in.
       --teams string                 GitHub: Only users that are members of at least one of the listed teams will be allowed to log in. The format is <org>/<team>.
                                      
+      --host-url string              GitLab: The host URL of a GitLab provider. (default "https://gitlab.com")
       --hosted-domain string         Google: Restrict users to a Google Apps domain.
                                      
       --url string                   LDAP: An RFC 2255 URL which specifies the LDAP search parameters to use.

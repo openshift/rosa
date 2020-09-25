@@ -48,6 +48,9 @@ var args struct {
 	githubOrganizations string
 	githubTeams         string
 
+	// GitLab
+	gitlabURL string
+
 	// Google
 	googleHostedDomain string
 
@@ -68,7 +71,7 @@ var args struct {
 }
 
 // TODO: Add gitlab
-var validIdps []string = []string{"github", "google", "ldap", "openid"}
+var validIdps []string = []string{"github", "gitlab", "google", "ldap", "openid"}
 
 var Cmd = &cobra.Command{
 	Use:   "idp",
@@ -153,6 +156,14 @@ func init() {
 		"",
 		"GitHub: Only users that are members of at least one of the listed teams will be allowed to log in. "+
 			"The format is <org>/<team>.\n",
+	)
+
+	// GitLab
+	flags.StringVar(
+		&args.gitlabURL,
+		"host-url",
+		"https://gitlab.com",
+		"GitLab: The host URL of a GitLab provider.",
 	)
 
 	// Google
@@ -367,6 +378,8 @@ func run(cmd *cobra.Command, _ []string) {
 	switch idpType {
 	case "github":
 		idpBuilder, err = buildGithubIdp(cmd, cluster, idpName)
+	case "gitlab":
+		idpBuilder, err = buildGitlabIdp(cmd, cluster, idpName)
 	case "google":
 		idpBuilder, err = buildGoogleIdp(cmd, cluster, idpName)
 	case "ldap":
