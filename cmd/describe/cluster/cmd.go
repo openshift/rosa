@@ -148,23 +148,44 @@ func run(_ *cobra.Command, argv []string) {
 			phase = "(Install is taking longer than expected)"
 		}
 	}
-	str := "Name:                     " + cluster.Name() + "\n" +
-		"ID:                       " + cluster.ID() + "\n" +
-		"External ID:              " + cluster.ExternalID() + "\n" +
-		"AWS Account:              " + creatorARN.AccountID + "\n" +
-		"API URL:                  " + cluster.API().URL() + "\n" +
-		"Console URL:              " + cluster.Console().URL() + "\n" +
-		"Nodes:                    " + "Master: " + fmt.Sprintf("%d", cluster.Nodes().Master()) +
-		"Infra: " + fmt.Sprintf("%d", cluster.Nodes().Infra()) +
-		"Compute: " + fmt.Sprintf("%d", cluster.Nodes().Compute()) + "\n" +
-		"Region:                   " + cluster.Region().ID() + "\n" +
-		"State:                    " + string(cluster.State()) + phase + "\n" +
-		"Channel Group:            " + cluster.Version().ChannelGroup() + "\n" +
-		"Created:                  " + cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST") + "\n"
+	// Print short cluster description:
+	str := fmt.Sprintf(""+
+		"Name:                      %s\n"+
+		"ID:                        %s\n"+
+		"External ID:               %s\n"+
+		"AWS Account:               %s\n"+
+		"API URL:                   %s\n"+
+		"Console URL:               %s\n"+
+		"Nodes:                     Master: %d, Infra: %d, Compute: %d\n"+
+		"Region:                    %s\n"+
+		"State:                     %s %s\n"+
+		"Channel Group:             %s\n"+
+		"Created:                   %s\n",
+		cluster.Name(),
+		cluster.ID(),
+		cluster.ExternalID(),
+		creatorARN.AccountID,
+		cluster.API().URL(),
+		cluster.Console().URL(),
+		cluster.Nodes().Master(), cluster.Nodes().Infra(), cluster.Nodes().Compute(),
+		cluster.Region().ID(),
+		cluster.State(), phase,
+		cluster.Version().ChannelGroup(),
+		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
+	)
 
+	if err != nil {
+		reporter.Errorf("Failed to parse creator ARN for cluster '%s'", clusterKey)
+		os.Exit(1)
+	}
 	if cluster.Status().State() == cmv1.ClusterStateError {
-		str = str + "Provisioning Error Type   " + cluster.Status().ProvisionErrorType() + "\n" +
-			"Provisioning Error Reason " + cluster.Status().ProvisionErrorReason() + "\n"
+		str = fmt.Sprintf("%s"+
+			"Provisioning Error Type:   %s\n"+
+			"Provisioning Error Reason: %s\n",
+			str,
+			cluster.Status().ProvisionErrorType(),
+			cluster.Status().ProvisionErrorReason(),
+		)
 	}
 	// Print short cluster description:
 	fmt.Printf(str)
