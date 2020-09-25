@@ -34,6 +34,7 @@ var _ = Describe("Client", func() {
 			mockCfAPI,
 			mocks.NewMockServiceQuotasAPI(mockCtrl),
 			&session.Session{},
+			&aws.AccessKey{},
 		)
 	})
 
@@ -41,59 +42,6 @@ var _ = Describe("Client", func() {
 		mockCtrl.Finish()
 	})
 
-	Context("ValidateCFUserCredentials", func() {
-		var (
-			CFsecretID      = "sut"
-			IAMAccessKey    = "sut"
-			oddIAMAccessKey = "longtestkey"
-			status          = "Active"
-		)
-		Context("when creds are OK and matches", func() {
-			BeforeEach(func() {
-				mockCfAPI.EXPECT().DescribeStackResource(gomock.Any()).Return(&cloudformation.DescribeStackResourceOutput{
-					StackResourceDetail: &cloudformation.StackResourceDetail{
-						PhysicalResourceId: &CFsecretID,
-					},
-				}, nil)
-
-				mockIamAPI.EXPECT().ListAccessKeys(gomock.Any()).Return(&iam.ListAccessKeysOutput{
-					AccessKeyMetadata: []*iam.AccessKeyMetadata{
-						{
-							AccessKeyId: &IAMAccessKey,
-							Status:      &status,
-						},
-					},
-				}, nil)
-			})
-			It("should finish successfully and return nil", func() {
-				err := client.ValidateCFUserCredentials()
-				Expect(err).To(BeNil())
-			})
-		})
-
-		Context("when the credentials don't match", func() {
-			BeforeEach(func() {
-				mockCfAPI.EXPECT().DescribeStackResource(gomock.Any()).Return(&cloudformation.DescribeStackResourceOutput{
-					StackResourceDetail: &cloudformation.StackResourceDetail{
-						PhysicalResourceId: &CFsecretID,
-					},
-				}, nil)
-
-				mockIamAPI.EXPECT().ListAccessKeys(gomock.Any()).Return(&iam.ListAccessKeysOutput{
-					AccessKeyMetadata: []*iam.AccessKeyMetadata{
-						{
-							AccessKeyId: &oddIAMAccessKey,
-						},
-					},
-				}, nil)
-			})
-			It("should return err", func() {
-				err := client.ValidateCFUserCredentials()
-				Expect(err.Error()).Should(ContainSubstring("Invalid CloudFormation stack credentials"))
-			})
-		})
-
-	})
 	Context("EnsureOsdCcsAdminUser", func() {
 		var (
 			stackName     string
@@ -119,6 +67,8 @@ var _ = Describe("Client", func() {
 			Context("When stack is in CREATE_COMPLETE state", func() {
 				BeforeEach(func() {
 					stackStatus = cloudformation.StackStatusCreateComplete
+					mockCfAPI.EXPECT().UpdateStack(gomock.Any()).Return(nil, nil)
+					mockCfAPI.EXPECT().WaitUntilStackUpdateComplete(gomock.Any()).Return(nil)
 				})
 				It("Returns without error", func() {
 					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)

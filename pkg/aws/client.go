@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/client"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
@@ -57,14 +58,14 @@ const (
 
 // Client defines a client interface
 type Client interface {
-	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, err error)
 	CheckAdminUserNotExisting(userName string) (err error)
+	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, stackStatus *string, err error)
+	GetIAMCredentials() (credentials.Value, error)
 	GetRegion() string
 	ValidateCredentials() (bool, error)
-	ValidateCFUserCredentials() error
 	EnsureOsdCcsAdminUser(stackName string, adminUserName string) (bool, error)
 	DeleteOsdCcsAdminUser(stackName string) error
-	GetAccessKeyFromStack(stackName string) (*AccessKey, error)
+	GetAWSAccessKeys() (*AccessKey, error)
 	GetCreator() (*Creator, error)
 	TagUser(username string, clusterID string, clusterName string) error
 	ValidateSCP(*string) (bool, error)
@@ -73,8 +74,9 @@ type Client interface {
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
 type ClientBuilder struct {
-	logger *logrus.Logger
-	region *string
+	logger      *logrus.Logger
+	region      *string
+	credentials *AccessKey
 }
 
 type awsClient struct {
@@ -85,6 +87,7 @@ type awsClient struct {
 	cfClient            cloudformationiface.CloudFormationAPI
 	servicequotasClient servicequotasiface.ServiceQuotasAPI
 	awsSession          *session.Session
+	awsAccessKeys       *AccessKey
 }
 
 // NewClient creates a builder that can then be used to configure and build a new AWS client.
@@ -100,6 +103,7 @@ func New(
 	cfClient cloudformationiface.CloudFormationAPI,
 	servicequotasClient servicequotasiface.ServiceQuotasAPI,
 	awsSession *session.Session,
+	awsAccessKeys *AccessKey,
 
 ) Client {
 	return &awsClient{
@@ -110,6 +114,7 @@ func New(
 		cfClient,
 		servicequotasClient,
 		awsSession,
+		awsAccessKeys,
 	}
 }
 
@@ -122,6 +127,34 @@ func (b *ClientBuilder) Logger(value *logrus.Logger) *ClientBuilder {
 func (b *ClientBuilder) Region(value string) *ClientBuilder {
 	b.region = aws.String(value)
 	return b
+}
+
+func (b *ClientBuilder) AccessKeys(value *AccessKey) *ClientBuilder {
+	// fmt.Printf("Using new access key %s\n", value.AccessKeyID)
+	b.credentials = value
+	return b
+}
+
+// Create AWS session with a specific set of credentials
+func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey) (*session.Session, error) {
+	return session.NewSessionWithOptions(session.Options{
+		Config: aws.Config{
+			CredentialsChainVerboseErrors: aws.Bool(true),
+			Region:                        b.region,
+			Credentials:                   credentials.NewStaticCredentials(value.AccessKeyID, value.SecretAccessKey, ""),
+		},
+	})
+}
+
+func (b *ClientBuilder) BuildSessionWithOptions() (*session.Session, error) {
+	return session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+		Profile:           profile.Profile(),
+		Config: aws.Config{
+			CredentialsChainVerboseErrors: aws.Bool(true),
+			Region:                        b.region,
+		},
+	})
 }
 
 // Build uses the information stored in the builder to build a new AWS client.
@@ -139,15 +172,14 @@ func (b *ClientBuilder) Build() (Client, error) {
 		return nil, err
 	}
 
+	var sess *session.Session
+
 	// Create the AWS session:
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-		Profile:           profile.Profile(),
-		Config: aws.Config{
-			CredentialsChainVerboseErrors: aws.Bool(true),
-			Region:                        b.region,
-		},
-	})
+	if b.credentials != nil {
+		sess, err = b.BuildSessionWithOptionsCredentials(b.credentials)
+	} else {
+		sess, err = b.BuildSessionWithOptions()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +241,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 
 	_, root, err := getClientDetails(c)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get client details: %v", err)
+		return nil, err
 	}
 
 	if root {
@@ -217,6 +249,10 @@ func (b *ClientBuilder) Build() (Client, error) {
 	}
 
 	return c, err
+}
+
+func (c *awsClient) GetIAMCredentials() (credentials.Value, error) {
+	return c.awsSession.Config.Credentials.Get()
 }
 
 func (c *awsClient) GetRegion() string {
@@ -255,55 +291,10 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 	return true, nil
 }
 
-// ValidateCFUserCredentials checks if CF-IAM credentials are valid.
-// it gets stack's key and actual key and compares them
-// to get the stack credentials:
-// aws cloudformation describe-stack-resource \
-// --logical-resource-id osdCcsAdminAccessKeys --stack-name osdCcsAdminIAMUser
-func (c *awsClient) ValidateCFUserCredentials() error {
-	name := AdminUserName
-	accessKeyInput := &iam.ListAccessKeysInput{
-		UserName: &name,
-	}
-	accessKeyList, err := c.iamClient.ListAccessKeys(accessKeyInput)
-	if err != nil {
-		return err
-	}
-
-	OsdCcsAdminStackNamePtr := OsdCcsAdminStackName
-	LogicalResourceIDPtr := "osdCcsAdminAccessKeys"
-	stackResourceInput := &cloudformation.DescribeStackResourceInput{
-		StackName:         &OsdCcsAdminStackNamePtr,
-		LogicalResourceId: &LogicalResourceIDPtr,
-	}
-	resources, err := c.cfClient.DescribeStackResource(stackResourceInput)
-	if err != nil {
-		return err
-	}
-	cfAccessKey := resources.StackResourceDetail.PhysicalResourceId
-
-	for _, key := range accessKeyList.AccessKeyMetadata {
-		if *key.AccessKeyId == *cfAccessKey && *key.Status == "Active" {
-			return nil
-		}
-	}
-
-	return fmt.Errorf(
-		"Invalid CloudFormation stack credentials: %s is not valid \n"+
-			"you can recreate the CloudFormation stack with: \n"+
-			"rosa init --delete-stack && rosa init \n", name)
-}
-
 // Ensure osdCcsAdmin IAM user is created
 func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string) (bool, error) {
 	// Check already existing cloudformation stack status
-
-	stackReady, err := c.CheckStackReadyOrNotExisting(stackName)
-	if err != nil || stackReady {
-		return false, err
-	}
-
-	err = c.CheckAdminUserNotExisting(adminUserName)
+	stackReady, stackStatus, err := c.CheckStackReadyOrNotExisting(stackName)
 	if err != nil {
 		return false, err
 	}
@@ -314,8 +305,41 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string
 		return false, err
 	}
 
+	// If stack CREATE_COMPLETE or UPGRADE_COMPLETE the stack is already create
+	// try to update it in case the cloudformation template has changed
+	if stackStatus != nil {
+		if (*stackStatus == cloudformation.StackStatusCreateComplete) ||
+			(*stackStatus == cloudformation.StackStatusUpdateComplete) {
+			_, err = c.UpdateStack(cfTemplateBody, stackName)
+			if err != nil {
+				return false, err
+			}
+
+			return false, nil
+		}
+	}
+
+	// If the Cloudformation stack isn't ready, make sure the IAM user
+	// doesn't exist or the Cloudformation stack create will fail
+	if !stackReady {
+		err = c.CheckAdminUserNotExisting(adminUserName)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// Create stack
+	_, err = c.CreateStack(cfTemplateBody, stackName)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (c *awsClient) CreateStack(cfTemplateBody, stackName string) (bool, error) {
 	// Create cloudformation stack
-	_, err = c.cfClient.CreateStack(buildStackInput(cfTemplateBody, stackName))
+	_, err := c.cfClient.CreateStack(buildCreateStackInput(cfTemplateBody, stackName))
 	if err != nil {
 		return false, err
 	}
@@ -339,27 +363,63 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string
 	return true, nil
 }
 
-func (c *awsClient) CheckStackReadyOrNotExisting(stackName string) (stackReady bool, err error) {
+func (c *awsClient) UpdateStack(cfTemplateBody, stackName string) (bool, error) {
+	_, err := c.cfClient.UpdateStack(buildUpdateStackInput(cfTemplateBody, stackName))
+	if err != nil {
+		switch typed := err.(type) {
+		case awserr.Error:
+			// Exit true if there is no update to be performed on the cloudformation stack
+			if typed.Code() == "ValidationError" {
+				if typed.Message() == "No updates are to be performed." {
+					return true, nil
+				}
+			}
+		}
+		return false, err
+	}
+
+	// Wait for CloudFormation update to complete
+	err = c.cfClient.WaitUntilStackUpdateComplete(&cloudformation.DescribeStacksInput{
+		StackName: aws.String(stackName),
+	})
+
+	if err != nil {
+		switch typed := err.(type) {
+		case awserr.Error:
+			// Waiter reached maximum attempts waiting for the resource to be ready
+			if typed.Code() == request.WaiterResourceNotReadyErrorCode {
+				c.logger.Errorf("Max retries reached waiting for stack to create")
+				return false, err
+			}
+		}
+		return false, err
+	}
+
+	return true, err
+}
+
+func (c *awsClient) CheckStackReadyOrNotExisting(stackName string) (stackReady bool, status *string, err error) {
 	stackList, err := c.cfClient.ListStacks(&cloudformation.ListStacksInput{})
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	for _, summary := range stackList.StackSummaries {
 		if *summary.StackName == stackName {
-			if *summary.StackStatus == cloudformation.StackStatusCreateComplete {
-				return true, nil
+			if (*summary.StackStatus == cloudformation.StackStatusCreateComplete) ||
+				(*summary.StackStatus == cloudformation.StackStatusUpdateComplete) {
+				return true, summary.StackStatus, nil
 			}
 			if *summary.StackStatus != cloudformation.StackStatusDeleteComplete {
-				return false, fmt.Errorf("Error creating CloudFormation Stack: Cloudformation stack %s exists with status %s. "+
-					"Expected status is %s.\n"+
+				return false, summary.StackStatus, fmt.Errorf("Error creating user: Cloudformation stack %s exists "+
+					"with status %s. Expected status is %s.\n"+
 					"Ensure %s CloudFormation Stack does not exist, then retry with\n"+
 					"rosa init --delete-stack; rosa init",
-					*summary.StackName, *summary.StackName, *summary.StackStatus, cloudformation.StackStatusCreateComplete)
+					*summary.StackName, *summary.StackStatus, cloudformation.StackStatusCreateComplete, *summary.StackName)
 			}
 		}
 	}
-	return false, nil
+	return false, nil, nil
 }
 
 func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
@@ -369,7 +429,7 @@ func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
 	}
 	for _, user := range userList.Users {
 		if *user.UserName == userName {
-			return fmt.Errorf("Error creating user: IAM user '%s' already exists."+
+			return fmt.Errorf("Error creating user: IAM user '%s' already exists.\n"+
 				"Ensure user '%s' IAM user does not exist, then retry with\n"+
 				"rosa init",
 				*user.UserName, *user.UserName)
@@ -441,27 +501,152 @@ type AccessKey struct {
 	SecretAccessKey string
 }
 
-func (c *awsClient) GetAccessKeyFromStack(stackName string) (*AccessKey, error) {
-	outputKeySecretKey := "SecretKey"
-	outputKeyAccessKey := "AccessKey"
-	keys := AccessKey{}
+// GetAWSAccessKeys uses UpsertAccessKey to delete and create new access keys
+// for `osdCcsAdmin` each time we use the client to create a cluster.
+// There is no need to permanently store these credentials since they are only used
+// on create, the cluster uses a completely different set of IAM credentials
+// provisioned by this user.
+func (c *awsClient) GetAWSAccessKeys() (*AccessKey, error) {
+	if c.awsAccessKeys != nil {
+		return c.awsAccessKeys, nil
+	}
 
-	stackOutput, err := c.cfClient.DescribeStacks(&cloudformation.DescribeStacksInput{StackName: &stackName})
+	accessKey, err := c.UpsertAccessKey(AdminUserName)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, stack := range stackOutput.Stacks {
-		if *stack.StackName == stackName {
-			for _, output := range stack.Outputs {
-				if *output.OutputKey == outputKeyAccessKey {
-					keys.AccessKeyID = aws.StringValue(output.OutputValue)
+	err = c.ValidateAccessKeys(accessKey)
+	if err != nil {
+		return nil, err
+	}
+
+	c.awsAccessKeys = accessKey
+
+	return c.awsAccessKeys, nil
+}
+
+// ValidateAccessKeys deals with AWS' eventual consistency, its attempts to call
+// GetCallerIdentity and will try again if the error is access denied.
+func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
+	logger, err := logging.NewLogger().
+		Build()
+	if err != nil {
+		return fmt.Errorf("Unable to create AWS logger: %v", err)
+	}
+
+	start := time.Now()
+	maxAttempts := 15
+
+	// Wait for credentials
+	// 15 attempts should be enough, it takes generally around 10 seconds to ready
+	// credentials
+	for i := 0; i < maxAttempts; i++ {
+		// Create the AWS client
+		_, err := NewClient().
+			Logger(logger).
+			Region(DefaultRegion).
+			AccessKeys(AccessKey).
+			Build()
+
+		if err != nil {
+			logger.Debug(fmt.Sprintf("%+v\n", err))
+			switch typed := err.(type) {
+			case awserr.Error:
+				// Waiter reached maximum attempts waiting for the resource to be ready
+				if typed.Code() == "InvalidClientTokenId" {
+					wait := time.Duration((i * 200)) * time.Millisecond
+					waited := time.Since(start)
+					logger.Debug(fmt.Sprintf("InvalidClientTokenId, waited %.2f\n", waited.Seconds()))
+					time.Sleep(wait)
 				}
-				if *output.OutputKey == outputKeySecretKey {
-					keys.SecretAccessKey = aws.StringValue(output.OutputValue)
+				if typed.Code() == "AccessDenied" {
+					wait := time.Duration((i * 200)) * time.Millisecond
+					waited := time.Since(start)
+					logger.Debug(fmt.Printf("AccessDenied, waited %.2f\n", waited.Seconds()))
+					time.Sleep(wait)
 				}
 			}
+
+			// If we've still got an error on the last attempt return it
+			if i == maxAttempts {
+				logger.Error("Error waiting for IAM credentials to become ready")
+				return err
+			}
+		} else {
+			waited := time.Since(start)
+			logger.Debug(fmt.Sprintf("\nCredentials ready in %.2fs\n", waited.Seconds()))
+			break
+		}
+	}
+	return nil
+}
+
+// UpsertAccessKey first deletes all access keys attached to `username` and then creates a
+// new access key. DeleteAccessKey ensures we own the user before proceeding to delete
+// access keys
+func (c *awsClient) UpsertAccessKey(username string) (*AccessKey, error) {
+	err := c.DeleteAccessKeys(username)
+	if err != nil {
+		return nil, err
+	}
+
+	createAccessKeyOutput, err := c.CreateAccessKey(username)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AccessKey{
+		AccessKeyID:     *createAccessKeyOutput.AccessKey.AccessKeyId,
+		SecretAccessKey: *createAccessKeyOutput.AccessKey.SecretAccessKey,
+	}, nil
+}
+
+// CreateAccessKey creates an IAM access key for `username`
+func (c *awsClient) CreateAccessKey(username string) (*iam.CreateAccessKeyOutput, error) {
+	// Create access key for IAM user
+	createIAMUserAccessKeyOutput, err := c.iamClient.CreateAccessKey(
+		&iam.CreateAccessKeyInput{
+			UserName: aws.String(username),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return createIAMUserAccessKeyOutput, nil
+}
+
+// DeleteAccessKeys deletes all access keys from `username`. We ensure
+// that we own the user before deleting access keys by search for IAM Tags
+func (c *awsClient) DeleteAccessKeys(username string) error {
+	// List all access keys for user. Result wont be truncated since IAM users
+	// can only have 2 access keys
+	listAccessKeysOutput, err := c.iamClient.ListAccessKeys(
+		&iam.ListAccessKeysInput{
+			UserName: aws.String(username),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	// Delete all access keys. Moactl owns this user since the CloudFormation stack
+	// at this point is complete and the user is tagged by use on creation
+	for _, key := range listAccessKeysOutput.AccessKeyMetadata {
+		_, err = c.iamClient.DeleteAccessKey(
+			&iam.DeleteAccessKeyInput{
+				UserName:    aws.String(username),
+				AccessKeyId: key.AccessKeyId,
+			},
+		)
+		if err != nil {
+			return err
 		}
 	}
 
-	return &keys, err
+	// Complete, deleted all accesskeys for `username`
+	return nil
 }
 
 // ValidateQuota

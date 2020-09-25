@@ -295,7 +295,7 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 	}
 
 	// Create the access key for the AWS user:
-	awsAccessKey, err := awsClient.GetAccessKeyFromStack(aws.OsdCcsAdminStackName)
+	awsAccessKey, err := awsClient.GetAWSAccessKeys()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get access keys for user '%s': %v", aws.AdminUserName, err)
 	}

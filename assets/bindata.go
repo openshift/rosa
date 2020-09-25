@@ -64,31 +64,6 @@ var _templatesCloudformationIam_user_osdccsadminJson = []byte(`{
         ],
         "UserName": "osdCcsAdmin"
       }
-    },
-    "osdCcsAdminAccessKeys": {
-      "Type": "AWS::IAM::AccessKey",
-      "Properties": {
-        "UserName": {
-          "Ref": "osdCcsAdmin"
-        }
-      }
-    }
-  },
-  "Outputs": {
-    "AccessKey": {
-      "Value": {
-        "Ref": "osdCcsAdminAccessKeys"
-      },
-      "Description": "Access Key ID for osdCcsAdmin IAM User"
-    },
-    "SecretKey": {
-      "Value": {
-        "Fn::GetAtt": [
-          "osdCcsAdminAccessKeys",
-          "SecretAccessKey"
-        ]
-      },
-      "Description": "Secret Access Key for osdCcsAdmin IAM User"
     }
   }
 }

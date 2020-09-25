@@ -37,13 +37,13 @@ func getClientDetails(awsClient *awsClient) (*iam.User, bool, error) {
 
 	user, err := awsClient.iamClient.GetUser(nil)
 	if err != nil {
-		return nil, rootUser, fmt.Errorf("Error querying username: %v", err)
+		return nil, rootUser, err
 	}
 
 	// Detect whether the AWS account's root user is being used
 	parsed, err := arn.Parse(*user.User.Arn)
 	if err != nil {
-		return nil, rootUser, fmt.Errorf("Error parsing user's ARN: %v", err)
+		return nil, rootUser, err
 	}
 	if parsed.AccountID == *user.User.UserId {
 		rootUser = true
@@ -52,14 +52,28 @@ func getClientDetails(awsClient *awsClient) (*iam.User, bool, error) {
 	return user.User, rootUser, nil
 }
 
-// Build cloudformation stack input
-func buildStackInput(cfTemplateBody, stackName string) *cloudformation.CreateStackInput {
-	// Special cloudformation capabilities are required to craete IAM resources in AWS
+// Build cloudformation create stack input
+func buildCreateStackInput(cfTemplateBody, stackName string) *cloudformation.CreateStackInput {
+	// Special cloudformation capabilities are required to create IAM resources in AWS
 	cfCapabilityIAM := "CAPABILITY_IAM"
 	cfCapabilityNamedIAM := "CAPABILITY_NAMED_IAM"
 	cfTemplateCapabilities := []*string{&cfCapabilityIAM, &cfCapabilityNamedIAM}
 
 	return &cloudformation.CreateStackInput{
+		Capabilities: cfTemplateCapabilities,
+		StackName:    aws.String(stackName),
+		TemplateBody: aws.String(cfTemplateBody),
+	}
+}
+
+// Build cloudformation update stack input
+func buildUpdateStackInput(cfTemplateBody, stackName string) *cloudformation.UpdateStackInput {
+	// Special cloudformation capabilities are required to update IAM resources in AWS
+	cfCapabilityIAM := "CAPABILITY_IAM"
+	cfCapabilityNamedIAM := "CAPABILITY_NAMED_IAM"
+	cfTemplateCapabilities := []*string{&cfCapabilityIAM, &cfCapabilityNamedIAM}
+
+	return &cloudformation.UpdateStackInput{
 		Capabilities: cfTemplateCapabilities,
 		StackName:    aws.String(stackName),
 		TemplateBody: aws.String(cfTemplateBody),
