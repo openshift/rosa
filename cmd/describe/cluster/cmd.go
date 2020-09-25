@@ -174,10 +174,6 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
 	)
 
-	if err != nil {
-		reporter.Errorf("Failed to parse creator ARN for cluster '%s'", clusterKey)
-		os.Exit(1)
-	}
 	if cluster.Status().State() == cmv1.ClusterStateError {
 		str = fmt.Sprintf("%s"+
 			"Provisioning Error Type:   %s\n"+
@@ -188,6 +184,6 @@ func run(_ *cobra.Command, argv []string) {
 		)
 	}
 	// Print short cluster description:
-	fmt.Printf(str)
+	fmt.Print(str)
 	fmt.Println()
 }
