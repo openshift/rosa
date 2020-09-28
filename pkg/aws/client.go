@@ -143,23 +143,45 @@ func (b *ClientBuilder) Build() (Client, error) {
 		SharedConfigState: session.SharedConfigEnable,
 		Profile:           profile.Profile(),
 		Config: aws.Config{
-			Region: b.region,
-			// MaxRetries to limit the number of attempts on failed API calls
-			MaxRetries: aws.Int(25),
-			// Set MinThrottleDelay to 1 second
-			Retryer: client.DefaultRetryer{
-				NumMaxRetries:    5,
-				MinThrottleDelay: 1 * time.Second,
-			},
-			Logger: logger,
-			HTTPClient: &http.Client{
-				Transport: http.DefaultTransport,
-			},
+			CredentialsChainVerboseErrors: aws.Bool(true),
+			Region:                        b.region,
 		},
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	if profile.Profile() != "" {
+		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
+	}
+
+	// Check that the region is set:
+	region := aws.StringValue(sess.Config.Region)
+	if region == "" {
+		return nil, fmt.Errorf("Region is not set")
+	}
+
+	// Check that the AWS credentials are available:
+	_, err = sess.Config.Credentials.Get()
+	if err != nil {
+		b.logger.Debugf("Failed to find credentials: %v", err)
+		return nil, fmt.Errorf("Failed to find credentials. Check your AWS configuration and try again")
+	}
+
+	// Update session config
+	sess = sess.Copy(&aws.Config{
+		// MaxRetries to limit the number of attempts on failed API calls
+		MaxRetries: aws.Int(25),
+		// Set MinThrottleDelay to 1 second
+		Retryer: client.DefaultRetryer{
+			NumMaxRetries:    5,
+			MinThrottleDelay: 1 * time.Second,
+		},
+		Logger: logger,
+		HTTPClient: &http.Client{
+			Transport: http.DefaultTransport,
+		},
+	})
 
 	if b.logger.IsLevelEnabled(logrus.DebugLevel) {
 		var dumper http.RoundTripper
@@ -171,21 +193,6 @@ func (b *ClientBuilder) Build() (Client, error) {
 			return nil, err
 		}
 		sess.Config.HTTPClient.Transport = dumper
-	}
-
-	// Check that the region is set:
-	region := aws.StringValue(sess.Config.Region)
-	if region == "" {
-		return nil, fmt.Errorf("Region is not set")
-	}
-	if profile.Profile() != "" {
-		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
-	}
-
-	// Check that the AWS credentials are available:
-	_, err = sess.Config.Credentials.Get()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to find credentials: %v", err)
 	}
 
 	// Create and populate the object:
