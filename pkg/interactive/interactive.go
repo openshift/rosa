@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -210,6 +211,54 @@ func GetPassword(input Input) (a string, err error) {
 	}
 	err = survey.AskOne(prompt, &a)
 	return
+}
+
+// Gets path to certificate file from the command line
+func GetCert(input Input) (a string, err error) {
+	dflt, ok := input.Default.(string)
+	if !ok {
+		dflt = ""
+	}
+	question := input.Question
+	if !input.Required && dflt == "" {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
+	prompt := &survey.Input{
+		Message: fmt.Sprintf("%s:", question),
+		Help:    input.Help,
+		Default: dflt,
+	}
+	if input.Required {
+		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required), survey.WithValidator(certValidator))
+		return
+	}
+	err = survey.AskOne(prompt, &a, survey.WithValidator(certValidator))
+	return
+}
+
+// certValidator validates whether the given filepath is a valid cert file
+func certValidator(filepath interface{}) error {
+	if filepath == nil {
+		return nil
+	}
+	if s, ok := filepath.(string); ok {
+		if s == "" {
+			return nil
+		}
+		validExtension, err := regexp.MatchString("\\.(pem|ca-bundle|ce?rt?|key)$", s)
+		if err != nil {
+			return err
+		}
+		if !validExtension {
+			return fmt.Errorf("file '%s' does not have a valid file extension", s)
+		}
+		if _, err := os.Stat(s); !os.IsNotExist(err) {
+			// path to file exist
+			return nil
+		}
+		return fmt.Errorf("file '%s' does not exist on the file system", s)
+	}
+	return fmt.Errorf("can only validate strings, got %v", filepath)
 }
 
 var helpTemplate = `{{color "cyan"}}? {{.Message}}

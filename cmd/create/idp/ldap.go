@@ -19,6 +19,7 @@ package idp
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"strings"
 
@@ -67,6 +68,27 @@ func buildLdapIdp(cmd *cobra.Command,
 	}
 	if parsedLdapURL.Scheme != "ldap" && parsedLdapURL.Scheme != "ldaps" {
 		return idpBuilder, errors.New("Expected LDAP URL to have an ldap:// or ldaps:// scheme")
+	}
+
+	caPath := args.caPath
+	if interactive.Enabled() {
+		caPath, err = interactive.GetCert(interactive.Input{
+			Question: "CA file path",
+			Help:     cmd.Flags().Lookup("ca").Usage,
+			Default:  caPath,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
+		}
+	}
+	// Get certificate contents
+	ca := ""
+	if caPath != "" {
+		cert, err := ioutil.ReadFile(caPath)
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
+		}
+		ca = string(cert)
 	}
 
 	mappingMethod := args.mappingMethod
@@ -181,6 +203,11 @@ func buildLdapIdp(cmd *cobra.Command,
 		if ldapBindPassword != "" {
 			ldapIDP = ldapIDP.BindPassword(ldapBindPassword)
 		}
+	}
+
+	// Set the CA file, if any
+	if ca != "" {
+		ldapIDP = ldapIDP.CA(ca)
 	}
 
 	// Create new IDP with LDAP provider
