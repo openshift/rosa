@@ -157,16 +157,27 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
+	pendingMessage := fmt.Sprintf(
+		"Cluster '%s' is in %s state waiting for installation to begin. Logs will show up within 5 minutes",
+		clusterKey, cluster.State(),
+	)
 	if cluster.State() == cmv1.ClusterStatePending && !watch {
-		reporter.Warnf("Logs for cluster '%s' are not available yet", clusterKey)
-		os.Exit(1)
+		if cluster.CreationTimestamp().Add(5 * time.Minute).Before(time.Now()) {
+			reporter.Errorf(
+				"Cluster '%s' has been in %s state for too long. Please contact support",
+				clusterKey, cluster.State(),
+			)
+			os.Exit(1)
+		}
+		reporter.Warnf(pendingMessage)
+		os.Exit(0)
 	}
 
 	// Get logs from Hive
 	logs, err := ocm.GetInstallLogs(clustersCollection, cluster.ID(), args.tail)
 	if err != nil {
 		if errors.GetType(err) == errors.NotFound {
-			reporter.Infof("Cluster '%s' installation beginning. Installation logs will show up within 5 minutes", clusterKey)
+			reporter.Infof(pendingMessage)
 		} else {
 			reporter.Errorf("Failed to get logs for cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
