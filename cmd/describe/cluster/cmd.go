@@ -148,20 +148,19 @@ func run(_ *cobra.Command, argv []string) {
 			phase = "(Install is taking longer than expected)"
 		}
 	}
-
 	// Print short cluster description:
-	fmt.Printf(""+
-		"Name:          %s\n"+
-		"ID:            %s\n"+
-		"External ID:   %s\n"+
-		"AWS Account:   %s\n"+
-		"API URL:       %s\n"+
-		"Console URL:   %s\n"+
-		"Nodes:         Master: %d, Infra: %d, Compute: %d\n"+
-		"Region:        %s\n"+
-		"State:         %s %s\n"+
-		"Channel Group: %s\n"+
-		"Created:       %s\n",
+	str := fmt.Sprintf(""+
+		"Name:                      %s\n"+
+		"ID:                        %s\n"+
+		"External ID:               %s\n"+
+		"AWS Account:               %s\n"+
+		"API URL:                   %s\n"+
+		"Console URL:               %s\n"+
+		"Nodes:                     Master: %d, Infra: %d, Compute: %d\n"+
+		"Region:                    %s\n"+
+		"State:                     %s %s\n"+
+		"Channel Group:             %s\n"+
+		"Created:                   %s\n",
 		cluster.Name(),
 		cluster.ID(),
 		cluster.ExternalID(),
@@ -174,5 +173,17 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Version().ChannelGroup(),
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
 	)
+
+	if cluster.Status().State() == cmv1.ClusterStateError {
+		str = fmt.Sprintf("%s"+
+			"Provisioning Error Type:   %s\n"+
+			"Provisioning Error Reason: %s\n",
+			str,
+			cluster.Status().ProvisionErrorType(),
+			cluster.Status().ProvisionErrorReason(),
+		)
+	}
+	// Print short cluster description:
+	fmt.Print(str)
 	fmt.Println()
 }
