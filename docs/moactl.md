@@ -9,9 +9,10 @@ Command line tool for MOA.
 ### Options
 
 ```
-      --debug     Enable debug mode.
-  -h, --help      help for moactl
-  -v, --v Level   log level for V logs
+      --debug            Enable debug mode.
+  -h, --help             help for moactl
+      --profile string   Use a specific AWS profile from your credential file.
+  -v, --v Level          log level for V logs
 ```
 
 ### SEE ALSO

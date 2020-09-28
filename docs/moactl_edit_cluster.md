@@ -36,9 +36,10 @@ moactl edit cluster [flags]
 ### Options inherited from parent commands
 
 ```
-      --debug         Enable debug mode.
-  -i, --interactive   Enable interactive mode.
-  -v, --v Level       log level for V logs
+      --debug            Enable debug mode.
+  -i, --interactive      Enable interactive mode.
+      --profile string   Use a specific AWS profile from your credential file.
+  -v, --v Level          log level for V logs
 ```
 
 ### SEE ALSO

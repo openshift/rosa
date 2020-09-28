@@ -14,23 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// This file contains functions that add common arguments to the command line.
+// This file contains functions used to implement the '--profile' command line option.
 
-package arguments
+package profile
 
 import (
 	"github.com/spf13/pflag"
-
-	"github.com/openshift/moactl/pkg/aws/profile"
-	"github.com/openshift/moactl/pkg/debug"
 )
 
-// AddDebugFlag adds the '--debug' flag to the given set of command line flags.
-func AddDebugFlag(fs *pflag.FlagSet) {
-	debug.AddFlag(fs)
+// AddFlag adds the debug flag to the given set of command line flags.
+func AddFlag(flags *pflag.FlagSet) {
+	flags.StringVar(
+		&profile,
+		"profile",
+		"",
+		"Use a specific AWS profile from your credential file.",
+	)
 }
 
-// AddProfileFlag adds the '--profile' flag to the given set of command line flags.
-func AddProfileFlag(fs *pflag.FlagSet) {
-	profile.AddFlag(fs)
+// Enabled retursn a boolean flag that indicates if the debug mode is enabled.
+func Profile() string {
+	return profile
 }
+
+// enabled is a boolean flag that indicates that the debug mode is enabled.
+var profile string

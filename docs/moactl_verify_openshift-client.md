@@ -26,9 +26,10 @@ moactl verify openshift-client [flags]
 ### Options inherited from parent commands
 
 ```
-      --debug           Enable debug mode.
-  -r, --region string   AWS region in which to run (overrides the AWS_REGION environment variable)
-  -v, --v Level         log level for V logs
+      --debug            Enable debug mode.
+      --profile string   Use a specific AWS profile from your credential file.
+  -r, --region string    AWS region in which to run (overrides the AWS_REGION environment variable)
+  -v, --v Level          log level for V logs
 ```
 
 ### SEE ALSO

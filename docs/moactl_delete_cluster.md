@@ -31,9 +31,10 @@ moactl delete cluster [ID|NAME] [flags]
 ### Options inherited from parent commands
 
 ```
-      --debug     Enable debug mode.
-  -v, --v Level   log level for V logs
-  -y, --yes       Automatically answer yes to confirm operation.
+      --debug            Enable debug mode.
+      --profile string   Use a specific AWS profile from your credential file.
+  -v, --v Level          log level for V logs
+  -y, --yes              Automatically answer yes to confirm operation.
 ```
 
 ### SEE ALSO
