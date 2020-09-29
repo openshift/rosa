@@ -23,7 +23,6 @@ import (
 	"github.com/openshift/moactl/cmd/dlt/idp"
 	"github.com/openshift/moactl/cmd/dlt/ingress"
 	"github.com/openshift/moactl/cmd/dlt/user"
-
 	"github.com/openshift/moactl/pkg/confirm"
 )
 

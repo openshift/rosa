@@ -56,6 +56,7 @@ const (
 
 // Client defines a client interface
 type Client interface {
+	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, err error)
 	GetRegion() string
 	ValidateCredentials() (bool, error)
 	ValidateCFUserCredentials() error
@@ -283,7 +284,7 @@ func (c *awsClient) ValidateCFUserCredentials() error {
 // Ensure osdCcsAdmin IAM user is created
 func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
 	// Check already existing cloudformation stack status
-	stackReady, err := c.checkStackReadyOrNotExisting(stackName)
+	stackReady, err := c.CheckStackReadyOrNotExisting(stackName)
 	if err != nil || stackReady {
 		return false, err
 	}
@@ -319,7 +320,7 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
 	return true, nil
 }
 
-func (c *awsClient) checkStackReadyOrNotExisting(stackName string) (stackReady bool, err error) {
+func (c *awsClient) CheckStackReadyOrNotExisting(stackName string) (stackReady bool, err error) {
 	stackList, err := c.cfClient.ListStacks(&cloudformation.ListStacksInput{})
 	if err != nil {
 		return false, err
