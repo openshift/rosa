@@ -24,14 +24,16 @@ import (
 	"github.com/openshift/moactl/cmd/create/idp"
 	"github.com/openshift/moactl/cmd/create/ingress"
 	"github.com/openshift/moactl/cmd/create/user"
+	v "github.com/openshift/moactl/cmd/validations"
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
 var Cmd = &cobra.Command{
-	Use:     "create RESOURCE [flags]",
-	Aliases: []string{"add"},
-	Short:   "Create a resource from stdin",
-	Long:    "Create a resource from stdin",
+	Use:              "create RESOURCE [flags]",
+	Aliases:          []string{"add"},
+	Short:            "Create a resource from stdin",
+	Long:             "Create a resource from stdin",
+	PersistentPreRun: v.Validations,
 }
 
 func init() {

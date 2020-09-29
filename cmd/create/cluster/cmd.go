@@ -30,6 +30,7 @@ import (
 	clusterdescribe "github.com/openshift/moactl/cmd/describe/cluster"
 	installLogs "github.com/openshift/moactl/cmd/logs/install"
 
+	v "github.com/openshift/moactl/cmd/validations"
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/interactive"
@@ -79,7 +80,8 @@ var Cmd = &cobra.Command{
 
   # Create a cluster in the us-east-2 region
   moactl create cluster --cluster-name=mycluster --region=us-east-2`,
-	Run: run,
+	Run:              run,
+	PersistentPreRun: v.Validations,
 }
 
 func init() {
@@ -270,7 +272,6 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
-
 	// Create the AWS client:
 	client, err := aws.NewClient().
 		Logger(logger).
@@ -284,7 +285,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Validate AWS credentials for current user
 	reporter.Debugf("Validating AWS credentials...")
 	if err = client.ValidateCFUserCredentials(); err != nil {
-		reporter.Errorf("Error validating AWS credentials: %v", err)
+		reporter.Errorf("Error validating AWS credentials for user '%s': %v", aws.AdminUserName, err)
 		os.Exit(1)
 	}
 	reporter.Debugf("AWS credentials are valid!")
