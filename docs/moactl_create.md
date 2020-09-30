@@ -16,8 +16,9 @@ Create a resource from stdin
 ### Options inherited from parent commands
 
 ```
-      --debug     Enable debug mode.
-  -v, --v Level   log level for V logs
+      --debug            Enable debug mode.
+      --profile string   Use a specific AWS profile from your credential file.
+  -v, --v Level          log level for V logs
 ```
 
 ### SEE ALSO

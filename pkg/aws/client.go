@@ -40,6 +40,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 	"github.com/sirupsen/logrus"
 
+	"github.com/openshift/moactl/pkg/aws/profile"
 	"github.com/openshift/moactl/pkg/aws/tags"
 	"github.com/openshift/moactl/pkg/logging"
 )
@@ -140,6 +141,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	// Create the AWS session:
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
+		Profile:           profile.Profile(),
 		Config: aws.Config{
 			Region: b.region,
 			// MaxRetries to limit the number of attempts on failed API calls
@@ -175,6 +177,9 @@ func (b *ClientBuilder) Build() (Client, error) {
 	region := aws.StringValue(sess.Config.Region)
 	if region == "" {
 		return nil, fmt.Errorf("Region is not set")
+	}
+	if profile.Profile() != "" {
+		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
 	}
 
 	// Check that the AWS credentials are available:
