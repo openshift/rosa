@@ -52,7 +52,7 @@ clean:
 
 .PHONY: generate
 generate:
-	go get github.com/go-bindata/go-bindata/...
+	which go-bindata || GO111MODULE=off go install -i github.com/go-bindata/go-bindata/go-bindata
 	go-bindata -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 
 .PHONY: docs
