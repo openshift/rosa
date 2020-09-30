@@ -19,6 +19,7 @@ package initialize
 import (
 	"os"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/cmd/login"
@@ -27,9 +28,11 @@ import (
 	"github.com/openshift/moactl/cmd/verify/quota"
 
 	"github.com/openshift/moactl/pkg/aws"
+	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	"github.com/openshift/moactl/pkg/ocm/config"
+	"github.com/openshift/moactl/pkg/ocm/properties"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
@@ -137,24 +140,18 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	reporter.Infof("AWS credentials are valid!")
 
+	// Create the client for the OCM API:
+	ocmConnection, err := ocm.NewConnection().Logger(logger).Build()
+	if err != nil {
+		reporter.Errorf("Failed to create OCM connection: %v", err)
+		os.Exit(1)
+	}
+	defer ocmConnection.Close()
+	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
+
 	// Delete CloudFormation stack and exit
 	if args.deleteStack {
 		reporter.Infof("Deleting cluster administrator user '%s'...", aws.AdminUserName)
-
-		// Create the client for the OCM API:
-		ocmConnection, err := ocm.NewConnection().
-			Logger(logger).
-			Build()
-		if err != nil {
-			reporter.Errorf("Failed to create OCM connection: %v", err)
-			os.Exit(1)
-		}
-		defer func() {
-			err = ocmConnection.Close()
-			if err != nil {
-				reporter.Errorf("Failed to close OCM connection: %v", err)
-			}
-		}()
 
 		// Get creator ARN to determine existing clusters:
 		awsCreator, err := client.GetCreator()
@@ -164,7 +161,6 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		// Check whether the account has clusters:
-		clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 		hasClusters, err := ocm.HasClusters(clustersCollection, awsCreator.ARN)
 		if err != nil {
 			reporter.Errorf("Failed to check for clusters: %v", err)
@@ -197,6 +193,16 @@ func run(cmd *cobra.Command, argv []string) {
 	// Call `verify quota` as part of init
 	quota.Cmd.Run(cmd, argv)
 
+	// Check whether the user can create a basic cluster
+	reporter.Infof("Running cluster simulation...")
+	err = simulateCluster(clustersCollection, args.region)
+	if err != nil {
+		reporter.Warnf("Cluster simulation failed. "+
+			"If you try to create a cluster, it will likely fail with an error similar to:\n%s", err)
+	} else {
+		reporter.Infof("Cluster simulation successful")
+	}
+
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
 	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
 	created, err := client.EnsureOsdCcsAdminUser(aws.OsdCcsAdminStackName)
@@ -211,4 +217,24 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	oc.Cmd.Run(cmd, argv)
+}
+
+func simulateCluster(client *cmv1.ClustersClient, region string) error {
+	dryRun := true
+	if region == "" {
+		region = aws.DefaultRegion
+	}
+	spec := clusterprovider.Spec{
+		Name:             "moactl-init-test",
+		Region:           region,
+		CustomProperties: map[string]string{properties.UseMarketplaceAMI: "true"},
+		DryRun:           &dryRun,
+	}
+
+	_, err := clusterprovider.CreateCluster(client, spec)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
