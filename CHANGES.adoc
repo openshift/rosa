@@ -3,6 +3,18 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.13 Sep 30 2020
+
+- Add Provision Type and Reason for error cluster
+- Review Comments
+- Fixed lint and reverted wrong line
+- idp: Warn the user that it will take about 1 minute to add IdP
+- aws: Add support for AWS profiles
+- logs: Improve warnings when cluster is pending
+- Adding validations to cluster create command
+- remove validations from create command
+- aws: Split configuration to ensure early failure
+
 == 0.0.12 Sep 24 2020
 
 - README: Update based on output of newer commands
