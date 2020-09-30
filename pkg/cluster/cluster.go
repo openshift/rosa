@@ -62,6 +62,9 @@ type Spec struct {
 
 	// Access control config
 	ClusterAdmins *bool
+
+	// Simulate creating a cluster but don't actually create it
+	DryRun *bool
 }
 
 func IsValidClusterKey(clusterKey string) bool {
@@ -110,9 +113,12 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 		return nil, fmt.Errorf("Unable to create cluster spec: %v", err)
 	}
 
-	cluster, err := client.Add().Body(spec).Send()
+	cluster, err := client.Add().Parameter("dryRun", *config.DryRun).Body(spec).Send()
 	if err != nil {
 		return nil, fmt.Errorf("Error creating cluster in OCM: %v", err)
+	}
+	if config.DryRun != nil && *config.DryRun {
+		return nil, nil
 	}
 
 	clusterObject := cluster.Body()
