@@ -144,10 +144,15 @@ func run(_ *cobra.Command, argv []string) {
 		if !cluster.Status().DNSReady() {
 			phase = "(DNS setup in progress)"
 		}
-		if cluster.Status().ProvisionErrorReason() != "" && cluster.Status().ProvisionErrorType() == "ProvisionFailed" {
-			phase = "(Install is taking longer than expected)"
+		if cluster.Status().ProvisionErrorMessage() != "" {
+			errorCode := ""
+			if cluster.Status().ProvisionErrorCode() != "" {
+				errorCode = cluster.Status().ProvisionErrorCode() + " - "
+			}
+			phase = "(" + errorCode + "Install is taking longer than expected)"
 		}
 	}
+
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
 		"Name:                      %s\n"+
