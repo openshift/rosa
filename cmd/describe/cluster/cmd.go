@@ -155,17 +155,17 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
-		"Name:                      %s\n"+
-		"ID:                        %s\n"+
-		"External ID:               %s\n"+
-		"AWS Account:               %s\n"+
-		"API URL:                   %s\n"+
-		"Console URL:               %s\n"+
-		"Nodes:                     Master: %d, Infra: %d, Compute: %d\n"+
-		"Region:                    %s\n"+
-		"State:                     %s %s\n"+
-		"Channel Group:             %s\n"+
-		"Created:                   %s\n",
+		"Name:                       %s\n"+
+		"ID:                         %s\n"+
+		"External ID:                %s\n"+
+		"AWS Account:                %s\n"+
+		"API URL:                    %s\n"+
+		"Console URL:                %s\n"+
+		"Nodes:                      Master: %d, Infra: %d, Compute: %d\n"+
+		"Region:                     %s\n"+
+		"State:                      %s %s\n"+
+		"Channel Group:              %s\n"+
+		"Created:                    %s\n",
 		cluster.Name(),
 		cluster.ID(),
 		cluster.ExternalID(),
@@ -181,11 +181,11 @@ func run(_ *cobra.Command, argv []string) {
 
 	if cluster.Status().State() == cmv1.ClusterStateError {
 		str = fmt.Sprintf("%s"+
-			"Provisioning Error Type:   %s\n"+
-			"Provisioning Error Reason: %s\n",
+			"Provisioning Error Code:    %s\n"+
+			"Provisioning Error Message: %s\n",
 			str,
-			cluster.Status().ProvisionErrorType(),
-			cluster.Status().ProvisionErrorReason(),
+			cluster.Status().ProvisionErrorCode(),
+			cluster.Status().ProvisionErrorMessage(),
 		)
 	}
 	// Print short cluster description:
