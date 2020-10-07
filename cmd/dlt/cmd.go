@@ -19,6 +19,7 @@ package dlt
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/moactl/cmd/dlt/admin"
 	"github.com/openshift/moactl/cmd/dlt/cluster"
 	"github.com/openshift/moactl/cmd/dlt/idp"
 	"github.com/openshift/moactl/cmd/dlt/ingress"
@@ -37,6 +38,7 @@ func init() {
 	flags := Cmd.PersistentFlags()
 	confirm.AddFlag(flags)
 
+	Cmd.AddCommand(admin.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
