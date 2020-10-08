@@ -41,6 +41,7 @@ var args struct {
 	clientID      string
 	clientSecret  string
 	mappingMethod string
+	caPath        string
 
 	// GitHub
 	githubHostname      string
@@ -124,7 +125,13 @@ func init() {
 		&args.clientSecret,
 		"client-secret",
 		"",
-		"Client Secret from the registered application.\n",
+		"Client Secret from the registered application.",
+	)
+	flags.StringVar(
+		&args.caPath,
+		"ca",
+		"",
+		"Path to PEM-encoded certificate file to use when making requests to the server.\n",
 	)
 
 	// GitHub

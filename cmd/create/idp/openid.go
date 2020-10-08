@@ -19,6 +19,7 @@ package idp
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"strings"
 
@@ -108,6 +109,27 @@ func buildOpenidIdp(cmd *cobra.Command,
 		return idpBuilder, errors.New("OpenID issuer URL must not have a fragment")
 	}
 
+	caPath := args.caPath
+	if interactive.Enabled() {
+		caPath, err = interactive.GetCert(interactive.Input{
+			Question: "CA file path",
+			Help:     cmd.Flags().Lookup("ca").Usage,
+			Default:  caPath,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
+		}
+	}
+	// Get certificate contents
+	ca := ""
+	if caPath != "" {
+		cert, err := ioutil.ReadFile(caPath)
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
+		}
+		ca = string(cert)
+	}
+
 	mappingMethod := args.mappingMethod
 	if interactive.Enabled() {
 		mappingMethod, err = interactive.GetOption(interactive.Input{
@@ -177,6 +199,11 @@ func buildOpenidIdp(cmd *cobra.Command,
 		ClientSecret(clientSecret).
 		Issuer(issuerURL).
 		Claims(openIDClaims)
+
+	// Set the CA file, if any
+	if ca != "" {
+		openIDIDP = openIDIDP.CA(ca)
+	}
 
 	// Create new IDP with OpenID provider
 	idpBuilder.

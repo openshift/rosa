@@ -19,6 +19,7 @@ package idp
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"strings"
 
@@ -173,6 +174,31 @@ func buildGithubIdp(cmd *cobra.Command,
 		}
 		// Set the hostname, if any
 		githubIDP = githubIDP.Hostname(githubHostname)
+
+		caPath := args.caPath
+		if interactive.Enabled() {
+			caPath, err = interactive.GetCert(interactive.Input{
+				Question: "CA file path",
+				Help:     cmd.Flags().Lookup("ca").Usage,
+				Default:  caPath,
+			})
+			if err != nil {
+				return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
+			}
+		}
+		// Get certificate contents
+		ca := ""
+		if caPath != "" {
+			cert, err := ioutil.ReadFile(caPath)
+			if err != nil {
+				return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
+			}
+			ca = string(cert)
+		}
+		// Set the CA file, if any
+		if ca != "" {
+			githubIDP = githubIDP.CA(ca)
+		}
 	}
 
 	mappingMethod := args.mappingMethod

@@ -30,6 +30,7 @@ moactl create idp [flags]
       --mapping-method string        Specifies how new identities are mapped to users when they log in. (default "claim")
       --client-id string             Client ID from the registered application.
       --client-secret string         Client Secret from the registered application.
+      --ca string                    Path to PEM-encoded certificate file to use when making requests to the server.
                                      
       --hostname string              GitHub: Optional domain to use with a hosted instance of GitHub Enterprise.
       --organizations string         GitHub: Only users that are members of at least one of the listed organizations will be allowed to log in.
