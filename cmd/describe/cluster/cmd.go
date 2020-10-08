@@ -144,23 +144,28 @@ func run(_ *cobra.Command, argv []string) {
 		if !cluster.Status().DNSReady() {
 			phase = "(DNS setup in progress)"
 		}
-		if cluster.Status().ProvisionErrorReason() != "" && cluster.Status().ProvisionErrorType() == "ProvisionFailed" {
-			phase = "(Install is taking longer than expected)"
+		if cluster.Status().ProvisionErrorMessage() != "" {
+			errorCode := ""
+			if cluster.Status().ProvisionErrorCode() != "" {
+				errorCode = cluster.Status().ProvisionErrorCode() + " - "
+			}
+			phase = "(" + errorCode + "Install is taking longer than expected)"
 		}
 	}
+
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
-		"Name:                      %s\n"+
-		"ID:                        %s\n"+
-		"External ID:               %s\n"+
-		"AWS Account:               %s\n"+
-		"API URL:                   %s\n"+
-		"Console URL:               %s\n"+
-		"Nodes:                     Master: %d, Infra: %d, Compute: %d\n"+
-		"Region:                    %s\n"+
-		"State:                     %s %s\n"+
-		"Channel Group:             %s\n"+
-		"Created:                   %s\n",
+		"Name:                       %s\n"+
+		"ID:                         %s\n"+
+		"External ID:                %s\n"+
+		"AWS Account:                %s\n"+
+		"API URL:                    %s\n"+
+		"Console URL:                %s\n"+
+		"Nodes:                      Master: %d, Infra: %d, Compute: %d\n"+
+		"Region:                     %s\n"+
+		"State:                      %s %s\n"+
+		"Channel Group:              %s\n"+
+		"Created:                    %s\n",
 		cluster.Name(),
 		cluster.ID(),
 		cluster.ExternalID(),
@@ -176,11 +181,11 @@ func run(_ *cobra.Command, argv []string) {
 
 	if cluster.Status().State() == cmv1.ClusterStateError {
 		str = fmt.Sprintf("%s"+
-			"Provisioning Error Type:   %s\n"+
-			"Provisioning Error Reason: %s\n",
+			"Provisioning Error Code:    %s\n"+
+			"Provisioning Error Message: %s\n",
 			str,
-			cluster.Status().ProvisionErrorType(),
-			cluster.Status().ProvisionErrorReason(),
+			cluster.Status().ProvisionErrorCode(),
+			cluster.Status().ProvisionErrorMessage(),
 		)
 	}
 	// Print short cluster description:
