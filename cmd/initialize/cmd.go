@@ -216,6 +216,13 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
 	}
 
+	reporter.Infof("Ensuring cluster administrator user '%s' has correct permissions...", aws.AdminUserName)
+	err = client.EnsureOsdCcsAdminUserPermissions()
+	if err != nil {
+		reporter.Errorf("Permission check is failed for '%s': \n%v", aws.AdminUserName, err)
+		os.Exit(1)
+	}
+
 	oc.Cmd.Run(cmd, argv)
 }
 

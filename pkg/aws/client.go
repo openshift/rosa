@@ -62,6 +62,7 @@ type Client interface {
 	ValidateCredentials() (bool, error)
 	ValidateCFUserCredentials() error
 	EnsureOsdCcsAdminUser(stackName string) (bool, error)
+	EnsureOsdCcsAdminUserPermissions() error
 	DeleteOsdCcsAdminUser(stackName string) error
 	GetAccessKeyFromStack(stackName string) (*AccessKey, error)
 	GetCreator() (*Creator, error)
@@ -289,8 +290,38 @@ func (c *awsClient) ValidateCFUserCredentials() error {
 
 	return fmt.Errorf(
 		"Invalid CloudFormation stack credentials: %s is not valid \n"+
-			"you can recreate the CloudFormation stack with: \n"+
-			"moactl init --delete-stack && moactl init \n", name)
+			adviseRecreate(), name)
+}
+
+func (c *awsClient) EnsureOsdCcsAdminUserPermissions() error {
+	AdminUserNamePtr := AdminUserName
+	ListAttachedUserPoliciesInput := &iam.ListAttachedUserPoliciesInput{
+		UserName: &AdminUserNamePtr,
+	}
+	policies, err := c.iamClient.ListAttachedUserPolicies(ListAttachedUserPoliciesInput)
+	if err != nil {
+		return fmt.Errorf("listAttachedUserPolicies failed: %w", err)
+	}
+
+	if len(policies.AttachedPolicies) != 1 {
+		return fmt.Errorf(
+			"currently only AdministratorAccess needs to be attached \n"+
+				adviseRecreate(), AdminUserName)
+	}
+
+	if *policies.AttachedPolicies[0].PolicyName != "AdministratorAccess" {
+		return fmt.Errorf(
+			"No AdministratorAccess policy found for %s user \n"+
+				adviseRecreate(), AdminUserName)
+	}
+
+	return nil
+}
+
+func adviseRecreate() string {
+	return fmt.Sprintf(
+		"you can recreate the user with appropriate permissions via: \n" +
+			"moactl init --delete-stack && moactl init \n")
 }
 
 // Ensure osdCcsAdmin IAM user is created

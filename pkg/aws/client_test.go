@@ -41,6 +41,71 @@ var _ = Describe("Client", func() {
 		mockCtrl.Finish()
 	})
 
+	Context("EnsureOsdCcsAdminUserPermissions", func() {
+		var (
+			policyArn   = "sut"
+			testPolicy  = "sut"
+			adminPolicy = "AdministratorAccess"
+			adminArn    = "AdministratorAccess"
+		)
+		Context("when listAttachedUserPolicies() returns multiple policy", func() {
+			BeforeEach(func() {
+				mockIamAPI.EXPECT().ListAttachedUserPolicies(gomock.Any()).Return(&iam.ListAttachedUserPoliciesOutput{
+					AttachedPolicies: []*iam.AttachedPolicy{
+						{
+							PolicyName: &testPolicy,
+							PolicyArn:  &policyArn,
+						},
+						{
+							PolicyName: &adminPolicy,
+							PolicyArn:  &adminArn,
+						},
+					},
+				}, nil)
+			})
+			It("should fail as only Administrator policy needs to be attached", func() {
+				err := client.EnsureOsdCcsAdminUserPermissions()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("only AdministratorAccess needs to be attached"))
+			})
+		})
+
+		Context("when listAttachedUserPolicies() returns single different policy", func() {
+			BeforeEach(func() {
+				mockIamAPI.EXPECT().ListAttachedUserPolicies(gomock.Any()).Return(&iam.ListAttachedUserPoliciesOutput{
+					AttachedPolicies: []*iam.AttachedPolicy{
+						{
+							PolicyName: &testPolicy,
+							PolicyArn:  &policyArn,
+						},
+					},
+				}, nil)
+			})
+			It("should fail as only Administrator policy needs to be attached", func() {
+				err := client.EnsureOsdCcsAdminUserPermissions()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("No AdministratorAccess policy found for osdCcsAdmin user"))
+			})
+		})
+
+		Context("when listAttachedUserPolicies() returns AdministratorAccess only", func() {
+			BeforeEach(func() {
+				mockIamAPI.EXPECT().ListAttachedUserPolicies(gomock.Any()).Return(&iam.ListAttachedUserPoliciesOutput{
+					AttachedPolicies: []*iam.AttachedPolicy{
+						{
+							PolicyName: &adminPolicy,
+							PolicyArn:  &adminArn,
+						},
+					},
+				}, nil)
+			})
+			It("should return nil", func() {
+				err := client.EnsureOsdCcsAdminUserPermissions()
+				Expect(err).To(BeNil())
+			})
+		})
+	})
+
 	Context("ValidateCFUserCredentials", func() {
 		var (
 			CFsecretID      = "sut"
