@@ -53,6 +53,9 @@ var args struct {
 	// Whether to use the AMI image override from the AWS marketplace
 	usePaidAMI bool
 
+	// Disable SCP checks in the installer
+	disableSCPChecks bool
+
 	// Basic options
 	private            bool
 	multiAZ            bool
@@ -193,6 +196,13 @@ func init() {
 		"private",
 		false,
 		"Restrict master API endpoint and application routes to direct, private connectivity.",
+	)
+
+	flags.BoolVar(
+		&args.disableSCPChecks,
+		"disable-scp-checks",
+		false,
+		"Indicates if cloud permission checks are disabled when attempting installation of the cluster.",
 	)
 
 	flags.BoolVar(
@@ -495,6 +505,7 @@ func run(cmd *cobra.Command, _ []string) {
 		HostPrefix:         hostPrefix,
 		Private:            &private,
 		DryRun:             &args.dryRun,
+		DisableSCPChecks:   &args.disableSCPChecks,
 	}
 
 	// If the flag is explicitly set to false, OCM will tell the cluster provisioner

@@ -35,6 +35,7 @@ moactl create cluster [flags]
       --pod-cidr ipNet                Block of IP addresses from which Pod IP addresses are allocated, for example "10.128.0.0/14".
       --host-prefix int               Subnet prefix length to assign to each individual node. For example, if host prefix is set to "23", then each node is assigned a /23 subnet out of the given CIDR.
       --private                       Restrict master API endpoint and application routes to direct, private connectivity.
+      --disable-scp-checks            Indicates if cloud permission checks are disabled when attempting installation of the cluster.
       --watch                         Watch cluster installation logs.
       --dry-run                       Simulate creating the cluster.
   -h, --help                          help for cluster
