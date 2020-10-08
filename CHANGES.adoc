@@ -3,6 +3,17 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.14 Oct 8 2020
+
+- idp: Add support for certificate bundles
+- Added New Error Message Implementation
+- Updated OCM SDK version
+- idp: Add support for GitLab
+- create-cluster: Add --dry-run flag
+- init: Simulate cluster creation
+- Makefile: only download go-bindata when not available
+- Move main.go to moactl directory, add make install target
+
 == 0.0.13 Sep 30 2020
 
 - Add Provision Type and Reason for error cluster
