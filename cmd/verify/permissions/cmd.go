@@ -64,8 +64,10 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		reporter.Errorf("Unable to validate SCP policies")
 		reporter.Errorf("%v", err)
-		reporter.Infof("Verify your user's AWS account permissions")
-		reporter.Infof("You can set it up correctly by running aws iam attach-user-policy --user-name <username> --policy-arn \"arn:aws:iam::aws:policy/AdministratorAccess\" ")
+		permissionErrMessage := `Verify your user's AWS account permissions
+                You can set it up correctly by running
+                aws iam attach-user-policy --user-name <username> --policy-arn \"arn:aws:iam::aws:policy/AdministratorAccess\"`
+		reporter.Infof(permissionErrMessage)
 		os.Exit(1)
 	}
 	if !ok {
