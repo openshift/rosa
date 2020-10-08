@@ -47,6 +47,9 @@ var args struct {
 	// Watch logs during cluster installation
 	watch bool
 
+	// Simulate creating a cluster
+	dryRun bool
+
 	// Whether to use the AMI image override from the AWS marketplace
 	usePaidAMI bool
 
@@ -197,6 +200,13 @@ func init() {
 		"watch",
 		false,
 		"Watch cluster installation logs.",
+	)
+
+	flags.BoolVar(
+		&args.dryRun,
+		"dry-run",
+		false,
+		"Simulate creating the cluster.",
 	)
 
 	flags.BoolVar(
@@ -483,6 +493,7 @@ func run(cmd *cobra.Command, _ []string) {
 		PodCIDR:            podCIDR,
 		HostPrefix:         hostPrefix,
 		Private:            &private,
+		DryRun:             &args.dryRun,
 	}
 
 	// If the flag is explicitly set, OCM will tell the cluster provisioner
@@ -495,8 +506,19 @@ func run(cmd *cobra.Command, _ []string) {
 
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
 	if err != nil {
-		reporter.Errorf("Failed to create cluster: %v", err)
+		if args.dryRun {
+			reporter.Errorf("Creating cluster '%s' would have failed: %s", clusterName, err)
+		} else {
+			reporter.Errorf("Failed to create cluster: %s", err)
+		}
 		os.Exit(1)
+	}
+
+	if args.dryRun {
+		reporter.Infof(
+			"Creating cluster '%s' would have succeeded. Run without the '--dry-run' flag to create the cluster.",
+			clusterName)
+		os.Exit(0)
 	}
 
 	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", cluster.ID(), clusterName)

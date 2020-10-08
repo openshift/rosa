@@ -36,6 +36,7 @@ moactl create cluster [flags]
       --host-prefix int               Subnet prefix length to assign to each individual node. For example, if host prefix is set to "23", then each node is assigned a /23 subnet out of the given CIDR.
       --private                       Restrict master API endpoint and application routes to direct, private connectivity.
       --watch                         Watch cluster installation logs.
+      --dry-run                       Simulate creating the cluster.
       --use-paid-ami                  Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.
   -h, --help                          help for cluster
 ```
