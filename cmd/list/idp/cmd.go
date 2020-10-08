@@ -145,6 +145,8 @@ func getType(idp *cmv1.IdentityProvider) string {
 	switch idp.Type() {
 	case "GithubIdentityProvider":
 		return "GitHub"
+	case "GitlabIdentityProvider":
+		return "GitLab"
 	case "GoogleIdentityProvider":
 		return "Google"
 	case "LDAPIdentityProvider":
