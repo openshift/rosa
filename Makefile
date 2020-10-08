@@ -26,11 +26,15 @@ unexport GOFLAGS
 
 .PHONY: build
 moactl: generate
-	go build .
+	go build ./cmd/moactl
 
 .PHONY: test
 test:
 	go test ./...
+
+.PHONY: install
+install:
+	go install ./cmd/moactl
 
 .PHONY: fmt
 fmt:

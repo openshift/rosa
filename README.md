@@ -512,6 +512,34 @@ Once the cluster is uninstalled, you can clean up your CloudFormation stack (thi
 moactl init --delete-stack
 ```
 
+## Build from source
+
+If you'd like to build this project from source use the following steps:
+
+1. Checkout the repostiory into your `$GOPATH`
+
+```
+go get -u github.com/openshift/moactl
+```
+
+2. `cd` to the checkout out source directory
+
+```
+cd $GOPATH/src/github.com/openshift/moactl
+```
+
+3. Install the binary (This will install to `$GOPATH/bin`)
+
+```
+make install
+```
+
+NOTE: If you don't have `$GOPATH/bin` in your `$PATH` you need to add it or move `moactl` to a standard system directory eg. for Linux/OSX:
+
+```
+sudo mv $GOPATH/bin/moactl /usr/local/bin
+```
+
 ## Have you got feedback?
 
 We want to hear it. [Open and issue](https://github.com/openshift/moactl/issues/new) against the repo and someone from the team will be in touch.
