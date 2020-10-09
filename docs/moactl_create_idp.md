@@ -52,6 +52,7 @@ moactl create idp [flags]
       --email-claims string          OpenID: List of claims to use as the email address.
       --name-claims string           OpenID: List of claims to use as the display name.
       --username-claims string       OpenID: List of claims to use as the preferred username when provisioning a user.
+      --extra-scopes string          OpenID: List of scopes to request, in addition to the 'openid' scope, during the authorization token request.
                                      
   -h, --help                         help for idp
 ```

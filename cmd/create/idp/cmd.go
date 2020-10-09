@@ -69,6 +69,7 @@ var args struct {
 	openidEmail     string
 	openidName      string
 	openidUsername  string
+	openidScopes    string
 }
 
 // TODO: Add gitlab
@@ -249,7 +250,13 @@ func init() {
 		&args.openidUsername,
 		"username-claims",
 		"",
-		"OpenID: List of claims to use as the preferred username when provisioning a user.\n",
+		"OpenID: List of claims to use as the preferred username when provisioning a user.",
+	)
+	flags.StringVar(
+		&args.openidScopes,
+		"extra-scopes",
+		"",
+		"OpenID: List of scopes to request, in addition to the 'openid' scope, during the authorization token request.\n",
 	)
 }
 
