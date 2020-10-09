@@ -56,6 +56,7 @@ var args struct {
 
 	// LDAP
 	ldapURL          string
+	ldapInsecure     bool
 	ldapBindDN       string
 	ldapBindPassword string
 	ldapIDs          string
@@ -180,6 +181,12 @@ func init() {
 		"url",
 		"",
 		"LDAP: An RFC 2255 URL which specifies the LDAP search parameters to use.",
+	)
+	flags.BoolVar(
+		&args.ldapInsecure,
+		"insecure",
+		false,
+		"LDAP: Do not make TLS connections to the server.",
 	)
 	flags.StringVar(
 		&args.ldapBindDN,
