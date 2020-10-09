@@ -91,15 +91,9 @@ func buildLdapIdp(cmd *cobra.Command,
 		ca = string(cert)
 	}
 
-	mappingMethod := args.mappingMethod
-	if interactive.Enabled() {
-		mappingMethod, err = interactive.GetOption(interactive.Input{
-			Question: "Mapping method",
-			Help:     cmd.Flags().Lookup("mapping-method").Usage,
-			Options:  []string{"add", "claim", "generate", "lookup"},
-			Default:  mappingMethod,
-			Required: true,
-		})
+	mappingMethod, err := getMappingMethod(cmd, args.mappingMethod)
+	if err != nil {
+		return idpBuilder, fmt.Errorf("Expected a valid mapping method: %s", err)
 	}
 
 	ldapBindDN := args.ldapBindDN
