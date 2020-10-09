@@ -28,6 +28,11 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"log"},
 	Short:   "Show installation or uninstallation logs for a cluster",
 	Long:    "Show installation or uninstallation logs for a cluster",
+	Example: `  # Show install logs for a cluster named 'mycluster'
+  moactl logs install --cluster=mycluster
+
+  # Show uninstall logs for a cluster named 'mycluster'
+  moactl logs uninstall --cluster=mycluster`,
 }
 
 func init() {
