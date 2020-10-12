@@ -171,7 +171,7 @@ func run(_ *cobra.Command, _ []string) {
 				reporter.Errorf("Failed to create cluster-admin user '%s' for cluster '%s'", username, clusterKey)
 				continue
 			}
-			_, err = clustersCollection.Cluster(cluster.ID()).
+			res, err := clustersCollection.Cluster(cluster.ID()).
 				Groups().
 				Group("cluster-admins").
 				Users().
@@ -179,7 +179,9 @@ func run(_ *cobra.Command, _ []string) {
 				Body(user).
 				Send()
 			if err != nil {
-				reporter.Errorf("Failed to add cluster-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
+				reporter.Debugf(err.Error())
+				reporter.Errorf("Failed to add cluster-admin user '%s' to cluster '%s': %s",
+					username, clusterKey, res.Error().Reason())
 				continue
 			}
 		}
@@ -193,7 +195,7 @@ func run(_ *cobra.Command, _ []string) {
 				reporter.Errorf("Failed to create dedicated-admin user '%s' for cluster '%s'", username, clusterKey)
 				continue
 			}
-			_, err = clustersCollection.Cluster(cluster.ID()).
+			res, err := clustersCollection.Cluster(cluster.ID()).
 				Groups().
 				Group("dedicated-admins").
 				Users().
@@ -201,7 +203,9 @@ func run(_ *cobra.Command, _ []string) {
 				Body(user).
 				Send()
 			if err != nil {
-				reporter.Errorf("Failed to add dedicated-admin user '%s' to cluster '%s': %v", username, clusterKey, err)
+				reporter.Debugf(err.Error())
+				reporter.Errorf("Failed to add dedicated-admin user '%s' to cluster '%s': %s",
+					username, clusterKey, res.Error().Reason())
 				continue
 			}
 		}

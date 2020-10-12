@@ -239,7 +239,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Updating ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-	_, err = clustersCollection.
+	res, err := clustersCollection.
 		Cluster(cluster.ID()).
 		Ingresses().
 		Ingress(ingress.ID()).
@@ -247,8 +247,9 @@ func run(cmd *cobra.Command, argv []string) {
 		Body(ingress).
 		Send()
 	if err != nil {
-		reporter.Errorf("Failed to update ingress '%s' on cluster '%s': %v",
-			ingress.ID(), clusterKey, err)
+		reporter.Debugf(err.Error())
+		reporter.Errorf("Failed to update ingress '%s' on cluster '%s': %s",
+			ingress.ID(), clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
 }

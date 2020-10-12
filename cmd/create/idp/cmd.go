@@ -400,13 +400,14 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	_, err = clustersCollection.Cluster(cluster.ID()).
+	res, err := clustersCollection.Cluster(cluster.ID()).
 		IdentityProviders().
 		Add().
 		Body(idp).
 		Send()
 	if err != nil {
-		reporter.Errorf("Failed to add IDP to cluster '%s': %v", clusterKey, err)
+		reporter.Debugf(err.Error())
+		reporter.Errorf("Failed to add IDP to cluster '%s': %s", clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
 

@@ -79,7 +79,7 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 		Size(1).
 		Send()
 	if err != nil {
-		return false, fmt.Errorf("Failed to list clusters: %v", err)
+		return false, fmt.Errorf(response.Error().Reason())
 	}
 
 	return response.Total() > 0, nil
@@ -115,7 +115,7 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 
 	cluster, err := client.Add().Parameter("dryRun", *config.DryRun).Body(spec).Send()
 	if err != nil {
-		return nil, fmt.Errorf("Error creating cluster in OCM: %v", err)
+		return nil, fmt.Errorf(cluster.Error().Reason())
 	}
 	if config.DryRun != nil && *config.DryRun {
 		return nil, nil
@@ -167,7 +167,7 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 		Size(1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to locate cluster '%s': %v", clusterKey, err)
+		return nil, fmt.Errorf(response.Error().Reason())
 	}
 
 	switch response.Total() {
@@ -226,9 +226,9 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 		return err
 	}
 
-	_, err = client.Cluster(cluster.ID()).Update().Body(clusterSpec).Send()
+	response, err := client.Cluster(cluster.ID()).Update().Body(clusterSpec).Send()
 	if err != nil {
-		return err
+		return fmt.Errorf(response.Error().Reason())
 	}
 
 	return nil
@@ -240,9 +240,9 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 		return nil, err
 	}
 
-	_, err = client.Cluster(cluster.ID()).Delete().Send()
+	response, err := client.Cluster(cluster.ID()).Delete().Send()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(response.Error().Reason())
 	}
 
 	return cluster, nil
@@ -261,9 +261,9 @@ func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN str
 		return err
 	}
 
-	_, err = client.Cluster(cluster.ID()).Addons().Add().Body(addOnInstallation).Send()
+	response, err := client.Cluster(cluster.ID()).Addons().Add().Body(addOnInstallation).Send()
 	if err != nil {
-		return err
+		return fmt.Errorf(response.Error().Reason())
 	}
 
 	return nil
