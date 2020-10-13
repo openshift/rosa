@@ -48,7 +48,7 @@ var _ = Describe("Client", func() {
 			adminPolicy = "AdministratorAccess"
 			adminArn    = "AdministratorAccess"
 		)
-		Context("when listAttachedUserPolicies() returns multiple policy", func() {
+		Context("when listAttachedUserPolicies() returns multiple policies", func() {
 			BeforeEach(func() {
 				mockIamAPI.EXPECT().ListAttachedUserPolicies(gomock.Any()).Return(&iam.ListAttachedUserPoliciesOutput{
 					AttachedPolicies: []*iam.AttachedPolicy{
@@ -84,7 +84,7 @@ var _ = Describe("Client", func() {
 			It("should fail as only Administrator policy needs to be attached", func() {
 				err := client.EnsureOsdCcsAdminUserPermissions()
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(ContainSubstring("No AdministratorAccess policy found for osdCcsAdmin user"))
+				Expect(err.Error()).Should(HavePrefix("No AdministratorAccess policy found for osdCcsAdmin user"))
 			})
 		})
 

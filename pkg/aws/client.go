@@ -294,9 +294,9 @@ func (c *awsClient) ValidateCFUserCredentials() error {
 }
 
 func (c *awsClient) EnsureOsdCcsAdminUserPermissions() error {
-	AdminUserNamePtr := AdminUserName
+	adminUserName := AdminUserName
 	ListAttachedUserPoliciesInput := &iam.ListAttachedUserPoliciesInput{
-		UserName: &AdminUserNamePtr,
+		UserName: &adminUserName,
 	}
 	policies, err := c.iamClient.ListAttachedUserPolicies(ListAttachedUserPoliciesInput)
 	if err != nil {
@@ -306,13 +306,13 @@ func (c *awsClient) EnsureOsdCcsAdminUserPermissions() error {
 	if len(policies.AttachedPolicies) != 1 {
 		return fmt.Errorf(
 			"currently only AdministratorAccess needs to be attached \n"+
-				adviseRecreate(), AdminUserName)
+				adviseRecreate(), adminUserName)
 	}
 
 	if *policies.AttachedPolicies[0].PolicyName != "AdministratorAccess" {
 		return fmt.Errorf(
 			"No AdministratorAccess policy found for %s user \n"+
-				adviseRecreate(), AdminUserName)
+				adviseRecreate(), adminUserName)
 	}
 
 	return nil
