@@ -14,13 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package idp
+package admin
 
 import (
-	"fmt"
 	"os"
-	"strings"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -31,17 +28,21 @@ import (
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
+const (
+	idpName = "htpasswd"
+	// username = "cluster-admin"
+)
+
 var args struct {
 	clusterKey string
 }
 
 var Cmd = &cobra.Command{
-	Use:     "idps",
-	Aliases: []string{"idp"},
-	Short:   "List cluster IDPs",
-	Long:    "List identity providers for a cluster.",
-	Example: `  # List all identity providers on a cluster named "mycluster"
-  moactl list idps --cluster=mycluster`,
+	Use:   "admin [ID|NAME]",
+	Short: "Show details of the cluster-admin user",
+	Long:  "Show details of the cluster-admin user and a command to login to the cluster",
+	Example: `  # Describe cluster-admin user of a cluster named mycluster
+  moactl describe admin -c mycluster`,
 	Run: run,
 }
 
@@ -53,12 +54,12 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to list the IdP of (required).",
+		"Name or ID of the cluster that cluster-admin belongs to.",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
@@ -120,51 +121,26 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Load any existing IDPs for this cluster
-	reporter.Debugf("Loading identity providers for cluster '%s'", clusterKey)
+	// Try to find the htpasswd identity provider:
+	reporter.Debugf("Loading '%s' identity provider", idpName)
 	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
+		reporter.Errorf("Failed to get '%s' identity provider for cluster '%s': %v", idpName, clusterKey, err)
 		os.Exit(1)
 	}
 
-	if len(idps) == 0 {
-		reporter.Infof("There are no identity providers configured for cluster '%s'", clusterKey)
-	}
-
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
-	for _, idp := range idps {
-		idpType := getType(idp)
-		if idpType == "htpasswd" {
-			continue
+	var idp *cmv1.IdentityProvider
+	for _, item := range idps {
+		if item.Name() == idpName {
+			idp = item
 		}
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), getType(idp), getAuthURL(cluster, idp.Name()))
 	}
-	writer.Flush()
-}
-
-func getType(idp *cmv1.IdentityProvider) string {
-	switch idp.Type() {
-	case "GithubIdentityProvider":
-		return "GitHub"
-	case "GitlabIdentityProvider":
-		return "GitLab"
-	case "GoogleIdentityProvider":
-		return "Google"
-	case "HTPasswdIdentityProvider":
-		return "htpasswd"
-	case "LDAPIdentityProvider":
-		return "LDAP"
-	case "OpenIDIdentityProvider":
-		return "OpenID"
+	if idp == nil || idp.Htpasswd() == nil {
+		reporter.Warnf("There is no admin on cluster '%s'. To create it run the following command:\n"+
+			"   moactl create admin -c %s", clusterKey, clusterKey)
+		os.Exit(0)
 	}
 
-	return ""
-}
-
-func getAuthURL(cluster *cmv1.Cluster, idpName string) string {
-	oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
-	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idpName)
+	reporter.Infof("There is an admin on cluster '%s'. To login, run the following command:\n"+
+		"   oc login %s --username %s", clusterKey, cluster.API().URL(), idp.Htpasswd().Username())
 }
