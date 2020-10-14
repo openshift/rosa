@@ -109,10 +109,11 @@ func run(_ *cobra.Command, _ []string) {
 	useTokenData := false
 	response, err := connection.AccountsMgmt().V1().CurrentAccount().Get().Send()
 	if err != nil {
+		reporter.Debugf(err.Error())
 		if response.Status() == http.StatusNotFound {
 			useTokenData = true
 		} else {
-			reporter.Errorf("Failed to get current account: %v", err)
+			reporter.Errorf("Failed to get current account: %s", response.Error().Reason())
 			os.Exit(1)
 		}
 	}

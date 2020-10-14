@@ -149,14 +149,16 @@ func run(_ *cobra.Command, argv []string) {
 
 	if confirm.Confirm("delete identity provider %s on cluster %s", idpName, clusterKey) {
 		reporter.Debugf("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
-		_, err = clustersCollection.
+		res, err := clustersCollection.
 			Cluster(cluster.ID()).
 			IdentityProviders().
 			IdentityProvider(idp.ID()).
 			Delete().
 			Send()
 		if err != nil {
-			reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s'", idpName, clusterKey)
+			reporter.Debugf(err.Error())
+			reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s': %s",
+				idpName, clusterKey, res.Error().Reason())
 			os.Exit(1)
 		}
 	}
