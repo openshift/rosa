@@ -261,7 +261,7 @@ Flags:
   -r, --region string                 AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)
       --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
       --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
-      --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, multizone clusters need at least 9 nodes. (default 4)
+      --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, multizone clusters need at least 3 nodes. (default 2)
       --machine-cidr ipNet            Block of IP addresses used by OpenShift while installing the cluster, for example "10.0.0.0/16".
       --service-cidr ipNet            Block of IP addresses for services, for example "172.30.0.0/16".
       --pod-cidr ipNet                Block of IP addresses from which Pod IP addresses are allocated, for example "10.128.0.0/14".
@@ -290,8 +290,8 @@ Otherwise, run the following command to create your cluster with the default clu
 * A single availability zone
 * Public cluster (Public API)
 * Master nodes: 3
-* Infra nodes: 3
-* Compute nodes: 4 (m5.xlarge instance types)
+* Infra nodes: 2
+* Compute nodes: 2 (m5.xlarge instance types)
 
 ```
 $ moactl create cluster --cluster-name=rh-moa-test-cluster
@@ -324,7 +324,7 @@ ID:          1de87g7c30g75qechgh7l5b2bha6r04e
 External ID: 34322be7-b2a7-45c2-af39-2c684ce624e1
 API URL:     https://api.rh-moa-test-cluster.j9n4.s1.devshift.org:6443
 Console URL: https://console-openshift-console.apps.rh-moa-test-cluster.j9n4.s1.devshift.org
-Nodes:       Master: 3, Infra: 3, Compute: 4
+Nodes:       Master: 3, Infra: 2, Compute: 2
 Region:      us-east-2
 State:       ready
 Created:     May 27, 2020
@@ -404,7 +404,7 @@ ID:          1de87g7c30g75qechgh7l5b2bha6r04e
 External ID: 34322be7-b2a7-45c2-af39-2c684ce624e1
 API URL:     https://api.rh-moa-test-cluster.j9n4.s1.devshift.org:6443
 Console URL: https://console-openshift-console.apps.rh-moa-test-cluster.j9n4.s1.devshift.org
-Nodes:       Master: 3, Infra: 3, Compute: 4
+Nodes:       Master: 3, Infra: 2, Compute: 2
 Region:      us-east-2
 State:       ready
 Created:     May 27, 2020

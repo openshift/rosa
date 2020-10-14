@@ -27,7 +27,7 @@ moactl edit cluster [flags]
 
 ```
   -c, --cluster string          Name or ID of the cluster to edit.
-      --compute-nodes int       Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, while multizone clusters need at least 9 nodes (3 per zone) for resiliency.
+      --compute-nodes int       Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, while multizone clusters need at least 3 nodes (1 per zone) for resiliency.
       --private                 Restrict master API endpoint to direct, private connectivity.
       --enable-cluster-admins   Enable the cluster-admins role for your cluster.
   -h, --help                    help for cluster
