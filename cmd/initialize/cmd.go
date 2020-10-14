@@ -193,16 +193,6 @@ func run(cmd *cobra.Command, argv []string) {
 	// Call `verify quota` as part of init
 	quota.Cmd.Run(cmd, argv)
 
-	// Check whether the user can create a basic cluster
-	reporter.Infof("Running cluster simulation...")
-	err = simulateCluster(clustersCollection, args.region)
-	if err != nil {
-		reporter.Warnf("Cluster simulation failed. "+
-			"If you try to create a cluster, it will likely fail with an error similar to:\n%s", err)
-	} else {
-		reporter.Infof("Cluster simulation successful")
-	}
-
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
 	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
 	created, err := client.EnsureOsdCcsAdminUser(aws.OsdCcsAdminStackName)
@@ -214,6 +204,16 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Infof("Admin user '%s' created successfully!", aws.AdminUserName)
 	} else {
 		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
+	}
+
+	// Check whether the user can create a basic cluster
+	reporter.Infof("Validating cluster creation...")
+	err = simulateCluster(clustersCollection, args.region)
+	if err != nil {
+		reporter.Warnf("Cluster creation failed. "+
+			"If you create a cluster, it should fail with the following error:\n%s", err)
+	} else {
+		reporter.Infof("Cluster creation valid")
 	}
 
 	oc.Cmd.Run(cmd, argv)

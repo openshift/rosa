@@ -507,7 +507,7 @@ func run(cmd *cobra.Command, _ []string) {
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
 	if err != nil {
 		if args.dryRun {
-			reporter.Errorf("Creating cluster '%s' would have failed: %s", clusterName, err)
+			reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)
 		} else {
 			reporter.Errorf("Failed to create cluster: %s", err)
 		}
@@ -516,7 +516,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if args.dryRun {
 		reporter.Infof(
-			"Creating cluster '%s' would have succeeded. Run without the '--dry-run' flag to create the cluster.",
+			"Creating cluster '%s' should succeed. Run without the '--dry-run' flag to create the cluster.",
 			clusterName)
 		os.Exit(0)
 	}
