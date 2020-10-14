@@ -19,6 +19,8 @@ limitations under the License.
 package profile
 
 import (
+	"os"
+
 	"github.com/spf13/pflag"
 )
 
@@ -32,10 +34,17 @@ func AddFlag(flags *pflag.FlagSet) {
 	)
 }
 
-// Enabled retursn a boolean flag that indicates if the debug mode is enabled.
+// Profile returns a string with the name of the AWS profile being used.
 func Profile() string {
-	return profile
+	if profile != "" {
+		return profile
+	}
+	awsProfile := os.Getenv("AWS_PROFILE")
+	if awsProfile != "" {
+		return awsProfile
+	}
+	return ""
 }
 
-// enabled is a boolean flag that indicates that the debug mode is enabled.
+// profile is a string flag that indicates which AWS profile is being used.
 var profile string
