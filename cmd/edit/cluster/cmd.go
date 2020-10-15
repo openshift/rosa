@@ -99,8 +99,8 @@ func init() {
 		&args.computeNodes,
 		"compute-nodes",
 		0,
-		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, "+
-			"while multizone clusters need at least 9 nodes (3 per zone) for resiliency.",
+		"Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, "+
+			"while multizone clusters need at least 3 nodes (1 per zone) for resiliency.",
 	)
 
 	// Networking options

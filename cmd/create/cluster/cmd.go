@@ -158,9 +158,9 @@ func init() {
 	flags.IntVar(
 		&args.computeNodes,
 		"compute-nodes",
-		4,
-		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, "+
-			"multizone clusters need at least 9 nodes.",
+		2,
+		"Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, "+
+			"multizone clusters need at least 3 nodes.",
 	)
 
 	flags.IPNetVar(
@@ -388,7 +388,7 @@ func run(cmd *cobra.Command, _ []string) {
 	computeNodes := args.computeNodes
 	// Compute node requirements for multi-AZ clusters are higher
 	if multiAZ && !cmd.Flags().Changed("compute-nodes") {
-		computeNodes = 9
+		computeNodes = 3
 	}
 	if interactive.Enabled() {
 		computeNodes, err = interactive.GetInt(interactive.Input{
