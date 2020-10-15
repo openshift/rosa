@@ -225,7 +225,7 @@ func simulateCluster(client *cmv1.ClustersClient, region string) error {
 		region = aws.DefaultRegion
 	}
 	spec := clusterprovider.Spec{
-		Name:             "moactl-init-test",
+		Name:             "moactl-init",
 		Region:           region,
 		CustomProperties: map[string]string{properties.UseMarketplaceAMI: "true"},
 		DryRun:           &dryRun,
