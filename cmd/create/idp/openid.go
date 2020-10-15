@@ -193,12 +193,29 @@ func buildOpenidIdp(cmd *cobra.Command,
 		openIDClaims = openIDClaims.PreferredUsername(strings.Split(username, ",")...)
 	}
 
+	// Build extra OpenID scopes
+	scopes := args.openidScopes
+	if interactive.Enabled() {
+		scopes, err = interactive.GetString(interactive.Input{
+			Question: "Extra scopes",
+			Help:     cmd.Flags().Lookup("extra-scopes").Usage,
+			Default:  scopes,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of scopes: %s", err)
+		}
+	}
+
 	// Create OpenID IDP
 	openIDIDP := cmv1.NewOpenIDIdentityProvider().
 		ClientID(clientID).
 		ClientSecret(clientSecret).
 		Issuer(issuerURL).
 		Claims(openIDClaims)
+
+	if scopes != "" {
+		openIDIDP = openIDIDP.ExtraScopes(strings.Split(scopes, ",")...)
+	}
 
 	// Set the CA file, if any
 	if ca != "" {
