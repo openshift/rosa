@@ -65,6 +65,9 @@ type Spec struct {
 
 	// Simulate creating a cluster but don't actually create it
 	DryRun *bool
+
+	// Disable SCP checks in the installer by setting credentials mode as mint
+	DisableSCPChecks *bool
 }
 
 func IsValidClusterKey(clusterKey string) bool {
@@ -394,6 +397,10 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 					Listening(cmv1.ListeningMethodExternal),
 			)
 		}
+	}
+
+	if config.DisableSCPChecks != nil && *config.DisableSCPChecks {
+		clusterBuilder = clusterBuilder.CCS(cmv1.NewCCS().DisableSCPChecks(true))
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
