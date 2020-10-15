@@ -449,3 +449,20 @@ func getNextName(idpType string, idps []*cmv1.IdentityProvider) string {
 	}
 	return fmt.Sprintf("%s-%d", idpType, nextSuffix+1)
 }
+
+func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) {
+	var err error
+	if interactive.Enabled() {
+		usage := fmt.Sprintf("%s\n  For more information see the documentation:\n  %s",
+			cmd.Flags().Lookup("mapping-method").Usage,
+			"https://docs.openshift.com/dedicated/4/authentication/dedicated-understanding-authentication.html")
+		mappingMethod, err = interactive.GetOption(interactive.Input{
+			Question: "Mapping method",
+			Help:     usage,
+			Options:  []string{"add", "claim", "generate", "lookup"},
+			Default:  mappingMethod,
+			Required: true,
+		})
+	}
+	return mappingMethod, err
+}
