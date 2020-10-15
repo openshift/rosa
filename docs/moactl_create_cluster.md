@@ -37,7 +37,6 @@ moactl create cluster [flags]
       --private                       Restrict master API endpoint and application routes to direct, private connectivity.
       --watch                         Watch cluster installation logs.
       --dry-run                       Simulate creating the cluster.
-      --use-paid-ami                  Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.
   -h, --help                          help for cluster
 ```
 
