@@ -152,10 +152,14 @@ func run(_ *cobra.Command, argv []string) {
 			phase = "(" + errorCode + "Install is taking longer than expected)"
 		}
 	}
-
+	clusterName := cluster.DisplayName()
+	if clusterName == "" {
+		clusterName = cluster.Name()
+	}
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
 		"Name:                       %s\n"+
+		"DNS:                        %s.%s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
 		"AWS Account:                %s\n"+
@@ -166,7 +170,8 @@ func run(_ *cobra.Command, argv []string) {
 		"State:                      %s %s\n"+
 		"Channel Group:              %s\n"+
 		"Created:                    %s\n",
-		cluster.Name(),
+		clusterName,
+		cluster.Name(), cluster.DNS().BaseDomain(),
 		cluster.ID(),
 		cluster.ExternalID(),
 		creatorARN.AccountID,
