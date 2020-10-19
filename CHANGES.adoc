@@ -3,6 +3,33 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.15 Oct 15 2020
+- init: Ensure osdCcsAdmin exists before attempting cluster dry-run
+- github: Provide guidance on using GitHub organizations when creating IdP
+- logs: Show example command for install logs
+- idp-google: Make hosted_domain required unless mapping method is lookup
+- idp: Provide help link for mapping method
+- idp: Allow insecure connections on LDAP IdP
+- idp: Add extra scopes to OpenID IdP
+- ocm: Keep error opIds and codes behind debug flag
+- aws: Allow using AWS_PROFILE env var
+- htpasswd: Add admin resource to login to cluster
+- nodes: Bring the default number of nodes down
+- cluster: Default to using paid AMI
+- cluster: Add flag to disable SCP checks
+- Init test cluster name to less than 15 char
+
+== 0.0.14 Oct 8 2020
+
+- idp: Add support for certificate bundles
+- Added New Error Message Implementation
+- Updated OCM SDK version
+- idp: Add support for GitLab
+- create-cluster: Add --dry-run flag
+- init: Simulate cluster creation
+- Makefile: only download go-bindata when not available
+- Move main.go to moactl directory, add make install target
+
 == 0.0.13 Sep 30 2020
 
 - Add Provision Type and Reason for error cluster

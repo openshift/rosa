@@ -14,40 +14,35 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ingress
+package admin
 
 import (
 	"os"
-	"regexp"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
-	"github.com/openshift/moactl/pkg/confirm"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
-// Regular expression to used to make sure that the identifier given by the
-// user is safe and that it there is no risk of SQL injection:
-var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{3,5}$`)
+const (
+	idpName = "htpasswd"
+	// username = "cluster-admin"
+)
 
 var args struct {
 	clusterKey string
 }
 
 var Cmd = &cobra.Command{
-	Use:     "ingress",
-	Aliases: []string{"ingresses", "route", "routes"},
-	Short:   "Delete cluster ingress",
-	Long:    "Delete the additional non-default application router for a cluster.",
-	Example: `  # Delete ingress with ID a1b2 from a cluster named 'mycluster'
-  moactl delete ingress --cluster=mycluster a1b2
-
-  # Delete secondary ingress using the sub-domain name
-  moactl delete ingress --cluster=mycluster apps2`,
+	Use:   "admin [ID|NAME]",
+	Short: "Show details of the cluster-admin user",
+	Long:  "Show details of the cluster-admin user and a command to login to the cluster",
+	Example: `  # Describe cluster-admin user of a cluster named mycluster
+  moactl describe admin -c mycluster`,
 	Run: run,
 }
 
@@ -59,31 +54,14 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to delete the ingress from (required).",
+		"Name or ID of the cluster that cluster-admin belongs to.",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the id of the ingress",
-		)
-		os.Exit(1)
-	}
-
-	ingressID := argv[0]
-	if !ingressKeyRE.MatchString(ingressID) {
-		reporter.Errorf(
-			"Ingress  identifier '%s' isn't valid: it must contain only four letters or digits",
-			ingressID,
-		)
-		os.Exit(1)
-	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
@@ -138,44 +116,31 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Try to find the ingress:
-	reporter.Debugf("Loading ingresses for cluster '%s'", clusterKey)
-	ingresses, err := ocm.GetIngresses(clustersCollection, cluster.ID())
+	if cluster.State() != cmv1.ClusterStateReady {
+		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		os.Exit(1)
+	}
+
+	// Try to find the htpasswd identity provider:
+	reporter.Debugf("Loading '%s' identity provider", idpName)
+	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
+		reporter.Errorf("Failed to get '%s' identity provider for cluster '%s': %v", idpName, clusterKey, err)
 		os.Exit(1)
 	}
 
-	var ingress *cmv1.Ingress
-	for _, item := range ingresses {
-		if ingressID == "apps" && item.Default() {
-			ingress = item
-		}
-		if ingressID == "apps2" && !item.Default() {
-			ingress = item
-		}
-		if item.ID() == ingressID {
-			ingress = item
+	var idp *cmv1.IdentityProvider
+	for _, item := range idps {
+		if item.Name() == idpName {
+			idp = item
 		}
 	}
-	if ingress == nil {
-		reporter.Errorf("Failed to get ingress '%s' for cluster '%s'", ingressID, clusterKey)
-		os.Exit(1)
+	if idp == nil || idp.Htpasswd() == nil {
+		reporter.Warnf("There is no admin on cluster '%s'. To create it run the following command:\n"+
+			"   moactl create admin -c %s", clusterKey, clusterKey)
+		os.Exit(0)
 	}
 
-	if confirm.Confirm("delete ingress %s on cluster %s", ingressID, clusterKey) {
-		reporter.Debugf("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-		res, err := clustersCollection.
-			Cluster(cluster.ID()).
-			Ingresses().
-			Ingress(ingress.ID()).
-			Delete().
-			Send()
-		if err != nil {
-			reporter.Debugf(err.Error())
-			reporter.Errorf("Failed to delete ingress '%s' on cluster '%s': %s",
-				ingress.ID(), clusterKey, res.Error().Reason())
-			os.Exit(1)
-		}
-	}
+	reporter.Infof("There is an admin on cluster '%s'. To login, run the following command:\n"+
+		"   oc login %s --username %s", clusterKey, cluster.API().URL(), idp.Htpasswd().Username())
 }

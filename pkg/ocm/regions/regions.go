@@ -67,7 +67,7 @@ func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
 			Body(awsCredentials).
 			Send()
 		if err != nil {
-			return
+			return nil, fmt.Errorf(response.Error().Reason())
 		}
 		regions = append(regions, response.Items().Slice()...)
 		if response.Size() < size {

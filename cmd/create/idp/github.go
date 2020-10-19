@@ -47,10 +47,14 @@ func buildGithubIdp(cmd *cobra.Command,
 		restrictType = "teams"
 	}
 
+	orgHelp := "You must be an administrator in your organization or create a new one: " +
+		"https://github.com/account/organizations/new"
+
 	if interactive.Enabled() || restrictType == "" {
 		restrictType, err = interactive.GetOption(interactive.Input{
 			Question: "Restrict to members of",
-			Help:     "GitHub authentication lets you use either GitHub organizations or GitHub teams to restrict access.",
+			Help: fmt.Sprintf("GitHub authentication lets you use either "+
+				"GitHub organizations or GitHub teams to restrict access.\n%s", orgHelp),
 			Options:  []string{"organizations", "teams"},
 			Default:  "organizations",
 			Required: true,
@@ -64,7 +68,7 @@ func buildGithubIdp(cmd *cobra.Command,
 		if restrictType == "organizations" {
 			organizations, err = interactive.GetString(interactive.Input{
 				Question: "GitHub organizations",
-				Help:     cmd.Flags().Lookup("organizations").Usage,
+				Help:     fmt.Sprintf("%s\n%s", cmd.Flags().Lookup("organizations").Usage, orgHelp),
 				Default:  organizations,
 				Required: true,
 			})
@@ -74,7 +78,7 @@ func buildGithubIdp(cmd *cobra.Command,
 		} else if restrictType == "teams" {
 			teams, err = interactive.GetString(interactive.Input{
 				Question: "GitHub teams",
-				Help:     cmd.Flags().Lookup("teams").Usage,
+				Help:     fmt.Sprintf("%s%s", cmd.Flags().Lookup("teams").Usage, orgHelp),
 				Default:  teams,
 				Required: true,
 			})
@@ -201,15 +205,9 @@ func buildGithubIdp(cmd *cobra.Command,
 		}
 	}
 
-	mappingMethod := args.mappingMethod
-	if interactive.Enabled() {
-		mappingMethod, err = interactive.GetOption(interactive.Input{
-			Question: "Mapping method",
-			Help:     cmd.Flags().Lookup("mapping-method").Usage,
-			Options:  []string{"add", "claim", "generate", "lookup"},
-			Default:  mappingMethod,
-			Required: true,
-		})
+	mappingMethod, err := getMappingMethod(cmd, args.mappingMethod)
+	if err != nil {
+		return idpBuilder, fmt.Errorf("Expected a valid mapping method: %s", err)
 	}
 
 	// Set organizations or teams in the IDP object

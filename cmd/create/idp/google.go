@@ -74,15 +74,9 @@ func buildGoogleIdp(cmd *cobra.Command,
 		}
 	}
 
-	mappingMethod := args.mappingMethod
-	if interactive.Enabled() {
-		mappingMethod, err = interactive.GetOption(interactive.Input{
-			Question: "Mapping method",
-			Help:     cmd.Flags().Lookup("mapping-method").Usage,
-			Options:  []string{"add", "claim", "generate", "lookup"},
-			Default:  mappingMethod,
-			Required: true,
-		})
+	mappingMethod, err := getMappingMethod(cmd, args.mappingMethod)
+	if err != nil {
+		return idpBuilder, fmt.Errorf("Expected a valid mapping method: %s", err)
 	}
 
 	// Create Google IDP
@@ -91,7 +85,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 		ClientSecret(clientSecret)
 
 	hostedDomain := args.googleHostedDomain
-	if interactive.Enabled() {
+	if interactive.Enabled() || mappingMethod != "lookup" {
 		hostedDomain, err = interactive.GetString(interactive.Input{
 			Question: "Hosted domain",
 			Help:     cmd.Flags().Lookup("hosted-domain").Usage,

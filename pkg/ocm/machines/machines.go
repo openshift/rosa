@@ -17,6 +17,8 @@ limitations under the License.
 package machines
 
 import (
+	"fmt"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -33,7 +35,7 @@ func GetMachineTypes(client *cmv1.Client) (machineTypes []*cmv1.MachineType, err
 			Size(size).
 			Send()
 		if err != nil {
-			return
+			return nil, fmt.Errorf(response.Error().Reason())
 		}
 		machineTypes = append(machineTypes, response.Items().Slice()...)
 		if response.Size() < size {

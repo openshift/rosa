@@ -41,7 +41,7 @@ func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Ver
 			Size(size).
 			Send()
 		if err != nil {
-			return
+			return nil, fmt.Errorf(response.Error().Reason())
 		}
 		versions = append(versions, response.Items().Slice()...)
 		if response.Size() < size {

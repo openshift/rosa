@@ -23,5 +23,6 @@ Show details of a specific resource
 ### SEE ALSO
 
 * [moactl](moactl.md)	 - 
+* [moactl describe admin](moactl_describe_admin.md)	 - Show details of the cluster-admin user
 * [moactl describe cluster](moactl_describe_cluster.md)	 - Show details of a cluster
 

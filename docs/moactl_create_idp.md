@@ -40,6 +40,7 @@ moactl create idp [flags]
       --hosted-domain string         Google: Restrict users to a Google Apps domain.
                                      
       --url string                   LDAP: An RFC 2255 URL which specifies the LDAP search parameters to use.
+      --insecure                     LDAP: Do not make TLS connections to the server.
       --bind-dn string               LDAP: DN to bind with during the search phase.
       --bind-password string         LDAP: Password to bind with during the search phase.
       --id-attributes string         LDAP: The list of attributes whose values should be used as the user ID. (default "dn")
@@ -51,6 +52,7 @@ moactl create idp [flags]
       --email-claims string          OpenID: List of claims to use as the email address.
       --name-claims string           OpenID: List of claims to use as the display name.
       --username-claims string       OpenID: List of claims to use as the preferred username when provisioning a user.
+      --extra-scopes string          OpenID: List of scopes to request, in addition to the 'openid' scope, during the authorization token request.
                                      
   -h, --help                         help for idp
 ```

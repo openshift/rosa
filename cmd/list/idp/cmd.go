@@ -136,6 +136,10 @@ func run(_ *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
 	for _, idp := range idps {
+		idpType := getType(idp)
+		if idpType == "htpasswd" {
+			continue
+		}
 		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), getType(idp), getAuthURL(cluster, idp.Name()))
 	}
 	writer.Flush()
@@ -149,6 +153,8 @@ func getType(idp *cmv1.IdentityProvider) string {
 		return "GitLab"
 	case "GoogleIdentityProvider":
 		return "Google"
+	case "HTPasswdIdentityProvider":
+		return "htpasswd"
 	case "LDAPIdentityProvider":
 		return "LDAP"
 	case "OpenIDIdentityProvider":

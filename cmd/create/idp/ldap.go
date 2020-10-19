@@ -69,9 +69,25 @@ func buildLdapIdp(cmd *cobra.Command,
 	if parsedLdapURL.Scheme != "ldap" && parsedLdapURL.Scheme != "ldaps" {
 		return idpBuilder, errors.New("Expected LDAP URL to have an ldap:// or ldaps:// scheme")
 	}
+	needsSecure := parsedLdapURL.Scheme == "ldaps"
+
+	ldapInsecure := args.ldapInsecure
+	if interactive.Enabled() && !needsSecure {
+		ldapInsecure, err = interactive.GetBool(interactive.Input{
+			Question: "Insecure",
+			Help:     cmd.Flags().Lookup("insecure").Usage,
+			Default:  !needsSecure,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid insecure value: %s", err)
+		}
+	}
+	if needsSecure && ldapInsecure {
+		return idpBuilder, fmt.Errorf("Cannot use insecure connection on ldaps URLs")
+	}
 
 	caPath := args.caPath
-	if interactive.Enabled() {
+	if interactive.Enabled() && !ldapInsecure {
 		caPath, err = interactive.GetCert(interactive.Input{
 			Question: "CA file path",
 			Help:     cmd.Flags().Lookup("ca").Usage,
@@ -84,6 +100,9 @@ func buildLdapIdp(cmd *cobra.Command,
 	// Get certificate contents
 	ca := ""
 	if caPath != "" {
+		if ldapInsecure {
+			return idpBuilder, fmt.Errorf("Cannot use certificate bundle with an insecure connection")
+		}
 		cert, err := ioutil.ReadFile(caPath)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
@@ -91,15 +110,9 @@ func buildLdapIdp(cmd *cobra.Command,
 		ca = string(cert)
 	}
 
-	mappingMethod := args.mappingMethod
-	if interactive.Enabled() {
-		mappingMethod, err = interactive.GetOption(interactive.Input{
-			Question: "Mapping method",
-			Help:     cmd.Flags().Lookup("mapping-method").Usage,
-			Options:  []string{"add", "claim", "generate", "lookup"},
-			Default:  mappingMethod,
-			Required: true,
-		})
+	mappingMethod, err := getMappingMethod(cmd, args.mappingMethod)
+	if err != nil {
+		return idpBuilder, fmt.Errorf("Expected a valid mapping method: %s", err)
 	}
 
 	ldapBindDN := args.ldapBindDN
@@ -196,6 +209,7 @@ func buildLdapIdp(cmd *cobra.Command,
 	// Create LDAP IDP
 	ldapIDP := cmv1.NewLDAPIdentityProvider().
 		URL(ldapURL).
+		Insecure(ldapInsecure).
 		Attributes(ldapAttributes)
 
 	if ldapBindDN != "" {

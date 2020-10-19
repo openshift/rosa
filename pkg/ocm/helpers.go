@@ -43,7 +43,7 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 		Size(1).
 		Send()
 	if err != nil {
-		return false, fmt.Errorf("Failed to list clusters: %v", err)
+		return false, fmt.Errorf(response.Error().Reason())
 	}
 
 	return response.Total() > 0, nil
@@ -60,7 +60,7 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 		Size(1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to locate cluster '%s': %v", clusterKey, err)
+		return nil, fmt.Errorf(response.Error().Reason())
 	}
 
 	switch response.Total() {
@@ -80,7 +80,7 @@ func GetIdentityProviders(client *cmv1.ClustersClient, clusterID string) ([]*cmv
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get identity providers for cluster '%s': %v", clusterID, err)
+		return nil, fmt.Errorf(response.Error().Reason())
 	}
 
 	return response.Items().Slice(), nil
@@ -93,7 +93,7 @@ func GetIngresses(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.Ingres
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get ingresses for cluster '%s': %v", clusterID, err)
+		return nil, fmt.Errorf(response.Error().Reason())
 	}
 
 	return response.Items().Slice(), nil
@@ -106,18 +106,18 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get %s users for cluster '%s': %v", group, clusterID, err)
+		return nil, fmt.Errorf(response.Error().Reason())
 	}
 
 	return response.Items().Slice(), nil
 }
 
 func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
-	addOn, err := client.Addon(id).Get().Send()
+	response, err := client.Addon(id).Get().Send()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(response.Error().Reason())
 	}
-	return addOn.Body(), nil
+	return response.Body(), nil
 }
 
 type ClusterAddOn struct {
@@ -134,7 +134,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		Get().
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get current account: %s", err)
+		return nil, fmt.Errorf(acctResponse.Error().Reason())
 	}
 	organization := acctResponse.Body().Organization().ID()
 
@@ -148,7 +148,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get add-ons: %v", err)
+		return nil, fmt.Errorf(resourceQuotasResponse.Error().Reason())
 	}
 	resourceQuotas := resourceQuotasResponse.Items()
 
@@ -160,7 +160,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get add-ons: %v", err)
+		return nil, fmt.Errorf(addOnsResponse.Error().Reason())
 	}
 	addOns := addOnsResponse.Items()
 
@@ -173,7 +173,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get add-on installations for cluster '%s': %v", clusterID, err)
+		return nil, fmt.Errorf(addOnInstallationsResponse.Error().Reason())
 	}
 	addOnInstallations := addOnInstallationsResponse.Items()
 

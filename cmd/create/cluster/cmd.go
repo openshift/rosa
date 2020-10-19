@@ -53,6 +53,9 @@ var args struct {
 	// Whether to use the AMI image override from the AWS marketplace
 	usePaidAMI bool
 
+	// Disable SCP checks in the installer
+	disableSCPChecks bool
+
 	// Basic options
 	private            bool
 	multiAZ            bool
@@ -158,9 +161,9 @@ func init() {
 	flags.IntVar(
 		&args.computeNodes,
 		"compute-nodes",
-		4,
-		"Number of worker nodes to provision per zone. Single zone clusters need at least 4 nodes, "+
-			"multizone clusters need at least 9 nodes.",
+		2,
+		"Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, "+
+			"multizone clusters need at least 3 nodes.",
 	)
 
 	flags.IPNetVar(
@@ -196,6 +199,13 @@ func init() {
 	)
 
 	flags.BoolVar(
+		&args.disableSCPChecks,
+		"disable-scp-checks",
+		false,
+		"Indicates if cloud permission checks are disabled when attempting installation of the cluster.",
+	)
+
+	flags.BoolVar(
 		&args.watch,
 		"watch",
 		false,
@@ -212,9 +222,10 @@ func init() {
 	flags.BoolVar(
 		&args.usePaidAMI,
 		"use-paid-ami",
-		false,
+		true,
 		"Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.",
 	)
+	flags.MarkDeprecated("use-paid-ami", "please contact support to get access to the paid AMI.")
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -388,7 +399,7 @@ func run(cmd *cobra.Command, _ []string) {
 	computeNodes := args.computeNodes
 	// Compute node requirements for multi-AZ clusters are higher
 	if multiAZ && !cmd.Flags().Changed("compute-nodes") {
-		computeNodes = 9
+		computeNodes = 3
 	}
 	if interactive.Enabled() {
 		computeNodes, err = interactive.GetInt(interactive.Input{
@@ -494,20 +505,23 @@ func run(cmd *cobra.Command, _ []string) {
 		HostPrefix:         hostPrefix,
 		Private:            &private,
 		DryRun:             &args.dryRun,
+		DisableSCPChecks:   &args.disableSCPChecks,
 	}
 
-	// If the flag is explicitly set, OCM will tell the cluster provisioner
-	// to use the AMI ID from the AWS Marketplace.
-	if cmd.Flags().Changed("use-paid-ami") && args.usePaidAMI {
-		clusterConfig.CustomProperties = map[string]string{
-			properties.UseMarketplaceAMI: "true",
-		}
+	// If the flag is explicitly set to false, OCM will tell the cluster provisioner
+	// to not use the AMI ID from the AWS Marketplace.
+	usePaidAMI := "true"
+	if cmd.Flags().Changed("use-paid-ami") && !args.usePaidAMI {
+		usePaidAMI = "false"
+	}
+	clusterConfig.CustomProperties = map[string]string{
+		properties.UseMarketplaceAMI: usePaidAMI,
 	}
 
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
 	if err != nil {
 		if args.dryRun {
-			reporter.Errorf("Creating cluster '%s' would have failed: %s", clusterName, err)
+			reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)
 		} else {
 			reporter.Errorf("Failed to create cluster: %s", err)
 		}
@@ -516,7 +530,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if args.dryRun {
 		reporter.Infof(
-			"Creating cluster '%s' would have succeeded. Run without the '--dry-run' flag to create the cluster.",
+			"Creating cluster '%s' should succeed. Run without the '--dry-run' flag to create the cluster.",
 			clusterName)
 		os.Exit(0)
 	}

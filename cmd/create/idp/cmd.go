@@ -56,6 +56,7 @@ var args struct {
 
 	// LDAP
 	ldapURL          string
+	ldapInsecure     bool
 	ldapBindDN       string
 	ldapBindPassword string
 	ldapIDs          string
@@ -68,6 +69,7 @@ var args struct {
 	openidEmail     string
 	openidName      string
 	openidUsername  string
+	openidScopes    string
 }
 
 // TODO: Add gitlab
@@ -181,6 +183,12 @@ func init() {
 		"",
 		"LDAP: An RFC 2255 URL which specifies the LDAP search parameters to use.",
 	)
+	flags.BoolVar(
+		&args.ldapInsecure,
+		"insecure",
+		false,
+		"LDAP: Do not make TLS connections to the server.",
+	)
 	flags.StringVar(
 		&args.ldapBindDN,
 		"bind-dn",
@@ -242,7 +250,13 @@ func init() {
 		&args.openidUsername,
 		"username-claims",
 		"",
-		"OpenID: List of claims to use as the preferred username when provisioning a user.\n",
+		"OpenID: List of claims to use as the preferred username when provisioning a user.",
+	)
+	flags.StringVar(
+		&args.openidScopes,
+		"extra-scopes",
+		"",
+		"OpenID: List of scopes to request, in addition to the 'openid' scope, during the authorization token request.\n",
 	)
 }
 
@@ -400,13 +414,14 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	_, err = clustersCollection.Cluster(cluster.ID()).
+	res, err := clustersCollection.Cluster(cluster.ID()).
 		IdentityProviders().
 		Add().
 		Body(idp).
 		Send()
 	if err != nil {
-		reporter.Errorf("Failed to add IDP to cluster '%s': %v", clusterKey, err)
+		reporter.Debugf(err.Error())
+		reporter.Errorf("Failed to add IDP to cluster '%s': %s", clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
 
@@ -433,4 +448,21 @@ func getNextName(idpType string, idps []*cmv1.IdentityProvider) string {
 		}
 	}
 	return fmt.Sprintf("%s-%d", idpType, nextSuffix+1)
+}
+
+func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) {
+	var err error
+	if interactive.Enabled() {
+		usage := fmt.Sprintf("%s\n  For more information see the documentation:\n  %s",
+			cmd.Flags().Lookup("mapping-method").Usage,
+			"https://docs.openshift.com/dedicated/4/authentication/dedicated-understanding-authentication.html")
+		mappingMethod, err = interactive.GetOption(interactive.Input{
+			Question: "Mapping method",
+			Help:     usage,
+			Options:  []string{"add", "claim", "generate", "lookup"},
+			Default:  mappingMethod,
+			Required: true,
+		})
+	}
+	return mappingMethod, err
 }

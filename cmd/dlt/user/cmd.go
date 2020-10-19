@@ -166,7 +166,7 @@ func run(_ *cobra.Command, _ []string) {
 	if clusterAdmins != "" {
 		reporter.Debugf("Deleting cluster-admin users from cluster '%s'", clusterKey)
 		for _, username := range strings.Split(clusterAdmins, ",") {
-			_, err = clustersCollection.Cluster(cluster.ID()).
+			res, err := clustersCollection.Cluster(cluster.ID()).
 				Groups().
 				Group("cluster-admins").
 				Users().
@@ -174,7 +174,9 @@ func run(_ *cobra.Command, _ []string) {
 				Delete().
 				Send()
 			if err != nil {
-				reporter.Errorf("Failed to delete cluster-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
+				reporter.Debugf(err.Error())
+				reporter.Errorf("Failed to delete cluster-admin user '%s' from cluster '%s': %s",
+					username, clusterKey, res.Error().Reason())
 				continue
 			}
 		}
@@ -183,7 +185,7 @@ func run(_ *cobra.Command, _ []string) {
 	if dedicatedAdmins != "" {
 		reporter.Debugf("Deleting dedicated-admin users from cluster '%s'", clusterKey)
 		for _, username := range strings.Split(dedicatedAdmins, ",") {
-			_, err = clustersCollection.Cluster(cluster.ID()).
+			res, err := clustersCollection.Cluster(cluster.ID()).
 				Groups().
 				Group("dedicated-admins").
 				Users().
@@ -191,7 +193,9 @@ func run(_ *cobra.Command, _ []string) {
 				Delete().
 				Send()
 			if err != nil {
-				reporter.Errorf("Failed to delete dedicated-admin user '%s' from cluster '%s': %v", username, clusterKey, err)
+				reporter.Debugf(err.Error())
+				reporter.Errorf("Failed to delete dedicated-admin user '%s' from cluster '%s': %s",
+					username, clusterKey, res.Error().Reason())
 				continue
 			}
 		}
