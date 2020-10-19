@@ -183,6 +183,8 @@ func run(cmd *cobra.Command, _ []string) {
 
 	reporter.Infof("Admin account has been added to cluster '%s'. "+
 		"It may take up to a minute for the account to become active.", clusterKey)
+	reporter.Infof("Please securely store this generated password. " +
+		"If you lose this password you can delete and recreate the cluster admin user.")
 	reporter.Infof("To login, run the following command:\n"+
 		"   oc login %s \\\n   --username %s \\\n   --password %s", cluster.API().URL(), username, password)
 }
