@@ -24,6 +24,7 @@ import (
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
 	"github.com/openshift/moactl/pkg/aws"
 	"github.com/openshift/moactl/pkg/info"
@@ -82,7 +83,7 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 		Size(1).
 		Send()
 	if err != nil {
-		return false, fmt.Errorf(response.Error().Reason())
+		return false, handleErr(response.Error(), err)
 	}
 
 	return response.Total() > 0, nil
@@ -118,7 +119,7 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 
 	cluster, err := client.Add().Parameter("dryRun", *config.DryRun).Body(spec).Send()
 	if err != nil {
-		return nil, fmt.Errorf(cluster.Error().Reason())
+		return nil, handleErr(cluster.Error(), err)
 	}
 	if config.DryRun != nil && *config.DryRun {
 		return nil, nil
@@ -170,7 +171,7 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 		Size(1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 
 	switch response.Total() {
@@ -231,7 +232,7 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 
 	response, err := client.Cluster(cluster.ID()).Update().Body(clusterSpec).Send()
 	if err != nil {
-		return fmt.Errorf(response.Error().Reason())
+		return handleErr(response.Error(), err)
 	}
 
 	return nil
@@ -245,7 +246,7 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 
 	response, err := client.Cluster(cluster.ID()).Delete().Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 
 	return cluster, nil
@@ -266,7 +267,7 @@ func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN str
 
 	response, err := client.Cluster(cluster.ID()).Addons().Add().Body(addOnInstallation).Send()
 	if err != nil {
-		return fmt.Errorf(response.Error().Reason())
+		return handleErr(response.Error(), err)
 	}
 
 	return nil
@@ -413,4 +414,12 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 
 func cidrIsEmpty(cidr net.IPNet) bool {
 	return cidr.String() == "<nil>"
+}
+
+func handleErr(res *ocmerrors.Error, err error) error {
+	msg := res.Reason()
+	if msg == "" {
+		msg = err.Error()
+	}
+	return errors.New(msg)
 }

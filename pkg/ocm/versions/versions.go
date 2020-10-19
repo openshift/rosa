@@ -17,6 +17,7 @@ limitations under the License.
 package versions
 
 import (
+	"errors"
 	"fmt"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -41,7 +42,11 @@ func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Ver
 			Size(size).
 			Send()
 		if err != nil {
-			return nil, fmt.Errorf(response.Error().Reason())
+			errMsg := response.Error().Reason()
+			if errMsg == "" {
+				errMsg = err.Error()
+			}
+			return nil, errors.New(errMsg)
 		}
 		versions = append(versions, response.Items().Slice()...)
 		if response.Size() < size {
