@@ -155,17 +155,17 @@ func (b *ClientBuilder) Build() (Client, error) {
 		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
 	}
 
-	// Check that the region is set:
-	region := aws.StringValue(sess.Config.Region)
-	if region == "" {
-		return nil, fmt.Errorf("Region is not set")
-	}
-
 	// Check that the AWS credentials are available:
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
 		b.logger.Debugf("Failed to find credentials: %v", err)
 		return nil, fmt.Errorf("Failed to find credentials. Check your AWS configuration and try again")
+	}
+
+	// Check that the region is set:
+	region := aws.StringValue(sess.Config.Region)
+	if region == "" {
+		return nil, fmt.Errorf("Region is not set")
 	}
 
 	// Update session config
