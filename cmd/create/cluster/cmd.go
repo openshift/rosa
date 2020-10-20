@@ -268,8 +268,9 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	if !clusterprovider.IsValidClusterKey(clusterName) {
-		reporter.Errorf("Expected a valid cluster name")
+	if !clusterprovider.IsValidClusterName(clusterName) {
+		reporter.Errorf("Cluster name must consist of no more than 15 lowercase alphanumeric characters or '-', " +
+			"start with a letter, and end with an alphanumeric character.")
 		os.Exit(1)
 	}
 
