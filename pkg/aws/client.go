@@ -353,9 +353,9 @@ func (c *awsClient) CheckStackReadyOrNotExisting(stackName string) (stackReady b
 			if *summary.StackStatus != cloudformation.StackStatusDeleteComplete {
 				return false, fmt.Errorf("Error creating CloudFormation Stack: Cloudformation stack %s exists with status %s. "+
 					"Expected status is %s.\n"+
-					"Ensure user osdCcsAdmin CloudFormation Stack does not exist, then retry with\n"+
+					"Ensure %s CloudFormation Stack does not exist, then retry with\n"+
 					"moactl init --delete-stack; moactl init",
-					*summary.StackName, *summary.StackStatus, cloudformation.StackStatusCreateComplete)
+					*summary.StackName, *summary.StackName, *summary.StackStatus, cloudformation.StackStatusCreateComplete)
 			}
 		}
 	}
@@ -370,9 +370,9 @@ func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
 	for _, user := range userList.Users {
 		if *user.UserName == userName {
 			return fmt.Errorf("Error creating user: IAM user '%s' already exists."+
-				"Ensure user osdCcsAdmin IAM user does not exist, then retry with\n"+
+				"Ensure user '%s' IAM user does not exist, then retry with\n"+
 				"moactl init --delete-stack; moactl init",
-				*user.UserName)
+				*user.UserName, *user.UserName)
 		}
 	}
 	return nil
