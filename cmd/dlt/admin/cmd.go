@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	idpName  = "htpasswd"
+	idpName  = "Cluster-Admin"
 	username = "cluster-admin"
 )
 
@@ -132,7 +132,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	var idp *cmv1.IdentityProvider
 	for _, item := range idps {
-		if item.Name() == idpName {
+		if ocm.IdentityProviderType(item) == "htpasswd" {
 			idp = item
 		}
 	}
@@ -144,20 +144,21 @@ func run(cmd *cobra.Command, _ []string) {
 	if confirm.Confirm("delete %s user on cluster %s", username, clusterKey) {
 		// Delete htpasswd IdP:
 		reporter.Debugf("Deleting '%s' identity provider on cluster '%s'", idpName, clusterKey)
-		_, err = clustersCollection.
+		idpResp, err := clustersCollection.
 			Cluster(cluster.ID()).
 			IdentityProviders().
 			IdentityProvider(idp.ID()).
 			Delete().
 			Send()
 		if err != nil {
-			reporter.Errorf("Failed to delete '%s' identity provider on cluster '%s'", idpName, clusterKey)
+			reporter.Errorf("Failed to delete '%s' identity provider on cluster '%s': %s",
+				idpName, clusterKey, idpResp.Error().Reason())
 			os.Exit(1)
 		}
 
 		// Delete admin user from the cluster-admins group:
 		reporter.Debugf("Deleting '%s' user from cluster-admins group on cluster '%s'", username, clusterKey)
-		_, err = clustersCollection.Cluster(cluster.ID()).
+		userResp, err := clustersCollection.Cluster(cluster.ID()).
 			Groups().
 			Group("cluster-admins").
 			Users().
@@ -165,7 +166,8 @@ func run(cmd *cobra.Command, _ []string) {
 			Delete().
 			Send()
 		if err != nil {
-			reporter.Errorf("Failed to delete '%s' user from cluster '%s': %v", username, clusterKey, err)
+			reporter.Errorf("Failed to delete '%s' user from cluster '%s': %s",
+				username, clusterKey, userResp.Error().Reason())
 			os.Exit(1)
 		}
 	}

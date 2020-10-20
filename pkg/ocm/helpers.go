@@ -88,6 +88,25 @@ func GetIdentityProviders(client *cmv1.ClustersClient, clusterID string) ([]*cmv
 	return response.Items().Slice(), nil
 }
 
+func IdentityProviderType(idp *cmv1.IdentityProvider) string {
+	switch idp.Type() {
+	case "GithubIdentityProvider":
+		return "GitHub"
+	case "GitlabIdentityProvider":
+		return "GitLab"
+	case "GoogleIdentityProvider":
+		return "Google"
+	case "HTPasswdIdentityProvider":
+		return "htpasswd"
+	case "LDAPIdentityProvider":
+		return "LDAP"
+	case "OpenIDIdentityProvider":
+		return "OpenID"
+	}
+
+	return ""
+}
+
 func GetIngresses(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.Ingress, error) {
 	ingressClient := client.Cluster(clusterID).Ingresses()
 	response, err := ingressClient.List().

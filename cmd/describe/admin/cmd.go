@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	idpName = "htpasswd"
+	idpName = "Cluster-Admin"
 	// username = "cluster-admin"
 )
 
@@ -131,7 +131,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	var idp *cmv1.IdentityProvider
 	for _, item := range idps {
-		if item.Name() == idpName {
+		if ocm.IdentityProviderType(item) == "htpasswd" {
 			idp = item
 		}
 	}
