@@ -35,7 +35,7 @@ func buildLdapIdp(cmd *cobra.Command,
 	ldapURL := args.ldapURL
 	ldapIDs := args.ldapIDs
 
-	if interactive.Enabled() || ldapURL == "" || ldapIDs == "" {
+	if ldapURL == "" || ldapIDs == "" {
 		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/" +
 			"identity_providers/configuring-ldap-identity-provider.html"
 		err = interactive.PrintHelp(interactive.Help{
@@ -51,7 +51,7 @@ func buildLdapIdp(cmd *cobra.Command,
 		}
 	}
 
-	if interactive.Enabled() || ldapURL == "" {
+	if ldapURL == "" {
 		ldapURL, err = interactive.GetString(interactive.Input{
 			Question: "LDAP URL",
 			Help:     cmd.Flags().Lookup("url").Usage,
@@ -148,7 +148,7 @@ func buildLdapIdp(cmd *cobra.Command,
 		}
 	}
 
-	if interactive.Enabled() || ldapIDs == "" {
+	if ldapIDs == "" {
 		ldapIDs, err = interactive.GetString(interactive.Input{
 			Question: "ID",
 			Help:     cmd.Flags().Lookup("id-attributes").Usage,

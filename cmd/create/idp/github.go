@@ -50,7 +50,7 @@ func buildGithubIdp(cmd *cobra.Command,
 	orgHelp := "You must be an administrator in your organization or create a new one: " +
 		"https://github.com/account/organizations/new"
 
-	if interactive.Enabled() || restrictType == "" {
+	if restrictType == "" && organizations == "" && teams == "" {
 		restrictType, err = interactive.GetOption(interactive.Input{
 			Question: "Restrict to members of",
 			Help: fmt.Sprintf("GitHub authentication lets you use either "+
@@ -64,7 +64,7 @@ func buildGithubIdp(cmd *cobra.Command,
 		}
 	}
 
-	if interactive.Enabled() || (organizations == "" && teams == "") {
+	if organizations == "" && teams == "" {
 		if restrictType == "organizations" {
 			organizations, err = interactive.GetString(interactive.Input{
 				Question: "GitHub organizations",
@@ -94,7 +94,7 @@ func buildGithubIdp(cmd *cobra.Command,
 
 	clientID := args.clientID
 	clientSecret := args.clientSecret
-	if interactive.Enabled() || clientID == "" || clientSecret == "" {
+	if clientID == "" || clientSecret == "" {
 		// Create the full URL to automatically generate the GitHub app info
 		registerURLBase := "https://github.com/settings/applications/new"
 
