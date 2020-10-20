@@ -371,7 +371,7 @@ func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
 		if *user.UserName == userName {
 			return fmt.Errorf("Error creating user: IAM user '%s' already exists."+
 				"Ensure user '%s' IAM user does not exist, then retry with\n"+
-				"moactl init --delete-stack; moactl init",
+				"moactl init",
 				*user.UserName, *user.UserName)
 		}
 	}
