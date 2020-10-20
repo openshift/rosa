@@ -17,6 +17,7 @@ limitations under the License.
 package regions
 
 import (
+	"errors"
 	"fmt"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -67,7 +68,11 @@ func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
 			Body(awsCredentials).
 			Send()
 		if err != nil {
-			return nil, fmt.Errorf(response.Error().Reason())
+			errMsg := response.Error().Reason()
+			if errMsg == "" {
+				errMsg = err.Error()
+			}
+			return nil, errors.New(errMsg)
 		}
 		regions = append(regions, response.Items().Slice()...)
 		if response.Size() < size {

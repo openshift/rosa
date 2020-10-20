@@ -17,12 +17,14 @@ limitations under the License.
 package ocm
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
 	"github.com/openshift/moactl/pkg/ocm/properties"
 )
@@ -43,7 +45,7 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 		Size(1).
 		Send()
 	if err != nil {
-		return false, fmt.Errorf(response.Error().Reason())
+		return false, handleErr(response.Error(), err)
 	}
 
 	return response.Total() > 0, nil
@@ -60,7 +62,7 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 		Size(1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 
 	switch response.Total() {
@@ -80,7 +82,7 @@ func GetIdentityProviders(client *cmv1.ClustersClient, clusterID string) ([]*cmv
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
@@ -93,7 +95,7 @@ func GetIngresses(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.Ingres
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
@@ -106,7 +108,7 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
@@ -115,7 +117,7 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
 	response, err := client.Addon(id).Get().Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 	return response.Body(), nil
 }
@@ -134,7 +136,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		Get().
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(acctResponse.Error().Reason())
+		return nil, handleErr(acctResponse.Error(), err)
 	}
 	organization := acctResponse.Body().Organization().ID()
 
@@ -148,7 +150,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(resourceQuotasResponse.Error().Reason())
+		return nil, handleErr(resourceQuotasResponse.Error(), err)
 	}
 	resourceQuotas := resourceQuotasResponse.Items()
 
@@ -160,7 +162,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(addOnsResponse.Error().Reason())
+		return nil, handleErr(addOnsResponse.Error(), err)
 	}
 	addOns := addOnsResponse.Items()
 
@@ -173,7 +175,7 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(addOnInstallationsResponse.Error().Reason())
+		return nil, handleErr(addOnInstallationsResponse.Error(), err)
 	}
 	addOnInstallations := addOnInstallationsResponse.Items()
 
@@ -223,4 +225,12 @@ func GetClusterState(client *cmv1.ClustersClient, clusterID string) (cmv1.Cluste
 		return cmv1.ClusterState(""), err
 	}
 	return response.Body().State(), nil
+}
+
+func handleErr(res *ocmerrors.Error, err error) error {
+	msg := res.Reason()
+	if msg == "" {
+		msg = err.Error()
+	}
+	return errors.New(msg)
 }
