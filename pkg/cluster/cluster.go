@@ -409,7 +409,10 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 	}
 
 	if config.DisableSCPChecks != nil && *config.DisableSCPChecks {
-		clusterBuilder = clusterBuilder.CCS(cmv1.NewCCS().DisableSCPChecks(true))
+		clusterBuilder = clusterBuilder.CCS(cmv1.NewCCS().
+			Enabled(true).
+			DisableSCPChecks(true),
+		)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
