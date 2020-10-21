@@ -17,6 +17,7 @@ limitations under the License.
 package ingress
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/moactl/pkg/aws"
+	"github.com/openshift/moactl/pkg/interactive"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -95,15 +97,25 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	labelMatch := args.labelMatch
 	routeSelectors := make(map[string]string)
-	if args.labelMatch != "" {
-		for _, labelMatch := range strings.Split(args.labelMatch, ",") {
-			if !strings.Contains(labelMatch, "=") {
-				reporter.Errorf("Expected key=value format for label-match")
-				os.Exit(1)
-			}
-			tokens := strings.Split(labelMatch, "=")
-			routeSelectors[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+	var err error
+	if interactive.Enabled() {
+		labelMatch, err = interactive.GetString(interactive.Input{
+			Question: "Label match for ingress",
+			Help:     cmd.Flags().Lookup("label-match").Usage,
+			Default:  labelMatch,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+	}
+	if labelMatch != "" {
+		routeSelectors, err = getRouteSelector(labelMatch)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
 		}
 	}
 
@@ -154,13 +166,30 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	ingressBuilder := cmv1.NewIngress()
+
 	if cmd.Flags().Changed("private") {
 		if args.private {
 			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodInternal)
 		} else {
 			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodExternal)
 		}
+	} else if interactive.Enabled() {
+		private, err := interactive.GetBool(interactive.Input{
+			Question: "Private ingress",
+			Help:     cmd.Flags().Lookup("private").Usage,
+			Default:  args.private,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid private value: %s", err)
+			os.Exit(1)
+		}
+		if private {
+			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodInternal)
+		} else {
+			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodExternal)
+		}
 	}
+
 	if len(routeSelectors) > 0 {
 		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
 	}
@@ -180,4 +209,18 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Failed to add ingress to cluster '%s': %s", clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
+}
+
+func getRouteSelector(labelMatches string) (map[string]string, error) {
+	routeSelectors := make(map[string]string)
+
+	for _, labelMatch := range strings.Split(labelMatches, ",") {
+		if !strings.Contains(labelMatch, "=") {
+			return nil, fmt.Errorf("Expected key=value format for label-match")
+		}
+		tokens := strings.Split(labelMatch, "=")
+		routeSelectors[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+	}
+
+	return routeSelectors, nil
 }
