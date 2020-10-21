@@ -305,7 +305,7 @@ func (c *awsClient) EnsureOsdCcsAdminUserPermissions() error {
 
 	if len(policies.AttachedPolicies) != 1 {
 		return fmt.Errorf(
-			"currently only AdministratorAccess needs to be attached \n"+
+			"currently only AdministratorAccess needs to be attached for %s user \n"+
 				adviseRecreate(), adminUserName)
 	}
 
