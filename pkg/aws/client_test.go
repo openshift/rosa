@@ -96,11 +96,13 @@ var _ = Describe("Client", func() {
 	})
 	Context("EnsureOsdCcsAdminUser", func() {
 		var (
-			stackName   string
-			stackStatus string
+			stackName     string
+			stackStatus   string
+			adminUserName string
 		)
 		BeforeEach(func() {
 			stackName = "fake-stack"
+			adminUserName = "fake-admin-username"
 		})
 		Context("When the cloudformation stack already exists", func() {
 			JustBeforeEach(func() {
@@ -119,7 +121,7 @@ var _ = Describe("Client", func() {
 					stackStatus = cloudformation.StackStatusCreateComplete
 				})
 				It("Returns without error", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)
 
 					Expect(stackCreated).To(BeFalse())
 					Expect(err).NotTo(HaveOccurred())
@@ -129,11 +131,12 @@ var _ = Describe("Client", func() {
 			Context("When stack is in DELETE_COMPLETE state", func() {
 				BeforeEach(func() {
 					stackStatus = cloudformation.StackStatusDeleteComplete
+					mockIamAPI.EXPECT().ListUsers(gomock.Any()).Return(&iam.ListUsersOutput{Users: []*iam.User{}}, nil)
 					mockCfAPI.EXPECT().CreateStack(gomock.Any()).Return(nil, nil)
 					mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
 				})
 				It("Creates a cloudformation stack", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)
 
 					Expect(stackCreated).To(BeTrue())
 					Expect(err).NotTo(HaveOccurred())
@@ -146,7 +149,7 @@ var _ = Describe("Client", func() {
 				})
 
 				It("Returns error telling the stack is in an invalid state", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)
 
 					Expect(stackCreated).To(BeFalse())
 					Expect(err).To(HaveOccurred())
@@ -161,15 +164,56 @@ var _ = Describe("Client", func() {
 				mockCfAPI.EXPECT().ListStacks(gomock.Any()).Return(&cloudformation.ListStacksOutput{
 					StackSummaries: []*cloudformation.StackSummary{},
 				}, nil)
+				mockIamAPI.EXPECT().ListUsers(gomock.Any()).Return(&iam.ListUsersOutput{Users: []*iam.User{}}, nil)
 				mockCfAPI.EXPECT().CreateStack(gomock.Any()).Return(nil, nil)
 				mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
 			})
 
 			It("Creates a cloudformation stack", func() {
-				stackCreated, err := client.EnsureOsdCcsAdminUser(stackName)
+				stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(stackCreated).To(BeTrue())
+			})
+		})
+		//		Context("When the IAM user already exists"), func() {
+		//			BeforeEach(func() {
+
+		//			}
+	})
+	Context("CheckAdminUserNotExisting", func() {
+		var (
+			adminUserName string
+		)
+		BeforeEach(func() {
+			adminUserName = "fake-admin-username"
+			mockIamAPI.EXPECT().ListUsers(gomock.Any()).Return(&iam.ListUsersOutput{
+				Users: []*iam.User{
+					{
+						UserName: &adminUserName,
+					},
+				},
+			}, nil)
+		})
+		Context("When admin user already exists", func() {
+			It("returns an error", func() {
+				err := client.CheckAdminUserNotExisting(adminUserName)
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Error creating user: IAM user"))
+			})
+		})
+		Context("When admin user does not exist", func() {
+			var (
+				secondFakeAdminUserName string
+			)
+			BeforeEach(func() {
+				secondFakeAdminUserName = "second-fake-admin-username"
+			})
+			It("returns true", func() {
+				err := client.CheckAdminUserNotExisting(secondFakeAdminUserName)
+
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 	})
