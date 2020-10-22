@@ -128,6 +128,12 @@ func run(_ *cobra.Command, _ []string) {
 			reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
+		// Remove cluster-admin user
+		for i, user := range clusterAdmins {
+			if user.ID() == "cluster-admin" {
+				clusterAdmins = append(clusterAdmins[:i], clusterAdmins[i+1:]...)
+			}
+		}
 	}
 
 	// Load dedicated-admins for this cluster
