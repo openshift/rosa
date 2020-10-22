@@ -32,7 +32,6 @@ import (
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	"github.com/openshift/moactl/pkg/ocm/config"
-	"github.com/openshift/moactl/pkg/ocm/properties"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
@@ -225,10 +224,9 @@ func simulateCluster(client *cmv1.ClustersClient, region string) error {
 		region = aws.DefaultRegion
 	}
 	spec := clusterprovider.Spec{
-		Name:             "moactl-init",
-		Region:           region,
-		CustomProperties: map[string]string{properties.UseMarketplaceAMI: "true"},
-		DryRun:           &dryRun,
+		Name:   "moactl-init",
+		Region: region,
+		DryRun: &dryRun,
 	}
 
 	_, err := clusterprovider.CreateCluster(client, spec)
