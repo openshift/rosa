@@ -29,8 +29,13 @@ import (
 	"github.com/openshift/moactl/pkg/interactive"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
+	"github.com/openshift/moactl/pkg/reporter"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
+
+type IdentityProvider interface {
+	Name() string
+}
 
 var args struct {
 	clusterKey string
@@ -322,14 +327,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Load any existing IDPs for this cluster
-	reporter.Debugf("Loading identity providers for cluster '%s'", clusterKey)
-	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
-	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
 	if interactive.Enabled() {
 		reporter.Infof("Interactive mode enabled.\n" +
 			"Any optional fields can be left empty and a default will be selected.")
@@ -373,7 +370,8 @@ func run(cmd *cobra.Command, _ []string) {
 	idpName := args.idpName
 	// Auto-generate a name if none provided
 	if !cmd.Flags().Changed("name") {
-		idpName = getNextName(idpType, idps)
+		idps := getIdps(reporter, clustersCollection, cluster)
+		idpName = GenerateIdpName(idpType, idps)
 	}
 	if interactive.Enabled() {
 		idpName, err = interactive.GetString(interactive.Input{
@@ -434,11 +432,15 @@ func run(cmd *cobra.Command, _ []string) {
 	)
 }
 
-func getNextName(idpType string, idps []*cmv1.IdentityProvider) string {
+func GenerateIdpName(idpType string, idps []IdentityProvider) string {
 	nextSuffix := 0
 	for _, idp := range idps {
 		if strings.Contains(idp.Name(), idpType) {
-			lastSuffix, err := strconv.Atoi(strings.Split(idp.Name(), "-")[1])
+			idpNameComponents := strings.Split(idp.Name(), "-")
+			if len(idpNameComponents) < 2 {
+				continue
+			}
+			lastSuffix, err := strconv.Atoi(idpNameComponents[1])
 			if err != nil {
 				continue
 			}
@@ -465,4 +467,20 @@ func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) 
 		})
 	}
 	return mappingMethod, err
+}
+
+func getIdps(reporter *reporter.Object, clusters *cmv1.ClustersClient, cluster *cmv1.Cluster) []IdentityProvider {
+	// Load any existing IDPs for this cluster
+	reporter.Debugf("Loading identity providers for cluster '%s'", cluster.ID())
+
+	ocmIdps, err := ocm.GetIdentityProviders(clusters, cluster.ID())
+	if err != nil {
+		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", cluster.ID(), err)
+		os.Exit(1)
+	}
+	idps := []IdentityProvider{}
+	for _, idp := range ocmIdps {
+		idps = append(idps, idp)
+	}
+	return idps
 }
