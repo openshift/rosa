@@ -3,6 +3,25 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.0.16 Oct 22 2020
+
+- Add tags to template, not working
+- Add Check Admin User function, and add tests to verify
+- Added Display Name and Domain name to describe
+- errors: Fall back to full error message
+- cluster: Fail name check before calling API
+- aws: Check region after profile credentials have been validated
+- admin: Advise user to store password securely
+- addressing vkareh review
+- Fix idp name generation
+- Adressing code review items
+- describe-cluster: Display Provision Shard if available
+- openid: Always show help text for claims
+- users: Do not show cluster-admin user
+- ccs: Ensure CCS is enabled before asking to disable SCP checks
+- edit-cluster: Fallback to interactive mode
+- aws: Default to free AMI
+
 == 0.0.15 Oct 15 2020
 - init: Ensure osdCcsAdmin exists before attempting cluster dry-run
 - github: Provide guidance on using GitHub organizations when creating IdP
