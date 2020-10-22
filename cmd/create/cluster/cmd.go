@@ -222,10 +222,10 @@ func init() {
 	flags.BoolVar(
 		&args.usePaidAMI,
 		"use-paid-ami",
-		true,
+		false,
 		"Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.",
 	)
-	flags.MarkDeprecated("use-paid-ami", "please contact support to get access to the paid AMI.")
+	flags.MarkHidden("use-paid-ami")
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -509,14 +509,12 @@ func run(cmd *cobra.Command, _ []string) {
 		DisableSCPChecks:   &args.disableSCPChecks,
 	}
 
-	// If the flag is explicitly set to false, OCM will tell the cluster provisioner
-	// to not use the AMI ID from the AWS Marketplace.
-	usePaidAMI := "true"
-	if cmd.Flags().Changed("use-paid-ami") && !args.usePaidAMI {
-		usePaidAMI = "false"
-	}
-	clusterConfig.CustomProperties = map[string]string{
-		properties.UseMarketplaceAMI: usePaidAMI,
+	// If the flag is explicitly set to true, OCM will tell the cluster provisioner
+	// to use the AMI ID from the AWS Marketplace.
+	if cmd.Flags().Changed("use-paid-ami") && args.usePaidAMI {
+		clusterConfig.CustomProperties = map[string]string{
+			properties.UseMarketplaceAMI: "true",
+		}
 	}
 
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
