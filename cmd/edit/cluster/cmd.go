@@ -147,6 +147,19 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	isInteractive := interactive.Enabled()
+	if !isInteractive {
+		changedFlags := false
+		for _, flag := range []string{"compute-nodes", "private", "enable-cluster-admins"} {
+			if cmd.Flags().Changed(flag) {
+				changedFlags = true
+			}
+		}
+		if !changedFlags {
+			isInteractive = true
+		}
+	}
+
 	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Create the client for the OCM API:
@@ -204,11 +217,11 @@ func run(cmd *cobra.Command, argv []string) {
 	if cmd.Flags().Changed("private") {
 		privateValue = args.private
 		private = &privateValue
-	} else if interactive.Enabled() {
+	} else if isInteractive {
 		privateValue = cluster.API().Listening() == cmv1.ListeningMethodInternal
 	}
 
-	if interactive.Enabled() {
+	if isInteractive {
 		privateValue, err = interactive.GetBool(interactive.Input{
 			Question: "Private cluster",
 			Help:     cmd.Flags().Lookup("private").Usage,
@@ -226,11 +239,11 @@ func run(cmd *cobra.Command, argv []string) {
 	if cmd.Flags().Changed("enable-cluster-admins") {
 		clusterAdminsValue = args.clusterAdmins
 		clusterAdmins = &clusterAdminsValue
-	} else if interactive.Enabled() {
+	} else if isInteractive {
 		clusterAdminsValue = cluster.ClusterAdminEnabled()
 	}
 
-	if interactive.Enabled() {
+	if isInteractive {
 		clusterAdminsValue, err = interactive.GetBool(interactive.Input{
 			Question: "Enable cluster admins",
 			Help:     cmd.Flags().Lookup("enable-cluster-admins").Usage,
@@ -246,11 +259,11 @@ func run(cmd *cobra.Command, argv []string) {
 	var computeNodes int
 	if cmd.Flags().Changed("compute-nodes") {
 		computeNodes = args.computeNodes
-	} else if interactive.Enabled() {
+	} else if isInteractive {
 		computeNodes = cluster.Nodes().Compute()
 	}
 
-	if interactive.Enabled() {
+	if isInteractive {
 		computeNodes, err = interactive.GetInt(interactive.Input{
 			Question: "Compute nodes",
 			Help:     cmd.Flags().Lookup("compute-nodes").Usage,
