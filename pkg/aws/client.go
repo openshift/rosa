@@ -291,7 +291,7 @@ func (c *awsClient) ValidateCFUserCredentials() error {
 	return fmt.Errorf(
 		"Invalid CloudFormation stack credentials: %s is not valid \n"+
 			"you can recreate the CloudFormation stack with: \n"+
-			"moactl init --delete-stack && moactl init \n", name)
+			"rosa init --delete-stack && rosa init \n", name)
 }
 
 // Ensure osdCcsAdmin IAM user is created
@@ -354,7 +354,7 @@ func (c *awsClient) CheckStackReadyOrNotExisting(stackName string) (stackReady b
 				return false, fmt.Errorf("Error creating CloudFormation Stack: Cloudformation stack %s exists with status %s. "+
 					"Expected status is %s.\n"+
 					"Ensure %s CloudFormation Stack does not exist, then retry with\n"+
-					"moactl init --delete-stack; moactl init",
+					"rosa init --delete-stack; rosa init",
 					*summary.StackName, *summary.StackName, *summary.StackStatus, cloudformation.StackStatusCreateComplete)
 			}
 		}
@@ -371,7 +371,7 @@ func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
 		if *user.UserName == userName {
 			return fmt.Errorf("Error creating user: IAM user '%s' already exists."+
 				"Ensure user '%s' IAM user does not exist, then retry with\n"+
-				"moactl init",
+				"rosa init",
 				*user.UserName, *user.UserName)
 		}
 	}

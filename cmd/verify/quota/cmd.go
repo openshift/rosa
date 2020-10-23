@@ -31,10 +31,10 @@ var Cmd = &cobra.Command{
 	Short: "Verify AWS quota is ok for cluster install",
 	Long:  "Verify AWS quota needed to create a cluster is configured as expected",
 	Example: `  # Verify AWS quotas are configured correctly
-  moactl verify quota
+  rosa verify quota
 
   # Verify AWS quotas in a different region
-  moactl verify quota --region=us-west-2`,
+  rosa verify quota --region=us-west-2`,
 	Run: run,
 }
 

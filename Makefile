@@ -25,8 +25,8 @@ export CGO_ENABLED=0
 unexport GOFLAGS
 
 .PHONY: build
-moactl: generate
-	go build ./cmd/moactl
+rosa: generate
+	go build ./cmd/rosa
 
 .PHONY: test
 test:
@@ -34,7 +34,7 @@ test:
 
 .PHONY: install
 install:
-	go install ./cmd/moactl
+	go install ./cmd/rosa
 
 .PHONY: fmt
 fmt:
@@ -47,7 +47,7 @@ lint:
 .PHONY: clean
 clean:
 	rm -rf \
-		moactl \
+		rosa \
 		*-darwin-amd64 \
 		*-linux-amd64 \
 		*-windows-amd64 \
@@ -60,9 +60,9 @@ generate:
 	go-bindata -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 
 .PHONY: docs
-docs: moactl
+docs: rosa
 	rm -rf docs && mkdir docs
-	./moactl docs -d ./docs -f markdown
+	./rosa docs -d ./docs -f markdown
 
 mocks:
 	mockgen -package mocks -destination=pkg/aws/mocks/iamapi.go github.com/aws/aws-sdk-go/service/iam/iamiface IAMAPI

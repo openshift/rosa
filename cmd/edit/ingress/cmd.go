@@ -47,13 +47,13 @@ var Cmd = &cobra.Command{
 	Short:   "Edit the additional cluster ingress",
 	Long:    "Edit the additional non-default application router for a cluster.",
 	Example: `  # Make additional ingress with ID 'a1b2' private on a cluster named 'mycluster'
-  moactl edit ingress --private --cluster=mycluster a1b2
+  rosa edit ingress --private --cluster=mycluster a1b2
 
   # Update the router selectors for the additional ingress with ID 'a1b2'
-  moactl edit ingress --label-match=foo=bar --cluster=mycluster a1b2
+  rosa edit ingress --label-match=foo=bar --cluster=mycluster a1b2
 
   # Update the default ingress using the sub-domain identifier
-  moactl edit ingress --private=false --cluster=mycluster apps`,
+  rosa edit ingress --private=false --cluster=mycluster apps`,
 	Run: run,
 }
 

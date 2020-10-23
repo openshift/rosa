@@ -55,13 +55,13 @@ var Cmd = &cobra.Command{
 	Short: "Edit cluster",
 	Long:  "Edit cluster.",
 	Example: `  # Edit a cluster named "mycluster" to make it private
-  moactl edit cluster mycluster --private
+  rosa edit cluster mycluster --private
 
   # Enable the cluster-admins group using the --cluster flag
-  moactl edit cluster --cluster=mycluster --enable-cluster-admins
+  rosa edit cluster --cluster=mycluster --enable-cluster-admins
 
   # Edit all options interactively
-  moactl edit cluster -c mycluster --interactive`,
+  rosa edit cluster -c mycluster --interactive`,
 	Run: run,
 }
 

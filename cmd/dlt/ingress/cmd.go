@@ -44,10 +44,10 @@ var Cmd = &cobra.Command{
 	Short:   "Delete cluster ingress",
 	Long:    "Delete the additional non-default application router for a cluster.",
 	Example: `  # Delete ingress with ID a1b2 from a cluster named 'mycluster'
-  moactl delete ingress --cluster=mycluster a1b2
+  rosa delete ingress --cluster=mycluster a1b2
 
   # Delete secondary ingress using the sub-domain name
-  moactl delete ingress --cluster=mycluster apps2`,
+  rosa delete ingress --cluster=mycluster apps2`,
 	Run: run,
 }
 

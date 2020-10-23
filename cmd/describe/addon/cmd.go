@@ -36,7 +36,7 @@ var Cmd = &cobra.Command{
 	Short:   "Show details of an add-on",
 	Long:    "Show details of an add-on",
 	Example: `  # Describe an add-on named "codeready-workspaces"
-  moactl describe addon codeready-workspaces`,
+  rosa describe addon codeready-workspaces`,
 	Run: run,
 }
 
@@ -76,7 +76,7 @@ func run(_ *cobra.Command, argv []string) {
 	addOn, err := ocm.GetAddOn(addOnsCollection, addOnID)
 	if err != nil {
 		reporter.Errorf("Failed to get add-on '%s': %s\n"+
-			"Try running 'moactl list addons' to see all available add-ons.",
+			"Try running 'rosa list addons' to see all available add-ons.",
 			addOnID, err)
 		os.Exit(1)
 	}

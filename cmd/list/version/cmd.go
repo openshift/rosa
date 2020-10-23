@@ -39,7 +39,7 @@ var Cmd = &cobra.Command{
 	Short:   "List available versions",
 	Long:    "List versions of OpenShift that are available for creating clusters.",
 	Example: `  # List all OpenShift versions
-  moactl list versions`,
+  rosa list versions`,
 	Run: run,
 }
 

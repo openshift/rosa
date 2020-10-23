@@ -41,7 +41,7 @@ var Cmd = &cobra.Command{
 	Short:   "Install add-ons on cluster",
 	Long:    "Install Red Hat managed add-ons on a cluster",
 	Example: `  # Add the CodeReady Workspaces add-on installation to the cluster
-  moactl create addon --cluster=mycluster codeready-workspaces`,
+  rosa create addon --cluster=mycluster codeready-workspaces`,
 	Run: run,
 }
 
@@ -141,7 +141,7 @@ func run(_ *cobra.Command, argv []string) {
 			reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %s", addOnID, clusterKey, err)
 			os.Exit(1)
 		}
-		reporter.Infof("Add-on '%s' is now installing. To check the status run 'moactl list addons -c %s'",
+		reporter.Infof("Add-on '%s' is now installing. To check the status run 'rosa list addons -c %s'",
 			addOnID, clusterKey)
 	}
 }

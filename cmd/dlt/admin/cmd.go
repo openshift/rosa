@@ -43,7 +43,7 @@ var Cmd = &cobra.Command{
 	Short: "Deletes the admin user",
 	Long:  "Deletes the cluster-admin user used to login to the cluster",
 	Example: `  # Delete the admin user
-  moactl delete admin --cluster=mycluster`,
+  rosa delete admin --cluster=mycluster`,
 	Run: run,
 }
 

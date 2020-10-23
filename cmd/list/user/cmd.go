@@ -40,7 +40,7 @@ var Cmd = &cobra.Command{
 	Short:   "List cluster users",
 	Long:    "List administrative cluster users.",
 	Example: `  # List all users on a cluster named "mycluster"
-  moactl list users --cluster=mycluster`,
+  rosa list users --cluster=mycluster`,
 	Run: run,
 }
 
