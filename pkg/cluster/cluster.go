@@ -73,6 +73,13 @@ type Spec struct {
 
 	// Disable SCP checks in the installer by setting credentials mode as mint
 	DisableSCPChecks *bool
+
+	AWSCredentials *AWSCredentials
+}
+
+type AWSCredentials struct {
+	AccessKeyID     string
+	SecretAccessKey string
 }
 
 func IsValidClusterKey(clusterKey string) bool {
@@ -232,7 +239,10 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	if config.ClusterAdmins != nil {
 		clusterBuilder = clusterBuilder.ClusterAdminEnabled(*config.ClusterAdmins)
 	}
-
+	if config.AWSCredentials != nil {
+		clusterBuilder.AWS(cmv1.NewAWS().AccessKeyID(config.AWSCredentials.AccessKeyID).
+			SecretAccessKey(config.AWSCredentials.SecretAccessKey))
+	}
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
 		return err

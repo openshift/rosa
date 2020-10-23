@@ -19,6 +19,8 @@ package cluster
 import (
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/openshift/moactl/pkg/confirm"
 	"os"
 	"time"
 
@@ -48,6 +50,8 @@ var args struct {
 
 	// Access control options
 	clusterAdmins bool
+
+	awsCredentials bool
 }
 
 var Cmd = &cobra.Command{
@@ -117,6 +121,13 @@ func init() {
 		"enable-cluster-admins",
 		false,
 		"Enable the cluster-admins role for your cluster.",
+	)
+
+	flags.BoolVar(
+		&args.awsCredentials,
+		"update-aws-credentials",
+		false,
+		"Enable this to update the aws credentials from the environment variable.",
 	)
 }
 
@@ -191,6 +202,31 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		reporter.Errorf("Failed to get AWS creator: %v", err)
 		os.Exit(1)
+	}
+	awsCredentials := &clusterprovider.AWSCredentials{}
+	if cmd.Flags().Changed("update-aws-credentials") {
+		if confirm.Confirm("update AWS credentials for cluster %s", clusterKey) {
+			ok, err := awsClient.ValidateCredentials()
+			if err != nil {
+				reporter.Errorf("Error validating AWS credentials: %v", err)
+				os.Exit(1)
+			}
+			if !ok {
+				reporter.Errorf("AWS credentials are invalid")
+				os.Exit(1)
+			}
+			reporter.Infof("AWS credentials are valid!")
+
+			// Retrieve the credentials value
+			credValue, err := credentials.NewEnvCredentials().Get()
+
+			if err != nil {
+				reporter.Errorf("Failed to get aws credentials: %v", err)
+				os.Exit(1)
+			}
+			awsCredentials.AccessKeyID = credValue.AccessKeyID
+			awsCredentials.SecretAccessKey = credValue.SecretAccessKey
+		}
 	}
 
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
@@ -276,10 +312,11 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	clusterConfig := clusterprovider.Spec{
-		Expiration:    expiration,
-		ComputeNodes:  computeNodes,
-		Private:       private,
-		ClusterAdmins: clusterAdmins,
+		Expiration:     expiration,
+		ComputeNodes:   computeNodes,
+		Private:        private,
+		ClusterAdmins:  clusterAdmins,
+		AWSCredentials: awsCredentials,
 	}
 
 	reporter.Debugf("Updating cluster '%s'", clusterKey)
