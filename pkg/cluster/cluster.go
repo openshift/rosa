@@ -24,6 +24,7 @@ import (
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
 	"github.com/openshift/moactl/pkg/aws"
 	"github.com/openshift/moactl/pkg/info"
@@ -35,6 +36,10 @@ import (
 // Regular expression to used to make sure that the identifier or name given by the user is
 // safe and that it there is no risk of SQL injection:
 var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
+
+// Cluster names must be valid DNS-1035 labels, so they must consist of lower case alphanumeric
+// characters or '-', start with an alphabetic character, and end with an alphanumeric character
+var clusterNameRE = regexp.MustCompile(`^[a-z]([-a-z0-9]{0,13}[a-z0-9])?$`)
 
 // Spec is the configuration for a cluster spec.
 type Spec struct {
@@ -74,6 +79,10 @@ func IsValidClusterKey(clusterKey string) bool {
 	return clusterKeyRE.MatchString(clusterKey)
 }
 
+func IsValidClusterName(clusterName string) bool {
+	return clusterNameRE.MatchString(clusterName)
+}
+
 func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 	query := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, creatorARN)
 	response, err := client.List().
@@ -82,7 +91,7 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 		Size(1).
 		Send()
 	if err != nil {
-		return false, fmt.Errorf(response.Error().Reason())
+		return false, handleErr(response.Error(), err)
 	}
 
 	return response.Total() > 0, nil
@@ -118,7 +127,7 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 
 	cluster, err := client.Add().Parameter("dryRun", *config.DryRun).Body(spec).Send()
 	if err != nil {
-		return nil, fmt.Errorf(cluster.Error().Reason())
+		return nil, handleErr(cluster.Error(), err)
 	}
 	if config.DryRun != nil && *config.DryRun {
 		return nil, nil
@@ -170,7 +179,7 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 		Size(1).
 		Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 
 	switch response.Total() {
@@ -231,7 +240,7 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 
 	response, err := client.Cluster(cluster.ID()).Update().Body(clusterSpec).Send()
 	if err != nil {
-		return fmt.Errorf(response.Error().Reason())
+		return handleErr(response.Error(), err)
 	}
 
 	return nil
@@ -245,7 +254,7 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 
 	response, err := client.Cluster(cluster.ID()).Delete().Send()
 	if err != nil {
-		return nil, fmt.Errorf(response.Error().Reason())
+		return nil, handleErr(response.Error(), err)
 	}
 
 	return cluster, nil
@@ -266,7 +275,7 @@ func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN str
 
 	response, err := client.Cluster(cluster.ID()).Addons().Add().Body(addOnInstallation).Send()
 	if err != nil {
-		return fmt.Errorf(response.Error().Reason())
+		return handleErr(response.Error(), err)
 	}
 
 	return nil
@@ -400,7 +409,10 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 	}
 
 	if config.DisableSCPChecks != nil && *config.DisableSCPChecks {
-		clusterBuilder = clusterBuilder.CCS(cmv1.NewCCS().DisableSCPChecks(true))
+		clusterBuilder = clusterBuilder.CCS(cmv1.NewCCS().
+			Enabled(true).
+			DisableSCPChecks(true),
+		)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
@@ -413,4 +425,12 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 
 func cidrIsEmpty(cidr net.IPNet) bool {
 	return cidr.String() == "<nil>"
+}
+
+func handleErr(res *ocmerrors.Error, err error) error {
+	msg := res.Reason()
+	if msg == "" {
+		msg = err.Error()
+	}
+	return errors.New(msg)
 }

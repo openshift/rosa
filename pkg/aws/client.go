@@ -58,10 +58,11 @@ const (
 // Client defines a client interface
 type Client interface {
 	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, err error)
+	CheckAdminUserNotExisting(userName string) (err error)
 	GetRegion() string
 	ValidateCredentials() (bool, error)
 	ValidateCFUserCredentials() error
-	EnsureOsdCcsAdminUser(stackName string) (bool, error)
+	EnsureOsdCcsAdminUser(stackName string, adminUserName string) (bool, error)
 	EnsureOsdCcsAdminUserPermissions() error
 	DeleteOsdCcsAdminUser(stackName string) error
 	GetAccessKeyFromStack(stackName string) (*AccessKey, error)
@@ -156,17 +157,17 @@ func (b *ClientBuilder) Build() (Client, error) {
 		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
 	}
 
-	// Check that the region is set:
-	region := aws.StringValue(sess.Config.Region)
-	if region == "" {
-		return nil, fmt.Errorf("Region is not set")
-	}
-
 	// Check that the AWS credentials are available:
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
 		b.logger.Debugf("Failed to find credentials: %v", err)
 		return nil, fmt.Errorf("Failed to find credentials. Check your AWS configuration and try again")
+	}
+
+	// Check that the region is set:
+	region := aws.StringValue(sess.Config.Region)
+	if region == "" {
+		return nil, fmt.Errorf("Region is not set")
 	}
 
 	// Update session config
@@ -325,10 +326,16 @@ func adviseRecreate() string {
 }
 
 // Ensure osdCcsAdmin IAM user is created
-func (c *awsClient) EnsureOsdCcsAdminUser(stackName string) (bool, error) {
+func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string) (bool, error) {
 	// Check already existing cloudformation stack status
+
 	stackReady, err := c.CheckStackReadyOrNotExisting(stackName)
 	if err != nil || stackReady {
+		return false, err
+	}
+
+	err = c.CheckAdminUserNotExisting(adminUserName)
+	if err != nil {
 		return false, err
 	}
 
@@ -375,16 +382,31 @@ func (c *awsClient) CheckStackReadyOrNotExisting(stackName string) (stackReady b
 				return true, nil
 			}
 			if *summary.StackStatus != cloudformation.StackStatusDeleteComplete {
-				return false, fmt.Errorf("Error creating user: Cloudformation stack %s exists with status %s. "+
+				return false, fmt.Errorf("Error creating CloudFormation Stack: Cloudformation stack %s exists with status %s. "+
 					"Expected status is %s.\n"+
-					"Ensure user osdCcsAdmin does not exist, then retry with\n"+
+					"Ensure %s CloudFormation Stack does not exist, then retry with\n"+
 					"moactl init --delete-stack; moactl init",
-					*summary.StackName, *summary.StackStatus, cloudformation.StackStatusCreateComplete)
+					*summary.StackName, *summary.StackName, *summary.StackStatus, cloudformation.StackStatusCreateComplete)
 			}
 		}
 	}
-
 	return false, nil
+}
+
+func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
+	userList, err := c.iamClient.ListUsers(&iam.ListUsersInput{})
+	if err != nil {
+		return err
+	}
+	for _, user := range userList.Users {
+		if *user.UserName == userName {
+			return fmt.Errorf("Error creating user: IAM user '%s' already exists."+
+				"Ensure user '%s' IAM user does not exist, then retry with\n"+
+				"moactl init",
+				*user.UserName, *user.UserName)
+		}
+	}
+	return nil
 }
 
 func (c *awsClient) DeleteOsdCcsAdminUser(stackName string) error {

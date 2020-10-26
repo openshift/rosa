@@ -136,14 +136,12 @@ func buildOpenidIdp(cmd *cobra.Command,
 	}
 
 	if isInteractive {
-		if interactive.Enabled() {
-			err = interactive.PrintHelp(interactive.Help{
-				Message: `You can indicate which claims to use as the user’s preferred user name, display name, and email address.
+		err = interactive.PrintHelp(interactive.Help{
+			Message: `You can indicate which claims to use as the user’s preferred user name, display name, and email address.
   At least one claim must be configured to use as the user’s identity. Enter multiple values separated by commas.`,
-			})
-			if err != nil {
-				return idpBuilder, err
-			}
+		})
+		if err != nil {
+			return idpBuilder, err
 		}
 
 		email, err = interactive.GetString(interactive.Input{
