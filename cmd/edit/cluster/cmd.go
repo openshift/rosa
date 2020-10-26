@@ -19,8 +19,7 @@ package cluster
 import (
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/openshift/moactl/pkg/confirm"
+
 	"os"
 	"time"
 
@@ -29,6 +28,7 @@ import (
 
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
+	"github.com/openshift/moactl/pkg/confirm"
 	"github.com/openshift/moactl/pkg/interactive"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
@@ -216,14 +216,12 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 			reporter.Infof("AWS credentials are valid!")
-
-			// Retrieve the credentials value
-			credValue, err := credentials.NewEnvCredentials().Get()
-
+			credValue, err := awsClient.GetCredentials()
 			if err != nil {
-				reporter.Errorf("Failed to get aws credentials: %v", err)
+				reporter.Errorf("Error fetching AWS credentials: %v", err)
 				os.Exit(1)
 			}
+
 			awsCredentials.AccessKeyID = credValue.AccessKeyID
 			awsCredentials.SecretAccessKey = credValue.SecretAccessKey
 		}

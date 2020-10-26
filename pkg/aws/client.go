@@ -19,6 +19,7 @@ package aws
 import (
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"net/http"
 	"time"
 
@@ -69,6 +70,7 @@ type Client interface {
 	TagUser(username string, clusterID string, clusterName string) error
 	ValidateSCP() (bool, error)
 	ValidateQuota() (bool, error)
+	GetCredentials() (credentials.Value, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -512,4 +514,8 @@ func (c *awsClient) ValidateSCP() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (c *awsClient) GetCredentials() (credentials.Value, error) {
+	return c.awsSession.Config.Credentials.Get()
 }
