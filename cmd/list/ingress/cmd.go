@@ -41,7 +41,7 @@ var Cmd = &cobra.Command{
 	Short:   "List cluster Ingresses",
 	Long:    "List API and ingress endpoints for a cluster.",
 	Example: `  # List all routes on a cluster named "mycluster"
-  moactl list ingresses --cluster=mycluster`,
+  rosa list ingresses --cluster=mycluster`,
 	Run: run,
 }
 

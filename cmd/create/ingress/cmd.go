@@ -41,13 +41,13 @@ var Cmd = &cobra.Command{
 	Short:   "Add Ingress to cluster",
 	Long:    "Add an Ingress endpoint to determine API access to the cluster.",
 	Example: `  # Add an internal ingress to a cluster named "mycluster"
-  moactl create ingress --private --cluster=mycluster
+  rosa create ingress --private --cluster=mycluster
 
   # Add a public ingress to a cluster
-  moactl create ingress --cluster=mycluster
+  rosa create ingress --cluster=mycluster
 
   # Add an ingress with route selector label match
-  moactl create ingress -c mycluster --label-match="foo=bar,bar=baz"`,
+  rosa create ingress -c mycluster --label-match="foo=bar,bar=baz"`,
 	Run: run,
 }
 

@@ -40,7 +40,7 @@ var Cmd = &cobra.Command{
 	Short:   "List clusters",
 	Long:    "List clusters.",
 	Example: `  # List all clusters
-  moactl list clusters`,
+  rosa list clusters`,
 	Run: run,
 }
 

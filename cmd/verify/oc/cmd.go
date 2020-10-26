@@ -32,7 +32,7 @@ var Cmd = &cobra.Command{
 	Short:   "Verify OpenShift client tools",
 	Long:    "Verify that the OpenShift client tools is installed and compatible.",
 	Example: `  # Verify oc client tools
-  moactl verify oc`,
+  rosa verify oc`,
 	Run: run,
 }
 
@@ -45,7 +45,7 @@ func run(_ *cobra.Command, _ []string) {
 	output, err := exec.Command("oc", "version").Output()
 	if output == nil && err != nil {
 		reporter.Warnf("OpenShift command-line tool is not installed.\n" +
-			"Run 'moactl download oc' to download the latest version, then add it to your PATH.")
+			"Run 'rosa download oc' to download the latest version, then add it to your PATH.")
 		return
 	}
 
@@ -60,7 +60,7 @@ func run(_ *cobra.Command, _ []string) {
 	if !isCorrectVersion {
 		reporter.Warnf("Current OpenShift %s", version)
 		reporter.Warnf("Your version of the OpenShift command-line tool is not supported.\n" +
-			"Run 'moactl download oc' to download the latest version, then add it to your PATH.")
+			"Run 'rosa download oc' to download the latest version, then add it to your PATH.")
 		return
 	}
 

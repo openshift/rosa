@@ -42,13 +42,13 @@ var Cmd = &cobra.Command{
 	Short:   "Delete cluster users",
 	Long:    "Delete administrative cluster users.",
 	Example: `  # Delete a user from the cluster-admins group
-  moactl delete user --cluster=mycluster --cluster-admins=myusername
+  rosa delete user --cluster=mycluster --cluster-admins=myusername
 
   # Delete a user from the dedicated-admins group
-  moactl delete user --cluster=mycluster --dedicated-admins=myusername
+  rosa delete user --cluster=mycluster --dedicated-admins=myusername
 
   # Delete a user following interactive prompts
-  moactl delete user --cluster=mycluster`,
+  rosa delete user --cluster=mycluster`,
 	Run: run,
 }
 

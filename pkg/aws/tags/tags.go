@@ -20,7 +20,7 @@ limitations under the License.
 package tags
 
 // Prefix used by all the tag names:
-const prefix = "moa_"
+const prefix = "rosa_"
 
 // ClusterName is the name of the tag that will contain the name of the cluster.
 const ClusterName = prefix + "cluster_name"

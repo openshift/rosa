@@ -20,6 +20,7 @@ limitations under the License.
 package properties
 
 // Prefix used by all the property names:
+// TODO: Change to "rosa_" once OCM is updated
 const prefix = "moa_"
 
 // CreatorARN is the name of the label that will contain the ARN of the user that created the

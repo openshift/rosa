@@ -62,7 +62,7 @@ func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 			return result, err
 		}
 		if b.cfg == nil {
-			err = fmt.Errorf("Not logged in, run the 'moactl login' command")
+			err = fmt.Errorf("Not logged in, run the 'rosa login' command")
 			return result, err
 		}
 	}

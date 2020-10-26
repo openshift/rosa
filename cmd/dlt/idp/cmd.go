@@ -39,7 +39,7 @@ var Cmd = &cobra.Command{
 	Short:   "Delete cluster IDPs",
 	Long:    "Delete a specific identity provider for a cluster.",
 	Example: `  # Delete an identity provider named github-1
-  moactl delete idp github-1 --cluster=mycluster`,
+  rosa delete idp github-1 --cluster=mycluster`,
 	Run: run,
 }
 

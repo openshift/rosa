@@ -42,7 +42,7 @@ var Cmd = &cobra.Command{
 	Short: "Show details of the cluster-admin user",
 	Long:  "Show details of the cluster-admin user and a command to login to the cluster",
 	Example: `  # Describe cluster-admin user of a cluster named mycluster
-  moactl describe admin -c mycluster`,
+  rosa describe admin -c mycluster`,
 	Run: run,
 }
 
@@ -137,7 +137,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if idp == nil || idp.Htpasswd() == nil {
 		reporter.Warnf("There is no admin on cluster '%s'. To create it run the following command:\n"+
-			"   moactl create admin -c %s", clusterKey, clusterKey)
+			"   rosa create admin -c %s", clusterKey, clusterKey)
 		os.Exit(0)
 	}
 

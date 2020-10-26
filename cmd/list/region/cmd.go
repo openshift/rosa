@@ -39,7 +39,7 @@ var Cmd = &cobra.Command{
 	Short:   "List available regions",
 	Long:    "List regions that are available for the current AWS account.",
 	Example: `  # List all available regions
-  moactl list regions`,
+  rosa list regions`,
 	Run: run,
 }
 

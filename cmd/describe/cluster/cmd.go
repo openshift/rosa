@@ -41,10 +41,10 @@ var Cmd = &cobra.Command{
 	Short: "Show details of a cluster",
 	Long:  "Show details of a cluster",
 	Example: `  # Describe a cluster named "mycluster"
-  moactl describe cluster mycluster
+  rosa describe cluster mycluster
 
   # Describe a cluster using the --cluster flag
-  moactl describe cluster --cluster=mycluster`,
+  rosa describe cluster --cluster=mycluster`,
 	Run: run,
 }
 

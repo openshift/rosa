@@ -63,7 +63,7 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 		err = doc.GenMarkdownTree(cmd.Root(), args.dir)
 	case "man":
 		header := &doc.GenManHeader{
-			Title:   "MOACTL",
+			Title:   "ROSA",
 			Section: "1",
 			Source:  "Copyright (c) 2020 Red Hat, Inc.",
 		}

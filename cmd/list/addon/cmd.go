@@ -41,7 +41,7 @@ var Cmd = &cobra.Command{
 	Short:   "List add-on installations",
 	Long:    "List add-ons installed on a cluster.",
 	Example: `  # List all add-on installations on a cluster named "mycluster"
-  moactl list addons --cluster=mycluster`,
+  rosa list addons --cluster=mycluster`,
 	Run: run,
 }
 

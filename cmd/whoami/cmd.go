@@ -36,7 +36,7 @@ var Cmd = &cobra.Command{
 	Short: "Displays user account information",
 	Long:  "Displays information about your AWS and Red Hat accounts",
 	Example: `  # Displays user information
-  moactl whoami`,
+  rosa whoami`,
 	Run: run,
 }
 
