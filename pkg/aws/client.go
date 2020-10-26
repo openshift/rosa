@@ -19,7 +19,6 @@ package aws
 import (
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"net/http"
 	"time"
 
@@ -41,6 +40,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 	"github.com/sirupsen/logrus"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/openshift/moactl/pkg/aws/profile"
 	"github.com/openshift/moactl/pkg/aws/tags"
 	"github.com/openshift/moactl/pkg/logging"

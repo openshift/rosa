@@ -19,7 +19,6 @@ package cluster
 import (
 	"errors"
 	"fmt"
-
 	"os"
 	"time"
 
