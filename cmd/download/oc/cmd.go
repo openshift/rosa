@@ -38,7 +38,7 @@ var Cmd = &cobra.Command{
 	Short:   "Download OpenShift client tools",
 	Long:    "Downloads to latest compatible version of the OpenShift client tools.",
 	Example: `  # Download oc client tools
-  moactl download oc`,
+  rosa download oc`,
 	Run: run,
 }
 

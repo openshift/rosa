@@ -51,14 +51,14 @@ var Cmd = &cobra.Command{
 		"The supported mechanism is by using a token, which can be obtained at: %s\n\n"+
 		"The application looks for the token in the following order, stopping when it finds it:\n"+
 		"\t1. Command-line flags\n"+
-		"\t2. Environment variable (MOA_TOKEN)\n"+
+		"\t2. Environment variable (ROSA_TOKEN)\n"+
 		"\t3. Configuration file\n"+
 		"\t4. Command-line prompt\n", uiTokenPage),
 	Example: `  # Login to the OpenShift staging API with an existing token
-  moactl login --env staging --token=$OFFLINE_ACCESS_TOKEN
+  rosa login --env staging --token=$OFFLINE_ACCESS_TOKEN
 
   # Switch environments with an already logged-in account
-  moactl login --env production`,
+  rosa login --env production`,
 	Run: run,
 }
 
@@ -143,7 +143,11 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Verify environment variables:
 	if !haveReqs {
-		token = os.Getenv("MOA_TOKEN")
+		token = os.Getenv("ROSA_TOKEN")
+		// TODO: Remove in a future release to deprecate MOA
+		if token == "" {
+			token = os.Getenv("MOA_TOKEN")
+		}
 		haveReqs = token != ""
 	}
 
@@ -172,7 +176,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if !haveReqs {
-		reporter.Errorf("Failed to login to OCM. See 'moactl login --help' for information.")
+		reporter.Errorf("Failed to login to OCM. See 'rosa login --help' for information.")
 		os.Exit(1)
 	}
 

@@ -45,18 +45,18 @@ function build_cmds {
 
   # Build the command line tools:
   echo "Building binaries for OS '${os}' and architecture '${arch}'"
-  make moactl
+  make rosa
 
   # Rename the generated binaries adding the operating system and architecture
   # name and generate a SHA256 sum:
   echo "Calculating SHA 256 sums"
-  if [ -f "moactl.exe" ]
+  if [ -f "rosa.exe" ]
   then
-    mv "moactl.exe" "moactl-${os}-${arch}.exe"
-    sha256sum "moactl-${os}-${arch}.exe" > "moactl-${os}-${arch}.sha256"
+    mv "rosa.exe" "rosa-${os}-${arch}.exe"
+    sha256sum "rosa-${os}-${arch}.exe" > "rosa-${os}-${arch}.sha256"
   else
-    mv "moactl" "moactl-${os}-${arch}"
-    sha256sum "moactl-${os}-${arch}" > "moactl-${os}-${arch}.sha256"
+    mv "rosa" "rosa-${os}-${arch}"
+    sha256sum "rosa-${os}-${arch}" > "rosa-${os}-${arch}.sha256"
   fi
 }
 

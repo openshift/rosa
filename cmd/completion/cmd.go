@@ -27,12 +27,12 @@ var Cmd = &cobra.Command{
 	Short: "Generates bash completion scripts",
 	Long: `To load completion run
 
-. <(moactl completion)
+. <(rosa completion)
 
 To configure your bash shell to load completions for each session add to your bashrc
 
 # ~/.bashrc or ~/.profile
-. <(moactl completion)
+. <(rosa completion)
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Root().GenBashCompletion(os.Stdout)

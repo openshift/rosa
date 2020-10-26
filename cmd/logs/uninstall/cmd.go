@@ -45,10 +45,10 @@ var Cmd = &cobra.Command{
 	Short: "Show cluster uninstallation logs",
 	Long:  "Show cluster uninstallation logs",
 	Example: `  # Show last 100 uninstall log lines for a cluster named "mycluster"
-  moactl logs uninstall mycluster --tail=100
+  rosa logs uninstall mycluster --tail=100
 
   # Show uninstall logs for a cluster using the --cluster flag
-  moactl logs uninstall --cluster=mycluster`,
+  rosa logs uninstall --cluster=mycluster`,
 	Run: run,
 }
 

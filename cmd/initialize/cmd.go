@@ -42,14 +42,14 @@ var args struct {
 
 var Cmd = &cobra.Command{
 	Use:   "init",
-	Short: "Applies templates to support Managed OpenShift on AWS clusters",
-	Long: "Applies templates to support Managed OpenShift on AWS clusters. If you are not\n" +
+	Short: "Applies templates to support Red Hat OpenShift Service on AWS",
+	Long: "Applies templates to support Red Hat OpenShift Service on AWS. If you are not\n" +
 		"yet logged in to OCM, it will prompt you for credentials.",
-	Example: `  # Configure your AWS account to allow MOA clusters
-  moactl init
+	Example: `  # Configure your AWS account to allow ROSA clusters
+  rosa init
 
   # Configure a new AWS account using pre-existing OCM credentials
-  moactl init --token=$OFFLINE_ACCESS_TOKEN`,
+  rosa init --token=$OFFLINE_ACCESS_TOKEN`,
 	Run: run,
 }
 
@@ -231,7 +231,7 @@ func simulateCluster(client *cmv1.ClustersClient, region string) error {
 		region = aws.DefaultRegion
 	}
 	spec := clusterprovider.Spec{
-		Name:   "moactl-init",
+		Name:   "rosa-init",
 		Region: region,
 		DryRun: &dryRun,
 	}

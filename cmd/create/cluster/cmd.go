@@ -82,10 +82,10 @@ var Cmd = &cobra.Command{
 	Short: "Create cluster",
 	Long:  "Create cluster.",
 	Example: `  # Create a cluster named "mycluster"
-  moactl create cluster --cluster-name=mycluster
+  rosa create cluster --cluster-name=mycluster
 
   # Create a cluster in the us-east-2 region
-  moactl create cluster --cluster-name=mycluster --region=us-east-2`,
+  rosa create cluster --cluster-name=mycluster --region=us-east-2`,
 	Run:              run,
 	PersistentPreRun: v.Validations,
 }
@@ -535,23 +535,23 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", cluster.ID(), clusterName)
-	reporter.Infof("To view list of clusters and their status, run 'moactl list clusters'")
+	reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 
 	reporter.Infof("Cluster '%s' has been created.", clusterName)
 	reporter.Infof(
 		"Once the cluster is installed you will need to add an Identity Provider " +
-			"before you can login into the cluster. See 'moactl create idp --help' " +
+			"before you can login into the cluster. See 'rosa create idp --help' " +
 			"for more information.")
 
 	if args.watch {
 		installLogs.Cmd.Run(cmd, []string{cluster.ID()})
 	} else {
 		reporter.Infof(
-			"To determine when your cluster is Ready, run 'moactl describe cluster -c %s'.",
+			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
 			clusterName,
 		)
 		reporter.Infof(
-			"To watch your cluster installation logs, run 'moactl logs install -c %s --watch'.",
+			"To watch your cluster installation logs, run 'rosa logs install -c %s --watch'.",
 			clusterName,
 		)
 	}

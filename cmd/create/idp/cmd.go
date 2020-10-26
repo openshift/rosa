@@ -77,7 +77,6 @@ var args struct {
 	openidScopes    string
 }
 
-// TODO: Add gitlab
 var validIdps []string = []string{"github", "gitlab", "google", "ldap", "openid"}
 
 var Cmd = &cobra.Command{
@@ -85,10 +84,10 @@ var Cmd = &cobra.Command{
 	Short: "Add IDP for cluster",
 	Long:  "Add an Identity providers to determine how users log into the cluster.",
 	Example: `  # Add a GitHub identity provider to a cluster named "mycluster"
-  moactl create idp --type=github --cluster=mycluster
+  rosa create idp --type=github --cluster=mycluster
 
   # Add an identity provider following interactive prompts
-  moactl create idp --cluster=mycluster --interactive`,
+  rosa create idp --cluster=mycluster --interactive`,
 	Run: run,
 }
 
@@ -426,7 +425,7 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter.Infof(
 		"Identity Provider '%s' has been created.\n"+
 			"   It will take up to 1 minute for this configuration to be enabled.\n"+
-			"   To add cluster administrators, see 'moactl create user --help'.\n"+
+			"   To add cluster administrators, see 'rosa create user --help'.\n"+
 			"   To login into the console, open %s and click on %s.",
 		idpName, cluster.Console().URL(), idpName,
 	)

@@ -41,7 +41,7 @@ var Cmd = &cobra.Command{
 	Short:   "List cluster IDPs",
 	Long:    "List identity providers for a cluster.",
 	Example: `  # List all identity providers on a cluster named "mycluster"
-  moactl list idps --cluster=mycluster`,
+  rosa list idps --cluster=mycluster`,
 	Run: run,
 }
 

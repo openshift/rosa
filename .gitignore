@@ -2,10 +2,10 @@
 .vscode/
 docs/*.1
 docs/*.rst
-/moactl
-/moactl-darwin-amd64
-/moactl-darwin-amd64.sha256
-/moactl-linux-amd64
-/moactl-linux-amd64.sha256
-/moactl-windows-amd64.exe
-/moactl-windows-amd64.sha256
+/rosa
+/rosa-darwin-amd64
+/rosa-darwin-amd64.sha256
+/rosa-linux-amd64
+/rosa-linux-amd64.sha256
+/rosa-windows-amd64.exe
+/rosa-windows-amd64.sha256

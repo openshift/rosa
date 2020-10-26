@@ -32,10 +32,10 @@ var Cmd = &cobra.Command{
 	Short: "Verify AWS permissions are ok for cluster install",
 	Long:  "Verify AWS permissions needed to create a cluster are configured as expected",
 	Example: `  # Verify AWS permissions are configured correctly
-  moactl verify permissions
+  rosa verify permissions
 
   # Verify AWS permissions in a different region
-  moactl verify permissions --region=us-west-2`,
+  rosa verify permissions --region=us-west-2`,
 	Run: run,
 }
 

@@ -45,10 +45,10 @@ var Cmd = &cobra.Command{
 	Short: "Show cluster installation logs",
 	Long:  "Show cluster installation logs",
 	Example: `  # Show last 100 install log lines for a cluster named "mycluster"
-  moactl logs install mycluster --tail=100
+  rosa logs install mycluster --tail=100
 
   # Show install logs for a cluster using the --cluster flag
-  moactl logs install --cluster=mycluster`,
+  rosa logs install --cluster=mycluster`,
 	Run: run,
 }
 

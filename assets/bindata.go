@@ -62,8 +62,7 @@ var _templatesCloudformationIam_user_osdccsadminJson = []byte(`{
         "ManagedPolicyArns": [
           "arn:aws:iam::aws:policy/AdministratorAccess"
         ],
-        "UserName": "osdCcsAdmin",
-        "Tags" : [{"Key": "MOA", "Value": "true"}]
+        "UserName": "osdCcsAdmin"
       }
     },
     "osdCcsAdminAccessKeys": {

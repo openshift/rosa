@@ -44,7 +44,7 @@ var Cmd = &cobra.Command{
 	Short: "Creates an admin user to login to the cluster",
 	Long:  "Creates a cluster-admin user with an auto-generated password to login to the cluster",
 	Example: `  # Create an admin user to login to the cluster
-  moactl create admin --cluster=mycluster`,
+  rosa create admin --cluster=mycluster`,
 	Run: run,
 }
 
@@ -78,7 +78,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Warnf("It is recommended to add an identity provider to login to this cluster. " +
-		"See 'moactl create idp --help' for more information.")
+		"See 'rosa create idp --help' for more information.")
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
