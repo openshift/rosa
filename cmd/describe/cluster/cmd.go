@@ -153,13 +153,6 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}
 
-	// Find the details of the shard
-	shardPath, err := clustersCollection.Cluster(cluster.ID()).ProvisionShard().Get().Send()
-	var shard string
-	if shardPath != nil && err == nil {
-		shard = shardPath.Body().HiveConfig().Server()
-	}
-
 	clusterName := cluster.DisplayName()
 	if clusterName == "" {
 		clusterName = cluster.Name()
@@ -192,10 +185,6 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Version().ChannelGroup(),
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
 	)
-	if shard != "" {
-		str = fmt.Sprintf("%s"+
-			"Provision Shard:            %v\n", str, shard)
-	}
 
 	if cluster.Status().State() == cmv1.ClusterStateError {
 		str = fmt.Sprintf("%s"+
