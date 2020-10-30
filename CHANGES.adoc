@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.1.0 Oct 30 2020
+
+- admin: Rename IDP to Cluster-Admin
+- ingress: Enable interactive mode
+- Red Hat OpenShift Service on AWS
+- Remove shard info from describe cluster
+- roles: Update flow to use grant and revoke
+
 == 0.0.16 Oct 22 2020
 
 - Add tags to template, not working
