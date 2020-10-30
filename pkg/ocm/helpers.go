@@ -32,9 +32,14 @@ import (
 // Regular expression to used to make sure that the identifier or name given by the user is
 // safe and that it there is no risk of SQL injection:
 var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
+var badUsernameRE = regexp.MustCompile(`^(~|\.?\.|cluster-admin|.*[:\/%].*)$`)
 
 func IsValidClusterKey(clusterKey string) bool {
 	return clusterKeyRE.MatchString(clusterKey)
+}
+
+func IsValidUsername(username string) bool {
+	return !badUsernameRE.MatchString(username)
 }
 
 func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {

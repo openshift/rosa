@@ -31,11 +31,13 @@ import (
 	"github.com/openshift/moactl/cmd/docs"
 	"github.com/openshift/moactl/cmd/download"
 	"github.com/openshift/moactl/cmd/edit"
+	"github.com/openshift/moactl/cmd/grant"
 	"github.com/openshift/moactl/cmd/initialize"
 	"github.com/openshift/moactl/cmd/list"
 	"github.com/openshift/moactl/cmd/login"
 	"github.com/openshift/moactl/cmd/logout"
 	"github.com/openshift/moactl/cmd/logs"
+	"github.com/openshift/moactl/cmd/revoke"
 	"github.com/openshift/moactl/cmd/verify"
 	"github.com/openshift/moactl/cmd/version"
 	"github.com/openshift/moactl/cmd/whoami"
@@ -67,11 +69,13 @@ func init() {
 	root.AddCommand(docs.Cmd)
 	root.AddCommand(download.Cmd)
 	root.AddCommand(edit.Cmd)
+	root.AddCommand(grant.Cmd)
 	root.AddCommand(list.Cmd)
 	root.AddCommand(initialize.Cmd)
 	root.AddCommand(login.Cmd)
 	root.AddCommand(logout.Cmd)
 	root.AddCommand(logs.Cmd)
+	root.AddCommand(revoke.Cmd)
 	root.AddCommand(verify.Cmd)
 	root.AddCommand(version.Cmd)
 	root.AddCommand(whoami.Cmd)

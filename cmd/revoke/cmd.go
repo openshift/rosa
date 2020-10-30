@@ -14,33 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package create
+package revoke
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/create/addon"
-	"github.com/openshift/moactl/cmd/create/admin"
-	"github.com/openshift/moactl/cmd/create/cluster"
-	"github.com/openshift/moactl/cmd/create/idp"
-	"github.com/openshift/moactl/cmd/create/ingress"
-	"github.com/openshift/moactl/pkg/interactive"
+	"github.com/openshift/moactl/cmd/revoke/user"
+	"github.com/openshift/moactl/pkg/confirm"
 )
 
 var Cmd = &cobra.Command{
-	Use:     "create RESOURCE [flags]",
-	Aliases: []string{"add"},
-	Short:   "Create a resource from stdin",
-	Long:    "Create a resource from stdin",
+	Use:   "revoke RESOURCE [flags]",
+	Short: "Revoke role from a specific resource",
+	Long:  "Revoke role from a specific resource",
 }
 
 func init() {
-	Cmd.AddCommand(addon.Cmd)
-	Cmd.AddCommand(admin.Cmd)
-	Cmd.AddCommand(cluster.Cmd)
-	Cmd.AddCommand(idp.Cmd)
-	Cmd.AddCommand(ingress.Cmd)
-
 	flags := Cmd.PersistentFlags()
-	interactive.AddFlag(flags)
+	confirm.AddFlag(flags)
+
+	Cmd.AddCommand(user.Cmd)
 }
