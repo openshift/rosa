@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	idpName  = "htpasswd"
+	idpName  = "Cluster-Admin"
 	username = "cluster-admin"
 )
 
@@ -143,12 +143,13 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Failed to create user '%s' for cluster '%s'", username, clusterKey)
 		os.Exit(1)
 	}
-	_, err = clustersCollection.Cluster(cluster.ID()).
+	userResp, err := clustersCollection.Cluster(cluster.ID()).
 		Groups().Group("cluster-admins").
 		Users().Add().Body(user).
 		Send()
 	if err != nil {
-		reporter.Errorf("Failed to add user '%s' to cluster '%s': %v", username, clusterKey, err)
+		reporter.Errorf("Failed to add user '%s' to cluster '%s': %s",
+			username, clusterKey, userResp.Error().Reason())
 		os.Exit(1)
 	}
 
@@ -171,13 +172,14 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Add HTPasswd IDP to cluster:
-	_, err = clustersCollection.Cluster(cluster.ID()).
+	idpResp, err := clustersCollection.Cluster(cluster.ID()).
 		IdentityProviders().
 		Add().
 		Body(idp).
 		Send()
 	if err != nil {
-		reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s", idpName, clusterKey, err)
+		reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s",
+			idpName, clusterKey, idpResp.Error().Reason())
 		os.Exit(1)
 	}
 
