@@ -19,8 +19,6 @@ package user
 import (
 	"fmt"
 	"os"
-	"strings"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -33,17 +31,24 @@ import (
 
 var args struct {
 	clusterKey string
+	username   string
 }
 
 var Cmd = &cobra.Command{
-	Use:     "users",
-	Aliases: []string{"user"},
-	Short:   "List cluster users",
-	Long:    "List administrative cluster users.",
-	Example: `  # List all users on a cluster named "mycluster"
-  rosa list users --cluster=mycluster`,
+	Use:     "user ROLE [flags]",
+	Aliases: []string{"role"},
+	Short:   "Grant user access to cluster",
+	Long:    "Grant user access to cluster under a specific role",
+	Example: `  # Add cluster-admin role to a user
+  rosa grant user cluster-admin --user=myusername --cluster=mycluster
+
+  # Grant dedicated-admins role to a user
+  rosa grant user dedicated-admin --user=myusername --cluster=mycluster`,
 	Run: run,
 }
+
+var validRoles = []string{"cluster-admins", "dedicated-admins"}
+var validRolesAliases = []string{"cluster-admin", "dedicated-admin"}
 
 func init() {
 	flags := Cmd.Flags()
@@ -53,12 +58,21 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to list the users of (required).",
+		"Name or ID of the cluster to add the IdP to (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
+
+	flags.StringVarP(
+		&args.username,
+		"user",
+		"u",
+		"",
+		"Username to grant the role to (required).",
+	)
+	Cmd.MarkFlagRequired("user")
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
@@ -72,6 +86,40 @@ func run(_ *cobra.Command, _ []string) {
 			clusterKey,
 		)
 		os.Exit(1)
+	}
+
+	username := args.username
+	if !ocm.IsValidUsername(username) {
+		reporter.Errorf(
+			"username '%s' isn't valid: it must contain only letters, digits, dashes and underscores",
+			username,
+		)
+		os.Exit(1)
+	}
+
+	if len(argv) != 1 {
+		reporter.Errorf(
+			"Expected exactly one command line argument or flag containing the name " +
+				"of the group or role to grant the user.",
+		)
+		os.Exit(1)
+	}
+	role := argv[0]
+	// Allow role aliases
+	for _, validAlias := range validRolesAliases {
+		if role == validAlias {
+			role = fmt.Sprintf("%ss", role)
+		}
+	}
+	isRoleValid := false
+	// Determine if role is valid
+	for _, validRole := range validRoles {
+		if role == validRole {
+			isRoleValid = true
+		}
+	}
+	if !isRoleValid {
+		reporter.Errorf("Expected at least one of %s", validRoles)
 	}
 
 	// Create the AWS client:
@@ -120,53 +168,18 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	var clusterAdmins []*cmv1.User
-	if cluster.ClusterAdminEnabled() {
-		reporter.Debugf("Loading users for cluster '%s'", clusterKey)
-		// Load cluster-admins for this cluster
-		clusterAdmins, err = ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
-		if err != nil {
-			reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		}
-		// Remove cluster-admin user
-		for i, user := range clusterAdmins {
-			if user.ID() == "cluster-admin" {
-				clusterAdmins = append(clusterAdmins[:i], clusterAdmins[i+1:]...)
-			}
-		}
-	}
-
-	// Load dedicated-admins for this cluster
-	dedicatedAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "dedicated-admins")
+	user, err := cmv1.NewUser().ID(username).Build()
 	if err != nil {
-		reporter.Errorf("Failed to get dedicated-admins for cluster '%s': %v", clusterKey, err)
+		reporter.Errorf("Failed to create user '%s' for cluster '%s'", username, clusterKey)
 		os.Exit(1)
 	}
 
-	if len(clusterAdmins) == 0 && len(dedicatedAdmins) == 0 {
-		reporter.Warnf("There are no users configured for cluster '%s'", clusterKey)
+	reporter.Debugf("Adding user '%s' to group '%s' in cluster '%s'", username, role, clusterKey)
+	res, err := clustersCollection.Cluster(cluster.ID()).Groups().Group(role).Users().Add().Body(user).Send()
+	if err != nil {
+		reporter.Debugf(err.Error())
+		reporter.Errorf("Failed to grant '%s' to user '%s' to cluster '%s': %s",
+			role, username, clusterKey, res.Error().Reason())
 		os.Exit(1)
-	}
-
-	groups := make(map[string][]string)
-	for _, user := range clusterAdmins {
-		groups[user.ID()] = []string{"cluster-admins"}
-	}
-	for _, user := range dedicatedAdmins {
-		if _, ok := groups[user.ID()]; ok {
-			groups[user.ID()] = []string{"cluster-admins", "dedicated-admins"}
-		} else {
-			groups[user.ID()] = []string{"dedicated-admins"}
-		}
-	}
-
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tGROUPS\n")
-
-	for u, r := range groups {
-		fmt.Fprintf(writer, "%s\t\t%s\n", u, strings.Join(r, ", "))
-		writer.Flush()
 	}
 }

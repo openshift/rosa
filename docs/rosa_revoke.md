@@ -1,15 +1,15 @@
-## rosa delete
+## rosa revoke
 
-Delete a specific resource
+Revoke role from a specific resource
 
 ### Synopsis
 
-Delete a specific resource
+Revoke role from a specific resource
 
 ### Options
 
 ```
-  -h, --help   help for delete
+  -h, --help   help for revoke
   -y, --yes    Automatically answer yes to confirm operation.
 ```
 
@@ -24,8 +24,5 @@ Delete a specific resource
 ### SEE ALSO
 
 * [rosa](rosa.md)	 - Command line tool for ROSA.
-* [rosa delete admin](rosa_delete_admin.md)	 - Deletes the admin user
-* [rosa delete cluster](rosa_delete_cluster.md)	 - Delete cluster
-* [rosa delete idp](rosa_delete_idp.md)	 - Delete cluster IDPs
-* [rosa delete ingress](rosa_delete_ingress.md)	 - Delete cluster ingress
+* [rosa revoke user](rosa_revoke_user.md)	 - Revoke role from users
 
