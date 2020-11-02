@@ -36,15 +36,10 @@ type SimulateParams struct {
 
 // checkPermissionsUsingQueryClient will use queryClient to query whether the credentials in targetClient can perform
 // the actions listed in the statementEntries. queryClient will need iam:GetUser and iam:SimulatePrincipalPolicy
-func checkPermissionsUsingQueryClient(queryClient, targetClient *awsClient, policyDocument PolicyDocument,
+func checkPermissionsUsingQueryClient(queryClient *awsClient, targetUser *iam.User, policyDocument PolicyDocument,
 	params *SimulateParams) (bool, error) {
 	// Ignoring isRoot here since we only warn the user that its not best practice to use it.
-	// TODO: Add a check for isRoot in the initializer
-	targetUser, _, err := getClientDetails(targetClient)
-	if err != nil {
-		return false, fmt.Errorf("Error gathering AWS credentials details: %v", err)
-	}
-
+	// TODO: Add a check for isRoot in the initialize
 	allowList := []*string{}
 	for _, statement := range policyDocument.Statement {
 		for _, action := range statement.Action {
@@ -73,7 +68,7 @@ func checkPermissionsUsingQueryClient(queryClient, targetClient *awsClient, poli
 	// Collect all failed actions
 	var failedActions []string
 
-	err = queryClient.iamClient.SimulatePrincipalPolicyPages(input,
+	err := queryClient.iamClient.SimulatePrincipalPolicyPages(input,
 		func(response *iam.SimulatePolicyResponse, lastPage bool) bool {
 			for _, result := range response.EvaluationResults {
 				if *result.EvalDecision != "allowed" {
@@ -96,10 +91,10 @@ func checkPermissionsUsingQueryClient(queryClient, targetClient *awsClient, poli
 	return true, nil
 }
 
-func validatePolicyDocuments(queryClient, targetClient *awsClient, policyDocuments []PolicyDocument,
+func validatePolicyDocuments(queryClient *awsClient, targetUser *iam.User, policyDocuments []PolicyDocument,
 	sParams *SimulateParams) (bool, error) {
 	for _, policyDocument := range policyDocuments {
-		permissionsOk, err := checkPermissionsUsingQueryClient(queryClient, targetClient, policyDocument, sParams)
+		permissionsOk, err := checkPermissionsUsingQueryClient(queryClient, targetUser, policyDocument, sParams)
 		if err != nil {
 			return false, err
 		}
