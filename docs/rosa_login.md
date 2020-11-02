@@ -5,13 +5,14 @@ Log in to your Red Hat account
 ### Synopsis
 
 Log in to your Red Hat account, saving the credentials to the configuration file.
-The supported mechanism is by using a token, which can be obtained at: https://cloud.redhat.com/openshift/token/moa
+The supported mechanism is by using a token, which can be obtained at: https://cloud.redhat.com/openshift/token/rosa
 
 The application looks for the token in the following order, stopping when it finds it:
 	1. Command-line flags
 	2. Environment variable (ROSA_TOKEN)
-	3. Configuration file
-	4. Command-line prompt
+	3. Environment variable (OCM_TOKEN)
+	4. Configuration file
+	5. Command-line prompt
 
 
 ```

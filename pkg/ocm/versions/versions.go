@@ -29,8 +29,7 @@ func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Ver
 	collection := client.Versions()
 	page := 1
 	size := 100
-	// TODO: Change to rosa_enabled once OCM is updated
-	filter := "enabled = 'true' AND moa_enabled = 'true'"
+	filter := "enabled = 'true' AND rosa_enabled = 'true'"
 	if channelGroup != "" {
 		filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
 	}

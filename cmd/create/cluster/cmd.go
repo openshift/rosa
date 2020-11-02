@@ -39,7 +39,6 @@ import (
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
 	"github.com/openshift/moactl/pkg/ocm/machines"
-	"github.com/openshift/moactl/pkg/ocm/properties"
 	"github.com/openshift/moactl/pkg/ocm/regions"
 	"github.com/openshift/moactl/pkg/ocm/versions"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
@@ -51,9 +50,6 @@ var args struct {
 
 	// Simulate creating a cluster
 	dryRun bool
-
-	// Whether to use the AMI image override from the AWS marketplace
-	usePaidAMI bool
 
 	// Disable SCP checks in the installer
 	disableSCPChecks bool
@@ -234,15 +230,6 @@ func init() {
 			"Subnets are comma separated, for example: --subnet-ids=subnet-1,subnet-2."+
 			"Leave empty for installer provisioned subnet IDs.",
 	)
-
-	flags.BoolVar(
-		&args.usePaidAMI,
-		"use-paid-ami",
-		false,
-		"Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.",
-	)
-
-	flags.MarkHidden("use-paid-ami")
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -618,14 +605,6 @@ func run(cmd *cobra.Command, _ []string) {
 		DisableSCPChecks:   &args.disableSCPChecks,
 		AvailabilityZones:  availabilityZones,
 		SubnetIds:          subnetIDs,
-	}
-
-	// If the flag is explicitly set to true, OCM will tell the cluster provisioner
-	// to use the AMI ID from the AWS Marketplace.
-	if cmd.Flags().Changed("use-paid-ami") && args.usePaidAMI {
-		clusterConfig.CustomProperties = map[string]string{
-			properties.UseMarketplaceAMI: "true",
-		}
 	}
 
 	reporter.Infof("Creating cluster '%s'", clusterName)
