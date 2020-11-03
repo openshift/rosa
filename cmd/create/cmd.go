@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/moactl/cmd/create/cluster"
 	"github.com/openshift/moactl/cmd/create/idp"
 	"github.com/openshift/moactl/cmd/create/ingress"
+	"github.com/openshift/moactl/cmd/create/machinepool"
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
@@ -40,6 +41,7 @@ func init() {
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
+	Cmd.AddCommand(machinepool.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	interactive.AddFlag(flags)

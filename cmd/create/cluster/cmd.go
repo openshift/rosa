@@ -312,7 +312,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	reporter.Debugf("AWS credentials are valid!")
 
-	regionList, regionAZ, err := getRegionList(ocmClient, multiAZ)
+	regionList, regionAZ, err := regions.GetRegionList(ocmClient, multiAZ)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -373,7 +373,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
-	computeMachineTypeList, err := getMachineTypeList(ocmClient)
+	computeMachineTypeList, err := machines.GetMachineTypeList(ocmClient)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -390,7 +390,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	computeMachineType, err = validateMachineType(computeMachineType, computeMachineTypeList)
+	computeMachineType, err = machines.ValidateMachineType(computeMachineType, computeMachineTypeList)
 	if err != nil {
 		reporter.Errorf("Expected a valid machine type: %s", err)
 		os.Exit(1)
@@ -615,62 +615,6 @@ func validateExpiration() (expiration time.Time, err error) {
 	if args.expirationDuration != 0 {
 		// round up to the nearest second
 		expiration = time.Now().Add(args.expirationDuration).Round(time.Second)
-	}
-
-	return
-}
-
-// Validate AWS machine types
-func validateMachineType(machineType string, machineTypeList []string) (string, error) {
-	if machineType != "" {
-		// Check and set the cluster machineType
-		hasMachineType := false
-		for _, v := range machineTypeList {
-			if v == machineType {
-				hasMachineType = true
-			}
-		}
-		if !hasMachineType {
-			allMachineTypes := strings.Join(machineTypeList, " ")
-			err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
-			return machineType, err
-		}
-	}
-
-	return machineType, nil
-}
-
-func getMachineTypeList(client *cmv1.Client) (machineTypeList []string, err error) {
-	machineTypes, err := machines.GetMachineTypes(client)
-	if err != nil {
-		err = fmt.Errorf("Failed to retrieve machine types: %s", err)
-		return
-	}
-
-	for _, v := range machineTypes {
-		machineTypeList = append(machineTypeList, v.ID())
-	}
-
-	return
-}
-
-func getRegionList(client *cmv1.Client, multiAZ bool) (regionList []string, regionAZ map[string]bool, err error) {
-	regions, err := regions.GetRegions(client)
-	if err != nil {
-		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
-		return
-	}
-
-	regionAZ = make(map[string]bool, len(regions))
-
-	for _, v := range regions {
-		if !v.Enabled() {
-			continue
-		}
-		if !multiAZ || v.SupportsMultiAZ() {
-			regionList = append(regionList, v.ID())
-		}
-		regionAZ[v.ID()] = v.SupportsMultiAZ()
 	}
 
 	return

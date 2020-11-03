@@ -28,4 +28,5 @@ Delete a specific resource
 * [rosa delete cluster](rosa_delete_cluster.md)	 - Delete cluster
 * [rosa delete idp](rosa_delete_idp.md)	 - Delete cluster IDPs
 * [rosa delete ingress](rosa_delete_ingress.md)	 - Delete cluster ingress
+* [rosa delete machinepool](rosa_delete_machinepool.md)	 - Delete machine pool
 

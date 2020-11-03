@@ -251,6 +251,19 @@ func GetClusterState(client *cmv1.ClustersClient, clusterID string) (cmv1.Cluste
 	return response.Body().State(), nil
 }
 
+func GetMachinePools(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.MachinePool, error) {
+	response, err := client.Cluster(clusterID).MachinePools().
+		List().
+		Page(1).
+		Size(-1).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	return response.Items().Slice(), nil
+}
+
 func handleErr(res *ocmerrors.Error, err error) error {
 	msg := res.Reason()
 	if msg == "" {

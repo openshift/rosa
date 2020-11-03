@@ -28,4 +28,5 @@ Create a resource from stdin
 * [rosa create cluster](rosa_create_cluster.md)	 - Create cluster
 * [rosa create idp](rosa_create_idp.md)	 - Add IDP for cluster
 * [rosa create ingress](rosa_create_ingress.md)	 - Add Ingress to cluster
+* [rosa create machinepool](rosa_create_machinepool.md)	 - Add machine pool to cluster
 

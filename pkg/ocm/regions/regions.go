@@ -82,3 +82,25 @@ func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
 	}
 	return
 }
+
+func GetRegionList(client *cmv1.Client, multiAZ bool) (regionList []string, regionAZ map[string]bool, err error) {
+	regions, err := GetRegions(client)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
+		return
+	}
+
+	regionAZ = make(map[string]bool, len(regions))
+
+	for _, v := range regions {
+		if !v.Enabled() {
+			continue
+		}
+		if !multiAZ || v.SupportsMultiAZ() {
+			regionList = append(regionList, v.ID())
+		}
+		regionAZ[v.ID()] = v.SupportsMultiAZ()
+	}
+
+	return
+}
