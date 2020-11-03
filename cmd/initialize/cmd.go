@@ -205,6 +205,16 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
 	}
 
+	// Check if osdCcsAdmin has right permissions
+	reporter.Infof("Validating SCP policies for '%s'...", aws.AdminUserName)
+	target := aws.AdminUserName
+	isValid, err := client.ValidateSCP(&target)
+	if !isValid {
+		reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)
+		os.Exit(1)
+	}
+	reporter.Infof("AWS SCP policies ok")
+
 	// Check whether the user can create a basic cluster
 	reporter.Infof("Validating cluster creation...")
 	err = simulateCluster(clustersCollection, args.region)

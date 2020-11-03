@@ -61,7 +61,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	reporter.Infof("Validating SCP policies...")
-	ok, err := client.ValidateSCP()
+	ok, err := client.ValidateSCP(nil)
 	if err != nil {
 		reporter.Errorf("Unable to validate SCP policies")
 		if strings.Contains(err.Error(), "Throttling: Rate exceeded") {

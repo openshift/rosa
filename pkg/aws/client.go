@@ -67,7 +67,7 @@ type Client interface {
 	GetAccessKeyFromStack(stackName string) (*AccessKey, error)
 	GetCreator() (*Creator, error)
 	TagUser(username string, clusterID string, clusterName string) error
-	ValidateSCP() (bool, error)
+	ValidateSCP(*string) (bool, error)
 	ValidateQuota() (bool, error)
 }
 
@@ -491,7 +491,7 @@ func (c *awsClient) ValidateQuota() (bool, error) {
 }
 
 // ValidateSCP attempts to validate SCP policies by ensuring we have the correct permissions
-func (c *awsClient) ValidateSCP() (bool, error) {
+func (c *awsClient) ValidateSCP(target *string) (bool, error) {
 	scpPolicyPath := "templates/policies/osd_scp_policy.json"
 
 	sParams := &SimulateParams{
@@ -502,8 +502,24 @@ func (c *awsClient) ValidateSCP() (bool, error) {
 	osdPolicyDocument := readSCPPolicy(scpPolicyPath)
 	policyDocuments := []PolicyDocument{osdPolicyDocument}
 
+	// Find target user
+	var targetUser *iam.User
+	if target == nil {
+		var err error
+		targetUser, _, err = getClientDetails(c)
+		if err != nil {
+			return false, fmt.Errorf("getClientDetails: %v", err)
+		}
+	} else {
+		targetIamOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
+		if err != nil {
+			return false, fmt.Errorf("iamClient.GetUser: %v", err)
+		}
+		targetUser = targetIamOutput.User
+	}
+
 	// Validate permissions
-	hasPermissions, err := validatePolicyDocuments(c, c, policyDocuments, sParams)
+	hasPermissions, err := validatePolicyDocuments(c, targetUser, policyDocuments, sParams)
 	if err != nil {
 		return false, err
 	}
