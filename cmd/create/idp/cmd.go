@@ -19,6 +19,7 @@ package idp
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -78,6 +79,8 @@ var args struct {
 }
 
 var validIdps []string = []string{"github", "gitlab", "google", "ldap", "openid"}
+
+var idRE = regexp.MustCompile(`(?i)^[0-9a-z]+([-_][0-9a-z]+)*$`)
 
 var Cmd = &cobra.Command{
 	Use:   "idp",
@@ -367,10 +370,17 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	idpName := args.idpName
+
 	// Auto-generate a name if none provided
 	if !cmd.Flags().Changed("name") {
 		idps := getIdps(reporter, clustersCollection, cluster)
 		idpName = GenerateIdpName(idpType, idps)
+	} else {
+		isValidIdpName := idRE.MatchString(idpName)
+		if !isValidIdpName {
+			reporter.Errorf("Invalid identifier '%s' for 'name'", idpName)
+			os.Exit(1)
+		}
 	}
 	if interactive.Enabled() {
 		idpName, err = interactive.GetString(interactive.Input{
