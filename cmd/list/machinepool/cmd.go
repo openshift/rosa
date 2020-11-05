@@ -128,37 +128,37 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(machinePools) == 0 {
-		reporter.Infof("There are no machine pools configured for cluster '%s'", clusterKey)
-		os.Exit(0)
-	}
-
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(writer, "ID\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tAVAILABILITY ZONES\n")
+	fmt.Fprintf(writer, "%s\t%d\t%s\t%s\t\t%s\n",
+		"default",
+		cluster.Nodes().Compute(),
+		cluster.Nodes().ComputeMachineType().ID(),
+		printLabels(cluster.Nodes().ComputeLabels()),
+		printAZ(cluster.Nodes().AvailabilityZones()),
+	)
 	for _, machinePool := range machinePools {
 		fmt.Fprintf(writer, "%s\t%d\t%s\t%s\t\t%s\n",
 			machinePool.ID(),
 			machinePool.Replicas(),
 			machinePool.InstanceType(),
-			printLabels(machinePool),
-			printAZ(machinePool),
+			printLabels(machinePool.Labels()),
+			printAZ(machinePool.AvailabilityZones()),
 		)
 	}
 	writer.Flush()
 }
 
-func printAZ(machinePool *cmv1.MachinePool) string {
-	az := machinePool.AvailabilityZones()
+func printAZ(az []string) string {
 	if len(az) == 0 {
 		return ""
 	}
 	return strings.Join(az, ", ")
 }
 
-func printLabels(machinePool *cmv1.MachinePool) string {
-	labels := machinePool.Labels()
+func printLabels(labels map[string]string) string {
 	if len(labels) == 0 {
 		return ""
 	}

@@ -91,6 +91,11 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if machinePoolID == "default" {
+		reporter.Errorf("Machine pool '%s' cannot be deleted from cluster '%s'", machinePoolID, clusterKey)
+		os.Exit(1)
+	}
+
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
 		Logger(logger).

@@ -142,6 +142,29 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	var replicas int
+
+	// Editing the default machine pool is a different process
+	if machinePoolID == "default" {
+		replicas, err = getReplicas(cmd)
+		if err != nil {
+			reporter.Errorf("Expected a valid number of replicas: %s", err)
+			os.Exit(1)
+		}
+
+		clusterConfig := c.Spec{ComputeNodes: replicas}
+
+		reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
+		err = c.UpdateCluster(clustersCollection, clusterKey, awsCreator.ARN, clusterConfig)
+		if err != nil {
+			reporter.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
+				machinePoolID, clusterKey, err)
+			os.Exit(1)
+		}
+
+		os.Exit(0)
+	}
+
 	// Try to find the machine pool:
 	reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
 	machinePools, err := ocm.GetMachinePools(clustersCollection, cluster.ID())
@@ -161,19 +184,10 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Number of replicas:
-	replicas := args.replicas
-	if interactive.Enabled() || replicas == 0 {
-		replicas, err = interactive.GetInt(interactive.Input{
-			Question: "Replicas",
-			Help:     cmd.Flags().Lookup("replicas").Usage,
-			Default:  replicas,
-			Required: true,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid number of replicas: %s", err)
-			os.Exit(1)
-		}
+	replicas, err = getReplicas(cmd)
+	if err != nil {
+		reporter.Errorf("Expected a valid number of replicas: %s", err)
+		os.Exit(1)
 	}
 
 	machinePool, err = cmv1.NewMachinePool().
@@ -199,4 +213,18 @@ func run(cmd *cobra.Command, argv []string) {
 			machinePool.ID(), clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
+}
+
+func getReplicas(cmd *cobra.Command) (int, error) {
+	// Number of replicas:
+	replicas := args.replicas
+	if interactive.Enabled() || !cmd.Flags().Changed("replicas") {
+		return interactive.GetInt(interactive.Input{
+			Question: "Replicas",
+			Help:     cmd.Flags().Lookup("replicas").Usage,
+			Default:  replicas,
+			Required: true,
+		})
+	}
+	return replicas, nil
 }
