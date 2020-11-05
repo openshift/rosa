@@ -32,6 +32,13 @@ import (
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
+const (
+	StageURL      = "https://qaprodauth.cloud.redhat.com/openshift/details/"
+	ProductionURL = "https://cloud.redhat.com/openshift/details/"
+	StageEnv      = "https://api.stage.openshift.com"
+	ProductionEnv = "https://api.openshift.com"
+)
+
 var args struct {
 	clusterKey string
 }
@@ -107,6 +114,7 @@ func run(_ *cobra.Command, argv []string) {
 	ocmConnection, err := ocm.NewConnection().
 		Logger(logger).
 		Build()
+
 	if err != nil {
 		reporter.Errorf("Failed to create OCM connection: %v", err)
 		os.Exit(1)
@@ -157,7 +165,7 @@ func run(_ *cobra.Command, argv []string) {
 	if clusterName == "" {
 		clusterName = cluster.Name()
 	}
-
+	detailsPage := getDetailsLink(ocmConnection.URL())
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
 		"Name:                       %s\n"+
@@ -186,6 +194,11 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
 	)
 
+	if detailsPage != "" {
+		str = fmt.Sprintf("%s"+
+			"Details Page:               %s%s\n", str,
+			detailsPage, cluster.ID())
+	}
 	if cluster.Status().State() == cmv1.ClusterStateError {
 		str = fmt.Sprintf("%s"+
 			"Provisioning Error Code:    %s\n"+
@@ -198,4 +211,15 @@ func run(_ *cobra.Command, argv []string) {
 	// Print short cluster description:
 	fmt.Print(str)
 	fmt.Println()
+}
+
+func getDetailsLink(environment string) string {
+	switch environment {
+	case StageEnv:
+		return StageURL
+	case ProductionEnv:
+		return ProductionURL
+	default:
+		return ""
+	}
 }
