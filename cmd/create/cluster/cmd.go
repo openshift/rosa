@@ -294,23 +294,6 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
-	// Create the AWS client:
-	client, err := aws.NewClient().
-		Logger(logger).
-		Region(aws.DefaultRegion).
-		Build()
-	if err != nil {
-		reporter.Errorf("Error creating AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	// Validate AWS credentials for current user
-	reporter.Debugf("Validating AWS credentials...")
-	if err = client.ValidateCFUserCredentials(); err != nil {
-		reporter.Errorf("Error validating AWS credentials for user '%s': %v", aws.AdminUserName, err)
-		os.Exit(1)
-	}
-	reporter.Debugf("AWS credentials are valid!")
 
 	regionList, regionAZ, err := regions.GetRegionList(ocmClient, multiAZ)
 	if err != nil {
@@ -330,6 +313,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+
 	if region == "" {
 		reporter.Errorf("Expected a valid AWS region")
 		os.Exit(1)
@@ -517,6 +501,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	reporter.Infof("Creating cluster '%s'", clusterName)
+	reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
+
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
 	if err != nil {
 		if args.dryRun {
@@ -533,9 +520,6 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName)
 		os.Exit(0)
 	}
-
-	reporter.Infof("Creating cluster with identifier '%s' and name '%s'", cluster.ID(), clusterName)
-	reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 
 	reporter.Infof("Cluster '%s' has been created.", clusterName)
 	reporter.Infof(

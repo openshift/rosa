@@ -24,34 +24,39 @@ import (
 
 	"github.com/openshift/moactl/pkg/aws"
 	"github.com/openshift/moactl/pkg/logging"
+	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
 func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
-	// Create logger:
-	logger, err := logging.NewLogger().Build()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to create AWS logger: %v", err)
-	}
+	// Retrieve AWS credentials from the local AWS user
+	// pass these to OCM to validate what regions are available
+	// in this AWS account
 
+	// Build AWS client and retrieve credentials
+	// This ensures we use the profile flag if passed to rosa
 	// Create the AWS client:
+	reporter := rprtr.CreateReporterOrExit()
+	logger := logging.CreateLoggerOrExit(reporter)
+
 	awsClient, err := aws.NewClient().
 		Logger(logger).
 		Region(aws.DefaultRegion).
 		Build()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create AWS client: %v", err)
+		return nil, fmt.Errorf("Error creating AWS client: %v", err)
 	}
 
-	// Get AWS credentials from the cloudformation stack:
-	awsAccessKey, err := awsClient.GetAccessKeyFromStack(aws.OsdCcsAdminStackName)
+	// Get AWS region
+	currentAWSCreds, err := awsClient.GetIAMCredentials()
+
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get access keys for user '%s': %v", aws.AdminUserName, err)
+		return nil, fmt.Errorf("Failed to get local AWS credentials: %v", err)
 	}
 
 	// Build cmv1.AWS object to get list of available regions:
 	awsCredentials, err := cmv1.NewAWS().
-		AccessKeyID(awsAccessKey.AccessKeyID).
-		SecretAccessKey(awsAccessKey.SecretAccessKey).
+		AccessKeyID(currentAWSCreds.AccessKeyID).
+		SecretAccessKey(currentAWSCreds.SecretAccessKey).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to build AWS credentials for user '%s': %v", aws.AdminUserName, err)

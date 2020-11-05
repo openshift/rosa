@@ -24,7 +24,7 @@ func Validations(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Debugf("Validating cloudformation stack exists")
-	stackExist, err := client.CheckStackReadyOrNotExisting(aws.OsdCcsAdminStackName)
+	stackExist, _, err := client.CheckStackReadyOrNotExisting(aws.OsdCcsAdminStackName)
 	if !stackExist || err != nil {
 		reporter.Errorf("Cloudformation stack does not exist. Run `rosa init` first")
 		os.Exit(1)
