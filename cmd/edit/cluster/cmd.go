@@ -40,9 +40,6 @@ var args struct {
 	expirationTime     string
 	expirationDuration time.Duration
 
-	// Scaling options
-	computeNodes int
-
 	// Networking options
 	private bool
 
@@ -94,15 +91,6 @@ func init() {
 	flags.MarkHidden("expiration-time")
 	flags.MarkHidden("expiration")
 
-	// Scaling options
-	flags.IntVar(
-		&args.computeNodes,
-		"compute-nodes",
-		0,
-		"Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, "+
-			"while multizone clusters need at least 3 nodes (1 per zone) for resiliency.",
-	)
-
 	// Networking options
 	flags.BoolVar(
 		&args.private,
@@ -150,7 +138,7 @@ func run(cmd *cobra.Command, argv []string) {
 	isInteractive := interactive.Enabled()
 	if !isInteractive {
 		changedFlags := false
-		for _, flag := range []string{"compute-nodes", "private", "enable-cluster-admins"} {
+		for _, flag := range []string{"private", "enable-cluster-admins"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
@@ -256,28 +244,8 @@ func run(cmd *cobra.Command, argv []string) {
 		clusterAdmins = &clusterAdminsValue
 	}
 
-	var computeNodes int
-	if cmd.Flags().Changed("compute-nodes") {
-		computeNodes = args.computeNodes
-	} else if isInteractive {
-		computeNodes = cluster.Nodes().Compute()
-	}
-
-	if isInteractive {
-		computeNodes, err = interactive.GetInt(interactive.Input{
-			Question: "Compute nodes",
-			Help:     cmd.Flags().Lookup("compute-nodes").Usage,
-			Default:  computeNodes,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid number of compute nodes: %s", err)
-			os.Exit(1)
-		}
-	}
-
 	clusterConfig := clusterprovider.Spec{
 		Expiration:    expiration,
-		ComputeNodes:  computeNodes,
 		Private:       private,
 		ClusterAdmins: clusterAdmins,
 	}
