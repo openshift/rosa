@@ -21,6 +21,7 @@ import (
 
 	"github.com/openshift/moactl/cmd/edit/cluster"
 	"github.com/openshift/moactl/cmd/edit/ingress"
+	"github.com/openshift/moactl/cmd/edit/machinepool"
 	"github.com/openshift/moactl/pkg/interactive"
 )
 
@@ -32,9 +33,10 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	Cmd.AddCommand(cluster.Cmd)
-	Cmd.AddCommand(ingress.Cmd)
-
 	flags := Cmd.PersistentFlags()
 	interactive.AddFlag(flags)
+
+	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(ingress.Cmd)
+	Cmd.AddCommand(machinepool.Cmd)
 }

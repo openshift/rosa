@@ -26,4 +26,5 @@ Edit a specific resource
 * [rosa](rosa.md)	 - Command line tool for ROSA.
 * [rosa edit cluster](rosa_edit_cluster.md)	 - Edit cluster
 * [rosa edit ingress](rosa_edit_ingress.md)	 - Edit the additional cluster ingress
+* [rosa edit machinepool](rosa_edit_machinepool.md)	 - Edit machine pool
 

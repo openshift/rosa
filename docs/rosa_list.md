@@ -26,6 +26,7 @@ List all resources of a specific type
 * [rosa list clusters](rosa_list_clusters.md)	 - List clusters
 * [rosa list idps](rosa_list_idps.md)	 - List cluster IDPs
 * [rosa list ingresses](rosa_list_ingresses.md)	 - List cluster Ingresses
+* [rosa list machinepools](rosa_list_machinepools.md)	 - List cluster machine pools
 * [rosa list regions](rosa_list_regions.md)	 - List available regions
 * [rosa list users](rosa_list_users.md)	 - List cluster users
 * [rosa list versions](rosa_list_versions.md)	 - List available versions

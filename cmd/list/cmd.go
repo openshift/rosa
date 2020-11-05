@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/moactl/cmd/list/cluster"
 	"github.com/openshift/moactl/cmd/list/idp"
 	"github.com/openshift/moactl/cmd/list/ingress"
+	"github.com/openshift/moactl/cmd/list/machinepool"
 	"github.com/openshift/moactl/cmd/list/region"
 	"github.com/openshift/moactl/cmd/list/user"
 	"github.com/openshift/moactl/cmd/list/version"
@@ -39,6 +40,7 @@ func init() {
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
+	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(region.Cmd)
 	Cmd.AddCommand(user.Cmd)
 	Cmd.AddCommand(version.Cmd)

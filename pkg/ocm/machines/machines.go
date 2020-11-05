@@ -18,6 +18,8 @@ package machines
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
@@ -47,5 +49,39 @@ func GetMachineTypes(client *cmv1.Client) (machineTypes []*cmv1.MachineType, err
 		}
 		page++
 	}
+	return
+}
+
+// Validate AWS machine types
+func ValidateMachineType(machineType string, machineTypeList []string) (string, error) {
+	if machineType != "" {
+		// Check and set the cluster machineType
+		hasMachineType := false
+		for _, v := range machineTypeList {
+			if v == machineType {
+				hasMachineType = true
+			}
+		}
+		if !hasMachineType {
+			allMachineTypes := strings.Join(machineTypeList, " ")
+			err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
+			return machineType, err
+		}
+	}
+
+	return machineType, nil
+}
+
+func GetMachineTypeList(client *cmv1.Client) (machineTypeList []string, err error) {
+	machineTypes, err := GetMachineTypes(client)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve machine types: %s", err)
+		return
+	}
+
+	for _, v := range machineTypes {
+		machineTypeList = append(machineTypeList, v.ID())
+	}
+
 	return
 }
