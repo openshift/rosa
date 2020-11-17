@@ -271,3 +271,17 @@ func handleErr(res *ocmerrors.Error, err error) error {
 	}
 	return errors.New(msg)
 }
+
+func GetDefaultClusterFlavors(ocmClient *cmv1.Client) (dMachinecidr string, dPodcidr string,
+	dServicecidr string, dhostPrefix int) {
+	flavourGetResponse, _ := ocmClient.Flavours().Flavour("osd-4").Get().Send()
+	network, ok := flavourGetResponse.Body().GetNetwork()
+	if !ok {
+		return "", "", "", 0
+	}
+	dMachinecidr, _ = network.GetMachineCIDR()
+	dPodcidr, _ = network.GetPodCIDR()
+	dServicecidr, _ = network.GetServiceCIDR()
+	dhostPrefix, _ = network.GetHostPrefix()
+	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix
+}

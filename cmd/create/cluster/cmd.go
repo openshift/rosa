@@ -25,10 +25,10 @@ import (
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/spf13/cobra"
-
 	clusterdescribe "github.com/openshift/moactl/cmd/describe/cluster"
 	installLogs "github.com/openshift/moactl/cmd/logs/install"
+	"github.com/openshift/moactl/pkg/confirm"
+	"github.com/spf13/cobra"
 
 	v "github.com/openshift/moactl/cmd/validations"
 	"github.com/openshift/moactl/pkg/aws"
@@ -472,6 +472,39 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			reporter.Errorf("Expected a valid private value: %s", err)
 			os.Exit(1)
+		}
+	}
+
+	if serviceCIDR.IP == nil || machineCIDR.IP == nil || podCIDR.IP == nil || hostPrefix == 0 {
+		dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocm.GetDefaultClusterFlavors(ocmClient)
+		str := fmt.Sprintf("Following default values will be used for network configurations " +
+			"and cannot be updated after installation \n")
+		if machineCIDR.IP == nil && dMachinecidr != "" {
+			str = fmt.Sprintf("%s"+
+				"Machine CIDR: %s\n", str,
+				dMachinecidr)
+		}
+		if podCIDR.IP == nil && dPodcidr != "" {
+			str = fmt.Sprintf("%s"+
+				"Pod CIDR:     %s\n", str,
+				dPodcidr)
+		}
+		if serviceCIDR.IP == nil && dServicecidr != "" {
+			str = fmt.Sprintf("%s"+
+				"Service CIDR: %s\n", str,
+				dServicecidr)
+		}
+		if hostPrefix == 0 && dhostPrefix != 0 {
+			str = fmt.Sprintf("%s"+
+				"Host Prefix:  %v\n", str,
+				dhostPrefix)
+		}
+		fmt.Print(str)
+		fmt.Println()
+		ok := confirm.Confirm("proceed with installation")
+		if !ok {
+			reporter.Infof("Aborting cluster creation")
+			os.Exit(0)
 		}
 	}
 
