@@ -135,10 +135,6 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	// Include API endpoint in routes table
-	fmt.Fprintf(writer, "ID\tAPI ENDPOINT\t\tPRIVATE\n")
-	fmt.Fprintf(writer, "api\t%s\t\t%s\n", cluster.API().URL(), isPrivate(cluster.API().Listening()))
-	fmt.Fprintf(writer, "\n")
 	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\t\t\tPRIVATE\t\tDEFAULT\t\tROUTE SELECTORS\n")
 	for _, ingress := range ingresses {
 		fmt.Fprintf(writer, "%s\thttps://%s\t\t\t%s\t\t%s\t\t%s\n",
