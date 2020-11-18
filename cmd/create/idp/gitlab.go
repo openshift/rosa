@@ -36,7 +36,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 	clientSecret := args.clientSecret
 	gitlabURL := args.gitlabURL
 
-	if interactive.Enabled() || !cmd.Flags().Changed("host-url") {
+	if !cmd.Flags().Changed("host-url") {
 		gitlabURL, err = interactive.GetString(interactive.Input{
 			Question: "URL",
 			Help:     cmd.Flags().Lookup("host-url").Usage,
@@ -61,7 +61,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 		return idpBuilder, errors.New("GitLab provider URL must not have a fragment")
 	}
 
-	if interactive.Enabled() || clientID == "" || clientSecret == "" {
+	if clientID == "" || clientSecret == "" {
 		instructionsURL := fmt.Sprintf("%s/profile/applications", gitlabURL)
 		consoleURL := cluster.Console().URL()
 		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
@@ -107,7 +107,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 	}
 
 	caPath := args.caPath
-	if interactive.Enabled() {
+	if interactive.Enabled() && cmd.Flags().Changed("host-url") {
 		caPath, err = interactive.GetCert(interactive.Input{
 			Question: "CA file path",
 			Help:     cmd.Flags().Lookup("ca").Usage,

@@ -34,7 +34,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 	clientID := args.clientID
 	clientSecret := args.clientSecret
 
-	if interactive.Enabled() || clientID == "" || clientSecret == "" {
+	if clientID == "" || clientSecret == "" {
 		instructionsURL := "https://console.developers.google.com/projectcreate"
 		consoleURL := cluster.Console().URL()
 		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
