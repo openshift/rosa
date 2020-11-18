@@ -106,6 +106,33 @@ func parseInt(str string) (num int, err error) {
 	return strconv.Atoi(str)
 }
 
+// Asks for multiple options selection
+func GetMultipleOptions(input Input) ([]string, error) {
+	var err error
+	res := make([]string, 0)
+	dflt, ok := input.Default.(string)
+	if !ok {
+		dflt = ""
+	}
+	question := input.Question
+	if !input.Required && dflt == "" {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
+	prompt := &survey.MultiSelect{
+		Message: fmt.Sprintf("%s:", question),
+		Help:    input.Help,
+		Options: input.Options,
+		Default: dflt,
+	}
+
+	if input.Required {
+		err = survey.AskOne(prompt, &res, survey.WithValidator(survey.Required))
+		return res, err
+	}
+	err = survey.AskOne(prompt, &res)
+	return res, err
+}
+
 // Asks for option selection in the command line
 func GetOption(input Input) (a string, err error) {
 	dflt, ok := input.Default.(string)

@@ -38,6 +38,7 @@ rosa create cluster [flags]
       --disable-scp-checks            Indicates if cloud permission checks are disabled when attempting installation of the cluster.
       --watch                         Watch cluster installation logs.
       --dry-run                       Simulate creating the cluster.
+      --subnet-ids stringArray        The Subnet IDs to use when installing the cluster. SubnetIDs should come in pairs; two per availability zone, one private and one public. Leave empty for installer provisioned subnet IDs.
   -h, --help                          help for cluster
 ```
 

@@ -18,6 +18,7 @@ var _ = Describe("Client", func() {
 		client   aws.Client
 		mockCtrl *gomock.Controller
 
+		mockEC2API *mocks.MockEC2API
 		mockCfAPI  *mocks.MockCloudFormationAPI
 		mockIamAPI *mocks.MockIAMAPI
 	)
@@ -26,9 +27,11 @@ var _ = Describe("Client", func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockCfAPI = mocks.NewMockCloudFormationAPI(mockCtrl)
 		mockIamAPI = mocks.NewMockIAMAPI(mockCtrl)
+		mockEC2API = mocks.NewMockEC2API(mockCtrl)
 		client = aws.New(
 			logrus.New(),
 			mockIamAPI,
+			mockEC2API,
 			mocks.NewMockOrganizationsAPI(mockCtrl),
 			mocks.NewMockSTSAPI(mockCtrl),
 			mockCfAPI,
