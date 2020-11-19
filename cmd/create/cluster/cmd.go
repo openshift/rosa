@@ -27,7 +27,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	clusterdescribe "github.com/openshift/moactl/cmd/describe/cluster"
 	installLogs "github.com/openshift/moactl/cmd/logs/install"
-	"github.com/openshift/moactl/pkg/confirm"
+
 	"github.com/spf13/cobra"
 
 	v "github.com/openshift/moactl/cmd/validations"
@@ -269,7 +269,8 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if !clusterprovider.IsValidClusterName(clusterName) {
-		reporter.Errorf("Cluster name must consist of no more than 15 lowercase alphanumeric characters or '-', " +
+		reporter.Errorf("Cluster name must consist" +
+			" of no more than 15 lowercase alphanumeric characters or '-', " +
 			"start with a letter, and end with an alphanumeric character.")
 		os.Exit(1)
 	}
@@ -404,6 +405,10 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
+	var dMachinecidr *net.IPNet
+	var dPodcidr *net.IPNet
+	var dServicecidr *net.IPNet
+	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocm.GetDefaultClusterFlavors(ocmClient)
 
 	// Machine CIDR:
 	machineCIDR := args.machineCIDR
@@ -411,7 +416,7 @@ func run(cmd *cobra.Command, _ []string) {
 		machineCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Machine CIDR",
 			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
-			Default:  machineCIDR,
+			Default:  *dMachinecidr,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid CIDR value: %s", err)
@@ -425,21 +430,20 @@ func run(cmd *cobra.Command, _ []string) {
 		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Service CIDR",
 			Help:     cmd.Flags().Lookup("service-cidr").Usage,
-			Default:  serviceCIDR,
+			Default:  *dServicecidr,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid CIDR value: %s", err)
 			os.Exit(1)
 		}
 	}
-
 	// Pod CIDR:
 	podCIDR := args.podCIDR
 	if interactive.Enabled() {
 		podCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Pod CIDR",
 			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
-			Default:  podCIDR,
+			Default:  *dPodcidr,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid CIDR value: %s", err)
@@ -453,7 +457,7 @@ func run(cmd *cobra.Command, _ []string) {
 		hostPrefix, err = interactive.GetInt(interactive.Input{
 			Question: "Host prefix",
 			Help:     cmd.Flags().Lookup("host-prefix").Usage,
-			Default:  hostPrefix,
+			Default:  dhostPrefix,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid host prefix value: %s", err)
@@ -472,39 +476,6 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			reporter.Errorf("Expected a valid private value: %s", err)
 			os.Exit(1)
-		}
-	}
-
-	if serviceCIDR.IP == nil || machineCIDR.IP == nil || podCIDR.IP == nil || hostPrefix == 0 {
-		dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocm.GetDefaultClusterFlavors(ocmClient)
-		str := fmt.Sprintf("Following default values will be used for network configurations " +
-			"and cannot be updated after installation \n")
-		if machineCIDR.IP == nil && dMachinecidr != "" {
-			str = fmt.Sprintf("%s"+
-				"Machine CIDR: %s\n", str,
-				dMachinecidr)
-		}
-		if podCIDR.IP == nil && dPodcidr != "" {
-			str = fmt.Sprintf("%s"+
-				"Pod CIDR:     %s\n", str,
-				dPodcidr)
-		}
-		if serviceCIDR.IP == nil && dServicecidr != "" {
-			str = fmt.Sprintf("%s"+
-				"Service CIDR: %s\n", str,
-				dServicecidr)
-		}
-		if hostPrefix == 0 && dhostPrefix != 0 {
-			str = fmt.Sprintf("%s"+
-				"Host Prefix:  %v\n", str,
-				dhostPrefix)
-		}
-		fmt.Print(str)
-		fmt.Println()
-		ok := confirm.Confirm("proceed with installation")
-		if !ok {
-			reporter.Infof("Aborting cluster creation")
-			os.Exit(0)
 		}
 	}
 
