@@ -27,9 +27,10 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift-online/ocm-cli/pkg/cluster"
+	"github.com/openshift-online/ocm-cli/pkg/provider"
 	clusterdescribe "github.com/openshift/moactl/cmd/describe/cluster"
 	installLogs "github.com/openshift/moactl/cmd/logs/install"
-
 	v "github.com/openshift/moactl/cmd/validations"
 	"github.com/openshift/moactl/pkg/aws"
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
@@ -38,7 +39,6 @@ import (
 	"github.com/openshift/moactl/pkg/ocm"
 	"github.com/openshift/moactl/pkg/ocm/machines"
 	"github.com/openshift/moactl/pkg/ocm/properties"
-	"github.com/openshift/moactl/pkg/ocm/regions"
 	"github.com/openshift/moactl/pkg/ocm/versions"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
@@ -295,7 +295,17 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	regionList, regionAZ, err := regions.GetRegionList(ocmClient, multiAZ)
+	// Create the AWS client:
+	awsClient, err := aws.NewClient().
+		Logger(logger).
+		Region(aws.DefaultRegion).
+		Build()
+	if err != nil {
+		reporter.Errorf("Error creating AWS client: %v", err)
+		os.Exit(1)
+	}
+
+	regionList, regionAZ, err := getRegionList(awsClient, ocmClient, multiAZ)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -599,6 +609,76 @@ func validateExpiration() (expiration time.Time, err error) {
 	if args.expirationDuration != 0 {
 		// round up to the nearest second
 		expiration = time.Now().Add(args.expirationDuration).Round(time.Second)
+	}
+
+	return
+}
+
+// Validate AWS machine types
+func validateMachineType(machineType string, machineTypeList []string) (string, error) {
+	if machineType != "" {
+		// Check and set the cluster machineType
+		hasMachineType := false
+		for _, v := range machineTypeList {
+			if v == machineType {
+				hasMachineType = true
+			}
+		}
+		if !hasMachineType {
+			allMachineTypes := strings.Join(machineTypeList, " ")
+			err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
+			return machineType, err
+		}
+	}
+
+	return machineType, nil
+}
+
+func getMachineTypeList(client *cmv1.Client) (machineTypeList []string, err error) {
+	machineTypes, err := machines.GetMachineTypes(client)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve machine types: %s", err)
+		return
+	}
+
+	for _, v := range machineTypes {
+		machineTypeList = append(machineTypeList, v.ID())
+	}
+
+	return
+}
+
+func getRegionList(awsClient aws.Client, ocmClient *cmv1.Client, multiAZ bool) (regionList []string, regionAZ map[string]bool, err error) {
+	// Get AWS credentials from the cloudformation stack:
+	awsAccessKey, err := awsClient.GetAWSAccessKeys()
+	if err != nil {
+		err = fmt.Errorf("Failed to get access keys for user '%s': %v", aws.AdminUserName, err)
+		return
+	}
+
+	ccs := cluster.CCS{
+		Enabled: true,
+		AWS: cluster.AWSCredentials{
+			AccessKeyID:     awsAccessKey.AccessKeyID,
+			SecretAccessKey: awsAccessKey.SecretAccessKey,
+		},
+	}
+	regions, err := provider.GetRegions(ocmClient, "aws", ccs)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
+		return
+	}
+
+	regionAZ = make(map[string]bool, len(regions))
+
+	for _, v := range regions {
+		if !v.Enabled() {
+			continue
+		}
+		if !multiAZ || v.SupportsMultiAZ() {
+			regionList = append(regionList, v.ID())
+		}
+		regionAZ[v.ID()] = v.SupportsMultiAZ()
 	}
 
 	return

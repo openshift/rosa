@@ -23,9 +23,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift-online/ocm-cli/pkg/cluster"
+	"github.com/openshift-online/ocm-cli/pkg/provider"
+	"github.com/openshift/moactl/pkg/aws"
 	"github.com/openshift/moactl/pkg/logging"
 	"github.com/openshift/moactl/pkg/ocm"
-	"github.com/openshift/moactl/pkg/ocm/regions"
 	rprtr "github.com/openshift/moactl/pkg/reporter"
 )
 
@@ -75,9 +77,31 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get the client for the OCM collection of clusters:
 	ocmClient := ocmConnection.ClustersMgmt().V1()
 
+	// Create the AWS client:
+	awsClient, err := aws.NewClient().
+		Logger(logger).
+		Region(aws.DefaultRegion).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create AWS client: %v", err)
+	}
+
+	// Get AWS credentials from the cloudformation stack:
+	awsAccessKey, err := awsClient.GetAWSAccessKeys()
+	if err != nil {
+		reporter.Errorf("Failed to get access keys for user '%s': %v", aws.AdminUserName, err)
+	}
+
 	// Try to find the cluster:
 	reporter.Debugf("Fetching regions")
-	regions, err := regions.GetRegions(ocmClient)
+	ccs := cluster.CCS{
+		Enabled: true,
+		AWS: cluster.AWSCredentials{
+			AccessKeyID:     awsAccessKey.AccessKeyID,
+			SecretAccessKey: awsAccessKey.SecretAccessKey,
+		},
+	}
+	regions, err := provider.GetRegions(ocmClient, "aws", ccs)
 	if err != nil {
 		reporter.Errorf("Failed to fetch regions: %v", err)
 		os.Exit(1)

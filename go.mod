@@ -15,6 +15,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
+	github.com/openshift-online/ocm-cli v0.1.44
 	github.com/openshift-online/ocm-sdk-go v0.1.142
 	github.com/prometheus/common v0.11.1 // indirect
 	github.com/sirupsen/logrus v1.6.0
