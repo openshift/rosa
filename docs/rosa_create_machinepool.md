@@ -17,10 +17,10 @@ rosa create machinepool [flags]
   rosa create machinepool --cluster=mycluster --interactive
 
   # Add a machine pool mp-1 with 3 replicas of m5.xlarge to a cluster
-  rosa create machinepool --cluster=mycluster --replicas=3 --instance-type=m5.xlarge mp-1
+  rosa create machinepool --cluster=mycluster --name=mp-1 --replicas=3 --instance-type=m5.xlarge
 
   # Add a machine pool with labels to a cluster
-  rosa create machinepool --cluster mycluster --replicas=2 --instance-type=r5.2xlarge --labels =foo=bar,bar=baz" mp-1
+  rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels =foo=bar,bar=baz"
 ```
 
 ### Options
@@ -28,7 +28,7 @@ rosa create machinepool [flags]
 ```
   -c, --cluster string         Name or ID of the cluster to add the machine pool to (required).
   -h, --help                   help for machinepool
-      --instance-type string   Instance type that should be used.
+      --instance-type string   Instance type that should be used. (default "m5.xlarge")
       --labels string          Labels for machine pool. Format should be a comma-separated list of 'key=value'. This list will overwrite any modifications made to Node labels on an ongoing basis.
       --name string            Name for the machine pool (required).
       --replicas int           Count of machines for this machine pool (required).

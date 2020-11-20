@@ -55,10 +55,10 @@ var Cmd = &cobra.Command{
   rosa create machinepool --cluster=mycluster --interactive
 
   # Add a machine pool mp-1 with 3 replicas of m5.xlarge to a cluster
-  rosa create machinepool --cluster=mycluster --replicas=3 --instance-type=m5.xlarge mp-1
+  rosa create machinepool --cluster=mycluster --name=mp-1 --replicas=3 --instance-type=m5.xlarge
 
   # Add a machine pool with labels to a cluster
-  rosa create machinepool --cluster mycluster --replicas=2 --instance-type=r5.2xlarge --labels =foo=bar,bar=baz" mp-1`,
+  rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels =foo=bar,bar=baz"`,
 	Run: run,
 }
 
@@ -91,7 +91,7 @@ func init() {
 	flags.StringVar(
 		&args.instanceType,
 		"instance-type",
-		"",
+		"m5.xlarge",
 		"Instance type that should be used.",
 	)
 
@@ -169,6 +169,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Machine pool name:
 	name := args.name
+	if name == "" && !interactive.Enabled() {
+		interactive.Enable()
+		reporter.Infof("Enabling interactive mode")
+	}
 	if name == "" || interactive.Enabled() {
 		name, err = interactive.GetString(interactive.Input{
 			Question: "Machine pool name",
@@ -222,6 +226,10 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Expected a valid machine type: %s", err)
 			os.Exit(1)
 		}
+	}
+	if instanceType == "" {
+		reporter.Errorf("Expected a valid machine type")
+		os.Exit(1)
 	}
 	instanceType, err = machines.ValidateMachineType(instanceType, instanceTypeList)
 	if err != nil {
