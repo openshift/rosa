@@ -256,6 +256,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Get cluster name
 	clusterName := args.clusterName
+
+	if clusterName == "" && !interactive.Enabled() {
+		interactive.Enable()
+		reporter.Infof("Enabling interactive mode")
+	}
+
 	if interactive.Enabled() {
 		clusterName, err = interactive.GetString(interactive.Input{
 			Question: "Cluster name",

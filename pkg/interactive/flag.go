@@ -38,5 +38,10 @@ func Enabled() bool {
 	return enabled
 }
 
+//Enables the interactive mode
+func Enable() {
+	enabled = true
+}
+
 // enabled is a boolean flag that indicates that the interactive mode is enabled.
 var enabled bool
