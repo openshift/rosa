@@ -151,6 +151,10 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Errorf("Expected a valid number of replicas: %s", err)
 			os.Exit(1)
 		}
+		if replicas < 2 {
+			reporter.Errorf("Default machine pool requires at least 2 compute nodes")
+			os.Exit(1)
+		}
 
 		clusterConfig := c.Spec{ComputeNodes: replicas}
 
