@@ -30,8 +30,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	awssdk "github.com/aws/aws-sdk-go/aws"
 	v "github.com/openshift/moactl/cmd/validations"
 	"github.com/openshift/moactl/pkg/aws"
+
 	clusterprovider "github.com/openshift/moactl/pkg/cluster"
 	"github.com/openshift/moactl/pkg/interactive"
 	"github.com/openshift/moactl/pkg/logging"
@@ -75,6 +77,10 @@ var args struct {
 	machineCIDR net.IPNet
 	serviceCIDR net.IPNet
 	podCIDR     net.IPNet
+
+	// The Subnet IDs to use when installing the cluster.
+	// SubnetIDs should come in pairs; two per availability zone, one private and one public.
+	subnetIDs []string
 }
 
 var Cmd = &cobra.Command{
@@ -89,6 +95,8 @@ var Cmd = &cobra.Command{
 	Run:              run,
 	PersistentPreRun: v.Validations,
 }
+
+const subnetTemplate = "%s (%s)"
 
 func init() {
 	flags := Cmd.Flags()
@@ -225,6 +233,16 @@ func init() {
 		false,
 		"Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.",
 	)
+
+	flags.StringArrayVar(
+		&args.subnetIDs,
+		"subnet-ids",
+		nil,
+		"The Subnet IDs to use when installing the cluster. "+
+			"SubnetIDs should come in pairs; two per availability zone, one private and one public. "+
+			"Leave empty for installer provisioned subnet IDs.",
+	)
+
 	flags.MarkHidden("use-paid-ami")
 }
 
@@ -360,6 +378,55 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
+	}
+
+	// Subnet IDs
+	awsClient, err := aws.NewClient().
+		Region(region).
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create awsClient: %s", err)
+		os.Exit(1)
+	}
+
+	subnetIDs := args.subnetIDs
+	subnets, err := awsClient.GetSubnetIDs()
+	mapSubnetToAZ := make(map[string]string)
+	mapAZCreated := make(map[string]bool)
+	options := make([]string, len(subnets))
+	for i, subnet := range subnets {
+		subnetID := awssdk.StringValue(subnet.SubnetId)
+		availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
+
+		// Create the options to prompt the user.
+		options[i] = setSubnetOption(subnetID, availabilityZone)
+		mapSubnetToAZ[subnetID] = availabilityZone
+		mapAZCreated[availabilityZone] = false
+	}
+	if interactive.Enabled() && len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3) {
+		subnetIDs, err = interactive.GetMultipleOptions(interactive.Input{
+			Question: "Subnet IDs",
+			Help:     cmd.Flags().Lookup("subnet-ids").Usage,
+			Required: false,
+			Options:  options,
+		})
+		if err != nil {
+			reporter.Errorf("Expected valid subnet IDs: %s", err)
+			os.Exit(1)
+		}
+		for i, subnet := range subnetIDs {
+			subnetIDs[i] = parseSubnet(subnet)
+		}
+	}
+
+	var availabilityZones []string
+	for _, subnet := range subnetIDs {
+		az := mapSubnetToAZ[subnet]
+		if !mapAZCreated[az] {
+			availabilityZones = append(availabilityZones, az)
+			mapAZCreated[az] = true
+		}
 	}
 
 	// Compute node instance type:
@@ -501,6 +568,8 @@ func run(cmd *cobra.Command, _ []string) {
 		Private:            &private,
 		DryRun:             &args.dryRun,
 		DisableSCPChecks:   &args.disableSCPChecks,
+		AvailabilityZones:  availabilityZones,
+		SubnetIds:          subnetIDs,
 	}
 
 	// If the flag is explicitly set to true, OCM will tell the cluster provisioner
@@ -620,4 +689,14 @@ func parseRFC3339(s string) (time.Time, error) {
 		return t, nil
 	}
 	return time.Parse(time.RFC3339, s)
+}
+
+// Creates a subnet options using a predefined template.
+func setSubnetOption(subnet, zone string) string {
+	return fmt.Sprintf(subnetTemplate, subnet, zone)
+}
+
+// Parses the subnet from the option chosen by the user.
+func parseSubnet(subnetOption string) string {
+	return strings.Split(subnetOption, " ")[0]
 }

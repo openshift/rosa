@@ -55,6 +55,12 @@ type Spec struct {
 	ComputeMachineType string
 	ComputeNodes       int
 
+	// SubnetIDs
+	SubnetIds []string
+
+	// AvailabilityZones
+	AvailabilityZones []string
+
 	// Network config
 	MachineCIDR net.IPNet
 	ServiceCIDR net.IPNet
@@ -336,12 +342,6 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 			cmv1.NewCloudRegion().
 				ID(config.Region),
 		).
-		AWS(
-			cmv1.NewAWS().
-				AccountID(awsCreator.AccountID).
-				AccessKeyID(awsAccessKey.AccessKeyID).
-				SecretAccessKey(awsAccessKey.SecretAccessKey),
-		).
 		Properties(clusterProperties)
 
 	if config.Version != "" {
@@ -360,7 +360,7 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		clusterBuilder = clusterBuilder.ExpirationTimestamp(config.Expiration)
 	}
 
-	if config.ComputeMachineType != "" || config.ComputeNodes != 0 {
+	if config.ComputeMachineType != "" || config.ComputeNodes != 0 || len(config.AvailabilityZones) > 0 {
 		clusterNodesBuilder := cmv1.NewClusterNodes()
 		if config.ComputeMachineType != "" {
 			clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
@@ -371,6 +371,9 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		}
 		if config.ComputeNodes != 0 {
 			clusterNodesBuilder = clusterNodesBuilder.Compute(config.ComputeNodes)
+		}
+		if len(config.AvailabilityZones) > 0 {
+			clusterNodesBuilder = clusterNodesBuilder.AvailabilityZones(config.AvailabilityZones...)
 		}
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}
@@ -408,6 +411,17 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 			)
 		}
 	}
+
+	awsBuilder := cmv1.NewAWS().
+		AccountID(awsCreator.AccountID).
+		AccessKeyID(awsAccessKey.AccessKeyID).
+		SecretAccessKey(awsAccessKey.SecretAccessKey)
+
+	if config.SubnetIds != nil {
+		awsBuilder.SubnetIDs(config.SubnetIds...)
+	}
+
+	clusterBuilder = clusterBuilder.AWS(awsBuilder)
 
 	if config.DisableSCPChecks != nil && *config.DisableSCPChecks {
 		clusterBuilder = clusterBuilder.CCS(cmv1.NewCCS().

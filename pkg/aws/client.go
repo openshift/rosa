@@ -31,6 +31,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/organizations"
@@ -69,6 +71,7 @@ type Client interface {
 	GetCreator() (*Creator, error)
 	TagUser(username string, clusterID string, clusterName string) error
 	ValidateSCP(*string) (bool, error)
+	GetSubnetIDs() ([]*ec2.Subnet, error)
 	ValidateQuota() (bool, error)
 }
 
@@ -82,6 +85,7 @@ type ClientBuilder struct {
 type awsClient struct {
 	logger              *logrus.Logger
 	iamClient           iamiface.IAMAPI
+	ec2Client           ec2iface.EC2API
 	orgClient           organizationsiface.OrganizationsAPI
 	stsClient           stsiface.STSAPI
 	cfClient            cloudformationiface.CloudFormationAPI
@@ -98,6 +102,7 @@ func NewClient() *ClientBuilder {
 func New(
 	logger *logrus.Logger,
 	iamClient iamiface.IAMAPI,
+	ec2Client ec2iface.EC2API,
 	orgClient organizationsiface.OrganizationsAPI,
 	stsClient stsiface.STSAPI,
 	cfClient cloudformationiface.CloudFormationAPI,
@@ -109,6 +114,7 @@ func New(
 	return &awsClient{
 		logger,
 		iamClient,
+		ec2Client,
 		orgClient,
 		stsClient,
 		cfClient,
@@ -232,6 +238,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	c := &awsClient{
 		logger:              b.logger,
 		iamClient:           iam.New(sess),
+		ec2Client:           ec2.New(sess),
 		orgClient:           organizations.New(sess),
 		stsClient:           sts.New(sess),
 		cfClient:            cloudformation.New(sess),
@@ -257,6 +264,15 @@ func (c *awsClient) GetIAMCredentials() (credentials.Value, error) {
 
 func (c *awsClient) GetRegion() string {
 	return aws.StringValue(c.awsSession.Config.Region)
+}
+
+// GetSubnetIDs will return the list of subnetsIDs supported for the region picked.
+func (c *awsClient) GetSubnetIDs() ([]*ec2.Subnet, error) {
+	res, err := c.ec2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{})
+	if err != nil {
+		return nil, err
+	}
+	return res.Subnets, nil
 }
 
 type Creator struct {
