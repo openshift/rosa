@@ -19,6 +19,7 @@ package ocm
 import (
 	"errors"
 	"fmt"
+	"net"
 	"regexp"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
@@ -270,4 +271,27 @@ func handleErr(res *ocmerrors.Error, err error) error {
 		msg = err.Error()
 	}
 	return errors.New(msg)
+}
+
+func GetDefaultClusterFlavors(ocmClient *cmv1.Client) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
+	dServicecidr *net.IPNet, dhostPrefix int) {
+	flavourGetResponse, _ := ocmClient.Flavours().Flavour("osd-4").Get().Send()
+	network, ok := flavourGetResponse.Body().GetNetwork()
+	if !ok {
+		return nil, nil, nil, 0
+	}
+	_, dMachinecidr, err := net.ParseCIDR(network.MachineCIDR())
+	if err != nil {
+		dMachinecidr = nil
+	}
+	_, dPodcidr, err = net.ParseCIDR(network.PodCIDR())
+	if err != nil {
+		dPodcidr = nil
+	}
+	_, dServicecidr, err = net.ParseCIDR(network.ServiceCIDR())
+	if err != nil {
+		dServicecidr = nil
+	}
+	dhostPrefix, _ = network.GetHostPrefix()
+	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix
 }
