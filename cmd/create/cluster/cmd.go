@@ -655,6 +655,11 @@ func getVersionList(client *cmv1.Client, channelGroup string) (versionList []str
 		versionList = append(versionList, strings.Replace(v.ID(), "openshift-v", "", 1))
 	}
 
+	if len(versionList) == 0 {
+		err = fmt.Errorf("Could not find versions for the provided channel-group: '%s'", channelGroup)
+		return
+	}
+
 	return
 }
 
