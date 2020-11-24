@@ -96,8 +96,6 @@ var Cmd = &cobra.Command{
 	PersistentPreRun: v.Validations,
 }
 
-const subnetTemplate = "%s (%s)"
-
 func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
@@ -227,13 +225,6 @@ func init() {
 		"Simulate creating the cluster.",
 	)
 
-	flags.BoolVar(
-		&args.usePaidAMI,
-		"use-paid-ami",
-		false,
-		"Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.",
-	)
-
 	flags.StringArrayVar(
 		&args.subnetIDs,
 		"subnet-ids",
@@ -241,6 +232,13 @@ func init() {
 		"The Subnet IDs to use when installing the cluster. "+
 			"SubnetIDs should come in pairs; two per availability zone, one private and one public. "+
 			"Leave empty for installer provisioned subnet IDs.",
+	)
+
+	flags.BoolVar(
+		&args.usePaidAMI,
+		"use-paid-ami",
+		false,
+		"Whether to use the paid AMI from AWS. Requires a valid subscription to the MOA Product.",
 	)
 
 	flags.MarkHidden("use-paid-ami")
@@ -390,42 +388,65 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	subnetIDs := args.subnetIDs
-	subnets, err := awsClient.GetSubnetIDs()
-	mapSubnetToAZ := make(map[string]string)
-	mapAZCreated := make(map[string]bool)
-	options := make([]string, len(subnets))
-	for i, subnet := range subnets {
-		subnetID := awssdk.StringValue(subnet.SubnetId)
-		availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
-
-		// Create the options to prompt the user.
-		options[i] = setSubnetOption(subnetID, availabilityZone)
-		mapSubnetToAZ[subnetID] = availabilityZone
-		mapAZCreated[availabilityZone] = false
-	}
-	if interactive.Enabled() && len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3) {
-		subnetIDs, err = interactive.GetMultipleOptions(interactive.Input{
-			Question: "Subnet IDs",
-			Help:     cmd.Flags().Lookup("subnet-ids").Usage,
-			Required: false,
-			Options:  options,
+	useExistingVPC := false
+	if interactive.Enabled() {
+		useExistingVPC, err = interactive.GetBool(interactive.Input{
+			Question: "Install into an existing VPC",
+			Help: "To install into an existing VPC you need to ensure that your VPC is configured " +
+				"with a public and a private subnet for each availability zone that you want the " +
+				"cluster installed into.",
+			Default: useExistingVPC,
 		})
 		if err != nil {
-			reporter.Errorf("Expected valid subnet IDs: %s", err)
+			reporter.Errorf("Expected a valid value: %s", err)
 			os.Exit(1)
-		}
-		for i, subnet := range subnetIDs {
-			subnetIDs[i] = parseSubnet(subnet)
 		}
 	}
 
+	var subnetIDs []string
 	var availabilityZones []string
-	for _, subnet := range subnetIDs {
-		az := mapSubnetToAZ[subnet]
-		if !mapAZCreated[az] {
-			availabilityZones = append(availabilityZones, az)
-			mapAZCreated[az] = true
+	if useExistingVPC {
+		subnetIDs = args.subnetIDs
+		subnets, err := awsClient.GetSubnetIDs()
+		if err != nil {
+			reporter.Errorf("Failed to get the list of subnets: %s", err)
+			os.Exit(1)
+		}
+
+		mapSubnetToAZ := make(map[string]string)
+		mapAZCreated := make(map[string]bool)
+		options := make([]string, len(subnets))
+		for i, subnet := range subnets {
+			subnetID := awssdk.StringValue(subnet.SubnetId)
+			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
+
+			// Create the options to prompt the user.
+			options[i] = setSubnetOption(subnetID, availabilityZone)
+			mapSubnetToAZ[subnetID] = availabilityZone
+			mapAZCreated[availabilityZone] = false
+		}
+		if interactive.Enabled() && len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3) {
+			subnetIDs, err = interactive.GetMultipleOptions(interactive.Input{
+				Question: "Subnet IDs",
+				Help:     cmd.Flags().Lookup("subnet-ids").Usage,
+				Required: false,
+				Options:  options,
+			})
+			if err != nil {
+				reporter.Errorf("Expected valid subnet IDs: %s", err)
+				os.Exit(1)
+			}
+			for i, subnet := range subnetIDs {
+				subnetIDs[i] = parseSubnet(subnet)
+			}
+		}
+
+		for _, subnet := range subnetIDs {
+			az := mapSubnetToAZ[subnet]
+			if !mapAZCreated[az] {
+				availabilityZones = append(availabilityZones, az)
+				mapAZCreated[az] = true
+			}
 		}
 	}
 
@@ -695,6 +716,8 @@ func parseRFC3339(s string) (time.Time, error) {
 	}
 	return time.Parse(time.RFC3339, s)
 }
+
+const subnetTemplate = "%s (%s)"
 
 // Creates a subnet options using a predefined template.
 func setSubnetOption(subnet, zone string) string {
