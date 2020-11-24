@@ -3,6 +3,17 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.1.2 Nov 24 2020
+
+- Remove API ingress when listing ingress
+- idp: Always use interactive mode on unset required flags
+- Added Confirmation option for default network parameters
+- Update implementation to include the default values in the interactive mode only
+- Enabling Interactive mode if no arguments specified
+- machinepool: Fix interactive mode
+- Add support for existing VPC
+- [rosa create cluster] Return more clear error message when no versions are found.
+
 == 0.1.1 Nov 5 2020
 
 - refactor(init): verify permissions for osdccsadmin using ValidateSCP
