@@ -110,12 +110,12 @@ func parseInt(str string) (num int, err error) {
 func GetMultipleOptions(input Input) ([]string, error) {
 	var err error
 	res := make([]string, 0)
-	dflt, ok := input.Default.(string)
+	dflt, ok := input.Default.([]string)
 	if !ok {
-		dflt = ""
+		dflt = []string{}
 	}
 	question := input.Question
-	if !input.Required && dflt == "" {
+	if !input.Required && len(dflt) == 0 {
 		question = fmt.Sprintf("%s (optional)", question)
 	}
 	prompt := &survey.MultiSelect{
