@@ -225,12 +225,13 @@ func init() {
 		"Simulate creating the cluster.",
 	)
 
-	flags.StringArrayVar(
+	flags.StringSliceVar(
 		&args.subnetIDs,
 		"subnet-ids",
 		nil,
 		"The Subnet IDs to use when installing the cluster. "+
 			"SubnetIDs should come in pairs; two per availability zone, one private and one public. "+
+			"Subnets are comma separated, for example: --subnet-ids=subnet-1,subnet-2."+
 			"Leave empty for installer provisioned subnet IDs.",
 	)
 
@@ -388,8 +389,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	subnetIDs := args.subnetIDs
+	subnetsProvided := len(subnetIDs) > 0
 	useExistingVPC := false
-	if interactive.Enabled() {
+	reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
+	if !subnetsProvided && interactive.Enabled() {
 		useExistingVPC, err = interactive.GetBool(interactive.Input{
 			Question: "Install into an existing VPC",
 			Help: "To install into an existing VPC you need to ensure that your VPC is configured " +
@@ -403,10 +407,8 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	var subnetIDs []string
 	var availabilityZones []string
-	if useExistingVPC {
-		subnetIDs = args.subnetIDs
+	if useExistingVPC || subnetsProvided {
 		subnets, err := awsClient.GetSubnetIDs()
 		if err != nil {
 			reporter.Errorf("Failed to get the list of subnets: %s", err)
@@ -416,12 +418,21 @@ func run(cmd *cobra.Command, _ []string) {
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
 		options := make([]string, len(subnets))
+		optionDefaults := make([]string, len(subnetIDs))
+
 		for i, subnet := range subnets {
 			subnetID := awssdk.StringValue(subnet.SubnetId)
 			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
 
 			// Create the options to prompt the user.
 			options[i] = setSubnetOption(subnetID, availabilityZone)
+			if subnetsProvided {
+				for _, subnetArg := range subnetIDs {
+					if subnetArg == subnetID {
+						optionDefaults = append(optionDefaults, setSubnetOption(subnetID, availabilityZone))
+					}
+				}
+			}
 			mapSubnetToAZ[subnetID] = availabilityZone
 			mapAZCreated[availabilityZone] = false
 		}
@@ -431,6 +442,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("subnet-ids").Usage,
 				Required: false,
 				Options:  options,
+				Default:  optionDefaults,
 			})
 			if err != nil {
 				reporter.Errorf("Expected valid subnet IDs: %s", err)
@@ -449,6 +461,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	}
+	reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
 
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
