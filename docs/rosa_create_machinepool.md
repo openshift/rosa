@@ -32,6 +32,7 @@ rosa create machinepool [flags]
       --labels string          Labels for machine pool. Format should be a comma-separated list of 'key=value'. This list will overwrite any modifications made to Node labels on an ongoing basis.
       --name string            Name for the machine pool (required).
       --replicas int           Count of machines for this machine pool (required).
+      --taints string          Taints for machine pool. Format should be a comma-separated list of 'key=value:ScheduleType'. This list will overwrite any modifications made to Node taints on an ongoing basis.
 ```
 
 ### Options inherited from parent commands
