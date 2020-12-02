@@ -418,7 +418,23 @@ func run(cmd *cobra.Command, _ []string) {
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
 		options := make([]string, len(subnets))
-		optionDefaults := make([]string, len(subnetIDs))
+		defaultOptions := make([]string, len(subnetIDs))
+
+		// Verify subnets provided exist.
+		if subnetsProvided {
+			for _, subnetArg := range subnetIDs {
+				verifiedSubnet := false
+				for _, subnet := range subnets {
+					if awssdk.StringValue(subnet.SubnetId) == subnetArg {
+						verifiedSubnet = true
+					}
+				}
+				if !verifiedSubnet {
+					reporter.Errorf("Could not find the following subnet provided: %s", subnetArg)
+					os.Exit(1)
+				}
+			}
+		}
 
 		for i, subnet := range subnets {
 			subnetID := awssdk.StringValue(subnet.SubnetId)
@@ -428,9 +444,7 @@ func run(cmd *cobra.Command, _ []string) {
 			options[i] = setSubnetOption(subnetID, availabilityZone)
 			if subnetsProvided {
 				for _, subnetArg := range subnetIDs {
-					if subnetArg == subnetID {
-						optionDefaults = append(optionDefaults, setSubnetOption(subnetID, availabilityZone))
-					}
+					defaultOptions = append(defaultOptions, setSubnetOption(subnetArg, availabilityZone))
 				}
 			}
 			mapSubnetToAZ[subnetID] = availabilityZone
@@ -442,7 +456,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("subnet-ids").Usage,
 				Required: false,
 				Options:  options,
-				Default:  optionDefaults,
+				Default:  defaultOptions,
 			})
 			if err != nil {
 				reporter.Errorf("Expected valid subnet IDs: %s", err)
