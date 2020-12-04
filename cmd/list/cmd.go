@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/moactl/cmd/list/ingress"
 	"github.com/openshift/moactl/cmd/list/machinepool"
 	"github.com/openshift/moactl/cmd/list/region"
+	"github.com/openshift/moactl/cmd/list/upgrade"
 	"github.com/openshift/moactl/cmd/list/user"
 	"github.com/openshift/moactl/cmd/list/version"
 )
@@ -42,6 +43,7 @@ func init() {
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(region.Cmd)
+	Cmd.AddCommand(upgrade.Cmd)
 	Cmd.AddCommand(user.Cmd)
 	Cmd.AddCommand(version.Cmd)
 }

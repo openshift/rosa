@@ -29,4 +29,5 @@ Delete a specific resource
 * [rosa delete idp](rosa_delete_idp.md)	 - Delete cluster IDPs
 * [rosa delete ingress](rosa_delete_ingress.md)	 - Delete cluster ingress
 * [rosa delete machinepool](rosa_delete_machinepool.md)	 - Delete machine pool
+* [rosa delete upgrade](rosa_delete_upgrade.md)	 - Cancel cluster upgrade
 
