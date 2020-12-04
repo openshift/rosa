@@ -32,7 +32,7 @@ import (
 )
 
 // #nosec G101
-const uiTokenPage = "https://cloud.redhat.com/openshift/token/moa"
+const uiTokenPage = "https://cloud.redhat.com/openshift/token/rosa"
 
 var args struct {
 	tokenURL     string
@@ -52,8 +52,9 @@ var Cmd = &cobra.Command{
 		"The application looks for the token in the following order, stopping when it finds it:\n"+
 		"\t1. Command-line flags\n"+
 		"\t2. Environment variable (ROSA_TOKEN)\n"+
-		"\t3. Configuration file\n"+
-		"\t4. Command-line prompt\n", uiTokenPage),
+		"\t3. Environment variable (OCM_TOKEN)\n"+
+		"\t4. Configuration file\n"+
+		"\t5. Command-line prompt\n", uiTokenPage),
 	Example: `  # Login to the OpenShift staging API with an existing token
   rosa login --env staging --token=$OFFLINE_ACCESS_TOKEN
 
@@ -144,9 +145,8 @@ func run(cmd *cobra.Command, argv []string) {
 	// Verify environment variables:
 	if !haveReqs {
 		token = os.Getenv("ROSA_TOKEN")
-		// TODO: Remove in a future release to deprecate MOA
 		if token == "" {
-			token = os.Getenv("MOA_TOKEN")
+			token = os.Getenv("OCM_TOKEN")
 		}
 		haveReqs = token != ""
 	}

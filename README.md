@@ -184,7 +184,7 @@ In this step you log in to your Red Hat account using `rosa`, and then initializ
 
 If you do not already have a Red Hat account, [create one here](https://cloud.redhat.com/). Be sure to accept the required terms and conditions. Then, check your email for a verification link.  
 
-After creating your Red Hat account, follow this link to [get an offline access token](https://cloud.redhat.com/openshift/token/moa
+After creating your Red Hat account, follow this link to [get an offline access token](https://cloud.redhat.com/openshift/token/rosa
 ).
 
 Run the following command to log in to your Red Hat account with rosa. Replace &lt;my-offline-access-token&gt; with your token:

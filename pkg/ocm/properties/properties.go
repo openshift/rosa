@@ -20,14 +20,10 @@ limitations under the License.
 package properties
 
 // Prefix used by all the property names:
-// TODO: Change to "rosa_" once OCM is updated
-const prefix = "moa_"
+const prefix = "rosa_"
 
 // CreatorARN is the name of the label that will contain the ARN of the user that created the
 // cluster:
 const CreatorARN = prefix + "creator_arn"
 
 const CLIVersion = prefix + "cli_version"
-
-// UseMarketplaceAMI tells the cluster provisioner whether to use the AMRO AMI ID from the AWS marketplace.
-const UseMarketplaceAMI = prefix + "use_marketplace_ami"

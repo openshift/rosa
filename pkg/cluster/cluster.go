@@ -334,9 +334,8 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		DisplayName(config.Name).
 		MultiAZ(config.MultiAZ).
 		Product(
-			// TODO: Change to "rosa" once OCM is updated
 			cmv1.NewProduct().
-				ID("moa"),
+				ID("rosa"),
 		).
 		Region(
 			cmv1.NewCloudRegion().
