@@ -44,6 +44,7 @@ var args struct {
 	instanceType string
 	replicas     int
 	labels       string
+	taints       string
 }
 
 var Cmd = &cobra.Command{
@@ -101,6 +102,14 @@ func init() {
 		"",
 		"Labels for machine pool. Format should be a comma-separated list of 'key=value'. "+
 			"This list will overwrite any modifications made to Node labels on an ongoing basis.",
+	)
+
+	flags.StringVar(
+		&args.taints,
+		"taints",
+		"",
+		"Taints for machine pool. Format should be a comma-separated list of 'key=value:ScheduleType'. "+
+			"This list will overwrite any modifications made to Node taints on an ongoing basis.",
 	)
 }
 
@@ -261,11 +270,36 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	taints := args.taints
+	taintBuilders := []*cmv1.TaintBuilder{}
+	if interactive.Enabled() {
+		taints, err = interactive.GetString(interactive.Input{
+			Question: "Taints",
+			Help:     cmd.Flags().Lookup("taints").Usage,
+			Default:  labels,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+	}
+	if taints != "" {
+		for _, taint := range strings.Split(taints, ",") {
+			if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
+				reporter.Errorf("Expected key=value:scheduleType format for taints")
+				os.Exit(1)
+			}
+			tokens := strings.FieldsFunc(taint, Split)
+			taintBuilders = append(taintBuilders, cmv1.NewTaint().Key(tokens[0]).Value(tokens[1]).Effect(tokens[2]))
+		}
+	}
+
 	machinePool, err := cmv1.NewMachinePool().
 		ID(name).
 		Replicas(replicas).
 		InstanceType(instanceType).
 		Labels(labelMap).
+		Taints(taintBuilders...).
 		Build()
 	if err != nil {
 		reporter.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
@@ -284,4 +318,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
+}
+
+func Split(r rune) bool {
+	return r == '=' || r == ':'
 }

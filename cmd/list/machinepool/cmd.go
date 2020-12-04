@@ -131,20 +131,22 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tAVAILABILITY ZONES\n")
-	fmt.Fprintf(writer, "%s\t%d\t%s\t%s\t\t%s\n",
+	fmt.Fprintf(writer, "ID\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\n")
+	fmt.Fprintf(writer, "%s\t%d\t%s\t%s\t\t%s\t\t%s\n",
 		"default",
 		cluster.Nodes().Compute(),
 		cluster.Nodes().ComputeMachineType().ID(),
 		printLabels(cluster.Nodes().ComputeLabels()),
+		"",
 		printAZ(cluster.Nodes().AvailabilityZones()),
 	)
 	for _, machinePool := range machinePools {
-		fmt.Fprintf(writer, "%s\t%d\t%s\t%s\t\t%s\n",
+		fmt.Fprintf(writer, "%s\t%d\t%s\t%s\t\t%s\t\t%s\n",
 			machinePool.ID(),
 			machinePool.Replicas(),
 			machinePool.InstanceType(),
 			printLabels(machinePool.Labels()),
+			printTaints(machinePool.Taints()),
 			printAZ(machinePool.AvailabilityZones()),
 		)
 	}
@@ -165,6 +167,18 @@ func printLabels(labels map[string]string) string {
 	output := []string{}
 	for k, v := range labels {
 		output = append(output, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return strings.Join(output, ", ")
+}
+
+func printTaints(taints []*cmv1.Taint) string {
+	if len(taints) == 0 {
+		return ""
+	}
+	output := []string{}
+	for _, taint := range taints {
+		output = append(output, fmt.Sprintf("%s=%s:%s", taint.Key(), taint.Value(), taint.Effect()))
 	}
 
 	return strings.Join(output, ", ")
