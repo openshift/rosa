@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 )
 
 const DefaultChannelGroup = "stable"
@@ -42,11 +43,7 @@ func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Ver
 			Size(size).
 			Send()
 		if err != nil {
-			errMsg := response.Error().Reason()
-			if errMsg == "" {
-				errMsg = err.Error()
-			}
-			return nil, errors.New(errMsg)
+			return nil, handleErr(response.Error(), err)
 		}
 		versions = append(versions, response.Items().Slice()...)
 		if response.Size() < size {
@@ -55,4 +52,51 @@ func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Ver
 		page++
 	}
 	return
+}
+
+func GetVersionID(cluster *cmv1.Cluster) string {
+	if cluster.OpenshiftVersion() != "" {
+		return createVersionID(cluster.OpenshiftVersion(), cluster.Version().ChannelGroup())
+	}
+	return cluster.Version().ID()
+}
+
+func GetAvailableUpgrades(client *cmv1.Client, versionID string) ([]string, error) {
+	response, err := client.Versions().Version(versionID).Get().Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	version := response.Body()
+	availableUpgrades := []string{}
+
+	for _, v := range version.AvailableUpgrades() {
+		id := createVersionID(v, version.ChannelGroup())
+		resp, err := client.Versions().Version(id).Get().Send()
+		if err != nil {
+			return nil, handleErr(response.Error(), err)
+		}
+		if resp.Body().ROSAEnabled() {
+			// Prepend versions so that the latest one shows up first
+			availableUpgrades = append([]string{v}, availableUpgrades...)
+		}
+	}
+
+	return availableUpgrades, nil
+}
+
+func createVersionID(version string, channelGroup string) string {
+	versionID := fmt.Sprintf("openshift-v%s", version)
+	if channelGroup != "stable" {
+		versionID = fmt.Sprintf("%s-%s", versionID, channelGroup)
+	}
+	return versionID
+}
+
+func handleErr(res *ocmerrors.Error, err error) error {
+	msg := res.Reason()
+	if msg == "" {
+		msg = err.Error()
+	}
+	return errors.New(msg)
 }

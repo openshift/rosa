@@ -38,6 +38,7 @@ import (
 	"github.com/openshift/moactl/cmd/logout"
 	"github.com/openshift/moactl/cmd/logs"
 	"github.com/openshift/moactl/cmd/revoke"
+	"github.com/openshift/moactl/cmd/upgrade"
 	"github.com/openshift/moactl/cmd/verify"
 	"github.com/openshift/moactl/cmd/version"
 	"github.com/openshift/moactl/cmd/whoami"
@@ -76,6 +77,7 @@ func init() {
 	root.AddCommand(logout.Cmd)
 	root.AddCommand(logs.Cmd)
 	root.AddCommand(revoke.Cmd)
+	root.AddCommand(upgrade.Cmd)
 	root.AddCommand(verify.Cmd)
 	root.AddCommand(version.Cmd)
 	root.AddCommand(whoami.Cmd)
