@@ -709,12 +709,14 @@ func (c *awsClient) ValidateSCP(target *string) (bool, error) {
 		var err error
 		targetUser, _, err = getClientDetails(c)
 		if err != nil {
-			return false, fmt.Errorf("getClientDetails: %v", err)
+			return false, fmt.Errorf("getClientDetails: %v\n"+
+				"Run 'rosa init' and try again", err)
 		}
 	} else {
 		targetIamOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
 		if err != nil {
-			return false, fmt.Errorf("iamClient.GetUser: %v", err)
+			return false, fmt.Errorf("iamClient.GetUser: %v\n"+
+				"To reset the '%s' account, run 'rosa init --delete-stack' and try again", *target, err)
 		}
 		targetUser = targetIamOutput.User
 	}
