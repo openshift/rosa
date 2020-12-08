@@ -19,9 +19,9 @@ package describe
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/describe/addon"
-	"github.com/openshift/moactl/cmd/describe/admin"
-	"github.com/openshift/moactl/cmd/describe/cluster"
+	"github.com/openshift/rosa/cmd/describe/addon"
+	"github.com/openshift/rosa/cmd/describe/admin"
+	"github.com/openshift/rosa/cmd/describe/cluster"
 )
 
 var Cmd = &cobra.Command{

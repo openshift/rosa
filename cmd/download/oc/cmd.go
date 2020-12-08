@@ -27,9 +27,9 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	rprtr "github.com/openshift/moactl/pkg/reporter"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 
-	"github.com/openshift/moactl/cmd/verify/oc"
+	"github.com/openshift/rosa/cmd/verify/oc"
 )
 
 var Cmd = &cobra.Command{

@@ -22,13 +22,13 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/pkg/aws"
-	c "github.com/openshift/moactl/pkg/cluster"
-	"github.com/openshift/moactl/pkg/confirm"
-	"github.com/openshift/moactl/pkg/logging"
-	"github.com/openshift/moactl/pkg/ocm"
-	"github.com/openshift/moactl/pkg/ocm/upgrades"
-	rprtr "github.com/openshift/moactl/pkg/reporter"
+	"github.com/openshift/rosa/pkg/aws"
+	c "github.com/openshift/rosa/pkg/cluster"
+	"github.com/openshift/rosa/pkg/confirm"
+	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/ocm/upgrades"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var args struct {

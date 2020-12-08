@@ -19,7 +19,7 @@ package download
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/download/oc"
+	"github.com/openshift/rosa/cmd/download/oc"
 )
 
 var Cmd = &cobra.Command{

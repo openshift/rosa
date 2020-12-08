@@ -19,8 +19,8 @@ package logs
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/logs/install"
-	"github.com/openshift/moactl/cmd/logs/uninstall"
+	"github.com/openshift/rosa/cmd/logs/install"
+	"github.com/openshift/rosa/cmd/logs/uninstall"
 )
 
 var Cmd = &cobra.Command{

@@ -19,9 +19,9 @@ package verify
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/verify/oc"
-	"github.com/openshift/moactl/cmd/verify/permissions"
-	"github.com/openshift/moactl/cmd/verify/quota"
+	"github.com/openshift/rosa/cmd/verify/oc"
+	"github.com/openshift/rosa/cmd/verify/permissions"
+	"github.com/openshift/rosa/cmd/verify/quota"
 )
 
 var Cmd = &cobra.Command{

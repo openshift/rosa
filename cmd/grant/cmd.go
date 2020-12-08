@@ -19,8 +19,8 @@ package grant
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/grant/user"
-	"github.com/openshift/moactl/pkg/interactive"
+	"github.com/openshift/rosa/cmd/grant/user"
+	"github.com/openshift/rosa/pkg/interactive"
 )
 
 var Cmd = &cobra.Command{

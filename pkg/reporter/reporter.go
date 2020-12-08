@@ -22,7 +22,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/openshift/moactl/pkg/debug"
+	"github.com/openshift/rosa/pkg/debug"
 )
 
 // Builder contains the information and logic needed to create a new reporter.

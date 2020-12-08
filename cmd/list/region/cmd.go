@@ -23,10 +23,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/pkg/logging"
-	"github.com/openshift/moactl/pkg/ocm"
-	"github.com/openshift/moactl/pkg/ocm/regions"
-	rprtr "github.com/openshift/moactl/pkg/reporter"
+	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/ocm/regions"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var args struct {

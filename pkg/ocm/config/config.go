@@ -32,7 +32,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 
-	"github.com/openshift/moactl/pkg/debug"
+	"github.com/openshift/rosa/pkg/debug"
 )
 
 // URLAliases allows the value of the `--env` option to map to the various API URLs.

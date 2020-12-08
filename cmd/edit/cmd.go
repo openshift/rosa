@@ -19,10 +19,10 @@ package edit
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/edit/cluster"
-	"github.com/openshift/moactl/cmd/edit/ingress"
-	"github.com/openshift/moactl/cmd/edit/machinepool"
-	"github.com/openshift/moactl/pkg/interactive"
+	"github.com/openshift/rosa/cmd/edit/cluster"
+	"github.com/openshift/rosa/cmd/edit/ingress"
+	"github.com/openshift/rosa/cmd/edit/machinepool"
+	"github.com/openshift/rosa/pkg/interactive"
 )
 
 var Cmd = &cobra.Command{
