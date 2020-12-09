@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 
-	"github.com/openshift/moactl/pkg/aws"
-	"github.com/openshift/moactl/pkg/aws/mocks"
+	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/mocks"
 )
 
 var _ = Describe("Client", func() {

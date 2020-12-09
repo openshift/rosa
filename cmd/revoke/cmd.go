@@ -19,8 +19,8 @@ package revoke
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/revoke/user"
-	"github.com/openshift/moactl/pkg/confirm"
+	"github.com/openshift/rosa/cmd/revoke/user"
+	"github.com/openshift/rosa/pkg/confirm"
 )
 
 var Cmd = &cobra.Command{

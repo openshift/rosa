@@ -19,13 +19,13 @@ package dlt
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/dlt/admin"
-	"github.com/openshift/moactl/cmd/dlt/cluster"
-	"github.com/openshift/moactl/cmd/dlt/idp"
-	"github.com/openshift/moactl/cmd/dlt/ingress"
-	"github.com/openshift/moactl/cmd/dlt/machinepool"
-	"github.com/openshift/moactl/cmd/dlt/upgrade"
-	"github.com/openshift/moactl/pkg/confirm"
+	"github.com/openshift/rosa/cmd/dlt/admin"
+	"github.com/openshift/rosa/cmd/dlt/cluster"
+	"github.com/openshift/rosa/cmd/dlt/idp"
+	"github.com/openshift/rosa/cmd/dlt/ingress"
+	"github.com/openshift/rosa/cmd/dlt/machinepool"
+	"github.com/openshift/rosa/cmd/dlt/upgrade"
+	"github.com/openshift/rosa/pkg/confirm"
 )
 
 var Cmd = &cobra.Command{

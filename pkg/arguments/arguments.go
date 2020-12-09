@@ -21,8 +21,8 @@ package arguments
 import (
 	"github.com/spf13/pflag"
 
-	"github.com/openshift/moactl/pkg/aws/profile"
-	"github.com/openshift/moactl/pkg/debug"
+	"github.com/openshift/rosa/pkg/aws/profile"
+	"github.com/openshift/rosa/pkg/debug"
 )
 
 // AddDebugFlag adds the '--debug' flag to the given set of command line flags.

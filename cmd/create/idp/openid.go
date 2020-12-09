@@ -26,7 +26,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive"
 )
 
 func buildOpenidIdp(cmd *cobra.Command,

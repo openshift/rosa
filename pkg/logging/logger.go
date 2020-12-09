@@ -23,8 +23,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/openshift/moactl/pkg/debug"
-	rprtr "github.com/openshift/moactl/pkg/reporter"
+	"github.com/openshift/rosa/pkg/debug"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 // LoggerBuilder contains the information and logic needed to create the default loggers used by

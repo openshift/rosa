@@ -19,13 +19,13 @@ package create
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/create/addon"
-	"github.com/openshift/moactl/cmd/create/admin"
-	"github.com/openshift/moactl/cmd/create/cluster"
-	"github.com/openshift/moactl/cmd/create/idp"
-	"github.com/openshift/moactl/cmd/create/ingress"
-	"github.com/openshift/moactl/cmd/create/machinepool"
-	"github.com/openshift/moactl/pkg/interactive"
+	"github.com/openshift/rosa/cmd/create/addon"
+	"github.com/openshift/rosa/cmd/create/admin"
+	"github.com/openshift/rosa/cmd/create/cluster"
+	"github.com/openshift/rosa/cmd/create/idp"
+	"github.com/openshift/rosa/cmd/create/ingress"
+	"github.com/openshift/rosa/cmd/create/machinepool"
+	"github.com/openshift/rosa/pkg/interactive"
 )
 
 var Cmd = &cobra.Command{

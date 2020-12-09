@@ -24,9 +24,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/pkg/logging"
-	"github.com/openshift/moactl/pkg/ocm"
-	rprtr "github.com/openshift/moactl/pkg/reporter"
+	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/ocm"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var Cmd = &cobra.Command{

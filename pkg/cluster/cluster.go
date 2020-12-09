@@ -26,11 +26,11 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
-	"github.com/openshift/moactl/pkg/aws"
-	"github.com/openshift/moactl/pkg/info"
-	"github.com/openshift/moactl/pkg/logging"
-	"github.com/openshift/moactl/pkg/ocm/properties"
-	rprtr "github.com/openshift/moactl/pkg/reporter"
+	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/ocm/properties"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is

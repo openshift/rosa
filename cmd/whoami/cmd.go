@@ -24,11 +24,11 @@ import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/pkg/aws"
-	"github.com/openshift/moactl/pkg/logging"
-	"github.com/openshift/moactl/pkg/ocm"
-	"github.com/openshift/moactl/pkg/ocm/config"
-	rprtr "github.com/openshift/moactl/pkg/reporter"
+	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/ocm/config"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var Cmd = &cobra.Command{

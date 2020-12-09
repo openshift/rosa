@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/iam"
 
-	"github.com/openshift/moactl/assets"
+	"github.com/openshift/rosa/assets"
 )
 
 // GetRegion will return a region selected by the user or given as a default to the AWS client.

@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/pkg/ocm/config"
+	"github.com/openshift/rosa/pkg/ocm/config"
 )
 
 var Cmd = &cobra.Command{

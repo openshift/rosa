@@ -28,7 +28,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
-	"github.com/openshift/moactl/pkg/ocm/properties"
+	"github.com/openshift/rosa/pkg/ocm/properties"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is

@@ -25,23 +25,23 @@ import (
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	clusterdescribe "github.com/openshift/moactl/cmd/describe/cluster"
-	installLogs "github.com/openshift/moactl/cmd/logs/install"
+	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
+	installLogs "github.com/openshift/rosa/cmd/logs/install"
 
 	"github.com/spf13/cobra"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
-	v "github.com/openshift/moactl/cmd/validations"
-	"github.com/openshift/moactl/pkg/aws"
+	v "github.com/openshift/rosa/cmd/validations"
+	"github.com/openshift/rosa/pkg/aws"
 
-	clusterprovider "github.com/openshift/moactl/pkg/cluster"
-	"github.com/openshift/moactl/pkg/interactive"
-	"github.com/openshift/moactl/pkg/logging"
-	"github.com/openshift/moactl/pkg/ocm"
-	"github.com/openshift/moactl/pkg/ocm/machines"
-	"github.com/openshift/moactl/pkg/ocm/regions"
-	"github.com/openshift/moactl/pkg/ocm/versions"
-	rprtr "github.com/openshift/moactl/pkg/reporter"
+	clusterprovider "github.com/openshift/rosa/pkg/cluster"
+	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/ocm/machines"
+	"github.com/openshift/rosa/pkg/ocm/regions"
+	"github.com/openshift/rosa/pkg/ocm/versions"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var args struct {

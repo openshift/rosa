@@ -19,15 +19,15 @@ package list
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/list/addon"
-	"github.com/openshift/moactl/cmd/list/cluster"
-	"github.com/openshift/moactl/cmd/list/idp"
-	"github.com/openshift/moactl/cmd/list/ingress"
-	"github.com/openshift/moactl/cmd/list/machinepool"
-	"github.com/openshift/moactl/cmd/list/region"
-	"github.com/openshift/moactl/cmd/list/upgrade"
-	"github.com/openshift/moactl/cmd/list/user"
-	"github.com/openshift/moactl/cmd/list/version"
+	"github.com/openshift/rosa/cmd/list/addon"
+	"github.com/openshift/rosa/cmd/list/cluster"
+	"github.com/openshift/rosa/cmd/list/idp"
+	"github.com/openshift/rosa/cmd/list/ingress"
+	"github.com/openshift/rosa/cmd/list/machinepool"
+	"github.com/openshift/rosa/cmd/list/region"
+	"github.com/openshift/rosa/cmd/list/upgrade"
+	"github.com/openshift/rosa/cmd/list/user"
+	"github.com/openshift/rosa/cmd/list/version"
 )
 
 var Cmd = &cobra.Command{

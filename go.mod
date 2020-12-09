@@ -1,4 +1,4 @@
-module github.com/openshift/moactl
+module github.com/openshift/rosa
 
 go 1.13
 

@@ -19,8 +19,8 @@ package upgrade
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/moactl/cmd/upgrade/cluster"
-	"github.com/openshift/moactl/pkg/interactive"
+	"github.com/openshift/rosa/cmd/upgrade/cluster"
+	"github.com/openshift/rosa/pkg/interactive"
 )
 
 var Cmd = &cobra.Command{

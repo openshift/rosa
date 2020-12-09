@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/openshift/moactl/assets"
+	"github.com/openshift/rosa/assets"
 )
 
 // PolicyStatement models an AWS policy statement entry.

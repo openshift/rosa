@@ -43,9 +43,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 	"github.com/sirupsen/logrus"
 
-	"github.com/openshift/moactl/pkg/aws/profile"
-	"github.com/openshift/moactl/pkg/aws/tags"
-	"github.com/openshift/moactl/pkg/logging"
+	"github.com/openshift/rosa/pkg/aws/profile"
+	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/logging"
 )
 
 // Name of the AWS user that will be used to create all the resources of the cluster:

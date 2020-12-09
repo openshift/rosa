@@ -100,7 +100,7 @@ $ aws ec2 describe-regions
 
 ### Install rosa
 
-Download the [latest release of rosa](https://github.com/openshift/moactl/releases/latest) and add it to your path.
+Download the [latest release of rosa](https://github.com/openshift/rosa/releases/latest) and add it to your path.
 
 Verify your installation by running the following command:
 
@@ -521,13 +521,13 @@ If you'd like to build this project from source use the following steps:
 1. Checkout the repostiory into your `$GOPATH`
 
 ```
-go get -u github.com/openshift/moactl
+go get -u github.com/openshift/rosa
 ```
 
 2. `cd` to the checkout out source directory
 
 ```
-cd $GOPATH/src/github.com/openshift/moactl
+cd $GOPATH/src/github.com/openshift/rosa
 ```
 
 3. Install the binary (This will install to `$GOPATH/bin`)
@@ -544,4 +544,4 @@ sudo mv $GOPATH/bin/rosa /usr/local/bin
 
 ## Have you got feedback?
 
-We want to hear it. [Open and issue](https://github.com/openshift/moactl/issues/new) against the repo and someone from the team will be in touch.
+We want to hear it. [Open and issue](https://github.com/openshift/rosa/issues/new) against the repo and someone from the team will be in touch.
