@@ -163,6 +163,19 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	// Try to find the user:
+	reporter.Debugf("Loading '%s' users for cluster '%s'", role, clusterKey)
+	user, err := ocm.GetUser(clustersCollection, cluster.ID(), role, username)
+	if err != nil {
+		reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+
+	if user == nil {
+		reporter.Warnf("Cannot find user '%s' with role '%s' on cluster '%s'", username, role, clusterKey)
+		os.Exit(0)
+	}
+
 	if !confirm.Confirm("revoke role %s from user %s in cluster %s", role, username, clusterKey) {
 		os.Exit(0)
 	}
