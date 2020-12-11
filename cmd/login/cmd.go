@@ -55,11 +55,8 @@ var Cmd = &cobra.Command{
 		"\t3. Environment variable (OCM_TOKEN)\n"+
 		"\t4. Configuration file\n"+
 		"\t5. Command-line prompt\n", uiTokenPage),
-	Example: `  # Login to the OpenShift staging API with an existing token
-  rosa login --env staging --token=$OFFLINE_ACCESS_TOKEN
-
-  # Switch environments with an already logged-in account
-  rosa login --env production`,
+	Example: `  # Login to the OpenShift API with an existing token
+  rosa login --token=$OFFLINE_ACCESS_TOKEN`,
 	Run: run,
 }
 
@@ -103,6 +100,7 @@ func init() {
 		"Environment of the API gateway. The value can be the complete URL or an alias. "+
 			"The valid aliases are 'production', 'staging' and 'integration'.",
 	)
+	flags.MarkHidden("env")
 	flags.StringVarP(
 		&args.token,
 		"token",
