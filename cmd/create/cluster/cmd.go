@@ -348,6 +348,9 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
+	if version == "" {
+		version = versionList[0]
+	}
 	if interactive.Enabled() {
 		version, err = interactive.GetOption(interactive.Input{
 			Question: "OpenShift version",
