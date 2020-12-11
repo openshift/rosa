@@ -155,6 +155,10 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Errorf("Default machine pool requires at least 2 compute nodes")
 			os.Exit(1)
 		}
+		if cluster.MultiAZ() && replicas%3 != 0 {
+			reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+			os.Exit(1)
+		}
 
 		clusterConfig := c.Spec{ComputeNodes: replicas}
 
@@ -191,6 +195,10 @@ func run(cmd *cobra.Command, argv []string) {
 	replicas, err = getReplicas(cmd)
 	if err != nil {
 		reporter.Errorf("Expected a valid number of replicas: %s", err)
+		os.Exit(1)
+	}
+	if cluster.MultiAZ() && replicas%3 != 0 {
+		reporter.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
 		os.Exit(1)
 	}
 
