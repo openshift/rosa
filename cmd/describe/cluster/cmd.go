@@ -165,6 +165,15 @@ func run(_ *cobra.Command, argv []string) {
 	if clusterName == "" {
 		clusterName = cluster.Name()
 	}
+
+	isPrivate := "No"
+	ingresses, err := ocm.GetIngresses(clustersCollection, cluster.ID())
+	for _, ingress := range ingresses {
+		if ingress.Default() && ingress.Listening() == cmv1.ListeningMethodInternal {
+			isPrivate = "Yes"
+		}
+	}
+
 	detailsPage := getDetailsLink(ocmConnection.URL())
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
@@ -179,6 +188,7 @@ func run(_ *cobra.Command, argv []string) {
 		"Region:                     %s\n"+
 		"State:                      %s %s\n"+
 		"Channel Group:              %s\n"+
+		"Private:                    %s\n"+
 		"Created:                    %s\n",
 		clusterName,
 		cluster.Name(), cluster.DNS().BaseDomain(),
@@ -191,6 +201,7 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Region().ID(),
 		cluster.State(), phase,
 		cluster.Version().ChannelGroup(),
+		isPrivate,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
 	)
 
