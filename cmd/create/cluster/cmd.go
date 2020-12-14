@@ -35,6 +35,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
+	"github.com/openshift/rosa/pkg/confirm"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -582,15 +583,21 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Cluster privacy:
 	private := args.private
+	privateWarning := "You will not be able to access your cluster until you edit network settings in your cloud provider."
 	if interactive.Enabled() {
 		private, err = interactive.GetBool(interactive.Input{
 			Question: "Private cluster",
-			Help:     cmd.Flags().Lookup("private").Usage,
+			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateWarning),
 			Default:  private,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid private value: %s", err)
 			os.Exit(1)
+		}
+	} else if private {
+		reporter.Warnf("You are choosing to make your cluster private. %s", privateWarning)
+		if !confirm.Confirm("set cluster '%s' as private", clusterName) {
+			os.Exit(0)
 		}
 	}
 

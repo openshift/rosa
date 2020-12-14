@@ -11,6 +11,7 @@ Create a resource from stdin
 ```
   -h, --help          help for create
   -i, --interactive   Enable interactive mode.
+  -y, --yes           Automatically answer yes to confirm operation.
 ```
 
 ### Options inherited from parent commands

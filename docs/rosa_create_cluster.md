@@ -49,6 +49,7 @@ rosa create cluster [flags]
   -i, --interactive      Enable interactive mode.
       --profile string   Use a specific AWS profile from your credential file.
   -v, --v Level          log level for V logs
+  -y, --yes              Automatically answer yes to confirm operation.
 ```
 
 ### SEE ALSO
