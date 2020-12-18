@@ -55,7 +55,8 @@ var Cmd = &cobra.Command{
 		"\t3. Environment variable (OCM_TOKEN)\n"+
 		"\t4. Configuration file\n"+
 		"\t5. Command-line prompt\n", uiTokenPage),
-	Example: `  # Login to the OpenShift API with an existing token
+	Example: "  # Login to the OpenShift API with an existing token generated from" +
+		`https://cloud.redhat.com/openshift/token/rosa
   rosa login --token=$OFFLINE_ACCESS_TOKEN`,
 	Run: run,
 }
@@ -106,7 +107,7 @@ func init() {
 		"token",
 		"t",
 		"",
-		"Access or refresh token.",
+		"Access or refresh token generated from https://cloud.redhat.com/openshift/token/rosa.",
 	)
 	flags.BoolVar(
 		&args.insecure,
