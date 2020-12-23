@@ -510,9 +510,20 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	if multiAZ && computeNodes%3 != 0 {
-		reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-		os.Exit(1)
+	if multiAZ {
+		if computeNodes < 3 {
+			reporter.Errorf("The number of compute nodes needs to be at least 3")
+			os.Exit(1)
+		}
+		if computeNodes%3 != 0 {
+			reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+			os.Exit(1)
+		}
+	} else {
+		if computeNodes < 2 {
+			reporter.Errorf("The number of compute nodes needs to be at least 2")
+			os.Exit(1)
+		}
 	}
 
 	// Validate all remaining flags:

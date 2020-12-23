@@ -212,6 +212,14 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+	if replicas < 0 {
+		reporter.Errorf("The number of machine pool replicas needs to be a positive integer")
+		os.Exit(1)
+	}
+	if cluster.MultiAZ() && replicas%3 != 0 {
+		reporter.Errorf("Multi AZ clusters require that the number of machine pool replicas be a multiple of 3")
+		os.Exit(1)
+	}
 
 	// Machine pool instance type:
 	instanceType := args.instanceType
