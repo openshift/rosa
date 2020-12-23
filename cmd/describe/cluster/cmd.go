@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/ocm/properties"
+	"github.com/openshift/rosa/pkg/ocm/upgrades"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -127,11 +128,11 @@ func run(_ *cobra.Command, argv []string) {
 	}()
 
 	// Get the client for the OCM collection of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
+	ocmClient := ocmConnection.ClustersMgmt().V1()
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := clusterprovider.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	cluster, err := clusterprovider.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("Failed to get cluster '%s': %v", clusterKey, err))
 		os.Exit(1)
@@ -167,11 +168,17 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	isPrivate := "No"
-	ingresses, err := ocm.GetIngresses(clustersCollection, cluster.ID())
+	ingresses, err := ocm.GetIngresses(ocmClient.Clusters(), cluster.ID())
 	for _, ingress := range ingresses {
 		if ingress.Default() && ingress.Listening() == cmv1.ListeningMethodInternal {
 			isPrivate = "Yes"
 		}
+	}
+
+	scheduledUpgrade, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
+	if err != nil {
+		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
 	}
 
 	detailsPage := getDetailsLink(ocmConnection.URL())
@@ -209,6 +216,14 @@ func run(_ *cobra.Command, argv []string) {
 		str = fmt.Sprintf("%s"+
 			"Details Page:               %s%s\n", str,
 			detailsPage, cluster.ID())
+	}
+	if scheduledUpgrade != nil {
+		str = fmt.Sprintf("%s"+
+			"Scheduled upgrade:          %s on %s\n",
+			str,
+			scheduledUpgrade.Version(),
+			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
+		)
 	}
 	if cluster.Status().State() == cmv1.ClusterStateError {
 		str = fmt.Sprintf("%s"+
