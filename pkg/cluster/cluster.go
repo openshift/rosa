@@ -54,6 +54,9 @@ type Spec struct {
 	// Scaling config
 	ComputeMachineType string
 	ComputeNodes       int
+	Autoscaling        bool
+	MinReplicas        int
+	MaxReplicas        int
 
 	// SubnetIDs
 	SubnetIds []string
@@ -360,7 +363,8 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		clusterBuilder = clusterBuilder.ExpirationTimestamp(config.Expiration)
 	}
 
-	if config.ComputeMachineType != "" || config.ComputeNodes != 0 || len(config.AvailabilityZones) > 0 {
+	if config.ComputeMachineType != "" || config.ComputeNodes != 0 || len(config.AvailabilityZones) > 0 ||
+		config.Autoscaling {
 		clusterNodesBuilder := cmv1.NewClusterNodes()
 		if config.ComputeMachineType != "" {
 			clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
@@ -369,7 +373,12 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 
 			reporter.Debugf("Using machine type '%s'", config.ComputeMachineType)
 		}
-		if config.ComputeNodes != 0 {
+		if config.Autoscaling {
+			clusterNodesBuilder = clusterNodesBuilder.AutoscaleCompute(
+				cmv1.NewMachinePoolAutoscaling().
+					MinReplicas(config.MinReplicas).
+					MaxReplicas(config.MaxReplicas))
+		} else if config.ComputeNodes != 0 {
 			clusterNodesBuilder = clusterNodesBuilder.Compute(config.ComputeNodes)
 		}
 		if len(config.AvailabilityZones) > 0 {

@@ -39,12 +39,15 @@ import (
 var machinePoolKeyRE = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])?$`)
 
 var args struct {
-	clusterKey   string
-	name         string
-	instanceType string
-	replicas     int
-	labels       string
-	taints       string
+	clusterKey         string
+	name               string
+	instanceType       string
+	replicas           int
+	autoscalingEnabled bool
+	minReplicas        int
+	maxReplicas        int
+	labels             string
+	taints             string
 }
 
 var Cmd = &cobra.Command{
@@ -86,7 +89,28 @@ func init() {
 		&args.replicas,
 		"replicas",
 		0,
-		"Count of machines for this machine pool (required).",
+		"Count of machines for this machine pool.",
+	)
+
+	flags.BoolVar(
+		&args.autoscalingEnabled,
+		"enable-autoscaling",
+		false,
+		"Enable autoscaling for the machine pool.",
+	)
+
+	flags.IntVar(
+		&args.minReplicas,
+		"min-replicas",
+		0,
+		"Minimum number of machines for this machine pool.",
+	)
+
+	flags.IntVar(
+		&args.maxReplicas,
+		"max-replicas",
+		0,
+		"Maximum number of machines for this machine pool.",
 	)
 
 	flags.StringVar(
@@ -198,9 +222,49 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Autoscaling
+	autoscaling := args.autoscalingEnabled
+	if !autoscaling && interactive.Enabled() {
+		autoscaling, err = interactive.GetBool(interactive.Input{
+			Question: "Enable autoscaling",
+			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
+			Default:  autoscaling,
+			Required: false,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	minReplicas := args.minReplicas
+	maxReplicas := args.maxReplicas
+	if autoscaling && interactive.Enabled() {
+		minReplicas, err = interactive.GetInt(interactive.Input{
+			Question: "Min replicas",
+			Help:     cmd.Flags().Lookup("min-replicas").Usage,
+			Default:  minReplicas,
+			Required: true,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid number of min replicas: %s", err)
+			os.Exit(1)
+		}
+		maxReplicas, err = interactive.GetInt(interactive.Input{
+			Question: "Max replicas",
+			Help:     cmd.Flags().Lookup("max-replicas").Usage,
+			Default:  maxReplicas,
+			Required: true,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid number of max replicas: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	// Number of replicas:
 	replicas := args.replicas
-	if interactive.Enabled() {
+	if !autoscaling && interactive.Enabled() {
 		replicas, err = interactive.GetInt(interactive.Input{
 			Question: "Replicas",
 			Help:     cmd.Flags().Lookup("replicas").Usage,
@@ -302,13 +366,22 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	machinePool, err := cmv1.NewMachinePool().
+	mpBuilder := cmv1.NewMachinePool().
 		ID(name).
-		Replicas(replicas).
 		InstanceType(instanceType).
 		Labels(labelMap).
-		Taints(taintBuilders...).
-		Build()
+		Taints(taintBuilders...)
+
+	if autoscaling {
+		mpBuilder = mpBuilder.Autoscaling(
+			cmv1.NewMachinePoolAutoscaling().
+				MinReplicas(minReplicas).
+				MaxReplicas(maxReplicas))
+	} else {
+		mpBuilder = mpBuilder.Replicas(replicas)
+	}
+
+	machinePool, err := mpBuilder.Build()
 	if err != nil {
 		reporter.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

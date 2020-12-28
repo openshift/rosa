@@ -182,6 +182,22 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	detailsPage := getDetailsLink(ocmConnection.URL())
+
+	var nodesStr string
+	if cluster.Nodes().AutoscaleCompute() != nil {
+		nodesStr = fmt.Sprintf(""+
+			"Nodes:                      Master: %d, Infra: %d, Compute (Autoscaled): %d-%d\n",
+			cluster.Nodes().Master(), cluster.Nodes().Infra(),
+			cluster.Nodes().AutoscaleCompute().MinReplicas(),
+			cluster.Nodes().AutoscaleCompute().MaxReplicas(),
+		)
+	} else {
+		nodesStr = fmt.Sprintf(""+
+			"Nodes:                      Master: %d, Infra: %d, Compute: %d\n",
+			cluster.Nodes().Master(), cluster.Nodes().Infra(), cluster.Nodes().Compute(),
+		)
+	}
+
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
 		"Name:                       %s\n"+
@@ -191,7 +207,7 @@ func run(_ *cobra.Command, argv []string) {
 		"AWS Account:                %s\n"+
 		"API URL:                    %s\n"+
 		"Console URL:                %s\n"+
-		"Nodes:                      Master: %d, Infra: %d, Compute: %d\n"+
+		"%s"+
 		"Region:                     %s\n"+
 		"State:                      %s %s\n"+
 		"Channel Group:              %s\n"+
@@ -204,7 +220,7 @@ func run(_ *cobra.Command, argv []string) {
 		creatorARN.AccountID,
 		cluster.API().URL(),
 		cluster.Console().URL(),
-		cluster.Nodes().Master(), cluster.Nodes().Infra(), cluster.Nodes().Compute(),
+		nodesStr,
 		cluster.Region().ID(),
 		cluster.State(), phase,
 		cluster.Version().ChannelGroup(),

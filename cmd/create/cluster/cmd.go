@@ -68,6 +68,9 @@ var args struct {
 	// Scaling options
 	computeMachineType string
 	computeNodes       int
+	autoscalingEnabled bool
+	minReplicas        int
+	maxReplicas        int
 
 	// Networking options
 	hostPrefix  int
@@ -167,6 +170,27 @@ func init() {
 		2,
 		"Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, "+
 			"multizone clusters need at least 3 nodes.",
+	)
+
+	flags.BoolVar(
+		&args.autoscalingEnabled,
+		"enable-autoscaling",
+		false,
+		"Enable autoscaling of compute nodes.",
+	)
+
+	flags.IntVar(
+		&args.minReplicas,
+		"min-replicas",
+		0,
+		"Minimum number of compute nodes.",
+	)
+
+	flags.IntVar(
+		&args.maxReplicas,
+		"max-replicas",
+		0,
+		"Maximum number of compute nodes.",
 	)
 
 	flags.IPNetVar(
@@ -493,13 +517,53 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Autoscaling
+	autoscaling := args.autoscalingEnabled
+	if !autoscaling && interactive.Enabled() {
+		autoscaling, err = interactive.GetBool(interactive.Input{
+			Question: "Enable autoscaling",
+			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
+			Default:  autoscaling,
+			Required: false,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	minReplicas := args.minReplicas
+	maxReplicas := args.maxReplicas
+	if autoscaling && interactive.Enabled() {
+		minReplicas, err = interactive.GetInt(interactive.Input{
+			Question: "Min replicas",
+			Help:     cmd.Flags().Lookup("min-replicas").Usage,
+			Default:  minReplicas,
+			Required: true,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid number of min replicas: %s", err)
+			os.Exit(1)
+		}
+		maxReplicas, err = interactive.GetInt(interactive.Input{
+			Question: "Max replicas",
+			Help:     cmd.Flags().Lookup("max-replicas").Usage,
+			Default:  maxReplicas,
+			Required: true,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid number of max replicas: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	// Compute nodes:
 	computeNodes := args.computeNodes
 	// Compute node requirements for multi-AZ clusters are higher
 	if multiAZ && !cmd.Flags().Changed("compute-nodes") {
 		computeNodes = 3
 	}
-	if interactive.Enabled() {
+	if !autoscaling && interactive.Enabled() {
 		computeNodes, err = interactive.GetInt(interactive.Input{
 			Question: "Compute nodes",
 			Help:     cmd.Flags().Lookup("compute-nodes").Usage,
@@ -621,6 +685,9 @@ func run(cmd *cobra.Command, _ []string) {
 		Expiration:         expiration,
 		ComputeMachineType: computeMachineType,
 		ComputeNodes:       computeNodes,
+		Autoscaling:        autoscaling,
+		MinReplicas:        minReplicas,
+		MaxReplicas:        maxReplicas,
 		MachineCIDR:        machineCIDR,
 		ServiceCIDR:        serviceCIDR,
 		PodCIDR:            podCIDR,
