@@ -131,19 +131,21 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\n")
-	fmt.Fprintf(writer, "%s\t%d\t%s\t%s\t\t%s\t\t%s\n",
+	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\n")
+	fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\n",
 		"default",
-		cluster.Nodes().Compute(),
+		printAutoscaling(cluster.Nodes().AutoscaleCompute()),
+		printReplicas(cluster.Nodes().AutoscaleCompute(), cluster.Nodes().Compute()),
 		cluster.Nodes().ComputeMachineType().ID(),
 		printLabels(cluster.Nodes().ComputeLabels()),
 		"",
 		printAZ(cluster.Nodes().AvailabilityZones()),
 	)
 	for _, machinePool := range machinePools {
-		fmt.Fprintf(writer, "%s\t%d\t%s\t%s\t\t%s\t\t%s\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\n",
 			machinePool.ID(),
-			machinePool.Replicas(),
+			printAutoscaling(machinePool.Autoscaling()),
+			printReplicas(machinePool.Autoscaling(), machinePool.Replicas()),
 			machinePool.InstanceType(),
 			printLabels(machinePool.Labels()),
 			printTaints(machinePool.Taints()),
@@ -151,6 +153,24 @@ func run(_ *cobra.Command, _ []string) {
 		)
 	}
 	writer.Flush()
+}
+
+func printAutoscaling(autoscaling *cmv1.MachinePoolAutoscaling) string {
+	if autoscaling != nil {
+		return "Yes"
+	} else {
+		return "No"
+	}
+}
+
+func printReplicas(autoscaling *cmv1.MachinePoolAutoscaling, replicas int) string {
+	if autoscaling != nil {
+		return fmt.Sprintf("%d-%d",
+			autoscaling.MinReplicas(),
+			autoscaling.MaxReplicas())
+	} else {
+		return fmt.Sprintf("%d", replicas)
+	}
 }
 
 func printAZ(az []string) string {
