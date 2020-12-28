@@ -29,7 +29,6 @@ linters:
   - ineffassign
   - interfacer
   - lll
-  - maligned
   - megacheck
   - misspell
   - structcheck
