@@ -158,9 +158,8 @@ func run(_ *cobra.Command, _ []string) {
 func printAutoscaling(autoscaling *cmv1.MachinePoolAutoscaling) string {
 	if autoscaling != nil {
 		return "Yes"
-	} else {
-		return "No"
 	}
+	return "No"
 }
 
 func printReplicas(autoscaling *cmv1.MachinePoolAutoscaling, replicas int) string {
@@ -168,9 +167,8 @@ func printReplicas(autoscaling *cmv1.MachinePoolAutoscaling, replicas int) strin
 		return fmt.Sprintf("%d-%d",
 			autoscaling.MinReplicas(),
 			autoscaling.MaxReplicas())
-	} else {
-		return fmt.Sprintf("%d", replicas)
 	}
+	return fmt.Sprintf("%d", replicas)
 }
 
 func printAZ(az []string) string {
