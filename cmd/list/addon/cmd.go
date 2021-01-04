@@ -54,7 +54,6 @@ func init() {
 		"",
 		"Name or ID of the cluster to list the add-ons of (required).",
 	)
-	Cmd.MarkFlagRequired("cluster")
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -64,7 +63,7 @@ func run(_ *cobra.Command, _ []string) {
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
+	if clusterKey != "" && !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -87,6 +86,29 @@ func run(_ *cobra.Command, _ []string) {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
+
+	if clusterKey == "" {
+		reporter.Debugf("Fetching all available add-ons")
+		addOns, err := ocm.GetAvailableAddOns(ocmConnection)
+		if err != nil {
+			reporter.Errorf("Failed to fetch add-ons: %v", err)
+			os.Exit(1)
+		}
+		if len(addOns) == 0 {
+			reporter.Infof("There are no add-ons available")
+			os.Exit(0)
+		}
+
+		// Create the writer that will be used to print the tabulated results:
+		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(writer, "ID\t\tNAME\n")
+		for _, addOn := range addOns {
+			fmt.Fprintf(writer, "%s\t\t%s\n", addOn.ID(), addOn.Name())
+		}
+		writer.Flush()
+
+		os.Exit(0)
+	}
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().

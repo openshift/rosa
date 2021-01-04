@@ -155,23 +155,8 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 	return response.Items().Slice(), nil
 }
 
-func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
-	response, err := client.Addon(id).Get().Send()
-	if err != nil {
-		return nil, handleErr(response.Error(), err)
-	}
-	return response.Body(), nil
-}
-
-type ClusterAddOn struct {
-	ID        string
-	Name      string
-	State     string
-	Available bool
-}
-
-// Get all add-ons available for a cluster
-func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterAddOn, error) {
+// Get complete list of available add-ons for the current organization
+func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 	// Get organization ID (used to get add-on quotas)
 	acctResponse, err := connection.AccountsMgmt().V1().CurrentAccount().
 		Get().
@@ -205,7 +190,52 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 	if err != nil {
 		return nil, handleErr(addOnsResponse.Error(), err)
 	}
-	addOns := addOnsResponse.Items()
+
+	var addOns []*cmv1.AddOn
+
+	// Populate enabled add-ons with if they are available for the current org
+	addOnsResponse.Items().Each(func(addOn *cmv1.AddOn) bool {
+		available := addOn.ResourceCost() == 0
+
+		// Only return add-ons for which the org has quota
+		resourceQuotas.Each(func(resourceQuota *amsv1.ResourceQuota) bool {
+			if addOn.ResourceName() == resourceQuota.ResourceName() {
+				available = float64(resourceQuota.Allowed()) >= addOn.ResourceCost()
+			}
+			return true
+		})
+
+		// Only display add-ons that meet the above criteria
+		if available {
+			addOns = append(addOns, addOn)
+		}
+
+		return true
+	})
+
+	return addOns, nil
+}
+
+func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
+	response, err := client.Addon(id).Get().Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
+type ClusterAddOn struct {
+	ID    string
+	Name  string
+	State string
+}
+
+// Get all add-ons available for a cluster
+func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterAddOn, error) {
+	addOns, err := GetAvailableAddOns(connection)
+	if err != nil {
+		return nil, err
+	}
 
 	// Get add-ons already installed on cluster
 	addOnInstallationsResponse, err := connection.ClustersMgmt().V1().Clusters().
@@ -223,21 +253,12 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 	var clusterAddOns []*ClusterAddOn
 
 	// Populate add-on installations with all add-on metadata
-	addOns.Each(func(addOn *cmv1.AddOn) bool {
+	for _, addOn := range addOns {
 		clusterAddOn := ClusterAddOn{
-			ID:        addOn.ID(),
-			Name:      addOn.Name(),
-			State:     "not installed",
-			Available: addOn.ResourceCost() == 0,
+			ID:    addOn.ID(),
+			Name:  addOn.Name(),
+			State: "not installed",
 		}
-
-		// Only display add-ons for which the org has quota
-		resourceQuotas.Each(func(resourceQuota *amsv1.ResourceQuota) bool {
-			if addOn.ResourceName() == resourceQuota.ResourceName() {
-				clusterAddOn.Available = float64(resourceQuota.Allowed()) >= addOn.ResourceCost()
-			}
-			return true
-		})
 
 		// Get the state of add-on installations on the cluster
 		addOnInstallations.Each(func(addOnInstallation *cmv1.AddOnInstallation) bool {
@@ -250,12 +271,8 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 			return true
 		})
 
-		// Only display add-ons that meet the above criteria
-		if clusterAddOn.Available {
-			clusterAddOns = append(clusterAddOns, &clusterAddOn)
-		}
-		return true
-	})
+		clusterAddOns = append(clusterAddOns, &clusterAddOn)
+	}
 
 	return clusterAddOns, nil
 }
