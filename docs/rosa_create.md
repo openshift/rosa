@@ -25,6 +25,7 @@ Create a resource from stdin
 ### SEE ALSO
 
 * [rosa](rosa.md)	 - Command line tool for ROSA.
+* [rosa create addon](rosa_create_addon.md)	 - Install add-ons on cluster
 * [rosa create admin](rosa_create_admin.md)	 - Creates an admin user to login to the cluster
 * [rosa create cluster](rosa_create_cluster.md)	 - Create cluster
 * [rosa create idp](rosa_create_idp.md)	 - Add IDP for cluster

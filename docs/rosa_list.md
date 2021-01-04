@@ -23,6 +23,7 @@ List all resources of a specific type
 ### SEE ALSO
 
 * [rosa](rosa.md)	 - Command line tool for ROSA.
+* [rosa list addons](rosa_list_addons.md)	 - List add-on installations
 * [rosa list clusters](rosa_list_clusters.md)	 - List clusters
 * [rosa list idps](rosa_list_idps.md)	 - List cluster IDPs
 * [rosa list ingresses](rosa_list_ingresses.md)	 - List cluster Ingresses
