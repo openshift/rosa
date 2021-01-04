@@ -25,6 +25,7 @@ Command line tool for Red Hat OpenShift Service on AWS.
 * [rosa edit](rosa_edit.md)	 - Edit a specific resource
 * [rosa grant](rosa_grant.md)	 - Grant role to a specific resource
 * [rosa init](rosa_init.md)	 - Applies templates to support Red Hat OpenShift Service on AWS
+* [rosa install](rosa_install.md)	 - Installs a resource into a cluster
 * [rosa list](rosa_list.md)	 - List all resources of a specific type
 * [rosa login](rosa_login.md)	 - Log in to your Red Hat account
 * [rosa logout](rosa_logout.md)	 - Log out
