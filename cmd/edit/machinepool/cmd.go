@@ -220,27 +220,19 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-<<<<<<< HEAD
-	replicas, err = getReplicas(cmd)
-	if err != nil {
-		reporter.Errorf("Expected a valid number of replicas: %s", err)
-		os.Exit(1)
-	}
-	if replicas < 0 {
+	autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
+		machinePool.Autoscaling())
+
+	if !autoscaling && replicas < 0 ||
+		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1) {
 		reporter.Errorf("The number of machine pool replicas needs to be a positive integer")
 		os.Exit(1)
 	}
-	if cluster.MultiAZ() && replicas%3 != 0 {
-		reporter.Errorf("Multi AZ clusters require that the number of machine pool replicas be a multiple of 3")
-=======
-	autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
-		machinePool.Autoscaling())
 
 	if cluster.MultiAZ() &&
 		(!autoscaling && replicas%3 != 0 ||
 			(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0))) {
 		reporter.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
->>>>>>> ade85b9 (Handle edit and some other fixes)
 		os.Exit(1)
 	}
 
