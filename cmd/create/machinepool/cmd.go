@@ -223,8 +223,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Autoscaling
+	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
 	autoscaling := args.autoscalingEnabled
-	if !autoscaling && interactive.Enabled() {
+	if !autoscaling && !isAutoscalingSet && interactive.Enabled() {
 		autoscaling, err = interactive.GetBool(interactive.Input{
 			Question: "Enable autoscaling",
 			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
