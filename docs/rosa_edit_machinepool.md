@@ -15,6 +15,12 @@ rosa edit machinepool [flags]
 ```
   # Set 4 replicas on machine pool 'mp1' on cluster 'mycluster'
   rosa edit machinepool --replicas=4 --cluster=mycluster mp1
+
+
+  # Enable autoscaling and Set 3-5 replicas on machine pool 'mp1' on cluster 'mycluster'
+  rosa edit machinepool --enable-autoscaling --min-replicas=3 max-replicas=5 --cluster=mycluster mp1
+
+
 ```
 
 ### Options

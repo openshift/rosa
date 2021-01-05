@@ -532,27 +532,49 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
+	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
+
 	minReplicas := args.minReplicas
 	maxReplicas := args.maxReplicas
-	if autoscaling && interactive.Enabled() {
-		minReplicas, err = interactive.GetInt(interactive.Input{
-			Question: "Min replicas",
-			Help:     cmd.Flags().Lookup("min-replicas").Usage,
-			Default:  minReplicas,
-			Required: true,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid number of min replicas: %s", err)
+	if autoscaling {
+		if interactive.Enabled() || !isMinReplicasSet {
+			minReplicas, err = interactive.GetInt(interactive.Input{
+				Question: "Min replicas",
+				Help:     cmd.Flags().Lookup("min-replicas").Usage,
+				Default:  minReplicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of min replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+		if interactive.Enabled() || !isMaxReplicasSet {
+			maxReplicas, err = interactive.GetInt(interactive.Input{
+				Question: "Max replicas",
+				Help:     cmd.Flags().Lookup("max-replicas").Usage,
+				Default:  maxReplicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of max replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		if minReplicas < 2 {
+			reporter.Errorf("Cluster requires at least 2 compute nodes")
 			os.Exit(1)
 		}
-		maxReplicas, err = interactive.GetInt(interactive.Input{
-			Question: "Max replicas",
-			Help:     cmd.Flags().Lookup("max-replicas").Usage,
-			Default:  maxReplicas,
-			Required: true,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid number of max replicas: %s", err)
+
+		if minReplicas > maxReplicas {
+			reporter.Errorf("max-replicas must be greater or equal to min-replicas")
+			os.Exit(1)
+		}
+
+		if multiAZ && (minReplicas%3 != 0 || maxReplicas%3 != 0) {
+			reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
 			os.Exit(1)
 		}
 	}
@@ -560,7 +582,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Compute nodes:
 	computeNodes := args.computeNodes
 	// Compute node requirements for multi-AZ clusters are higher
-	if multiAZ && !cmd.Flags().Changed("compute-nodes") {
+	if multiAZ && !autoscaling && !cmd.Flags().Changed("compute-nodes") {
 		computeNodes = 3
 	}
 	if !autoscaling && interactive.Enabled() {

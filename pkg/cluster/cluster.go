@@ -215,6 +215,22 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	}
 
 	// Scale cluster
+	clusterNodesBuilder := cmv1.NewClusterNodes()
+	if config.Autoscaling {
+		autoscalingBuilder := cmv1.NewMachinePoolAutoscaling()
+		if config.MinReplicas != 0 {
+			autoscalingBuilder = autoscalingBuilder.MinReplicas(config.MinReplicas)
+		}
+		if config.MaxReplicas != 0 {
+			autoscalingBuilder = autoscalingBuilder.MaxReplicas(config.MaxReplicas)
+		}
+		clusterNodesBuilder = clusterNodesBuilder.AutoscaleCompute(autoscalingBuilder)
+		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
+	} else if config.ComputeNodes != 0 {
+		clusterNodesBuilder = clusterNodesBuilder.Compute(config.ComputeNodes)
+		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
+	}
+
 	if config.ComputeNodes != 0 {
 		clusterBuilder = clusterBuilder.Nodes(
 			cmv1.NewClusterNodes().

@@ -19,6 +19,9 @@ rosa create machinepool [flags]
   # Add a machine pool mp-1 with 3 replicas of m5.xlarge to a cluster
   rosa create machinepool --cluster=mycluster --name=mp-1 --replicas=3 --instance-type=m5.xlarge
 
+  # Add a machine pool mp-1 with autoscaling enabled and 3 to 6 replicas of m5.xlarge to a cluster
+  rosa create machinepool --cluster=mycluster --name=mp-1 --enable-autoscaling --min-replicas=3 --max-replicas=6 --instance-type=m5.xlarge
+
   # Add a machine pool with labels to a cluster
   rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels =foo=bar,bar=baz"
 ```
@@ -31,7 +34,10 @@ rosa create machinepool [flags]
       --instance-type string   Instance type that should be used. (default "m5.xlarge")
       --labels string          Labels for machine pool. Format should be a comma-separated list of 'key=value'. This list will overwrite any modifications made to Node labels on an ongoing basis.
       --name string            Name for the machine pool (required).
-      --replicas int           Count of machines for this machine pool (required).
+      --replicas int           Count of machines for this machine pool (required when autoscaling is disabled).
+      --enable-autoscaling     Enable autoscaling for the machine pool.
+      --min-replicas int       Minimun number  machines for this machine pool (required when autoscaling is enabled).
+      --max-replicas int       Maximun number  machines for this machine pool (required when autoscaling is enabled).
       --taints string          Taints for machine pool. Format should be a comma-separated list of 'key=value:ScheduleType'. This list will overwrite any modifications made to Node taints on an ongoing basis.
 ```
 

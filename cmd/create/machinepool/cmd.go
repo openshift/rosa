@@ -89,7 +89,7 @@ func init() {
 		&args.replicas,
 		"replicas",
 		0,
-		"Count of machines for this machine pool.",
+		"Count of machines for the machine pool (required when autoscaling is disabled).",
 	)
 
 	flags.BoolVar(
@@ -103,14 +103,14 @@ func init() {
 		&args.minReplicas,
 		"min-replicas",
 		0,
-		"Minimum number of machines for this machine pool.",
+		"Minimum number of machines for the machine pool.",
 	)
 
 	flags.IntVar(
 		&args.maxReplicas,
 		"max-replicas",
 		0,
-		"Maximum number of machines for this machine pool.",
+		"Maximum number of machines for the machine pool.",
 	)
 
 	flags.StringVar(
@@ -237,54 +237,71 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
+	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
+	isReplicasSet := cmd.Flags().Changed("replicas")
 	minReplicas := args.minReplicas
 	maxReplicas := args.maxReplicas
-	if autoscaling && interactive.Enabled() {
-		minReplicas, err = interactive.GetInt(interactive.Input{
-			Question: "Min replicas",
-			Help:     cmd.Flags().Lookup("min-replicas").Usage,
-			Default:  minReplicas,
-			Required: true,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid number of min replicas: %s", err)
-			os.Exit(1)
-		}
-		maxReplicas, err = interactive.GetInt(interactive.Input{
-			Question: "Max replicas",
-			Help:     cmd.Flags().Lookup("max-replicas").Usage,
-			Default:  maxReplicas,
-			Required: true,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid number of max replicas: %s", err)
-			os.Exit(1)
-		}
-	}
-
-	// Number of replicas:
 	replicas := args.replicas
-	if !autoscaling && interactive.Enabled() {
-		replicas, err = interactive.GetInt(interactive.Input{
-			Question: "Replicas",
-			Help:     cmd.Flags().Lookup("replicas").Usage,
-			Default:  replicas,
-			Required: true,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid number of replicas: %s", err)
+
+	if autoscaling {
+		if interactive.Enabled() || !isMinReplicasSet {
+			minReplicas, err = interactive.GetInt(interactive.Input{
+				Question: "Min replicas",
+				Help:     cmd.Flags().Lookup("min-replicas").Usage,
+				Default:  minReplicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of min replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+		if interactive.Enabled() || !isMaxReplicasSet {
+			maxReplicas, err = interactive.GetInt(interactive.Input{
+				Question: "Max replicas",
+				Help:     cmd.Flags().Lookup("max-replicas").Usage,
+				Default:  maxReplicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of max replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		if minReplicas < 1 {
+			reporter.Errorf("min-replicas must be greater or equal to the number of zones")
+			os.Exit(1)
+		}
+
+		if minReplicas > maxReplicas {
+			reporter.Errorf("max-replicas must be greater or equal to min-replicas")
+			os.Exit(1)
+		}
+
+		if cluster.MultiAZ() && (minReplicas%3 != 0 || maxReplicas%3 != 0) {
+			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+			os.Exit(1)
+		}
+	} else {
+		if interactive.Enabled() || !isReplicasSet {
+			replicas, err = interactive.GetInt(interactive.Input{
+				Question: "Replicas",
+				Help:     cmd.Flags().Lookup("replicas").Usage,
+				Default:  replicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+		if cluster.MultiAZ() && replicas%3 != 0 {
+			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
 			os.Exit(1)
 		}
 	}
-	if replicas < 0 {
-		reporter.Errorf("The number of machine pool replicas needs to be a positive integer")
-		os.Exit(1)
-	}
-	if cluster.MultiAZ() && replicas%3 != 0 {
-		reporter.Errorf("Multi AZ clusters require that the number of machine pool replicas be a multiple of 3")
-		os.Exit(1)
-	}
-
 	// Machine pool instance type:
 	instanceType := args.instanceType
 	instanceTypeList, err := machines.GetMachineTypeList(ocmClient)
