@@ -246,6 +246,11 @@ func run(cmd *cobra.Command, _ []string) {
 	replicas := args.replicas
 
 	if autoscaling {
+		// if the user set replicas and enabled autoscaling
+		if isReplicasSet {
+			reporter.Errorf("Replicas can't be set when autoscaling is enabled")
+			os.Exit(1)
+		}
 		if interactive.Enabled() || !isMinReplicasSet {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
@@ -286,6 +291,11 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	} else {
+		// if the user set min/max replicas and hasn't enabled autoscaling
+		if isMinReplicasSet || isMaxReplicasSet {
+			reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
+			os.Exit(1)
+		}
 		if interactive.Enabled() || !isReplicasSet {
 			replicas, err = interactive.GetInt(interactive.Input{
 				Question: "Replicas",

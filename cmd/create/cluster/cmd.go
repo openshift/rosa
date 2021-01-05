@@ -539,6 +539,13 @@ func run(cmd *cobra.Command, _ []string) {
 	minReplicas := args.minReplicas
 	maxReplicas := args.maxReplicas
 	if autoscaling {
+
+		// if the user set compute-nodes and enabled autoscaling
+		if cmd.Flags().Changed("compute-nodes") {
+			reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
+			os.Exit(1)
+		}
+
 		if interactive.Enabled() || !isMinReplicasSet {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
@@ -586,30 +593,38 @@ func run(cmd *cobra.Command, _ []string) {
 	if multiAZ && !autoscaling && !cmd.Flags().Changed("compute-nodes") {
 		computeNodes = 3
 	}
-	if !autoscaling && interactive.Enabled() {
-		computeNodes, err = interactive.GetInt(interactive.Input{
-			Question: "Compute nodes",
-			Help:     cmd.Flags().Lookup("compute-nodes").Usage,
-			Default:  computeNodes,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid number of compute nodes: %s", err)
+	if !autoscaling {
+		// if the user set min/max replicas and hasn't enabled autoscaling
+		if isMinReplicasSet || isMaxReplicasSet {
+			reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
 			os.Exit(1)
 		}
-	}
-	if multiAZ {
-		if computeNodes < 3 {
-			reporter.Errorf("The number of compute nodes needs to be at least 3")
-			os.Exit(1)
+
+		if interactive.Enabled() {
+			computeNodes, err = interactive.GetInt(interactive.Input{
+				Question: "Compute nodes",
+				Help:     cmd.Flags().Lookup("compute-nodes").Usage,
+				Default:  computeNodes,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of compute nodes: %s", err)
+				os.Exit(1)
+			}
 		}
-		if computeNodes%3 != 0 {
-			reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-			os.Exit(1)
-		}
-	} else {
-		if computeNodes < 2 {
-			reporter.Errorf("The number of compute nodes needs to be at least 2")
-			os.Exit(1)
+		if multiAZ {
+			if computeNodes < 3 {
+				reporter.Errorf("The number of compute nodes needs to be at least 3")
+				os.Exit(1)
+			}
+			if computeNodes%3 != 0 {
+				reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+				os.Exit(1)
+			}
+		} else {
+			if computeNodes < 2 {
+				reporter.Errorf("The number of compute nodes needs to be at least 2")
+				os.Exit(1)
+			}
 		}
 	}
 

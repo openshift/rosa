@@ -303,7 +303,7 @@ func getReplicas(cmd *cobra.Command,
 
 	// if the user set min/max replicas and hasn't enabled autoscaling, or existing is disabled
 	if (isMinReplicasSet || isMaxReplicasSet) && !autoscaling && existingAutoscaling == nil {
-		reporter.Errorf("Autoscaling in not enabled on machine pool '%s'. can't set min or max replicas",
+		reporter.Errorf("Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas",
 			machinePoolID)
 		os.Exit(1)
 	}
