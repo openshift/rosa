@@ -173,15 +173,21 @@ func run(cmd *cobra.Command, argv []string) {
 		autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
 			cluster.Nodes().AutoscaleCompute())
 
-		if !autoscaling && replicas < 2 ||
+		if cluster.MultiAZ() {
+			if !autoscaling && replicas < 3 ||
+				(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 3) {
+				reporter.Errorf("Default machine pool for AZ cluster requires at least 3 compute nodes")
+				os.Exit(1)
+			}
+
+			if !autoscaling && replicas%3 != 0 ||
+				(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0)) {
+				reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+				os.Exit(1)
+			}
+		} else if !autoscaling && replicas < 2 ||
 			(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 2) {
 			reporter.Errorf("Default machine pool requires at least 2 compute nodes")
-			os.Exit(1)
-		}
-		if cluster.MultiAZ() &&
-			(!autoscaling && replicas%3 != 0 ||
-				(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0))) {
-			reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
 			os.Exit(1)
 		}
 
