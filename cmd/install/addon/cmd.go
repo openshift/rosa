@@ -37,11 +37,10 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "addon",
 	Aliases: []string{"addons", "add-on", "add-ons"},
-	Hidden:  true,
 	Short:   "Install add-ons on cluster",
 	Long:    "Install Red Hat managed add-ons on a cluster",
 	Example: `  # Add the CodeReady Workspaces add-on installation to the cluster
-  rosa create addon --cluster=mycluster codeready-workspaces`,
+  rosa install addon --cluster=mycluster codeready-workspaces`,
 	Run: run,
 }
 

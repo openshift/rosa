@@ -23,6 +23,7 @@ Show details of a specific resource
 ### SEE ALSO
 
 * [rosa](rosa.md)	 - Command line tool for ROSA.
+* [rosa describe addon](rosa_describe_addon.md)	 - Show details of an add-on
 * [rosa describe admin](rosa_describe_admin.md)	 - Show details of the cluster-admin user
 * [rosa describe cluster](rosa_describe_cluster.md)	 - Show details of a cluster
 
