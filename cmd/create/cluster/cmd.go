@@ -68,6 +68,9 @@ var args struct {
 	// Scaling options
 	computeMachineType string
 	computeNodes       int
+	autoscalingEnabled bool
+	minReplicas        int
+	maxReplicas        int
 
 	// Networking options
 	hostPrefix  int
@@ -167,6 +170,27 @@ func init() {
 		2,
 		"Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, "+
 			"multizone clusters need at least 3 nodes.",
+	)
+
+	flags.BoolVar(
+		&args.autoscalingEnabled,
+		"enable-autoscaling",
+		false,
+		"Enable autoscaling of compute nodes.",
+	)
+
+	flags.IntVar(
+		&args.minReplicas,
+		"min-replicas",
+		2,
+		"Minimum number of compute nodes.",
+	)
+
+	flags.IntVar(
+		&args.maxReplicas,
+		"max-replicas",
+		2,
+		"Maximum number of compute nodes.",
 	)
 
 	flags.IPNetVar(
@@ -493,36 +517,125 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Compute nodes:
-	computeNodes := args.computeNodes
-	// Compute node requirements for multi-AZ clusters are higher
-	if multiAZ && !cmd.Flags().Changed("compute-nodes") {
-		computeNodes = 3
-	}
-	if interactive.Enabled() {
-		computeNodes, err = interactive.GetInt(interactive.Input{
-			Question: "Compute nodes",
-			Help:     cmd.Flags().Lookup("compute-nodes").Usage,
-			Default:  computeNodes,
+	// Autoscaling
+	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
+	autoscaling := args.autoscalingEnabled
+	if !autoscaling && !isAutoscalingSet && interactive.Enabled() {
+		autoscaling, err = interactive.GetBool(interactive.Input{
+			Question: "Enable autoscaling",
+			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
+			Default:  autoscaling,
+			Required: false,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid number of compute nodes: %s", err)
+			reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
 			os.Exit(1)
 		}
 	}
-	if multiAZ {
-		if computeNodes < 3 {
-			reporter.Errorf("The number of compute nodes needs to be at least 3")
+
+	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
+	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
+
+	minReplicas := args.minReplicas
+	maxReplicas := args.maxReplicas
+	if autoscaling {
+		// if the user set compute-nodes and enabled autoscaling
+		if cmd.Flags().Changed("compute-nodes") {
+			reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
 			os.Exit(1)
 		}
-		if computeNodes%3 != 0 {
+
+		if multiAZ {
+			if !isMinReplicasSet {
+				minReplicas = 3
+			}
+			if !isMaxReplicasSet {
+				maxReplicas = minReplicas
+			}
+		}
+		if interactive.Enabled() || !isMinReplicasSet {
+			minReplicas, err = interactive.GetInt(interactive.Input{
+				Question: "Min replicas",
+				Help:     cmd.Flags().Lookup("min-replicas").Usage,
+				Default:  minReplicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of min replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+		if interactive.Enabled() || !isMaxReplicasSet {
+			maxReplicas, err = interactive.GetInt(interactive.Input{
+				Question: "Max replicas",
+				Help:     cmd.Flags().Lookup("max-replicas").Usage,
+				Default:  maxReplicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of max replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		if multiAZ && minReplicas < 3 {
+			reporter.Errorf("Multi AZ cluster requires at least 3 compute nodes")
+			os.Exit(1)
+		}
+		if !multiAZ && minReplicas < 2 {
+			reporter.Errorf("Cluster requires at least 2 compute nodes")
+			os.Exit(1)
+		}
+
+		if minReplicas > maxReplicas {
+			reporter.Errorf("max-replicas must be greater or equal to min-replicas")
+			os.Exit(1)
+		}
+
+		if multiAZ && (minReplicas%3 != 0 || maxReplicas%3 != 0) {
 			reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
 			os.Exit(1)
 		}
-	} else {
-		if computeNodes < 2 {
-			reporter.Errorf("The number of compute nodes needs to be at least 2")
+	}
+
+	// Compute nodes:
+	computeNodes := args.computeNodes
+	// Compute node requirements for multi-AZ clusters are higher
+	if multiAZ && !autoscaling && !cmd.Flags().Changed("compute-nodes") {
+		computeNodes = 3
+	}
+	if !autoscaling {
+		// if the user set min/max replicas and hasn't enabled autoscaling
+		if isMinReplicasSet || isMaxReplicasSet {
+			reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
 			os.Exit(1)
+		}
+
+		if interactive.Enabled() {
+			computeNodes, err = interactive.GetInt(interactive.Input{
+				Question: "Compute nodes",
+				Help:     cmd.Flags().Lookup("compute-nodes").Usage,
+				Default:  computeNodes,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of compute nodes: %s", err)
+				os.Exit(1)
+			}
+		}
+		if multiAZ {
+			if computeNodes < 3 {
+				reporter.Errorf("The number of compute nodes needs to be at least 3")
+				os.Exit(1)
+			}
+			if computeNodes%3 != 0 {
+				reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+				os.Exit(1)
+			}
+		} else {
+			if computeNodes < 2 {
+				reporter.Errorf("The number of compute nodes needs to be at least 2")
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -621,6 +734,9 @@ func run(cmd *cobra.Command, _ []string) {
 		Expiration:         expiration,
 		ComputeMachineType: computeMachineType,
 		ComputeNodes:       computeNodes,
+		Autoscaling:        autoscaling,
+		MinReplicas:        minReplicas,
+		MaxReplicas:        maxReplicas,
 		MachineCIDR:        machineCIDR,
 		ServiceCIDR:        serviceCIDR,
 		PodCIDR:            podCIDR,

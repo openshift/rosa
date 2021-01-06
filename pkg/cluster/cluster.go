@@ -54,6 +54,9 @@ type Spec struct {
 	// Scaling config
 	ComputeMachineType string
 	ComputeNodes       int
+	Autoscaling        bool
+	MinReplicas        int
+	MaxReplicas        int
 
 	// SubnetIDs
 	SubnetIds []string
@@ -212,6 +215,22 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	}
 
 	// Scale cluster
+	clusterNodesBuilder := cmv1.NewClusterNodes()
+	if config.Autoscaling {
+		autoscalingBuilder := cmv1.NewMachinePoolAutoscaling()
+		if config.MinReplicas != 0 {
+			autoscalingBuilder = autoscalingBuilder.MinReplicas(config.MinReplicas)
+		}
+		if config.MaxReplicas != 0 {
+			autoscalingBuilder = autoscalingBuilder.MaxReplicas(config.MaxReplicas)
+		}
+		clusterNodesBuilder = clusterNodesBuilder.AutoscaleCompute(autoscalingBuilder)
+		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
+	} else if config.ComputeNodes != 0 {
+		clusterNodesBuilder = clusterNodesBuilder.Compute(config.ComputeNodes)
+		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
+	}
+
 	if config.ComputeNodes != 0 {
 		clusterBuilder = clusterBuilder.Nodes(
 			cmv1.NewClusterNodes().
@@ -360,7 +379,8 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		clusterBuilder = clusterBuilder.ExpirationTimestamp(config.Expiration)
 	}
 
-	if config.ComputeMachineType != "" || config.ComputeNodes != 0 || len(config.AvailabilityZones) > 0 {
+	if config.ComputeMachineType != "" || config.ComputeNodes != 0 || len(config.AvailabilityZones) > 0 ||
+		config.Autoscaling {
 		clusterNodesBuilder := cmv1.NewClusterNodes()
 		if config.ComputeMachineType != "" {
 			clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
@@ -369,7 +389,12 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 
 			reporter.Debugf("Using machine type '%s'", config.ComputeMachineType)
 		}
-		if config.ComputeNodes != 0 {
+		if config.Autoscaling {
+			clusterNodesBuilder = clusterNodesBuilder.AutoscaleCompute(
+				cmv1.NewMachinePoolAutoscaling().
+					MinReplicas(config.MinReplicas).
+					MaxReplicas(config.MaxReplicas))
+		} else if config.ComputeNodes != 0 {
 			clusterNodesBuilder = clusterNodesBuilder.Compute(config.ComputeNodes)
 		}
 		if len(config.AvailabilityZones) > 0 {

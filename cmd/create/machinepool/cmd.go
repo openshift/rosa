@@ -39,12 +39,15 @@ import (
 var machinePoolKeyRE = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])?$`)
 
 var args struct {
-	clusterKey   string
-	name         string
-	instanceType string
-	replicas     int
-	labels       string
-	taints       string
+	clusterKey         string
+	name               string
+	instanceType       string
+	replicas           int
+	autoscalingEnabled bool
+	minReplicas        int
+	maxReplicas        int
+	labels             string
+	taints             string
 }
 
 var Cmd = &cobra.Command{
@@ -57,6 +60,10 @@ var Cmd = &cobra.Command{
 
   # Add a machine pool mp-1 with 3 replicas of m5.xlarge to a cluster
   rosa create machinepool --cluster=mycluster --name=mp-1 --replicas=3 --instance-type=m5.xlarge
+
+  # Add a machine pool mp-1 with autoscaling enabled and 3 to 6 replicas of m5.xlarge to a cluster
+  rosa create machinepool --cluster=mycluster --name=mp-1 --enable-autoscaling 
+  --min-replicas=3 --max-replicas=6 --instance-type=m5.xlarge
 
   # Add a machine pool with labels to a cluster
   rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels =foo=bar,bar=baz"`,
@@ -86,7 +93,28 @@ func init() {
 		&args.replicas,
 		"replicas",
 		0,
-		"Count of machines for this machine pool (required).",
+		"Count of machines for the machine pool (required when autoscaling is disabled).",
+	)
+
+	flags.BoolVar(
+		&args.autoscalingEnabled,
+		"enable-autoscaling",
+		false,
+		"Enable autoscaling for the machine pool.",
+	)
+
+	flags.IntVar(
+		&args.minReplicas,
+		"min-replicas",
+		0,
+		"Minimum number of machines for the machine pool.",
+	)
+
+	flags.IntVar(
+		&args.maxReplicas,
+		"max-replicas",
+		0,
+		"Maximum number of machines for the machine pool.",
 	)
 
 	flags.StringVar(
@@ -198,29 +226,97 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Number of replicas:
-	replicas := args.replicas
-	if interactive.Enabled() {
-		replicas, err = interactive.GetInt(interactive.Input{
-			Question: "Replicas",
-			Help:     cmd.Flags().Lookup("replicas").Usage,
-			Default:  replicas,
-			Required: true,
+	// Autoscaling
+	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
+	autoscaling := args.autoscalingEnabled
+	if !autoscaling && !isAutoscalingSet && interactive.Enabled() {
+		autoscaling, err = interactive.GetBool(interactive.Input{
+			Question: "Enable autoscaling",
+			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
+			Default:  autoscaling,
+			Required: false,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid number of replicas: %s", err)
+			reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
 			os.Exit(1)
 		}
 	}
-	if replicas < 0 {
-		reporter.Errorf("The number of machine pool replicas needs to be a positive integer")
-		os.Exit(1)
-	}
-	if cluster.MultiAZ() && replicas%3 != 0 {
-		reporter.Errorf("Multi AZ clusters require that the number of machine pool replicas be a multiple of 3")
-		os.Exit(1)
-	}
 
+	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
+	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
+	isReplicasSet := cmd.Flags().Changed("replicas")
+	minReplicas := args.minReplicas
+	maxReplicas := args.maxReplicas
+	replicas := args.replicas
+
+	if autoscaling {
+		// if the user set replicas and enabled autoscaling
+		if isReplicasSet {
+			reporter.Errorf("Replicas can't be set when autoscaling is enabled")
+			os.Exit(1)
+		}
+		if interactive.Enabled() || !isMinReplicasSet {
+			minReplicas, err = interactive.GetInt(interactive.Input{
+				Question: "Min replicas",
+				Help:     cmd.Flags().Lookup("min-replicas").Usage,
+				Default:  minReplicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of min replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+		if interactive.Enabled() || !isMaxReplicasSet {
+			maxReplicas, err = interactive.GetInt(interactive.Input{
+				Question: "Max replicas",
+				Help:     cmd.Flags().Lookup("max-replicas").Usage,
+				Default:  maxReplicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of max replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		if minReplicas < 1 {
+			reporter.Errorf("min-replicas must be greater or equal to the number of zones")
+			os.Exit(1)
+		}
+
+		if minReplicas > maxReplicas {
+			reporter.Errorf("max-replicas must be greater or equal to min-replicas")
+			os.Exit(1)
+		}
+
+		if cluster.MultiAZ() && (minReplicas%3 != 0 || maxReplicas%3 != 0) {
+			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+			os.Exit(1)
+		}
+	} else {
+		// if the user set min/max replicas and hasn't enabled autoscaling
+		if isMinReplicasSet || isMaxReplicasSet {
+			reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
+			os.Exit(1)
+		}
+		if interactive.Enabled() || !isReplicasSet {
+			replicas, err = interactive.GetInt(interactive.Input{
+				Question: "Replicas",
+				Help:     cmd.Flags().Lookup("replicas").Usage,
+				Default:  replicas,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid number of replicas: %s", err)
+				os.Exit(1)
+			}
+		}
+		if cluster.MultiAZ() && replicas%3 != 0 {
+			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+			os.Exit(1)
+		}
+	}
 	// Machine pool instance type:
 	instanceType := args.instanceType
 	instanceTypeList, err := machines.GetMachineTypeList(ocmClient)
@@ -302,13 +398,22 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	machinePool, err := cmv1.NewMachinePool().
+	mpBuilder := cmv1.NewMachinePool().
 		ID(name).
-		Replicas(replicas).
 		InstanceType(instanceType).
 		Labels(labelMap).
-		Taints(taintBuilders...).
-		Build()
+		Taints(taintBuilders...)
+
+	if autoscaling {
+		mpBuilder = mpBuilder.Autoscaling(
+			cmv1.NewMachinePoolAutoscaling().
+				MinReplicas(minReplicas).
+				MaxReplicas(maxReplicas))
+	} else {
+		mpBuilder = mpBuilder.Replicas(replicas)
+	}
+
+	machinePool, err := mpBuilder.Build()
 	if err != nil {
 		reporter.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
