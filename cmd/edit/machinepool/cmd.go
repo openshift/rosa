@@ -49,7 +49,9 @@ var Cmd = &cobra.Command{
 	Short:   "Edit machine pool",
 	Long:    "Edit the additional machine pool from a cluster.",
 	Example: `  # Set 4 replicas on machine pool 'mp1' on cluster 'mycluster'
-  rosa edit machinepool --replicas=4 --cluster=mycluster mp1`,
+  rosa edit machinepool --replicas=4 --cluster=mycluster mp1
+  # Enable autoscaling and Set 3-5 replicas on machine pool 'mp1' on cluster 'mycluster'
+  rosa edit machinepool --enable-autoscaling --min-replicas=3 max-replicas=5 --cluster=mycluster mp1`,
 	Run: run,
 }
 
@@ -281,7 +283,6 @@ func getReplicas(cmd *cobra.Command,
 	machinePoolID string,
 	existingAutoscaling *cmv1.MachinePoolAutoscaling) (autoscaling bool,
 	replicas, minReplicas, maxReplicas int) {
-
 	var err error
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")

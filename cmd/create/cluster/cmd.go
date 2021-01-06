@@ -182,14 +182,14 @@ func init() {
 	flags.IntVar(
 		&args.minReplicas,
 		"min-replicas",
-		0,
+		2,
 		"Minimum number of compute nodes.",
 	)
 
 	flags.IntVar(
 		&args.maxReplicas,
 		"max-replicas",
-		0,
+		2,
 		"Maximum number of compute nodes.",
 	)
 
@@ -539,13 +539,20 @@ func run(cmd *cobra.Command, _ []string) {
 	minReplicas := args.minReplicas
 	maxReplicas := args.maxReplicas
 	if autoscaling {
-
 		// if the user set compute-nodes and enabled autoscaling
 		if cmd.Flags().Changed("compute-nodes") {
 			reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
 			os.Exit(1)
 		}
 
+		if multiAZ {
+			if !isMinReplicasSet {
+				minReplicas = 3
+			}
+			if !isMaxReplicasSet {
+				maxReplicas = minReplicas
+			}
+		}
 		if interactive.Enabled() || !isMinReplicasSet {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
@@ -571,7 +578,11 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		if minReplicas < 2 {
+		if multiAZ && minReplicas < 3 {
+			reporter.Errorf("Multi AZ cluster requires at least 3 compute nodes")
+			os.Exit(1)
+		}
+		if !multiAZ && minReplicas < 2 {
 			reporter.Errorf("Cluster requires at least 2 compute nodes")
 			os.Exit(1)
 		}

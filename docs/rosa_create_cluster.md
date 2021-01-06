@@ -30,6 +30,9 @@ rosa create cluster [flags]
       --channel-group string          Channel group is the name of the group where this image belongs, for example "stable" or "fast". (default "stable")
       --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
       --compute-nodes int             Number of worker nodes to provision per zone. Single zone clusters need at least 2 nodes, multizone clusters need at least 3 nodes. (default 2)
+      --enable-autoscaling            Enable autoscaling of compute nodes.
+      --min-replicas int              Minimum number of compute nodes. (default 2)
+      --max-replicas int              Maximum number of compute nodes. (default 2)
       --machine-cidr ipNet            Block of IP addresses used by OpenShift while installing the cluster, for example "10.0.0.0/16".
       --service-cidr ipNet            Block of IP addresses for services, for example "172.30.0.0/16".
       --pod-cidr ipNet                Block of IP addresses from which Pod IP addresses are allocated, for example "10.128.0.0/14".
