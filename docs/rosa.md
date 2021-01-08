@@ -31,6 +31,7 @@ Command line tool for Red Hat OpenShift Service on AWS.
 * [rosa logout](rosa_logout.md)	 - Log out
 * [rosa logs](rosa_logs.md)	 - Show installation or uninstallation logs for a cluster
 * [rosa revoke](rosa_revoke.md)	 - Revoke role from a specific resource
+* [rosa uninstall](rosa_uninstall.md)	 - Uninstalls a resource from a cluster
 * [rosa upgrade](rosa_upgrade.md)	 - Upgrade a resource
 * [rosa verify](rosa_verify.md)	 - Verify resources are configured correctly for cluster install
 * [rosa version](rosa_version.md)	 - Prints the version of the tool
