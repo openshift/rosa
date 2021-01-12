@@ -299,6 +299,7 @@ func getReplicas(cmd *cobra.Command,
 	minReplicas = args.minReplicas
 	maxReplicas = args.maxReplicas
 	autoscaling = args.autoscalingEnabled
+	replicasRequired := existingAutoscaling == nil
 
 	// if the user set min/max replicas and hasn't enabled autoscaling, or existing is disabled
 	if (isMinReplicasSet || isMaxReplicasSet) && !autoscaling && existingAutoscaling == nil {
@@ -337,7 +338,7 @@ func getReplicas(cmd *cobra.Command,
 				Question: "Min replicas",
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
 				Default:  existingAutoscaling.MinReplicas(),
-				Required: false,
+				Required: replicasRequired,
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of min replicas: %s", err)
@@ -351,7 +352,7 @@ func getReplicas(cmd *cobra.Command,
 				Question: "Max replicas",
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
 				Default:  existingAutoscaling.MaxReplicas(),
-				Required: false,
+				Required: replicasRequired,
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of max replicas: %s", err)
