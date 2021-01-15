@@ -201,6 +201,7 @@ func run(_ *cobra.Command, argv []string) {
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
 		"Name:                       %s\n"+
+		"OpenShift Version:          %s\n"+
 		"DNS:                        %s.%s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
@@ -214,6 +215,7 @@ func run(_ *cobra.Command, argv []string) {
 		"Private:                    %s\n"+
 		"Created:                    %s\n",
 		clusterName,
+		cluster.OpenshiftVersion(),
 		cluster.Name(), cluster.DNS().BaseDomain(),
 		cluster.ID(),
 		cluster.ExternalID(),
