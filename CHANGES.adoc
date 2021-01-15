@@ -3,6 +3,13 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.1.5 Jan 15 2021
+
+- Require min/max replicas on interactive mode iff existing machinepool autoscaling is disabled
+- addon: Support addon uninstallation form cluster
+- addons: Support add-on installation parameters
+- add openshift version to describe output
+
 == 0.1.4 Jan 6 2021
 
 - Adding Orange team members to OWNERS file

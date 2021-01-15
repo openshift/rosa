@@ -18,4 +18,4 @@ limitations under the License.
 
 package info
 
-const Version = "0.1.4"
+const Version = "0.1.5"
