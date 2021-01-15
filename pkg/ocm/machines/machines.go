@@ -32,7 +32,7 @@ func GetMachineTypes(client *cmv1.Client) (machineTypes []*cmv1.MachineType, err
 		var response *cmv1.MachineTypesListResponse
 		response, err = collection.List().
 			Search("cloud_provider.id = 'aws'").
-			Order("size desc").
+			Order("cpu asc").
 			Page(page).
 			Size(size).
 			Send()
