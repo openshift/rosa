@@ -43,9 +43,6 @@ var args struct {
 
 	// Networking options
 	private bool
-
-	// Access control options
-	clusterAdmins bool
 }
 
 var Cmd = &cobra.Command{
@@ -54,9 +51,6 @@ var Cmd = &cobra.Command{
 	Long:  "Edit cluster.",
 	Example: `  # Edit a cluster named "mycluster" to make it private
   rosa edit cluster mycluster --private
-
-  # Enable the cluster-admins group using the --cluster flag
-  rosa edit cluster --cluster=mycluster --enable-cluster-admins
 
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
@@ -99,14 +93,6 @@ func init() {
 		false,
 		"Restrict master API endpoint to direct, private connectivity.",
 	)
-
-	// Access control options
-	flags.BoolVar(
-		&args.clusterAdmins,
-		"enable-cluster-admins",
-		false,
-		"Enable the cluster-admins role for your cluster.",
-	)
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -139,7 +125,7 @@ func run(cmd *cobra.Command, argv []string) {
 	isInteractive := interactive.Enabled()
 	if !isInteractive {
 		changedFlags := false
-		for _, flag := range []string{"private", "enable-cluster-admins"} {
+		for _, flag := range []string{"private"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
@@ -229,32 +215,9 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	var clusterAdmins *bool
-	var clusterAdminsValue bool
-	if cmd.Flags().Changed("enable-cluster-admins") {
-		clusterAdminsValue = args.clusterAdmins
-		clusterAdmins = &clusterAdminsValue
-	} else if isInteractive {
-		clusterAdminsValue = cluster.ClusterAdminEnabled()
-	}
-
-	if isInteractive {
-		clusterAdminsValue, err = interactive.GetBool(interactive.Input{
-			Question: "Enable cluster admins",
-			Help:     cmd.Flags().Lookup("enable-cluster-admins").Usage,
-			Default:  clusterAdminsValue,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid cluster-admins value: %s", err)
-			os.Exit(1)
-		}
-		clusterAdmins = &clusterAdminsValue
-	}
-
 	clusterConfig := clusterprovider.Spec{
-		Expiration:    expiration,
-		Private:       private,
-		ClusterAdmins: clusterAdmins,
+		Expiration: expiration,
+		Private:    private,
 	}
 
 	reporter.Debugf("Updating cluster '%s'", clusterKey)

@@ -16,9 +16,6 @@ rosa edit cluster [flags]
   # Edit a cluster named "mycluster" to make it private
   rosa edit cluster mycluster --private
 
-  # Enable the cluster-admins group using the --cluster flag
-  rosa edit cluster --cluster=mycluster --enable-cluster-admins
-
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive
 ```
@@ -26,10 +23,9 @@ rosa edit cluster [flags]
 ### Options
 
 ```
-  -c, --cluster string          Name or ID of the cluster to edit.
-      --private                 Restrict master API endpoint to direct, private connectivity.
-      --enable-cluster-admins   Enable the cluster-admins role for your cluster.
-  -h, --help                    help for cluster
+  -c, --cluster string   Name or ID of the cluster to edit.
+      --private          Restrict master API endpoint to direct, private connectivity.
+  -h, --help             help for cluster
 ```
 
 ### Options inherited from parent commands

@@ -74,9 +74,6 @@ type Spec struct {
 	// Properties
 	CustomProperties map[string]string
 
-	// Access control config
-	ClusterAdmins *bool
-
 	// Simulate creating a cluster but don't actually create it
 	DryRun *bool
 
@@ -251,11 +248,6 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 					Listening(cmv1.ListeningMethodExternal),
 			)
 		}
-	}
-
-	// Toggle cluster-admins group
-	if config.ClusterAdmins != nil {
-		clusterBuilder = clusterBuilder.ClusterAdminEnabled(*config.ClusterAdmins)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
