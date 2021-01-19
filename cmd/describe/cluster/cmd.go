@@ -210,6 +210,7 @@ func run(_ *cobra.Command, argv []string) {
 		"Console URL:                %s\n"+
 		"%s"+
 		"Region:                     %s\n"+
+		"Multi-AZ:                   %t\n"+
 		"State:                      %s %s\n"+
 		"Channel Group:              %s\n"+
 		"Private:                    %s\n"+
@@ -224,6 +225,7 @@ func run(_ *cobra.Command, argv []string) {
 		cluster.Console().URL(),
 		nodesStr,
 		cluster.Region().ID(),
+		cluster.MultiAZ(),
 		cluster.State(), phase,
 		cluster.Version().ChannelGroup(),
 		isPrivate,
