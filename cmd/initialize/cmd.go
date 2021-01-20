@@ -93,7 +93,19 @@ func run(cmd *cobra.Command, argv []string) {
 	// If necessary, call `login` as part of `init`. We do this before
 	// other validations to get the prompt out of the way before performing
 	// longer checks.
-	if cmd.Flags().NFlag() == 0 || (args.deleteStack && cmd.Flags().NFlag() == 1) {
+	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", "env", "token", "insecure"}
+	hasLoginFlags := false
+	// Check if the user set login flags
+	for _, loginFlag := range loginFlags {
+		if cmd.Flags().Changed(loginFlag) {
+			hasLoginFlags = true
+			break
+		}
+	}
+	if hasLoginFlags {
+		// Always force login if user sets login flags
+		login.Cmd.Run(cmd, argv)
+	} else {
 		// Verify if user is already logged in:
 		isLoggedIn := false
 		cfg, err := config.Load()
@@ -121,9 +133,6 @@ func run(cmd *cobra.Command, argv []string) {
 		} else {
 			login.Cmd.Run(cmd, argv)
 		}
-	} else {
-		// Always force login if user sets login flags
-		login.Cmd.Run(cmd, argv)
 	}
 
 	// Validate AWS credentials for current user
