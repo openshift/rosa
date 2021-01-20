@@ -3,6 +3,13 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.1.6 Jan 20 2021
+
+- cluster-admins: Remove explicit enable
+- machines: Sort machine types by CPU cores
+- add multi-az status to describe
+- init: Use explicit login flag checks
+
 == 0.1.5 Jan 15 2021
 
 - Require min/max replicas on interactive mode iff existing machinepool autoscaling is disabled
