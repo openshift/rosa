@@ -380,7 +380,7 @@ func run(cmd *cobra.Command, _ []string) {
 		taints, err = interactive.GetString(interactive.Input{
 			Question: "Taints",
 			Help:     cmd.Flags().Lookup("taints").Usage,
-			Default:  labels,
+			Default:  taints,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
