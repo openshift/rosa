@@ -47,11 +47,11 @@ var Cmd = &cobra.Command{
 	Use:     "machinepool",
 	Aliases: []string{"machinepools", "machine-pool", "machine-pools"},
 	Short:   "Edit machine pool",
-	Long:    "Edit the additional machine pool from a cluster.",
+	Long:    "Edit machine pools on a cluster.",
 	Example: `  # Set 4 replicas on machine pool 'mp1' on cluster 'mycluster'
   rosa edit machinepool --replicas=4 --cluster=mycluster mp1
   # Enable autoscaling and Set 3-5 replicas on machine pool 'mp1' on cluster 'mycluster'
-  rosa edit machinepool --enable-autoscaling --min-replicas=3 max-replicas=5 --cluster=mycluster mp1`,
+  rosa edit machinepool --enable-autoscaling --min-replicas=3 --max-replicas=5 --cluster=mycluster mp1`,
 	Run: run,
 }
 
