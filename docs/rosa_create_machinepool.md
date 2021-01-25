@@ -20,11 +20,11 @@ rosa create machinepool [flags]
   rosa create machinepool --cluster=mycluster --name=mp-1 --replicas=3 --instance-type=m5.xlarge
 
   # Add a machine pool mp-1 with autoscaling enabled and 3 to 6 replicas of m5.xlarge to a cluster
-  rosa create machinepool --cluster=mycluster --name=mp-1 --enable-autoscaling 
-  --min-replicas=3 --max-replicas=6 --instance-type=m5.xlarge
+  rosa create machinepool --cluster=mycluster --name=mp-1 --enable-autoscaling \
+	--min-replicas=3 --max-replicas=6 --instance-type=m5.xlarge
 
   # Add a machine pool with labels to a cluster
-  rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels =foo=bar,bar=baz"
+  rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels=foo=bar,bar=baz
 ```
 
 ### Options
