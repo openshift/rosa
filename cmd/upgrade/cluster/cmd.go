@@ -80,14 +80,14 @@ func init() {
 		&args.scheduleDate,
 		"schedule-date",
 		"",
-		"Next date the upgrade should run at the specified time. Format should be 'yyyy-mm-dd'",
+		"Next date the upgrade should run at the specified UTC time. Format should be 'yyyy-mm-dd'",
 	)
 
 	flags.StringVar(
 		&args.scheduleTime,
 		"schedule-time",
 		"",
-		"Next time the upgrade should run on the specified date. Format should be 'HH:mm'",
+		"Next UTC time that the upgrade should run on the specified date. Format should be 'HH:mm'",
 	)
 
 	flags.StringVar(
