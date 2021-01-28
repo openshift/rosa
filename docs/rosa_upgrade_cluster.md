@@ -28,7 +28,8 @@ rosa upgrade cluster [flags]
       --schedule-date string             Next date the upgrade should run at the specified time. Format should be 'yyyy-mm-dd'
       --schedule-time string             Next time the upgrade should run on the specified date. Format should be 'HH:mm'
       --node-drain-grace-period string   You may set a grace period for how long Pod Disruption Budget-protected workloads will be respected during upgrades.
-                                         After this grace period, any workloads protected by Pod Disruption Budgets that have not been successfully drained from a node will be forcibly evicted (default "1 hour")
+                                         After this grace period, any workloads protected by Pod Disruption Budgets that have not been successfully drained from a node will be forcibly evicted.
+                                         Valid options are ['15 minutes','30 minutes','45 minutes','1 hour','2 hours','4 hours','8 hours'] (default "1 hour")
   -h, --help                             help for cluster
 ```
 
