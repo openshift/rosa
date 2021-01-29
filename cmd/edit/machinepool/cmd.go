@@ -17,8 +17,10 @@ limitations under the License.
 package machinepool
 
 import (
+	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -41,6 +43,8 @@ var args struct {
 	autoscalingEnabled bool
 	minReplicas        int
 	maxReplicas        int
+	labels             string
+	taints             string
 }
 
 var Cmd = &cobra.Command{
@@ -93,6 +97,22 @@ func init() {
 		"max-replicas",
 		0,
 		"Maximum number of machines for the machine pool.",
+	)
+
+	flags.StringVar(
+		&args.labels,
+		"labels",
+		"",
+		"Labels for machine pool. Format should be a comma-separated list of 'key=value'. "+
+			"This list will overwrite any modifications made to Node labels on an ongoing basis.",
+	)
+
+	flags.StringVar(
+		&args.taints,
+		"taints",
+		"",
+		"Taints for machine pool. Format should be a comma-separated list of 'key=value:scheduleType'. "+
+			"This list will overwrite any modifications made to Node taints on an ongoing basis.",
 	)
 }
 
@@ -168,8 +188,23 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	var labels *map[string]string
+
 	// Editing the default machine pool is a different process
 	if machinePoolID == "default" {
+		if cmd.Flags().Changed("taints") {
+			reporter.Errorf("Taints are not supported on the default machine pool")
+			os.Exit(1)
+		}
+
+		if cmd.Flags().Changed("labels") {
+			labels, err = constructMachinePoolLabels(args.labels)
+			if err != nil {
+				reporter.Errorf(err.Error())
+				os.Exit(1)
+			}
+		}
+
 		autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
 			cluster.Nodes().AutoscaleCompute())
 
@@ -244,6 +279,27 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if args.labels != "" {
+		labels, err = constructMachinePoolLabels(args.labels)
+		if err != nil {
+			reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
+
+	}
+
+	taintBuilders := []*cmv1.TaintBuilder{}
+
+	if args.taints != "" {
+		for _, taint := range strings.Split(args.taints, ",") {
+			if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
+				reporter.Errorf("Expected key=value:scheduleType format for taints")
+			}
+			tokens := strings.FieldsFunc(taint, split)
+			taintBuilders = append(taintBuilders, cmv1.NewTaint().Key(tokens[0]).Value(tokens[1]).Effect(tokens[2]))
+		}
+	}
+
 	mpBuilder := cmv1.NewMachinePool().
 		ID(machinePool.ID())
 
@@ -260,6 +316,14 @@ func run(cmd *cobra.Command, argv []string) {
 		mpBuilder = mpBuilder.Autoscaling(asBuilder)
 	} else {
 		mpBuilder = mpBuilder.Replicas(replicas)
+	}
+
+	if cmd.Flags().Changed("labels") {
+		mpBuilder = mpBuilder.Labels(*labels)
+	}
+
+	if cmd.Flags().Changed("taints") {
+		mpBuilder = mpBuilder.Taints(taintBuilders...)
 	}
 
 	machinePool, err = mpBuilder.Build()
@@ -372,4 +436,21 @@ func getReplicas(cmd *cobra.Command,
 		}
 	}
 	return
+}
+
+func constructMachinePoolLabels(labels string) (*map[string]string, error) {
+	machinePoolLabels := make(map[string]string)
+	for _, label := range strings.Split(labels, ",") {
+		if !strings.Contains(label, "=") {
+			return nil, fmt.Errorf("Expected key=value format for label-match")
+		}
+		tokens := strings.Split(label, "=")
+		machinePoolLabels[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+	}
+	return &machinePoolLabels, nil
+
+}
+
+func split(r rune) bool {
+	return r == '=' || r == ':'
 }
