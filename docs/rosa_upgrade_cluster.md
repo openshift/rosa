@@ -25,8 +25,8 @@ rosa upgrade cluster [flags]
 ```
   -c, --cluster string                   Name or ID of the cluster to schedule the upgrade for (required)
       --version string                   Version of OpenShift that the cluster will be upgraded to
-      --schedule-date string             Next date the upgrade should run at the specified time. Format should be 'yyyy-mm-dd'
-      --schedule-time string             Next time the upgrade should run on the specified date. Format should be 'HH:mm'
+      --schedule-date string             Next date the upgrade should run at the specified UTC time. Format should be 'yyyy-mm-dd'
+      --schedule-time string             Next UTC time that the upgrade should run on the specified date. Format should be 'HH:mm'
       --node-drain-grace-period string   You may set a grace period for how long Pod Disruption Budget-protected workloads will be respected during upgrades.
                                          After this grace period, any workloads protected by Pod Disruption Budgets that have not been successfully drained from a node will be forcibly evicted (default "1 hour")
   -h, --help                             help for cluster
