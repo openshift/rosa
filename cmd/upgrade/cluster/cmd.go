@@ -44,6 +44,16 @@ var args struct {
 	nodeDrainGracePeriod string
 }
 
+var nodeDrainOptions = []string{
+	"15 minutes",
+	"30 minutes",
+	"45 minutes",
+	"1 hour",
+	"2 hours",
+	"4 hours",
+	"8 hours",
+}
+
 var Cmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Upgrade cluster",
@@ -94,9 +104,10 @@ func init() {
 		&args.nodeDrainGracePeriod,
 		"node-drain-grace-period",
 		"1 hour",
-		"You may set a grace period for how long Pod Disruption Budget-protected workloads will be "+
+		fmt.Sprintf("You may set a grace period for how long Pod Disruption Budget-protected workloads will be "+
 			"respected during upgrades.\nAfter this grace period, any workloads protected by Pod Disruption "+
-			"Budgets that have not been successfully drained from a node will be forcibly evicted",
+			"Budgets that have not been successfully drained from a node will be forcibly evicted.\nValid "+
+			"options are ['%s']", strings.Join(nodeDrainOptions, "','")),
 	)
 }
 
@@ -305,15 +316,6 @@ func run(cmd *cobra.Command, _ []string) {
 	// If node drain grace period is not set, or the user sent it as a CLI argument, use that instead
 	if nodeDrainGracePeriod == "" || cmd.Flags().Changed("node-drain-grace-period") {
 		nodeDrainGracePeriod = args.nodeDrainGracePeriod
-	}
-	nodeDrainOptions := []string{
-		"15 minutes",
-		"30 minutes",
-		"45 minutes",
-		"1 hour",
-		"2 hours",
-		"4 hours",
-		"8 hours",
 	}
 	if interactive.Enabled() {
 		nodeDrainGracePeriod, err = interactive.GetOption(interactive.Input{
