@@ -220,6 +220,10 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if scheduleDate == "" || scheduleTime == "" {
+		interactive.Enable()
+	}
+
 	// Set the default next run within the next 10 minutes
 	now := time.Now().UTC().Add(time.Minute * 10)
 	if scheduleDate == "" {
