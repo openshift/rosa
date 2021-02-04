@@ -1,6 +1,6 @@
 module github.com/openshift/rosa
 
-go 1.13
+go 1.15
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.1.0
@@ -15,7 +15,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
-	github.com/openshift-online/ocm-sdk-go v0.1.152
+	github.com/openshift-online/ocm-sdk-go v0.1.157
 	github.com/prometheus/common v0.11.1 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
@@ -23,8 +23,6 @@ require (
 	github.com/zgalor/weberr v0.6.0
 	gitlab.com/c0b/go-ordered-json v0.0.0-20171130231205-49bbdab258c2
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de // indirect
-	golang.org/x/sys v0.0.0-20200803210538-64077c9b5642 // indirect
-	golang.org/x/text v0.3.3 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 )
 
