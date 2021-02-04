@@ -205,7 +205,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Machine pool name:
-	name := args.name
+	name := strings.Trim(args.name, " \t")
 	if name == "" && !interactive.Enabled() {
 		interactive.Enable()
 		reporter.Infof("Enabling interactive mode")
@@ -221,6 +221,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+	name = strings.Trim(name, " \t")
 	if !machinePoolKeyRE.MatchString(name) {
 		reporter.Errorf("Expected a valid name for the machine pool")
 		os.Exit(1)
