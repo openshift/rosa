@@ -284,7 +284,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Get cluster name
-	clusterName := args.clusterName
+	clusterName := strings.Trim(args.clusterName, " \t")
 
 	if clusterName == "" && !interactive.Enabled() {
 		interactive.Enable()
@@ -303,6 +303,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+
+	// Trim names to remove any leading/trailing invisible characters
+	clusterName = strings.Trim(clusterName, " \t")
+
 	if !clusterprovider.IsValidClusterName(clusterName) {
 		reporter.Errorf("Cluster name must consist" +
 			" of no more than 15 lowercase alphanumeric characters or '-', " +

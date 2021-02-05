@@ -369,7 +369,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	idpName := args.idpName
+	idpName := strings.Trim(args.idpName, " \t")
 
 	// Auto-generate a name if none provided
 	if !cmd.Flags().Changed("name") {
@@ -394,6 +394,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+	idpName = strings.Trim(idpName, " \t")
 
 	var idpBuilder cmv1.IdentityProviderBuilder
 	switch idpType {
