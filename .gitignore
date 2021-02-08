@@ -1,7 +1,6 @@
 .idea/
 .vscode/
-docs/*.1
-docs/*.rst
+docs/
 /rosa
 /rosa-darwin-amd64
 /rosa-darwin-amd64.sha256
