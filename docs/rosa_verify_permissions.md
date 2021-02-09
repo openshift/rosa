@@ -23,16 +23,16 @@ rosa verify permissions [flags]
 ### Options
 
 ```
-  -h, --help   help for permissions
+  -h, --help             help for permissions
+      --profile string   Use a specific AWS profile from your credential file.
+      --region string    Use a specific AWS region, overriding the AWS_REGION environment variable.
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --debug            Enable debug mode.
-      --profile string   Use a specific AWS profile from your credential file.
-  -r, --region string    AWS region in which to run (overrides the AWS_REGION environment variable)
-  -v, --v Level          log level for V logs
+      --debug     Enable debug mode.
+  -v, --v Level   log level for V logs
 ```
 
 ### SEE ALSO

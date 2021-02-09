@@ -20,15 +20,15 @@ rosa whoami [flags]
 ### Options
 
 ```
-  -h, --help   help for whoami
+  -h, --help             help for whoami
+      --profile string   Use a specific AWS profile from your credential file.
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --debug            Enable debug mode.
-      --profile string   Use a specific AWS profile from your credential file.
-  -v, --v Level          log level for V logs
+      --debug     Enable debug mode.
+  -v, --v Level   log level for V logs
 ```
 
 ### SEE ALSO

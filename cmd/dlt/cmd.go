@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/ingress"
 	"github.com/openshift/rosa/cmd/dlt/machinepool"
 	"github.com/openshift/rosa/cmd/dlt/upgrade"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/confirm"
 )
 
@@ -36,13 +37,14 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	flags := Cmd.PersistentFlags()
-	confirm.AddFlag(flags)
-
 	Cmd.AddCommand(admin.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(upgrade.Cmd)
+
+	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
+	confirm.AddFlag(flags)
 }

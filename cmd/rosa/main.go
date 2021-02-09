@@ -62,7 +62,6 @@ func init() {
 	// Add the command line flags:
 	fs := root.PersistentFlags()
 	arguments.AddDebugFlag(fs)
-	arguments.AddProfileFlag(fs)
 
 	// Register the subcommands:
 	root.AddCommand(completion.Cmd)

@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/openshift/rosa/pkg/aws/profile"
+	"github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/debug"
 )
 
@@ -33,4 +34,17 @@ func AddDebugFlag(fs *pflag.FlagSet) {
 // AddProfileFlag adds the '--profile' flag to the given set of command line flags.
 func AddProfileFlag(fs *pflag.FlagSet) {
 	profile.AddFlag(fs)
+}
+
+func GetProfile() string {
+	return profile.Profile()
+}
+
+// AddRegionFlag adds the '--region' flag to the given set of command line flags.
+func AddRegionFlag(fs *pflag.FlagSet) {
+	region.AddFlag(fs)
+}
+
+func GetRegion() string {
+	return region.Region()
 }

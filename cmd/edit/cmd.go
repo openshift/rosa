@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/rosa/cmd/edit/cluster"
 	"github.com/openshift/rosa/cmd/edit/ingress"
 	"github.com/openshift/rosa/cmd/edit/machinepool"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
 )
 
@@ -33,10 +34,11 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	flags := Cmd.PersistentFlags()
-	interactive.AddFlag(flags)
-
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
+
+	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
+	interactive.AddFlag(flags)
 }

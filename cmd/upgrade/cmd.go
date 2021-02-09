@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/upgrade/cluster"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
 )
 
@@ -33,5 +34,6 @@ func init() {
 	Cmd.AddCommand(cluster.Cmd)
 
 	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
 	interactive.AddFlag(flags)
 }

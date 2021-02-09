@@ -9,16 +9,16 @@ Edit a specific resource
 ### Options
 
 ```
-  -h, --help          help for edit
-  -i, --interactive   Enable interactive mode.
+  -h, --help             help for edit
+  -i, --interactive      Enable interactive mode.
+      --profile string   Use a specific AWS profile from your credential file.
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --debug            Enable debug mode.
-      --profile string   Use a specific AWS profile from your credential file.
-  -v, --v Level          log level for V logs
+      --debug     Enable debug mode.
+  -v, --v Level   log level for V logs
 ```
 
 ### SEE ALSO
