@@ -21,6 +21,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -152,7 +153,6 @@ func run(_ *cobra.Command, argv []string) {
 			input := interactive.Input{
 				Question: param.Name(),
 				Help:     param.Description(),
-				Default:  param.DefaultValue(),
 				Required: param.Required(),
 			}
 
@@ -160,6 +160,7 @@ func run(_ *cobra.Command, argv []string) {
 			switch param.ValueType() {
 			case "boolean":
 				var boolVal bool
+				input.Default, _ = strconv.ParseBool(param.DefaultValue())
 				boolVal, err = interactive.GetBool(input)
 				if boolVal {
 					val = "true"
@@ -168,13 +169,19 @@ func run(_ *cobra.Command, argv []string) {
 				}
 			case "cidr":
 				var cidrVal net.IPNet
+				if param.DefaultValue() != "" {
+					_, defaultIDR, _ := net.ParseCIDR(param.DefaultValue())
+					input.Default = *defaultIDR
+				}
 				cidrVal, err = interactive.GetIPNet(input)
 				val = cidrVal.String()
 			case "number":
 				var numVal int
+				input.Default, _ = strconv.ParseInt(param.DefaultValue(), 10, 0)
 				numVal, err = interactive.GetInt(input)
 				val = strconv.Itoa(numVal)
 			case "string":
+				input.Default = param.DefaultValue()
 				val, err = interactive.GetString(input)
 			}
 			if err != nil {
@@ -182,7 +189,10 @@ func run(_ *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 
-			if param.Validation() != "" {
+			if val != "" {
+				val = strings.Trim(val, " ")
+			}
+			if val != "" && param.Validation() != "" {
 				isValid, err := regexp.MatchString(param.Validation(), val)
 				if err != nil || !isValid {
 					reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
