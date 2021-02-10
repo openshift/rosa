@@ -25,7 +25,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "verify RESOURCE [flags]",
+	Use:   "verify",
 	Short: "Verify resources are configured correctly for cluster install",
 	Long:  "Verify resources are configured correctly for cluster install",
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package machinepool
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 
@@ -39,13 +40,21 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "machinepool",
+	Use:     "machinepool ID",
 	Aliases: []string{"machinepools", "machine-pool", "machine-pools"},
 	Short:   "Delete machine pool",
 	Long:    "Delete the additional machine pool from a cluster.",
 	Example: `  # Delete machine pool with ID mp-1 from a cluster named 'mycluster'
   rosa delete machinepool --cluster=mycluster mp-1`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf(
+				"Expected exactly one command line parameter containing the id of the machine pool",
+			)
+		}
+		return nil
+	},
 }
 
 func init() {
@@ -64,14 +73,6 @@ func init() {
 func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the id of the machine pool",
-		)
-		os.Exit(1)
-	}
 
 	machinePoolID := argv[0]
 	if !machinePoolKeyRE.MatchString(machinePoolID) {

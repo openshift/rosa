@@ -41,7 +41,7 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:   "uninstall [ID|NAME]",
+	Use:   "uninstall",
 	Short: "Show cluster uninstallation logs",
 	Long:  "Show cluster uninstallation logs",
 	Example: `  # Show last 100 uninstall log lines for a cluster named "mycluster"
@@ -62,6 +62,7 @@ func init() {
 		"",
 		"Name or ID of the cluster to get logs for.",
 	)
+	Cmd.MarkFlagRequired("cluster")
 
 	flags.IntVar(
 		&args.tail,
@@ -79,7 +80,7 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
@@ -87,19 +88,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// We check the flag value this way to allow other commands to watch logs
 	watch := cmd.Flags().Lookup("watch").Value.String() == "true"
 
-	// Check command line arguments:
 	clusterKey := args.clusterKey
-	if clusterKey == "" {
-		if len(argv) != 1 {
-			reporter.Errorf(
-				"Expected exactly one command line argument or flag containing the name " +
-					"or identifier of the cluster",
-			)
-			os.Exit(1)
-		}
-		clusterKey = argv[0]
-	}
-
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	if !clusterprovider.IsValidClusterKey(clusterKey) {

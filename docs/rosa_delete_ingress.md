@@ -7,7 +7,7 @@ Delete cluster ingress
 Delete the additional non-default application router for a cluster.
 
 ```
-rosa delete ingress [flags]
+rosa delete ingress ID [flags]
 ```
 
 ### Examples

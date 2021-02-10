@@ -35,7 +35,7 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "user ROLE [flags]",
+	Use:     "user ROLE",
 	Aliases: []string{"role"},
 	Short:   "Grant user access to cluster",
 	Long:    "Grant user access to cluster under a specific role",
@@ -45,6 +45,15 @@ var Cmd = &cobra.Command{
   # Grant dedicated-admins role to a user
   rosa grant user dedicated-admin --user=myusername --cluster=mycluster`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf(
+				"Expected exactly one command line argument containing the name " +
+					"of the group or role to grant the user.",
+			)
+		}
+		return nil
+	},
 }
 
 var validRoles = []string{"cluster-admins", "dedicated-admins"}
@@ -97,13 +106,6 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line argument or flag containing the name " +
-				"of the group or role to grant the user.",
-		)
-		os.Exit(1)
-	}
 	role := argv[0]
 	// Allow role aliases
 	for _, validAlias := range validRolesAliases {

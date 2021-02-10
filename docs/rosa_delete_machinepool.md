@@ -7,7 +7,7 @@ Delete machine pool
 Delete the additional machine pool from a cluster.
 
 ```
-rosa delete machinepool [flags]
+rosa delete machinepool ID [flags]
 ```
 
 ### Examples

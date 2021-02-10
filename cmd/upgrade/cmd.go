@@ -24,7 +24,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "upgrade RESOURCE [flags]",
+	Use:   "upgrade",
 	Short: "Upgrade a resource",
 	Long:  "Upgrade a resource",
 }

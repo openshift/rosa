@@ -25,7 +25,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "describe RESOURCE [flags]",
+	Use:   "describe",
 	Short: "Show details of a specific resource",
 	Long:  "Show details of a specific resource",
 }

@@ -29,7 +29,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:     "create RESOURCE [flags]",
+	Use:     "create",
 	Aliases: []string{"add"},
 	Short:   "Create a resource from stdin",
 	Long:    "Create a resource from stdin",

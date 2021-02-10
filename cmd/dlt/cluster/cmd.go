@@ -38,7 +38,7 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:   "cluster [ID|NAME]",
+	Use:   "cluster",
 	Short: "Delete cluster",
 	Long:  "Delete cluster.",
 	Example: `  # Delete a cluster named "mycluster"
@@ -59,6 +59,7 @@ func init() {
 		"",
 		"Name or ID of the cluster to delete.",
 	)
+	Cmd.MarkFlagRequired("cluster")
 
 	flags.BoolVar(
 		&args.watch,
@@ -68,23 +69,11 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Check command line arguments:
 	clusterKey := args.clusterKey
-	if clusterKey == "" {
-		if len(argv) != 1 {
-			reporter.Errorf(
-				"Expected exactly one command line argument or flag containing the name " +
-					"or identifier of the cluster",
-			)
-			os.Exit(1)
-		}
-		clusterKey = argv[0]
-	}
-
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	if !clusterprovider.IsValidClusterKey(clusterKey) {

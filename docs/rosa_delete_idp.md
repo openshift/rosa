@@ -7,7 +7,7 @@ Delete cluster IDPs
 Delete a specific identity provider for a cluster.
 
 ```
-rosa delete idp [IDP NAME] [flags]
+rosa delete idp ID [flags]
 ```
 
 ### Examples

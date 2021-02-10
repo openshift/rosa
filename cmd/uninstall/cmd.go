@@ -24,7 +24,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "uninstall RESOURCE [flags]",
+	Use:   "uninstall",
 	Short: "Uninstalls a resource from a cluster",
 	Long:  "Uninstalls a resource from a cluster",
 }

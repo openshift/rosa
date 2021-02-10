@@ -7,7 +7,7 @@ Install add-ons on cluster
 Install Red Hat managed add-ons on a cluster
 
 ```
-rosa install addon [flags]
+rosa install addon ID [flags]
 ```
 
 ### Examples

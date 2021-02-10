@@ -7,7 +7,7 @@ Delete cluster
 Delete cluster.
 
 ```
-rosa delete cluster [ID|NAME] [flags]
+rosa delete cluster [flags]
 ```
 
 ### Examples
