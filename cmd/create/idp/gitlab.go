@@ -129,7 +129,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 
 	mappingMethod, err := getMappingMethod(cmd, args.mappingMethod)
 	if err != nil {
-		return idpBuilder, fmt.Errorf("Expected a valid mapping method: %s", err)
+		return idpBuilder, err
 	}
 
 	// Create GitLab IDP
