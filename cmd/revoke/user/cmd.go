@@ -188,4 +188,5 @@ func run(_ *cobra.Command, argv []string) {
 			role, username, clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
+	reporter.Infof("Revoked role '%s' from user '%s' on cluster '%s'", role, username, clusterKey)
 }

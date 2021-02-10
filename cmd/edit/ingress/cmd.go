@@ -275,6 +275,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ingress.ID(), clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
+	reporter.Infof("Updated ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
 }
 
 func getRouteSelector(labelMatches string) (map[string]string, error) {

@@ -161,5 +161,6 @@ func run(_ *cobra.Command, argv []string) {
 				idpName, clusterKey, res.Error().Reason())
 			os.Exit(1)
 		}
+		reporter.Infof("Successfully deleted identity provider '%s' from cluster '%s'", idpName, clusterKey)
 	}
 }

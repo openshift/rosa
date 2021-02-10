@@ -170,5 +170,6 @@ func run(_ *cobra.Command, argv []string) {
 				machinePool.ID(), clusterKey, res.Error().Reason())
 			os.Exit(1)
 		}
+		reporter.Infof("Successfully deleted machine pool '%s' from cluster '%s'", machinePoolID, clusterKey)
 	}
 }

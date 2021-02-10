@@ -282,6 +282,7 @@ func run(cmd *cobra.Command, argv []string) {
 			machinePool.ID(), clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
+	reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
 }
 
 func getReplicas(cmd *cobra.Command,

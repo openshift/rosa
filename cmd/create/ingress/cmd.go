@@ -209,6 +209,9 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Failed to add ingress to cluster '%s': %s", clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
+
+	reporter.Infof("Ingress has been created on cluster '%s'.", clusterKey)
+	reporter.Infof("To view all ingresses, run 'rosa list ingresses -c %s'", clusterKey)
 }
 
 func getRouteSelector(labelMatches string) (map[string]string, error) {

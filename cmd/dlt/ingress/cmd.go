@@ -177,5 +177,6 @@ func run(_ *cobra.Command, argv []string) {
 				ingress.ID(), clusterKey, res.Error().Reason())
 			os.Exit(1)
 		}
+		reporter.Infof("Successfully deleted ingress '%s' from cluster '%s'", ingressID, clusterKey)
 	}
 }
