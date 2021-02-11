@@ -50,6 +50,7 @@ type Spec struct {
 	Version      string
 	ChannelGroup string
 	Expiration   time.Time
+	Flavour      string
 
 	// Scaling config
 	ComputeMachineType string
@@ -383,6 +384,10 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		Region(
 			cmv1.NewCloudRegion().
 				ID(config.Region),
+		).
+		Flavour(
+			cmv1.NewFlavour().
+				ID(config.Flavour),
 		).
 		Properties(clusterProperties)
 
