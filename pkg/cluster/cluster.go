@@ -228,13 +228,6 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}
 
-	if config.ComputeNodes != 0 {
-		clusterBuilder = clusterBuilder.Nodes(
-			cmv1.NewClusterNodes().
-				Compute(config.ComputeNodes),
-		)
-	}
-
 	// Toggle private mode
 	if config.Private != nil {
 		if *config.Private {
