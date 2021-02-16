@@ -85,7 +85,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 		ClientSecret(clientSecret)
 
 	hostedDomain := args.googleHostedDomain
-	if interactive.Enabled() || mappingMethod != "lookup" {
+	if interactive.Enabled() || (mappingMethod != "lookup" && hostedDomain == "") {
 		hostedDomain, err = interactive.GetString(interactive.Input{
 			Question: "Hosted domain",
 			Help:     cmd.Flags().Lookup("hosted-domain").Usage,
