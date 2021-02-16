@@ -120,6 +120,7 @@ func run(_ *cobra.Command, argv []string) {
 	}
 	if !isRoleValid {
 		reporter.Errorf("Expected at least one of %s", validRoles)
+		os.Exit(1)
 	}
 
 	// Create the AWS client:
