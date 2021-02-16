@@ -79,6 +79,7 @@ var args struct {
 }
 
 var validIdps []string = []string{"github", "gitlab", "google", "ldap", "openid"}
+var validMappingMethods []string = []string{"add", "claim", "generate", "lookup"}
 
 var idRE = regexp.MustCompile(`(?i)^[0-9a-z]+([-_][0-9a-z]+)*$`)
 
@@ -125,7 +126,7 @@ func init() {
 		&args.mappingMethod,
 		"mapping-method",
 		"claim",
-		"Specifies how new identities are mapped to users when they log in.",
+		fmt.Sprintf("Specifies how new identities are mapped to users when they log in. Options are %s", validMappingMethods),
 	)
 	flags.StringVar(
 		&args.clientID,
@@ -471,10 +472,19 @@ func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) 
 		mappingMethod, err = interactive.GetOption(interactive.Input{
 			Question: "Mapping method",
 			Help:     usage,
-			Options:  []string{"add", "claim", "generate", "lookup"},
+			Options:  validMappingMethods,
 			Default:  mappingMethod,
 			Required: true,
 		})
+	}
+	isValidMappingMethod := false
+	for _, validMappingMethod := range validMappingMethods {
+		if mappingMethod == validMappingMethod {
+			isValidMappingMethod = true
+		}
+	}
+	if !isValidMappingMethod {
+		err = fmt.Errorf("Expected a valid mapping method. Options are %s", validMappingMethods)
 	}
 	return mappingMethod, err
 }

@@ -27,7 +27,7 @@ rosa create idp [flags]
   -t, --type string                  Type of identity provider. Options are [github gitlab google ldap openid].
       --name string                  Name for the identity provider.
                                      
-      --mapping-method string        Specifies how new identities are mapped to users when they log in. (default "claim")
+      --mapping-method string        Specifies how new identities are mapped to users when they log in. Options are [add claim generate lookup] (default "claim")
       --client-id string             Client ID from the registered application.
       --client-secret string         Client Secret from the registered application.
       --ca string                    Path to PEM-encoded certificate file to use when making requests to the server.
