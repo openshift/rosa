@@ -183,4 +183,6 @@ func run(_ *cobra.Command, argv []string) {
 			role, username, clusterKey, res.Error().Reason())
 		os.Exit(1)
 	}
+
+	reporter.Infof("Granted role '%s' to user '%s' on cluster '%s'", role, username, clusterKey)
 }

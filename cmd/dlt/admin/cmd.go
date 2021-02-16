@@ -170,5 +170,7 @@ func run(cmd *cobra.Command, _ []string) {
 				username, clusterKey, userResp.Error().Reason())
 			os.Exit(1)
 		}
+
+		reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", username, clusterKey)
 	}
 }

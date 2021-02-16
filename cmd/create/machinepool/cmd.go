@@ -432,6 +432,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
+	reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
 }
 
 func Split(r rune) bool {

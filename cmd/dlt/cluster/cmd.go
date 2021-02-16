@@ -139,8 +139,14 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
+	reporter.Infof("Cluster '%s' will start uninstalling now", clusterKey)
 
 	if args.watch {
 		uninstallLogs.Cmd.Run(cmd, []string{cluster.ID()})
+	} else {
+		reporter.Infof(
+			"To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",
+			clusterKey,
+		)
 	}
 }

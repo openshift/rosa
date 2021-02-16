@@ -226,6 +226,7 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
 	}
+	reporter.Infof("Updated cluster '%s'", clusterKey)
 }
 
 func validateExpiration() (expiration time.Time, err error) {
