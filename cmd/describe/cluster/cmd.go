@@ -168,11 +168,8 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	isPrivate := "No"
-	ingresses, err := ocm.GetIngresses(ocmClient.Clusters(), cluster.ID())
-	for _, ingress := range ingresses {
-		if ingress.Default() && ingress.Listening() == cmv1.ListeningMethodInternal {
-			isPrivate = "Yes"
-		}
+	if cluster.API().Listening() == cmv1.ListeningMethodInternal {
+		isPrivate = "Yes"
 	}
 
 	scheduledUpgrade, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())

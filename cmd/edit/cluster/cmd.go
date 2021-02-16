@@ -196,7 +196,9 @@ func run(cmd *cobra.Command, argv []string) {
 		privateValue = cluster.API().Listening() == cmv1.ListeningMethodInternal
 	}
 
-	privateWarning := "You will not be able to access your cluster until you edit network settings in your cloud provider."
+	privateWarning := "You will not be able to access your cluster until you edit network settings " +
+		"in your cloud provider. To also change the privacy setting of the application router " +
+		"endpoints, use the 'rosa edit ingress' command."
 	if isInteractive {
 		privateValue, err = interactive.GetBool(interactive.Input{
 			Question: "Private cluster",
@@ -209,7 +211,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		private = &privateValue
 	} else if privateValue {
-		reporter.Warnf("You are choosing to make your cluster private. %s", privateWarning)
+		reporter.Warnf("You are choosing to make your cluster API private. %s", privateWarning)
 		if !confirm.Confirm("set cluster '%s' as private", clusterKey) {
 			os.Exit(0)
 		}
