@@ -40,6 +40,7 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/ocm/machines"
+	"github.com/openshift/rosa/pkg/ocm/properties"
 	"github.com/openshift/rosa/pkg/ocm/regions"
 	"github.com/openshift/rosa/pkg/ocm/versions"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -51,6 +52,8 @@ var args struct {
 
 	// Simulate creating a cluster
 	dryRun bool
+	// Create a fake cluster with no AWS resources
+	fakeCluster bool
 
 	// Disable SCP checks in the installer
 	disableSCPChecks bool
@@ -255,6 +258,14 @@ func init() {
 		false,
 		"Simulate creating the cluster.",
 	)
+
+	flags.BoolVar(
+		&args.fakeCluster,
+		"fake-cluster",
+		false,
+		"Create a fake cluster that uses no AWS resources.",
+	)
+	flags.MarkHidden("fake-cluster")
 
 	flags.StringSliceVar(
 		&args.subnetIDs,
@@ -773,6 +784,11 @@ func run(cmd *cobra.Command, _ []string) {
 		DisableSCPChecks:   &args.disableSCPChecks,
 		AvailabilityZones:  availabilityZones,
 		SubnetIds:          subnetIDs,
+	}
+
+	if args.fakeCluster {
+		clusterConfig.CustomProperties = map[string]string{}
+		clusterConfig.CustomProperties[properties.FakeCluster] = "true"
 	}
 
 	reporter.Infof("Creating cluster '%s'", clusterName)

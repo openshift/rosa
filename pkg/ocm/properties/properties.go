@@ -27,3 +27,5 @@ const prefix = "rosa_"
 const CreatorARN = prefix + "creator_arn"
 
 const CLIVersion = prefix + "cli_version"
+
+const FakeCluster = "fake_cluster"
