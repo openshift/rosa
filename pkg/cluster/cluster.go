@@ -426,18 +426,18 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}
 
-	if !cidrIsEmpty(config.MachineCIDR) ||
-		!cidrIsEmpty(config.ServiceCIDR) ||
-		!cidrIsEmpty(config.PodCIDR) ||
+	if !IsEmptyCIDR(config.MachineCIDR) ||
+		!IsEmptyCIDR(config.ServiceCIDR) ||
+		!IsEmptyCIDR(config.PodCIDR) ||
 		config.HostPrefix != 0 {
 		networkBuilder := cmv1.NewNetwork()
-		if !cidrIsEmpty(config.MachineCIDR) {
+		if !IsEmptyCIDR(config.MachineCIDR) {
 			networkBuilder = networkBuilder.MachineCIDR(config.MachineCIDR.String())
 		}
-		if !cidrIsEmpty(config.ServiceCIDR) {
+		if !IsEmptyCIDR(config.ServiceCIDR) {
 			networkBuilder = networkBuilder.ServiceCIDR(config.ServiceCIDR.String())
 		}
-		if !cidrIsEmpty(config.PodCIDR) {
+		if !IsEmptyCIDR(config.PodCIDR) {
 			networkBuilder = networkBuilder.PodCIDR(config.PodCIDR.String())
 		}
 		if config.HostPrefix != 0 {
@@ -486,7 +486,8 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 	return clusterSpec, nil
 }
 
-func cidrIsEmpty(cidr net.IPNet) bool {
+// nolint:interfacer
+func IsEmptyCIDR(cidr net.IPNet) bool {
 	return cidr.String() == "<nil>"
 }
 

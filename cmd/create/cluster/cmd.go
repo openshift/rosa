@@ -657,10 +657,13 @@ func run(cmd *cobra.Command, _ []string) {
 	// Machine CIDR:
 	machineCIDR := args.machineCIDR
 	if interactive.Enabled() {
+		if clusterprovider.IsEmptyCIDR(machineCIDR) {
+			machineCIDR = *dMachinecidr
+		}
 		machineCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Machine CIDR",
 			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
-			Default:  *dMachinecidr,
+			Default:  machineCIDR,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid CIDR value: %s", err)
@@ -671,10 +674,13 @@ func run(cmd *cobra.Command, _ []string) {
 	// Service CIDR:
 	serviceCIDR := args.serviceCIDR
 	if interactive.Enabled() {
+		if clusterprovider.IsEmptyCIDR(serviceCIDR) {
+			serviceCIDR = *dServicecidr
+		}
 		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Service CIDR",
 			Help:     cmd.Flags().Lookup("service-cidr").Usage,
-			Default:  *dServicecidr,
+			Default:  serviceCIDR,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid CIDR value: %s", err)
@@ -684,10 +690,13 @@ func run(cmd *cobra.Command, _ []string) {
 	// Pod CIDR:
 	podCIDR := args.podCIDR
 	if interactive.Enabled() {
+		if clusterprovider.IsEmptyCIDR(podCIDR) {
+			podCIDR = *dPodcidr
+		}
 		podCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Pod CIDR",
 			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
-			Default:  *dPodcidr,
+			Default:  podCIDR,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid CIDR value: %s", err)
@@ -698,10 +707,13 @@ func run(cmd *cobra.Command, _ []string) {
 	// Host prefix:
 	hostPrefix := args.hostPrefix
 	if interactive.Enabled() {
+		if hostPrefix == 0 {
+			hostPrefix = dhostPrefix
+		}
 		hostPrefix, err = interactive.GetInt(interactive.Input{
 			Question: "Host prefix",
 			Help:     cmd.Flags().Lookup("host-prefix").Usage,
-			Default:  dhostPrefix,
+			Default:  hostPrefix,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid host prefix value: %s", err)
@@ -753,6 +765,10 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Infof("Creating cluster '%s'", clusterName)
+	if interactive.Enabled() {
+		command := buildCommand(clusterConfig)
+		reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
+	}
 	reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 
 	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
@@ -878,4 +894,66 @@ func setSubnetOption(subnet, zone string) string {
 // Parses the subnet from the option chosen by the user.
 func parseSubnet(subnetOption string) string {
 	return strings.Split(subnetOption, " ")[0]
+}
+
+func buildCommand(spec clusterprovider.Spec) string {
+	command := "rosa create cluster"
+	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
+	if spec.MultiAZ {
+		command += " --multi-az"
+	}
+	if spec.Region != "" {
+		command += fmt.Sprintf(" --region %s", spec.Region)
+	}
+	if spec.DisableSCPChecks != nil && *spec.DisableSCPChecks {
+		command += " --disable-scp-checks"
+	}
+	if spec.Version != "" {
+		if spec.ChannelGroup != versions.DefaultChannelGroup {
+			command += fmt.Sprintf(" --channel-group %s", spec.ChannelGroup)
+		}
+		command += fmt.Sprintf(" --version %s", strings.TrimPrefix(spec.Version, "openshift-v"))
+	}
+
+	// Only account for expiration duration, as a fixed date may be obsolete if command is re-run later
+	if args.expirationDuration != 0 {
+		command += fmt.Sprintf(" --expiration %s", args.expirationDuration)
+	}
+
+	if spec.Autoscaling {
+		command += " --enable-autoscaling"
+		if spec.MinReplicas > 0 {
+			command += fmt.Sprintf(" --min-replicas %d", spec.MinReplicas)
+		}
+		if spec.MaxReplicas > 0 {
+			command += fmt.Sprintf(" --max-replicas %d", spec.MaxReplicas)
+		}
+	} else {
+		if spec.ComputeNodes != 0 {
+			command += fmt.Sprintf(" --compute-nodes %d", spec.ComputeNodes)
+		}
+	}
+	if spec.ComputeMachineType != "" {
+		command += fmt.Sprintf(" --compute-machine-type %s", spec.ComputeMachineType)
+	}
+
+	if !clusterprovider.IsEmptyCIDR(spec.MachineCIDR) {
+		command += fmt.Sprintf(" --machine-cidr %s", spec.MachineCIDR.String())
+	}
+	if !clusterprovider.IsEmptyCIDR(spec.ServiceCIDR) {
+		command += fmt.Sprintf(" --service-cidr %s", spec.ServiceCIDR.String())
+	}
+	if !clusterprovider.IsEmptyCIDR(spec.PodCIDR) {
+		command += fmt.Sprintf(" --pod-cidr %s", spec.PodCIDR.String())
+	}
+	if spec.HostPrefix != 0 {
+		command += fmt.Sprintf(" --host-prefix %d", spec.HostPrefix)
+	}
+	if spec.Private != nil && *spec.Private {
+		command += " --private"
+	}
+	if len(spec.SubnetIds) > 0 {
+		command += fmt.Sprintf(" --subnet-ids %s", strings.Join(spec.SubnetIds, ","))
+	}
+	return command
 }
