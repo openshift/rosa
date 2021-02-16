@@ -3,6 +3,31 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.1.7 Feb 16 2021
+
+- fix example
+- Align command with auto-generated docs
+- machinepools: Fix doc typos
+- machinepools: Fix default taints in interactive mode
+- upgrade: Ensure interactive mode for schedule
+- upgrade: Display explicit values in grace period help
+- upgrade: Specify UTC for schedule time
+- Trim user-provided machine-friendly names
+- ocm-sdk: Update version
+- addons: Fix parameter defaults in interactive prompt
+- interactive: Output command to rerun cluster creation
+- cluster: Remove suggestion to run init
+- user: Avoid calling API after failed validation
+- google: Only force interactive mode when necessary
+- idp: Validate mapping method input
+- Show success message on write operations
+- args: Clean up argument and flag requirements
+- Cleaning up some leftover obsolete code from autoscaling PR
+- cluster: Add hidden flag to set cluster flavour
+- cluster: Allow the creation of fake clusters
+- cluster: Use correct privacy flag on describe
+- Fix go-bindata command and downgrade go version
+
 == 0.1.6 Jan 20 2021
 
 - cluster-admins: Remove explicit enable
