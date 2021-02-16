@@ -64,6 +64,7 @@ var args struct {
 	region             string
 	version            string
 	channelGroup       string
+	flavour            string
 
 	// Scaling options
 	computeMachineType string
@@ -141,6 +142,15 @@ func init() {
 		versions.DefaultChannelGroup,
 		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
 	)
+
+	flags.StringVar(
+		&args.flavour,
+		"flavour",
+		"osd-4",
+		"Set of predefined properties of a cluster",
+	)
+	flags.MarkHidden("flavour")
+
 	flags.StringVar(
 		&args.expirationTime,
 		"expiration-time",
@@ -652,7 +662,7 @@ func run(cmd *cobra.Command, _ []string) {
 	var dMachinecidr *net.IPNet
 	var dPodcidr *net.IPNet
 	var dServicecidr *net.IPNet
-	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocm.GetDefaultClusterFlavors(ocmClient)
+	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocm.GetDefaultClusterFlavors(ocmClient, args.flavour)
 
 	// Machine CIDR:
 	machineCIDR := args.machineCIDR
@@ -747,6 +757,7 @@ func run(cmd *cobra.Command, _ []string) {
 		MultiAZ:            multiAZ,
 		Version:            version,
 		ChannelGroup:       channelGroup,
+		Flavour:            args.flavour,
 		Expiration:         expiration,
 		ComputeMachineType: computeMachineType,
 		ComputeNodes:       computeNodes,

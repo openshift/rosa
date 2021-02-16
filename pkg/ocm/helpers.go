@@ -306,14 +306,17 @@ func handleErr(res *ocmerrors.Error, err error) error {
 	return errors.New(msg)
 }
 
-func GetDefaultClusterFlavors(ocmClient *cmv1.Client) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
+func GetDefaultClusterFlavors(ocmClient *cmv1.Client, flavour string) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
 	dServicecidr *net.IPNet, dhostPrefix int) {
-	flavourGetResponse, _ := ocmClient.Flavours().Flavour("osd-4").Get().Send()
+	flavourGetResponse, err := ocmClient.Flavours().Flavour(flavour).Get().Send()
+	if err != nil {
+		flavourGetResponse, _ = ocmClient.Flavours().Flavour("osd-4").Get().Send()
+	}
 	network, ok := flavourGetResponse.Body().GetNetwork()
 	if !ok {
 		return nil, nil, nil, 0
 	}
-	_, dMachinecidr, err := net.ParseCIDR(network.MachineCIDR())
+	_, dMachinecidr, err = net.ParseCIDR(network.MachineCIDR())
 	if err != nil {
 		dMachinecidr = nil
 	}
