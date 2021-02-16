@@ -7,7 +7,7 @@ Show cluster installation logs
 Show cluster installation logs
 
 ```
-rosa logs install [ID|NAME] [flags]
+rosa logs install [flags]
 ```
 
 ### Examples

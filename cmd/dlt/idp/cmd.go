@@ -17,6 +17,7 @@ limitations under the License.
 package idp
 
 import (
+	"fmt"
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -34,13 +35,21 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "idp [IDP NAME]",
+	Use:     "idp ID",
 	Aliases: []string{"idps"},
 	Short:   "Delete cluster IDPs",
 	Long:    "Delete a specific identity provider for a cluster.",
 	Example: `  # Delete an identity provider named github-1
   rosa delete idp github-1 --cluster=mycluster`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf(
+				"Expected exactly one command line parameter containing the name of the identity provider",
+			)
+		}
+		return nil
+	},
 }
 
 func init() {
@@ -60,20 +69,7 @@ func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameters containing the name " +
-				"of the Identity provider.",
-		)
-		os.Exit(1)
-	}
-
 	idpName := argv[0]
-	if idpName == "" {
-		reporter.Errorf("Identity provider name is required.")
-		os.Exit(1)
-	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:

@@ -7,7 +7,7 @@ Show details of a cluster
 Show details of a cluster
 
 ```
-rosa describe cluster [ID|NAME] [flags]
+rosa describe cluster [flags]
 ```
 
 ### Examples

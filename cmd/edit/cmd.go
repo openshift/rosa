@@ -26,7 +26,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:     "edit RESOURCE [flags]",
+	Use:     "edit",
 	Aliases: []string{"update"},
 	Short:   "Edit a specific resource",
 	Long:    "Edit a specific resource",

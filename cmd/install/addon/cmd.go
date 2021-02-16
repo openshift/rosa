@@ -17,6 +17,7 @@ limitations under the License.
 package addon
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"regexp"
@@ -40,13 +41,19 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "addon",
+	Use:     "addon ID",
 	Aliases: []string{"addons", "add-on", "add-ons"},
 	Short:   "Install add-ons on cluster",
 	Long:    "Install Red Hat managed add-ons on a cluster",
 	Example: `  # Add the CodeReady Workspaces add-on installation to the cluster
   rosa install addon --cluster=mycluster codeready-workspaces`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf("Expected exactly one command line parameter containing the id of the add-on")
+		}
+		return nil
+	},
 }
 
 func init() {
@@ -67,17 +74,7 @@ func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf("Expected exactly one command line parameters containing the identifier of the add-on.")
-		os.Exit(1)
-	}
-
 	addOnID := argv[0]
-	if addOnID == "" {
-		reporter.Errorf("Add-on ID is required.")
-		os.Exit(1)
-	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:

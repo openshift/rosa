@@ -17,6 +17,7 @@ limitations under the License.
 package machinepool
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 
@@ -44,7 +45,7 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "machinepool",
+	Use:     "machinepool ID",
 	Aliases: []string{"machinepools", "machine-pool", "machine-pools"},
 	Short:   "Edit machine pool",
 	Long:    "Edit machine pools on a cluster.",
@@ -53,6 +54,14 @@ var Cmd = &cobra.Command{
   # Enable autoscaling and Set 3-5 replicas on machine pool 'mp1' on cluster 'mycluster'
   rosa edit machinepool --enable-autoscaling --min-replicas=3 --max-replicas=5 --cluster=mycluster mp1`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf(
+				"Expected exactly one command line parameter containing the id of the machine pool",
+			)
+		}
+		return nil
+	},
 }
 
 func init() {
@@ -99,14 +108,6 @@ func init() {
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the id of the machine pool",
-		)
-		os.Exit(1)
-	}
 
 	machinePoolID := argv[0]
 	if !machinePoolKeyRE.MatchString(machinePoolID) {

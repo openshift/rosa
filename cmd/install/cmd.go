@@ -24,7 +24,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "install RESOURCE [flags]",
+	Use:   "install",
 	Short: "Installs a resource into a cluster",
 	Long:  "Installs a resource into a cluster",
 }

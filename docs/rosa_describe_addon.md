@@ -7,7 +7,7 @@ Show details of an add-on
 Show details of an add-on
 
 ```
-rosa describe addon [ID|NAME] [flags]
+rosa describe addon ID [flags]
 ```
 
 ### Examples

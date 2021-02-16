@@ -7,7 +7,7 @@ Show cluster uninstallation logs
 Show cluster uninstallation logs
 
 ```
-rosa logs uninstall [ID|NAME] [flags]
+rosa logs uninstall [flags]
 ```
 
 ### Examples

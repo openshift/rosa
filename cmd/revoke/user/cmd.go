@@ -35,7 +35,7 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "user ROLE [flags]",
+	Use:     "user ROLE",
 	Aliases: []string{"role"},
 	Short:   "Revoke role from users",
 	Long:    "Revoke role from cluster user",
@@ -45,6 +45,15 @@ var Cmd = &cobra.Command{
   # Revoke dedicated-admin role from a user
   rosa revoke user dedicate-admins --user=myusername --cluster=mycluster`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf(
+				"Expected exactly one command line argument containing the name " +
+					"of the group or role to grant the user.",
+			)
+		}
+		return nil
+	},
 }
 
 var validRoles = []string{"cluster-admins", "dedicated-admins"}
@@ -93,14 +102,6 @@ func run(_ *cobra.Command, argv []string) {
 		reporter.Errorf(
 			"username '%s' isn't valid: it must contain only letters, digits, dashes and underscores",
 			username,
-		)
-		os.Exit(1)
-	}
-
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line argument or flag containing the name " +
-				"of the group or role to grant the user.",
 		)
 		os.Exit(1)
 	}

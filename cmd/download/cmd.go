@@ -23,7 +23,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "download RESOURCE [flags]",
+	Use:   "download",
 	Short: "Download necessary tools for using your cluster",
 	Long:  "Download necessary tools for using your cluster",
 }

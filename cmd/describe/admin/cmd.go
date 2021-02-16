@@ -38,7 +38,7 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:   "admin [ID|NAME]",
+	Use:   "admin",
 	Short: "Show details of the cluster-admin user",
 	Long:  "Show details of the cluster-admin user and a command to login to the cluster",
 	Example: `  # Describe cluster-admin user of a cluster named mycluster

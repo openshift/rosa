@@ -7,7 +7,7 @@ Edit the additional cluster ingress
 Edit the additional non-default application router for a cluster.
 
 ```
-rosa edit ingress [flags]
+rosa edit ingress ID [flags]
 ```
 
 ### Examples

@@ -7,7 +7,7 @@ Edit machine pool
 Edit machine pools on a cluster.
 
 ```
-rosa edit machinepool [flags]
+rosa edit machinepool ID [flags]
 ```
 
 ### Examples

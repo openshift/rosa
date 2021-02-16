@@ -44,7 +44,7 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "ingress",
+	Use:     "ingress ID",
 	Aliases: []string{"route"},
 	Short:   "Edit the additional cluster ingress",
 	Long:    "Edit the additional non-default application router for a cluster.",
@@ -57,6 +57,14 @@ var Cmd = &cobra.Command{
   # Update the default ingress using the sub-domain identifier
   rosa edit ingress --private=false --cluster=mycluster apps`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf(
+				"Expected exactly one command line parameter containing the id of the ingress",
+			)
+		}
+		return nil
+	},
 }
 
 func init() {
@@ -90,14 +98,6 @@ func init() {
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line parameter containing the id of the ingress",
-		)
-		os.Exit(1)
-	}
 
 	ingressID := argv[0]
 	if !ingressKeyRE.MatchString(ingressID) {

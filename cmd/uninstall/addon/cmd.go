@@ -17,6 +17,7 @@ limitations under the License.
 package addon
 
 import (
+	"fmt"
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -35,13 +36,19 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:     "addon",
+	Use:     "addon ID",
 	Aliases: []string{"addons", "add-on", "add-ons"},
 	Short:   "Uninstall add-on from cluster",
 	Long:    "Uninstall Red Hat managed add-on from a cluster",
 	Example: `  # Remove the CodeReady Workspaces add-on installation from the cluster
   rosa uninstall addon --cluster=mycluster codeready-workspaces`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf("Expected exactly one command line parameter containing the id of the add-on")
+		}
+		return nil
+	},
 }
 
 func init() {
@@ -53,7 +60,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to add the IdP to (required).",
+		"Name or ID of the cluster to uninstall the add-on from (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }
@@ -62,17 +69,7 @@ func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf("Expected exactly one command line parameters containing the identifier of the add-on.")
-		os.Exit(1)
-	}
-
 	addOnID := argv[0]
-	if addOnID == "" {
-		reporter.Errorf("Add-on ID is required.")
-		os.Exit(1)
-	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:

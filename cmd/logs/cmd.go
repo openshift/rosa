@@ -24,7 +24,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:     "logs RESOURCE",
+	Use:     "logs",
 	Aliases: []string{"log"},
 	Short:   "Show installation or uninstallation logs for a cluster",
 	Long:    "Show installation or uninstallation logs for a cluster",

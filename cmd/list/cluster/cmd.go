@@ -41,7 +41,8 @@ var Cmd = &cobra.Command{
 	Long:    "List clusters.",
 	Example: `  # List all clusters
   rosa list clusters`,
-	Run: run,
+	Args: cobra.NoArgs,
+	Run:  run,
 }
 
 func init() {
@@ -57,15 +58,9 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
-	// Check command line arguments:
-	if len(argv) != 0 {
-		reporter.Errorf("Expected exactly zero command line parameters")
-		os.Exit(1)
-	}
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().

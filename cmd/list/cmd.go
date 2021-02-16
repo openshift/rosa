@@ -31,7 +31,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "list RESOURCE",
+	Use:   "list",
 	Short: "List all resources of a specific type",
 	Long:  "List all resources of a specific type",
 }

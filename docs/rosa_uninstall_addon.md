@@ -7,7 +7,7 @@ Uninstall add-on from cluster
 Uninstall Red Hat managed add-on from a cluster
 
 ```
-rosa uninstall addon [flags]
+rosa uninstall addon ID [flags]
 ```
 
 ### Examples
@@ -20,7 +20,7 @@ rosa uninstall addon [flags]
 ### Options
 
 ```
-  -c, --cluster string   Name or ID of the cluster to add the IdP to (required).
+  -c, --cluster string   Name or ID of the cluster to uninstall the add-on from (required).
   -h, --help             help for addon
 ```
 

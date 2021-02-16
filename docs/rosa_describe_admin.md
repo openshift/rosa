@@ -7,7 +7,7 @@ Show details of the cluster-admin user
 Show details of the cluster-admin user and a command to login to the cluster
 
 ```
-rosa describe admin [ID|NAME] [flags]
+rosa describe admin [flags]
 ```
 
 ### Examples

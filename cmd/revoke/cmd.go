@@ -24,7 +24,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "revoke RESOURCE [flags]",
+	Use:   "revoke",
 	Short: "Revoke role from a specific resource",
 	Long:  "Revoke role from a specific resource",
 }

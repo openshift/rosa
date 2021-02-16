@@ -31,26 +31,26 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:     "addon [ID|NAME]",
+	Use:     "addon ID",
 	Aliases: []string{"add-on"},
 	Short:   "Show details of an add-on",
 	Long:    "Show details of an add-on",
 	Example: `  # Describe an add-on named "codeready-workspaces"
   rosa describe addon codeready-workspaces`,
 	Run: run,
+	Args: func(_ *cobra.Command, argv []string) error {
+		if len(argv) != 1 {
+			return fmt.Errorf(
+				"Expected exactly one command line argument containing the identifier of the add-on")
+		}
+		return nil
+	},
 }
 
 func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Check command line arguments:
-	if len(argv) != 1 {
-		reporter.Errorf(
-			"Expected exactly one command line argument or flag containing the identifier of the add-on",
-		)
-		os.Exit(1)
-	}
 	addOnID := argv[0]
 
 	// Create the client for the OCM API:
