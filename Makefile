@@ -24,7 +24,7 @@ export CGO_ENABLED=0
 # Unset GOFLAG for CI and ensure we've got nothing accidently set
 unexport GOFLAGS
 
-.PHONY: build
+.PHONY: rosa
 rosa:
 	go build ./cmd/rosa
 
