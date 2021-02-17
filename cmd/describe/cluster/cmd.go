@@ -54,12 +54,6 @@ var Cmd = &cobra.Command{
   # Describe a cluster using the --cluster flag
   rosa describe cluster --cluster=mycluster`,
 	Run: run,
-	PreRun: func(cmd *cobra.Command, argv []string) {
-		// Allow the command to be called programmatically
-		if len(argv) == 1 && !cmd.Flag("cluster").Changed {
-			args.clusterKey = argv[0]
-		}
-	},
 }
 
 func init() {
@@ -75,9 +69,14 @@ func init() {
 	Cmd.MarkFlagRequired("cluster")
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	// Allow the command to be called programmatically
+	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
+		args.clusterKey = argv[0]
+	}
 
 	clusterKey := args.clusterKey
 	// Check that the cluster key (name, identifier or external identifier) given by the user

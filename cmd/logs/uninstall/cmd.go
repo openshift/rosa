@@ -50,13 +50,6 @@ var Cmd = &cobra.Command{
   # Show uninstall logs for a cluster using the --cluster flag
   rosa logs uninstall --cluster=mycluster`,
 	Run: run,
-	PreRun: func(cmd *cobra.Command, argv []string) {
-		// Allow the command to be called programmatically
-		if len(argv) == 1 && !cmd.Flag("cluster").Changed {
-			args.clusterKey = argv[0]
-			args.watch = true
-		}
-	},
 }
 
 func init() {
@@ -87,13 +80,19 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Determine whether the user wants to watch logs streaming.
 	// We check the flag value this way to allow other commands to watch logs
 	watch := cmd.Flags().Lookup("watch").Value.String() == "true"
+
+	// Allow the command to be called programmatically
+	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
+		args.clusterKey = argv[0]
+		watch = true
+	}
 
 	clusterKey := args.clusterKey
 	// Check that the cluster key (name, identifier or external identifier) given by the user
