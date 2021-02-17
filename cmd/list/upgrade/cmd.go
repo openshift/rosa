@@ -19,6 +19,7 @@ package upgrade
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -157,17 +158,21 @@ func run(_ *cobra.Command, _ []string) {
 }
 
 func latestInCurrentMinor(current string, versions []string) string {
-	currentParts := strings.Split(current, ".")
-	currentRev := currentParts[2]
 	latestVersion := current
+	currentParts := strings.Split(current, ".")
+	currentPart1, _ := strconv.Atoi(currentParts[1])
+	currentPart2, _ := strconv.Atoi(currentParts[2])
+	currentRev := currentPart2
 	latestRev := currentRev
 	for _, version := range versions {
 		versionParts := strings.Split(version, ".")
-		if currentParts[1] != versionParts[1] {
+		versionPart1, _ := strconv.Atoi(versionParts[1])
+		versionPart2, _ := strconv.Atoi(versionParts[2])
+		if currentPart1 != versionPart1 {
 			continue
 		}
-		if versionParts[2] > latestRev {
-			latestRev = versionParts[2]
+		if versionPart2 > latestRev {
+			latestRev = versionPart2
 			latestVersion = version
 		}
 	}
