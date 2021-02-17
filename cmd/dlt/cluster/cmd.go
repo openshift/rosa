@@ -123,7 +123,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Debugf("Deleting cluster '%s'", clusterKey)
-	cluster, err := clusterprovider.DeleteCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	_, err = clusterprovider.DeleteCluster(clustersCollection, clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -131,7 +131,7 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter.Infof("Cluster '%s' will start uninstalling now", clusterKey)
 
 	if args.watch {
-		uninstallLogs.Cmd.Run(cmd, []string{cluster.ID()})
+		uninstallLogs.Cmd.Run(uninstallLogs.Cmd, []string{clusterKey})
 	} else {
 		reporter.Infof(
 			"To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",

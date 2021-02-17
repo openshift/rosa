@@ -798,7 +798,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 
-	cluster, err := clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
+	_, err = clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
 	if err != nil {
 		if args.dryRun {
 			reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)
@@ -822,7 +822,7 @@ func run(cmd *cobra.Command, _ []string) {
 			"for more information.")
 
 	if args.watch {
-		installLogs.Cmd.Run(cmd, []string{cluster.ID()})
+		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
 	} else {
 		reporter.Infof(
 			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
@@ -834,7 +834,7 @@ func run(cmd *cobra.Command, _ []string) {
 		)
 	}
 
-	clusterdescribe.Cmd.Run(cmd, []string{cluster.ID()})
+	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{clusterName})
 }
 
 // Validate OpenShift versions
