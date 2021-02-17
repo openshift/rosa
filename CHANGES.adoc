@@ -3,6 +3,16 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.1.8 Feb 17 2021
+
+- Remove asset build dependency
+- cmd: Fix programmatically-run commands
+- init: Fix empty flavour when validating cluster creation
+- Fix Makefile build command
+- cmd: Use Run instead of PreRun
+- upgrade: Validate node drain grace period
+- upgrades: Fix list of recommendations
+
 == 0.1.7 Feb 16 2021
 
 - fix example
