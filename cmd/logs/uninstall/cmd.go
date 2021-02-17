@@ -50,6 +50,13 @@ var Cmd = &cobra.Command{
   # Show uninstall logs for a cluster using the --cluster flag
   rosa logs uninstall --cluster=mycluster`,
 	Run: run,
+	PreRun: func(cmd *cobra.Command, argv []string) {
+		// Allow the command to be called programmatically
+		if len(argv) == 1 && !cmd.Flag("cluster").Changed {
+			args.clusterKey = argv[0]
+			args.watch = true
+		}
+	},
 }
 
 func init() {
