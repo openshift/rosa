@@ -330,6 +330,18 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+	isValidNodeDrainGracePeriod := false
+	for _, nodeDrainOption := range nodeDrainOptions {
+		if nodeDrainGracePeriod == nodeDrainOption {
+			isValidNodeDrainGracePeriod = true
+			break
+		}
+	}
+	if !isValidNodeDrainGracePeriod {
+		reporter.Errorf("Expected a valid node drain grace period. Options are [%s]",
+			strings.Join(nodeDrainOptions, ", "))
+		os.Exit(1)
+	}
 	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
 	nodeDrainValue, err := strconv.ParseFloat(nodeDrainParsed[0], 64)
 	if err != nil {
