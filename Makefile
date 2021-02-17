@@ -25,7 +25,7 @@ export CGO_ENABLED=0
 unexport GOFLAGS
 
 .PHONY: build
-rosa: generate
+rosa:
 	go build ./cmd/rosa
 
 .PHONY: test
