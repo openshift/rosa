@@ -1,0 +1,8 @@
+/.gobin/
+/.idea/
+/examples/*
+/metamodel/
+/model/
+/vendor/
+!/examples/*.go
+!/examples/*.yaml
