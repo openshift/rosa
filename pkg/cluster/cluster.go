@@ -385,11 +385,15 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 			cmv1.NewCloudRegion().
 				ID(config.Region),
 		).
-		Flavour(
+		Properties(clusterProperties)
+
+	if config.Flavour != "" {
+		clusterBuilder = clusterBuilder.Flavour(
 			cmv1.NewFlavour().
 				ID(config.Flavour),
-		).
-		Properties(clusterProperties)
+		)
+		reporter.Debugf("Using cluster flavour '%s'", config.Flavour)
+	}
 
 	if config.Version != "" {
 		clusterBuilder = clusterBuilder.Version(
