@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the `moactl`
 command line tool.
 
+== 0.1.9 Feb 18 2021
+
+- go: Use vendor directory
+
 == 0.1.8 Feb 17 2021
 
 - Remove asset build dependency
