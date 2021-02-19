@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/ingress"
 	"github.com/openshift/rosa/cmd/create/machinepool"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/confirm"
 	"github.com/openshift/rosa/pkg/interactive"
 )
@@ -43,6 +44,7 @@ func init() {
 	Cmd.AddCommand(machinepool.Cmd)
 
 	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }

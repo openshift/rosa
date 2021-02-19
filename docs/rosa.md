@@ -9,10 +9,9 @@ Command line tool for Red Hat OpenShift Service on AWS.
 ### Options
 
 ```
-      --debug            Enable debug mode.
-  -h, --help             help for rosa
-      --profile string   Use a specific AWS profile from your credential file.
-  -v, --v Level          log level for V logs
+      --debug     Enable debug mode.
+  -h, --help      help for rosa
+  -v, --v Level   log level for V logs
 ```
 
 ### SEE ALSO

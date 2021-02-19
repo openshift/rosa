@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/revoke/user"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/confirm"
 )
 
@@ -30,8 +31,9 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	flags := Cmd.PersistentFlags()
-	confirm.AddFlag(flags)
-
 	Cmd.AddCommand(user.Cmd)
+
+	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
+	confirm.AddFlag(flags)
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/cmd/verify/oc"
 	"github.com/openshift/rosa/cmd/verify/permissions"
 	"github.com/openshift/rosa/cmd/verify/quota"
+	"github.com/openshift/rosa/pkg/arguments"
 
 	"github.com/openshift/rosa/pkg/aws"
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
@@ -57,14 +58,6 @@ func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVarP(
-		&args.region,
-		"region",
-		"r",
-		"",
-		"AWS region in which verify quota and permissions (overrides the AWS_REGION environment variable)",
-	)
-
 	flags.BoolVar(
 		&args.deleteStack,
 		"delete-stack",
@@ -74,6 +67,9 @@ func init() {
 
 	// Force-load all flags from `login` into `init`
 	flags.AddFlagSet(login.Cmd.Flags())
+
+	arguments.AddProfileFlag(flags)
+	arguments.AddRegionFlag(flags)
 }
 
 func run(cmd *cobra.Command, argv []string) {

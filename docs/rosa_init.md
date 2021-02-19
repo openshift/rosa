@@ -24,7 +24,6 @@ rosa init [flags]
 ### Options
 
 ```
-  -r, --region string          AWS region in which verify quota and permissions (overrides the AWS_REGION environment variable)
       --delete-stack           Deletes stack template applied to your AWS account during the 'init' command.
                                
       --client-id string       OpenID client identifier. The default value is 'cloud-services'.
@@ -33,15 +32,16 @@ rosa init [flags]
       --scope strings          OpenID scope. If this option is used it will replace completely the default scopes. Can be repeated multiple times to specify multiple scopes. (default [openid])
   -t, --token string           Access or refresh token generated from https://cloud.redhat.com/openshift/token/rosa.
       --token-url string       OpenID token URL. The default value is 'https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token'.
+      --profile string         Use a specific AWS profile from your credential file.
+      --region string          Use a specific AWS region, overriding the AWS_REGION environment variable.
   -h, --help                   help for init
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --debug            Enable debug mode.
-      --profile string   Use a specific AWS profile from your credential file.
-  -v, --v Level          log level for V logs
+      --debug     Enable debug mode.
+  -v, --v Level   log level for V logs
 ```
 
 ### SEE ALSO

@@ -30,21 +30,7 @@ var Cmd = &cobra.Command{
 	Long:  "Verify resources are configured correctly for cluster install",
 }
 
-var args struct {
-	region string
-}
-
 func init() {
-	flags := Cmd.PersistentFlags()
-
-	flags.StringVarP(
-		&args.region,
-		"region",
-		"r",
-		"",
-		"AWS region in which to run (overrides the AWS_REGION environment variable)",
-	)
-
 	Cmd.AddCommand(oc.Cmd)
 	Cmd.AddCommand(permissions.Cmd)
 	Cmd.AddCommand(quota.Cmd)

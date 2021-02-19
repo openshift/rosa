@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/install/addon"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/confirm"
 )
 
@@ -33,5 +34,6 @@ func init() {
 	Cmd.AddCommand(addon.Cmd)
 
 	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
 	confirm.AddFlag(flags)
 }

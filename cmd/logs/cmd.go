@@ -21,6 +21,7 @@ import (
 
 	"github.com/openshift/rosa/cmd/logs/install"
 	"github.com/openshift/rosa/cmd/logs/uninstall"
+	"github.com/openshift/rosa/pkg/arguments"
 )
 
 var Cmd = &cobra.Command{
@@ -38,4 +39,7 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.AddCommand(install.Cmd)
 	Cmd.AddCommand(uninstall.Cmd)
+
+	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
 }

@@ -34,6 +34,7 @@ import (
 	v "github.com/openshift/rosa/cmd/validations"
 	"github.com/openshift/rosa/pkg/aws"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/confirm"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -126,13 +127,7 @@ func init() {
 		false,
 		"Deploy to multiple data centers.",
 	)
-	flags.StringVarP(
-		&args.region,
-		"region",
-		"r",
-		"",
-		"AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)",
-	)
+	arguments.AddRegionFlag(flags)
 	flags.StringVar(
 		&args.version,
 		"version",
@@ -350,7 +345,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Get AWS region
-	region, err := aws.GetRegion(args.region)
+	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
 		reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)

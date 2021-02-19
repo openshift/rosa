@@ -25,7 +25,7 @@ rosa create cluster [flags]
 ```
   -c, --cluster-name string           Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.
       --multi-az                      Deploy to multiple data centers.
-  -r, --region string                 AWS region where your worker pool will be located. (overrides the AWS_REGION environment variable)
+      --region string                 Use a specific AWS region, overriding the AWS_REGION environment variable.
       --version string                Version of OpenShift that will be used to install the cluster, for example "4.3.10"
       --channel-group string          Channel group is the name of the group where this image belongs, for example "stable" or "fast". (default "stable")
       --compute-machine-type string   Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.

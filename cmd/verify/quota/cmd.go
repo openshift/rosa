@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -38,12 +39,19 @@ var Cmd = &cobra.Command{
 	Run: run,
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func init() {
+	flags := Cmd.Flags()
+
+	arguments.AddRegionFlag(flags)
+	arguments.AddProfileFlag(flags)
+}
+
+func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Get AWS region
-	region, err := aws.GetRegion(cmd.Flags().Lookup("region").Value.String())
+	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
 		reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)

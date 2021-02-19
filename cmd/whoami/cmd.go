@@ -24,6 +24,7 @@ import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -38,6 +39,11 @@ var Cmd = &cobra.Command{
 	Example: `  # Displays user information
   rosa whoami`,
 	Run: run,
+}
+
+func init() {
+	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
 }
 
 func run(_ *cobra.Command, _ []string) {

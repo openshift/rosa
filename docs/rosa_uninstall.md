@@ -9,16 +9,16 @@ Uninstalls a resource from a cluster
 ### Options
 
 ```
-  -h, --help   help for uninstall
-  -y, --yes    Automatically answer yes to confirm operation.
+  -h, --help             help for uninstall
+      --profile string   Use a specific AWS profile from your credential file.
+  -y, --yes              Automatically answer yes to confirm operation.
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --debug            Enable debug mode.
-      --profile string   Use a specific AWS profile from your credential file.
-  -v, --v Level          log level for V logs
+      --debug     Enable debug mode.
+  -v, --v Level   log level for V logs
 ```
 
 ### SEE ALSO

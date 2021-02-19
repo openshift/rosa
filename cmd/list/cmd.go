@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/upgrade"
 	"github.com/openshift/rosa/cmd/list/user"
 	"github.com/openshift/rosa/cmd/list/version"
+	"github.com/openshift/rosa/pkg/arguments"
 )
 
 var Cmd = &cobra.Command{
@@ -46,4 +47,7 @@ func init() {
 	Cmd.AddCommand(upgrade.Cmd)
 	Cmd.AddCommand(user.Cmd)
 	Cmd.AddCommand(version.Cmd)
+
+	flags := Cmd.PersistentFlags()
+	arguments.AddProfileFlag(flags)
 }
