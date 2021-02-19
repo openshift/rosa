@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/logging"
@@ -49,6 +50,8 @@ func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
 
+	arguments.AddRegionFlag(flags)
+
 	// Basic options
 	flags.IntVar(
 		&args.count,
@@ -64,6 +67,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
+		Region(arguments.GetRegion()).
 		Logger(logger).
 		Build()
 	if err != nil {
