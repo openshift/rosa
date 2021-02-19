@@ -20,8 +20,9 @@ rosa list clusters [flags]
 ### Options
 
 ```
-      --count int   Number of clusters to display. (default 100)
-  -h, --help        help for clusters
+      --region string   Use a specific AWS region, overriding the AWS_REGION environment variable.
+      --count int       Number of clusters to display. (default 100)
+  -h, --help            help for clusters
 ```
 
 ### Options inherited from parent commands
