@@ -230,7 +230,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	if scheduledUpgrade != nil {
 		str = fmt.Sprintf("%s"+
-			"Scheduled upgrade:          %s on %s\n",
+			"Scheduled Upgrade:          %s on %s\n",
 			str,
 			scheduledUpgrade.Version(),
 			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
