@@ -3,6 +3,25 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.162 Feb 22 2021
+
+- Update to model 0.0.110:
+** organization: Add quota_cost endpoint resources
+
+== 0.1.161 Feb 22 2021
+
+- Update to model 0.0.109:
+** Remove deprecated 'upgrade_channel_group' field.
+- Run tests in parallel.
+- Add documentation of upgrade policy states.
+
+== 0.1.160 Feb 17 2021
+
+- Improve testing of metrics.
+- Update to model 0.0.108:
+** Add `billing_model` attribute to the `ReservedResource` type.
+** Add `cluster_billing_model` attribute to the `Subscriptioin` type.
+
 == 0.1.159 Feb 15 2021
 
 - Add metrics package
@@ -36,7 +55,7 @@ SDK.
 == 0.1.156 Feb 4 2021
 
 - Update to model 0.0.105:
-** Add cluster hibernation support 
+** Add cluster hibernation support
 - Declare go 1.15 in go.mod
 - connection: Skip loading SystemCertPool on Windows
 

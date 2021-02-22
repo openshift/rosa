@@ -25,8 +25,11 @@ import (
 )
 
 // serviceLabel calculates the `service` for the given HTTP request.
-func serviceLabel(request *http.Request) string {
+func (t *roundTripper) serviceLabel(request *http.Request) string {
 	path := request.URL.Path
+	if !strings.HasPrefix(path, "/api/") {
+		return ""
+	}
 	if strings.HasPrefix(path, "/api/accounts_mgmt") {
 		return "ocm-accounts-service"
 	} else if strings.HasPrefix(path, "/api/clusters_mgmt") {
@@ -45,12 +48,12 @@ func serviceLabel(request *http.Request) string {
 }
 
 // methodLabel calculates the `method` label from the HTTP method.
-func methodLabel(request *http.Request) string {
+func (t *roundTripper) methodLabel(request *http.Request) string {
 	return strings.ToUpper(request.Method)
 }
 
-// pathLabel caculates the `path` label from the URL path.
-func pathLabel(request *http.Request) string {
+// pathLabel calculates the `path` label from the URL path.
+func (t *roundTripper) pathLabel(request *http.Request) string {
 	// Remove leading and trailing slashes:
 	path := request.URL.Path
 	for len(path) > 0 && strings.HasPrefix(path, "/") {
@@ -62,7 +65,7 @@ func pathLabel(request *http.Request) string {
 
 	// Clear segments that correspond to path variables:
 	segments := strings.Split(path, "/")
-	current := pathRoot
+	current := t.owner.paths
 	for i, segment := range segments {
 		next, ok := current[segment]
 		if ok {
@@ -83,7 +86,7 @@ func pathLabel(request *http.Request) string {
 }
 
 // codeLabel calculates the `code` label from the given HTTP response.
-func codeLabel(response *http.Response) string {
+func (t *roundTripper) codeLabel(response *http.Response) string {
 	code := 0
 	if response != nil {
 		code = response.StatusCode

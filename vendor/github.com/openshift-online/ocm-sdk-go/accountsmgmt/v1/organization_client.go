@@ -82,6 +82,16 @@ func (c *OrganizationClient) Labels() *GenericLabelsClient {
 	)
 }
 
+// QuotaCost returns the target 'quota_cost' resource.
+//
+// Reference to the service that returns a summary of quota cost for this organization
+func (c *OrganizationClient) QuotaCost() *QuotaCostClient {
+	return NewQuotaCostClient(
+		c.transport,
+		path.Join(c.path, "quota_cost"),
+	)
+}
+
 // QuotaSummary returns the target 'quota_summary' resource.
 //
 // Reference to the service that returns the summary of the resource quota for this

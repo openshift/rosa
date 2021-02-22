@@ -27,7 +27,7 @@ type UpgradePolicyStateBuilder struct {
 	id          string
 	href        string
 	description string
-	value       string
+	value       UpgradePolicyStateValue
 }
 
 // NewUpgradePolicyState creates a new builder of 'upgrade_policy_state' objects.
@@ -66,8 +66,8 @@ func (b *UpgradePolicyStateBuilder) Description(value string) *UpgradePolicyStat
 
 // Value sets the value of the 'value' attribute to the given value.
 //
-//
-func (b *UpgradePolicyStateBuilder) Value(value string) *UpgradePolicyStateBuilder {
+// Overall state of a cluster upgrade policy.
+func (b *UpgradePolicyStateBuilder) Value(value UpgradePolicyStateValue) *UpgradePolicyStateBuilder {
 	b.value = value
 	b.bitmap_ |= 16
 	return b

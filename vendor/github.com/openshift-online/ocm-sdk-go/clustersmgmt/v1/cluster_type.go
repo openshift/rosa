@@ -114,7 +114,6 @@ type Cluster struct {
 	status                            *ClusterStatus
 	storageQuota                      *Value
 	subscription                      *Subscription
-	upgradeChannelGroup               string
 	version                           *Version
 	etcdEncryption                    bool
 	managed                           bool
@@ -1113,35 +1112,12 @@ func (o *Cluster) GetSubscription() (value *Subscription, ok bool) {
 	return
 }
 
-// UpgradeChannelGroup returns the value of the 'upgrade_channel_group' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Channel group to be used for upgrading the cluster. Valid values: stable (default), fast, candidate, nightly.
-func (o *Cluster) UpgradeChannelGroup() string {
-	if o != nil && o.bitmap_&4398046511104 != 0 {
-		return o.upgradeChannelGroup
-	}
-	return ""
-}
-
-// GetUpgradeChannelGroup returns the value of the 'upgrade_channel_group' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Channel group to be used for upgrading the cluster. Valid values: stable (default), fast, candidate, nightly.
-func (o *Cluster) GetUpgradeChannelGroup() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4398046511104 != 0
-	if ok {
-		value = o.upgradeChannelGroup
-	}
-	return
-}
-
 // Version returns the value of the 'version' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the version of _OpenShift_ that will be used to install the cluster.
 func (o *Cluster) Version() *Version {
-	if o != nil && o.bitmap_&8796093022208 != 0 {
+	if o != nil && o.bitmap_&4398046511104 != 0 {
 		return o.version
 	}
 	return nil
@@ -1152,7 +1128,7 @@ func (o *Cluster) Version() *Version {
 //
 // Link to the version of _OpenShift_ that will be used to install the cluster.
 func (o *Cluster) GetVersion() (value *Version, ok bool) {
-	ok = o != nil && o.bitmap_&8796093022208 != 0
+	ok = o != nil && o.bitmap_&4398046511104 != 0
 	if ok {
 		value = o.version
 	}

@@ -35,7 +35,7 @@ func (c *Connection) registerMetrics(subsystem string) error {
 		},
 		tokenMetricsLabels,
 	)
-	err = prometheus.Register(c.tokenCountMetric)
+	err = c.metricsRegisterer.Register(c.tokenCountMetric)
 	if err != nil {
 		registered, ok := err.(prometheus.AlreadyRegisteredError)
 		if ok {
@@ -60,7 +60,7 @@ func (c *Connection) registerMetrics(subsystem string) error {
 		},
 		tokenMetricsLabels,
 	)
-	err = prometheus.Register(c.tokenDurationMetric)
+	err = c.metricsRegisterer.Register(c.tokenDurationMetric)
 	if err != nil {
 		registered, ok := err.(prometheus.AlreadyRegisteredError)
 		if ok {

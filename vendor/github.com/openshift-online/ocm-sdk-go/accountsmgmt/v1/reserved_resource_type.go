@@ -29,6 +29,7 @@ import (
 type ReservedResource struct {
 	bitmap_              uint32
 	availabilityZoneType string
+	billingModel         BillingModel
 	count                int
 	createdAt            time.Time
 	resourceName         string
@@ -88,12 +89,35 @@ func (o *ReservedResource) GetAvailabilityZoneType() (value string, ok bool) {
 	return
 }
 
+// BillingModel returns the value of the 'billing_model' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *ReservedResource) BillingModel() BillingModel {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.billingModel
+	}
+	return BillingModel("")
+}
+
+// GetBillingModel returns the value of the 'billing_model' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *ReservedResource) GetBillingModel() (value BillingModel, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.billingModel
+	}
+	return
+}
+
 // Count returns the value of the 'count' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *ReservedResource) Count() int {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.count
 	}
 	return 0
@@ -104,7 +128,7 @@ func (o *ReservedResource) Count() int {
 //
 //
 func (o *ReservedResource) GetCount() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.count
 	}
@@ -116,7 +140,7 @@ func (o *ReservedResource) GetCount() (value int, ok bool) {
 //
 //
 func (o *ReservedResource) CreatedAt() time.Time {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.createdAt
 	}
 	return time.Time{}
@@ -127,7 +151,7 @@ func (o *ReservedResource) CreatedAt() time.Time {
 //
 //
 func (o *ReservedResource) GetCreatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.createdAt
 	}
@@ -139,7 +163,7 @@ func (o *ReservedResource) GetCreatedAt() (value time.Time, ok bool) {
 //
 //
 func (o *ReservedResource) ResourceName() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.resourceName
 	}
 	return ""
@@ -150,7 +174,7 @@ func (o *ReservedResource) ResourceName() string {
 //
 //
 func (o *ReservedResource) GetResourceName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.resourceName
 	}
@@ -162,7 +186,7 @@ func (o *ReservedResource) GetResourceName() (value string, ok bool) {
 //
 //
 func (o *ReservedResource) ResourceType() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.resourceType
 	}
 	return ""
@@ -173,7 +197,7 @@ func (o *ReservedResource) ResourceType() string {
 //
 //
 func (o *ReservedResource) GetResourceType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.resourceType
 	}
@@ -185,7 +209,7 @@ func (o *ReservedResource) GetResourceType() (value string, ok bool) {
 //
 //
 func (o *ReservedResource) UpdatedAt() time.Time {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.updatedAt
 	}
 	return time.Time{}
@@ -196,7 +220,7 @@ func (o *ReservedResource) UpdatedAt() time.Time {
 //
 //
 func (o *ReservedResource) GetUpdatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.updatedAt
 	}

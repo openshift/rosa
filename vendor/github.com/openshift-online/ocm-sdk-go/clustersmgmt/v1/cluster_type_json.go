@@ -454,16 +454,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeSubscription(object.subscription, stream)
 		count++
 	}
-	present_ = object.bitmap_&4398046511104 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("upgrade_channel_group")
-		stream.WriteString(object.upgradeChannelGroup)
-		count++
-	}
-	present_ = object.bitmap_&8796093022208 != 0 && object.version != nil
+	present_ = object.bitmap_&4398046511104 != 0 && object.version != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -787,14 +778,10 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 			value := readSubscription(iterator)
 			object.subscription = value
 			object.bitmap_ |= 2199023255552
-		case "upgrade_channel_group":
-			value := iterator.ReadString()
-			object.upgradeChannelGroup = value
-			object.bitmap_ |= 4398046511104
 		case "version":
 			value := readVersion(iterator)
 			object.version = value
-			object.bitmap_ |= 8796093022208
+			object.bitmap_ |= 4398046511104
 		default:
 			iterator.ReadAny()
 		}

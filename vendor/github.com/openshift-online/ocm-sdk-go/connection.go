@@ -80,7 +80,8 @@ type ConnectionBuilder struct {
 	transportWrappers []TransportWrapper
 
 	// Metrics:
-	metricsSubsystem string
+	metricsSubsystem  string
+	metricsRegisterer prometheus.Registerer
 
 	// Error detected while populating the builder. Once set calls to methods to
 	// set other builder parameters will be ignored and the Build method will
@@ -121,6 +122,7 @@ type Connection struct {
 
 	// Metrics:
 	metricsSubsystem    string
+	metricsRegisterer   prometheus.Registerer
 	metricsWrapper      TransportWrapper
 	tokenCountMetric    *prometheus.CounterVec
 	tokenDurationMetric *prometheus.HistogramVec
@@ -149,6 +151,7 @@ func NewConnectionBuilder() *ConnectionBuilder {
 		urlTable: map[string]string{
 			"": DefaultURL,
 		},
+		metricsRegisterer: prometheus.DefaultRegisterer,
 	}
 }
 
@@ -473,6 +476,21 @@ func (b *ConnectionBuilder) MetricsSubsystem(value string) *ConnectionBuilder {
 	return b
 }
 
+// MetricsRegisterer sets the Prometheus registerer that will be used to register the metrics. The
+// default is to use the default Prometheus registerer and there is usually no need to change that.
+// This is intended for unit tests, where it is convenient to have a registerer that doesn't
+// interfere with the rest of the system.
+func (b *ConnectionBuilder) MetricsRegisterer(value prometheus.Registerer) *ConnectionBuilder {
+	if b.err != nil {
+		return b
+	}
+	if value == nil {
+		value = prometheus.DefaultRegisterer
+	}
+	b.metricsRegisterer = value
+	return b
+}
+
 // Metrics sets the name of the subsystem that will be used by the connection to register metrics
 // with Prometheus.
 //
@@ -789,7 +807,9 @@ func (b *ConnectionBuilder) BuildContext(ctx context.Context) (connection *Conne
 		var wrapper *metrics.TransportWrapper
 		wrapper, err = metrics.NewTransportWrapper().
 			Logger(b.logger).
+			Path(tokenURL.Path).
 			Subsystem(b.metricsSubsystem).
+			Registerer(b.metricsRegisterer).
 			Build()
 		if err != nil {
 			return
@@ -819,6 +839,7 @@ func (b *ConnectionBuilder) BuildContext(ctx context.Context) (connection *Conne
 		refreshToken:      refreshToken,
 		scopes:            scopes,
 		metricsSubsystem:  b.metricsSubsystem,
+		metricsRegisterer: b.metricsRegisterer,
 		userWrapers:       userWrappers,
 		loggingWrapper:    loggingWrapper,
 		metricsWrapper:    metricsWrapper,

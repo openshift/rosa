@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"strings"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -167,18 +168,19 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 	organization := acctResponse.Body().Organization().ID()
 
 	// Get a list of add-on quotas for the current organization
-	resourceQuotasResponse, err := connection.AccountsMgmt().V1().Organizations().
+	quotaCostResponse, err := connection.AccountsMgmt().V1().Organizations().
 		Organization(organization).
-		ResourceQuota().
+		QuotaCost().
 		List().
-		Search("resource_type='addon'").
+		Search("quota_id LIKE 'add-on%'").
+		Parameter("fetchRelatedResources", true).
 		Page(1).
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, handleErr(resourceQuotasResponse.Error(), err)
+		return nil, handleErr(quotaCostResponse.Error(), err)
 	}
-	resourceQuotas := resourceQuotasResponse.Items()
+	quotaCosts := quotaCostResponse.Items()
 
 	// Get complete list of enabled add-ons
 	addOnsResponse, err := connection.ClustersMgmt().V1().Addons().
@@ -195,12 +197,19 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 
 	// Populate enabled add-ons with if they are available for the current org
 	addOnsResponse.Items().Each(func(addOn *cmv1.AddOn) bool {
+		// Free add-ons are always available
 		available := addOn.ResourceCost() == 0
 
 		// Only return add-ons for which the org has quota
-		resourceQuotas.Each(func(resourceQuota *amsv1.ResourceQuota) bool {
-			if addOn.ResourceName() == resourceQuota.ResourceName() {
-				available = float64(resourceQuota.Allowed()) >= addOn.ResourceCost()
+		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
+			// Check all related resources to ensure we're checking the product of the correct addon
+			for _, relatedResource := range quotaCost.RelatedResources() {
+				resourceName := relatedResource.(map[string]interface{})["resource_name"].(string)
+				product := relatedResource.(map[string]interface{})["product"].(string)
+				// Filter out non-compatible addons
+				if addOn.ResourceName() == resourceName && isCompatible(product) {
+					available = true
+				}
 			}
 			return true
 		})
@@ -214,6 +223,11 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 	})
 
 	return addOns, nil
+}
+
+func isCompatible(product string) bool {
+	product = strings.ToLower(product)
+	return product == "any" || product == "rosa" || product == "moa"
 }
 
 func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
