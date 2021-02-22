@@ -102,7 +102,6 @@ type ClusterBuilder struct {
 	status                            *ClusterStatusBuilder
 	storageQuota                      *ValueBuilder
 	subscription                      *SubscriptionBuilder
-	upgradeChannelGroup               string
 	version                           *VersionBuilder
 	etcdEncryption                    bool
 	managed                           bool
@@ -600,24 +599,15 @@ func (b *ClusterBuilder) Subscription(value *SubscriptionBuilder) *ClusterBuilde
 	return b
 }
 
-// UpgradeChannelGroup sets the value of the 'upgrade_channel_group' attribute to the given value.
-//
-//
-func (b *ClusterBuilder) UpgradeChannelGroup(value string) *ClusterBuilder {
-	b.upgradeChannelGroup = value
-	b.bitmap_ |= 4398046511104
-	return b
-}
-
 // Version sets the value of the 'version' attribute to the given value.
 //
 // Representation of an _OpenShift_ version.
 func (b *ClusterBuilder) Version(value *VersionBuilder) *ClusterBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 8796093022208
+		b.bitmap_ |= 4398046511104
 	} else {
-		b.bitmap_ &^= 8796093022208
+		b.bitmap_ &^= 4398046511104
 	}
 	return b
 }
@@ -776,7 +766,6 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	} else {
 		b.subscription = nil
 	}
-	b.upgradeChannelGroup = object.upgradeChannelGroup
 	if object.version != nil {
 		b.version = NewVersion().Copy(object.version)
 	} else {
@@ -960,7 +949,6 @@ func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 			return
 		}
 	}
-	object.upgradeChannelGroup = b.upgradeChannelGroup
 	if b.version != nil {
 		object.version, err = b.version.Build()
 		if err != nil {

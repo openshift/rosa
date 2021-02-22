@@ -67,11 +67,9 @@ type pathTree map[string]pathTree
 // Paths with segments that don't match this tree will be replaced with `/-`.
 func (t pathTree) redact(path string) string {
 	// Remove leading and trailing slashes:
-	for len(path) > 0 && strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
-	for len(path) > 0 && strings.HasSuffix(path, "/") {
-		path = path[0 : len(path)-1]
+	path = t.clean(path)
+	if len(path) == 0 {
+		return path
 	}
 
 	// Clear segments that correspond to path variables:
@@ -94,6 +92,54 @@ func (t pathTree) redact(path string) string {
 
 	// Reconstruct the path joining the modified segments:
 	return "/" + strings.Join(segments, "/")
+}
+
+// copy creates a deep copy of this tree.
+func (t pathTree) copy() pathTree {
+	if t == nil {
+		return nil
+	}
+	tree := pathTree{}
+	for label, child := range t {
+		tree[label] = child.copy()
+	}
+	return tree
+}
+
+// add adds the given branch to this tree.
+func (t pathTree) add(path string) {
+	path = t.clean(path)
+	if len(path) == 0 {
+		return
+	}
+	segments := strings.Split(path, "/")
+	t.addSegments(segments)
+}
+
+func (t pathTree) addSegments(segments []string) {
+	if len(segments) == 0 {
+		return
+	}
+	head := segments[0]
+	tail := segments[1:]
+	next := t[head]
+	if next == nil {
+		if len(tail) > 0 {
+			next = pathTree{}
+		}
+		t[head] = next
+	}
+	next.addSegments(tail)
+}
+
+func (t pathTree) clean(path string) string {
+	for len(path) > 0 && strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+	for len(path) > 0 && strings.HasSuffix(path, "/") {
+		path = path[0 : len(path)-1]
+	}
+	return path
 }
 
 // pathRoot is the root of the URL path tree.

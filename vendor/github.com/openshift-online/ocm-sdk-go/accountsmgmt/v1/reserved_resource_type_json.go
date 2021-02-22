@@ -64,11 +64,20 @@ func writeReservedResource(object *ReservedResource, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("billing_model")
+		stream.WriteString(string(object.billingModel))
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("count")
 		stream.WriteInt(object.count)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -77,7 +86,7 @@ func writeReservedResource(object *ReservedResource, stream *jsoniter.Stream) {
 		stream.WriteString((object.createdAt).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -86,7 +95,7 @@ func writeReservedResource(object *ReservedResource, stream *jsoniter.Stream) {
 		stream.WriteString(object.resourceName)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -95,7 +104,7 @@ func writeReservedResource(object *ReservedResource, stream *jsoniter.Stream) {
 		stream.WriteString(object.resourceType)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -139,10 +148,15 @@ func readReservedResource(iterator *jsoniter.Iterator) *ReservedResource {
 			value := iterator.ReadString()
 			object.availabilityZoneType = value
 			object.bitmap_ |= 2
+		case "billing_model":
+			text := iterator.ReadString()
+			value := BillingModel(text)
+			object.billingModel = value
+			object.bitmap_ |= 4
 		case "count":
 			value := iterator.ReadInt()
 			object.count = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		case "created_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -150,15 +164,15 @@ func readReservedResource(iterator *jsoniter.Iterator) *ReservedResource {
 				iterator.ReportError("", err.Error())
 			}
 			object.createdAt = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		case "resource_name":
 			value := iterator.ReadString()
 			object.resourceName = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "resource_type":
 			value := iterator.ReadString()
 			object.resourceType = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "updated_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -166,7 +180,7 @@ func readReservedResource(iterator *jsoniter.Iterator) *ReservedResource {
 				iterator.ReportError("", err.Error())
 			}
 			object.updatedAt = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		default:
 			iterator.ReadAny()
 		}

@@ -39,7 +39,7 @@ type UpgradePolicyState struct {
 	id          string
 	href        string
 	description string
-	value       string
+	value       UpgradePolicyStateValue
 }
 
 // Kind returns the name of the type of the object.
@@ -125,19 +125,21 @@ func (o *UpgradePolicyState) GetDescription() (value string, ok bool) {
 // Value returns the value of the 'value' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// State value, can be 'pending', 'started', 'delayed', 'failed' or 'completed'.
-func (o *UpgradePolicyState) Value() string {
+// State value can be 'pending', 'scheduled', 'cancelled', 'started', 'delayed',
+// 'failed' or 'completed'.
+func (o *UpgradePolicyState) Value() UpgradePolicyStateValue {
 	if o != nil && o.bitmap_&16 != 0 {
 		return o.value
 	}
-	return ""
+	return UpgradePolicyStateValue("")
 }
 
 // GetValue returns the value of the 'value' attribute and
 // a flag indicating if the attribute has a value.
 //
-// State value, can be 'pending', 'started', 'delayed', 'failed' or 'completed'.
-func (o *UpgradePolicyState) GetValue() (value string, ok bool) {
+// State value can be 'pending', 'scheduled', 'cancelled', 'started', 'delayed',
+// 'failed' or 'completed'.
+func (o *UpgradePolicyState) GetValue() (value UpgradePolicyStateValue, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.value

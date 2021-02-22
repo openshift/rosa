@@ -27,34 +27,35 @@ import (
 //
 //
 type SubscriptionBuilder struct {
-	bitmap_           uint32
-	id                string
-	href              string
-	cloudAccountID    string
-	cloudProviderID   string
-	clusterID         string
-	consumerUUID      string
-	cpuTotal          int
-	createdAt         time.Time
-	creator           *AccountBuilder
-	displayName       string
-	externalClusterID string
-	labels            []*LabelBuilder
-	lastReconcileDate time.Time
-	lastTelemetryDate time.Time
-	organizationID    string
-	plan              *PlanBuilder
-	productBundle     ProductBundleEnum
-	provenance        string
-	regionID          string
-	serviceLevel      ServiceLevelEnum
-	socketTotal       int
-	status            string
-	supportLevel      SupportLevelEnum
-	systemUnits       SystemUnitsEnum
-	updatedAt         time.Time
-	usage             UsageEnum
-	managed           bool
+	bitmap_             uint32
+	id                  string
+	href                string
+	cloudAccountID      string
+	cloudProviderID     string
+	clusterID           string
+	clusterBillingModel BillingModel
+	consumerUUID        string
+	cpuTotal            int
+	createdAt           time.Time
+	creator             *AccountBuilder
+	displayName         string
+	externalClusterID   string
+	labels              []*LabelBuilder
+	lastReconcileDate   time.Time
+	lastTelemetryDate   time.Time
+	organizationID      string
+	plan                *PlanBuilder
+	productBundle       ProductBundleEnum
+	provenance          string
+	regionID            string
+	serviceLevel        ServiceLevelEnum
+	socketTotal         int
+	status              string
+	supportLevel        SupportLevelEnum
+	systemUnits         SystemUnitsEnum
+	updatedAt           time.Time
+	usage               UsageEnum
+	managed             bool
 }
 
 // NewSubscription creates a new builder of 'subscription' objects.
@@ -109,12 +110,21 @@ func (b *SubscriptionBuilder) ClusterID(value string) *SubscriptionBuilder {
 	return b
 }
 
+// ClusterBillingModel sets the value of the 'cluster_billing_model' attribute to the given value.
+//
+// Billing model for subscripiton and reserved_resource resources.
+func (b *SubscriptionBuilder) ClusterBillingModel(value BillingModel) *SubscriptionBuilder {
+	b.clusterBillingModel = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // ConsumerUUID sets the value of the 'consumer_UUID' attribute to the given value.
 //
 //
 func (b *SubscriptionBuilder) ConsumerUUID(value string) *SubscriptionBuilder {
 	b.consumerUUID = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -123,7 +133,7 @@ func (b *SubscriptionBuilder) ConsumerUUID(value string) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) CpuTotal(value int) *SubscriptionBuilder {
 	b.cpuTotal = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -132,7 +142,7 @@ func (b *SubscriptionBuilder) CpuTotal(value int) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) CreatedAt(value time.Time) *SubscriptionBuilder {
 	b.createdAt = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -142,9 +152,9 @@ func (b *SubscriptionBuilder) CreatedAt(value time.Time) *SubscriptionBuilder {
 func (b *SubscriptionBuilder) Creator(value *AccountBuilder) *SubscriptionBuilder {
 	b.creator = value
 	if value != nil {
-		b.bitmap_ |= 512
+		b.bitmap_ |= 1024
 	} else {
-		b.bitmap_ &^= 512
+		b.bitmap_ &^= 1024
 	}
 	return b
 }
@@ -154,7 +164,7 @@ func (b *SubscriptionBuilder) Creator(value *AccountBuilder) *SubscriptionBuilde
 //
 func (b *SubscriptionBuilder) DisplayName(value string) *SubscriptionBuilder {
 	b.displayName = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -163,7 +173,7 @@ func (b *SubscriptionBuilder) DisplayName(value string) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) ExternalClusterID(value string) *SubscriptionBuilder {
 	b.externalClusterID = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -173,7 +183,7 @@ func (b *SubscriptionBuilder) ExternalClusterID(value string) *SubscriptionBuild
 func (b *SubscriptionBuilder) Labels(values ...*LabelBuilder) *SubscriptionBuilder {
 	b.labels = make([]*LabelBuilder, len(values))
 	copy(b.labels, values)
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -182,7 +192,7 @@ func (b *SubscriptionBuilder) Labels(values ...*LabelBuilder) *SubscriptionBuild
 //
 func (b *SubscriptionBuilder) LastReconcileDate(value time.Time) *SubscriptionBuilder {
 	b.lastReconcileDate = value
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -191,7 +201,7 @@ func (b *SubscriptionBuilder) LastReconcileDate(value time.Time) *SubscriptionBu
 //
 func (b *SubscriptionBuilder) LastTelemetryDate(value time.Time) *SubscriptionBuilder {
 	b.lastTelemetryDate = value
-	b.bitmap_ |= 16384
+	b.bitmap_ |= 32768
 	return b
 }
 
@@ -200,7 +210,7 @@ func (b *SubscriptionBuilder) LastTelemetryDate(value time.Time) *SubscriptionBu
 //
 func (b *SubscriptionBuilder) Managed(value bool) *SubscriptionBuilder {
 	b.managed = value
-	b.bitmap_ |= 32768
+	b.bitmap_ |= 65536
 	return b
 }
 
@@ -209,7 +219,7 @@ func (b *SubscriptionBuilder) Managed(value bool) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) OrganizationID(value string) *SubscriptionBuilder {
 	b.organizationID = value
-	b.bitmap_ |= 65536
+	b.bitmap_ |= 131072
 	return b
 }
 
@@ -219,9 +229,9 @@ func (b *SubscriptionBuilder) OrganizationID(value string) *SubscriptionBuilder 
 func (b *SubscriptionBuilder) Plan(value *PlanBuilder) *SubscriptionBuilder {
 	b.plan = value
 	if value != nil {
-		b.bitmap_ |= 131072
+		b.bitmap_ |= 262144
 	} else {
-		b.bitmap_ &^= 131072
+		b.bitmap_ &^= 262144
 	}
 	return b
 }
@@ -231,7 +241,7 @@ func (b *SubscriptionBuilder) Plan(value *PlanBuilder) *SubscriptionBuilder {
 // Usage of Subscription.
 func (b *SubscriptionBuilder) ProductBundle(value ProductBundleEnum) *SubscriptionBuilder {
 	b.productBundle = value
-	b.bitmap_ |= 262144
+	b.bitmap_ |= 524288
 	return b
 }
 
@@ -240,7 +250,7 @@ func (b *SubscriptionBuilder) ProductBundle(value ProductBundleEnum) *Subscripti
 //
 func (b *SubscriptionBuilder) Provenance(value string) *SubscriptionBuilder {
 	b.provenance = value
-	b.bitmap_ |= 524288
+	b.bitmap_ |= 1048576
 	return b
 }
 
@@ -249,7 +259,7 @@ func (b *SubscriptionBuilder) Provenance(value string) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) RegionID(value string) *SubscriptionBuilder {
 	b.regionID = value
-	b.bitmap_ |= 1048576
+	b.bitmap_ |= 2097152
 	return b
 }
 
@@ -258,7 +268,7 @@ func (b *SubscriptionBuilder) RegionID(value string) *SubscriptionBuilder {
 // Service Level of Subscription.
 func (b *SubscriptionBuilder) ServiceLevel(value ServiceLevelEnum) *SubscriptionBuilder {
 	b.serviceLevel = value
-	b.bitmap_ |= 2097152
+	b.bitmap_ |= 4194304
 	return b
 }
 
@@ -267,7 +277,7 @@ func (b *SubscriptionBuilder) ServiceLevel(value ServiceLevelEnum) *Subscription
 //
 func (b *SubscriptionBuilder) SocketTotal(value int) *SubscriptionBuilder {
 	b.socketTotal = value
-	b.bitmap_ |= 4194304
+	b.bitmap_ |= 8388608
 	return b
 }
 
@@ -276,7 +286,7 @@ func (b *SubscriptionBuilder) SocketTotal(value int) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) Status(value string) *SubscriptionBuilder {
 	b.status = value
-	b.bitmap_ |= 8388608
+	b.bitmap_ |= 16777216
 	return b
 }
 
@@ -285,7 +295,7 @@ func (b *SubscriptionBuilder) Status(value string) *SubscriptionBuilder {
 // Support Level of Subscription.
 func (b *SubscriptionBuilder) SupportLevel(value SupportLevelEnum) *SubscriptionBuilder {
 	b.supportLevel = value
-	b.bitmap_ |= 16777216
+	b.bitmap_ |= 33554432
 	return b
 }
 
@@ -294,7 +304,7 @@ func (b *SubscriptionBuilder) SupportLevel(value SupportLevelEnum) *Subscription
 // Usage of Subscription.
 func (b *SubscriptionBuilder) SystemUnits(value SystemUnitsEnum) *SubscriptionBuilder {
 	b.systemUnits = value
-	b.bitmap_ |= 33554432
+	b.bitmap_ |= 67108864
 	return b
 }
 
@@ -303,7 +313,7 @@ func (b *SubscriptionBuilder) SystemUnits(value SystemUnitsEnum) *SubscriptionBu
 //
 func (b *SubscriptionBuilder) UpdatedAt(value time.Time) *SubscriptionBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 67108864
+	b.bitmap_ |= 134217728
 	return b
 }
 
@@ -312,7 +322,7 @@ func (b *SubscriptionBuilder) UpdatedAt(value time.Time) *SubscriptionBuilder {
 // Usage of Subscription.
 func (b *SubscriptionBuilder) Usage(value UsageEnum) *SubscriptionBuilder {
 	b.usage = value
-	b.bitmap_ |= 134217728
+	b.bitmap_ |= 268435456
 	return b
 }
 
@@ -327,6 +337,7 @@ func (b *SubscriptionBuilder) Copy(object *Subscription) *SubscriptionBuilder {
 	b.cloudAccountID = object.cloudAccountID
 	b.cloudProviderID = object.cloudProviderID
 	b.clusterID = object.clusterID
+	b.clusterBillingModel = object.clusterBillingModel
 	b.consumerUUID = object.consumerUUID
 	b.cpuTotal = object.cpuTotal
 	b.createdAt = object.createdAt
@@ -376,6 +387,7 @@ func (b *SubscriptionBuilder) Build() (object *Subscription, err error) {
 	object.cloudAccountID = b.cloudAccountID
 	object.cloudProviderID = b.cloudProviderID
 	object.clusterID = b.clusterID
+	object.clusterBillingModel = b.clusterBillingModel
 	object.consumerUUID = b.consumerUUID
 	object.cpuTotal = b.cpuTotal
 	object.createdAt = b.createdAt

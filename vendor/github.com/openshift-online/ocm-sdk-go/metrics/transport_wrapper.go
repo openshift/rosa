@@ -72,6 +72,7 @@ import (
 // Don't create objects of this type directly; use the NewTransportWrapper function instead.
 type TransportWrapperBuilder struct {
 	logger     logging.Logger
+	paths      []string
 	subsystem  string
 	registerer prometheus.Registerer
 }
@@ -80,6 +81,7 @@ type TransportWrapperBuilder struct {
 // one that generates Prometheus metrics.
 type TransportWrapper struct {
 	logger          logging.Logger
+	paths           pathTree
 	requestCount    *prometheus.CounterVec
 	requestDuration *prometheus.HistogramVec
 }
@@ -99,6 +101,15 @@ func NewTransportWrapper() *TransportWrapperBuilder {
 	return &TransportWrapperBuilder{
 		registerer: prometheus.DefaultRegisterer,
 	}
+}
+
+// Path adds a path that will be accepted as a value for the `path` label. By default all the paths
+// of the API are already added. This is intended for additional pads, for example the path for
+// token requests. If those paths aren't explicitly specified here then their metrics will be
+// accumulated in the `/-` path.
+func (b *TransportWrapperBuilder) Path(value string) *TransportWrapperBuilder {
+	b.paths = append(b.paths, value)
+	return b
 }
 
 // Logger sets the logger that will be used by the round tripper. This is mandatory.
@@ -127,6 +138,9 @@ func (b *TransportWrapperBuilder) Subsystem(value string) *TransportWrapperBuild
 // intended for unit tests, where it is convenient to have a registerer that doesn't interfere with
 // the rest of the system.
 func (b *TransportWrapperBuilder) Registerer(value prometheus.Registerer) *TransportWrapperBuilder {
+	if value == nil {
+		value = prometheus.DefaultRegisterer
+	}
 	b.registerer = value
 	return b
 }
@@ -163,6 +177,12 @@ func (b *TransportWrapperBuilder) Build() (result *TransportWrapper, err error) 
 		}
 	}
 
+	// Create the path tree:
+	paths := pathRoot.copy()
+	for _, path := range b.paths {
+		paths.add(path)
+	}
+
 	// Register the request duration metric:
 	requestDuration := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -192,6 +212,7 @@ func (b *TransportWrapperBuilder) Build() (result *TransportWrapper, err error) 
 	// Create and populate the object:
 	result = &TransportWrapper{
 		logger:          b.logger,
+		paths:           paths,
 		requestCount:    requestCount,
 		requestDuration: requestDuration,
 	}
@@ -217,10 +238,10 @@ func (t *roundTripper) RoundTrip(request *http.Request) (response *http.Response
 
 	// Update the metrics:
 	labels := prometheus.Labels{
-		serviceLabelName: serviceLabel(request),
-		methodLabelName:  methodLabel(request),
-		pathLabelName:    pathLabel(request),
-		codeLabelName:    codeLabel(response),
+		serviceLabelName: t.serviceLabel(request),
+		methodLabelName:  t.methodLabel(request),
+		pathLabelName:    t.pathLabel(request),
+		codeLabelName:    t.codeLabel(response),
 	}
 	t.owner.requestCount.With(labels).Inc()
 	t.owner.requestDuration.With(labels).Observe(elapsed.Seconds())

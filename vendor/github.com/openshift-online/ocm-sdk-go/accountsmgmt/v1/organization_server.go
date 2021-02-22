@@ -45,6 +45,11 @@ type OrganizationServer interface {
 	// Reference to the list of labels of a specific organization.
 	Labels() GenericLabelsServer
 
+	// QuotaCost returns the target 'quota_cost' resource.
+	//
+	// Reference to the service that returns a summary of quota cost for this organization
+	QuotaCost() QuotaCostServer
+
 	// QuotaSummary returns the target 'quota_summary' resource.
 	//
 	// Reference to the service that returns the summary of the resource quota for this
@@ -162,6 +167,13 @@ func dispatchOrganization(w http.ResponseWriter, r *http.Request, server Organiz
 			return
 		}
 		dispatchGenericLabels(w, r, target, segments[1:])
+	case "quota_cost":
+		target := server.QuotaCost()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchQuotaCost(w, r, target, segments[1:])
 	case "quota_summary":
 		target := server.QuotaSummary()
 		if target == nil {

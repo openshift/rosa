@@ -78,7 +78,7 @@ func writeUpgradePolicyState(object *UpgradePolicyState, stream *jsoniter.Stream
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("value")
-		stream.WriteString(object.value)
+		stream.WriteString(string(object.value))
 		count++
 	}
 	stream.WriteObjectEnd()
@@ -124,7 +124,8 @@ func readUpgradePolicyState(iterator *jsoniter.Iterator) *UpgradePolicyState {
 			object.description = value
 			object.bitmap_ |= 8
 		case "value":
-			value := iterator.ReadString()
+			text := iterator.ReadString()
+			value := UpgradePolicyStateValue(text)
 			object.value = value
 			object.bitmap_ |= 16
 		default:

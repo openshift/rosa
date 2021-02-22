@@ -39,34 +39,35 @@ const SubscriptionNilKind = "SubscriptionNil"
 //
 //
 type Subscription struct {
-	bitmap_           uint32
-	id                string
-	href              string
-	cloudAccountID    string
-	cloudProviderID   string
-	clusterID         string
-	consumerUUID      string
-	cpuTotal          int
-	createdAt         time.Time
-	creator           *Account
-	displayName       string
-	externalClusterID string
-	labels            []*Label
-	lastReconcileDate time.Time
-	lastTelemetryDate time.Time
-	organizationID    string
-	plan              *Plan
-	productBundle     ProductBundleEnum
-	provenance        string
-	regionID          string
-	serviceLevel      ServiceLevelEnum
-	socketTotal       int
-	status            string
-	supportLevel      SupportLevelEnum
-	systemUnits       SystemUnitsEnum
-	updatedAt         time.Time
-	usage             UsageEnum
-	managed           bool
+	bitmap_             uint32
+	id                  string
+	href                string
+	cloudAccountID      string
+	cloudProviderID     string
+	clusterID           string
+	clusterBillingModel BillingModel
+	consumerUUID        string
+	cpuTotal            int
+	createdAt           time.Time
+	creator             *Account
+	displayName         string
+	externalClusterID   string
+	labels              []*Label
+	lastReconcileDate   time.Time
+	lastTelemetryDate   time.Time
+	organizationID      string
+	plan                *Plan
+	productBundle       ProductBundleEnum
+	provenance          string
+	regionID            string
+	serviceLevel        ServiceLevelEnum
+	socketTotal         int
+	status              string
+	supportLevel        SupportLevelEnum
+	systemUnits         SystemUnitsEnum
+	updatedAt           time.Time
+	usage               UsageEnum
+	managed             bool
 }
 
 // Kind returns the name of the type of the object.
@@ -195,12 +196,35 @@ func (o *Subscription) GetClusterID() (value string, ok bool) {
 	return
 }
 
+// ClusterBillingModel returns the value of the 'cluster_billing_model' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Subscription) ClusterBillingModel() BillingModel {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.clusterBillingModel
+	}
+	return BillingModel("")
+}
+
+// GetClusterBillingModel returns the value of the 'cluster_billing_model' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Subscription) GetClusterBillingModel() (value BillingModel, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.clusterBillingModel
+	}
+	return
+}
+
 // ConsumerUUID returns the value of the 'consumer_UUID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *Subscription) ConsumerUUID() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.consumerUUID
 	}
 	return ""
@@ -211,7 +235,7 @@ func (o *Subscription) ConsumerUUID() string {
 //
 //
 func (o *Subscription) GetConsumerUUID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.consumerUUID
 	}
@@ -223,7 +247,7 @@ func (o *Subscription) GetConsumerUUID() (value string, ok bool) {
 //
 //
 func (o *Subscription) CpuTotal() int {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.cpuTotal
 	}
 	return 0
@@ -234,7 +258,7 @@ func (o *Subscription) CpuTotal() int {
 //
 //
 func (o *Subscription) GetCpuTotal() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.cpuTotal
 	}
@@ -246,7 +270,7 @@ func (o *Subscription) GetCpuTotal() (value int, ok bool) {
 //
 //
 func (o *Subscription) CreatedAt() time.Time {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.createdAt
 	}
 	return time.Time{}
@@ -257,7 +281,7 @@ func (o *Subscription) CreatedAt() time.Time {
 //
 //
 func (o *Subscription) GetCreatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.createdAt
 	}
@@ -269,7 +293,7 @@ func (o *Subscription) GetCreatedAt() (value time.Time, ok bool) {
 //
 // Link to the account that created the subscription.
 func (o *Subscription) Creator() *Account {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.creator
 	}
 	return nil
@@ -280,7 +304,7 @@ func (o *Subscription) Creator() *Account {
 //
 // Link to the account that created the subscription.
 func (o *Subscription) GetCreator() (value *Account, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.creator
 	}
@@ -292,7 +316,7 @@ func (o *Subscription) GetCreator() (value *Account, ok bool) {
 //
 //
 func (o *Subscription) DisplayName() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.displayName
 	}
 	return ""
@@ -303,7 +327,7 @@ func (o *Subscription) DisplayName() string {
 //
 //
 func (o *Subscription) GetDisplayName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.displayName
 	}
@@ -315,7 +339,7 @@ func (o *Subscription) GetDisplayName() (value string, ok bool) {
 //
 //
 func (o *Subscription) ExternalClusterID() string {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.externalClusterID
 	}
 	return ""
@@ -326,7 +350,7 @@ func (o *Subscription) ExternalClusterID() string {
 //
 //
 func (o *Subscription) GetExternalClusterID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.externalClusterID
 	}
@@ -338,7 +362,7 @@ func (o *Subscription) GetExternalClusterID() (value string, ok bool) {
 //
 //
 func (o *Subscription) Labels() []*Label {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&8192 != 0 {
 		return o.labels
 	}
 	return nil
@@ -349,7 +373,7 @@ func (o *Subscription) Labels() []*Label {
 //
 //
 func (o *Subscription) GetLabels() (value []*Label, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&8192 != 0
 	if ok {
 		value = o.labels
 	}
@@ -361,7 +385,7 @@ func (o *Subscription) GetLabels() (value []*Label, ok bool) {
 //
 // Last time this subscription were reconciled about cluster usage
 func (o *Subscription) LastReconcileDate() time.Time {
-	if o != nil && o.bitmap_&8192 != 0 {
+	if o != nil && o.bitmap_&16384 != 0 {
 		return o.lastReconcileDate
 	}
 	return time.Time{}
@@ -372,7 +396,7 @@ func (o *Subscription) LastReconcileDate() time.Time {
 //
 // Last time this subscription were reconciled about cluster usage
 func (o *Subscription) GetLastReconcileDate() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&8192 != 0
+	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {
 		value = o.lastReconcileDate
 	}
@@ -384,7 +408,7 @@ func (o *Subscription) GetLastReconcileDate() (value time.Time, ok bool) {
 //
 // Last telemetry authorization request for this  cluster/subscription in Unix time
 func (o *Subscription) LastTelemetryDate() time.Time {
-	if o != nil && o.bitmap_&16384 != 0 {
+	if o != nil && o.bitmap_&32768 != 0 {
 		return o.lastTelemetryDate
 	}
 	return time.Time{}
@@ -395,7 +419,7 @@ func (o *Subscription) LastTelemetryDate() time.Time {
 //
 // Last telemetry authorization request for this  cluster/subscription in Unix time
 func (o *Subscription) GetLastTelemetryDate() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&16384 != 0
+	ok = o != nil && o.bitmap_&32768 != 0
 	if ok {
 		value = o.lastTelemetryDate
 	}
@@ -407,7 +431,7 @@ func (o *Subscription) GetLastTelemetryDate() (value time.Time, ok bool) {
 //
 //
 func (o *Subscription) Managed() bool {
-	if o != nil && o.bitmap_&32768 != 0 {
+	if o != nil && o.bitmap_&65536 != 0 {
 		return o.managed
 	}
 	return false
@@ -418,7 +442,7 @@ func (o *Subscription) Managed() bool {
 //
 //
 func (o *Subscription) GetManaged() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&32768 != 0
+	ok = o != nil && o.bitmap_&65536 != 0
 	if ok {
 		value = o.managed
 	}
@@ -430,7 +454,7 @@ func (o *Subscription) GetManaged() (value bool, ok bool) {
 //
 //
 func (o *Subscription) OrganizationID() string {
-	if o != nil && o.bitmap_&65536 != 0 {
+	if o != nil && o.bitmap_&131072 != 0 {
 		return o.organizationID
 	}
 	return ""
@@ -441,7 +465,7 @@ func (o *Subscription) OrganizationID() string {
 //
 //
 func (o *Subscription) GetOrganizationID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&65536 != 0
+	ok = o != nil && o.bitmap_&131072 != 0
 	if ok {
 		value = o.organizationID
 	}
@@ -453,7 +477,7 @@ func (o *Subscription) GetOrganizationID() (value string, ok bool) {
 //
 //
 func (o *Subscription) Plan() *Plan {
-	if o != nil && o.bitmap_&131072 != 0 {
+	if o != nil && o.bitmap_&262144 != 0 {
 		return o.plan
 	}
 	return nil
@@ -464,7 +488,7 @@ func (o *Subscription) Plan() *Plan {
 //
 //
 func (o *Subscription) GetPlan() (value *Plan, ok bool) {
-	ok = o != nil && o.bitmap_&131072 != 0
+	ok = o != nil && o.bitmap_&262144 != 0
 	if ok {
 		value = o.plan
 	}
@@ -476,7 +500,7 @@ func (o *Subscription) GetPlan() (value *Plan, ok bool) {
 //
 //
 func (o *Subscription) ProductBundle() ProductBundleEnum {
-	if o != nil && o.bitmap_&262144 != 0 {
+	if o != nil && o.bitmap_&524288 != 0 {
 		return o.productBundle
 	}
 	return ProductBundleEnum("")
@@ -487,7 +511,7 @@ func (o *Subscription) ProductBundle() ProductBundleEnum {
 //
 //
 func (o *Subscription) GetProductBundle() (value ProductBundleEnum, ok bool) {
-	ok = o != nil && o.bitmap_&262144 != 0
+	ok = o != nil && o.bitmap_&524288 != 0
 	if ok {
 		value = o.productBundle
 	}
@@ -499,7 +523,7 @@ func (o *Subscription) GetProductBundle() (value ProductBundleEnum, ok bool) {
 //
 //
 func (o *Subscription) Provenance() string {
-	if o != nil && o.bitmap_&524288 != 0 {
+	if o != nil && o.bitmap_&1048576 != 0 {
 		return o.provenance
 	}
 	return ""
@@ -510,7 +534,7 @@ func (o *Subscription) Provenance() string {
 //
 //
 func (o *Subscription) GetProvenance() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&524288 != 0
+	ok = o != nil && o.bitmap_&1048576 != 0
 	if ok {
 		value = o.provenance
 	}
@@ -522,7 +546,7 @@ func (o *Subscription) GetProvenance() (value string, ok bool) {
 //
 //
 func (o *Subscription) RegionID() string {
-	if o != nil && o.bitmap_&1048576 != 0 {
+	if o != nil && o.bitmap_&2097152 != 0 {
 		return o.regionID
 	}
 	return ""
@@ -533,7 +557,7 @@ func (o *Subscription) RegionID() string {
 //
 //
 func (o *Subscription) GetRegionID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1048576 != 0
+	ok = o != nil && o.bitmap_&2097152 != 0
 	if ok {
 		value = o.regionID
 	}
@@ -545,7 +569,7 @@ func (o *Subscription) GetRegionID() (value string, ok bool) {
 //
 //
 func (o *Subscription) ServiceLevel() ServiceLevelEnum {
-	if o != nil && o.bitmap_&2097152 != 0 {
+	if o != nil && o.bitmap_&4194304 != 0 {
 		return o.serviceLevel
 	}
 	return ServiceLevelEnum("")
@@ -556,7 +580,7 @@ func (o *Subscription) ServiceLevel() ServiceLevelEnum {
 //
 //
 func (o *Subscription) GetServiceLevel() (value ServiceLevelEnum, ok bool) {
-	ok = o != nil && o.bitmap_&2097152 != 0
+	ok = o != nil && o.bitmap_&4194304 != 0
 	if ok {
 		value = o.serviceLevel
 	}
@@ -568,7 +592,7 @@ func (o *Subscription) GetServiceLevel() (value ServiceLevelEnum, ok bool) {
 //
 //
 func (o *Subscription) SocketTotal() int {
-	if o != nil && o.bitmap_&4194304 != 0 {
+	if o != nil && o.bitmap_&8388608 != 0 {
 		return o.socketTotal
 	}
 	return 0
@@ -579,7 +603,7 @@ func (o *Subscription) SocketTotal() int {
 //
 //
 func (o *Subscription) GetSocketTotal() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&4194304 != 0
+	ok = o != nil && o.bitmap_&8388608 != 0
 	if ok {
 		value = o.socketTotal
 	}
@@ -591,7 +615,7 @@ func (o *Subscription) GetSocketTotal() (value int, ok bool) {
 //
 //
 func (o *Subscription) Status() string {
-	if o != nil && o.bitmap_&8388608 != 0 {
+	if o != nil && o.bitmap_&16777216 != 0 {
 		return o.status
 	}
 	return ""
@@ -602,7 +626,7 @@ func (o *Subscription) Status() string {
 //
 //
 func (o *Subscription) GetStatus() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8388608 != 0
+	ok = o != nil && o.bitmap_&16777216 != 0
 	if ok {
 		value = o.status
 	}
@@ -614,7 +638,7 @@ func (o *Subscription) GetStatus() (value string, ok bool) {
 //
 //
 func (o *Subscription) SupportLevel() SupportLevelEnum {
-	if o != nil && o.bitmap_&16777216 != 0 {
+	if o != nil && o.bitmap_&33554432 != 0 {
 		return o.supportLevel
 	}
 	return SupportLevelEnum("")
@@ -625,7 +649,7 @@ func (o *Subscription) SupportLevel() SupportLevelEnum {
 //
 //
 func (o *Subscription) GetSupportLevel() (value SupportLevelEnum, ok bool) {
-	ok = o != nil && o.bitmap_&16777216 != 0
+	ok = o != nil && o.bitmap_&33554432 != 0
 	if ok {
 		value = o.supportLevel
 	}
@@ -637,7 +661,7 @@ func (o *Subscription) GetSupportLevel() (value SupportLevelEnum, ok bool) {
 //
 //
 func (o *Subscription) SystemUnits() SystemUnitsEnum {
-	if o != nil && o.bitmap_&33554432 != 0 {
+	if o != nil && o.bitmap_&67108864 != 0 {
 		return o.systemUnits
 	}
 	return SystemUnitsEnum("")
@@ -648,7 +672,7 @@ func (o *Subscription) SystemUnits() SystemUnitsEnum {
 //
 //
 func (o *Subscription) GetSystemUnits() (value SystemUnitsEnum, ok bool) {
-	ok = o != nil && o.bitmap_&33554432 != 0
+	ok = o != nil && o.bitmap_&67108864 != 0
 	if ok {
 		value = o.systemUnits
 	}
@@ -660,7 +684,7 @@ func (o *Subscription) GetSystemUnits() (value SystemUnitsEnum, ok bool) {
 //
 //
 func (o *Subscription) UpdatedAt() time.Time {
-	if o != nil && o.bitmap_&67108864 != 0 {
+	if o != nil && o.bitmap_&134217728 != 0 {
 		return o.updatedAt
 	}
 	return time.Time{}
@@ -671,7 +695,7 @@ func (o *Subscription) UpdatedAt() time.Time {
 //
 //
 func (o *Subscription) GetUpdatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&67108864 != 0
+	ok = o != nil && o.bitmap_&134217728 != 0
 	if ok {
 		value = o.updatedAt
 	}
@@ -683,7 +707,7 @@ func (o *Subscription) GetUpdatedAt() (value time.Time, ok bool) {
 //
 //
 func (o *Subscription) Usage() UsageEnum {
-	if o != nil && o.bitmap_&134217728 != 0 {
+	if o != nil && o.bitmap_&268435456 != 0 {
 		return o.usage
 	}
 	return UsageEnum("")
@@ -694,7 +718,7 @@ func (o *Subscription) Usage() UsageEnum {
 //
 //
 func (o *Subscription) GetUsage() (value UsageEnum, ok bool) {
-	ok = o != nil && o.bitmap_&134217728 != 0
+	ok = o != nil && o.bitmap_&268435456 != 0
 	if ok {
 		value = o.usage
 	}

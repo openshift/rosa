@@ -309,9 +309,8 @@ func (c *Connection) createTransport(ctx context.Context, base *urlInfo) (
 
 	// The metrics wrapper should be called the first because we want the corresponding round
 	// tripper to be called the last so that metrics aren't affected by users specified round
-	// trippers and don't include the logging overhead. Also, we don't want to add this wrapper
-	// for transports used for token requests because there are specific metrics for that.
-	if c.metricsWrapper != nil && base != c.tokenURL {
+	// trippers and don't include the logging overhead.
+	if c.metricsWrapper != nil {
 		result = c.metricsWrapper(result)
 	}
 

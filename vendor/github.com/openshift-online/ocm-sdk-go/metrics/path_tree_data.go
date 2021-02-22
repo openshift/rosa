@@ -50,6 +50,7 @@ var pathTreeData = `{
             "labels": {
               "-": null
             },
+            "quota_cost": null,
             "quota_summary": null,
             "resource_quota": {
               "-": null
