@@ -62,9 +62,9 @@ func GetString(input Input) (a string, err error) {
 	}
 	if input.Required {
 		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-		return
+	} else {
+		err = survey.AskOne(prompt, &a)
 	}
-	err = survey.AskOne(prompt, &a)
 	return
 }
 
@@ -87,12 +87,12 @@ func GetInt(input Input) (a int, err error) {
 		Help:    input.Help,
 		Default: dfltStr,
 	}
-	if input.Required {
-		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-		return
-	}
 	var str string
-	err = survey.AskOne(prompt, &str)
+	if input.Required {
+		err = survey.AskOne(prompt, &str, survey.WithValidator(survey.Required))
+	} else {
+		err = survey.AskOne(prompt, &str)
+	}
 	if err != nil {
 		return
 	}
@@ -127,9 +127,9 @@ func GetMultipleOptions(input Input) ([]string, error) {
 
 	if input.Required {
 		err = survey.AskOne(prompt, &res, survey.WithValidator(survey.Required))
-		return res, err
+	} else {
+		err = survey.AskOne(prompt, &res)
 	}
-	err = survey.AskOne(prompt, &res)
 	return res, err
 }
 
@@ -151,9 +151,9 @@ func GetOption(input Input) (a string, err error) {
 	}
 	if input.Required {
 		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-		return
+	} else {
+		err = survey.AskOne(prompt, &a)
 	}
-	err = survey.AskOne(prompt, &a)
 	return
 }
 
@@ -174,9 +174,9 @@ func GetBool(input Input) (a bool, err error) {
 	}
 	if input.Required {
 		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-		return
+	} else {
+		err = survey.AskOne(prompt, &a)
 	}
-	err = survey.AskOne(prompt, &a)
 	return
 }
 
@@ -199,16 +199,15 @@ func GetIPNet(input Input) (a net.IPNet, err error) {
 		Help:    input.Help,
 		Default: dfltStr,
 	}
-	if input.Required {
-		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-		return
-	}
 	var str string
-	err = survey.AskOne(prompt, &str)
+	if input.Required {
+		err = survey.AskOne(prompt, &str, survey.WithValidator(survey.Required))
+	} else {
+		err = survey.AskOne(prompt, &str)
+	}
 	if err != nil {
 		return
 	}
-
 	if str == "" {
 		return
 	}
@@ -234,9 +233,9 @@ func GetPassword(input Input) (a string, err error) {
 	}
 	if input.Required {
 		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-		return
+	} else {
+		err = survey.AskOne(prompt, &a)
 	}
-	err = survey.AskOne(prompt, &a)
 	return
 }
 
@@ -257,9 +256,9 @@ func GetCert(input Input) (a string, err error) {
 	}
 	if input.Required {
 		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required), survey.WithValidator(certValidator))
-		return
+	} else {
+		err = survey.AskOne(prompt, &a, survey.WithValidator(certValidator))
 	}
-	err = survey.AskOne(prompt, &a, survey.WithValidator(certValidator))
 	return
 }
 
