@@ -205,9 +205,8 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 			// Check all related resources to ensure we're checking the product of the correct addon
 			for _, relatedResource := range quotaCost.RelatedResources() {
 				resourceName := relatedResource.(map[string]interface{})["resource_name"].(string)
-				product := relatedResource.(map[string]interface{})["product"].(string)
-				// Filter out non-compatible addons
-				if addOn.ResourceName() == resourceName && isCompatible(product) {
+				// Only return compatible addons
+				if addOn.ResourceName() == resourceName && isCompatible(relatedResource) {
 					available = true
 				}
 			}
@@ -225,9 +224,16 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 	return addOns, nil
 }
 
-func isCompatible(product string) bool {
-	product = strings.ToLower(product)
-	return product == "any" || product == "rosa" || product == "moa"
+// Determine whether an add-on is compatible with ROSA clusters in general
+func isCompatible(relatedResource interface{}) bool {
+	product := strings.ToLower(relatedResource.(map[string]interface{})["product"].(string))
+	cloudProvider := strings.ToLower(relatedResource.(map[string]interface{})["cloud_provider"].(string))
+	byoc := strings.ToLower(relatedResource.(map[string]interface{})["byoc"].(string))
+
+	// nolint:goconst
+	return (product == "any" || product == "rosa" || product == "moa") &&
+		(cloudProvider == "any" || cloudProvider == "aws") &&
+		(byoc == "any" || byoc == "byoc")
 }
 
 func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
