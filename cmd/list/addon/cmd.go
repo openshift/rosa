@@ -89,12 +89,12 @@ func run(_ *cobra.Command, _ []string) {
 
 	if clusterKey == "" {
 		reporter.Debugf("Fetching all available add-ons")
-		addOns, err := ocm.GetAvailableAddOns(ocmConnection)
+		addOnResources, err := ocm.GetAvailableAddOns(ocmConnection)
 		if err != nil {
 			reporter.Errorf("Failed to fetch add-ons: %v", err)
 			os.Exit(1)
 		}
-		if len(addOns) == 0 {
+		if len(addOnResources) == 0 {
 			reporter.Infof("There are no add-ons available")
 			os.Exit(0)
 		}
@@ -102,8 +102,8 @@ func run(_ *cobra.Command, _ []string) {
 		// Create the writer that will be used to print the tabulated results:
 		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		fmt.Fprintf(writer, "ID\t\tNAME\n")
-		for _, addOn := range addOns {
-			fmt.Fprintf(writer, "%s\t\t%s\n", addOn.ID(), addOn.Name())
+		for _, addOnResource := range addOnResources {
+			fmt.Fprintf(writer, "%s\t\t%s\n", addOnResource.AddOn.ID(), addOnResource.AddOn.Name())
 		}
 		writer.Flush()
 
@@ -140,7 +140,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Load any existing Add-Ons for this cluster
 	reporter.Debugf("Loading add-ons installations for cluster '%s'", clusterKey)
-	clusterAddOns, err := ocm.GetClusterAddOns(ocmConnection, cluster.ID())
+	clusterAddOns, err := ocm.GetClusterAddOns(ocmConnection, cluster)
 	if err != nil {
 		reporter.Errorf("Failed to get add-ons for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

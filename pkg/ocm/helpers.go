@@ -156,8 +156,13 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 	return response.Items().Slice(), nil
 }
 
+type AddOnResource struct {
+	AddOn  *cmv1.AddOn
+	AZType string
+}
+
 // Get complete list of available add-ons for the current organization
-func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
+func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 	// Get organization ID (used to get add-on quotas)
 	acctResponse, err := connection.AccountsMgmt().V1().CurrentAccount().
 		Get().
@@ -193,10 +198,13 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 		return nil, handleErr(addOnsResponse.Error(), err)
 	}
 
-	var addOns []*cmv1.AddOn
+	var addOns []*AddOnResource
 
 	// Populate enabled add-ons with if they are available for the current org
 	addOnsResponse.Items().Each(func(addOn *cmv1.AddOn) bool {
+		addOnResource := &AddOnResource{
+			AddOn: addOn,
+		}
 		// Free add-ons are always available
 		available := addOn.ResourceCost() == 0
 
@@ -205,10 +213,13 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 			// Check all related resources to ensure we're checking the product of the correct addon
 			for _, relatedResource := range quotaCost.RelatedResources() {
 				resourceName := relatedResource.(map[string]interface{})["resource_name"].(string)
-				product := relatedResource.(map[string]interface{})["product"].(string)
-				// Filter out non-compatible addons
-				if addOn.ResourceName() == resourceName && isCompatible(product) {
+				// Only return compatible addons
+				if addOn.ResourceName() == resourceName && isCompatible(relatedResource) {
 					available = true
+					// Track AZ type so that we can compare against cluster
+					addOnResource.AZType = relatedResource.(map[string]interface{})["availability_zone_type"].(string)
+					// Since add-on is considered available now, there's no need to check the other resources
+					return false
 				}
 			}
 			return true
@@ -216,7 +227,7 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 
 		// Only display add-ons that meet the above criteria
 		if available {
-			addOns = append(addOns, addOn)
+			addOns = append(addOns, addOnResource)
 		}
 
 		return true
@@ -225,9 +236,16 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*cmv1.AddOn, error) {
 	return addOns, nil
 }
 
-func isCompatible(product string) bool {
-	product = strings.ToLower(product)
-	return product == "any" || product == "rosa" || product == "moa"
+// Determine whether an add-on is compatible with ROSA clusters in general
+func isCompatible(relatedResource interface{}) bool {
+	product := strings.ToLower(relatedResource.(map[string]interface{})["product"].(string))
+	cloudProvider := strings.ToLower(relatedResource.(map[string]interface{})["cloud_provider"].(string))
+	byoc := strings.ToLower(relatedResource.(map[string]interface{})["byoc"].(string))
+
+	// nolint:goconst
+	return (product == "any" || product == "rosa" || product == "moa") &&
+		(cloudProvider == "any" || cloudProvider == "aws") &&
+		(byoc == "any" || byoc == "byoc")
 }
 
 func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
@@ -245,15 +263,15 @@ type ClusterAddOn struct {
 }
 
 // Get all add-ons available for a cluster
-func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterAddOn, error) {
-	addOns, err := GetAvailableAddOns(connection)
+func GetClusterAddOns(connection *sdk.Connection, cluster *cmv1.Cluster) ([]*ClusterAddOn, error) {
+	addOnResources, err := GetAvailableAddOns(connection)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get add-ons already installed on cluster
 	addOnInstallationsResponse, err := connection.ClustersMgmt().V1().Clusters().
-		Cluster(clusterID).
+		Cluster(cluster.ID()).
 		Addons().
 		List().
 		Page(1).
@@ -267,16 +285,22 @@ func GetClusterAddOns(connection *sdk.Connection, clusterID string) ([]*ClusterA
 	var clusterAddOns []*ClusterAddOn
 
 	// Populate add-on installations with all add-on metadata
-	for _, addOn := range addOns {
+	for _, addOnResource := range addOnResources {
+		// Ensure add-on is compatible with the cluster's availability zones
+		if !(addOnResource.AZType == "any" ||
+			(cluster.MultiAZ() && addOnResource.AZType == "multi") ||
+			(!cluster.MultiAZ() && addOnResource.AZType == "single")) {
+			continue
+		}
 		clusterAddOn := ClusterAddOn{
-			ID:    addOn.ID(),
-			Name:  addOn.Name(),
+			ID:    addOnResource.AddOn.ID(),
+			Name:  addOnResource.AddOn.Name(),
 			State: "not installed",
 		}
 
 		// Get the state of add-on installations on the cluster
 		addOnInstallations.Each(func(addOnInstallation *cmv1.AddOnInstallation) bool {
-			if addOn.ID() == addOnInstallation.Addon().ID() {
+			if addOnResource.AddOn.ID() == addOnInstallation.Addon().ID() {
 				clusterAddOn.State = string(addOnInstallation.State())
 				if clusterAddOn.State == "" {
 					clusterAddOn.State = string(cmv1.AddOnInstallationStateInstalling)
