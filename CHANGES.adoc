@@ -1,7 +1,23 @@
 = Changes
 
-This document describes the relevant changes between releases of the `moactl`
+This document describes the relevant changes between releases of the `rosa`
 command line tool.
+
+== 0.1.10 Feb 24 2021
+
+- arguments: Move region and profile flags
+- addon: Validation message should show parameter name
+- describe: Display total worker nodes across all machine pools
+- describe: Fix text capitalization
+- Add region flag to list cmd
+- Rebuild docs on list cluster command
+- addons: Use quota_cost to determine compatibility
+- Remove vendor dir from linter
+- addons: Filter list of addons to those compatible with ROSA
+- addons: Verify compatibility of addons on cluster
+- interactive: Ensure that required inputs are same type as non-required
+- docs: Remove from repo and refer users to official docs
+- docs: Update copyright year for man pages
 
 == 0.1.9 Feb 18 2021
 
