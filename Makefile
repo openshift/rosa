@@ -59,11 +59,6 @@ generate:
 	which go-bindata || GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...
 	go-bindata -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 
-.PHONY: docs
-docs: rosa
-	rm -rf docs && mkdir docs
-	./rosa docs -d ./docs -f markdown
-
 mocks:
 	mockgen -package mocks -destination=pkg/aws/mocks/iamapi.go github.com/aws/aws-sdk-go/service/iam/iamiface IAMAPI
 	mockgen -package mocks -destination=pkg/aws/mocks/organaztionsapi.go github.com/aws/aws-sdk-go/service/organizations/organizationsiface OrganizationsAPI
