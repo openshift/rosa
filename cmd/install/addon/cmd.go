@@ -182,7 +182,7 @@ func run(_ *cobra.Command, argv []string) {
 				val, err = interactive.GetString(input)
 			}
 			if err != nil {
-				reporter.Errorf("Expected a valid value for '%s': %v", param.ID(), err)
+				reporter.Errorf("Expected a valid value for '%s': %v", param.Name(), err)
 				os.Exit(1)
 			}
 
