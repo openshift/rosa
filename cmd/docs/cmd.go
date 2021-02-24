@@ -18,6 +18,7 @@ package docs
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
@@ -62,10 +63,11 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 	case "markdown":
 		err = doc.GenMarkdownTree(cmd.Root(), args.dir)
 	case "man":
+		year := time.Now().Year()
 		header := &doc.GenManHeader{
 			Title:   "ROSA",
 			Section: "1",
-			Source:  "Copyright (c) 2020 Red Hat, Inc.",
+			Source:  fmt.Sprintf("Copyright (c) %d Red Hat, Inc.", year),
 		}
 		err = doc.GenManTree(cmd.Root(), header, args.dir)
 	case "restructured":
