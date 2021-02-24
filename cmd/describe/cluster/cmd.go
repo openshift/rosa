@@ -174,18 +174,43 @@ func run(cmd *cobra.Command, argv []string) {
 
 	detailsPage := getDetailsLink(ocmConnection.URL())
 
+	// Display number of all worker nodes across the cluster
+	minNodes := 0
+	maxNodes := 0
 	var nodesStr string
+	machinePools, err := ocm.GetMachinePools(ocmClient.Clusters(), cluster.ID())
+	if err != nil {
+		reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+	// Accumulate all replicas across machine pools
+	for _, machinePool := range machinePools {
+		if machinePool.Autoscaling() != nil {
+			minNodes += machinePool.Autoscaling().MinReplicas()
+			maxNodes += machinePool.Autoscaling().MaxReplicas()
+		} else {
+			minNodes += machinePool.Replicas()
+			maxNodes += machinePool.Replicas()
+		}
+	}
+	// Add compute nodes as well
 	if cluster.Nodes().AutoscaleCompute() != nil {
+		minNodes += cluster.Nodes().AutoscaleCompute().MinReplicas()
+		maxNodes += cluster.Nodes().AutoscaleCompute().MaxReplicas()
+	} else {
+		minNodes += cluster.Nodes().Compute()
+		maxNodes += cluster.Nodes().Compute()
+	}
+	// Determine whether there is any auto-scaling in the cluster
+	if minNodes == maxNodes {
 		nodesStr = fmt.Sprintf(""+
-			"Nodes:                      Master: %d, Infra: %d, Compute (Autoscaled): %d-%d\n",
-			cluster.Nodes().Master(), cluster.Nodes().Infra(),
-			cluster.Nodes().AutoscaleCompute().MinReplicas(),
-			cluster.Nodes().AutoscaleCompute().MaxReplicas(),
+			"Nodes:                      Master: %d, Infra: %d, Compute: %d\n",
+			cluster.Nodes().Master(), cluster.Nodes().Infra(), minNodes,
 		)
 	} else {
 		nodesStr = fmt.Sprintf(""+
-			"Nodes:                      Master: %d, Infra: %d, Compute: %d\n",
-			cluster.Nodes().Master(), cluster.Nodes().Infra(), cluster.Nodes().Compute(),
+			"Nodes:                      Master: %d, Infra: %d, Compute (Autoscaled): %d-%d\n",
+			cluster.Nodes().Master(), cluster.Nodes().Infra(), minNodes, maxNodes,
 		)
 	}
 
