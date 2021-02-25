@@ -44,23 +44,30 @@ func GetUpgradePolicies(client *cmv1.Client, clusterID string) (upgradePolicies 
 	return
 }
 
-func GetScheduledUpgrade(client *cmv1.Client, clusterID string) (*cmv1.UpgradePolicy, error) {
+func GetScheduledUpgrade(client *cmv1.Client, clusterID string) (*cmv1.UpgradePolicy, *cmv1.UpgradePolicyState, error) {
 	upgradePolicies, err := GetUpgradePolicies(client, clusterID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, upgradePolicy := range upgradePolicies {
 		if upgradePolicy.ScheduleType() == "manual" && upgradePolicy.UpgradeType() == "OSD" {
-			return upgradePolicy, nil
+			state, err := client.Clusters().Cluster(clusterID).
+				UpgradePolicies().UpgradePolicy(upgradePolicy.ID()).State().
+				Get().Send()
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return upgradePolicy, state.Body(), nil
 		}
 	}
 
-	return nil, nil
+	return nil, nil, nil
 }
 
 func CancelUpgrade(client *cmv1.Client, clusterID string) (bool, error) {
-	scheduledUpgrade, err := GetScheduledUpgrade(client, clusterID)
+	scheduledUpgrade, _, err := GetScheduledUpgrade(client, clusterID)
 	if err != nil || scheduledUpgrade == nil {
 		return false, err
 	}

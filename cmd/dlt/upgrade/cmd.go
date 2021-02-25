@@ -120,7 +120,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, _, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

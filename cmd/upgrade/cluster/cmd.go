@@ -174,13 +174,14 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, upgradeState, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 	if scheduledUpgrade != nil {
-		reporter.Warnf("There is already a scheduled upgrade to version %s on %s",
+		reporter.Warnf("There is already a %s upgrade to version %s on %s",
+			upgradeState.Value(),
 			scheduledUpgrade.Version(),
 			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
 		)
