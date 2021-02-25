@@ -195,10 +195,10 @@ func run(_ *cobra.Command, argv []string) {
 				cidrVal, err = interactive.GetIPNet(input)
 				val = cidrVal.String()
 			case "number":
-				var numVal int
-				input.Default, _ = strconv.ParseInt(dflt, 10, 0)
-				numVal, err = interactive.GetInt(input)
-				val = strconv.Itoa(numVal)
+				var numVal float64
+				input.Default, _ = strconv.ParseFloat(dflt, 64)
+				numVal, err = interactive.GetFloat(input)
+				val = fmt.Sprintf("%f", numVal)
 			case "string":
 				input.Default = dflt
 				val, err = interactive.GetString(input)
