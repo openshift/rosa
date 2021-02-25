@@ -330,6 +330,55 @@ func UninstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN s
 	return nil
 }
 
+func GetAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, creatorARN string,
+	addOnID string) (*cmv1.AddOnInstallation, error) {
+	cluster, err := GetCluster(client, clusterKey, creatorARN)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := client.Cluster(cluster.ID()).Addons().Addoninstallation(addOnID).Get().Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	return response.Body(), nil
+}
+
+func UpdateAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string,
+	params []AddOnParam) error {
+	cluster, err := GetCluster(client, clusterKey, creatorARN)
+	if err != nil {
+		return err
+	}
+
+	addOnInstallationBuilder := cmv1.NewAddOnInstallation().
+		Addon(cmv1.NewAddOn().ID(addOnID))
+
+	if len(params) > 0 {
+		addOnParamList := make([]*cmv1.AddOnInstallationParameterBuilder, len(params))
+		for i, param := range params {
+			addOnParamList[i] = cmv1.NewAddOnInstallationParameter().ID(param.Key).Value(param.Val)
+		}
+		addOnInstallationBuilder = addOnInstallationBuilder.
+			Parameters(cmv1.NewAddOnInstallationParameterList().Items(addOnParamList...))
+	}
+
+	addOnInstallation, err := addOnInstallationBuilder.Build()
+	if err != nil {
+		return err
+	}
+
+	response, err := client.Cluster(cluster.ID()).
+		Addons().Addoninstallation(addOnID).
+		Update().Body(addOnInstallation).Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+
+	return nil
+}
+
 func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
 	reporter, err := rprtr.New().
 		Build()
