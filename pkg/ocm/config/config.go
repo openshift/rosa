@@ -39,7 +39,7 @@ import (
 var URLAliases = map[string]string{
 	"production":  "https://api.openshift.com",
 	"staging":     "https://api.stage.openshift.com",
-	"integration": "https://api-integration.6943.hive-integration.openshiftapps.com",
+	"integration": "https://api.integration.openshift.com",
 }
 
 // Config is the type used to store the configuration of the client.
