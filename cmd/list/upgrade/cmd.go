@@ -135,7 +135,7 @@ func run(_ *cobra.Command, _ []string) {
 	latestRev := latestInCurrentMinor(versions.GetVersionID(cluster), availableUpgrades)
 
 	reporter.Debugf("Loading scheduled upgrades for cluster '%s'", clusterKey)
-	scheduledUpgrade, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, upgradeState, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -150,7 +150,8 @@ func run(_ *cobra.Command, _ []string) {
 			notes = "recommended"
 		}
 		if availableUpgrade == scheduledUpgrade.Version() {
-			notes = fmt.Sprintf("scheduled for %s", scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"))
+			notes = fmt.Sprintf("%s for %s", upgradeState.Value(),
+				scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"))
 		}
 		fmt.Fprintf(writer, "%s\t%s\n", availableUpgrade, notes)
 	}

@@ -166,7 +166,7 @@ func run(cmd *cobra.Command, argv []string) {
 		isPrivate = "Yes"
 	}
 
-	scheduledUpgrade, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, upgradeState, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -255,8 +255,9 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	if scheduledUpgrade != nil {
 		str = fmt.Sprintf("%s"+
-			"Scheduled Upgrade:          %s on %s\n",
+			"Scheduled Upgrade:          %s %s on %s\n",
 			str,
+			upgradeState.Value(),
 			scheduledUpgrade.Version(),
 			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
 		)
