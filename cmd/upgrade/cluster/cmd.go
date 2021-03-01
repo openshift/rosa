@@ -248,6 +248,11 @@ func run(cmd *cobra.Command, _ []string) {
 		// If datetimes are set, use them in the interactive form, otherwise fallback to 'now'
 		scheduleParsed, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%s %s", scheduleDate, scheduleTime))
 		if err != nil {
+			reporter.Errorf("Schedule date should use the format 'yyyy-mm-dd'\n" +
+				"   Schedule time should use the format 'HH:mm'")
+			os.Exit(1)
+		}
+		if scheduleParsed.IsZero() {
 			scheduleParsed = now
 		}
 		scheduleDate = scheduleParsed.Format("2006-01-02")
@@ -255,6 +260,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 		scheduleDate, err = interactive.GetString(interactive.Input{
 			Question: "Please input desired date in format yyyy-mm-dd",
+			Help:     cmd.Flags().Lookup("schedule-date").Usage,
 			Default:  scheduleDate,
 			Required: true,
 		})
@@ -270,6 +276,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 		scheduleTime, err = interactive.GetString(interactive.Input{
 			Question: "Please input desired UTC time in format HH:mm",
+			Help:     cmd.Flags().Lookup("schedule-time").Usage,
 			Default:  scheduleTime,
 			Required: true,
 		})
