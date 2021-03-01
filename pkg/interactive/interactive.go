@@ -106,6 +106,44 @@ func parseInt(str string) (num int, err error) {
 	return strconv.Atoi(str)
 }
 
+// Gets float number input from the command line
+func GetFloat(input Input) (a float64, err error) {
+	dflt, ok := input.Default.(float64)
+	if !ok {
+		dflt = 0
+	}
+	dfltStr := fmt.Sprintf("%f", dflt)
+	if dfltStr == "0" {
+		dfltStr = ""
+	}
+	question := input.Question
+	if !input.Required && dfltStr == "" {
+		question = fmt.Sprintf("%s (optional)", question)
+	}
+	prompt := &survey.Input{
+		Message: fmt.Sprintf("%s:", question),
+		Help:    input.Help,
+		Default: dfltStr,
+	}
+	var str string
+	if input.Required {
+		err = survey.AskOne(prompt, &str, survey.WithValidator(survey.Required))
+	} else {
+		err = survey.AskOne(prompt, &str)
+	}
+	if err != nil {
+		return
+	}
+	if str == "" {
+		return
+	}
+	return parseFloat(str)
+}
+
+func parseFloat(str string) (num float64, err error) {
+	return strconv.ParseFloat(str, 64)
+}
+
 // Asks for multiple options selection
 func GetMultipleOptions(input Input) ([]string, error) {
 	var err error

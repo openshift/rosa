@@ -19,6 +19,7 @@ package edit
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/edit/addon"
 	"github.com/openshift/rosa/cmd/edit/cluster"
 	"github.com/openshift/rosa/cmd/edit/ingress"
 	"github.com/openshift/rosa/cmd/edit/machinepool"
@@ -34,6 +35,7 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	Cmd.AddCommand(addon.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)

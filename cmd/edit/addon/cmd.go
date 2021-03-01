@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2020 Red Hat, Inc.
+Copyright (c) 2021 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
-	"github.com/openshift/rosa/pkg/confirm"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -43,10 +42,10 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "addon ID",
 	Aliases: []string{"addons", "add-on", "add-ons"},
-	Short:   "Install add-ons on cluster",
-	Long:    "Install Red Hat managed add-ons on a cluster",
-	Example: `  # Add the CodeReady Workspaces add-on installation to the cluster
-  rosa install addon --cluster=mycluster codeready-workspaces`,
+	Short:   "Edit add-on installation parameters on cluster",
+	Long:    "Edit the parameters on installed Red Hat managed add-ons on a cluster",
+	Example: `  # Edit the parameters of the Red Hat OpenShift logging operator add-on installation
+  rosa edit addon --cluster=mycluster cluster-logging-operator`,
 	Run: run,
 	Args: func(_ *cobra.Command, argv []string) error {
 		if len(argv) != 1 {
@@ -58,7 +57,6 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
-	confirm.AddFlag(flags)
 
 	flags.StringVarP(
 		&args.clusterKey,
@@ -79,7 +77,7 @@ func run(_ *cobra.Command, argv []string) {
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
+	if !clusterprovider.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -123,7 +121,7 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
+	cluster, err := clusterprovider.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -134,19 +132,43 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if !confirm.Confirm("install add-on '%s' on cluster '%s'", addOnID, clusterKey) {
-		os.Exit(0)
-	}
-
 	parameters, err := clusterprovider.GetAddOnParameters(ocmClient.Addons(), addOnID)
 	if err != nil {
 		reporter.Errorf("Failed to get add-on '%s' parameters: %v", addOnID, err)
 		os.Exit(1)
 	}
 
+	addOnInstallation, err := clusterprovider.GetAddOnInstallation(ocmClient.Clusters(),
+		clusterKey, awsCreator.ARN, addOnID)
+	if err != nil {
+		reporter.Errorf("Failed to get add-on '%s' installation: %v", addOnID, err)
+		os.Exit(1)
+	}
+
 	var params []clusterprovider.AddOnParam
 	if parameters.Len() > 0 {
 		parameters.Each(func(param *cmv1.AddOnParameter) bool {
+			// Find the installation parameter corresponding to the addon parameter
+			var addOnInstallationParam *cmv1.AddOnInstallationParameter
+			addOnInstallation.Parameters().Each(func(p *cmv1.AddOnInstallationParameter) bool {
+				if p.ID() == param.ID() {
+					addOnInstallationParam = p
+					return false
+				}
+				return true
+			})
+
+			// If the parameter already exists in the cluster and is not editable, hide it
+			if addOnInstallationParam != nil && !param.Editable() {
+				return true
+			}
+
+			// Set default value based on existing parameter, otherwise use parameter default
+			dflt := param.DefaultValue()
+			if addOnInstallationParam != nil {
+				dflt = addOnInstallationParam.Value()
+			}
+
 			input := interactive.Input{
 				Question: param.Name(),
 				Help:     param.Description(),
@@ -157,7 +179,7 @@ func run(_ *cobra.Command, argv []string) {
 			switch param.ValueType() {
 			case "boolean":
 				var boolVal bool
-				input.Default, _ = strconv.ParseBool(param.DefaultValue())
+				input.Default, _ = strconv.ParseBool(dflt)
 				boolVal, err = interactive.GetBool(input)
 				if boolVal {
 					val = "true"
@@ -166,23 +188,23 @@ func run(_ *cobra.Command, argv []string) {
 				}
 			case "cidr":
 				var cidrVal net.IPNet
-				if param.DefaultValue() != "" {
-					_, defaultIDR, _ := net.ParseCIDR(param.DefaultValue())
+				if dflt != "" {
+					_, defaultIDR, _ := net.ParseCIDR(dflt)
 					input.Default = *defaultIDR
 				}
 				cidrVal, err = interactive.GetIPNet(input)
 				val = cidrVal.String()
 			case "number":
 				var numVal float64
-				input.Default, _ = strconv.ParseFloat(param.DefaultValue(), 64)
+				input.Default, _ = strconv.ParseFloat(dflt, 64)
 				numVal, err = interactive.GetFloat(input)
 				val = fmt.Sprintf("%f", numVal)
 			case "string":
-				input.Default = param.DefaultValue()
+				input.Default = dflt
 				val, err = interactive.GetString(input)
 			}
 			if err != nil {
-				reporter.Errorf("Expected a valid value for '%s': %v", param.Name(), err)
+				reporter.Errorf("Expected a valid value for '%s': %v", param.ID(), err)
 				os.Exit(1)
 			}
 
@@ -203,11 +225,11 @@ func run(_ *cobra.Command, argv []string) {
 		})
 	}
 
-	reporter.Debugf("Installing add-on '%s' on cluster '%s'", addOnID, clusterKey)
-	err = clusterprovider.InstallAddOn(ocmClient.Clusters(), clusterKey, awsCreator.ARN, addOnID, params)
+	reporter.Debugf("Updating add-on parameters for '%s' on cluster '%s'", addOnID, clusterKey)
+	err = clusterprovider.UpdateAddOnInstallation(ocmClient.Clusters(), clusterKey, awsCreator.ARN, addOnID, params)
 	if err != nil {
-		reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
+		reporter.Errorf("Failed to update add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
 		os.Exit(1)
 	}
-	reporter.Infof("Add-on '%s' is now installing. To check the status run 'rosa list addons -c %s'", addOnID, clusterKey)
+	reporter.Infof("Add-on '%s' is now updating. To check the status run 'rosa list addons -c %s'", addOnID, clusterKey)
 }
