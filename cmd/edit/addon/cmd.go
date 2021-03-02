@@ -27,6 +27,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -46,9 +47,15 @@ var Cmd = &cobra.Command{
 	Long:    "Edit the parameters on installed Red Hat managed add-ons on a cluster",
 	Example: `  # Edit the parameters of the Red Hat OpenShift logging operator add-on installation
   rosa edit addon --cluster=mycluster cluster-logging-operator`,
-	Run: run,
-	Args: func(_ *cobra.Command, argv []string) error {
-		if len(argv) != 1 {
+	Run:                run,
+	DisableFlagParsing: true,
+	Args: func(cmd *cobra.Command, argv []string) error {
+		err := arguments.ParseUnknownFlags(cmd, argv)
+		if err != nil {
+			return fmt.Errorf("Failed to parse flags: %v", err)
+		}
+
+		if len(cmd.Flags().Args()) != 1 {
 			return fmt.Errorf("Expected exactly one command line parameter containing the id of the add-on")
 		}
 		return nil
@@ -63,15 +70,18 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to add the IdP to (required).",
+		"Name or ID of the cluster to install the addon to (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
+	// Parse out CLI flags, then override positional arguments
+	_ = cmd.Flags().Parse(argv)
+	argv = cmd.Flags().Args()
 	addOnID := argv[0]
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
@@ -163,54 +173,58 @@ func run(_ *cobra.Command, argv []string) {
 				return true
 			}
 
-			// Set default value based on existing parameter, otherwise use parameter default
-			dflt := param.DefaultValue()
-			if addOnInstallationParam != nil {
-				dflt = addOnInstallationParam.Value()
-			}
-
-			input := interactive.Input{
-				Question: param.Name(),
-				Help:     param.Description(),
-				Required: param.Required(),
-			}
-
 			var val string
-			switch param.ValueType() {
-			case "boolean":
-				var boolVal bool
-				input.Default, _ = strconv.ParseBool(dflt)
-				boolVal, err = interactive.GetBool(input)
-				if boolVal {
-					val = "true"
-				} else {
-					val = "false"
+			// If value is already set in the CLI, ignore interactive prompt
+			flag := cmd.Flags().Lookup(param.ID())
+			if flag != nil {
+				val = flag.Value.String()
+			} else {
+				// Set default value based on existing parameter, otherwise use parameter default
+				dflt := param.DefaultValue()
+				if addOnInstallationParam != nil {
+					dflt = addOnInstallationParam.Value()
 				}
-			case "cidr":
-				var cidrVal net.IPNet
-				if dflt != "" {
-					_, defaultIDR, _ := net.ParseCIDR(dflt)
-					input.Default = *defaultIDR
+
+				input := interactive.Input{
+					Question: param.Name(),
+					Help:     fmt.Sprintf("%s: %s", param.ID(), param.Description()),
+					Required: param.Required(),
 				}
-				cidrVal, err = interactive.GetIPNet(input)
-				val = cidrVal.String()
-			case "number":
-				var numVal float64
-				input.Default, _ = strconv.ParseFloat(dflt, 64)
-				numVal, err = interactive.GetFloat(input)
-				val = fmt.Sprintf("%f", numVal)
-			case "string":
-				input.Default = dflt
-				val, err = interactive.GetString(input)
-			}
-			if err != nil {
-				reporter.Errorf("Expected a valid value for '%s': %v", param.ID(), err)
-				os.Exit(1)
+
+				switch param.ValueType() {
+				case "boolean":
+					var boolVal bool
+					input.Default, _ = strconv.ParseBool(dflt)
+					boolVal, err = interactive.GetBool(input)
+					if boolVal {
+						val = "true"
+					} else {
+						val = "false"
+					}
+				case "cidr":
+					var cidrVal net.IPNet
+					if dflt != "" {
+						_, defaultIDR, _ := net.ParseCIDR(dflt)
+						input.Default = *defaultIDR
+					}
+					cidrVal, err = interactive.GetIPNet(input)
+					val = cidrVal.String()
+				case "number":
+					var numVal float64
+					input.Default, _ = strconv.ParseFloat(dflt, 64)
+					numVal, err = interactive.GetFloat(input)
+					val = fmt.Sprintf("%f", numVal)
+				case "string":
+					input.Default = dflt
+					val, err = interactive.GetString(input)
+				}
+				if err != nil {
+					reporter.Errorf("Expected a valid value for '%s': %v", param.ID(), err)
+					os.Exit(1)
+				}
 			}
 
-			if val != "" {
-				val = strings.Trim(val, " ")
-			}
+			val = strings.Trim(val, " ")
 			if val != "" && param.Validation() != "" {
 				isValid, err := regexp.MatchString(param.Validation(), val)
 				if err != nil || !isValid {
