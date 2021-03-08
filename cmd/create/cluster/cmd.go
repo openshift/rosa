@@ -390,7 +390,7 @@ func run(cmd *cobra.Command, _ []string) {
 	channelGroup := args.channelGroup
 	versionList, err := getVersionList(ocmClient, channelGroup)
 	if err != nil {
-		reporter.Errorf(fmt.Sprintf("%s", err))
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if version == "" {
