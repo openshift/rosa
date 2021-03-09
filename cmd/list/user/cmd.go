@@ -25,6 +25,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -47,6 +48,8 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+
+	arguments.AddRegionFlag(flags)
 
 	flags.StringVarP(
 		&args.clusterKey,
@@ -76,6 +79,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
+		Region(arguments.GetRegion()).
 		Logger(logger).
 		Build()
 	if err != nil {

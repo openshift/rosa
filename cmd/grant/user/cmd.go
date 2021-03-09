@@ -23,6 +23,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -61,6 +62,8 @@ var validRolesAliases = []string{"cluster-admin", "dedicated-admin"}
 
 func init() {
 	flags := Cmd.Flags()
+
+	arguments.AddRegionFlag(flags)
 
 	flags.StringVarP(
 		&args.clusterKey,
@@ -125,8 +128,16 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	// Get AWS region
+	region, err := aws.GetRegion(arguments.GetRegion())
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
+		Region(region).
 		Logger(logger).
 		Build()
 	if err != nil {
