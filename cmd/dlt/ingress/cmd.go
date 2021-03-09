@@ -160,7 +160,7 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}
 	if ingress == nil {
-		reporter.Errorf("Failed to get ingress '%s' for cluster '%s'", ingressID, clusterKey)
+		reporter.Errorf("Ingress '%s' does not exist on cluster '%s'", ingressID, clusterKey)
 		os.Exit(1)
 	}
 
