@@ -19,6 +19,7 @@ package version
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -90,16 +91,20 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tDEFAULT\n")
+	fmt.Fprintf(writer, "VERSION\t\tDEFAULT\n")
 
 	for _, version := range versions {
 		if !version.Enabled() {
 			continue
 		}
+		isDefault := "no"
+		if version.Default() {
+			isDefault = "yes"
+		}
 		fmt.Fprintf(writer,
-			"%s\t\t%t\n",
-			version.ID(),
-			version.Default(),
+			"%s\t\t%s\n",
+			strings.TrimPrefix(version.ID(), "openshift-v"),
+			isDefault,
 		)
 	}
 	writer.Flush()
