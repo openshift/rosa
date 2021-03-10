@@ -98,9 +98,15 @@ func buildGoogleIdp(cmd *cobra.Command,
 	}
 
 	if hostedDomain != "" {
-		_, err = url.ParseRequestURI(hostedDomain)
+		parsedHostedDomain, err := url.Parse(hostedDomain)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid Hosted Domain: %v", err)
+		}
+		if parsedHostedDomain.RawQuery != "" {
+			return idpBuilder, errors.New("Hosted Domain URL must not have query parameters")
+		}
+		if parsedHostedDomain.Fragment != "" {
+			return idpBuilder, errors.New("Hosted Domain URL must not have a fragment")
 		}
 		// Set the hosted domain, if any
 		googleIDP = googleIDP.HostedDomain(hostedDomain)
