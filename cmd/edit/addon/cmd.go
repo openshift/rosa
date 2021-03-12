@@ -154,6 +154,10 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Failed to get add-on '%s' installation: %v", addOnID, err)
 		os.Exit(1)
 	}
+	if addOnInstallation.State() != cmv1.AddOnInstallationStateReady {
+		reporter.Errorf("Add-on '%s' is not yet ready on cluster '%s'", addOnID, clusterKey)
+		os.Exit(1)
+	}
 
 	if parameters.Len() == 0 {
 		reporter.Errorf("Add-on '%s' has no parameters to edit", addOnID)
