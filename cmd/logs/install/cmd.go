@@ -168,6 +168,13 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
+	if cluster.State() == cmv1.ClusterStateError || cluster.State() == cmv1.ClusterStateUninstalling {
+		reporter.Errorf("Cluster '%s' is in '%s' state and no installation logs are available",
+			clusterKey, cluster.State(),
+		)
+		os.Exit(1)
+	}
+
 	// Get logs from Hive
 	logs, err := ocm.GetInstallLogs(clustersCollection, cluster.ID(), args.tail)
 	if err != nil {
