@@ -155,89 +155,92 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if parameters.Len() == 0 {
+		reporter.Errorf("Add-on '%s' has no parameters to edit", addOnID)
+		os.Exit(1)
+	}
+
 	var params []clusterprovider.AddOnParam
-	if parameters.Len() > 0 {
-		parameters.Each(func(param *cmv1.AddOnParameter) bool {
-			// Find the installation parameter corresponding to the addon parameter
-			var addOnInstallationParam *cmv1.AddOnInstallationParameter
-			addOnInstallation.Parameters().Each(func(p *cmv1.AddOnInstallationParameter) bool {
-				if p.ID() == param.ID() {
-					addOnInstallationParam = p
-					return false
-				}
-				return true
-			})
-
-			// If the parameter already exists in the cluster and is not editable, hide it
-			if addOnInstallationParam != nil && !param.Editable() {
-				return true
+	parameters.Each(func(param *cmv1.AddOnParameter) bool {
+		// Find the installation parameter corresponding to the addon parameter
+		var addOnInstallationParam *cmv1.AddOnInstallationParameter
+		addOnInstallation.Parameters().Each(func(p *cmv1.AddOnInstallationParameter) bool {
+			if p.ID() == param.ID() {
+				addOnInstallationParam = p
+				return false
 			}
-
-			var val string
-			// If value is already set in the CLI, ignore interactive prompt
-			flag := cmd.Flags().Lookup(param.ID())
-			if flag != nil {
-				val = flag.Value.String()
-			} else {
-				// Set default value based on existing parameter, otherwise use parameter default
-				dflt := param.DefaultValue()
-				if addOnInstallationParam != nil {
-					dflt = addOnInstallationParam.Value()
-				}
-
-				input := interactive.Input{
-					Question: param.Name(),
-					Help:     fmt.Sprintf("%s: %s", param.ID(), param.Description()),
-					Required: param.Required(),
-				}
-
-				switch param.ValueType() {
-				case "boolean":
-					var boolVal bool
-					input.Default, _ = strconv.ParseBool(dflt)
-					boolVal, err = interactive.GetBool(input)
-					if boolVal {
-						val = "true"
-					} else {
-						val = "false"
-					}
-				case "cidr":
-					var cidrVal net.IPNet
-					if dflt != "" {
-						_, defaultIDR, _ := net.ParseCIDR(dflt)
-						input.Default = *defaultIDR
-					}
-					cidrVal, err = interactive.GetIPNet(input)
-					val = cidrVal.String()
-				case "number":
-					var numVal float64
-					input.Default, _ = strconv.ParseFloat(dflt, 64)
-					numVal, err = interactive.GetFloat(input)
-					val = fmt.Sprintf("%f", numVal)
-				case "string":
-					input.Default = dflt
-					val, err = interactive.GetString(input)
-				}
-				if err != nil {
-					reporter.Errorf("Expected a valid value for '%s': %v", param.ID(), err)
-					os.Exit(1)
-				}
-			}
-
-			val = strings.Trim(val, " ")
-			if val != "" && param.Validation() != "" {
-				isValid, err := regexp.MatchString(param.Validation(), val)
-				if err != nil || !isValid {
-					reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
-					os.Exit(1)
-				}
-			}
-
-			params = append(params, clusterprovider.AddOnParam{Key: param.ID(), Val: val})
-
 			return true
 		})
-	}
+
+		// If the parameter already exists in the cluster and is not editable, hide it
+		if addOnInstallationParam != nil && !param.Editable() {
+			return true
+		}
+
+		var val string
+		// If value is already set in the CLI, ignore interactive prompt
+		flag := cmd.Flags().Lookup(param.ID())
+		if flag != nil {
+			val = flag.Value.String()
+		} else {
+			// Set default value based on existing parameter, otherwise use parameter default
+			dflt := param.DefaultValue()
+			if addOnInstallationParam != nil {
+				dflt = addOnInstallationParam.Value()
+			}
+
+			input := interactive.Input{
+				Question: param.Name(),
+				Help:     fmt.Sprintf("%s: %s", param.ID(), param.Description()),
+				Required: param.Required(),
+			}
+
+			switch param.ValueType() {
+			case "boolean":
+				var boolVal bool
+				input.Default, _ = strconv.ParseBool(dflt)
+				boolVal, err = interactive.GetBool(input)
+				if boolVal {
+					val = "true"
+				} else {
+					val = "false"
+				}
+			case "cidr":
+				var cidrVal net.IPNet
+				if dflt != "" {
+					_, defaultIDR, _ := net.ParseCIDR(dflt)
+					input.Default = *defaultIDR
+				}
+				cidrVal, err = interactive.GetIPNet(input)
+				val = cidrVal.String()
+			case "number":
+				var numVal float64
+				input.Default, _ = strconv.ParseFloat(dflt, 64)
+				numVal, err = interactive.GetFloat(input)
+				val = fmt.Sprintf("%f", numVal)
+			case "string":
+				input.Default = dflt
+				val, err = interactive.GetString(input)
+			}
+			if err != nil {
+				reporter.Errorf("Expected a valid value for '%s': %v", param.ID(), err)
+				os.Exit(1)
+			}
+		}
+
+		val = strings.Trim(val, " ")
+		if val != "" && param.Validation() != "" {
+			isValid, err := regexp.MatchString(param.Validation(), val)
+			if err != nil || !isValid {
+				reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
+				os.Exit(1)
+			}
+		}
+
+		params = append(params, clusterprovider.AddOnParam{Key: param.ID(), Val: val})
+
+		return true
+	})
 
 	reporter.Debugf("Updating add-on parameters for '%s' on cluster '%s'", addOnID, clusterKey)
 	err = clusterprovider.UpdateAddOnInstallation(ocmClient.Clusters(), clusterKey, awsCreator.ARN, addOnID, params)
