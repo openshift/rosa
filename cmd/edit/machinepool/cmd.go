@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -42,6 +43,8 @@ var args struct {
 	autoscalingEnabled bool
 	minReplicas        int
 	maxReplicas        int
+	labels             string
+	taints             string
 }
 
 var Cmd = &cobra.Command{
@@ -102,6 +105,22 @@ func init() {
 		"max-replicas",
 		0,
 		"Maximum number of machines for the machine pool.",
+	)
+
+	flags.StringVar(
+		&args.labels,
+		"labels",
+		"",
+		"Labels for machine pool. Format should be a comma-separated list of 'key=value'. "+
+			"This list will overwrite any modifications made to node labels on an ongoing basis.",
+	)
+
+	flags.StringVar(
+		&args.taints,
+		"taints",
+		"",
+		"Taints for machine pool. Format should be a comma-separated list of 'key=value:ScheduleType'. "+
+			"This list will overwrite any modifications made to node taints on an ongoing basis.",
 	)
 }
 
@@ -171,8 +190,17 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Editing the default machine pool is a different process
 	if machinePoolID == "Default" {
+		if cmd.Flags().Changed("labels") {
+			reporter.Errorf("Labels cannot be updated on the Default machine pool")
+			os.Exit(1)
+		}
+		if cmd.Flags().Changed("taints") {
+			reporter.Errorf("Taints are not supported on the Default machine pool")
+			os.Exit(1)
+		}
+
 		autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
-			cluster.Nodes().AutoscaleCompute())
+			cluster.Nodes().Compute(), cluster.Nodes().AutoscaleCompute())
 
 		if cluster.MultiAZ() {
 			if !autoscaling && replicas < 3 ||
@@ -230,7 +258,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
-		machinePool.Autoscaling())
+		machinePool.Replicas(), machinePool.Autoscaling())
 
 	if !autoscaling && replicas < 0 ||
 		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1) {
@@ -245,8 +273,84 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	labels := args.labels
+	labelMap := make(map[string]string)
+	if interactive.Enabled() {
+		if labels == "" {
+			for lk, lv := range machinePool.Labels() {
+				if labels != "" {
+					labels += ","
+				}
+				labels += fmt.Sprintf("%s=%s", lk, lv)
+			}
+		}
+		labels, err = interactive.GetString(interactive.Input{
+			Question: "Labels",
+			Help:     cmd.Flags().Lookup("labels").Usage,
+			Default:  labels,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+	}
+	labels = strings.Trim(labels, " ")
+	if labels != "" {
+		for _, label := range strings.Split(labels, ",") {
+			if !strings.Contains(label, "=") {
+				reporter.Errorf("Expected key=value format for labels")
+				os.Exit(1)
+			}
+			tokens := strings.Split(label, "=")
+			labelMap[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+		}
+	}
+
+	taints := args.taints
+	taintBuilders := []*cmv1.TaintBuilder{}
+	if interactive.Enabled() {
+		if taints == "" {
+			for _, taint := range machinePool.Taints() {
+				if taints != "" {
+					taints += ","
+				}
+				taints += fmt.Sprintf("%s=%s:%s", taint.Key(), taint.Value(), taint.Effect())
+			}
+		}
+		taints, err = interactive.GetString(interactive.Input{
+			Question: "Taints",
+			Help:     cmd.Flags().Lookup("taints").Usage,
+			Default:  taints,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+	}
+	taints = strings.Trim(taints, " ")
+	if taints != "" {
+		for _, taint := range strings.Split(taints, ",") {
+			if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
+				reporter.Errorf("Expected key=value:scheduleType format for taints")
+				os.Exit(1)
+			}
+			tokens := strings.FieldsFunc(taint, Split)
+			taintBuilders = append(taintBuilders, cmv1.NewTaint().Key(tokens[0]).Value(tokens[1]).Effect(tokens[2]))
+		}
+	}
+
 	mpBuilder := cmv1.NewMachinePool().
 		ID(machinePool.ID())
+
+	// Check either for an explicit flag or interactive mode. Since
+	// interactive will always show both labels and taints we can safely
+	// assume that the value entered is the same as the value desired.
+	if cmd.Flags().Changed("labels") || interactive.Enabled() {
+		mpBuilder = mpBuilder.Labels(labelMap)
+	}
+	if cmd.Flags().Changed("taints") || interactive.Enabled() {
+		mpBuilder = mpBuilder.Taints(taintBuilders...)
+	}
 
 	if autoscaling {
 		asBuilder := cmv1.NewMachinePoolAutoscaling()
@@ -289,6 +393,7 @@ func run(cmd *cobra.Command, argv []string) {
 func getReplicas(cmd *cobra.Command,
 	reporter *rprtr.Object,
 	machinePoolID string,
+	existingReplicas int,
 	existingAutoscaling *cmv1.MachinePoolAutoscaling) (autoscaling bool,
 	replicas, minReplicas, maxReplicas int) {
 	var err error
@@ -362,6 +467,9 @@ func getReplicas(cmd *cobra.Command,
 			}
 		}
 	} else if interactive.Enabled() || !isReplicasSet {
+		if !isReplicasSet {
+			replicas = existingReplicas
+		}
 		replicas, err = interactive.GetInt(interactive.Input{
 			Question: "Replicas",
 			Help:     cmd.Flags().Lookup("replicas").Usage,
@@ -374,4 +482,8 @@ func getReplicas(cmd *cobra.Command,
 		}
 	}
 	return
+}
+
+func Split(r rune) bool {
+	return r == '=' || r == ':'
 }
