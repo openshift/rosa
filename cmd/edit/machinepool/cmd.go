@@ -110,7 +110,7 @@ func run(cmd *cobra.Command, argv []string) {
 	logger := logging.CreateLoggerOrExit(reporter)
 
 	machinePoolID := argv[0]
-	if !machinePoolKeyRE.MatchString(machinePoolID) {
+	if machinePoolID != "Default" && !machinePoolKeyRE.MatchString(machinePoolID) {
 		reporter.Errorf("Expected a valid identifier for the machine pool")
 		os.Exit(1)
 	}
@@ -170,7 +170,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Editing the default machine pool is a different process
-	if machinePoolID == "default" {
+	if machinePoolID == "Default" {
 		autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
 			cluster.Nodes().AutoscaleCompute())
 

@@ -75,7 +75,7 @@ func run(_ *cobra.Command, argv []string) {
 	logger := logging.CreateLoggerOrExit(reporter)
 
 	machinePoolID := argv[0]
-	if !machinePoolKeyRE.MatchString(machinePoolID) {
+	if machinePoolID != "Default" && !machinePoolKeyRE.MatchString(machinePoolID) {
 		reporter.Errorf("Expected a valid identifier for the machine pool")
 		os.Exit(1)
 	}
@@ -92,7 +92,7 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if machinePoolID == "default" {
+	if machinePoolID == "Default" {
 		reporter.Errorf("Machine pool '%s' cannot be deleted from cluster '%s'", machinePoolID, clusterKey)
 		os.Exit(1)
 	}
