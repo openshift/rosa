@@ -187,10 +187,10 @@ func run(cmd *cobra.Command, argv []string) {
 					cidrVal, err = interactive.GetIPNet(input)
 					val = cidrVal.String()
 				case "number":
-					var numVal float64
-					input.Default, _ = strconv.ParseFloat(param.DefaultValue(), 64)
-					numVal, err = interactive.GetFloat(input)
-					val = fmt.Sprintf("%f", numVal)
+					var numVal int
+					input.Default, _ = strconv.Atoi(param.DefaultValue())
+					numVal, err = interactive.GetInt(input)
+					val = fmt.Sprintf("%d", numVal)
 				case "string":
 					input.Default = param.DefaultValue()
 					val, err = interactive.GetString(input)
