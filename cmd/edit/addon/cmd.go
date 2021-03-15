@@ -217,6 +217,9 @@ func run(cmd *cobra.Command, argv []string) {
 				}
 				cidrVal, err = interactive.GetIPNet(input)
 				val = cidrVal.String()
+				if val == "<nil>" {
+					val = ""
+				}
 			case "number":
 				var numVal int
 				input.Default, _ = strconv.Atoi(dflt)
