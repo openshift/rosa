@@ -55,7 +55,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to add the IdP to (required).",
+		"Name or ID of the cluster to delete the admin user from (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }

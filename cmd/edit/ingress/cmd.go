@@ -75,7 +75,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to add the ingress to (required).",
+		"Name or ID of the cluster to edit the ingress of (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 
