@@ -31,10 +31,6 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var args struct {
-	count int
-}
-
 var Cmd = &cobra.Command{
 	Use:     "clusters",
 	Aliases: []string{"cluster"},
@@ -51,14 +47,6 @@ func init() {
 	flags.SortFlags = false
 
 	arguments.AddRegionFlag(flags)
-
-	// Basic options
-	flags.IntVar(
-		&args.count,
-		"count",
-		100,
-		"Number of clusters to display.",
-	)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -98,7 +86,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Retrieve the list of clusters:
 	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-	clusters, err := clusterprovider.GetClusters(clustersCollection, awsCreator.ARN, args.count)
+	clusters, err := clusterprovider.GetClusters(clustersCollection, awsCreator.ARN, 1000)
 	if err != nil {
 		reporter.Errorf("Failed to get clusters: %v", err)
 		os.Exit(1)
