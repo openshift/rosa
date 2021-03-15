@@ -268,6 +268,15 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
+		if minReplicas < 1 {
+			reporter.Errorf("min-replicas must be greater or equal to the number of zones")
+			os.Exit(1)
+		}
+		if cluster.MultiAZ() && minReplicas%3 != 0 {
+			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+			os.Exit(1)
+		}
+
 		if interactive.Enabled() || !isMaxReplicasSet {
 			maxReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Max replicas",
@@ -280,18 +289,11 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-
-		if minReplicas < 1 {
-			reporter.Errorf("min-replicas must be greater or equal to the number of zones")
-			os.Exit(1)
-		}
-
 		if minReplicas > maxReplicas {
 			reporter.Errorf("max-replicas must be greater or equal to min-replicas")
 			os.Exit(1)
 		}
-
-		if cluster.MultiAZ() && (minReplicas%3 != 0 || maxReplicas%3 != 0) {
+		if cluster.MultiAZ() && maxReplicas%3 != 0 {
 			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
 			os.Exit(1)
 		}
