@@ -111,16 +111,16 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	isInteractive := interactive.Enabled()
-	if !isInteractive {
+	// Enable interactive mode if no flags have been set
+	if !interactive.Enabled() {
 		changedFlags := false
-		for _, flag := range []string{"private"} {
+		for _, flag := range []string{"expiration-time", "expiration", "private"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
 		}
 		if !changedFlags {
-			isInteractive = true
+			interactive.Enable()
 		}
 	}
 
@@ -181,14 +181,14 @@ func run(cmd *cobra.Command, _ []string) {
 	if cmd.Flags().Changed("private") {
 		privateValue = args.private
 		private = &privateValue
-	} else if isInteractive {
+	} else if interactive.Enabled() {
 		privateValue = cluster.API().Listening() == cmv1.ListeningMethodInternal
 	}
 
 	privateWarning := "You will not be able to access your cluster until you edit network settings " +
 		"in your cloud provider. To also change the privacy setting of the application router " +
 		"endpoints, use the 'rosa edit ingress' command."
-	if isInteractive {
+	if interactive.Enabled() {
 		privateValue, err = interactive.GetBool(interactive.Input{
 			Question: "Private cluster",
 			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateWarning),
