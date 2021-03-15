@@ -17,12 +17,10 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	"github.com/openshift/rosa/cmd/completion"
 	"github.com/openshift/rosa/cmd/create"
@@ -55,10 +53,6 @@ var root = &cobra.Command{
 }
 
 func init() {
-	// Register the options that are managed by the 'flag' package, so that they will also be parsed
-	// by the 'pflag' package:
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-
 	// Add the command line flags:
 	fs := root.PersistentFlags()
 	arguments.AddDebugFlag(fs)
