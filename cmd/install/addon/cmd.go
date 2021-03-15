@@ -156,13 +156,30 @@ func run(cmd *cobra.Command, argv []string) {
 
 	var params []clusterprovider.AddOnParam
 	if parameters.Len() > 0 {
+		// Determine if all required parameters have already been set as flags and ensure
+		// that interactive mode is enabled if they have not. If there are no parameters
+		// set as flags, then we also ensure that interactive mode is enabled so that the
+		// user gets prompted.
+		if arguments.HasUnknownFlags() {
+			parameters.Each(func(param *cmv1.AddOnParameter) bool {
+				flag := cmd.Flags().Lookup(param.ID())
+				if param.Required() && (flag == nil || flag.Value.String() == "") {
+					interactive.Enable()
+					return false
+				}
+				return true
+			})
+		} else {
+			interactive.Enable()
+		}
+
 		parameters.Each(func(param *cmv1.AddOnParameter) bool {
 			var val string
 			// If value is already set in the CLI, ignore interactive prompt
 			flag := cmd.Flags().Lookup(param.ID())
 			if flag != nil {
 				val = flag.Value.String()
-			} else {
+			} else if interactive.Enabled() {
 				input := interactive.Input{
 					Question: param.Name(),
 					Help:     fmt.Sprintf("%s: %s", param.ID(), param.Description()),

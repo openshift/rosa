@@ -29,6 +29,8 @@ import (
 	"github.com/openshift/rosa/pkg/debug"
 )
 
+var hasUnknownFlags bool
+
 // ParseUnknownFlags parses all flags from the CLI, including
 // unknown ones, and adds them to the current command tree
 func ParseUnknownFlags(cmd *cobra.Command, argv []string) error {
@@ -43,6 +45,7 @@ func ParseUnknownFlags(cmd *cobra.Command, argv []string) error {
 			flags.BoolVar(&boolVal, prevArg, false, "")
 			flags.Set(prevArg, "true")
 			prevArg = ""
+			hasUnknownFlags = true
 		}
 
 		switch {
@@ -61,6 +64,7 @@ func ParseUnknownFlags(cmd *cobra.Command, argv []string) error {
 			flags.StringVar(&strVal, prevArg, "", "")
 			flags.Set(prevArg, arg)
 			prevArg = ""
+			hasUnknownFlags = true
 			continue
 		// A long flag with an '=' separated value
 		case strings.HasPrefix(arg, "--") && strings.Contains(arg, "="):
@@ -70,12 +74,18 @@ func ParseUnknownFlags(cmd *cobra.Command, argv []string) error {
 				var strVal string
 				flags.StringVar(&strVal, val[0], "", "")
 				flags.Set(val[0], val[1])
+				hasUnknownFlags = true
 			}
 			continue
 		}
 	}
 
 	return flags.Parse(argv)
+}
+
+// HasUnknownFlags returns whether the flag parser detected any unknown flags
+func HasUnknownFlags() bool {
+	return hasUnknownFlags
 }
 
 // AddDebugFlag adds the '--debug' flag to the given set of command line flags.

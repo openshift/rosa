@@ -164,6 +164,23 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	// Determine if all required parameters have already been set as flags and ensure
+	// that interactive mode is enabled if they have not. If there are no parameters
+	// set as flags, then we also ensure that interactive mode is enabled so that the
+	// user gets prompted.
+	if arguments.HasUnknownFlags() {
+		parameters.Each(func(param *cmv1.AddOnParameter) bool {
+			flag := cmd.Flags().Lookup(param.ID())
+			if param.Required() && (flag == nil || flag.Value.String() == "") {
+				interactive.Enable()
+				return false
+			}
+			return true
+		})
+	} else {
+		interactive.Enable()
+	}
+
 	var params []clusterprovider.AddOnParam
 	parameters.Each(func(param *cmv1.AddOnParameter) bool {
 		// Find the installation parameter corresponding to the addon parameter
@@ -186,7 +203,7 @@ func run(cmd *cobra.Command, argv []string) {
 		flag := cmd.Flags().Lookup(param.ID())
 		if flag != nil {
 			val = flag.Value.String()
-		} else {
+		} else if interactive.Enabled() {
 			// Set default value based on existing parameter, otherwise use parameter default
 			dflt := param.DefaultValue()
 			if addOnInstallationParam != nil {
