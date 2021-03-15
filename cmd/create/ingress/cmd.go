@@ -79,6 +79,8 @@ func init() {
 		"Label match for ingress. Format should be a comma-separated list of 'key=value'. "+
 			"If no label is specified, all routes will be exposed on both routers.",
 	)
+
+	interactive.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {
