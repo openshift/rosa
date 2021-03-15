@@ -252,7 +252,8 @@ func run(cmd *cobra.Command, argv []string) {
 	}()
 	accessToken, refreshToken, err := connection.Tokens()
 	if err != nil {
-		reporter.Errorf("Failed to get token: %v", err)
+		reporter.Errorf("Failed to get token. Your session might be expired: %v", err)
+		reporter.Infof("Get a new offline access token at %s", uiTokenPage)
 		os.Exit(1)
 	}
 
