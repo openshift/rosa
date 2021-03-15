@@ -133,7 +133,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\n")
 	fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\n",
-		"default",
+		"Default",
 		printAutoscaling(cluster.Nodes().AutoscaleCompute()),
 		printReplicas(cluster.Nodes().AutoscaleCompute(), cluster.Nodes().Compute()),
 		cluster.Nodes().ComputeMachineType().ID(),
