@@ -53,7 +53,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to list the IdP of (required).",
+		"Name or ID of the cluster to list the IdPs of (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }

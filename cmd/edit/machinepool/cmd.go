@@ -72,7 +72,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to add the machine pool to (required).",
+		"Name or ID of the cluster to edit the machine pool of (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 

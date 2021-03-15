@@ -70,7 +70,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to install the addon to (required).",
+		"Name or ID of the cluster to edit the addon parameters of (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 }
