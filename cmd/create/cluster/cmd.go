@@ -271,6 +271,8 @@ func init() {
 			"Subnets are comma separated, for example: --subnet-ids=subnet-1,subnet-2."+
 			"Leave empty for installer provisioned subnet IDs.",
 	)
+
+	interactive.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {

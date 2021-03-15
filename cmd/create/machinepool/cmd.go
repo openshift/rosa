@@ -139,6 +139,8 @@ func init() {
 		"Taints for machine pool. Format should be a comma-separated list of 'key=value:ScheduleType'. "+
 			"This list will overwrite any modifications made to Node taints on an ongoing basis.",
 	)
+
+	interactive.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {

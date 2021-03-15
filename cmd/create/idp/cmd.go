@@ -269,6 +269,8 @@ func init() {
 		"",
 		"OpenID: List of scopes to request, in addition to the 'openid' scope, during the authorization token request.\n",
 	)
+
+	interactive.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {
