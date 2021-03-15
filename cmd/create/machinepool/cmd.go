@@ -227,10 +227,18 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Autoscaling
+	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
+	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
 	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
+	isReplicasSet := cmd.Flags().Changed("replicas")
+
+	minReplicas := args.minReplicas
+	maxReplicas := args.maxReplicas
 	autoscaling := args.autoscalingEnabled
-	if !autoscaling && !isAutoscalingSet && interactive.Enabled() {
+	replicas := args.replicas
+
+	// Autoscaling
+	if !isReplicasSet && !autoscaling && !isAutoscalingSet && interactive.Enabled() {
 		autoscaling, err = interactive.GetBool(interactive.Input{
 			Question: "Enable autoscaling",
 			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
@@ -242,13 +250,6 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
-	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
-	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
-	isReplicasSet := cmd.Flags().Changed("replicas")
-	minReplicas := args.minReplicas
-	maxReplicas := args.maxReplicas
-	replicas := args.replicas
 
 	if autoscaling {
 		// if the user set replicas and enabled autoscaling

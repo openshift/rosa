@@ -537,10 +537,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Autoscaling
 	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
+	isReplicasSet := cmd.Flags().Changed("compute-nodes")
+
+	// Autoscaling
 	autoscaling := args.autoscalingEnabled
-	if !autoscaling && !isAutoscalingSet && interactive.Enabled() {
+	if !isReplicasSet && !autoscaling && !isAutoscalingSet && interactive.Enabled() {
 		autoscaling, err = interactive.GetBool(interactive.Input{
 			Question: "Enable autoscaling",
 			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
@@ -560,7 +562,7 @@ func run(cmd *cobra.Command, _ []string) {
 	maxReplicas := args.maxReplicas
 	if autoscaling {
 		// if the user set compute-nodes and enabled autoscaling
-		if cmd.Flags().Changed("compute-nodes") {
+		if isReplicasSet {
 			reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
 			os.Exit(1)
 		}
@@ -621,7 +623,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Compute nodes:
 	computeNodes := args.computeNodes
 	// Compute node requirements for multi-AZ clusters are higher
-	if multiAZ && !autoscaling && !cmd.Flags().Changed("compute-nodes") {
+	if multiAZ && !autoscaling && !isReplicasSet {
 		computeNodes = 3
 	}
 	if !autoscaling {
