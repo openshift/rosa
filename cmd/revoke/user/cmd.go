@@ -100,11 +100,16 @@ func run(_ *cobra.Command, argv []string) {
 	username := args.username
 	if !ocm.IsValidUsername(username) {
 		reporter.Errorf(
-			"username '%s' isn't valid: it must contain only letters, digits, dashes and underscores",
+			"Username '%s' isn't valid: it must contain only letters, digits, dashes and underscores",
 			username,
 		)
 		os.Exit(1)
 	}
+	if username == "cluster-admin" {
+		reporter.Errorf("Username 'cluster-admin' is not allowed")
+		os.Exit(1)
+	}
+
 	role := argv[0]
 	// Allow role aliases
 	for _, validAlias := range validRolesAliases {
