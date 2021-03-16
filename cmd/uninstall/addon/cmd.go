@@ -129,6 +129,12 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	addOn, err := clusterprovider.GetAddOnInstallation(ocmClient.Clusters(), clusterKey, awsCreator.ARN, addOnID)
+	if addOn == nil {
+		reporter.Warnf("Addon '%s' is not installed on cluster '%s'", addOnID, clusterKey)
+		os.Exit(0)
+	}
+
 	if !confirm.Confirm("uninstall add-on '%s' from cluster '%s'", addOnID, clusterKey) {
 		os.Exit(0)
 	}
