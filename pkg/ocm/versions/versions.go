@@ -38,7 +38,7 @@ func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Ver
 		var response *cmv1.VersionsListResponse
 		response, err = collection.List().
 			Search(filter).
-			Order("default desc, id asc").
+			Order("default desc, id desc").
 			Page(page).
 			Size(size).
 			Send()

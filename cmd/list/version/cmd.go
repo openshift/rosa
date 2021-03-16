@@ -91,7 +91,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "VERSION\t\tDEFAULT\n")
+	fmt.Fprintf(writer, "VERSION\t\tDEFAULT\t\tAVAILABLE UPGRADES\n")
 
 	for _, version := range versions {
 		if !version.Enabled() {
@@ -102,9 +102,10 @@ func run(cmd *cobra.Command, _ []string) {
 			isDefault = "yes"
 		}
 		fmt.Fprintf(writer,
-			"%s\t\t%s\n",
-			strings.TrimPrefix(version.ID(), "openshift-v"),
+			"%s\t\t%s\t\t%s\n",
+			version.RawID(),
 			isDefault,
+			strings.Join(version.AvailableUpgrades(), ", "),
 		)
 	}
 	writer.Flush()
