@@ -3,6 +3,40 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.0 Mar 16 2021
+
+- addons: Allow editing of addon parameters
+- addons: Accept numeric parameters as floats
+- upgrade: Display datetime format in error output
+- upgrade: Display upgrade state whenever showing existing upgrades
+- login: Update URL for integration environment
+- addons: Allow installation parameters in CLI
+- ingress: Better message when deleting non-existent ingress
+- versions: Align version list with cluster creation
+- Add missing region flags
+- idp: Allow schema-less hosted domains on Google IDP
+- addons: Disallow editing addons without parameters
+- addons: Disallow editing params of a non-ready addon
+- addons: Use integer for numeric params
+- logs: Report better errors for incompatible installation states
+- machinepools: Display default machine pool as Default
+- clusters: Remove count flag
+- machinepools: Allow editing labels and taints
+- addons: Check existence of addon installation before installing
+- addons: Send empty string when CIDR is nil
+- machinepool: Skip autoscaling prompt when setting replicas
+- machinepool: Error out on invalid min-replica
+- cluster-admin: Format the success message
+- flags: Fix description of cluster flags
+- edit-cluster: Skip interactive mode if any flag is set
+- login: Print link to get new token on expired session
+- flag: Remove unnecessary flags
+- interactive: Remove flag from global create
+- addons: Enforce interactive mode if required params are missing
+- version: Align sort with OCM version list
+- users: Disallow grant and revoke on cluster-admin
+- describe: Add cluster network configuration
+
 == 0.1.10 Feb 24 2021
 
 - arguments: Move region and profile flags
