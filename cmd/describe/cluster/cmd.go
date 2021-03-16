@@ -215,46 +215,65 @@ func run(cmd *cobra.Command, argv []string) {
 	// Determine whether there is any auto-scaling in the cluster
 	if minNodes == maxNodes {
 		nodesStr = fmt.Sprintf(""+
-			"Nodes:                      Master: %d, Infra: %d, Compute: %d\n",
-			cluster.Nodes().Master(), cluster.Nodes().Infra(), minNodes,
+			"Nodes:\n"+
+			" - Master:                  %d\n"+
+			" - Infra:                   %d\n"+
+			" - Compute:                 %d (%s)\n",
+			cluster.Nodes().Master(),
+			cluster.Nodes().Infra(),
+			minNodes, cluster.Nodes().ComputeMachineType().ID(),
 		)
 	} else {
 		nodesStr = fmt.Sprintf(""+
-			"Nodes:                      Master: %d, Infra: %d, Compute (Autoscaled): %d-%d\n",
-			cluster.Nodes().Master(), cluster.Nodes().Infra(), minNodes, maxNodes,
+			"Nodes:\n"+
+			" - Master:                  %d\n"+
+			" - Infra:                   %d\n"+
+			" - Compute (Autoscaled):    %d-%d (%s)\n",
+			cluster.Nodes().Master(),
+			cluster.Nodes().Infra(),
+			minNodes, maxNodes, cluster.Nodes().ComputeMachineType().ID(),
 		)
 	}
 
 	// Print short cluster description:
 	str := fmt.Sprintf(""+
 		"Name:                       %s\n"+
-		"OpenShift Version:          %s\n"+
-		"DNS:                        %s.%s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
+		"OpenShift Version:          %s\n"+
+		"Channel Group:              %s\n"+
+		"DNS:                        %s.%s\n"+
 		"AWS Account:                %s\n"+
 		"API URL:                    %s\n"+
 		"Console URL:                %s\n"+
-		"%s"+
 		"Region:                     %s\n"+
 		"Multi-AZ:                   %t\n"+
+		"%s"+
+		"Network:\n"+
+		" - Service CIDR:            %s\n"+
+		" - Machine CIDR:            %s\n"+
+		" - Pod CIDR:                %s\n"+
+		" - Host Prefix:             /%d\n"+
 		"State:                      %s %s\n"+
-		"Channel Group:              %s\n"+
 		"Private:                    %s\n"+
 		"Created:                    %s\n",
 		clusterName,
-		cluster.OpenshiftVersion(),
-		cluster.Name(), cluster.DNS().BaseDomain(),
 		cluster.ID(),
 		cluster.ExternalID(),
+		cluster.OpenshiftVersion(),
+		cluster.Version().ChannelGroup(),
+		cluster.Name(), cluster.DNS().BaseDomain(),
 		creatorARN.AccountID,
 		cluster.API().URL(),
 		cluster.Console().URL(),
-		nodesStr,
 		cluster.Region().ID(),
 		cluster.MultiAZ(),
+		nodesStr,
+		cluster.Network().ServiceCIDR(),
+		cluster.Network().MachineCIDR(),
+		cluster.Network().PodCIDR(),
+		cluster.Network().HostPrefix(),
 		cluster.State(), phase,
-		cluster.Version().ChannelGroup(),
 		isPrivate,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
 	)
