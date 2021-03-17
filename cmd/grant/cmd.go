@@ -21,7 +21,6 @@ import (
 
 	"github.com/openshift/rosa/cmd/grant/user"
 	"github.com/openshift/rosa/pkg/arguments"
-	"github.com/openshift/rosa/pkg/interactive"
 )
 
 var Cmd = &cobra.Command{
@@ -35,5 +34,4 @@ func init() {
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
-	interactive.AddFlag(flags)
 }
