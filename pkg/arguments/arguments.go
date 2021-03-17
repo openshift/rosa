@@ -80,7 +80,25 @@ func ParseUnknownFlags(cmd *cobra.Command, argv []string) error {
 		}
 	}
 
-	return flags.Parse(argv)
+	err := flags.Parse(argv)
+	if err != nil {
+		return err
+	}
+
+	// If help is called, regardless of other flags, return we want help.
+	// Also say we need help if the command isn't runnable.
+	helpVal, err := cmd.Flags().GetBool("help")
+	if err != nil {
+		// should be impossible to get here as we always declare a help
+		// flag in InitDefaultHelpFlag()
+		cmd.Println("\"help\" flag declared as non-bool. Please correct your code")
+		return err
+	}
+	if helpVal {
+		return pflag.ErrHelp
+	}
+
+	return nil
 }
 
 // HasUnknownFlags returns whether the flag parser detected any unknown flags
