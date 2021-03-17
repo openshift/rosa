@@ -52,7 +52,7 @@ var Cmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, argv []string) error {
 		err := arguments.ParseUnknownFlags(cmd, argv)
 		if err != nil {
-			return fmt.Errorf("Failed to parse flags: %v", err)
+			return err
 		}
 
 		if len(cmd.Flags().Args()) != 1 {
