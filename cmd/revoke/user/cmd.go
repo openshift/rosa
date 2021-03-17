@@ -43,13 +43,13 @@ var Cmd = &cobra.Command{
   rosa revoke user cluster-admins --user=myusername --cluster=mycluster
 
   # Revoke dedicated-admin role from a user
-  rosa revoke user dedicate-admins --user=myusername --cluster=mycluster`,
+  rosa revoke user dedicated-admins --user=myusername --cluster=mycluster`,
 	Run: run,
 	Args: func(_ *cobra.Command, argv []string) error {
 		if len(argv) != 1 {
 			return fmt.Errorf(
 				"Expected exactly one command line argument containing the name " +
-					"of the group or role to grant the user.",
+					"of the group or role to revoke from the user.",
 			)
 		}
 		return nil
