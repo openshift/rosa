@@ -181,10 +181,12 @@ func run(cmd *cobra.Command, argv []string) {
 
 		parameters.Each(func(param *cmv1.AddOnParameter) bool {
 			var val string
+			var hasVal bool
 			// If value is already set in the CLI, ignore interactive prompt
 			flag := cmd.Flags().Lookup(param.ID())
 			if flag != nil {
 				val = flag.Value.String()
+				hasVal = true
 			} else if interactive.Enabled() {
 				input := interactive.Input{
 					Question: param.Name(),
@@ -225,18 +227,20 @@ func run(cmd *cobra.Command, argv []string) {
 					reporter.Errorf("Expected a valid value for '%s': %v", param.Name(), err)
 					os.Exit(1)
 				}
+				hasVal = true
 			}
 
-			val = strings.Trim(val, " ")
-			if val != "" && param.Validation() != "" {
-				isValid, err := regexp.MatchString(param.Validation(), val)
-				if err != nil || !isValid {
-					reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
-					os.Exit(1)
+			if hasVal {
+				val = strings.Trim(val, " ")
+				if val != "" && param.Validation() != "" {
+					isValid, err := regexp.MatchString(param.Validation(), val)
+					if err != nil || !isValid {
+						reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
+						os.Exit(1)
+					}
 				}
+				params = append(params, clusterprovider.AddOnParam{Key: param.ID(), Val: val})
 			}
-
-			params = append(params, clusterprovider.AddOnParam{Key: param.ID(), Val: val})
 
 			return true
 		})
