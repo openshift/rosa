@@ -3,6 +3,15 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.1 Mar 18 2021
+
+- arguments: Parse help flag when overriding flag parsing
+- revoke: Fix example and help text
+- grant: Remove unnecessary interactive flag
+- addons: When setting CLI params skip unset values
+- upgrade: Display expected format in error
+- addons: Display availability
+
 == 1.0.0 Mar 16 2021
 
 - addons: Allow editing of addon parameters
