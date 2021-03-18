@@ -157,8 +157,9 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 }
 
 type AddOnResource struct {
-	AddOn  *cmv1.AddOn
-	AZType string
+	AddOn     *cmv1.AddOn
+	AZType    string
+	Available bool
 }
 
 // Get complete list of available add-ons for the current organization
@@ -216,6 +217,11 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 				// Only return compatible addons
 				if addOn.ResourceName() == resourceName && isCompatible(relatedResource) {
 					available = true
+
+					// Addon is only available if quota allows it
+					cost := int(relatedResource.(map[string]interface{})["cost"].(float64))
+					addOnResource.Available = quotaCost.Allowed()-quotaCost.Consumed() >= cost
+
 					// Track AZ type so that we can compare against cluster
 					addOnResource.AZType = relatedResource.(map[string]interface{})["availability_zone_type"].(string)
 					// Since add-on is considered available now, there's no need to check the other resources
@@ -296,6 +302,9 @@ func GetClusterAddOns(connection *sdk.Connection, cluster *cmv1.Cluster) ([]*Clu
 			ID:    addOnResource.AddOn.ID(),
 			Name:  addOnResource.AddOn.Name(),
 			State: "not installed",
+		}
+		if !addOnResource.Available {
+			clusterAddOn.State = "unavailable"
 		}
 
 		// Get the state of add-on installations on the cluster

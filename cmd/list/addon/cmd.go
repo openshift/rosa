@@ -101,9 +101,13 @@ func run(_ *cobra.Command, _ []string) {
 
 		// Create the writer that will be used to print the tabulated results:
 		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(writer, "ID\t\tNAME\n")
+		fmt.Fprintf(writer, "ID\t\tNAME\t\tAVAILABILITY\n")
 		for _, addOnResource := range addOnResources {
-			fmt.Fprintf(writer, "%s\t\t%s\n", addOnResource.AddOn.ID(), addOnResource.AddOn.Name())
+			availability := "unavailable"
+			if addOnResource.Available {
+				availability = "available"
+			}
+			fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", addOnResource.AddOn.ID(), addOnResource.AddOn.Name(), availability)
 		}
 		writer.Flush()
 
