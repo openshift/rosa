@@ -295,7 +295,8 @@ func run(cmd *cobra.Command, _ []string) {
 	// Parse next run to time.Time
 	nextRun, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%s %s", scheduleDate, scheduleTime))
 	if err != nil {
-		reporter.Errorf("Time format invalid: %s", err)
+		reporter.Errorf("Schedule date should use the format 'yyyy-mm-dd'\n" +
+			"   Schedule time should use the format 'HH:mm'")
 		os.Exit(1)
 	}
 
