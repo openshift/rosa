@@ -218,20 +218,20 @@ func run(cmd *cobra.Command, argv []string) {
 			"Nodes:\n"+
 			" - Master:                  %d\n"+
 			" - Infra:                   %d\n"+
-			" - Compute:                 %d (%s)\n",
+			" - Compute:                 %d\n",
 			cluster.Nodes().Master(),
 			cluster.Nodes().Infra(),
-			minNodes, cluster.Nodes().ComputeMachineType().ID(),
+			minNodes,
 		)
 	} else {
 		nodesStr = fmt.Sprintf(""+
 			"Nodes:\n"+
 			" - Master:                  %d\n"+
 			" - Infra:                   %d\n"+
-			" - Compute (Autoscaled):    %d-%d (%s)\n",
+			" - Compute (Autoscaled):    %d-%d\n",
 			cluster.Nodes().Master(),
 			cluster.Nodes().Infra(),
-			minNodes, maxNodes, cluster.Nodes().ComputeMachineType().ID(),
+			minNodes, maxNodes,
 		)
 	}
 
