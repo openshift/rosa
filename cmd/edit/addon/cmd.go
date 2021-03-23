@@ -171,9 +171,9 @@ func run(cmd *cobra.Command, argv []string) {
 	if arguments.HasUnknownFlags() {
 		parameters.Each(func(param *cmv1.AddOnParameter) bool {
 			flag := cmd.Flags().Lookup(param.ID())
-			if param.Required() && (flag == nil || flag.Value.String() == "") {
-				interactive.Enable()
-				return false
+			if flag != nil && !param.Editable() {
+				reporter.Errorf("Parameter '%s' on addon '%s' cannot be modified", param.ID(), addOnID)
+				os.Exit(1)
 			}
 			return true
 		})
