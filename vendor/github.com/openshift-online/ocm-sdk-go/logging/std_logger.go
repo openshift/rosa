@@ -153,7 +153,7 @@ func (l *StdLogger) Info(ctx context.Context, format string, args ...interface{}
 // Warn sends to the log a warning message formatted using the fmt.Sprintf function and the given
 // format and arguments.
 func (l *StdLogger) Warn(ctx context.Context, format string, args ...interface{}) {
-	if l.infoEnabled {
+	if l.warnEnabled {
 		fmt.Fprintf(l.outStream, format+"\n", args...)
 	}
 }
@@ -161,7 +161,15 @@ func (l *StdLogger) Warn(ctx context.Context, format string, args ...interface{}
 // Error sends to the log an error message formatted using the fmt.Sprintf function and the given
 // format and arguments.
 func (l *StdLogger) Error(ctx context.Context, format string, args ...interface{}) {
-	if l.infoEnabled {
+	if l.errorEnabled {
 		fmt.Fprintf(l.errStream, format+"\n", args...)
 	}
+}
+
+// Fatal sends to the log an error message formatted using the fmt.Sprintf function and the given
+// format and arguments. After that it will os.Exit(1)
+// This level is always enabled
+func (l *StdLogger) Fatal(ctx context.Context, format string, args ...interface{}) {
+	fmt.Fprintf(l.errStream, format+"\n", args...)
+	os.Exit(1)
 }

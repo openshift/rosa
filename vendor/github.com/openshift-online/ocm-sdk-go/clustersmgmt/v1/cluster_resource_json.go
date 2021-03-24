@@ -36,10 +36,6 @@ func readClusterDeleteRequest(request *ClusterDeleteServerRequest, r *http.Reque
 	if request.deprovision == nil {
 		request.deprovision = helpers.NewBoolean(true)
 	}
-	request.force, err = helpers.ParseBoolean(query, "force")
-	if err != nil {
-		return err
-	}
 	return nil
 }
 func writeClusterDeleteRequest(request *ClusterDeleteRequest, writer io.Writer) error {

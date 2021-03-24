@@ -141,6 +141,7 @@ var pathTreeData = `{
             "aws_infrastructure_access_role_grants": {
               "-": null
             },
+            "clusterdeployment": null,
             "credentials": null,
             "external_configuration": {
               "labels": {
@@ -205,6 +206,22 @@ var pathTreeData = `{
         },
         "versions": {
           "-": null
+        }
+      }
+    },
+    "job_queue": {
+      "v1": {
+        "queues": {
+          "-": {
+            "jobs": {
+              "-": {
+                "failure": null,
+                "success": null
+              }
+            },
+            "pop": null,
+            "push": null
+          }
         }
       }
     },

@@ -76,11 +76,25 @@ type Spec struct {
 	// Properties
 	CustomProperties map[string]string
 
+	// User-defined tags for AWS resources
+	Tags map[string]string
+
 	// Simulate creating a cluster but don't actually create it
 	DryRun *bool
 
 	// Disable SCP checks in the installer by setting credentials mode as mint
 	DisableSCPChecks *bool
+
+	// STS
+	RoleARN          string
+	ExternalID       string
+	OperatorIAMRoles []OperatorIAMRole
+}
+
+type OperatorIAMRole struct {
+	Name      string
+	Namespace string
+	RoleARN   string
 }
 
 func IsValidClusterKey(clusterKey string) bool {
@@ -106,13 +120,6 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 }
 
 func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, error) {
-	reporter, err := rprtr.New().
-		Build()
-
-	if err != nil {
-		return nil, fmt.Errorf("Unable to create reporter: %v", err)
-	}
-
 	logger, err := logging.NewLogger().
 		Build()
 	if err != nil {
@@ -146,11 +153,6 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 
 	clusterObject := cluster.Body()
 
-	// Add tags to the AWS administrator user containing the identifier and name of the cluster:
-	err = awsClient.TagUser(aws.AdminUserName, clusterObject.ID(), clusterObject.Name())
-	if err != nil {
-		reporter.Warnf("Failed to add cluster tags to user '%s'", aws.AdminUserName)
-	}
 	return clusterObject, nil
 }
 
@@ -396,14 +398,17 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		return nil, fmt.Errorf("Failed to get AWS creator: %v", err)
 	}
 
-	// Create the access key for the AWS user:
-	awsAccessKey, err := awsClient.GetAWSAccessKeys()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get access keys for user '%s': %v",
-			aws.AdminUserName, err)
+	var awsAccessKey *aws.AccessKey
+	if config.RoleARN == "" {
+		// Create the access key for the AWS user:
+		awsAccessKey, err = awsClient.GetAWSAccessKeys()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get access keys for user '%s': %v",
+				aws.AdminUserName, err)
+		}
+		reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
+		reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
 	}
-	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
-	reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
 
 	clusterProperties := map[string]string{}
 
@@ -509,9 +514,7 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 	}
 
 	awsBuilder := cmv1.NewAWS().
-		AccountID(awsCreator.AccountID).
-		AccessKeyID(awsAccessKey.AccessKeyID).
-		SecretAccessKey(awsAccessKey.SecretAccessKey)
+		AccountID(awsCreator.AccountID)
 
 	if config.SubnetIds != nil {
 		awsBuilder = awsBuilder.SubnetIDs(config.SubnetIds...)
@@ -522,6 +525,33 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		if *config.PrivateLink {
 			*config.Private = true
 		}
+	}
+
+	if config.RoleARN != "" {
+		stsBuilder := cmv1.NewSTS().RoleARN(config.RoleARN)
+		if config.ExternalID != "" {
+			stsBuilder = stsBuilder.ExternalID(config.ExternalID)
+		}
+		if len(config.OperatorIAMRoles) > 0 {
+			roles := []*cmv1.OperatorIAMRoleBuilder{}
+			for _, role := range config.OperatorIAMRoles {
+				roles = append(roles, cmv1.NewOperatorIAMRole().
+					Name(role.Name).
+					Namespace(role.Namespace).
+					RoleARN(role.RoleARN),
+				)
+			}
+			stsBuilder = stsBuilder.OperatorIAMRoles(roles...)
+		}
+		awsBuilder = awsBuilder.STS(stsBuilder)
+	} else {
+		awsBuilder = awsBuilder.
+			AccessKeyID(awsAccessKey.AccessKeyID).
+			SecretAccessKey(awsAccessKey.SecretAccessKey)
+	}
+
+	if len(config.Tags) > 0 {
+		awsBuilder = awsBuilder.Tags(config.Tags)
 	}
 
 	clusterBuilder = clusterBuilder.AWS(awsBuilder)

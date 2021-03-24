@@ -26,6 +26,8 @@ package v1 // github.com/openshift-online/ocm-sdk-go/authorizations/v1
 type TermsReviewRequest struct {
 	bitmap_         uint32
 	accountUsername string
+	eventCode       string
+	siteCode        string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -52,6 +54,52 @@ func (o *TermsReviewRequest) GetAccountUsername() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
 		value = o.accountUsername
+	}
+	return
+}
+
+// EventCode returns the value of the 'event_code' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Defines the event code of the terms being checked
+func (o *TermsReviewRequest) EventCode() string {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.eventCode
+	}
+	return ""
+}
+
+// GetEventCode returns the value of the 'event_code' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Defines the event code of the terms being checked
+func (o *TermsReviewRequest) GetEventCode() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.eventCode
+	}
+	return
+}
+
+// SiteCode returns the value of the 'site_code' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Defines the site code of the terms being checked
+func (o *TermsReviewRequest) SiteCode() string {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.siteCode
+	}
+	return ""
+}
+
+// GetSiteCode returns the value of the 'site_code' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Defines the site code of the terms being checked
+func (o *TermsReviewRequest) GetSiteCode() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.siteCode
 	}
 	return
 }

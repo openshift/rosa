@@ -67,6 +67,11 @@ type ClusterServer interface {
 	// Reference to the resource that manages the collection of add-ons installed on this cluster.
 	Addons() AddOnInstallationsServer
 
+	// Clusterdeployment returns the target 'clusterdeployment' resource.
+	//
+	// Reference to the resource that manages the cluster deployment.
+	Clusterdeployment() ClusterdeploymentServer
+
 	// Credentials returns the target 'credentials' resource.
 	//
 	// Reference to the resource that manages the credentials of the cluster.
@@ -131,7 +136,6 @@ type ClusterServer interface {
 // ClusterDeleteServerRequest is the request for the 'delete' method.
 type ClusterDeleteServerRequest struct {
 	deprovision *bool
-	force       *bool
 }
 
 // Deprovision returns the value of the 'deprovision' parameter.
@@ -154,32 +158,6 @@ func (r *ClusterDeleteServerRequest) GetDeprovision() (value bool, ok bool) {
 	ok = r != nil && r.deprovision != nil
 	if ok {
 		value = *r.deprovision
-	}
-	return
-}
-
-// Force returns the value of the 'force' parameter.
-//
-// If true it will force delete the cluster even if external dependecies
-// cleanup was not finalized. Should be used with extreme caution, after manual cleanup
-// of external dependencies. OSD only. false by default.
-func (r *ClusterDeleteServerRequest) Force() bool {
-	if r != nil && r.force != nil {
-		return *r.force
-	}
-	return false
-}
-
-// GetForce returns the value of the 'force' parameter and
-// a flag indicating if the parameter has a value.
-//
-// If true it will force delete the cluster even if external dependecies
-// cleanup was not finalized. Should be used with extreme caution, after manual cleanup
-// of external dependencies. OSD only. false by default.
-func (r *ClusterDeleteServerRequest) GetForce() (value bool, ok bool) {
-	ok = r != nil && r.force != nil
-	if ok {
-		value = *r.force
 	}
 	return
 }
@@ -350,6 +328,13 @@ func dispatchCluster(w http.ResponseWriter, r *http.Request, server ClusterServe
 			return
 		}
 		dispatchAddOnInstallations(w, r, target, segments[1:])
+	case "clusterdeployment":
+		target := server.Clusterdeployment()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchClusterdeployment(w, r, target, segments[1:])
 	case "credentials":
 		target := server.Credentials()
 		if target == nil {

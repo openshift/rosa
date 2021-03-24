@@ -17,50 +17,50 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/jobqueue/v1
 
-// ClusterMetricListBuilder contains the data and logic needed to build
-// 'cluster_metric' objects.
-type ClusterMetricListBuilder struct {
-	items []*ClusterMetricBuilder
+// JobListBuilder contains the data and logic needed to build
+// 'job' objects.
+type JobListBuilder struct {
+	items []*JobBuilder
 }
 
-// NewClusterMetricList creates a new builder of 'cluster_metric' objects.
-func NewClusterMetricList() *ClusterMetricListBuilder {
-	return new(ClusterMetricListBuilder)
+// NewJobList creates a new builder of 'job' objects.
+func NewJobList() *JobListBuilder {
+	return new(JobListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *ClusterMetricListBuilder) Items(values ...*ClusterMetricBuilder) *ClusterMetricListBuilder {
-	b.items = make([]*ClusterMetricBuilder, len(values))
+func (b *JobListBuilder) Items(values ...*JobBuilder) *JobListBuilder {
+	b.items = make([]*JobBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *ClusterMetricListBuilder) Copy(list *ClusterMetricList) *ClusterMetricListBuilder {
+func (b *JobListBuilder) Copy(list *JobList) *JobListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*ClusterMetricBuilder, len(list.items))
+		b.items = make([]*JobBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewClusterMetric().Copy(v)
+			b.items[i] = NewJob().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'cluster_metric' objects using the
+// Build creates a list of 'job' objects using the
 // configuration stored in the builder.
-func (b *ClusterMetricListBuilder) Build() (list *ClusterMetricList, err error) {
-	items := make([]*ClusterMetric, len(b.items))
+func (b *JobListBuilder) Build() (list *JobList, err error) {
+	items := make([]*Job, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(ClusterMetricList)
+	list = new(JobList)
 	list.items = items
 	return
 }

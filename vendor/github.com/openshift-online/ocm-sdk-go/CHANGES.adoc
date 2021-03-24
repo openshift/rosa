@@ -3,6 +3,48 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+
+== 0.1.176 May 12 2021
+
+- Added Arguments to JobQueue#Pop
+
+== 0.1.175 May 6 2021
+
+- Update `Logger` interface to include a `Fatal` log level.
+** Fatal level will call `os.Exit(1)` after writing the message.
+** Fatal level is always active.
+
+IMPORTANT: This version breaks backwards compatibility in the `Logger`
+interface, as all implementations now require a `Fatal` method to be implemented.
+
+== 0.1.174 Apr 14 2021
+
+- Miscellaneous fixes to JobQueue service.
+- Bump ocm-api-model to v0.0.121
+
+== 0.1.173 May 03 2021
+
+- Bump ocm-api-model to v0.0.119
+** STS: Support attributes to allow STS clusters
+
+== 0.1.172 May 03 2021
+
+- Bump ocm-api-model to v0.0.118
+
+== 0.1.171 Apr 14 2021
+
+- Add JobQueue service.
+
+== 0.1.170 Apr 14 2021
+
+- Add `Tolerance` parameter to authentication handler.
+
+== 0.1.169 Apr 13 2021
+
+- Bump ocm-api-model to v0.0.115
+** Add event_code and site_code to TermsReviewRequest type
+** Add new SelfTermsReviewRequest type
+
 == 0.1.168 Apr 6 2021
 
 - Bump ocm-api-model to v0.0.114

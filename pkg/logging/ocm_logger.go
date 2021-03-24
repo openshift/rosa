@@ -103,3 +103,7 @@ func (l *OCMLogger) Warn(ctx context.Context, format string, args ...interface{}
 func (l *OCMLogger) Error(ctx context.Context, format string, args ...interface{}) {
 	l.logger.Errorf(format, args...)
 }
+
+func (l *OCMLogger) Fatal(ctx context.Context, format string, args ...interface{}) {
+	l.logger.Errorf(format, args...)
+}

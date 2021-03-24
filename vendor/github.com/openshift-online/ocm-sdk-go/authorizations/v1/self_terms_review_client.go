@@ -20,10 +20,14 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/authorizations/v1
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -63,6 +67,7 @@ type SelfTermsReviewPostRequest struct {
 	path      string
 	query     url.Values
 	header    http.Header
+	request   *SelfTermsReviewRequest
 }
 
 // Parameter adds a query parameter.
@@ -74,6 +79,14 @@ func (r *SelfTermsReviewPostRequest) Parameter(name string, value interface{}) *
 // Header adds a request header.
 func (r *SelfTermsReviewPostRequest) Header(name string, value interface{}) *SelfTermsReviewPostRequest {
 	helpers.AddHeader(&r.header, name, value)
+	return r
+}
+
+// Request sets the value of the 'request' parameter.
+//
+//
+func (r *SelfTermsReviewPostRequest) Request(value *SelfTermsReviewRequest) *SelfTermsReviewPostRequest {
+	r.request = value
 	return r
 }
 
@@ -89,6 +102,11 @@ func (r *SelfTermsReviewPostRequest) Send() (result *SelfTermsReviewPostResponse
 func (r *SelfTermsReviewPostRequest) SendContext(ctx context.Context) (result *SelfTermsReviewPostResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
+	buffer := &bytes.Buffer{}
+	err = writeSelfTermsReviewPostRequest(r, buffer)
+	if err != nil {
+		return
+	}
 	uri := &url.URL{
 		Path:     r.path,
 		RawQuery: query.Encode(),
@@ -97,6 +115,7 @@ func (r *SelfTermsReviewPostRequest) SendContext(ctx context.Context) (result *S
 		Method: "POST",
 		URL:    uri,
 		Header: header,
+		Body:   ioutil.NopCloser(buffer),
 	}
 	if ctx != nil {
 		request = request.WithContext(ctx)
@@ -122,6 +141,16 @@ func (r *SelfTermsReviewPostRequest) SendContext(ctx context.Context) (result *S
 		return
 	}
 	return
+}
+
+// marshall is the method used internally to marshal requests for the
+// 'post' method.
+func (r *SelfTermsReviewPostRequest) marshal(writer io.Writer) error {
+	stream := helpers.NewStream(writer)
+	r.stream(stream)
+	return stream.Error
+}
+func (r *SelfTermsReviewPostRequest) stream(stream *jsoniter.Stream) {
 }
 
 // SelfTermsReviewPostResponse is the response for the 'post' method.

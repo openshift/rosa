@@ -19,48 +19,48 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// ClusterMetricsListBuilder contains the data and logic needed to build
-// 'cluster_metrics' objects.
-type ClusterMetricsListBuilder struct {
-	items []*ClusterMetricsBuilder
+// OperatorIAMRoleListBuilder contains the data and logic needed to build
+// 'operator_IAM_role' objects.
+type OperatorIAMRoleListBuilder struct {
+	items []*OperatorIAMRoleBuilder
 }
 
-// NewClusterMetricsList creates a new builder of 'cluster_metrics' objects.
-func NewClusterMetricsList() *ClusterMetricsListBuilder {
-	return new(ClusterMetricsListBuilder)
+// NewOperatorIAMRoleList creates a new builder of 'operator_IAM_role' objects.
+func NewOperatorIAMRoleList() *OperatorIAMRoleListBuilder {
+	return new(OperatorIAMRoleListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *ClusterMetricsListBuilder) Items(values ...*ClusterMetricsBuilder) *ClusterMetricsListBuilder {
-	b.items = make([]*ClusterMetricsBuilder, len(values))
+func (b *OperatorIAMRoleListBuilder) Items(values ...*OperatorIAMRoleBuilder) *OperatorIAMRoleListBuilder {
+	b.items = make([]*OperatorIAMRoleBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *ClusterMetricsListBuilder) Copy(list *ClusterMetricsList) *ClusterMetricsListBuilder {
+func (b *OperatorIAMRoleListBuilder) Copy(list *OperatorIAMRoleList) *OperatorIAMRoleListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*ClusterMetricsBuilder, len(list.items))
+		b.items = make([]*OperatorIAMRoleBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewClusterMetrics().Copy(v)
+			b.items[i] = NewOperatorIAMRole().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'cluster_metrics' objects using the
+// Build creates a list of 'operator_IAM_role' objects using the
 // configuration stored in the builder.
-func (b *ClusterMetricsListBuilder) Build() (list *ClusterMetricsList, err error) {
-	items := make([]*ClusterMetrics, len(b.items))
+func (b *OperatorIAMRoleListBuilder) Build() (list *OperatorIAMRoleList, err error) {
+	items := make([]*OperatorIAMRole, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(ClusterMetricsList)
+	list = new(OperatorIAMRoleList)
 	list.items = items
 	return
 }

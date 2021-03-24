@@ -27,7 +27,7 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
+func GetRegions(client *cmv1.Client, roleARN string, externalID string) (regions []*cmv1.CloudRegion, err error) {
 	// Retrieve AWS credentials from the local AWS user
 	// pass these to OCM to validate what regions are available
 	// in this AWS account
@@ -38,26 +38,35 @@ func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Region(aws.DefaultRegion).
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("Error creating AWS client: %v", err)
+	awsBuilder := cmv1.NewAWS()
+	if roleARN != "" {
+		stsBuilder := cmv1.NewSTS().RoleARN(roleARN)
+		if externalID != "" {
+			stsBuilder = stsBuilder.ExternalID(externalID)
+		}
+		awsBuilder = awsBuilder.STS(stsBuilder)
+	} else {
+		awsClient, err := aws.NewClient().
+			Logger(logger).
+			Region(aws.DefaultRegion).
+			Build()
+		if err != nil {
+			return nil, fmt.Errorf("Error creating AWS client: %v", err)
+		}
+
+		// Get AWS region
+		currentAWSCreds, err := awsClient.GetIAMCredentials()
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get local AWS credentials: %v", err)
+		}
+
+		awsBuilder = awsBuilder.
+			AccessKeyID(currentAWSCreds.AccessKeyID).
+			SecretAccessKey(currentAWSCreds.SecretAccessKey)
 	}
 
-	// Get AWS region
-	currentAWSCreds, err := awsClient.GetIAMCredentials()
-
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get local AWS credentials: %v", err)
-	}
-
-	// Build cmv1.AWS object to get list of available regions:
-	awsCredentials, err := cmv1.NewAWS().
-		AccessKeyID(currentAWSCreds.AccessKeyID).
-		SecretAccessKey(currentAWSCreds.SecretAccessKey).
-		Build()
+	awsCredentials, err := awsBuilder.Build()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to build AWS credentials for user '%s': %v", aws.AdminUserName, err)
 	}
@@ -88,8 +97,9 @@ func GetRegions(client *cmv1.Client) (regions []*cmv1.CloudRegion, err error) {
 	return
 }
 
-func GetRegionList(client *cmv1.Client, multiAZ bool) (regionList []string, regionAZ map[string]bool, err error) {
-	regions, err := GetRegions(client)
+func GetRegionList(client *cmv1.Client, multiAZ bool,
+	roleARN string, externalID string) (regionList []string, regionAZ map[string]bool, err error) {
+	regions, err := GetRegions(client, roleARN, externalID)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
 		return

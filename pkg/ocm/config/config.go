@@ -31,7 +31,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/mitchellh/go-homedir"
 	sdk "github.com/openshift-online/ocm-sdk-go"
-	"github.com/openshift-online/ocm-sdk-go/authentication"
 
 	"github.com/openshift/rosa/pkg/debug"
 )
@@ -181,7 +180,7 @@ func (c *Config) Armed() (armed bool, err error) {
 		if err != nil {
 			return
 		}
-		expires, left, err = authentication.GetTokenExpiry(accessToken, now)
+		expires, left, err = getTokenExpiry(accessToken, now)
 		if err != nil {
 			return
 		}
@@ -198,7 +197,7 @@ func (c *Config) Armed() (armed bool, err error) {
 		if err != nil {
 			return
 		}
-		expires, left, err = authentication.GetTokenExpiry(refreshToken, now)
+		expires, left, err = getTokenExpiry(refreshToken, now)
 		if err != nil {
 			return
 		}
@@ -206,6 +205,32 @@ func (c *Config) Armed() (armed bool, err error) {
 			armed = true
 			return
 		}
+	}
+	return
+}
+
+// GetTokenExpiry determines if the given token expires, and the time that remains till it expires.
+func getTokenExpiry(token *jwt.Token, now time.Time) (expires bool, left time.Duration, err error) {
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		err = fmt.Errorf("expected map claims bug got %T", claims)
+		return
+	}
+	var exp float64
+	claim, ok := claims["exp"]
+	if ok {
+		exp, ok = claim.(float64)
+		if !ok {
+			err = fmt.Errorf("expected floating point 'exp' but got %T", claim)
+			return
+		}
+	}
+	if exp == 0 {
+		expires = false
+		left = 0
+	} else {
+		expires = true
+		left = time.Unix(int64(exp), 0).Sub(now)
 	}
 	return
 }

@@ -22,6 +22,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 import (
 	"io"
 	"net/http"
+	"sort"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -40,7 +41,16 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&1 != 0 && object.sts != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("sts")
+		writeSTS(object.sts, stream)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -49,7 +59,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.accessKeyID)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -58,7 +68,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.accountID)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -67,7 +77,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteBool(object.privateLink)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -76,13 +86,42 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.secretAccessKey)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0 && object.subnetIDs != nil
+	present_ = object.bitmap_&32 != 0 && object.subnetIDs != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("subnet_ids")
 		writeStringList(object.subnetIDs, stream)
+		count++
+	}
+	present_ = object.bitmap_&64 != 0 && object.tags != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("tags")
+		if object.tags != nil {
+			stream.WriteObjectStart()
+			keys := make([]string, len(object.tags))
+			i := 0
+			for key := range object.tags {
+				keys[i] = key
+				i++
+			}
+			sort.Strings(keys)
+			for i, key := range keys {
+				if i > 0 {
+					stream.WriteMore()
+				}
+				item := object.tags[key]
+				stream.WriteObjectField(key)
+				stream.WriteString(item)
+			}
+			stream.WriteObjectEnd()
+		} else {
+			stream.WriteNil()
+		}
 		count++
 	}
 	stream.WriteObjectEnd()
@@ -112,26 +151,42 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 			break
 		}
 		switch field {
+		case "sts":
+			value := readSTS(iterator)
+			object.sts = value
+			object.bitmap_ |= 1
 		case "access_key_id":
 			value := iterator.ReadString()
 			object.accessKeyID = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		case "account_id":
 			value := iterator.ReadString()
 			object.accountID = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "private_link":
 			value := iterator.ReadBool()
 			object.privateLink = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		case "secret_access_key":
 			value := iterator.ReadString()
 			object.secretAccessKey = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		case "subnet_ids":
 			value := readStringList(iterator)
 			object.subnetIDs = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
+		case "tags":
+			value := map[string]string{}
+			for {
+				key := iterator.ReadObject()
+				if key == "" {
+					break
+				}
+				item := iterator.ReadString()
+				value[key] = item
+			}
+			object.tags = value
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

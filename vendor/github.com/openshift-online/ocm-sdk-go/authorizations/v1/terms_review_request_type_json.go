@@ -49,6 +49,24 @@ func writeTermsReviewRequest(object *TermsReviewRequest, stream *jsoniter.Stream
 		stream.WriteString(object.accountUsername)
 		count++
 	}
+	present_ = object.bitmap_&2 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("event_code")
+		stream.WriteString(object.eventCode)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("site_code")
+		stream.WriteString(object.siteCode)
+		count++
+	}
 	stream.WriteObjectEnd()
 }
 
@@ -80,6 +98,14 @@ func readTermsReviewRequest(iterator *jsoniter.Iterator) *TermsReviewRequest {
 			value := iterator.ReadString()
 			object.accountUsername = value
 			object.bitmap_ |= 1
+		case "event_code":
+			value := iterator.ReadString()
+			object.eventCode = value
+			object.bitmap_ |= 2
+		case "site_code":
+			value := iterator.ReadString()
+			object.siteCode = value
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}
