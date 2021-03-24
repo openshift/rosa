@@ -162,6 +162,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.AWS().PrivateLink() {
+		reporter.Errorf("Cluster '%s' is PrivateLink and does not support creating new ingresses", clusterKey)
+		os.Exit(1)
+	}
+
 	if cluster.State() != cmv1.ClusterStateReady {
 		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
