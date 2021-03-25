@@ -3,6 +3,18 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.2 Mar 25 2021
+
+- addons: Error when editing non-editable parameters
+- describe: Remove instance type
+- logs: Display logs when cluster is in error state
+- errors: Display legal terms URL
+- logs: Filter out misleading output
+- delete: Fix example command
+- describe: Fix command help example
+- aws: Add helpful error message when using STS credentials
+- logs: Redact KUBECONFIG line
+
 == 1.0.1 Mar 18 2021
 
 - arguments: Parse help flag when overriding flag parsing
