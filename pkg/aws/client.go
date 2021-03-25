@@ -195,6 +195,9 @@ func (b *ClientBuilder) Build() (Client, error) {
 	}
 
 	// Check that the AWS credentials are available:
+	// TODO: No need to do this twice, we're essentially doing the
+	// same thing in getClientDetails()
+	// We should implement getClientDetails() here or a new validation func
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
 		b.logger.Debugf("Failed to find credentials: %v", err)
@@ -300,9 +303,32 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 
 // Checks if given credentials are valid.
 func (c *awsClient) ValidateCredentials() (bool, error) {
-	_, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	callerIdentityOutput, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return false, err
+	}
+
+	// Get IAM credentials only to support a better error message
+	// to help a user identity which AWS credentials the AWS client
+	// is using
+	iamCredentials, err := c.GetIAMCredentials()
+	if err != nil {
+		return false, err
+	}
+
+	parsedArn, err := arn.Parse(*callerIdentityOutput.Arn)
+	if err != nil {
+		return false, err
+	}
+
+	// At this time we don't support creating clusters with STS credentials
+	// Inform the user to try again using a IAM User, provide access key to help
+	// the user debug where the credentials are coming from
+	if parsedArn.Service == "sts" {
+		return false, fmt.Errorf(
+			"The AWS Access Key ID %s is associated with with STS credentials ARN %s\n"+
+				"STS users are not currently supported, please set AWS credentials to use an IAM user",
+			iamCredentials.AccessKeyID, parsedArn)
 	}
 	return true, nil
 }
