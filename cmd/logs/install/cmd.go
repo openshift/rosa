@@ -244,6 +244,10 @@ func findNextLines(logs *cmv1.Log) string {
 	}
 	// Find where the new logs and the last line overlap
 	for i, line := range lines {
+		// Remove lines containing misleading output
+		if strings.Contains(line, "KUBECONFIG") || strings.Contains(line, "REDACTED") {
+			lines[i] = ""
+		}
 		if lastLine != "" && line == lastLine {
 			// Remove any duplicate lines
 			lines = lines[i+1:]
