@@ -168,7 +168,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	if cluster.State() == cmv1.ClusterStateError || cluster.State() == cmv1.ClusterStateUninstalling {
+	if cluster.State() == cmv1.ClusterStateUninstalling {
 		reporter.Errorf("Cluster '%s' is in '%s' state and no installation logs are available",
 			clusterKey, cluster.State(),
 		)
