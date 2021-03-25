@@ -19,6 +19,7 @@ package install
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -221,6 +222,7 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 var lastLine string
+var redact = regexp.MustCompile(`(?s:.*)KUBECONFIG(?s:.*)`)
 
 // Print next log lines
 func printLog(logs *cmv1.Log, spin *spinner.Spinner) {
@@ -245,7 +247,7 @@ func findNextLines(logs *cmv1.Log) string {
 	// Find where the new logs and the last line overlap
 	for i, line := range lines {
 		// Remove lines containing misleading output
-		if strings.Contains(line, "KUBECONFIG") || strings.Contains(line, "REDACTED") {
+		if redact.MatchString(line) {
 			lines[i] = ""
 		}
 		if lastLine != "" && line == lastLine {
