@@ -28,7 +28,7 @@ type QuotaCostBuilder struct {
 	consumed         int
 	organizationID   string
 	quotaID          string
-	relatedResources []interface{}
+	relatedResources []*RelatedResourceBuilder
 }
 
 // NewQuotaCost creates a new builder of 'quota_cost' objects.
@@ -75,8 +75,8 @@ func (b *QuotaCostBuilder) QuotaID(value string) *QuotaCostBuilder {
 // RelatedResources sets the value of the 'related_resources' attribute to the given values.
 //
 //
-func (b *QuotaCostBuilder) RelatedResources(values ...interface{}) *QuotaCostBuilder {
-	b.relatedResources = make([]interface{}, len(values))
+func (b *QuotaCostBuilder) RelatedResources(values ...*RelatedResourceBuilder) *QuotaCostBuilder {
+	b.relatedResources = make([]*RelatedResourceBuilder, len(values))
 	copy(b.relatedResources, values)
 	b.bitmap_ |= 16
 	return b
@@ -93,8 +93,10 @@ func (b *QuotaCostBuilder) Copy(object *QuotaCost) *QuotaCostBuilder {
 	b.organizationID = object.organizationID
 	b.quotaID = object.quotaID
 	if object.relatedResources != nil {
-		b.relatedResources = make([]interface{}, len(object.relatedResources))
-		copy(b.relatedResources, object.relatedResources)
+		b.relatedResources = make([]*RelatedResourceBuilder, len(object.relatedResources))
+		for i, v := range object.relatedResources {
+			b.relatedResources[i] = NewRelatedResource().Copy(v)
+		}
 	} else {
 		b.relatedResources = nil
 	}
@@ -110,8 +112,13 @@ func (b *QuotaCostBuilder) Build() (object *QuotaCost, err error) {
 	object.organizationID = b.organizationID
 	object.quotaID = b.quotaID
 	if b.relatedResources != nil {
-		object.relatedResources = make([]interface{}, len(b.relatedResources))
-		copy(object.relatedResources, b.relatedResources)
+		object.relatedResources = make([]*RelatedResource, len(b.relatedResources))
+		for i, v := range b.relatedResources {
+			object.relatedResources[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
 	}
 	return
 }

@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/openshift/rosa/cmd/create/idp"
+	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/idp/mocks"
 )
 
@@ -25,15 +25,15 @@ var _ = Describe("Cmd", func() {
 
 		var (
 			idpType string
-			idps    []IdentityProvider
+			idps    []idp.IdentityProvider
 		)
 		BeforeEach(func() {
 			idpType = "github"
-			idps = []IdentityProvider{}
+			idps = []idp.IdentityProvider{}
 		})
 		Context("when no IDP exists", func() {
 			It("generates a idp name name-1", func() {
-				name := GenerateIdpName(idpType, idps)
+				name := idp.GenerateIdpName(idpType, idps)
 				Expect(name).To(Equal(idpType + "-1"))
 			})
 		})
@@ -45,7 +45,7 @@ var _ = Describe("Cmd", func() {
 				idps = append(idps, mockIdp)
 			})
 			It("generates a unique idp name", func() {
-				name := GenerateIdpName(idpType, idps)
+				name := idp.GenerateIdpName(idpType, idps)
 				expectUnique(name, idps)
 			})
 		})
@@ -53,18 +53,18 @@ var _ = Describe("Cmd", func() {
 		Context("when an IDP with a generated name already exists", func() {
 			BeforeEach(func() {
 				mockIdp := mocks.NewMockIdentityProvider(mockCtrl)
-				mockIdp.EXPECT().Name().Return(GenerateIdpName(idpType, idps)).AnyTimes()
+				mockIdp.EXPECT().Name().Return(idp.GenerateIdpName(idpType, idps)).AnyTimes()
 				idps = append(idps, mockIdp)
 			})
 			It("generates a unique idp name", func() {
-				name := GenerateIdpName(idpType, idps)
+				name := idp.GenerateIdpName(idpType, idps)
 				expectUnique(name, idps)
 			})
 		})
 	})
 })
 
-func expectUnique(name string, idps []IdentityProvider) {
+func expectUnique(name string, idps []idp.IdentityProvider) {
 	for _, idp := range idps {
 		Expect(name).NotTo(Equal(idp.Name()))
 	}

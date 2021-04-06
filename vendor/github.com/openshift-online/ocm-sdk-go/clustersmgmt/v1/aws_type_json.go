@@ -63,11 +63,20 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("private_link")
+		stream.WriteBool(object.privateLink)
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("secret_access_key")
 		stream.WriteString(object.secretAccessKey)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0 && object.subnetIDs != nil
+	present_ = object.bitmap_&16 != 0 && object.subnetIDs != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -111,14 +120,18 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 			value := iterator.ReadString()
 			object.accountID = value
 			object.bitmap_ |= 2
+		case "private_link":
+			value := iterator.ReadBool()
+			object.privateLink = value
+			object.bitmap_ |= 4
 		case "secret_access_key":
 			value := iterator.ReadString()
 			object.secretAccessKey = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		case "subnet_ids":
 			value := readStringList(iterator)
 			object.subnetIDs = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()
 		}

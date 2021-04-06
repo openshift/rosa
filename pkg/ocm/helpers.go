@@ -213,17 +213,15 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
 			// Check all related resources to ensure we're checking the product of the correct addon
 			for _, relatedResource := range quotaCost.RelatedResources() {
-				resourceName := relatedResource.(map[string]interface{})["resource_name"].(string)
 				// Only return compatible addons
-				if addOn.ResourceName() == resourceName && isCompatible(relatedResource) {
+				if addOn.ResourceName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
 					available = true
 
 					// Addon is only available if quota allows it
-					cost := int(relatedResource.(map[string]interface{})["cost"].(float64))
-					addOnResource.Available = quotaCost.Allowed()-quotaCost.Consumed() >= cost
+					addOnResource.Available = quotaCost.Allowed()-quotaCost.Consumed() >= relatedResource.Cost()
 
 					// Track AZ type so that we can compare against cluster
-					addOnResource.AZType = relatedResource.(map[string]interface{})["availability_zone_type"].(string)
+					addOnResource.AZType = relatedResource.AvailabilityZoneType()
 					// Since add-on is considered available now, there's no need to check the other resources
 					return false
 				}
@@ -243,10 +241,10 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 }
 
 // Determine whether an add-on is compatible with ROSA clusters in general
-func isCompatible(relatedResource interface{}) bool {
-	product := strings.ToLower(relatedResource.(map[string]interface{})["product"].(string))
-	cloudProvider := strings.ToLower(relatedResource.(map[string]interface{})["cloud_provider"].(string))
-	byoc := strings.ToLower(relatedResource.(map[string]interface{})["byoc"].(string))
+func isCompatible(relatedResource *amsv1.RelatedResource) bool {
+	product := strings.ToLower(relatedResource.Product())
+	cloudProvider := strings.ToLower(relatedResource.CloudProvider())
+	byoc := strings.ToLower(relatedResource.BYOC())
 
 	// nolint:goconst
 	return (product == "any" || product == "rosa" || product == "moa") &&
@@ -377,4 +375,11 @@ func GetDefaultClusterFlavors(ocmClient *cmv1.Client, flavour string) (dMachinec
 	}
 	dhostPrefix, _ = network.GetHostPrefix()
 	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix
+}
+
+func LogEvent(ocmClient *cmv1.Client, key string) {
+	event, err := cmv1.NewEvent().Key(key).Build()
+	if err == nil {
+		_, _ = ocmClient.Events().Add().Body(event).Send()
+	}
 }

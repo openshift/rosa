@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -46,6 +45,7 @@ import (
 //	method - Name of the HTTP method, for example GET or POST.
 //	path - Request path, for example /api/clusters_mgmt/v1/clusters.
 //	code - HTTP response code, for example 200 or 500.
+//	apiservice - API service name, for example ocm-clusters-service.
 //
 // To calculate the average request duration during the last 10 minutes, for example, use a
 // Prometheus expression like this:
@@ -57,7 +57,8 @@ import (
 // be replaced by .../clusters/-, and the values will be accumulated. The line returned by the
 // metrics server will be like this:
 //
-//      <subsystem>_request_count{code="200",method="GET",path="/api/clusters_mgmt/v1/clusters/-"} 56
+//      <subsystem>_request_count{code="200",method="GET",path="/api/clusters_mgmt/v1/clusters/-",
+//		apiservice="ocm-clusters-service"} 56
 //
 // The meaning of that is that there were a total of 56 requests to get specific clusters,
 // independently of the specific identifier of the cluster.
@@ -71,7 +72,6 @@ import (
 //
 // Don't create objects of this type directly; use the NewTransportWrapper function instead.
 type TransportWrapperBuilder struct {
-	logger     logging.Logger
 	paths      []string
 	subsystem  string
 	registerer prometheus.Registerer
@@ -80,7 +80,6 @@ type TransportWrapperBuilder struct {
 // TransportWrapper contains the data and logic needed to wrap an HTTP round tripper with another
 // one that generates Prometheus metrics.
 type TransportWrapper struct {
-	logger          logging.Logger
 	paths           pathTree
 	requestCount    *prometheus.CounterVec
 	requestDuration *prometheus.HistogramVec
@@ -109,12 +108,6 @@ func NewTransportWrapper() *TransportWrapperBuilder {
 // accumulated in the `/-` path.
 func (b *TransportWrapperBuilder) Path(value string) *TransportWrapperBuilder {
 	b.paths = append(b.paths, value)
-	return b
-}
-
-// Logger sets the logger that will be used by the round tripper. This is mandatory.
-func (b *TransportWrapperBuilder) Logger(value logging.Logger) *TransportWrapperBuilder {
-	b.logger = value
 	return b
 }
 
@@ -148,10 +141,6 @@ func (b *TransportWrapperBuilder) Registerer(value prometheus.Registerer) *Trans
 // Build uses the information stored in the builder to create a new transport wrapper.
 func (b *TransportWrapperBuilder) Build() (result *TransportWrapper, err error) {
 	// Check parameters:
-	if b.logger == nil {
-		err = fmt.Errorf("logger is mandatory")
-		return
-	}
 	if b.subsystem == "" {
 		err = fmt.Errorf("subsystem is mandatory")
 		return
@@ -211,7 +200,6 @@ func (b *TransportWrapperBuilder) Build() (result *TransportWrapper, err error) 
 
 	// Create and populate the object:
 	result = &TransportWrapper{
-		logger:          b.logger,
 		paths:           paths,
 		requestCount:    requestCount,
 		requestDuration: requestDuration,
@@ -231,17 +219,22 @@ func (w *TransportWrapper) Wrap(transport http.RoundTripper) http.RoundTripper {
 // RoundTrip is the implementation of the round tripper interface.
 func (t *roundTripper) RoundTrip(request *http.Request) (response *http.Response, err error) {
 	// Measure the time that it takes to send the request and receive the response:
-	// it in the log:
 	start := time.Now()
 	response, err = t.transport.RoundTrip(request)
 	elapsed := time.Since(start)
 
 	// Update the metrics:
+	path := request.URL.Path
+	method := request.Method
+	var code int
+	if response != nil {
+		code = response.StatusCode
+	}
 	labels := prometheus.Labels{
-		serviceLabelName: t.serviceLabel(request),
-		methodLabelName:  t.methodLabel(request),
-		pathLabelName:    t.pathLabel(request),
-		codeLabelName:    t.codeLabel(response),
+		serviceLabelName: serviceLabel(path),
+		methodLabelName:  methodLabel(method),
+		pathLabelName:    pathLabel(t.owner.paths, path),
+		codeLabelName:    codeLabel(code),
 	}
 	t.owner.requestCount.With(labels).Inc()
 	t.owner.requestDuration.With(labels).Observe(elapsed.Seconds())

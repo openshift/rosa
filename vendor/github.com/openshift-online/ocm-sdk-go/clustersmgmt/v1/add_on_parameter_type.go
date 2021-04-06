@@ -42,6 +42,7 @@ type AddOnParameter struct {
 	defaultValue string
 	description  string
 	name         string
+	options      []*AddOnParameterOption
 	validation   string
 	valueType    string
 	editable     bool
@@ -132,7 +133,7 @@ func (o *AddOnParameter) GetAddon() (value *AddOn, ok bool) {
 // DefaultValue returns the value of the 'default_value' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Indicates the value default for the add-on parameter
+// Indicates the value default for the add-on parameter.
 func (o *AddOnParameter) DefaultValue() string {
 	if o != nil && o.bitmap_&16 != 0 {
 		return o.defaultValue
@@ -143,7 +144,7 @@ func (o *AddOnParameter) DefaultValue() string {
 // GetDefaultValue returns the value of the 'default_value' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Indicates the value default for the add-on parameter
+// Indicates the value default for the add-on parameter.
 func (o *AddOnParameter) GetDefaultValue() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
@@ -244,12 +245,35 @@ func (o *AddOnParameter) GetName() (value string, ok bool) {
 	return
 }
 
+// Options returns the value of the 'options' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// List of options for the add-on parameter value.
+func (o *AddOnParameter) Options() []*AddOnParameterOption {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.options
+	}
+	return nil
+}
+
+// GetOptions returns the value of the 'options' attribute and
+// a flag indicating if the attribute has a value.
+//
+// List of options for the add-on parameter value.
+func (o *AddOnParameter) GetOptions() (value []*AddOnParameterOption, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.options
+	}
+	return
+}
+
 // Required returns the value of the 'required' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Indicates if this parameter is required by the add-on.
 func (o *AddOnParameter) Required() bool {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.required
 	}
 	return false
@@ -260,7 +284,7 @@ func (o *AddOnParameter) Required() bool {
 //
 // Indicates if this parameter is required by the add-on.
 func (o *AddOnParameter) GetRequired() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.required
 	}
@@ -272,7 +296,7 @@ func (o *AddOnParameter) GetRequired() (value bool, ok bool) {
 //
 // Validation rule for the add-on parameter.
 func (o *AddOnParameter) Validation() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.validation
 	}
 	return ""
@@ -283,7 +307,7 @@ func (o *AddOnParameter) Validation() string {
 //
 // Validation rule for the add-on parameter.
 func (o *AddOnParameter) GetValidation() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.validation
 	}
@@ -295,7 +319,7 @@ func (o *AddOnParameter) GetValidation() (value string, ok bool) {
 //
 // Type of value of the add-on parameter.
 func (o *AddOnParameter) ValueType() string {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.valueType
 	}
 	return ""
@@ -306,7 +330,7 @@ func (o *AddOnParameter) ValueType() string {
 //
 // Type of value of the add-on parameter.
 func (o *AddOnParameter) GetValueType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.valueType
 	}

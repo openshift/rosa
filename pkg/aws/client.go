@@ -64,7 +64,7 @@ type Client interface {
 	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, stackStatus *string, err error)
 	GetIAMCredentials() (credentials.Value, error)
 	GetRegion() string
-	ValidateCredentials() (bool, error)
+	ValidateCredentials() (isValid bool, isSTS bool, err error)
 	EnsureOsdCcsAdminUser(stackName string, adminUserName string) (bool, error)
 	DeleteOsdCcsAdminUser(stackName string) error
 	GetAWSAccessKeys() (*AccessKey, error)
@@ -302,10 +302,10 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 }
 
 // Checks if given credentials are valid.
-func (c *awsClient) ValidateCredentials() (bool, error) {
+func (c *awsClient) ValidateCredentials() (bool, bool, error) {
 	callerIdentityOutput, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	// Get IAM credentials only to support a better error message
@@ -313,24 +313,24 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 	// is using
 	iamCredentials, err := c.GetIAMCredentials()
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	parsedArn, err := arn.Parse(*callerIdentityOutput.Arn)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	// At this time we don't support creating clusters with STS credentials
 	// Inform the user to try again using a IAM User, provide access key to help
 	// the user debug where the credentials are coming from
 	if parsedArn.Service == "sts" {
-		return false, fmt.Errorf(
+		return false, true, fmt.Errorf(
 			"The AWS Access Key ID %s is associated with with STS credentials ARN %s\n"+
 				"STS users are not currently supported, please set AWS credentials to use an IAM user",
 			iamCredentials.AccessKeyID, parsedArn)
 	}
-	return true, nil
+	return true, false, nil
 }
 
 // Ensure osdCcsAdmin IAM user is created

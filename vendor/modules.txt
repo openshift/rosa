@@ -72,6 +72,8 @@ github.com/dgrijalva/jwt-go
 github.com/dustin/go-humanize
 # github.com/fatih/color v1.7.0
 github.com/fatih/color
+# github.com/ghodss/yaml v1.0.0
+github.com/ghodss/yaml
 # github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
 ## explicit
 github.com/golang/glog
@@ -153,11 +155,12 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-online/ocm-sdk-go v0.1.162
+# github.com/openshift-online/ocm-sdk-go v0.1.168
 ## explicit
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accountsmgmt
 github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+github.com/openshift-online/ocm-sdk-go/authentication
 github.com/openshift-online/ocm-sdk-go/authorizations
 github.com/openshift-online/ocm-sdk-go/authorizations/v1
 github.com/openshift-online/ocm-sdk-go/clustersmgmt
@@ -208,10 +211,14 @@ gitlab.com/c0b/go-ordered-json
 # golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
 ## explicit
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20201021035429-f5854403a974
+# golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
+golang.org/x/net/http/httpguts
+golang.org/x/net/http2
+golang.org/x/net/http2/hpack
+golang.org/x/net/idna
 # golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -233,7 +240,10 @@ golang.org/x/text/internal/tag
 golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
 golang.org/x/text/runes
+golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
+golang.org/x/text/unicode/bidi
+golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # google.golang.org/protobuf v1.25.0
 ## explicit

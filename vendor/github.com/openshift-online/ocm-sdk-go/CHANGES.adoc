@@ -3,6 +3,48 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.168 Apr 6 2021
+
+- Bump ocm-api-model to v0.0.114
+** related-resources: Add resource type and cloud provider
+** event: Track ad-hoc authenticated events
+
+== 0.1.167 Apr 6 2021
+
+- Move token logic to separate transport wrapper.
+- Use defaults from authentication package.
+- Update to model 0.0.113:
+** Add RelatedResources struct to QuotaCost.
+
+== 0.1.166 Mar 30 2021
+
+- Move client selection logic to separate type
+- Update ocm-api-model to v0.0.112
+** Add Options to AddOnParameter type.
+** aws: Support PrivateLink for fully-private clusters
+
+== 0.1.165 Mar 22 2021
+
+- Fix wrong TLS server name (issue
+  https://github.com/openshift-online/ocm-sdk-go/issues/356[356]).
+
+== 0.1.164 Mar 17 2021
+
+- Change default user agent to `OCM-SDK`.
+- Update to model 0.0.111:
+** Add subscription metrics.
+** Add `deprovision` and `force` parameters to delete cluster method.
+** Ensure all subscription fields are available.
+
+== 0.1.163 Mar 5 2021
+
+- Enable compression.
+- Remove logger from metrics transport wrapper.
+- Reorder execution of tests.
+- Add metrics handler wrapper.
+- Add `h2c` support.
+- Enable HTTP/2.
+
 == 0.1.162 Feb 22 2021
 
 - Update to model 0.0.110:

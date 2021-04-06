@@ -28,7 +28,7 @@ type QuotaCost struct {
 	consumed         int
 	organizationID   string
 	quotaID          string
-	relatedResources []interface{}
+	relatedResources []*RelatedResource
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -132,7 +132,7 @@ func (o *QuotaCost) GetQuotaID() (value string, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
-func (o *QuotaCost) RelatedResources() []interface{} {
+func (o *QuotaCost) RelatedResources() []*RelatedResource {
 	if o != nil && o.bitmap_&16 != 0 {
 		return o.relatedResources
 	}
@@ -143,7 +143,7 @@ func (o *QuotaCost) RelatedResources() []interface{} {
 // a flag indicating if the attribute has a value.
 //
 //
-func (o *QuotaCost) GetRelatedResources() (value []interface{}, ok bool) {
+func (o *QuotaCost) GetRelatedResources() (value []*RelatedResource, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.relatedResources

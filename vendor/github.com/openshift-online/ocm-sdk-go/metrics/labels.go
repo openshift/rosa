@@ -19,14 +19,12 @@ limitations under the License.
 package metrics
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 )
 
-// serviceLabel calculates the `service` for the given HTTP request.
-func (t *roundTripper) serviceLabel(request *http.Request) string {
-	path := request.URL.Path
+// serviceLabel calculates the `service` for the given URL path.
+func serviceLabel(path string) string {
 	if !strings.HasPrefix(path, "/api/") {
 		return ""
 	}
@@ -47,15 +45,14 @@ func (t *roundTripper) serviceLabel(request *http.Request) string {
 	}
 }
 
-// methodLabel calculates the `method` label from the HTTP method.
-func (t *roundTripper) methodLabel(request *http.Request) string {
-	return strings.ToUpper(request.Method)
+// methodLabel calculates the `method` label from the given HTTP method.
+func methodLabel(method string) string {
+	return strings.ToUpper(method)
 }
 
 // pathLabel calculates the `path` label from the URL path.
-func (t *roundTripper) pathLabel(request *http.Request) string {
+func pathLabel(paths pathTree, path string) string {
 	// Remove leading and trailing slashes:
-	path := request.URL.Path
 	for len(path) > 0 && strings.HasPrefix(path, "/") {
 		path = path[1:]
 	}
@@ -65,7 +62,7 @@ func (t *roundTripper) pathLabel(request *http.Request) string {
 
 	// Clear segments that correspond to path variables:
 	segments := strings.Split(path, "/")
-	current := t.owner.paths
+	current := paths
 	for i, segment := range segments {
 		next, ok := current[segment]
 		if ok {
@@ -86,11 +83,7 @@ func (t *roundTripper) pathLabel(request *http.Request) string {
 }
 
 // codeLabel calculates the `code` label from the given HTTP response.
-func (t *roundTripper) codeLabel(response *http.Response) string {
-	code := 0
-	if response != nil {
-		code = response.StatusCode
-	}
+func codeLabel(code int) string {
 	return strconv.Itoa(code)
 }
 

@@ -27,6 +27,16 @@ export PATH="${GOBIN}:${PATH}"
 go get github.com/onsi/ginkgo/ginkgo@v1.8.0
 go get golang.org/x/tools/cmd/goimports@v0.0.0-20200518194103-259583f2d8a9
 
+# Remove the temporary model and metamodel directories, as otherwise `ginkgo`
+# will try to run the tests inside them:
+rm -rf model metamodel
+
+# Run the checks:
+make \
+  test \
+  examples \
+  lint
+
 # Check that running `make generate` doesn't introduce any change in the
 # generated code:
 make generate
@@ -35,13 +45,3 @@ if [ $? = 1 ]; then
   echo "Generated code isn't in sync with model and metamodel"
   exit 1
 fi
-
-# Remove the temporary model and metamodel directories, as otherwise `ginkgo`
-# will try to run the tests inside them:
-rm -rf model metamodel
-
-# Run the checks:
-make \
-  examples \
-  test \
-  lint

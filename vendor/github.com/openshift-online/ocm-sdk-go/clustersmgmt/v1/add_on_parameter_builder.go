@@ -30,6 +30,7 @@ type AddOnParameterBuilder struct {
 	defaultValue string
 	description  string
 	name         string
+	options      []*AddOnParameterOptionBuilder
 	validation   string
 	valueType    string
 	editable     bool
@@ -120,12 +121,22 @@ func (b *AddOnParameterBuilder) Name(value string) *AddOnParameterBuilder {
 	return b
 }
 
+// Options sets the value of the 'options' attribute to the given values.
+//
+//
+func (b *AddOnParameterBuilder) Options(values ...*AddOnParameterOptionBuilder) *AddOnParameterBuilder {
+	b.options = make([]*AddOnParameterOptionBuilder, len(values))
+	copy(b.options, values)
+	b.bitmap_ |= 512
+	return b
+}
+
 // Required sets the value of the 'required' attribute to the given value.
 //
 //
 func (b *AddOnParameterBuilder) Required(value bool) *AddOnParameterBuilder {
 	b.required = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -134,7 +145,7 @@ func (b *AddOnParameterBuilder) Required(value bool) *AddOnParameterBuilder {
 //
 func (b *AddOnParameterBuilder) Validation(value string) *AddOnParameterBuilder {
 	b.validation = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -143,7 +154,7 @@ func (b *AddOnParameterBuilder) Validation(value string) *AddOnParameterBuilder 
 //
 func (b *AddOnParameterBuilder) ValueType(value string) *AddOnParameterBuilder {
 	b.valueType = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -165,6 +176,14 @@ func (b *AddOnParameterBuilder) Copy(object *AddOnParameter) *AddOnParameterBuil
 	b.editable = object.editable
 	b.enabled = object.enabled
 	b.name = object.name
+	if object.options != nil {
+		b.options = make([]*AddOnParameterOptionBuilder, len(object.options))
+		for i, v := range object.options {
+			b.options[i] = NewAddOnParameterOption().Copy(v)
+		}
+	} else {
+		b.options = nil
+	}
 	b.required = object.required
 	b.validation = object.validation
 	b.valueType = object.valueType
@@ -188,6 +207,15 @@ func (b *AddOnParameterBuilder) Build() (object *AddOnParameter, err error) {
 	object.editable = b.editable
 	object.enabled = b.enabled
 	object.name = b.name
+	if b.options != nil {
+		object.options = make([]*AddOnParameterOption, len(b.options))
+		for i, v := range b.options {
+			object.options[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	object.required = b.required
 	object.validation = b.validation
 	object.valueType = b.valueType

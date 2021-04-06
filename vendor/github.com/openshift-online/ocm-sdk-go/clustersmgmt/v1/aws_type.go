@@ -28,6 +28,7 @@ type AWS struct {
 	accountID       string
 	secretAccessKey string
 	subnetIDs       []string
+	privateLink     bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -81,12 +82,35 @@ func (o *AWS) GetAccountID() (value string, ok bool) {
 	return
 }
 
+// PrivateLink returns the value of the 'private_link' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Sets cluster to be inaccessible externally.
+func (o *AWS) PrivateLink() bool {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.privateLink
+	}
+	return false
+}
+
+// GetPrivateLink returns the value of the 'private_link' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Sets cluster to be inaccessible externally.
+func (o *AWS) GetPrivateLink() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.privateLink
+	}
+	return
+}
+
 // SecretAccessKey returns the value of the 'secret_access_key' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // AWS secret access key.
 func (o *AWS) SecretAccessKey() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.secretAccessKey
 	}
 	return ""
@@ -97,7 +121,7 @@ func (o *AWS) SecretAccessKey() string {
 //
 // AWS secret access key.
 func (o *AWS) GetSecretAccessKey() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.secretAccessKey
 	}
@@ -107,9 +131,9 @@ func (o *AWS) GetSecretAccessKey() (value string, ok bool) {
 // SubnetIDs returns the value of the 'subnet_IDs' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// SubnetIDs are the subnet ids to be used when installing the cluster.
+// The subnet ids to be used when installing the cluster.
 func (o *AWS) SubnetIDs() []string {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.subnetIDs
 	}
 	return nil
@@ -118,9 +142,9 @@ func (o *AWS) SubnetIDs() []string {
 // GetSubnetIDs returns the value of the 'subnet_IDs' attribute and
 // a flag indicating if the attribute has a value.
 //
-// SubnetIDs are the subnet ids to be used when installing the cluster.
+// The subnet ids to be used when installing the cluster.
 func (o *AWS) GetSubnetIDs() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.subnetIDs
 	}

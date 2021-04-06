@@ -367,10 +367,12 @@ func (c *ClusterClient) Poll() *ClusterPollRequest {
 
 // ClusterDeleteRequest is the request for the 'delete' method.
 type ClusterDeleteRequest struct {
-	transport http.RoundTripper
-	path      string
-	query     url.Values
-	header    http.Header
+	transport   http.RoundTripper
+	path        string
+	query       url.Values
+	header      http.Header
+	deprovision *bool
+	force       *bool
 }
 
 // Parameter adds a query parameter.
@@ -385,6 +387,25 @@ func (r *ClusterDeleteRequest) Header(name string, value interface{}) *ClusterDe
 	return r
 }
 
+// Deprovision sets the value of the 'deprovision' parameter.
+//
+// If false it will only delete from OCM but not the actual cluster resources.
+// false is only allowed for OCP clusters. true by default.
+func (r *ClusterDeleteRequest) Deprovision(value bool) *ClusterDeleteRequest {
+	r.deprovision = &value
+	return r
+}
+
+// Force sets the value of the 'force' parameter.
+//
+// If true it will force delete the cluster even if external dependecies
+// cleanup was not finalized. Should be used with extreme caution, after manual cleanup
+// of external dependencies. OSD only. false by default.
+func (r *ClusterDeleteRequest) Force(value bool) *ClusterDeleteRequest {
+	r.force = &value
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -396,6 +417,12 @@ func (r *ClusterDeleteRequest) Send() (result *ClusterDeleteResponse, err error)
 // SendContext sends this request, waits for the response, and returns it.
 func (r *ClusterDeleteRequest) SendContext(ctx context.Context) (result *ClusterDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
+	if r.deprovision != nil {
+		helpers.AddValue(&query, "deprovision", *r.deprovision)
+	}
+	if r.force != nil {
+		helpers.AddValue(&query, "force", *r.force)
+	}
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
 		Path:     r.path,

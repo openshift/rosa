@@ -31,6 +31,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/mitchellh/go-homedir"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	"github.com/openshift-online/ocm-sdk-go/authentication"
 
 	"github.com/openshift/rosa/pkg/debug"
 )
@@ -180,7 +181,7 @@ func (c *Config) Armed() (armed bool, err error) {
 		if err != nil {
 			return
 		}
-		expires, left, err = sdk.GetTokenExpiry(accessToken, now)
+		expires, left, err = authentication.GetTokenExpiry(accessToken, now)
 		if err != nil {
 			return
 		}
@@ -197,7 +198,7 @@ func (c *Config) Armed() (armed bool, err error) {
 		if err != nil {
 			return
 		}
-		expires, left, err = sdk.GetTokenExpiry(refreshToken, now)
+		expires, left, err = authentication.GetTokenExpiry(refreshToken, now)
 		if err != nil {
 			return
 		}

@@ -165,6 +165,7 @@ func (d *dumpRoundTripper) dumpRequest(ctx context.Context, request *http.Reques
 
 // dumpResponse dumps to the log, in debug level, the details of the given HTTP response.
 func (d *dumpRoundTripper) dumpResponse(ctx context.Context, response *http.Response, body []byte) {
+	d.logger.Debug(ctx, "Response protocol is '%s'", response.Proto)
 	d.logger.Debug(ctx, "Response status is '%s'", response.Status)
 	header := response.Header
 	names := make([]string, len(header))

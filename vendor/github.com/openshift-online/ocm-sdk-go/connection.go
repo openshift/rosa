@@ -22,22 +22,19 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"regexp"
 	"sort"
-	"strings"
-	"sync"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/openshift-online/ocm-sdk-go/accountsmgmt"
+	"github.com/openshift-online/ocm-sdk-go/authentication"
 	"github.com/openshift-online/ocm-sdk-go/authorizations"
 	"github.com/openshift-online/ocm-sdk-go/clustersmgmt"
 	"github.com/openshift-online/ocm-sdk-go/configuration"
+	"github.com/openshift-online/ocm-sdk-go/internal"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift-online/ocm-sdk-go/metrics"
 	"github.com/openshift-online/ocm-sdk-go/servicelogs"
@@ -46,11 +43,11 @@ import (
 // Default values:
 const (
 	// #nosec G101
-	DefaultTokenURL     = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
-	DefaultClientID     = "cloud-services"
-	DefaultClientSecret = ""
+	DefaultTokenURL     = authentication.DefaultTokenURL
+	DefaultClientID     = authentication.DefaultClientID
+	DefaultClientSecret = authentication.DefaultClientSecret
 	DefaultURL          = "https://api.openshift.com"
-	DefaultAgent        = "OCM/" + Version
+	DefaultAgent        = "OCM-SDK/" + Version
 )
 
 // DefaultScopes is the ser of scopes used by default:
@@ -64,8 +61,7 @@ var DefaultScopes = []string{
 type ConnectionBuilder struct {
 	// Basic attributes:
 	logger            logging.Logger
-	trustedCASources  []interface{}
-	trustedCAPool     *x509.CertPool
+	trustedCAs        []interface{}
 	insecure          bool
 	disableKeepAlives bool
 	tokenURL          string
@@ -77,7 +73,7 @@ type ConnectionBuilder struct {
 	password          string
 	tokens            []string
 	scopes            []string
-	transportWrappers []TransportWrapper
+	transportWrappers []func(http.RoundTripper) http.RoundTripper
 
 	// Metrics:
 	metricsSubsystem  string
@@ -97,43 +93,16 @@ type TransportWrapper func(http.RoundTripper) http.RoundTripper
 // of this type directly, use the builder instead.
 type Connection struct {
 	// Basic attributes:
-	closed            bool
-	logger            logging.Logger
-	trustedCAs        *x509.CertPool
-	insecure          bool
-	disableKeepAlives bool
-	cookieJar         http.CookieJar
-	clientsMutex      *sync.Mutex
-	clientsTable      map[string]*http.Client
-	tokenURL          *urlInfo
-	clientID          string
-	clientSecret      string
-	urlTable          []urlTableEntry
-	agent             string
-	user              string
-	password          string
-	tokenMutex        *sync.Mutex
-	tokenParser       *jwt.Parser
-	accessToken       *jwt.Token
-	refreshToken      *jwt.Token
-	scopes            []string
-	userWrapers       []TransportWrapper
-	loggingWrapper    TransportWrapper
+	closed         bool
+	logger         logging.Logger
+	authnWrapper   *authentication.TransportWrapper
+	clientSelector *internal.ClientSelector
+	urlTable       []urlTableEntry
+	agent          string
 
 	// Metrics:
-	metricsSubsystem    string
-	metricsRegisterer   prometheus.Registerer
-	metricsWrapper      TransportWrapper
-	tokenCountMetric    *prometheus.CounterVec
-	tokenDurationMetric *prometheus.HistogramVec
-}
-
-// urlInfo contains a parsed URL and additional information extracted from the parameters, like the
-// network (tcp or unix) and the socket name (for Unix sockets).
-type urlInfo struct {
-	*url.URL
-	network string
-	socket  string
+	metricsSubsystem  string
+	metricsRegisterer prometheus.Registerer
 }
 
 // urlTableEntry is used to store one entry of the table that contains the correspondence between
@@ -141,7 +110,7 @@ type urlInfo struct {
 type urlTableEntry struct {
 	prefix string
 	re     *regexp.Regexp
-	url    *urlInfo
+	url    *internal.ServerAddress
 }
 
 // NewConnectionBuilder creates an builder that knows how to create connections with the default
@@ -236,6 +205,9 @@ func (b *ConnectionBuilder) Client(id string, secret string) *ConnectionBuilder 
 //
 // To connect using Unix sockets and HTTPS use `unix+https://my.server.com/tmp/api.socket`.
 //
+// To force use of HTTP/2 without TLS use `h2c://...`. This can also be combined with Unix sockets,
+// for example `unix+h2c://...`.
+//
 // Note that the host name is mandatory even when using Unix sockets because it is used to populate
 // the `Host` header sent to the server.
 func (b *ConnectionBuilder) URL(url string) *ConnectionBuilder {
@@ -305,7 +277,7 @@ func (b *ConnectionBuilder) Agent(agent string) *ConnectionBuilder {
 // obtain the token. For example:
 //
 //	// Use the resource owner password grant:
-//	connection, err := client.NewConnectionBuilder().
+//	connection, err := sdk.NewConnectionBuilder().
 //		User("myuser", "mypassword").
 //		Build()
 //
@@ -314,7 +286,7 @@ func (b *ConnectionBuilder) Agent(agent string) *ConnectionBuilder {
 // secret blank. For example:
 //
 //	// Use the resource owner password grant:
-//	connection, err := client.NewConnectionBuilder().
+//	connection, err := sdk.NewConnectionBuilder().
 //		User("myuser", "mypassword").
 //		Client("myclientid", "").
 //		Build()
@@ -335,7 +307,7 @@ func (b *ConnectionBuilder) User(name string, password string) *ConnectionBuilde
 // scope 'myscope' without loosing the default you will have to do something like this:
 //
 //	// Create a connection with the default 'openid' scope and some additional scopes:
-//	connection, err := client.NewConnectionBuilder().
+//	connection, err := sdk.NewConnectionBuilder().
 //		User("myuser", "mypassword").
 //		Scopes("openid", "myscope", "yourscope").
 //		Build()
@@ -374,7 +346,7 @@ func (b *ConnectionBuilder) TrustedCAs(value *x509.CertPool) *ConnectionBuilder 
 	if b.err != nil {
 		return b
 	}
-	b.trustedCASources = append(b.trustedCASources, value)
+	b.trustedCAs = append(b.trustedCAs, value)
 	return b
 }
 
@@ -385,7 +357,7 @@ func (b *ConnectionBuilder) TrustedCAFile(value string) *ConnectionBuilder {
 	if b.err != nil {
 		return b
 	}
-	b.trustedCASources = append(b.trustedCASources, value)
+	b.trustedCAs = append(b.trustedCAs, value)
 	return b
 }
 
@@ -653,57 +625,6 @@ func (b *ConnectionBuilder) BuildContext(ctx context.Context) (connection *Conne
 		return
 	}
 
-	// Check that we have some kind of credentials or a token:
-	haveTokens := len(b.tokens) > 0
-	havePassword := b.user != "" && b.password != ""
-	haveSecret := b.clientID != "" && b.clientSecret != ""
-	if !haveTokens && !havePassword && !haveSecret {
-		err = fmt.Errorf(
-			"either a token, and user name and password or a client identifier and secret are " +
-				"necessary, but none has been provided",
-		)
-		return
-	}
-
-	// Parse the tokens:
-	tokenParser := new(jwt.Parser)
-	var accessToken *jwt.Token
-	var refreshToken *jwt.Token
-	for i, text := range b.tokens {
-		var token *jwt.Token
-		token, _, err = tokenParser.ParseUnverified(text, jwt.MapClaims{})
-		if err != nil {
-			err = fmt.Errorf("can't parse token %d: %w", i, err)
-			return
-		}
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			err = fmt.Errorf("claims of token %d are of type '%T'", i, claims)
-			return
-		}
-		claim, ok := claims["typ"]
-		if !ok {
-			err = fmt.Errorf("token %d doesn't contain the 'typ' claim", i)
-			return
-		}
-		typ, ok := claim.(string)
-		if !ok {
-			err = fmt.Errorf("claim 'type' of token %d is of type '%T'", i, claim)
-			return
-		}
-		switch {
-		case strings.EqualFold(typ, "Bearer"):
-			accessToken = token
-		case strings.EqualFold(typ, "Refresh"):
-			refreshToken = token
-		case strings.EqualFold(typ, "Offline"):
-			refreshToken = token
-		default:
-			err = fmt.Errorf("type '%s' of token %d is unknown", typ, i)
-			return
-		}
-	}
-
 	// Create the default logger, if needed:
 	if b.logger == nil {
 		b.logger, err = logging.NewGoLoggerBuilder().
@@ -719,51 +640,6 @@ func (b *ConnectionBuilder) BuildContext(ctx context.Context) (connection *Conne
 		b.logger.Debug(ctx, "Logger wasn't provided, will use Go log")
 	}
 
-	// Set the default authentication details, if needed:
-	rawTokenURL := b.tokenURL
-	if rawTokenURL == "" {
-		rawTokenURL = DefaultTokenURL
-		b.logger.Debug(
-			ctx,
-			"OpenID token URL wasn't provided, will use '%s'",
-			rawTokenURL,
-		)
-	}
-	tokenURL, err := b.parseURL(ctx, rawTokenURL)
-	if err != nil {
-		err = fmt.Errorf("can't parse token URL '%s': %w", rawTokenURL, err)
-		return
-	}
-	clientID := b.clientID
-	if clientID == "" {
-		clientID = DefaultClientID
-		b.logger.Debug(
-			ctx,
-			"OpenID client identifier wasn't provided, will use '%s'",
-			clientID,
-		)
-	}
-	clientSecret := b.clientSecret
-	if clientSecret == "" {
-		clientSecret = DefaultClientSecret
-		b.logger.Debug(
-			ctx,
-			"OpenID client secret wasn't provided, will use '%s'",
-			clientSecret,
-		)
-	}
-
-	// Set the default authentication scopes, if needed:
-	scopes := b.scopes
-	if len(scopes) == 0 {
-		scopes = DefaultScopes
-	} else {
-		scopes = make([]string, len(b.scopes))
-		for i := range b.scopes {
-			scopes[i] = b.scopes[i]
-		}
-	}
-
 	// Create the URL table:
 	urlTable, err := b.createURLTable(ctx)
 	if err != nil {
@@ -776,38 +652,17 @@ func (b *ConnectionBuilder) BuildContext(ctx context.Context) (connection *Conne
 		agent = DefaultAgent
 	}
 
-	// Create the cookie jar:
-	cookieJar, err := b.createCookieJar()
-	if err != nil {
-		return
-	}
-
-	// Load trusted CAs:
-	err = b.loadTrustedCAs(ctx)
-	if err != nil {
-		return
-	}
-
-	// Make a copy of the user specified transport wrappers:
-	userWrappers := make([]TransportWrapper, len(b.transportWrappers))
-	copy(userWrappers, b.transportWrappers)
-
-	// Create the logging transport wrapper:
-	var loggingWrapper TransportWrapper
-	if b.logger.DebugEnabled() {
-		wrapper := &dumpTransportWrapper{
-			logger: b.logger,
-		}
-		loggingWrapper = wrapper.Wrap
-	}
-
-	// Create the metrics transport wrapper:
-	var metricsWrapper TransportWrapper
+	// Create the metrics wrapper:
+	var metricsWrapper func(http.RoundTripper) http.RoundTripper
 	if b.metricsSubsystem != "" {
+		var parsed *url.URL
+		parsed, err = url.Parse(b.tokenURL)
+		if err != nil {
+			return
+		}
 		var wrapper *metrics.TransportWrapper
 		wrapper, err = metrics.NewTransportWrapper().
-			Logger(b.logger).
-			Path(tokenURL.Path).
+			Path(parsed.Path).
 			Subsystem(b.metricsSubsystem).
 			Registerer(b.metricsRegisterer).
 			Build()
@@ -817,40 +672,58 @@ func (b *ConnectionBuilder) BuildContext(ctx context.Context) (connection *Conne
 		metricsWrapper = wrapper.Wrap
 	}
 
+	// Create the logging wrapper:
+	var loggingWrapper func(http.RoundTripper) http.RoundTripper
+	if b.logger.DebugEnabled() {
+		wrapper := &dumpTransportWrapper{
+			logger: b.logger,
+		}
+		loggingWrapper = wrapper.Wrap
+	}
+
+	// Create the authentication wrapper:
+	authnWrapper, err := authentication.NewTransportWrapper().
+		Logger(b.logger).
+		TokenURL(b.tokenURL).
+		User(b.user, b.password).
+		Client(b.clientID, b.clientSecret).
+		Tokens(b.tokens...).
+		Scopes(b.scopes...).
+		TrustedCAs(b.trustedCAs...).
+		Insecure(b.insecure).
+		TransportWrappers(b.transportWrappers...).
+		TransportWrapper(loggingWrapper).
+		TransportWrapper(metricsWrapper).
+		MetricsSubsystem(b.metricsSubsystem).
+		MetricsRegisterer(b.metricsRegisterer).
+		Build(ctx)
+	if err != nil {
+		return
+	}
+
+	// Create the client selector:
+	clientSelector, err := internal.NewClientSelector().
+		Logger(b.logger).
+		TrustedCAs(b.trustedCAs...).
+		Insecure(b.insecure).
+		TransportWrapper(authnWrapper.Wrap).
+		TransportWrappers(b.transportWrappers...).
+		TransportWrapper(loggingWrapper).
+		TransportWrapper(metricsWrapper).
+		Build(ctx)
+	if err != nil {
+		return
+	}
+
 	// Allocate and populate the connection object:
 	connection = &Connection{
 		logger:            b.logger,
-		trustedCAs:        b.trustedCAPool,
-		insecure:          b.insecure,
-		disableKeepAlives: b.disableKeepAlives,
-		cookieJar:         cookieJar,
-		clientsMutex:      &sync.Mutex{},
-		clientsTable:      map[string]*http.Client{},
-		tokenURL:          tokenURL,
-		clientID:          clientID,
-		clientSecret:      clientSecret,
+		authnWrapper:      authnWrapper,
+		clientSelector:    clientSelector,
 		urlTable:          urlTable,
 		agent:             agent,
-		user:              b.user,
-		password:          b.password,
-		tokenMutex:        &sync.Mutex{},
-		tokenParser:       tokenParser,
-		accessToken:       accessToken,
-		refreshToken:      refreshToken,
-		scopes:            scopes,
 		metricsSubsystem:  b.metricsSubsystem,
 		metricsRegisterer: b.metricsRegisterer,
-		userWrapers:       userWrappers,
-		loggingWrapper:    loggingWrapper,
-		metricsWrapper:    metricsWrapper,
-	}
-
-	// Register metrics:
-	if b.metricsSubsystem != "" {
-		err = connection.registerMetrics(b.metricsSubsystem)
-		if err != nil {
-			return
-		}
 	}
 
 	return
@@ -861,8 +734,8 @@ func (b *ConnectionBuilder) createURLTable(ctx context.Context) (table []urlTabl
 	for prefix, base := range b.urlTable {
 		if !validPrefixRE.MatchString(prefix) {
 			err = fmt.Errorf(
-				"prefix '%s' for alternative URL '%s' isn't valid; it must start "+
-					"with a slash and be composed of slash separated segments "+
+				"prefix '%s' for URL '%s' isn't valid; it must start with a "+
+					"slash and be composed of slash separated segments "+
 					"containing only digits, letters, dashes and undercores",
 				prefix, base,
 			)
@@ -883,16 +756,16 @@ func (b *ConnectionBuilder) createURLTable(ctx context.Context) (table []urlTabl
 		entry.re, err = regexp.Compile(pattern)
 		if err != nil {
 			err = fmt.Errorf(
-				"can't compile regular expression '%s' for alternative URL with "+
+				"can't compile regular expression '%s' for URL with "+
 					"prefix '%s' and URL '%s': %v",
 				pattern, prefix, base, err,
 			)
 			return
 		}
-		entry.url, err = b.parseURL(ctx, base)
+		entry.url, err = internal.ParseServerAddress(ctx, base)
 		if err != nil {
 			err = fmt.Errorf(
-				"can't parse alternative URL '%s' for prefix '%s': %w",
+				"can't parse URL '%s' for prefix '%s': %w",
 				base, prefix, err,
 			)
 			return
@@ -913,149 +786,13 @@ func (b *ConnectionBuilder) createURLTable(ctx context.Context) (table []urlTabl
 		for _, entry := range table {
 			b.logger.Debug(
 				ctx,
-				"Added alternative URL with prefix '%s', regular expression "+
+				"Added URL with prefix '%s', regular expression "+
 					"'%s' and URL '%s'",
-				entry.prefix, entry.re, entry.url,
+				entry.prefix, entry.re, entry.url.Text,
 			)
 		}
 	}
 
-	return
-}
-
-func (b *ConnectionBuilder) createCookieJar() (jar http.CookieJar, err error) {
-	jar, err = cookiejar.New(nil)
-	return
-}
-
-func (b *ConnectionBuilder) loadTrustedCAs(ctx context.Context) error {
-	var err error
-	b.trustedCAPool, err = b.loadSystemCAs()
-	if err != nil {
-		return err
-	}
-	for _, ca := range b.trustedCASources {
-		switch source := ca.(type) {
-		case *x509.CertPool:
-			b.logger.Debug(
-				ctx,
-				"Default trusted CA certificates have been explicitly replaced",
-			)
-			b.trustedCAPool = source
-		case string:
-			b.logger.Debug(
-				ctx,
-				"Loading trusted CA certificates from file '%s'",
-				source,
-			)
-			var buffer []byte
-			buffer, err = ioutil.ReadFile(source) // #nosec G304
-			if err != nil {
-				return fmt.Errorf(
-					"can't read trusted CA certificates from file '%s': %w",
-					source, err,
-				)
-			}
-			if !b.trustedCAPool.AppendCertsFromPEM(buffer) {
-				return fmt.Errorf(
-					"file '%s' doesn't contain any certificate",
-					source,
-				)
-			}
-		default:
-			return fmt.Errorf(
-				"don't know how to load trusted CA from source of type '%T'",
-				source,
-			)
-		}
-	}
-	return nil
-}
-
-func (b *ConnectionBuilder) parseURL(ctx context.Context, text string) (result *urlInfo,
-	err error) {
-	// Parse the URL:
-	parsed, err := url.Parse(text)
-	if err != nil {
-		return
-	}
-
-	// Extract the network and protocol from the scheme:
-	network, protocol, err := b.parseScheme(ctx, parsed.Scheme)
-	if err != nil {
-		return
-	}
-
-	// Check that the host name is acceptable. Note that the host name is mandatory even when
-	// using Unix sockets, because it is used to populate the `Host` header.
-	host := parsed.Hostname()
-	if host == "" {
-		err = fmt.Errorf(
-			"host name in URL '%s' is mandatory, but it is empty",
-			text,
-		)
-		return
-	}
-
-	// Get the socket path is acceptable (only for Unix network):
-	socket := parsed.Path
-	if network == unixNetwork && socket == "" {
-		socket = parsed.Path
-		if socket == "" {
-			err = fmt.Errorf(
-				"path in URL '%s' is empty, but should contain the Unix "+
-					"socket path",
-				text,
-			)
-			return
-		}
-	}
-
-	// The parsed URL will be used by the HTTP client, and this expects the scheme to be `http`
-	// or `https`, so we need to update it as it may be `unix` at this point:
-	parsed.Scheme = protocol
-
-	// Create and populate the result:
-	result = &urlInfo{
-		URL:     parsed,
-		network: network,
-		socket:  socket,
-	}
-
-	return
-}
-
-func (b *ConnectionBuilder) parseScheme(ctx context.Context, scheme string) (network, protocol string,
-	err error) {
-	scheme = strings.ToLower(scheme)
-	index := strings.Index(scheme, "+")
-	if index >= 0 {
-		network = scheme[0:index]
-		protocol = scheme[index+1:]
-	} else {
-		if scheme == unixNetwork {
-			network = scheme
-			protocol = httpProtocol
-		} else {
-			network = tcpNetwork
-			protocol = scheme
-		}
-	}
-	if network != tcpNetwork && network != unixNetwork {
-		err = fmt.Errorf(
-			"network in scheme '%s' should should be 'tcp' or 'unix', but it is '%s'",
-			scheme, network,
-		)
-		return
-	}
-	if protocol != httpProtocol && protocol != httpsProtocol {
-		err = fmt.Errorf(
-			"protocol in scheme '%s' should should be 'http' or 'https', but it "+
-				"is '%s'",
-			scheme, protocol,
-		)
-		return
-	}
 	return
 }
 
@@ -1066,13 +803,25 @@ func (c *Connection) Logger() logging.Logger {
 
 // TokenURL returns the URL that the connection is using request OpenID access tokens.
 func (c *Connection) TokenURL() string {
-	return c.tokenURL.String()
+	return c.authnWrapper.TokenURL()
 }
 
 // Client returns OpenID client identifier and secret that the connection is using to request OpenID
 // access tokens.
 func (c *Connection) Client() (id, secret string) {
-	return c.clientID, c.clientSecret
+	id, secret = c.authnWrapper.Client()
+	return
+}
+
+// User returns the user name and password that the is using to request OpenID access tokens.
+func (c *Connection) User() (user, password string) {
+	user, password = c.authnWrapper.User()
+	return
+}
+
+// Scopes returns the OpenID scopes that the connection is using to request OpenID access tokens.
+func (c *Connection) Scopes() []string {
+	return c.authnWrapper.Scopes()
 }
 
 // URL returns the base URL of the API gateway.
@@ -1083,7 +832,7 @@ func (c *Connection) URL() string {
 	for i := len(c.urlTable) - 1; i >= 0; i-- {
 		entry := &c.urlTable[i]
 		if entry.prefix == "" {
-			return entry.url.String()
+			return entry.url.Text
 		}
 	}
 	return ""
@@ -1094,31 +843,20 @@ func (c *Connection) Agent() string {
 	return c.agent
 }
 
-// User returns the user name and password that the is using to request OpenID access tokens.
-func (c *Connection) User() (user, password string) {
-	return c.user, c.password
-}
-
-// Scopes returns the OpenID scopes that the connection is using to request OpenID access tokens.
-func (c *Connection) Scopes() []string {
-	result := make([]string, len(c.scopes))
-	copy(result, c.scopes)
-	return result
-}
-
 // TrustedCAs sets returns the certificate pool that contains the certificate authorities that are
 // trusted by the connection.
 func (c *Connection) TrustedCAs() *x509.CertPool {
-	return c.trustedCAs
+	return c.clientSelector.TrustedCAs()
 }
 
 // Insecure returns the flag that indicates if insecure communication with the server is enabled.
 func (c *Connection) Insecure() bool {
-	return c.insecure
+	return c.clientSelector.Insecure()
 }
 
+// DisableKeepAlives returns the flag that indicates if HTTP keep alive is disabled.
 func (c *Connection) DisableKeepAlives() bool {
-	return c.disableKeepAlives
+	return c.clientSelector.DisableKeepAlives()
 }
 
 // MetricsSubsystem returns the name of the subsystem that is used by the connection to register
@@ -1135,7 +873,7 @@ func (c *Connection) AlternativeURLs() map[string]string {
 	result := map[string]string{}
 	for _, entry := range c.urlTable {
 		if entry.prefix != "" {
-			result[entry.prefix] = entry.url.String()
+			result[entry.prefix] = entry.url.Text
 		}
 	}
 	return result
@@ -1165,10 +903,21 @@ func (c *Connection) ServiceLogs() *servicelogs.Client {
 // once it is no longer needed, as otherwise those resources may be leaked. Trying to use a
 // connection that has been closed will result in a error.
 func (c *Connection) Close() error {
-	err := c.checkClosed()
+	var err error
+
+	// Close the HTTP clients:
+	err = c.clientSelector.Close()
 	if err != nil {
 		return err
 	}
+
+	// Close the authentication wrapper:
+	err = c.authnWrapper.Close()
+	if err != nil {
+		return err
+	}
+
+	// Makr the connection as closed, so that further attempts to use it will fail:
 	c.closed = true
 	return nil
 }
@@ -1182,15 +931,3 @@ func (c *Connection) checkClosed() error {
 
 // validPrefixRE is the regular expression used to check patch prefixes.
 var validPrefixRE = regexp.MustCompile(`^((/\w+)*)?$`)
-
-// Network names:
-const (
-	unixNetwork = "unix"
-	tcpNetwork  = "tcp"
-)
-
-// Protocol names:
-const (
-	httpProtocol  = "http"
-	httpsProtocol = "https"
-)
