@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.3 Apr 6 2021
+
+- aws: Enable skip SCP check on init
+- ocm-sdk-go: Bump version
+- init: Track ad-hoc authenticated events
+
 == 1.0.2 Mar 25 2021
 
 - addons: Error when editing non-editable parameters
