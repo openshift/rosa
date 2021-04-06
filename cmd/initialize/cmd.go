@@ -37,8 +37,9 @@ import (
 )
 
 var args struct {
-	region      string
-	deleteStack bool
+	deleteStack      bool
+	disableSCPChecks bool
+	region           string
 }
 
 var Cmd = &cobra.Command{
@@ -63,6 +64,13 @@ func init() {
 		"delete-stack",
 		false,
 		"Deletes stack template applied to your AWS account during the 'init' command.\n",
+	)
+
+	flags.BoolVar(
+		&args.disableSCPChecks,
+		"disable-scp-checks",
+		false,
+		"Indicates if cloud permission checks are disabled when attempting installation of the cluster.",
 	)
 
 	// Force-load all flags from `login` into `init`
@@ -191,7 +199,15 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate AWS SCP/IAM Permissions
 	// Call `verify permissions` as part of init
-	permissions.Cmd.Run(cmd, argv)
+	// Skip this check if --disable-scp-checks is true
+	// If SCP policies conditions restrict an AWS accounts permissions by region
+	// AWS will fail all policy simulation checks
+	// Validate AWS credentials for current user
+	if !args.disableSCPChecks {
+		permissions.Cmd.Run(cmd, argv)
+	} else {
+		reporter.Infof("Skipping AWS SCP policies check")
+	}
 
 	// Validate AWS quota
 	// Call `verify quota` as part of init
