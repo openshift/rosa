@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -68,9 +69,21 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Create the client for the OCM API:
+	ocmConnection, err := ocm.NewConnection().
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create OCM connection: %v", err)
+		os.Exit(1)
+	}
+	defer ocmConnection.Close()
+	ocmClient := ocmConnection.ClustersMgmt().V1()
+
 	reporter.Infof("Validating SCP policies...")
 	ok, err := client.ValidateSCP(nil)
 	if err != nil {
+		ocm.LogEvent(ocmClient, "ROSAVerifyPermissionsSCPFailed")
 		reporter.Errorf("Unable to validate SCP policies")
 		if strings.Contains(err.Error(), "Throttling: Rate exceeded") {
 			reporter.Errorf("Throttling: Rate exceeded. Please wait 3-5 minutes before retrying.")
@@ -80,6 +93,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if !ok {
+		ocm.LogEvent(ocmClient, "ROSAVerifyPermissionsSCPInvalid")
 		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
 	}
 	reporter.Infof("AWS SCP policies ok")

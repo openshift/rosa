@@ -376,3 +376,10 @@ func GetDefaultClusterFlavors(ocmClient *cmv1.Client, flavour string) (dMachinec
 	dhostPrefix, _ = network.GetHostPrefix()
 	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix
 }
+
+func LogEvent(ocmClient *cmv1.Client, key string) {
+	event, err := cmv1.NewEvent().Key(key).Build()
+	if err == nil {
+		_, _ = ocmClient.Events().Add().Body(event).Send()
+	}
+}

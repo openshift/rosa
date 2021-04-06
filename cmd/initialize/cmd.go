@@ -139,19 +139,6 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	// Validate AWS credentials for current user
-	reporter.Infof("Validating AWS credentials...")
-	ok, err := client.ValidateCredentials()
-	if err != nil {
-		reporter.Errorf("Error validating AWS credentials: %v", err)
-		os.Exit(1)
-	}
-	if !ok {
-		reporter.Errorf("AWS credentials are invalid")
-		os.Exit(1)
-	}
-	reporter.Infof("AWS credentials are valid!")
-
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().Logger(logger).Build()
 	if err != nil {
@@ -159,7 +146,26 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	defer ocmConnection.Close()
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
+	ocmClient := ocmConnection.ClustersMgmt().V1()
+
+	// Validate AWS credentials for current user
+	reporter.Infof("Validating AWS credentials...")
+	ok, isSTS, err := client.ValidateCredentials()
+	if err != nil {
+		ocm.LogEvent(ocmClient, "ROSAInitCredentialsFailed")
+		if isSTS {
+			ocm.LogEvent(ocmClient, "ROSAInitCredentialsSTS")
+		}
+		reporter.Errorf("Error validating AWS credentials: %v", err)
+		os.Exit(1)
+	}
+	if !ok {
+		ocm.LogEvent(ocmClient, "ROSAInitCredentialsInvalid")
+		reporter.Errorf("AWS credentials are invalid")
+		os.Exit(1)
+	}
+	reporter.Infof("AWS credentials are valid!")
+	clustersCollection := ocmClient.Clusters()
 
 	// Delete CloudFormation stack and exit
 	if args.deleteStack {
@@ -168,6 +174,7 @@ func run(cmd *cobra.Command, argv []string) {
 		// Get creator ARN to determine existing clusters:
 		awsCreator, err := client.GetCreator()
 		if err != nil {
+			ocm.LogEvent(ocmClient, "ROSAInitGetCreatorFailed")
 			reporter.Errorf("Failed to get AWS creator: %v", err)
 			os.Exit(1)
 		}
@@ -189,6 +196,7 @@ func run(cmd *cobra.Command, argv []string) {
 		// Delete the CloudFormation stack
 		err = client.DeleteOsdCcsAdminUser(aws.OsdCcsAdminStackName)
 		if err != nil {
+			ocm.LogEvent(ocmClient, "ROSAInitDeleteStackFailed")
 			reporter.Errorf("Failed to delete user '%s': %v", aws.AdminUserName, err)
 			os.Exit(1)
 		}
@@ -217,6 +225,7 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
 	created, err := client.EnsureOsdCcsAdminUser(aws.OsdCcsAdminStackName, aws.AdminUserName)
 	if err != nil {
+		ocm.LogEvent(ocmClient, "ROSAInitCreateStackFailed")
 		reporter.Errorf("Failed to create user '%s': %v", aws.AdminUserName, err)
 		os.Exit(1)
 	}
@@ -231,6 +240,7 @@ func run(cmd *cobra.Command, argv []string) {
 	target := aws.AdminUserName
 	isValid, err := client.ValidateSCP(&target)
 	if !isValid {
+		ocm.LogEvent(ocmClient, "ROSAInitSCPPoliciesFailed")
 		reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)
 		os.Exit(1)
 	}
@@ -240,6 +250,7 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter.Infof("Validating cluster creation...")
 	err = simulateCluster(clustersCollection, args.region)
 	if err != nil {
+		ocm.LogEvent(ocmClient, "ROSAInitDryRunFailed")
 		reporter.Warnf("Cluster creation failed. "+
 			"If you create a cluster, it should fail with the following error:\n%s", err)
 	} else {
