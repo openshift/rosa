@@ -27,35 +27,42 @@ import (
 //
 //
 type SubscriptionBuilder struct {
-	bitmap_             uint32
-	id                  string
-	href                string
-	cloudAccountID      string
-	cloudProviderID     string
-	clusterID           string
-	clusterBillingModel BillingModel
-	consumerUUID        string
-	cpuTotal            int
-	createdAt           time.Time
-	creator             *AccountBuilder
-	displayName         string
-	externalClusterID   string
-	labels              []*LabelBuilder
-	lastReconcileDate   time.Time
-	lastTelemetryDate   time.Time
-	organizationID      string
-	plan                *PlanBuilder
-	productBundle       ProductBundleEnum
-	provenance          string
-	regionID            string
-	serviceLevel        ServiceLevelEnum
-	socketTotal         int
-	status              string
-	supportLevel        SupportLevelEnum
-	systemUnits         SystemUnitsEnum
-	updatedAt           time.Time
-	usage               UsageEnum
-	managed             bool
+	bitmap_              uint64
+	id                   string
+	href                 string
+	capabilities         []*CapabilityBuilder
+	cloudAccountID       string
+	cloudProviderID      string
+	clusterID            string
+	clusterBillingModel  BillingModel
+	consoleURL           string
+	consumerUUID         string
+	cpuTotal             int
+	createdAt            time.Time
+	creator              *AccountBuilder
+	displayName          string
+	externalClusterID    string
+	labels               []*LabelBuilder
+	lastReconcileDate    time.Time
+	lastReleasedAt       time.Time
+	lastTelemetryDate    time.Time
+	metrics              []*SubscriptionMetricsBuilder
+	notificationContacts []*AccountBuilder
+	organizationID       string
+	plan                 *PlanBuilder
+	productBundle        string
+	provenance           string
+	regionID             string
+	serviceLevel         string
+	socketTotal          int
+	status               string
+	supportLevel         string
+	systemUnits          string
+	trialEndDate         time.Time
+	updatedAt            time.Time
+	usage                string
+	managed              bool
+	released             bool
 }
 
 // NewSubscription creates a new builder of 'subscription' objects.
@@ -83,12 +90,22 @@ func (b *SubscriptionBuilder) HREF(value string) *SubscriptionBuilder {
 	return b
 }
 
+// Capabilities sets the value of the 'capabilities' attribute to the given values.
+//
+//
+func (b *SubscriptionBuilder) Capabilities(values ...*CapabilityBuilder) *SubscriptionBuilder {
+	b.capabilities = make([]*CapabilityBuilder, len(values))
+	copy(b.capabilities, values)
+	b.bitmap_ |= 8
+	return b
+}
+
 // CloudAccountID sets the value of the 'cloud_account_ID' attribute to the given value.
 //
 //
 func (b *SubscriptionBuilder) CloudAccountID(value string) *SubscriptionBuilder {
 	b.cloudAccountID = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -97,7 +114,7 @@ func (b *SubscriptionBuilder) CloudAccountID(value string) *SubscriptionBuilder 
 //
 func (b *SubscriptionBuilder) CloudProviderID(value string) *SubscriptionBuilder {
 	b.cloudProviderID = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -106,7 +123,7 @@ func (b *SubscriptionBuilder) CloudProviderID(value string) *SubscriptionBuilder
 //
 func (b *SubscriptionBuilder) ClusterID(value string) *SubscriptionBuilder {
 	b.clusterID = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -115,7 +132,16 @@ func (b *SubscriptionBuilder) ClusterID(value string) *SubscriptionBuilder {
 // Billing model for subscripiton and reserved_resource resources.
 func (b *SubscriptionBuilder) ClusterBillingModel(value BillingModel) *SubscriptionBuilder {
 	b.clusterBillingModel = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
+	return b
+}
+
+// ConsoleURL sets the value of the 'console_URL' attribute to the given value.
+//
+//
+func (b *SubscriptionBuilder) ConsoleURL(value string) *SubscriptionBuilder {
+	b.consoleURL = value
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -124,7 +150,7 @@ func (b *SubscriptionBuilder) ClusterBillingModel(value BillingModel) *Subscript
 //
 func (b *SubscriptionBuilder) ConsumerUUID(value string) *SubscriptionBuilder {
 	b.consumerUUID = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -133,7 +159,7 @@ func (b *SubscriptionBuilder) ConsumerUUID(value string) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) CpuTotal(value int) *SubscriptionBuilder {
 	b.cpuTotal = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -142,7 +168,7 @@ func (b *SubscriptionBuilder) CpuTotal(value int) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) CreatedAt(value time.Time) *SubscriptionBuilder {
 	b.createdAt = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -152,9 +178,9 @@ func (b *SubscriptionBuilder) CreatedAt(value time.Time) *SubscriptionBuilder {
 func (b *SubscriptionBuilder) Creator(value *AccountBuilder) *SubscriptionBuilder {
 	b.creator = value
 	if value != nil {
-		b.bitmap_ |= 1024
+		b.bitmap_ |= 4096
 	} else {
-		b.bitmap_ &^= 1024
+		b.bitmap_ &^= 4096
 	}
 	return b
 }
@@ -164,7 +190,7 @@ func (b *SubscriptionBuilder) Creator(value *AccountBuilder) *SubscriptionBuilde
 //
 func (b *SubscriptionBuilder) DisplayName(value string) *SubscriptionBuilder {
 	b.displayName = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -173,7 +199,7 @@ func (b *SubscriptionBuilder) DisplayName(value string) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) ExternalClusterID(value string) *SubscriptionBuilder {
 	b.externalClusterID = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -183,7 +209,7 @@ func (b *SubscriptionBuilder) ExternalClusterID(value string) *SubscriptionBuild
 func (b *SubscriptionBuilder) Labels(values ...*LabelBuilder) *SubscriptionBuilder {
 	b.labels = make([]*LabelBuilder, len(values))
 	copy(b.labels, values)
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 32768
 	return b
 }
 
@@ -192,7 +218,16 @@ func (b *SubscriptionBuilder) Labels(values ...*LabelBuilder) *SubscriptionBuild
 //
 func (b *SubscriptionBuilder) LastReconcileDate(value time.Time) *SubscriptionBuilder {
 	b.lastReconcileDate = value
-	b.bitmap_ |= 16384
+	b.bitmap_ |= 65536
+	return b
+}
+
+// LastReleasedAt sets the value of the 'last_released_at' attribute to the given value.
+//
+//
+func (b *SubscriptionBuilder) LastReleasedAt(value time.Time) *SubscriptionBuilder {
+	b.lastReleasedAt = value
+	b.bitmap_ |= 131072
 	return b
 }
 
@@ -201,7 +236,7 @@ func (b *SubscriptionBuilder) LastReconcileDate(value time.Time) *SubscriptionBu
 //
 func (b *SubscriptionBuilder) LastTelemetryDate(value time.Time) *SubscriptionBuilder {
 	b.lastTelemetryDate = value
-	b.bitmap_ |= 32768
+	b.bitmap_ |= 262144
 	return b
 }
 
@@ -210,7 +245,27 @@ func (b *SubscriptionBuilder) LastTelemetryDate(value time.Time) *SubscriptionBu
 //
 func (b *SubscriptionBuilder) Managed(value bool) *SubscriptionBuilder {
 	b.managed = value
-	b.bitmap_ |= 65536
+	b.bitmap_ |= 524288
+	return b
+}
+
+// Metrics sets the value of the 'metrics' attribute to the given values.
+//
+//
+func (b *SubscriptionBuilder) Metrics(values ...*SubscriptionMetricsBuilder) *SubscriptionBuilder {
+	b.metrics = make([]*SubscriptionMetricsBuilder, len(values))
+	copy(b.metrics, values)
+	b.bitmap_ |= 1048576
+	return b
+}
+
+// NotificationContacts sets the value of the 'notification_contacts' attribute to the given values.
+//
+//
+func (b *SubscriptionBuilder) NotificationContacts(values ...*AccountBuilder) *SubscriptionBuilder {
+	b.notificationContacts = make([]*AccountBuilder, len(values))
+	copy(b.notificationContacts, values)
+	b.bitmap_ |= 2097152
 	return b
 }
 
@@ -219,7 +274,7 @@ func (b *SubscriptionBuilder) Managed(value bool) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) OrganizationID(value string) *SubscriptionBuilder {
 	b.organizationID = value
-	b.bitmap_ |= 131072
+	b.bitmap_ |= 4194304
 	return b
 }
 
@@ -229,19 +284,19 @@ func (b *SubscriptionBuilder) OrganizationID(value string) *SubscriptionBuilder 
 func (b *SubscriptionBuilder) Plan(value *PlanBuilder) *SubscriptionBuilder {
 	b.plan = value
 	if value != nil {
-		b.bitmap_ |= 262144
+		b.bitmap_ |= 8388608
 	} else {
-		b.bitmap_ &^= 262144
+		b.bitmap_ &^= 8388608
 	}
 	return b
 }
 
 // ProductBundle sets the value of the 'product_bundle' attribute to the given value.
 //
-// Usage of Subscription.
-func (b *SubscriptionBuilder) ProductBundle(value ProductBundleEnum) *SubscriptionBuilder {
+//
+func (b *SubscriptionBuilder) ProductBundle(value string) *SubscriptionBuilder {
 	b.productBundle = value
-	b.bitmap_ |= 524288
+	b.bitmap_ |= 16777216
 	return b
 }
 
@@ -250,7 +305,7 @@ func (b *SubscriptionBuilder) ProductBundle(value ProductBundleEnum) *Subscripti
 //
 func (b *SubscriptionBuilder) Provenance(value string) *SubscriptionBuilder {
 	b.provenance = value
-	b.bitmap_ |= 1048576
+	b.bitmap_ |= 33554432
 	return b
 }
 
@@ -259,16 +314,25 @@ func (b *SubscriptionBuilder) Provenance(value string) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) RegionID(value string) *SubscriptionBuilder {
 	b.regionID = value
-	b.bitmap_ |= 2097152
+	b.bitmap_ |= 67108864
+	return b
+}
+
+// Released sets the value of the 'released' attribute to the given value.
+//
+//
+func (b *SubscriptionBuilder) Released(value bool) *SubscriptionBuilder {
+	b.released = value
+	b.bitmap_ |= 134217728
 	return b
 }
 
 // ServiceLevel sets the value of the 'service_level' attribute to the given value.
 //
-// Service Level of Subscription.
-func (b *SubscriptionBuilder) ServiceLevel(value ServiceLevelEnum) *SubscriptionBuilder {
+//
+func (b *SubscriptionBuilder) ServiceLevel(value string) *SubscriptionBuilder {
 	b.serviceLevel = value
-	b.bitmap_ |= 4194304
+	b.bitmap_ |= 268435456
 	return b
 }
 
@@ -277,7 +341,7 @@ func (b *SubscriptionBuilder) ServiceLevel(value ServiceLevelEnum) *Subscription
 //
 func (b *SubscriptionBuilder) SocketTotal(value int) *SubscriptionBuilder {
 	b.socketTotal = value
-	b.bitmap_ |= 8388608
+	b.bitmap_ |= 536870912
 	return b
 }
 
@@ -286,25 +350,34 @@ func (b *SubscriptionBuilder) SocketTotal(value int) *SubscriptionBuilder {
 //
 func (b *SubscriptionBuilder) Status(value string) *SubscriptionBuilder {
 	b.status = value
-	b.bitmap_ |= 16777216
+	b.bitmap_ |= 1073741824
 	return b
 }
 
 // SupportLevel sets the value of the 'support_level' attribute to the given value.
 //
-// Support Level of Subscription.
-func (b *SubscriptionBuilder) SupportLevel(value SupportLevelEnum) *SubscriptionBuilder {
+//
+func (b *SubscriptionBuilder) SupportLevel(value string) *SubscriptionBuilder {
 	b.supportLevel = value
-	b.bitmap_ |= 33554432
+	b.bitmap_ |= 2147483648
 	return b
 }
 
 // SystemUnits sets the value of the 'system_units' attribute to the given value.
 //
-// Usage of Subscription.
-func (b *SubscriptionBuilder) SystemUnits(value SystemUnitsEnum) *SubscriptionBuilder {
+//
+func (b *SubscriptionBuilder) SystemUnits(value string) *SubscriptionBuilder {
 	b.systemUnits = value
-	b.bitmap_ |= 67108864
+	b.bitmap_ |= 4294967296
+	return b
+}
+
+// TrialEndDate sets the value of the 'trial_end_date' attribute to the given value.
+//
+//
+func (b *SubscriptionBuilder) TrialEndDate(value time.Time) *SubscriptionBuilder {
+	b.trialEndDate = value
+	b.bitmap_ |= 8589934592
 	return b
 }
 
@@ -313,16 +386,16 @@ func (b *SubscriptionBuilder) SystemUnits(value SystemUnitsEnum) *SubscriptionBu
 //
 func (b *SubscriptionBuilder) UpdatedAt(value time.Time) *SubscriptionBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 134217728
+	b.bitmap_ |= 17179869184
 	return b
 }
 
 // Usage sets the value of the 'usage' attribute to the given value.
 //
-// Usage of Subscription.
-func (b *SubscriptionBuilder) Usage(value UsageEnum) *SubscriptionBuilder {
+//
+func (b *SubscriptionBuilder) Usage(value string) *SubscriptionBuilder {
 	b.usage = value
-	b.bitmap_ |= 268435456
+	b.bitmap_ |= 34359738368
 	return b
 }
 
@@ -334,10 +407,19 @@ func (b *SubscriptionBuilder) Copy(object *Subscription) *SubscriptionBuilder {
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
+	if object.capabilities != nil {
+		b.capabilities = make([]*CapabilityBuilder, len(object.capabilities))
+		for i, v := range object.capabilities {
+			b.capabilities[i] = NewCapability().Copy(v)
+		}
+	} else {
+		b.capabilities = nil
+	}
 	b.cloudAccountID = object.cloudAccountID
 	b.cloudProviderID = object.cloudProviderID
 	b.clusterID = object.clusterID
 	b.clusterBillingModel = object.clusterBillingModel
+	b.consoleURL = object.consoleURL
 	b.consumerUUID = object.consumerUUID
 	b.cpuTotal = object.cpuTotal
 	b.createdAt = object.createdAt
@@ -357,8 +439,25 @@ func (b *SubscriptionBuilder) Copy(object *Subscription) *SubscriptionBuilder {
 		b.labels = nil
 	}
 	b.lastReconcileDate = object.lastReconcileDate
+	b.lastReleasedAt = object.lastReleasedAt
 	b.lastTelemetryDate = object.lastTelemetryDate
 	b.managed = object.managed
+	if object.metrics != nil {
+		b.metrics = make([]*SubscriptionMetricsBuilder, len(object.metrics))
+		for i, v := range object.metrics {
+			b.metrics[i] = NewSubscriptionMetrics().Copy(v)
+		}
+	} else {
+		b.metrics = nil
+	}
+	if object.notificationContacts != nil {
+		b.notificationContacts = make([]*AccountBuilder, len(object.notificationContacts))
+		for i, v := range object.notificationContacts {
+			b.notificationContacts[i] = NewAccount().Copy(v)
+		}
+	} else {
+		b.notificationContacts = nil
+	}
 	b.organizationID = object.organizationID
 	if object.plan != nil {
 		b.plan = NewPlan().Copy(object.plan)
@@ -368,11 +467,13 @@ func (b *SubscriptionBuilder) Copy(object *Subscription) *SubscriptionBuilder {
 	b.productBundle = object.productBundle
 	b.provenance = object.provenance
 	b.regionID = object.regionID
+	b.released = object.released
 	b.serviceLevel = object.serviceLevel
 	b.socketTotal = object.socketTotal
 	b.status = object.status
 	b.supportLevel = object.supportLevel
 	b.systemUnits = object.systemUnits
+	b.trialEndDate = object.trialEndDate
 	b.updatedAt = object.updatedAt
 	b.usage = object.usage
 	return b
@@ -384,10 +485,20 @@ func (b *SubscriptionBuilder) Build() (object *Subscription, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
+	if b.capabilities != nil {
+		object.capabilities = make([]*Capability, len(b.capabilities))
+		for i, v := range b.capabilities {
+			object.capabilities[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	object.cloudAccountID = b.cloudAccountID
 	object.cloudProviderID = b.cloudProviderID
 	object.clusterID = b.clusterID
 	object.clusterBillingModel = b.clusterBillingModel
+	object.consoleURL = b.consoleURL
 	object.consumerUUID = b.consumerUUID
 	object.cpuTotal = b.cpuTotal
 	object.createdAt = b.createdAt
@@ -409,8 +520,27 @@ func (b *SubscriptionBuilder) Build() (object *Subscription, err error) {
 		}
 	}
 	object.lastReconcileDate = b.lastReconcileDate
+	object.lastReleasedAt = b.lastReleasedAt
 	object.lastTelemetryDate = b.lastTelemetryDate
 	object.managed = b.managed
+	if b.metrics != nil {
+		object.metrics = make([]*SubscriptionMetrics, len(b.metrics))
+		for i, v := range b.metrics {
+			object.metrics[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
+	if b.notificationContacts != nil {
+		object.notificationContacts = make([]*Account, len(b.notificationContacts))
+		for i, v := range b.notificationContacts {
+			object.notificationContacts[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	object.organizationID = b.organizationID
 	if b.plan != nil {
 		object.plan, err = b.plan.Build()
@@ -421,11 +551,13 @@ func (b *SubscriptionBuilder) Build() (object *Subscription, err error) {
 	object.productBundle = b.productBundle
 	object.provenance = b.provenance
 	object.regionID = b.regionID
+	object.released = b.released
 	object.serviceLevel = b.serviceLevel
 	object.socketTotal = b.socketTotal
 	object.status = b.status
 	object.supportLevel = b.supportLevel
 	object.systemUnits = b.systemUnits
+	object.trialEndDate = b.trialEndDate
 	object.updatedAt = b.updatedAt
 	object.usage = b.usage
 	return

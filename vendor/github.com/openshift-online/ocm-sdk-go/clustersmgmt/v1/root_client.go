@@ -101,6 +101,16 @@ func (c *Client) Dashboards() *DashboardsClient {
 	)
 }
 
+// Events returns the target 'events' resource.
+//
+// Reference to the resource that manages the collection of trackable events.
+func (c *Client) Events() *EventsClient {
+	return NewEventsClient(
+		c.transport,
+		path.Join(c.path, "events"),
+	)
+}
+
 // Flavours returns the target 'flavours' resource.
 //
 // Reference to the service that manages the collection of flavours.

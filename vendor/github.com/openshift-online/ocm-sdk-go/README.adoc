@@ -163,7 +163,7 @@ if err != nil {
 
 The connection holds expensive resources, including a pool of HTTP connections
 to the server and an authentication token. It is important to release those
-resources whey they are no longer in use:
+resources when they are no longer in use:
 
 [source,go]
 ----

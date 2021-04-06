@@ -22,9 +22,24 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 import (
 	"io"
 	"net/http"
+
+	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
 func readClusterDeleteRequest(request *ClusterDeleteServerRequest, r *http.Request) error {
+	var err error
+	query := r.URL.Query()
+	request.deprovision, err = helpers.ParseBoolean(query, "deprovision")
+	if err != nil {
+		return err
+	}
+	if request.deprovision == nil {
+		request.deprovision = helpers.NewBoolean(true)
+	}
+	request.force, err = helpers.ParseBoolean(query, "force")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 func writeClusterDeleteRequest(request *ClusterDeleteRequest, writer io.Writer) error {

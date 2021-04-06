@@ -130,6 +130,58 @@ type ClusterServer interface {
 
 // ClusterDeleteServerRequest is the request for the 'delete' method.
 type ClusterDeleteServerRequest struct {
+	deprovision *bool
+	force       *bool
+}
+
+// Deprovision returns the value of the 'deprovision' parameter.
+//
+// If false it will only delete from OCM but not the actual cluster resources.
+// false is only allowed for OCP clusters. true by default.
+func (r *ClusterDeleteServerRequest) Deprovision() bool {
+	if r != nil && r.deprovision != nil {
+		return *r.deprovision
+	}
+	return false
+}
+
+// GetDeprovision returns the value of the 'deprovision' parameter and
+// a flag indicating if the parameter has a value.
+//
+// If false it will only delete from OCM but not the actual cluster resources.
+// false is only allowed for OCP clusters. true by default.
+func (r *ClusterDeleteServerRequest) GetDeprovision() (value bool, ok bool) {
+	ok = r != nil && r.deprovision != nil
+	if ok {
+		value = *r.deprovision
+	}
+	return
+}
+
+// Force returns the value of the 'force' parameter.
+//
+// If true it will force delete the cluster even if external dependecies
+// cleanup was not finalized. Should be used with extreme caution, after manual cleanup
+// of external dependencies. OSD only. false by default.
+func (r *ClusterDeleteServerRequest) Force() bool {
+	if r != nil && r.force != nil {
+		return *r.force
+	}
+	return false
+}
+
+// GetForce returns the value of the 'force' parameter and
+// a flag indicating if the parameter has a value.
+//
+// If true it will force delete the cluster even if external dependecies
+// cleanup was not finalized. Should be used with extreme caution, after manual cleanup
+// of external dependencies. OSD only. false by default.
+func (r *ClusterDeleteServerRequest) GetForce() (value bool, ok bool) {
+	ok = r != nil && r.force != nil
+	if ok {
+		value = *r.force
+	}
+	return
 }
 
 // ClusterDeleteServerResponse is the response for the 'delete' method.

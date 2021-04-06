@@ -28,6 +28,7 @@ type AWSBuilder struct {
 	accountID       string
 	secretAccessKey string
 	subnetIDs       []string
+	privateLink     bool
 }
 
 // NewAWS creates a new builder of 'AWS' objects.
@@ -53,12 +54,21 @@ func (b *AWSBuilder) AccountID(value string) *AWSBuilder {
 	return b
 }
 
+// PrivateLink sets the value of the 'private_link' attribute to the given value.
+//
+//
+func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
+	b.privateLink = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
 //
 //
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	b.secretAccessKey = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -68,7 +78,7 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -80,6 +90,7 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 	b.bitmap_ = object.bitmap_
 	b.accessKeyID = object.accessKeyID
 	b.accountID = object.accountID
+	b.privateLink = object.privateLink
 	b.secretAccessKey = object.secretAccessKey
 	if object.subnetIDs != nil {
 		b.subnetIDs = make([]string, len(object.subnetIDs))
@@ -96,6 +107,7 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 	object.bitmap_ = b.bitmap_
 	object.accessKeyID = b.accessKeyID
 	object.accountID = b.accountID
+	object.privateLink = b.privateLink
 	object.secretAccessKey = b.secretAccessKey
 	if b.subnetIDs != nil {
 		object.subnetIDs = make([]string, len(b.subnetIDs))

@@ -82,7 +82,7 @@ func writeQuotaCost(object *QuotaCost, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("related_resources")
-		writeInterfaceList(object.relatedResources, stream)
+		writeRelatedResourceList(object.relatedResources, stream)
 		count++
 	}
 	stream.WriteObjectEnd()
@@ -129,7 +129,7 @@ func readQuotaCost(iterator *jsoniter.Iterator) *QuotaCost {
 			object.quotaID = value
 			object.bitmap_ |= 8
 		case "related_resources":
-			value := readInterfaceList(iterator)
+			value := readRelatedResourceList(iterator)
 			object.relatedResources = value
 			object.bitmap_ |= 16
 		default:

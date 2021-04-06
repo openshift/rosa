@@ -133,11 +133,14 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 	}
 
 	cluster, err := client.Add().Parameter("dryRun", *config.DryRun).Body(spec).Send()
+	if config.DryRun != nil && *config.DryRun {
+		if cluster.Error() != nil {
+			return nil, handleErr(cluster.Error(), err)
+		}
+		return nil, nil
+	}
 	if err != nil {
 		return nil, handleErr(cluster.Error(), err)
-	}
-	if config.DryRun != nil && *config.DryRun {
-		return nil, nil
 	}
 
 	clusterObject := cluster.Body()

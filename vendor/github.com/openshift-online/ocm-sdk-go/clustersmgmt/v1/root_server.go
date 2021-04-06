@@ -54,6 +54,11 @@ type Server interface {
 	// Reference to the resource that manages the collection of dashboards.
 	Dashboards() DashboardsServer
 
+	// Events returns the target 'events' resource.
+	//
+	// Reference to the resource that manages the collection of trackable events.
+	Events() EventsServer
+
 	// Flavours returns the target 'flavours' resource.
 	//
 	// Reference to the service that manages the collection of flavours.
@@ -127,6 +132,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchDashboards(w, r, target, segments[1:])
+	case "events":
+		target := server.Events()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchEvents(w, r, target, segments[1:])
 	case "flavours":
 		target := server.Flavours()
 		if target == nil {

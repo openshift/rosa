@@ -117,7 +117,16 @@ func writeAddOnParameter(object *AddOnParameter, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&512 != 0 && object.options != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("options")
+		writeAddOnParameterOptionList(object.options, stream)
+		count++
+	}
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -126,7 +135,7 @@ func writeAddOnParameter(object *AddOnParameter, stream *jsoniter.Stream) {
 		stream.WriteBool(object.required)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -135,7 +144,7 @@ func writeAddOnParameter(object *AddOnParameter, stream *jsoniter.Stream) {
 		stream.WriteString(object.validation)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0
+	present_ = object.bitmap_&4096 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -206,18 +215,22 @@ func readAddOnParameter(iterator *jsoniter.Iterator) *AddOnParameter {
 			value := iterator.ReadString()
 			object.name = value
 			object.bitmap_ |= 256
+		case "options":
+			value := readAddOnParameterOptionList(iterator)
+			object.options = value
+			object.bitmap_ |= 512
 		case "required":
 			value := iterator.ReadBool()
 			object.required = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "validation":
 			value := iterator.ReadString()
 			object.validation = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		case "value_type":
 			value := iterator.ReadString()
 			object.valueType = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 4096
 		default:
 			iterator.ReadAny()
 		}

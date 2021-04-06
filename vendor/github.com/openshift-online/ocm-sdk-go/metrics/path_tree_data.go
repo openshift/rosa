@@ -192,6 +192,7 @@ var pathTreeData = `{
         "dashboards": {
           "-": null
         },
+        "events": null,
         "flavours": {
           "-": null
         },
