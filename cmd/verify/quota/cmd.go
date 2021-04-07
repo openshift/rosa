@@ -17,7 +17,9 @@ limitations under the License.
 package quota
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -58,16 +60,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Create the AWS client:
-	client, err := aws.NewClient().
-		Logger(logger).
-		Region(region).
-		Build()
-	if err != nil {
-		reporter.Errorf("Error creating AWS client: %v", err)
-		os.Exit(1)
-	}
-
 	// Create the client for the OCM API:
 	ocmConnection, err := ocm.NewConnection().
 		Logger(logger).
@@ -78,6 +70,20 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	defer ocmConnection.Close()
 	ocmClient := ocmConnection.ClustersMgmt().V1()
+
+	// Create the AWS client:
+	client, err := aws.NewClient().
+		Logger(logger).
+		Region(region).
+		Build()
+	if err != nil {
+		// FIXME Hack to capture errors due to using STS accounts
+		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
+			ocm.LogEvent(ocmClient, "ROSAInitCredentialsSTS")
+		}
+		reporter.Errorf("Error creating AWS client: %v", err)
+		os.Exit(1)
+	}
 
 	reporter.Infof("Validating AWS quota...")
 	_, err = client.ValidateQuota()
