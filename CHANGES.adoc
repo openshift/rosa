@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.4 Apr 7 2021
+
+- aws: Log event when creating client with STS credentials
+
 == 1.0.3 Apr 6 2021
 
 - aws: Enable skip SCP check on init
