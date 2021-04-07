@@ -17,7 +17,9 @@ limitations under the License.
 package initialize
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -84,16 +86,6 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Create the AWS client:
-	client, err := aws.NewClient().
-		Logger(logger).
-		Region(aws.DefaultRegion).
-		Build()
-	if err != nil {
-		reporter.Errorf("Error creating AWS client: %v", err)
-		os.Exit(1)
-	}
-
 	// If necessary, call `login` as part of `init`. We do this before
 	// other validations to get the prompt out of the way before performing
 	// longer checks.
@@ -147,6 +139,20 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	defer ocmConnection.Close()
 	ocmClient := ocmConnection.ClustersMgmt().V1()
+
+	// Create the AWS client:
+	client, err := aws.NewClient().
+		Logger(logger).
+		Region(aws.DefaultRegion).
+		Build()
+	if err != nil {
+		// FIXME Hack to capture errors due to using STS accounts
+		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
+			ocm.LogEvent(ocmClient, "ROSAInitCredentialsSTS")
+		}
+		reporter.Errorf("Error creating AWS client: %v", err)
+		os.Exit(1)
+	}
 
 	// Validate AWS credentials for current user
 	reporter.Infof("Validating AWS credentials...")
