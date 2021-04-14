@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/region"
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -254,7 +255,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Check whether the user can create a basic cluster
 	reporter.Infof("Validating cluster creation...")
-	err = simulateCluster(clustersCollection, args.region)
+	err = simulateCluster(clustersCollection, region.Region())
 	if err != nil {
 		ocm.LogEvent(ocmClient, "ROSAInitDryRunFailed")
 		reporter.Warnf("Cluster creation failed. "+
