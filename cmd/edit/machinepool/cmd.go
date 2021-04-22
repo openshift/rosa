@@ -261,8 +261,8 @@ func run(cmd *cobra.Command, argv []string) {
 		machinePool.Replicas(), machinePool.Autoscaling())
 
 	if !autoscaling && replicas < 0 ||
-		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1) {
-		reporter.Errorf("The number of machine pool replicas needs to be a positive integer")
+		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 0) {
+		reporter.Errorf("The number of machine pool replicas needs to be a non-negative integer")
 		os.Exit(1)
 	}
 
