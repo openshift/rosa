@@ -199,6 +199,11 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if cluster.AWS().PrivateLink() {
+		reporter.Errorf("Cluster '%s' is PrivateLink and does not support updating ingresses", clusterKey)
+		os.Exit(1)
+	}
+
 	// Edit API endpoint instead of ingresses
 	if ingressID == "api" {
 		clusterConfig := clusterprovider.Spec{

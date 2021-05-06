@@ -71,6 +71,7 @@ type Spec struct {
 	PodCIDR     net.IPNet
 	HostPrefix  int
 	Private     *bool
+	PrivateLink *bool
 
 	// Properties
 	CustomProperties map[string]string
@@ -507,6 +508,24 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 		clusterBuilder = clusterBuilder.Network(networkBuilder)
 	}
 
+	awsBuilder := cmv1.NewAWS().
+		AccountID(awsCreator.AccountID).
+		AccessKeyID(awsAccessKey.AccessKeyID).
+		SecretAccessKey(awsAccessKey.SecretAccessKey)
+
+	if config.SubnetIds != nil {
+		awsBuilder = awsBuilder.SubnetIDs(config.SubnetIds...)
+	}
+
+	if config.PrivateLink != nil {
+		awsBuilder = awsBuilder.PrivateLink(*config.PrivateLink)
+		if *config.PrivateLink {
+			*config.Private = true
+		}
+	}
+
+	clusterBuilder = clusterBuilder.AWS(awsBuilder)
+
 	if config.Private != nil {
 		if *config.Private {
 			clusterBuilder = clusterBuilder.API(
@@ -520,17 +539,6 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 			)
 		}
 	}
-
-	awsBuilder := cmv1.NewAWS().
-		AccountID(awsCreator.AccountID).
-		AccessKeyID(awsAccessKey.AccessKeyID).
-		SecretAccessKey(awsAccessKey.SecretAccessKey)
-
-	if config.SubnetIds != nil {
-		awsBuilder.SubnetIDs(config.SubnetIds...)
-	}
-
-	clusterBuilder = clusterBuilder.AWS(awsBuilder)
 
 	if config.DisableSCPChecks != nil && *config.DisableSCPChecks {
 		clusterBuilder = clusterBuilder.CCS(cmv1.NewCCS().
