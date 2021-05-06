@@ -438,7 +438,7 @@ func run(cmd *cobra.Command, _ []string) {
 	useExistingVPC := false
 	privateLink := args.privateLink
 	privateLinkWarning := "Once the cluster is created, this option cannot be changed."
-	if interactive.Enabled() {
+	if cmd.Flags().Changed("private-link") && interactive.Enabled() {
 		privateLink, err = interactive.GetBool(interactive.Input{
 			Question: "PrivateLink cluster",
 			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
@@ -464,12 +464,15 @@ func run(cmd *cobra.Command, _ []string) {
 	subnetsProvided := len(subnetIDs) > 0
 	reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
 	if !useExistingVPC && !subnetsProvided && interactive.Enabled() {
+		existingVPCHelp := "To install into an existing VPC you need to ensure that your VPC is configured " +
+			"with two subnets for each availability zone that you want the cluster installed into. "
+		if privateLink {
+			existingVPCHelp += "For PrivateLink, only a private subnet per availability zone is needed."
+		}
 		useExistingVPC, err = interactive.GetBool(interactive.Input{
 			Question: "Install into an existing VPC",
-			Help: "To install into an existing VPC you need to ensure that your VPC is configured with " +
-				"two subnets for each availability zone that you want the cluster installed into. " +
-				"For PrivateLink clusters, only a private subnet per availability zone is needed.",
-			Default: useExistingVPC,
+			Help:     existingVPCHelp,
+			Default:  useExistingVPC,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid value: %s", err)
