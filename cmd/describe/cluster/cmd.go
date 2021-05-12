@@ -280,6 +280,11 @@ func run(cmd *cobra.Command, argv []string) {
 			"Details Page:               %s%s\n", str,
 			detailsPage, cluster.ID())
 	}
+	if cluster.AWS().STS().OIDCEndpointURL() != "" {
+		str = fmt.Sprintf("%s"+
+			"OIDC Endpoint URL:          %s\n", str,
+			cluster.AWS().STS().OIDCEndpointURL())
+	}
 	if scheduledUpgrade != nil {
 		str = fmt.Sprintf("%s"+
 			"Scheduled Upgrade:          %s %s on %s\n",
