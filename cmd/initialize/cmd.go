@@ -243,15 +243,20 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Check if osdCcsAdmin has right permissions
-	reporter.Infof("Validating SCP policies for '%s'...", aws.AdminUserName)
-	target := aws.AdminUserName
-	isValid, err := client.ValidateSCP(&target)
-	if !isValid {
-		ocm.LogEvent(ocmClient, "ROSAInitSCPPoliciesFailed")
-		reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)
-		os.Exit(1)
+	// Skip this check if --disable-scp-checks is true
+	if !args.disableSCPChecks {
+		reporter.Infof("Validating SCP policies for '%s'...", aws.AdminUserName)
+		target := aws.AdminUserName
+		isValid, err := client.ValidateSCP(&target)
+		if !isValid {
+			ocm.LogEvent(ocmClient, "ROSAInitSCPPoliciesFailed")
+			reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)
+			os.Exit(1)
+		}
+		reporter.Infof("AWS SCP policies ok")
+	} else {
+		reporter.Infof("Skipping AWS SCP policies check for '%s'...", aws.AdminUserName)
 	}
-	reporter.Infof("AWS SCP policies ok")
 
 	// Check whether the user can create a basic cluster
 	reporter.Infof("Validating cluster creation...")
