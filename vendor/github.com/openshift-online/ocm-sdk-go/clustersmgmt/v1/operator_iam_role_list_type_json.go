@@ -26,46 +26,46 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalClusterMetricsList writes a list of values of the 'cluster_metrics' type to
+// MarshalOperatorIAMRoleList writes a list of values of the 'operator_IAM_role' type to
 // the given writer.
-func MarshalClusterMetricsList(list []*ClusterMetrics, writer io.Writer) error {
+func MarshalOperatorIAMRoleList(list []*OperatorIAMRole, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeClusterMetricsList(list, stream)
+	writeOperatorIAMRoleList(list, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeClusterMetricsList writes a list of value of the 'cluster_metrics' type to
+// writeOperatorIAMRoleList writes a list of value of the 'operator_IAM_role' type to
 // the given stream.
-func writeClusterMetricsList(list []*ClusterMetrics, stream *jsoniter.Stream) {
+func writeOperatorIAMRoleList(list []*OperatorIAMRole, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeClusterMetrics(value, stream)
+		writeOperatorIAMRole(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalClusterMetricsList reads a list of values of the 'cluster_metrics' type
+// UnmarshalOperatorIAMRoleList reads a list of values of the 'operator_IAM_role' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalClusterMetricsList(source interface{}) (items []*ClusterMetrics, err error) {
+func UnmarshalOperatorIAMRoleList(source interface{}) (items []*OperatorIAMRole, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readClusterMetricsList(iterator)
+	items = readOperatorIAMRoleList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readClusterMetricsList reads list of values of the ''cluster_metrics' type from
+// readOperatorIAMRoleList reads list of values of the ''operator_IAM_role' type from
 // the given iterator.
-func readClusterMetricsList(iterator *jsoniter.Iterator) []*ClusterMetrics {
-	list := []*ClusterMetrics{}
+func readOperatorIAMRoleList(iterator *jsoniter.Iterator) []*OperatorIAMRole {
+	list := []*OperatorIAMRole{}
 	for iterator.ReadArray() {
-		item := readClusterMetrics(iterator)
+		item := readOperatorIAMRole(iterator)
 		list = append(list, item)
 	}
 	return list

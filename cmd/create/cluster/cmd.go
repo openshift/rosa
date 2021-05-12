@@ -88,6 +88,12 @@ var args struct {
 	// SubnetIDs should come in pairs; two per availability zone, one private and one public,
 	// unless using PrivateLink, in which case it should only be one private per availability zone
 	subnetIDs []string
+
+	// STS
+	roleARN          string
+	externalID       string
+	operatorIAMRoles []string
+	tags             []string
 }
 
 var Cmd = &cobra.Command{
@@ -123,6 +129,35 @@ func init() {
 		"",
 		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
 	)
+	flags.StringVar(
+		&args.roleARN,
+		"role-arn",
+		"",
+		"The Amazon Resource Name of the role that OpenShift Cluster Manager will assume to create the cluster.",
+	)
+	flags.MarkHidden("role-arn")
+	flags.StringVar(
+		&args.externalID,
+		"external-id",
+		"",
+		"A unique identifier that might be required when you assume a role in another account",
+	)
+	flags.MarkHidden("external-id")
+	flags.StringArrayVar(
+		&args.operatorIAMRoles,
+		"operator-iam-roles",
+		nil,
+		"",
+	)
+	flags.MarkHidden("operator-iam-roles")
+	flags.StringSliceVar(
+		&args.tags,
+		"tags",
+		nil,
+		"Apply user defined tags to all resources created by ROSA in AWS."+
+			"Tags are comma separated, for example: --tags=foo:bar,bar:baz",
+	)
+	flags.MarkHidden("tags")
 	flags.BoolVar(
 		&args.multiAZ,
 		"multi-az",
@@ -342,6 +377,107 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// AWS ARN Role
+	roleARN := args.roleARN
+	if interactive.Enabled() {
+		roleARN, err = interactive.GetString(interactive.Input{
+			Question: "Role ARN",
+			Help:     cmd.Flags().Lookup("role-arn").Usage,
+			Default:  roleARN,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid ARN: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// All STS-related options
+	externalID := args.externalID
+	tagsList := map[string]string{}
+	operatorIAMRoleList := []clusterprovider.OperatorIAMRole{}
+	if roleARN != "" {
+		if interactive.Enabled() {
+			externalID, err = interactive.GetString(interactive.Input{
+				Question: "External ID",
+				Help:     cmd.Flags().Lookup("external-id").Usage,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid External ID: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		operatorIAMRoles := args.operatorIAMRoles
+		for _, role := range operatorIAMRoles {
+			roleData := strings.Split(role, ",")
+			operatorIAMRoleList = append(operatorIAMRoleList, clusterprovider.OperatorIAMRole{
+				Name:      roleData[0],
+				Namespace: roleData[1],
+				RoleARN:   roleData[2],
+			})
+		}
+		if interactive.Enabled() {
+			for {
+				name, err := interactive.GetString(interactive.Input{
+					Question: "Operator IAM role name",
+				})
+				if err != nil {
+					reporter.Errorf("Expected the name of the operator IAM role: %s", err)
+					os.Exit(1)
+				}
+				if name == "" {
+					break
+				}
+				namespace, err := interactive.GetString(interactive.Input{
+					Question: "Operator IAM role namespace",
+				})
+				if err != nil {
+					reporter.Errorf("Expected the namespace of the operator IAM role: %s", err)
+					os.Exit(1)
+				}
+				if namespace == "" {
+					break
+				}
+				arn, err := interactive.GetString(interactive.Input{
+					Question: "Operator IAM role ARN",
+				})
+				if err != nil {
+					reporter.Errorf("Expected the ARN of the operator IAM role: %s", err)
+					os.Exit(1)
+				}
+				if arn == "" {
+					break
+				}
+				operatorIAMRoleList = append(operatorIAMRoleList, clusterprovider.OperatorIAMRole{
+					Namespace: namespace,
+					Name:      name,
+					RoleARN:   arn,
+				})
+			}
+		}
+	}
+
+	// Custom tags for AWS resources
+	tags := args.tags
+	if len(tags) > 0 && interactive.Enabled() {
+		tagsInput, err := interactive.GetString(interactive.Input{
+			Question: "Tags",
+			Help:     cmd.Flags().Lookup("tags").Usage,
+			Default:  strings.Join(tags, ","),
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid set of tags: %s", err)
+			os.Exit(1)
+		}
+		tags = strings.Split(tagsInput, ",")
+	}
+	if len(tags) > 0 {
+		for _, tag := range tags {
+			t := strings.Split(tag, ":")
+			tagsList[t[0]] = strings.TrimSpace(t[1])
+		}
+	}
+
 	// Multi-AZ:
 	multiAZ := args.multiAZ
 	if interactive.Enabled() {
@@ -363,7 +499,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	regionList, regionAZ, err := regions.GetRegionList(ocmClient, multiAZ)
+	regionList, regionAZ, err := regions.GetRegionList(ocmClient, multiAZ, roleARN, externalID)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -826,6 +962,10 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:  availabilityZones,
 		SubnetIds:          subnetIDs,
 		PrivateLink:        &privateLink,
+		RoleARN:            roleARN,
+		ExternalID:         externalID,
+		OperatorIAMRoles:   operatorIAMRoleList,
+		Tags:               tagsList,
 	}
 
 	if args.fakeCluster {
@@ -968,6 +1108,24 @@ func parseSubnet(subnetOption string) string {
 func buildCommand(spec clusterprovider.Spec) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
+	if spec.RoleARN != "" {
+		command += fmt.Sprintf(" --role-arn %s", spec.RoleARN)
+	}
+	if spec.ExternalID != "" {
+		command += fmt.Sprintf(" --external-id %s", spec.ExternalID)
+	}
+	if len(spec.OperatorIAMRoles) > 0 {
+		for _, role := range spec.OperatorIAMRoles {
+			command += fmt.Sprintf(" --operator-iam-roles %s,%s,%s", role.Name, role.Namespace, role.RoleARN)
+		}
+	}
+	if len(spec.Tags) > 0 {
+		tags := []string{}
+		for k, v := range spec.Tags {
+			tags = append(tags, fmt.Sprintf("%s:%s", k, v))
+		}
+		command += fmt.Sprintf(" --tags %s", strings.Join(tags, ","))
+	}
 	if spec.MultiAZ {
 		command += " --multi-az"
 	}

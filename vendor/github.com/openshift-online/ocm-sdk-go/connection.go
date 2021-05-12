@@ -35,6 +35,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/clustersmgmt"
 	"github.com/openshift-online/ocm-sdk-go/configuration"
 	"github.com/openshift-online/ocm-sdk-go/internal"
+	"github.com/openshift-online/ocm-sdk-go/jobqueue"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift-online/ocm-sdk-go/metrics"
 	"github.com/openshift-online/ocm-sdk-go/servicelogs"
@@ -897,6 +898,11 @@ func (c *Connection) Authorizations() *authorizations.Client {
 // ServiceLogs returns the client for the logs service.
 func (c *Connection) ServiceLogs() *servicelogs.Client {
 	return servicelogs.NewClient(c, "/api/service_logs")
+}
+
+// JobQueue returns the client for the Job Queues service.
+func (c *Connection) JobQueue() *jobqueue.Client {
+	return jobqueue.NewClient(c, "/api/job_queue")
 }
 
 // Close releases all the resources used by the connection. It is very important to always close it

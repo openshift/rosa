@@ -55,6 +55,7 @@ type HandlerBuilder struct {
 	service      string
 	error        string
 	operationID  func(*http.Request) string
+	tolerance    time.Duration
 	next         http.Handler
 }
 
@@ -73,6 +74,7 @@ type Handler struct {
 	service       string
 	error         string
 	operationID   func(*http.Request) string
+	tolerance     time.Duration
 	next          http.Handler
 }
 
@@ -240,11 +242,34 @@ func (b *HandlerBuilder) OperationID(value func(r *http.Request) string) *Handle
 	return b
 }
 
+// Tolerance sets the maximum time that a token will be considered valid after it has expired. For
+// example, to accept requests with tokens that have expired up to five minutes ago:
+//
+//	handler, err := authentication.NewHandler().
+//		Logger(logger).
+//		KeysURL("https://...").
+//		Tolerance(5 * time.Minute).
+//		Next(next).
+//		Build()
+//	if err != nil {
+//		...
+//	}
+//
+// The default value is zero tolerance.
+func (b *HandlerBuilder) Tolerance(value time.Duration) *HandlerBuilder {
+	b.tolerance = value
+	return b
+}
+
 // Build uses the data stored in the builder to create a new authentication handler.
 func (b *HandlerBuilder) Build() (handler *Handler, err error) {
 	// Check parameters:
 	if b.logger == nil {
 		err = fmt.Errorf("logger is mandatory")
+		return
+	}
+	if b.tolerance < 0 {
+		err = fmt.Errorf("tolerance must be zero or positive")
 		return
 	}
 	if b.next == nil {
@@ -342,6 +367,7 @@ func (b *HandlerBuilder) Build() (handler *Handler, err error) {
 		service:     b.service,
 		error:       b.error,
 		operationID: b.operationID,
+		tolerance:   b.tolerance,
 		next:        b.next,
 	}
 
@@ -694,44 +720,75 @@ func (h *Handler) checkToken(w http.ResponseWriter, r *http.Request,
 					w, r,
 					"Bearer token is malformed",
 				)
+				ok = false
 			case typed.Errors&jwt.ValidationErrorUnverifiable != 0:
 				h.sendError(
 					w, r,
 					"Bearer token can't be verified",
 				)
+				ok = false
 			case typed.Errors&jwt.ValidationErrorSignatureInvalid != 0:
 				h.sendError(
 					w, r,
 					"Signature of bearer token isn't valid",
 				)
+				ok = false
 			case typed.Errors&jwt.ValidationErrorExpired != 0:
-				h.sendError(
-					w, r,
-					"Bearer token is expired",
-				)
+				// When the token is expired according to the JWT library we may
+				// still want to accept it if we have a configured tolerance:
+				if h.tolerance > 0 {
+					var remaining time.Duration
+					_, remaining, err = tokenRemaining(token, time.Now())
+					if err != nil {
+						h.logger.Error(
+							ctx,
+							"Can't check token duration: %v",
+							err,
+						)
+						remaining = 0
+					}
+					if -remaining <= h.tolerance {
+						ok = true
+					} else {
+						h.sendError(
+							w, r,
+							"Bearer token is expired",
+						)
+						ok = false
+					}
+				} else {
+					h.sendError(
+						w, r,
+						"Bearer token is expired",
+					)
+					ok = false
+				}
 			case typed.Errors&jwt.ValidationErrorIssuedAt != 0:
 				h.sendError(
 					w, r,
 					"Bearer token was issued in the future",
 				)
+				ok = false
 			case typed.Errors&jwt.ValidationErrorNotValidYet != 0:
 				h.sendError(
 					w, r,
 					"Bearer token isn't valid yet",
 				)
+				ok = false
 			default:
 				h.sendError(
 					w, r,
 					"Bearer token isn't valid",
 				)
+				ok = false
 			}
 		default:
 			h.sendError(
 				w, r,
 				"Bearer token is malformed",
 			)
+			ok = false
 		}
-		ok = false
 		return
 	}
 	ok = true

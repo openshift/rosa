@@ -27,6 +27,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/clustersmgmt"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
+	"github.com/openshift-online/ocm-sdk-go/jobqueue"
 	"github.com/openshift-online/ocm-sdk-go/servicelogs"
 )
 
@@ -41,6 +42,9 @@ type Server interface {
 
 	// ClustersMgmt returns the server for service 'clusters_mgmt'.
 	ClustersMgmt() clustersmgmt.Server
+
+	// JobQueue returns the server for service 'job_queue'.
+	JobQueue() jobqueue.Server
 
 	// ServiceLogs returns the server for service 'service_logs'.
 	ServiceLogs() servicelogs.Server
@@ -83,6 +87,13 @@ func dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 				return
 			}
 			clustersmgmt.Dispatch(w, r, service, segments[1:])
+		case "job_queue":
+			service := server.JobQueue()
+			if service == nil {
+				errors.SendNotFound(w, r)
+				return
+			}
+			jobqueue.Dispatch(w, r, service, segments[1:])
 		case "service_logs":
 			service := server.ServiceLogs()
 			if service == nil {

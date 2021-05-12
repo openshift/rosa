@@ -26,6 +26,8 @@ package v1 // github.com/openshift-online/ocm-sdk-go/authorizations/v1
 type TermsReviewRequestBuilder struct {
 	bitmap_         uint32
 	accountUsername string
+	eventCode       string
+	siteCode        string
 }
 
 // NewTermsReviewRequest creates a new builder of 'terms_review_request' objects.
@@ -42,6 +44,24 @@ func (b *TermsReviewRequestBuilder) AccountUsername(value string) *TermsReviewRe
 	return b
 }
 
+// EventCode sets the value of the 'event_code' attribute to the given value.
+//
+//
+func (b *TermsReviewRequestBuilder) EventCode(value string) *TermsReviewRequestBuilder {
+	b.eventCode = value
+	b.bitmap_ |= 2
+	return b
+}
+
+// SiteCode sets the value of the 'site_code' attribute to the given value.
+//
+//
+func (b *TermsReviewRequestBuilder) SiteCode(value string) *TermsReviewRequestBuilder {
+	b.siteCode = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *TermsReviewRequestBuilder) Copy(object *TermsReviewRequest) *TermsReviewRequestBuilder {
 	if object == nil {
@@ -49,6 +69,8 @@ func (b *TermsReviewRequestBuilder) Copy(object *TermsReviewRequest) *TermsRevie
 	}
 	b.bitmap_ = object.bitmap_
 	b.accountUsername = object.accountUsername
+	b.eventCode = object.eventCode
+	b.siteCode = object.siteCode
 	return b
 }
 
@@ -57,5 +79,7 @@ func (b *TermsReviewRequestBuilder) Build() (object *TermsReviewRequest, err err
 	object = new(TermsReviewRequest)
 	object.bitmap_ = b.bitmap_
 	object.accountUsername = b.accountUsername
+	object.eventCode = b.eventCode
+	object.siteCode = b.siteCode
 	return
 }

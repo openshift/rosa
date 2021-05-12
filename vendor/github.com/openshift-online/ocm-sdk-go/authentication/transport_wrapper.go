@@ -33,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	//
 	"github.com/cenkalti/backoff/v4"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/openshift-online/ocm-sdk-go/internal"
@@ -611,7 +612,7 @@ func (w *TransportWrapper) Tokens(ctx context.Context, expiresIn ...time.Duratio
 			if code >= http.StatusInternalServerError {
 				w.logger.Error(
 					ctx,
-					"Can't to get tokens, got HTTP code %d, will retry: %v",
+					"Can't get tokens, got HTTP code %d, will retry: %v",
 					code, err,
 				)
 				return err
@@ -638,7 +639,7 @@ func (w *TransportWrapper) Tokens(ctx context.Context, expiresIn ...time.Duratio
 }
 
 func (w *TransportWrapper) tokens(ctx context.Context, attempt int,
-	expiresIn time.Duration) (code int, access, refresh string, err error) {
+	minRemaining time.Duration) (code int, access, refresh string, err error) {
 	// We need to make sure that this method isn't execute concurrently, as we will be updating
 	// multiple attributes of the connection:
 	w.tokenMutex.Lock()
@@ -647,29 +648,29 @@ func (w *TransportWrapper) tokens(ctx context.Context, attempt int,
 	// Check the expiration times of the tokens:
 	now := time.Now()
 	var accessExpires bool
-	var accessLeft time.Duration
+	var accessReamining time.Duration
 	if w.accessToken != nil {
-		accessExpires, accessLeft, err = GetTokenExpiry(w.accessToken, now)
+		accessExpires, accessReamining, err = tokenRemaining(w.accessToken, now)
 		if err != nil {
 			return
 		}
 	}
 	var refreshExpires bool
-	var refreshLeft time.Duration
+	var refreshRemaining time.Duration
 	if w.refreshToken != nil {
-		refreshExpires, refreshLeft, err = GetTokenExpiry(w.refreshToken, now)
+		refreshExpires, refreshRemaining, err = tokenRemaining(w.refreshToken, now)
 		if err != nil {
 			return
 		}
 	}
 	if w.logger.DebugEnabled() {
-		w.debugExpiry(ctx, "Bearer", w.accessToken, accessExpires, accessLeft)
-		w.debugExpiry(ctx, "Refresh", w.refreshToken, refreshExpires, refreshLeft)
+		w.debugExpiry(ctx, "Bearer", w.accessToken, accessExpires, accessReamining)
+		w.debugExpiry(ctx, "Refresh", w.refreshToken, refreshExpires, refreshRemaining)
 	}
 
 	// If the access token is available and it isn't expired or about to expire then we can
 	// return the current tokens directly:
-	if w.accessToken != nil && (!accessExpires || accessLeft >= expiresIn) {
+	if w.accessToken != nil && (!accessExpires || accessReamining >= minRemaining) {
 		access, refresh = w.currentTokens()
 		return
 	}
@@ -678,7 +679,7 @@ func (w *TransportWrapper) tokens(ctx context.Context, attempt int,
 	w.logger.Debug(ctx, "Trying to get new tokens (attempt %d)", attempt)
 
 	// So we need to check if we can use the refresh token to request a new one.
-	if w.refreshToken != nil && (!refreshExpires || refreshLeft >= expiresIn) {
+	if w.refreshToken != nil && (!refreshExpires || refreshRemaining >= minRemaining) {
 		code, _, err = w.sendRefreshTokenForm(ctx, attempt)
 		if err != nil {
 			return
@@ -702,12 +703,12 @@ func (w *TransportWrapper) tokens(ctx context.Context, attempt int,
 	// Here we know that the access and refresh tokens are unavailable, expired or about to
 	// expire. We also know that we don't have credentials to request new ones. But we could
 	// still use the refresh token if it isn't completely expired.
-	if w.refreshToken != nil && refreshLeft > 0 {
+	if w.refreshToken != nil && refreshRemaining > 0 {
 		w.logger.Warn(
 			ctx,
 			"Refresh token expires in only %s, but there is no other mechanism to "+
 				"obtain a new token, so will try to use it anyhow",
-			refreshLeft,
+			refreshRemaining,
 		)
 		code, _, err = w.sendRefreshTokenForm(ctx, attempt)
 		if err != nil {
@@ -721,12 +722,12 @@ func (w *TransportWrapper) tokens(ctx context.Context, attempt int,
 	// that the refresh token is unavailable or completely expired. And we know that we don't
 	// have credentials to request new tokens. But we can still use the access token if it isn't
 	// expired.
-	if w.accessToken != nil && accessLeft > 0 {
+	if w.accessToken != nil && accessReamining > 0 {
 		w.logger.Warn(
 			ctx,
 			"Access token expires in only %s, but there is no other mechanism to "+
 				"obtain a new token, so will try to use it anyhow",
-			accessLeft,
+			accessReamining,
 		)
 		access, refresh = w.currentTokens()
 		return
@@ -971,33 +972,6 @@ func (w *TransportWrapper) debugExpiry(ctx context.Context, typ string, token *j
 	} else {
 		w.logger.Debug(ctx, "%s token isn't available", typ)
 	}
-}
-
-// GetTokenExpiry determines if the given token expires, and the time that remains till it expires.
-func GetTokenExpiry(token *jwt.Token, now time.Time) (expires bool,
-	left time.Duration, err error) {
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		err = fmt.Errorf("expected map claims bug got %T", claims)
-		return
-	}
-	var exp float64
-	claim, ok := claims["exp"]
-	if ok {
-		exp, ok = claim.(float64)
-		if !ok {
-			err = fmt.Errorf("expected floating point 'exp' but got %T", claim)
-			return
-		}
-	}
-	if exp == 0 {
-		expires = false
-		left = 0
-	} else {
-		expires = true
-		left = time.Unix(int64(exp), 0).Sub(now)
-	}
-	return
 }
 
 const (

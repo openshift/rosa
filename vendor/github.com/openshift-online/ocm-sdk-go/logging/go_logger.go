@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 )
 
 // GoLoggerBuilder contains the configuration and logic needed to build a logger that uses the Go
@@ -136,7 +137,7 @@ func (l *GoLogger) Info(ctx context.Context, format string, args ...interface{})
 // Warn sends to the log a warning message formatted using the fmt.Sprintf function and the given
 // format and arguments.
 func (l *GoLogger) Warn(ctx context.Context, format string, args ...interface{}) {
-	if l.infoEnabled {
+	if l.warnEnabled {
 		msg := fmt.Sprintf(format, args...)
 		// #nosec G104
 		log.Output(1, msg)
@@ -151,4 +152,14 @@ func (l *GoLogger) Error(ctx context.Context, format string, args ...interface{}
 		// #nosec G104
 		log.Output(1, msg)
 	}
+}
+
+// Fatal sends to the log an error message formatted using the fmt.Sprintf function and the given
+// format and arguments. After that it will os.Exit(1)
+// This level is always enabled
+func (l *GoLogger) Fatal(ctx context.Context, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	// #nosec G104
+	log.Output(1, msg)
+	os.Exit(1)
 }

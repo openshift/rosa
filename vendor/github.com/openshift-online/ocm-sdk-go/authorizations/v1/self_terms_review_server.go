@@ -38,6 +38,29 @@ type SelfTermsReviewServer interface {
 
 // SelfTermsReviewPostServerRequest is the request for the 'post' method.
 type SelfTermsReviewPostServerRequest struct {
+	request *SelfTermsReviewRequest
+}
+
+// Request returns the value of the 'request' parameter.
+//
+//
+func (r *SelfTermsReviewPostServerRequest) Request() *SelfTermsReviewRequest {
+	if r == nil {
+		return nil
+	}
+	return r.request
+}
+
+// GetRequest returns the value of the 'request' parameter and
+// a flag indicating if the parameter has a value.
+//
+//
+func (r *SelfTermsReviewPostServerRequest) GetRequest() (value *SelfTermsReviewRequest, ok bool) {
+	ok = r != nil && r.request != nil
+	if ok {
+		value = r.request
+	}
+	return
 }
 
 // SelfTermsReviewPostServerResponse is the response for the 'post' method.

@@ -124,6 +124,16 @@ func (c *ClusterClient) Addons() *AddOnInstallationsClient {
 	)
 }
 
+// Clusterdeployment returns the target 'clusterdeployment' resource.
+//
+// Reference to the resource that manages the cluster deployment.
+func (c *ClusterClient) Clusterdeployment() *ClusterdeploymentClient {
+	return NewClusterdeploymentClient(
+		c.transport,
+		path.Join(c.path, "clusterdeployment"),
+	)
+}
+
 // Credentials returns the target 'credentials' resource.
 //
 // Reference to the resource that manages the credentials of the cluster.
@@ -372,7 +382,6 @@ type ClusterDeleteRequest struct {
 	query       url.Values
 	header      http.Header
 	deprovision *bool
-	force       *bool
 }
 
 // Parameter adds a query parameter.
@@ -396,16 +405,6 @@ func (r *ClusterDeleteRequest) Deprovision(value bool) *ClusterDeleteRequest {
 	return r
 }
 
-// Force sets the value of the 'force' parameter.
-//
-// If true it will force delete the cluster even if external dependecies
-// cleanup was not finalized. Should be used with extreme caution, after manual cleanup
-// of external dependencies. OSD only. false by default.
-func (r *ClusterDeleteRequest) Force(value bool) *ClusterDeleteRequest {
-	r.force = &value
-	return r
-}
-
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -419,9 +418,6 @@ func (r *ClusterDeleteRequest) SendContext(ctx context.Context) (result *Cluster
 	query := helpers.CopyQuery(r.query)
 	if r.deprovision != nil {
 		helpers.AddValue(&query, "deprovision", *r.deprovision)
-	}
-	if r.force != nil {
-		helpers.AddValue(&query, "force", *r.force)
 	}
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{

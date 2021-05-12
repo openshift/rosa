@@ -25,10 +25,12 @@ import (
 )
 
 func readSelfTermsReviewPostRequest(request *SelfTermsReviewPostServerRequest, r *http.Request) error {
-	return nil
+	var err error
+	request.request, err = UnmarshalSelfTermsReviewRequest(r)
+	return err
 }
 func writeSelfTermsReviewPostRequest(request *SelfTermsReviewPostRequest, writer io.Writer) error {
-	return nil
+	return MarshalSelfTermsReviewRequest(request.request, writer)
 }
 func readSelfTermsReviewPostResponse(response *SelfTermsReviewPostResponse, reader io.Reader) error {
 	var err error

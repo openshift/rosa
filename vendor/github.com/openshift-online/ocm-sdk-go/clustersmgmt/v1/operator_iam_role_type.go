@@ -19,120 +19,111 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-import (
-	time "time"
-)
-
-// ClusterMetric represents the values of the 'cluster_metric' type.
+// OperatorIAMRole represents the values of the 'operator_IAM_role' type.
 //
-// Metric describing the total and used amount of some resource (like RAM, CPU and storage) in
-// a cluster.
-type ClusterMetric struct {
-	bitmap_          uint32
-	total            *Value
-	updatedTimestamp time.Time
-	used             *Value
+// Contains the necessary attributes to allow each operator to access the necessary AWS resources
+type OperatorIAMRole struct {
+	bitmap_   uint32
+	name      string
+	namespace string
+	roleARN   string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *ClusterMetric) Empty() bool {
+func (o *OperatorIAMRole) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// Total returns the value of the 'total' attribute, or
+// Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Total amount of the resource that exists in the cluster. For example the total amount
-// of RAM.
-func (o *ClusterMetric) Total() *Value {
+// Name of the operator
+func (o *OperatorIAMRole) Name() string {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.total
+		return o.name
 	}
-	return nil
+	return ""
 }
 
-// GetTotal returns the value of the 'total' attribute and
+// GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Total amount of the resource that exists in the cluster. For example the total amount
-// of RAM.
-func (o *ClusterMetric) GetTotal() (value *Value, ok bool) {
+// Name of the operator
+func (o *OperatorIAMRole) GetName() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.total
+		value = o.name
 	}
 	return
 }
 
-// UpdatedTimestamp returns the value of the 'updated_timestamp' attribute, or
+// Namespace returns the value of the 'namespace' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Collection timestamp of the metric.
-func (o *ClusterMetric) UpdatedTimestamp() time.Time {
+// Namespace where the operator lives in the cluster
+func (o *OperatorIAMRole) Namespace() string {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.updatedTimestamp
+		return o.namespace
 	}
-	return time.Time{}
+	return ""
 }
 
-// GetUpdatedTimestamp returns the value of the 'updated_timestamp' attribute and
+// GetNamespace returns the value of the 'namespace' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Collection timestamp of the metric.
-func (o *ClusterMetric) GetUpdatedTimestamp() (value time.Time, ok bool) {
+// Namespace where the operator lives in the cluster
+func (o *OperatorIAMRole) GetNamespace() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.updatedTimestamp
+		value = o.namespace
 	}
 	return
 }
 
-// Used returns the value of the 'used' attribute, or
+// RoleARN returns the value of the 'role_ARN' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Amount of the resource that is currently in use in the cluster. Fore example the amount
-// of RAM in use.
-func (o *ClusterMetric) Used() *Value {
+// Role to assume when accessing AWS resources
+func (o *OperatorIAMRole) RoleARN() string {
 	if o != nil && o.bitmap_&4 != 0 {
-		return o.used
+		return o.roleARN
 	}
-	return nil
+	return ""
 }
 
-// GetUsed returns the value of the 'used' attribute and
+// GetRoleARN returns the value of the 'role_ARN' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Amount of the resource that is currently in use in the cluster. Fore example the amount
-// of RAM in use.
-func (o *ClusterMetric) GetUsed() (value *Value, ok bool) {
+// Role to assume when accessing AWS resources
+func (o *OperatorIAMRole) GetRoleARN() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
-		value = o.used
+		value = o.roleARN
 	}
 	return
 }
 
-// ClusterMetricListKind is the name of the type used to represent list of objects of
-// type 'cluster_metric'.
-const ClusterMetricListKind = "ClusterMetricList"
+// OperatorIAMRoleListKind is the name of the type used to represent list of objects of
+// type 'operator_IAM_role'.
+const OperatorIAMRoleListKind = "OperatorIAMRoleList"
 
-// ClusterMetricListLinkKind is the name of the type used to represent links to list
-// of objects of type 'cluster_metric'.
-const ClusterMetricListLinkKind = "ClusterMetricListLink"
+// OperatorIAMRoleListLinkKind is the name of the type used to represent links to list
+// of objects of type 'operator_IAM_role'.
+const OperatorIAMRoleListLinkKind = "OperatorIAMRoleListLink"
 
-// ClusterMetricNilKind is the name of the type used to nil lists of objects of
-// type 'cluster_metric'.
-const ClusterMetricListNilKind = "ClusterMetricListNil"
+// OperatorIAMRoleNilKind is the name of the type used to nil lists of objects of
+// type 'operator_IAM_role'.
+const OperatorIAMRoleListNilKind = "OperatorIAMRoleListNil"
 
-// ClusterMetricList is a list of values of the 'cluster_metric' type.
-type ClusterMetricList struct {
+// OperatorIAMRoleList is a list of values of the 'operator_IAM_role' type.
+type OperatorIAMRoleList struct {
 	href  string
 	link  bool
-	items []*ClusterMetric
+	items []*OperatorIAMRole
 }
 
 // Len returns the length of the list.
-func (l *ClusterMetricList) Len() int {
+func (l *OperatorIAMRoleList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -140,13 +131,13 @@ func (l *ClusterMetricList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *ClusterMetricList) Empty() bool {
+func (l *OperatorIAMRoleList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *ClusterMetricList) Get(i int) *ClusterMetric {
+func (l *OperatorIAMRoleList) Get(i int) *OperatorIAMRole {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -159,12 +150,12 @@ func (l *ClusterMetricList) Get(i int) *ClusterMetric {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *ClusterMetricList) Slice() []*ClusterMetric {
-	var slice []*ClusterMetric
+func (l *OperatorIAMRoleList) Slice() []*OperatorIAMRole {
+	var slice []*OperatorIAMRole
 	if l == nil {
-		slice = make([]*ClusterMetric, 0)
+		slice = make([]*OperatorIAMRole, 0)
 	} else {
-		slice = make([]*ClusterMetric, len(l.items))
+		slice = make([]*OperatorIAMRole, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -173,7 +164,7 @@ func (l *ClusterMetricList) Slice() []*ClusterMetric {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *ClusterMetricList) Each(f func(item *ClusterMetric) bool) {
+func (l *OperatorIAMRoleList) Each(f func(item *OperatorIAMRole) bool) {
 	if l == nil {
 		return
 	}
@@ -187,7 +178,7 @@ func (l *ClusterMetricList) Each(f func(item *ClusterMetric) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *ClusterMetricList) Range(f func(index int, item *ClusterMetric) bool) {
+func (l *OperatorIAMRoleList) Range(f func(index int, item *OperatorIAMRole) bool) {
 	if l == nil {
 		return
 	}

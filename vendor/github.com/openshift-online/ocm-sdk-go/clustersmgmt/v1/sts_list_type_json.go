@@ -26,46 +26,46 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalClusterMetricList writes a list of values of the 'cluster_metric' type to
+// MarshalSTSList writes a list of values of the 'STS' type to
 // the given writer.
-func MarshalClusterMetricList(list []*ClusterMetric, writer io.Writer) error {
+func MarshalSTSList(list []*STS, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeClusterMetricList(list, stream)
+	writeSTSList(list, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeClusterMetricList writes a list of value of the 'cluster_metric' type to
+// writeSTSList writes a list of value of the 'STS' type to
 // the given stream.
-func writeClusterMetricList(list []*ClusterMetric, stream *jsoniter.Stream) {
+func writeSTSList(list []*STS, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeClusterMetric(value, stream)
+		writeSTS(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalClusterMetricList reads a list of values of the 'cluster_metric' type
+// UnmarshalSTSList reads a list of values of the 'STS' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalClusterMetricList(source interface{}) (items []*ClusterMetric, err error) {
+func UnmarshalSTSList(source interface{}) (items []*STS, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readClusterMetricList(iterator)
+	items = readSTSList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readClusterMetricList reads list of values of the ''cluster_metric' type from
+// readSTSList reads list of values of the ''STS' type from
 // the given iterator.
-func readClusterMetricList(iterator *jsoniter.Iterator) []*ClusterMetric {
-	list := []*ClusterMetric{}
+func readSTSList(iterator *jsoniter.Iterator) []*STS {
+	list := []*STS{}
 	for iterator.ReadArray() {
-		item := readClusterMetric(iterator)
+		item := readSTS(iterator)
 		list = append(list, item)
 	}
 	return list

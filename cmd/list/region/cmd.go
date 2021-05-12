@@ -30,7 +30,9 @@ import (
 )
 
 var args struct {
-	multiAZ bool
+	multiAZ    bool
+	roleARN    string
+	externalID string
 }
 
 var Cmd = &cobra.Command{
@@ -51,6 +53,20 @@ func init() {
 		false,
 		"List only regions with support for multiple availability zones",
 	)
+	flags.StringVar(
+		&args.roleARN,
+		"role-arn",
+		"",
+		"The Amazon Resource Name of the role that the API will assume to fetch available regions.",
+	)
+	flags.MarkHidden("role-arn")
+	flags.StringVar(
+		&args.externalID,
+		"external-id",
+		"",
+		"A unique identifier that might be required when you assume a role in another account",
+	)
+	flags.MarkHidden("external-id")
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -77,7 +93,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Fetching regions")
-	regions, err := regions.GetRegions(ocmClient)
+	regions, err := regions.GetRegions(ocmClient, args.roleARN, args.externalID)
 	if err != nil {
 		reporter.Errorf("Failed to fetch regions: %v", err)
 		os.Exit(1)

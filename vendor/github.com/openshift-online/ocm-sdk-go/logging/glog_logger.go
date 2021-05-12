@@ -21,6 +21,7 @@ package logging
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/golang/glog"
 )
@@ -161,4 +162,14 @@ func (l *GlogLogger) Error(ctx context.Context, format string, args ...interface
 		msg := fmt.Sprintf(format, args...)
 		glog.ErrorDepth(1, msg)
 	}
+}
+
+// Fatal sends to the log an error message formatted using the fmt.Sprintf function and the given
+// format and arguments. After that it will os.Exit(1)
+// This level is always enabled
+func (l *GlogLogger) Fatal(ctx context.Context, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	// #nosec G104
+	glog.ErrorDepth(1, msg)
+	os.Exit(1)
 }
