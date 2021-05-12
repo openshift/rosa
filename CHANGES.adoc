@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.6 May 12 2021
+
+- Enable PrivateLink on clusters
+- PrivateLink: Hide references to PrivateLink
+- Correctly use the --disable-scp-checks parameter when supplied to init command
+- Add support for STS clusters
+- describe: Output OIDC Endpoint URL if available
+
 == 1.0.5 Apr 16 2021
 
 - init: Use correct region instead of default
