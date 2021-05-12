@@ -141,11 +141,18 @@ func run(cmd *cobra.Command, argv []string) {
 	defer ocmConnection.Close()
 	ocmClient := ocmConnection.ClustersMgmt().V1()
 
+	// Get AWS region
+	awsRegion, err := aws.GetRegion(arguments.GetRegion())
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
 	// Create the AWS client:
 	client, err := aws.NewClient().
 		Logger(logger).
-		Region(aws.DefaultRegion).
+		Region(awsRegion).
 		Build()
+
 	if err != nil {
 		// FIXME Hack to capture errors due to using STS accounts
 		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
@@ -176,10 +183,29 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Delete CloudFormation stack and exit
 	if args.deleteStack {
+		awsClientForDeleteStack := client
 		reporter.Infof("Deleting cluster administrator user '%s'...", aws.AdminUserName)
+		tagRegion, err := client.GetClusterRegionTagForUser(aws.AdminUserName)
+		if err != nil {
+			reporter.Warnf("Error fetching AWS tag for user: %s", aws.AdminUserName)
+		}
+		if tagRegion != "" && tagRegion != awsRegion {
+			//tagregion specifies the region user used for rosa init. so if it is not same as the one used for deletestack
+			//then we need to delete the stack from region used for rosa init
+			// Create the AWS client using the tagged region and delete the cloud formation
+			client, err := aws.NewClient().
+				Logger(logger).
+				Region(tagRegion).
+				Build()
+			if err != nil {
+				reporter.Errorf("Error creating AWS client: %v", err)
+				os.Exit(1)
+			}
+			awsClientForDeleteStack = client
+		}
 
 		// Get creator ARN to determine existing clusters:
-		awsCreator, err := client.GetCreator()
+		awsCreator, err := awsClientForDeleteStack.GetCreator()
 		if err != nil {
 			ocm.LogEvent(ocmClient, "ROSAInitGetCreatorFailed")
 			reporter.Errorf("Failed to get AWS creator: %v", err)
@@ -201,7 +227,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		// Delete the CloudFormation stack
-		err = client.DeleteOsdCcsAdminUser(aws.OsdCcsAdminStackName)
+		err = awsClientForDeleteStack.DeleteOsdCcsAdminUser(aws.OsdCcsAdminStackName)
 		if err != nil {
 			ocm.LogEvent(ocmClient, "ROSAInitDeleteStackFailed")
 			reporter.Errorf("Failed to delete user '%s': %v", aws.AdminUserName, err)
@@ -256,6 +282,11 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Infof("AWS SCP policies ok")
 	} else {
 		reporter.Infof("Skipping AWS SCP policies check for '%s'...", aws.AdminUserName)
+	}
+
+	err = client.TagUserRegion(aws.AdminUserName, awsRegion)
+	if err != nil {
+		reporter.Errorf("Failed to add region tag to user '%s': %s", aws.AdminUserName, err)
 	}
 
 	// Check whether the user can create a basic cluster
