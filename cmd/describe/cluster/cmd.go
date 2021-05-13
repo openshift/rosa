@@ -35,8 +35,8 @@ import (
 )
 
 const (
-	StageURL      = "https://qaprodauth.cloud.redhat.com/openshift/details/"
-	ProductionURL = "https://cloud.redhat.com/openshift/details/"
+	StageURL      = "https://qaprodauth.cloud.redhat.com/openshift/details/s/"
+	ProductionURL = "https://cloud.redhat.com/openshift/details/s/"
 	StageEnv      = "https://api.stage.openshift.com"
 	ProductionEnv = "https://api.openshift.com"
 )
@@ -278,7 +278,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if detailsPage != "" {
 		str = fmt.Sprintf("%s"+
 			"Details Page:               %s%s\n", str,
-			detailsPage, cluster.ID())
+			detailsPage, cluster.Subscription().ID())
 	}
 	if scheduledUpgrade != nil {
 		str = fmt.Sprintf("%s"+
