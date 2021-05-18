@@ -176,7 +176,32 @@ func (r *QueuePopServerResponse) Status(value int) *QueuePopServerResponse {
 
 // QueuePushServerRequest is the request for the 'push' method.
 type QueuePushServerRequest struct {
-	arguments *string
+	abandonedAt *time.Time
+	arguments   *string
+	attempts    *int
+	createdAt   *time.Time
+}
+
+// AbandonedAt returns the value of the 'abandoned_at' parameter.
+//
+//
+func (r *QueuePushServerRequest) AbandonedAt() time.Time {
+	if r != nil && r.abandonedAt != nil {
+		return *r.abandonedAt
+	}
+	return time.Time{}
+}
+
+// GetAbandonedAt returns the value of the 'abandoned_at' parameter and
+// a flag indicating if the parameter has a value.
+//
+//
+func (r *QueuePushServerRequest) GetAbandonedAt() (value time.Time, ok bool) {
+	ok = r != nil && r.abandonedAt != nil
+	if ok {
+		value = *r.abandonedAt
+	}
+	return
 }
 
 // Arguments returns the value of the 'arguments' parameter.
@@ -197,6 +222,50 @@ func (r *QueuePushServerRequest) GetArguments() (value string, ok bool) {
 	ok = r != nil && r.arguments != nil
 	if ok {
 		value = *r.arguments
+	}
+	return
+}
+
+// Attempts returns the value of the 'attempts' parameter.
+//
+//
+func (r *QueuePushServerRequest) Attempts() int {
+	if r != nil && r.attempts != nil {
+		return *r.attempts
+	}
+	return 0
+}
+
+// GetAttempts returns the value of the 'attempts' parameter and
+// a flag indicating if the parameter has a value.
+//
+//
+func (r *QueuePushServerRequest) GetAttempts() (value int, ok bool) {
+	ok = r != nil && r.attempts != nil
+	if ok {
+		value = *r.attempts
+	}
+	return
+}
+
+// CreatedAt returns the value of the 'created_at' parameter.
+//
+//
+func (r *QueuePushServerRequest) CreatedAt() time.Time {
+	if r != nil && r.createdAt != nil {
+		return *r.createdAt
+	}
+	return time.Time{}
+}
+
+// GetCreatedAt returns the value of the 'created_at' parameter and
+// a flag indicating if the parameter has a value.
+//
+//
+func (r *QueuePushServerRequest) GetCreatedAt() (value time.Time, ok bool) {
+	ok = r != nil && r.createdAt != nil
+	if ok {
+		value = *r.createdAt
 	}
 	return
 }

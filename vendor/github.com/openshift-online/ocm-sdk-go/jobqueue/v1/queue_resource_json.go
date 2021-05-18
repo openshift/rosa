@@ -194,9 +194,26 @@ func readQueuePushRequest(request *QueuePushServerRequest, r *http.Request) erro
 			break
 		}
 		switch field {
+		case "abandoned_at":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			request.abandonedAt = &value
 		case "arguments":
 			value := iterator.ReadString()
 			request.arguments = &value
+		case "attempts":
+			value := iterator.ReadInt()
+			request.attempts = &value
+		case "created_at":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			request.createdAt = &value
 		default:
 			iterator.ReadAny()
 		}
@@ -211,12 +228,36 @@ func writeQueuePushRequest(request *QueuePushRequest, writer io.Writer) error {
 	count := 0
 	stream := helpers.NewStream(writer)
 	stream.WriteObjectStart()
+	if request.abandonedAt != nil {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("abandoned_at")
+		stream.WriteString((*request.abandonedAt).Format(time.RFC3339))
+		count++
+	}
 	if request.arguments != nil {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("arguments")
 		stream.WriteString(*request.arguments)
+		count++
+	}
+	if request.attempts != nil {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("attempts")
+		stream.WriteInt(*request.attempts)
+		count++
+	}
+	if request.createdAt != nil {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("created_at")
+		stream.WriteString((*request.createdAt).Format(time.RFC3339))
 		count++
 	}
 	stream.WriteObjectEnd()

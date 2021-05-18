@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type STS struct {
 	bitmap_          uint32
 	oidcEndpointURL  string
+	customIAMRoles   *CustomIAMRoles
 	externalID       string
 	operatorIAMRoles []*OperatorIAMRole
 	roleARN          string
@@ -58,12 +59,35 @@ func (o *STS) GetOIDCEndpointURL() (value string, ok bool) {
 	return
 }
 
+// CustomIAMRoles returns the value of the 'custom_IAM_roles' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Custom IAM roles to use for the instance profiles of the master and worker instances
+func (o *STS) CustomIAMRoles() *CustomIAMRoles {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.customIAMRoles
+	}
+	return nil
+}
+
+// GetCustomIAMRoles returns the value of the 'custom_IAM_roles' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Custom IAM roles to use for the instance profiles of the master and worker instances
+func (o *STS) GetCustomIAMRoles() (value *CustomIAMRoles, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.customIAMRoles
+	}
+	return
+}
+
 // ExternalID returns the value of the 'external_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Optional unique identifier when assuming role in another account
 func (o *STS) ExternalID() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.externalID
 	}
 	return ""
@@ -74,7 +98,7 @@ func (o *STS) ExternalID() string {
 //
 // Optional unique identifier when assuming role in another account
 func (o *STS) GetExternalID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.externalID
 	}
@@ -86,7 +110,7 @@ func (o *STS) GetExternalID() (value string, ok bool) {
 //
 // List of roles necessary to access the AWS resources of the various operators used during installation
 func (o *STS) OperatorIAMRoles() []*OperatorIAMRole {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.operatorIAMRoles
 	}
 	return nil
@@ -97,7 +121,7 @@ func (o *STS) OperatorIAMRoles() []*OperatorIAMRole {
 //
 // List of roles necessary to access the AWS resources of the various operators used during installation
 func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.operatorIAMRoles
 	}
@@ -109,7 +133,7 @@ func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
 //
 // ARN of the AWS role to assume when installing the cluster
 func (o *STS) RoleARN() string {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.roleARN
 	}
 	return ""
@@ -120,7 +144,7 @@ func (o *STS) RoleARN() string {
 //
 // ARN of the AWS role to assume when installing the cluster
 func (o *STS) GetRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.roleARN
 	}
