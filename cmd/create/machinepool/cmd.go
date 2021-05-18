@@ -271,8 +271,8 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		if minReplicas < 1 {
-			reporter.Errorf("min-replicas must be greater or equal to the number of zones")
+		if minReplicas < 0 {
+			reporter.Errorf("min-replicas must be a non-negative integer.")
 			os.Exit(1)
 		}
 		if cluster.MultiAZ() && minReplicas%3 != 0 {
