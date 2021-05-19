@@ -18,6 +18,7 @@ package ocm
 
 import (
 	"fmt"
+	"time"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/sirupsen/logrus"
@@ -112,6 +113,11 @@ func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 	// Create the connection:
 	result, err = builder.Build()
 	if err != nil {
+		return
+	}
+	_, _, err = result.Tokens(10 * time.Minute)
+	if err != nil {
+		err = fmt.Errorf("Error creating connection. Not able to get authentication token")
 		return
 	}
 
