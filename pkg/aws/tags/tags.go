@@ -27,3 +27,6 @@ const ClusterName = prefix + "cluster_name"
 
 // ClusterID is the name of the tag that will contain the identifier of the cluster.
 const ClusterID = prefix + "cluster_id"
+
+// ClusterID is the name of the tag that will contain the identifier of the cluster.
+const ClusterRegion = prefix + "region"

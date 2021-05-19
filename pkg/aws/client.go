@@ -69,10 +69,11 @@ type Client interface {
 	DeleteOsdCcsAdminUser(stackName string) error
 	GetAWSAccessKeys() (*AccessKey, error)
 	GetCreator() (*Creator, error)
-	TagUser(username string, clusterID string, clusterName string) error
 	ValidateSCP(*string) (bool, error)
 	GetSubnetIDs() ([]*ec2.Subnet, error)
 	ValidateQuota() (bool, error)
+	TagUserRegion(username string, region string) error
+	GetClusterRegionTagForUser(username string) (string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -207,7 +208,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	// Check that the region is set:
 	region := aws.StringValue(sess.Config.Region)
 	if region == "" {
-		return nil, fmt.Errorf("Region is not set")
+		return nil, fmt.Errorf("Region is not set. Use --region to set the region")
 	}
 
 	// Update session config
@@ -516,19 +517,26 @@ func (c *awsClient) DeleteOsdCcsAdminUser(stackName string) error {
 	return nil
 }
 
-// FIXME: Since we support multiple clusters per user, we need to find a better way to
-// tag the user so that the tags don't overwrite each other with each new cluster.
-func (c *awsClient) TagUser(username string, clusterID string, clusterName string) error {
+func (c *awsClient) GetClusterRegionTagForUser(username string) (string, error) {
+	user, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: aws.String(username)})
+	if err != nil {
+		return "", err
+	}
+	for _, tag := range user.User.Tags {
+		if *tag.Key == tags.ClusterRegion {
+			return *tag.Value, nil
+		}
+	}
+	return "", nil
+}
+
+func (c *awsClient) TagUserRegion(username string, region string) error {
 	_, err := c.iamClient.TagUser(&iam.TagUserInput{
 		UserName: aws.String(username),
 		Tags: []*iam.Tag{
 			{
-				Key:   aws.String(tags.ClusterID),
-				Value: aws.String(clusterID),
-			},
-			{
-				Key:   aws.String(tags.ClusterName),
-				Value: aws.String(clusterName),
+				Key:   aws.String(tags.ClusterRegion),
+				Value: aws.String(region),
 			},
 		},
 	})
