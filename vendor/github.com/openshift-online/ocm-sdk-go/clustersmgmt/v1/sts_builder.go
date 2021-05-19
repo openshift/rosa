@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type STSBuilder struct {
 	bitmap_          uint32
 	oidcEndpointURL  string
+	customIAMRoles   *CustomIAMRolesBuilder
 	externalID       string
 	operatorIAMRoles []*OperatorIAMRoleBuilder
 	roleARN          string
@@ -44,12 +45,25 @@ func (b *STSBuilder) OIDCEndpointURL(value string) *STSBuilder {
 	return b
 }
 
+// CustomIAMRoles sets the value of the 'custom_IAM_roles' attribute to the given value.
+//
+// Contains the necessary attributes to support role-based authentication on AWS.
+func (b *STSBuilder) CustomIAMRoles(value *CustomIAMRolesBuilder) *STSBuilder {
+	b.customIAMRoles = value
+	if value != nil {
+		b.bitmap_ |= 2
+	} else {
+		b.bitmap_ &^= 2
+	}
+	return b
+}
+
 // ExternalID sets the value of the 'external_ID' attribute to the given value.
 //
 //
 func (b *STSBuilder) ExternalID(value string) *STSBuilder {
 	b.externalID = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
@@ -59,7 +73,7 @@ func (b *STSBuilder) ExternalID(value string) *STSBuilder {
 func (b *STSBuilder) OperatorIAMRoles(values ...*OperatorIAMRoleBuilder) *STSBuilder {
 	b.operatorIAMRoles = make([]*OperatorIAMRoleBuilder, len(values))
 	copy(b.operatorIAMRoles, values)
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -68,7 +82,7 @@ func (b *STSBuilder) OperatorIAMRoles(values ...*OperatorIAMRoleBuilder) *STSBui
 //
 func (b *STSBuilder) RoleARN(value string) *STSBuilder {
 	b.roleARN = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -79,6 +93,11 @@ func (b *STSBuilder) Copy(object *STS) *STSBuilder {
 	}
 	b.bitmap_ = object.bitmap_
 	b.oidcEndpointURL = object.oidcEndpointURL
+	if object.customIAMRoles != nil {
+		b.customIAMRoles = NewCustomIAMRoles().Copy(object.customIAMRoles)
+	} else {
+		b.customIAMRoles = nil
+	}
 	b.externalID = object.externalID
 	if object.operatorIAMRoles != nil {
 		b.operatorIAMRoles = make([]*OperatorIAMRoleBuilder, len(object.operatorIAMRoles))
@@ -97,6 +116,12 @@ func (b *STSBuilder) Build() (object *STS, err error) {
 	object = new(STS)
 	object.bitmap_ = b.bitmap_
 	object.oidcEndpointURL = b.oidcEndpointURL
+	if b.customIAMRoles != nil {
+		object.customIAMRoles, err = b.customIAMRoles.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.externalID = b.externalID
 	if b.operatorIAMRoles != nil {
 		object.operatorIAMRoles = make([]*OperatorIAMRole, len(b.operatorIAMRoles))

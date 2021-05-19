@@ -94,6 +94,9 @@ var args struct {
 	externalID       string
 	operatorIAMRoles []string
 	tags             []string
+	//Custom IAM Roles
+	masterIAMCustomRole string
+	workerIAMCustomRole string
 }
 
 var Cmd = &cobra.Command{
@@ -150,6 +153,23 @@ func init() {
 		"",
 	)
 	flags.MarkHidden("operator-iam-roles")
+
+	flags.StringVar(
+		&args.masterIAMCustomRole,
+		"master-iam-role",
+		"",
+		"The name of the IAM role that will be attached to master instances",
+	)
+	flags.MarkHidden("master-iam-role")
+
+	flags.StringVar(
+		&args.workerIAMCustomRole,
+		"worker-iam-role",
+		"",
+		"The name of the IAM role that will be attached to worker instances",
+	)
+	flags.MarkHidden("worker-iam-role")
+
 	flags.StringSliceVar(
 		&args.tags,
 		"tags",
@@ -395,6 +415,9 @@ func run(cmd *cobra.Command, _ []string) {
 	externalID := args.externalID
 	tagsList := map[string]string{}
 	operatorIAMRoleList := []clusterprovider.OperatorIAMRole{}
+	masterIAMCustomRole := ""
+	workerIAMCustomRole := ""
+
 	if roleARN != "" {
 		if interactive.Enabled() {
 			externalID, err = interactive.GetString(interactive.Input{
@@ -453,6 +476,35 @@ func run(cmd *cobra.Command, _ []string) {
 					Name:      name,
 					RoleARN:   arn,
 				})
+			}
+		}
+		//Custom IAM Role
+		masterIAMCustomRole = args.masterIAMCustomRole
+
+		if interactive.Enabled() {
+			masterIAMCustomRole, err = interactive.GetString(interactive.Input{
+				Question: "Master IAM Role Name",
+				Help:     cmd.Flags().Lookup("master-iam-role").Usage,
+				Default:  masterIAMCustomRole,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid master iam role: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		//Custom IAM Role
+		workerIAMCustomRole = args.workerIAMCustomRole
+
+		if interactive.Enabled() {
+			workerIAMCustomRole, err = interactive.GetString(interactive.Input{
+				Question: "Worker IAM Role Name",
+				Help:     cmd.Flags().Lookup("worker-iam-role").Usage,
+				Default:  workerIAMCustomRole,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid worker iam role: %s", err)
+				os.Exit(1)
 			}
 		}
 	}
@@ -940,32 +992,34 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterConfig := clusterprovider.Spec{
-		Name:               clusterName,
-		Region:             region,
-		MultiAZ:            multiAZ,
-		Version:            version,
-		ChannelGroup:       channelGroup,
-		Flavour:            args.flavour,
-		Expiration:         expiration,
-		ComputeMachineType: computeMachineType,
-		ComputeNodes:       computeNodes,
-		Autoscaling:        autoscaling,
-		MinReplicas:        minReplicas,
-		MaxReplicas:        maxReplicas,
-		MachineCIDR:        machineCIDR,
-		ServiceCIDR:        serviceCIDR,
-		PodCIDR:            podCIDR,
-		HostPrefix:         hostPrefix,
-		Private:            &private,
-		DryRun:             &args.dryRun,
-		DisableSCPChecks:   &args.disableSCPChecks,
-		AvailabilityZones:  availabilityZones,
-		SubnetIds:          subnetIDs,
-		PrivateLink:        &privateLink,
-		RoleARN:            roleARN,
-		ExternalID:         externalID,
-		OperatorIAMRoles:   operatorIAMRoleList,
-		Tags:               tagsList,
+		Name:                clusterName,
+		Region:              region,
+		MultiAZ:             multiAZ,
+		Version:             version,
+		ChannelGroup:        channelGroup,
+		Flavour:             args.flavour,
+		Expiration:          expiration,
+		ComputeMachineType:  computeMachineType,
+		ComputeNodes:        computeNodes,
+		Autoscaling:         autoscaling,
+		MinReplicas:         minReplicas,
+		MaxReplicas:         maxReplicas,
+		MachineCIDR:         machineCIDR,
+		ServiceCIDR:         serviceCIDR,
+		PodCIDR:             podCIDR,
+		HostPrefix:          hostPrefix,
+		Private:             &private,
+		DryRun:              &args.dryRun,
+		DisableSCPChecks:    &args.disableSCPChecks,
+		AvailabilityZones:   availabilityZones,
+		SubnetIds:           subnetIDs,
+		PrivateLink:         &privateLink,
+		RoleARN:             roleARN,
+		ExternalID:          externalID,
+		OperatorIAMRoles:    operatorIAMRoleList,
+		MasterIAMCustomRole: masterIAMCustomRole,
+		WorkerIAMCustomRole: workerIAMCustomRole,
+		Tags:                tagsList,
 	}
 
 	if args.fakeCluster {

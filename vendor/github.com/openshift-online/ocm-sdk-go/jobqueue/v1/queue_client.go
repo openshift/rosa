@@ -641,11 +641,14 @@ func (r *QueuePopResponse) GetUpdatedAt() (value time.Time, ok bool) {
 
 // QueuePushRequest is the request for the 'push' method.
 type QueuePushRequest struct {
-	transport http.RoundTripper
-	path      string
-	query     url.Values
-	header    http.Header
-	arguments *string
+	transport   http.RoundTripper
+	path        string
+	query       url.Values
+	header      http.Header
+	abandonedAt *time.Time
+	arguments   *string
+	attempts    *int
+	createdAt   *time.Time
 }
 
 // Parameter adds a query parameter.
@@ -660,11 +663,35 @@ func (r *QueuePushRequest) Header(name string, value interface{}) *QueuePushRequ
 	return r
 }
 
+// AbandonedAt sets the value of the 'abandoned_at' parameter.
+//
+//
+func (r *QueuePushRequest) AbandonedAt(value time.Time) *QueuePushRequest {
+	r.abandonedAt = &value
+	return r
+}
+
 // Arguments sets the value of the 'arguments' parameter.
 //
 //
 func (r *QueuePushRequest) Arguments(value string) *QueuePushRequest {
 	r.arguments = &value
+	return r
+}
+
+// Attempts sets the value of the 'attempts' parameter.
+//
+//
+func (r *QueuePushRequest) Attempts(value int) *QueuePushRequest {
+	r.attempts = &value
+	return r
+}
+
+// CreatedAt sets the value of the 'created_at' parameter.
+//
+//
+func (r *QueuePushRequest) CreatedAt(value time.Time) *QueuePushRequest {
+	r.createdAt = &value
 	return r
 }
 

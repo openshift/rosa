@@ -69,38 +69,11 @@ func writeResourceQuota(object *ResourceQuota, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("byoc")
-		stream.WriteBool(object.byoc)
-		count++
-	}
-	present_ = object.bitmap_&16 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
 		stream.WriteObjectField("sku")
 		stream.WriteString(object.sku)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("allowed")
-		stream.WriteInt(object.allowed)
-		count++
-	}
-	present_ = object.bitmap_&64 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("availability_zone_type")
-		stream.WriteString(object.availabilityZoneType)
-		count++
-	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -109,7 +82,7 @@ func writeResourceQuota(object *ResourceQuota, stream *jsoniter.Stream) {
 		stream.WriteString((object.createdAt).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -118,25 +91,7 @@ func writeResourceQuota(object *ResourceQuota, stream *jsoniter.Stream) {
 		stream.WriteString(object.organizationID)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("resource_name")
-		stream.WriteString(object.resourceName)
-		count++
-	}
-	present_ = object.bitmap_&1024 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("resource_type")
-		stream.WriteString(object.resourceType)
-		count++
-	}
-	present_ = object.bitmap_&2048 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -145,7 +100,7 @@ func writeResourceQuota(object *ResourceQuota, stream *jsoniter.Stream) {
 		stream.WriteInt(object.skuCount)
 		count++
 	}
-	present_ = object.bitmap_&4096 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -154,7 +109,7 @@ func writeResourceQuota(object *ResourceQuota, stream *jsoniter.Stream) {
 		stream.WriteString(object.type_)
 		count++
 	}
-	present_ = object.bitmap_&8192 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -201,22 +156,10 @@ func readResourceQuota(iterator *jsoniter.Iterator) *ResourceQuota {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
-		case "byoc":
-			value := iterator.ReadBool()
-			object.byoc = value
-			object.bitmap_ |= 8
 		case "sku":
 			value := iterator.ReadString()
 			object.sku = value
-			object.bitmap_ |= 16
-		case "allowed":
-			value := iterator.ReadInt()
-			object.allowed = value
-			object.bitmap_ |= 32
-		case "availability_zone_type":
-			value := iterator.ReadString()
-			object.availabilityZoneType = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 8
 		case "created_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -224,27 +167,19 @@ func readResourceQuota(iterator *jsoniter.Iterator) *ResourceQuota {
 				iterator.ReportError("", err.Error())
 			}
 			object.createdAt = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 16
 		case "organization_id":
 			value := iterator.ReadString()
 			object.organizationID = value
-			object.bitmap_ |= 256
-		case "resource_name":
-			value := iterator.ReadString()
-			object.resourceName = value
-			object.bitmap_ |= 512
-		case "resource_type":
-			value := iterator.ReadString()
-			object.resourceType = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 32
 		case "sku_count":
 			value := iterator.ReadInt()
 			object.skuCount = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 64
 		case "type":
 			value := iterator.ReadString()
 			object.type_ = value
-			object.bitmap_ |= 4096
+			object.bitmap_ |= 128
 		case "updated_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -252,7 +187,7 @@ func readResourceQuota(iterator *jsoniter.Iterator) *ResourceQuota {
 				iterator.ReportError("", err.Error())
 			}
 			object.updatedAt = value
-			object.bitmap_ |= 8192
+			object.bitmap_ |= 256
 		default:
 			iterator.ReadAny()
 		}

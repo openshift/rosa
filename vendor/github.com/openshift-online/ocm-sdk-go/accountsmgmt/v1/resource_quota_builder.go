@@ -27,20 +27,15 @@ import (
 //
 //
 type ResourceQuotaBuilder struct {
-	bitmap_              uint32
-	id                   string
-	href                 string
-	sku                  string
-	allowed              int
-	availabilityZoneType string
-	createdAt            time.Time
-	organizationID       string
-	resourceName         string
-	resourceType         string
-	skuCount             int
-	type_                string
-	updatedAt            time.Time
-	byoc                 bool
+	bitmap_        uint32
+	id             string
+	href           string
+	sku            string
+	createdAt      time.Time
+	organizationID string
+	skuCount       int
+	type_          string
+	updatedAt      time.Time
 }
 
 // NewResourceQuota creates a new builder of 'resource_quota' objects.
@@ -68,39 +63,12 @@ func (b *ResourceQuotaBuilder) HREF(value string) *ResourceQuotaBuilder {
 	return b
 }
 
-// BYOC sets the value of the 'BYOC' attribute to the given value.
-//
-//
-func (b *ResourceQuotaBuilder) BYOC(value bool) *ResourceQuotaBuilder {
-	b.byoc = value
-	b.bitmap_ |= 8
-	return b
-}
-
 // SKU sets the value of the 'SKU' attribute to the given value.
 //
 //
 func (b *ResourceQuotaBuilder) SKU(value string) *ResourceQuotaBuilder {
 	b.sku = value
-	b.bitmap_ |= 16
-	return b
-}
-
-// Allowed sets the value of the 'allowed' attribute to the given value.
-//
-//
-func (b *ResourceQuotaBuilder) Allowed(value int) *ResourceQuotaBuilder {
-	b.allowed = value
-	b.bitmap_ |= 32
-	return b
-}
-
-// AvailabilityZoneType sets the value of the 'availability_zone_type' attribute to the given value.
-//
-//
-func (b *ResourceQuotaBuilder) AvailabilityZoneType(value string) *ResourceQuotaBuilder {
-	b.availabilityZoneType = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -109,7 +77,7 @@ func (b *ResourceQuotaBuilder) AvailabilityZoneType(value string) *ResourceQuota
 //
 func (b *ResourceQuotaBuilder) CreatedAt(value time.Time) *ResourceQuotaBuilder {
 	b.createdAt = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -118,25 +86,7 @@ func (b *ResourceQuotaBuilder) CreatedAt(value time.Time) *ResourceQuotaBuilder 
 //
 func (b *ResourceQuotaBuilder) OrganizationID(value string) *ResourceQuotaBuilder {
 	b.organizationID = value
-	b.bitmap_ |= 256
-	return b
-}
-
-// ResourceName sets the value of the 'resource_name' attribute to the given value.
-//
-//
-func (b *ResourceQuotaBuilder) ResourceName(value string) *ResourceQuotaBuilder {
-	b.resourceName = value
-	b.bitmap_ |= 512
-	return b
-}
-
-// ResourceType sets the value of the 'resource_type' attribute to the given value.
-//
-//
-func (b *ResourceQuotaBuilder) ResourceType(value string) *ResourceQuotaBuilder {
-	b.resourceType = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -145,7 +95,7 @@ func (b *ResourceQuotaBuilder) ResourceType(value string) *ResourceQuotaBuilder 
 //
 func (b *ResourceQuotaBuilder) SkuCount(value int) *ResourceQuotaBuilder {
 	b.skuCount = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -154,7 +104,7 @@ func (b *ResourceQuotaBuilder) SkuCount(value int) *ResourceQuotaBuilder {
 //
 func (b *ResourceQuotaBuilder) Type(value string) *ResourceQuotaBuilder {
 	b.type_ = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -163,7 +113,7 @@ func (b *ResourceQuotaBuilder) Type(value string) *ResourceQuotaBuilder {
 //
 func (b *ResourceQuotaBuilder) UpdatedAt(value time.Time) *ResourceQuotaBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -175,14 +125,9 @@ func (b *ResourceQuotaBuilder) Copy(object *ResourceQuota) *ResourceQuotaBuilder
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
-	b.byoc = object.byoc
 	b.sku = object.sku
-	b.allowed = object.allowed
-	b.availabilityZoneType = object.availabilityZoneType
 	b.createdAt = object.createdAt
 	b.organizationID = object.organizationID
-	b.resourceName = object.resourceName
-	b.resourceType = object.resourceType
 	b.skuCount = object.skuCount
 	b.type_ = object.type_
 	b.updatedAt = object.updatedAt
@@ -195,14 +140,9 @@ func (b *ResourceQuotaBuilder) Build() (object *ResourceQuota, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
-	object.byoc = b.byoc
 	object.sku = b.sku
-	object.allowed = b.allowed
-	object.availabilityZoneType = b.availabilityZoneType
 	object.createdAt = b.createdAt
 	object.organizationID = b.organizationID
-	object.resourceName = b.resourceName
-	object.resourceType = b.resourceType
 	object.skuCount = b.skuCount
 	object.type_ = b.type_
 	object.updatedAt = b.updatedAt

@@ -86,9 +86,11 @@ type Spec struct {
 	DisableSCPChecks *bool
 
 	// STS
-	RoleARN          string
-	ExternalID       string
-	OperatorIAMRoles []OperatorIAMRole
+	RoleARN             string
+	ExternalID          string
+	OperatorIAMRoles    []OperatorIAMRole
+	MasterIAMCustomRole string
+	WorkerIAMCustomRole string
 }
 
 type OperatorIAMRole struct {
@@ -543,6 +545,14 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 			}
 			stsBuilder = stsBuilder.OperatorIAMRoles(roles...)
 		}
+		customIAMBuilder := cmv1.NewCustomIAMRoles()
+		if config.MasterIAMCustomRole != "" {
+			customIAMBuilder.MasterIAMRole(config.MasterIAMCustomRole)
+		}
+		if config.MasterIAMCustomRole != "" {
+			customIAMBuilder.WorkerIAMRole(config.WorkerIAMCustomRole)
+		}
+		stsBuilder = stsBuilder.CustomIAMRoles(customIAMBuilder)
 		awsBuilder = awsBuilder.STS(stsBuilder)
 	} else {
 		awsBuilder = awsBuilder.
