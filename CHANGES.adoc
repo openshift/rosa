@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.7 May 20 2021
+
+- Allow setting 0 replicas to autoscaling machine pool (Not default)
+- Updated the details link
+- Added custom IAM Roles
+- Remove default region
+- describe: Display description during Pending state
+
 == 1.0.6 May 12 2021
 
 - Enable PrivateLink on clusters
