@@ -149,6 +149,10 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if cluster.State() == cmv1.ClusterStatePending {
 		phase = "(Preparing account)"
+		status, _ := clusterprovider.GetClusterStatus(ocmClient.Clusters(), cluster.ID())
+		if status.Description() != "" {
+			phase = fmt.Sprintf("(%s)", status.Description())
+		}
 	}
 
 	if cluster.State() == cmv1.ClusterStateInstalling {

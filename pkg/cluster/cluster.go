@@ -207,6 +207,14 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 	}
 }
 
+func GetClusterStatus(client *cmv1.ClustersClient, clusterID string) (*cmv1.ClusterStatus, error) {
+	response, err := client.Cluster(clusterID).Status().Get().Send()
+	if err != nil || response.Body() == nil {
+		return nil, err
+	}
+	return response.Body(), nil
+}
+
 func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string, config Spec) error {
 	cluster, err := GetCluster(client, clusterKey, creatorARN)
 	if err != nil {
