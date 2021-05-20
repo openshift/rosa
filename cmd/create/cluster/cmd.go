@@ -399,7 +399,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// AWS ARN Role
 	roleARN := args.roleARN
-	if interactive.Enabled() {
+	if roleARN != "" && interactive.Enabled() {
 		roleARN, err = interactive.GetString(interactive.Input{
 			Question: "Role ARN",
 			Help:     cmd.Flags().Lookup("role-arn").Usage,
