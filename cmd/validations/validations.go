@@ -13,15 +13,8 @@ import (
 func Validations(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-	// Create the AWS client:
-	client, err := aws.NewClient().
-		Logger(logger).
-		Region(aws.DefaultRegion).
-		Build()
-	if err != nil {
-		reporter.Errorf("Error creating AWS client: %v", err)
-		os.Exit(1)
-	}
+
+	client := aws.GetAWSClientForUserRegion(reporter, logger)
 
 	reporter.Debugf("Validating cloudformation stack exists")
 	stackExist, _, err := client.CheckStackReadyOrNotExisting(aws.OsdCcsAdminStackName)

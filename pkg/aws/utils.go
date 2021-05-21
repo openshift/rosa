@@ -2,14 +2,17 @@ package aws
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/iam"
-
 	"github.com/openshift/rosa/assets"
+	"github.com/openshift/rosa/pkg/arguments"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/sirupsen/logrus"
 )
 
 // GetRegion will return a region selected by the user or given as a default to the AWS client.
@@ -96,4 +99,50 @@ func readCFTemplate() (string, error) {
 	}
 
 	return string(cfTemplate), nil
+}
+
+/**
+Currently user can rosa init using the region from their config or using --region
+When checking for cloud formation we need to check in the region used by the user
+*/
+func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger) Client {
+	// Get AWS region from env
+	awsRegionInUserConfig, err := GetRegion(arguments.GetRegion())
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+	if awsRegionInUserConfig == "" {
+		reporter.Errorf("AWS Region not set")
+		os.Exit(1)
+	}
+
+	// Create the AWS client:
+	client, err := NewClient().
+		Logger(logger).
+		Region(awsRegionInUserConfig).
+		Build()
+	if err != nil {
+		reporter.Errorf("Error creating aws client for stack validation: %v", err)
+		os.Exit(1)
+	}
+	regionUsedForInit, err := client.GetClusterRegionTagForUser(AdminUserName)
+	if err != nil {
+		return client
+	}
+
+	if regionUsedForInit != awsRegionInUserConfig {
+		// Create the AWS client with the region used in the init
+		//So we can check for the stack in that region
+		awsClient, err := NewClient().
+			Logger(logger).
+			Region(regionUsedForInit).
+			Build()
+		if err != nil {
+			reporter.Errorf("Error creating aws client for stack validation: %v", err)
+			os.Exit(1)
+		}
+		return awsClient
+	}
+	return client
 }

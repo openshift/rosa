@@ -31,9 +31,9 @@ import (
 	"github.com/spf13/cobra"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
-	v "github.com/openshift/rosa/cmd/validations"
 	"github.com/openshift/rosa/pkg/aws"
 
+	"github.com/openshift/rosa/cmd/validations"
 	"github.com/openshift/rosa/pkg/arguments"
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/confirm"
@@ -108,8 +108,7 @@ var Cmd = &cobra.Command{
 
   # Create a cluster in the us-east-2 region
   rosa create cluster --cluster-name=mycluster --region=us-east-2`,
-	Run:              run,
-	PersistentPreRun: v.Validations,
+	Run: run,
 }
 
 func init() {
@@ -507,6 +506,8 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
+	} else {
+		validations.Validations(cmd, []string{})
 	}
 
 	// Custom tags for AWS resources
