@@ -74,7 +74,7 @@ var _ = Describe("Client", func() {
 					mockCfAPI.EXPECT().WaitUntilStackUpdateComplete(gomock.Any()).Return(nil)
 				})
 				It("Returns without error", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
 
 					Expect(stackCreated).To(BeFalse())
 					Expect(err).NotTo(HaveOccurred())
@@ -89,7 +89,7 @@ var _ = Describe("Client", func() {
 					mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
 				})
 				It("Creates a cloudformation stack", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
 
 					Expect(stackCreated).To(BeTrue())
 					Expect(err).NotTo(HaveOccurred())
@@ -102,7 +102,7 @@ var _ = Describe("Client", func() {
 				})
 
 				It("Returns error telling the stack is in an invalid state", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
 
 					Expect(stackCreated).To(BeFalse())
 					Expect(err).To(HaveOccurred())
@@ -123,7 +123,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("Creates a cloudformation stack", func() {
-				stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName)
+				stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(stackCreated).To(BeTrue())

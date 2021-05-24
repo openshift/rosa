@@ -31,7 +31,6 @@ import (
 	"github.com/spf13/cobra"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
-	v "github.com/openshift/rosa/cmd/validations"
 	"github.com/openshift/rosa/pkg/aws"
 
 	"github.com/openshift/rosa/pkg/arguments"
@@ -108,8 +107,7 @@ var Cmd = &cobra.Command{
 
   # Create a cluster in the us-east-2 region
   rosa create cluster --cluster-name=mycluster --region=us-east-2`,
-	Run:              run,
-	PersistentPreRun: v.Validations,
+	Run: run,
 }
 
 func init() {
@@ -360,6 +358,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}()
 	ocmClient := ocmConnection.ClustersMgmt().V1()
+
+	//Currently roleARN is hidden in interactive mode
+	//Might need to change later
+	if args.roleARN == "" {
+		aws.CheckStackReadyForCreateCluster(reporter, logger)
+	}
 
 	if interactive.Enabled() {
 		reporter.Infof("Interactive mode enabled.\n" +

@@ -65,7 +65,7 @@ type Client interface {
 	GetIAMCredentials() (credentials.Value, error)
 	GetRegion() string
 	ValidateCredentials() (isValid bool, isSTS bool, err error)
-	EnsureOsdCcsAdminUser(stackName string, adminUserName string) (bool, error)
+	EnsureOsdCcsAdminUser(stackName string, adminUserName string, awsRegion string) (bool, error)
 	DeleteOsdCcsAdminUser(stackName string) error
 	GetAWSAccessKeys() (*AccessKey, error)
 	GetCreator() (*Creator, error)
@@ -335,7 +335,7 @@ func (c *awsClient) ValidateCredentials() (bool, bool, error) {
 }
 
 // Ensure osdCcsAdmin IAM user is created
-func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string) (bool, error) {
+func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string, awsRegion string) (bool, error) {
 	// Check already existing cloudformation stack status
 	stackReady, stackStatus, err := c.CheckStackReadyOrNotExisting(stackName)
 	if err != nil {
@@ -377,6 +377,10 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string
 		return false, err
 	}
 
+	err = c.TagUserRegion(adminUserName, awsRegion)
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
