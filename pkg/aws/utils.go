@@ -146,3 +146,15 @@ func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger) Cl
 	}
 	return client
 }
+
+// Validations will validate if CF stack/users exist
+func CheckStackReadyForCreateCluster(reporter *rprtr.Object, logger *logrus.Logger) {
+	client := GetAWSClientForUserRegion(reporter, logger)
+	reporter.Debugf("Validating cloudformation stack exists")
+	stackExist, _, err := client.CheckStackReadyOrNotExisting(OsdCcsAdminStackName)
+	if !stackExist || err != nil {
+		reporter.Errorf("Cloudformation stack does not exist. Run `rosa init` first")
+		os.Exit(1)
+	}
+	reporter.Debugf("cloudformation stack is valid!")
+}
