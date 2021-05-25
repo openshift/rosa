@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/openshift/rosa/assets"
 	"github.com/openshift/rosa/pkg/arguments"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -36,7 +36,7 @@ func GetRegion(region string) (string, error) {
 // getClientDetails will return the *iam.User associated with the provided client's credentials,
 // a boolean indicating whether the user is the 'root' account, and any error encountered
 // while trying to gather the info.
-func getClientDetails(awsClient *awsClient) (*iam.User, bool, error) {
+func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool, error) {
 	rootUser := false
 
 	_, _, err := awsClient.ValidateCredentials()
@@ -44,21 +44,21 @@ func getClientDetails(awsClient *awsClient) (*iam.User, bool, error) {
 		return nil, rootUser, err
 	}
 
-	user, err := awsClient.iamClient.GetUser(nil)
+	user, err := awsClient.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, rootUser, err
 	}
 
 	// Detect whether the AWS account's root user is being used
-	parsed, err := arn.Parse(*user.User.Arn)
+	parsed, err := arn.Parse(*user.Arn)
 	if err != nil {
 		return nil, rootUser, err
 	}
-	if parsed.AccountID == *user.User.UserId {
+	if parsed.AccountID == *user.UserId {
 		rootUser = true
 	}
 
-	return user.User, rootUser, nil
+	return user, rootUser, nil
 }
 
 // Build cloudformation create stack input

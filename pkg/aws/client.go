@@ -304,7 +304,7 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 
 // Checks if given credentials are valid.
 func (c *awsClient) ValidateCredentials() (bool, bool, error) {
-	// Validate the AWS credentails by calling STS GetCallerIdentity
+	// Validate the AWS credentials by calling STS GetCallerIdentity
 	// This will fail if the AWS access key and secret key are invalid. This
 	// will also work for STS credentials with access key, secret key and session
 	// token
@@ -724,25 +724,32 @@ func (c *awsClient) ValidateSCP(target *string) (bool, error) {
 	policyDocuments := []PolicyDocument{osdPolicyDocument}
 
 	// Find target user
-	var targetUser *iam.User
+	var targetUserARN arn.ARN
 	if target == nil {
 		var err error
-		targetUser, _, err = getClientDetails(c)
+		callerIdentity, _, err := getClientDetails(c)
 		if err != nil {
 			return false, fmt.Errorf("getClientDetails: %v\n"+
 				"Run 'rosa init' and try again", err)
 		}
+		targetUserARN, err = arn.Parse(*callerIdentity.Arn)
+		if err != nil {
+			return false, fmt.Errorf("unable to parse caller ARN %v", err)
+		}
 	} else {
-		targetIamOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
+		targetIAMOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
 		if err != nil {
 			return false, fmt.Errorf("iamClient.GetUser: %v\n"+
 				"To reset the '%s' account, run 'rosa init --delete-stack' and try again", *target, err)
 		}
-		targetUser = targetIamOutput.User
+		targetUserARN, err = arn.Parse(*targetIAMOutput.User.Arn)
+		if err != nil {
+			return false, fmt.Errorf("unable to parse caller ARN %v", err)
+		}
 	}
 
 	// Validate permissions
-	hasPermissions, err := validatePolicyDocuments(c, targetUser, policyDocuments, sParams)
+	hasPermissions, err := validatePolicyDocuments(c, targetUserARN.String(), policyDocuments, sParams)
 	if err != nil {
 		return false, err
 	}
