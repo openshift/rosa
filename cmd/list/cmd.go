@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/cluster"
 	"github.com/openshift/rosa/cmd/list/idp"
 	"github.com/openshift/rosa/cmd/list/ingress"
+	"github.com/openshift/rosa/cmd/list/instancetypes"
 	"github.com/openshift/rosa/cmd/list/machinepool"
 	"github.com/openshift/rosa/cmd/list/region"
 	"github.com/openshift/rosa/cmd/list/upgrade"
@@ -47,6 +48,7 @@ func init() {
 	Cmd.AddCommand(upgrade.Cmd)
 	Cmd.AddCommand(user.Cmd)
 	Cmd.AddCommand(version.Cmd)
+	Cmd.AddCommand(instancetypes.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
