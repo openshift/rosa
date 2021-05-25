@@ -304,33 +304,15 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 
 // Checks if given credentials are valid.
 func (c *awsClient) ValidateCredentials() (bool, bool, error) {
-	callerIdentityOutput, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	// Validate the AWS credentails by calling STS GetCallerIdentity
+	// This will fail if the AWS access key and secret key are invalid. This
+	// will also work for STS credentials with access key, secret key and session
+	// token
+	_, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return false, false, err
 	}
 
-	// Get IAM credentials only to support a better error message
-	// to help a user identity which AWS credentials the AWS client
-	// is using
-	iamCredentials, err := c.GetIAMCredentials()
-	if err != nil {
-		return false, false, err
-	}
-
-	parsedArn, err := arn.Parse(*callerIdentityOutput.Arn)
-	if err != nil {
-		return false, false, err
-	}
-
-	// At this time we don't support creating clusters with STS credentials
-	// Inform the user to try again using a IAM User, provide access key to help
-	// the user debug where the credentials are coming from
-	if parsedArn.Service == "sts" {
-		return false, true, fmt.Errorf(
-			"The AWS Access Key ID %s is associated with with STS credentials ARN %s\n"+
-				"STS users are not currently supported, please set AWS credentials to use an IAM user",
-			iamCredentials.AccessKeyID, parsedArn)
-	}
 	return true, false, nil
 }
 
