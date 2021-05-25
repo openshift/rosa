@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"regexp"
 	"time"
 
@@ -137,7 +138,7 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 		return nil, fmt.Errorf("Failed to create AWS client: %v", err)
 	}
 
-	spec, err := createClusterSpec(config, awsClient)
+	spec, err := createClusterSpec(client, config, awsClient)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create cluster spec: %v", err)
 	}
@@ -205,6 +206,17 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 	default:
 		return nil, fmt.Errorf("There are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
 	}
+}
+
+func GetPendingClusterForARN(client *cmv1.ClustersClient, creatorARN string) (cluster *cmv1.Cluster, err error) {
+	query := fmt.Sprintf("(state = 'pending') and properties.%s = '%s'", properties.CreatorARN, creatorARN)
+	request := client.List().Search(query)
+
+	response, err := request.Send()
+	if err != nil {
+		return cluster, err
+	}
+	return response.Items().Get(0), nil
 }
 
 func GetClusterStatus(client *cmv1.ClustersClient, clusterID string) (*cmv1.ClusterStatus, error) {
@@ -395,7 +407,8 @@ func UpdateAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, cre
 	return nil
 }
 
-func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
+func createClusterSpec(ocmClusterClient *cmv1.ClustersClient,
+	config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
 	reporter, err := rprtr.New().
 		Build()
 
@@ -410,6 +423,32 @@ func createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error)
 
 	var awsAccessKey *aws.AccessKey
 	if config.RoleARN == "" {
+		/**
+		1) Poll the cluster with same arn from ocm
+		2) Check the status and if pending enter to a loop until it becomes installing
+		3) Do it only for ROSA clusters and before UpsertAccessKey
+		*/
+		deadline := time.Now().Add(5 * time.Minute)
+		for {
+			pendingCluster, err := GetPendingClusterForARN(ocmClusterClient, awsCreator.ARN)
+			if err != nil {
+				reporter.Errorf("Error getting cluster using ARN '%s'", awsCreator.ARN)
+				os.Exit(1)
+			}
+			if time.Now().After(deadline) {
+				reporter.Errorf("Timeout waiting for the cluster '%s' installation. Try again in a few minutes",
+					pendingCluster.ID())
+				os.Exit(1)
+			}
+			if pendingCluster == nil {
+				break
+			} else {
+				reporter.Infof("Waiting for cluster '%s' with the same creator ARN to start installing",
+					pendingCluster.ID())
+				time.Sleep(30 * time.Second)
+			}
+		}
+
 		// Create the access key for the AWS user:
 		awsAccessKey, err = awsClient.GetAWSAccessKeys()
 		if err != nil {
