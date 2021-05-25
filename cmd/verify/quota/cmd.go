@@ -93,5 +93,7 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("%v", err)
 		os.Exit(1)
 	}
-	reporter.Infof("AWS quota ok")
+	reporter.Infof("AWS quota ok. " +
+		"If cluster installation fails, validate actual AWS resource usage against " +
+		"https://docs.openshift.com/rosa/rosa_getting_started/rosa-required-aws-service-quotas.html")
 }
