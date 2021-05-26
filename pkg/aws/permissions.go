@@ -35,8 +35,9 @@ type SimulateParams struct {
 }
 
 // checkPermissionsUsingQueryClient will use queryClient to query whether the credentials in targetClient can perform
-// the actions listed in the statementEntries. queryClient will need iam:GetUser and iam:SimulatePrincipalPolicy
-func checkPermissionsUsingQueryClient(queryClient *awsClient, targetUser *iam.User, policyDocument PolicyDocument,
+// the actions listed in the statementEntries. queryClient will need
+// sts:GetCallerIdentity and iam:SimulatePrincipalPolicy
+func checkPermissionsUsingQueryClient(queryClient *awsClient, targetUserARN string, policyDocument PolicyDocument,
 	params *SimulateParams) (bool, error) {
 	// Ignoring isRoot here since we only warn the user that its not best practice to use it.
 	// TODO: Add a check for isRoot in the initialize
@@ -48,7 +49,7 @@ func checkPermissionsUsingQueryClient(queryClient *awsClient, targetUser *iam.Us
 	}
 
 	input := &iam.SimulatePrincipalPolicyInput{
-		PolicySourceArn: targetUser.Arn,
+		PolicySourceArn: aws.String(targetUserARN),
 		ActionNames:     allowList,
 		ContextEntries:  []*iam.ContextEntry{},
 	}
@@ -91,10 +92,10 @@ func checkPermissionsUsingQueryClient(queryClient *awsClient, targetUser *iam.Us
 	return true, nil
 }
 
-func validatePolicyDocuments(queryClient *awsClient, targetUser *iam.User, policyDocuments []PolicyDocument,
+func validatePolicyDocuments(queryClient *awsClient, targetUserARN string, policyDocuments []PolicyDocument,
 	sParams *SimulateParams) (bool, error) {
 	for _, policyDocument := range policyDocuments {
-		permissionsOk, err := checkPermissionsUsingQueryClient(queryClient, targetUser, policyDocument, sParams)
+		permissionsOk, err := checkPermissionsUsingQueryClient(queryClient, targetUserARN, policyDocument, sParams)
 		if err != nil {
 			return false, err
 		}

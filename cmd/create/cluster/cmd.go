@@ -359,6 +359,21 @@ func run(cmd *cobra.Command, _ []string) {
 	}()
 	ocmClient := ocmConnection.ClustersMgmt().V1()
 
+	tempAWSClient := aws.GetAWSClientForUserRegion(reporter, logger)
+
+	creator, err := tempAWSClient.GetCreator()
+	if err != nil {
+		reporter.Errorf("Unable to get IAM credentials: %v", err)
+		os.Exit(1)
+	}
+
+	// Creating non STS clusters is not supported
+	if creator.IsSTS && args.roleARN == "" {
+		reporter.Errorf("IAM STS credentials can only create STS clusters --role-arn cannot be blank")
+		reporter.Errorf("Your AWS credentials are returning an STS ARN: %s", creator.ARN)
+		os.Exit(1)
+	}
+
 	//Currently roleARN is hidden in interactive mode
 	//Might need to change later
 	if args.roleARN == "" {

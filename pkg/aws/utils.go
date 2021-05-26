@@ -3,12 +3,13 @@ package aws
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/openshift/rosa/assets"
 	"github.com/openshift/rosa/pkg/arguments"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -36,7 +37,7 @@ func GetRegion(region string) (string, error) {
 // getClientDetails will return the *iam.User associated with the provided client's credentials,
 // a boolean indicating whether the user is the 'root' account, and any error encountered
 // while trying to gather the info.
-func getClientDetails(awsClient *awsClient) (*iam.User, bool, error) {
+func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool, error) {
 	rootUser := false
 
 	_, _, err := awsClient.ValidateCredentials()
@@ -44,21 +45,21 @@ func getClientDetails(awsClient *awsClient) (*iam.User, bool, error) {
 		return nil, rootUser, err
 	}
 
-	user, err := awsClient.iamClient.GetUser(nil)
+	user, err := awsClient.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, rootUser, err
 	}
 
 	// Detect whether the AWS account's root user is being used
-	parsed, err := arn.Parse(*user.User.Arn)
+	parsed, err := arn.Parse(*user.Arn)
 	if err != nil {
 		return nil, rootUser, err
 	}
-	if parsed.AccountID == *user.User.UserId {
+	if parsed.AccountID == *user.UserId {
 		rootUser = true
 	}
 
-	return user.User, rootUser, nil
+	return user, rootUser, nil
 }
 
 // Build cloudformation create stack input
@@ -157,4 +158,46 @@ func CheckStackReadyForCreateCluster(reporter *rprtr.Object, logger *logrus.Logg
 		os.Exit(1)
 	}
 	reporter.Debugf("cloudformation stack is valid!")
+}
+
+func isSTS(ARN arn.ARN) bool {
+	// If the client is using STS credentials we'll attempt to find the role
+	// assumed by the user and validate that using PolicySimulator
+	resource := strings.Split(ARN.Resource, "/")
+	resourceType := 0
+	// Example STS role ARN "arn:aws:sts::123456789123:assumed-role/OrganizationAccountAccessRole/UserAccess"
+	// if the "service" is STS and the "resource-id" sectino of the ARN contains 3 sections delimited by
+	// "/" we can validate its an assumed-role and assume the role name is the "parent-resource" and construct
+	// a role ARN
+	// https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+	if ARN.Service == "sts" &&
+		resource[resourceType] == "assumed-role" {
+		return true
+	}
+	return false
+}
+
+func resolveSTSRole(ARN arn.ARN) (*string, error) {
+	// If the client is using STS credentials we'll attempt to find the role
+	// assumed by the user and validate that using PolicySimulator
+	resource := strings.Split(ARN.Resource, "/")
+	parentResource := 1
+	// Example STS role ARN "arn:aws:sts::123456789123:assumed-role/OrganizationAccountAccessRole/UserAccess"
+	// if the "service" is STS and the "resource-id" sectino of the ARN contains 3 sections delimited by
+	// "/" we can validate its an assumed-role and assume the role name is the "parent-resource" and construct
+	// a role ARN
+	// https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+	if isSTS(ARN) && len(resource) == 3 {
+		// Construct IAM role ARN
+		roleARNString := fmt.Sprintf(
+			"arn:%s:iam::%s:role/%s", ARN.Partition, ARN.AccountID, resource[parentResource])
+		// Parse it to validate its ok
+		_, err := arn.Parse(roleARNString)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to parse role ARN %s created from sts role: %v", roleARNString, err)
+		}
+		return &roleARNString, nil
+	}
+
+	return nil, fmt.Errorf("ARN %s doesn't appear to have a a resource-id that confirms to an STS user", ARN.String())
 }

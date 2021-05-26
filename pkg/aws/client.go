@@ -282,6 +282,7 @@ func (c *awsClient) GetSubnetIDs() ([]*ec2.Subnet, error) {
 type Creator struct {
 	ARN       string
 	AccountID string
+	IsSTS     bool
 }
 
 func (c *awsClient) GetCreator() (*Creator, error) {
@@ -289,6 +290,7 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	creatorARN := aws.StringValue(getCallerIdentityOutput.Arn)
 
 	// Extract the account identifier from the ARN of the user:
@@ -296,41 +298,38 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// If the user is STS resolve the Role the user has assumed
+	var stsRole *string
+	if isSTS(creatorParsedARN) {
+		stsRole, err = resolveSTSRole(creatorParsedARN)
+		if err != nil {
+			return nil, err
+		}
+
+		// resolveSTSRole esures a parsed valid ARN before
+		// returning it so we don't need to parse it again
+		creatorARN = *stsRole
+	}
+
 	return &Creator{
 		ARN:       creatorARN,
 		AccountID: creatorParsedARN.AccountID,
+		IsSTS:     isSTS(creatorParsedARN),
 	}, nil
 }
 
 // Checks if given credentials are valid.
 func (c *awsClient) ValidateCredentials() (bool, bool, error) {
-	callerIdentityOutput, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	// Validate the AWS credentials by calling STS GetCallerIdentity
+	// This will fail if the AWS access key and secret key are invalid. This
+	// will also work for STS credentials with access key, secret key and session
+	// token
+	_, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return false, false, err
 	}
 
-	// Get IAM credentials only to support a better error message
-	// to help a user identity which AWS credentials the AWS client
-	// is using
-	iamCredentials, err := c.GetIAMCredentials()
-	if err != nil {
-		return false, false, err
-	}
-
-	parsedArn, err := arn.Parse(*callerIdentityOutput.Arn)
-	if err != nil {
-		return false, false, err
-	}
-
-	// At this time we don't support creating clusters with STS credentials
-	// Inform the user to try again using a IAM User, provide access key to help
-	// the user debug where the credentials are coming from
-	if parsedArn.Service == "sts" {
-		return false, true, fmt.Errorf(
-			"The AWS Access Key ID %s is associated with with STS credentials ARN %s\n"+
-				"STS users are not currently supported, please set AWS credentials to use an IAM user",
-			iamCredentials.AccessKeyID, parsedArn)
-	}
 	return true, false, nil
 }
 
@@ -741,26 +740,48 @@ func (c *awsClient) ValidateSCP(target *string) (bool, error) {
 	osdPolicyDocument := readSCPPolicy(scpPolicyPath)
 	policyDocuments := []PolicyDocument{osdPolicyDocument}
 
+	// Get Creator details
+	creator, err := c.GetCreator()
+	if err != nil {
+		return false, err
+	}
+
 	// Find target user
-	var targetUser *iam.User
+	var targetUserARN arn.ARN
 	if target == nil {
 		var err error
-		targetUser, _, err = getClientDetails(c)
+		callerIdentity, _, err := getClientDetails(c)
 		if err != nil {
 			return false, fmt.Errorf("getClientDetails: %v\n"+
 				"Run 'rosa init' and try again", err)
 		}
+		targetUserARN, err = arn.Parse(*callerIdentity.Arn)
+		if err != nil {
+			return false, fmt.Errorf("unable to parse caller ARN %v", err)
+		}
+		// If the client is using STS credentials want to validate the role
+		// the user has assumed. GetCreator() resolves that for us and updates
+		// the ARN
+		if creator.IsSTS {
+			targetUserARN, err = arn.Parse(creator.ARN)
+			if err != nil {
+				return false, err
+			}
+		}
 	} else {
-		targetIamOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
+		targetIAMOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
 		if err != nil {
 			return false, fmt.Errorf("iamClient.GetUser: %v\n"+
 				"To reset the '%s' account, run 'rosa init --delete-stack' and try again", *target, err)
 		}
-		targetUser = targetIamOutput.User
+		targetUserARN, err = arn.Parse(*targetIAMOutput.User.Arn)
+		if err != nil {
+			return false, fmt.Errorf("unable to parse caller ARN %v", err)
+		}
 	}
 
 	// Validate permissions
-	hasPermissions, err := validatePolicyDocuments(c, targetUser, policyDocuments, sParams)
+	hasPermissions, err := validatePolicyDocuments(c, targetUserARN.String(), policyDocuments, sParams)
 	if err != nil {
 		return false, err
 	}
