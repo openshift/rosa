@@ -3,6 +3,7 @@ package aws
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -157,4 +158,46 @@ func CheckStackReadyForCreateCluster(reporter *rprtr.Object, logger *logrus.Logg
 		os.Exit(1)
 	}
 	reporter.Debugf("cloudformation stack is valid!")
+}
+
+func isSTS(ARN arn.ARN) bool {
+	// If the client is using STS credentials we'll attempt to find the role
+	// assumed by the user and validate that using PolicySimulator
+	resource := strings.Split(ARN.Resource, "/")
+	resourceType := 0
+	// Example STS role ARN "arn:aws:sts::123456789123:assumed-role/OrganizationAccountAccessRole/UserAccess"
+	// if the "service" is STS and the "resource-id" sectino of the ARN contains 3 sections delimited by
+	// "/" we can validate its an assumed-role and assume the role name is the "parent-resource" and construct
+	// a role ARN
+	// https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+	if ARN.Service == "sts" &&
+		resource[resourceType] == "assumed-role" {
+		return true
+	}
+	return false
+}
+
+func resolveSTSRole(ARN arn.ARN) (*string, error) {
+	// If the client is using STS credentials we'll attempt to find the role
+	// assumed by the user and validate that using PolicySimulator
+	resource := strings.Split(ARN.Resource, "/")
+	parentResource := 1
+	// Example STS role ARN "arn:aws:sts::123456789123:assumed-role/OrganizationAccountAccessRole/UserAccess"
+	// if the "service" is STS and the "resource-id" sectino of the ARN contains 3 sections delimited by
+	// "/" we can validate its an assumed-role and assume the role name is the "parent-resource" and construct
+	// a role ARN
+	// https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+	if isSTS(ARN) && len(resource) == 3 {
+		// Construct IAM role ARN
+		roleARNString := fmt.Sprintf(
+			"arn:%s:iam::%s:role/%s", ARN.Partition, ARN.AccountID, resource[parentResource])
+		// Parse it to validate its ok
+		_, err := arn.Parse(roleARNString)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to parse role ARN %s created from sts role: %v", roleARNString, err)
+		}
+		return &roleARNString, nil
+	}
+
+	return nil, fmt.Errorf("ARN %s doesn't appear to have a a resource-id that confirms to an STS user", ARN.String())
 }

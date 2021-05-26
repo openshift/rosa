@@ -282,6 +282,7 @@ func (c *awsClient) GetSubnetIDs() ([]*ec2.Subnet, error) {
 type Creator struct {
 	ARN       string
 	AccountID string
+	IsSTS     bool
 }
 
 func (c *awsClient) GetCreator() (*Creator, error) {
@@ -289,6 +290,7 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	creatorARN := aws.StringValue(getCallerIdentityOutput.Arn)
 
 	// Extract the account identifier from the ARN of the user:
@@ -296,9 +298,24 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// If the user is STS resolve the Role the user has assumed
+	var stsRole *string
+	if isSTS(creatorParsedARN) {
+		stsRole, err = resolveSTSRole(creatorParsedARN)
+		if err != nil {
+			return nil, err
+		}
+
+		// resolveSTSRole esures a parsed valid ARN before
+		// returning it so we don't need to parse it again
+		creatorARN = *stsRole
+	}
+
 	return &Creator{
 		ARN:       creatorARN,
 		AccountID: creatorParsedARN.AccountID,
+		IsSTS:     isSTS(creatorParsedARN),
 	}, nil
 }
 
@@ -723,6 +740,12 @@ func (c *awsClient) ValidateSCP(target *string) (bool, error) {
 	osdPolicyDocument := readSCPPolicy(scpPolicyPath)
 	policyDocuments := []PolicyDocument{osdPolicyDocument}
 
+	// Get Creator details
+	creator, err := c.GetCreator()
+	if err != nil {
+		return false, err
+	}
+
 	// Find target user
 	var targetUserARN arn.ARN
 	if target == nil {
@@ -735,6 +758,15 @@ func (c *awsClient) ValidateSCP(target *string) (bool, error) {
 		targetUserARN, err = arn.Parse(*callerIdentity.Arn)
 		if err != nil {
 			return false, fmt.Errorf("unable to parse caller ARN %v", err)
+		}
+		// If the client is using STS credentials want to validate the role
+		// the user has assumed. GetCreator() resolves that for us and updates
+		// the ARN
+		if creator.IsSTS {
+			targetUserARN, err = arn.Parse(creator.ARN)
+			if err != nil {
+				return false, err
+			}
 		}
 	} else {
 		targetIAMOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
