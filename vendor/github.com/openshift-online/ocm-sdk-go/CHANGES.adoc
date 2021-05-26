@@ -3,6 +3,24 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.182 May 25 2021
+
+- Update model to v0.0.126
+** Add ClusterConfigurationMode type under ClusterStatus
+** sts: Change custom roles to instance roles
+
+== 0.1.181 May 25 2021
+
+- Add support for cookie authentication.
+
+== 0.1.180 May 25 2021
+
+- Remove `AccessToken` authentication.
+
+== 0.1.179 May 20 2021
+
+- Allow building with Go 1.13.
+
 == 0.1.178 May 18 2021
 
 - Update model to v0.0.125

@@ -56,6 +56,7 @@ type HandlerBuilder struct {
 	error        string
 	operationID  func(*http.Request) string
 	tolerance    time.Duration
+	cookie       string
 	next         http.Handler
 }
 
@@ -75,13 +76,16 @@ type Handler struct {
 	error         string
 	operationID   func(*http.Request) string
 	tolerance     time.Duration
+	cookie        string
 	next          http.Handler
 }
 
 // NewHandler creates a builder that can then be configured and used to create authentication
 // handlers.
 func NewHandler() *HandlerBuilder {
-	return &HandlerBuilder{}
+	return &HandlerBuilder{
+		cookie: defaultCookie,
+	}
 }
 
 // Logger sets the logger that the middleware will use to send messages to the log. This is
@@ -261,6 +265,13 @@ func (b *HandlerBuilder) Tolerance(value time.Duration) *HandlerBuilder {
 	return b
 }
 
+// Cookie sets the name of the cookie where the bearer token will be extracted from when the
+// `Authorization` header isn't present. The default is `cs_jwt`.
+func (b *HandlerBuilder) Cookie(value string) *HandlerBuilder {
+	b.cookie = value
+	return b
+}
+
 // Build uses the data stored in the builder to create a new authentication handler.
 func (b *HandlerBuilder) Build() (handler *Handler, err error) {
 	// Check parameters:
@@ -368,6 +379,7 @@ func (b *HandlerBuilder) Build() (handler *Handler, err error) {
 		error:       b.error,
 		operationID: b.operationID,
 		tolerance:   b.tolerance,
+		cookie:      b.cookie,
 		next:        b.next,
 	}
 
@@ -419,64 +431,81 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Extract the bearer token from the authorization header:
+	// Try to extract the credentials from the `Authorization` header:
+	var bearer string
 	header := r.Header.Get("Authorization")
-	if header == "" {
-		h.sendError(
-			w, r,
-			"Request doesn't contain the 'Authorization' header",
-		)
-		return
-	}
-	matches := bearerRE.FindStringSubmatch(header)
-	if len(matches) != 3 {
-		h.sendError(
-			w, r,
-			"Authorization header '%s' is malformed",
-			header,
-		)
-		return
-	}
-	typ := matches[1]
-	bearer := matches[2]
-
-	if strings.EqualFold(typ, "AccessToken") {
-		// Set JWT to nil since there is an AccessToken authorization header
-		ctx = ContextWithToken(ctx, nil)
-	} else {
-		if !strings.EqualFold(typ, "Bearer") {
+	if header != "" {
+		matches := bearerRE.FindStringSubmatch(header)
+		if len(matches) != 3 {
 			h.sendError(
 				w, r,
-				"Authentication type '%s' isn't supported",
-				typ,
+				"Authorization header '%s' is malformed",
+				header,
 			)
 			return
 		}
-
-		// Use the JWT library to verify that the token is correctly signed and that the basic
-		// claims are correct:
-		token, claims, ok := h.checkToken(w, r, bearer)
-		if !ok {
+		scheme := matches[1]
+		if !strings.EqualFold(scheme, "Bearer") {
+			h.sendError(
+				w, r,
+				"Authentication type '%s' isn't supported",
+				scheme,
+			)
 			return
 		}
-
-		// The library that we use considers tokens valid if the claims that it checks don't exist,
-		// but we want to reject those tokens, so we need to do some additional validations:
-		ok = h.checkClaims(w, r, claims)
-		if !ok {
-			return
-		}
-
-		// Check if the claims match at least one of the ACL items:
-		ok = h.checkACL(w, r, claims)
-		if !ok {
-			return
-		}
-
-		// Add the token to the context:
-		ctx = ContextWithToken(ctx, token)
+		bearer = matches[2]
 	}
 
+	// If it wasn't possible to extract the credentials from the `Authorization` header then try
+	// to get them from the cookies:
+	if bearer == "" && h.cookie != "" {
+		for _, cookie := range r.Cookies() {
+			if cookie.Name == h.cookie {
+				bearer = cookie.Value
+			}
+		}
+	}
+
+	// Report an error if after tying headers and cookies we still don't have credentials:
+	if bearer == "" {
+		if h.cookie != "" {
+			h.sendError(
+				w, r,
+				"Request doesn't contain the 'Authorization' header or "+
+					"the '%s' cookie",
+				h.cookie,
+			)
+		} else {
+			h.sendError(
+				w, r,
+				"Request doesn't contain the 'Authorization' header",
+			)
+		}
+		return
+	}
+
+	// Use the JWT library to verify that the token is correctly signed and that the basic
+	// claims are correct:
+	token, claims, ok := h.checkToken(w, r, bearer)
+	if !ok {
+		return
+	}
+
+	// The library that we use considers tokens valid if the claims that it checks don't exist,
+	// but we want to reject those tokens, so we need to do some additional validations:
+	ok = h.checkClaims(w, r, claims)
+	if !ok {
+		return
+	}
+
+	// Check if the claims match at least one of the ACL items:
+	ok = h.checkACL(w, r, claims)
+	if !ok {
+		return
+	}
+
+	// Add the token to the context:
+	ctx = ContextWithToken(ctx, token)
 	r = r.WithContext(ctx)
 
 	// Call the next handler:
@@ -976,3 +1005,7 @@ func (h *Handler) sendError(w http.ResponseWriter, r *http.Request, format strin
 
 // Regular expression used to extract the bearer token from the authorization header:
 var bearerRE = regexp.MustCompile(`^([a-zA-Z0-9]+)\s+(.*)$`)
+
+// Name of the cookie used to extract the bearer token when the `Authorization` header isn't
+// part of the request
+var defaultCookie = "cs_jwt"

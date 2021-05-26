@@ -26,46 +26,47 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalCustomIAMRolesList writes a list of values of the 'custom_IAM_roles' type to
+// MarshalClusterConfigurationModeList writes a list of values of the 'cluster_configuration_mode' type to
 // the given writer.
-func MarshalCustomIAMRolesList(list []*CustomIAMRoles, writer io.Writer) error {
+func MarshalClusterConfigurationModeList(list []ClusterConfigurationMode, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeCustomIAMRolesList(list, stream)
+	writeClusterConfigurationModeList(list, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeCustomIAMRolesList writes a list of value of the 'custom_IAM_roles' type to
+// writeClusterConfigurationModeList writes a list of value of the 'cluster_configuration_mode' type to
 // the given stream.
-func writeCustomIAMRolesList(list []*CustomIAMRoles, stream *jsoniter.Stream) {
+func writeClusterConfigurationModeList(list []ClusterConfigurationMode, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeCustomIAMRoles(value, stream)
+		stream.WriteString(string(value))
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalCustomIAMRolesList reads a list of values of the 'custom_IAM_roles' type
+// UnmarshalClusterConfigurationModeList reads a list of values of the 'cluster_configuration_mode' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalCustomIAMRolesList(source interface{}) (items []*CustomIAMRoles, err error) {
+func UnmarshalClusterConfigurationModeList(source interface{}) (items []ClusterConfigurationMode, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readCustomIAMRolesList(iterator)
+	items = readClusterConfigurationModeList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readCustomIAMRolesList reads list of values of the ''custom_IAM_roles' type from
+// readClusterConfigurationModeList reads list of values of the ''cluster_configuration_mode' type from
 // the given iterator.
-func readCustomIAMRolesList(iterator *jsoniter.Iterator) []*CustomIAMRoles {
-	list := []*CustomIAMRoles{}
+func readClusterConfigurationModeList(iterator *jsoniter.Iterator) []ClusterConfigurationMode {
+	list := []ClusterConfigurationMode{}
 	for iterator.ReadArray() {
-		item := readCustomIAMRoles(iterator)
+		text := iterator.ReadString()
+		item := ClusterConfigurationMode(text)
 		list = append(list, item)
 	}
 	return list

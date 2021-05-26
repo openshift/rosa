@@ -27,16 +27,16 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalCustomIAMRoles writes a value of the 'custom_IAM_roles' type to the given writer.
-func MarshalCustomIAMRoles(object *CustomIAMRoles, writer io.Writer) error {
+// MarshalInstanceIAMRoles writes a value of the 'instance_IAM_roles' type to the given writer.
+func MarshalInstanceIAMRoles(object *InstanceIAMRoles, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeCustomIAMRoles(object, stream)
+	writeInstanceIAMRoles(object, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeCustomIAMRoles writes a value of the 'custom_IAM_roles' type to the given stream.
-func writeCustomIAMRoles(object *CustomIAMRoles, stream *jsoniter.Stream) {
+// writeInstanceIAMRoles writes a value of the 'instance_IAM_roles' type to the given stream.
+func writeInstanceIAMRoles(object *InstanceIAMRoles, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -45,8 +45,8 @@ func writeCustomIAMRoles(object *CustomIAMRoles, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("master_iam_role")
-		stream.WriteString(object.masterIAMRole)
+		stream.WriteObjectField("master_role_arn")
+		stream.WriteString(object.masterRoleARN)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -54,16 +54,16 @@ func writeCustomIAMRoles(object *CustomIAMRoles, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("worker_iam_role")
-		stream.WriteString(object.workerIAMRole)
+		stream.WriteObjectField("worker_role_arn")
+		stream.WriteString(object.workerRoleARN)
 		count++
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalCustomIAMRoles reads a value of the 'custom_IAM_roles' type from the given
+// UnmarshalInstanceIAMRoles reads a value of the 'instance_IAM_roles' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalCustomIAMRoles(source interface{}) (object *CustomIAMRoles, err error) {
+func UnmarshalInstanceIAMRoles(source interface{}) (object *InstanceIAMRoles, err error) {
 	if source == http.NoBody {
 		return
 	}
@@ -71,27 +71,27 @@ func UnmarshalCustomIAMRoles(source interface{}) (object *CustomIAMRoles, err er
 	if err != nil {
 		return
 	}
-	object = readCustomIAMRoles(iterator)
+	object = readInstanceIAMRoles(iterator)
 	err = iterator.Error
 	return
 }
 
-// readCustomIAMRoles reads a value of the 'custom_IAM_roles' type from the given iterator.
-func readCustomIAMRoles(iterator *jsoniter.Iterator) *CustomIAMRoles {
-	object := &CustomIAMRoles{}
+// readInstanceIAMRoles reads a value of the 'instance_IAM_roles' type from the given iterator.
+func readInstanceIAMRoles(iterator *jsoniter.Iterator) *InstanceIAMRoles {
+	object := &InstanceIAMRoles{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "master_iam_role":
+		case "master_role_arn":
 			value := iterator.ReadString()
-			object.masterIAMRole = value
+			object.masterRoleARN = value
 			object.bitmap_ |= 1
-		case "worker_iam_role":
+		case "worker_role_arn":
 			value := iterator.ReadString()
-			object.workerIAMRole = value
+			object.workerRoleARN = value
 			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()

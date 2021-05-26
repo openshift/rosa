@@ -49,22 +49,22 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		stream.WriteString(object.oidcEndpointURL)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0 && object.customIAMRoles != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("custom_iam_roles")
-		writeCustomIAMRoles(object.customIAMRoles, stream)
-		count++
-	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&2 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("external_id")
 		stream.WriteString(object.externalID)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0 && object.instanceIAMRoles != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("instance_iam_roles")
+		writeInstanceIAMRoles(object.instanceIAMRoles, stream)
 		count++
 	}
 	present_ = object.bitmap_&8 != 0 && object.operatorIAMRoles != nil
@@ -116,13 +116,13 @@ func readSTS(iterator *jsoniter.Iterator) *STS {
 			value := iterator.ReadString()
 			object.oidcEndpointURL = value
 			object.bitmap_ |= 1
-		case "custom_iam_roles":
-			value := readCustomIAMRoles(iterator)
-			object.customIAMRoles = value
-			object.bitmap_ |= 2
 		case "external_id":
 			value := iterator.ReadString()
 			object.externalID = value
+			object.bitmap_ |= 2
+		case "instance_iam_roles":
+			value := readInstanceIAMRoles(iterator)
+			object.instanceIAMRoles = value
 			object.bitmap_ |= 4
 		case "operator_iam_roles":
 			value := readOperatorIAMRoleList(iterator)

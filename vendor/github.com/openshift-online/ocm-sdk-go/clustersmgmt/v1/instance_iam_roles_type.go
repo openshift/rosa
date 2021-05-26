@@ -19,87 +19,87 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// CustomIAMRoles represents the values of the 'custom_IAM_roles' type.
+// InstanceIAMRoles represents the values of the 'instance_IAM_roles' type.
 //
 // Contains the necessary attributes to support role-based authentication on AWS.
-type CustomIAMRoles struct {
+type InstanceIAMRoles struct {
 	bitmap_       uint32
-	masterIAMRole string
-	workerIAMRole string
+	masterRoleARN string
+	workerRoleARN string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *CustomIAMRoles) Empty() bool {
+func (o *InstanceIAMRoles) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// MasterIAMRole returns the value of the 'master_IAM_role' attribute, or
+// MasterRoleARN returns the value of the 'master_role_ARN' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// The name of the IAM role that will be attached to master instances
-func (o *CustomIAMRoles) MasterIAMRole() string {
+// The IAM role ARN that will be attached to master instances
+func (o *InstanceIAMRoles) MasterRoleARN() string {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.masterIAMRole
+		return o.masterRoleARN
 	}
 	return ""
 }
 
-// GetMasterIAMRole returns the value of the 'master_IAM_role' attribute and
+// GetMasterRoleARN returns the value of the 'master_role_ARN' attribute and
 // a flag indicating if the attribute has a value.
 //
-// The name of the IAM role that will be attached to master instances
-func (o *CustomIAMRoles) GetMasterIAMRole() (value string, ok bool) {
+// The IAM role ARN that will be attached to master instances
+func (o *InstanceIAMRoles) GetMasterRoleARN() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.masterIAMRole
+		value = o.masterRoleARN
 	}
 	return
 }
 
-// WorkerIAMRole returns the value of the 'worker_IAM_role' attribute, or
+// WorkerRoleARN returns the value of the 'worker_role_ARN' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// The name of the IAM role that will be attached to worker instances
-func (o *CustomIAMRoles) WorkerIAMRole() string {
+// The IAM role ARN that will be attached to worker instances
+func (o *InstanceIAMRoles) WorkerRoleARN() string {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.workerIAMRole
+		return o.workerRoleARN
 	}
 	return ""
 }
 
-// GetWorkerIAMRole returns the value of the 'worker_IAM_role' attribute and
+// GetWorkerRoleARN returns the value of the 'worker_role_ARN' attribute and
 // a flag indicating if the attribute has a value.
 //
-// The name of the IAM role that will be attached to worker instances
-func (o *CustomIAMRoles) GetWorkerIAMRole() (value string, ok bool) {
+// The IAM role ARN that will be attached to worker instances
+func (o *InstanceIAMRoles) GetWorkerRoleARN() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.workerIAMRole
+		value = o.workerRoleARN
 	}
 	return
 }
 
-// CustomIAMRolesListKind is the name of the type used to represent list of objects of
-// type 'custom_IAM_roles'.
-const CustomIAMRolesListKind = "CustomIAMRolesList"
+// InstanceIAMRolesListKind is the name of the type used to represent list of objects of
+// type 'instance_IAM_roles'.
+const InstanceIAMRolesListKind = "InstanceIAMRolesList"
 
-// CustomIAMRolesListLinkKind is the name of the type used to represent links to list
-// of objects of type 'custom_IAM_roles'.
-const CustomIAMRolesListLinkKind = "CustomIAMRolesListLink"
+// InstanceIAMRolesListLinkKind is the name of the type used to represent links to list
+// of objects of type 'instance_IAM_roles'.
+const InstanceIAMRolesListLinkKind = "InstanceIAMRolesListLink"
 
-// CustomIAMRolesNilKind is the name of the type used to nil lists of objects of
-// type 'custom_IAM_roles'.
-const CustomIAMRolesListNilKind = "CustomIAMRolesListNil"
+// InstanceIAMRolesNilKind is the name of the type used to nil lists of objects of
+// type 'instance_IAM_roles'.
+const InstanceIAMRolesListNilKind = "InstanceIAMRolesListNil"
 
-// CustomIAMRolesList is a list of values of the 'custom_IAM_roles' type.
-type CustomIAMRolesList struct {
+// InstanceIAMRolesList is a list of values of the 'instance_IAM_roles' type.
+type InstanceIAMRolesList struct {
 	href  string
 	link  bool
-	items []*CustomIAMRoles
+	items []*InstanceIAMRoles
 }
 
 // Len returns the length of the list.
-func (l *CustomIAMRolesList) Len() int {
+func (l *InstanceIAMRolesList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -107,13 +107,13 @@ func (l *CustomIAMRolesList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *CustomIAMRolesList) Empty() bool {
+func (l *InstanceIAMRolesList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *CustomIAMRolesList) Get(i int) *CustomIAMRoles {
+func (l *InstanceIAMRolesList) Get(i int) *InstanceIAMRoles {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -126,12 +126,12 @@ func (l *CustomIAMRolesList) Get(i int) *CustomIAMRoles {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *CustomIAMRolesList) Slice() []*CustomIAMRoles {
-	var slice []*CustomIAMRoles
+func (l *InstanceIAMRolesList) Slice() []*InstanceIAMRoles {
+	var slice []*InstanceIAMRoles
 	if l == nil {
-		slice = make([]*CustomIAMRoles, 0)
+		slice = make([]*InstanceIAMRoles, 0)
 	} else {
-		slice = make([]*CustomIAMRoles, len(l.items))
+		slice = make([]*InstanceIAMRoles, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -140,7 +140,7 @@ func (l *CustomIAMRolesList) Slice() []*CustomIAMRoles {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *CustomIAMRolesList) Each(f func(item *CustomIAMRoles) bool) {
+func (l *InstanceIAMRolesList) Each(f func(item *InstanceIAMRoles) bool) {
 	if l == nil {
 		return
 	}
@@ -154,7 +154,7 @@ func (l *CustomIAMRolesList) Each(f func(item *CustomIAMRoles) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *CustomIAMRolesList) Range(f func(index int, item *CustomIAMRoles) bool) {
+func (l *InstanceIAMRolesList) Range(f func(index int, item *InstanceIAMRoles) bool) {
 	if l == nil {
 		return
 	}
