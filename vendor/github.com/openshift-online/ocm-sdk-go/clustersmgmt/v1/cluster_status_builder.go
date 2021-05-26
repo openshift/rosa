@@ -26,6 +26,7 @@ type ClusterStatusBuilder struct {
 	bitmap_               uint32
 	id                    string
 	href                  string
+	configurationMode     ClusterConfigurationMode
 	description           string
 	provisionErrorCode    string
 	provisionErrorMessage string
@@ -67,12 +68,21 @@ func (b *ClusterStatusBuilder) DNSReady(value bool) *ClusterStatusBuilder {
 	return b
 }
 
+// ConfigurationMode sets the value of the 'configuration_mode' attribute to the given value.
+//
+// Configuration mode of a cluster.
+func (b *ClusterStatusBuilder) ConfigurationMode(value ClusterConfigurationMode) *ClusterStatusBuilder {
+	b.configurationMode = value
+	b.bitmap_ |= 16
+	return b
+}
+
 // Description sets the value of the 'description' attribute to the given value.
 //
 //
 func (b *ClusterStatusBuilder) Description(value string) *ClusterStatusBuilder {
 	b.description = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -81,7 +91,7 @@ func (b *ClusterStatusBuilder) Description(value string) *ClusterStatusBuilder {
 //
 func (b *ClusterStatusBuilder) ProvisionErrorCode(value string) *ClusterStatusBuilder {
 	b.provisionErrorCode = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -90,7 +100,7 @@ func (b *ClusterStatusBuilder) ProvisionErrorCode(value string) *ClusterStatusBu
 //
 func (b *ClusterStatusBuilder) ProvisionErrorMessage(value string) *ClusterStatusBuilder {
 	b.provisionErrorMessage = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -99,7 +109,7 @@ func (b *ClusterStatusBuilder) ProvisionErrorMessage(value string) *ClusterStatu
 // Overall state of a cluster.
 func (b *ClusterStatusBuilder) State(value ClusterState) *ClusterStatusBuilder {
 	b.state = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -112,6 +122,7 @@ func (b *ClusterStatusBuilder) Copy(object *ClusterStatus) *ClusterStatusBuilder
 	b.id = object.id
 	b.href = object.href
 	b.dnsReady = object.dnsReady
+	b.configurationMode = object.configurationMode
 	b.description = object.description
 	b.provisionErrorCode = object.provisionErrorCode
 	b.provisionErrorMessage = object.provisionErrorMessage
@@ -126,6 +137,7 @@ func (b *ClusterStatusBuilder) Build() (object *ClusterStatus, err error) {
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
 	object.dnsReady = b.dnsReady
+	object.configurationMode = b.configurationMode
 	object.description = b.description
 	object.provisionErrorCode = b.provisionErrorCode
 	object.provisionErrorMessage = b.provisionErrorMessage

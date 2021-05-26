@@ -25,8 +25,8 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type STS struct {
 	bitmap_          uint32
 	oidcEndpointURL  string
-	customIAMRoles   *CustomIAMRoles
 	externalID       string
+	instanceIAMRoles *InstanceIAMRoles
 	operatorIAMRoles []*OperatorIAMRole
 	roleARN          string
 }
@@ -59,35 +59,12 @@ func (o *STS) GetOIDCEndpointURL() (value string, ok bool) {
 	return
 }
 
-// CustomIAMRoles returns the value of the 'custom_IAM_roles' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Custom IAM roles to use for the instance profiles of the master and worker instances
-func (o *STS) CustomIAMRoles() *CustomIAMRoles {
-	if o != nil && o.bitmap_&2 != 0 {
-		return o.customIAMRoles
-	}
-	return nil
-}
-
-// GetCustomIAMRoles returns the value of the 'custom_IAM_roles' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Custom IAM roles to use for the instance profiles of the master and worker instances
-func (o *STS) GetCustomIAMRoles() (value *CustomIAMRoles, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
-	if ok {
-		value = o.customIAMRoles
-	}
-	return
-}
-
 // ExternalID returns the value of the 'external_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Optional unique identifier when assuming role in another account
 func (o *STS) ExternalID() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&2 != 0 {
 		return o.externalID
 	}
 	return ""
@@ -98,9 +75,32 @@ func (o *STS) ExternalID() string {
 //
 // Optional unique identifier when assuming role in another account
 func (o *STS) GetExternalID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.externalID
+	}
+	return
+}
+
+// InstanceIAMRoles returns the value of the 'instance_IAM_roles' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Instance IAM roles to use for the instance profiles of the master and worker instances
+func (o *STS) InstanceIAMRoles() *InstanceIAMRoles {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.instanceIAMRoles
+	}
+	return nil
+}
+
+// GetInstanceIAMRoles returns the value of the 'instance_IAM_roles' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Instance IAM roles to use for the instance profiles of the master and worker instances
+func (o *STS) GetInstanceIAMRoles() (value *InstanceIAMRoles, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.instanceIAMRoles
 	}
 	return
 }
