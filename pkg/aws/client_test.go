@@ -85,6 +85,7 @@ var _ = Describe("Client", func() {
 				BeforeEach(func() {
 					stackStatus = cloudformation.StackStatusDeleteComplete
 					mockIamAPI.EXPECT().ListUsers(gomock.Any()).Return(&iam.ListUsersOutput{Users: []*iam.User{}}, nil)
+					mockIamAPI.EXPECT().TagUser(gomock.Any()).Return(&iam.TagUserOutput{}, nil)
 					mockCfAPI.EXPECT().CreateStack(gomock.Any()).Return(nil, nil)
 					mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
 				})
@@ -118,6 +119,7 @@ var _ = Describe("Client", func() {
 					StackSummaries: []*cloudformation.StackSummary{},
 				}, nil)
 				mockIamAPI.EXPECT().ListUsers(gomock.Any()).Return(&iam.ListUsersOutput{Users: []*iam.User{}}, nil)
+				mockIamAPI.EXPECT().TagUser(gomock.Any()).Return(&iam.TagUserOutput{}, nil)
 				mockCfAPI.EXPECT().CreateStack(gomock.Any()).Return(nil, nil)
 				mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
 			})
