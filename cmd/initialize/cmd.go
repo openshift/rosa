@@ -83,7 +83,6 @@ func init() {
 		false,
 		"Indicates if cluster credentials checks should be done using STS Assume Role",
 	)
-	flags.MarkHidden("sts")
 
 	// Force-load all flags from `login` into `init`
 	flags.AddFlagSet(login.Cmd.Flags())
