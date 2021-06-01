@@ -399,15 +399,24 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// AWS ARN Role
 	roleARN := args.roleARN
-	if interactive.Enabled() {
-		help := cmd.Flags().Lookup("role-arn").Usage
-		if creator.IsSTS {
-			help = fmt.Sprintf("%s Since your AWS credentials are returning an STS ARN you can only "+
-				"create STS clusters. Otherwise, switch to IAM credentials.", help)
+
+	if !interactive.Enabled() && creator.IsSTS && roleARN == "" {
+		err = interactive.PrintHelp(interactive.Help{
+			Message: "Since your AWS credentials are returning an STS ARN you can only " +
+				"create STS clusters. Otherwise, switch to IAM credentials.",
+		})
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
 		}
+		interactive.Enable()
+		reporter.Infof("Enabling interactive mode")
+	}
+
+	if interactive.Enabled() {
 		roleARN, err = interactive.GetString(interactive.Input{
 			Question: "Role ARN",
-			Help:     help,
+			Help:     cmd.Flags().Lookup("role-arn").Usage,
 			Default:  roleARN,
 			Required: creator.IsSTS,
 		})
