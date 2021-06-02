@@ -26,46 +26,46 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSampleList writes a list of values of the 'sample' type to
+// MarshalKeyRingList writes a list of values of the 'key_ring' type to
 // the given writer.
-func MarshalSampleList(list []*Sample, writer io.Writer) error {
+func MarshalKeyRingList(list []*KeyRing, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSampleList(list, stream)
+	writeKeyRingList(list, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeSampleList writes a list of value of the 'sample' type to
+// writeKeyRingList writes a list of value of the 'key_ring' type to
 // the given stream.
-func writeSampleList(list []*Sample, stream *jsoniter.Stream) {
+func writeKeyRingList(list []*KeyRing, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeSample(value, stream)
+		writeKeyRing(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalSampleList reads a list of values of the 'sample' type
+// UnmarshalKeyRingList reads a list of values of the 'key_ring' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalSampleList(source interface{}) (items []*Sample, err error) {
+func UnmarshalKeyRingList(source interface{}) (items []*KeyRing, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readSampleList(iterator)
+	items = readKeyRingList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSampleList reads list of values of the ''sample' type from
+// readKeyRingList reads list of values of the ''key_ring' type from
 // the given iterator.
-func readSampleList(iterator *jsoniter.Iterator) []*Sample {
-	list := []*Sample{}
+func readKeyRingList(iterator *jsoniter.Iterator) []*KeyRing {
+	list := []*KeyRing{}
 	for iterator.ReadArray() {
-		item := readSample(iterator)
+		item := readKeyRing(iterator)
 		list = append(list, item)
 	}
 	return list

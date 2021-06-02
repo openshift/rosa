@@ -23,6 +23,8 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type MachineTypeCategory string
 
 const (
+	// Accelerated Computing machine type.
+	MachineTypeCategoryAcceleratedComputing MachineTypeCategory = "accelerated_computing"
 	// Compute Optimized machine type.
 	MachineTypeCategoryComputeOptimized MachineTypeCategory = "compute_optimized"
 	// General Purpose machine type.

@@ -19,25 +19,25 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// Metric represents the values of the 'metric' type.
+// CloudVPC represents the values of the 'cloud_VPC' type.
 //
-// Metric included in a dashboard.
-type Metric struct {
+// Description of a cloud provider virtual private cloud.
+type CloudVPC struct {
 	bitmap_ uint32
 	name    string
-	vector  []*Sample
+	subnets []string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *Metric) Empty() bool {
+func (o *CloudVPC) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Name of the metric.
-func (o *Metric) Name() string {
+// Name of virtual private cloud
+func (o *CloudVPC) Name() string {
 	if o != nil && o.bitmap_&1 != 0 {
 		return o.name
 	}
@@ -47,8 +47,8 @@ func (o *Metric) Name() string {
 // GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Name of the metric.
-func (o *Metric) GetName() (value string, ok bool) {
+// Name of virtual private cloud
+func (o *CloudVPC) GetName() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
 		value = o.name
@@ -56,50 +56,50 @@ func (o *Metric) GetName() (value string, ok bool) {
 	return
 }
 
-// Vector returns the value of the 'vector' attribute, or
+// Subnets returns the value of the 'subnets' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Samples of the metric.
-func (o *Metric) Vector() []*Sample {
+// List of subnets used by the virtual private cloud.
+func (o *CloudVPC) Subnets() []string {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.vector
+		return o.subnets
 	}
 	return nil
 }
 
-// GetVector returns the value of the 'vector' attribute and
+// GetSubnets returns the value of the 'subnets' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Samples of the metric.
-func (o *Metric) GetVector() (value []*Sample, ok bool) {
+// List of subnets used by the virtual private cloud.
+func (o *CloudVPC) GetSubnets() (value []string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.vector
+		value = o.subnets
 	}
 	return
 }
 
-// MetricListKind is the name of the type used to represent list of objects of
-// type 'metric'.
-const MetricListKind = "MetricList"
+// CloudVPCListKind is the name of the type used to represent list of objects of
+// type 'cloud_VPC'.
+const CloudVPCListKind = "CloudVPCList"
 
-// MetricListLinkKind is the name of the type used to represent links to list
-// of objects of type 'metric'.
-const MetricListLinkKind = "MetricListLink"
+// CloudVPCListLinkKind is the name of the type used to represent links to list
+// of objects of type 'cloud_VPC'.
+const CloudVPCListLinkKind = "CloudVPCListLink"
 
-// MetricNilKind is the name of the type used to nil lists of objects of
-// type 'metric'.
-const MetricListNilKind = "MetricListNil"
+// CloudVPCNilKind is the name of the type used to nil lists of objects of
+// type 'cloud_VPC'.
+const CloudVPCListNilKind = "CloudVPCListNil"
 
-// MetricList is a list of values of the 'metric' type.
-type MetricList struct {
+// CloudVPCList is a list of values of the 'cloud_VPC' type.
+type CloudVPCList struct {
 	href  string
 	link  bool
-	items []*Metric
+	items []*CloudVPC
 }
 
 // Len returns the length of the list.
-func (l *MetricList) Len() int {
+func (l *CloudVPCList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -107,13 +107,13 @@ func (l *MetricList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *MetricList) Empty() bool {
+func (l *CloudVPCList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *MetricList) Get(i int) *Metric {
+func (l *CloudVPCList) Get(i int) *CloudVPC {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -126,12 +126,12 @@ func (l *MetricList) Get(i int) *Metric {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *MetricList) Slice() []*Metric {
-	var slice []*Metric
+func (l *CloudVPCList) Slice() []*CloudVPC {
+	var slice []*CloudVPC
 	if l == nil {
-		slice = make([]*Metric, 0)
+		slice = make([]*CloudVPC, 0)
 	} else {
-		slice = make([]*Metric, len(l.items))
+		slice = make([]*CloudVPC, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -140,7 +140,7 @@ func (l *MetricList) Slice() []*Metric {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *MetricList) Each(f func(item *Metric) bool) {
+func (l *CloudVPCList) Each(f func(item *CloudVPC) bool) {
 	if l == nil {
 		return
 	}
@@ -154,7 +154,7 @@ func (l *MetricList) Each(f func(item *Metric) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *MetricList) Range(f func(index int, item *Metric) bool) {
+func (l *CloudVPCList) Range(f func(index int, item *CloudVPC) bool) {
 	if l == nil {
 		return
 	}

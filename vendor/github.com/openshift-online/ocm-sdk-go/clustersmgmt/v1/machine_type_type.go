@@ -41,9 +41,11 @@ type MachineType struct {
 	cpu           *Value
 	category      MachineTypeCategory
 	cloudProvider *CloudProvider
+	genericName   string
 	memory        *Value
 	name          string
 	size          MachineTypeSize
+	ccsOnly       bool
 }
 
 // Kind returns the name of the type of the object.
@@ -103,12 +105,35 @@ func (o *MachineType) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
+// CCSOnly returns the value of the 'CCS_only' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// 'true' if the instance type is supported only for CCS clusters, 'false' otherwise.
+func (o *MachineType) CCSOnly() bool {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.ccsOnly
+	}
+	return false
+}
+
+// GetCCSOnly returns the value of the 'CCS_only' attribute and
+// a flag indicating if the attribute has a value.
+//
+// 'true' if the instance type is supported only for CCS clusters, 'false' otherwise.
+func (o *MachineType) GetCCSOnly() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.ccsOnly
+	}
+	return
+}
+
 // CPU returns the value of the 'CPU' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The amount of cpu's of the machine type.
 func (o *MachineType) CPU() *Value {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.cpu
 	}
 	return nil
@@ -119,7 +144,7 @@ func (o *MachineType) CPU() *Value {
 //
 // The amount of cpu's of the machine type.
 func (o *MachineType) GetCPU() (value *Value, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.cpu
 	}
@@ -131,7 +156,7 @@ func (o *MachineType) GetCPU() (value *Value, ok bool) {
 //
 // The category which the machine type is suitable for.
 func (o *MachineType) Category() MachineTypeCategory {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.category
 	}
 	return MachineTypeCategory("")
@@ -142,7 +167,7 @@ func (o *MachineType) Category() MachineTypeCategory {
 //
 // The category which the machine type is suitable for.
 func (o *MachineType) GetCategory() (value MachineTypeCategory, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.category
 	}
@@ -154,7 +179,7 @@ func (o *MachineType) GetCategory() (value MachineTypeCategory, ok bool) {
 //
 // Link to the cloud provider that the machine type belongs to.
 func (o *MachineType) CloudProvider() *CloudProvider {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.cloudProvider
 	}
 	return nil
@@ -165,9 +190,38 @@ func (o *MachineType) CloudProvider() *CloudProvider {
 //
 // Link to the cloud provider that the machine type belongs to.
 func (o *MachineType) GetCloudProvider() (value *CloudProvider, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.cloudProvider
+	}
+	return
+}
+
+// GenericName returns the value of the 'generic_name' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Generic name for quota purposes, for example `highmem-4`.
+// Cloud provider agnostic - many values are shared between "similar"
+// machine types on different providers.
+// Corresponds to `resource_name` values in "compute.node"  quota cost data.
+func (o *MachineType) GenericName() string {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.genericName
+	}
+	return ""
+}
+
+// GetGenericName returns the value of the 'generic_name' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Generic name for quota purposes, for example `highmem-4`.
+// Cloud provider agnostic - many values are shared between "similar"
+// machine types on different providers.
+// Corresponds to `resource_name` values in "compute.node"  quota cost data.
+func (o *MachineType) GetGenericName() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.genericName
 	}
 	return
 }
@@ -177,7 +231,7 @@ func (o *MachineType) GetCloudProvider() (value *CloudProvider, ok bool) {
 //
 // The amount of memory of the machine type.
 func (o *MachineType) Memory() *Value {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.memory
 	}
 	return nil
@@ -188,7 +242,7 @@ func (o *MachineType) Memory() *Value {
 //
 // The amount of memory of the machine type.
 func (o *MachineType) GetMemory() (value *Value, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.memory
 	}
@@ -200,7 +254,7 @@ func (o *MachineType) GetMemory() (value *Value, ok bool) {
 //
 // Human friendly identifier of the machine type, for example `r5.xlarge - Memory Optimized`.
 func (o *MachineType) Name() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.name
 	}
 	return ""
@@ -211,7 +265,7 @@ func (o *MachineType) Name() string {
 //
 // Human friendly identifier of the machine type, for example `r5.xlarge - Memory Optimized`.
 func (o *MachineType) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.name
 	}
@@ -223,7 +277,7 @@ func (o *MachineType) GetName() (value string, ok bool) {
 //
 // The size of the machine type.
 func (o *MachineType) Size() MachineTypeSize {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.size
 	}
 	return MachineTypeSize("")
@@ -234,7 +288,7 @@ func (o *MachineType) Size() MachineTypeSize {
 //
 // The size of the machine type.
 func (o *MachineType) GetSize() (value MachineTypeSize, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.size
 	}

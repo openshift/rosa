@@ -27,20 +27,43 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalMetric writes a value of the 'metric' type to the given writer.
-func MarshalMetric(object *Metric, writer io.Writer) error {
+// MarshalEncryptionKey writes a value of the 'encryption_key' type to the given writer.
+func MarshalEncryptionKey(object *EncryptionKey, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeMetric(object, stream)
+	writeEncryptionKey(object, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeMetric writes a value of the 'metric' type to the given stream.
-func writeMetric(object *Metric, stream *jsoniter.Stream) {
+// writeEncryptionKey writes a value of the 'encryption_key' type to the given stream.
+func writeEncryptionKey(object *EncryptionKey, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
+	stream.WriteObjectField("kind")
+	if object.bitmap_&1 != 0 {
+		stream.WriteString(EncryptionKeyLinkKind)
+	} else {
+		stream.WriteString(EncryptionKeyKind)
+	}
+	count++
+	if object.bitmap_&2 != 0 {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("id")
+		stream.WriteString(object.id)
+		count++
+	}
+	if object.bitmap_&4 != 0 {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("href")
+		stream.WriteString(object.href)
+		count++
+	}
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -49,21 +72,12 @@ func writeMetric(object *Metric, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0 && object.vector != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("vector")
-		writeSampleList(object.vector, stream)
-		count++
-	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalMetric reads a value of the 'metric' type from the given
+// UnmarshalEncryptionKey reads a value of the 'encryption_key' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalMetric(source interface{}) (object *Metric, err error) {
+func UnmarshalEncryptionKey(source interface{}) (object *EncryptionKey, err error) {
 	if source == http.NoBody {
 		return
 	}
@@ -71,28 +85,35 @@ func UnmarshalMetric(source interface{}) (object *Metric, err error) {
 	if err != nil {
 		return
 	}
-	object = readMetric(iterator)
+	object = readEncryptionKey(iterator)
 	err = iterator.Error
 	return
 }
 
-// readMetric reads a value of the 'metric' type from the given iterator.
-func readMetric(iterator *jsoniter.Iterator) *Metric {
-	object := &Metric{}
+// readEncryptionKey reads a value of the 'encryption_key' type from the given iterator.
+func readEncryptionKey(iterator *jsoniter.Iterator) *EncryptionKey {
+	object := &EncryptionKey{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
+		case "kind":
+			value := iterator.ReadString()
+			if value == EncryptionKeyLinkKind {
+				object.bitmap_ |= 1
+			}
+		case "id":
+			object.id = iterator.ReadString()
+			object.bitmap_ |= 2
+		case "href":
+			object.href = iterator.ReadString()
+			object.bitmap_ |= 4
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 1
-		case "vector":
-			value := readSampleList(iterator)
-			object.vector = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

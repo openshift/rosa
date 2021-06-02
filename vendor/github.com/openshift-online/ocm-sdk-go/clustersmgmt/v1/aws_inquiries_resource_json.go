@@ -18,23 +18,3 @@ limitations under the License.
 // your changes will be lost when the file is generated again.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
-
-import (
-	"io"
-	"net/http"
-)
-
-func readDashboardGetRequest(request *DashboardGetServerRequest, r *http.Request) error {
-	return nil
-}
-func writeDashboardGetRequest(request *DashboardGetRequest, writer io.Writer) error {
-	return nil
-}
-func readDashboardGetResponse(response *DashboardGetResponse, reader io.Reader) error {
-	var err error
-	response.body, err = UnmarshalDashboard(reader)
-	return err
-}
-func writeDashboardGetResponse(response *DashboardGetServerResponse, w http.ResponseWriter) error {
-	return MarshalDashboard(response.body, w)
-}

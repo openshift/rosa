@@ -26,46 +26,46 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalDashboardList writes a list of values of the 'dashboard' type to
+// MarshalEncryptionKeyList writes a list of values of the 'encryption_key' type to
 // the given writer.
-func MarshalDashboardList(list []*Dashboard, writer io.Writer) error {
+func MarshalEncryptionKeyList(list []*EncryptionKey, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeDashboardList(list, stream)
+	writeEncryptionKeyList(list, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeDashboardList writes a list of value of the 'dashboard' type to
+// writeEncryptionKeyList writes a list of value of the 'encryption_key' type to
 // the given stream.
-func writeDashboardList(list []*Dashboard, stream *jsoniter.Stream) {
+func writeEncryptionKeyList(list []*EncryptionKey, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeDashboard(value, stream)
+		writeEncryptionKey(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalDashboardList reads a list of values of the 'dashboard' type
+// UnmarshalEncryptionKeyList reads a list of values of the 'encryption_key' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalDashboardList(source interface{}) (items []*Dashboard, err error) {
+func UnmarshalEncryptionKeyList(source interface{}) (items []*EncryptionKey, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readDashboardList(iterator)
+	items = readEncryptionKeyList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readDashboardList reads list of values of the ''dashboard' type from
+// readEncryptionKeyList reads list of values of the ''encryption_key' type from
 // the given iterator.
-func readDashboardList(iterator *jsoniter.Iterator) []*Dashboard {
-	list := []*Dashboard{}
+func readEncryptionKeyList(iterator *jsoniter.Iterator) []*EncryptionKey {
+	list := []*EncryptionKey{}
 	for iterator.ReadArray() {
-		item := readDashboard(iterator)
+		item := readEncryptionKey(iterator)
 		list = append(list, item)
 	}
 	return list

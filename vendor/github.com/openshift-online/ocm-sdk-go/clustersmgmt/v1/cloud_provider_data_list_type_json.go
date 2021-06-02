@@ -26,46 +26,46 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalMetricList writes a list of values of the 'metric' type to
+// MarshalCloudProviderDataList writes a list of values of the 'cloud_provider_data' type to
 // the given writer.
-func MarshalMetricList(list []*Metric, writer io.Writer) error {
+func MarshalCloudProviderDataList(list []*CloudProviderData, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeMetricList(list, stream)
+	writeCloudProviderDataList(list, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeMetricList writes a list of value of the 'metric' type to
+// writeCloudProviderDataList writes a list of value of the 'cloud_provider_data' type to
 // the given stream.
-func writeMetricList(list []*Metric, stream *jsoniter.Stream) {
+func writeCloudProviderDataList(list []*CloudProviderData, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeMetric(value, stream)
+		writeCloudProviderData(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalMetricList reads a list of values of the 'metric' type
+// UnmarshalCloudProviderDataList reads a list of values of the 'cloud_provider_data' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalMetricList(source interface{}) (items []*Metric, err error) {
+func UnmarshalCloudProviderDataList(source interface{}) (items []*CloudProviderData, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readMetricList(iterator)
+	items = readCloudProviderDataList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readMetricList reads list of values of the ''metric' type from
+// readCloudProviderDataList reads list of values of the ''cloud_provider_data' type from
 // the given iterator.
-func readMetricList(iterator *jsoniter.Iterator) []*Metric {
-	list := []*Metric{}
+func readCloudProviderDataList(iterator *jsoniter.Iterator) []*CloudProviderData {
+	list := []*CloudProviderData{}
 	for iterator.ReadArray() {
-		item := readMetric(iterator)
+		item := readCloudProviderData(iterator)
 		list = append(list, item)
 	}
 	return list

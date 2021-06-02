@@ -29,6 +29,7 @@ type STS struct {
 	instanceIAMRoles *InstanceIAMRoles
 	operatorIAMRoles []*OperatorIAMRole
 	roleARN          string
+	supportRoleARN   string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -147,6 +148,29 @@ func (o *STS) GetRoleARN() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.roleARN
+	}
+	return
+}
+
+// SupportRoleARN returns the value of the 'support_role_ARN' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// ARN of the AWS role used by SREs to access the cluster AWS account in order to provide support
+func (o *STS) SupportRoleARN() string {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.supportRoleARN
+	}
+	return ""
+}
+
+// GetSupportRoleARN returns the value of the 'support_role_ARN' attribute and
+// a flag indicating if the attribute has a value.
+//
+// ARN of the AWS role used by SREs to access the cluster AWS account in order to provide support
+func (o *STS) GetSupportRoleARN() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.supportRoleARN
 	}
 	return
 }

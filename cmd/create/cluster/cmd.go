@@ -90,6 +90,7 @@ var args struct {
 	// STS
 	roleARN          string
 	externalID       string
+	supportRoleARN   string
 	operatorIAMRoles []string
 	tags             []string
 	// Instance IAM Roles
@@ -140,6 +141,13 @@ func init() {
 		"external-id",
 		"",
 		"An optional unique identifier that might be required when you assume a role in another account.",
+	)
+	flags.StringVar(
+		&args.supportRoleARN,
+		"support-role-arn",
+		"",
+		"The Amazon Resource Name of the role used by Red Hat SREs to enable "+
+			"access to the cluster account in order to provide support.",
 	)
 	flags.StringArrayVar(
 		&args.operatorIAMRoles,
@@ -443,6 +451,26 @@ func run(cmd *cobra.Command, _ []string) {
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid External ID: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	supportRoleARN := args.supportRoleARN
+	if roleARN != "" && interactive.Enabled() {
+		supportRoleARN, err = interactive.GetString(interactive.Input{
+			Question: "Support Role ARN",
+			Help:     cmd.Flags().Lookup("support-role-arn").Usage,
+			Default:  supportRoleARN,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid ARN: %s", err)
+			os.Exit(1)
+		}
+	}
+	if supportRoleARN != "" {
+		_, err = arn.Parse(supportRoleARN)
+		if err != nil {
+			reporter.Errorf("Expected a valid Support Role ARN: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1079,6 +1107,7 @@ func run(cmd *cobra.Command, _ []string) {
 		PrivateLink:        &privateLink,
 		RoleARN:            roleARN,
 		ExternalID:         externalID,
+		SupportRoleARN:     supportRoleARN,
 		OperatorIAMRoles:   operatorIAMRoleList,
 		MasterRoleARN:      masterRoleARN,
 		WorkerRoleARN:      workerRoleARN,

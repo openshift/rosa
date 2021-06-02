@@ -61,6 +61,26 @@ func (c *Client) AWSInfrastructureAccessRoles() *AWSInfrastructureAccessRolesCli
 	)
 }
 
+// AWSInquiries returns the target 'AWS_inquiries' resource.
+//
+// Reference to the resource that manages the collection of aws inquiries.
+func (c *Client) AWSInquiries() *AWSInquiriesClient {
+	return NewAWSInquiriesClient(
+		c.transport,
+		path.Join(c.path, "aws_inquiries"),
+	)
+}
+
+// GCPInquiries returns the target 'GCP_inquiries' resource.
+//
+// Reference to the resource that manages the collection of gcp inquiries.
+func (c *Client) GCPInquiries() *GCPInquiriesClient {
+	return NewGCPInquiriesClient(
+		c.transport,
+		path.Join(c.path, "gcp_inquiries"),
+	)
+}
+
 // Addons returns the target 'add_ons' resource.
 //
 // Reference to the resource that manages the collection of add-ons.
@@ -88,16 +108,6 @@ func (c *Client) Clusters() *ClustersClient {
 	return NewClustersClient(
 		c.transport,
 		path.Join(c.path, "clusters"),
-	)
-}
-
-// Dashboards returns the target 'dashboards' resource.
-//
-// Reference to the resource that manages the collection of dashboards.
-func (c *Client) Dashboards() *DashboardsClient {
-	return NewDashboardsClient(
-		c.transport,
-		path.Join(c.path, "dashboards"),
 	)
 }
 

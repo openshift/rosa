@@ -22,22 +22,21 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 import (
 	"io"
 	"net/http"
-	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSample writes a value of the 'sample' type to the given writer.
-func MarshalSample(object *Sample, writer io.Writer) error {
+// MarshalCloudVPC writes a value of the 'cloud_VPC' type to the given writer.
+func MarshalCloudVPC(object *CloudVPC, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSample(object, stream)
+	writeCloudVPC(object, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeSample writes a value of the 'sample' type to the given stream.
-func writeSample(object *Sample, stream *jsoniter.Stream) {
+// writeCloudVPC writes a value of the 'cloud_VPC' type to the given stream.
+func writeCloudVPC(object *CloudVPC, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -46,25 +45,25 @@ func writeSample(object *Sample, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("time")
-		stream.WriteString((object.time).Format(time.RFC3339))
+		stream.WriteObjectField("name")
+		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&2 != 0 && object.subnets != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("value")
-		stream.WriteFloat64(object.value)
+		stream.WriteObjectField("subnets")
+		writeStringList(object.subnets, stream)
 		count++
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalSample reads a value of the 'sample' type from the given
+// UnmarshalCloudVPC reads a value of the 'cloud_VPC' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalSample(source interface{}) (object *Sample, err error) {
+func UnmarshalCloudVPC(source interface{}) (object *CloudVPC, err error) {
 	if source == http.NoBody {
 		return
 	}
@@ -72,31 +71,27 @@ func UnmarshalSample(source interface{}) (object *Sample, err error) {
 	if err != nil {
 		return
 	}
-	object = readSample(iterator)
+	object = readCloudVPC(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSample reads a value of the 'sample' type from the given iterator.
-func readSample(iterator *jsoniter.Iterator) *Sample {
-	object := &Sample{}
+// readCloudVPC reads a value of the 'cloud_VPC' type from the given iterator.
+func readCloudVPC(iterator *jsoniter.Iterator) *CloudVPC {
+	object := &CloudVPC{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "time":
-			text := iterator.ReadString()
-			value, err := time.Parse(time.RFC3339, text)
-			if err != nil {
-				iterator.ReportError("", err.Error())
-			}
-			object.time = value
+		case "name":
+			value := iterator.ReadString()
+			object.name = value
 			object.bitmap_ |= 1
-		case "value":
-			value := iterator.ReadFloat64()
-			object.value = value
+		case "subnets":
+			value := readStringList(iterator)
+			object.subnets = value
 			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()

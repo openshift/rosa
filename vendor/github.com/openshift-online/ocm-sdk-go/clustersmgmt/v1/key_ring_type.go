@@ -19,47 +19,46 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// DashboardKind is the name of the type used to represent objects
-// of type 'dashboard'.
-const DashboardKind = "Dashboard"
+// KeyRingKind is the name of the type used to represent objects
+// of type 'key_ring'.
+const KeyRingKind = "KeyRing"
 
-// DashboardLinkKind is the name of the type used to represent links
-// to objects of type 'dashboard'.
-const DashboardLinkKind = "DashboardLink"
+// KeyRingLinkKind is the name of the type used to represent links
+// to objects of type 'key_ring'.
+const KeyRingLinkKind = "KeyRingLink"
 
-// DashboardNilKind is the name of the type used to nil references
-// to objects of type 'dashboard'.
-const DashboardNilKind = "DashboardNil"
+// KeyRingNilKind is the name of the type used to nil references
+// to objects of type 'key_ring'.
+const KeyRingNilKind = "KeyRingNil"
 
-// Dashboard represents the values of the 'dashboard' type.
+// KeyRing represents the values of the 'key_ring' type.
 //
-// Collection of metrics intended to render a graphical dashboard.
-type Dashboard struct {
+// Description of a cloud provider key ring.
+type KeyRing struct {
 	bitmap_ uint32
 	id      string
 	href    string
-	metrics []*Metric
 	name    string
 }
 
 // Kind returns the name of the type of the object.
-func (o *Dashboard) Kind() string {
+func (o *KeyRing) Kind() string {
 	if o == nil {
-		return DashboardNilKind
+		return KeyRingNilKind
 	}
 	if o.bitmap_&1 != 0 {
-		return DashboardLinkKind
+		return KeyRingLinkKind
 	}
-	return DashboardKind
+	return KeyRingKind
 }
 
 // Link returns true iif this is a link.
-func (o *Dashboard) Link() bool {
+func (o *KeyRing) Link() bool {
 	return o != nil && o.bitmap_&1 != 0
 }
 
 // ID returns the identifier of the object.
-func (o *Dashboard) ID() string {
+func (o *KeyRing) ID() string {
 	if o != nil && o.bitmap_&2 != 0 {
 		return o.id
 	}
@@ -68,7 +67,7 @@ func (o *Dashboard) ID() string {
 
 // GetID returns the identifier of the object and a flag indicating if the
 // identifier has a value.
-func (o *Dashboard) GetID() (value string, ok bool) {
+func (o *KeyRing) GetID() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.id
@@ -77,7 +76,7 @@ func (o *Dashboard) GetID() (value string, ok bool) {
 }
 
 // HREF returns the link to the object.
-func (o *Dashboard) HREF() string {
+func (o *KeyRing) HREF() string {
 	if o != nil && o.bitmap_&4 != 0 {
 		return o.href
 	}
@@ -86,7 +85,7 @@ func (o *Dashboard) HREF() string {
 
 // GetHREF returns the link of the object and a flag indicating if the
 // link has a value.
-func (o *Dashboard) GetHREF() (value string, ok bool) {
+func (o *KeyRing) GetHREF() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.href
@@ -95,39 +94,16 @@ func (o *Dashboard) GetHREF() (value string, ok bool) {
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *Dashboard) Empty() bool {
+func (o *KeyRing) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
-}
-
-// Metrics returns the value of the 'metrics' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Metrics included in the dashboard.
-func (o *Dashboard) Metrics() []*Metric {
-	if o != nil && o.bitmap_&8 != 0 {
-		return o.metrics
-	}
-	return nil
-}
-
-// GetMetrics returns the value of the 'metrics' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Metrics included in the dashboard.
-func (o *Dashboard) GetMetrics() (value []*Metric, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
-	if ok {
-		value = o.metrics
-	}
-	return
 }
 
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Name of the dashboard.
-func (o *Dashboard) Name() string {
-	if o != nil && o.bitmap_&16 != 0 {
+// Name of the key ring.
+func (o *KeyRing) Name() string {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.name
 	}
 	return ""
@@ -136,52 +112,52 @@ func (o *Dashboard) Name() string {
 // GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Name of the dashboard.
-func (o *Dashboard) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+// Name of the key ring.
+func (o *KeyRing) GetName() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.name
 	}
 	return
 }
 
-// DashboardListKind is the name of the type used to represent list of objects of
-// type 'dashboard'.
-const DashboardListKind = "DashboardList"
+// KeyRingListKind is the name of the type used to represent list of objects of
+// type 'key_ring'.
+const KeyRingListKind = "KeyRingList"
 
-// DashboardListLinkKind is the name of the type used to represent links to list
-// of objects of type 'dashboard'.
-const DashboardListLinkKind = "DashboardListLink"
+// KeyRingListLinkKind is the name of the type used to represent links to list
+// of objects of type 'key_ring'.
+const KeyRingListLinkKind = "KeyRingListLink"
 
-// DashboardNilKind is the name of the type used to nil lists of objects of
-// type 'dashboard'.
-const DashboardListNilKind = "DashboardListNil"
+// KeyRingNilKind is the name of the type used to nil lists of objects of
+// type 'key_ring'.
+const KeyRingListNilKind = "KeyRingListNil"
 
-// DashboardList is a list of values of the 'dashboard' type.
-type DashboardList struct {
+// KeyRingList is a list of values of the 'key_ring' type.
+type KeyRingList struct {
 	href  string
 	link  bool
-	items []*Dashboard
+	items []*KeyRing
 }
 
 // Kind returns the name of the type of the object.
-func (l *DashboardList) Kind() string {
+func (l *KeyRingList) Kind() string {
 	if l == nil {
-		return DashboardListNilKind
+		return KeyRingListNilKind
 	}
 	if l.link {
-		return DashboardListLinkKind
+		return KeyRingListLinkKind
 	}
-	return DashboardListKind
+	return KeyRingListKind
 }
 
 // Link returns true iif this is a link.
-func (l *DashboardList) Link() bool {
+func (l *KeyRingList) Link() bool {
 	return l != nil && l.link
 }
 
 // HREF returns the link to the list.
-func (l *DashboardList) HREF() string {
+func (l *KeyRingList) HREF() string {
 	if l != nil {
 		return l.href
 	}
@@ -190,7 +166,7 @@ func (l *DashboardList) HREF() string {
 
 // GetHREF returns the link of the list and a flag indicating if the
 // link has a value.
-func (l *DashboardList) GetHREF() (value string, ok bool) {
+func (l *KeyRingList) GetHREF() (value string, ok bool) {
 	ok = l != nil && l.href != ""
 	if ok {
 		value = l.href
@@ -199,7 +175,7 @@ func (l *DashboardList) GetHREF() (value string, ok bool) {
 }
 
 // Len returns the length of the list.
-func (l *DashboardList) Len() int {
+func (l *KeyRingList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -207,13 +183,13 @@ func (l *DashboardList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *DashboardList) Empty() bool {
+func (l *KeyRingList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *DashboardList) Get(i int) *Dashboard {
+func (l *KeyRingList) Get(i int) *KeyRing {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -226,12 +202,12 @@ func (l *DashboardList) Get(i int) *Dashboard {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *DashboardList) Slice() []*Dashboard {
-	var slice []*Dashboard
+func (l *KeyRingList) Slice() []*KeyRing {
+	var slice []*KeyRing
 	if l == nil {
-		slice = make([]*Dashboard, 0)
+		slice = make([]*KeyRing, 0)
 	} else {
-		slice = make([]*Dashboard, len(l.items))
+		slice = make([]*KeyRing, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -240,7 +216,7 @@ func (l *DashboardList) Slice() []*Dashboard {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *DashboardList) Each(f func(item *Dashboard) bool) {
+func (l *KeyRingList) Each(f func(item *KeyRing) bool) {
 	if l == nil {
 		return
 	}
@@ -254,7 +230,7 @@ func (l *DashboardList) Each(f func(item *Dashboard) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *DashboardList) Range(f func(index int, item *Dashboard) bool) {
+func (l *KeyRingList) Range(f func(index int, item *KeyRing) bool) {
 	if l == nil {
 		return
 	}
