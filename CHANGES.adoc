@@ -3,6 +3,22 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.8 Jun 2 2021
+
+- Added SSO Validation
+- Removed default region from CloudFormation stack check
+- verify: Include note about quota limitations
+- Disable IAM user checks for STS
+- Added wait for accountclaims to get ready
+- Fix tests with missing TagUser call
+- Increase golangci timeout to 5 minutes
+- Added new rosa list instance-types api
+- Support STS users (#351)
+- sts: Normalize instace role parameters
+- sts: Expose all flags
+- sts: Ensure interactive mode for STS credentials without role ARN
+- sts: Add support role ARN attribute
+
 == 1.0.7 May 20 2021
 
 - Allow setting 0 replicas to autoscaling machine pool (Not default)
