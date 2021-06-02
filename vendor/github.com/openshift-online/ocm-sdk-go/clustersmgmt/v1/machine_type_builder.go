@@ -29,9 +29,11 @@ type MachineTypeBuilder struct {
 	cpu           *ValueBuilder
 	category      MachineTypeCategory
 	cloudProvider *CloudProviderBuilder
+	genericName   string
 	memory        *ValueBuilder
 	name          string
 	size          MachineTypeSize
+	ccsOnly       bool
 }
 
 // NewMachineType creates a new builder of 'machine_type' objects.
@@ -59,6 +61,15 @@ func (b *MachineTypeBuilder) HREF(value string) *MachineTypeBuilder {
 	return b
 }
 
+// CCSOnly sets the value of the 'CCS_only' attribute to the given value.
+//
+//
+func (b *MachineTypeBuilder) CCSOnly(value bool) *MachineTypeBuilder {
+	b.ccsOnly = value
+	b.bitmap_ |= 8
+	return b
+}
+
 // CPU sets the value of the 'CPU' attribute to the given value.
 //
 // Numeric value and the unit used to measure it.
@@ -82,9 +93,9 @@ func (b *MachineTypeBuilder) HREF(value string) *MachineTypeBuilder {
 func (b *MachineTypeBuilder) CPU(value *ValueBuilder) *MachineTypeBuilder {
 	b.cpu = value
 	if value != nil {
-		b.bitmap_ |= 8
+		b.bitmap_ |= 16
 	} else {
-		b.bitmap_ &^= 8
+		b.bitmap_ &^= 16
 	}
 	return b
 }
@@ -94,7 +105,7 @@ func (b *MachineTypeBuilder) CPU(value *ValueBuilder) *MachineTypeBuilder {
 // Machine type category.
 func (b *MachineTypeBuilder) Category(value MachineTypeCategory) *MachineTypeBuilder {
 	b.category = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -104,10 +115,19 @@ func (b *MachineTypeBuilder) Category(value MachineTypeCategory) *MachineTypeBui
 func (b *MachineTypeBuilder) CloudProvider(value *CloudProviderBuilder) *MachineTypeBuilder {
 	b.cloudProvider = value
 	if value != nil {
-		b.bitmap_ |= 32
+		b.bitmap_ |= 64
 	} else {
-		b.bitmap_ &^= 32
+		b.bitmap_ &^= 64
 	}
+	return b
+}
+
+// GenericName sets the value of the 'generic_name' attribute to the given value.
+//
+//
+func (b *MachineTypeBuilder) GenericName(value string) *MachineTypeBuilder {
+	b.genericName = value
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -134,9 +154,9 @@ func (b *MachineTypeBuilder) CloudProvider(value *CloudProviderBuilder) *Machine
 func (b *MachineTypeBuilder) Memory(value *ValueBuilder) *MachineTypeBuilder {
 	b.memory = value
 	if value != nil {
-		b.bitmap_ |= 64
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 64
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -146,7 +166,7 @@ func (b *MachineTypeBuilder) Memory(value *ValueBuilder) *MachineTypeBuilder {
 //
 func (b *MachineTypeBuilder) Name(value string) *MachineTypeBuilder {
 	b.name = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -155,7 +175,7 @@ func (b *MachineTypeBuilder) Name(value string) *MachineTypeBuilder {
 // Machine type size.
 func (b *MachineTypeBuilder) Size(value MachineTypeSize) *MachineTypeBuilder {
 	b.size = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -167,6 +187,7 @@ func (b *MachineTypeBuilder) Copy(object *MachineType) *MachineTypeBuilder {
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
+	b.ccsOnly = object.ccsOnly
 	if object.cpu != nil {
 		b.cpu = NewValue().Copy(object.cpu)
 	} else {
@@ -178,6 +199,7 @@ func (b *MachineTypeBuilder) Copy(object *MachineType) *MachineTypeBuilder {
 	} else {
 		b.cloudProvider = nil
 	}
+	b.genericName = object.genericName
 	if object.memory != nil {
 		b.memory = NewValue().Copy(object.memory)
 	} else {
@@ -194,6 +216,7 @@ func (b *MachineTypeBuilder) Build() (object *MachineType, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
+	object.ccsOnly = b.ccsOnly
 	if b.cpu != nil {
 		object.cpu, err = b.cpu.Build()
 		if err != nil {
@@ -207,6 +230,7 @@ func (b *MachineTypeBuilder) Build() (object *MachineType, err error) {
 			return
 		}
 	}
+	object.genericName = b.genericName
 	if b.memory != nil {
 		object.memory, err = b.memory.Build()
 		if err != nil {

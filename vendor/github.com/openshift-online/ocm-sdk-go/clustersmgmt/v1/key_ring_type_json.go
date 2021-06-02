@@ -27,23 +27,23 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalDashboard writes a value of the 'dashboard' type to the given writer.
-func MarshalDashboard(object *Dashboard, writer io.Writer) error {
+// MarshalKeyRing writes a value of the 'key_ring' type to the given writer.
+func MarshalKeyRing(object *KeyRing, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeDashboard(object, stream)
+	writeKeyRing(object, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeDashboard writes a value of the 'dashboard' type to the given stream.
-func writeDashboard(object *Dashboard, stream *jsoniter.Stream) {
+// writeKeyRing writes a value of the 'key_ring' type to the given stream.
+func writeKeyRing(object *KeyRing, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	if object.bitmap_&1 != 0 {
-		stream.WriteString(DashboardLinkKind)
+		stream.WriteString(KeyRingLinkKind)
 	} else {
-		stream.WriteString(DashboardKind)
+		stream.WriteString(KeyRingKind)
 	}
 	count++
 	if object.bitmap_&2 != 0 {
@@ -63,16 +63,7 @@ func writeDashboard(object *Dashboard, stream *jsoniter.Stream) {
 		count++
 	}
 	var present_ bool
-	present_ = object.bitmap_&8 != 0 && object.metrics != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("metrics")
-		writeMetricList(object.metrics, stream)
-		count++
-	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -84,9 +75,9 @@ func writeDashboard(object *Dashboard, stream *jsoniter.Stream) {
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalDashboard reads a value of the 'dashboard' type from the given
+// UnmarshalKeyRing reads a value of the 'key_ring' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalDashboard(source interface{}) (object *Dashboard, err error) {
+func UnmarshalKeyRing(source interface{}) (object *KeyRing, err error) {
 	if source == http.NoBody {
 		return
 	}
@@ -94,14 +85,14 @@ func UnmarshalDashboard(source interface{}) (object *Dashboard, err error) {
 	if err != nil {
 		return
 	}
-	object = readDashboard(iterator)
+	object = readKeyRing(iterator)
 	err = iterator.Error
 	return
 }
 
-// readDashboard reads a value of the 'dashboard' type from the given iterator.
-func readDashboard(iterator *jsoniter.Iterator) *Dashboard {
-	object := &Dashboard{}
+// readKeyRing reads a value of the 'key_ring' type from the given iterator.
+func readKeyRing(iterator *jsoniter.Iterator) *KeyRing {
+	object := &KeyRing{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
@@ -110,7 +101,7 @@ func readDashboard(iterator *jsoniter.Iterator) *Dashboard {
 		switch field {
 		case "kind":
 			value := iterator.ReadString()
-			if value == DashboardLinkKind {
+			if value == KeyRingLinkKind {
 				object.bitmap_ |= 1
 			}
 		case "id":
@@ -119,14 +110,10 @@ func readDashboard(iterator *jsoniter.Iterator) *Dashboard {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
-		case "metrics":
-			value := readMetricList(iterator)
-			object.metrics = value
-			object.bitmap_ |= 8
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

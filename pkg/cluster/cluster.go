@@ -89,6 +89,7 @@ type Spec struct {
 	// STS
 	RoleARN          string
 	ExternalID       string
+	SupportRoleARN   string
 	OperatorIAMRoles []OperatorIAMRole
 	MasterRoleARN    string
 	WorkerRoleARN    string
@@ -580,6 +581,9 @@ func createClusterSpec(ocmClusterClient *cmv1.ClustersClient,
 		stsBuilder := cmv1.NewSTS().RoleARN(config.RoleARN)
 		if config.ExternalID != "" {
 			stsBuilder = stsBuilder.ExternalID(config.ExternalID)
+		}
+		if config.SupportRoleARN != "" {
+			stsBuilder = stsBuilder.SupportRoleARN(config.SupportRoleARN)
 		}
 		if len(config.OperatorIAMRoles) > 0 {
 			roles := []*cmv1.OperatorIAMRoleBuilder{}

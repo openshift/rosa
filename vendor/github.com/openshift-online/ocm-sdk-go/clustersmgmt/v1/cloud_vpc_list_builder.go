@@ -19,48 +19,48 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// DashboardListBuilder contains the data and logic needed to build
-// 'dashboard' objects.
-type DashboardListBuilder struct {
-	items []*DashboardBuilder
+// CloudVPCListBuilder contains the data and logic needed to build
+// 'cloud_VPC' objects.
+type CloudVPCListBuilder struct {
+	items []*CloudVPCBuilder
 }
 
-// NewDashboardList creates a new builder of 'dashboard' objects.
-func NewDashboardList() *DashboardListBuilder {
-	return new(DashboardListBuilder)
+// NewCloudVPCList creates a new builder of 'cloud_VPC' objects.
+func NewCloudVPCList() *CloudVPCListBuilder {
+	return new(CloudVPCListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *DashboardListBuilder) Items(values ...*DashboardBuilder) *DashboardListBuilder {
-	b.items = make([]*DashboardBuilder, len(values))
+func (b *CloudVPCListBuilder) Items(values ...*CloudVPCBuilder) *CloudVPCListBuilder {
+	b.items = make([]*CloudVPCBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *DashboardListBuilder) Copy(list *DashboardList) *DashboardListBuilder {
+func (b *CloudVPCListBuilder) Copy(list *CloudVPCList) *CloudVPCListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*DashboardBuilder, len(list.items))
+		b.items = make([]*CloudVPCBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewDashboard().Copy(v)
+			b.items[i] = NewCloudVPC().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'dashboard' objects using the
+// Build creates a list of 'cloud_VPC' objects using the
 // configuration stored in the builder.
-func (b *DashboardListBuilder) Build() (list *DashboardList, err error) {
-	items := make([]*Dashboard, len(b.items))
+func (b *CloudVPCListBuilder) Build() (list *CloudVPCList, err error) {
+	items := make([]*CloudVPC, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(DashboardList)
+	list = new(CloudVPCList)
 	list.items = items
 	return
 }

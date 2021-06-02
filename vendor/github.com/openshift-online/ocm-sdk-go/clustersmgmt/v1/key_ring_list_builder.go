@@ -19,48 +19,48 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// MetricListBuilder contains the data and logic needed to build
-// 'metric' objects.
-type MetricListBuilder struct {
-	items []*MetricBuilder
+// KeyRingListBuilder contains the data and logic needed to build
+// 'key_ring' objects.
+type KeyRingListBuilder struct {
+	items []*KeyRingBuilder
 }
 
-// NewMetricList creates a new builder of 'metric' objects.
-func NewMetricList() *MetricListBuilder {
-	return new(MetricListBuilder)
+// NewKeyRingList creates a new builder of 'key_ring' objects.
+func NewKeyRingList() *KeyRingListBuilder {
+	return new(KeyRingListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *MetricListBuilder) Items(values ...*MetricBuilder) *MetricListBuilder {
-	b.items = make([]*MetricBuilder, len(values))
+func (b *KeyRingListBuilder) Items(values ...*KeyRingBuilder) *KeyRingListBuilder {
+	b.items = make([]*KeyRingBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *MetricListBuilder) Copy(list *MetricList) *MetricListBuilder {
+func (b *KeyRingListBuilder) Copy(list *KeyRingList) *KeyRingListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*MetricBuilder, len(list.items))
+		b.items = make([]*KeyRingBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewMetric().Copy(v)
+			b.items[i] = NewKeyRing().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'metric' objects using the
+// Build creates a list of 'key_ring' objects using the
 // configuration stored in the builder.
-func (b *MetricListBuilder) Build() (list *MetricList, err error) {
-	items := make([]*Metric, len(b.items))
+func (b *KeyRingListBuilder) Build() (list *KeyRingList, err error) {
+	items := make([]*KeyRing, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(MetricList)
+	list = new(KeyRingList)
 	list.items = items
 	return
 }

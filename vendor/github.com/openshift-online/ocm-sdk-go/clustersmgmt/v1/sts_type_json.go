@@ -85,6 +85,15 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		stream.WriteString(object.roleARN)
 		count++
 	}
+	present_ = object.bitmap_&32 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("support_role_arn")
+		stream.WriteString(object.supportRoleARN)
+		count++
+	}
 	stream.WriteObjectEnd()
 }
 
@@ -132,6 +141,10 @@ func readSTS(iterator *jsoniter.Iterator) *STS {
 			value := iterator.ReadString()
 			object.roleARN = value
 			object.bitmap_ |= 16
+		case "support_role_arn":
+			value := iterator.ReadString()
+			object.supportRoleARN = value
+			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()
 		}

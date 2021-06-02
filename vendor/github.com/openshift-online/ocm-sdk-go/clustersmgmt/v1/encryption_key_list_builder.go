@@ -19,48 +19,48 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// SampleListBuilder contains the data and logic needed to build
-// 'sample' objects.
-type SampleListBuilder struct {
-	items []*SampleBuilder
+// EncryptionKeyListBuilder contains the data and logic needed to build
+// 'encryption_key' objects.
+type EncryptionKeyListBuilder struct {
+	items []*EncryptionKeyBuilder
 }
 
-// NewSampleList creates a new builder of 'sample' objects.
-func NewSampleList() *SampleListBuilder {
-	return new(SampleListBuilder)
+// NewEncryptionKeyList creates a new builder of 'encryption_key' objects.
+func NewEncryptionKeyList() *EncryptionKeyListBuilder {
+	return new(EncryptionKeyListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *SampleListBuilder) Items(values ...*SampleBuilder) *SampleListBuilder {
-	b.items = make([]*SampleBuilder, len(values))
+func (b *EncryptionKeyListBuilder) Items(values ...*EncryptionKeyBuilder) *EncryptionKeyListBuilder {
+	b.items = make([]*EncryptionKeyBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *SampleListBuilder) Copy(list *SampleList) *SampleListBuilder {
+func (b *EncryptionKeyListBuilder) Copy(list *EncryptionKeyList) *EncryptionKeyListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*SampleBuilder, len(list.items))
+		b.items = make([]*EncryptionKeyBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewSample().Copy(v)
+			b.items[i] = NewEncryptionKey().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'sample' objects using the
+// Build creates a list of 'encryption_key' objects using the
 // configuration stored in the builder.
-func (b *SampleListBuilder) Build() (list *SampleList, err error) {
-	items := make([]*Sample, len(b.items))
+func (b *EncryptionKeyListBuilder) Build() (list *EncryptionKeyList, err error) {
+	items := make([]*EncryptionKey, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(SampleList)
+	list = new(EncryptionKeyList)
 	list.items = items
 	return
 }

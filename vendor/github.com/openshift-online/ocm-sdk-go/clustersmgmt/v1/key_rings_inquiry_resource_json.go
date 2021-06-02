@@ -26,23 +26,15 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-func readDashboardsListRequest(request *DashboardsListServerRequest, r *http.Request) error {
+func readKeyRingsInquirySearchRequest(request *KeyRingsInquirySearchServerRequest, r *http.Request) error {
 	var err error
 	query := r.URL.Query()
-	request.order, err = helpers.ParseString(query, "order")
-	if err != nil {
-		return err
-	}
 	request.page, err = helpers.ParseInteger(query, "page")
 	if err != nil {
 		return err
 	}
 	if request.page == nil {
 		request.page = helpers.NewInteger(1)
-	}
-	request.search, err = helpers.ParseString(query, "search")
-	if err != nil {
-		return err
 	}
 	request.size, err = helpers.ParseInteger(query, "size")
 	if err != nil {
@@ -51,12 +43,16 @@ func readDashboardsListRequest(request *DashboardsListServerRequest, r *http.Req
 	if request.size == nil {
 		request.size = helpers.NewInteger(100)
 	}
+	request.body, err = UnmarshalCloudProviderData(r)
+	if err != nil {
+		return err
+	}
 	return nil
 }
-func writeDashboardsListRequest(request *DashboardsListRequest, writer io.Writer) error {
-	return nil
+func writeKeyRingsInquirySearchRequest(request *KeyRingsInquirySearchRequest, writer io.Writer) error {
+	return MarshalCloudProviderData(request.body, writer)
 }
-func readDashboardsListResponse(response *DashboardsListResponse, reader io.Reader) error {
+func readKeyRingsInquirySearchResponse(response *KeyRingsInquirySearchResponse, reader io.Reader) error {
 	iterator, err := helpers.NewIterator(reader)
 	if err != nil {
 		return err
@@ -77,8 +73,8 @@ func readDashboardsListResponse(response *DashboardsListResponse, reader io.Read
 			value := iterator.ReadInt()
 			response.total = &value
 		case "items":
-			items := readDashboardList(iterator)
-			response.items = &DashboardList{
+			items := readKeyRingList(iterator)
+			response.items = &KeyRingList{
 				items: items,
 			}
 		default:
@@ -87,14 +83,14 @@ func readDashboardsListResponse(response *DashboardsListResponse, reader io.Read
 	}
 	return iterator.Error
 }
-func writeDashboardsListResponse(response *DashboardsListServerResponse, w http.ResponseWriter) error {
+func writeKeyRingsInquirySearchResponse(response *KeyRingsInquirySearchServerResponse, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.status)
 	stream := helpers.NewStream(w)
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	count := 1
-	stream.WriteString(DashboardListKind)
+	stream.WriteString(KeyRingListKind)
 	if response.items != nil && response.items.href != "" {
 		stream.WriteMore()
 		stream.WriteObjectField("href")
@@ -131,7 +127,7 @@ func writeDashboardsListResponse(response *DashboardsListServerResponse, w http.
 				stream.WriteMore()
 			}
 			stream.WriteObjectField("items")
-			writeDashboardList(response.items.items, stream)
+			writeKeyRingList(response.items.items, stream)
 			count++
 		}
 	}

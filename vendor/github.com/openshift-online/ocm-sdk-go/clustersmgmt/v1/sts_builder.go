@@ -29,6 +29,7 @@ type STSBuilder struct {
 	instanceIAMRoles *InstanceIAMRolesBuilder
 	operatorIAMRoles []*OperatorIAMRoleBuilder
 	roleARN          string
+	supportRoleARN   string
 }
 
 // NewSTS creates a new builder of 'STS' objects.
@@ -86,6 +87,15 @@ func (b *STSBuilder) RoleARN(value string) *STSBuilder {
 	return b
 }
 
+// SupportRoleARN sets the value of the 'support_role_ARN' attribute to the given value.
+//
+//
+func (b *STSBuilder) SupportRoleARN(value string) *STSBuilder {
+	b.supportRoleARN = value
+	b.bitmap_ |= 32
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *STSBuilder) Copy(object *STS) *STSBuilder {
 	if object == nil {
@@ -108,6 +118,7 @@ func (b *STSBuilder) Copy(object *STS) *STSBuilder {
 		b.operatorIAMRoles = nil
 	}
 	b.roleARN = object.roleARN
+	b.supportRoleARN = object.supportRoleARN
 	return b
 }
 
@@ -133,5 +144,6 @@ func (b *STSBuilder) Build() (object *STS, err error) {
 		}
 	}
 	object.roleARN = b.roleARN
+	object.supportRoleARN = b.supportRoleARN
 	return
 }
