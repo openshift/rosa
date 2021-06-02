@@ -59,14 +59,12 @@ func init() {
 		"",
 		"The Amazon Resource Name of the role that the API will assume to fetch available regions.",
 	)
-	flags.MarkHidden("role-arn")
 	flags.StringVar(
 		&args.externalID,
 		"external-id",
 		"",
 		"A unique identifier that might be required when you assume a role in another account",
 	)
-	flags.MarkHidden("external-id")
 }
 
 func run(cmd *cobra.Command, _ []string) {

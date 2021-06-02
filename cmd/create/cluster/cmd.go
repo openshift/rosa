@@ -24,16 +24,15 @@ import (
 	"strings"
 	"time"
 
+	awssdk "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
-	installLogs "github.com/openshift/rosa/cmd/logs/install"
-
 	"github.com/spf13/cobra"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/openshift/rosa/pkg/aws"
-
+	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
+	installLogs "github.com/openshift/rosa/cmd/logs/install"
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/aws"
 	clusterprovider "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/confirm"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -136,37 +135,33 @@ func init() {
 		"",
 		"The Amazon Resource Name of the role that OpenShift Cluster Manager will assume to create the cluster.",
 	)
-	flags.MarkHidden("role-arn")
 	flags.StringVar(
 		&args.externalID,
 		"external-id",
 		"",
-		"A unique identifier that might be required when you assume a role in another account",
+		"An optional unique identifier that might be required when you assume a role in another account.",
 	)
-	flags.MarkHidden("external-id")
 	flags.StringArrayVar(
 		&args.operatorIAMRoles,
 		"operator-iam-roles",
 		nil,
-		"",
+		"List of OpenShift name and namespace, and role ARNs used to perform credential "+
+			"requests by operators needed in the OpenShift installer.",
 	)
-	flags.MarkHidden("operator-iam-roles")
 
 	flags.StringVar(
 		&args.masterRoleARN,
 		"master-iam-role",
 		"",
-		"The IAM role ARN that will be attached to master instances",
+		"The IAM role ARN that will be attached to master instances.",
 	)
-	flags.MarkHidden("master-iam-role")
 
 	flags.StringVar(
 		&args.workerRoleARN,
 		"worker-iam-role",
 		"",
-		"The IAM role ARN that will be attached to worker instances",
+		"The IAM role ARN that will be attached to worker instances.",
 	)
-	flags.MarkHidden("worker-iam-role")
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -227,7 +222,6 @@ func init() {
 		"Provides private connectivity between VPCs, AWS services, and your on-premises networks, "+
 			"without exposing your traffic to the public internet.",
 	)
-	flags.MarkHidden("private-link")
 
 	flags.StringSliceVar(
 		&args.subnetIDs,
@@ -367,19 +361,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Creating non STS clusters is not supported
-	if creator.IsSTS && args.roleARN == "" {
-		reporter.Errorf("IAM STS credentials can only create STS clusters --role-arn cannot be blank")
-		reporter.Errorf("Your AWS credentials are returning an STS ARN: %s", creator.ARN)
-		os.Exit(1)
-	}
-
-	//Currently roleARN is hidden in interactive mode
-	//Might need to change later
-	if args.roleARN == "" {
-		aws.CheckStackReadyForCreateCluster(reporter, logger)
-	}
-
 	if interactive.Enabled() {
 		reporter.Infof("Interactive mode enabled.\n" +
 			"Any optional fields can be left empty and a default will be selected.")
@@ -418,40 +399,98 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// AWS ARN Role
 	roleARN := args.roleARN
-	if roleARN != "" && interactive.Enabled() {
+
+	if !interactive.Enabled() && creator.IsSTS && roleARN == "" {
+		err = interactive.PrintHelp(interactive.Help{
+			Message: "Since your AWS credentials are returning an STS ARN you can only " +
+				"create STS clusters. Otherwise, switch to IAM credentials.",
+		})
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		interactive.Enable()
+		reporter.Infof("Enabling interactive mode")
+	}
+
+	if interactive.Enabled() {
 		roleARN, err = interactive.GetString(interactive.Input{
 			Question: "Role ARN",
 			Help:     cmd.Flags().Lookup("role-arn").Usage,
 			Default:  roleARN,
+			Required: creator.IsSTS,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid ARN: %s", err)
 			os.Exit(1)
 		}
 	}
-
-	// All STS-related options
-	externalID := args.externalID
-	tagsList := map[string]string{}
-	operatorIAMRoleList := []clusterprovider.OperatorIAMRole{}
-	masterRoleARN := ""
-	workerRoleARN := ""
-
 	if roleARN != "" {
-		if interactive.Enabled() {
-			externalID, err = interactive.GetString(interactive.Input{
-				Question: "External ID",
-				Help:     cmd.Flags().Lookup("external-id").Usage,
-			})
-			if err != nil {
-				reporter.Errorf("Expected a valid External ID: %s", err)
+		_, err = arn.Parse(roleARN)
+		if err != nil {
+			reporter.Errorf("Expected a valid Role ARN: %s", err)
+			os.Exit(1)
+		}
+	} else {
+		aws.CheckStackReadyForCreateCluster(reporter, logger)
+	}
+
+	externalID := args.externalID
+	if roleARN != "" && interactive.Enabled() {
+		externalID, err = interactive.GetString(interactive.Input{
+			Question: "External ID",
+			Help:     cmd.Flags().Lookup("external-id").Usage,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid External ID: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// OpenShift version:
+	version := args.version
+	channelGroup := args.channelGroup
+	versionList, err := getVersionList(ocmClient, channelGroup)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if version == "" {
+		version = versionList[0]
+	}
+	if interactive.Enabled() {
+		version, err = interactive.GetOption(interactive.Input{
+			Question: "OpenShift version",
+			Help:     cmd.Flags().Lookup("version").Usage,
+			Options:  versionList,
+			Default:  version,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid OpenShift version: %s", err)
+			os.Exit(1)
+		}
+	}
+	version, err = validateVersion(version, versionList)
+	if err != nil {
+		reporter.Errorf("Expected a valid OpenShift version: %s", err)
+		os.Exit(1)
+	}
+
+	operatorIAMRoles := args.operatorIAMRoles
+	operatorIAMRoleList := []clusterprovider.OperatorIAMRole{}
+	if roleARN != "" {
+		for _, role := range operatorIAMRoles {
+			if !strings.Contains(role, ",") {
+				reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
+					"list of name,namespace,role_arn")
 				os.Exit(1)
 			}
-		}
-
-		operatorIAMRoles := args.operatorIAMRoles
-		for _, role := range operatorIAMRoles {
 			roleData := strings.Split(role, ",")
+			if len(roleData) != 3 {
+				reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
+					"list of name,namespace,role_arn")
+				os.Exit(1)
+			}
 			operatorIAMRoleList = append(operatorIAMRoleList, clusterprovider.OperatorIAMRole{
 				Name:      roleData[0],
 				Namespace: roleData[1],
@@ -460,74 +499,110 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if interactive.Enabled() {
 			for {
+				ocpVersion := strings.Replace(version, "openshift-v", "", 1)
+				ocpVersion = strings.Split(ocpVersion, "-")[0]
+				credRequest := fmt.Sprintf("oc adm release extract "+
+					"--credentials-requests --cloud aws "+
+					"--from quay.io/openshift-release-dev/ocp-release:%s-x86_64",
+					ocpVersion,
+				)
+				addRole, err := interactive.GetBool(interactive.Input{
+					Question: "Add an operator IAM role?",
+					Help: fmt.Sprintf("%s To extract the manifest for your specific version, run "+
+						"the following command and enter the name and namespace in the "+
+						"secretRef, as well as a role ARN that has similar permissions to "+
+						"the spec of the generated files:\n%s",
+						cmd.Flags().Lookup("operator-iam-roles").Usage, credRequest),
+					Default: len(operatorIAMRoleList) == 0,
+				})
+				if !addRole || err != nil {
+					break
+				}
 				name, err := interactive.GetString(interactive.Input{
 					Question: "Operator IAM role name",
+					Help:     "Name of the operator",
+					Required: true,
 				})
 				if err != nil {
 					reporter.Errorf("Expected the name of the operator IAM role: %s", err)
 					os.Exit(1)
 				}
-				if name == "" {
-					break
-				}
 				namespace, err := interactive.GetString(interactive.Input{
 					Question: "Operator IAM role namespace",
+					Help:     "Namespace of the operator",
+					Required: true,
 				})
 				if err != nil {
 					reporter.Errorf("Expected the namespace of the operator IAM role: %s", err)
 					os.Exit(1)
 				}
-				if namespace == "" {
-					break
-				}
-				arn, err := interactive.GetString(interactive.Input{
+				iamRoleARN, err := interactive.GetString(interactive.Input{
 					Question: "Operator IAM role ARN",
+					Help:     "Role ARN with the necessary permissions to install the operator",
+					Required: true,
 				})
 				if err != nil {
 					reporter.Errorf("Expected the ARN of the operator IAM role: %s", err)
 					os.Exit(1)
 				}
-				if arn == "" {
-					break
+				_, err = arn.Parse(iamRoleARN)
+				if err != nil {
+					reporter.Errorf("Expected a valid operator IAM role ARN: %s", err)
+					os.Exit(1)
 				}
 				operatorIAMRoleList = append(operatorIAMRoleList, clusterprovider.OperatorIAMRole{
 					Namespace: namespace,
 					Name:      name,
-					RoleARN:   arn,
+					RoleARN:   iamRoleARN,
 				})
 			}
 		}
+	}
 
-		// Instance IAM Roles
-		masterRoleARN = args.masterRoleARN
-		if interactive.Enabled() {
-			masterRoleARN, err = interactive.GetString(interactive.Input{
-				Question: "Master IAM Role ARN",
-				Help:     cmd.Flags().Lookup("master-iam-role").Usage,
-				Default:  masterRoleARN,
-			})
-			if err != nil {
-				reporter.Errorf("Expected a valid master IAM role ARN: %s", err)
-				os.Exit(1)
-			}
+	// Instance IAM Roles
+	masterRoleARN := args.masterRoleARN
+	if roleARN != "" && interactive.Enabled() {
+		masterRoleARN, err = interactive.GetString(interactive.Input{
+			Question: "Master IAM Role ARN",
+			Help:     cmd.Flags().Lookup("master-iam-role").Usage,
+			Default:  masterRoleARN,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid master IAM role ARN: %s", err)
+			os.Exit(1)
 		}
+	}
+	if masterRoleARN != "" {
+		_, err = arn.Parse(masterRoleARN)
+		if err != nil {
+			reporter.Errorf("Expected a valid instance IAM role ARN: %s", err)
+			os.Exit(1)
+		}
+	}
 
-		workerRoleARN = args.workerRoleARN
-		if interactive.Enabled() {
-			workerRoleARN, err = interactive.GetString(interactive.Input{
-				Question: "Worker IAM Role ARN",
-				Help:     cmd.Flags().Lookup("worker-iam-role").Usage,
-				Default:  workerRoleARN,
-			})
-			if err != nil {
-				reporter.Errorf("Expected a valid worker IAM role ARN: %s", err)
-				os.Exit(1)
-			}
+	workerRoleARN := args.workerRoleARN
+	if roleARN != "" && interactive.Enabled() {
+		workerRoleARN, err = interactive.GetString(interactive.Input{
+			Question: "Worker IAM Role ARN",
+			Help:     cmd.Flags().Lookup("worker-iam-role").Usage,
+			Default:  workerRoleARN,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid worker IAM role ARN: %s", err)
+			os.Exit(1)
+		}
+	}
+	if workerRoleARN != "" {
+		_, err = arn.Parse(workerRoleARN)
+		if err != nil {
+			reporter.Errorf("Expected a valid instance IAM role ARN: %s", err)
+			os.Exit(1)
 		}
 	}
 
 	// Custom tags for AWS resources
 	tags := args.tags
+	tagsList := map[string]string{}
 	if len(tags) > 0 && interactive.Enabled() {
 		tagsInput, err := interactive.GetString(interactive.Input{
 			Question: "Tags",
@@ -602,35 +677,6 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// OpenShift version:
-	version := args.version
-	channelGroup := args.channelGroup
-	versionList, err := getVersionList(ocmClient, channelGroup)
-	if err != nil {
-		reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	if version == "" {
-		version = versionList[0]
-	}
-	if interactive.Enabled() {
-		version, err = interactive.GetOption(interactive.Input{
-			Question: "OpenShift version",
-			Help:     cmd.Flags().Lookup("version").Usage,
-			Options:  versionList,
-			Default:  version,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid OpenShift version: %s", err)
-			os.Exit(1)
-		}
-	}
-	version, err = validateVersion(version, versionList)
-	if err != nil {
-		reporter.Errorf("Expected a valid OpenShift version: %s", err)
-		os.Exit(1)
-	}
-
 	awsClient, err := aws.NewClient().
 		Region(region).
 		Logger(logger).
@@ -643,7 +689,7 @@ func run(cmd *cobra.Command, _ []string) {
 	useExistingVPC := false
 	privateLink := args.privateLink
 	privateLinkWarning := "Once the cluster is created, this option cannot be changed."
-	if cmd.Flags().Changed("private-link") && interactive.Enabled() {
+	if interactive.Enabled() {
 		privateLink, err = interactive.GetBool(interactive.Input{
 			Question: "PrivateLink cluster",
 			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
@@ -1189,6 +1235,12 @@ func buildCommand(spec clusterprovider.Spec) string {
 		for _, role := range spec.OperatorIAMRoles {
 			command += fmt.Sprintf(" --operator-iam-roles %s,%s,%s", role.Name, role.Namespace, role.RoleARN)
 		}
+	}
+	if spec.MasterRoleARN != "" {
+		command += fmt.Sprintf(" --master-iam-role %s", spec.MasterRoleARN)
+	}
+	if spec.WorkerRoleARN != "" {
+		command += fmt.Sprintf(" --worker-iam-role %s", spec.WorkerRoleARN)
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
