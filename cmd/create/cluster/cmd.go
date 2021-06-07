@@ -525,22 +525,25 @@ func run(cmd *cobra.Command, _ []string) {
 				RoleARN:   roleData[2],
 			})
 		}
+		ocpVersion := strings.Replace(version, "openshift-v", "", 1)
+		ocpVersion = strings.Split(ocpVersion, "-")[0]
+		credRequest := fmt.Sprintf("oc adm release extract \\\n"+
+			"\t--credentials-requests \\\n"+
+			"\t--cloud aws \\\n"+
+			"\t--from quay.io/openshift-release-dev/ocp-release:%s-x86_64",
+			ocpVersion,
+		)
+		operatorIAMRoleHelp := fmt.Sprintf("To extract the necessary operator credential requests for your "+
+			"specific version, run the following command and enter the name and namespace in the "+
+			"secretRef, as well as a role ARN that has similar permissions to the spec of the generated "+
+			"files:\n %s", credRequest)
 		if interactive.Enabled() {
 			for {
-				ocpVersion := strings.Replace(version, "openshift-v", "", 1)
-				ocpVersion = strings.Split(ocpVersion, "-")[0]
-				credRequest := fmt.Sprintf("oc adm release extract "+
-					"--credentials-requests --cloud aws "+
-					"--from quay.io/openshift-release-dev/ocp-release:%s-x86_64",
-					ocpVersion,
-				)
 				addRole, err := interactive.GetBool(interactive.Input{
 					Question: "Add an operator IAM role?",
-					Help: fmt.Sprintf("%s To extract the manifest for your specific version, run "+
-						"the following command and enter the name and namespace in the "+
-						"secretRef, as well as a role ARN that has similar permissions to "+
-						"the spec of the generated files:\n%s",
-						cmd.Flags().Lookup("operator-iam-roles").Usage, credRequest),
+					Help: fmt.Sprintf("%s %s",
+						cmd.Flags().Lookup("operator-iam-roles").Usage,
+						operatorIAMRoleHelp),
 					Default: len(operatorIAMRoleList) == 0,
 				})
 				if !addRole || err != nil {
@@ -584,6 +587,10 @@ func run(cmd *cobra.Command, _ []string) {
 					RoleARN:   iamRoleARN,
 				})
 			}
+		}
+		if len(operatorIAMRoleList) == 0 {
+			reporter.Errorf("Expected a list of operator IAM roles. %s", operatorIAMRoleHelp)
+			os.Exit(1)
 		}
 	}
 
