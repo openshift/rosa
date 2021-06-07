@@ -1267,6 +1267,9 @@ func buildCommand(spec clusterprovider.Spec) string {
 	if spec.ExternalID != "" {
 		command += fmt.Sprintf(" --external-id %s", spec.ExternalID)
 	}
+	if spec.SupportRoleARN != "" {
+		command += fmt.Sprintf(" --support-role-arn %s", spec.SupportRoleARN)
+	}
 	if len(spec.OperatorIAMRoles) > 0 {
 		for _, role := range spec.OperatorIAMRoles {
 			command += fmt.Sprintf(" --operator-iam-roles %s,%s,%s", role.Name, role.Namespace, role.RoleARN)
@@ -1335,7 +1338,9 @@ func buildCommand(spec clusterprovider.Spec) string {
 	if spec.HostPrefix != 0 {
 		command += fmt.Sprintf(" --host-prefix %d", spec.HostPrefix)
 	}
-	if spec.Private != nil && *spec.Private {
+	if spec.PrivateLink != nil && *spec.PrivateLink {
+		command += " --private-link"
+	} else if spec.Private != nil && *spec.Private {
 		command += " --private"
 	}
 	if len(spec.SubnetIds) > 0 {
