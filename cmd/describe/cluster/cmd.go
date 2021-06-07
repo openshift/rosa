@@ -254,10 +254,7 @@ func run(cmd *cobra.Command, argv []string) {
 		" - Service CIDR:            %s\n"+
 		" - Machine CIDR:            %s\n"+
 		" - Pod CIDR:                %s\n"+
-		" - Host Prefix:             /%d\n"+
-		"State:                      %s %s\n"+
-		"Private:                    %s\n"+
-		"Created:                    %s\n",
+		" - Host Prefix:             /%d\n",
 		clusterName,
 		cluster.ID(),
 		cluster.ExternalID(),
@@ -274,10 +271,53 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Network().MachineCIDR(),
 		cluster.Network().PodCIDR(),
 		cluster.Network().HostPrefix(),
+	)
+
+	if cluster.AWS().STS().RoleARN() != "" {
+		str = fmt.Sprintf("%s"+
+			"STS Role ARN:               %s\n", str,
+			cluster.AWS().STS().RoleARN())
+		if cluster.AWS().STS().ExternalID() != "" {
+			str = fmt.Sprintf("%s"+
+				"STS External ID:            %s\n", str,
+				cluster.AWS().STS().ExternalID())
+		}
+		if cluster.AWS().STS().SupportRoleARN() != "" {
+			str = fmt.Sprintf("%s"+
+				"Support Role ARN:           %s\n", str,
+				cluster.AWS().STS().SupportRoleARN())
+		}
+		if cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN() != "" ||
+			cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN() != "" {
+			str = fmt.Sprintf("%sInstance IAM Roles:\n", str)
+			if cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN() != "" {
+				str = fmt.Sprintf("%s"+
+					" - Master:                  %s\n", str,
+					cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN())
+			}
+			if cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN() != "" {
+				str = fmt.Sprintf("%s"+
+					" - Worker:                  %s\n", str,
+					cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN())
+			}
+		}
+		if len(cluster.AWS().STS().OperatorIAMRoles()) > 0 {
+			str = fmt.Sprintf("%sOperator IAM Roles:\n", str)
+			for _, operatorIAMRole := range cluster.AWS().STS().OperatorIAMRoles() {
+				str = fmt.Sprintf("%s"+
+					" - %s\n", str,
+					operatorIAMRole.RoleARN())
+			}
+		}
+	}
+
+	str = fmt.Sprintf("%s"+
+		"State:                      %s %s\n"+
+		"Private:                    %s\n"+
+		"Created:                    %s\n", str,
 		cluster.State(), phase,
 		isPrivate,
-		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"),
-	)
+		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
 
 	if detailsPage != "" {
 		str = fmt.Sprintf("%s"+
