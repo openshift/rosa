@@ -325,19 +325,19 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	// Machine pool instance type:
 	instanceType := args.instanceType
-	instanceTypeList, err := machines.GetMachineTypeList(ocmClient)
+	instanceTypeList, err := machines.GetAvailableMachineTypes(ocmConnection)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
 	if interactive.Enabled() {
 		if instanceType == "" {
-			instanceType = instanceTypeList[0]
+			instanceType = instanceTypeList[0].MachineType.ID()
 		}
 		instanceType, err = interactive.GetOption(interactive.Input{
 			Question: "Instance type",
 			Help:     cmd.Flags().Lookup("instance-type").Usage,
-			Options:  instanceTypeList,
+			Options:  machines.GetAvailableMachineTypeList(instanceTypeList, cluster.MultiAZ()),
 			Default:  instanceType,
 			Required: true,
 		})
@@ -350,7 +350,7 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Expected a valid machine type")
 		os.Exit(1)
 	}
-	instanceType, err = machines.ValidateMachineType(instanceType, instanceTypeList)
+	instanceType, err = machines.ValidateMachineType(instanceType, instanceTypeList, cluster.MultiAZ())
 	if err != nil {
 		reporter.Errorf("Expected a valid machine type: %s", err)
 		os.Exit(1)

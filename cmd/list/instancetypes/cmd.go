@@ -58,11 +58,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	ocmClient := ocmConnection.ClustersMgmt().V1()
-
 	reporter.Debugf("Fetching instance types")
-	machineTypes, err := machines.GetMachineTypes(ocmClient)
+
+	machineTypes, err := machines.GetAvailableMachineTypes(ocmConnection)
 	if err != nil {
 		reporter.Errorf("Failed to fetch instance types: %v", err)
 		os.Exit(1)
@@ -78,10 +76,15 @@ func run(cmd *cobra.Command, _ []string) {
 	fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\t\n")
 
 	for _, machine := range machineTypes {
+		if !machine.Available {
+			continue
+		}
+		availableMachine := machine.MachineType
 		fmt.Fprintf(writer,
 			"%s\t%s\t%d\t%s\n",
-			machine.ID(), machine.Category(), int(machine.CPU().Value()), ByteCountIEC(int(machine.Memory().Value()),
-				machine.Memory().Unit()),
+			availableMachine.ID(), availableMachine.Category(), int(availableMachine.CPU().Value()),
+			ByteCountIEC(int(availableMachine.Memory().Value()),
+				availableMachine.Memory().Unit()),
 		)
 	}
 	writer.Flush()

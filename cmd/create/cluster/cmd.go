@@ -832,7 +832,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
-	computeMachineTypeList, err := machines.GetMachineTypeList(ocmClient)
+	computeMachineTypeList, err := machines.GetAvailableMachineTypes(ocmConnection)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -841,7 +841,7 @@ func run(cmd *cobra.Command, _ []string) {
 		computeMachineType, err = interactive.GetOption(interactive.Input{
 			Question: "Compute nodes instance type",
 			Help:     cmd.Flags().Lookup("compute-machine-type").Usage,
-			Options:  computeMachineTypeList,
+			Options:  machines.GetAvailableMachineTypeList(computeMachineTypeList, multiAZ),
 			Default:  computeMachineType,
 		})
 		if err != nil {
@@ -849,7 +849,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	computeMachineType, err = machines.ValidateMachineType(computeMachineType, computeMachineTypeList)
+	computeMachineType, err = machines.ValidateMachineType(computeMachineType, computeMachineTypeList, multiAZ)
 	if err != nil {
 		reporter.Errorf("Expected a valid machine type: %s", err)
 		os.Exit(1)
