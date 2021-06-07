@@ -646,7 +646,6 @@ func createClusterSpec(ocmClusterClient *cmv1.ClustersClient,
 	return clusterSpec, nil
 }
 
-// nolint:interfacer
 func IsEmptyCIDR(cidr net.IPNet) bool {
 	return cidr.String() == "<nil>"
 }
