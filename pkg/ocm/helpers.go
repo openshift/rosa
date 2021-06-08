@@ -53,7 +53,7 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 		Size(1).
 		Send()
 	if err != nil {
-		return false, handleErr(response.Error(), err)
+		return false, HandleErr(response.Error(), err)
 	}
 
 	return response.Total() > 0, nil
@@ -70,7 +70,7 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 		Size(1).
 		Send()
 	if err != nil {
-		return nil, handleErr(response.Error(), err)
+		return nil, HandleErr(response.Error(), err)
 	}
 
 	switch response.Total() {
@@ -90,7 +90,7 @@ func GetIdentityProviders(client *cmv1.ClustersClient, clusterID string) ([]*cmv
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, handleErr(response.Error(), err)
+		return nil, HandleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
@@ -122,7 +122,7 @@ func GetIngresses(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.Ingres
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, handleErr(response.Error(), err)
+		return nil, HandleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
@@ -137,7 +137,7 @@ func GetUser(client *cmv1.ClustersClient, clusterID string, group string, userna
 		if response.Status() == http.StatusNotFound {
 			return nil, nil
 		}
-		return nil, handleErr(response.Error(), err)
+		return nil, HandleErr(response.Error(), err)
 	}
 
 	return response.Body(), nil
@@ -150,7 +150,7 @@ func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*c
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, handleErr(response.Error(), err)
+		return nil, HandleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
@@ -169,7 +169,7 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 		Get().
 		Send()
 	if err != nil {
-		return nil, handleErr(acctResponse.Error(), err)
+		return nil, HandleErr(acctResponse.Error(), err)
 	}
 	organization := acctResponse.Body().Organization().ID()
 
@@ -184,7 +184,7 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, handleErr(quotaCostResponse.Error(), err)
+		return nil, HandleErr(quotaCostResponse.Error(), err)
 	}
 	quotaCosts := quotaCostResponse.Items()
 
@@ -196,7 +196,7 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, handleErr(addOnsResponse.Error(), err)
+		return nil, HandleErr(addOnsResponse.Error(), err)
 	}
 
 	var addOns []*AddOnResource
@@ -214,7 +214,7 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 			// Check all related resources to ensure we're checking the product of the correct addon
 			for _, relatedResource := range quotaCost.RelatedResources() {
 				// Only return compatible addons
-				if addOn.ResourceName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
+				if addOn.ResourceName() == relatedResource.ResourceName() && IsCompatible(relatedResource) {
 					available = true
 
 					// Addon is only available if quota allows it
@@ -241,7 +241,7 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 }
 
 // Determine whether an add-on is compatible with ROSA clusters in general
-func isCompatible(relatedResource *amsv1.RelatedResource) bool {
+func IsCompatible(relatedResource *amsv1.RelatedResource) bool {
 	product := strings.ToLower(relatedResource.Product())
 	cloudProvider := strings.ToLower(relatedResource.CloudProvider())
 	byoc := strings.ToLower(relatedResource.BYOC())
@@ -255,7 +255,7 @@ func isCompatible(relatedResource *amsv1.RelatedResource) bool {
 func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
 	response, err := client.Addon(id).Get().Send()
 	if err != nil {
-		return nil, handleErr(response.Error(), err)
+		return nil, HandleErr(response.Error(), err)
 	}
 	return response.Body(), nil
 }
@@ -282,7 +282,7 @@ func GetClusterAddOns(connection *sdk.Connection, cluster *cmv1.Cluster) ([]*Clu
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, handleErr(addOnInstallationsResponse.Error(), err)
+		return nil, HandleErr(addOnInstallationsResponse.Error(), err)
 	}
 	addOnInstallations := addOnInstallationsResponse.Items()
 
@@ -337,13 +337,13 @@ func GetMachinePools(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.Mac
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, handleErr(response.Error(), err)
+		return nil, HandleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
 }
 
-func handleErr(res *ocmerrors.Error, err error) error {
+func HandleErr(res *ocmerrors.Error, err error) error {
 	msg := res.Reason()
 	if msg == "" {
 		msg = err.Error()
