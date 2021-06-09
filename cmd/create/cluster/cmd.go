@@ -478,7 +478,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// OpenShift version:
 	version := args.version
 	channelGroup := args.channelGroup
-	versionList, err := getVersionList(ocmClient, channelGroup)
+	versionList, err := getVersionList(ocmClient, channelGroup, roleARN != "")
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -498,7 +498,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	version, err = validateVersion(version, versionList)
+	version, err = validateVersion(version, versionList, channelGroup, roleARN != "")
 	if err != nil {
 		reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
@@ -1173,7 +1173,7 @@ func run(cmd *cobra.Command, _ []string) {
 }
 
 // Validate OpenShift versions
-func validateVersion(version string, versionList []string) (string, error) {
+func validateVersion(version string, versionList []string, channelGroup string, isSTS bool) (string, error) {
 	if version != "" {
 		// Check and set the cluster version
 		hasVersion := false
@@ -1188,20 +1188,28 @@ func validateVersion(version string, versionList []string) (string, error) {
 			return version, err
 		}
 
+		if isSTS && !versions.HasSTSSupport(version, channelGroup) {
+			err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
+			return version, err
+		}
+
 		version = "openshift-v" + version
 	}
 
 	return version, nil
 }
 
-func getVersionList(client *cmv1.Client, channelGroup string) (versionList []string, err error) {
-	versions, err := versions.GetVersions(client, channelGroup)
+func getVersionList(client *cmv1.Client, channelGroup string, isSTS bool) (versionList []string, err error) {
+	vs, err := versions.GetVersions(client, channelGroup)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return
 	}
 
-	for _, v := range versions {
+	for _, v := range vs {
+		if isSTS && !versions.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
+			continue
+		}
 		versionList = append(versionList, strings.Replace(v.ID(), "openshift-v", "", 1))
 	}
 

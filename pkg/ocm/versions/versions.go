@@ -19,12 +19,17 @@ package versions
 import (
 	"errors"
 	"fmt"
+	"sort"
+
+	ver "github.com/hashicorp/go-version"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 )
 
 const DefaultChannelGroup = "stable"
+
+const LowestSTSSupport = "4.7.11"
 
 func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Version, err error) {
 	collection := client.Versions()
@@ -51,7 +56,38 @@ func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Ver
 		}
 		page++
 	}
+
+	// Sort list in descending order, ensuring the 'default' version at the top
+	sort.Slice(versions, func(i, j int) bool {
+		if versions[i].Default() {
+			return true
+		}
+		if versions[j].Default() {
+			return false
+		}
+		a, erra := ver.NewVersion(versions[i].RawID())
+		b, errb := ver.NewVersion(versions[j].RawID())
+		if erra != nil || errb != nil {
+			return false
+		}
+		return a.GreaterThan(b)
+	})
+
 	return
+}
+
+func HasSTSSupport(rawID string, channelGroup string) bool {
+	if channelGroup == "nightly" {
+		return true
+	}
+
+	a, erra := ver.NewVersion(rawID)
+	b, errb := ver.NewVersion(LowestSTSSupport)
+	if erra != nil || errb != nil {
+		return rawID >= LowestSTSSupport
+	}
+
+	return a.GreaterThanOrEqual(b)
 }
 
 func GetVersionID(cluster *cmv1.Cluster) string {
