@@ -24,7 +24,6 @@ import (
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/info"
@@ -212,6 +211,14 @@ func GetClusterStatus(client *cmv1.ClustersClient, clusterID string) (*cmv1.Clus
 	return response.Body(), nil
 }
 
+func GetClusterState(client *cmv1.ClustersClient, clusterID string) (cmv1.ClusterState, error) {
+	response, err := client.Cluster(clusterID).Status().Get().Send()
+	if err != nil || response.Body() == nil {
+		return cmv1.ClusterState(""), err
+	}
+	return response.Body().State(), nil
+}
+
 func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string, config Spec) error {
 	cluster, err := GetCluster(client, clusterKey, creatorARN)
 	if err != nil {
@@ -282,114 +289,6 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	}
 
 	return cluster, nil
-}
-
-func GetAddOnParameters(client *cmv1.AddOnsClient, addOnID string) (*cmv1.AddOnParameterList, error) {
-	response, err := client.Addon(addOnID).Get().Send()
-	if err != nil {
-		return nil, handleErr(response.Error(), err)
-	}
-	return response.Body().Parameters(), nil
-}
-
-type AddOnParam struct {
-	Key string
-	Val string
-}
-
-func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string,
-	params []AddOnParam) error {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
-	if err != nil {
-		return err
-	}
-
-	addOnInstallationBuilder := cmv1.NewAddOnInstallation().
-		Addon(cmv1.NewAddOn().ID(addOnID))
-
-	if len(params) > 0 {
-		addOnParamList := make([]*cmv1.AddOnInstallationParameterBuilder, len(params))
-		for i, param := range params {
-			addOnParamList[i] = cmv1.NewAddOnInstallationParameter().ID(param.Key).Value(param.Val)
-		}
-		addOnInstallationBuilder = addOnInstallationBuilder.
-			Parameters(cmv1.NewAddOnInstallationParameterList().Items(addOnParamList...))
-	}
-
-	addOnInstallation, err := addOnInstallationBuilder.Build()
-	if err != nil {
-		return err
-	}
-
-	response, err := client.Cluster(cluster.ID()).Addons().Add().Body(addOnInstallation).Send()
-	if err != nil {
-		return handleErr(response.Error(), err)
-	}
-
-	return nil
-}
-
-func UninstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string) error {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
-	if err != nil {
-		return err
-	}
-
-	response, err := client.Cluster(cluster.ID()).Addons().Addoninstallation(addOnID).Delete().Send()
-	if err != nil {
-		return handleErr(response.Error(), err)
-	}
-
-	return nil
-}
-
-func GetAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, creatorARN string,
-	addOnID string) (*cmv1.AddOnInstallation, error) {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
-	if err != nil {
-		return nil, err
-	}
-
-	response, err := client.Cluster(cluster.ID()).Addons().Addoninstallation(addOnID).Get().Send()
-	if err != nil {
-		return nil, handleErr(response.Error(), err)
-	}
-
-	return response.Body(), nil
-}
-
-func UpdateAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string,
-	params []AddOnParam) error {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
-	if err != nil {
-		return err
-	}
-
-	addOnInstallationBuilder := cmv1.NewAddOnInstallation().
-		Addon(cmv1.NewAddOn().ID(addOnID))
-
-	if len(params) > 0 {
-		addOnParamList := make([]*cmv1.AddOnInstallationParameterBuilder, len(params))
-		for i, param := range params {
-			addOnParamList[i] = cmv1.NewAddOnInstallationParameter().ID(param.Key).Value(param.Val)
-		}
-		addOnInstallationBuilder = addOnInstallationBuilder.
-			Parameters(cmv1.NewAddOnInstallationParameterList().Items(addOnParamList...))
-	}
-
-	addOnInstallation, err := addOnInstallationBuilder.Build()
-	if err != nil {
-		return err
-	}
-
-	response, err := client.Cluster(cluster.ID()).
-		Addons().Addoninstallation(addOnID).
-		Update().Body(addOnInstallation).Send()
-	if err != nil {
-		return handleErr(response.Error(), err)
-	}
-
-	return nil
 }
 
 func createClusterSpec(ocmClusterClient *cmv1.ClustersClient,
@@ -629,22 +528,4 @@ func createClusterSpec(ocmClusterClient *cmv1.ClustersClient,
 	}
 
 	return clusterSpec, nil
-}
-
-func IsEmptyCIDR(cidr net.IPNet) bool {
-	return cidr.String() == "<nil>"
-}
-
-func handleErr(res *ocmerrors.Error, err error) error {
-	msg := res.Reason()
-	if msg == "" {
-		msg = err.Error()
-	}
-	// Hack to always display the correct terms and conditions message
-	if res.Code() == "CLUSTERS-MGMT-451" {
-		msg = "You must accept the Terms and Conditions in order to continue.\n" +
-			"Go to https://www.redhat.com/wapps/tnc/ackrequired?site=ocm&event=register\n" +
-			"Once you accept the terms, you will need to retry the action that was blocked."
-	}
-	return errors.New(msg)
 }

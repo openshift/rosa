@@ -34,7 +34,7 @@ func GetInstallLogs(client *cmv1.ClustersClient, clusterID string, tail int) (lo
 		Parameter("tail", tail).
 		Send()
 	if err != nil {
-		err = HandleErr(response.Error(), err)
+		err = handleErr(response.Error(), err)
 		if response.Status() == http.StatusNotFound {
 			err = errors.NotFound.UserErrorf("Failed to get logs for cluster '%s'", clusterID)
 		}
@@ -50,7 +50,7 @@ func GetUninstallLogs(client *cmv1.ClustersClient, clusterID string, tail int) (
 		Parameter("tail", tail).
 		Send()
 	if err != nil {
-		err = HandleErr(response.Error(), err)
+		err = handleErr(response.Error(), err)
 		if response.Status() == http.StatusNotFound {
 			err = errors.NotFound.UserErrorf("Failed to get logs for cluster '%s'", clusterID)
 		}
