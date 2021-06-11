@@ -25,7 +25,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/ocm/regions"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -91,7 +90,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Fetching regions")
-	regions, err := regions.GetRegions(ocmClient, args.roleARN, args.externalID)
+	regions, err := ocm.GetRegions(ocmClient, args.roleARN, args.externalID)
 	if err != nil {
 		reporter.Errorf("Failed to fetch regions: %v", err)
 		os.Exit(1)

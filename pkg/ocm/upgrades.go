@@ -14,13 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package upgrades
+package ocm
 
 import (
-	"errors"
-
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 )
 
 func GetUpgradePolicies(client *cmv1.Client, clusterID string) (upgradePolicies []*cmv1.UpgradePolicy, err error) {
@@ -83,12 +80,4 @@ func CancelUpgrade(client *cmv1.Client, clusterID string) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func handleErr(res *ocmerrors.Error, err error) error {
-	msg := res.Reason()
-	if msg == "" {
-		msg = err.Error()
-	}
-	return errors.New(msg)
 }

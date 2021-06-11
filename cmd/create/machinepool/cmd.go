@@ -29,8 +29,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	c "github.com/openshift/rosa/pkg/ocm/cluster"
-	"github.com/openshift/rosa/pkg/ocm/machines"
+	c "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -325,7 +324,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	// Machine pool instance type:
 	instanceType := args.instanceType
-	instanceTypeList, err := machines.GetAvailableMachineTypes(ocmConnection)
+	instanceTypeList, err := ocm.GetAvailableMachineTypes(ocmConnection)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -337,7 +336,7 @@ func run(cmd *cobra.Command, _ []string) {
 		instanceType, err = interactive.GetOption(interactive.Input{
 			Question: "Instance type",
 			Help:     cmd.Flags().Lookup("instance-type").Usage,
-			Options:  machines.GetAvailableMachineTypeList(instanceTypeList, cluster.MultiAZ()),
+			Options:  ocm.GetAvailableMachineTypeList(instanceTypeList, cluster.MultiAZ()),
 			Default:  instanceType,
 			Required: true,
 		})
@@ -350,7 +349,7 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Expected a valid machine type")
 		os.Exit(1)
 	}
-	instanceType, err = machines.ValidateMachineType(instanceType, instanceTypeList, cluster.MultiAZ())
+	instanceType, err = ocm.ValidateMachineType(instanceType, instanceTypeList, cluster.MultiAZ())
 	if err != nil {
 		reporter.Errorf("Expected a valid machine type: %s", err)
 		os.Exit(1)

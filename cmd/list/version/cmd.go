@@ -26,7 +26,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/ocm/versions"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -49,7 +48,7 @@ func init() {
 	flags.StringVar(
 		&args.channelGroup,
 		"channel-group",
-		versions.DefaultChannelGroup,
+		ocm.DefaultChannelGroup,
 		"List only versions from the specified channel group",
 	)
 }
@@ -78,7 +77,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Fetching versions")
-	versions, err := versions.GetVersions(ocmClient, args.channelGroup)
+	versions, err := ocm.GetVersions(ocmClient, args.channelGroup)
 	if err != nil {
 		reporter.Errorf("Failed to fetch versions: %v", err)
 		os.Exit(1)

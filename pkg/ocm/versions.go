@@ -14,17 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package versions
+package ocm
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 
 	ver "github.com/hashicorp/go-version"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 )
 
 const DefaultChannelGroup = "stable"
@@ -127,12 +125,4 @@ func createVersionID(version string, channelGroup string) string {
 		versionID = fmt.Sprintf("%s-%s", versionID, channelGroup)
 	}
 	return versionID
-}
-
-func handleErr(res *ocmerrors.Error, err error) error {
-	msg := res.Reason()
-	if msg == "" {
-		msg = err.Error()
-	}
-	return errors.New(msg)
 }

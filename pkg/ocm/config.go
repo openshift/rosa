@@ -17,7 +17,7 @@ limitations under the License.
 // This file contains the types and functions used to manage the configuration of the command line
 // client.
 
-package config
+package ocm
 
 import (
 	"encoding/json"

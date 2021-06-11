@@ -30,9 +30,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	c "github.com/openshift/rosa/pkg/ocm/cluster"
-	"github.com/openshift/rosa/pkg/ocm/upgrades"
-	"github.com/openshift/rosa/pkg/ocm/versions"
+	c "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -174,7 +172,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, upgradeState, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, upgradeState, err := ocm.GetScheduledUpgrade(ocmClient, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -192,7 +190,7 @@ func run(cmd *cobra.Command, _ []string) {
 	scheduleDate := args.scheduleDate
 	scheduleTime := args.scheduleTime
 
-	availableUpgrades, err := versions.GetAvailableUpgrades(ocmClient, versions.GetVersionID(cluster))
+	availableUpgrades, err := ocm.GetAvailableUpgrades(ocmClient, ocm.GetVersionID(cluster))
 	if err != nil {
 		reporter.Errorf("Failed to find available upgrades: %v", err)
 		os.Exit(1)

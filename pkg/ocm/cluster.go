@@ -14,14 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package ocm
 
 import (
 	"errors"
 	"fmt"
 	"net"
 	"os"
-	"regexp"
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -33,14 +32,6 @@ import (
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
-
-// Regular expression to used to make sure that the identifier or name given by the user is
-// safe and that it there is no risk of SQL injection:
-var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
-
-// Cluster names must be valid DNS-1035 labels, so they must consist of lower case alphanumeric
-// characters or '-', start with an alphabetic character, and end with an alphanumeric character
-var clusterNameRE = regexp.MustCompile(`^[a-z]([-a-z0-9]{0,13}[a-z0-9])?$`)
 
 // Spec is the configuration for a cluster spec.
 type Spec struct {
@@ -100,14 +91,6 @@ type OperatorIAMRole struct {
 	Name      string
 	Namespace string
 	RoleARN   string
-}
-
-func IsValidClusterKey(clusterKey string) bool {
-	return clusterKeyRE.MatchString(clusterKey)
-}
-
-func IsValidClusterName(clusterName string) bool {
-	return clusterNameRE.MatchString(clusterName)
 }
 
 func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {

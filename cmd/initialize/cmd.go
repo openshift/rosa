@@ -34,8 +34,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm/cluster"
-	"github.com/openshift/rosa/pkg/ocm/config"
+	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -113,7 +112,7 @@ func run(cmd *cobra.Command, argv []string) {
 	} else {
 		// Verify if user is already logged in:
 		isLoggedIn := false
-		cfg, err := config.Load()
+		cfg, err := ocm.Load()
 		if err != nil {
 			reporter.Errorf("Failed to load config file: %v", err)
 			os.Exit(1)

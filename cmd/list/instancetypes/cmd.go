@@ -25,7 +25,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/ocm/machines"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -60,7 +59,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	reporter.Debugf("Fetching instance types")
 
-	machineTypes, err := machines.GetAvailableMachineTypes(ocmConnection)
+	machineTypes, err := ocm.GetAvailableMachineTypes(ocmConnection)
 	if err != nil {
 		reporter.Errorf("Failed to fetch instance types: %v", err)
 		os.Exit(1)

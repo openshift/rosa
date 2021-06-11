@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/ocm/config"
+	"github.com/openshift/rosa/pkg/ocm"
 )
 
 var Cmd = &cobra.Command{
@@ -33,7 +33,7 @@ var Cmd = &cobra.Command{
 
 func run(cmd *cobra.Command, argv []string) error {
 	// Remove the configuration file:
-	err := config.Remove()
+	err := ocm.Remove()
 	if err != nil {
 		return fmt.Errorf("Failed to remove config file: %v", err)
 	}
