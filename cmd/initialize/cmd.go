@@ -32,9 +32,9 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/region"
-	clusterprovider "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	clusterprovider "github.com/openshift/rosa/pkg/ocm/cluster"
 	"github.com/openshift/rosa/pkg/ocm/config"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )

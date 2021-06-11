@@ -29,10 +29,10 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
-	clusterprovider "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	clusterprovider "github.com/openshift/rosa/pkg/ocm/cluster"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
