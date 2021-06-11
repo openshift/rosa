@@ -25,7 +25,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/ingress"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/openshift/rosa/pkg/arguments"
-	"github.com/openshift/rosa/pkg/confirm"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
 
 var Cmd = &cobra.Command{
