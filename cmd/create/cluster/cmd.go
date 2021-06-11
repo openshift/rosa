@@ -39,9 +39,9 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/ocm/machines"
-	"github.com/openshift/rosa/pkg/ocm/properties"
 	"github.com/openshift/rosa/pkg/ocm/regions"
 	"github.com/openshift/rosa/pkg/ocm/versions"
+	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
