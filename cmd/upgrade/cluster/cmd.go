@@ -27,10 +27,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
-	c "github.com/openshift/rosa/pkg/cluster"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	c "github.com/openshift/rosa/pkg/ocm/cluster"
 	"github.com/openshift/rosa/pkg/ocm/upgrades"
 	"github.com/openshift/rosa/pkg/ocm/versions"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
