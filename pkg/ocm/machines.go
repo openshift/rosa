@@ -133,7 +133,7 @@ func GetAvailableMachineTypes(ocmConnection *sdk.Connection) ([]*MachineType, er
 		Get().
 		Send()
 	if err != nil {
-		return nil, HandleErr(acctResponse.Error(), err)
+		return nil, handleErr(acctResponse.Error(), err)
 	}
 	organization := acctResponse.Body().Organization().ID()
 	quotaCostResponse, err := ocmConnection.AccountsMgmt().V1().Organizations().
@@ -146,7 +146,7 @@ func GetAvailableMachineTypes(ocmConnection *sdk.Connection) ([]*MachineType, er
 		Size(-1).
 		Send()
 	if err != nil {
-		return nil, HandleErr(quotaCostResponse.Error(), err)
+		return nil, handleErr(quotaCostResponse.Error(), err)
 	}
 	var availableMachineTypes []*MachineType
 	quotaCosts := quotaCostResponse.Items()
@@ -158,7 +158,7 @@ func GetAvailableMachineTypes(ocmConnection *sdk.Connection) ([]*MachineType, er
 		if machineType.Category() == AcceleratedComputing {
 			quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
 				for _, relatedResource := range quotaCost.RelatedResources() {
-					if machineType.GenericName() == relatedResource.ResourceName() && IsCompatible(relatedResource) {
+					if machineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
 						availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
 						availableMachineType.Available = availableQuota > 1
 						availableMachineType.AvailableQuota = availableQuota

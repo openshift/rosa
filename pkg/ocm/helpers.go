@@ -19,15 +19,15 @@ package ocm
 import (
 	"errors"
 	"net"
-	"net/http"
 	"regexp"
 	"strings"
 
-	sdk "github.com/openshift-online/ocm-sdk-go"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 )
+
+const ANY = "any"
 
 // Regular expression to used to make sure that the identifier or name given by the user is
 // safe and that it there is no risk of SQL injection:
@@ -51,270 +51,32 @@ func IsValidUsername(username string) bool {
 	return !badUsernameRE.MatchString(username)
 }
 
-func GetIdentityProviders(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.IdentityProvider, error) {
-	idpClient := client.Cluster(clusterID).IdentityProviders()
-	response, err := idpClient.List().
-		Page(1).
-		Size(-1).
-		Send()
-	if err != nil {
-		return nil, HandleErr(response.Error(), err)
-	}
-
-	return response.Items().Slice(), nil
+func IsEmptyCIDR(cidr net.IPNet) bool {
+	return cidr.String() == "<nil>"
 }
 
-func IdentityProviderType(idp *cmv1.IdentityProvider) string {
-	switch idp.Type() {
-	case "GithubIdentityProvider":
-		return "GitHub"
-	case "GitlabIdentityProvider":
-		return "GitLab"
-	case "GoogleIdentityProvider":
-		return "Google"
-	case "HTPasswdIdentityProvider":
-		return "htpasswd"
-	case "LDAPIdentityProvider":
-		return "LDAP"
-	case "OpenIDIdentityProvider":
-		return "OpenID"
-	}
-
-	return ""
-}
-
-func GetIngresses(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.Ingress, error) {
-	ingressClient := client.Cluster(clusterID).Ingresses()
-	response, err := ingressClient.List().
-		Page(1).
-		Size(-1).
-		Send()
-	if err != nil {
-		return nil, HandleErr(response.Error(), err)
-	}
-
-	return response.Items().Slice(), nil
-}
-
-func GetUser(client *cmv1.ClustersClient, clusterID string, group string, username string) (*cmv1.User, error) {
-	response, err := client.Cluster(clusterID).
-		Groups().Group(group).
-		Users().User(username).
-		Get().Send()
-	if err != nil {
-		if response.Status() == http.StatusNotFound {
-			return nil, nil
-		}
-		return nil, HandleErr(response.Error(), err)
-	}
-
-	return response.Body(), nil
-}
-
-func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*cmv1.User, error) {
-	usersClient := client.Cluster(clusterID).Groups().Group(group).Users()
-	response, err := usersClient.List().
-		Page(1).
-		Size(-1).
-		Send()
-	if err != nil {
-		return nil, HandleErr(response.Error(), err)
-	}
-
-	return response.Items().Slice(), nil
-}
-
-type AddOnResource struct {
-	AddOn     *cmv1.AddOn
-	AZType    string
-	Available bool
-}
-
-// Get complete list of available add-ons for the current organization
-func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
-	// Get organization ID (used to get add-on quotas)
-	acctResponse, err := connection.AccountsMgmt().V1().CurrentAccount().
-		Get().
-		Send()
-	if err != nil {
-		return nil, HandleErr(acctResponse.Error(), err)
-	}
-	organization := acctResponse.Body().Organization().ID()
-
-	// Get a list of add-on quotas for the current organization
-	quotaCostResponse, err := connection.AccountsMgmt().V1().Organizations().
-		Organization(organization).
-		QuotaCost().
-		List().
-		Search("quota_id LIKE 'add-on%'").
-		Parameter("fetchRelatedResources", true).
-		Page(1).
-		Size(-1).
-		Send()
-	if err != nil {
-		return nil, HandleErr(quotaCostResponse.Error(), err)
-	}
-	quotaCosts := quotaCostResponse.Items()
-
-	// Get complete list of enabled add-ons
-	addOnsResponse, err := connection.ClustersMgmt().V1().Addons().
-		List().
-		Search("enabled='t'").
-		Page(1).
-		Size(-1).
-		Send()
-	if err != nil {
-		return nil, HandleErr(addOnsResponse.Error(), err)
-	}
-
-	var addOns []*AddOnResource
-
-	// Populate enabled add-ons with if they are available for the current org
-	addOnsResponse.Items().Each(func(addOn *cmv1.AddOn) bool {
-		addOnResource := &AddOnResource{
-			AddOn: addOn,
-		}
-		// Free add-ons are always available
-		available := addOn.ResourceCost() == 0
-
-		// Only return add-ons for which the org has quota
-		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
-			// Check all related resources to ensure we're checking the product of the correct addon
-			for _, relatedResource := range quotaCost.RelatedResources() {
-				// Only return compatible addons
-				if addOn.ResourceName() == relatedResource.ResourceName() && IsCompatible(relatedResource) {
-					available = true
-
-					// Addon is only available if quota allows it
-					addOnResource.Available = quotaCost.Allowed()-quotaCost.Consumed() >= relatedResource.Cost()
-
-					// Track AZ type so that we can compare against cluster
-					addOnResource.AZType = relatedResource.AvailabilityZoneType()
-					// Since add-on is considered available now, there's no need to check the other resources
-					return false
-				}
-			}
-			return true
-		})
-
-		// Only display add-ons that meet the above criteria
-		if available {
-			addOns = append(addOns, addOnResource)
-		}
-
-		return true
-	})
-
-	return addOns, nil
-}
-
-// Determine whether an add-on is compatible with ROSA clusters in general
-func IsCompatible(relatedResource *amsv1.RelatedResource) bool {
+// Determine whether a resources is compatible with ROSA clusters in general
+func isCompatible(relatedResource *amsv1.RelatedResource) bool {
 	product := strings.ToLower(relatedResource.Product())
 	cloudProvider := strings.ToLower(relatedResource.CloudProvider())
 	byoc := strings.ToLower(relatedResource.BYOC())
 
 	// nolint:goconst
-	return (product == "any" || product == "rosa" || product == "moa") &&
-		(cloudProvider == "any" || cloudProvider == "aws") &&
-		(byoc == "any" || byoc == "byoc")
+	return (product == ANY || product == "rosa" || product == "moa") &&
+		(cloudProvider == ANY || cloudProvider == "aws") &&
+		(byoc == ANY || byoc == "byoc")
 }
 
-func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
-	response, err := client.Addon(id).Get().Send()
-	if err != nil {
-		return nil, HandleErr(response.Error(), err)
-	}
-	return response.Body(), nil
-}
-
-type ClusterAddOn struct {
-	ID    string
-	Name  string
-	State string
-}
-
-// Get all add-ons available for a cluster
-func GetClusterAddOns(connection *sdk.Connection, cluster *cmv1.Cluster) ([]*ClusterAddOn, error) {
-	addOnResources, err := GetAvailableAddOns(connection)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get add-ons already installed on cluster
-	addOnInstallationsResponse, err := connection.ClustersMgmt().V1().Clusters().
-		Cluster(cluster.ID()).
-		Addons().
-		List().
-		Page(1).
-		Size(-1).
-		Send()
-	if err != nil {
-		return nil, HandleErr(addOnInstallationsResponse.Error(), err)
-	}
-	addOnInstallations := addOnInstallationsResponse.Items()
-
-	var clusterAddOns []*ClusterAddOn
-
-	// Populate add-on installations with all add-on metadata
-	for _, addOnResource := range addOnResources {
-		// Ensure add-on is compatible with the cluster's availability zones
-		if !(addOnResource.AZType == "any" ||
-			(cluster.MultiAZ() && addOnResource.AZType == "multi") ||
-			(!cluster.MultiAZ() && addOnResource.AZType == "single")) {
-			continue
-		}
-		clusterAddOn := ClusterAddOn{
-			ID:    addOnResource.AddOn.ID(),
-			Name:  addOnResource.AddOn.Name(),
-			State: "not installed",
-		}
-		if !addOnResource.Available {
-			clusterAddOn.State = "unavailable"
-		}
-
-		// Get the state of add-on installations on the cluster
-		addOnInstallations.Each(func(addOnInstallation *cmv1.AddOnInstallation) bool {
-			if addOnResource.AddOn.ID() == addOnInstallation.Addon().ID() {
-				clusterAddOn.State = string(addOnInstallation.State())
-				if clusterAddOn.State == "" {
-					clusterAddOn.State = string(cmv1.AddOnInstallationStateInstalling)
-				}
-			}
-			return true
-		})
-
-		clusterAddOns = append(clusterAddOns, &clusterAddOn)
-	}
-
-	return clusterAddOns, nil
-}
-
-func GetClusterState(client *cmv1.ClustersClient, clusterID string) (cmv1.ClusterState, error) {
-	response, err := client.Cluster(clusterID).Status().Get().Send()
-	if err != nil || response.Body() == nil {
-		return cmv1.ClusterState(""), err
-	}
-	return response.Body().State(), nil
-}
-
-func GetMachinePools(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.MachinePool, error) {
-	response, err := client.Cluster(clusterID).MachinePools().
-		List().
-		Page(1).
-		Size(-1).
-		Send()
-	if err != nil {
-		return nil, HandleErr(response.Error(), err)
-	}
-
-	return response.Items().Slice(), nil
-}
-
-func HandleErr(res *ocmerrors.Error, err error) error {
+func handleErr(res *ocmerrors.Error, err error) error {
 	msg := res.Reason()
 	if msg == "" {
 		msg = err.Error()
+	}
+	// Hack to always display the correct terms and conditions message
+	if res.Code() == "CLUSTERS-MGMT-451" {
+		msg = "You must accept the Terms and Conditions in order to continue.\n" +
+			"Go to https://www.redhat.com/wapps/tnc/ackrequired?site=ocm&event=register\n" +
+			"Once you accept the terms, you will need to retry the action that was blocked."
 	}
 	return errors.New(msg)
 }
