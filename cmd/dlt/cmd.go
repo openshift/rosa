@@ -26,7 +26,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/machinepool"
 	"github.com/openshift/rosa/cmd/dlt/upgrade"
 	"github.com/openshift/rosa/pkg/arguments"
-	"github.com/openshift/rosa/pkg/confirm"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
 
 var Cmd = &cobra.Command{

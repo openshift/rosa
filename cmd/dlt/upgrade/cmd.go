@@ -24,7 +24,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	c "github.com/openshift/rosa/pkg/cluster"
-	"github.com/openshift/rosa/pkg/confirm"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/ocm/upgrades"

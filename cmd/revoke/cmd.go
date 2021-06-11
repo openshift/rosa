@@ -21,7 +21,7 @@ import (
 
 	"github.com/openshift/rosa/cmd/revoke/user"
 	"github.com/openshift/rosa/pkg/arguments"
-	"github.com/openshift/rosa/pkg/confirm"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
 
 var Cmd = &cobra.Command{
