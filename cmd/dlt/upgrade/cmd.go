@@ -26,8 +26,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	c "github.com/openshift/rosa/pkg/ocm/cluster"
-	"github.com/openshift/rosa/pkg/ocm/upgrades"
+	c "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -120,7 +119,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, _, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, _, err := ocm.GetScheduledUpgrade(ocmClient, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -132,7 +131,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if confirm.Confirm("cancel scheduled upgrade on cluster %s", clusterKey) {
 		reporter.Debugf("Deleting scheduled upgrade for cluster '%s'", clusterKey)
-		canceled, err := upgrades.CancelUpgrade(ocmClient, cluster.ID())
+		canceled, err := ocm.CancelUpgrade(ocmClient, cluster.ID())
 		if err != nil {
 			reporter.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
 			os.Exit(1)

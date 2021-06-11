@@ -27,7 +27,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/ocm/config"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -129,13 +128,13 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Load the configuration file:
-	cfg, err := config.Load()
+	cfg, err := ocm.Load()
 	if err != nil {
 		reporter.Errorf("Failed to load config file: %v", err)
 		os.Exit(1)
 	}
 	if cfg == nil {
-		cfg = new(config.Config)
+		cfg = new(ocm.Config)
 	}
 
 	token := args.token
@@ -191,7 +190,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// If the value of the `--env` is any of the aliases then replace it with the corresponding
 	// real URL:
-	gatewayURL, ok := config.URLAliases[args.env]
+	gatewayURL, ok := ocm.URLAliases[args.env]
 	if !ok {
 		gatewayURL = args.env
 	}
@@ -260,7 +259,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Save the configuration:
 	cfg.AccessToken = accessToken
 	cfg.RefreshToken = refreshToken
-	err = config.Save(cfg)
+	err = ocm.Save(cfg)
 	if err != nil {
 		reporter.Errorf("Failed to save config file: %v", err)
 		os.Exit(1)

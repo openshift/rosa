@@ -37,10 +37,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm/cluster"
-	"github.com/openshift/rosa/pkg/ocm/machines"
-	"github.com/openshift/rosa/pkg/ocm/regions"
-	"github.com/openshift/rosa/pkg/ocm/versions"
+	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -196,7 +193,7 @@ func init() {
 	flags.StringVar(
 		&args.channelGroup,
 		"channel-group",
-		versions.DefaultChannelGroup,
+		ocm.DefaultChannelGroup,
 		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
 	)
 
@@ -686,7 +683,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	regionList, regionAZ, err := regions.GetRegionList(ocmClient, multiAZ, roleARN, externalID)
+	regionList, regionAZ, err := ocm.GetRegionList(ocmClient, multiAZ, roleARN, externalID)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -861,7 +858,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
-	computeMachineTypeList, err := machines.GetAvailableMachineTypes(ocmConnection)
+	computeMachineTypeList, err := ocm.GetAvailableMachineTypes(ocmConnection)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -870,7 +867,7 @@ func run(cmd *cobra.Command, _ []string) {
 		computeMachineType, err = interactive.GetOption(interactive.Input{
 			Question: "Compute nodes instance type",
 			Help:     cmd.Flags().Lookup("compute-machine-type").Usage,
-			Options:  machines.GetAvailableMachineTypeList(computeMachineTypeList, multiAZ),
+			Options:  ocm.GetAvailableMachineTypeList(computeMachineTypeList, multiAZ),
 			Default:  computeMachineType,
 		})
 		if err != nil {
@@ -878,7 +875,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	computeMachineType, err = machines.ValidateMachineType(computeMachineType, computeMachineTypeList, multiAZ)
+	computeMachineType, err = ocm.ValidateMachineType(computeMachineType, computeMachineTypeList, multiAZ)
 	if err != nil {
 		reporter.Errorf("Expected a valid machine type: %s", err)
 		os.Exit(1)
@@ -1211,7 +1208,7 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 			return version, err
 		}
 
-		if isSTS && !versions.HasSTSSupport(version, channelGroup) {
+		if isSTS && !ocm.HasSTSSupport(version, channelGroup) {
 			err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
 			return version, err
 		}
@@ -1223,14 +1220,14 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 }
 
 func getVersionList(client *cmv1.Client, channelGroup string, isSTS bool) (versionList []string, err error) {
-	vs, err := versions.GetVersions(client, channelGroup)
+	vs, err := ocm.GetVersions(client, channelGroup)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return
 	}
 
 	for _, v := range vs {
-		if isSTS && !versions.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
+		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
 			continue
 		}
 		versionList = append(versionList, strings.Replace(v.ID(), "openshift-v", "", 1))
@@ -1329,7 +1326,7 @@ func buildCommand(spec clusterprovider.Spec) string {
 		command += " --disable-scp-checks"
 	}
 	if spec.Version != "" {
-		if spec.ChannelGroup != versions.DefaultChannelGroup {
+		if spec.ChannelGroup != ocm.DefaultChannelGroup {
 			command += fmt.Sprintf(" --channel-group %s", spec.ChannelGroup)
 		}
 		command += fmt.Sprintf(" --version %s", strings.TrimPrefix(spec.Version, "openshift-v"))

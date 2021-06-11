@@ -29,8 +29,6 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/ocm/upgrades"
-	"github.com/openshift/rosa/pkg/ocm/versions"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -121,7 +119,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Load available upgrades for this cluster
 	reporter.Debugf("Loading available upgrades for cluster '%s'", clusterKey)
-	availableUpgrades, err := versions.GetAvailableUpgrades(ocmClient, versions.GetVersionID(cluster))
+	availableUpgrades, err := ocm.GetAvailableUpgrades(ocmClient, ocm.GetVersionID(cluster))
 	if err != nil {
 		reporter.Errorf("Failed to get available upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -132,10 +130,10 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	latestRev := latestInCurrentMinor(versions.GetVersionID(cluster), availableUpgrades)
+	latestRev := latestInCurrentMinor(ocm.GetVersionID(cluster), availableUpgrades)
 
 	reporter.Debugf("Loading scheduled upgrades for cluster '%s'", clusterKey)
-	scheduledUpgrade, upgradeState, err := upgrades.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, upgradeState, err := ocm.GetScheduledUpgrade(ocmClient, cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

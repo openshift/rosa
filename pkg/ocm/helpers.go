@@ -18,7 +18,6 @@ package ocm
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"regexp"
@@ -28,59 +27,28 @@ import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
-
-	"github.com/openshift/rosa/pkg/properties"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
 // safe and that it there is no risk of SQL injection:
 var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
+
+// Cluster names must be valid DNS-1035 labels, so they must consist of lower case alphanumeric
+// characters or '-', start with an alphabetic character, and end with an alphanumeric character
+var clusterNameRE = regexp.MustCompile(`^[a-z]([-a-z0-9]{0,13}[a-z0-9])?$`)
+
 var badUsernameRE = regexp.MustCompile(`^(~|\.?\.|.*[:\/%].*)$`)
 
 func IsValidClusterKey(clusterKey string) bool {
 	return clusterKeyRE.MatchString(clusterKey)
 }
 
+func IsValidClusterName(clusterName string) bool {
+	return clusterNameRE.MatchString(clusterName)
+}
+
 func IsValidUsername(username string) bool {
 	return !badUsernameRE.MatchString(username)
-}
-
-func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
-	query := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, creatorARN)
-	response, err := client.List().
-		Search(query).
-		Page(1).
-		Size(1).
-		Send()
-	if err != nil {
-		return false, HandleErr(response.Error(), err)
-	}
-
-	return response.Total() > 0, nil
-}
-
-func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
-	query := fmt.Sprintf(
-		"(id = '%s' or name = '%s') and properties.%s = '%s'",
-		clusterKey, clusterKey, properties.CreatorARN, creatorARN,
-	)
-	response, err := client.List().
-		Search(query).
-		Page(1).
-		Size(1).
-		Send()
-	if err != nil {
-		return nil, HandleErr(response.Error(), err)
-	}
-
-	switch response.Total() {
-	case 0:
-		return nil, fmt.Errorf("There is no cluster with identifier or name '%s'", clusterKey)
-	case 1:
-		return response.Items().Slice()[0], nil
-	default:
-		return nil, fmt.Errorf("There are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
-	}
 }
 
 func GetIdentityProviders(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.IdentityProvider, error) {

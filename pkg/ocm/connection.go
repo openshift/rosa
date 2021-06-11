@@ -24,14 +24,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm/config"
 )
 
 // ConnectionBuilder contains the information and logic needed to build a connection to OCM. Don't
 // create instances of this type directly; use the NewConnection function instead.
 type ConnectionBuilder struct {
 	logger *logrus.Logger
-	cfg    *config.Config
+	cfg    *Config
 }
 
 // NewConnection creates a builder that can then be used to configure and build an OCM connection.
@@ -48,7 +47,7 @@ func (b *ConnectionBuilder) Logger(value *logrus.Logger) *ConnectionBuilder {
 }
 
 // Config sets the configuration that the connection will use to authenticate the user
-func (b *ConnectionBuilder) Config(value *config.Config) *ConnectionBuilder {
+func (b *ConnectionBuilder) Config(value *Config) *ConnectionBuilder {
 	b.cfg = value
 	return b
 }
@@ -57,7 +56,7 @@ func (b *ConnectionBuilder) Config(value *config.Config) *ConnectionBuilder {
 func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 	if b.cfg == nil {
 		// Load the configuration file:
-		b.cfg, err = config.Load()
+		b.cfg, err = Load()
 		if err != nil {
 			err = fmt.Errorf("Failed to load config file: %v", err)
 			return result, err

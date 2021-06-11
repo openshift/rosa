@@ -33,7 +33,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm/cluster"
+	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
