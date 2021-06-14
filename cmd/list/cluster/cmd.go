@@ -27,7 +27,6 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -70,7 +69,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -78,15 +77,14 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
 	// Retrieve the list of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-	clusters, err := clusterprovider.GetClusters(clustersCollection, awsCreator.ARN, 1000)
+	clusters, err := ocmClient.GetClusters(awsCreator.ARN, 1000)
 	if err != nil {
 		reporter.Errorf("Failed to get clusters: %v", err)
 		os.Exit(1)

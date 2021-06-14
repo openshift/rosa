@@ -28,7 +28,6 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -80,7 +79,7 @@ func run(cmd *cobra.Command, argv []string) {
 	clusterKey := args.clusterKey
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	if !clusterprovider.IsValidClusterKey(clusterKey) {
+	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -113,7 +112,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 
@@ -122,18 +121,15 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	ocmClient := ocmConnection.ClustersMgmt().V1()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := clusterprovider.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("Failed to get cluster '%s': %v", clusterKey, err))
 		os.Exit(1)
@@ -148,7 +144,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if cluster.State() == cmv1.ClusterStatePending {
 		phase = "(Preparing account)"
-		status, _ := clusterprovider.GetClusterStatus(ocmClient.Clusters(), cluster.ID())
+		status, _ := ocmClient.GetClusterStatus(cluster.ID())
 		if status.Description() != "" {
 			phase = fmt.Sprintf("(%s)", status.Description())
 		}
@@ -177,19 +173,19 @@ func run(cmd *cobra.Command, argv []string) {
 		isPrivate = "Yes"
 	}
 
-	scheduledUpgrade, upgradeState, err := ocm.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, upgradeState, err := ocmClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	detailsPage := getDetailsLink(ocmConnection.URL())
+	detailsPage := getDetailsLink(ocmClient.OCM().URL())
 
 	// Display number of all worker nodes across the cluster
 	minNodes := 0
 	maxNodes := 0
 	var nodesStr string
-	machinePools, err := ocm.GetMachinePools(ocmClient.Clusters(), cluster.ID())
+	machinePools, err := ocmClient.GetMachinePools(cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

@@ -61,15 +61,14 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
 		reporter.Errorf("Failed to create OCM connection: %v", err)
 		os.Exit(1)
 	}
-	defer ocmConnection.Close()
-	ocmClient := ocmConnection.ClustersMgmt().V1()
+	defer ocmClient.Close()
 
 	// Create the AWS client:
 	client, err := aws.NewClient().
@@ -79,7 +78,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		// FIXME Hack to capture errors due to using STS accounts
 		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
-			ocm.LogEvent(ocmClient, "ROSAInitCredentialsSTS")
+			ocmClient.LogEvent("ROSAInitCredentialsSTS")
 		}
 		reporter.Errorf("Error creating AWS client: %v", err)
 		os.Exit(1)
@@ -88,7 +87,7 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter.Infof("Validating SCP policies...")
 	ok, err := client.ValidateSCP(nil)
 	if err != nil {
-		ocm.LogEvent(ocmClient, "ROSAVerifyPermissionsSCPFailed")
+		ocmClient.LogEvent("ROSAVerifyPermissionsSCPFailed")
 		reporter.Errorf("Unable to validate SCP policies")
 		if strings.Contains(err.Error(), "Throttling: Rate exceeded") {
 			reporter.Errorf("Throttling: Rate exceeded. Please wait 3-5 minutes before retrying.")
@@ -98,7 +97,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if !ok {
-		ocm.LogEvent(ocmClient, "ROSAVerifyPermissionsSCPInvalid")
+		ocmClient.LogEvent("ROSAVerifyPermissionsSCPInvalid")
 		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
 	}
 	reporter.Infof("AWS SCP policies ok")

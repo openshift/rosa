@@ -30,7 +30,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	c "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -116,7 +115,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := args.clusterKey
-	if !c.IsValidClusterKey(clusterKey) {
+	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -142,7 +141,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -150,18 +149,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	ocmClient := ocmConnection.ClustersMgmt().V1()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -172,7 +168,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, upgradeState, err := ocm.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, upgradeState, err := ocmClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -190,7 +186,7 @@ func run(cmd *cobra.Command, _ []string) {
 	scheduleDate := args.scheduleDate
 	scheduleTime := args.scheduleTime
 
-	availableUpgrades, err := ocm.GetAvailableUpgrades(ocmClient, ocm.GetVersionID(cluster))
+	availableUpgrades, err := ocmClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
 	if err != nil {
 		reporter.Errorf("Failed to find available upgrades: %v", err)
 		os.Exit(1)
@@ -375,7 +371,8 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	_, err = ocmClient.Clusters().
+	_, err = ocmClient.OCM().ClustersMgmt().V1().
+		Clusters().
 		Cluster(cluster.ID()).
 		UpgradePolicies().
 		Add().
@@ -386,7 +383,8 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	_, err = ocmClient.Clusters().
+	_, err = ocmClient.OCM().ClustersMgmt().V1().
+		Clusters().
 		Cluster(cluster.ID()).
 		Update().
 		Body(clusterSpec).

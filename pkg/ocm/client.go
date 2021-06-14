@@ -26,44 +26,47 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 )
 
-// ConnectionBuilder contains the information and logic needed to build a connection to OCM. Don't
-// create instances of this type directly; use the NewConnection function instead.
-type ConnectionBuilder struct {
+type Client struct {
+	ocm *sdk.Connection
+}
+
+// ClientBuilder contains the information and logic needed to build a connection to OCM. Don't
+// create instances of this type directly; use the NewClient function instead.
+type ClientBuilder struct {
 	logger *logrus.Logger
 	cfg    *Config
 }
 
-// NewConnection creates a builder that can then be used to configure and build an OCM connection.
-// Don't create instances of this type directly; use the NewConnection function instead.
-func NewConnection() *ConnectionBuilder {
-	return &ConnectionBuilder{}
+// NewClient creates a builder that can then be used to configure and build an OCM connection.
+func NewClient() *ClientBuilder {
+	return &ClientBuilder{}
 }
 
 // Logger sets the logger that the connection will use to send messages to the log. This is
 // mandatory.
-func (b *ConnectionBuilder) Logger(value *logrus.Logger) *ConnectionBuilder {
+func (b *ClientBuilder) Logger(value *logrus.Logger) *ClientBuilder {
 	b.logger = value
 	return b
 }
 
 // Config sets the configuration that the connection will use to authenticate the user
-func (b *ConnectionBuilder) Config(value *Config) *ConnectionBuilder {
+func (b *ClientBuilder) Config(value *Config) *ClientBuilder {
 	b.cfg = value
 	return b
 }
 
 // Build uses the information stored in the builder to create a new OCM connection.
-func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
+func (b *ClientBuilder) Build() (result *Client, err error) {
 	if b.cfg == nil {
 		// Load the configuration file:
 		b.cfg, err = Load()
 		if err != nil {
 			err = fmt.Errorf("Failed to load config file: %v", err)
-			return result, err
+			return nil, err
 		}
 		if b.cfg == nil {
 			err = fmt.Errorf("Not logged in, run the 'rosa login' command")
-			return result, err
+			return nil, err
 		}
 	}
 
@@ -110,15 +113,25 @@ func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 	builder.Insecure(b.cfg.Insecure)
 
 	// Create the connection:
-	result, err = builder.Build()
+	conn, err := builder.Build()
 	if err != nil {
 		return
 	}
-	_, _, err = result.Tokens(10 * time.Minute)
+	_, _, err = conn.Tokens(10 * time.Minute)
 	if err != nil {
 		err = fmt.Errorf("Error creating connection. Not able to get authentication token")
 		return
 	}
 
-	return
+	return &Client{
+		ocm: conn,
+	}, nil
+}
+
+func (c *Client) Close() error {
+	return c.ocm.Close()
+}
+
+func (c *Client) OCM() *sdk.Connection {
+	return c.ocm
 }

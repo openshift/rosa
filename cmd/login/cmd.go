@@ -235,7 +235,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Create a connection and get the token to verify that the crendentials are correct:
-	connection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Config(cfg).
 		Logger(logger).
 		Build()
@@ -244,12 +244,12 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = connection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
-	accessToken, refreshToken, err := connection.Tokens()
+	accessToken, refreshToken, err := ocmClient.OCM().Tokens()
 	if err != nil {
 		reporter.Errorf("Failed to get token. Your session might be expired: %v", err)
 		reporter.Infof("Get a new offline access token at %s", uiTokenPage)

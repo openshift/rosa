@@ -17,7 +17,6 @@ limitations under the License.
 package ocm
 
 import (
-	sdk "github.com/openshift-online/ocm-sdk-go"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
@@ -39,9 +38,9 @@ type ClusterAddOn struct {
 	State string
 }
 
-func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string,
+func (c *Client) InstallAddOn(clusterKey string, creatorARN string, addOnID string,
 	params []AddOnParam) error {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
+	cluster, err := c.GetCluster(clusterKey, creatorARN)
 	if err != nil {
 		return err
 	}
@@ -63,7 +62,13 @@ func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN str
 		return err
 	}
 
-	response, err := client.Cluster(cluster.ID()).Addons().Add().Body(addOnInstallation).Send()
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(cluster.ID()).
+		Addons().
+		Add().
+		Body(addOnInstallation).
+		Send()
 	if err != nil {
 		return handleErr(response.Error(), err)
 	}
@@ -71,13 +76,19 @@ func InstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN str
 	return nil
 }
 
-func UninstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string) error {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
+func (c *Client) UninstallAddOn(clusterKey string, creatorARN string, addOnID string) error {
+	cluster, err := c.GetCluster(clusterKey, creatorARN)
 	if err != nil {
 		return err
 	}
 
-	response, err := client.Cluster(cluster.ID()).Addons().Addoninstallation(addOnID).Delete().Send()
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(cluster.ID()).
+		Addons().
+		Addoninstallation(addOnID).
+		Delete().
+		Send()
 	if err != nil {
 		return handleErr(response.Error(), err)
 	}
@@ -85,14 +96,20 @@ func UninstallAddOn(client *cmv1.ClustersClient, clusterKey string, creatorARN s
 	return nil
 }
 
-func GetAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, creatorARN string,
+func (c *Client) GetAddOnInstallation(clusterKey string, creatorARN string,
 	addOnID string) (*cmv1.AddOnInstallation, error) {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
+	cluster, err := c.GetCluster(clusterKey, creatorARN)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Cluster(cluster.ID()).Addons().Addoninstallation(addOnID).Get().Send()
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(cluster.ID()).
+		Addons().
+		Addoninstallation(addOnID).
+		Get().
+		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
@@ -100,9 +117,9 @@ func GetAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, creato
 	return response.Body(), nil
 }
 
-func UpdateAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, creatorARN string, addOnID string,
+func (c *Client) UpdateAddOnInstallation(clusterKey string, creatorARN string, addOnID string,
 	params []AddOnParam) error {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
+	cluster, err := c.GetCluster(clusterKey, creatorARN)
 	if err != nil {
 		return err
 	}
@@ -124,7 +141,7 @@ func UpdateAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, cre
 		return err
 	}
 
-	response, err := client.Cluster(cluster.ID()).
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(cluster.ID()).
 		Addons().Addoninstallation(addOnID).
 		Update().Body(addOnInstallation).Send()
 	if err != nil {
@@ -134,8 +151,8 @@ func UpdateAddOnInstallation(client *cmv1.ClustersClient, clusterKey string, cre
 	return nil
 }
 
-func GetAddOnParameters(client *cmv1.AddOnsClient, addOnID string) (*cmv1.AddOnParameterList, error) {
-	response, err := client.Addon(addOnID).Get().Send()
+func (c *Client) GetAddOnParameters(addOnID string) (*cmv1.AddOnParameterList, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Addons().Addon(addOnID).Get().Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
@@ -143,9 +160,9 @@ func GetAddOnParameters(client *cmv1.AddOnsClient, addOnID string) (*cmv1.AddOnP
 }
 
 // Get complete list of available add-ons for the current organization
-func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
+func (c *Client) GetAvailableAddOns() ([]*AddOnResource, error) {
 	// Get organization ID (used to get add-on quotas)
-	acctResponse, err := connection.AccountsMgmt().V1().CurrentAccount().
+	acctResponse, err := c.ocm.AccountsMgmt().V1().CurrentAccount().
 		Get().
 		Send()
 	if err != nil {
@@ -154,7 +171,7 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 	organization := acctResponse.Body().Organization().ID()
 
 	// Get a list of add-on quotas for the current organization
-	quotaCostResponse, err := connection.AccountsMgmt().V1().Organizations().
+	quotaCostResponse, err := c.ocm.AccountsMgmt().V1().Organizations().
 		Organization(organization).
 		QuotaCost().
 		List().
@@ -169,7 +186,7 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 	quotaCosts := quotaCostResponse.Items()
 
 	// Get complete list of enabled add-ons
-	addOnsResponse, err := connection.ClustersMgmt().V1().Addons().
+	addOnsResponse, err := c.ocm.ClustersMgmt().V1().Addons().
 		List().
 		Search("enabled='t'").
 		Page(1).
@@ -220,8 +237,8 @@ func GetAvailableAddOns(connection *sdk.Connection) ([]*AddOnResource, error) {
 	return addOns, nil
 }
 
-func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
-	response, err := client.Addon(id).Get().Send()
+func (c *Client) GetAddOn(id string) (*cmv1.AddOn, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Addons().Addon(id).Get().Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
@@ -229,14 +246,14 @@ func GetAddOn(client *cmv1.AddOnsClient, id string) (*cmv1.AddOn, error) {
 }
 
 // Get all add-ons available for a cluster
-func GetClusterAddOns(connection *sdk.Connection, cluster *cmv1.Cluster) ([]*ClusterAddOn, error) {
-	addOnResources, err := GetAvailableAddOns(connection)
+func (c *Client) GetClusterAddOns(cluster *cmv1.Cluster) ([]*ClusterAddOn, error) {
+	addOnResources, err := c.GetAvailableAddOns()
 	if err != nil {
 		return nil, err
 	}
 
 	// Get add-ons already installed on cluster
-	addOnInstallationsResponse, err := connection.ClustersMgmt().V1().Clusters().
+	addOnInstallationsResponse, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Cluster(cluster.ID()).
 		Addons().
 		List().

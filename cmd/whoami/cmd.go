@@ -95,7 +95,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create a connection to OCM:
-	connection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Config(cfg).
 		Logger(logger).
 		Build()
@@ -104,7 +104,7 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = connection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
@@ -112,7 +112,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Get current OCM account:
 	useTokenData := false
-	response, err := connection.AccountsMgmt().V1().CurrentAccount().Get().Send()
+	response, err := ocmClient.OCM().AccountsMgmt().V1().CurrentAccount().Get().Send()
 	if err != nil {
 		reporter.Debugf(err.Error())
 		if response.Status() == http.StatusNotFound {

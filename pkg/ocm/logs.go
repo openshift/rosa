@@ -28,8 +28,11 @@ import (
 
 const interval = 15 * time.Second
 
-func GetInstallLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv1.Log, err error) {
-	logsClient := client.Cluster(clusterID).Logs().Install()
+func (c *Client) GetInstallLogs(clusterID string, tail int) (logs *cmv1.Log, err error) {
+	logsClient := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).
+		Logs().
+		Install()
 	response, err := logsClient.Get().
 		Parameter("tail", tail).
 		Send()
@@ -44,8 +47,11 @@ func GetInstallLogs(client *cmv1.ClustersClient, clusterID string, tail int) (lo
 	return response.Body(), nil
 }
 
-func GetUninstallLogs(client *cmv1.ClustersClient, clusterID string, tail int) (logs *cmv1.Log, err error) {
-	logsClient := client.Cluster(clusterID).Logs().Uninstall()
+func (c *Client) GetUninstallLogs(clusterID string, tail int) (logs *cmv1.Log, err error) {
+	logsClient := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).
+		Logs().
+		Uninstall()
 	response, err := logsClient.Get().
 		Parameter("tail", tail).
 		Send()
@@ -60,14 +66,16 @@ func GetUninstallLogs(client *cmv1.ClustersClient, clusterID string, tail int) (
 	return response.Body(), nil
 }
 
-func PollInstallLogs(client *cmv1.ClustersClient, clusterID string,
-	cb func(*cmv1.LogGetResponse) bool) (logs *cmv1.Log, err error) {
+func (c *Client) PollInstallLogs(clusterID string, cb func(*cmv1.LogGetResponse) bool) (logs *cmv1.Log, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 	defer func() {
 		cancel()
 	}()
 
-	logsClient := client.Cluster(clusterID).Logs().Install()
+	logsClient := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).
+		Logs().
+		Install()
 	response, err := logsClient.Poll().
 		Parameter("tail", 100).
 		Interval(interval).
@@ -84,14 +92,17 @@ func PollInstallLogs(client *cmv1.ClustersClient, clusterID string,
 	return response.Body(), nil
 }
 
-func PollUninstallLogs(client *cmv1.ClustersClient, clusterID string,
+func (c *Client) PollUninstallLogs(clusterID string,
 	cb func(*cmv1.LogGetResponse) bool) (logs *cmv1.Log, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 	defer func() {
 		cancel()
 	}()
 
-	logsClient := client.Cluster(clusterID).Logs().Uninstall()
+	logsClient := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).
+		Logs().
+		Uninstall()
 	response, err := logsClient.Poll().
 		Parameter("tail", 100).
 		Interval(interval).

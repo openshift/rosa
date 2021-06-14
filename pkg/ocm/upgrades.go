@@ -20,8 +20,11 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func GetUpgradePolicies(client *cmv1.Client, clusterID string) (upgradePolicies []*cmv1.UpgradePolicy, err error) {
-	collection := client.Clusters().Cluster(clusterID).UpgradePolicies()
+func (c *Client) GetUpgradePolicies(clusterID string) (upgradePolicies []*cmv1.UpgradePolicy, err error) {
+	collection := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(clusterID).
+		UpgradePolicies()
 	page := 1
 	size := 100
 	for {
@@ -41,17 +44,22 @@ func GetUpgradePolicies(client *cmv1.Client, clusterID string) (upgradePolicies 
 	return
 }
 
-func GetScheduledUpgrade(client *cmv1.Client, clusterID string) (*cmv1.UpgradePolicy, *cmv1.UpgradePolicyState, error) {
-	upgradePolicies, err := GetUpgradePolicies(client, clusterID)
+func (c *Client) GetScheduledUpgrade(clusterID string) (*cmv1.UpgradePolicy, *cmv1.UpgradePolicyState, error) {
+	upgradePolicies, err := c.GetUpgradePolicies(clusterID)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	for _, upgradePolicy := range upgradePolicies {
 		if upgradePolicy.ScheduleType() == "manual" && upgradePolicy.UpgradeType() == "OSD" {
-			state, err := client.Clusters().Cluster(clusterID).
-				UpgradePolicies().UpgradePolicy(upgradePolicy.ID()).State().
-				Get().Send()
+			state, err := c.ocm.ClustersMgmt().V1().
+				Clusters().
+				Cluster(clusterID).
+				UpgradePolicies().
+				UpgradePolicy(upgradePolicy.ID()).
+				State().
+				Get().
+				Send()
 			if err != nil {
 				return nil, nil, err
 			}
@@ -63,13 +71,14 @@ func GetScheduledUpgrade(client *cmv1.Client, clusterID string) (*cmv1.UpgradePo
 	return nil, nil, nil
 }
 
-func CancelUpgrade(client *cmv1.Client, clusterID string) (bool, error) {
-	scheduledUpgrade, _, err := GetScheduledUpgrade(client, clusterID)
+func (c *Client) CancelUpgrade(clusterID string) (bool, error) {
+	scheduledUpgrade, _, err := c.GetScheduledUpgrade(clusterID)
 	if err != nil || scheduledUpgrade == nil {
 		return false, err
 	}
 
-	response, err := client.Clusters().
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
 		Cluster(clusterID).
 		UpgradePolicies().
 		UpgradePolicy(scheduledUpgrade.ID()).

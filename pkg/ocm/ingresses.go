@@ -20,8 +20,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func GetIngresses(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.Ingress, error) {
-	ingressClient := client.Cluster(clusterID).Ingresses()
+func (c *Client) GetIngresses(clusterID string) ([]*cmv1.Ingress, error) {
+	ingressClient := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).Ingresses()
 	response, err := ingressClient.List().
 		Page(1).
 		Size(-1).

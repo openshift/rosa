@@ -92,7 +92,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -100,18 +100,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -124,7 +121,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find the htpasswd identity provider:
 	reporter.Debugf("Loading '%s' identity provider", idpName)
-	idps, err := ocm.GetIdentityProviders(clustersCollection, cluster.ID())
+	idps, err := ocmClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get '%s' identity provider for cluster '%s': %v", idpName, clusterKey, err)
 		os.Exit(1)
@@ -144,7 +141,8 @@ func run(cmd *cobra.Command, _ []string) {
 	if confirm.Confirm("delete %s user on cluster %s", username, clusterKey) {
 		// Delete htpasswd IdP:
 		reporter.Debugf("Deleting '%s' identity provider on cluster '%s'", idpName, clusterKey)
-		idpResp, err := clustersCollection.
+		idpResp, err := ocmClient.OCM().ClustersMgmt().V1().
+			Clusters().
 			Cluster(cluster.ID()).
 			IdentityProviders().
 			IdentityProvider(idp.ID()).
@@ -158,7 +156,9 @@ func run(cmd *cobra.Command, _ []string) {
 
 		// Delete admin user from the cluster-admins group:
 		reporter.Debugf("Deleting '%s' user from cluster-admins group on cluster '%s'", username, clusterKey)
-		userResp, err := clustersCollection.Cluster(cluster.ID()).
+		userResp, err := ocmClient.OCM().ClustersMgmt().V1().
+			Clusters().
+			Cluster(cluster.ID()).
 			Groups().
 			Group("cluster-admins").
 			Users().

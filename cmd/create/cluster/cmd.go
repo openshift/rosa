@@ -26,7 +26,6 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
@@ -37,7 +36,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -351,7 +349,7 @@ func run(cmd *cobra.Command, _ []string) {
 	var err error
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -359,12 +357,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
-	ocmClient := ocmConnection.ClustersMgmt().V1()
 
 	tempAWSClient := aws.GetAWSClientForUserRegion(reporter, logger)
 
@@ -403,7 +400,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Trim names to remove any leading/trailing invisible characters
 	clusterName = strings.Trim(clusterName, " \t")
 
-	if !clusterprovider.IsValidClusterName(clusterName) {
+	if !ocm.IsValidClusterName(clusterName) {
 		reporter.Errorf("Cluster name must consist" +
 			" of no more than 15 lowercase alphanumeric characters or '-', " +
 			"start with a letter, and end with an alphanumeric character.")
@@ -510,7 +507,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorIAMRoles := args.operatorIAMRoles
-	operatorIAMRoleList := []clusterprovider.OperatorIAMRole{}
+	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if roleARN != "" {
 		for _, role := range operatorIAMRoles {
 			if !strings.Contains(role, ",") {
@@ -524,7 +521,7 @@ func run(cmd *cobra.Command, _ []string) {
 					"list of name,namespace,role_arn")
 				os.Exit(1)
 			}
-			operatorIAMRoleList = append(operatorIAMRoleList, clusterprovider.OperatorIAMRole{
+			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 				Name:      roleData[0],
 				Namespace: roleData[1],
 				RoleARN:   roleData[2],
@@ -586,7 +583,7 @@ func run(cmd *cobra.Command, _ []string) {
 					reporter.Errorf("Expected a valid operator IAM role ARN: %s", err)
 					os.Exit(1)
 				}
-				operatorIAMRoleList = append(operatorIAMRoleList, clusterprovider.OperatorIAMRole{
+				operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 					Namespace: namespace,
 					Name:      name,
 					RoleARN:   iamRoleARN,
@@ -683,7 +680,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	regionList, regionAZ, err := ocm.GetRegionList(ocmClient, multiAZ, roleARN, externalID)
+	regionList, regionAZ, err := ocmClient.GetRegionList(multiAZ, roleARN, externalID)
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -858,7 +855,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
-	computeMachineTypeList, err := ocm.GetAvailableMachineTypes(ocmConnection)
+	computeMachineTypeList, err := ocmClient.GetAvailableMachineTypes()
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -1014,12 +1011,12 @@ func run(cmd *cobra.Command, _ []string) {
 	var dMachinecidr *net.IPNet
 	var dPodcidr *net.IPNet
 	var dServicecidr *net.IPNet
-	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocm.GetDefaultClusterFlavors(ocmClient, args.flavour)
+	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocmClient.GetDefaultClusterFlavors(args.flavour)
 
 	// Machine CIDR:
 	machineCIDR := args.machineCIDR
 	if interactive.Enabled() {
-		if clusterprovider.IsEmptyCIDR(machineCIDR) {
+		if ocm.IsEmptyCIDR(machineCIDR) {
 			machineCIDR = *dMachinecidr
 		}
 		machineCIDR, err = interactive.GetIPNet(interactive.Input{
@@ -1036,7 +1033,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Service CIDR:
 	serviceCIDR := args.serviceCIDR
 	if interactive.Enabled() {
-		if clusterprovider.IsEmptyCIDR(serviceCIDR) {
+		if ocm.IsEmptyCIDR(serviceCIDR) {
 			serviceCIDR = *dServicecidr
 		}
 		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
@@ -1052,7 +1049,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Pod CIDR:
 	podCIDR := args.podCIDR
 	if interactive.Enabled() {
-		if clusterprovider.IsEmptyCIDR(podCIDR) {
+		if ocm.IsEmptyCIDR(podCIDR) {
 			podCIDR = *dPodcidr
 		}
 		podCIDR, err = interactive.GetIPNet(interactive.Input{
@@ -1108,7 +1105,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	clusterConfig := clusterprovider.Spec{
+	clusterConfig := ocm.Spec{
 		Name:               clusterName,
 		Region:             region,
 		MultiAZ:            multiAZ,
@@ -1153,7 +1150,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 
-	_, err = clusterprovider.CreateCluster(ocmClient.Clusters(), clusterConfig)
+	_, err = ocmClient.CreateCluster(clusterConfig)
 	if err != nil {
 		if args.dryRun {
 			reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)
@@ -1219,8 +1216,8 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 	return version, nil
 }
 
-func getVersionList(client *cmv1.Client, channelGroup string, isSTS bool) (versionList []string, err error) {
-	vs, err := ocm.GetVersions(client, channelGroup)
+func getVersionList(ocmClient *ocm.Client, channelGroup string, isSTS bool) (versionList []string, err error) {
+	vs, err := ocmClient.GetVersions(channelGroup)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return
@@ -1286,7 +1283,7 @@ func parseSubnet(subnetOption string) string {
 	return strings.Split(subnetOption, " ")[0]
 }
 
-func buildCommand(spec clusterprovider.Spec) string {
+func buildCommand(spec ocm.Spec) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.RoleARN != "" {
@@ -1354,13 +1351,13 @@ func buildCommand(spec clusterprovider.Spec) string {
 		command += fmt.Sprintf(" --compute-machine-type %s", spec.ComputeMachineType)
 	}
 
-	if !clusterprovider.IsEmptyCIDR(spec.MachineCIDR) {
+	if !ocm.IsEmptyCIDR(spec.MachineCIDR) {
 		command += fmt.Sprintf(" --machine-cidr %s", spec.MachineCIDR.String())
 	}
-	if !clusterprovider.IsEmptyCIDR(spec.ServiceCIDR) {
+	if !ocm.IsEmptyCIDR(spec.ServiceCIDR) {
 		command += fmt.Sprintf(" --service-cidr %s", spec.ServiceCIDR.String())
 	}
-	if !clusterprovider.IsEmptyCIDR(spec.PodCIDR) {
+	if !ocm.IsEmptyCIDR(spec.PodCIDR) {
 		command += fmt.Sprintf(" --pod-cidr %s", spec.PodCIDR.String())
 	}
 	if spec.HostPrefix != 0 {

@@ -30,7 +30,6 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -97,7 +96,7 @@ func run(cmd *cobra.Command, argv []string) {
 	clusterKey := args.clusterKey
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	if !clusterprovider.IsValidClusterKey(clusterKey) {
+	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -122,7 +121,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -130,18 +129,15 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := clusterprovider.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -161,7 +157,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Get logs from Hive
-	logs, err := ocm.GetUninstallLogs(clustersCollection, cluster.ID(), args.tail)
+	logs, err := ocmClient.GetUninstallLogs(cluster.ID(), args.tail)
 	if err != nil {
 		if errors.GetType(err) == errors.NotFound {
 			reporter.Warnf("Logs for cluster '%s' are not available", clusterKey)
@@ -177,8 +173,8 @@ func run(cmd *cobra.Command, argv []string) {
 		spin.Start()
 
 		// Poll for changing logs:
-		response, err := ocm.PollUninstallLogs(clustersCollection, cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
-			state, err := ocm.GetClusterState(clustersCollection, cluster.ID())
+		response, err := ocmClient.PollUninstallLogs(cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
+			state, err := ocmClient.GetClusterState(cluster.ID())
 			if err != nil || state == cmv1.ClusterState("") {
 				return true
 			}
