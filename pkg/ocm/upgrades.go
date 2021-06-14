@@ -53,10 +53,8 @@ func (c *Client) GetScheduledUpgrade(clusterID string) (*cmv1.UpgradePolicy, *cm
 	for _, upgradePolicy := range upgradePolicies {
 		if upgradePolicy.ScheduleType() == "manual" && upgradePolicy.UpgradeType() == "OSD" {
 			state, err := c.ocm.ClustersMgmt().V1().
-				Clusters().
-				Cluster(clusterID).
-				UpgradePolicies().
-				UpgradePolicy(upgradePolicy.ID()).
+				Clusters().Cluster(clusterID).
+				UpgradePolicies().UpgradePolicy(upgradePolicy.ID()).
 				State().
 				Get().
 				Send()
@@ -71,22 +69,30 @@ func (c *Client) GetScheduledUpgrade(clusterID string) (*cmv1.UpgradePolicy, *cm
 	return nil, nil, nil
 }
 
+func (c *Client) ScheduleUpgrade(clusterID string, upgradePolicy *cmv1.UpgradePolicy) error {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		UpgradePolicies().
+		Add().Body(upgradePolicy).
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
 func (c *Client) CancelUpgrade(clusterID string) (bool, error) {
 	scheduledUpgrade, _, err := c.GetScheduledUpgrade(clusterID)
 	if err != nil || scheduledUpgrade == nil {
 		return false, err
 	}
-
 	response, err := c.ocm.ClustersMgmt().V1().
-		Clusters().
-		Cluster(clusterID).
-		UpgradePolicies().
-		UpgradePolicy(scheduledUpgrade.ID()).
+		Clusters().Cluster(clusterID).
+		UpgradePolicies().UpgradePolicy(scheduledUpgrade.ID()).
 		Delete().
 		Send()
 	if err != nil {
 		return false, handleErr(response.Error(), err)
 	}
-
 	return true, nil
 }

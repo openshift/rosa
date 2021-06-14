@@ -21,19 +21,40 @@ import (
 )
 
 func (c *Client) GetIdentityProviders(clusterID string) ([]*cmv1.IdentityProvider, error) {
-	idpClient := c.ocm.ClustersMgmt().V1().
-		Clusters().
-		Cluster(clusterID).
-		IdentityProviders()
-	response, err := idpClient.List().
-		Page(1).
-		Size(-1).
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		IdentityProviders().
+		List().Page(1).Size(-1).
 		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
+}
+
+func (c *Client) CreateIdentityProvider(clusterID string, idp *cmv1.IdentityProvider) (*cmv1.IdentityProvider, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		IdentityProviders().
+		Add().Body(idp).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
+func (c *Client) DeleteIdentityProvider(clusterID string, idpID string) error {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		IdentityProviders().IdentityProvider(idpID).
+		Delete().
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
 }
 
 func IdentityProviderType(idp *cmv1.IdentityProvider) string {

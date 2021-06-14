@@ -263,18 +263,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Updating ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-	res, err := ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().
-		Cluster(cluster.ID()).
-		Ingresses().
-		Ingress(ingress.ID()).
-		Update().
-		Body(ingress).
-		Send()
+	_, err = ocmClient.UpdateIngress(cluster.ID(), ingress)
 	if err != nil {
-		reporter.Debugf(err.Error())
 		reporter.Errorf("Failed to update ingress '%s' on cluster '%s': %s",
-			ingress.ID(), clusterKey, res.Error().Reason())
+			ingress.ID(), clusterKey, err)
 		os.Exit(1)
 	}
 	reporter.Infof("Updated ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)

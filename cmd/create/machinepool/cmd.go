@@ -421,13 +421,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	_, err = ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().
-		Cluster(cluster.ID()).
-		MachinePools().
-		Add().
-		Body(machinePool).
-		Send()
+	_, err = ocmClient.CreateMachinePool(cluster.ID(), machinePool)
 	if err != nil {
 		reporter.Errorf("Failed to add machine pool to cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

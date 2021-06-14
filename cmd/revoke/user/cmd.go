@@ -185,15 +185,10 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Removing user '%s' from group '%s' in cluster '%s'", username, role, clusterKey)
-	res, err := ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().Cluster(cluster.ID()).
-		Groups().Group(role).
-		Users().User(username).
-		Delete().Send()
+	err = ocmClient.DeleteUser(cluster.ID(), role, username)
 	if err != nil {
-		reporter.Debugf(err.Error())
 		reporter.Errorf("Failed to revoke '%s' from user '%s' in cluster '%s': %s",
-			role, username, clusterKey, res.Error().Reason())
+			role, username, clusterKey, err)
 		os.Exit(1)
 	}
 	reporter.Infof("Revoked role '%s' from user '%s' on cluster '%s'", role, username, clusterKey)

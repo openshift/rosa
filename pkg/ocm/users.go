@@ -27,7 +27,8 @@ func (c *Client) GetUser(clusterID string, group string, username string) (*cmv1
 		Clusters().Cluster(clusterID).
 		Groups().Group(group).
 		Users().User(username).
-		Get().Send()
+		Get().
+		Send()
 	if err != nil {
 		if response.Status() == http.StatusNotFound {
 			return nil, nil
@@ -39,17 +40,41 @@ func (c *Client) GetUser(clusterID string, group string, username string) (*cmv1
 }
 
 func (c *Client) GetUsers(clusterID string, group string) ([]*cmv1.User, error) {
-	usersClient := c.ocm.ClustersMgmt().V1().
+	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).
 		Groups().Group(group).
-		Users()
-	response, err := usersClient.List().
-		Page(1).
-		Size(-1).
+		Users().
+		List().Page(1).Size(-1).
 		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
 
 	return response.Items().Slice(), nil
+}
+
+func (c *Client) CreateUser(clusterID string, group string, user *cmv1.User) (*cmv1.User, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		Groups().Group(group).
+		Users().
+		Add().Body(user).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
+func (c *Client) DeleteUser(clusterID string, group string, username string) error {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		Groups().Group(group).
+		Users().User(username).
+		Delete().
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
 }

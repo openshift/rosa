@@ -433,16 +433,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	res, err := ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().
-		Cluster(cluster.ID()).
-		IdentityProviders().
-		Add().
-		Body(idp).
-		Send()
+	_, err = ocmClient.CreateIdentityProvider(cluster.ID(), idp)
 	if err != nil {
-		reporter.Debugf(err.Error())
-		reporter.Errorf("Failed to add IDP to cluster '%s': %s", clusterKey, res.Error().Reason())
+		reporter.Errorf("Failed to add IDP to cluster '%s': %s", clusterKey, err)
 		os.Exit(1)
 	}
 

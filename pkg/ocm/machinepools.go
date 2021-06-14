@@ -21,16 +21,48 @@ import (
 )
 
 func (c *Client) GetMachinePools(clusterID string) ([]*cmv1.MachinePool, error) {
-	response, err := c.ocm.ClustersMgmt().V1().Clusters().
-		Cluster(clusterID).
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
 		MachinePools().
-		List().
-		Page(1).
-		Size(-1).
+		List().Page(1).Size(-1).
 		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
-
 	return response.Items().Slice(), nil
+}
+
+func (c *Client) CreateMachinePool(clusterID string, machinePool *cmv1.MachinePool) (*cmv1.MachinePool, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		MachinePools().
+		Add().Body(machinePool).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+func (c *Client) UpdateMachinePool(clusterID string, machinePool *cmv1.MachinePool) (*cmv1.MachinePool, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		MachinePools().MachinePool(machinePool.ID()).
+		Update().Body(machinePool).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
+func (c *Client) DeleteMachinePool(clusterID string, machinePoolID string) error {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		MachinePools().MachinePool(machinePoolID).
+		Delete().
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
 }

@@ -18,7 +18,6 @@ package whoami
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -111,27 +110,18 @@ func run(_ *cobra.Command, _ []string) {
 	}()
 
 	// Get current OCM account:
-	useTokenData := false
-	response, err := ocmClient.OCM().AccountsMgmt().V1().CurrentAccount().Get().Send()
+	account, err := ocmClient.GetCurrentAccount()
 	if err != nil {
-		reporter.Debugf(err.Error())
-		if response.Status() == http.StatusNotFound {
-			useTokenData = true
-		} else {
-			reporter.Errorf("Failed to get current account: %s", response.Error().Reason())
-			os.Exit(1)
-		}
+		reporter.Errorf("Failed to get current account: %s", err)
+		os.Exit(1)
 	}
 
-	var account *amsv1.Account
-	if useTokenData {
+	if account == nil {
 		account, err = getAccountDataFromToken(cfg)
 		if err != nil {
 			reporter.Errorf("Failed to get account data from token: %v", err)
 			os.Exit(1)
 		}
-	} else {
-		account = response.Body()
 	}
 	fmt.Printf(""+
 		"AWS Account ID:               %s\n"+

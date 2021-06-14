@@ -156,17 +156,10 @@ func run(_ *cobra.Command, argv []string) {
 
 	if confirm.Confirm("delete machine pool '%s' on cluster '%s'", machinePoolID, clusterKey) {
 		reporter.Debugf("Deleting machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
-		res, err := ocmClient.OCM().ClustersMgmt().V1().
-			Clusters().
-			Cluster(cluster.ID()).
-			MachinePools().
-			MachinePool(machinePool.ID()).
-			Delete().
-			Send()
+		err = ocmClient.DeleteMachinePool(cluster.ID(), machinePool.ID())
 		if err != nil {
-			reporter.Debugf(err.Error())
 			reporter.Errorf("Failed to delete machine pool '%s' on cluster '%s': %s",
-				machinePool.ID(), clusterKey, res.Error().Reason())
+				machinePool.ID(), clusterKey, err)
 			os.Exit(1)
 		}
 		reporter.Infof("Successfully deleted machine pool '%s' from cluster '%s'", machinePoolID, clusterKey)

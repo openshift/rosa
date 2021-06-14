@@ -19,6 +19,7 @@ package ocm
 import (
 	"errors"
 	"net"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -116,4 +117,18 @@ func (c *Client) LogEvent(key string) {
 			Body(event).
 			Send()
 	}
+}
+
+func (c *Client) GetCurrentAccount() (*amsv1.Account, error) {
+	response, err := c.ocm.AccountsMgmt().V1().
+		CurrentAccount().
+		Get().
+		Send()
+	if err != nil {
+		if response.Status() == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
 }
