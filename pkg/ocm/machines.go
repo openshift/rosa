@@ -21,15 +21,14 @@ import (
 	"fmt"
 	"strings"
 
-	sdk "github.com/openshift-online/ocm-sdk-go"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 const AcceleratedComputing = "accelerated_computing"
 
-func GetMachineTypes(client *cmv1.Client) (machineTypes []*cmv1.MachineType, err error) {
-	collection := client.MachineTypes()
+func (c *Client) GetMachineTypes() (machineTypes []*cmv1.MachineType, err error) {
+	collection := c.ocm.ClustersMgmt().V1().MachineTypes()
 	page := 1
 	size := 100
 	for {
@@ -82,8 +81,8 @@ func ValidateMachineType(machineType string, machineTypes []*MachineType, multiA
 	return machineType, nil
 }
 
-func GetMachineTypeList(client *cmv1.Client) (machineTypeList []string, err error) {
-	machineTypes, err := GetMachineTypes(client)
+func (c *Client) GetMachineTypeList() (machineTypeList []string, err error) {
+	machineTypes, err := c.GetMachineTypes()
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve machine types: %s", err)
 		return
@@ -122,21 +121,19 @@ type MachineType struct {
 	AvailableQuota int
 }
 
-func GetAvailableMachineTypes(ocmConnection *sdk.Connection) ([]*MachineType, error) {
-	ocmClient := ocmConnection.ClustersMgmt().V1()
-
-	machineTypes, err := GetMachineTypes(ocmClient)
+func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
+	machineTypes, err := c.GetMachineTypes()
 	if err != nil {
 		return nil, err
 	}
-	acctResponse, err := ocmConnection.AccountsMgmt().V1().CurrentAccount().
+	acctResponse, err := c.ocm.AccountsMgmt().V1().CurrentAccount().
 		Get().
 		Send()
 	if err != nil {
 		return nil, handleErr(acctResponse.Error(), err)
 	}
 	organization := acctResponse.Body().Organization().ID()
-	quotaCostResponse, err := ocmConnection.AccountsMgmt().V1().Organizations().
+	quotaCostResponse, err := c.ocm.AccountsMgmt().V1().Organizations().
 		Organization(organization).
 		QuotaCost().
 		List().

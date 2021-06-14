@@ -156,7 +156,7 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -164,18 +164,15 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -193,7 +190,10 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Adding user '%s' to group '%s' in cluster '%s'", username, role, clusterKey)
-	res, err := clustersCollection.Cluster(cluster.ID()).Groups().Group(role).Users().Add().Body(user).Send()
+	res, err := ocmClient.OCM().ClustersMgmt().V1().
+		Clusters().Cluster(cluster.ID()).
+		Groups().Group(role).
+		Users().Add().Body(user).Send()
 	if err != nil {
 		reporter.Debugf(err.Error())
 		reporter.Errorf("Failed to grant '%s' to user '%s' to cluster '%s': %s",

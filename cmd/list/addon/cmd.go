@@ -73,7 +73,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -81,7 +81,7 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
@@ -89,7 +89,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	if clusterKey == "" {
 		reporter.Debugf("Fetching all available add-ons")
-		addOnResources, err := ocm.GetAvailableAddOns(ocmConnection)
+		addOnResources, err := ocmClient.GetAvailableAddOns()
 		if err != nil {
 			reporter.Errorf("Failed to fetch add-ons: %v", err)
 			os.Exit(1)
@@ -131,7 +131,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(ocmConnection.ClustersMgmt().V1().Clusters(), clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -144,7 +144,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Load any existing Add-Ons for this cluster
 	reporter.Debugf("Loading add-ons installations for cluster '%s'", clusterKey)
-	clusterAddOns, err := ocm.GetClusterAddOns(ocmConnection, cluster)
+	clusterAddOns, err := ocmClient.GetClusterAddOns(cluster)
 	if err != nil {
 		reporter.Errorf("Failed to get add-ons for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

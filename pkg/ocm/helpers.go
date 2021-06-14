@@ -81,11 +81,11 @@ func handleErr(res *ocmerrors.Error, err error) error {
 	return errors.New(msg)
 }
 
-func GetDefaultClusterFlavors(ocmClient *cmv1.Client, flavour string) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
+func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
 	dServicecidr *net.IPNet, dhostPrefix int) {
-	flavourGetResponse, err := ocmClient.Flavours().Flavour(flavour).Get().Send()
+	flavourGetResponse, err := c.ocm.ClustersMgmt().V1().Flavours().Flavour(flavour).Get().Send()
 	if err != nil {
-		flavourGetResponse, _ = ocmClient.Flavours().Flavour("osd-4").Get().Send()
+		flavourGetResponse, _ = c.ocm.ClustersMgmt().V1().Flavours().Flavour("osd-4").Get().Send()
 	}
 	network, ok := flavourGetResponse.Body().GetNetwork()
 	if !ok {
@@ -107,9 +107,13 @@ func GetDefaultClusterFlavors(ocmClient *cmv1.Client, flavour string) (dMachinec
 	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix
 }
 
-func LogEvent(ocmClient *cmv1.Client, key string) {
+func (c *Client) LogEvent(key string) {
 	event, err := cmv1.NewEvent().Key(key).Build()
 	if err == nil {
-		_, _ = ocmClient.Events().Add().Body(event).Send()
+		_, _ = c.ocm.ClustersMgmt().V1().
+			Events().
+			Add().
+			Body(event).
+			Send()
 	}
 }

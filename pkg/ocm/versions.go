@@ -29,8 +29,8 @@ const DefaultChannelGroup = "stable"
 
 const LowestSTSSupport = "4.7.11"
 
-func GetVersions(client *cmv1.Client, channelGroup string) (versions []*cmv1.Version, err error) {
-	collection := client.Versions()
+func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err error) {
+	collection := c.ocm.ClustersMgmt().V1().Versions()
 	page := 1
 	size := 100
 	filter := "enabled = 'true' AND rosa_enabled = 'true'"
@@ -95,8 +95,12 @@ func GetVersionID(cluster *cmv1.Cluster) string {
 	return cluster.Version().ID()
 }
 
-func GetAvailableUpgrades(client *cmv1.Client, versionID string) ([]string, error) {
-	response, err := client.Versions().Version(versionID).Get().Send()
+func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Versions().
+		Version(versionID).
+		Get().
+		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
@@ -106,7 +110,11 @@ func GetAvailableUpgrades(client *cmv1.Client, versionID string) ([]string, erro
 
 	for _, v := range version.AvailableUpgrades() {
 		id := createVersionID(v, version.ChannelGroup())
-		resp, err := client.Versions().Version(id).Get().Send()
+		resp, err := c.ocm.ClustersMgmt().V1().
+			Versions().
+			Version(id).
+			Get().
+			Send()
 		if err != nil {
 			return nil, handleErr(response.Error(), err)
 		}

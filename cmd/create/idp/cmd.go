@@ -313,7 +313,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -321,18 +321,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -387,7 +384,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Auto-generate a name if none provided
 	if !cmd.Flags().Changed("name") {
-		idps := getIdps(reporter, clustersCollection, cluster)
+		idps := getIdps(reporter, ocmClient, cluster)
 		idpName = GenerateIdpName(idpType, idps)
 	} else {
 		isValidIdpName := idRE.MatchString(idpName)
@@ -436,7 +433,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	res, err := clustersCollection.Cluster(cluster.ID()).
+	res, err := ocmClient.OCM().ClustersMgmt().V1().
+		Clusters().
+		Cluster(cluster.ID()).
 		IdentityProviders().
 		Add().
 		Body(idp).
@@ -502,11 +501,11 @@ func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) 
 	return mappingMethod, err
 }
 
-func getIdps(reporter *reporter.Object, clusters *cmv1.ClustersClient, cluster *cmv1.Cluster) []IdentityProvider {
+func getIdps(reporter *reporter.Object, ocmClient *ocm.Client, cluster *cmv1.Cluster) []IdentityProvider {
 	// Load any existing IDPs for this cluster
 	reporter.Debugf("Loading identity providers for cluster '%s'", cluster.ID())
 
-	ocmIdps, err := ocm.GetIdentityProviders(clusters, cluster.ID())
+	ocmIdps, err := ocmClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", cluster.ID(), err)
 		os.Exit(1)

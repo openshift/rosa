@@ -114,7 +114,7 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -122,18 +122,15 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -141,7 +138,7 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Try to find the ingress:
 	reporter.Debugf("Loading ingresses for cluster '%s'", clusterKey)
-	ingresses, err := ocm.GetIngresses(clustersCollection, cluster.ID())
+	ingresses, err := ocmClient.GetIngresses(cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -166,7 +163,8 @@ func run(_ *cobra.Command, argv []string) {
 
 	if confirm.Confirm("delete ingress %s on cluster %s", ingressID, clusterKey) {
 		reporter.Debugf("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-		res, err := clustersCollection.
+		res, err := ocmClient.OCM().ClustersMgmt().V1().
+			Clusters().
 			Cluster(cluster.ID()).
 			Ingresses().
 			Ingress(ingress.ID()).

@@ -89,7 +89,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -97,18 +97,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	ocmClient := ocmConnection.ClustersMgmt().V1()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -119,7 +116,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, _, err := ocm.GetScheduledUpgrade(ocmClient, cluster.ID())
+	scheduledUpgrade, _, err := ocmClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
 		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -131,7 +128,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if confirm.Confirm("cancel scheduled upgrade on cluster %s", clusterKey) {
 		reporter.Debugf("Deleting scheduled upgrade for cluster '%s'", clusterKey)
-		canceled, err := ocm.CancelUpgrade(ocmClient, cluster.ID())
+		canceled, err := ocmClient.CancelUpgrade(cluster.ID())
 		if err != nil {
 			reporter.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
 			os.Exit(1)

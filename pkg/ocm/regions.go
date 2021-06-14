@@ -27,7 +27,7 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-func GetRegions(client *cmv1.Client, roleARN string, externalID string) (regions []*cmv1.CloudRegion, err error) {
+func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.CloudRegion, err error) {
 	// Retrieve AWS credentials from the local AWS user
 	// pass these to OCM to validate what regions are available
 	// in this AWS account
@@ -71,7 +71,10 @@ func GetRegions(client *cmv1.Client, roleARN string, externalID string) (regions
 		return nil, fmt.Errorf("Failed to build AWS credentials for user '%s': %v", aws.AdminUserName, err)
 	}
 
-	collection := client.CloudProviders().CloudProvider("aws").AvailableRegions()
+	collection := c.ocm.ClustersMgmt().V1().
+		CloudProviders().
+		CloudProvider("aws").
+		AvailableRegions()
 	page := 1
 	size := 100
 	for {
@@ -97,9 +100,9 @@ func GetRegions(client *cmv1.Client, roleARN string, externalID string) (regions
 	return
 }
 
-func GetRegionList(client *cmv1.Client, multiAZ bool,
-	roleARN string, externalID string) (regionList []string, regionAZ map[string]bool, err error) {
-	regions, err := GetRegions(client, roleARN, externalID)
+func (c *Client) GetRegionList(multiAZ bool, roleARN string,
+	externalID string) (regionList []string, regionAZ map[string]bool, err error) {
+	regions, err := c.GetRegions(roleARN, externalID)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
 		return

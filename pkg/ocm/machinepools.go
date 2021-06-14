@@ -20,8 +20,10 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func GetMachinePools(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.MachinePool, error) {
-	response, err := client.Cluster(clusterID).MachinePools().
+func (c *Client) GetMachinePools(clusterID string) ([]*cmv1.MachinePool, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).
+		MachinePools().
 		List().
 		Page(1).
 		Size(-1).

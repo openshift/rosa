@@ -33,7 +33,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -114,7 +113,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -122,18 +121,15 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	ocmClient := ocmConnection.ClustersMgmt().V1()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -144,7 +140,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	addOn, err := clusterprovider.GetAddOnInstallation(ocmClient.Clusters(), clusterKey, awsCreator.ARN, addOnID)
+	addOn, err := ocmClient.GetAddOnInstallation(clusterKey, awsCreator.ARN, addOnID)
 	if addOn != nil {
 		reporter.Warnf("Addon '%s' is already installed on cluster '%s'", addOnID, clusterKey)
 		os.Exit(0)
@@ -154,13 +150,13 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	parameters, err := clusterprovider.GetAddOnParameters(ocmClient.Addons(), addOnID)
+	parameters, err := ocmClient.GetAddOnParameters(addOnID)
 	if err != nil {
 		reporter.Errorf("Failed to get add-on '%s' parameters: %v", addOnID, err)
 		os.Exit(1)
 	}
 
-	var params []clusterprovider.AddOnParam
+	var params []ocm.AddOnParam
 	if parameters.Len() > 0 {
 		// Determine if all required parameters have already been set as flags and ensure
 		// that interactive mode is enabled if they have not. If there are no parameters
@@ -239,7 +235,7 @@ func run(cmd *cobra.Command, argv []string) {
 						os.Exit(1)
 					}
 				}
-				params = append(params, clusterprovider.AddOnParam{Key: param.ID(), Val: val})
+				params = append(params, ocm.AddOnParam{Key: param.ID(), Val: val})
 			}
 
 			return true
@@ -247,7 +243,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Installing add-on '%s' on cluster '%s'", addOnID, clusterKey)
-	err = clusterprovider.InstallAddOn(ocmClient.Clusters(), clusterKey, awsCreator.ARN, addOnID, params)
+	err = ocmClient.InstallAddOn(clusterKey, awsCreator.ARN, addOnID, params)
 	if err != nil {
 		reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
 		os.Exit(1)

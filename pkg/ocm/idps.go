@@ -20,8 +20,11 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func GetIdentityProviders(client *cmv1.ClustersClient, clusterID string) ([]*cmv1.IdentityProvider, error) {
-	idpClient := client.Cluster(clusterID).IdentityProviders()
+func (c *Client) GetIdentityProviders(clusterID string) ([]*cmv1.IdentityProvider, error) {
+	idpClient := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(clusterID).
+		IdentityProviders()
 	response, err := idpClient.List().
 		Page(1).
 		Size(-1).

@@ -43,7 +43,7 @@ func run(cmd *cobra.Command, _ []string) {
 	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -51,7 +51,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
@@ -59,7 +59,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	reporter.Debugf("Fetching instance types")
 
-	machineTypes, err := ocm.GetAvailableMachineTypes(ocmConnection)
+	machineTypes, err := ocmClient.GetAvailableMachineTypes()
 	if err != nil {
 		reporter.Errorf("Failed to fetch instance types: %v", err)
 		os.Exit(1)

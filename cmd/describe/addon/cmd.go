@@ -54,7 +54,7 @@ func run(_ *cobra.Command, argv []string) {
 	addOnID := argv[0]
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -62,18 +62,15 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of add-ons:
-	addOnsCollection := ocmConnection.ClustersMgmt().V1().Addons()
-
 	// Try to find the add-on:
 	reporter.Debugf("Loading add-on '%s'", addOnID)
-	addOn, err := ocm.GetAddOn(addOnsCollection, addOnID)
+	addOn, err := ocmClient.GetAddOn(addOnID)
 	if err != nil {
 		reporter.Errorf("Failed to get add-on '%s': %s\n"+
 			"Try running 'rosa list addons' to see all available add-ons.",

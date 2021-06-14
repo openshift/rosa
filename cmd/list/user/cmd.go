@@ -94,7 +94,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -102,18 +102,15 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -127,7 +124,7 @@ func run(_ *cobra.Command, _ []string) {
 	var clusterAdmins []*cmv1.User
 	reporter.Debugf("Loading users for cluster '%s'", clusterKey)
 	// Load cluster-admins for this cluster
-	clusterAdmins, err = ocm.GetUsers(clustersCollection, cluster.ID(), "cluster-admins")
+	clusterAdmins, err = ocmClient.GetUsers(cluster.ID(), "cluster-admins")
 	if err != nil {
 		reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -140,7 +137,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Load dedicated-admins for this cluster
-	dedicatedAdmins, err := ocm.GetUsers(clustersCollection, cluster.ID(), "dedicated-admins")
+	dedicatedAdmins, err := ocmClient.GetUsers(cluster.ID(), "dedicated-admins")
 	if err != nil {
 		reporter.Errorf("Failed to get dedicated-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

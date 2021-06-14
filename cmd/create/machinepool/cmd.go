@@ -175,7 +175,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -183,18 +183,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
 
-	// Get the client for the OCM collection of clusters:
-	ocmClient := ocmConnection.ClustersMgmt().V1()
-
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocm.GetCluster(ocmClient.Clusters(), clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -324,7 +321,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	// Machine pool instance type:
 	instanceType := args.instanceType
-	instanceTypeList, err := ocm.GetAvailableMachineTypes(ocmConnection)
+	instanceTypeList, err := ocmClient.GetAvailableMachineTypes()
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -424,7 +421,8 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	_, err = ocmClient.Clusters().
+	_, err = ocmClient.OCM().ClustersMgmt().V1().
+		Clusters().
 		Cluster(cluster.ID()).
 		MachinePools().
 		Add().

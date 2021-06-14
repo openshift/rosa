@@ -22,8 +22,9 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func GetUser(client *cmv1.ClustersClient, clusterID string, group string, username string) (*cmv1.User, error) {
-	response, err := client.Cluster(clusterID).
+func (c *Client) GetUser(clusterID string, group string, username string) (*cmv1.User, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
 		Groups().Group(group).
 		Users().User(username).
 		Get().Send()
@@ -37,8 +38,11 @@ func GetUser(client *cmv1.ClustersClient, clusterID string, group string, userna
 	return response.Body(), nil
 }
 
-func GetUsers(client *cmv1.ClustersClient, clusterID string, group string) ([]*cmv1.User, error) {
-	usersClient := client.Cluster(clusterID).Groups().Group(group).Users()
+func (c *Client) GetUsers(clusterID string, group string) ([]*cmv1.User, error) {
+	usersClient := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		Groups().Group(group).
+		Users()
 	response, err := usersClient.List().
 		Page(1).
 		Size(-1).

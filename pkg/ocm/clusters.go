@@ -92,9 +92,10 @@ type OperatorIAMRole struct {
 	RoleARN   string
 }
 
-func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
+func (c *Client) HasClusters(creatorARN string) (bool, error) {
 	query := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, creatorARN)
-	response, err := client.List().
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		List().
 		Search(query).
 		Page(1).
 		Size(1).
@@ -106,7 +107,7 @@ func HasClusters(client *cmv1.ClustersClient, creatorARN string) (bool, error) {
 	return response.Total() > 0, nil
 }
 
-func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, error) {
+func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 	logger, err := logging.NewLogger().
 		Build()
 	if err != nil {
@@ -122,12 +123,16 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 		return nil, fmt.Errorf("Failed to create AWS client: %v", err)
 	}
 
-	spec, err := createClusterSpec(client, config, awsClient)
+	spec, err := c.createClusterSpec(config, awsClient)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create cluster spec: %v", err)
 	}
 
-	cluster, err := client.Add().Parameter("dryRun", *config.DryRun).Body(spec).Send()
+	cluster, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Add().
+		Parameter("dryRun", *config.DryRun).
+		Body(spec).
+		Send()
 	if config.DryRun != nil && *config.DryRun {
 		if cluster.Error() != nil {
 			return nil, handleErr(cluster.Error(), err)
@@ -143,13 +148,13 @@ func CreateCluster(client *cmv1.ClustersClient, config Spec) (*cmv1.Cluster, err
 	return clusterObject, nil
 }
 
-func GetClusters(client *cmv1.ClustersClient, creatorARN string, count int) (clusters []*cmv1.Cluster, err error) {
+func (c *Client) GetClusters(creatorARN string, count int) (clusters []*cmv1.Cluster, err error) {
 	if count < 1 {
 		err = errors.New("Cannot fetch fewer than 1 cluster")
 		return
 	}
 	query := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, creatorARN)
-	request := client.List().Search(query)
+	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1
 	for {
 		response, err := request.Page(page).Size(count).Send()
@@ -168,12 +173,12 @@ func GetClusters(client *cmv1.ClustersClient, creatorARN string, count int) (clu
 	return clusters, nil
 }
 
-func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
+func (c *Client) GetCluster(clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
 	query := fmt.Sprintf(
 		"(id = '%s' or name = '%s') and properties.%s = '%s'",
 		clusterKey, clusterKey, properties.CreatorARN, creatorARN,
 	)
-	response, err := client.List().
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().List().
 		Search(query).
 		Page(1).
 		Size(1).
@@ -192,9 +197,9 @@ func GetCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN strin
 	}
 }
 
-func GetPendingClusterForARN(client *cmv1.ClustersClient, creatorARN string) (cluster *cmv1.Cluster, err error) {
+func (c *Client) GetPendingClusterForARN(creatorARN string) (cluster *cmv1.Cluster, err error) {
 	query := fmt.Sprintf("(state = 'pending') and properties.%s = '%s'", properties.CreatorARN, creatorARN)
-	request := client.List().Search(query)
+	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 
 	response, err := request.Send()
 	if err != nil {
@@ -203,24 +208,32 @@ func GetPendingClusterForARN(client *cmv1.ClustersClient, creatorARN string) (cl
 	return response.Items().Get(0), nil
 }
 
-func GetClusterStatus(client *cmv1.ClustersClient, clusterID string) (*cmv1.ClusterStatus, error) {
-	response, err := client.Cluster(clusterID).Status().Get().Send()
+func (c *Client) GetClusterStatus(clusterID string) (*cmv1.ClusterStatus, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).
+		Status().
+		Get().
+		Send()
 	if err != nil || response.Body() == nil {
 		return nil, err
 	}
 	return response.Body(), nil
 }
 
-func GetClusterState(client *cmv1.ClustersClient, clusterID string) (cmv1.ClusterState, error) {
-	response, err := client.Cluster(clusterID).Status().Get().Send()
+func (c *Client) GetClusterState(clusterID string) (cmv1.ClusterState, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).
+		Status().
+		Get().
+		Send()
 	if err != nil || response.Body() == nil {
 		return cmv1.ClusterState(""), err
 	}
 	return response.Body().State(), nil
 }
 
-func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string, config Spec) error {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
+func (c *Client) UpdateCluster(clusterKey string, creatorARN string, config Spec) error {
+	cluster, err := c.GetCluster(clusterKey, creatorARN)
 	if err != nil {
 		return err
 	}
@@ -269,7 +282,11 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 		return err
 	}
 
-	response, err := client.Cluster(cluster.ID()).Update().Body(clusterSpec).Send()
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(cluster.ID()).
+		Update().
+		Body(clusterSpec).
+		Send()
 	if err != nil {
 		return handleErr(response.Error(), err)
 	}
@@ -277,13 +294,16 @@ func UpdateCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	return nil
 }
 
-func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
-	cluster, err := GetCluster(client, clusterKey, creatorARN)
+func (c *Client) DeleteCluster(clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
+	cluster, err := c.GetCluster(clusterKey, creatorARN)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Cluster(cluster.ID()).Delete().Send()
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(cluster.ID()).
+		Delete().
+		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
@@ -291,8 +311,7 @@ func DeleteCluster(client *cmv1.ClustersClient, clusterKey string, creatorARN st
 	return cluster, nil
 }
 
-func createClusterSpec(ocmClusterClient *cmv1.ClustersClient,
-	config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
+func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
 	reporter, err := rprtr.New().
 		Build()
 
@@ -314,7 +333,7 @@ func createClusterSpec(ocmClusterClient *cmv1.ClustersClient,
 		*/
 		deadline := time.Now().Add(5 * time.Minute)
 		for {
-			pendingCluster, err := GetPendingClusterForARN(ocmClusterClient, awsCreator.ARN)
+			pendingCluster, err := c.GetPendingClusterForARN(awsCreator.ARN)
 			if err != nil {
 				reporter.Errorf("Error getting cluster using ARN '%s'", awsCreator.ARN)
 				os.Exit(1)

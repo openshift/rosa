@@ -28,7 +28,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	clusterprovider "github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -76,7 +75,7 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterKey := args.clusterKey
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	if !clusterprovider.IsValidClusterKey(clusterKey) {
+	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
@@ -102,7 +101,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmConnection, err := ocm.NewConnection().
+	ocmClient, err := ocm.NewClient().
 		Logger(logger).
 		Build()
 	if err != nil {
@@ -110,21 +109,18 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	defer func() {
-		err = ocmConnection.Close()
+		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
-
-	// Get the client for the OCM collection of clusters:
-	clustersCollection := ocmConnection.ClustersMgmt().V1().Clusters()
 
 	if !confirm.Confirm("delete cluster %s", clusterKey) {
 		os.Exit(0)
 	}
 
 	reporter.Debugf("Deleting cluster '%s'", clusterKey)
-	_, err = clusterprovider.DeleteCluster(clustersCollection, clusterKey, awsCreator.ARN)
+	_, err = ocmClient.DeleteCluster(clusterKey, awsCreator.ARN)
 	if err != nil {
 		reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
