@@ -142,17 +142,10 @@ func run(_ *cobra.Command, argv []string) {
 
 	if confirm.Confirm("delete identity provider %s on cluster %s", idpName, clusterKey) {
 		reporter.Debugf("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
-		res, err := ocmClient.OCM().ClustersMgmt().V1().
-			Clusters().
-			Cluster(cluster.ID()).
-			IdentityProviders().
-			IdentityProvider(idp.ID()).
-			Delete().
-			Send()
+		err = ocmClient.DeleteIdentityProvider(cluster.ID(), idp.ID())
 		if err != nil {
-			reporter.Debugf(err.Error())
 			reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s': %s",
-				idpName, clusterKey, res.Error().Reason())
+				idpName, clusterKey, err)
 			os.Exit(1)
 		}
 		reporter.Infof("Successfully deleted identity provider '%s' from cluster '%s'", idpName, clusterKey)

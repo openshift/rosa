@@ -249,7 +249,7 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
-	accessToken, refreshToken, err := ocmClient.OCM().Tokens()
+	accessToken, refreshToken, err := ocmClient.GetConnectionTokens()
 	if err != nil {
 		reporter.Errorf("Failed to get token. Your session might be expired: %v", err)
 		reporter.Infof("Get a new offline access token at %s", uiTokenPage)

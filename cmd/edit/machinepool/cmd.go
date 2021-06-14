@@ -370,18 +370,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
-	res, err := ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().
-		Cluster(cluster.ID()).
-		MachinePools().
-		MachinePool(machinePool.ID()).
-		Update().
-		Body(machinePool).
-		Send()
+	_, err = ocmClient.UpdateMachinePool(cluster.ID(), machinePool)
 	if err != nil {
-		reporter.Debugf(err.Error())
 		reporter.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
-			machinePool.ID(), clusterKey, res.Error().Reason())
+			machinePool.ID(), clusterKey, err)
 		os.Exit(1)
 	}
 	reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)

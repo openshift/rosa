@@ -190,14 +190,10 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Adding user '%s' to group '%s' in cluster '%s'", username, role, clusterKey)
-	res, err := ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().Cluster(cluster.ID()).
-		Groups().Group(role).
-		Users().Add().Body(user).Send()
+	_, err = ocmClient.CreateUser(cluster.ID(), role, user)
 	if err != nil {
-		reporter.Debugf(err.Error())
 		reporter.Errorf("Failed to grant '%s' to user '%s' to cluster '%s': %s",
-			role, username, clusterKey, res.Error().Reason())
+			role, username, clusterKey, err)
 		os.Exit(1)
 	}
 

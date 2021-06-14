@@ -132,6 +132,10 @@ func (c *Client) Close() error {
 	return c.ocm.Close()
 }
 
-func (c *Client) OCM() *sdk.Connection {
-	return c.ocm
+func (c *Client) GetConnectionURL() string {
+	return c.ocm.URL()
+}
+
+func (c *Client) GetConnectionTokens() (string, string, error) {
+	return c.ocm.Tokens()
 }

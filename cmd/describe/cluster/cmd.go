@@ -179,7 +179,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	detailsPage := getDetailsLink(ocmClient.OCM().URL())
+	detailsPage := getDetailsLink(ocmClient.GetConnectionURL())
 
 	// Display number of all worker nodes across the cluster
 	minNodes := 0

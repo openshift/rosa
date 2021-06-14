@@ -355,14 +355,8 @@ func run(cmd *cobra.Command, _ []string) {
 		nodeDrainValue = nodeDrainValue * 60
 	}
 
-	clusterSpec, err := cmv1.NewCluster().
-		NodeDrainGracePeriod(cmv1.NewValue().
-			Value(nodeDrainValue).
-			Unit("minutes")).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+	clusterSpec := ocm.Spec{
+		NodeDrainGracePeriodInMinutes: nodeDrainValue,
 	}
 
 	upgradePolicy, err := upgradePolicyBuilder.Build()
@@ -371,24 +365,13 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	_, err = ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().
-		Cluster(cluster.ID()).
-		UpgradePolicies().
-		Add().
-		Body(upgradePolicy).
-		Send()
+	err = ocmClient.ScheduleUpgrade(cluster.ID(), upgradePolicy)
 	if err != nil {
 		reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	_, err = ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().
-		Cluster(cluster.ID()).
-		Update().
-		Body(clusterSpec).
-		Send()
+	err = ocmClient.UpdateCluster(cluster.ID(), awsCreator.ARN, clusterSpec)
 	if err != nil {
 		reporter.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

@@ -203,16 +203,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	res, err := ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().
-		Cluster(cluster.ID()).
-		Ingresses().
-		Add().
-		Body(ingress).
-		Send()
+	_, err = ocmClient.CreateIngress(cluster.ID(), ingress)
 	if err != nil {
-		reporter.Debugf(err.Error())
-		reporter.Errorf("Failed to add ingress to cluster '%s': %s", clusterKey, res.Error().Reason())
+		reporter.Errorf("Failed to add ingress to cluster '%s': %s", clusterKey, err)
 		os.Exit(1)
 	}
 

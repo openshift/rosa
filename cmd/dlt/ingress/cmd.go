@@ -163,17 +163,10 @@ func run(_ *cobra.Command, argv []string) {
 
 	if confirm.Confirm("delete ingress %s on cluster %s", ingressID, clusterKey) {
 		reporter.Debugf("Deleting ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-		res, err := ocmClient.OCM().ClustersMgmt().V1().
-			Clusters().
-			Cluster(cluster.ID()).
-			Ingresses().
-			Ingress(ingress.ID()).
-			Delete().
-			Send()
+		err = ocmClient.DeleteIngress(cluster.ID(), ingress.ID())
 		if err != nil {
-			reporter.Debugf(err.Error())
 			reporter.Errorf("Failed to delete ingress '%s' on cluster '%s': %s",
-				ingress.ID(), clusterKey, res.Error().Reason())
+				ingress.ID(), clusterKey, err)
 			os.Exit(1)
 		}
 		reporter.Infof("Successfully deleted ingress '%s' from cluster '%s'", ingressID, clusterKey)

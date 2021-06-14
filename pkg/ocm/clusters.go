@@ -84,6 +84,8 @@ type Spec struct {
 	OperatorIAMRoles []OperatorIAMRole
 	MasterRoleARN    string
 	WorkerRoleARN    string
+
+	NodeDrainGracePeriodInMinutes float64
 }
 
 type OperatorIAMRole struct {
@@ -275,6 +277,14 @@ func (c *Client) UpdateCluster(clusterKey string, creatorARN string, config Spec
 					Listening(cmv1.ListeningMethodExternal),
 			)
 		}
+	}
+
+	if config.NodeDrainGracePeriodInMinutes != 0 {
+		clusterBuilder = clusterBuilder.NodeDrainGracePeriod(
+			cmv1.NewValue().
+				Value(config.NodeDrainGracePeriodInMinutes).
+				Unit("minutes"),
+		)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()

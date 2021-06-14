@@ -141,33 +141,19 @@ func run(cmd *cobra.Command, _ []string) {
 	if confirm.Confirm("delete %s user on cluster %s", username, clusterKey) {
 		// Delete htpasswd IdP:
 		reporter.Debugf("Deleting '%s' identity provider on cluster '%s'", idpName, clusterKey)
-		idpResp, err := ocmClient.OCM().ClustersMgmt().V1().
-			Clusters().
-			Cluster(cluster.ID()).
-			IdentityProviders().
-			IdentityProvider(idp.ID()).
-			Delete().
-			Send()
+		err = ocmClient.DeleteIdentityProvider(cluster.ID(), idp.ID())
 		if err != nil {
 			reporter.Errorf("Failed to delete '%s' identity provider on cluster '%s': %s",
-				idpName, clusterKey, idpResp.Error().Reason())
+				idpName, clusterKey, err)
 			os.Exit(1)
 		}
 
 		// Delete admin user from the cluster-admins group:
 		reporter.Debugf("Deleting '%s' user from cluster-admins group on cluster '%s'", username, clusterKey)
-		userResp, err := ocmClient.OCM().ClustersMgmt().V1().
-			Clusters().
-			Cluster(cluster.ID()).
-			Groups().
-			Group("cluster-admins").
-			Users().
-			User(username).
-			Delete().
-			Send()
+		err = ocmClient.DeleteUser(cluster.ID(), "cluster-admins", username)
 		if err != nil {
 			reporter.Errorf("Failed to delete '%s' user from cluster '%s': %s",
-				username, clusterKey, userResp.Error().Reason())
+				username, clusterKey, err)
 			os.Exit(1)
 		}
 

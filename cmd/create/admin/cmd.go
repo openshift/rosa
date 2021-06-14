@@ -140,14 +140,11 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Failed to create user '%s' for cluster '%s'", username, clusterKey)
 		os.Exit(1)
 	}
-	userResp, err := ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().Cluster(cluster.ID()).
-		Groups().Group("cluster-admins").
-		Users().Add().Body(user).
-		Send()
+
+	_, err = ocmClient.CreateUser(cluster.ID(), "cluster-admins", user)
 	if err != nil {
 		reporter.Errorf("Failed to add user '%s' to cluster '%s': %s",
-			username, clusterKey, userResp.Error().Reason())
+			username, clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -170,16 +167,10 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Add HTPasswd IDP to cluster:
-	idpResp, err := ocmClient.OCM().ClustersMgmt().V1().
-		Clusters().
-		Cluster(cluster.ID()).
-		IdentityProviders().
-		Add().
-		Body(idp).
-		Send()
+	_, err = ocmClient.CreateIdentityProvider(cluster.ID(), idp)
 	if err != nil {
 		reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s",
-			idpName, clusterKey, idpResp.Error().Reason())
+			idpName, clusterKey, err)
 		os.Exit(1)
 	}
 
