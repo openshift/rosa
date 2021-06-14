@@ -45,13 +45,14 @@ var clusterNameRE = regexp.MustCompile(`^[a-z]([-a-z0-9]{0,13}[a-z0-9])?$`)
 // Spec is the configuration for a cluster spec.
 type Spec struct {
 	// Basic configs
-	Name         string
-	Region       string
-	MultiAZ      bool
-	Version      string
-	ChannelGroup string
-	Expiration   time.Time
-	Flavour      string
+	Name           string
+	Region         string
+	MultiAZ        bool
+	Version        string
+	ChannelGroup   string
+	Expiration     time.Time
+	Flavour        string
+	EtcdEncryption bool
 
 	// Scaling config
 	ComputeMachineType string
@@ -493,6 +494,7 @@ func createClusterSpec(ocmClusterClient *cmv1.ClustersClient,
 			cmv1.NewCloudRegion().
 				ID(config.Region),
 		).
+		EtcdEncryption(config.EtcdEncryption).
 		Properties(clusterProperties)
 
 	if config.Flavour != "" {
