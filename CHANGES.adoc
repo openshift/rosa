@@ -3,6 +3,17 @@
 This document describes the relevant changes between releases of the `rosa`
 command line tool.
 
+== 1.0.9 Jun 15 2021
+
+- Add Priya to reviewers list
+- describe: Display STS configuration
+- versions: Ensure versions with STS support
+- create: Add missing flags to re-create script
+- lint: Remove interfacer linter
+- sts: Ensure operator IAM roles
+- Added quota validation for listing instance types
+- Add option to enable etcd encryption
+
 == 1.0.8 Jun 2 2021
 
 - Added SSO Validation
