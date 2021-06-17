@@ -21,10 +21,12 @@ import (
 	"os"
 	"text/tabwriter"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -64,6 +66,8 @@ func init() {
 		"",
 		"A unique identifier that might be required when you assume a role in another account",
 	)
+
+	output.AddFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -93,15 +97,8 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(regions) == 0 {
-		reporter.Warnf("There are no regions available for this AWS account")
-		os.Exit(1)
-	}
-
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tNAME\t\tMULTI-AZ SUPPORT\n")
-
+	// Filter out unwanted regions
+	var availableRegions []*cmv1.CloudRegion
 	for _, region := range regions {
 		if !region.Enabled() {
 			continue
@@ -111,6 +108,28 @@ func run(cmd *cobra.Command, _ []string) {
 				continue
 			}
 		}
+		availableRegions = append(availableRegions, region)
+	}
+
+	if output.HasFlag() {
+		err = output.Print(availableRegions)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	if len(availableRegions) == 0 {
+		reporter.Warnf("There are no regions available for this AWS account")
+		os.Exit(1)
+	}
+
+	// Create the writer that will be used to print the tabulated results:
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(writer, "ID\t\tNAME\t\tMULTI-AZ SUPPORT\n")
+
+	for _, region := range availableRegions {
 		fmt.Fprintf(writer,
 			"%s\t\t%s\t\t%t\n",
 			region.ID(),

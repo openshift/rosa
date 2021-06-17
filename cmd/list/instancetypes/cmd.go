@@ -21,10 +21,12 @@ import (
 	"os"
 	"text/tabwriter"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -36,6 +38,10 @@ var Cmd = &cobra.Command{
 	Example: `  # List all instance types
   rosa list instance-types`,
 	Run: run,
+}
+
+func init() {
+	output.AddFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -63,6 +69,19 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		reporter.Errorf("Failed to fetch instance types: %v", err)
 		os.Exit(1)
+	}
+
+	if output.HasFlag() {
+		var instanceTypes []*cmv1.MachineType
+		for _, machine := range machineTypes {
+			instanceTypes = append(instanceTypes, machine.MachineType)
+		}
+		err = output.Print(instanceTypes)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 
 	if len(machineTypes) == 0 {

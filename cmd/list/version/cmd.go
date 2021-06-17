@@ -22,10 +22,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -51,6 +53,7 @@ func init() {
 		ocm.DefaultChannelGroup,
 		"List only versions from the specified channel group",
 	)
+	output.AddFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -80,7 +83,26 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(versions) == 0 {
+	var availableVersions []*cmv1.Version
+
+	// Remove disabled versions
+	for _, version := range versions {
+		if !version.Enabled() {
+			continue
+		}
+		availableVersions = append(availableVersions, version)
+	}
+
+	if output.HasFlag() {
+		err = output.Print(availableVersions)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	if len(availableVersions) == 0 {
 		reporter.Warnf("There are no OpenShift versions available")
 		os.Exit(1)
 	}
@@ -89,10 +111,7 @@ func run(cmd *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "VERSION\t\tDEFAULT\t\tAVAILABLE UPGRADES\n")
 
-	for _, version := range versions {
-		if !version.Enabled() {
-			continue
-		}
+	for _, version := range availableVersions {
 		isDefault := "no"
 		if version.Default() {
 			isDefault = "yes"

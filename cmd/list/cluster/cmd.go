@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -46,6 +47,7 @@ func init() {
 	flags.SortFlags = false
 
 	arguments.AddRegionFlag(flags)
+	output.AddFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -88,6 +90,15 @@ func run(_ *cobra.Command, _ []string) {
 	if err != nil {
 		reporter.Errorf("Failed to get clusters: %v", err)
 		os.Exit(1)
+	}
+
+	if output.HasFlag() {
+		err = output.Print(clusters)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 
 	if len(clusters) == 0 {
