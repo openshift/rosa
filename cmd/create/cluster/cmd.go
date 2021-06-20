@@ -1371,5 +1371,8 @@ func buildCommand(spec ocm.Spec) string {
 	if len(spec.SubnetIds) > 0 {
 		command += fmt.Sprintf(" --subnet-ids %s", strings.Join(spec.SubnetIds, ","))
 	}
+	if spec.EtcdEncryption {
+		command += " --etcd-encryption"
+	}
 	return command
 }
