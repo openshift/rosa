@@ -365,7 +365,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	tempAWSClient := aws.GetAWSClientForUserRegion(reporter, logger)
 
-	creator, err := tempAWSClient.GetCreator()
+	awsCreator, err := tempAWSClient.GetCreator()
 	if err != nil {
 		reporter.Errorf("Unable to get IAM credentials: %v", err)
 		os.Exit(1)
@@ -410,7 +410,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// AWS ARN Role
 	roleARN := args.roleARN
 
-	if !interactive.Enabled() && creator.IsSTS && roleARN == "" {
+	if !interactive.Enabled() && awsCreator.IsSTS && roleARN == "" {
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "Since your AWS credentials are returning an STS ARN you can only " +
 				"create STS clusters. Otherwise, switch to IAM credentials.",
@@ -428,7 +428,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Question: "Role ARN",
 			Help:     cmd.Flags().Lookup("role-arn").Usage,
 			Default:  roleARN,
-			Required: creator.IsSTS,
+			Required: awsCreator.IsSTS,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid ARN: %s", err)

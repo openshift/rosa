@@ -84,7 +84,7 @@ func run(_ *cobra.Command, _ []string) {
 	}()
 
 	// Retrieve the list of clusters:
-	clusters, err := ocmClient.GetClusters(awsCreator.ARN, 1000)
+	clusters, err := ocmClient.GetClusters(awsCreator, 1000)
 	if err != nil {
 		reporter.Errorf("Failed to get clusters: %v", err)
 		os.Exit(1)
