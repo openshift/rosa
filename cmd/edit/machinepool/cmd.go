@@ -178,7 +178,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.ARN)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -224,7 +224,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
-		err = ocmClient.UpdateCluster(clusterKey, awsCreator.ARN, clusterConfig)
+		err = ocmClient.UpdateCluster(clusterKey, awsCreator, clusterConfig)
 		if err != nil {
 			reporter.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
 				machinePoolID, clusterKey, err)

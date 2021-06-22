@@ -94,8 +94,18 @@ type OperatorIAMRole struct {
 	RoleARN   string
 }
 
-func (c *Client) HasClusters(creatorARN string) (bool, error) {
-	query := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, creatorARN)
+// Generate a query that filters clusters running on the current AWS session account
+func getClusterFilter(creator *aws.Creator) string {
+	return fmt.Sprintf(
+		"product.id = 'rosa' AND (properties.%s LIKE '%%:%s:%%' OR aws.sts.role_arn LIKE '%%:%s:%%')",
+		properties.CreatorARN,
+		creator.AccountID,
+		creator.AccountID,
+	)
+}
+
+func (c *Client) HasClusters(creator *aws.Creator) (bool, error) {
+	query := getClusterFilter(creator)
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().
 		List().
 		Search(query).
@@ -150,12 +160,12 @@ func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 	return clusterObject, nil
 }
 
-func (c *Client) GetClusters(creatorARN string, count int) (clusters []*cmv1.Cluster, err error) {
+func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.Cluster, err error) {
 	if count < 1 {
 		err = errors.New("Cannot fetch fewer than 1 cluster")
 		return
 	}
-	query := fmt.Sprintf("properties.%s = '%s'", properties.CreatorARN, creatorARN)
+	query := getClusterFilter(creator)
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1
 	for {
@@ -175,10 +185,10 @@ func (c *Client) GetClusters(creatorARN string, count int) (clusters []*cmv1.Clu
 	return clusters, nil
 }
 
-func (c *Client) GetCluster(clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
-	query := fmt.Sprintf(
-		"(id = '%s' or name = '%s') and properties.%s = '%s'",
-		clusterKey, clusterKey, properties.CreatorARN, creatorARN,
+func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
+	query := fmt.Sprintf("%s AND (id = '%s' OR name = '%s')",
+		getClusterFilter(creator),
+		clusterKey, clusterKey,
 	)
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().List().
 		Search(query).
@@ -199,8 +209,12 @@ func (c *Client) GetCluster(clusterKey string, creatorARN string) (*cmv1.Cluster
 	}
 }
 
-func (c *Client) GetPendingClusterForARN(creatorARN string) (cluster *cmv1.Cluster, err error) {
-	query := fmt.Sprintf("(state = 'pending') and properties.%s = '%s'", properties.CreatorARN, creatorARN)
+func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cluster, err error) {
+	query := fmt.Sprintf(
+		"(state = 'pending') AND product.id = 'rosa' AND properties.%s LIKE '%%:%s:%%'",
+		properties.CreatorARN,
+		creator.AccountID,
+	)
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 
 	response, err := request.Send()
@@ -234,8 +248,8 @@ func (c *Client) GetClusterState(clusterID string) (cmv1.ClusterState, error) {
 	return response.Body().State(), nil
 }
 
-func (c *Client) UpdateCluster(clusterKey string, creatorARN string, config Spec) error {
-	cluster, err := c.GetCluster(clusterKey, creatorARN)
+func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config Spec) error {
+	cluster, err := c.GetCluster(clusterKey, creator)
 	if err != nil {
 		return err
 	}
@@ -304,8 +318,8 @@ func (c *Client) UpdateCluster(clusterKey string, creatorARN string, config Spec
 	return nil
 }
 
-func (c *Client) DeleteCluster(clusterKey string, creatorARN string) (*cmv1.Cluster, error) {
-	cluster, err := c.GetCluster(clusterKey, creatorARN)
+func (c *Client) DeleteCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
+	cluster, err := c.GetCluster(clusterKey, creator)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +357,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		*/
 		deadline := time.Now().Add(5 * time.Minute)
 		for {
-			pendingCluster, err := c.GetPendingClusterForARN(awsCreator.ARN)
+			pendingCluster, err := c.GetPendingClusterForARN(awsCreator)
 			if err != nil {
 				reporter.Errorf("Error getting cluster using ARN '%s'", awsCreator.ARN)
 				os.Exit(1)

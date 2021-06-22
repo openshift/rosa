@@ -200,7 +200,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		// Check whether the account has clusters:
-		hasClusters, err := ocmClient.HasClusters(awsCreator.ARN)
+		hasClusters, err := ocmClient.HasClusters(awsCreator)
 		if err != nil {
 			reporter.Errorf("Failed to check for clusters: %v", err)
 			os.Exit(1)
