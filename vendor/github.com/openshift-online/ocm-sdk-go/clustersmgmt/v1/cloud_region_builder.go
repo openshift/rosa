@@ -29,6 +29,7 @@ type CloudRegionBuilder struct {
 	cloudProvider   *CloudProviderBuilder
 	displayName     string
 	name            string
+	ccsOnly         bool
 	enabled         bool
 	supportsMultiAZ bool
 }
@@ -58,15 +59,24 @@ func (b *CloudRegionBuilder) HREF(value string) *CloudRegionBuilder {
 	return b
 }
 
+// CCSOnly sets the value of the 'CCS_only' attribute to the given value.
+//
+//
+func (b *CloudRegionBuilder) CCSOnly(value bool) *CloudRegionBuilder {
+	b.ccsOnly = value
+	b.bitmap_ |= 8
+	return b
+}
+
 // CloudProvider sets the value of the 'cloud_provider' attribute to the given value.
 //
 // Cloud provider.
 func (b *CloudRegionBuilder) CloudProvider(value *CloudProviderBuilder) *CloudRegionBuilder {
 	b.cloudProvider = value
 	if value != nil {
-		b.bitmap_ |= 8
+		b.bitmap_ |= 16
 	} else {
-		b.bitmap_ &^= 8
+		b.bitmap_ &^= 16
 	}
 	return b
 }
@@ -76,7 +86,7 @@ func (b *CloudRegionBuilder) CloudProvider(value *CloudProviderBuilder) *CloudRe
 //
 func (b *CloudRegionBuilder) DisplayName(value string) *CloudRegionBuilder {
 	b.displayName = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -85,7 +95,7 @@ func (b *CloudRegionBuilder) DisplayName(value string) *CloudRegionBuilder {
 //
 func (b *CloudRegionBuilder) Enabled(value bool) *CloudRegionBuilder {
 	b.enabled = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -94,7 +104,7 @@ func (b *CloudRegionBuilder) Enabled(value bool) *CloudRegionBuilder {
 //
 func (b *CloudRegionBuilder) Name(value string) *CloudRegionBuilder {
 	b.name = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -103,7 +113,7 @@ func (b *CloudRegionBuilder) Name(value string) *CloudRegionBuilder {
 //
 func (b *CloudRegionBuilder) SupportsMultiAZ(value bool) *CloudRegionBuilder {
 	b.supportsMultiAZ = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -115,6 +125,7 @@ func (b *CloudRegionBuilder) Copy(object *CloudRegion) *CloudRegionBuilder {
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
+	b.ccsOnly = object.ccsOnly
 	if object.cloudProvider != nil {
 		b.cloudProvider = NewCloudProvider().Copy(object.cloudProvider)
 	} else {
@@ -133,6 +144,7 @@ func (b *CloudRegionBuilder) Build() (object *CloudRegion, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
+	object.ccsOnly = b.ccsOnly
 	if b.cloudProvider != nil {
 		object.cloudProvider, err = b.cloudProvider.Build()
 		if err != nil {

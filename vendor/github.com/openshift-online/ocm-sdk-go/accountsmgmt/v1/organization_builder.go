@@ -30,6 +30,7 @@ type OrganizationBuilder struct {
 	bitmap_      uint32
 	id           string
 	href         string
+	capabilities []*CapabilityBuilder
 	createdAt    time.Time
 	ebsAccountID string
 	externalID   string
@@ -63,12 +64,22 @@ func (b *OrganizationBuilder) HREF(value string) *OrganizationBuilder {
 	return b
 }
 
+// Capabilities sets the value of the 'capabilities' attribute to the given values.
+//
+//
+func (b *OrganizationBuilder) Capabilities(values ...*CapabilityBuilder) *OrganizationBuilder {
+	b.capabilities = make([]*CapabilityBuilder, len(values))
+	copy(b.capabilities, values)
+	b.bitmap_ |= 8
+	return b
+}
+
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
 //
 //
 func (b *OrganizationBuilder) CreatedAt(value time.Time) *OrganizationBuilder {
 	b.createdAt = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -77,7 +88,7 @@ func (b *OrganizationBuilder) CreatedAt(value time.Time) *OrganizationBuilder {
 //
 func (b *OrganizationBuilder) EbsAccountID(value string) *OrganizationBuilder {
 	b.ebsAccountID = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -86,7 +97,7 @@ func (b *OrganizationBuilder) EbsAccountID(value string) *OrganizationBuilder {
 //
 func (b *OrganizationBuilder) ExternalID(value string) *OrganizationBuilder {
 	b.externalID = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -96,7 +107,7 @@ func (b *OrganizationBuilder) ExternalID(value string) *OrganizationBuilder {
 func (b *OrganizationBuilder) Labels(values ...*LabelBuilder) *OrganizationBuilder {
 	b.labels = make([]*LabelBuilder, len(values))
 	copy(b.labels, values)
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -105,7 +116,7 @@ func (b *OrganizationBuilder) Labels(values ...*LabelBuilder) *OrganizationBuild
 //
 func (b *OrganizationBuilder) Name(value string) *OrganizationBuilder {
 	b.name = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -114,7 +125,7 @@ func (b *OrganizationBuilder) Name(value string) *OrganizationBuilder {
 //
 func (b *OrganizationBuilder) UpdatedAt(value time.Time) *OrganizationBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -126,6 +137,14 @@ func (b *OrganizationBuilder) Copy(object *Organization) *OrganizationBuilder {
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
+	if object.capabilities != nil {
+		b.capabilities = make([]*CapabilityBuilder, len(object.capabilities))
+		for i, v := range object.capabilities {
+			b.capabilities[i] = NewCapability().Copy(v)
+		}
+	} else {
+		b.capabilities = nil
+	}
 	b.createdAt = object.createdAt
 	b.ebsAccountID = object.ebsAccountID
 	b.externalID = object.externalID
@@ -148,6 +167,15 @@ func (b *OrganizationBuilder) Build() (object *Organization, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
+	if b.capabilities != nil {
+		object.capabilities = make([]*Capability, len(b.capabilities))
+		for i, v := range b.capabilities {
+			object.capabilities[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	object.createdAt = b.createdAt
 	object.ebsAccountID = b.ebsAccountID
 	object.externalID = b.externalID

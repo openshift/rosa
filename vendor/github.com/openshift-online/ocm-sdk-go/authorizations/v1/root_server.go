@@ -43,6 +43,11 @@ type Server interface {
 	// Reference to the resource that is used to submit export control review requests.
 	ExportControlReview() ExportControlReviewServer
 
+	// FeatureReview returns the target 'feature_review' resource.
+	//
+	// Reference to the resource that is used to submit feature review requests.
+	FeatureReview() FeatureReviewServer
+
 	// ResourceReview returns the target 'resource_review' resource.
 	//
 	// Reference to the resource that is used to submit resource review requests.
@@ -57,6 +62,11 @@ type Server interface {
 	//
 	// Reference to the resource that is used to submit self capability review requests.
 	SelfCapabilityReview() SelfCapabilityReviewServer
+
+	// SelfFeatureReview returns the target 'self_feature_review' resource.
+	//
+	// Reference to the resource that is used to submit self feature review requests.
+	SelfFeatureReview() SelfFeatureReviewServer
 
 	// SelfTermsReview returns the target 'self_terms_review' resource.
 	//
@@ -104,6 +114,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchExportControlReview(w, r, target, segments[1:])
+	case "feature_review":
+		target := server.FeatureReview()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchFeatureReview(w, r, target, segments[1:])
 	case "resource_review":
 		target := server.ResourceReview()
 		if target == nil {
@@ -125,6 +142,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchSelfCapabilityReview(w, r, target, segments[1:])
+	case "self_feature_review":
+		target := server.SelfFeatureReview()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchSelfFeatureReview(w, r, target, segments[1:])
 	case "self_terms_review":
 		target := server.SelfTermsReview()
 		if target == nil {

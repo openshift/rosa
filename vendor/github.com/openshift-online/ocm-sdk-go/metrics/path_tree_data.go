@@ -110,9 +110,11 @@ var pathTreeData = `{
         "access_review": null,
         "capability_review": null,
         "export_control_review": null,
+        "feature_review": null,
         "resource_review": null,
         "self_access_review": null,
         "self_capability_review": null,
+        "self_feature_review": null,
         "self_terms_review": null,
         "terms_review": null
       }

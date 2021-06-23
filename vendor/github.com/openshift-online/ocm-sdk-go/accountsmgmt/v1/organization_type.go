@@ -42,6 +42,7 @@ type Organization struct {
 	bitmap_      uint32
 	id           string
 	href         string
+	capabilities []*Capability
 	createdAt    time.Time
 	ebsAccountID string
 	externalID   string
@@ -107,12 +108,35 @@ func (o *Organization) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
+// Capabilities returns the value of the 'capabilities' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Organization) Capabilities() []*Capability {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.capabilities
+	}
+	return nil
+}
+
+// GetCapabilities returns the value of the 'capabilities' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Organization) GetCapabilities() (value []*Capability, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.capabilities
+	}
+	return
+}
+
 // CreatedAt returns the value of the 'created_at' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *Organization) CreatedAt() time.Time {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.createdAt
 	}
 	return time.Time{}
@@ -123,7 +147,7 @@ func (o *Organization) CreatedAt() time.Time {
 //
 //
 func (o *Organization) GetCreatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.createdAt
 	}
@@ -135,7 +159,7 @@ func (o *Organization) GetCreatedAt() (value time.Time, ok bool) {
 //
 //
 func (o *Organization) EbsAccountID() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.ebsAccountID
 	}
 	return ""
@@ -146,7 +170,7 @@ func (o *Organization) EbsAccountID() string {
 //
 //
 func (o *Organization) GetEbsAccountID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.ebsAccountID
 	}
@@ -158,7 +182,7 @@ func (o *Organization) GetEbsAccountID() (value string, ok bool) {
 //
 //
 func (o *Organization) ExternalID() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.externalID
 	}
 	return ""
@@ -169,7 +193,7 @@ func (o *Organization) ExternalID() string {
 //
 //
 func (o *Organization) GetExternalID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.externalID
 	}
@@ -181,7 +205,7 @@ func (o *Organization) GetExternalID() (value string, ok bool) {
 //
 //
 func (o *Organization) Labels() []*Label {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.labels
 	}
 	return nil
@@ -192,7 +216,7 @@ func (o *Organization) Labels() []*Label {
 //
 //
 func (o *Organization) GetLabels() (value []*Label, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.labels
 	}
@@ -204,7 +228,7 @@ func (o *Organization) GetLabels() (value []*Label, ok bool) {
 //
 //
 func (o *Organization) Name() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.name
 	}
 	return ""
@@ -215,7 +239,7 @@ func (o *Organization) Name() string {
 //
 //
 func (o *Organization) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.name
 	}
@@ -227,7 +251,7 @@ func (o *Organization) GetName() (value string, ok bool) {
 //
 //
 func (o *Organization) UpdatedAt() time.Time {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.updatedAt
 	}
 	return time.Time{}
@@ -238,7 +262,7 @@ func (o *Organization) UpdatedAt() time.Time {
 //
 //
 func (o *Organization) GetUpdatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.updatedAt
 	}

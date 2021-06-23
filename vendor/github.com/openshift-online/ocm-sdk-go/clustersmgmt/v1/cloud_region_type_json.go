@@ -63,7 +63,16 @@ func writeCloudRegion(object *CloudRegion, stream *jsoniter.Stream) {
 		count++
 	}
 	var present_ bool
-	present_ = object.bitmap_&8 != 0 && object.cloudProvider != nil
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("ccs_only")
+		stream.WriteBool(object.ccsOnly)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0 && object.cloudProvider != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -72,7 +81,7 @@ func writeCloudRegion(object *CloudRegion, stream *jsoniter.Stream) {
 		writeCloudProvider(object.cloudProvider, stream)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -81,7 +90,7 @@ func writeCloudRegion(object *CloudRegion, stream *jsoniter.Stream) {
 		stream.WriteString(object.displayName)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -90,7 +99,7 @@ func writeCloudRegion(object *CloudRegion, stream *jsoniter.Stream) {
 		stream.WriteBool(object.enabled)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -99,7 +108,7 @@ func writeCloudRegion(object *CloudRegion, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -146,26 +155,30 @@ func readCloudRegion(iterator *jsoniter.Iterator) *CloudRegion {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
+		case "ccs_only":
+			value := iterator.ReadBool()
+			object.ccsOnly = value
+			object.bitmap_ |= 8
 		case "cloud_provider":
 			value := readCloudProvider(iterator)
 			object.cloudProvider = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		case "display_name":
 			value := iterator.ReadString()
 			object.displayName = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "enabled":
 			value := iterator.ReadBool()
 			object.enabled = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "supports_multi_az":
 			value := iterator.ReadBool()
 			object.supportsMultiAZ = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		default:
 			iterator.ReadAny()
 		}

@@ -760,22 +760,22 @@ func (w *TransportWrapper) sendRequestTokenForm(ctx context.Context, attempt int
 	form := url.Values{}
 	if w.havePassword() {
 		w.logger.Debug(ctx, "Requesting new token using the password grant")
-		form.Set("grant_type", "password")
-		form.Set("client_id", w.clientID)
-		form.Set("username", w.user)
-		form.Set("password", w.password)
+		form.Set(grantTypeField, passwordGrant)
+		form.Set(clientIDField, w.clientID)
+		form.Set(usernameField, w.user)
+		form.Set(passwordField, w.password)
 	} else if w.haveSecret() {
 		w.logger.Debug(ctx, "Requesting new token using the client credentials grant")
-		form.Set("grant_type", "client_credentials")
-		form.Set("client_id", w.clientID)
-		form.Set("client_secret", w.clientSecret)
+		form.Set(grantTypeField, clientCredentialsGrant)
+		form.Set(clientIDField, w.clientID)
+		form.Set(clientSecretField, w.clientSecret)
 	} else {
 		err = fmt.Errorf(
 			"either password or client secret must be provided",
 		)
 		return
 	}
-	form.Set("scope", strings.Join(w.scopes, " "))
+	form.Set(scopeField, strings.Join(w.scopes, " "))
 	return w.sendTokenForm(ctx, form, attempt)
 }
 
@@ -784,10 +784,9 @@ func (w *TransportWrapper) sendRefreshTokenForm(ctx context.Context, attempt int
 	// Send the refresh token grant form:
 	w.logger.Debug(ctx, "Requesting new token using the refresh token grant")
 	form := url.Values{}
-	form.Set("grant_type", "refresh_token")
-	form.Set("client_id", w.clientID)
-	form.Set("client_secret", w.clientSecret)
-	form.Set("refresh_token", w.refreshToken.Raw)
+	form.Set(grantTypeField, refreshTokenGrant)
+	form.Set(clientIDField, w.clientID)
+	form.Set(refreshTokenField, w.refreshToken.Raw)
 	code, result, err = w.sendTokenForm(ctx, form, attempt)
 
 	// If the server returns an 'invalid_grant' error response then it may be that the
@@ -918,26 +917,43 @@ func (w *TransportWrapper) sendTokenFormTimed(ctx context.Context, form url.Valu
 		err = fmt.Errorf("expected 'bearer' token type but got '%s", *result.TokenType)
 		return
 	}
+
+	// The response should always contains the access token, regardless of the kind of grant
+	// that was used:
+	var accessToken *jwt.Token
 	if result.AccessToken == nil {
 		err = fmt.Errorf("no access token was received")
 		return
 	}
-	accessToken, _, err := w.tokenParser.ParseUnverified(*result.AccessToken, jwt.MapClaims{})
-	if err != nil {
-		return
-	}
-	if result.RefreshToken == nil {
-		err = fmt.Errorf("no refresh token was received")
-		return
-	}
-	refreshToken, _, err := w.tokenParser.ParseUnverified(*result.RefreshToken, jwt.MapClaims{})
+	accessToken, _, err = w.tokenParser.ParseUnverified(*result.AccessToken, jwt.MapClaims{})
 	if err != nil {
 		return
 	}
 
+	// The refresh token isn't mandatory for the client credentials grant:
+	var refreshToken *jwt.Token
+	if result.RefreshToken == nil {
+		if form.Get(grantTypeField) != clientCredentialsGrant {
+			err = fmt.Errorf("no refresh token was received")
+			return
+		}
+	} else {
+		refreshToken, _, err = w.tokenParser.ParseUnverified(
+			*result.RefreshToken,
+			jwt.MapClaims{},
+		)
+		if err != nil {
+			return
+		}
+	}
+
 	// Save the new tokens:
-	w.accessToken = accessToken
-	w.refreshToken = refreshToken
+	if accessToken != nil {
+		w.accessToken = accessToken
+	}
+	if refreshToken != nil {
+		w.refreshToken = refreshToken
+	}
 
 	return
 }
@@ -973,6 +989,24 @@ func (w *TransportWrapper) debugExpiry(ctx context.Context, typ string, token *j
 		w.logger.Debug(ctx, "%s token isn't available", typ)
 	}
 }
+
+// Names of fields in the token form:
+const (
+	grantTypeField    = "grant_type"
+	clientIDField     = "client_id"
+	clientSecretField = "client_secret"
+	usernameField     = "username"
+	passwordField     = "password"
+	refreshTokenField = "refresh_token"
+	scopeField        = "scope"
+)
+
+// Grant kinds:
+const (
+	clientCredentialsGrant = "client_credentials"
+	passwordGrant          = "password"
+	refreshTokenGrant      = "refresh_token"
+)
 
 const (
 	tokenExpiry = 1 * time.Minute

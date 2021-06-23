@@ -64,7 +64,16 @@ func writeOrganization(object *Organization, stream *jsoniter.Stream) {
 		count++
 	}
 	var present_ bool
-	present_ = object.bitmap_&8 != 0
+	present_ = object.bitmap_&8 != 0 && object.capabilities != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("capabilities")
+		writeCapabilityList(object.capabilities, stream)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -73,7 +82,7 @@ func writeOrganization(object *Organization, stream *jsoniter.Stream) {
 		stream.WriteString((object.createdAt).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -82,7 +91,7 @@ func writeOrganization(object *Organization, stream *jsoniter.Stream) {
 		stream.WriteString(object.ebsAccountID)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -91,7 +100,7 @@ func writeOrganization(object *Organization, stream *jsoniter.Stream) {
 		stream.WriteString(object.externalID)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.labels != nil
+	present_ = object.bitmap_&128 != 0 && object.labels != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -100,7 +109,7 @@ func writeOrganization(object *Organization, stream *jsoniter.Stream) {
 		writeLabelList(object.labels, stream)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -109,7 +118,7 @@ func writeOrganization(object *Organization, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -156,6 +165,10 @@ func readOrganization(iterator *jsoniter.Iterator) *Organization {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
+		case "capabilities":
+			value := readCapabilityList(iterator)
+			object.capabilities = value
+			object.bitmap_ |= 8
 		case "created_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -163,23 +176,23 @@ func readOrganization(iterator *jsoniter.Iterator) *Organization {
 				iterator.ReportError("", err.Error())
 			}
 			object.createdAt = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		case "ebs_account_id":
 			value := iterator.ReadString()
 			object.ebsAccountID = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "external_id":
 			value := iterator.ReadString()
 			object.externalID = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "labels":
 			value := readLabelList(iterator)
 			object.labels = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "updated_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -187,7 +200,7 @@ func readOrganization(iterator *jsoniter.Iterator) *Organization {
 				iterator.ReportError("", err.Error())
 			}
 			object.updatedAt = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		default:
 			iterator.ReadAny()
 		}

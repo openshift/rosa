@@ -102,6 +102,7 @@ type ClusterBuilder struct {
 	storageQuota                      *ValueBuilder
 	subscription                      *SubscriptionBuilder
 	version                           *VersionBuilder
+	disableUserWorkloadMonitoring     bool
 	etcdEncryption                    bool
 	managed                           bool
 	multiAZ                           bool
@@ -259,12 +260,21 @@ func (b *ClusterBuilder) CreationTimestamp(value time.Time) *ClusterBuilder {
 	return b
 }
 
+// DisableUserWorkloadMonitoring sets the value of the 'disable_user_workload_monitoring' attribute to the given value.
+//
+//
+func (b *ClusterBuilder) DisableUserWorkloadMonitoring(value bool) *ClusterBuilder {
+	b.disableUserWorkloadMonitoring = value
+	b.bitmap_ |= 16384
+	return b
+}
+
 // DisplayName sets the value of the 'display_name' attribute to the given value.
 //
 //
 func (b *ClusterBuilder) DisplayName(value string) *ClusterBuilder {
 	b.displayName = value
-	b.bitmap_ |= 16384
+	b.bitmap_ |= 32768
 	return b
 }
 
@@ -273,7 +283,7 @@ func (b *ClusterBuilder) DisplayName(value string) *ClusterBuilder {
 //
 func (b *ClusterBuilder) EtcdEncryption(value bool) *ClusterBuilder {
 	b.etcdEncryption = value
-	b.bitmap_ |= 32768
+	b.bitmap_ |= 65536
 	return b
 }
 
@@ -282,7 +292,7 @@ func (b *ClusterBuilder) EtcdEncryption(value bool) *ClusterBuilder {
 //
 func (b *ClusterBuilder) ExpirationTimestamp(value time.Time) *ClusterBuilder {
 	b.expirationTimestamp = value
-	b.bitmap_ |= 65536
+	b.bitmap_ |= 131072
 	return b
 }
 
@@ -291,7 +301,7 @@ func (b *ClusterBuilder) ExpirationTimestamp(value time.Time) *ClusterBuilder {
 //
 func (b *ClusterBuilder) ExternalID(value string) *ClusterBuilder {
 	b.externalID = value
-	b.bitmap_ |= 131072
+	b.bitmap_ |= 262144
 	return b
 }
 
@@ -301,9 +311,9 @@ func (b *ClusterBuilder) ExternalID(value string) *ClusterBuilder {
 func (b *ClusterBuilder) ExternalConfiguration(value *ExternalConfigurationBuilder) *ClusterBuilder {
 	b.externalConfiguration = value
 	if value != nil {
-		b.bitmap_ |= 262144
+		b.bitmap_ |= 524288
 	} else {
-		b.bitmap_ &^= 262144
+		b.bitmap_ &^= 524288
 	}
 	return b
 }
@@ -315,9 +325,9 @@ func (b *ClusterBuilder) ExternalConfiguration(value *ExternalConfigurationBuild
 func (b *ClusterBuilder) Flavour(value *FlavourBuilder) *ClusterBuilder {
 	b.flavour = value
 	if value != nil {
-		b.bitmap_ |= 524288
+		b.bitmap_ |= 1048576
 	} else {
-		b.bitmap_ &^= 524288
+		b.bitmap_ &^= 1048576
 	}
 	return b
 }
@@ -327,7 +337,7 @@ func (b *ClusterBuilder) Flavour(value *FlavourBuilder) *ClusterBuilder {
 //
 func (b *ClusterBuilder) Groups(value *GroupListBuilder) *ClusterBuilder {
 	b.groups = value
-	b.bitmap_ |= 1048576
+	b.bitmap_ |= 2097152
 	return b
 }
 
@@ -336,7 +346,7 @@ func (b *ClusterBuilder) Groups(value *GroupListBuilder) *ClusterBuilder {
 // ClusterHealthState indicates the health of a cluster.
 func (b *ClusterBuilder) HealthState(value ClusterHealthState) *ClusterBuilder {
 	b.healthState = value
-	b.bitmap_ |= 2097152
+	b.bitmap_ |= 4194304
 	return b
 }
 
@@ -345,7 +355,7 @@ func (b *ClusterBuilder) HealthState(value ClusterHealthState) *ClusterBuilder {
 //
 func (b *ClusterBuilder) IdentityProviders(value *IdentityProviderListBuilder) *ClusterBuilder {
 	b.identityProviders = value
-	b.bitmap_ |= 4194304
+	b.bitmap_ |= 8388608
 	return b
 }
 
@@ -354,7 +364,7 @@ func (b *ClusterBuilder) IdentityProviders(value *IdentityProviderListBuilder) *
 //
 func (b *ClusterBuilder) Ingresses(value *IngressListBuilder) *ClusterBuilder {
 	b.ingresses = value
-	b.bitmap_ |= 8388608
+	b.bitmap_ |= 16777216
 	return b
 }
 
@@ -363,7 +373,7 @@ func (b *ClusterBuilder) Ingresses(value *IngressListBuilder) *ClusterBuilder {
 //
 func (b *ClusterBuilder) LoadBalancerQuota(value int) *ClusterBuilder {
 	b.loadBalancerQuota = value
-	b.bitmap_ |= 16777216
+	b.bitmap_ |= 33554432
 	return b
 }
 
@@ -372,7 +382,7 @@ func (b *ClusterBuilder) LoadBalancerQuota(value int) *ClusterBuilder {
 //
 func (b *ClusterBuilder) MachinePools(value *MachinePoolListBuilder) *ClusterBuilder {
 	b.machinePools = value
-	b.bitmap_ |= 33554432
+	b.bitmap_ |= 67108864
 	return b
 }
 
@@ -381,7 +391,7 @@ func (b *ClusterBuilder) MachinePools(value *MachinePoolListBuilder) *ClusterBui
 //
 func (b *ClusterBuilder) Managed(value bool) *ClusterBuilder {
 	b.managed = value
-	b.bitmap_ |= 67108864
+	b.bitmap_ |= 134217728
 	return b
 }
 
@@ -390,7 +400,7 @@ func (b *ClusterBuilder) Managed(value bool) *ClusterBuilder {
 //
 func (b *ClusterBuilder) MultiAZ(value bool) *ClusterBuilder {
 	b.multiAZ = value
-	b.bitmap_ |= 134217728
+	b.bitmap_ |= 268435456
 	return b
 }
 
@@ -399,7 +409,7 @@ func (b *ClusterBuilder) MultiAZ(value bool) *ClusterBuilder {
 //
 func (b *ClusterBuilder) Name(value string) *ClusterBuilder {
 	b.name = value
-	b.bitmap_ |= 268435456
+	b.bitmap_ |= 536870912
 	return b
 }
 
@@ -409,9 +419,9 @@ func (b *ClusterBuilder) Name(value string) *ClusterBuilder {
 func (b *ClusterBuilder) Network(value *NetworkBuilder) *ClusterBuilder {
 	b.network = value
 	if value != nil {
-		b.bitmap_ |= 536870912
+		b.bitmap_ |= 1073741824
 	} else {
-		b.bitmap_ &^= 536870912
+		b.bitmap_ &^= 1073741824
 	}
 	return b
 }
@@ -439,9 +449,9 @@ func (b *ClusterBuilder) Network(value *NetworkBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) NodeDrainGracePeriod(value *ValueBuilder) *ClusterBuilder {
 	b.nodeDrainGracePeriod = value
 	if value != nil {
-		b.bitmap_ |= 1073741824
+		b.bitmap_ |= 2147483648
 	} else {
-		b.bitmap_ &^= 1073741824
+		b.bitmap_ &^= 2147483648
 	}
 	return b
 }
@@ -452,9 +462,9 @@ func (b *ClusterBuilder) NodeDrainGracePeriod(value *ValueBuilder) *ClusterBuild
 func (b *ClusterBuilder) Nodes(value *ClusterNodesBuilder) *ClusterBuilder {
 	b.nodes = value
 	if value != nil {
-		b.bitmap_ |= 2147483648
+		b.bitmap_ |= 4294967296
 	} else {
-		b.bitmap_ &^= 2147483648
+		b.bitmap_ &^= 4294967296
 	}
 	return b
 }
@@ -464,7 +474,7 @@ func (b *ClusterBuilder) Nodes(value *ClusterNodesBuilder) *ClusterBuilder {
 //
 func (b *ClusterBuilder) OpenshiftVersion(value string) *ClusterBuilder {
 	b.openshiftVersion = value
-	b.bitmap_ |= 4294967296
+	b.bitmap_ |= 8589934592
 	return b
 }
 
@@ -474,9 +484,9 @@ func (b *ClusterBuilder) OpenshiftVersion(value string) *ClusterBuilder {
 func (b *ClusterBuilder) Product(value *ProductBuilder) *ClusterBuilder {
 	b.product = value
 	if value != nil {
-		b.bitmap_ |= 8589934592
+		b.bitmap_ |= 17179869184
 	} else {
-		b.bitmap_ &^= 8589934592
+		b.bitmap_ &^= 17179869184
 	}
 	return b
 }
@@ -487,9 +497,9 @@ func (b *ClusterBuilder) Product(value *ProductBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 	b.properties = value
 	if value != nil {
-		b.bitmap_ |= 17179869184
+		b.bitmap_ |= 34359738368
 	} else {
-		b.bitmap_ &^= 17179869184
+		b.bitmap_ &^= 34359738368
 	}
 	return b
 }
@@ -500,9 +510,9 @@ func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 func (b *ClusterBuilder) ProvisionShard(value *ProvisionShardBuilder) *ClusterBuilder {
 	b.provisionShard = value
 	if value != nil {
-		b.bitmap_ |= 34359738368
+		b.bitmap_ |= 68719476736
 	} else {
-		b.bitmap_ &^= 34359738368
+		b.bitmap_ &^= 68719476736
 	}
 	return b
 }
@@ -513,9 +523,9 @@ func (b *ClusterBuilder) ProvisionShard(value *ProvisionShardBuilder) *ClusterBu
 func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 	b.region = value
 	if value != nil {
-		b.bitmap_ |= 68719476736
+		b.bitmap_ |= 137438953472
 	} else {
-		b.bitmap_ &^= 68719476736
+		b.bitmap_ &^= 137438953472
 	}
 	return b
 }
@@ -525,7 +535,7 @@ func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 // Overall state of a cluster.
 func (b *ClusterBuilder) State(value ClusterState) *ClusterBuilder {
 	b.state = value
-	b.bitmap_ |= 137438953472
+	b.bitmap_ |= 274877906944
 	return b
 }
 
@@ -535,9 +545,9 @@ func (b *ClusterBuilder) State(value ClusterState) *ClusterBuilder {
 func (b *ClusterBuilder) Status(value *ClusterStatusBuilder) *ClusterBuilder {
 	b.status = value
 	if value != nil {
-		b.bitmap_ |= 274877906944
+		b.bitmap_ |= 549755813888
 	} else {
-		b.bitmap_ &^= 274877906944
+		b.bitmap_ &^= 549755813888
 	}
 	return b
 }
@@ -565,9 +575,9 @@ func (b *ClusterBuilder) Status(value *ClusterStatusBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) StorageQuota(value *ValueBuilder) *ClusterBuilder {
 	b.storageQuota = value
 	if value != nil {
-		b.bitmap_ |= 549755813888
+		b.bitmap_ |= 1099511627776
 	} else {
-		b.bitmap_ &^= 549755813888
+		b.bitmap_ &^= 1099511627776
 	}
 	return b
 }
@@ -578,9 +588,9 @@ func (b *ClusterBuilder) StorageQuota(value *ValueBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) Subscription(value *SubscriptionBuilder) *ClusterBuilder {
 	b.subscription = value
 	if value != nil {
-		b.bitmap_ |= 1099511627776
+		b.bitmap_ |= 2199023255552
 	} else {
-		b.bitmap_ &^= 1099511627776
+		b.bitmap_ &^= 2199023255552
 	}
 	return b
 }
@@ -591,9 +601,9 @@ func (b *ClusterBuilder) Subscription(value *SubscriptionBuilder) *ClusterBuilde
 func (b *ClusterBuilder) Version(value *VersionBuilder) *ClusterBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 2199023255552
+		b.bitmap_ |= 4398046511104
 	} else {
-		b.bitmap_ &^= 2199023255552
+		b.bitmap_ &^= 4398046511104
 	}
 	return b
 }
@@ -653,6 +663,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.console = nil
 	}
 	b.creationTimestamp = object.creationTimestamp
+	b.disableUserWorkloadMonitoring = object.disableUserWorkloadMonitoring
 	b.displayName = object.displayName
 	b.etcdEncryption = object.etcdEncryption
 	b.expirationTimestamp = object.expirationTimestamp
@@ -817,6 +828,7 @@ func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 		}
 	}
 	object.creationTimestamp = b.creationTimestamp
+	object.disableUserWorkloadMonitoring = b.disableUserWorkloadMonitoring
 	object.displayName = b.displayName
 	object.etcdEncryption = b.etcdEncryption
 	object.expirationTimestamp = b.expirationTimestamp

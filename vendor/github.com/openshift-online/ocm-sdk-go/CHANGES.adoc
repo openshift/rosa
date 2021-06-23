@@ -3,6 +3,31 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.189 Jun 23 2021
+
+- Don't require refresh token for client credentials grant.
+
+== 0.1.188 Jun 23 2021
+
+- Update model to v0.0.134
+** Added InternalOnly flag to SubscriptionNotify
+
+== 0.1.187 Jun 16 2021
+
+- Update model to v0.0.133
+** Added capabilities support to Organization
+
+== 0.1.186 Jun 11 2021
+
+- Update model to v0.0.132
+** Added Disable workload monitoring
+** add authorizations feature review and self feature review models.
+** add locators for feature review and self feature review
+** Add ccs_only flag for cloud regions
+
+== 0.1.185 Jun 10 2021
+
+- Add `All` and `Any` functions to the logging package.
 
 == 0.1.184 Jun 1 2021
 
