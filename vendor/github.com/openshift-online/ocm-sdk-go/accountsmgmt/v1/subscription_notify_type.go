@@ -33,6 +33,7 @@ type SubscriptionNotify struct {
 	templateName            string
 	templateParameters      []*TemplateParameter
 	includeRedHatAssociates bool
+	internalOnly            bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -132,12 +133,35 @@ func (o *SubscriptionNotify) GetIncludeRedHatAssociates() (value bool, ok bool) 
 	return
 }
 
+// InternalOnly returns the value of the 'internal_only' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Indicates whether the service log is internal only to RH
+func (o *SubscriptionNotify) InternalOnly() bool {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.internalOnly
+	}
+	return false
+}
+
+// GetInternalOnly returns the value of the 'internal_only' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Indicates whether the service log is internal only to RH
+func (o *SubscriptionNotify) GetInternalOnly() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.internalOnly
+	}
+	return
+}
+
 // Subject returns the value of the 'subject' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The email subject
 func (o *SubscriptionNotify) Subject() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.subject
 	}
 	return ""
@@ -148,7 +172,7 @@ func (o *SubscriptionNotify) Subject() string {
 //
 // The email subject
 func (o *SubscriptionNotify) GetSubject() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.subject
 	}
@@ -160,7 +184,7 @@ func (o *SubscriptionNotify) GetSubject() (value string, ok bool) {
 //
 // Indicates which Subscription the resource type belongs to
 func (o *SubscriptionNotify) SubscriptionID() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.subscriptionID
 	}
 	return ""
@@ -171,7 +195,7 @@ func (o *SubscriptionNotify) SubscriptionID() string {
 //
 // Indicates which Subscription the resource type belongs to
 func (o *SubscriptionNotify) GetSubscriptionID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.subscriptionID
 	}
@@ -183,7 +207,7 @@ func (o *SubscriptionNotify) GetSubscriptionID() (value string, ok bool) {
 //
 // The name of the template used to construct the email contents
 func (o *SubscriptionNotify) TemplateName() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.templateName
 	}
 	return ""
@@ -194,7 +218,7 @@ func (o *SubscriptionNotify) TemplateName() string {
 //
 // The name of the template used to construct the email contents
 func (o *SubscriptionNotify) GetTemplateName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.templateName
 	}
@@ -206,7 +230,7 @@ func (o *SubscriptionNotify) GetTemplateName() (value string, ok bool) {
 //
 // The values which will be substituted into the templated email
 func (o *SubscriptionNotify) TemplateParameters() []*TemplateParameter {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.templateParameters
 	}
 	return nil
@@ -217,7 +241,7 @@ func (o *SubscriptionNotify) TemplateParameters() []*TemplateParameter {
 //
 // The values which will be substituted into the templated email
 func (o *SubscriptionNotify) GetTemplateParameters() (value []*TemplateParameter, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.templateParameters
 	}

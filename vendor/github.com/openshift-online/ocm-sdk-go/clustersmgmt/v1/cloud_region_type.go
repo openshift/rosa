@@ -41,6 +41,7 @@ type CloudRegion struct {
 	cloudProvider   *CloudProvider
 	displayName     string
 	name            string
+	ccsOnly         bool
 	enabled         bool
 	supportsMultiAZ bool
 }
@@ -102,12 +103,35 @@ func (o *CloudRegion) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
+// CCSOnly returns the value of the 'CCS_only' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// 'true' if the region is supported only for CCS clusters, 'false' otherwise.
+func (o *CloudRegion) CCSOnly() bool {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.ccsOnly
+	}
+	return false
+}
+
+// GetCCSOnly returns the value of the 'CCS_only' attribute and
+// a flag indicating if the attribute has a value.
+//
+// 'true' if the region is supported only for CCS clusters, 'false' otherwise.
+func (o *CloudRegion) GetCCSOnly() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.ccsOnly
+	}
+	return
+}
+
 // CloudProvider returns the value of the 'cloud_provider' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the cloud provider that the region belongs to.
 func (o *CloudRegion) CloudProvider() *CloudProvider {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.cloudProvider
 	}
 	return nil
@@ -118,7 +142,7 @@ func (o *CloudRegion) CloudProvider() *CloudProvider {
 //
 // Link to the cloud provider that the region belongs to.
 func (o *CloudRegion) GetCloudProvider() (value *CloudProvider, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.cloudProvider
 	}
@@ -130,7 +154,7 @@ func (o *CloudRegion) GetCloudProvider() (value *CloudProvider, ok bool) {
 //
 // Name of the region for display purposes, for example `N. Virginia`.
 func (o *CloudRegion) DisplayName() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.displayName
 	}
 	return ""
@@ -141,7 +165,7 @@ func (o *CloudRegion) DisplayName() string {
 //
 // Name of the region for display purposes, for example `N. Virginia`.
 func (o *CloudRegion) GetDisplayName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.displayName
 	}
@@ -153,7 +177,7 @@ func (o *CloudRegion) GetDisplayName() (value string, ok bool) {
 //
 // Whether the region is enabled for deploying an OSD cluster.
 func (o *CloudRegion) Enabled() bool {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.enabled
 	}
 	return false
@@ -164,7 +188,7 @@ func (o *CloudRegion) Enabled() bool {
 //
 // Whether the region is enabled for deploying an OSD cluster.
 func (o *CloudRegion) GetEnabled() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.enabled
 	}
@@ -179,7 +203,7 @@ func (o *CloudRegion) GetEnabled() (value bool, ok bool) {
 // NOTE: Currently for all cloud providers and all regions `id` and `name` have exactly
 // the same values.
 func (o *CloudRegion) Name() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.name
 	}
 	return ""
@@ -193,7 +217,7 @@ func (o *CloudRegion) Name() string {
 // NOTE: Currently for all cloud providers and all regions `id` and `name` have exactly
 // the same values.
 func (o *CloudRegion) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.name
 	}
@@ -205,7 +229,7 @@ func (o *CloudRegion) GetName() (value string, ok bool) {
 //
 // Whether the region supports multiple availability zones.
 func (o *CloudRegion) SupportsMultiAZ() bool {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.supportsMultiAZ
 	}
 	return false
@@ -216,7 +240,7 @@ func (o *CloudRegion) SupportsMultiAZ() bool {
 //
 // Whether the region supports multiple availability zones.
 func (o *CloudRegion) GetSupportsMultiAZ() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.supportsMultiAZ
 	}

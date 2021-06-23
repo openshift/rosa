@@ -33,6 +33,7 @@ type SubscriptionNotifyBuilder struct {
 	templateName            string
 	templateParameters      []*TemplateParameterBuilder
 	includeRedHatAssociates bool
+	internalOnly            bool
 }
 
 // NewSubscriptionNotify creates a new builder of 'subscription_notify' objects.
@@ -76,12 +77,21 @@ func (b *SubscriptionNotifyBuilder) IncludeRedHatAssociates(value bool) *Subscri
 	return b
 }
 
+// InternalOnly sets the value of the 'internal_only' attribute to the given value.
+//
+//
+func (b *SubscriptionNotifyBuilder) InternalOnly(value bool) *SubscriptionNotifyBuilder {
+	b.internalOnly = value
+	b.bitmap_ |= 16
+	return b
+}
+
 // Subject sets the value of the 'subject' attribute to the given value.
 //
 //
 func (b *SubscriptionNotifyBuilder) Subject(value string) *SubscriptionNotifyBuilder {
 	b.subject = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -90,7 +100,7 @@ func (b *SubscriptionNotifyBuilder) Subject(value string) *SubscriptionNotifyBui
 //
 func (b *SubscriptionNotifyBuilder) SubscriptionID(value string) *SubscriptionNotifyBuilder {
 	b.subscriptionID = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -99,7 +109,7 @@ func (b *SubscriptionNotifyBuilder) SubscriptionID(value string) *SubscriptionNo
 //
 func (b *SubscriptionNotifyBuilder) TemplateName(value string) *SubscriptionNotifyBuilder {
 	b.templateName = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -109,7 +119,7 @@ func (b *SubscriptionNotifyBuilder) TemplateName(value string) *SubscriptionNoti
 func (b *SubscriptionNotifyBuilder) TemplateParameters(values ...*TemplateParameterBuilder) *SubscriptionNotifyBuilder {
 	b.templateParameters = make([]*TemplateParameterBuilder, len(values))
 	copy(b.templateParameters, values)
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -123,6 +133,7 @@ func (b *SubscriptionNotifyBuilder) Copy(object *SubscriptionNotify) *Subscripti
 	b.clusterID = object.clusterID
 	b.clusterUUID = object.clusterUUID
 	b.includeRedHatAssociates = object.includeRedHatAssociates
+	b.internalOnly = object.internalOnly
 	b.subject = object.subject
 	b.subscriptionID = object.subscriptionID
 	b.templateName = object.templateName
@@ -145,6 +156,7 @@ func (b *SubscriptionNotifyBuilder) Build() (object *SubscriptionNotify, err err
 	object.clusterID = b.clusterID
 	object.clusterUUID = b.clusterUUID
 	object.includeRedHatAssociates = b.includeRedHatAssociates
+	object.internalOnly = b.internalOnly
 	object.subject = b.subject
 	object.subscriptionID = b.subscriptionID
 	object.templateName = b.templateName

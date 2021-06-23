@@ -81,11 +81,20 @@ func writeSubscriptionNotify(object *SubscriptionNotify, stream *jsoniter.Stream
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("internal_only")
+		stream.WriteBool(object.internalOnly)
+		count++
+	}
+	present_ = object.bitmap_&32 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("subject")
 		stream.WriteString(object.subject)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -94,7 +103,7 @@ func writeSubscriptionNotify(object *SubscriptionNotify, stream *jsoniter.Stream
 		stream.WriteString(object.subscriptionID)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -103,7 +112,7 @@ func writeSubscriptionNotify(object *SubscriptionNotify, stream *jsoniter.Stream
 		stream.WriteString(object.templateName)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.templateParameters != nil
+	present_ = object.bitmap_&256 != 0 && object.templateParameters != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -155,22 +164,26 @@ func readSubscriptionNotify(iterator *jsoniter.Iterator) *SubscriptionNotify {
 			value := iterator.ReadBool()
 			object.includeRedHatAssociates = value
 			object.bitmap_ |= 8
+		case "internal_only":
+			value := iterator.ReadBool()
+			object.internalOnly = value
+			object.bitmap_ |= 16
 		case "subject":
 			value := iterator.ReadString()
 			object.subject = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "subscription_id":
 			value := iterator.ReadString()
 			object.subscriptionID = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "template_name":
 			value := iterator.ReadString()
 			object.templateName = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "template_parameters":
 			value := readTemplateParameterList(iterator)
 			object.templateParameters = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		default:
 			iterator.ReadAny()
 		}

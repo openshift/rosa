@@ -80,6 +80,16 @@ func (c *Client) ExportControlReview() *ExportControlReviewClient {
 	)
 }
 
+// FeatureReview returns the target 'feature_review' resource.
+//
+// Reference to the resource that is used to submit feature review requests.
+func (c *Client) FeatureReview() *FeatureReviewClient {
+	return NewFeatureReviewClient(
+		c.transport,
+		path.Join(c.path, "feature_review"),
+	)
+}
+
 // ResourceReview returns the target 'resource_review' resource.
 //
 // Reference to the resource that is used to submit resource review requests.
@@ -107,6 +117,16 @@ func (c *Client) SelfCapabilityReview() *SelfCapabilityReviewClient {
 	return NewSelfCapabilityReviewClient(
 		c.transport,
 		path.Join(c.path, "self_capability_review"),
+	)
+}
+
+// SelfFeatureReview returns the target 'self_feature_review' resource.
+//
+// Reference to the resource that is used to submit self feature review requests.
+func (c *Client) SelfFeatureReview() *SelfFeatureReviewClient {
+	return NewSelfFeatureReviewClient(
+		c.transport,
+		path.Join(c.path, "self_feature_review"),
 	)
 }
 
