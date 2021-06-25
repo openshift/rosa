@@ -678,9 +678,24 @@ func (w *TransportWrapper) tokens(ctx context.Context, attempt int,
 	// At this point we know that the access token is unavailable, expired or about to expire.
 	w.logger.Debug(ctx, "Trying to get new tokens (attempt %d)", attempt)
 
-	// So we need to check if we can use the refresh token to request a new one.
+	// If we have a client identifier and secret we should use the client credentials grant even
+	// if we have a valid refresh token. Having both is a side effect of a incorrect behaviour
+	// of an old version of the SSO server. Note that we don't ignore the returned refresh token
+	// in that case, not because we will use it, but because we return it to the caller and we
+	// don't want to change that deprecated behaviour yet.
+	if w.haveSecret() {
+		code, _, err = w.sendClientCredentialsForm(ctx, attempt)
+		if err != nil {
+			return
+		}
+		access, refresh = w.currentTokens()
+		return
+	}
+
+	// At this point we know that we don't have client credentials, so we should try to use the
+	// refresh token if available and not expired.
 	if w.refreshToken != nil && (!refreshExpires || refreshRemaining >= minRemaining) {
-		code, _, err = w.sendRefreshTokenForm(ctx, attempt)
+		code, _, err = w.sendRefreshForm(ctx, attempt)
 		if err != nil {
 			return
 		}
@@ -689,10 +704,10 @@ func (w *TransportWrapper) tokens(ctx context.Context, attempt int,
 	}
 
 	// Now we know that both the access and refresh tokens are unavailable, expired or about to
-	// expire. So we need to check if we have other credentials that can be used to request a
-	// new token, and use them.
-	if w.haveCredentials() {
-		code, _, err = w.sendRequestTokenForm(ctx, attempt)
+	// expire. We also know that we don't have client credentials, but we may still have a user
+	// name and password.
+	if w.havePassword() {
+		code, _, err = w.sendPasswordForm(ctx, attempt)
 		if err != nil {
 			return
 		}
@@ -710,7 +725,7 @@ func (w *TransportWrapper) tokens(ctx context.Context, attempt int,
 				"obtain a new token, so will try to use it anyhow",
 			refreshRemaining,
 		)
-		code, _, err = w.sendRefreshTokenForm(ctx, attempt)
+		code, _, err = w.sendRefreshForm(ctx, attempt)
 		if err != nil {
 			return
 		}
@@ -755,74 +770,45 @@ func (w *TransportWrapper) currentTokens() (access, refresh string) {
 	return
 }
 
-func (w *TransportWrapper) sendRequestTokenForm(ctx context.Context, attempt int) (code int,
+func (w *TransportWrapper) sendClientCredentialsForm(ctx context.Context, attempt int) (code int,
 	result *internal.TokenResponse, err error) {
 	form := url.Values{}
-	if w.havePassword() {
-		w.logger.Debug(ctx, "Requesting new token using the password grant")
-		form.Set(grantTypeField, passwordGrant)
-		form.Set(clientIDField, w.clientID)
-		form.Set(usernameField, w.user)
-		form.Set(passwordField, w.password)
-	} else if w.haveSecret() {
-		w.logger.Debug(ctx, "Requesting new token using the client credentials grant")
-		form.Set(grantTypeField, clientCredentialsGrant)
-		form.Set(clientIDField, w.clientID)
-		form.Set(clientSecretField, w.clientSecret)
-	} else {
-		err = fmt.Errorf(
-			"either password or client secret must be provided",
-		)
-		return
-	}
+	w.logger.Debug(ctx, "Requesting new token using the client credentials grant")
+	form.Set(grantTypeField, clientCredentialsGrant)
+	form.Set(clientIDField, w.clientID)
+	form.Set(clientSecretField, w.clientSecret)
 	form.Set(scopeField, strings.Join(w.scopes, " "))
-	return w.sendTokenForm(ctx, form, attempt)
+	return w.sendForm(ctx, form, attempt)
 }
 
-func (w *TransportWrapper) sendRefreshTokenForm(ctx context.Context, attempt int) (code int,
+func (w *TransportWrapper) sendPasswordForm(ctx context.Context, attempt int) (code int,
 	result *internal.TokenResponse, err error) {
-	// Send the refresh token grant form:
+	form := url.Values{}
+	w.logger.Debug(ctx, "Requesting new token using the password grant")
+	form.Set(grantTypeField, passwordGrant)
+	form.Set(clientIDField, w.clientID)
+	form.Set(usernameField, w.user)
+	form.Set(passwordField, w.password)
+	form.Set(scopeField, strings.Join(w.scopes, " "))
+	return w.sendForm(ctx, form, attempt)
+}
+
+func (w *TransportWrapper) sendRefreshForm(ctx context.Context, attempt int) (code int,
+	result *internal.TokenResponse, err error) {
 	w.logger.Debug(ctx, "Requesting new token using the refresh token grant")
 	form := url.Values{}
 	form.Set(grantTypeField, refreshTokenGrant)
 	form.Set(clientIDField, w.clientID)
 	form.Set(refreshTokenField, w.refreshToken.Raw)
-	code, result, err = w.sendTokenForm(ctx, form, attempt)
-
-	// If the server returns an 'invalid_grant' error response then it may be that the
-	// session has expired even if the tokens have not expired. This may happen when the SSO
-	// server has been restarted or its session caches have been cleared. In theory that should
-	// not happen, but in practice it happens from time to time, specially when using the client
-	// credentials grant. To handle that smoothly we request new tokens if we have credentials
-	// to do so.
-	if err != nil && result != nil {
-		var errorCode string
-		if result.Error != nil {
-			errorCode = *result.Error
-		}
-		var errorDescription string
-		if result.ErrorDescription != nil {
-			errorDescription = *result.ErrorDescription
-		}
-		if errorCode == "invalid_grant" && w.haveCredentials() {
-			w.logger.Info(
-				ctx,
-				"Server returned error code '%s' and error description '%s' "+
-					"when the refresh token isn't expired",
-				errorCode, errorDescription,
-			)
-			return w.sendRequestTokenForm(ctx, attempt)
-		}
-	}
-
+	code, result, err = w.sendForm(ctx, form, attempt)
 	return
 }
 
-func (w *TransportWrapper) sendTokenForm(ctx context.Context, form url.Values,
+func (w *TransportWrapper) sendForm(ctx context.Context, form url.Values,
 	attempt int) (code int, result *internal.TokenResponse, err error) {
 	// Measure the time that it takes to send the request and receive the response:
 	start := time.Now()
-	code, result, err = w.sendTokenFormTimed(ctx, form)
+	code, result, err = w.sendFormTimed(ctx, form)
 	elapsed := time.Since(start)
 
 	// Update the metrics:
@@ -843,7 +829,7 @@ func (w *TransportWrapper) sendTokenForm(ctx context.Context, form url.Values,
 	return
 }
 
-func (w *TransportWrapper) sendTokenFormTimed(ctx context.Context, form url.Values) (code int,
+func (w *TransportWrapper) sendFormTimed(ctx context.Context, form url.Values) (code int,
 	result *internal.TokenResponse, err error) {
 	// Create the HTTP request:
 	body := []byte(form.Encode())

@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.190 Jun 23 2021
+
+- Don't use refresh token if have client credentials.
+
 == 0.1.189 Jun 23 2021
 
 - Don't require refresh token for client credentials grant.
