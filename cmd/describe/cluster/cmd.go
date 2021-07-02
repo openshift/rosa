@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -56,6 +57,7 @@ func init() {
 	flags := Cmd.Flags()
 
 	arguments.AddRegionFlag(flags)
+	output.AddFlag(Cmd)
 
 	flags.StringVarP(
 		&args.clusterKey,
@@ -131,8 +133,18 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
 	if err != nil {
-		reporter.Errorf(fmt.Sprintf("Failed to get cluster '%s': %v", clusterKey, err))
+		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
+	}
+
+	var str string
+	if output.HasFlag() {
+		err = output.Print(cluster)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 
 	creatorARN, err := arn.Parse(cluster.Properties()[properties.CreatorARN])
@@ -232,7 +244,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Print short cluster description:
-	str := fmt.Sprintf(""+
+	str = fmt.Sprintf(""+
 		"Name:                       %s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+

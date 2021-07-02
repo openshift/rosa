@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -56,6 +57,8 @@ func init() {
 		"Name or ID of the cluster to list the machine pools of (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
+
+	output.AddFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -125,19 +128,37 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Add default machine pool to the list
+	defaultMachinePoolBuilder := cmv1.NewMachinePool().
+		ID("Default").
+		AvailabilityZones(cluster.Nodes().AvailabilityZones()...).
+		InstanceType(cluster.Nodes().ComputeMachineType().ID()).
+		Labels(cluster.Nodes().ComputeLabels()).
+		Replicas(cluster.Nodes().Compute())
+	if cluster.Nodes().AutoscaleCompute() != nil {
+		defaultMachinePoolBuilder = defaultMachinePoolBuilder.Autoscaling(
+			cmv1.NewMachinePoolAutoscaling().
+				MinReplicas(cluster.Nodes().AutoscaleCompute().MinReplicas()).
+				MaxReplicas(cluster.Nodes().AutoscaleCompute().MaxReplicas()),
+		)
+	}
+	defaultMachinePool, _ := defaultMachinePoolBuilder.Build()
+
+	machinePools = append([]*cmv1.MachinePool{defaultMachinePool}, machinePools...)
+
+	if output.HasFlag() {
+		err = output.Print(machinePools)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\n")
-	fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\n",
-		"Default",
-		printAutoscaling(cluster.Nodes().AutoscaleCompute()),
-		printReplicas(cluster.Nodes().AutoscaleCompute(), cluster.Nodes().Compute()),
-		cluster.Nodes().ComputeMachineType().ID(),
-		printLabels(cluster.Nodes().ComputeLabels()),
-		"",
-		printAZ(cluster.Nodes().AvailabilityZones()),
-	)
 	for _, machinePool := range machinePools {
 		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\n",
 			machinePool.ID(),

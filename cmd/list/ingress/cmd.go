@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -56,6 +57,8 @@ func init() {
 		"Name or ID of the cluster to list the routes of (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
+
+	output.AddFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -123,6 +126,15 @@ func run(_ *cobra.Command, _ []string) {
 	if err != nil {
 		reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
+	}
+
+	if output.HasFlag() {
+		err = output.Print(ingresses)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 
 	if len(ingresses) == 0 {
