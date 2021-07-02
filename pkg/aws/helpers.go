@@ -5,15 +5,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/openshift/rosa/assets"
+	"github.com/sirupsen/logrus"
+
 	"github.com/openshift/rosa/pkg/arguments"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
-	"github.com/sirupsen/logrus"
 )
 
 // GetRegion will return a region selected by the user or given as a default to the AWS client.
@@ -60,46 +58,6 @@ func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool,
 	}
 
 	return user, rootUser, nil
-}
-
-// Build cloudformation create stack input
-func buildCreateStackInput(cfTemplateBody, stackName string) *cloudformation.CreateStackInput {
-	// Special cloudformation capabilities are required to create IAM resources in AWS
-	cfCapabilityIAM := "CAPABILITY_IAM"
-	cfCapabilityNamedIAM := "CAPABILITY_NAMED_IAM"
-	cfTemplateCapabilities := []*string{&cfCapabilityIAM, &cfCapabilityNamedIAM}
-
-	return &cloudformation.CreateStackInput{
-		Capabilities: cfTemplateCapabilities,
-		StackName:    aws.String(stackName),
-		TemplateBody: aws.String(cfTemplateBody),
-	}
-}
-
-// Build cloudformation update stack input
-func buildUpdateStackInput(cfTemplateBody, stackName string) *cloudformation.UpdateStackInput {
-	// Special cloudformation capabilities are required to update IAM resources in AWS
-	cfCapabilityIAM := "CAPABILITY_IAM"
-	cfCapabilityNamedIAM := "CAPABILITY_NAMED_IAM"
-	cfTemplateCapabilities := []*string{&cfCapabilityIAM, &cfCapabilityNamedIAM}
-
-	return &cloudformation.UpdateStackInput{
-		Capabilities: cfTemplateCapabilities,
-		StackName:    aws.String(stackName),
-		TemplateBody: aws.String(cfTemplateBody),
-	}
-}
-
-// Read cloudformation template
-func readCFTemplate() (string, error) {
-	cfTemplateBodyPath := "templates/cloudformation/iam_user_osdCcsAdmin.json"
-
-	cfTemplate, err := assets.Asset(cfTemplateBodyPath)
-	if err != nil {
-		return "", fmt.Errorf("Unable to read cloudformation template: %s", err)
-	}
-
-	return string(cfTemplate), nil
 }
 
 /**
