@@ -168,7 +168,7 @@ func (b *ClientBuilder) BuildSessionWithOptions() (*session.Session, error) {
 func (b *ClientBuilder) Build() (Client, error) {
 	// Check parameters:
 	if b.logger == nil {
-		return nil, fmt.Errorf("Logger is mandatory.")
+		return nil, fmt.Errorf("logger is mandatory")
 	}
 
 	// Create the AWS logger:
@@ -202,13 +202,13 @@ func (b *ClientBuilder) Build() (Client, error) {
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
 		b.logger.Debugf("Failed to find credentials: %v", err)
-		return nil, fmt.Errorf("Failed to find credentials. Check your AWS configuration and try again.")
+		return nil, fmt.Errorf("failed to find credentials. Check your AWS configuration and try again")
 	}
 
 	// Check that the region is set:
 	region := aws.StringValue(sess.Config.Region)
 	if region == "" {
-		return nil, fmt.Errorf("Region is not set. Use --region to set the region.")
+		return nil, fmt.Errorf("region is not set. Use --region to set the region")
 	}
 
 	// Update session config
