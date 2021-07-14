@@ -256,7 +256,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	}
 
 	if root {
-		return nil, errors.New("Using a root account is not supported, please use an IAM user instead.")
+		return nil, errors.New("using a root account is not supported, please use an IAM user instead")
 	}
 
 	return c, err
