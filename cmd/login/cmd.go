@@ -294,3 +294,47 @@ func tokenType(jwtToken *jwt.Token) (typ string, err error) {
 	typ = value
 	return
 }
+
+func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
+	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", "env", "token", "insecure"}
+	hasLoginFlags := false
+	// Check if the user set login flags
+	for _, loginFlag := range loginFlags {
+		if cmd.Flags().Changed(loginFlag) {
+			hasLoginFlags = true
+			break
+		}
+	}
+	if hasLoginFlags {
+		// Always force login if user sets login flags
+		run(cmd, argv)
+		return nil
+	}
+
+	// Verify if user is already logged in:
+	isLoggedIn := false
+	cfg, err := ocm.Load()
+	if err != nil {
+		return fmt.Errorf("Failed to load config file: %v", err)
+	}
+	if cfg != nil {
+		// Check that credentials in the config file are valid
+		isLoggedIn, err = cfg.Armed()
+		if err != nil {
+			return fmt.Errorf("Failed to determine if user is logged in: %v", err)
+		}
+	}
+
+	if isLoggedIn {
+		username, err := cfg.GetData("username")
+		if err != nil {
+			return fmt.Errorf("Failed to get username: %v", err)
+		}
+
+		reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
+		return nil
+	}
+
+	run(cmd, argv)
+	return nil
+}
