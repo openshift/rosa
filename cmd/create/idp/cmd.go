@@ -442,7 +442,7 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter.Infof(
 		"Identity Provider '%s' has been created.\n"+
 			"   It will take up to 1 minute for this configuration to be enabled.\n"+
-			"   To add cluster administrators, see 'rosa create user --help'.\n"+
+			"   To add cluster administrators, see 'rosa grant user --help'.\n"+
 			"   To login into the console, open %s and click on %s.",
 		idpName, cluster.Console().URL(), idpName,
 	)
