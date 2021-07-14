@@ -169,7 +169,7 @@ func (b *ClientBuilder) BuildSessionWithOptions() (*session.Session, error) {
 func (b *ClientBuilder) Build() (Client, error) {
 	// Check parameters:
 	if b.logger == nil {
-		return nil, fmt.Errorf("Logger is mandatory")
+		return nil, fmt.Errorf("logger is mandatory")
 	}
 
 	// Create the AWS logger:
@@ -203,13 +203,13 @@ func (b *ClientBuilder) Build() (Client, error) {
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
 		b.logger.Debugf("Failed to find credentials: %v", err)
-		return nil, fmt.Errorf("Failed to find credentials. Check your AWS configuration and try again")
+		return nil, fmt.Errorf("failed to find credentials. Check your AWS configuration and try again")
 	}
 
 	// Check that the region is set:
 	region := aws.StringValue(sess.Config.Region)
 	if region == "" {
-		return nil, fmt.Errorf("Region is not set. Use --region to set the region")
+		return nil, fmt.Errorf("region is not set. Use --region to set the region")
 	}
 
 	// Update session config
@@ -424,7 +424,7 @@ func (c *awsClient) CreateStack(cfTemplateBody, stackName string) (bool, error) 
 		case awserr.Error:
 			// Waiter reached maximum attempts waiting for the resource to be ready
 			if typed.Code() == request.WaiterResourceNotReadyErrorCode {
-				c.logger.Errorf("Max retries reached waiting for stack to create")
+				c.logger.Errorf("Max retries reached waiting for stack to create.")
 				return false, err
 			}
 		}
@@ -459,7 +459,7 @@ func (c *awsClient) UpdateStack(cfTemplateBody, stackName string) (bool, error) 
 		case awserr.Error:
 			// Waiter reached maximum attempts waiting for the resource to be ready
 			if typed.Code() == request.WaiterResourceNotReadyErrorCode {
-				c.logger.Errorf("Max retries reached waiting for stack to create")
+				c.logger.Errorf("Max retries reached waiting for stack to create.")
 				return false, err
 			}
 		}
@@ -543,7 +543,7 @@ func (c *awsClient) DeleteOsdCcsAdminUser(stackName string) error {
 		case awserr.Error:
 			// Waiter reached maximum attempts waiting for the resource to be ready
 			if typed.Code() == request.WaiterResourceNotReadyErrorCode {
-				c.logger.Errorf("Max retries reached waiting for stack to delete")
+				c.logger.Errorf("Max retries reached waiting for stack to delete.")
 				return err
 			}
 		}
@@ -656,7 +656,7 @@ func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
 
 			// If we've still got an error on the last attempt return it
 			if i == maxAttempts {
-				logger.Error("Error waiting for IAM credentials to become ready")
+				logger.Error("Error waiting for IAM credentials to become ready.")
 				return err
 			}
 		} else {
@@ -786,7 +786,7 @@ func (c *awsClient) ValidateSCP(target *string) (bool, error) {
 		callerIdentity, _, err := getClientDetails(c)
 		if err != nil {
 			return false, fmt.Errorf("getClientDetails: %v\n"+
-				"Run 'rosa init' and try again", err)
+				"Please run 'rosa init' and try again.", err)
 		}
 		targetUserARN, err = arn.Parse(*callerIdentity.Arn)
 		if err != nil {
@@ -805,11 +805,11 @@ func (c *awsClient) ValidateSCP(target *string) (bool, error) {
 		targetIAMOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
 		if err != nil {
 			return false, fmt.Errorf("iamClient.GetUser: %v\n"+
-				"To reset the '%s' account, run 'rosa init --delete-stack' and try again", *target, err)
+				"To reset the '%s' account, run 'rosa init --delete-stack' and try again.", *target, err)
 		}
 		targetUserARN, err = arn.Parse(*targetIAMOutput.User.Arn)
 		if err != nil {
-			return false, fmt.Errorf("unable to parse caller ARN %v", err)
+			return false, fmt.Errorf("Unable to parse caller ARN %v", err)
 		}
 	}
 
