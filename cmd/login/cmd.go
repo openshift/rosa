@@ -19,11 +19,13 @@ package login
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -41,6 +43,7 @@ var args struct {
 	env          string
 	token        string
 	insecure     bool
+	force        bool
 }
 
 var Cmd = &cobra.Command{
@@ -62,6 +65,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+	args.force = false
 	flags.StringVar(
 		&args.tokenURL,
 		"token-url",
@@ -141,7 +145,7 @@ func run(cmd *cobra.Command, argv []string) {
 	haveReqs := token != ""
 
 	// Verify environment variables:
-	if !haveReqs {
+	if !haveReqs && !args.force {
 		token = os.Getenv("ROSA_TOKEN")
 		if token == "" {
 			token = os.Getenv("OCM_TOKEN")
@@ -240,8 +244,12 @@ func run(cmd *cobra.Command, argv []string) {
 		Logger(logger).
 		Build()
 	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
+		if strings.Contains(err.Error(), "token needs to be updated") {
+			reattemptLogin(cmd, argv)
+		} else {
+			reporter.Errorf("Failed to create OCM connection: %v", err)
+			os.Exit(1)
+		}
 	}
 	defer func() {
 		err = ocmClient.Close()
@@ -272,6 +280,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
+}
+
+func reattemptLogin(cmd *cobra.Command, argv []string) {
+	logout.Cmd.Run(cmd, argv)
+	args.force = true
+	run(cmd, argv)
 }
 
 // tokenType extracts the value of the `typ` claim. It returns the value as a string, or the empty
