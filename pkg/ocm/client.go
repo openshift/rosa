@@ -18,6 +18,7 @@ package ocm
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
@@ -119,10 +120,12 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 	}
 	_, _, err = conn.Tokens(10 * time.Minute)
 	if err != nil {
-		err = fmt.Errorf("Error creating connection. Not able to get authentication token")
-		return
+		if strings.Contains(err.Error(), "invalid_grant") {
+			return nil, fmt.Errorf("your authorization token needs to be updated. " +
+				"Please login again using rosa login")
+		}
+		return nil, fmt.Errorf("error creating connection. Not able to get authentication token")
 	}
-
 	return &Client{
 		ocm: conn,
 	}, nil
