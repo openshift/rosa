@@ -139,6 +139,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	if len(idps) == 0 {
 		reporter.Infof("There are no identity providers configured for cluster '%s'", clusterKey)
+		os.Exit(0)
 	}
 
 	// Create the writer that will be used to print the tabulated results:
