@@ -30,6 +30,12 @@ import (
 	"gitlab.com/c0b/go-ordered-json"
 )
 
+// When ocm-sdk-go encounters an empty resource list, it marshals it as a
+// string that represents an empty JSON array with newline and spaces in between:
+// '[', '\n', ' ', ' ', '\n', ']'. This byte-array allows us to compare that so
+// that the output can be shown correctly.
+var emptyBuffer = []byte{91, 10, 32, 32, 10, 93}
+
 func Print(resource interface{}) error {
 	var b bytes.Buffer
 	switch reflect.TypeOf(resource).String() {
@@ -65,6 +71,11 @@ func Print(resource interface{}) error {
 		if versions, ok := resource.([]*cmv1.Version); ok {
 			cmv1.MarshalVersionList(versions, &b)
 		}
+	}
+	// Verify if the resource is an empty string and ensure that the JSON
+	// representation looks correct for STDOUT.
+	if b.String() == string(emptyBuffer) {
+		b = *bytes.NewBufferString("[]")
 	}
 	str, err := parseResource(b)
 	if err != nil {
