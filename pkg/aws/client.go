@@ -74,7 +74,7 @@ type Client interface {
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
 	GetClusterRegionTagForUser(username string) (string, error)
-	EnsureRole(name string, policy string, tagList map[string]string) error
+	EnsureRole(name string, policy string, tagList map[string]string) (string, error)
 	PutRolePolicy(roleName string, policyName string, policy string) error
 	EnsurePolicy(name string, document string, tagList map[string]string) error
 }
