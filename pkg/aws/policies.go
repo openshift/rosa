@@ -106,8 +106,26 @@ type PolicyStatementPrincipal struct {
 	AWS []string `json:"AWS"`
 }
 
-func (c *awsClient) EnsureRole(name string, policy string, tagList map[string]string) error {
-	_, err := c.iamClient.CreateRole(&iam.CreateRoleInput{
+func (c *awsClient) EnsureRole(name string, policy string, tagList map[string]string) (string, error) {
+	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(name),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return c.createRole(name, policy, tagList)
+			default:
+				return "", err
+			}
+		}
+	}
+	role := output.Role
+	return aws.StringValue(role.Arn), nil
+}
+
+func (c *awsClient) createRole(name string, policy string, tagList map[string]string) (string, error) {
+	output, err := c.iamClient.CreateRole(&iam.CreateRoleInput{
 		RoleName:                 aws.String(name),
 		AssumeRolePolicyDocument: aws.String(policy),
 		Tags:                     getTags(tagList),
@@ -116,12 +134,13 @@ func (c *awsClient) EnsureRole(name string, policy string, tagList map[string]st
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeEntityAlreadyExistsException:
-				return nil
+				return "", nil
 			}
 		}
-		return err
+		return "", err
 	}
-	return nil
+	role := output.Role
+	return aws.StringValue(role.Arn), nil
 }
 
 func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy string) error {

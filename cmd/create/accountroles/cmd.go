@@ -400,8 +400,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ve
 			return err
 		}
 
-		reporter.Infof("Creating role '%s'", name)
-		err = awsClient.EnsureRole(name, string(policy), map[string]string{
+		roleARN, err := awsClient.EnsureRole(name, string(policy), map[string]string{
 			tags.OpenShiftVersion: version,
 			tags.RolePrefix:       prefix,
 			tags.RoleType:         file,
@@ -409,6 +408,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ve
 		if err != nil {
 			return err
 		}
+		reporter.Infof("Created role '%s' with ARN '%s'", name, roleARN)
 
 		filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
 		path = fmt.Sprintf("templates/policies/%s/%s", version, filename)
