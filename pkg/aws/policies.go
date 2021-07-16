@@ -29,30 +29,48 @@ import (
 )
 
 type Operator struct {
-	Name      string
-	Namespace string
+	Name                string
+	Namespace           string
+	ServiceAccountNames []string
 }
 
 var CredentialRequests map[string]Operator = map[string]Operator{
 	"machine_api_aws_cloud_credentials": {
 		Name:      "aws-cloud-credentials",
 		Namespace: "openshift-machine-api",
+		ServiceAccountNames: []string{
+			"machine-api-controllers",
+		},
 	},
 	"cloud_credential_operator_cloud_credential_operator_iam_ro_creds": {
 		Name:      "cloud-credential-operator-iam-ro-creds",
 		Namespace: "openshift-cloud-credential-operator",
+		ServiceAccountNames: []string{
+			"cloud-credential-operator",
+		},
 	},
 	"image_registry_installer_cloud_credentials": {
 		Name:      "installer-cloud-credentials",
 		Namespace: "openshift-image-registry",
+		ServiceAccountNames: []string{
+			"cluster-image-registry-operator",
+			"registry",
+		},
 	},
 	"ingress_operator_cloud_credentials": {
 		Name:      "cloud-credentials",
 		Namespace: "openshift-ingress-operator",
+		ServiceAccountNames: []string{
+			"ingress-operator",
+		},
 	},
 	"cluster_csi_drivers_ebs_cloud_credentials": {
 		Name:      "ebs-cloud-credentials",
 		Namespace: "openshift-cluster-csi-drivers",
+		ServiceAccountNames: []string{
+			"aws-ebs-csi-driver-operator",
+			"aws-ebs-csi-driver-controller-sa",
+		},
 	},
 }
 
@@ -168,6 +186,17 @@ func (c *awsClient) EnsurePolicy(name string, document string, tagList map[strin
 				return nil
 			}
 		}
+		return err
+	}
+	return nil
+}
+
+func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
+	_, err := c.iamClient.AttachRolePolicy(&iam.AttachRolePolicyInput{
+		RoleName:  aws.String(roleName),
+		PolicyArn: aws.String(policyARN),
+	})
+	if err != nil {
 		return err
 	}
 	return nil

@@ -7,6 +7,7 @@
 // templates/policies/4.7/openshift_image_registry_installer_cloud_credentials_policy.json
 // templates/policies/4.7/openshift_ingress_operator_cloud_credentials_policy.json
 // templates/policies/4.7/openshift_machine_api_aws_cloud_credentials_policy.json
+// templates/policies/4.7/operator_iam_role_policy.json
 // templates/policies/4.7/sts_installer_permission_policy.json
 // templates/policies/4.7/sts_instance_controlplane_permission_policy.json
 // templates/policies/4.7/sts_instance_worker_permission_policy.json
@@ -16,6 +17,7 @@
 // templates/policies/4.8/openshift_image_registry_installer_cloud_credentials_policy.json
 // templates/policies/4.8/openshift_ingress_operator_cloud_credentials_policy.json
 // templates/policies/4.8/openshift_machine_api_aws_cloud_credentials_policy.json
+// templates/policies/4.8/operator_iam_role_policy.json
 // templates/policies/4.8/sts_installer_permission_policy.json
 // templates/policies/4.8/sts_instance_controlplane_permission_policy.json
 // templates/policies/4.8/sts_instance_worker_permission_policy.json
@@ -25,6 +27,7 @@
 // templates/policies/4.9/openshift_image_registry_installer_cloud_credentials_policy.json
 // templates/policies/4.9/openshift_ingress_operator_cloud_credentials_policy.json
 // templates/policies/4.9/openshift_machine_api_aws_cloud_credentials_policy.json
+// templates/policies/4.9/operator_iam_role_policy.json
 // templates/policies/4.9/sts_installer_permission_policy.json
 // templates/policies/4.9/sts_instance_controlplane_permission_policy.json
 // templates/policies/4.9/sts_instance_worker_permission_policy.json
@@ -332,6 +335,40 @@ func templatesPolicies47Openshift_machine_api_aws_cloud_credentials_policyJson()
 	}
 
 	info := bindataFileInfo{name: "templates/policies/4.7/openshift_machine_api_aws_cloud_credentials_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _templatesPolicies47Operator_iam_role_policyJson = []byte(`{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "%{oidc_provider_arn}"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "%{issuer_url}:aud": "openshift"
+        }
+      }
+    }
+  ]
+}
+`)
+
+func templatesPolicies47Operator_iam_role_policyJsonBytes() ([]byte, error) {
+	return _templatesPolicies47Operator_iam_role_policyJson, nil
+}
+
+func templatesPolicies47Operator_iam_role_policyJson() (*asset, error) {
+	bytes, err := templatesPolicies47Operator_iam_role_policyJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "templates/policies/4.7/operator_iam_role_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -1012,6 +1049,40 @@ func templatesPolicies48Openshift_machine_api_aws_cloud_credentials_policyJson()
 	return a, nil
 }
 
+var _templatesPolicies48Operator_iam_role_policyJson = []byte(`{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "%{oidc_provider_arn}"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "%{issuer_url}:sub": [ "%{service_accounts}" ]
+        }
+      }
+    }
+  ]
+}
+`)
+
+func templatesPolicies48Operator_iam_role_policyJsonBytes() ([]byte, error) {
+	return _templatesPolicies48Operator_iam_role_policyJson, nil
+}
+
+func templatesPolicies48Operator_iam_role_policyJson() (*asset, error) {
+	bytes, err := templatesPolicies48Operator_iam_role_policyJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "templates/policies/4.8/operator_iam_role_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _templatesPolicies48Sts_installer_permission_policyJson = []byte(`{
     "Version": "2012-10-17",
     "Statement": [
@@ -1686,6 +1757,40 @@ func templatesPolicies49Openshift_machine_api_aws_cloud_credentials_policyJson()
 	}
 
 	info := bindataFileInfo{name: "templates/policies/4.9/openshift_machine_api_aws_cloud_credentials_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _templatesPolicies49Operator_iam_role_policyJson = []byte(`{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "%{oidc_provider_arn}"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "%{issuer_url}:sub": [ "%{service_accounts}" ]
+        }
+      }
+    }
+  ]
+}
+`)
+
+func templatesPolicies49Operator_iam_role_policyJsonBytes() ([]byte, error) {
+	return _templatesPolicies49Operator_iam_role_policyJson, nil
+}
+
+func templatesPolicies49Operator_iam_role_policyJson() (*asset, error) {
+	bytes, err := templatesPolicies49Operator_iam_role_policyJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "templates/policies/4.9/operator_iam_role_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -2521,6 +2626,7 @@ var _bindata = map[string]func() (*asset, error){
 	"templates/policies/4.7/openshift_image_registry_installer_cloud_credentials_policy.json":                       templatesPolicies47Openshift_image_registry_installer_cloud_credentials_policyJson,
 	"templates/policies/4.7/openshift_ingress_operator_cloud_credentials_policy.json":                               templatesPolicies47Openshift_ingress_operator_cloud_credentials_policyJson,
 	"templates/policies/4.7/openshift_machine_api_aws_cloud_credentials_policy.json":                                templatesPolicies47Openshift_machine_api_aws_cloud_credentials_policyJson,
+	"templates/policies/4.7/operator_iam_role_policy.json":                                                          templatesPolicies47Operator_iam_role_policyJson,
 	"templates/policies/4.7/sts_installer_permission_policy.json":                                                   templatesPolicies47Sts_installer_permission_policyJson,
 	"templates/policies/4.7/sts_instance_controlplane_permission_policy.json":                                       templatesPolicies47Sts_instance_controlplane_permission_policyJson,
 	"templates/policies/4.7/sts_instance_worker_permission_policy.json":                                             templatesPolicies47Sts_instance_worker_permission_policyJson,
@@ -2530,6 +2636,7 @@ var _bindata = map[string]func() (*asset, error){
 	"templates/policies/4.8/openshift_image_registry_installer_cloud_credentials_policy.json":                       templatesPolicies48Openshift_image_registry_installer_cloud_credentials_policyJson,
 	"templates/policies/4.8/openshift_ingress_operator_cloud_credentials_policy.json":                               templatesPolicies48Openshift_ingress_operator_cloud_credentials_policyJson,
 	"templates/policies/4.8/openshift_machine_api_aws_cloud_credentials_policy.json":                                templatesPolicies48Openshift_machine_api_aws_cloud_credentials_policyJson,
+	"templates/policies/4.8/operator_iam_role_policy.json":                                                          templatesPolicies48Operator_iam_role_policyJson,
 	"templates/policies/4.8/sts_installer_permission_policy.json":                                                   templatesPolicies48Sts_installer_permission_policyJson,
 	"templates/policies/4.8/sts_instance_controlplane_permission_policy.json":                                       templatesPolicies48Sts_instance_controlplane_permission_policyJson,
 	"templates/policies/4.8/sts_instance_worker_permission_policy.json":                                             templatesPolicies48Sts_instance_worker_permission_policyJson,
@@ -2539,6 +2646,7 @@ var _bindata = map[string]func() (*asset, error){
 	"templates/policies/4.9/openshift_image_registry_installer_cloud_credentials_policy.json":                       templatesPolicies49Openshift_image_registry_installer_cloud_credentials_policyJson,
 	"templates/policies/4.9/openshift_ingress_operator_cloud_credentials_policy.json":                               templatesPolicies49Openshift_ingress_operator_cloud_credentials_policyJson,
 	"templates/policies/4.9/openshift_machine_api_aws_cloud_credentials_policy.json":                                templatesPolicies49Openshift_machine_api_aws_cloud_credentials_policyJson,
+	"templates/policies/4.9/operator_iam_role_policy.json":                                                          templatesPolicies49Operator_iam_role_policyJson,
 	"templates/policies/4.9/sts_installer_permission_policy.json":                                                   templatesPolicies49Sts_installer_permission_policyJson,
 	"templates/policies/4.9/sts_instance_controlplane_permission_policy.json":                                       templatesPolicies49Sts_instance_controlplane_permission_policyJson,
 	"templates/policies/4.9/sts_instance_worker_permission_policy.json":                                             templatesPolicies49Sts_instance_worker_permission_policyJson,
@@ -2602,6 +2710,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"openshift_image_registry_installer_cloud_credentials_policy.json":                       &bintree{templatesPolicies47Openshift_image_registry_installer_cloud_credentials_policyJson, map[string]*bintree{}},
 				"openshift_ingress_operator_cloud_credentials_policy.json":                               &bintree{templatesPolicies47Openshift_ingress_operator_cloud_credentials_policyJson, map[string]*bintree{}},
 				"openshift_machine_api_aws_cloud_credentials_policy.json":                                &bintree{templatesPolicies47Openshift_machine_api_aws_cloud_credentials_policyJson, map[string]*bintree{}},
+				"operator_iam_role_policy.json":                                                          &bintree{templatesPolicies47Operator_iam_role_policyJson, map[string]*bintree{}},
 				"sts_installer_permission_policy.json":                                                   &bintree{templatesPolicies47Sts_installer_permission_policyJson, map[string]*bintree{}},
 				"sts_instance_controlplane_permission_policy.json":                                       &bintree{templatesPolicies47Sts_instance_controlplane_permission_policyJson, map[string]*bintree{}},
 				"sts_instance_worker_permission_policy.json":                                             &bintree{templatesPolicies47Sts_instance_worker_permission_policyJson, map[string]*bintree{}},
@@ -2613,6 +2722,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"openshift_image_registry_installer_cloud_credentials_policy.json":                       &bintree{templatesPolicies48Openshift_image_registry_installer_cloud_credentials_policyJson, map[string]*bintree{}},
 				"openshift_ingress_operator_cloud_credentials_policy.json":                               &bintree{templatesPolicies48Openshift_ingress_operator_cloud_credentials_policyJson, map[string]*bintree{}},
 				"openshift_machine_api_aws_cloud_credentials_policy.json":                                &bintree{templatesPolicies48Openshift_machine_api_aws_cloud_credentials_policyJson, map[string]*bintree{}},
+				"operator_iam_role_policy.json":                                                          &bintree{templatesPolicies48Operator_iam_role_policyJson, map[string]*bintree{}},
 				"sts_installer_permission_policy.json":                                                   &bintree{templatesPolicies48Sts_installer_permission_policyJson, map[string]*bintree{}},
 				"sts_instance_controlplane_permission_policy.json":                                       &bintree{templatesPolicies48Sts_instance_controlplane_permission_policyJson, map[string]*bintree{}},
 				"sts_instance_worker_permission_policy.json":                                             &bintree{templatesPolicies48Sts_instance_worker_permission_policyJson, map[string]*bintree{}},
@@ -2624,6 +2734,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"openshift_image_registry_installer_cloud_credentials_policy.json":                       &bintree{templatesPolicies49Openshift_image_registry_installer_cloud_credentials_policyJson, map[string]*bintree{}},
 				"openshift_ingress_operator_cloud_credentials_policy.json":                               &bintree{templatesPolicies49Openshift_ingress_operator_cloud_credentials_policyJson, map[string]*bintree{}},
 				"openshift_machine_api_aws_cloud_credentials_policy.json":                                &bintree{templatesPolicies49Openshift_machine_api_aws_cloud_credentials_policyJson, map[string]*bintree{}},
+				"operator_iam_role_policy.json":                                                          &bintree{templatesPolicies49Operator_iam_role_policyJson, map[string]*bintree{}},
 				"sts_installer_permission_policy.json":                                                   &bintree{templatesPolicies49Sts_installer_permission_policyJson, map[string]*bintree{}},
 				"sts_instance_controlplane_permission_policy.json":                                       &bintree{templatesPolicies49Sts_instance_controlplane_permission_policyJson, map[string]*bintree{}},
 				"sts_instance_worker_permission_policy.json":                                             &bintree{templatesPolicies49Sts_instance_worker_permission_policyJson, map[string]*bintree{}},
