@@ -71,9 +71,9 @@ func (r *Object) Infof(format string, args ...interface{}) {
 func (r *Object) Warnf(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	if r.useColors() {
-		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", warnPrefix, message)
+		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", warnPrefix, message)
 	} else {
-		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "WARN: ", message)
+		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", "WARN: ", message)
 	}
 }
 
@@ -85,7 +85,7 @@ func (r *Object) Errorf(format string, args ...interface{}) error {
 	if r.useColors() {
 		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", errorPrefix, message)
 	} else {
-		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "ERR: ", message)
+		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", "ERR: ", message)
 	}
 	r.errors++
 	return errors.New(message)
