@@ -35,7 +35,7 @@ import (
 
 const (
 	StageURL      = "https://qaprodauth.cloud.redhat.com/openshift/details/s/"
-	ProductionURL = "https://cloud.redhat.com/openshift/details/s/"
+	ProductionURL = "https://console.redhat.com/openshift/details/s/"
 	StageEnv      = "https://api.stage.openshift.com"
 	ProductionEnv = "https://api.openshift.com"
 )

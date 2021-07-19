@@ -31,7 +31,7 @@ import (
 )
 
 // #nosec G101
-const uiTokenPage = "https://cloud.redhat.com/openshift/token/rosa"
+const uiTokenPage = "https://console.redhat.com/openshift/token/rosa"
 
 var args struct {
 	tokenURL     string
@@ -55,7 +55,7 @@ var Cmd = &cobra.Command{
 		"\t4. Configuration file\n"+
 		"\t5. Command-line prompt\n", uiTokenPage),
 	Example: "  # Login to the OpenShift API with an existing token generated from " +
-		`https://cloud.redhat.com/openshift/token/rosa
+		`https://console.redhat.com/openshift/token/rosa
   rosa login --token=$OFFLINE_ACCESS_TOKEN`,
 	Run: run,
 }
@@ -106,7 +106,7 @@ func init() {
 		"token",
 		"t",
 		"",
-		"Access or refresh token generated from https://cloud.redhat.com/openshift/token/rosa.",
+		"Access or refresh token generated from https://console.redhat.com/openshift/token/rosa.",
 	)
 	flags.BoolVar(
 		&args.insecure,
