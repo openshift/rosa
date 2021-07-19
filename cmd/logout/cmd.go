@@ -17,9 +17,9 @@ limitations under the License.
 package logout
 
 import (
-	"fmt"
-
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/spf13/cobra"
+	"os"
 
 	"github.com/openshift/rosa/pkg/ocm"
 )
@@ -28,15 +28,15 @@ var Cmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Log out",
 	Long:  "Log out, removing the configuration file.",
-	RunE:  run,
+	Run:   run,
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, argv []string) {
+	reporter := rprtr.CreateReporterOrExit()
 	// Remove the configuration file:
 	err := ocm.Remove()
 	if err != nil {
-		return fmt.Errorf("Failed to remove config file: %v", err)
+		reporter.Errorf("Failed to remove config file: %v", err)
+		os.Exit(1)
 	}
-
-	return nil
 }
