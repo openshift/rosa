@@ -158,9 +158,10 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\n")
+	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES"+
+		"\t\tSPOT INSTANCES\n")
 	for _, machinePool := range machinePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\n",
 			machinePool.ID(),
 			printAutoscaling(machinePool.Autoscaling()),
 			printReplicas(machinePool.Autoscaling(), machinePool.Replicas()),
@@ -168,6 +169,7 @@ func run(_ *cobra.Command, _ []string) {
 			printLabels(machinePool.Labels()),
 			printTaints(machinePool.Taints()),
 			printAZ(machinePool.AvailabilityZones()),
+			printSpot(machinePool.AWS()),
 		)
 	}
 	writer.Flush()
@@ -176,6 +178,19 @@ func run(_ *cobra.Command, _ []string) {
 func printAutoscaling(autoscaling *cmv1.MachinePoolAutoscaling) string {
 	if autoscaling != nil {
 		return "Yes"
+	}
+	return "No"
+}
+
+func printSpot(aws *cmv1.AWSMachinePool) string {
+	if aws != nil {
+		if spot := aws.SpotMarketOptions(); spot != nil {
+			price := "on-demand"
+			if maxPrice, ok := spot.GetMaxPrice(); ok {
+				price = fmt.Sprintf("max $%.2f", maxPrice)
+			}
+			return fmt.Sprintf("Yes (%s)", price)
+		}
 	}
 	return "No"
 }
