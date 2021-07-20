@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/ingress"
 	"github.com/openshift/rosa/cmd/create/machinepool"
+	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 
 	"github.com/openshift/rosa/pkg/arguments"
@@ -45,6 +46,7 @@ func init() {
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
+	Cmd.AddCommand(oidcprovider.Cmd)
 	Cmd.AddCommand(operatorroles.Cmd)
 
 	flags := Cmd.PersistentFlags()
