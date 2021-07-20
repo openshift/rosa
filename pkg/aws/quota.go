@@ -51,7 +51,7 @@ var serviceQuotaServices = []quota{
 		ServiceCode:  "ebs",
 		QuotaCode:    "L-D18FCD1D",
 		QuotaName:    "General Purpose SSD (gp2) volume storage",
-		DesiredValue: aws.Float64(300.0),
+		DesiredValue: aws.Float64(50.0),
 	},
 	{
 		ServiceCode:  "ebs",
@@ -69,7 +69,7 @@ var serviceQuotaServices = []quota{
 		ServiceCode:  "ebs",
 		QuotaCode:    "L-FD252861",
 		QuotaName:    "Provisioned IOPS SSD (io1) volume storage",
-		DesiredValue: aws.Float64(300.0),
+		DesiredValue: aws.Float64(50.0),
 	},
 	{
 		ServiceCode:  "elasticloadbalancing",
