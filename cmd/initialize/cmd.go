@@ -37,10 +37,11 @@ import (
 )
 
 var args struct {
-	deleteStack      bool
-	disableSCPChecks bool
-	sts              bool
-	region           string
+	deleteStack        bool
+	disableSCPChecks   bool
+	disableQuotaChecks bool
+	sts                bool
+	region             string
 }
 
 var Cmd = &cobra.Command{
@@ -72,6 +73,13 @@ func init() {
 		"disable-scp-checks",
 		false,
 		"Indicates if cloud permission checks are disabled when attempting installation of the cluster.",
+	)
+
+	flags.BoolVar(
+		&args.disableQuotaChecks,
+		"disable-quota-checks",
+		false,
+		"Disable quota checks during init",
 	)
 
 	flags.BoolVar(
@@ -239,7 +247,11 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate AWS quota
 	// Call `verify quota` as part of init
-	quota.Cmd.Run(cmd, argv)
+	if !args.disableQuotaChecks {
+		quota.Cmd.Run(cmd, argv)
+	} else {
+		reporter.Infof("Skipping AWS Quota checks")
+	}
 
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
 	if !args.sts {
