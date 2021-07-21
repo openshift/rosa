@@ -186,9 +186,9 @@ func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.
 }
 
 func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
-	query := fmt.Sprintf("%s AND (id = '%s' OR name = '%s')",
+	query := fmt.Sprintf("%s AND (id = '%s' OR name = '%s' OR external_id = '%s')",
 		getClusterFilter(creator),
-		clusterKey, clusterKey,
+		clusterKey, clusterKey, clusterKey,
 	)
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().List().
 		Search(query).
