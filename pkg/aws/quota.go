@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/servicequotas"
@@ -87,6 +88,7 @@ var serviceQuotaServices = []quota{
 
 // ValidateQuota
 func (c *awsClient) ValidateQuota() (bool, error) {
+	var invalidQuotas []string
 	for _, quota := range serviceQuotaServices {
 		serviceQuotas, err := ListServiceQuotas(c, quota.ServiceCode)
 		if err != nil {
@@ -99,13 +101,18 @@ func (c *awsClient) ValidateQuota() (bool, error) {
 		}
 
 		if *serviceQuota.Value < *quota.DesiredValue {
-			return false, fmt.Errorf(
-				"Service %s quota code %s %s not valid, expected quota of at least %d, but got %d",
+			invalidQuotas = append(invalidQuotas, fmt.Sprintf(
+				"- Service %s quota code %s %s not valid, expected quota of at least %d, but got %d",
 				quota.ServiceCode, quota.QuotaCode, quota.QuotaName,
-				int(*quota.DesiredValue), int(*serviceQuota.Value))
+				int(*quota.DesiredValue), int(*serviceQuota.Value)))
 		}
 
 		c.logger.Debug(fmt.Sprintf("Service %s quota code %s is ok", quota.ServiceCode, quota.QuotaCode))
+	}
+
+	if len(invalidQuotas) > 0 {
+		return false, fmt.Errorf("Service quota is insufficient for the following service quota codes:\n%s",
+			strings.Join(invalidQuotas, "\n"))
 	}
 
 	return true, nil
