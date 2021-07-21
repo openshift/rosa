@@ -250,7 +250,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		}
 
 		reporter.Debugf("Creating role '%s'", roleName)
-		roleARN, err := awsClient.EnsureRole(roleName, policy, map[string]string{
+		roleARN, err := awsClient.EnsureRole(roleName, policy, version, map[string]string{
 			tags.ClusterID:        cluster.ID(),
 			tags.OpenShiftVersion: version,
 			tags.RolePrefix:       prefix,
