@@ -74,11 +74,16 @@ var CredentialRequests map[string]Operator = map[string]Operator{
 	},
 }
 
-var AccountRoles map[string]string = map[string]string{
-	"installer":             "Installer",
-	"instance_controlplane": "ControlPlane",
-	"instance_worker":       "Worker",
-	"support":               "Support",
+type AccountRole struct {
+	Name string
+	Flag string
+}
+
+var AccountRoles map[string]AccountRole = map[string]AccountRole{
+	"installer":             {Name: "Installer", Flag: "role-arn"},
+	"instance_controlplane": {Name: "ControlPlane", Flag: "master-iam-role"},
+	"instance_worker":       {Name: "Worker", Flag: "worker-iam-role"},
+	"support":               {Name: "Support", Flag: "support-role-arn"},
 }
 
 // PolicyDocument models an AWS IAM policy document

@@ -272,8 +272,8 @@ func validateVersion(version string, versionList []string) (string, error) {
 }
 
 func generatePolicyFiles(reporter *rprtr.Object, version string, env string) error {
-	for role := range aws.AccountRoles {
-		filename := fmt.Sprintf("sts_%s_trust_policy.json", role)
+	for file := range aws.AccountRoles {
+		filename := fmt.Sprintf("sts_%s_trust_policy.json", file)
 		path := fmt.Sprintf("templates/policies/%s", filename)
 
 		policy, err := aws.ReadPolicyDocument(path, map[string]string{
@@ -289,7 +289,7 @@ func generatePolicyFiles(reporter *rprtr.Object, version string, env string) err
 			return err
 		}
 
-		filename = fmt.Sprintf("sts_%s_permission_policy.json", role)
+		filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
 		path = fmt.Sprintf("templates/policies/%s/%s", version, filename)
 
 		policy, err = aws.ReadPolicyDocument(path)
@@ -342,7 +342,7 @@ func buildCommands(prefix string, version string) string {
 	commands := []string{}
 
 	for file, role := range aws.AccountRoles {
-		name := getRoleName(prefix, role)
+		name := getRoleName(prefix, role.Name)
 		iamTags := fmt.Sprintf(
 			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.OpenShiftVersion, version,
@@ -383,8 +383,9 @@ func buildCommands(prefix string, version string) string {
 }
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, version string, env string) error {
+	command := []string{"rosa create cluster"}
 	for file, role := range aws.AccountRoles {
-		name := getRoleName(prefix, role)
+		name := getRoleName(prefix, role.Name)
 
 		if !confirm.Confirm("create the '%s' role", name) {
 			continue
@@ -409,6 +410,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ve
 			return err
 		}
 		reporter.Infof("Created role '%s' with ARN '%s'", name, roleARN)
+		command = append(command, fmt.Sprintf("\t--%s %s", role.Flag, roleARN))
 
 		filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
 		path = fmt.Sprintf("templates/policies/%s/%s", version, filename)
@@ -425,32 +427,33 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ve
 		}
 	}
 
-	if !confirm.Confirm("create the operator policies for OpenShift %s", version) {
-		return nil
-	}
+	if confirm.Confirm("create the operator policies for OpenShift %s", version) {
+		for credrequest, operator := range aws.CredentialRequests {
+			name := getPolicyName(prefix, operator.Namespace, operator.Name)
 
-	for credrequest, operator := range aws.CredentialRequests {
-		name := getPolicyName(prefix, operator.Namespace, operator.Name)
+			filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
+			path := fmt.Sprintf("templates/policies/%s/%s", version, filename)
 
-		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
-		path := fmt.Sprintf("templates/policies/%s/%s", version, filename)
+			policy, err := aws.ReadPolicyDocument(path)
+			if err != nil {
+				return err
+			}
 
-		policy, err := aws.ReadPolicyDocument(path)
-		if err != nil {
-			return err
-		}
-
-		reporter.Infof("Creating policy '%s'", name)
-		err = awsClient.EnsurePolicy(name, string(policy), map[string]string{
-			tags.OpenShiftVersion: version,
-			tags.RolePrefix:       prefix,
-			"operator_namespace":  operator.Namespace,
-			"operator_name":       operator.Name,
-		})
-		if err != nil {
-			return err
+			reporter.Infof("Creating policy '%s'", name)
+			err = awsClient.EnsurePolicy(name, string(policy), map[string]string{
+				tags.OpenShiftVersion: version,
+				tags.RolePrefix:       prefix,
+				"operator_namespace":  operator.Namespace,
+				"operator_name":       operator.Name,
+			})
+			if err != nil {
+				return err
+			}
 		}
 	}
+
+	reporter.Infof("To create a cluster with these roles, run the following command:\n%s",
+		strings.Join(command, " \\\n"))
 
 	return nil
 }
