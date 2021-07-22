@@ -149,15 +149,22 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if cluster.State() != cmv1.ClusterStatePending {
-		reporter.Errorf("Cluster '%s' is %s and does not need additional configuration.",
-			clusterKey, cluster.State())
-		os.Exit(1)
-	}
-
 	if cluster.AWS().STS().RoleARN() == "" {
 		reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
 		os.Exit(1)
+	}
+
+	// Check to see if IAM operator roles have already created
+	missingRoles, err := validateOperatorRoles(awsClient, cluster)
+	if err != nil {
+		reporter.Errorf("Unable to find validate operator roles exist: %s", err)
+		os.Exit(1)
+	}
+
+	if len(missingRoles) == 0 && cluster.State() != cmv1.ClusterStatePending {
+		reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
+			clusterKey, cluster.State())
+		os.Exit(0)
 	}
 
 	prefix := args.prefix
@@ -376,4 +383,31 @@ func getVersionMinor(cluster *cmv1.Cluster) string {
 	}
 	segments := version.Segments()
 	return fmt.Sprintf("%d.%d", segments[0], segments[1])
+}
+
+func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]string, error) {
+	var missingRoles []string
+
+	operatorIAMRoles := cluster.AWS().STS().OperatorIAMRoles()
+
+	if len(operatorIAMRoles) == 0 {
+		return missingRoles, fmt.Errorf("No Operator IAM roles found for cluster %s", cluster.Name())
+	}
+
+	for _, operatorIAMRole := range operatorIAMRoles {
+		roleARN := operatorIAMRole.RoleARN()
+
+		roleName := strings.Split(roleARN, "/")[1]
+
+		exists, err := awsClient.CheckRoleExists(roleName)
+		if err != nil {
+			return missingRoles, err
+		}
+
+		if !exists {
+			missingRoles = append(missingRoles, roleName)
+		}
+	}
+
+	return missingRoles, nil
 }
