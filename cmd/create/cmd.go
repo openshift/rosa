@@ -25,6 +25,8 @@ import (
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/ingress"
 	"github.com/openshift/rosa/cmd/create/machinepool"
+	"github.com/openshift/rosa/cmd/create/oidcprovider"
+	"github.com/openshift/rosa/cmd/create/operatorroles"
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -38,12 +40,14 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	Cmd.AddCommand(accountroles.Cmd)
 	Cmd.AddCommand(admin.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
-	Cmd.AddCommand(accountroles.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
+	Cmd.AddCommand(oidcprovider.Cmd)
+	Cmd.AddCommand(operatorroles.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
