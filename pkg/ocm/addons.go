@@ -153,8 +153,9 @@ func (c *Client) UpdateAddOnInstallation(clusterKey string, creator *aws.Creator
 	return nil
 }
 
-func (c *Client) GetAddOnParameters(addOnID string) (*cmv1.AddOnParameterList, error) {
-	response, err := c.ocm.ClustersMgmt().V1().Addons().Addon(addOnID).Get().Send()
+func (c *Client) GetAddOnParameters(clusterID string, addOnID string) (*cmv1.AddOnParameterList, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).AddonInquiries().AddonInquiry(addOnID).Get().Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}

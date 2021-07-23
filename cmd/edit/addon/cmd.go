@@ -138,7 +138,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	parameters, err := ocmClient.GetAddOnParameters(addOnID)
+	parameters, err := ocmClient.GetAddOnParameters(cluster.ID(), addOnID)
 	if err != nil {
 		reporter.Errorf("Failed to get add-on '%s' parameters: %v", addOnID, err)
 		os.Exit(1)
@@ -234,7 +234,7 @@ func run(cmd *cobra.Command, argv []string) {
 				if val == "<nil>" {
 					val = ""
 				}
-			case "number":
+			case "number", "resource":
 				var numVal int
 				input.Default, _ = strconv.Atoi(dflt)
 				numVal, err = interactive.GetInt(input)
