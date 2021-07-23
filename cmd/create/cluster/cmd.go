@@ -84,11 +84,12 @@ var args struct {
 	subnetIDs []string
 
 	// STS
-	roleARN          string
-	externalID       string
-	supportRoleARN   string
-	operatorIAMRoles []string
-	tags             []string
+	roleARN             string
+	externalID          string
+	supportRoleARN      string
+	operatorIAMRoles    []string
+	operatorRolesPrefix string
+	tags                []string
 	// Instance IAM Roles
 	masterRoleARN string
 	workerRoleARN string
@@ -151,6 +152,14 @@ func init() {
 		nil,
 		"List of OpenShift name and namespace, and role ARNs used to perform credential "+
 			"requests by operators needed in the OpenShift installer.",
+	)
+	flags.MarkDeprecated("operator-iam-roles", "use --operator-roles-prefix instead")
+	flags.StringVar(
+		&args.operatorRolesPrefix,
+		"operator-roles-prefix",
+		"",
+		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
+			"Leave empty to use the cluster name.",
 	)
 
 	flags.StringVar(
@@ -512,93 +521,65 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	operatorRolesPrefix := args.operatorRolesPrefix
+	if roleARN != "" {
+		if operatorRolesPrefix == "" {
+			operatorRolesPrefix = clusterName
+		}
+		if interactive.Enabled() {
+			operatorRolesPrefix, err = interactive.GetString(interactive.Input{
+				Question: "Operator roles prefix",
+				Help:     cmd.Flags().Lookup("operator-roles-prefix").Usage,
+				Required: true,
+				Default:  operatorRolesPrefix,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
+				os.Exit(1)
+			}
+		}
+		if len(operatorRolesPrefix) == 0 {
+			reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
+			os.Exit(1)
+		}
+		if len(operatorRolesPrefix) > 32 {
+			reporter.Errorf("Expected a prefix with no more than 32 characters")
+			os.Exit(1)
+		}
+	}
+
 	operatorIAMRoles := args.operatorIAMRoles
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if roleARN != "" {
-		for _, role := range operatorIAMRoles {
-			if !strings.Contains(role, ",") {
-				reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
-					"list of name,namespace,role_arn")
-				os.Exit(1)
-			}
-			roleData := strings.Split(role, ",")
-			if len(roleData) != 3 {
-				reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
-					"list of name,namespace,role_arn")
-				os.Exit(1)
-			}
+		for _, operator := range aws.CredentialRequests {
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
-				Name:      roleData[0],
-				Namespace: roleData[1],
-				RoleARN:   roleData[2],
+				Name:      operator.Name,
+				Namespace: operator.Namespace,
+				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator),
 			})
 		}
-		ocpVersion := strings.Replace(version, "openshift-v", "", 1)
-		ocpVersion = strings.Split(ocpVersion, "-")[0]
-		credRequest := fmt.Sprintf("oc adm release extract \\\n"+
-			"\t--credentials-requests \\\n"+
-			"\t--cloud aws \\\n"+
-			"\t--from quay.io/openshift-release-dev/ocp-release:%s-x86_64",
-			ocpVersion,
-		)
-		operatorIAMRoleHelp := fmt.Sprintf("To extract the necessary operator credential requests for your "+
-			"specific version, run the following command and enter the name and namespace in the "+
-			"secretRef, as well as a role ARN that has similar permissions to the spec of the generated "+
-			"files:\n %s", credRequest)
-		if interactive.Enabled() {
-			for {
-				addRole, err := interactive.GetBool(interactive.Input{
-					Question: "Add an operator IAM role?",
-					Help: fmt.Sprintf("%s %s",
-						cmd.Flags().Lookup("operator-iam-roles").Usage,
-						operatorIAMRoleHelp),
-					Default: len(operatorIAMRoleList) == 0,
-				})
-				if !addRole || err != nil {
-					break
-				}
-				name, err := interactive.GetString(interactive.Input{
-					Question: "Operator IAM role name",
-					Help:     "Name of the operator",
-					Required: true,
-				})
-				if err != nil {
-					reporter.Errorf("Expected the name of the operator IAM role: %s", err)
+		// If user insists on using the deprecated --operator-iam-roles
+		// override the values to support the legacy documentation
+		if cmd.Flags().Changed("operator-iam-roles") {
+			operatorIAMRoleList = []ocm.OperatorIAMRole{}
+			for _, role := range operatorIAMRoles {
+				if !strings.Contains(role, ",") {
+					reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
+						"list of name,namespace,role_arn")
 					os.Exit(1)
 				}
-				namespace, err := interactive.GetString(interactive.Input{
-					Question: "Operator IAM role namespace",
-					Help:     "Namespace of the operator",
-					Required: true,
-				})
-				if err != nil {
-					reporter.Errorf("Expected the namespace of the operator IAM role: %s", err)
-					os.Exit(1)
-				}
-				iamRoleARN, err := interactive.GetString(interactive.Input{
-					Question: "Operator IAM role ARN",
-					Help:     "Role ARN with the necessary permissions to install the operator",
-					Required: true,
-				})
-				if err != nil {
-					reporter.Errorf("Expected the ARN of the operator IAM role: %s", err)
-					os.Exit(1)
-				}
-				_, err = arn.Parse(iamRoleARN)
-				if err != nil {
-					reporter.Errorf("Expected a valid operator IAM role ARN: %s", err)
+				roleData := strings.Split(role, ",")
+				if len(roleData) != 3 {
+					reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
+						"list of name,namespace,role_arn")
 					os.Exit(1)
 				}
 				operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
-					Namespace: namespace,
-					Name:      name,
-					RoleARN:   iamRoleARN,
+					Name:      roleData[0],
+					Namespace: roleData[1],
+					RoleARN:   roleData[2],
 				})
 			}
-		}
-		if len(operatorIAMRoleList) == 0 {
-			reporter.Errorf("Expected a list of operator IAM roles. %s", operatorIAMRoleHelp)
-			os.Exit(1)
 		}
 	}
 
@@ -1195,6 +1176,14 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{clusterName})
 }
 
+func getOperatorRoleArn(prefix string, operator aws.Operator, creator *aws.Creator) string {
+	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace, operator.Name)
+	if len(role) > 64 {
+		role = role[0:64]
+	}
+	return fmt.Sprintf("arn:aws:iam::%s:role/%s", creator.AccountID, role)
+}
+
 // Validate OpenShift versions
 func validateVersion(version string, versionList []string, channelGroup string, isSTS bool) (string, error) {
 	if version != "" {
@@ -1301,16 +1290,18 @@ func buildCommand(spec ocm.Spec) string {
 	if spec.SupportRoleARN != "" {
 		command += fmt.Sprintf(" --support-role-arn %s", spec.SupportRoleARN)
 	}
-	if len(spec.OperatorIAMRoles) > 0 {
-		for _, role := range spec.OperatorIAMRoles {
-			command += fmt.Sprintf(" --operator-iam-roles %s,%s,%s", role.Name, role.Namespace, role.RoleARN)
-		}
-	}
 	if spec.MasterRoleARN != "" {
 		command += fmt.Sprintf(" --master-iam-role %s", spec.MasterRoleARN)
 	}
 	if spec.WorkerRoleARN != "" {
 		command += fmt.Sprintf(" --worker-iam-role %s", spec.WorkerRoleARN)
+	}
+	if len(spec.OperatorIAMRoles) > 0 {
+		if args.operatorRolesPrefix != "" {
+			command += fmt.Sprintf(" --operator-roles-prefix %s", args.operatorRolesPrefix)
+		} else {
+			command += fmt.Sprintf(" --operator-roles-prefix %s", spec.Name)
+		}
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
