@@ -207,7 +207,8 @@ func init() {
 		&args.etcdEncryption,
 		"etcd-encryption",
 		false,
-		"Enable etcd encryption for your cluster to provide an additional layer of data security.",
+		"Add etcd encryption. By default etcd data is encrypted at rest. "+
+			"This option configures etcd encryption on top of existing storage encryption.",
 	)
 
 	flags.StringVar(
