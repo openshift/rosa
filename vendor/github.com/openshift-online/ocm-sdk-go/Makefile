@@ -22,11 +22,11 @@ export GOPROXY=https://proxy.golang.org
 export CGO_ENABLED=0
 
 # Details of the model to use:
-model_version:=v0.0.134
+model_version:=v0.0.138
 model_url:=https://github.com/openshift-online/ocm-api-model.git
 
 # Details of the metamodel to use:
-metamodel_version:=v0.0.37
+metamodel_version:=v0.0.38
 metamodel_url:=https://github.com/openshift-online/ocm-api-metamodel.git
 
 .PHONY: examples
@@ -38,7 +38,9 @@ examples:
 
 .PHONY: test tests
 test tests:
-	ginkgo -p -r .
+	# Currently we need to skip the tests of the `leadership` package
+	# because the Jenkins environment isn't prepared to run `podman`.
+	ginkgo -p -r --skipPackage=leadership
 
 .PHONY: fmt
 fmt:

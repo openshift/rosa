@@ -26,6 +26,7 @@ type MachinePoolBuilder struct {
 	bitmap_           uint32
 	id                string
 	href              string
+	aws               *AWSMachinePoolBuilder
 	autoscaling       *MachinePoolAutoscalingBuilder
 	availabilityZones []string
 	cluster           *ClusterBuilder
@@ -60,15 +61,28 @@ func (b *MachinePoolBuilder) HREF(value string) *MachinePoolBuilder {
 	return b
 }
 
+// AWS sets the value of the 'AWS' attribute to the given value.
+//
+// Representation of aws machine pool specific parameters.
+func (b *MachinePoolBuilder) AWS(value *AWSMachinePoolBuilder) *MachinePoolBuilder {
+	b.aws = value
+	if value != nil {
+		b.bitmap_ |= 8
+	} else {
+		b.bitmap_ &^= 8
+	}
+	return b
+}
+
 // Autoscaling sets the value of the 'autoscaling' attribute to the given value.
 //
 // Representation of a autoscaling in a machine pool.
 func (b *MachinePoolBuilder) Autoscaling(value *MachinePoolAutoscalingBuilder) *MachinePoolBuilder {
 	b.autoscaling = value
 	if value != nil {
-		b.bitmap_ |= 8
+		b.bitmap_ |= 16
 	} else {
-		b.bitmap_ &^= 8
+		b.bitmap_ &^= 16
 	}
 	return b
 }
@@ -79,7 +93,7 @@ func (b *MachinePoolBuilder) Autoscaling(value *MachinePoolAutoscalingBuilder) *
 func (b *MachinePoolBuilder) AvailabilityZones(values ...string) *MachinePoolBuilder {
 	b.availabilityZones = make([]string, len(values))
 	copy(b.availabilityZones, values)
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -125,9 +139,9 @@ func (b *MachinePoolBuilder) AvailabilityZones(values ...string) *MachinePoolBui
 func (b *MachinePoolBuilder) Cluster(value *ClusterBuilder) *MachinePoolBuilder {
 	b.cluster = value
 	if value != nil {
-		b.bitmap_ |= 32
+		b.bitmap_ |= 64
 	} else {
-		b.bitmap_ &^= 32
+		b.bitmap_ &^= 64
 	}
 	return b
 }
@@ -137,7 +151,7 @@ func (b *MachinePoolBuilder) Cluster(value *ClusterBuilder) *MachinePoolBuilder 
 //
 func (b *MachinePoolBuilder) InstanceType(value string) *MachinePoolBuilder {
 	b.instanceType = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -147,9 +161,9 @@ func (b *MachinePoolBuilder) InstanceType(value string) *MachinePoolBuilder {
 func (b *MachinePoolBuilder) Labels(value map[string]string) *MachinePoolBuilder {
 	b.labels = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -159,7 +173,7 @@ func (b *MachinePoolBuilder) Labels(value map[string]string) *MachinePoolBuilder
 //
 func (b *MachinePoolBuilder) Replicas(value int) *MachinePoolBuilder {
 	b.replicas = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -169,7 +183,7 @@ func (b *MachinePoolBuilder) Replicas(value int) *MachinePoolBuilder {
 func (b *MachinePoolBuilder) Taints(values ...*TaintBuilder) *MachinePoolBuilder {
 	b.taints = make([]*TaintBuilder, len(values))
 	copy(b.taints, values)
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -181,6 +195,11 @@ func (b *MachinePoolBuilder) Copy(object *MachinePool) *MachinePoolBuilder {
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
+	if object.aws != nil {
+		b.aws = NewAWSMachinePool().Copy(object.aws)
+	} else {
+		b.aws = nil
+	}
 	if object.autoscaling != nil {
 		b.autoscaling = NewMachinePoolAutoscaling().Copy(object.autoscaling)
 	} else {
@@ -224,6 +243,12 @@ func (b *MachinePoolBuilder) Build() (object *MachinePool, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
+	if b.aws != nil {
+		object.aws, err = b.aws.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.autoscaling != nil {
 		object.autoscaling, err = b.autoscaling.Build()
 		if err != nil {

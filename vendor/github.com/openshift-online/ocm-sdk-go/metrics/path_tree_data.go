@@ -141,6 +141,9 @@ var pathTreeData = `{
         },
         "clusters": {
           "-": {
+            "addon_inquiries": {
+              "-": null
+            },
             "addons": {
               "-": null
             },
@@ -187,6 +190,9 @@ var pathTreeData = `{
             },
             "product": null,
             "provision_shard": null,
+            "resources": {
+              "live": null
+            },
             "resume": null,
             "status": null,
             "upgrade_policies": {

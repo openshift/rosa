@@ -115,7 +115,9 @@ var _ http.RoundTripper = (*roundTripper)(nil)
 // NewTransportWrapper creates a new builder that can then be used to configure and create a new
 // authentication round tripper.
 func NewTransportWrapper() *TransportWrapperBuilder {
-	return &TransportWrapperBuilder{}
+	return &TransportWrapperBuilder{
+		metricsRegisterer: prometheus.DefaultRegisterer,
+	}
 }
 
 // Logger sets the logger that will be used by the wrapper and by the transports that it creates.
@@ -432,7 +434,7 @@ func (b *TransportWrapperBuilder) Build(ctx context.Context) (result *TransportW
 	// Register the metrics:
 	var tokenCountMetric *prometheus.CounterVec
 	var tokenDurationMetric *prometheus.HistogramVec
-	if b.metricsSubsystem != "" {
+	if b.metricsSubsystem != "" && b.metricsRegisterer != nil {
 		tokenCountMetric = prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Subsystem: b.metricsSubsystem,

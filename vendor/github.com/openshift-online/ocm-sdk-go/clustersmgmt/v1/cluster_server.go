@@ -62,6 +62,11 @@ type ClusterServer interface {
 	// access role grants on this cluster.
 	AWSInfrastructureAccessRoleGrants() AWSInfrastructureAccessRoleGrantsServer
 
+	// AddonInquiries returns the target 'addon_inquiries' resource.
+	//
+	// Reference to the resource that manages the collection of the add-on inquiries on this cluster.
+	AddonInquiries() AddonInquiriesServer
+
 	// Addons returns the target 'add_on_installations' resource.
 	//
 	// Reference to the resource that manages the collection of add-ons installed on this cluster.
@@ -121,6 +126,11 @@ type ClusterServer interface {
 	//
 	// Reference to the resource that manages the cluster's provision shard.
 	ProvisionShard() ProvisionShardServer
+
+	// Resources returns the target 'resources' resource.
+	//
+	// Reference to cluster resources
+	Resources() ResourcesServer
 
 	// Status returns the target 'cluster_status' resource.
 	//
@@ -321,6 +331,13 @@ func dispatchCluster(w http.ResponseWriter, r *http.Request, server ClusterServe
 			return
 		}
 		dispatchAWSInfrastructureAccessRoleGrants(w, r, target, segments[1:])
+	case "addon_inquiries":
+		target := server.AddonInquiries()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchAddonInquiries(w, r, target, segments[1:])
 	case "addons":
 		target := server.Addons()
 		if target == nil {
@@ -405,6 +422,13 @@ func dispatchCluster(w http.ResponseWriter, r *http.Request, server ClusterServe
 			return
 		}
 		dispatchProvisionShard(w, r, target, segments[1:])
+	case "resources":
+		target := server.Resources()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchResources(w, r, target, segments[1:])
 	case "status":
 		target := server.Status()
 		if target == nil {

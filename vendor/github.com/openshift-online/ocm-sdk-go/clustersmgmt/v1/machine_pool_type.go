@@ -38,6 +38,7 @@ type MachinePool struct {
 	bitmap_           uint32
 	id                string
 	href              string
+	aws               *AWSMachinePool
 	autoscaling       *MachinePoolAutoscaling
 	availabilityZones []string
 	cluster           *Cluster
@@ -104,13 +105,36 @@ func (o *MachinePool) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
+// AWS returns the value of the 'AWS' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// AWS specific parameters (Optional).
+func (o *MachinePool) AWS() *AWSMachinePool {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.aws
+	}
+	return nil
+}
+
+// GetAWS returns the value of the 'AWS' attribute and
+// a flag indicating if the attribute has a value.
+//
+// AWS specific parameters (Optional).
+func (o *MachinePool) GetAWS() (value *AWSMachinePool, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.aws
+	}
+	return
+}
+
 // Autoscaling returns the value of the 'autoscaling' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Details for auto-scaling the machine pool.
 // Replicas and autoscaling cannot be used together.
 func (o *MachinePool) Autoscaling() *MachinePoolAutoscaling {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.autoscaling
 	}
 	return nil
@@ -122,7 +146,7 @@ func (o *MachinePool) Autoscaling() *MachinePoolAutoscaling {
 // Details for auto-scaling the machine pool.
 // Replicas and autoscaling cannot be used together.
 func (o *MachinePool) GetAutoscaling() (value *MachinePoolAutoscaling, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.autoscaling
 	}
@@ -134,7 +158,7 @@ func (o *MachinePool) GetAutoscaling() (value *MachinePoolAutoscaling, ok bool) 
 //
 // The availability zones upon which the nodes are created.
 func (o *MachinePool) AvailabilityZones() []string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.availabilityZones
 	}
 	return nil
@@ -145,7 +169,7 @@ func (o *MachinePool) AvailabilityZones() []string {
 //
 // The availability zones upon which the nodes are created.
 func (o *MachinePool) GetAvailabilityZones() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.availabilityZones
 	}
@@ -157,7 +181,7 @@ func (o *MachinePool) GetAvailabilityZones() (value []string, ok bool) {
 //
 // ID used to identify the cluster that this machinepool is attached to.
 func (o *MachinePool) Cluster() *Cluster {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.cluster
 	}
 	return nil
@@ -168,7 +192,7 @@ func (o *MachinePool) Cluster() *Cluster {
 //
 // ID used to identify the cluster that this machinepool is attached to.
 func (o *MachinePool) GetCluster() (value *Cluster, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.cluster
 	}
@@ -180,7 +204,7 @@ func (o *MachinePool) GetCluster() (value *Cluster, ok bool) {
 //
 // The instance type of Nodes to create.
 func (o *MachinePool) InstanceType() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.instanceType
 	}
 	return ""
@@ -191,7 +215,7 @@ func (o *MachinePool) InstanceType() string {
 //
 // The instance type of Nodes to create.
 func (o *MachinePool) GetInstanceType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.instanceType
 	}
@@ -203,7 +227,7 @@ func (o *MachinePool) GetInstanceType() (value string, ok bool) {
 //
 // The labels set on the Nodes created.
 func (o *MachinePool) Labels() map[string]string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.labels
 	}
 	return nil
@@ -214,7 +238,7 @@ func (o *MachinePool) Labels() map[string]string {
 //
 // The labels set on the Nodes created.
 func (o *MachinePool) GetLabels() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.labels
 	}
@@ -227,7 +251,7 @@ func (o *MachinePool) GetLabels() (value map[string]string, ok bool) {
 // The number of Machines (and Nodes) to create.
 // Replicas and autoscaling cannot be used together.
 func (o *MachinePool) Replicas() int {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.replicas
 	}
 	return 0
@@ -239,7 +263,7 @@ func (o *MachinePool) Replicas() int {
 // The number of Machines (and Nodes) to create.
 // Replicas and autoscaling cannot be used together.
 func (o *MachinePool) GetReplicas() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.replicas
 	}
@@ -251,7 +275,7 @@ func (o *MachinePool) GetReplicas() (value int, ok bool) {
 //
 // The taints set on the Nodes created.
 func (o *MachinePool) Taints() []*Taint {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.taints
 	}
 	return nil
@@ -262,7 +286,7 @@ func (o *MachinePool) Taints() []*Taint {
 //
 // The taints set on the Nodes created.
 func (o *MachinePool) GetTaints() (value []*Taint, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.taints
 	}

@@ -36,17 +36,3 @@ func readClusterdeploymentDeleteResponse(response *ClusterdeploymentDeleteRespon
 func writeClusterdeploymentDeleteResponse(response *ClusterdeploymentDeleteServerResponse, w http.ResponseWriter) error {
 	return nil
 }
-func readClusterdeploymentGetRequest(request *ClusterdeploymentGetServerRequest, r *http.Request) error {
-	return nil
-}
-func writeClusterdeploymentGetRequest(request *ClusterdeploymentGetRequest, writer io.Writer) error {
-	return nil
-}
-func readClusterdeploymentGetResponse(response *ClusterdeploymentGetResponse, reader io.Reader) error {
-	var err error
-	response.body, err = UnmarshalClusterDeployment(reader)
-	return err
-}
-func writeClusterdeploymentGetResponse(response *ClusterdeploymentGetServerResponse, w http.ResponseWriter) error {
-	return MarshalClusterDeployment(response.body, w)
-}

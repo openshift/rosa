@@ -114,6 +114,16 @@ func (c *ClusterClient) AWSInfrastructureAccessRoleGrants() *AWSInfrastructureAc
 	)
 }
 
+// AddonInquiries returns the target 'addon_inquiries' resource.
+//
+// Reference to the resource that manages the collection of the add-on inquiries on this cluster.
+func (c *ClusterClient) AddonInquiries() *AddonInquiriesClient {
+	return NewAddonInquiriesClient(
+		c.transport,
+		path.Join(c.path, "addon_inquiries"),
+	)
+}
+
 // Addons returns the target 'add_on_installations' resource.
 //
 // Reference to the resource that manages the collection of add-ons installed on this cluster.
@@ -231,6 +241,16 @@ func (c *ClusterClient) ProvisionShard() *ProvisionShardClient {
 	return NewProvisionShardClient(
 		c.transport,
 		path.Join(c.path, "provision_shard"),
+	)
+}
+
+// Resources returns the target 'resources' resource.
+//
+// Reference to cluster resources
+func (c *ClusterClient) Resources() *ResourcesClient {
+	return NewResourcesClient(
+		c.transport,
+		path.Join(c.path, "resources"),
 	)
 }
 

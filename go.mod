@@ -17,13 +17,12 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
-	github.com/openshift-online/ocm-sdk-go v0.1.190
+	github.com/openshift-online/ocm-sdk-go v0.1.197
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/zgalor/weberr v0.6.0
 	gitlab.com/c0b/go-ordered-json v0.0.0-20171130231205-49bbdab258c2
-	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	rsc.io/quote/v3 v3.1.0 // indirect
 )

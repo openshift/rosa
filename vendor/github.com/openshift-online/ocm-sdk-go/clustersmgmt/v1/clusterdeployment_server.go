@@ -34,11 +34,6 @@ type ClusterdeploymentServer interface {
 	//
 	// Deletes the clusterdeployment.
 	Delete(ctx context.Context, request *ClusterdeploymentDeleteServerRequest, response *ClusterdeploymentDeleteServerResponse) error
-
-	// Get handles a request for the 'get' method.
-	//
-	// Retrieves the details of the clusterdeployment.
-	Get(ctx context.Context, request *ClusterdeploymentGetServerRequest, response *ClusterdeploymentGetServerResponse) error
 }
 
 // ClusterdeploymentDeleteServerRequest is the request for the 'delete' method.
@@ -57,31 +52,6 @@ func (r *ClusterdeploymentDeleteServerResponse) Status(value int) *Clusterdeploy
 	return r
 }
 
-// ClusterdeploymentGetServerRequest is the request for the 'get' method.
-type ClusterdeploymentGetServerRequest struct {
-}
-
-// ClusterdeploymentGetServerResponse is the response for the 'get' method.
-type ClusterdeploymentGetServerResponse struct {
-	status int
-	err    *errors.Error
-	body   *ClusterDeployment
-}
-
-// Body sets the value of the 'body' parameter.
-//
-//
-func (r *ClusterdeploymentGetServerResponse) Body(value *ClusterDeployment) *ClusterdeploymentGetServerResponse {
-	r.body = value
-	return r
-}
-
-// Status sets the status code.
-func (r *ClusterdeploymentGetServerResponse) Status(value int) *ClusterdeploymentGetServerResponse {
-	r.status = value
-	return r
-}
-
 // dispatchClusterdeployment navigates the servers tree rooted at the given server
 // till it finds one that matches the given set of path segments, and then invokes
 // the corresponding server.
@@ -90,9 +60,6 @@ func dispatchClusterdeployment(w http.ResponseWriter, r *http.Request, server Cl
 		switch r.Method {
 		case "DELETE":
 			adaptClusterdeploymentDeleteRequest(w, r, server)
-			return
-		case "GET":
-			adaptClusterdeploymentGetRequest(w, r, server)
 			return
 		default:
 			errors.SendMethodNotAllowed(w, r)
@@ -132,41 +99,6 @@ func adaptClusterdeploymentDeleteRequest(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	err = writeClusterdeploymentDeleteResponse(response, w)
-	if err != nil {
-		glog.Errorf(
-			"Can't write response for method '%s' and path '%s': %v",
-			r.Method, r.URL.Path, err,
-		)
-		return
-	}
-}
-
-// adaptClusterdeploymentGetRequest translates the given HTTP request into a call to
-// the corresponding method of the given server. Then it translates the
-// results returned by that method into an HTTP response.
-func adaptClusterdeploymentGetRequest(w http.ResponseWriter, r *http.Request, server ClusterdeploymentServer) {
-	request := &ClusterdeploymentGetServerRequest{}
-	err := readClusterdeploymentGetRequest(request, r)
-	if err != nil {
-		glog.Errorf(
-			"Can't read request for method '%s' and path '%s': %v",
-			r.Method, r.URL.Path, err,
-		)
-		errors.SendInternalServerError(w, r)
-		return
-	}
-	response := &ClusterdeploymentGetServerResponse{}
-	response.status = 200
-	err = server.Get(r.Context(), request, response)
-	if err != nil {
-		glog.Errorf(
-			"Can't process request for method '%s' and path '%s': %v",
-			r.Method, r.URL.Path, err,
-		)
-		errors.SendInternalServerError(w, r)
-		return
-	}
-	err = writeClusterdeploymentGetResponse(response, w)
 	if err != nil {
 		glog.Errorf(
 			"Can't write response for method '%s' and path '%s': %v",
