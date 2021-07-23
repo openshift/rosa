@@ -6,7 +6,9 @@
       "Principal": {
         "Federated": "%{oidc_provider_arn}"
       },
-      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+      ],
       "Condition": {
         "StringEquals": {
           "%{issuer_url}:aud": "openshift"

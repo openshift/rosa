@@ -347,7 +347,9 @@ var _templatesPolicies47Operator_iam_role_policyJson = []byte(`{
       "Principal": {
         "Federated": "%{oidc_provider_arn}"
       },
-      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+      ],
       "Condition": {
         "StringEquals": {
           "%{issuer_url}:aud": "openshift"
@@ -1057,7 +1059,9 @@ var _templatesPolicies48Operator_iam_role_policyJson = []byte(`{
       "Principal": {
         "Federated": "%{oidc_provider_arn}"
       },
-      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+      ],
       "Condition": {
         "StringEquals": {
           "%{issuer_url}:sub": [ "%{service_accounts}" ]
@@ -1769,7 +1773,9 @@ var _templatesPolicies49Operator_iam_role_policyJson = []byte(`{
       "Principal": {
         "Federated": "%{oidc_provider_arn}"
       },
-      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+      ],
       "Condition": {
         "StringEquals": {
           "%{issuer_url}:sub": [ "%{service_accounts}" ]
@@ -2450,7 +2456,9 @@ var _templatesPoliciesSts_installer_trust_policyJson = []byte(`{
         {
             "Effect": "Allow",
             "Principal": {
-                "AWS": "arn:aws:iam::%{aws_account_id}:role/RH-Managed-OpenShift-Installer"
+                "AWS": [
+                    "arn:aws:iam::%{aws_account_id}:role/RH-Managed-OpenShift-Installer"
+                ]
             },
             "Action": [
                 "sts:AssumeRole"
@@ -2481,7 +2489,9 @@ var _templatesPoliciesSts_instance_controlplane_trust_policyJson = []byte(`{
         {
             "Effect": "Allow",
             "Principal": {
-                "Service": "ec2.amazonaws.com"
+                "Service": [
+                    "ec2.amazonaws.com"
+                ]
             },
             "Action": [
                 "sts:AssumeRole"
@@ -2512,7 +2522,9 @@ var _templatesPoliciesSts_instance_worker_trust_policyJson = []byte(`{
         {
             "Effect": "Allow",
             "Principal": {
-                "Service": "ec2.amazonaws.com"
+                "Service": [
+                    "ec2.amazonaws.com"
+                ]
             },
             "Action": [
                 "sts:AssumeRole"
@@ -2543,7 +2555,9 @@ var _templatesPoliciesSts_support_trust_policyJson = []byte(`{
         {
             "Effect": "Allow",
             "Principal": {
-                "AWS": "arn:aws:iam::%{aws_account_id}:role/RH-Technical-Support-Access"
+                "AWS": [
+                    "arn:aws:iam::%{aws_account_id}:role/RH-Technical-Support-Access"
+                ]
             },
             "Action": [
                 "sts:AssumeRole"
