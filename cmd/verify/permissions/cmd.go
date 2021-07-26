@@ -31,9 +31,10 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:   "permissions",
-	Short: "Verify AWS permissions are ok for cluster install",
-	Long:  "Verify AWS permissions needed to create a cluster are configured as expected",
+	Use:     "permissions",
+	Aliases: []string{"scp"},
+	Short:   "Verify AWS permissions are ok for cluster install",
+	Long:    "Verify AWS permissions needed to create a cluster are configured as expected",
 	Example: `  # Verify AWS permissions are configured correctly
   rosa verify permissions
 
@@ -88,7 +89,8 @@ func run(cmd *cobra.Command, _ []string) {
 	ok, err := client.ValidateSCP(nil)
 	if err != nil {
 		ocmClient.LogEvent("ROSAVerifyPermissionsSCPFailed")
-		reporter.Errorf("Unable to validate SCP policies")
+		reporter.Errorf("Unable to validate SCP policies. Make sure that an organizational " +
+			"SCP is not preventing this account from performing the required checks")
 		if strings.Contains(err.Error(), "Throttling: Rate exceeded") {
 			reporter.Errorf("Throttling: Rate exceeded. Please wait 3-5 minutes before retrying.")
 			os.Exit(1)
