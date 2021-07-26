@@ -81,6 +81,7 @@ type Client interface {
 	AttachRolePolicy(roleName string, policyARN string) error
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string) (string, error)
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
+	FindPolicyARN(operator Operator, version string) (string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
