@@ -148,6 +148,9 @@ func (c *awsClient) EnsureRole(name string, policy string, tagList map[string]st
 }
 
 func (c *awsClient) createRole(name string, policy string, tagList map[string]string) (string, error) {
+	if !RoleNameRE.MatchString(name) {
+		return "", fmt.Errorf("Role name is invalid")
+	}
 	output, err := c.iamClient.CreateRole(&iam.CreateRoleInput{
 		RoleName:                 aws.String(name),
 		AssumeRolePolicyDocument: aws.String(policy),
