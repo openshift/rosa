@@ -68,7 +68,7 @@ func init() {
 	flags.StringVar(
 		&args.prefix,
 		"prefix",
-		"ManagedOpenShift",
+		"",
 		"User-defined prefix for generated AWS roles. Leave empty to use the cluster name.",
 	)
 
@@ -168,6 +168,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	prefix := args.prefix
+	if prefix == "" {
+		prefix = cluster.Name()
+	}
 	if interactive.Enabled() {
 		prefix, err = interactive.GetString(interactive.Input{
 			Question: "Role prefix",
@@ -179,9 +182,6 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Expected a valid role prefix: %s", err)
 			os.Exit(1)
 		}
-	}
-	if prefix == "" {
-		prefix = cluster.Name()
 	}
 	if len(prefix) > 32 {
 		reporter.Errorf("Expected a prefix with no more than 32 characters")
