@@ -271,7 +271,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
 		err = awsClient.AttachRolePolicy(roleName, policyARN)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to attach role policy. Check your prefix or run "+
+				"'rosa create account-roles' to create the necessary policies: %s", err)
 		}
 	}
 
