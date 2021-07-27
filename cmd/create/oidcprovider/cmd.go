@@ -202,6 +202,9 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		fmt.Println(commands)
+	default:
+		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		os.Exit(1)
 	}
 }
 
