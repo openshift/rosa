@@ -17,7 +17,11 @@ limitations under the License.
 package aws
 
 import (
+	"fmt"
+	"net/url"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 )
 
@@ -40,4 +44,30 @@ func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint s
 	}
 
 	return aws.StringValue(output.OpenIDConnectProviderArn), nil
+}
+
+func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error) {
+	parsedIssuerURL, err := url.ParseRequestURI(issuerURL)
+	if err != nil {
+		return false, err
+	}
+	providerURL := fmt.Sprintf("%s%s", parsedIssuerURL.Host, parsedIssuerURL.Path)
+	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, providerURL)
+	output, err := c.iamClient.GetOpenIDConnectProvider(&iam.GetOpenIDConnectProviderInput{
+		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return false, nil
+			default:
+				return false, err
+			}
+		}
+	}
+	if aws.StringValue(output.Url) != providerURL {
+		return false, fmt.Errorf("The OIDC provider exists but is misconfigured")
+	}
+	return true, nil
 }

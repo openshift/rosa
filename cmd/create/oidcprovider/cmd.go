@@ -167,6 +167,18 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
+	oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
+	oidcProviderExists, err := awsClient.HasOpenIDConnectProvider(oidcEndpointURL, creator.AccountID)
+	if err != nil {
+		reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
+		os.Exit(1)
+	}
+	if oidcProviderExists {
+		reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
+			"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
+		os.Exit(1)
+	}
+
 	mode := args.mode
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
