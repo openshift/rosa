@@ -62,7 +62,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster to create the roles for (required).",
+		"Name or ID of the cluster to create the OIDC provider for (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 
@@ -71,8 +71,8 @@ func init() {
 		"mode",
 		modes[0],
 		"How to perform the operation. Valid options are:\n"+
-			"auto: Roles will be created using the current AWS account\n"+
-			"manual: Role files will be saved in the current directory",
+			"auto: OIDC provider will be created using the current AWS account\n"+
+			"manual: Command to create the OIDC provider will be output",
 	)
 	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
 
@@ -170,14 +170,14 @@ func run(cmd *cobra.Command, _ []string) {
 	mode := args.mode
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Role creation mode",
+			Question: "OIDC provider creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  mode,
 			Options:  modes,
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid role creation mode: %s", err)
+			reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
 			os.Exit(1)
 		}
 	}
