@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -419,6 +420,9 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("cluster-name").Usage,
 			Default:  clusterName,
 			Required: true,
+			Validators: []interactive.Validator{
+				ocm.ClusterNameValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid cluster name: %s", err)
@@ -458,6 +462,9 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("role-arn").Usage,
 			Default:  roleARN,
 			Required: awsCreator.IsSTS,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid ARN: %s", err)
@@ -484,6 +491,10 @@ func run(cmd *cobra.Command, _ []string) {
 		externalID, err = interactive.GetString(interactive.Input{
 			Question: "External ID",
 			Help:     cmd.Flags().Lookup("external-id").Usage,
+			Validators: []interactive.Validator{
+				interactive.RegExp(`^[\w+=,.@:\/-]*$`),
+				interactive.MaxLength(1224),
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid External ID: %s", err)
@@ -502,6 +513,9 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("support-role-arn").Usage,
 			Default:  supportRoleARN,
 			Required: true,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid ARN: %s", err)
@@ -559,6 +573,9 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("operator-roles-prefix").Usage,
 				Required: true,
 				Default:  operatorRolesPrefix,
+				Validators: []interactive.Validator{
+					interactive.MaxLength(32),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
@@ -629,6 +646,9 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("master-iam-role").Usage,
 			Default:  masterRoleARN,
 			Required: true,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid master IAM role ARN: %s", err)
@@ -652,6 +672,9 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("worker-iam-role").Usage,
 			Default:  workerRoleARN,
 			Required: true,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid worker IAM role ARN: %s", err)
@@ -896,6 +919,9 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("kms-key-arn").Usage,
 			Default:  kmsKeyARN,
 			Required: enableCustomerManagedKey,
+			Validators: []interactive.Validator{
+				interactive.RegExp(kmsArnRE.String()),
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
@@ -978,41 +1004,39 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
 				Default:  minReplicas,
 				Required: true,
+				Validators: []interactive.Validator{
+					minReplicaValidator(multiAZ),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of min replicas: %s", err)
 				os.Exit(1)
 			}
 		}
+		err = minReplicaValidator(multiAZ)(minReplicas)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
 		if interactive.Enabled() || !isMaxReplicasSet {
 			maxReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Max replicas",
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
 				Default:  maxReplicas,
 				Required: true,
+				Validators: []interactive.Validator{
+					maxReplicaValidator(multiAZ, minReplicas),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of max replicas: %s", err)
 				os.Exit(1)
 			}
 		}
-
-		if multiAZ && minReplicas < 3 {
-			reporter.Errorf("Multi AZ cluster requires at least 3 compute nodes")
-			os.Exit(1)
-		}
-		if !multiAZ && minReplicas < 2 {
-			reporter.Errorf("Cluster requires at least 2 compute nodes")
-			os.Exit(1)
-		}
-
-		if minReplicas > maxReplicas {
-			reporter.Errorf("max-replicas must be greater or equal to min-replicas")
-			os.Exit(1)
-		}
-
-		if multiAZ && (minReplicas%3 != 0 || maxReplicas%3 != 0) {
-			reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+		err = maxReplicaValidator(multiAZ, minReplicas)(maxReplicas)
+		if err != nil {
+			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
@@ -1035,26 +1059,19 @@ func run(cmd *cobra.Command, _ []string) {
 				Question: "Compute nodes",
 				Help:     cmd.Flags().Lookup("compute-nodes").Usage,
 				Default:  computeNodes,
+				Validators: []interactive.Validator{
+					minReplicaValidator(multiAZ),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of compute nodes: %s", err)
 				os.Exit(1)
 			}
 		}
-		if multiAZ {
-			if computeNodes < 3 {
-				reporter.Errorf("The number of compute nodes needs to be at least 3")
-				os.Exit(1)
-			}
-			if computeNodes%3 != 0 {
-				reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-				os.Exit(1)
-			}
-		} else {
-			if computeNodes < 2 {
-				reporter.Errorf("The number of compute nodes needs to be at least 2")
-				os.Exit(1)
-			}
+		err = minReplicaValidator(multiAZ)(computeNodes)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
 		}
 	}
 
@@ -1244,6 +1261,42 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{clusterName})
+}
+
+func minReplicaValidator(multiAZ bool) interactive.Validator {
+	return func(val interface{}) error {
+		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
+		if err != nil {
+			return err
+		}
+		if multiAZ {
+			if minReplicas < 3 {
+				return fmt.Errorf("Multi AZ cluster requires at least 3 compute nodes")
+			}
+			if minReplicas%3 != 0 {
+				return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+			}
+		} else if minReplicas < 2 {
+			return fmt.Errorf("Cluster requires at least 2 compute nodes")
+		}
+		return nil
+	}
+}
+
+func maxReplicaValidator(multiAZ bool, minReplicas int) interactive.Validator {
+	return func(val interface{}) error {
+		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
+		if err != nil {
+			return err
+		}
+		if minReplicas > maxReplicas {
+			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
+		}
+		if multiAZ && maxReplicas%3 != 0 {
+			return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+		}
+		return nil
+	}
 }
 
 func getOperatorRoleArn(prefix string, operator aws.Operator, creator *aws.Creator) string {
