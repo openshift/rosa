@@ -3,7 +3,7 @@ module github.com/openshift/rosa
 go 1.14
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.1.0
+	github.com/AlecAivazis/survey/v2 v2.2.15
 	github.com/aws/aws-sdk-go v1.39.3
 	github.com/briandowns/spinner v1.11.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
