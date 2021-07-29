@@ -3,6 +3,7 @@ package aws
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -13,6 +14,8 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
+
+var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 
 // JumpAccounts are the various of AWS accounts used for the installer jump role in the various OCM environments
 var JumpAccounts = map[string]string{
