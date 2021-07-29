@@ -212,6 +212,9 @@ func run(cmd *cobra.Command, _ []string) {
 
 		commands := buildCommands(prefix, version)
 		fmt.Println(commands)
+	default:
+		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		os.Exit(1)
 	}
 }
 
