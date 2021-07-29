@@ -47,6 +47,8 @@ var args struct {
 	maxReplicas        int
 	labels             string
 	taints             string
+	useSpotInstances   bool
+	spotMaxPrice       float64
 }
 
 var Cmd = &cobra.Command{
@@ -138,6 +140,22 @@ func init() {
 		"Taints for machine pool. Format should be a comma-separated list of 'key=value:ScheduleType'. "+
 			"This list will overwrite any modifications made to Node taints on an ongoing basis.",
 	)
+
+	flags.BoolVar(
+		&args.useSpotInstances,
+		"use-spot-instances",
+		false,
+		"Use spot instances for the machine pool.",
+	)
+
+	flags.Float64Var(
+		&args.spotMaxPrice,
+		"spot-max-price",
+		0,
+		"Max price for spot instance. If empty use the on-demand price.",
+	)
+	flags.MarkHidden("use-spot-instances")
+	flags.MarkHidden("spot-max-price")
 
 	interactive.AddFlag(flags)
 }
@@ -400,6 +418,38 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	// Spot instances
+	isSpotSet := cmd.Flags().Changed("use-spot-instances")
+	isSpotMaxPriceSet := cmd.Flags().Changed("spot-max-price")
+
+	useSpotInstances := args.useSpotInstances
+	spotMaxPrice := args.spotMaxPrice
+	if isSpotMaxPriceSet && isSpotSet && !useSpotInstances {
+		reporter.Errorf("Can't set max price when not using spot instances")
+		os.Exit(1)
+	}
+
+	if isSpotMaxPriceSet {
+		useSpotInstances = true
+	}
+
+	if useSpotInstances && !isSpotMaxPriceSet && interactive.Enabled() {
+		spotMaxPrice, err = interactive.GetFloat(interactive.Input{
+			Question: "Spot instance max price",
+			Help:     cmd.Flags().Lookup("spot-max-price").Usage,
+			Required: false,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid value for spot max price: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if spotMaxPrice < 0 {
+		reporter.Errorf("Spot max price must be positive")
+		os.Exit(1)
+	}
+
 	mpBuilder := cmv1.NewMachinePool().
 		ID(name).
 		InstanceType(instanceType).
@@ -413,6 +463,15 @@ func run(cmd *cobra.Command, _ []string) {
 				MaxReplicas(maxReplicas))
 	} else {
 		mpBuilder = mpBuilder.Replicas(replicas)
+	}
+
+	if useSpotInstances {
+		spotBuilder := cmv1.NewAWSSpotMarketOptions()
+		if spotMaxPrice > 0 {
+			spotBuilder = spotBuilder.MaxPrice(spotMaxPrice)
+		}
+		mpBuilder = mpBuilder.AWS(cmv1.NewAWSMachinePool().
+			SpotMarketOptions(spotBuilder))
 	}
 
 	machinePool, err := mpBuilder.Build()

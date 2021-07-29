@@ -123,7 +123,9 @@ func GetFloat(input Input) (a float64, err error) {
 	prompt := &survey.Input{
 		Message: fmt.Sprintf("%s:", question),
 		Help:    input.Help,
-		Default: dfltStr,
+	}
+	if input.Default != nil {
+		prompt.Default = dfltStr
 	}
 	var str string
 	if input.Required {
