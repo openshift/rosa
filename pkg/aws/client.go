@@ -80,6 +80,7 @@ type Client interface {
 	EnsurePolicy(name string, document string, tagList map[string]string) error
 	AttachRolePolicy(roleName string, policyARN string) error
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string) (string, error)
+	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
