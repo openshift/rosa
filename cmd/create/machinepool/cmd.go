@@ -67,11 +67,7 @@ var Cmd = &cobra.Command{
 	--min-replicas=3 --max-replicas=6 --instance-type=m5.xlarge
 
   # Add a machine pool with labels to a cluster
-  rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels=foo=bar,bar=baz
-  
-  # Add a machine pool with spot instances to a cluster
-  rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --use-spot-instances \
-    --spot-max-price=0.5`,
+  rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels=foo=bar,bar=baz`,
 	Run: run,
 }
 
@@ -158,6 +154,8 @@ func init() {
 		0,
 		"Max price for spot instance. If empty use the on-demand price.",
 	)
+	flags.MarkHidden("use-spot-instances")
+	flags.MarkHidden("spot-max-price")
 
 	interactive.AddFlag(flags)
 }
@@ -420,6 +418,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	// Spot instances
 	isSpotSet := cmd.Flags().Changed("use-spot-instances")
 	isSpotMaxPriceSet := cmd.Flags().Changed("spot-max-price")
 
@@ -431,21 +430,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if isSpotMaxPriceSet {
-		isSpotSet = true
 		useSpotInstances = true
-	}
-
-	if !isSpotSet && interactive.Enabled() {
-		useSpotInstances, err = interactive.GetBool(interactive.Input{
-			Question: "Use spot instances",
-			Help:     cmd.Flags().Lookup("use-spot-instances").Usage,
-			Default:  useSpotInstances,
-			Required: false,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid value for use spot instances: %s", err)
-			os.Exit(1)
-		}
 	}
 
 	if useSpotInstances && !isSpotMaxPriceSet && interactive.Enabled() {

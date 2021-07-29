@@ -158,8 +158,15 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
+	// Show spot details only if the cluster has spot machine pools
+	showSpot := isSpotCluster(machinePools)
+	var spotTitle string
+	if showSpot {
+		spotTitle = "SPOT INSTANCES"
+	}
+
 	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES"+
-		"\t\tSPOT INSTANCES\n")
+		"\t\t%s\n", spotTitle)
 	for _, machinePool := range machinePools {
 		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\n",
 			machinePool.ID(),
@@ -169,10 +176,20 @@ func run(_ *cobra.Command, _ []string) {
 			printLabels(machinePool.Labels()),
 			printTaints(machinePool.Taints()),
 			printAZ(machinePool.AvailabilityZones()),
-			printSpot(machinePool.AWS()),
+			printSpot(machinePool, showSpot),
 		)
 	}
 	writer.Flush()
+}
+
+// true if at least one machine pool has spot instances
+func isSpotCluster(machinePools []*cmv1.MachinePool) bool {
+	for _, machinePool := range machinePools {
+		if machinePool.AWS() != nil && machinePool.AWS().SpotMarketOptions() != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func printAutoscaling(autoscaling *cmv1.MachinePoolAutoscaling) string {
@@ -182,9 +199,17 @@ func printAutoscaling(autoscaling *cmv1.MachinePoolAutoscaling) string {
 	return "No"
 }
 
-func printSpot(aws *cmv1.AWSMachinePool) string {
-	if aws != nil {
-		if spot := aws.SpotMarketOptions(); spot != nil {
+func printSpot(mp *cmv1.MachinePool, showSpot bool) string {
+	if !showSpot {
+		return ""
+	}
+
+	if mp.ID() == "Default" {
+		return "N/A"
+	}
+
+	if mp.AWS() != nil {
+		if spot := mp.AWS().SpotMarketOptions(); spot != nil {
 			price := "on-demand"
 			if maxPrice, ok := spot.GetMaxPrice(); ok {
 				price = fmt.Sprintf("max $%.2f", maxPrice)
