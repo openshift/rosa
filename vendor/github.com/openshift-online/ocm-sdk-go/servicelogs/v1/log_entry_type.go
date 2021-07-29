@@ -48,6 +48,7 @@ type LogEntry struct {
 	severity     Severity
 	summary      string
 	timestamp    time.Time
+	username     string
 	internalOnly bool
 }
 
@@ -265,6 +266,29 @@ func (o *LogEntry) GetTimestamp() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.timestamp
+	}
+	return
+}
+
+// Username returns the value of the 'username' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The username that triggered the event (if available).
+func (o *LogEntry) Username() string {
+	if o != nil && o.bitmap_&1024 != 0 {
+		return o.username
+	}
+	return ""
+}
+
+// GetUsername returns the value of the 'username' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The username that triggered the event (if available).
+func (o *LogEntry) GetUsername() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&1024 != 0
+	if ok {
+		value = o.username
 	}
 	return
 }

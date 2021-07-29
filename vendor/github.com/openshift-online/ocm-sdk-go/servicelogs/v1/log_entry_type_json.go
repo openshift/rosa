@@ -127,6 +127,15 @@ func writeLogEntry(object *LogEntry, stream *jsoniter.Stream) {
 		stream.WriteString((object.timestamp).Format(time.RFC3339))
 		count++
 	}
+	present_ = object.bitmap_&1024 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("username")
+		stream.WriteString(object.username)
+		count++
+	}
 	stream.WriteObjectEnd()
 }
 
@@ -198,6 +207,10 @@ func readLogEntry(iterator *jsoniter.Iterator) *LogEntry {
 			}
 			object.timestamp = value
 			object.bitmap_ |= 512
+		case "username":
+			value := iterator.ReadString()
+			object.username = value
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}

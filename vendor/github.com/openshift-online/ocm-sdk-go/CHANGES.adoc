@@ -3,6 +3,42 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.197 Jul 22 2021
+
+- Update model to v0.0.138:
+** Add addon inquiries endpoints get and list
+
+== 0.1.196 Jul 20 2021
+
+- Update model to v0.0.137:
+** Add Cluster Resource Type
+** Remove Cluster Deployment GET
+
+== 0.1.195 Jul 19 2021
+
+- Update model to v0.0.136:
+** Added Spot Market Options to MachinePool
+
+== 0.1.194 Jul 6 2021
+
+- Update to version 0.0.38 of the metamodel in order to fix a conflict between
+  `github.com/golang/glog` and `github.com/istio/glog` that prevents building
+  packages that use the SDK.
+
+== 0.1.193 Jul 6 2021
+
+- Update the version number in the `version.go` file.
+
+== 0.1.192 Jul 6 2021
+
+- Fix initialization of metrics registerer.
+- Update model to v0.0.135:
+** Add user name to service log `LogEntry`.
+
+== 0.1.191 Jul 5 2021
+
+- Add leadership flag.
+
 == 0.1.190 Jun 23 2021
 
 - Don't use refresh token if have client credentials.

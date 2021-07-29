@@ -36,6 +36,7 @@ type LogEntryBuilder struct {
 	severity     Severity
 	summary      string
 	timestamp    time.Time
+	username     string
 	internalOnly bool
 }
 
@@ -127,6 +128,15 @@ func (b *LogEntryBuilder) Timestamp(value time.Time) *LogEntryBuilder {
 	return b
 }
 
+// Username sets the value of the 'username' attribute to the given value.
+//
+//
+func (b *LogEntryBuilder) Username(value string) *LogEntryBuilder {
+	b.username = value
+	b.bitmap_ |= 1024
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *LogEntryBuilder) Copy(object *LogEntry) *LogEntryBuilder {
 	if object == nil {
@@ -142,6 +152,7 @@ func (b *LogEntryBuilder) Copy(object *LogEntry) *LogEntryBuilder {
 	b.severity = object.severity
 	b.summary = object.summary
 	b.timestamp = object.timestamp
+	b.username = object.username
 	return b
 }
 
@@ -158,5 +169,6 @@ func (b *LogEntryBuilder) Build() (object *LogEntry, err error) {
 	object.severity = b.severity
 	object.summary = b.summary
 	object.timestamp = b.timestamp
+	object.username = b.username
 	return
 }
