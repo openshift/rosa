@@ -22,10 +22,13 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	semver "github.com/hashicorp/go-version"
 
 	"github.com/openshift/rosa/assets"
+	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
 type Operator struct {
@@ -129,7 +132,7 @@ type PolicyStatementPrincipal struct {
 	AWS []string `json:"AWS"`
 }
 
-func (c *awsClient) EnsureRole(name string, policy string, tagList map[string]string) (string, error) {
+func (c *awsClient) EnsureRole(name string, policy string, version string, tagList map[string]string) (string, error) {
 	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(name),
 	})
@@ -143,8 +146,33 @@ func (c *awsClient) EnsureRole(name string, policy string, tagList map[string]st
 			}
 		}
 	}
-	role := output.Role
-	return aws.StringValue(role.Arn), nil
+
+	roleArn := aws.StringValue(output.Role.Arn)
+
+	isCompatible, err := c.isRoleCompatible(name, version)
+	if err != nil {
+		return roleArn, err
+	}
+
+	if !isCompatible {
+		_, err = c.iamClient.UpdateAssumeRolePolicy(&iam.UpdateAssumeRolePolicyInput{
+			RoleName:       aws.String(name),
+			PolicyDocument: aws.String(policy),
+		})
+		if err != nil {
+			return roleArn, err
+		}
+
+		_, err = c.iamClient.TagRole(&iam.TagRoleInput{
+			RoleName: aws.String(name),
+			Tags:     getTags(tagList),
+		})
+		if err != nil {
+			return roleArn, err
+		}
+	}
+
+	return roleArn, nil
 }
 
 func (c *awsClient) createRole(name string, policy string, tagList map[string]string) (string, error) {
@@ -165,8 +193,18 @@ func (c *awsClient) createRole(name string, policy string, tagList map[string]st
 		}
 		return "", err
 	}
-	role := output.Role
-	return aws.StringValue(role.Arn), nil
+	return aws.StringValue(output.Role.Arn), nil
+}
+
+func (c *awsClient) isRoleCompatible(name string, version string) (bool, error) {
+	output, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+		RoleName: aws.String(name),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return hasCompatibleTags(output.Tags, version)
 }
 
 func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy string) error {
@@ -181,9 +219,60 @@ func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy str
 	return nil
 }
 
-func (c *awsClient) EnsurePolicy(name string, document string, tagList map[string]string) error {
-	_, err := c.iamClient.CreatePolicy(&iam.CreatePolicyInput{
-		PolicyName:     aws.String(name),
+func (c *awsClient) EnsurePolicy(policyArn string, document string,
+	version string, tagList map[string]string) (string, error) {
+	output, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{
+		PolicyArn: aws.String(policyArn),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return c.createPolicy(policyArn, document, tagList)
+			default:
+				return "", err
+			}
+		}
+	}
+
+	policyArn = aws.StringValue(output.Policy.Arn)
+
+	isCompatible, err := c.isPolicyCompatible(policyArn, version)
+	if err != nil {
+		return policyArn, err
+	}
+
+	if !isCompatible {
+		_, err = c.iamClient.CreatePolicyVersion(&iam.CreatePolicyVersionInput{
+			PolicyArn:      aws.String(policyArn),
+			PolicyDocument: aws.String(document),
+			SetAsDefault:   aws.Bool(true),
+		})
+		if err != nil {
+			return policyArn, err
+		}
+
+		_, err = c.iamClient.TagPolicy(&iam.TagPolicyInput{
+			PolicyArn: aws.String(policyArn),
+			Tags:      getTags(tagList),
+		})
+		if err != nil {
+			return policyArn, err
+		}
+	}
+
+	return policyArn, nil
+}
+
+func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string) (string, error) {
+	parsedArn, err := arn.Parse(policyArn)
+	if err != nil {
+		return "", err
+	}
+	policyName := strings.Split(parsedArn.Resource, "/")[1]
+
+	output, err := c.iamClient.CreatePolicy(&iam.CreatePolicyInput{
+		PolicyName:     aws.String(policyName),
 		PolicyDocument: aws.String(document),
 		Tags:           getTags(tagList),
 	})
@@ -191,12 +280,46 @@ func (c *awsClient) EnsurePolicy(name string, document string, tagList map[strin
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeEntityAlreadyExistsException:
-				return nil
+				return policyArn, nil
 			}
 		}
-		return err
+		return "", err
 	}
-	return nil
+	return aws.StringValue(output.Policy.Arn), nil
+}
+
+func (c *awsClient) isPolicyCompatible(policyArn string, version string) (bool, error) {
+	output, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
+		PolicyArn: aws.String(policyArn),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return hasCompatibleTags(output.Tags, version)
+}
+
+func hasCompatibleTags(iamTags []*iam.Tag, version string) (bool, error) {
+	if len(iamTags) == 0 {
+		return false, nil
+	}
+	for _, tag := range iamTags {
+		if aws.StringValue(tag.Key) == tags.OpenShiftVersion {
+			if version == aws.StringValue(tag.Value) {
+				return true, nil
+			}
+			wantedVersion, err := semver.NewVersion(version)
+			if err != nil {
+				return false, err
+			}
+			currentVersion, err := semver.NewVersion(aws.StringValue(tag.Value))
+			if err != nil {
+				return false, err
+			}
+			return currentVersion.GreaterThanOrEqual(wantedVersion), nil
+		}
+	}
+	return false, nil
 }
 
 func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
