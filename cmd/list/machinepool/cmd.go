@@ -212,7 +212,7 @@ func printSpot(mp *cmv1.MachinePool, showSpot bool) string {
 		if spot := mp.AWS().SpotMarketOptions(); spot != nil {
 			price := "on-demand"
 			if maxPrice, ok := spot.GetMaxPrice(); ok {
-				price = fmt.Sprintf("max $%.2f", maxPrice)
+				price = fmt.Sprintf("max $%g", maxPrice)
 			}
 			return fmt.Sprintf("Yes (%s)", price)
 		}
