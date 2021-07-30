@@ -32,6 +32,8 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
+var DefaultPrefix = "ManagedOpenShift"
+
 type Operator struct {
 	Name                string
 	Namespace           string
@@ -397,6 +399,56 @@ func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
 		return err
 	}
 	return nil
+}
+
+func (c *awsClient) FindPolicyARN(operator Operator, version string) (string, error) {
+	policies := []*iam.Policy{}
+	err := c.iamClient.ListPoliciesPages(&iam.ListPoliciesInput{
+		Scope: aws.String(iam.PolicyScopeTypeLocal),
+	}, func(page *iam.ListPoliciesOutput, lastPage bool) bool {
+		policies = append(policies, page.Policies...)
+		return aws.BoolValue(page.IsTruncated)
+	})
+	if err != nil {
+		return "", err
+	}
+	for _, policy := range policies {
+		listPolicyTagsOutput, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
+			PolicyArn: policy.Arn,
+		})
+		if err != nil {
+			return "", err
+		}
+		skip := false
+		isTagged := false
+		for _, tag := range listPolicyTagsOutput.Tags {
+			tagValue := aws.StringValue(tag.Value)
+			switch aws.StringValue(tag.Key) {
+			case "operator_namespace":
+				isTagged = true
+				if tagValue != operator.Namespace {
+					skip = true
+					break
+				}
+			case "operator_name":
+				isTagged = true
+				if tagValue != operator.Name {
+					skip = true
+					break
+				}
+			case tags.OpenShiftVersion:
+				isTagged = true
+				if tagValue != version {
+					skip = true
+					break
+				}
+			}
+		}
+		if isTagged && !skip {
+			return aws.StringValue(policy.Arn), nil
+		}
+	}
+	return "", nil
 }
 
 func getTags(tagList map[string]string) []*iam.Tag {

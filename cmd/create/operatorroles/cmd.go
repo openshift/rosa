@@ -68,8 +68,8 @@ func init() {
 	flags.StringVar(
 		&args.prefix,
 		"prefix",
-		"ManagedOpenShift",
-		"User-defined prefix for generated AWS roles. Leave empty to use the cluster name.",
+		"",
+		"User-defined prefix for generated AWS operator policies. Leave empty to attempt to find them automatically.",
 	)
 
 	flags.StringVar(
@@ -173,21 +173,17 @@ func run(cmd *cobra.Command, _ []string) {
 			Question: "Role prefix",
 			Help:     cmd.Flags().Lookup("prefix").Usage,
 			Default:  prefix,
-			Required: true,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid role prefix: %s", err)
 			os.Exit(1)
 		}
 	}
-	if prefix == "" {
-		prefix = cluster.Name()
-	}
 	if len(prefix) > 32 {
 		reporter.Errorf("Expected a prefix with no more than 32 characters")
 		os.Exit(1)
 	}
-	if !aws.RoleNameRE.MatchString(prefix) {
+	if prefix != "" && !aws.RoleNameRE.MatchString(prefix) {
 		reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
@@ -253,7 +249,6 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		roleARN, err := awsClient.EnsureRole(roleName, policy, version, map[string]string{
 			tags.ClusterID:        cluster.ID(),
 			tags.OpenShiftVersion: version,
-			tags.RolePrefix:       prefix,
 			"operator_namespace":  operator.Namespace,
 			"operator_name":       operator.Name,
 		})
@@ -262,12 +257,22 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		}
 		reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 
-		policyARN := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		policyARN := ""
+		if prefix == "" {
+			policyARN, err = awsClient.FindPolicyARN(operator, version)
+			if err != nil {
+				return err
+			}
+		}
+		if policyARN == "" {
+			policyARN = getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		}
 
 		reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
 		err = awsClient.AttachRolePolicy(roleName, policyARN)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to attach role policy. Check your prefix or run "+
+				"'rosa create account-roles' to create the necessary policies: %s", err)
 		}
 	}
 
@@ -372,6 +377,9 @@ func getRoleName(cluster *cmv1.Cluster, operator aws.Operator) string {
 }
 
 func getPolicyARN(accountID string, prefix string, namespace string, name string) string {
+	if prefix == "" {
+		prefix = aws.DefaultPrefix
+	}
 	policy := fmt.Sprintf("%s-%s-%s", prefix, namespace, name)
 	if len(policy) > 64 {
 		policy = policy[0:64]

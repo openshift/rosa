@@ -64,7 +64,7 @@ func init() {
 	flags.StringVar(
 		&args.prefix,
 		"prefix",
-		"ManagedOpenShift",
+		aws.DefaultPrefix,
 		"User-defined prefix for all generated AWS resources",
 	)
 
