@@ -546,7 +546,13 @@ var _templatesPolicies47Sts_installer_permission_policyJson = []byte(`{
                 "sts:AssumeRoleWithWebIdentity",
                 "sts:GetCallerIdentity",
                 "tag:GetResources",
-                "tag:UntagResources"
+                "tag:UntagResources",
+                "ec2:CreateVpcEndpointServiceConfiguration",
+                "ec2:DeleteVpcEndpointServiceConfigurations",
+                "ec2:DescribeVpcEndpointServiceConfigurations",
+                "ec2:DescribeVpcEndpointServicePermissions",
+                "ec2:DescribeVpcEndpointServices",
+                "ec2:ModifyVpcEndpointServicePermissions"
             ],
             "Resource": "*"
         }
@@ -1258,7 +1264,13 @@ var _templatesPolicies48Sts_installer_permission_policyJson = []byte(`{
                 "sts:AssumeRoleWithWebIdentity",
                 "sts:GetCallerIdentity",
                 "tag:GetResources",
-                "tag:UntagResources"
+                "tag:UntagResources",
+                "ec2:CreateVpcEndpointServiceConfiguration",
+                "ec2:DeleteVpcEndpointServiceConfigurations",
+                "ec2:DescribeVpcEndpointServiceConfigurations",
+                "ec2:DescribeVpcEndpointServicePermissions",
+                "ec2:DescribeVpcEndpointServices",
+                "ec2:ModifyVpcEndpointServicePermissions"
             ],
             "Resource": "*"
         }
@@ -1972,7 +1984,13 @@ var _templatesPolicies49Sts_installer_permission_policyJson = []byte(`{
                 "sts:AssumeRoleWithWebIdentity",
                 "sts:GetCallerIdentity",
                 "tag:GetResources",
-                "tag:UntagResources"
+                "tag:UntagResources",
+                "ec2:CreateVpcEndpointServiceConfiguration",
+                "ec2:DeleteVpcEndpointServiceConfigurations",
+                "ec2:DescribeVpcEndpointServiceConfigurations",
+                "ec2:DescribeVpcEndpointServicePermissions",
+                "ec2:DescribeVpcEndpointServices",
+                "ec2:ModifyVpcEndpointServicePermissions"
             ],
             "Resource": "*"
         }
