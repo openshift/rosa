@@ -19,6 +19,7 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -110,7 +111,7 @@ type PolicyStatement struct {
 	// federated user to which you would like to allow or deny access. If you are creating an
 	// IAM permissions policy to attach to a user or role, you cannot include this element.
 	// The principal is implied as that user or role.
-	Principal []PolicyStatementPrincipal `json:"Principal"`
+	Principal PolicyStatementPrincipal `json:"Principal"`
 	// Include a list of actions that the policy allows or denies.
 	// (i.e. ec2:StartInstances, iam:ChangePassword)
 	Action []string `json:"Action"`
@@ -130,6 +131,8 @@ type PolicyStatementPrincipal struct {
 	// In IAM roles, the Principal element in the role's trust policy specifies who can assume the role.
 	// When you specify more than one principal in the element, you grant permissions to each principal.
 	AWS []string `json:"AWS"`
+	// A federated principal uses a web identity token or SAML federation
+	Federated string `json:"Federated"`
 }
 
 func (c *awsClient) EnsureRole(name string, policy string, version string, tagList map[string]string) (string, error) {
@@ -147,14 +150,20 @@ func (c *awsClient) EnsureRole(name string, policy string, version string, tagLi
 		}
 	}
 
-	roleArn := aws.StringValue(output.Role.Arn)
+	role := output.Role
+	roleArn := aws.StringValue(role.Arn)
 
 	isCompatible, err := c.isRoleCompatible(name, version)
 	if err != nil {
 		return roleArn, err
 	}
 
-	if !isCompatible {
+	policy, needsUpdate, err := c.updateAssumeRolePolicyPrincipals(policy, role)
+	if err != nil {
+		return roleArn, err
+	}
+
+	if needsUpdate || !isCompatible {
 		_, err = c.iamClient.UpdateAssumeRolePolicy(&iam.UpdateAssumeRolePolicyInput{
 			RoleName:       aws.String(name),
 			PolicyDocument: aws.String(policy),
@@ -173,6 +182,63 @@ func (c *awsClient) EnsureRole(name string, policy string, version string, tagLi
 	}
 
 	return roleArn, nil
+}
+
+func (c *awsClient) updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bool, error) {
+	oldPolicy, err := url.QueryUnescape(aws.StringValue(role.AssumeRolePolicyDocument))
+	if err != nil {
+		return policy, false, err
+	}
+
+	newPolicyDoc := PolicyDocument{}
+	err = json.Unmarshal([]byte(policy), &newPolicyDoc)
+	if err != nil {
+		return policy, false, err
+	}
+
+	// Determine if role already contains trusted principal
+	principals := []string{}
+	hasMultiplePrincipals := false
+	for _, statement := range newPolicyDoc.Statement {
+		// There is no AWS principal to add, nothing to do here
+		if len(statement.Principal.AWS) == 0 {
+			return policy, false, nil
+		}
+		for _, trust := range statement.Principal.AWS {
+			// Trusted principal already exists, nothing to do here
+			if strings.Contains(oldPolicy, trust) {
+				return policy, false, nil
+			}
+			if strings.Contains(oldPolicy, `"AWS":[`) {
+				hasMultiplePrincipals = true
+			}
+			principals = append(principals, trust)
+		}
+	}
+	oldPrincipals := strings.Join(principals, `","`)
+
+	// Extract existing trusted principals from existing role trust policy.
+	// The AWS API is ambiguous faced with 1 vs many entries, so we cannot
+	// unmarshal and have to resort to string matching...
+	startSearch := `"AWS":"`
+	endSearch := `"`
+	if hasMultiplePrincipals {
+		startSearch = `"AWS":["`
+		endSearch = `"]`
+	}
+	start := strings.Index(oldPolicy, startSearch)
+	if start >= 0 {
+		start += len(startSearch)
+		end := start + strings.Index(oldPolicy[start:], endSearch)
+		if end >= start {
+			principals = append(principals, strings.Split(oldPolicy[start:end], `","`)...)
+		}
+	}
+
+	// Update assume role policy document to contain all trusted principals
+	policy = strings.Replace(policy, oldPrincipals, strings.Join(principals, `","`), 1)
+
+	return policy, true, nil
 }
 
 func (c *awsClient) createRole(name string, policy string, tagList map[string]string) (string, error) {
