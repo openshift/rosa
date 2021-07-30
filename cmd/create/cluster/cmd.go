@@ -473,11 +473,16 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	supportRoleARN := args.supportRoleARN
+	// Ensure interactive mode if missing required role ARNs on STS clusters
+	if roleARN != "" && !interactive.Enabled() && supportRoleARN == "" {
+		interactive.Enable()
+	}
 	if roleARN != "" && interactive.Enabled() {
 		supportRoleARN, err = interactive.GetString(interactive.Input{
 			Question: "Support Role ARN",
 			Help:     cmd.Flags().Lookup("support-role-arn").Usage,
 			Default:  supportRoleARN,
+			Required: true,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid ARN: %s", err)
@@ -490,6 +495,9 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Expected a valid Support Role ARN: %s", err)
 			os.Exit(1)
 		}
+	} else if roleARN != "" {
+		reporter.Errorf("Support Role ARN is required: %s", err)
+		os.Exit(1)
 	}
 
 	// OpenShift version:
@@ -585,11 +593,19 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Instance IAM Roles
 	masterRoleARN := args.masterRoleARN
+	workerRoleARN := args.workerRoleARN
+	// Ensure interactive mode if missing required role ARNs on STS clusters
+	if roleARN != "" && !interactive.Enabled() {
+		if masterRoleARN == "" || workerRoleARN == "" {
+			interactive.Enable()
+		}
+	}
 	if roleARN != "" && interactive.Enabled() {
 		masterRoleARN, err = interactive.GetString(interactive.Input{
 			Question: "Master IAM Role ARN",
 			Help:     cmd.Flags().Lookup("master-iam-role").Usage,
 			Default:  masterRoleARN,
+			Required: true,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid master IAM role ARN: %s", err)
@@ -599,17 +615,20 @@ func run(cmd *cobra.Command, _ []string) {
 	if masterRoleARN != "" {
 		_, err = arn.Parse(masterRoleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid instance IAM role ARN: %s", err)
+			reporter.Errorf("Expected a valid master instance IAM role ARN: %s", err)
 			os.Exit(1)
 		}
+	} else if roleARN != "" {
+		reporter.Errorf("Master instance IAM role ARN is required: %s", err)
+		os.Exit(1)
 	}
 
-	workerRoleARN := args.workerRoleARN
 	if roleARN != "" && interactive.Enabled() {
 		workerRoleARN, err = interactive.GetString(interactive.Input{
 			Question: "Worker IAM Role ARN",
 			Help:     cmd.Flags().Lookup("worker-iam-role").Usage,
 			Default:  workerRoleARN,
+			Required: true,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid worker IAM role ARN: %s", err)
@@ -619,9 +638,12 @@ func run(cmd *cobra.Command, _ []string) {
 	if workerRoleARN != "" {
 		_, err = arn.Parse(workerRoleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid instance IAM role ARN: %s", err)
+			reporter.Errorf("Expected a valid worker instance IAM role ARN: %s", err)
 			os.Exit(1)
 		}
+	} else if roleARN != "" {
+		reporter.Errorf("Worker instance IAM role ARN is required: %s", err)
+		os.Exit(1)
 	}
 
 	// Custom tags for AWS resources
