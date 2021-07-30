@@ -209,9 +209,10 @@ func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Clus
 	}
 }
 
+// Gets only pending non-STS clusters that are installed in the same AWS account
 func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cluster, err error) {
 	query := fmt.Sprintf(
-		"(state = 'pending') AND product.id = 'rosa' AND properties.%s LIKE '%%:%s:%%'",
+		"state = 'pending' AND product.id = 'rosa' AND aws.sts.role_arn = '' AND properties.%s LIKE '%%:%s:%%'",
 		properties.CreatorARN,
 		creator.AccountID,
 	)
