@@ -1,7 +1,65 @@
 = Changes
 
-This document describes the relevant changes between releases of the `rosa`
-command line tool.
+This document describes the relevant changes between releases of the `rosa` command line tool.
+
+== 1.0.10 Jul 30 2021
+
+- confirm: Move to interactive package
+- properties: Move to separate package
+- cluster: Move to ocm package
+- ocm: Move all OCM API wrappers to ocm package
+- ocm: Split resources into files
+- ocm: Refactor OCM client code
+- ocm: Do not expose internal API structure
+- add etcd-encryption flag to buildCommand
+- ocm: Bump SDK version
+- ocm: Bump SDK version
+- aws: Filter clusters by AWS account ID
+- output: Add flag for JSON and YAML output
+- Add region tag for older versions
+- There is no "user" anymore
+- Added hibernation and resume support to rosa cli
+- hack: Add directory with development scripts
+- Update cmd/create/idp/cmd.go
+- output: Ensure that JSON output for empty arrays looks correct
+- reporter: Send WARN output to STDERR
+- aws: Refactor AWS client code
+- init: Replace --delete-stack flag with --delete
+- init: Confirm delete operation
+- create: Add new account-roles resource
+- vendor: Update AWS SDK
+- account-roles: Add tags to AWS resources
+- init: Add 'account' to init command
+- login: Provide a way to externally call command
+- accountroles: Output Role ARN once created
+- Update URLs for upcoming move to console.redhat.com
+- reattempt login in case of sso outage
+- Reduce EBS quota checks
+- create: Add operator-roles command
+- ocm: Find cluster by external ID
+- Report all insufficient quotas
+- create: Add oidc-provider command
+- create-cluster: Update help text for etcd encryption
+- create-cluster: Automatically populate operator IAM roles
+- account-roles: Output sample create cluster command
+- bump ocm-sdk v0.1.197
+- update get addon parameters to use addon-inquiries request
+- Validate operator roles exist
+- verify-permissions: Add user-friendly error
+- aws: Add input validation for role names
+- create-oidcprovider: Fix help text for mode flag
+- create-oidcprovider: Verify if OIDC Provider already exists
+- mode: Error out when using invalid mode
+- account-roles: Ensure that roles and policies can be upgraded
+- Add support for machine pool spot instances
+- Hide spot instance flags
+- list-machinepool: Fix spot instance decimal representation
+- roles: Update trust policy
+- create-cluster: Ensure all role ARNs are required
+- clusters: Ensure blocking pending clusters are non-STS
+- create-operatorroles: Auto-find policies for roles
+- create-operatorroles: Prompt user to create policies
+- account-roles: Add permissions required for PrivateLink
 
 == 1.0.9 Jun 15 2021
 
@@ -460,4 +518,3 @@ Initial pre-release of moactl. Contains the following commands:
 - logs        Show logs of a specific resource
 - verify      Verify resources are configured correctly for cluster install
 - version     Prints the version of the tool
-
