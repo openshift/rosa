@@ -19,7 +19,7 @@
 
 git fetch --tags
 tagcommit=$(git rev-list --tags --max-count=1)
-current=$(git describe --tags $tagcommit)
+current=$(git describe --tags $tagcommit | sed 's/v//')
 echo "Current version is $current"
 
 base=$(echo $current | grep -o ".*\.")
