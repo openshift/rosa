@@ -169,7 +169,13 @@
                 "sts:AssumeRoleWithWebIdentity",
                 "sts:GetCallerIdentity",
                 "tag:GetResources",
-                "tag:UntagResources"
+                "tag:UntagResources",
+                "ec2:CreateVpcEndpointServiceConfiguration",
+                "ec2:DeleteVpcEndpointServiceConfigurations",
+                "ec2:DescribeVpcEndpointServiceConfigurations",
+                "ec2:DescribeVpcEndpointServicePermissions",
+                "ec2:DescribeVpcEndpointServices",
+                "ec2:ModifyVpcEndpointServicePermissions"
             ],
             "Resource": "*"
         }
