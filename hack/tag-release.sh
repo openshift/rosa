@@ -22,7 +22,7 @@ next="v$(cat pkg/info/info.go | grep -o '[0-9.]*' | tail -n1)"
 echo "Tagging release $next"
 
 # Create git release tag
-log=$(git log $current..$next --oneline --no-merges --no-decorate --reverse | grep -v $next | sed "s/^\w*/-/")
+log=$(git log $current..HEAD --oneline --no-merges --no-decorate --reverse | grep -v $next | sed "s/^\w*/-/")
 read -r -p "Create release tag '$next'? [y/N] " response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
 then
