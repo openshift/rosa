@@ -20,6 +20,7 @@ package interactive
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"reflect"
 	"regexp"
@@ -41,6 +42,12 @@ func compose(validators []Validator) survey.Validator {
 		surveyValidators = append(surveyValidators, survey.Validator(validator))
 	}
 	return survey.ComposeValidators(surveyValidators...)
+}
+
+// IsURL validates whether the given value is a valid URL
+func IsURL(val interface{}) error {
+	_, err := url.ParseRequestURI(fmt.Sprintf("%v", val))
+	return err
 }
 
 // IsCert validates whether the given filepath is a valid cert file

@@ -81,6 +81,15 @@ func buildGithubIdp(cmd *cobra.Command,
 				Help:     fmt.Sprintf("%s%s", cmd.Flags().Lookup("teams").Usage, orgHelp),
 				Default:  teams,
 				Required: true,
+				Validators: []interactive.Validator{
+					func(val interface{}) error {
+						parts := strings.Split(fmt.Sprintf("%v", val), "/")
+						if len(parts) != 2 {
+							return fmt.Errorf("Expected a GitHub team to follow the form '<org>/<team>'")
+						}
+						return nil
+					},
+				},
 			})
 			if err != nil {
 				return idpBuilder, fmt.Errorf("Expected a valid GitHub organization: %s", err)
@@ -166,6 +175,9 @@ func buildGithubIdp(cmd *cobra.Command,
 			Question: "GitHub Enterprise Hostname",
 			Help:     cmd.Flags().Lookup("hostname").Usage,
 			Default:  githubHostname,
+			Validators: []interactive.Validator{
+				interactive.IsURL,
+			},
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid Hostname: %s", err)
@@ -185,6 +197,12 @@ func buildGithubIdp(cmd *cobra.Command,
 				Question: "CA file path",
 				Help:     cmd.Flags().Lookup("ca").Usage,
 				Default:  caPath,
+				Validators: []interactive.Validator{
+					func(val interface{}) error {
+						_, err := ioutil.ReadFile(fmt.Sprintf("%v", val))
+						return err
+					},
+				},
 			})
 			if err != nil {
 				return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)

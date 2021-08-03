@@ -91,6 +91,10 @@ func buildGoogleIdp(cmd *cobra.Command,
 			Help:     cmd.Flags().Lookup("hosted-domain").Usage,
 			Default:  hostedDomain,
 			Required: mappingMethod != "lookup",
+			Validators: []interactive.Validator{
+				interactive.IsURL,
+				validateGoogleHostedDomain,
+			},
 		})
 		if err != nil {
 			return idpBuilder, errors.New("Expected a valid Hosted Domain")
@@ -98,15 +102,9 @@ func buildGoogleIdp(cmd *cobra.Command,
 	}
 
 	if hostedDomain != "" {
-		parsedHostedDomain, err := url.Parse(hostedDomain)
+		err = validateGoogleHostedDomain(hostedDomain)
 		if err != nil {
-			return idpBuilder, fmt.Errorf("Expected a valid Hosted Domain: %v", err)
-		}
-		if parsedHostedDomain.RawQuery != "" {
-			return idpBuilder, errors.New("Hosted Domain URL must not have query parameters")
-		}
-		if parsedHostedDomain.Fragment != "" {
-			return idpBuilder, errors.New("Hosted Domain URL must not have a fragment")
+			return idpBuilder, err
 		}
 		// Set the hosted domain, if any
 		googleIDP = googleIDP.HostedDomain(hostedDomain)
@@ -120,4 +118,19 @@ func buildGoogleIdp(cmd *cobra.Command,
 		Google(googleIDP)
 
 	return
+}
+
+func validateGoogleHostedDomain(val interface{}) error {
+	hostedDomain := fmt.Sprintf("%v", val)
+	parsedHostedDomain, err := url.Parse(hostedDomain)
+	if err != nil {
+		return fmt.Errorf("Expected a valid Hosted Domain: %v", err)
+	}
+	if parsedHostedDomain.RawQuery != "" {
+		return errors.New("Hosted Domain URL must not have query parameters")
+	}
+	if parsedHostedDomain.Fragment != "" {
+		return errors.New("Hosted Domain URL must not have a fragment")
+	}
+	return nil
 }

@@ -57,19 +57,21 @@ func buildLdapIdp(cmd *cobra.Command,
 			Help:     cmd.Flags().Lookup("url").Usage,
 			Default:  ldapURL,
 			Required: true,
+			Validators: []interactive.Validator{
+				interactive.IsURL,
+				validateLdapURL,
+			},
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid LDAP URL: %s", err)
 		}
 	}
-	parsedLdapURL, err := url.ParseRequestURI(ldapURL)
+	err = validateLdapURL(ldapURL)
 	if err != nil {
-		return idpBuilder, fmt.Errorf("Expected a valid LDAP URL: %v", err)
+		return idpBuilder, err
 	}
-	if parsedLdapURL.Scheme != "ldap" && parsedLdapURL.Scheme != "ldaps" {
-		return idpBuilder, errors.New("Expected LDAP URL to have an ldap:// or ldaps:// scheme")
-	}
-	needsSecure := parsedLdapURL.Scheme == "ldaps"
+
+	needsSecure := strings.HasPrefix(ldapURL, "ldaps")
 
 	ldapInsecure := args.ldapInsecure
 	if interactive.Enabled() && !needsSecure {
@@ -92,6 +94,12 @@ func buildLdapIdp(cmd *cobra.Command,
 			Question: "CA file path",
 			Help:     cmd.Flags().Lookup("ca").Usage,
 			Default:  caPath,
+			Validators: []interactive.Validator{
+				func(val interface{}) error {
+					_, err := ioutil.ReadFile(fmt.Sprintf("%v", val))
+					return err
+				},
+			},
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
@@ -232,4 +240,16 @@ func buildLdapIdp(cmd *cobra.Command,
 		LDAP(ldapIDP)
 
 	return
+}
+
+func validateLdapURL(val interface{}) error {
+	ldapURL := fmt.Sprintf("%v", val)
+	parsedLdapURL, err := url.ParseRequestURI(ldapURL)
+	if err != nil {
+		return fmt.Errorf("Expected a valid LDAP URL: %v", err)
+	}
+	if parsedLdapURL.Scheme != "ldap" && parsedLdapURL.Scheme != "ldaps" {
+		return errors.New("Expected LDAP URL to have an ldap:// or ldaps:// scheme")
+	}
+	return nil
 }
