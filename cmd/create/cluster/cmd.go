@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -39,6 +40,9 @@ import (
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
+
+//nolint
+var kmsArnRE = regexp.MustCompile(`^arn:aws:kms:[\w-]+:\d{12}:key\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
 var args struct {
 	// Watch logs during cluster installation
@@ -63,8 +67,11 @@ var args struct {
 	version            string
 	channelGroup       string
 	flavour            string
-	etcdEncryption     bool
 
+	//Encryption
+	etcdEncryption           bool
+	enableCustomerManagedKey bool
+	kmsKeyARN                string
 	// Scaling options
 	computeMachineType string
 	computeNodes       int
@@ -219,6 +226,18 @@ func init() {
 		"Add etcd encryption. By default etcd data is encrypted at rest. "+
 			"This option configures etcd encryption on top of existing storage encryption.",
 	)
+
+	flags.BoolVar(&args.enableCustomerManagedKey,
+		"enable-customer-managed-key",
+		false,
+		"Enable to specific your KMS Key to encrypt EBS instance volumes. By default account’s default "+
+			"KMS key for that particular region is used.")
+
+	flags.StringVar(&args.kmsKeyARN,
+		"kms-key-arn",
+		"",
+		"The key ARN is the Amazon Resource Name (ARN) of a CMK. It is a unique, "+
+			"fully qualified identifier for the CMK. A key ARN includes the AWS account, Region, and the key ID.")
 
 	flags.StringVar(
 		&args.expirationTime,
@@ -852,6 +871,44 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
 
+	enableCustomerManagedKey := args.enableCustomerManagedKey
+	kmsKeyARN := args.kmsKeyARN
+
+	if kmsKeyARN != "" {
+		enableCustomerManagedKey = true
+	}
+	if interactive.Enabled() && !enableCustomerManagedKey {
+		enableCustomerManagedKey, err = interactive.GetBool(interactive.Input{
+			Question: "Enable Customer Managed key",
+			Help:     cmd.Flags().Lookup("enable-customer-managed-key").Usage,
+			Default:  enableCustomerManagedKey,
+			Required: false,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid value for enable-customer-managed-key: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if enableCustomerManagedKey && (kmsKeyARN == "" || interactive.Enabled()) {
+		kmsKeyARN, err = interactive.GetString(interactive.Input{
+			Question: "KMS Key ARN",
+			Help:     cmd.Flags().Lookup("kms-key-arn").Usage,
+			Default:  kmsKeyARN,
+			Required: enableCustomerManagedKey,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if kmsKeyARN != "" && !kmsArnRE.MatchString(kmsKeyARN) {
+		reporter.Errorf("Expected a valid value for kms-key-arn. It should be in the" +
+			" format arn:aws:kms:<region>:<accountid>:key/<keyid>")
+		os.Exit(1)
+	}
+
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
 	computeMachineTypeList, err := ocmClient.GetAvailableMachineTypes()
@@ -1135,6 +1192,7 @@ func run(cmd *cobra.Command, _ []string) {
 		MasterRoleARN:      masterRoleARN,
 		WorkerRoleARN:      workerRoleARN,
 		Tags:               tagsList,
+		KMSKeyArn:          kmsKeyARN,
 	}
 
 	if args.fakeCluster {
@@ -1382,6 +1440,9 @@ func buildCommand(spec ocm.Spec) string {
 	}
 	if spec.EtcdEncryption {
 		command += " --etcd-encryption"
+	}
+	if spec.KMSKeyArn != "" {
+		command += fmt.Sprintf(" --kms-key-arn %s", spec.KMSKeyArn)
 	}
 	return command
 }

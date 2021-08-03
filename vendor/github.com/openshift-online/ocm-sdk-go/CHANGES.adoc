@@ -3,6 +3,11 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.198 Aug 03 2021
+
+- Update model to v0.0.139:
+** Add kms key arn to aws ccs cluster encryption
+
 == 0.1.197 Jul 22 2021
 
 - Update model to v0.0.138:
