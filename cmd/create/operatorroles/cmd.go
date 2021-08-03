@@ -170,12 +170,12 @@ func run(cmd *cobra.Command, _ []string) {
 	prefix := args.prefix
 	if interactive.Enabled() {
 		prefix, err = interactive.GetString(interactive.Input{
-			Question: "Role prefix",
+			Question: "Operator policy prefix",
 			Help:     cmd.Flags().Lookup("prefix").Usage,
 			Default:  prefix,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid role prefix: %s", err)
+			reporter.Errorf("Expected a valid operator policy prefix: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -184,7 +184,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if prefix != "" && !aws.RoleNameRE.MatchString(prefix) {
-		reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
+		reporter.Errorf("Expected a valid operator policy prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
 
