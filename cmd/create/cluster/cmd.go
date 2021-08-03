@@ -554,6 +554,10 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Expected a prefix with no more than 32 characters")
 			os.Exit(1)
 		}
+		if !aws.RoleNameRE.MatchString(operatorRolesPrefix) {
+			reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
+			os.Exit(1)
+		}
 	}
 
 	operatorIAMRoles := args.operatorIAMRoles
