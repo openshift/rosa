@@ -236,7 +236,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			return fmt.Errorf("Failed to find operator IAM role")
 		}
 
-		if !confirm.Confirm("create the '%s' role", roleName) {
+		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 			continue
 		}
 
