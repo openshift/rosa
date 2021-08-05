@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -48,7 +49,7 @@ var args struct {
 	labels             string
 	taints             string
 	useSpotInstances   bool
-	spotMaxPrice       float64
+	spotMaxPrice       string
 }
 
 var Cmd = &cobra.Command{
@@ -148,10 +149,10 @@ func init() {
 		"Use spot instances for the machine pool.",
 	)
 
-	flags.Float64Var(
+	flags.StringVar(
 		&args.spotMaxPrice,
 		"spot-max-price",
-		0,
+		"on-demand",
 		"Max price for spot instance. If empty use the on-demand price.",
 	)
 	flags.MarkHidden("use-spot-instances")
@@ -429,15 +430,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if isSpotMaxPriceSet {
-		useSpotInstances = true
-	}
-
 	if useSpotInstances && !isSpotMaxPriceSet && interactive.Enabled() {
-		spotMaxPrice, err = interactive.GetFloat(interactive.Input{
+		spotMaxPrice, err = interactive.GetString(interactive.Input{
 			Question: "Spot instance max price",
 			Help:     cmd.Flags().Lookup("spot-max-price").Usage,
 			Required: false,
+			Default:  spotMaxPrice,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid value for spot max price: %s", err)
@@ -445,9 +443,22 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if spotMaxPrice < 0 {
-		reporter.Errorf("Spot max price must be positive")
-		os.Exit(1)
+	var maxPrice *float64
+
+	if spotMaxPrice != "on-demand" {
+		// parse user input to float
+		price, err := strconv.ParseFloat(spotMaxPrice, 8)
+		if err != nil {
+			reporter.Errorf("Expected a numeric value for spot max price")
+			os.Exit(1)
+		}
+
+		if price <= 0 {
+			reporter.Errorf("Spot max price must be positive")
+			os.Exit(1)
+		}
+
+		maxPrice = &price
 	}
 
 	mpBuilder := cmv1.NewMachinePool().
@@ -467,8 +478,8 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if useSpotInstances {
 		spotBuilder := cmv1.NewAWSSpotMarketOptions()
-		if spotMaxPrice > 0 {
-			spotBuilder = spotBuilder.MaxPrice(spotMaxPrice)
+		if maxPrice != nil {
+			spotBuilder = spotBuilder.MaxPrice(*maxPrice)
 		}
 		mpBuilder = mpBuilder.AWS(cmv1.NewAWSMachinePool().
 			SpotMarketOptions(spotBuilder))
