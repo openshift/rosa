@@ -852,20 +852,6 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
 
-	etcdEncryption := args.etcdEncryption
-	if interactive.Enabled() {
-		etcdEncryption, err = interactive.GetBool(interactive.Input{
-			Question: "Enable etcd encryption",
-			Help:     cmd.Flags().Lookup("etcd-encryption").Usage,
-			Default:  etcdEncryption,
-			Required: false,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid value for etcd-encryption: %s", err)
-			os.Exit(1)
-		}
-	}
-
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
 	computeMachineTypeList, err := ocmClient.GetAvailableMachineTypes()
@@ -1125,7 +1111,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Version:            version,
 		ChannelGroup:       channelGroup,
 		Flavour:            args.flavour,
-		EtcdEncryption:     etcdEncryption,
+		EtcdEncryption:     args.etcdEncryption,
 		Expiration:         expiration,
 		ComputeMachineType: computeMachineType,
 		ComputeNodes:       computeNodes,
