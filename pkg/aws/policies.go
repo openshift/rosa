@@ -137,7 +137,8 @@ type PolicyStatementPrincipal struct {
 	Federated string `json:"Federated"`
 }
 
-func (c *awsClient) EnsureRole(name string, policy string, version string, tagList map[string]string) (string, error) {
+func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
+	version string, tagList map[string]string) (string, error) {
 	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(name),
 	})
@@ -145,11 +146,25 @@ func (c *awsClient) EnsureRole(name string, policy string, version string, tagLi
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				return c.createRole(name, policy, tagList)
+				return c.createRole(name, policy, permissionsBoundary, tagList)
 			default:
 				return "", err
 			}
 		}
+	}
+
+	if permissionsBoundary != "" {
+		_, err = c.iamClient.PutRolePermissionsBoundary(&iam.PutRolePermissionsBoundaryInput{
+			RoleName:            aws.String(name),
+			PermissionsBoundary: aws.String(permissionsBoundary),
+		})
+	} else if output.Role.PermissionsBoundary != nil {
+		_, err = c.iamClient.DeleteRolePermissionsBoundary(&iam.DeleteRolePermissionsBoundaryInput{
+			RoleName: aws.String(name),
+		})
+	}
+	if err != nil {
+		return "", err
 	}
 
 	role := output.Role
@@ -243,15 +258,20 @@ func (c *awsClient) updateAssumeRolePolicyPrincipals(policy string, role *iam.Ro
 	return policy, true, nil
 }
 
-func (c *awsClient) createRole(name string, policy string, tagList map[string]string) (string, error) {
+func (c *awsClient) createRole(name string, policy string, permissionsBoundary string,
+	tagList map[string]string) (string, error) {
 	if !RoleNameRE.MatchString(name) {
 		return "", fmt.Errorf("Role name is invalid")
 	}
-	output, err := c.iamClient.CreateRole(&iam.CreateRoleInput{
+	createRoleInput := &iam.CreateRoleInput{
 		RoleName:                 aws.String(name),
 		AssumeRolePolicyDocument: aws.String(policy),
 		Tags:                     getTags(tagList),
-	})
+	}
+	if permissionsBoundary != "" {
+		createRoleInput.PermissionsBoundary = aws.String(permissionsBoundary)
+	}
+	output, err := c.iamClient.CreateRole(createRoleInput)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
