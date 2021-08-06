@@ -1,19 +1,16 @@
 reviewers:
 - jharrington22
-- vkareh 
+- vkareh
 - igoihman
-- jeremyeder 
-- NautiluX 
-- boranx
-- georgettica
-- sulmer-redhat
 - pvasant
+- ciaranRoche
+- zgalor
+- cben
 approvers:
 - jharrington22
-- vkareh 
+- vkareh
 - igoihman
-- jeremyeder 
-- NautiluX
+- jeremyeder
 maintainers:
 - jharrington22
-- vkareh 
+- vkareh
