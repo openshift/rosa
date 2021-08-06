@@ -2399,26 +2399,6 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327792000",
-            "Effect": "Allow",
-            "Action": [
-                "cur:*"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Sid": "Stmt1543327798000",
-            "Effect": "Allow",
-            "Action": [
-                "ce:*"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
             "Sid": "AllowTagging",
             "Effect": "Allow",
             "Action": [
@@ -2433,17 +2413,6 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             "Effect": "Allow",
             "Action": [
                 "route53:*"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Sid": "Stmt1543327831000",
-            "Effect": "Allow",
-            "Action": [
-                "aws-portal:ViewAccount",
-                "aws-portal:ViewUsage"
             ],
             "Resource": [
                 "*"
