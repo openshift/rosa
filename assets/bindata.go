@@ -2279,7 +2279,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
     "Id": "OSD SCP Policy Document",
     "Statement": [
         {
-            "Sid": "Stmt1543327396000",
+            "Sid": "AllowEC2",
             "Effect": "Allow",
             "Action": [
                 "ec2:*"
@@ -2289,7 +2289,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327408000",
+            "Sid": "AllowAutoscaling",
             "Effect": "Allow",
             "Action": [
                 "autoscaling:*"
@@ -2299,7 +2299,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327417000",
+            "Sid": "AllowS3",
             "Effect": "Allow",
             "Action": [
                 "s3:*"
@@ -2309,7 +2309,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327428000",
+            "Sid": "AllowIAM",
             "Effect": "Allow",
             "Action": [
                 "iam:*"
@@ -2319,7 +2319,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327656000",
+            "Sid": "AllowELB",
             "Effect": "Allow",
             "Action": [
                 "elasticloadbalancing:*"
@@ -2329,17 +2329,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1546616571000",
-            "Effect": "Allow",
-            "Action": [
-                "directconnect:*"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Sid": "Stmt1543327666000",
+            "Sid": "AllowCloudWatch",
             "Effect": "Allow",
             "Action": [
                 "cloudwatch:*"
@@ -2349,7 +2339,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327671000",
+            "Sid": "AllowCloudWatchEvents",
             "Effect": "Allow",
             "Action": [
                 "events:*"
@@ -2359,7 +2349,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327675000",
+            "Sid": "AllowCloudWatchLogs",
             "Effect": "Allow",
             "Action": [
                 "logs:*"
@@ -2369,7 +2359,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327772000",
+            "Sid": "AllowSupport",
             "Effect": "Allow",
             "Action": [
                 "support:*"
@@ -2379,7 +2369,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327781000",
+            "Sid": "AllowKMS",
             "Effect": "Allow",
             "Action": [
                 "kms:*"
@@ -2389,7 +2379,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1548175905000",
+            "Sid": "AllowSTS",
             "Effect": "Allow",
             "Action": [
                 "sts:*"
@@ -2399,27 +2389,7 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327792000",
-            "Effect": "Allow",
-            "Action": [
-                "cur:*"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Sid": "Stmt1543327798000",
-            "Effect": "Allow",
-            "Action": [
-                "ce:*"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Sid": "AllowTagging",
+            "Sid": "AllowTag",
             "Effect": "Allow",
             "Action": [
                 "tag:*"
@@ -2439,11 +2409,14 @@ var _templatesPoliciesOsd_scp_policyJson = []byte(`{
             ]
         },
         {
-            "Sid": "Stmt1543327831000",
+            "Sid": "AllowServiceQuotas",
             "Effect": "Allow",
             "Action": [
-                "aws-portal:ViewAccount",
-                "aws-portal:ViewUsage"
+                "servicequotas:ListServices",
+                "servicequotas:GetRequestedServiceQuotaChange",
+                "servicequotas:GetServiceQuota",
+                "servicequotas:RequestServiceQuotaIncrease",
+                "servicequotas:ListServiceQuotas"
             ],
             "Resource": [
                 "*"
