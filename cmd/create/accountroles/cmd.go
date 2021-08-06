@@ -395,7 +395,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	for file, role := range aws.AccountRoles {
 		name := getRoleName(prefix, role.Name)
 
-		if !confirm.Confirm("create the '%s' role", name) {
+		if !confirm.Prompt(true, "Create the '%s' role?", name) {
 			continue
 		}
 
@@ -435,7 +435,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		}
 	}
 
-	if confirm.Confirm("create the operator policies for OpenShift %s", version) {
+	if confirm.Prompt(true, "Create the operator policies for OpenShift %s?", version) {
 		for credrequest, operator := range aws.CredentialRequests {
 			policyArn := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
 

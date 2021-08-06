@@ -197,7 +197,7 @@ func run(cmd *cobra.Command, _ []string) {
 	switch mode {
 	case "auto":
 		reporter.Infof("Creating OIDC provider using '%s'", creator.ARN)
-		if !confirm.Confirm("create the OIDC provider for cluster '%s'", clusterKey) {
+		if !confirm.Prompt(true, "Create the OIDC provider for cluster '%s'?", clusterKey) {
 			os.Exit(0)
 		}
 		err = createProvider(reporter, awsClient, cluster)

@@ -37,12 +37,17 @@ func AddFlag(flags *pflag.FlagSet) {
 }
 
 func Confirm(q string, v ...interface{}) bool {
+	msg := fmt.Sprintf("Are you sure you want to %s?", fmt.Sprintf(q, v...))
+	return Prompt(false, msg)
+}
+
+func Prompt(dflt bool, q string, v ...interface{}) bool {
 	if yes {
 		return yes
 	}
 	prompt := &survey.Confirm{
-		Message: fmt.Sprintf("Are you sure you want to %s?", fmt.Sprintf(q, v...)),
-		Default: false,
+		Message: fmt.Sprintf(q, v...),
+		Default: dflt,
 	}
 	response := false
 	survey.AskOne(prompt, &response, survey.WithValidator(survey.Required))
