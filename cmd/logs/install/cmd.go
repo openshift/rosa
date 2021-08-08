@@ -202,7 +202,7 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 			if state == cmv1.ClusterStateReady {
 				reporter.Infof("Cluster '%s' is now ready", clusterKey)
-				return true
+				os.Exit(0)
 			}
 			printLog(logResponse.Body(), spin)
 			return false

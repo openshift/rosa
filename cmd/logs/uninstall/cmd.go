@@ -176,7 +176,8 @@ func run(cmd *cobra.Command, argv []string) {
 		response, err := ocmClient.PollUninstallLogs(cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
 			state, err := ocmClient.GetClusterState(cluster.ID())
 			if err != nil || state == cmv1.ClusterState("") {
-				return true
+				reporter.Infof("Cluster '%s' completed uninstallation", clusterKey)
+				os.Exit(0)
 			}
 			printLog(logResponse.Body(), spin)
 			return false
