@@ -35,15 +35,16 @@ import (
 // Spec is the configuration for a cluster spec.
 type Spec struct {
 	// Basic configs
-	Name           string
-	Region         string
-	MultiAZ        bool
-	Version        string
-	ChannelGroup   string
-	Expiration     time.Time
-	Flavour        string
+	Name         string
+	Region       string
+	MultiAZ      bool
+	Version      string
+	ChannelGroup string
+	Expiration   time.Time
+	Flavour      string
+	//Encryption
 	EtcdEncryption bool
-
+	KMSKeyArn      string
 	// Scaling config
 	ComputeMachineType string
 	ComputeNodes       int
@@ -537,6 +538,9 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		awsBuilder = awsBuilder.
 			AccessKeyID(awsAccessKey.AccessKeyID).
 			SecretAccessKey(awsAccessKey.SecretAccessKey)
+		if config.KMSKeyArn != "" {
+			awsBuilder = awsBuilder.KMSKeyArn(config.KMSKeyArn)
+		}
 	}
 
 	if len(config.Tags) > 0 {
