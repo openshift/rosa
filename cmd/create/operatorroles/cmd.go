@@ -205,6 +205,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	switch mode {
 	case "auto":
+		ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto")
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
 		err = createRoles(reporter, awsClient, prefix, cluster, creator.AccountID)
 		if err != nil {
@@ -212,6 +213,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	case "manual":
+		ocmClient.LogEvent("ROSACreateOperatorRolesModeManual")
 		reporter.Infof("Run the following commands to create the operator roles:\n")
 
 		commands, err := buildCommands(reporter, prefix, cluster, creator.AccountID)

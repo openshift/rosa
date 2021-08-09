@@ -196,6 +196,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	switch mode {
 	case "auto":
+		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto")
 		reporter.Infof("Creating OIDC provider using '%s'", creator.ARN)
 		if !confirm.Prompt(true, "Create the OIDC provider for cluster '%s'?", clusterKey) {
 			os.Exit(0)
@@ -206,6 +207,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	case "manual":
+		ocmClient.LogEvent("ROSACreateOIDCProviderModeManual")
 		reporter.Infof("Run the following commands to create the OIDC provider:\n")
 
 		commands, err := buildCommands(reporter, cluster)
