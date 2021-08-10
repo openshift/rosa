@@ -24,6 +24,20 @@ var JumpAccounts = map[string]string{
 	"integration": "896164604406",
 }
 
+func ARNValidator(input interface{}) error {
+	if str, ok := input.(string); ok {
+		if str == "" {
+			return nil
+		}
+		_, err := arn.Parse(str)
+		if err != nil {
+			return fmt.Errorf("Invalid ARN: %s", err)
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", input)
+}
+
 // GetRegion will return a region selected by the user or given as a default to the AWS client.
 // If the region given is empty, it will first attempt to use the default, and, failing that, will
 // prompt for user input.

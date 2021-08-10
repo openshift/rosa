@@ -90,23 +90,19 @@ func buildOpenidIdp(cmd *cobra.Command,
 			Help:     cmd.Flags().Lookup("issuer-url").Usage,
 			Default:  issuerURL,
 			Required: true,
+			Validators: []interactive.Validator{
+				interactive.IsURL,
+				validateOpenidIssuerURL,
+			},
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid OpenID Issuer URL: %s", err)
 		}
 	}
-	parsedIssuerURL, err := url.ParseRequestURI(issuerURL)
+
+	err = validateOpenidIssuerURL(issuerURL)
 	if err != nil {
-		return idpBuilder, fmt.Errorf("Expected a valid OpenID issuer URL: %v", err)
-	}
-	if parsedIssuerURL.Scheme != "https" {
-		return idpBuilder, errors.New("Expected OpenID issuer URL to use an https:// scheme")
-	}
-	if parsedIssuerURL.RawQuery != "" {
-		return idpBuilder, errors.New("OpenID issuer URL must not have query parameters")
-	}
-	if parsedIssuerURL.Fragment != "" {
-		return idpBuilder, errors.New("OpenID issuer URL must not have a fragment")
+		return idpBuilder, err
 	}
 
 	caPath := args.caPath
@@ -115,6 +111,12 @@ func buildOpenidIdp(cmd *cobra.Command,
 			Question: "CA file path",
 			Help:     cmd.Flags().Lookup("ca").Usage,
 			Default:  caPath,
+			Validators: []interactive.Validator{
+				func(val interface{}) error {
+					_, err := ioutil.ReadFile(fmt.Sprintf("%v", val))
+					return err
+				},
+			},
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
@@ -222,4 +224,22 @@ func buildOpenidIdp(cmd *cobra.Command,
 		OpenID(openIDIDP)
 
 	return
+}
+
+func validateOpenidIssuerURL(val interface{}) error {
+	issuerURL := fmt.Sprintf("%v", val)
+	parsedIssuerURL, err := url.ParseRequestURI(issuerURL)
+	if err != nil {
+		return fmt.Errorf("Expected a valid OpenID issuer URL: %v", err)
+	}
+	if parsedIssuerURL.Scheme != "https" {
+		return errors.New("Expected OpenID issuer URL to use an https:// scheme")
+	}
+	if parsedIssuerURL.RawQuery != "" {
+		return errors.New("OpenID issuer URL must not have query parameters")
+	}
+	if parsedIssuerURL.Fragment != "" {
+		return errors.New("OpenID issuer URL must not have a fragment")
+	}
+	return nil
 }

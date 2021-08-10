@@ -52,6 +52,18 @@ func IsValidClusterName(clusterName string) bool {
 	return clusterNameRE.MatchString(clusterName)
 }
 
+func ClusterNameValidator(name interface{}) error {
+	if str, ok := name.(string); ok {
+		if !IsValidClusterName(str) {
+			return fmt.Errorf("Cluster name must consist of no more than 15 lowercase " +
+				"alphanumeric characters or '-', start with a letter, and end with an " +
+				"alphanumeric character.")
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", name)
+}
+
 func IsValidUsername(username string) bool {
 	return !badUsernameRE.MatchString(username)
 }

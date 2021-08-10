@@ -232,6 +232,9 @@ func run(cmd *cobra.Command, _ []string) {
 			Question: "Machine pool name",
 			Default:  name,
 			Required: true,
+			Validators: []interactive.Validator{
+				interactive.RegExp(machinePoolKeyRE.String()),
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid name for the machine pool: %s", err)
@@ -280,18 +283,18 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
 				Default:  minReplicas,
 				Required: true,
+				Validators: []interactive.Validator{
+					minReplicaValidator(cluster.MultiAZ()),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of min replicas: %s", err)
 				os.Exit(1)
 			}
 		}
-		if minReplicas < 0 {
-			reporter.Errorf("min-replicas must be a non-negative integer.")
-			os.Exit(1)
-		}
-		if cluster.MultiAZ() && minReplicas%3 != 0 {
-			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+		err = minReplicaValidator(cluster.MultiAZ())(minReplicas)
+		if err != nil {
+			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
@@ -301,18 +304,18 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
 				Default:  maxReplicas,
 				Required: true,
+				Validators: []interactive.Validator{
+					maxReplicaValidator(cluster.MultiAZ(), minReplicas),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of max replicas: %s", err)
 				os.Exit(1)
 			}
 		}
-		if minReplicas > maxReplicas {
-			reporter.Errorf("max-replicas must be greater or equal to min-replicas")
-			os.Exit(1)
-		}
-		if cluster.MultiAZ() && maxReplicas%3 != 0 {
-			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+		err = maxReplicaValidator(cluster.MultiAZ(), minReplicas)(maxReplicas)
+		if err != nil {
+			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	} else {
@@ -327,14 +330,18 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("replicas").Usage,
 				Default:  replicas,
 				Required: true,
+				Validators: []interactive.Validator{
+					minReplicaValidator(cluster.MultiAZ()),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of replicas: %s", err)
 				os.Exit(1)
 			}
 		}
-		if cluster.MultiAZ() && replicas%3 != 0 {
-			reporter.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+		err = minReplicaValidator(cluster.MultiAZ())(replicas)
+		if err != nil {
+			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
@@ -436,6 +443,9 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("spot-max-price").Usage,
 			Required: false,
 			Default:  spotMaxPrice,
+			Validators: []interactive.Validator{
+				spotMaxPriceValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid value for spot max price: %s", err)
@@ -445,19 +455,13 @@ func run(cmd *cobra.Command, _ []string) {
 
 	var maxPrice *float64
 
+	err = spotMaxPriceValidator(spotMaxPrice)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 	if spotMaxPrice != "on-demand" {
-		// parse user input to float
-		price, err := strconv.ParseFloat(spotMaxPrice, 8)
-		if err != nil {
-			reporter.Errorf("Expected a numeric value for spot max price")
-			os.Exit(1)
-		}
-
-		if price <= 0 {
-			reporter.Errorf("Spot max price must be positive")
-			os.Exit(1)
-		}
-
+		price, _ := strconv.ParseFloat(spotMaxPrice, 8)
 		maxPrice = &price
 	}
 
@@ -503,4 +507,52 @@ func run(cmd *cobra.Command, _ []string) {
 
 func Split(r rune) bool {
 	return r == '=' || r == ':'
+}
+
+func minReplicaValidator(multiAZ bool) interactive.Validator {
+	return func(val interface{}) error {
+		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
+		if err != nil {
+			return err
+		}
+		if minReplicas < 0 {
+			return fmt.Errorf("min-replicas must be a non-negative integer")
+		}
+		if multiAZ && minReplicas%3 != 0 {
+			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+		}
+		return nil
+	}
+}
+
+func maxReplicaValidator(multiAZ bool, minReplicas int) interactive.Validator {
+	return func(val interface{}) error {
+		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
+		if err != nil {
+			return err
+		}
+		if minReplicas > maxReplicas {
+			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
+		}
+		if multiAZ && maxReplicas%3 != 0 {
+			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+		}
+		return nil
+	}
+}
+
+func spotMaxPriceValidator(val interface{}) error {
+	spotMaxPrice := fmt.Sprintf("%v", val)
+	if spotMaxPrice == "on-demand" {
+		return nil
+	}
+	price, err := strconv.ParseFloat(spotMaxPrice, 8)
+	if err != nil {
+		return fmt.Errorf("Expected a numeric value for spot max price")
+	}
+
+	if price <= 0 {
+		return fmt.Errorf("Spot max price must be positive")
+	}
+	return nil
 }

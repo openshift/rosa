@@ -173,6 +173,10 @@ func run(cmd *cobra.Command, _ []string) {
 			Question: "Operator policy prefix",
 			Help:     cmd.Flags().Lookup("prefix").Usage,
 			Default:  prefix,
+			Validators: []interactive.Validator{
+				interactive.RegExp(`[\w+=,.@-]+`),
+				interactive.MaxLength(32),
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid operator policy prefix: %s", err)

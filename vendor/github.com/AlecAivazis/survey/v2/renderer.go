@@ -7,7 +7,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	goterm "golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type Renderer struct {
@@ -119,7 +119,7 @@ func (r *Renderer) resetPrompt(lines int) {
 
 func (r *Renderer) termWidth() (int, error) {
 	fd := int(r.stdio.Out.Fd())
-	termWidth, _, err := goterm.GetSize(fd)
+	termWidth, _, err := term.GetSize(fd)
 	return termWidth, err
 }
 
@@ -148,8 +148,15 @@ func (r *Renderer) countLines(buf bytes.Buffer) int {
 			delim = len(bufBytes) // no new line found, read rest of text
 		}
 
-		// account for word wrapping
-		count += int(utf8.RuneCount(bufBytes[curr:delim]) / w)
+		if lineWidth := utf8.RuneCount(bufBytes[curr:delim]); lineWidth > w {
+			// account for word wrapping
+			count += lineWidth / w
+			if (lineWidth % w) == 0 {
+				// content whose width is exactly a multiplier of available width should not
+				// count as having wrapped on the last line
+				count -= 1
+			}
+		}
 		curr = delim + 1
 	}
 

@@ -42,23 +42,18 @@ func buildGitlabIdp(cmd *cobra.Command,
 			Help:     cmd.Flags().Lookup("host-url").Usage,
 			Default:  gitlabURL,
 			Required: true,
+			Validators: []interactive.Validator{
+				interactive.IsURL,
+				validateGitlabHostURL,
+			},
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid GitLab provider URL: %s", err)
 		}
 	}
-	parsedIssuerURL, err := url.ParseRequestURI(gitlabURL)
+	err = validateGitlabHostURL(gitlabURL)
 	if err != nil {
-		return idpBuilder, fmt.Errorf("Expected a valid GitLab provider URL: %s", err)
-	}
-	if parsedIssuerURL.Scheme != "https" {
-		return idpBuilder, errors.New("Expected GitLab provider URL to use an https:// scheme")
-	}
-	if parsedIssuerURL.RawQuery != "" {
-		return idpBuilder, errors.New("GitLab provider URL must not have query parameters")
-	}
-	if parsedIssuerURL.Fragment != "" {
-		return idpBuilder, errors.New("GitLab provider URL must not have a fragment")
+		return idpBuilder, err
 	}
 
 	if clientID == "" || clientSecret == "" {
@@ -112,6 +107,12 @@ func buildGitlabIdp(cmd *cobra.Command,
 			Question: "CA file path",
 			Help:     cmd.Flags().Lookup("ca").Usage,
 			Default:  caPath,
+			Validators: []interactive.Validator{
+				func(val interface{}) error {
+					_, err := ioutil.ReadFile(fmt.Sprintf("%v", val))
+					return err
+				},
+			},
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
@@ -151,4 +152,22 @@ func buildGitlabIdp(cmd *cobra.Command,
 		Gitlab(gitlabIDP)
 
 	return
+}
+
+func validateGitlabHostURL(val interface{}) error {
+	gitlabURL := fmt.Sprintf("%v", val)
+	parsedIssuerURL, err := url.ParseRequestURI(gitlabURL)
+	if err != nil {
+		return fmt.Errorf("Expected a valid GitLab provider URL: %s", err)
+	}
+	if parsedIssuerURL.Scheme != "https" {
+		return errors.New("Expected GitLab provider URL to use an https:// scheme")
+	}
+	if parsedIssuerURL.RawQuery != "" {
+		return errors.New("GitLab provider URL must not have query parameters")
+	}
+	if parsedIssuerURL.Fragment != "" {
+		return errors.New("GitLab provider URL must not have a fragment")
+	}
+	return nil
 }

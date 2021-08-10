@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"regexp"
 	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -29,20 +28,12 @@ import (
 )
 
 type Input struct {
-	Question string
-	Help     string
-	Options  []string
-	Default  interface{}
-	Required bool
-}
-
-// Gets user input from the command line
-func GetInput(q string) (a string, err error) {
-	prompt := &survey.Input{
-		Message: fmt.Sprintf("%s:", q),
-	}
-	survey.AskOne(prompt, &a)
-	return
+	Question   string
+	Help       string
+	Options    []string
+	Default    interface{}
+	Required   bool
+	Validators []Validator
 }
 
 // Gets string input from the command line
@@ -61,10 +52,9 @@ func GetString(input Input) (a string, err error) {
 		Default: dflt,
 	}
 	if input.Required {
-		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-	} else {
-		err = survey.AskOne(prompt, &a)
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)))
 	return
 }
 
@@ -89,10 +79,9 @@ func GetInt(input Input) (a int, err error) {
 	}
 	var str string
 	if input.Required {
-		err = survey.AskOne(prompt, &str, survey.WithValidator(survey.Required))
-	} else {
-		err = survey.AskOne(prompt, &str)
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &str, survey.WithValidator(compose(input.Validators)))
 	if err != nil {
 		return
 	}
@@ -129,10 +118,9 @@ func GetFloat(input Input) (a float64, err error) {
 	}
 	var str string
 	if input.Required {
-		err = survey.AskOne(prompt, &str, survey.WithValidator(survey.Required))
-	} else {
-		err = survey.AskOne(prompt, &str)
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &str, survey.WithValidator(compose(input.Validators)))
 	if err != nil {
 		return
 	}
@@ -164,12 +152,10 @@ func GetMultipleOptions(input Input) ([]string, error) {
 		Options: input.Options,
 		Default: dflt,
 	}
-
 	if input.Required {
-		err = survey.AskOne(prompt, &res, survey.WithValidator(survey.Required))
-	} else {
-		err = survey.AskOne(prompt, &res)
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &res, survey.WithValidator(compose(input.Validators)))
 	return res, err
 }
 
@@ -190,10 +176,9 @@ func GetOption(input Input) (a string, err error) {
 		Default: dflt,
 	}
 	if input.Required {
-		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-	} else {
-		err = survey.AskOne(prompt, &a)
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)))
 	return
 }
 
@@ -213,10 +198,9 @@ func GetBool(input Input) (a bool, err error) {
 		Default: dflt,
 	}
 	if input.Required {
-		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-	} else {
-		err = survey.AskOne(prompt, &a)
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)))
 	return
 }
 
@@ -241,10 +225,9 @@ func GetIPNet(input Input) (a net.IPNet, err error) {
 	}
 	var str string
 	if input.Required {
-		err = survey.AskOne(prompt, &str, survey.WithValidator(survey.Required))
-	} else {
-		err = survey.AskOne(prompt, &str)
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &str, survey.WithValidator(compose(input.Validators)))
 	if err != nil {
 		return
 	}
@@ -272,10 +255,9 @@ func GetPassword(input Input) (a string, err error) {
 		Help:    input.Help,
 	}
 	if input.Required {
-		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required))
-	} else {
-		err = survey.AskOne(prompt, &a)
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)))
 	return
 }
 
@@ -295,36 +277,10 @@ func GetCert(input Input) (a string, err error) {
 		Default: dflt,
 	}
 	if input.Required {
-		err = survey.AskOne(prompt, &a, survey.WithValidator(survey.Required), survey.WithValidator(certValidator))
-	} else {
-		err = survey.AskOne(prompt, &a, survey.WithValidator(certValidator))
+		input.Validators = append([]Validator{required}, input.Validators...)
 	}
+	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)), survey.WithValidator(IsCert))
 	return
-}
-
-// certValidator validates whether the given filepath is a valid cert file
-func certValidator(filepath interface{}) error {
-	if filepath == nil {
-		return nil
-	}
-	if s, ok := filepath.(string); ok {
-		if s == "" {
-			return nil
-		}
-		validExtension, err := regexp.MatchString("\\.(pem|ca-bundle|ce?rt?|key)$", s)
-		if err != nil {
-			return err
-		}
-		if !validExtension {
-			return fmt.Errorf("file '%s' does not have a valid file extension", s)
-		}
-		if _, err := os.Stat(s); !os.IsNotExist(err) {
-			// path to file exist
-			return nil
-		}
-		return fmt.Errorf("file '%s' does not exist on the file system", s)
-	}
-	return fmt.Errorf("can only validate strings, got %v", filepath)
 }
 
 var helpTemplate = `{{color "cyan"}}? {{.Message}}

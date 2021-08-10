@@ -166,6 +166,10 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("prefix").Usage,
 			Default:  prefix,
 			Required: true,
+			Validators: []interactive.Validator{
+				interactive.RegExp(`[\w+=,.@-]+`),
+				interactive.MaxLength(32),
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid role prefix: %s", err)
