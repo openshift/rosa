@@ -3,6 +3,44 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.199 Aug 10 2021
+
+Changes in this release are mainly intended to simplify packaging of the SDK in
+Fedora, see https://github.com/openshift-online/ocm-sdk-go/issues/421[issue
+#421] for details.
+
+- Use `golang-jwt/jwt` instead of `dgrijalva/jwt-go`.
++
+The `dgrijalva/jwt-go` library is no longer maintained and `golang-jwt/jwt` is
+a community maintained fork. See https://github.com/dgrijalva/jwt-go/issues/462
+for detailts.
++
+Parts of the public interface of the SDK use this library, so this is a
+backwards compatibility breaking change. Projects using the SDK will need to
+switch to the new library, specially if they are using the
+`context.ContextWithToken` or `context.TokenFromContext` functions. The change
+should only require changing the import paths, as the fork is fully compatible
+with the original library.
++
+A simple way to do the required changes is the following command:
++
+....
+$ find . -name '*.go' | xargs sed -i 's|dgrijalva/jwt-go|golang-jwt/jwt|'
+....
++
+This also addresses
+https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-26160[CVE-2020-26160],
+but that vulnerability doesn't currently affect the SDK because the
+authentication handler doesn't use the `aud` claim.
+
+- Use https://github.com/microcosm-cc/bluemonday[microcosm-cc/bluemonday]
+instead of https://github.com/grokify/html-strip-tags-go[grokify/html-strip-tags-go]
+for HTML sanitizing.
+
+- Use https://github.com/json-iterator/go[json-iterator/go] instead of
+  https://gitlab.com/c0b/go-ordered-json[c0b/go-ordered-json] to ensure ordered
+JSON in debug output.
+
 == 0.1.198 Aug 03 2021
 
 - Update model to v0.0.139:

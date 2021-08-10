@@ -35,7 +35,7 @@ import (
 
 	//
 	"github.com/cenkalti/backoff/v4"
-	jwt "github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt"
 	"github.com/openshift-online/ocm-sdk-go/internal"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/prometheus/client_golang/prometheus"
