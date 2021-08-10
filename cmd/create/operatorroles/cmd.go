@@ -218,13 +218,17 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	case "manual":
 		ocmClient.LogEvent("ROSACreateOperatorRolesModeManual")
-		reporter.Infof("Run the following commands to create the operator roles:\n")
 
 		commands, err := buildCommands(reporter, prefix, cluster, creator.AccountID)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
 		}
+
+		if reporter.IsTerminal() {
+			reporter.Infof("Run the following commands to create the operator roles:\n")
+		}
+
 		fmt.Println(commands)
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
