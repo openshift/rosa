@@ -107,6 +107,16 @@ func (r *Object) useColors() bool {
 	return runtime.GOOS != "windows"
 }
 
+// Determine whether the reporter output is meant for the terminal
+// or whether it's piped or redirected to a file.
+func (r *Object) IsTerminal() bool {
+	stdout, err := os.Stdout.Stat()
+	if err != nil {
+		return true
+	}
+	return (stdout.Mode()&os.ModeDevice != 0) && (stdout.Mode()&os.ModeNamedPipe == 0)
+}
+
 // CreateReporterOrExit creates the reportor instance or exits to the console
 // noting the error on failure.
 func CreateReporterOrExit() *Object {

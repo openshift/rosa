@@ -217,8 +217,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		reporter.Infof("All policy files saved to the current directory")
-		reporter.Infof("Run the following commands to create the account roles and policies:\n")
+		if reporter.IsTerminal() {
+			reporter.Infof("All policy files saved to the current directory")
+			reporter.Infof("Run the following commands to create the account roles and policies:\n")
+		}
 
 		commands := buildCommands(prefix, version)
 		fmt.Println(commands)
