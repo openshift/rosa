@@ -22,7 +22,6 @@ package sdk
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -30,8 +29,9 @@ import (
 	"sort"
 	"strings"
 
-	"gitlab.com/c0b/go-ordered-json"
+	jsoniter "github.com/json-iterator/go"
 
+	"github.com/openshift-online/ocm-sdk-go/helpers"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 )
 
@@ -269,19 +269,21 @@ func (d *dumpRoundTripper) dumpForm(ctx context.Context, data []byte) {
 // dumpJSON tries to parse the given data as a JSON document. If that works, then it dumps it
 // indented, otherwise dumps it as is.
 func (d *dumpRoundTripper) dumpJSON(ctx context.Context, data []byte) {
-	parsed := ordered.NewOrderedMap()
-	err := json.Unmarshal(data, parsed)
+	it, err := helpers.NewIterator(data)
 	if err != nil {
 		d.logger.Debug(ctx, "%s", data)
 	} else {
-		// remove sensitive information
-		d.redactSensitive(parsed)
+		var buf bytes.Buffer
+		str := helpers.NewStream(&buf)
 
-		indented, err := json.MarshalIndent(parsed, "", "  ")
+		// remove sensitive information
+		d.redactSensitive(it, str)
+
+		err := str.Flush()
 		if err != nil {
 			d.logger.Debug(ctx, "%s", data)
 		} else {
-			d.logger.Debug(ctx, "%s", indented)
+			d.logger.Debug(ctx, "%s", buf.String())
 		}
 	}
 }
@@ -292,15 +294,54 @@ func (d *dumpRoundTripper) dumpBytes(ctx context.Context, data []byte) {
 }
 
 // redactSensitive replaces sensitive fields within a response with redactionStr.
-func (d *dumpRoundTripper) redactSensitive(body *ordered.OrderedMap) {
-	iterator := body.EntriesIter()
-	for {
-		pair, ok := iterator()
-		if !ok {
+func (d *dumpRoundTripper) redactSensitive(it *jsoniter.Iterator, str *jsoniter.Stream) {
+	switch it.WhatIsNext() {
+	case jsoniter.ObjectValue:
+		str.WriteObjectStart()
+		first := true
+		for field := it.ReadObject(); field != ""; field = it.ReadObject() {
+			if !first {
+				str.WriteMore()
+			}
+			first = false
+			str.WriteObjectField(field)
+			if v, ok := redactFields[field]; ok && v {
+				str.WriteString(redactionStr)
+				it.Skip()
+				continue
+			}
+			d.redactSensitive(it, str)
+		}
+		str.WriteObjectEnd()
+	case jsoniter.ArrayValue:
+		str.WriteArrayStart()
+		first := true
+		for it.ReadArray() {
+			if !first {
+				str.WriteMore()
+			}
+			first = false
+			d.redactSensitive(it, str)
+		}
+		str.WriteArrayEnd()
+	case jsoniter.StringValue:
+		str.WriteString(it.ReadString())
+	case jsoniter.NumberValue:
+		v := it.ReadNumber()
+		i, err := v.Int64()
+		if err == nil {
+			str.WriteInt64(i)
 			break
 		}
-		if redactFields[pair.Key] {
-			body.Set(pair.Key, redactionStr)
+		f, err := v.Float64()
+		if err == nil {
+			str.WriteFloat64(f)
 		}
+	case jsoniter.BoolValue:
+		str.WriteBool(it.ReadBool())
+	case jsoniter.NilValue:
+		str.WriteNil()
+		// Skip because no reading from it is involved
+		it.Skip()
 	}
 }
