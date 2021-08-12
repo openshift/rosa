@@ -1146,11 +1146,19 @@ func run(cmd *cobra.Command, _ []string) {
 			Question: "Host prefix",
 			Help:     cmd.Flags().Lookup("host-prefix").Usage,
 			Default:  hostPrefix,
+			Validators: []interactive.Validator{
+				hostPrefixValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid host prefix value: %s", err)
 			os.Exit(1)
 		}
+	}
+	err = hostPrefixValidator(hostPrefix)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 
 	// Cluster privacy:
@@ -1297,6 +1305,27 @@ func maxReplicaValidator(multiAZ bool, minReplicas int) interactive.Validator {
 		}
 		return nil
 	}
+}
+
+const (
+	HostPrefixMin = 23
+	HostPrefixMax = 26
+)
+
+func hostPrefixValidator(val interface{}) error {
+	hostPrefix, err := strconv.Atoi(fmt.Sprintf("%v", val))
+	if err != nil {
+		return err
+	}
+	if hostPrefix == 0 {
+		return nil
+	}
+	if hostPrefix < HostPrefixMin || hostPrefix > HostPrefixMax {
+		return fmt.Errorf(
+			"Invalid Network Host Prefix /%d: Subnet length should be between %d and %d",
+			hostPrefix, HostPrefixMin, HostPrefixMax)
+	}
+	return nil
 }
 
 func getOperatorRoleArn(prefix string, operator aws.Operator, creator *aws.Creator) string {
