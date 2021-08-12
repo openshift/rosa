@@ -174,7 +174,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("prefix").Usage,
 			Default:  prefix,
 			Validators: []interactive.Validator{
-				interactive.RegExp(`[\w+=,.@-]+`),
+				interactive.RegExp(aws.RoleNameRE.String()),
 				interactive.MaxLength(32),
 			},
 		})
