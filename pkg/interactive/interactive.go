@@ -227,7 +227,7 @@ func GetIPNet(input Input) (a net.IPNet, err error) {
 	if input.Required {
 		input.Validators = append([]Validator{required}, input.Validators...)
 	}
-	err = survey.AskOne(prompt, &str, survey.WithValidator(compose(input.Validators)))
+	err = survey.AskOne(prompt, &str, survey.WithValidator(compose(input.Validators)), survey.WithValidator(IsCIDR))
 	if err != nil {
 		return
 	}

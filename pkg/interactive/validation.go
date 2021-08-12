@@ -20,6 +20,7 @@ package interactive
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"reflect"
@@ -73,6 +74,17 @@ func IsCert(filepath interface{}) error {
 		return fmt.Errorf("file '%s' does not exist on the file system", s)
 	}
 	return fmt.Errorf("can only validate strings, got %v", filepath)
+}
+
+func IsCIDR(val interface{}) error {
+	if s, ok := val.(string); ok {
+		_, _, err := net.ParseCIDR(s)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
 func RegExp(restr string) Validator {
