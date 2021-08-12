@@ -379,51 +379,45 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	labels := args.labels
-	labelMap := make(map[string]string)
 	if interactive.Enabled() {
 		labels, err = interactive.GetString(interactive.Input{
 			Question: "Labels",
 			Help:     cmd.Flags().Lookup("labels").Usage,
 			Default:  labels,
+			Validators: []interactive.Validator{
+				labelValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
 	}
-	if labels != "" {
-		for _, label := range strings.Split(labels, ",") {
-			if !strings.Contains(label, "=") {
-				reporter.Errorf("Expected key=value format for labels")
-				os.Exit(1)
-			}
-			tokens := strings.Split(label, "=")
-			labelMap[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
-		}
+	labelMap, err := parseLabels(labels)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 
 	taints := args.taints
-	taintBuilders := []*cmv1.TaintBuilder{}
 	if interactive.Enabled() {
 		taints, err = interactive.GetString(interactive.Input{
 			Question: "Taints",
 			Help:     cmd.Flags().Lookup("taints").Usage,
 			Default:  taints,
+			Validators: []interactive.Validator{
+				taintValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
 	}
-	if taints != "" {
-		for _, taint := range strings.Split(taints, ",") {
-			if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
-				reporter.Errorf("Expected key=value:scheduleType format for taints")
-				os.Exit(1)
-			}
-			tokens := strings.FieldsFunc(taint, Split)
-			taintBuilders = append(taintBuilders, cmv1.NewTaint().Key(tokens[0]).Value(tokens[1]).Effect(tokens[2]))
-		}
+	taintBuilders, err := parseTaints(taints)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 
 	// Spot instances
@@ -555,4 +549,56 @@ func spotMaxPriceValidator(val interface{}) error {
 		return fmt.Errorf("Spot max price must be positive")
 	}
 	return nil
+}
+
+func labelValidator(val interface{}) error {
+	if labels, ok := val.(string); ok {
+		_, err := parseLabels(labels)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
+}
+
+func parseLabels(labels string) (map[string]string, error) {
+	labelMap := make(map[string]string)
+	if labels == "" {
+		return labelMap, nil
+	}
+	for _, label := range strings.Split(labels, ",") {
+		if !strings.Contains(label, "=") {
+			return nil, fmt.Errorf("Expected key=value format for labels")
+		}
+		tokens := strings.Split(label, "=")
+		labelMap[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+	}
+	return labelMap, nil
+}
+
+func taintValidator(val interface{}) error {
+	if taints, ok := val.(string); ok {
+		_, err := parseTaints(taints)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
+}
+
+func parseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
+	taintBuilders := []*cmv1.TaintBuilder{}
+	if taints == "" {
+		return taintBuilders, nil
+	}
+	for _, taint := range strings.Split(taints, ",") {
+		if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
+			return nil, fmt.Errorf("Expected key=value:scheduleType format for taints")
+		}
+		tokens := strings.FieldsFunc(taint, Split)
+		taintBuilders = append(taintBuilders, cmv1.NewTaint().Key(tokens[0]).Value(tokens[1]).Effect(tokens[2]))
+	}
+	return taintBuilders, nil
 }
