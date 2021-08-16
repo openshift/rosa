@@ -20,9 +20,9 @@ package interactive
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
-	"reflect"
 	"regexp"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -75,18 +75,29 @@ func IsCert(filepath interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", filepath)
 }
 
+func IsCIDR(val interface{}) error {
+	if s, ok := val.(string); ok {
+		_, _, err := net.ParseCIDR(s)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
+}
+
 func RegExp(restr string) Validator {
 	re := regexp.MustCompile(restr)
 	return func(val interface{}) error {
 		if str, ok := val.(string); ok {
+			if str == "" {
+				return nil
+			}
 			if !re.MatchString(str) {
 				return fmt.Errorf("%s does not match regular expression %s", str, re.String())
 			}
-		} else {
-			// otherwise we cannot convert the value into a string and cannot enforce length
-			return fmt.Errorf("cannot enforce length on response of type %v", reflect.TypeOf(val).Name())
+			return nil
 		}
-
-		return nil
+		return fmt.Errorf("can only validate strings, got %v", val)
 	}
 }

@@ -100,25 +100,25 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	labelMatch := args.labelMatch
-	routeSelectors := make(map[string]string)
 	var err error
 	if interactive.Enabled() {
 		labelMatch, err = interactive.GetString(interactive.Input{
 			Question: "Label match for ingress",
 			Help:     cmd.Flags().Lookup("label-match").Usage,
 			Default:  labelMatch,
+			Validators: []interactive.Validator{
+				labelValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
 	}
-	if labelMatch != "" {
-		routeSelectors, err = getRouteSelector(labelMatch)
-		if err != nil {
-			reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
+	routeSelectors, err := getRouteSelector(labelMatch)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 
 	// Create the AWS client:
@@ -213,16 +213,28 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter.Infof("To view all ingresses, run 'rosa list ingresses -c %s'", clusterKey)
 }
 
-func getRouteSelector(labelMatches string) (map[string]string, error) {
-	routeSelectors := make(map[string]string)
+func labelValidator(val interface{}) error {
+	if labelMatch, ok := val.(string); ok {
+		_, err := getRouteSelector(labelMatch)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
+}
 
-	for _, labelMatch := range strings.Split(labelMatches, ",") {
+func getRouteSelector(labelMatch string) (map[string]string, error) {
+	routeSelectors := make(map[string]string)
+	if labelMatch == "" {
+		return routeSelectors, nil
+	}
+	for _, labelMatch := range strings.Split(labelMatch, ",") {
 		if !strings.Contains(labelMatch, "=") {
 			return nil, fmt.Errorf("Expected key=value format for label-match")
 		}
 		tokens := strings.Split(labelMatch, "=")
 		routeSelectors[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
 	}
-
 	return routeSelectors, nil
 }
