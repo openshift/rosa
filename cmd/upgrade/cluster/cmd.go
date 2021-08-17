@@ -134,12 +134,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if scheduledUpgrade != nil {
-		r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
+		r.Reporter.Warnf("There is already a scheduled %s upgrade on this cluster. To change the "+
+			"upgrade policy first delete the existing one with 'rosa delete upgrade -c %s'",
 			upgradeState.Value(),
-			scheduledUpgrade.Version(),
-			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
+			clusterKey,
 		)
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	version := args.version

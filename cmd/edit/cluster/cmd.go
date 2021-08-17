@@ -21,17 +21,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/robfig/cron/v3"
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
 )
 
 const doubleQuotesToRemove = "\"\""
@@ -48,6 +52,20 @@ var args struct {
 	httpsProxy                string
 	noProxySlice              []string
 	additionalTrustBundleFile string
+
+	// Upgrade schedule options
+	upgradeScheduleDay  string
+	upgradeScheduleTime string
+}
+
+var daysMap = map[string]string{
+	"Sunday":    "SUN",
+	"Monday":    "MON",
+	"Tuesday":   "TUE",
+	"Wednesday": "WED",
+	"Thursday":  "THU",
+	"Friday":    "FRI",
+	"Saturday":  "SAT",
 }
 
 var Cmd = &cobra.Command{
@@ -55,7 +73,10 @@ var Cmd = &cobra.Command{
 	Short: "Edit cluster",
 	Long:  "Edit cluster.",
 	Example: `  # Edit a cluster named "mycluster" to make it private
-  rosa edit cluster mycluster --private
+  rosa edit cluster -c mycluster --private
+
+  # Edit a cluster to enable automatic upgrades
+  rosa edit cluster -c mycluster --upgrade-schedule-day Monday --upgrade-schedule-time 15:04
 
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
@@ -127,6 +148,32 @@ func init() {
 		"",
 		"A file contains a PEM-encoded X.509 certificate bundle that will be "+
 			"added to the nodes' trusted certificate store.")
+
+	flags.StringVar(
+		&args.upgradeScheduleDay,
+		"upgrade-schedule-day",
+		"Sunday",
+		"Preferred day of the week to upgrade cluster.",
+	)
+	Cmd.RegisterFlagCompletionFunc("upgrade-schedule-day", upgradeScheduleDayCompletion)
+
+	flags.StringVar(
+		&args.upgradeScheduleTime,
+		"upgrade-schedule-time",
+		"0:00",
+		"Preferred time of the day to upgrade cluster.",
+	)
+	Cmd.RegisterFlagCompletionFunc("upgrade-schedule-time", upgradeScheduleTimeCompletion)
+}
+
+func upgradeScheduleDayCompletion(cmd *cobra.Command,
+	args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return dayOptions(), cobra.ShellCompDirectiveDefault
+}
+
+func upgradeScheduleTimeCompletion(cmd *cobra.Command,
+	args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return getTimeOptions(), cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -138,8 +185,18 @@ func run(cmd *cobra.Command, _ []string) {
 	// Enable interactive mode if no flags have been set
 	if !interactive.Enabled() {
 		changedFlags := false
-		for _, flag := range []string{"expiration-time", "expiration", "private",
-			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy", "additional-trust-bundle-file"} {
+		for _, flag := range []string{
+			"additional-trust-bundle-file",
+			"disable-workload-monitoring",
+			"expiration-time",
+			"expiration",
+			"http-proxy",
+			"https-proxy",
+			"no-proxy",
+			"private",
+			"upgrade-schedule-day",
+			"upgrade-schedule-time",
+		} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
@@ -150,6 +207,11 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	cluster := r.FetchCluster()
+
+	if cluster.State() != cmv1.ClusterStateReady {
+		r.Reporter.Errorf("Cluster '%s' is in '%s' state, can't update", clusterKey, cluster.State())
+		os.Exit(1)
+	}
 
 	// Validate flags:
 	expiration, err := validateExpiration()
@@ -474,6 +536,97 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	upgradeScheduleDay := args.upgradeScheduleDay
+	upgradeScheduleTime := args.upgradeScheduleTime
+	enableAutomaticUpgradeSchedule := false
+	isSTS := cluster.AWS().STS().RoleARN() != ""
+
+	if cmd.Flags().Changed("upgrade-schedule-day") || cmd.Flags().Changed("upgrade-schedule-time") {
+		enableAutomaticUpgradeSchedule = true
+	}
+	if interactive.Enabled() && !enableAutomaticUpgradeSchedule && !isSTS {
+		enableAutomaticUpgradeSchedule, _ = interactive.GetBool(interactive.Input{
+			Question: "Enable automatic upgrades?",
+			Help: "Clusters will be automatically upgraded based on your defined " +
+				"day and start time when new versions are available",
+			Required: true,
+		})
+	}
+
+	if enableAutomaticUpgradeSchedule && isSTS {
+		r.Reporter.Errorf("Automatic upgrades are not currently supported on STS clusters")
+		os.Exit(1)
+	}
+
+	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+	if scheduledUpgrade != nil {
+		r.Reporter.Warnf("There is already a scheduled %s upgrade on this cluster. To change the "+
+			"upgrade policy first delete the existing one with 'rosa delete upgrade -c %s'",
+			upgradeState.Value(),
+			clusterKey,
+		)
+		os.Exit(1)
+	}
+
+	if interactive.Enabled() && enableAutomaticUpgradeSchedule {
+		upgradeScheduleDay, err = interactive.GetOption(interactive.Input{
+			Question: "Preferred day",
+			Help:     cmd.Flags().Lookup("upgrade-schedule-day").Usage,
+			Options:  dayOptions(),
+			Default:  upgradeScheduleDay,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid day of the week: %s", err)
+			os.Exit(1)
+		}
+
+		upgradeScheduleTime, err = interactive.GetOption(interactive.Input{
+			Question: "Preferred time",
+			Help:     cmd.Flags().Lookup("upgrade-schedule-time").Usage,
+			Options:  getTimeOptions(),
+			Default:  upgradeScheduleTime,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid time of the day: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	upgradeSchedule := ""
+	if enableAutomaticUpgradeSchedule {
+		if upgradeScheduleDay == "" {
+			r.Reporter.Errorf("Automatic upgrade schedule requires a day of the week")
+			os.Exit(1)
+		}
+		if daysMap[upgradeScheduleDay] == "" {
+			r.Reporter.Errorf("Invalid day of the week. Valid options are %s", dayOptions())
+			os.Exit(1)
+		}
+		if upgradeScheduleTime == "" {
+			r.Reporter.Errorf("Automatic upgrade schedule requires a time of the day")
+			os.Exit(1)
+		}
+		timeOfDay, err := time.Parse("15:04", upgradeScheduleTime)
+		if err != nil {
+			r.Reporter.Errorf("Invalid time of the day. Use the format HH:mm")
+			os.Exit(1)
+		}
+		upgradeSchedule = fmt.Sprintf("%d %d * * %s",
+			timeOfDay.Minute(), timeOfDay.Hour(), daysMap[upgradeScheduleDay])
+
+		err = cronValidator(upgradeSchedule)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
 	clusterConfig := ocm.Spec{
 		Expiration:                expiration,
 		Private:                   private,
@@ -513,7 +666,33 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
 	}
+
+	if upgradeSchedule != "" {
+		upgradePolicy, err := cmv1.NewUpgradePolicy().
+			ScheduleType("automatic").
+			Schedule(upgradeSchedule).
+			Build()
+		if err != nil {
+			r.Reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+		err = r.OCMClient.ScheduleUpgrade(cluster.ID(), upgradePolicy)
+		if err != nil {
+			r.Reporter.Errorf("Failed to set automatic upgrade policy for cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+	}
+
 	r.Reporter.Infof("Updated cluster '%s'", clusterKey)
+}
+
+func dayOptions() []string {
+	keys := reflect.ValueOf(daysMap).MapKeys()
+	daySlice := make([]string, len(keys))
+	for i, v := range keys {
+		daySlice[i] = v.Interface().(string)
+	}
+	return daySlice
 }
 
 func validateExpiration() (expiration time.Time, err error) {
@@ -541,6 +720,14 @@ func validateExpiration() (expiration time.Time, err error) {
 	return
 }
 
+func getTimeOptions() []string {
+	timeOptions := []string{}
+	for time := 0; time < 24; time++ {
+		timeOptions = append(timeOptions, fmt.Sprintf("%d:00", time))
+	}
+	return timeOptions
+}
+
 // parseRFC3339 parses an RFC3339 date in either RFC3339Nano or RFC3339 format.
 func parseRFC3339(s string) (time.Time, error) {
 	if t, timeErr := time.Parse(time.RFC3339Nano, s); timeErr == nil {
@@ -551,4 +738,33 @@ func parseRFC3339(s string) (time.Time, error) {
 
 func isExpectedHTTPProxyOrHTTPSProxy(httpProxy, httpsProxy *string, noProxySlice []string, cluster *cmv1.Cluster) bool {
 	return httpProxy == nil && httpsProxy == nil && len(noProxySlice) > 0 && cluster.Proxy() == nil
+}
+
+var cronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+
+func cronValidator(val interface{}) error {
+	if schedule, ok := val.(string); ok {
+		if schedule == "" {
+			return nil
+		}
+		_, err := cronParser.Parse(fmt.Sprintf("CRON_TZ=UTC %s", schedule))
+		if err != nil {
+			return err
+		}
+		parts := strings.Fields(schedule)
+		if _, err := strconv.Atoi(parts[0]); err != nil {
+			return fmt.Errorf("The minute value '%s' must be a valid number", parts[0])
+		}
+		if _, err := strconv.Atoi(parts[1]); err != nil {
+			return fmt.Errorf("The hour value '%s' must be a valid number", parts[1])
+		}
+		if parts[2] != "*" {
+			return fmt.Errorf("Setting day of month in the schedule expression is not supported")
+		}
+		if parts[3] != "*" {
+			return fmt.Errorf("Setting a month in the schedule expression is not supported")
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
 }
