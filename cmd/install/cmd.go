@@ -36,6 +36,7 @@ func init() {
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
+	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }

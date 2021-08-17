@@ -22,7 +22,6 @@ import (
 	"github.com/spf13/cobra"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -72,14 +71,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	logger := logging.CreateLoggerOrExit(reporter)
-	region, err := aws.GetRegion(arguments.GetRegion())
-	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
-	}
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
-		Region(region).
 		Logger(logger).
 		Build()
 	if err != nil {

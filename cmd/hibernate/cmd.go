@@ -34,4 +34,5 @@ func init() {
 	Cmd.AddCommand(cluster.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
+	arguments.AddRegionFlag(flags)
 }
