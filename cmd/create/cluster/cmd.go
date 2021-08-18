@@ -930,8 +930,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if kmsKeyARN != "" && !kmsArnRE.MatchString(kmsKeyARN) {
-		reporter.Errorf("Expected a valid value for kms-key-arn. It should be in the" +
-			" format arn:aws:kms:<region>:<accountid>:key/<keyid>")
+		reporter.Errorf("Expected a valid value for kms-key-arn matching %s", kmsArnRE)
 		os.Exit(1)
 	}
 
