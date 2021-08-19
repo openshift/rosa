@@ -213,6 +213,14 @@ func run(cmd *cobra.Command, argv []string) {
 				Required: param.Required(),
 			}
 
+			// add a prompt to question name to indicate if the boolean param is required and check validation
+			if param.ValueType() == "boolean" && param.Validation() == "^true$" && param.Required() {
+				input.Question = fmt.Sprintf("%s (required)", param.Name())
+				input.Validators = []interactive.Validator{
+					interactive.RegExpBoolean(param.Validation()),
+				}
+			}
+
 			switch param.ValueType() {
 			case "boolean":
 				var boolVal bool
