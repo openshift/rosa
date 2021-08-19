@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	semver "github.com/hashicorp/go-version"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -38,9 +39,10 @@ import (
 var modes []string = []string{"auto", "manual"}
 
 var args struct {
-	clusterKey string
-	prefix     string
-	mode       string
+	clusterKey          string
+	prefix              string
+	permissionsBoundary string
+	mode                string
 }
 
 var Cmd = &cobra.Command{
@@ -49,7 +51,10 @@ var Cmd = &cobra.Command{
 	Short:   "Create operator IAM roles for a cluster.",
 	Long:    "Create cluster-specific operator IAM roles based on your cluster configuration.",
 	Example: `  # Create default operator roles for cluster named "mycluster"
-  rosa create operator-roles --cluster=mycluster`,
+  rosa create operator-roles --cluster=mycluster
+
+  # Create operator roles with a specific permissions boundary
+  rosa create operator-roles -c mycluster --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
 	Run: run,
 }
 
@@ -70,6 +75,13 @@ func init() {
 		"prefix",
 		"",
 		"User-defined prefix for generated AWS operator policies. Leave empty to attempt to find them automatically.",
+	)
+
+	flags.StringVar(
+		&args.permissionsBoundary,
+		"permissions-boundary",
+		"",
+		"The ARN of the policy that is used to set the permissions boundary for the operator roles.",
 	)
 
 	flags.StringVar(
@@ -192,6 +204,29 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	permissionsBoundary := args.permissionsBoundary
+	if interactive.Enabled() {
+		permissionsBoundary, err = interactive.GetString(interactive.Input{
+			Question: "Permissions boundary ARN",
+			Help:     cmd.Flags().Lookup("permissions-boundary").Usage,
+			Default:  permissionsBoundary,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid policy ARN: %s", err)
+			os.Exit(1)
+		}
+	}
+	if permissionsBoundary != "" {
+		_, err := arn.Parse(permissionsBoundary)
+		if err != nil {
+			reporter.Errorf("Expected a valid policy ARN: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	mode := args.mode
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
@@ -211,7 +246,7 @@ func run(cmd *cobra.Command, _ []string) {
 	case "auto":
 		ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto")
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
-		err = createRoles(reporter, awsClient, prefix, cluster, creator.AccountID)
+		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID)
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
 			os.Exit(1)
@@ -219,7 +254,7 @@ func run(cmd *cobra.Command, _ []string) {
 	case "manual":
 		ocmClient.LogEvent("ROSACreateOperatorRolesModeManual")
 
-		commands, err := buildCommands(reporter, prefix, cluster, creator.AccountID)
+		commands, err := buildCommands(reporter, prefix, permissionsBoundary, cluster, creator.AccountID)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -237,7 +272,8 @@ func run(cmd *cobra.Command, _ []string) {
 }
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
-	prefix string, cluster *cmv1.Cluster, accountID string) error {
+	prefix string, permissionsBoundary string,
+	cluster *cmv1.Cluster, accountID string) error {
 	version := getVersionMinor(cluster)
 
 	for _, operator := range aws.CredentialRequests {
@@ -256,7 +292,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		}
 
 		reporter.Debugf("Creating role '%s'", roleName)
-		roleARN, err := awsClient.EnsureRole(roleName, policy, version, map[string]string{
+		roleARN, err := awsClient.EnsureRole(roleName, policy, permissionsBoundary, version, map[string]string{
 			tags.ClusterID:        cluster.ID(),
 			tags.OpenShiftVersion: version,
 			"operator_namespace":  operator.Namespace,
@@ -289,7 +325,9 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	return nil
 }
 
-func buildCommands(reporter *rprtr.Object, prefix string, cluster *cmv1.Cluster, accountID string) (string, error) {
+func buildCommands(reporter *rprtr.Object,
+	prefix string, permissionsBoundary string,
+	cluster *cmv1.Cluster, accountID string) (string, error) {
 	commands := []string{}
 
 	for credrequest, operator := range aws.CredentialRequests {
@@ -317,11 +355,16 @@ func buildCommands(reporter *rprtr.Object, prefix string, cluster *cmv1.Cluster,
 			"operator_namespace", operator.Namespace,
 			"operator_name", operator.Name,
 		)
+		permBoundaryFlag := ""
+		if permissionsBoundary != "" {
+			permBoundaryFlag = fmt.Sprintf("\t--permissions-boundary %s \\\n", permissionsBoundary)
+		}
 		createRole := fmt.Sprintf("aws iam create-role \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--assume-role-policy-document file://%s \\\n"+
+			"%s"+
 			"\t--tags %s",
-			roleName, filename, iamTags)
+			roleName, filename, permBoundaryFlag, iamTags)
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--policy-arn %s",
