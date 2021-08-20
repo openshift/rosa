@@ -38,6 +38,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -371,6 +372,7 @@ func init() {
 	flags.MarkHidden("fake-cluster")
 
 	interactive.AddFlag(flags)
+	output.AddFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -1224,12 +1226,14 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.CustomProperties[properties.FakeCluster] = "true"
 	}
 
-	reporter.Infof("Creating cluster '%s'", clusterName)
-	if interactive.Enabled() {
-		command := buildCommand(clusterConfig)
-		reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
+	if !output.HasFlag() || reporter.IsTerminal() {
+		reporter.Infof("Creating cluster '%s'", clusterName)
+		if interactive.Enabled() {
+			command := buildCommand(clusterConfig)
+			reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
+		}
+		reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 	}
-	reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 
 	_, err = ocmClient.CreateCluster(clusterConfig)
 	if err != nil {
@@ -1248,15 +1252,17 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	reporter.Infof("Cluster '%s' has been created.", clusterName)
-	reporter.Infof(
-		"Once the cluster is installed you will need to add an Identity Provider " +
-			"before you can login into the cluster. See 'rosa create idp --help' " +
-			"for more information.")
+	if !output.HasFlag() || reporter.IsTerminal() {
+		reporter.Infof("Cluster '%s' has been created.", clusterName)
+		reporter.Infof(
+			"Once the cluster is installed you will need to add an Identity Provider " +
+				"before you can login into the cluster. See 'rosa create idp --help' " +
+				"for more information.")
+	}
 
 	if args.watch {
 		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
-	} else {
+	} else if !output.HasFlag() || reporter.IsTerminal() {
 		reporter.Infof(
 			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
 			clusterName,
