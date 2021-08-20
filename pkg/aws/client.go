@@ -43,6 +43,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/profile"
+	regionflag "github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/logging"
 )
@@ -189,6 +190,14 @@ func (b *ClientBuilder) Build() (Client, error) {
 	}
 
 	var sess *session.Session
+
+	if b.region == nil || *b.region == "" {
+		region, err := GetRegion(regionflag.Region())
+		if err != nil {
+			return nil, err
+		}
+		b.region = aws.String(region)
+	}
 
 	// Create the AWS session:
 	if b.credentials != nil {

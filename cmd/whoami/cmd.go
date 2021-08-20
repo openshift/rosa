@@ -42,6 +42,7 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
+	arguments.AddRegionFlag(flags)
 }
 
 func run(_ *cobra.Command, _ []string) {

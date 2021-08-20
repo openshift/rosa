@@ -23,7 +23,6 @@ import (
 
 	uninstallLogs "github.com/openshift/rosa/cmd/logs/uninstall"
 
-	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -48,8 +47,6 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
-
-	arguments.AddRegionFlag(flags)
 
 	flags.StringVarP(
 		&args.clusterKey,
@@ -86,7 +83,6 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
-		Region(arguments.GetRegion()).
 		Logger(logger).
 		Build()
 	if err != nil {
