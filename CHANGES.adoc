@@ -2,6 +2,40 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.1 Aug 20 2021
+
+- hack: Fix query to fetch changelog
+- create-operatorroles: Fix prefix prompt text
+- create-cluster: Validate operator roles prefix
+- Fix validation of spot max price
+- confirm: Add confirmation prompt with default of 'Y'
+- create-cluster: Remove etcd encryption from interactive mode
+- config: Use standard config path for ocm.json
+- events: Track mode for AWS resource creation
+- scp-policy: Remove optional policy checks
+- scp-policy: Update to minimum required SCP
+- Update OWNERS file
+- logs: Exit once done watching logs
+- Add customer managed key for rosa cluster
+- interactive: Provide real-time validators
+- create-accountroles: Use interactive validators
+- create-cluster: Use interactive validators
+- create-idp: Use interactive validators
+- create-machinepool: Use interactive validators
+- create-operatorroles: Use interactive validators
+- Add jhernand to reviewer list
+- Bump OCM SDK version to v0.1.199
+- Bump golang version to 1.15
+- reporter: Determine whether output is meant for terminal
+- interactive: Add validator for CIDRs
+- interactive: Add validators for labels and taints
+- interactive: Ensure regexp validation allows empty values
+- interactive: Add validator for host prefix
+- aws: Allow creating roles with permissions boundary
+- logs-install: Do not redact install log output
+- region: Move flag up a level
+- updated error message
+
 == 1.1.0 Jul 30 2021
 
 - confirm: Move to interactive package
