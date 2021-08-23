@@ -92,6 +92,9 @@ var args struct {
 	// unless using PrivateLink, in which case it should only be one private per availability zone
 	subnetIDs []string
 
+	// Force STS mode for interactive and validation
+	sts bool
+
 	// Account IAM Roles
 	roleARN            string
 	externalID         string
@@ -138,6 +141,13 @@ func init() {
 		"c",
 		"",
 		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
+	)
+
+	flags.BoolVar(
+		&args.sts,
+		"sts",
+		false,
+		"Use AWS Security Token Service (STS) instead of IAM credentials to deploy your cluster.",
 	)
 	flags.StringVar(
 		&args.roleARN,
@@ -459,29 +469,47 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	isSTS := args.sts
+	isIAM := cmd.Flags().Changed("sts") && !isSTS
+
+	if interactive.Enabled() && (!isSTS && !isIAM) {
+		isSTS, err = interactive.GetBool(interactive.Input{
+			Question: "Deploy cluster using AWS STS",
+			Help:     cmd.Flags().Lookup("sts").Usage,
+			Default:  isSTS,
+			Required: true,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid --sts value: %s", err)
+			os.Exit(1)
+		}
+		isIAM = !isSTS
+	}
+
+	if isIAM {
+		if awsCreator.IsSTS {
+			reporter.Errorf("Since your AWS credentials are returning an STS ARN you can only " +
+				"create STS clusters. Otherwise, switch to IAM credentials.")
+			os.Exit(1)
+		}
+		err := awsClient.CheckAdminUserExists(aws.AdminUserName)
+		if err != nil {
+			reporter.Errorf("IAM user '%s' does not exist. Run `rosa init` first", aws.AdminUserName)
+			os.Exit(1)
+		}
+		reporter.Debugf("IAM user is valid!")
+	}
+
 	// AWS ARN Role
 	roleARN := args.roleARN
 	accountRolesPrefix := args.accountRolesPrefix
 
-	if !interactive.Enabled() && awsCreator.IsSTS && roleARN == "" && accountRolesPrefix == "" {
-		err = interactive.PrintHelp(interactive.Help{
-			Message: "Since your AWS credentials are returning an STS ARN you can only " +
-				"create STS clusters. Otherwise, switch to IAM credentials.",
-		})
-		if err != nil {
-			reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
-		interactive.Enable()
-		reporter.Infof("Enabling interactive mode")
+	isSTS = isSTS || awsCreator.IsSTS || roleARN != "" || accountRolesPrefix != ""
+
+	if isSTS && accountRolesPrefix == "" {
+		accountRolesPrefix = aws.DefaultPrefix
 	}
-
-	isSTS := awsCreator.IsSTS || roleARN != "" || accountRolesPrefix != ""
-
-	if interactive.Enabled() {
-		if isSTS && accountRolesPrefix == "" {
-			accountRolesPrefix = aws.DefaultPrefix
-		}
+	if interactive.Enabled() && isSTS {
 		accountRolesPrefix, err = interactive.GetString(interactive.Input{
 			Question: "Account roles prefix",
 			Help:     cmd.Flags().Lookup("account-roles-prefix").Usage,
@@ -496,14 +524,17 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Expected a prefix for the account IAM roles: %s", err)
 			os.Exit(1)
 		}
+	}
+	if accountRolesPrefix != "" {
 		if len(accountRolesPrefix) > 32 {
 			reporter.Errorf("Expected a prefix with no more than 32 characters")
 			os.Exit(1)
 		}
-		if accountRolesPrefix != "" && !aws.RoleNameRE.MatchString(accountRolesPrefix) {
+		if !aws.RoleNameRE.MatchString(accountRolesPrefix) {
 			reporter.Errorf("Expected valid account roles prefix matching %s", aws.RoleNameRE.String())
 			os.Exit(1)
 		}
+		isSTS = true
 	}
 
 	if interactive.Enabled() && isSTS && accountRolesPrefix == "" {
@@ -527,18 +558,7 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Expected a valid Role ARN: %s", err)
 			os.Exit(1)
 		}
-	}
-
-	// Re-calculate whether we are using STS mode
-	isSTS = awsCreator.IsSTS || roleARN != "" || accountRolesPrefix != ""
-
-	if !isSTS {
-		err := awsClient.CheckAdminUserExists(aws.AdminUserName)
-		if err != nil {
-			reporter.Errorf("IAM user '%s' does not exist. Run `rosa init` first", aws.AdminUserName)
-			os.Exit(1)
-		}
-		reporter.Debugf("IAM user is valid!")
+		isSTS = true
 	}
 
 	externalID := args.externalID
