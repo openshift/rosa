@@ -77,7 +77,7 @@ func init() {
 		&args.permissionsBoundary,
 		"permissions-boundary",
 		"",
-		"The ARN of the policy that is used to set the permissions boundary for the operator roles.",
+		"The ARN of the policy that is used to set the permissions boundary for the account roles.",
 	)
 
 	flags.StringVar(
@@ -208,14 +208,14 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid policy ARN: %s", err)
+			reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
 			os.Exit(1)
 		}
 	}
 	if permissionsBoundary != "" {
 		_, err := arn.Parse(permissionsBoundary)
 		if err != nil {
-			reporter.Errorf("Expected a valid policy ARN: %s", err)
+			reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
 			os.Exit(1)
 		}
 	}
