@@ -280,7 +280,7 @@ func getVersionList(ocmClient *ocm.Client) (versionList []string, err error) {
 			continue
 		}
 		ver, errv := semver.NewVersion(v.RawID())
-		if err != nil {
+		if errv != nil {
 			return versionList, errv
 		}
 		segments := ver.Segments64()
