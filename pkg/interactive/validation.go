@@ -46,8 +46,14 @@ func compose(validators []Validator) survey.Validator {
 
 // IsURL validates whether the given value is a valid URL
 func IsURL(val interface{}) error {
-	_, err := url.ParseRequestURI(fmt.Sprintf("%v", val))
-	return err
+	if s, ok := val.(string); ok {
+		if s == "" {
+			return nil
+		}
+		_, err := url.ParseRequestURI(fmt.Sprintf("%v", val))
+		return err
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
 // IsCert validates whether the given filepath is a valid cert file
