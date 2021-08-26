@@ -17,6 +17,10 @@ import (
 
 var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 
+// UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
+var UserTagKeyRE = regexp.MustCompile(`^[A-Za-zÀ-ȕ0-9_.:/=+\-@]{1,128}$`)
+var UserTagValueRE = regexp.MustCompile(`^[A-Za-zÀ-ȕ0-9_.:/=+\-@]{0,256}$`)
+
 // JumpAccounts are the various of AWS accounts used for the installer jump role in the various OCM environments
 var JumpAccounts = map[string]string{
 	"production":  "710019948333",
@@ -170,4 +174,57 @@ func resolveSTSRole(ARN arn.ARN) (*string, error) {
 	}
 
 	return nil, fmt.Errorf("ARN %s doesn't appear to have a a resource-id that confirms to an STS user", ARN.String())
+}
+
+func UserTagValidator(input interface{}) error {
+	if str, ok := input.(string); ok {
+		if str == "" {
+			return nil
+		}
+		tags := strings.Split(str, ",")
+		for _, t := range tags {
+			if !strings.Contains(t, ":") {
+				return fmt.Errorf("invalid tag format, Tags are comma separated, for example: --tags=foo:bar,bar:baz")
+			}
+			tag := strings.Split(t, ":")
+			if len(tag) != 2 {
+				return fmt.Errorf("invalid tag format. Expected tag format: --tags=key:value")
+			}
+			if !UserTagKeyRE.MatchString(tag[0]) {
+				return fmt.Errorf("expected a valid user tag key '%s' matching %s", tag[0], UserTagKeyRE.String())
+			}
+			if !UserTagValueRE.MatchString(tag[1]) {
+				return fmt.Errorf("expected a valid user tag value '%s' matching %s", tag[1], UserTagValueRE.String())
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", input)
+}
+
+func UserTagDuplicateValidator(input interface{}) error {
+	if str, ok := input.(string); ok {
+		if str == "" {
+			return nil
+		}
+		tags := strings.Split(str, ",")
+		duplicate, found := HasDuplicateTagKey(tags)
+		if found {
+			return fmt.Errorf("user tag keys must be unique, duplicate key '%s' found", duplicate)
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", input)
+}
+
+func HasDuplicateTagKey(tags []string) (string, bool) {
+	visited := make(map[string]bool)
+	for _, t := range tags {
+		tag := strings.Split(t, ":")
+		if visited[tag[0]] {
+			return tag[0], true
+		}
+		visited[tag[0]] = true
+	}
+	return "", false
 }
