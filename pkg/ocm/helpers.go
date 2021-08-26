@@ -19,15 +19,21 @@ package ocm
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 const (
 	ANY                 = "any"
@@ -189,4 +195,34 @@ func (c *Client) IsCapabilityEnabled(capabilityName string, orgID string) (bool,
 		}
 	}
 	return false, nil
+}
+
+// ASCII codes of important characters:
+const (
+	aCode    = 97
+	zCode    = 122
+	zeroCode = 48
+	nineCode = 57
+)
+
+// Number of letters and digits:
+const (
+	letterCount = zCode - aCode + 1
+	digitCount  = nineCode - zeroCode + 1
+)
+
+func RandomLabel(size int) string {
+	value := rand.Int() // #nosec G404
+	chars := make([]byte, size)
+	for size > 0 {
+		size--
+		if size%2 == 0 {
+			chars[size] = byte(aCode + value%letterCount)
+			value = value / letterCount
+		} else {
+			chars[size] = byte(zeroCode + value%digitCount)
+			value = value / digitCount
+		}
+	}
+	return string(chars)
 }
