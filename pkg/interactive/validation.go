@@ -101,3 +101,22 @@ func RegExp(restr string) Validator {
 		return fmt.Errorf("can only validate strings, got %v", val)
 	}
 }
+
+func RegExpBoolean(restr string) Validator {
+	re := regexp.MustCompile(restr)
+	return func(val interface{}) error {
+		if boolVal, ok := val.(bool); ok {
+			var val string
+			if boolVal {
+				val = "true"
+			} else {
+				val = "false"
+			}
+			if !re.MatchString(val) {
+				return fmt.Errorf("%s does not match regular expression %s", val, re.String())
+			}
+			return nil
+		}
+		return fmt.Errorf("can only validate boolean values, got %v", val)
+	}
+}
