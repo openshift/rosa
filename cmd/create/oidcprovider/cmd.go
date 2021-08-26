@@ -237,7 +237,7 @@ func createProvider(reporter *rprtr.Object, awsClient aws.Client, cluster *cmv1.
 
 	oidcProviderARN, err := awsClient.CreateOpenIDConnectProvider(oidcEndpointURL, thumbprint)
 	if err != nil {
-		return nil
+		return err
 	}
 	reporter.Infof("Created OIDC provider with ARN '%s'", oidcProviderARN)
 
