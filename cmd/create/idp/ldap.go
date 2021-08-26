@@ -94,12 +94,6 @@ func buildLdapIdp(cmd *cobra.Command,
 			Question: "CA file path",
 			Help:     cmd.Flags().Lookup("ca").Usage,
 			Default:  caPath,
-			Validators: []interactive.Validator{
-				func(val interface{}) error {
-					_, err := ioutil.ReadFile(fmt.Sprintf("%v", val))
-					return err
-				},
-			},
 		})
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
