@@ -244,8 +244,8 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("There was an error creating the account roles: %s", err)
 			os.Exit(1)
 		}
-		command := fmt.Sprintf("rosa create cluster --account-roles-prefix %s", prefix)
-		reporter.Infof("To create a cluster with these roles, run the following command:\n%s", command)
+		reporter.Infof("To create a cluster with these roles, run the following command:\n" +
+			"rosa create cluster --sts")
 	case "manual":
 		ocmClient.LogEvent("ROSACreateAccountRolesModeManual")
 		err = generatePolicyFiles(reporter, version, env)

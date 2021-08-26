@@ -97,12 +97,11 @@ var args struct {
 	sts bool
 
 	// Account IAM Roles
-	roleARN            string
-	externalID         string
-	supportRoleARN     string
-	masterRoleARN      string
-	workerRoleARN      string
-	accountRolesPrefix string
+	roleARN        string
+	externalID     string
+	supportRoleARN string
+	masterRoleARN  string
+	workerRoleARN  string
 
 	// Operator IAM Roles
 	operatorIAMRoles    []string
@@ -156,7 +155,6 @@ func init() {
 		"",
 		"The Amazon Resource Name of the role that OpenShift Cluster Manager will assume to create the cluster.",
 	)
-	flags.MarkDeprecated("role-arn", "use --account-roles-prefix instead")
 	flags.StringVar(
 		&args.externalID,
 		"external-id",
@@ -170,7 +168,6 @@ func init() {
 		"The Amazon Resource Name of the role used by Red Hat SREs to enable "+
 			"access to the cluster account in order to provide support.",
 	)
-	flags.MarkDeprecated("support-role-arn", "use --account-roles-prefix instead")
 
 	flags.StringVar(
 		&args.masterRoleARN,
@@ -178,22 +175,12 @@ func init() {
 		"",
 		"The IAM role ARN that will be attached to master instances.",
 	)
-	flags.MarkDeprecated("master-iam-role", "use --account-roles-prefix instead")
 
 	flags.StringVar(
 		&args.workerRoleARN,
 		"worker-iam-role",
 		"",
 		"The IAM role ARN that will be attached to worker instances.",
-	)
-	flags.MarkDeprecated("worker-iam-role", "use --account-roles-prefix instead")
-
-	flags.StringVar(
-		&args.accountRolesPrefix,
-		"account-roles-prefix",
-		"",
-		"Prefix to use for all IAM roles needed by OpenShift installer. "+
-			"These roles are created by running 'rosa create account-roles'.",
 	)
 
 	flags.StringArrayVar(
@@ -470,7 +457,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	isSTS := args.sts
+	isSTS := args.sts || args.roleARN != ""
 	isIAM := cmd.Flags().Changed("sts") && !isSTS
 
 	if interactive.Enabled() && (!isSTS && !isIAM) {
@@ -506,9 +493,8 @@ func run(cmd *cobra.Command, _ []string) {
 	supportRoleARN := args.supportRoleARN
 	masterRoleARN := args.masterRoleARN
 	workerRoleARN := args.workerRoleARN
-	accountRolesPrefix := args.accountRolesPrefix
 
-	isSTS = isSTS || awsCreator.IsSTS || roleARN != "" || accountRolesPrefix != ""
+	isSTS = isSTS || awsCreator.IsSTS
 
 	// OpenShift version:
 	version := args.version
@@ -541,13 +527,14 @@ func run(cmd *cobra.Command, _ []string) {
 
 	hasRoles := false
 
-	if isSTS && roleARN == "" && accountRolesPrefix == "" {
+	if isSTS && roleARN == "" {
 		minor := getVersionMinor(version)
 		// Attempt to find account roles using AWS resource tags
 		for roleType, role := range aws.AccountRoles {
 			roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
 			if err != nil {
 				reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+				os.Exit(1)
 			}
 			selectedARN := ""
 			if len(roleARNs) > 1 {
@@ -569,9 +556,10 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 				selectedARN = roleARNs[0]
 			} else {
-				reporter.Warnf("No %s roles found. You may need to manually set them in the next "+
-					"steps or run 'rosa create account-roles' to create them first.", role.Name)
-				continue
+				reporter.Warnf("No account roles found. You will need to manually set them in the " +
+					"next steps or run 'rosa create account-roles' to create them first.")
+				interactive.Enable()
+				break
 			}
 			switch roleType {
 			case "installer":
@@ -587,57 +575,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if isSTS && !hasRoles && roleARN == "" && accountRolesPrefix == "" {
-		accountRolesPrefix = aws.DefaultPrefix
-	}
-	if interactive.Enabled() && isSTS && !hasRoles && roleARN == "" {
-		accountRolesPrefix, err = interactive.GetString(interactive.Input{
-			Question: "Account roles prefix",
-			Help:     cmd.Flags().Lookup("account-roles-prefix").Usage,
-			Required: isSTS,
-			Default:  accountRolesPrefix,
-			Validators: []interactive.Validator{
-				interactive.RegExp(aws.RoleNameRE.String()),
-				interactive.MaxLength(32),
-			},
-		})
-		if err != nil {
-			reporter.Errorf("Expected a prefix for the account IAM roles: %s", err)
-			os.Exit(1)
-		}
-	}
-	if accountRolesPrefix != "" {
-		if len(accountRolesPrefix) > 32 {
-			reporter.Errorf("Expected a prefix with no more than 32 characters")
-			os.Exit(1)
-		}
-		if !aws.RoleNameRE.MatchString(accountRolesPrefix) {
-			reporter.Errorf("Expected valid account roles prefix matching %s", aws.RoleNameRE.String())
-			os.Exit(1)
-		}
-		isSTS = true
-		hasRoles = true
-
-		for _, role := range aws.AccountRoles {
-			name := fmt.Sprintf("%s-%s-Role", accountRolesPrefix, role.Name)
-			if len(name) > 64 {
-				name = name[0:64]
-			}
-			arn := fmt.Sprintf("arn:aws:iam::%s:role/%s", awsCreator.AccountID, name)
-			switch role.Flag {
-			case "role-arn":
-				roleARN = arn
-			case "support-role-arn":
-				supportRoleARN = arn
-			case "master-iam-role":
-				masterRoleARN = arn
-			case "worker-iam-role":
-				workerRoleARN = arn
-			}
-		}
-	}
-
-	if interactive.Enabled() && isSTS && !hasRoles {
+	if isSTS && !hasRoles && interactive.Enabled() {
 		roleARN, err = interactive.GetString(interactive.Input{
 			Question: "Role ARN",
 			Help:     cmd.Flags().Lookup("role-arn").Usage,
