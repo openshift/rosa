@@ -421,6 +421,52 @@ func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
 	return nil
 }
 
+func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, error) {
+	roleARNs := []string{}
+	roles := []*iam.Role{}
+	err := c.iamClient.ListRolesPages(&iam.ListRolesInput{}, func(page *iam.ListRolesOutput, lastPage bool) bool {
+		roles = append(roles, page.Roles...)
+		return aws.BoolValue(page.IsTruncated)
+	})
+	if err != nil {
+		return roleARNs, err
+	}
+	for _, role := range roles {
+		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
+			continue
+		}
+		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return roleARNs, err
+		}
+		skip := false
+		isTagged := false
+		for _, tag := range listRoleTagsOutput.Tags {
+			tagValue := aws.StringValue(tag.Value)
+			switch aws.StringValue(tag.Key) {
+			case tags.RoleType:
+				isTagged = true
+				if tagValue != roleType {
+					skip = true
+					break
+				}
+			case tags.OpenShiftVersion:
+				isTagged = true
+				if tagValue != version {
+					skip = true
+					break
+				}
+			}
+		}
+		if isTagged && !skip {
+			roleARNs = append(roleARNs, aws.StringValue(role.Arn))
+		}
+	}
+	return roleARNs, nil
+}
+
 func (c *awsClient) FindPolicyARN(operator Operator, version string) (string, error) {
 	policies := []*iam.Policy{}
 	err := c.iamClient.ListPoliciesPages(&iam.ListPoliciesInput{

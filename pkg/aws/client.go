@@ -83,6 +83,7 @@ type Client interface {
 	AttachRolePolicy(roleName string, policyARN string) error
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string) (string, error)
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
+	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 }
 

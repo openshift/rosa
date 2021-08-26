@@ -28,6 +28,7 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	semver "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
@@ -502,14 +503,94 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// AWS ARN Role
 	roleARN := args.roleARN
+	supportRoleARN := args.supportRoleARN
+	masterRoleARN := args.masterRoleARN
+	workerRoleARN := args.workerRoleARN
 	accountRolesPrefix := args.accountRolesPrefix
 
 	isSTS = isSTS || awsCreator.IsSTS || roleARN != "" || accountRolesPrefix != ""
 
-	if isSTS && accountRolesPrefix == "" {
+	// OpenShift version:
+	version := args.version
+	channelGroup := args.channelGroup
+	versionList, err := getVersionList(ocmClient, channelGroup, isSTS)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if version == "" {
+		version = versionList[0]
+	}
+	if interactive.Enabled() {
+		version, err = interactive.GetOption(interactive.Input{
+			Question: "OpenShift version",
+			Help:     cmd.Flags().Lookup("version").Usage,
+			Options:  versionList,
+			Default:  version,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid OpenShift version: %s", err)
+			os.Exit(1)
+		}
+	}
+	version, err = validateVersion(version, versionList, channelGroup, isSTS)
+	if err != nil {
+		reporter.Errorf("Expected a valid OpenShift version: %s", err)
+		os.Exit(1)
+	}
+
+	hasRoles := false
+
+	if isSTS && roleARN == "" && accountRolesPrefix == "" {
+		minor := getVersionMinor(version)
+		// Attempt to find account roles using AWS resource tags
+		for roleType, role := range aws.AccountRoles {
+			roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
+			if err != nil {
+				reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+			}
+			selectedARN := ""
+			if len(roleARNs) > 1 {
+				reporter.Warnf("More than one %s role found", role.Name)
+				selectedARN, err = interactive.GetOption(interactive.Input{
+					Question: fmt.Sprintf("%s role ARN", role.Name),
+					Help:     cmd.Flags().Lookup(role.Flag).Usage,
+					Options:  roleARNs,
+					Default:  roleARNs[0],
+					Required: true,
+				})
+				if err != nil {
+					reporter.Errorf("Expected a valid role ARN: %s", err)
+					os.Exit(1)
+				}
+			} else if len(roleARNs) == 1 {
+				if !output.HasFlag() || reporter.IsTerminal() {
+					reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
+				}
+				selectedARN = roleARNs[0]
+			} else {
+				reporter.Warnf("No %s roles found. You may need to manually set them in the next "+
+					"steps or run 'rosa create account-roles' to create them first.", role.Name)
+				continue
+			}
+			switch roleType {
+			case "installer":
+				roleARN = selectedARN
+			case "support":
+				supportRoleARN = selectedARN
+			case "instance_controlplane":
+				masterRoleARN = selectedARN
+			case "instance_worker":
+				workerRoleARN = selectedARN
+			}
+			hasRoles = true
+		}
+	}
+
+	if isSTS && !hasRoles && roleARN == "" && accountRolesPrefix == "" {
 		accountRolesPrefix = aws.DefaultPrefix
 	}
-	if interactive.Enabled() && isSTS {
+	if interactive.Enabled() && isSTS && !hasRoles && roleARN == "" {
 		accountRolesPrefix, err = interactive.GetString(interactive.Input{
 			Question: "Account roles prefix",
 			Help:     cmd.Flags().Lookup("account-roles-prefix").Usage,
@@ -535,9 +616,28 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		isSTS = true
+		hasRoles = true
+
+		for _, role := range aws.AccountRoles {
+			name := fmt.Sprintf("%s-%s-Role", accountRolesPrefix, role.Name)
+			if len(name) > 64 {
+				name = name[0:64]
+			}
+			arn := fmt.Sprintf("arn:aws:iam::%s:role/%s", awsCreator.AccountID, name)
+			switch role.Flag {
+			case "role-arn":
+				roleARN = arn
+			case "support-role-arn":
+				supportRoleARN = arn
+			case "master-iam-role":
+				masterRoleARN = arn
+			case "worker-iam-role":
+				workerRoleARN = arn
+			}
+		}
 	}
 
-	if interactive.Enabled() && isSTS && accountRolesPrefix == "" {
+	if interactive.Enabled() && isSTS && !hasRoles {
 		roleARN, err = interactive.GetString(interactive.Input{
 			Question: "Role ARN",
 			Help:     cmd.Flags().Lookup("role-arn").Usage,
@@ -577,12 +677,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	supportRoleARN := args.supportRoleARN
 	// Ensure interactive mode if missing required role ARNs on STS clusters
-	if roleARN != "" && !interactive.Enabled() && supportRoleARN == "" {
+	if isSTS && !hasRoles && !interactive.Enabled() && supportRoleARN == "" {
 		interactive.Enable()
 	}
-	if roleARN != "" && interactive.Enabled() {
+	if isSTS && !hasRoles && interactive.Enabled() {
 		supportRoleARN, err = interactive.GetString(interactive.Input{
 			Question: "Support Role ARN",
 			Help:     cmd.Flags().Lookup("support-role-arn").Usage,
@@ -609,15 +708,13 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Instance IAM Roles
-	masterRoleARN := args.masterRoleARN
-	workerRoleARN := args.workerRoleARN
 	// Ensure interactive mode if missing required role ARNs on STS clusters
-	if roleARN != "" && !interactive.Enabled() {
+	if isSTS && !hasRoles && !interactive.Enabled() {
 		if masterRoleARN == "" || workerRoleARN == "" {
 			interactive.Enable()
 		}
 	}
-	if roleARN != "" && interactive.Enabled() {
+	if isSTS && !hasRoles && interactive.Enabled() {
 		masterRoleARN, err = interactive.GetString(interactive.Input{
 			Question: "Master IAM Role ARN",
 			Help:     cmd.Flags().Lookup("master-iam-role").Usage,
@@ -643,7 +740,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if roleARN != "" && interactive.Enabled() {
+	if isSTS && !hasRoles && interactive.Enabled() {
 		workerRoleARN, err = interactive.GetString(interactive.Input{
 			Question: "Worker IAM Role ARN",
 			Help:     cmd.Flags().Lookup("worker-iam-role").Usage,
@@ -666,55 +763,6 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	} else if roleARN != "" {
 		reporter.Errorf("Worker instance IAM role ARN is required: %s", err)
-		os.Exit(1)
-	}
-
-	if accountRolesPrefix != "" {
-		for _, role := range aws.AccountRoles {
-			name := fmt.Sprintf("%s-%s-Role", accountRolesPrefix, role.Name)
-			if len(name) > 64 {
-				name = name[0:64]
-			}
-			arn := fmt.Sprintf("arn:aws:iam::%s:role/%s", awsCreator.AccountID, name)
-			switch role.Flag {
-			case "role-arn":
-				roleARN = arn
-			case "support-role-arn":
-				supportRoleARN = arn
-			case "master-iam-role":
-				masterRoleARN = arn
-			case "worker-iam-role":
-				workerRoleARN = arn
-			}
-		}
-	}
-
-	// OpenShift version:
-	version := args.version
-	channelGroup := args.channelGroup
-	versionList, err := getVersionList(ocmClient, channelGroup, isSTS)
-	if err != nil {
-		reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	if version == "" {
-		version = versionList[0]
-	}
-	if interactive.Enabled() {
-		version, err = interactive.GetOption(interactive.Input{
-			Question: "OpenShift version",
-			Help:     cmd.Flags().Lookup("version").Usage,
-			Options:  versionList,
-			Default:  version,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid OpenShift version: %s", err)
-			os.Exit(1)
-		}
-	}
-	version, err = validateVersion(version, versionList, channelGroup, isSTS)
-	if err != nil {
-		reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
 	}
 
@@ -1620,4 +1668,15 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 
 func getRolePrefix(clusterName string) string {
 	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
+}
+
+func getVersionMinor(ver string) string {
+	rawID := strings.Replace(ver, "openshift-v", "", 1)
+	version, err := semver.NewVersion(rawID)
+	if err != nil {
+		segments := strings.Split(rawID, ".")
+		return fmt.Sprintf("%s.%s", segments[0], segments[1])
+	}
+	segments := version.Segments()
+	return fmt.Sprintf("%d.%d", segments[0], segments[1])
 }
