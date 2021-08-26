@@ -36,8 +36,8 @@ func buildLdapIdp(cmd *cobra.Command,
 	ldapIDs := args.ldapIDs
 
 	if ldapURL == "" || ldapIDs == "" {
-		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/" +
-			"identity_providers/configuring-ldap-identity-provider.html"
+		instructionsURL := "https://docs.openshift.com/dedicated/identity_providers/" +
+			"config-identity-providers.html#config-ldap-idp_config-identity-providers"
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use LDAP as an identity provider, you must first register the application:",
 			Steps: []string{
