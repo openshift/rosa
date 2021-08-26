@@ -43,8 +43,8 @@ func buildOpenidIdp(cmd *cobra.Command,
 		(email == "" && name == "" && username == "")
 
 	if isInteractive {
-		instructionsURL := "https://docs.openshift.com/dedicated/4/authentication/" +
-			"identity_providers/configuring-oidc-identity-provider.html"
+		instructionsURL := "https://docs.openshift.com/dedicated/identity_providers/" +
+			"config-identity-providers.html#config-openid-idp_config-identity-providers"
 		oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use OpenID as an identity provider, you must first register the application:",
