@@ -702,6 +702,10 @@ func run(cmd *cobra.Command, _ []string) {
 			Question: "Tags",
 			Help:     cmd.Flags().Lookup("tags").Usage,
 			Default:  strings.Join(tags, ","),
+			Validators: []interactive.Validator{
+				aws.UserTagValidator,
+				aws.UserTagDuplicateValidator,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid set of tags: %s", err)
@@ -710,7 +714,17 @@ func run(cmd *cobra.Command, _ []string) {
 		tags = strings.Split(tagsInput, ",")
 	}
 	if len(tags) > 0 {
+		duplicate, found := aws.HasDuplicateTagKey(tags)
+		if found {
+			reporter.Errorf("Invalid tags, user tag keys must be unique, duplicate key '%s' found", duplicate)
+			os.Exit(1)
+		}
 		for _, tag := range tags {
+			err := aws.UserTagValidator(tag)
+			if err != nil {
+				reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 			t := strings.Split(tag, ":")
 			tagsList[t[0]] = strings.TrimSpace(t[1])
 		}
