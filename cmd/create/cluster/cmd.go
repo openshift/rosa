@@ -168,7 +168,7 @@ func init() {
 		"operator-roles-prefix",
 		"",
 		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
-			"Leave empty to use the cluster name.",
+			"Leave empty to use an auto-generated one.",
 	)
 
 	flags.StringVar(
@@ -567,7 +567,7 @@ func run(cmd *cobra.Command, _ []string) {
 	operatorRolesPrefix := args.operatorRolesPrefix
 	if roleARN != "" {
 		if operatorRolesPrefix == "" {
-			operatorRolesPrefix = clusterName
+			operatorRolesPrefix = getRolePrefix(clusterName)
 		}
 		if interactive.Enabled() {
 			operatorRolesPrefix, err = interactive.GetString(interactive.Input{
@@ -1229,7 +1229,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if !output.HasFlag() || reporter.IsTerminal() {
 		reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
-			command := buildCommand(clusterConfig)
+			command := buildCommand(clusterConfig, operatorRolesPrefix)
 			reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
@@ -1435,7 +1435,7 @@ func parseSubnet(subnetOption string) string {
 	return strings.Split(subnetOption, " ")[0]
 }
 
-func buildCommand(spec ocm.Spec) string {
+func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.RoleARN != "" {
@@ -1453,12 +1453,8 @@ func buildCommand(spec ocm.Spec) string {
 	if spec.WorkerRoleARN != "" {
 		command += fmt.Sprintf(" --worker-iam-role %s", spec.WorkerRoleARN)
 	}
-	if len(spec.OperatorIAMRoles) > 0 {
-		if args.operatorRolesPrefix != "" {
-			command += fmt.Sprintf(" --operator-roles-prefix %s", args.operatorRolesPrefix)
-		} else {
-			command += fmt.Sprintf(" --operator-roles-prefix %s", spec.Name)
-		}
+	if operatorRolesPrefix != "" {
+		command += fmt.Sprintf(" --operator-roles-prefix %s", operatorRolesPrefix)
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
@@ -1532,4 +1528,8 @@ func buildCommand(spec ocm.Spec) string {
 		command += fmt.Sprintf(" --kms-key-arn %s", spec.KMSKeyArn)
 	}
 	return command
+}
+
+func getRolePrefix(clusterName string) string {
+	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
 }
