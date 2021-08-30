@@ -244,6 +244,8 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("There was an error creating the account roles: %s", err)
 			os.Exit(1)
 		}
+		reporter.Infof("To create a cluster with these roles, run the following command:\n" +
+			"rosa create cluster --sts")
 	case "manual":
 		ocmClient.LogEvent("ROSACreateAccountRolesModeManual")
 		err = generatePolicyFiles(reporter, version, env)
@@ -440,7 +442,6 @@ func buildCommands(prefix string, permissionsBoundary string, version string) st
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	prefix string, permissionsBoundary string,
 	version string, accountID string, env string) error {
-	command := []string{"rosa create cluster"}
 	for file, role := range aws.AccountRoles {
 		name := getRoleName(prefix, role.Name)
 
@@ -467,7 +468,6 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			return err
 		}
 		reporter.Infof("Created role '%s' with ARN '%s'", name, roleARN)
-		command = append(command, fmt.Sprintf("\t--%s %s", role.Flag, roleARN))
 
 		filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
 		path = fmt.Sprintf("templates/policies/%s/%s", version, filename)
@@ -508,9 +508,6 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			reporter.Infof("Created policy with ARN '%s'", policyArn)
 		}
 	}
-
-	reporter.Infof("To create a cluster with these roles, run the following command:\n%s",
-		strings.Join(command, " \\\n"))
 
 	return nil
 }
