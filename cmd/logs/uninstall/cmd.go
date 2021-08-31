@@ -169,8 +169,13 @@ func run(cmd *cobra.Command, argv []string) {
 	printLog(logs, nil)
 
 	if watch {
-		spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-		spin.Start()
+		var spin *spinner.Spinner
+		if reporter.IsTerminal() {
+			spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		}
+		if spin != nil {
+			spin.Start()
+		}
 
 		// Poll for changing logs:
 		response, err := ocmClient.PollUninstallLogs(cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
