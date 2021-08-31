@@ -1,17 +1,22 @@
 package aws
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/sirupsen/logrus"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -227,4 +232,30 @@ func HasDuplicateTagKey(tags []string) (string, bool) {
 		visited[tag[0]] = true
 	}
 	return "", false
+}
+
+func GetTagValues(tagsValue []*iam.Tag) (roleType string, version string) {
+	for _, tag := range tagsValue {
+		switch aws.StringValue(tag.Key) {
+		case tags.RoleType:
+			roleType = aws.StringValue(tag.Value)
+		case tags.OpenShiftVersion:
+			version = aws.StringValue(tag.Value)
+		}
+	}
+	return
+}
+
+func MarshalRoles(role []Role, b *bytes.Buffer) error {
+	reqBodyBytes := new(bytes.Buffer)
+	json.NewEncoder(reqBodyBytes).Encode(role)
+	return prettyPrint(reqBodyBytes, b)
+}
+
+func prettyPrint(reqBodyBytes *bytes.Buffer, b *bytes.Buffer) error {
+	err := json.Indent(b, reqBodyBytes.Bytes(), "", "  ")
+	if err != nil {
+		return err
+	}
+	return nil
 }
