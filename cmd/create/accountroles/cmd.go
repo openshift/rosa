@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
-	semver "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -144,7 +143,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// OpenShift version:
 	version := args.version
-	versionList, err := getVersionList(ocmClient)
+	versionList, err := ocm.GetVersionMinorList(ocmClient)
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -165,7 +164,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	version, err = validateVersion(version, versionList)
+	version, err = ocm.ValidateVersion(version, versionList)
 	if err != nil {
 		reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
@@ -265,62 +264,6 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
 		os.Exit(1)
 	}
-}
-
-// Get a list of all STS-supported minor versions
-func getVersionList(ocmClient *ocm.Client) (versionList []string, err error) {
-	vs, err := ocmClient.GetVersions("")
-	if err != nil {
-		err = fmt.Errorf("Failed to retrieve versions: %s", err)
-		return
-	}
-
-	// Make a set-map of all minors
-	minorSet := make(map[string]struct{})
-	for _, v := range vs {
-		if !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
-			continue
-		}
-		ver, errv := semver.NewVersion(v.RawID())
-		if errv != nil {
-			return versionList, errv
-		}
-		segments := ver.Segments64()
-		minor := fmt.Sprintf("%d.%d", segments[0], segments[1])
-		minorSet[minor] = struct{}{}
-	}
-
-	// Extract minor keys into a slice
-	for m := range minorSet {
-		versionList = append(versionList, m)
-	}
-
-	return
-}
-
-// Validate OpenShift versions
-func validateVersion(version string, versionList []string) (string, error) {
-	if version != "" {
-		// Check and set the cluster version
-		hasVersion := false
-		for _, v := range versionList {
-			if v == version {
-				hasVersion = true
-			}
-		}
-		if !hasVersion {
-			allVersions := strings.Join(versionList, " ")
-			err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
-			return version, err
-		}
-
-		if !ocm.HasSTSSupportMinor(version) {
-			err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
-			return version, err
-		}
-	}
-
-	return version, nil
 }
 
 func generatePolicyFiles(reporter *rprtr.Object, version string, env string) error {

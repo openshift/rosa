@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -90,7 +91,8 @@ func checkPermissionsUsingQueryClient(queryClient *awsClient, targetUserARN stri
 	// TODO: Add a check for isRoot in the initialize
 	allowList := []*string{}
 	for _, statement := range policyDocument.Statement {
-		for _, action := range statement.Action {
+		actionArr := getActionAllowed(statement.Action)
+		for _, action := range actionArr {
 			allowList = append(allowList, aws.String(action))
 		}
 	}
@@ -152,4 +154,20 @@ func validatePolicyDocuments(queryClient *awsClient, targetUserARN string, polic
 	}
 
 	return true, nil
+}
+
+func getActionAllowed(action interface{}) []string {
+	var actionArr []string
+	switch reflect.TypeOf(action).Kind() {
+	case reflect.Slice:
+		value := reflect.ValueOf(action)
+		actionArr = make([]string, value.Len())
+		for i := 0; i < value.Len(); i++ {
+			actionArr[i] = value.Index(i).Interface().(string)
+		}
+	case reflect.String:
+		actionArr = make([]string, 1)
+		actionArr[0] = action.(string)
+	}
+	return actionArr
 }
