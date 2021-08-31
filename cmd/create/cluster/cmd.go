@@ -874,24 +874,63 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Cluster privacy:
 	useExistingVPC := false
 	privateLink := args.privateLink
+	private := args.private
+
 	privateLinkWarning := "Once the cluster is created, this option cannot be changed."
+	if isSTS {
+		privateLinkWarning = fmt.Sprintf("STS clusters can only be private if AWS PrivateLink is used. %s ",
+			privateLinkWarning)
+	}
 	if interactive.Enabled() {
 		privateLink, err = interactive.GetBool(interactive.Input{
 			Question: "PrivateLink cluster",
 			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
-			Default:  privateLink,
+			Default:  privateLink || (isSTS && args.private),
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid private-link value: %s", err)
 			os.Exit(1)
 		}
-	} else if privateLink {
+	} else if privateLink || (isSTS && private) {
 		reporter.Warnf("You are choosing to use AWS PrivateLink for your cluster. %s", privateLinkWarning)
 		if !confirm.Confirm("use AWS PrivateLink for cluster '%s'", clusterName) {
 			os.Exit(0)
 		}
+		privateLink = true
+	}
+
+	if privateLink {
+		private = true
+	} else if isSTS && private {
+		reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
+		os.Exit(1)
+	} else if !isSTS {
+		privateWarning := "You will not be able to access your cluster until " +
+			"you edit network settings in your cloud provider."
+		if interactive.Enabled() {
+			private, err = interactive.GetBool(interactive.Input{
+				Question: "Private cluster",
+				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateWarning),
+				Default:  private,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid private value: %s", err)
+				os.Exit(1)
+			}
+		} else if private {
+			reporter.Warnf("You are choosing to make your cluster private. %s", privateWarning)
+			if !confirm.Confirm("set cluster '%s' as private", clusterName) {
+				os.Exit(0)
+			}
+		}
+	}
+
+	if isSTS && private && !privateLink {
+		reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
+		os.Exit(1)
 	}
 
 	if privateLink {
@@ -1254,31 +1293,6 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
-	}
-
-	// Cluster privacy:
-	private := args.private
-	if privateLink {
-		private = true
-	} else {
-		privateWarning := "You will not be able to access your cluster until " +
-			"you edit network settings in your cloud provider."
-		if interactive.Enabled() {
-			private, err = interactive.GetBool(interactive.Input{
-				Question: "Private cluster",
-				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateWarning),
-				Default:  private,
-			})
-			if err != nil {
-				reporter.Errorf("Expected a valid private value: %s", err)
-				os.Exit(1)
-			}
-		} else if private {
-			reporter.Warnf("You are choosing to make your cluster private. %s", privateWarning)
-			if !confirm.Confirm("set cluster '%s' as private", clusterName) {
-				os.Exit(0)
-			}
-		}
 	}
 
 	clusterConfig := ocm.Spec{
