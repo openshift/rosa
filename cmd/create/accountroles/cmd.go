@@ -138,7 +138,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && (!cmd.Flags().Changed("version") || !cmd.Flags().Changed("mode")) {
+	if !interactive.Enabled() && (!cmd.Flags().Changed("mode")) {
 		interactive.Enable()
 	}
 
@@ -149,10 +149,10 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+	if version == "" {
+		version = versionList[0]
+	}
 	if interactive.Enabled() {
-		if version == "" {
-			version = versionList[0]
-		}
 		version, err = interactive.GetOption(interactive.Input{
 			Question: "OpenShift version",
 			Help:     cmd.Flags().Lookup("version").Usage,
