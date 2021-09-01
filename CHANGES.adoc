@@ -2,6 +2,24 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.2 Sep 1 2021
+
+- add check and prompt for required true addon parameters
+- create-cluster: Allow setting --output flag
+- idp: Allow empty URL and CA Path in interactive mode
+- create: Return error when request fails
+- permissions-boundary: Fix help and error messages
+- fix broken links
+- create-cluster: Ensure operator roles are unique
+- create-cluster: Replace account role ARNs with account roles prefix
+- create-cluster: Add STS flag
+- create-cluster: Use AWS Tags to find pre-configured account roles
+- create-cluster: Remove account roles prefix flag
+- Add validation to user tags
+- use default version on create account-roles
+- create-cluster: Force AWS PrivateLink for private STS clusters
+- logs: Suppress spinner on non-terminal output
+
 == 1.1.1 Aug 20 2021
 
 - hack: Fix query to fetch changelog
