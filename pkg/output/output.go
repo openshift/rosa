@@ -27,6 +27,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/aws"
 	"gitlab.com/c0b/go-ordered-json"
 )
 
@@ -40,6 +41,7 @@ func Print(resource interface{}) error {
 	var b bytes.Buffer
 	switch reflect.TypeOf(resource).String() {
 	case "[]*v1.CloudRegion":
+
 		if cloudRegions, ok := resource.([]*cmv1.CloudRegion); ok {
 			cmv1.MarshalCloudRegionList(cloudRegions, &b)
 		}
@@ -70,6 +72,15 @@ func Print(resource interface{}) error {
 	case "[]*v1.Version":
 		if versions, ok := resource.([]*cmv1.Version); ok {
 			cmv1.MarshalVersionList(versions, &b)
+		}
+	case "[]aws.Role":
+		{
+			if roles, ok := resource.([]aws.Role); ok {
+				err := aws.MarshalRoles(roles, &b)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 	// Verify if the resource is an empty string and ensure that the JSON

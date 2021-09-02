@@ -19,6 +19,7 @@ package list
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/list/accountroles"
 	"github.com/openshift/rosa/cmd/list/addon"
 	"github.com/openshift/rosa/cmd/list/cluster"
 	"github.com/openshift/rosa/cmd/list/idp"
@@ -49,7 +50,7 @@ func init() {
 	Cmd.AddCommand(user.Cmd)
 	Cmd.AddCommand(version.Cmd)
 	Cmd.AddCommand(instancetypes.Cmd)
-
+	Cmd.AddCommand(accountroles.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)

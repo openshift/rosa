@@ -19,9 +19,9 @@ package ocm
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	ver "github.com/hashicorp/go-version"
-
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -144,4 +144,60 @@ func createVersionID(version string, channelGroup string) string {
 		versionID = fmt.Sprintf("%s-%s", versionID, channelGroup)
 	}
 	return versionID
+}
+
+// Get a list of all STS-supported minor versions
+func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
+	vs, err := ocmClient.GetVersions("")
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve versions: %s", err)
+		return
+	}
+
+	// Make a set-map of all minors
+	minorSet := make(map[string]struct{})
+	for _, v := range vs {
+		if !HasSTSSupport(v.RawID(), v.ChannelGroup()) {
+			continue
+		}
+		version, errv := ver.NewVersion(v.RawID())
+		if errv != nil {
+			return versionList, errv
+		}
+		segments := version.Segments64()
+		minor := fmt.Sprintf("%d.%d", segments[0], segments[1])
+		minorSet[minor] = struct{}{}
+	}
+
+	// Extract minor keys into a slice
+	for m := range minorSet {
+		versionList = append(versionList, m)
+	}
+
+	return
+}
+
+// Validate OpenShift versions
+func ValidateVersion(version string, versionList []string) (string, error) {
+	if version != "" {
+		// Check and set the cluster version
+		hasVersion := false
+		for _, v := range versionList {
+			if v == version {
+				hasVersion = true
+			}
+		}
+		if !hasVersion {
+			allVersions := strings.Join(versionList, " ")
+			err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
+			return version, err
+		}
+
+		if !HasSTSSupportMinor(version) {
+			err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
+			return version, err
+		}
+	}
+
+	return version, nil
 }

@@ -85,11 +85,32 @@ type AccountRole struct {
 	Flag string
 }
 
+type Role struct {
+	RoleType   string   `json:"RoleType,omitempty"`
+	Version    string   `json:"Version,omitempty"`
+	RolePrefix string   `json:"RolePrefix,omitempty"`
+	RoleName   string   `json:"RoleName,omitempty"`
+	RoleARN    string   `json:"RoleARN,omitempty"`
+	Policy     []Policy `json:"Policy,omitempty"`
+}
+
+type Policy struct {
+	PolicyName     string         `json:"PolicyName,omitempty"`
+	PolicyDocument PolicyDocument `json:"PolicyDocument,omitempty"`
+}
+
 var AccountRoles map[string]AccountRole = map[string]AccountRole{
 	"installer":             {Name: "Installer", Flag: "role-arn"},
 	"instance_controlplane": {Name: "ControlPlane", Flag: "master-iam-role"},
 	"instance_worker":       {Name: "Worker", Flag: "worker-iam-role"},
 	"support":               {Name: "Support", Flag: "support-role-arn"},
+}
+
+var roleTypeMap = map[string]string{
+	"installer":             "Installer",
+	"support":               "Support",
+	"instance_controlplane": "Control plane",
+	"instance_worker":       "Worker",
 }
 
 // PolicyDocument models an AWS IAM policy document
@@ -113,28 +134,28 @@ type PolicyStatement struct {
 	// federated user to which you would like to allow or deny access. If you are creating an
 	// IAM permissions policy to attach to a user or role, you cannot include this element.
 	// The principal is implied as that user or role.
-	Principal PolicyStatementPrincipal `json:"Principal"`
+	Principal PolicyStatementPrincipal `json:"Principal,omitempty"`
 	// Include a list of actions that the policy allows or denies.
 	// (i.e. ec2:StartInstances, iam:ChangePassword)
-	Action []string `json:"Action"`
+	Action interface{} `json:"Action,omitempty"`
 	// If you create an IAM permissions policy, you must specify a list of resources to which
 	// the actions apply. If you create a resource-based policy, this element is optional. If
 	// you do not include this element, then the resource to which the action applies is the
 	// resource to which the policy is attached.
-	Resource []string `json:"Resource"`
+	Resource interface{} `json:"Resource,omitempty"`
 }
 
 type PolicyStatementPrincipal struct {
 	// A service principal is an identifier that is used to grant permissions to a service.
 	// The identifier for a service principal includes the service name, and is usually in the
 	// following format: service-name.amazonaws.com
-	Service []string `json:"Service"`
+	Service []string `json:"Service,omitempty"`
 	// You can specify an individual IAM role ARN (or array of role ARNs) as the principal.
 	// In IAM roles, the Principal element in the role's trust policy specifies who can assume the role.
 	// When you specify more than one principal in the element, you grant permissions to each principal.
-	AWS []string `json:"AWS"`
+	AWS []string `json:"AWS,omitempty"`
 	// A federated principal uses a web identity token or SAML federation
-	Federated string `json:"Federated"`
+	Federated string `json:"Federated,omitempty"`
 }
 
 func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
@@ -423,11 +444,7 @@ func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
 
 func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, error) {
 	roleARNs := []string{}
-	roles := []*iam.Role{}
-	err := c.iamClient.ListRolesPages(&iam.ListRolesInput{}, func(page *iam.ListRolesOutput, lastPage bool) bool {
-		roles = append(roles, page.Roles...)
-		return aws.BoolValue(page.IsTruncated)
-	})
+	roles, err := c.ListRoles()
 	if err != nil {
 		return roleARNs, err
 	}
@@ -465,6 +482,15 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 		}
 	}
 	return roleARNs, nil
+}
+
+func (c *awsClient) ListRoles() ([]*iam.Role, error) {
+	roles := []*iam.Role{}
+	err := c.iamClient.ListRolesPages(&iam.ListRolesInput{}, func(page *iam.ListRolesOutput, lastPage bool) bool {
+		roles = append(roles, page.Roles...)
+		return aws.BoolValue(page.IsTruncated)
+	})
+	return roles, err
 }
 
 func (c *awsClient) FindPolicyARN(operator Operator, version string) (string, error) {
@@ -556,4 +582,99 @@ func parsePolicyDocument(path string) (PolicyDocument, error) {
 	}
 
 	return doc, nil
+}
+
+func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
+	accountRoles := []Role{}
+	roles, err := c.ListRoles()
+	if err != nil {
+		return accountRoles, err
+	}
+	for _, role := range roles {
+		if !checkIfROSARole(role.RoleName) {
+			continue
+		}
+		accountRole := Role{}
+		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return accountRoles, err
+		}
+
+		isTagged := false
+		skip := false
+		for _, tag := range listRoleTagsOutput.Tags {
+			switch aws.StringValue(tag.Key) {
+			case tags.RoleType:
+				isTagged = true
+				accountRole.RoleType = roleTypeMap[aws.StringValue(tag.Value)]
+			case tags.OpenShiftVersion:
+				tagValue := aws.StringValue(tag.Value)
+				if version != "" && tagValue != version {
+					skip = true
+					break
+				}
+				isTagged = true
+				accountRole.Version = tagValue
+			}
+		}
+		if isTagged && !skip {
+			accountRole.RoleName = aws.StringValue(role.RoleName)
+			accountRole.RoleARN = aws.StringValue(role.Arn)
+			policiesOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{
+				RoleName: role.RoleName,
+			})
+			if err != nil {
+				return nil, err
+			}
+			policies := []Policy{}
+			for _, policyName := range policiesOutput.PolicyNames {
+				policyOutput, err := c.iamClient.GetRolePolicy(&iam.GetRolePolicyInput{
+					PolicyName: policyName,
+					RoleName:   role.RoleName,
+				})
+				if err != nil {
+					return nil, err
+				}
+				policyDoc, err := getPolicyDocument(policyOutput.PolicyDocument)
+				if err != nil {
+					return nil, err
+				}
+				policy := Policy{
+					PolicyName:     aws.StringValue(policyOutput.PolicyName),
+					PolicyDocument: policyDoc,
+				}
+				policies = append(policies, policy)
+			}
+			accountRole.Policy = policies
+			accountRoles = append(accountRoles, accountRole)
+		}
+	}
+	return accountRoles, nil
+}
+
+//Check if it is one of the ROSA account roles
+func checkIfROSARole(roleName *string) bool {
+	for _, prefix := range AccountRoles {
+		if strings.Contains(aws.StringValue(roleName), prefix.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
+	data := PolicyDocument{}
+	if policyDocument != nil {
+		val, err := url.QueryUnescape(aws.StringValue(policyDocument))
+		if err != nil {
+			return data, err
+		}
+		err = json.Unmarshal([]byte(val), &data)
+		if err != nil {
+			return data, err
+		}
+	}
+	return data, nil
 }
