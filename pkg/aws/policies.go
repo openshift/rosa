@@ -94,6 +94,14 @@ type Role struct {
 	Policy     []Policy `json:"Policy,omitempty"`
 }
 
+type OperatorRole struct {
+	Operator          string `json:"Operator,omitempty"`
+	OperatorNamespace string `json:"OperatorNamespace,omitempty"`
+	ClusterID         string `json:"ClusterID,omitempty"`
+	Active            string `json:"Active,omitempty"`
+	Role              Role   `json:"Role,omitempty"`
+}
+
 type Policy struct {
 	PolicyName     string         `json:"PolicyName,omitempty"`
 	PolicyDocument PolicyDocument `json:"PolicyDocument,omitempty"`
@@ -585,7 +593,7 @@ func parsePolicyDocument(path string) (PolicyDocument, error) {
 }
 
 func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
-	accountRoles := []Role{}
+	var accountRoles []Role
 	roles, err := c.ListRoles()
 	if err != nil {
 		return accountRoles, err
@@ -628,7 +636,7 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 			if err != nil {
 				return nil, err
 			}
-			policies := []Policy{}
+			var policies []Policy
 			for _, policyName := range policiesOutput.PolicyNames {
 				policyOutput, err := c.iamClient.GetRolePolicy(&iam.GetRolePolicyInput{
 					PolicyName: policyName,
@@ -652,6 +660,74 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 		}
 	}
 	return accountRoles, nil
+}
+
+func (c *awsClient) ListOperatorRoles(clusterID string) ([]OperatorRole, error) {
+	var operatorRoles []OperatorRole
+	roles, err := c.ListRoles()
+	if err != nil {
+		return operatorRoles, err
+	}
+
+	for _, role := range roles {
+		// filter out non operator roles from list of roles
+		if !strings.Contains(aws.StringValue(role.RoleName), "-openshift-") {
+			continue
+		}
+
+		var operatorRole OperatorRole
+		roleTags, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return operatorRoles, err
+		}
+
+		isTagged := false
+		skip := false
+		for _, tag := range roleTags.Tags {
+			switch aws.StringValue(tag.Key) {
+			case tags.OperatorName:
+				isTagged = true
+				operatorRole.Role.RoleType = "CredentialRequest"
+				operatorRole.Role.RoleName = aws.StringValue(role.RoleName)
+				operatorRole.Role.RoleARN = aws.StringValue(role.Arn)
+				// get full operator name credential requests or else use parsed tag value
+				operatorName, found := getOperatorRole(aws.StringValue(tag.Value))
+				if found {
+					operatorRole.Operator = operatorName
+				} else {
+					operatorRole.Operator = aws.StringValue(tag.Value)
+				}
+			case tags.OperatorNamespace:
+				operatorRole.OperatorNamespace = aws.StringValue(tag.Value)
+			case tags.OpenShiftVersion:
+				operatorRole.Role.Version = aws.StringValue(tag.Value)
+			case tags.ClusterID:
+				tagValue := aws.StringValue(tag.Value)
+				if clusterID != "" && tagValue != clusterID {
+					skip = true
+					break
+				}
+				operatorRole.ClusterID = tagValue
+			}
+		}
+
+		if isTagged && !skip {
+			operatorRoles = append(operatorRoles, operatorRole)
+		}
+	}
+	return operatorRoles, nil
+}
+
+// getOperatorRole returns full operator name from CredentialRequests based on operator tag name
+func getOperatorRole(tagName string) (string, bool) {
+	for id, operator := range CredentialRequests {
+		if operator.Name == tagName {
+			return id, true
+		}
+	}
+	return "", false
 }
 
 //Check if it is one of the ROSA account roles

@@ -252,6 +252,12 @@ func MarshalRoles(role []Role, b *bytes.Buffer) error {
 	return prettyPrint(reqBodyBytes, b)
 }
 
+func MarshalOperatorRoles(operatorRole []OperatorRole, b *bytes.Buffer) error {
+	byteBuffer := new(bytes.Buffer)
+	json.NewEncoder(byteBuffer).Encode(operatorRole)
+	return prettyPrint(byteBuffer, b)
+}
+
 func prettyPrint(reqBodyBytes *bytes.Buffer, b *bytes.Buffer) error {
 	err := json.Indent(b, reqBodyBytes.Bytes(), "", "  ")
 	if err != nil {

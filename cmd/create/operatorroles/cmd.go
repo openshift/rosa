@@ -294,10 +294,10 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 
 		reporter.Debugf("Creating role '%s'", roleName)
 		roleARN, err := awsClient.EnsureRole(roleName, policy, permissionsBoundary, version, map[string]string{
-			tags.ClusterID:        cluster.ID(),
-			tags.OpenShiftVersion: version,
-			"operator_namespace":  operator.Namespace,
-			"operator_name":       operator.Name,
+			tags.ClusterID:         cluster.ID(),
+			tags.OpenShiftVersion:  version,
+			tags.OperatorNamespace: operator.Namespace,
+			tags.OperatorName:      operator.Name,
 		})
 		if err != nil {
 			return err

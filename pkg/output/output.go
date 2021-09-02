@@ -82,6 +82,15 @@ func Print(resource interface{}) error {
 				}
 			}
 		}
+	case "[]aws.OperatorRole":
+		{
+			if operatorRoles, ok := resource.([]aws.OperatorRole); ok {
+				err := aws.MarshalOperatorRoles(operatorRoles, &b)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 	// Verify if the resource is an empty string and ensure that the JSON
 	// representation looks correct for STDOUT.

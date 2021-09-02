@@ -28,7 +28,7 @@ const ClusterName = prefix + "cluster_name"
 // ClusterID is the name of the tag that will contain the identifier of the cluster.
 const ClusterID = prefix + "cluster_id"
 
-// ClusterID is the name of the tag that will contain the identifier of the cluster.
+// ClusterRegion is the name of the tag that will contain the region of the cluster.
 const ClusterRegion = prefix + "region"
 
 // OpenShiftVersion is the name of the tag that will contain
@@ -40,3 +40,9 @@ const RoleType = prefix + "role_type"
 
 // RolePrefix is the name of the tag that will contain the user-set prefix of the role (installer, support, etc.)
 const RolePrefix = prefix + "role_prefix"
+
+// OperatorName is the tag that will contain the name of the operator
+const OperatorName = "operator_name"
+
+// OperatorNamespace is the tag that will contain the namespace for the operator
+const OperatorNamespace = "operator_namespace"

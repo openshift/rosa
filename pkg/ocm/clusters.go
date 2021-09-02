@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -208,6 +209,40 @@ func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Clus
 		return response.Items().Slice()[0], nil
 	default:
 		return nil, fmt.Errorf("There are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
+	}
+}
+
+func (c *Client) GetClusterOrArchived(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
+	query := fmt.Sprintf("%s AND (id = '%s' OR name = '%s' OR external_id = '%s')",
+		getClusterFilter(creator),
+		clusterKey, clusterKey, clusterKey,
+	)
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().List().
+		Search(query).
+		Page(1).
+		Size(1).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	switch response.Total() {
+	case 0:
+		clusters, err := c.GetArchivedCluster(clusterKey)
+		if err != nil {
+			return nil, err
+		}
+		switch len(clusters) {
+		case 0:
+			return nil, fmt.Errorf("there is no cluster with identifier or name '%s'", clusterKey)
+		case 1:
+			return clusters[0], nil
+		}
+		return nil, fmt.Errorf("there are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
+	case 1:
+		return response.Items().Slice()[0], nil
+	default:
+		return nil, fmt.Errorf("there are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
 	}
 }
 
@@ -603,4 +638,45 @@ func (c *Client) ResumeCluster(clusterID string) error {
 	}
 
 	return nil
+}
+
+//Get all the archived ROSA STS clusters
+func (c *Client) GetArchivedCluster(clusterKey string) (clusters []*cmv1.Cluster, err error) {
+	query := fmt.Sprintf("id = '%s' OR name = '%s' OR external_id = '%s'",
+		clusterKey, clusterKey, clusterKey,
+	)
+	request := c.ocm.ClustersMgmt().V1().ArchivedClusters().List().Search(query)
+	response, err := request.Send()
+
+	if err != nil {
+		if response.Status() == http.StatusNotFound {
+			return clusters, handleErr(response.Error(), err)
+		}
+		return clusters, err
+	}
+	response.Items().Each(func(cluster *cmv1.Cluster) bool {
+		clusters = append(clusters, cluster)
+		return true
+	})
+
+	return clusters, nil
+}
+
+func (c *Client) ListAccountArchivedClusters(accountID string) ([]*cmv1.Cluster, error) {
+	var clusters []*cmv1.Cluster
+
+	query := fmt.Sprintf("product.id like '%%rosa%%' and aws.sts.role_arn like '%%%s%%'", accountID)
+	request := c.ocm.ClustersMgmt().V1().ArchivedClusters().List().Search(query)
+
+	response, err := request.Send()
+	if err != nil {
+		return clusters, err
+	}
+
+	response.Items().Each(func(cluster *cmv1.Cluster) bool {
+		clusters = append(clusters, cluster)
+		return true
+	})
+
+	return clusters, nil
 }
