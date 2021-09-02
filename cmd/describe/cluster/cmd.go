@@ -263,6 +263,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Console().URL(),
 		cluster.Region().ID(),
 		cluster.MultiAZ(),
+
 		nodesStr,
 		cluster.Network().ServiceCIDR(),
 		cluster.Network().MachineCIDR(),
@@ -316,6 +317,12 @@ func run(cmd *cobra.Command, argv []string) {
 		isPrivate,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
 
+	if cluster.DisableUserWorkloadMonitoring() {
+		str = fmt.Sprintf("%s"+
+			"User Workload Monitoring:   %s\n",
+			str,
+			getUseworkloadMonitoring(cluster.DisableUserWorkloadMonitoring()))
+	}
 	if detailsPage != "" {
 		str = fmt.Sprintf("%s"+
 			"Details Page:               %s%s\n", str,
@@ -335,6 +342,7 @@ func run(cmd *cobra.Command, argv []string) {
 			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
 		)
 	}
+
 	if cluster.Status().State() == cmv1.ClusterStateError {
 		str = fmt.Sprintf("%s"+
 			"Provisioning Error Code:    %s\n"+
@@ -358,4 +366,11 @@ func getDetailsLink(environment string) string {
 	default:
 		return ""
 	}
+}
+
+func getUseworkloadMonitoring(disabled bool) string {
+	if disabled {
+		return "disabled"
+	}
+	return "enabled"
 }

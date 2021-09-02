@@ -60,16 +60,17 @@ var args struct {
 	disableSCPChecks bool
 
 	// Basic options
-	private            bool
-	privateLink        bool
-	multiAZ            bool
-	expirationDuration time.Duration
-	expirationTime     string
-	clusterName        string
-	region             string
-	version            string
-	channelGroup       string
-	flavour            string
+	private                   bool
+	privateLink               bool
+	multiAZ                   bool
+	expirationDuration        time.Duration
+	expirationTime            string
+	clusterName               string
+	region                    string
+	version                   string
+	channelGroup              string
+	flavour                   string
+	disableWorkloadMonitoring bool
 
 	//Encryption
 	etcdEncryption           bool
@@ -362,6 +363,13 @@ func init() {
 		"disable-scp-checks",
 		false,
 		"Indicates if cloud permission checks are disabled when attempting installation of the cluster.",
+	)
+	flags.BoolVar(
+		&args.disableWorkloadMonitoring,
+		"disable-workload-monitoring",
+		false,
+		"Enables you to monitor your own projects in isolation from Red Hat Site Reliability Engineer (SRE) "+
+			"platform metrics.",
 	)
 
 	flags.BoolVar(
@@ -1295,38 +1303,52 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	disableWorkloadMonitoring := args.disableWorkloadMonitoring
+	if interactive.Enabled() {
+		disableWorkloadMonitoring, err = interactive.GetBool(interactive.Input{
+			Question: "Disable Workload monitoring",
+			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
+			Default:  false,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	clusterConfig := ocm.Spec{
-		Name:               clusterName,
-		Region:             region,
-		MultiAZ:            multiAZ,
-		Version:            version,
-		ChannelGroup:       channelGroup,
-		Flavour:            args.flavour,
-		EtcdEncryption:     args.etcdEncryption,
-		Expiration:         expiration,
-		ComputeMachineType: computeMachineType,
-		ComputeNodes:       computeNodes,
-		Autoscaling:        autoscaling,
-		MinReplicas:        minReplicas,
-		MaxReplicas:        maxReplicas,
-		MachineCIDR:        machineCIDR,
-		ServiceCIDR:        serviceCIDR,
-		PodCIDR:            podCIDR,
-		HostPrefix:         hostPrefix,
-		Private:            &private,
-		DryRun:             &args.dryRun,
-		DisableSCPChecks:   &args.disableSCPChecks,
-		AvailabilityZones:  availabilityZones,
-		SubnetIds:          subnetIDs,
-		PrivateLink:        &privateLink,
-		RoleARN:            roleARN,
-		ExternalID:         externalID,
-		SupportRoleARN:     supportRoleARN,
-		OperatorIAMRoles:   operatorIAMRoleList,
-		MasterRoleARN:      masterRoleARN,
-		WorkerRoleARN:      workerRoleARN,
-		Tags:               tagsList,
-		KMSKeyArn:          kmsKeyARN,
+		Name:                      clusterName,
+		Region:                    region,
+		MultiAZ:                   multiAZ,
+		Version:                   version,
+		ChannelGroup:              channelGroup,
+		Flavour:                   args.flavour,
+		EtcdEncryption:            args.etcdEncryption,
+		Expiration:                expiration,
+		ComputeMachineType:        computeMachineType,
+		ComputeNodes:              computeNodes,
+		Autoscaling:               autoscaling,
+		MinReplicas:               minReplicas,
+		MaxReplicas:               maxReplicas,
+		MachineCIDR:               machineCIDR,
+		ServiceCIDR:               serviceCIDR,
+		PodCIDR:                   podCIDR,
+		HostPrefix:                hostPrefix,
+		Private:                   &private,
+		DryRun:                    &args.dryRun,
+		DisableSCPChecks:          &args.disableSCPChecks,
+		AvailabilityZones:         availabilityZones,
+		SubnetIds:                 subnetIDs,
+		PrivateLink:               &privateLink,
+		RoleARN:                   roleARN,
+		ExternalID:                externalID,
+		SupportRoleARN:            supportRoleARN,
+		OperatorIAMRoles:          operatorIAMRoleList,
+		MasterRoleARN:             masterRoleARN,
+		WorkerRoleARN:             workerRoleARN,
+		Tags:                      tagsList,
+		KMSKeyArn:                 kmsKeyARN,
+		DisableWorkloadMonitoring: disableWorkloadMonitoring,
 	}
 
 	if args.fakeCluster {
@@ -1628,6 +1650,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	}
 	if spec.KMSKeyArn != "" {
 		command += fmt.Sprintf(" --kms-key-arn %s", spec.KMSKeyArn)
+	}
+	if spec.DisableWorkloadMonitoring {
+		command += " --disable-workload-monitoring"
 	}
 	return command
 }
