@@ -39,7 +39,6 @@ import (
 var modes []string = []string{"auto", "manual"}
 
 var args struct {
-	clusterKey          string
 	prefix              string
 	permissionsBoundary string
 	mode                string
@@ -61,14 +60,7 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVarP(
-		&args.clusterKey,
-		"cluster",
-		"c",
-		"",
-		"Name or ID of the cluster to create the roles for (required).",
-	)
-	Cmd.MarkFlagRequired("cluster")
+	ocm.AddClusterFlag(Cmd)
 
 	flags.StringVar(
 		&args.prefix,
@@ -109,7 +101,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Allow the command to be called programmatically
 	skipInteractive := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
-		args.clusterKey = argv[0]
+		ocm.SetClusterKey(argv[0])
 		args.mode = argv[1]
 		args.permissionsBoundary = argv[2]
 
@@ -118,15 +110,9 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	// Check that the cluster key (name, identifier or external identifier) given by the user
-	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
-		reporter.Errorf(
-			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
-				"must contain only letters, digits, dashes and underscores",
-			clusterKey,
-		)
+	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
