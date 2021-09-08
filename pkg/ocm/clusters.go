@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -224,6 +225,20 @@ func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cl
 		return cluster, err
 	}
 	return response.Items().Get(0), nil
+}
+
+//Get all the archived ROSA STS clusters
+func (c *Client) GetArchivedCluster(clusterKey string) (cluster *cmv1.Cluster, err error) {
+	//	query := fmt.Sprintf("id = '%s'",clusterKey)
+	request := c.ocm.ClustersMgmt().V1().ArchivedClusters().Cluster(clusterKey)
+	response, err := request.Get().Send()
+	if err != nil {
+		if response.Status() == http.StatusNotFound {
+			return cluster, handleErr(response.Error(), err)
+		}
+		return cluster, err
+	}
+	return response.Body(), nil
 }
 
 func (c *Client) GetClusterStatus(clusterID string) (*cmv1.ClusterStatus, error) {

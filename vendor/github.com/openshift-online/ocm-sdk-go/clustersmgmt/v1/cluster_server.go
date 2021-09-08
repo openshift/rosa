@@ -102,6 +102,11 @@ type ClusterServer interface {
 	// Reference to the resource that manages the collection of ingress resources.
 	Ingresses() IngressesServer
 
+	// LimitedSupportReasons returns the target 'limited_support_reasons' resource.
+	//
+	// Reference to cluster limited support reasons.
+	LimitedSupportReasons() LimitedSupportReasonsServer
+
 	// Logs returns the target 'logs' resource.
 	//
 	// Reference to the resource that manages the collection of logs of the cluster.
@@ -129,7 +134,7 @@ type ClusterServer interface {
 
 	// Resources returns the target 'resources' resource.
 	//
-	// Reference to cluster resources
+	// Reference to cluster resources.
 	Resources() ResourcesServer
 
 	// Status returns the target 'cluster_status' resource.
@@ -387,6 +392,13 @@ func dispatchCluster(w http.ResponseWriter, r *http.Request, server ClusterServe
 			return
 		}
 		dispatchIngresses(w, r, target, segments[1:])
+	case "limited_support_reasons":
+		target := server.LimitedSupportReasons()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchLimitedSupportReasons(w, r, target, segments[1:])
 	case "logs":
 		target := server.Logs()
 		if target == nil {

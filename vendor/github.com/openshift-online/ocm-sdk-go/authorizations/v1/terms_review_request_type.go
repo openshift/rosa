@@ -24,10 +24,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/authorizations/v1
 // Representation of Red Hat's Terms and Conditions for using OpenShift Dedicated and Amazon Red Hat OpenShift [Terms]
 // review requests.
 type TermsReviewRequest struct {
-	bitmap_         uint32
-	accountUsername string
-	eventCode       string
-	siteCode        string
+	bitmap_            uint32
+	accountUsername    string
+	eventCode          string
+	siteCode           string
+	checkOptionalTerms bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -58,12 +59,35 @@ func (o *TermsReviewRequest) GetAccountUsername() (value string, ok bool) {
 	return
 }
 
+// CheckOptionalTerms returns the value of the 'check_optional_terms' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// If false, only `terms_required` will be checked
+func (o *TermsReviewRequest) CheckOptionalTerms() bool {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.checkOptionalTerms
+	}
+	return false
+}
+
+// GetCheckOptionalTerms returns the value of the 'check_optional_terms' attribute and
+// a flag indicating if the attribute has a value.
+//
+// If false, only `terms_required` will be checked
+func (o *TermsReviewRequest) GetCheckOptionalTerms() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.checkOptionalTerms
+	}
+	return
+}
+
 // EventCode returns the value of the 'event_code' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Defines the event code of the terms being checked
 func (o *TermsReviewRequest) EventCode() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.eventCode
 	}
 	return ""
@@ -74,7 +98,7 @@ func (o *TermsReviewRequest) EventCode() string {
 //
 // Defines the event code of the terms being checked
 func (o *TermsReviewRequest) GetEventCode() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.eventCode
 	}
@@ -86,7 +110,7 @@ func (o *TermsReviewRequest) GetEventCode() (value string, ok bool) {
 //
 // Defines the site code of the terms being checked
 func (o *TermsReviewRequest) SiteCode() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.siteCode
 	}
 	return ""
@@ -97,7 +121,7 @@ func (o *TermsReviewRequest) SiteCode() string {
 //
 // Defines the site code of the terms being checked
 func (o *TermsReviewRequest) GetSiteCode() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.siteCode
 	}

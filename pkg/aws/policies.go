@@ -678,3 +678,95 @@ func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
 	}
 	return data, nil
 }
+
+func (c *awsClient) DeleteOperatorRoles(roles []string) error {
+	for _, role := range roles {
+		r := aws.String(role)
+		err := c.deleteOperatorRolePolicies(r)
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					fmt.Printf("Policies does not exists for role '%s'.Skipping!!",
+						role)
+					continue
+				}
+			}
+		}
+		_, err = c.iamClient.DeleteRole(&iam.DeleteRoleInput{RoleName: r})
+		if err != nil {
+			if err != nil {
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					case iam.ErrCodeNoSuchEntityException:
+						fmt.Printf("Operator role '%s' does not exists.Skipping!!",
+							role)
+						continue
+					}
+				}
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *awsClient) deleteOperatorRolePolicies(role *string) error {
+	// get attached role policies as operator roles have managed policies
+	policiesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+		RoleName: role,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, policy := range policiesOutput.AttachedPolicies {
+		_, err := c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{PolicyArn: policy.PolicyArn, RoleName: role})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *awsClient) GetOperatorRolesFromAccount(roles []string) ([]string, error) {
+	operatorRoles := []string{}
+	for _, role := range roles {
+		_, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(role)})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					continue
+				}
+			}
+			return operatorRoles, err
+		}
+		operatorRoles = append(operatorRoles, role)
+	}
+	return operatorRoles, nil
+}
+
+func (c *awsClient) GetPolicyForOperatorRole(roles []string) (map[string][]string, error) {
+	roleMap := make(map[string][]string)
+	for _, role := range roles {
+		policyArr := []string{}
+		policiesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(role),
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					continue
+				}
+			}
+			return roleMap, err
+		}
+		for _, policy := range policiesOutput.AttachedPolicies {
+			policyArr = append(policyArr, aws.StringValue(policy.PolicyArn))
+		}
+		roleMap[role] = policyArr
+	}
+	return roleMap, nil
+}

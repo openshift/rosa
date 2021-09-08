@@ -57,43 +57,6 @@ import (
 // Path variables are represented with a dash.
 type pathTree map[string]pathTree
 
-// redact removes from the given URL path all the segments that correspond to path variable, as
-// defined in this tree. Each path variable will be replaced with a dash. For example:
-//
-//	/api/clusters_mgmt/v1/clusters/123 -> /api/clusters_mgmt/v1/clusters/-
-//	/api/clusters_mgmt/v1/clusters/123/users -> /api/clusters_mgmt/v1/clusters/-/users
-//	/api/clusters_mgmt/v1/clusters/123/users/456 -> /api/clusters_mgmt/v1/clusters/-/users/456
-//
-// Paths with segments that don't match this tree will be replaced with `/-`.
-func (t pathTree) redact(path string) string {
-	// Remove leading and trailing slashes:
-	path = t.clean(path)
-	if len(path) == 0 {
-		return path
-	}
-
-	// Clear segments that correspond to path variables:
-	segments := strings.Split(path, "/")
-	current := t
-	for i, segment := range segments {
-		next, ok := current[segment]
-		if ok {
-			current = next
-			continue
-		}
-		next, ok = current["-"]
-		if ok {
-			segments[i] = "-"
-			current = next
-			continue
-		}
-		return "/-"
-	}
-
-	// Reconstruct the path joining the modified segments:
-	return "/" + strings.Join(segments, "/")
-}
-
 // copy creates a deep copy of this tree.
 func (t pathTree) copy() pathTree {
 	if t == nil {

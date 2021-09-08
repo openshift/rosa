@@ -46,6 +46,23 @@ func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint s
 	return aws.StringValue(output.OpenIDConnectProviderArn), nil
 }
 
+func (c *awsClient) DeleteOpenIDConnectProvider(oidcProviderARN string) error {
+	_, err := c.iamClient.DeleteOpenIDConnectProvider(&iam.DeleteOpenIDConnectProviderInput{
+		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return fmt.Errorf("OIDC provider '%s' does not exists",
+					oidcProviderARN)
+			}
+		}
+		return err
+	}
+	return nil
+}
+
 func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error) {
 	parsedIssuerURL, err := url.ParseRequestURI(issuerURL)
 	if err != nil {

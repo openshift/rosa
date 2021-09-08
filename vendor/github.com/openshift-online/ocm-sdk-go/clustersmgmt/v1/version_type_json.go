@@ -22,6 +22,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 import (
 	"io"
 	"net/http"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -113,6 +114,15 @@ func writeVersion(object *Version, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("end_of_life_timestamp")
+		stream.WriteString((object.endOfLifeTimestamp).Format(time.RFC3339))
+		count++
+	}
+	present_ = object.bitmap_&512 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("raw_id")
 		stream.WriteString(object.rawID)
 		count++
@@ -175,10 +185,18 @@ func readVersion(iterator *jsoniter.Iterator) *Version {
 			value := iterator.ReadBool()
 			object.enabled = value
 			object.bitmap_ |= 128
+		case "end_of_life_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.endOfLifeTimestamp = value
+			object.bitmap_ |= 256
 		case "raw_id":
 			value := iterator.ReadString()
 			object.rawID = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		default:
 			iterator.ReadAny()
 		}

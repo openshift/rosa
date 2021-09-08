@@ -49,12 +49,12 @@ func (c *Connection) RoundTrip(request *http.Request) (response *http.Response, 
 		return
 	}
 
-	// Add the base URL to the request URL:
-	base, err := c.selectServer(ctx, request)
+	// Select the target server add the base URL to the request URL:
+	server, err := c.selectServer(ctx, request)
 	if err != nil {
 		return
 	}
-	request.URL = base.URL.ResolveReference(request.URL)
+	request.URL = server.URL.ResolveReference(request.URL)
 
 	// Check the request method and body:
 	switch request.Method {
@@ -87,15 +87,14 @@ func (c *Connection) RoundTrip(request *http.Request) (response *http.Response, 
 	request.Header.Set("Accept", "application/json")
 
 	// Select the client:
-	client, err := c.clientSelector.Select(ctx, base)
+	client, err := c.clientSelector.Select(ctx, server)
 	if err != nil {
 		return
 	}
 
-	// Send the request and get the response:
+	// Send the request:
 	response, err = client.Do(request)
 	if err != nil {
-		err = fmt.Errorf("can't send request: %w", err)
 		return
 	}
 

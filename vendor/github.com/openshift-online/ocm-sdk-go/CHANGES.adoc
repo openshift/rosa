@@ -3,6 +3,51 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.208 Sep 13 2021
+
+- Add Archived cluster endpoint
+- Add cluster waiting state
+
+== 0.1.207 Sep 13 2021
+
+- Add cluster-wide proxy
+
+== 0.1.206 Sep 9 2021
+
+- Update model to v0.0.143:
+** Add Add() method to Limited Support Reasons resource
+
+== 0.1.205 Sep 9 2021
+
+- Update model to v0.0.142:
+** Add Limited Support Reason API
+
+== 0.1.204 Aug 25 2021
+
+- Change level of token retry messages to `DEBUG`.
+
+== 0.1.203 Aug 23 2021
+
+- Retry requests with body
+- Update to metamodel 0.0.39
+** Add Details to Errors
+
+== 0.1.202 Aug 18 2021
+
+- Update model to v0.0.141:
+** Add support for EndOfLifeTimestamp in version
+
+== 0.1.201 Aug 17 2021
+
+- Retry when server sends go away before settings.
+- Reject impersonation.
+
+== 0.1.200 Aug 11 2021
+
+- Update model to v0.0.140:
+** Add check_optional_terms to TermsReview and SelfTermsReview
+** Add reduceClusterList to ResourceReview and SelfResourceReview
+
 == 0.1.199 Aug 10 2021
 
 Changes in this release are mainly intended to simplify packaging of the SDK in
