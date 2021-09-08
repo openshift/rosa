@@ -19,16 +19,24 @@ package aws
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 const (
 	OIDCClientIDOpenShift = "openshift"
 	OIDCClientIDSTSAWS    = "sts.amazonaws.com"
 )
+
+type OIDC struct {
+	ARN       string `json:"ARN,omitempty"`
+	ClusterID string `json:"ClusterID,omitempty"`
+	InUse     string `json:"InUse,omitempty"`
+}
 
 func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint string) (string, error) {
 	output, err := c.iamClient.CreateOpenIDConnectProvider(&iam.CreateOpenIDConnectProviderInput{
@@ -70,4 +78,46 @@ func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string)
 		return false, fmt.Errorf("The OIDC provider exists but is misconfigured")
 	}
 	return true, nil
+}
+
+func (c *awsClient) ListOpenIDConnectProviders(clusterID string, clusters []*cmv1.Cluster) ([]OIDC, error) {
+	// get all open id connect providers
+	oidcProviderOutput, err := c.iamClient.ListOpenIDConnectProviders(&iam.ListOpenIDConnectProvidersInput{})
+	if err != nil {
+		return nil, err
+	}
+
+	var oidcProviders []OIDC
+	for _, oidcp := range oidcProviderOutput.OpenIDConnectProviderList {
+		// filter out rosa oidc providers
+		if !strings.Contains(aws.StringValue(oidcp.Arn), "rh-oidc") {
+			continue
+		}
+
+		// split arn to get cluster id
+		splitOIDC := strings.Split(aws.StringValue(oidcp.Arn), "amazonaws.com/")
+		oidcClusterID := splitOIDC[1]
+
+		// filter out oidc provider if cluster id is passed
+		if clusterID != "" && oidcClusterID != clusterID {
+			continue
+		}
+
+		// declare oidc object, defaulting InUse to `no`
+		oidc := OIDC{
+			ARN:       aws.StringValue(oidcp.Arn),
+			ClusterID: oidcClusterID,
+			InUse:     "no",
+		}
+
+		// set InUse to `yes` if there is a cluster in OCM with the corresponding ID
+		for _, cluster := range clusters {
+			if cluster.ID() == oidcClusterID {
+				oidc.InUse = "yes"
+				break
+			}
+		}
+		oidcProviders = append(oidcProviders, oidc)
+	}
+	return oidcProviders, nil
 }

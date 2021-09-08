@@ -40,6 +40,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/profile"
@@ -86,6 +87,7 @@ type Client interface {
 	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListAccountRoles(version string) ([]Role, error)
+	ListOpenIDConnectProviders(clusterID string, clusters []*cmv1.Cluster) ([]OIDC, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
