@@ -35,13 +35,14 @@ import (
 // Spec is the configuration for a cluster spec.
 type Spec struct {
 	// Basic configs
-	Name         string
-	Region       string
-	MultiAZ      bool
-	Version      string
-	ChannelGroup string
-	Expiration   time.Time
-	Flavour      string
+	Name                      string
+	Region                    string
+	MultiAZ                   bool
+	Version                   string
+	ChannelGroup              string
+	Expiration                time.Time
+	Flavour                   string
+	DisableWorkloadMonitoring bool
 	//Encryption
 	EtcdEncryption bool
 	KMSKeyArn      string
@@ -422,7 +423,8 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 				ID(config.Region),
 		).
 		EtcdEncryption(config.EtcdEncryption).
-		Properties(clusterProperties)
+		Properties(clusterProperties).
+		DisableUserWorkloadMonitoring(config.DisableWorkloadMonitoring)
 
 	if config.Flavour != "" {
 		clusterBuilder = clusterBuilder.Flavour(
