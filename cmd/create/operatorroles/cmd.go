@@ -173,7 +173,8 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(missingRoles) == 0 && cluster.State() != cmv1.ClusterStatePending {
+	if len(missingRoles) == 0 &&
+		cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
 		reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 			clusterKey, cluster.State())
 		os.Exit(0)

@@ -23,10 +23,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/authorizations/v1
 //
 // Request to perform a resource access review.
 type ResourceReviewRequestBuilder struct {
-	bitmap_         uint32
-	accountUsername string
-	action          string
-	resourceType    string
+	bitmap_           uint32
+	accountUsername   string
+	action            string
+	resourceType      string
+	reduceClusterList bool
 }
 
 // NewResourceReviewRequest creates a new builder of 'resource_review_request' objects.
@@ -52,12 +53,21 @@ func (b *ResourceReviewRequestBuilder) Action(value string) *ResourceReviewReque
 	return b
 }
 
+// ReduceClusterList sets the value of the 'reduce_cluster_list' attribute to the given value.
+//
+//
+func (b *ResourceReviewRequestBuilder) ReduceClusterList(value bool) *ResourceReviewRequestBuilder {
+	b.reduceClusterList = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // ResourceType sets the value of the 'resource_type' attribute to the given value.
 //
 //
 func (b *ResourceReviewRequestBuilder) ResourceType(value string) *ResourceReviewRequestBuilder {
 	b.resourceType = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -69,6 +79,7 @@ func (b *ResourceReviewRequestBuilder) Copy(object *ResourceReviewRequest) *Reso
 	b.bitmap_ = object.bitmap_
 	b.accountUsername = object.accountUsername
 	b.action = object.action
+	b.reduceClusterList = object.reduceClusterList
 	b.resourceType = object.resourceType
 	return b
 }
@@ -79,6 +90,7 @@ func (b *ResourceReviewRequestBuilder) Build() (object *ResourceReviewRequest, e
 	object.bitmap_ = b.bitmap_
 	object.accountUsername = b.accountUsername
 	object.action = b.action
+	object.reduceClusterList = b.reduceClusterList
 	object.resourceType = b.resourceType
 	return
 }

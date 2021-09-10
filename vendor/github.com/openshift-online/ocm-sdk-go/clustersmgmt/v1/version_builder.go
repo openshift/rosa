@@ -19,19 +19,24 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
+import (
+	time "time"
+)
+
 // VersionBuilder contains the data and logic needed to build 'version' objects.
 //
 // Representation of an _OpenShift_ version.
 type VersionBuilder struct {
-	bitmap_           uint32
-	id                string
-	href              string
-	availableUpgrades []string
-	channelGroup      string
-	rawID             string
-	rosaEnabled       bool
-	default_          bool
-	enabled           bool
+	bitmap_            uint32
+	id                 string
+	href               string
+	availableUpgrades  []string
+	channelGroup       string
+	endOfLifeTimestamp time.Time
+	rawID              string
+	rosaEnabled        bool
+	default_           bool
+	enabled            bool
 }
 
 // NewVersion creates a new builder of 'version' objects.
@@ -105,12 +110,21 @@ func (b *VersionBuilder) Enabled(value bool) *VersionBuilder {
 	return b
 }
 
+// EndOfLifeTimestamp sets the value of the 'end_of_life_timestamp' attribute to the given value.
+//
+//
+func (b *VersionBuilder) EndOfLifeTimestamp(value time.Time) *VersionBuilder {
+	b.endOfLifeTimestamp = value
+	b.bitmap_ |= 256
+	return b
+}
+
 // RawID sets the value of the 'raw_ID' attribute to the given value.
 //
 //
 func (b *VersionBuilder) RawID(value string) *VersionBuilder {
 	b.rawID = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -132,6 +146,7 @@ func (b *VersionBuilder) Copy(object *Version) *VersionBuilder {
 	b.channelGroup = object.channelGroup
 	b.default_ = object.default_
 	b.enabled = object.enabled
+	b.endOfLifeTimestamp = object.endOfLifeTimestamp
 	b.rawID = object.rawID
 	return b
 }
@@ -150,6 +165,7 @@ func (b *VersionBuilder) Build() (object *Version, err error) {
 	object.channelGroup = b.channelGroup
 	object.default_ = b.default_
 	object.enabled = b.enabled
+	object.endOfLifeTimestamp = b.endOfLifeTimestamp
 	object.rawID = b.rawID
 	return
 }

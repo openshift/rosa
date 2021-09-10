@@ -91,6 +91,16 @@ func (c *Client) Addons() *AddOnsClient {
 	)
 }
 
+// ArchivedClusters returns the target 'archived_clusters' resource.
+//
+// Reference to limited support reason templates.
+func (c *Client) ArchivedClusters() *ArchivedClustersClient {
+	return NewArchivedClustersClient(
+		c.transport,
+		path.Join(c.path, "archived_clusters"),
+	)
+}
+
 // CloudProviders returns the target 'cloud_providers' resource.
 //
 // Reference to the resource that manages the collection of cloud providers.
@@ -128,6 +138,16 @@ func (c *Client) Flavours() *FlavoursClient {
 	return NewFlavoursClient(
 		c.transport,
 		path.Join(c.path, "flavours"),
+	)
+}
+
+// LimitedSupportReasonTemplates returns the target 'limited_support_reason_templates' resource.
+//
+// Reference to limited support reason templates.
+func (c *Client) LimitedSupportReasonTemplates() *LimitedSupportReasonTemplatesClient {
+	return NewLimitedSupportReasonTemplatesClient(
+		c.transport,
+		path.Join(c.path, "limited_support_reason_templates"),
 	)
 }
 

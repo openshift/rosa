@@ -63,6 +63,15 @@ func writeResourceReviewRequest(object *ResourceReviewRequest, stream *jsoniter.
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("reduce_cluster_list")
+		stream.WriteBool(object.reduceClusterList)
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("resource_type")
 		stream.WriteString(object.resourceType)
 		count++
@@ -102,10 +111,14 @@ func readResourceReviewRequest(iterator *jsoniter.Iterator) *ResourceReviewReque
 			value := iterator.ReadString()
 			object.action = value
 			object.bitmap_ |= 2
+		case "reduce_cluster_list":
+			value := iterator.ReadBool()
+			object.reduceClusterList = value
+			object.bitmap_ |= 4
 		case "resource_type":
 			value := iterator.ReadString()
 			object.resourceType = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

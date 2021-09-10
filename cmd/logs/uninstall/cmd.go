@@ -149,7 +149,8 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if cluster.State() == cmv1.ClusterStateInstalling ||
-		cluster.State() == cmv1.ClusterStatePending {
+		cluster.State() == cmv1.ClusterStatePending ||
+		cluster.State() == cmv1.ClusterStateWaiting {
 		reporter.Errorf("Cluster '%s' is in '%s' state and no uninstallation logs are available",
 			clusterKey, cluster.State(),
 		)

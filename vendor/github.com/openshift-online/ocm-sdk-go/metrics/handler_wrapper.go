@@ -250,8 +250,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	h.owner.requestCount.With(labels).Inc()
 	h.owner.requestDuration.With(labels).Observe(elapsed.Seconds())
-
-	return
 }
 
 // Header is part of the implementation of the http.ResponseWriter interface.
@@ -269,4 +267,12 @@ func (w *responseWriter) Write(b []byte) (n int, err error) {
 func (w *responseWriter) WriteHeader(code int) {
 	w.code = code
 	w.writer.WriteHeader(code)
+}
+
+// Flush is the implementation of the http.Flusher interface.
+func (w *responseWriter) Flush() {
+	flusher, ok := w.writer.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
 }

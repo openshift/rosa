@@ -27,6 +27,7 @@ type AddOnRequirement struct {
 	id       string
 	data     map[string]interface{}
 	resource string
+	status   *AddOnRequirementStatus
 	enabled  bool
 }
 
@@ -123,6 +124,29 @@ func (o *AddOnRequirement) GetResource() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.resource
+	}
+	return
+}
+
+// Status returns the value of the 'status' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Optional cluster specific status for the add-on.
+func (o *AddOnRequirement) Status() *AddOnRequirementStatus {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.status
+	}
+	return nil
+}
+
+// GetStatus returns the value of the 'status' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Optional cluster specific status for the add-on.
+func (o *AddOnRequirement) GetStatus() (value *AddOnRequirementStatus, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.status
 	}
 	return
 }

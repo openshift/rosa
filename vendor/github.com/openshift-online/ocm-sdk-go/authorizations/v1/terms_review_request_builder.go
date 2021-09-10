@@ -24,10 +24,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/authorizations/v1
 // Representation of Red Hat's Terms and Conditions for using OpenShift Dedicated and Amazon Red Hat OpenShift [Terms]
 // review requests.
 type TermsReviewRequestBuilder struct {
-	bitmap_         uint32
-	accountUsername string
-	eventCode       string
-	siteCode        string
+	bitmap_            uint32
+	accountUsername    string
+	eventCode          string
+	siteCode           string
+	checkOptionalTerms bool
 }
 
 // NewTermsReviewRequest creates a new builder of 'terms_review_request' objects.
@@ -44,12 +45,21 @@ func (b *TermsReviewRequestBuilder) AccountUsername(value string) *TermsReviewRe
 	return b
 }
 
+// CheckOptionalTerms sets the value of the 'check_optional_terms' attribute to the given value.
+//
+//
+func (b *TermsReviewRequestBuilder) CheckOptionalTerms(value bool) *TermsReviewRequestBuilder {
+	b.checkOptionalTerms = value
+	b.bitmap_ |= 2
+	return b
+}
+
 // EventCode sets the value of the 'event_code' attribute to the given value.
 //
 //
 func (b *TermsReviewRequestBuilder) EventCode(value string) *TermsReviewRequestBuilder {
 	b.eventCode = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
@@ -58,7 +68,7 @@ func (b *TermsReviewRequestBuilder) EventCode(value string) *TermsReviewRequestB
 //
 func (b *TermsReviewRequestBuilder) SiteCode(value string) *TermsReviewRequestBuilder {
 	b.siteCode = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -69,6 +79,7 @@ func (b *TermsReviewRequestBuilder) Copy(object *TermsReviewRequest) *TermsRevie
 	}
 	b.bitmap_ = object.bitmap_
 	b.accountUsername = object.accountUsername
+	b.checkOptionalTerms = object.checkOptionalTerms
 	b.eventCode = object.eventCode
 	b.siteCode = object.siteCode
 	return b
@@ -79,6 +90,7 @@ func (b *TermsReviewRequestBuilder) Build() (object *TermsReviewRequest, err err
 	object = new(TermsReviewRequest)
 	object.bitmap_ = b.bitmap_
 	object.accountUsername = b.accountUsername
+	object.checkOptionalTerms = b.checkOptionalTerms
 	object.eventCode = b.eventCode
 	object.siteCode = b.siteCode
 	return

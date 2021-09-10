@@ -144,15 +144,20 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	phase := ""
 
-	if cluster.State() == cmv1.ClusterStatePending {
+	switch cluster.State() {
+	case cmv1.ClusterStateWaiting:
+		phase = "(Waiting for user action)"
+		status, _ := ocmClient.GetClusterStatus(cluster.ID())
+		if status.Description() != "" {
+			phase = fmt.Sprintf("(%s)", status.Description())
+		}
+	case cmv1.ClusterStatePending:
 		phase = "(Preparing account)"
 		status, _ := ocmClient.GetClusterStatus(cluster.ID())
 		if status.Description() != "" {
 			phase = fmt.Sprintf("(%s)", status.Description())
 		}
-	}
-
-	if cluster.State() == cmv1.ClusterStateInstalling {
+	case cmv1.ClusterStateInstalling:
 		if !cluster.Status().DNSReady() {
 			phase = "(DNS setup in progress)"
 		}

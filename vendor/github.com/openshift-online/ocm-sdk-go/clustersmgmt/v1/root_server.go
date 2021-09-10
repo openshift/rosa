@@ -49,6 +49,11 @@ type Server interface {
 	// Reference to the resource that manages the collection of add-ons.
 	Addons() AddOnsServer
 
+	// ArchivedClusters returns the target 'archived_clusters' resource.
+	//
+	// Reference to limited support reason templates.
+	ArchivedClusters() ArchivedClustersServer
+
 	// CloudProviders returns the target 'cloud_providers' resource.
 	//
 	// Reference to the resource that manages the collection of cloud providers.
@@ -68,6 +73,11 @@ type Server interface {
 	//
 	// Reference to the service that manages the collection of flavours.
 	Flavours() FlavoursServer
+
+	// LimitedSupportReasonTemplates returns the target 'limited_support_reason_templates' resource.
+	//
+	// Reference to limited support reason templates.
+	LimitedSupportReasonTemplates() LimitedSupportReasonTemplatesServer
 
 	// MachineTypes returns the target 'machine_types' resource.
 	//
@@ -130,6 +140,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchAddOns(w, r, target, segments[1:])
+	case "archived_clusters":
+		target := server.ArchivedClusters()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchArchivedClusters(w, r, target, segments[1:])
 	case "cloud_providers":
 		target := server.CloudProviders()
 		if target == nil {
@@ -158,6 +175,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchFlavours(w, r, target, segments[1:])
+	case "limited_support_reason_templates":
+		target := server.LimitedSupportReasonTemplates()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchLimitedSupportReasonTemplates(w, r, target, segments[1:])
 	case "machine_types":
 		target := server.MachineTypes()
 		if target == nil {
