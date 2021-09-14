@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -603,4 +604,27 @@ func (c *Client) ResumeCluster(clusterID string) error {
 	}
 
 	return nil
+}
+
+//Get all the archived ROSA STS clusters
+func (c *Client) GetArchivedCluster(clusterKey string, creator *aws.Creator) (clusters []*cmv1.Cluster, err error) {
+	query := fmt.Sprintf("%s AND (id = '%s' OR name = '%s' OR external_id = '%s')",
+		getClusterFilter(creator),
+		clusterKey, clusterKey, clusterKey,
+	)
+	request := c.ocm.ClustersMgmt().V1().ArchivedClusters().List().Search(query)
+	response, err := request.Send()
+
+	if err != nil {
+		if response.Status() == http.StatusNotFound {
+			return clusters, handleErr(response.Error(), err)
+		}
+		return clusters, err
+	}
+	response.Items().Each(func(cluster *cmv1.Cluster) bool {
+		clusters = append(clusters, cluster)
+		return true
+	})
+
+	return clusters, nil
 }

@@ -52,6 +52,7 @@ func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string)
 		return false, err
 	}
 	providerURL := fmt.Sprintf("%s%s", parsedIssuerURL.Host, parsedIssuerURL.Path)
+
 	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, providerURL)
 	output, err := c.iamClient.GetOpenIDConnectProvider(&iam.GetOpenIDConnectProviderInput{
 		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
@@ -70,4 +71,21 @@ func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string)
 		return false, fmt.Errorf("The OIDC provider exists but is misconfigured")
 	}
 	return true, nil
+}
+
+func (c *awsClient) DeleteOpenIDConnectProvider(oidcProviderARN string) error {
+	_, err := c.iamClient.DeleteOpenIDConnectProvider(&iam.DeleteOpenIDConnectProviderInput{
+		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return fmt.Errorf("OIDC provider '%s' does not exists",
+					oidcProviderARN)
+			}
+		}
+		return err
+	}
+	return nil
 }
