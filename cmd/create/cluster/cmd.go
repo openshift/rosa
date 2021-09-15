@@ -55,6 +55,8 @@ var args struct {
 	dryRun bool
 	// Create a fake cluster with no AWS resources
 	fakeCluster bool
+	// Set custom properties in cluster spec
+	properties []string
 
 	// Disable SCP checks in the installer
 	disableSCPChecks bool
@@ -393,6 +395,14 @@ func init() {
 		"Create a fake cluster that uses no AWS resources.",
 	)
 	flags.MarkHidden("fake-cluster")
+
+	flags.StringArrayVar(
+		&args.properties,
+		"properties",
+		nil,
+		"User defined properties for tagging and querying.",
+	)
+	flags.MarkHidden("properties")
 
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
@@ -1351,9 +1361,20 @@ func run(cmd *cobra.Command, _ []string) {
 		DisableWorkloadMonitoring: disableWorkloadMonitoring,
 	}
 
+	props := args.properties
 	if args.fakeCluster {
+		props = append(props, properties.FakeCluster)
+	}
+	if len(props) > 0 {
 		clusterConfig.CustomProperties = map[string]string{}
-		clusterConfig.CustomProperties[properties.FakeCluster] = "true"
+	}
+	for _, prop := range props {
+		if strings.Contains(prop, ":") {
+			p := strings.SplitN(prop, ":", 2)
+			clusterConfig.CustomProperties[p[0]] = p[1]
+		} else {
+			clusterConfig.CustomProperties[prop] = "true"
+		}
 	}
 
 	if !output.HasFlag() || reporter.IsTerminal() {
