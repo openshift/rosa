@@ -23,8 +23,8 @@ import (
 var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
-var UserTagKeyRE = regexp.MustCompile(`^[A-Za-zÀ-ȕ0-9_.:/=+\-@]{1,128}$`)
-var UserTagValueRE = regexp.MustCompile(`^[A-Za-zÀ-ȕ0-9_.:/=+\-@]{0,256}$`)
+var UserTagKeyRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
+var UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
 
 // JumpAccounts are the various of AWS accounts used for the installer jump role in the various OCM environments
 var JumpAccounts = map[string]string{
