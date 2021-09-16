@@ -151,8 +151,12 @@ func run(cmd *cobra.Command, _ []string) {
 	// Check to see if IAM operator roles have already created
 	missingRoles, err := validateOperatorRoles(awsClient, cluster)
 	if err != nil {
-		reporter.Errorf("Failed to validate operator roles exist: %s", err)
-		os.Exit(1)
+		if strings.Contains(err.Error(), "AccessDenied") {
+			reporter.Debugf("Failed to verify if operator roles exist: %s", err)
+		} else {
+			reporter.Errorf("Failed to verify if operator roles exist: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	if len(missingRoles) > 0 {
@@ -170,8 +174,12 @@ func run(cmd *cobra.Command, _ []string) {
 	oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
 	oidcProviderExists, err := awsClient.HasOpenIDConnectProvider(oidcEndpointURL, creator.AccountID)
 	if err != nil {
-		reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
-		os.Exit(1)
+		if strings.Contains(err.Error(), "AccessDenied") {
+			reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
+		} else {
+			reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
+			os.Exit(1)
+		}
 	}
 	if oidcProviderExists {
 		reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
