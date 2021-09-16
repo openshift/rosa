@@ -18,12 +18,16 @@ package accountroles
 
 import (
 	"fmt"
+
 	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/login"
+	"github.com/openshift/rosa/cmd/verify/oc"
+	"github.com/openshift/rosa/cmd/verify/quota"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -97,24 +101,18 @@ func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 	return modes, cobra.ShellCompDirectiveDefault
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
+	// If necessary, call `login` as part of `init`. We do this before
+	// other validations to get the prompt out of the way before performing
+	// longer checks.
+	err := login.Call(cmd, argv, reporter)
 	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
+		reporter.Errorf("Failed to login to OCM: %v", err)
 		os.Exit(1)
 	}
-	creator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Unable to get IAM credentials: %s", err)
-		os.Exit(1)
-	}
-
 	// Create the client for the OCM API:
 	ocmClient, err := ocm.NewClient().
 		Logger(logger).
@@ -136,11 +134,51 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Create the AWS client:
+	awsClient, err := aws.NewClient().
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create AWS client: %v", err)
+		os.Exit(1)
+	}
+
+	// Validate AWS credentials for current user
+	reporter.Infof("Validating AWS credentials...")
+	ok, err := awsClient.ValidateCredentials()
+	if err != nil {
+		ocmClient.LogEvent("ROSAInitCredentialsFailed")
+		reporter.Errorf("Error validating AWS credentials: %v", err)
+		os.Exit(1)
+	}
+	if !ok {
+		ocmClient.LogEvent("ROSAInitCredentialsInvalid")
+		reporter.Errorf("AWS credentials are invalid")
+		os.Exit(1)
+	}
+	reporter.Infof("AWS credentials are valid!")
+
+	creator, err := awsClient.GetCreator()
+	if err != nil {
+		reporter.Errorf("Unable to get IAM credentials: %s", err)
+		os.Exit(1)
+	}
+
+	// Validate AWS quota
+	// Call `verify quota` as part of init
+	err = quota.Cmd.RunE(cmd, argv)
+	if err != nil {
+		reporter.Warnf("Insufficient AWS quotas. Cluster installation might fail.")
+	}
+	// Verify version of `oc`
+	oc.Cmd.Run(cmd, argv)
+
 	// Determine if interactive mode is needed
 	if !interactive.Enabled() && (!cmd.Flags().Changed("mode")) {
 		interactive.Enable()
 	}
 
+	reporter.Infof("Starting to create the account roles!")
 	// OpenShift version:
 	version := args.version
 	versionList, err := ocm.GetVersionMinorList(ocmClient)
@@ -153,7 +191,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if interactive.Enabled() {
 		version, err = interactive.GetOption(interactive.Input{
-			Question: "OpenShift version",
+			Question: "OpenShift version to create account roles",
 			Help:     cmd.Flags().Lookup("version").Usage,
 			Options:  versionList,
 			Default:  version,
