@@ -540,11 +540,10 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		awsBuilder = awsBuilder.
 			AccessKeyID(awsAccessKey.AccessKeyID).
 			SecretAccessKey(awsAccessKey.SecretAccessKey)
-		if config.KMSKeyArn != "" {
-			awsBuilder = awsBuilder.KMSKeyArn(config.KMSKeyArn)
-		}
 	}
-
+	if config.KMSKeyArn != "" {
+		awsBuilder = awsBuilder.KMSKeyArn(config.KMSKeyArn)
+	}
 	if len(config.Tags) > 0 {
 		awsBuilder = awsBuilder.Tags(config.Tags)
 	}
