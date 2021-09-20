@@ -83,13 +83,6 @@ func init() {
 		"Indicates if cloud permission checks are disabled when attempting installation of the cluster.",
 	)
 
-	flags.BoolVar(
-		&args.sts,
-		"sts",
-		false,
-		"Indicates if cluster credentials checks should be done using STS Assume Role",
-	)
-
 	// Force-load all flags from `login` into `init`
 	flags.AddFlagSet(login.Cmd.Flags())
 
@@ -190,49 +183,51 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate AWS quota
 	// Call `verify quota` as part of init
-	quota.Cmd.Run(cmd, argv)
+	err = quota.Cmd.RunE(cmd, argv)
+	if err != nil {
+		reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
 
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
-	if !args.sts {
-		reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
-		created, err := cfClient.EnsureOsdCcsAdminUser(aws.OsdCcsAdminStackName, aws.AdminUserName, awsRegion)
-		if err != nil {
-			ocmClient.LogEvent("ROSAInitCreateStackFailed")
-			reporter.Errorf("Failed to create user '%s': %v", aws.AdminUserName, err)
+	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
+	created, err := cfClient.EnsureOsdCcsAdminUser(aws.OsdCcsAdminStackName, aws.AdminUserName, awsRegion)
+	if err != nil {
+		ocmClient.LogEvent("ROSAInitCreateStackFailed")
+		reporter.Errorf("Failed to create user '%s': %v", aws.AdminUserName, err)
+		os.Exit(1)
+	}
+	if created {
+		reporter.Infof("Admin user '%s' created successfully!", aws.AdminUserName)
+	} else {
+		reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
+	}
+
+	// Check if osdCcsAdmin has right permissions
+	// Skip this check if --disable-scp-checks is true
+	if !args.disableSCPChecks {
+		reporter.Infof("Validating SCP policies for '%s'...", aws.AdminUserName)
+		target := aws.AdminUserName
+		isValid, err := client.ValidateSCP(&target)
+		if !isValid {
+			ocmClient.LogEvent("ROSAInitSCPPoliciesFailed")
+			reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)
 			os.Exit(1)
 		}
-		if created {
-			reporter.Infof("Admin user '%s' created successfully!", aws.AdminUserName)
-		} else {
-			reporter.Infof("Admin user '%s' already exists!", aws.AdminUserName)
-		}
+		reporter.Infof("AWS SCP policies ok")
+	} else {
+		reporter.Infof("Skipping AWS SCP policies check for '%s'...", aws.AdminUserName)
+	}
 
-		// Check if osdCcsAdmin has right permissions
-		// Skip this check if --disable-scp-checks is true
-		if !args.disableSCPChecks {
-			reporter.Infof("Validating SCP policies for '%s'...", aws.AdminUserName)
-			target := aws.AdminUserName
-			isValid, err := client.ValidateSCP(&target)
-			if !isValid {
-				ocmClient.LogEvent("ROSAInitSCPPoliciesFailed")
-				reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)
-				os.Exit(1)
-			}
-			reporter.Infof("AWS SCP policies ok")
-		} else {
-			reporter.Infof("Skipping AWS SCP policies check for '%s'...", aws.AdminUserName)
-		}
-
-		// Check whether the user can create a basic cluster
-		reporter.Infof("Validating cluster creation...")
-		err = simulateCluster(ocmClient, region.Region())
-		if err != nil {
-			ocmClient.LogEvent("ROSAInitDryRunFailed")
-			reporter.Warnf("Cluster creation failed. "+
-				"If you create a cluster, it should fail with the following error:\n%s", err)
-		} else {
-			reporter.Infof("Cluster creation valid")
-		}
+	// Check whether the user can create a basic cluster
+	reporter.Infof("Validating cluster creation...")
+	err = simulateCluster(ocmClient, region.Region())
+	if err != nil {
+		ocmClient.LogEvent("ROSAInitDryRunFailed")
+		reporter.Warnf("Cluster creation failed. "+
+			"If you create a cluster, it should fail with the following error:\n%s", err)
+	} else {
+		reporter.Infof("Cluster creation valid")
 	}
 
 	// Verify version of `oc`
