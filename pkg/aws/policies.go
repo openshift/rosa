@@ -19,9 +19,7 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"net/url"
-	"reflect"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -155,7 +153,7 @@ type PolicyStatementPrincipal struct {
 	// You can specify an individual IAM role ARN (or array of role ARNs) as the principal.
 	// In IAM roles, the Principal element in the role's trust policy specifies who can assume the role.
 	// When you specify more than one principal in the element, you grant permissions to each principal.
-	AWS interface{} `json:"AWS,omitempty"`
+	AWS []string `json:"AWS,omitempty"`
 	// A federated principal uses a web identity token or SAML federation
 	Federated string `json:"Federated,omitempty"`
 }
@@ -240,12 +238,11 @@ func (c *awsClient) updateAssumeRolePolicyPrincipals(policy string, role *iam.Ro
 	principals := []string{}
 	hasMultiplePrincipals := false
 	for _, statement := range newPolicyDoc.Statement {
-		awsPrinciples := getAWSPrinciple(statement.Principal.AWS)
 		// There is no AWS principal to add, nothing to do here
-		if len(awsPrinciples) == 0 {
+		if len(statement.Principal.AWS) == 0 {
 			return policy, false, nil
 		}
-		for _, trust := range awsPrinciples {
+		for _, trust := range statement.Principal.AWS {
 			// Trusted principal already exists, nothing to do here
 			if strings.Contains(oldPolicy, trust) {
 				return policy, false, nil
@@ -280,23 +277,6 @@ func (c *awsClient) updateAssumeRolePolicyPrincipals(policy string, role *iam.Ro
 	policy = strings.Replace(policy, oldPrincipals, strings.Join(principals, `","`), 1)
 
 	return policy, true, nil
-}
-
-func getAWSPrinciple(awsPrinciple interface{}) []string {
-	var awsArr []string
-	switch reflect.TypeOf(awsPrinciple).Kind() {
-	case reflect.Slice:
-		value := reflect.ValueOf(awsPrinciple)
-		awsArr = make([]string, value.Len())
-		for i := 0; i < value.Len(); i++ {
-			awsArr[i] = value.Index(i).Interface().(string)
-		}
-	case reflect.String:
-		awsArr = make([]string, 1)
-		awsArr[0] = awsPrinciple.(string)
-	}
-	return awsArr
-
 }
 
 func (c *awsClient) createRole(name string, policy string, permissionsBoundary string,
@@ -611,7 +591,6 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 		return accountRoles, err
 	}
 	for _, role := range roles {
-
 		if !checkIfROSARole(role.RoleName) {
 			continue
 		}
@@ -675,62 +654,10 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 	return accountRoles, nil
 }
 
-/**
-1) Get the trust
-2) Check with the account
-3) Yes -->
-*/
-
-func (c *awsClient) GetAccountRolesForCurrentEnv(env string) ([]string, error) {
-	reporter := rprtr.CreateReporterOrExit()
-	roleList := []string{}
-	roles, err := c.ListRoles()
-	if err != nil {
-		return roleList, err
-	}
-	for _, role := range roles {
-		if role.RoleName == nil{
-			continue
-		}
-		//reporter.Infof("%v",aws.StringValue(role.Arn))
-		if !strings.Contains(aws.StringValue(role.RoleName), ("Installer-Role")) {
-			continue
-		}
-		policyDoc, err := getPolicyDocument(role.AssumeRolePolicyDocument)
-		if err != nil {
-			return roleList, err
-		}
-		statements := policyDoc.Statement
-		for _, statement := range statements {
-			awsArr := statement.Principal.AWS
-			awsPriciple := getAWSPrinciple(awsArr)
-			for _, a := range awsPriciple {
-				str := strings.Split(a, "::")
-				if len(str) > 1 {
-					c := strings.Split(str[1], ":")
-					if c[0] == JumpAccounts[env] {
-						buildRoles(aws.StringValue(role.RoleName))
-						roleList = append(roleList, aws.StringValue(role.RoleName))
-						break
-					}
-				}
-			}
-		}
-	}
-
-	return roleList, nil
-}
-
-
-func buildRoles(roleName string){
-	for _, prefix := range AccountRoles {
-
-	}
-}
 //Check if it is one of the ROSA account roles
 func checkIfROSARole(roleName *string) bool {
 	for _, prefix := range AccountRoles {
-		if strings.Contains(aws.StringValue(roleName), (prefix.Name + "-Role")) {
+		if strings.Contains(aws.StringValue(roleName), prefix.Name) {
 			return true
 		}
 	}
