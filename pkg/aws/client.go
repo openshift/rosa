@@ -86,7 +86,9 @@ type Client interface {
 	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListAccountRoles(version string) ([]Role, error)
-	GetAccountRolesForCurrentEnv(env string) ([]string, error)
+	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
+	DeleteAccountRole(roleName string) error
+	GetAccountRoleForCurrentEnv(env string, roleName string) (string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.

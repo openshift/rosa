@@ -681,24 +681,22 @@ func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
 	return data, nil
 }
 
-
 /**
 1) Get the trust
 2) Check with the account
 3) Yes -->
 */
 
-func (c *awsClient) GetAccountRolesForCurrentEnv(env string) ([]string, error) {
-	roleList := []string{}
+func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error) {
+	roleList := []Role{}
 	roles, err := c.ListRoles()
 	if err != nil {
 		return roleList, err
 	}
 	for _, role := range roles {
-		if role.RoleName == nil{
+		if role.RoleName == nil {
 			continue
 		}
-		//reporter.Infof("%v",aws.StringValue(role.Arn))
 		if !strings.Contains(aws.StringValue(role.RoleName), ("Installer-Role")) {
 			continue
 		}
@@ -708,14 +706,16 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string) ([]string, error) {
 		}
 		statements := policyDoc.Statement
 		for _, statement := range statements {
-			awsArr := statement.Principal.AWS
-			awsPriciple := getAWSPrinciple(awsArr)
+			awsPriciple := getAWSPrinciple(statement.Principal.AWS)
 			for _, a := range awsPriciple {
 				str := strings.Split(a, "::")
 				if len(str) > 1 {
-					c := strings.Split(str[1], ":")
-					if c[0] == JumpAccounts[env] {
-						roles:=buildRoles(aws.StringValue(role.RoleName))
+					e := strings.Split(str[1], ":")
+					if e[0] == JumpAccounts[env] {
+						roles, err := c.buildRoles(aws.StringValue(role.RoleName), accountID)
+						if err != nil {
+							return roleList, err
+						}
 						roleList = append(roleList, roles...)
 						break
 					}
@@ -723,20 +723,31 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string) ([]string, error) {
 			}
 		}
 	}
-
 	return roleList, nil
 }
 
-
-func buildRoles(roleName string) []string{
-	roles := []string{}
-	role := strings.Split(roleName,"-Installer-Role")[0]
+func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error) {
+	roles := []Role{}
+	rolePrefix := strings.Split(roleName, "-Installer-Role")[0]
 	for _, prefix := range AccountRoles {
-		roles = append(roles, fmt.Sprintf("%s-%s",role,prefix.Name))
-	}
-	return roles
-}
+		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s-%s-Role", accountID, rolePrefix, prefix.Name)
+		roleName := fmt.Sprintf("%s-%s-Role", rolePrefix, prefix.Name)
 
+		if prefix.Name != "Installer" {
+			_, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
+			if err != nil {
+				return roles, err
+			}
+		}
+		role := Role{
+			RoleARN:  roleArn,
+			RoleName: roleName,
+			RoleType: prefix.Name,
+		}
+		roles = append(roles, role)
+	}
+	return roles, nil
+}
 
 func getAWSPrinciple(awsPrinciple interface{}) []string {
 	var awsArr []string
@@ -755,3 +766,44 @@ func getAWSPrinciple(awsPrinciple interface{}) []string {
 
 }
 
+func (c *awsClient) DeleteAccountRole(role string) error {
+	_, err := c.iamClient.DeleteRole(&iam.DeleteRoleInput{RoleName: aws.String(role)})
+	return err
+}
+
+func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (string, error) {
+	accountRoleResponse, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
+	if err != nil {
+		return "", err
+	}
+	installerRole := roleName
+	rolePrefix := strings.Split(roleName, "-Installer-Role")[0]
+	if !strings.Contains(roleName, ("Installer-Role")) {
+		installerRole = fmt.Sprintf("%s-%s-Role", rolePrefix, "Installer")
+	}
+	installerRoleResponse, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(installerRole)})
+	if err != nil {
+		return "", err
+	}
+
+	policyDoc, err := getPolicyDocument(installerRoleResponse.Role.AssumeRolePolicyDocument)
+	if err != nil {
+		return "", err
+	}
+	statements := policyDoc.Statement
+	for _, statement := range statements {
+		awsPriciple := getAWSPrinciple(statement.Principal.AWS)
+		for _, a := range awsPriciple {
+			str := strings.Split(a, "::")
+			if len(str) > 1 {
+				e := strings.Split(str[1], ":")
+				if e[0] == JumpAccounts[env] {
+					return aws.StringValue(accountRoleResponse.Role.Arn), nil
+				}
+			}
+		}
+
+	}
+	return "", nil
+
+}
