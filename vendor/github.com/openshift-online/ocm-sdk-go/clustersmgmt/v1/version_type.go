@@ -19,6 +19,10 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
+import (
+	time "time"
+)
+
 // VersionKind is the name of the type used to represent objects
 // of type 'version'.
 const VersionKind = "Version"
@@ -35,15 +39,16 @@ const VersionNilKind = "VersionNil"
 //
 // Representation of an _OpenShift_ version.
 type Version struct {
-	bitmap_           uint32
-	id                string
-	href              string
-	availableUpgrades []string
-	channelGroup      string
-	rawID             string
-	rosaEnabled       bool
-	default_          bool
-	enabled           bool
+	bitmap_            uint32
+	id                 string
+	href               string
+	availableUpgrades  []string
+	channelGroup       string
+	endOfLifeTimestamp time.Time
+	rawID              string
+	rosaEnabled        bool
+	default_           bool
+	enabled            bool
 }
 
 // Kind returns the name of the type of the object.
@@ -224,12 +229,37 @@ func (o *Version) GetEnabled() (value bool, ok bool) {
 	return
 }
 
+// EndOfLifeTimestamp returns the value of the 'end_of_life_timestamp' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// EndOfLifeTimestamp is the date and time when the version will get to End of Life, using the
+// format defined in https://www.ietf.org/rfc/rfc3339.txt[RC3339].
+func (o *Version) EndOfLifeTimestamp() time.Time {
+	if o != nil && o.bitmap_&256 != 0 {
+		return o.endOfLifeTimestamp
+	}
+	return time.Time{}
+}
+
+// GetEndOfLifeTimestamp returns the value of the 'end_of_life_timestamp' attribute and
+// a flag indicating if the attribute has a value.
+//
+// EndOfLifeTimestamp is the date and time when the version will get to End of Life, using the
+// format defined in https://www.ietf.org/rfc/rfc3339.txt[RC3339].
+func (o *Version) GetEndOfLifeTimestamp() (value time.Time, ok bool) {
+	ok = o != nil && o.bitmap_&256 != 0
+	if ok {
+		value = o.endOfLifeTimestamp
+	}
+	return
+}
+
 // RawID returns the value of the 'raw_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // RawID is the id of the version - without channel group and prefix.
 func (o *Version) RawID() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.rawID
 	}
 	return ""
@@ -240,7 +270,7 @@ func (o *Version) RawID() string {
 //
 // RawID is the id of the version - without channel group and prefix.
 func (o *Version) GetRawID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.rawID
 	}

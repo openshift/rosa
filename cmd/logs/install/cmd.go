@@ -152,7 +152,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"Cluster '%s' is in %s state waiting for installation to begin. Logs will show up within 5 minutes",
 		clusterKey, cluster.State(),
 	)
-	if cluster.State() == cmv1.ClusterStatePending && !watch {
+	if (cluster.State() == cmv1.ClusterStatePending || cluster.State() == cmv1.ClusterStateWaiting) && !watch {
 		if cluster.CreationTimestamp().Add(5 * time.Minute).Before(time.Now()) {
 			reporter.Errorf(
 				"Cluster '%s' has been in %s state for too long. Please contact support",

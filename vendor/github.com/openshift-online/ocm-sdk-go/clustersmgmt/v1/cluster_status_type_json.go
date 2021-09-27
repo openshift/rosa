@@ -77,11 +77,20 @@ func writeClusterStatus(object *ClusterStatus, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("oidc_ready")
+		stream.WriteBool(object.oidcReady)
+		count++
+	}
+	present_ = object.bitmap_&32 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("configuration_mode")
 		stream.WriteString(string(object.configurationMode))
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -90,7 +99,7 @@ func writeClusterStatus(object *ClusterStatus, stream *jsoniter.Stream) {
 		stream.WriteString(object.description)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -99,7 +108,7 @@ func writeClusterStatus(object *ClusterStatus, stream *jsoniter.Stream) {
 		stream.WriteString(object.provisionErrorCode)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -108,7 +117,7 @@ func writeClusterStatus(object *ClusterStatus, stream *jsoniter.Stream) {
 		stream.WriteString(object.provisionErrorMessage)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -159,28 +168,32 @@ func readClusterStatus(iterator *jsoniter.Iterator) *ClusterStatus {
 			value := iterator.ReadBool()
 			object.dnsReady = value
 			object.bitmap_ |= 8
+		case "oidc_ready":
+			value := iterator.ReadBool()
+			object.oidcReady = value
+			object.bitmap_ |= 16
 		case "configuration_mode":
 			text := iterator.ReadString()
 			value := ClusterConfigurationMode(text)
 			object.configurationMode = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "description":
 			value := iterator.ReadString()
 			object.description = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "provision_error_code":
 			value := iterator.ReadString()
 			object.provisionErrorCode = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "provision_error_message":
 			value := iterator.ReadString()
 			object.provisionErrorMessage = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "state":
 			text := iterator.ReadString()
 			value := ClusterState(text)
 			object.state = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		default:
 			iterator.ReadAny()
 		}

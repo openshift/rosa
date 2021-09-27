@@ -23,10 +23,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/authorizations/v1
 //
 // Request to perform a resource access review.
 type ResourceReviewRequest struct {
-	bitmap_         uint32
-	accountUsername string
-	action          string
-	resourceType    string
+	bitmap_           uint32
+	accountUsername   string
+	action            string
+	resourceType      string
+	reduceClusterList bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -80,12 +81,37 @@ func (o *ResourceReviewRequest) GetAction() (value string, ok bool) {
 	return
 }
 
+// ReduceClusterList returns the value of the 'reduce_cluster_list' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// If true, in the case when all subscriptions in organization are permitted, response will *not* include
+// these subscriptions' ID, but organization only.
+func (o *ResourceReviewRequest) ReduceClusterList() bool {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.reduceClusterList
+	}
+	return false
+}
+
+// GetReduceClusterList returns the value of the 'reduce_cluster_list' attribute and
+// a flag indicating if the attribute has a value.
+//
+// If true, in the case when all subscriptions in organization are permitted, response will *not* include
+// these subscriptions' ID, but organization only.
+func (o *ResourceReviewRequest) GetReduceClusterList() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.reduceClusterList
+	}
+	return
+}
+
 // ResourceType returns the value of the 'resource_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Type of resource.
 func (o *ResourceReviewRequest) ResourceType() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.resourceType
 	}
 	return ""
@@ -96,7 +122,7 @@ func (o *ResourceReviewRequest) ResourceType() string {
 //
 // Type of resource.
 func (o *ResourceReviewRequest) GetResourceType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.resourceType
 	}

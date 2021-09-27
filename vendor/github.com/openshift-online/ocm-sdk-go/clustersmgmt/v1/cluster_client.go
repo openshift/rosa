@@ -194,6 +194,16 @@ func (c *ClusterClient) Ingresses() *IngressesClient {
 	)
 }
 
+// LimitedSupportReasons returns the target 'limited_support_reasons' resource.
+//
+// Reference to cluster limited support reasons.
+func (c *ClusterClient) LimitedSupportReasons() *LimitedSupportReasonsClient {
+	return NewLimitedSupportReasonsClient(
+		c.transport,
+		path.Join(c.path, "limited_support_reasons"),
+	)
+}
+
 // Logs returns the target 'logs' resource.
 //
 // Reference to the resource that manages the collection of logs of the cluster.
@@ -246,7 +256,7 @@ func (c *ClusterClient) ProvisionShard() *ProvisionShardClient {
 
 // Resources returns the target 'resources' resource.
 //
-// Reference to cluster resources
+// Reference to cluster resources.
 func (c *ClusterClient) Resources() *ResourcesClient {
 	return NewResourcesClient(
 		c.transport,
