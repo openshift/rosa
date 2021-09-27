@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -677,4 +678,128 @@ func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
 		}
 	}
 	return data, nil
+}
+
+/**
+1) Get the trust
+2) Check with the account
+3) Yes -->
+*/
+
+func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error) {
+	roleList := []Role{}
+	roles, err := c.ListRoles()
+	if err != nil {
+		return roleList, err
+	}
+	for _, role := range roles {
+		if role.RoleName == nil {
+			continue
+		}
+		if !strings.Contains(aws.StringValue(role.RoleName), ("Installer-Role")) {
+			continue
+		}
+		policyDoc, err := getPolicyDocument(role.AssumeRolePolicyDocument)
+		if err != nil {
+			return roleList, err
+		}
+		statements := policyDoc.Statement
+		for _, statement := range statements {
+			awsPriciple := getAWSPrinciple(statement.Principal.AWS)
+			for _, a := range awsPriciple {
+				str := strings.Split(a, "::")
+				if len(str) > 1 {
+					e := strings.Split(str[1], ":")
+					if e[0] == JumpAccounts[env] {
+						roles, err := c.buildRoles(aws.StringValue(role.RoleName), accountID)
+						if err != nil {
+							return roleList, err
+						}
+						roleList = append(roleList, roles...)
+						break
+					}
+				}
+			}
+		}
+	}
+	return roleList, nil
+}
+
+func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error) {
+	roles := []Role{}
+	rolePrefix := strings.Split(roleName, "-Installer-Role")[0]
+	for _, prefix := range AccountRoles {
+		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s-%s-Role", accountID, rolePrefix, prefix.Name)
+		roleName := fmt.Sprintf("%s-%s-Role", rolePrefix, prefix.Name)
+
+		if prefix.Name != "Installer" {
+			_, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
+			if err != nil {
+				return roles, err
+			}
+		}
+		role := Role{
+			RoleARN:  roleArn,
+			RoleName: roleName,
+			RoleType: prefix.Name,
+		}
+		roles = append(roles, role)
+	}
+	return roles, nil
+}
+
+func getAWSPrinciple(awsPrinciple interface{}) []string {
+	var awsArr []string
+	switch reflect.TypeOf(awsPrinciple).Kind() {
+	case reflect.Slice:
+		value := reflect.ValueOf(awsPrinciple)
+		awsArr = make([]string, value.Len())
+		for i := 0; i < value.Len(); i++ {
+			awsArr[i] = value.Index(i).Interface().(string)
+		}
+	case reflect.String:
+		awsArr = make([]string, 1)
+		awsArr[0] = awsPrinciple.(string)
+	}
+	return awsArr
+}
+
+func (c *awsClient) DeleteAccountRole(role string) error {
+	_, err := c.iamClient.DeleteRole(&iam.DeleteRoleInput{RoleName: aws.String(role)})
+	return err
+}
+
+func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (string, error) {
+	accountRoleResponse, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
+	if err != nil {
+		return "", err
+	}
+	installerRole := roleName
+	rolePrefix := strings.Split(roleName, "-Installer-Role")[0]
+	if !strings.Contains(roleName, ("Installer-Role")) {
+		installerRole = fmt.Sprintf("%s-%s-Role", rolePrefix, "Installer")
+	}
+	installerRoleResponse, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(installerRole)})
+	if err != nil {
+		return "", err
+	}
+
+	policyDoc, err := getPolicyDocument(installerRoleResponse.Role.AssumeRolePolicyDocument)
+	if err != nil {
+		return "", err
+	}
+	statements := policyDoc.Statement
+	for _, statement := range statements {
+		awsPriciple := getAWSPrinciple(statement.Principal.AWS)
+		for _, a := range awsPriciple {
+			str := strings.Split(a, "::")
+			if len(str) > 1 {
+				e := strings.Split(str[1], ":")
+				if e[0] == JumpAccounts[env] {
+					return aws.StringValue(accountRoleResponse.Role.Arn), nil
+				}
+			}
+		}
+	}
+	return "", nil
 }
