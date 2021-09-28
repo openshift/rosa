@@ -19,9 +19,9 @@ package oidcprovider
 import (
 	// nolint:gosec
 	"crypto/sha1"
-	"crypto/tls"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -271,13 +271,12 @@ func getThumbprint(oidcEndpointURL string) (string, error) {
 		return "", err
 	}
 
-	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:443", connect.Host), nil)
+	response, err := http.Get(fmt.Sprintf("https://%s:443", connect.Host))
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
 
-	certChain := conn.ConnectionState().PeerCertificates
+	certChain := response.TLS.PeerCertificates
 
 	// Grab the CA in the chain
 	for _, cert := range certChain {
