@@ -92,7 +92,11 @@ type Client interface {
 	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
 	DeleteOperatorRole(roles string) error
 	GetOperatorRolesFromAccount(roles []string) ([]string, error)
-	GetPolicyForOperatorRole(roles []string) (map[string][]string, error)
+	GetPolicies(roles []string) (map[string][]string, error)
+	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
+	GetAccountRoleForCurrentEnv(env string, roleName string) (string, error)
+	DeleteAccountRole(roles string) error
+	GetAccountRolePolicies(roles []string) (map[string]string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.

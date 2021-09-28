@@ -19,6 +19,7 @@ package dlt
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/dlt/accountroles"
 	"github.com/openshift/rosa/cmd/dlt/admin"
 	"github.com/openshift/rosa/cmd/dlt/cluster"
 	"github.com/openshift/rosa/cmd/dlt/idp"
@@ -47,6 +48,7 @@ func init() {
 	Cmd.AddCommand(upgrade.Cmd)
 	Cmd.AddCommand(oidcprovider.Cmd)
 	Cmd.AddCommand(operatorrole.Cmd)
+	Cmd.AddCommand(accountroles.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

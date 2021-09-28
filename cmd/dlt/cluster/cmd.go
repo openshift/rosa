@@ -17,7 +17,9 @@ limitations under the License.
 package cluster
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -102,7 +104,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Debugf("Deleting cluster '%s'", clusterKey)
-	_, err = ocmClient.DeleteCluster(clusterKey, awsCreator)
+	cluster, err := ocmClient.DeleteCluster(clusterKey, awsCreator)
 	if err != nil {
 		reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -116,5 +118,44 @@ func run(cmd *cobra.Command, _ []string) {
 			"To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",
 			clusterKey,
 		)
+	}
+
+	if cluster.AWS().STS().RoleARN() != "" {
+		reporter.Infof(
+			"Your cluster '%s' will be deleted but the following object may remain",
+			clusterKey,
+		)
+		accountRoles := []string{}
+		accountRoles = append(accountRoles, cluster.AWS().STS().RoleARN())
+		if cluster.AWS().STS().SupportRoleARN() != "" {
+			accountRoles = append(accountRoles, cluster.AWS().STS().SupportRoleARN())
+		}
+		if cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN() != "" {
+			accountRoles = append(accountRoles, cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN())
+		}
+		if cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN() != "" {
+			accountRoles = append(accountRoles, cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN())
+		}
+		operatorRoles := []string{}
+		if len(cluster.AWS().STS().OperatorIAMRoles()) > 0 {
+			for _, operatorIAMRole := range cluster.AWS().STS().OperatorIAMRoles() {
+				operatorRoles = append(operatorRoles, operatorIAMRole.RoleARN())
+			}
+		}
+		reporter.Infof("Account Roles:\t\n%s", strings.Join(accountRoles, "\n"))
+		reporter.Infof("Operator IAM Roles:\n%s", strings.Join(operatorRoles, "\n"))
+		reporter.Infof("Delete these with `rosa delete operator-roles -c %s", clusterKey)
+		reporter.Infof("Delete these with `rosa delete oidc-provider -c %s", clusterKey)
+
+		accountRolesCmd := []string{}
+		for _, role := range accountRoles {
+			roleName := strings.Split(role, "/")
+			if len(roleName) > 1 {
+				accountRolesCmd = append(accountRolesCmd, fmt.Sprintf("rosa delete account-roles --role-name%s\n",
+					roleName[1]))
+			}
+		}
+		reporter.Infof("Only if you're certain you should delete account-roles with \n %s",
+			strings.Join(accountRolesCmd, "\n"))
 	}
 }

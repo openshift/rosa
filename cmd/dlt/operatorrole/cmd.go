@@ -18,6 +18,7 @@ package operatorrole
 
 import (
 	"fmt"
+
 	"os"
 	"strings"
 
@@ -187,7 +188,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	case "manual":
 		ocmClient.LogEvent("ROSADeleteOperatorroleModeManual")
-		policyMap, err := awsClient.GetPolicyForOperatorRole(rolesList)
+		policyMap, err := awsClient.GetPolicies(rolesList)
 		if err != nil {
 			reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
@@ -201,6 +202,15 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
 		os.Exit(1)
 	}
+}
+
+func getRoleNames(operatorIAMRoles []*cmv1.OperatorIAMRole) []string {
+	roleNames := []string{}
+	for _, role := range operatorIAMRoles {
+		s := strings.Split(role.RoleARN(), "/")[1]
+		roleNames = append(roleNames, s)
+	}
+	return roleNames
 }
 
 func buildCommand(roleNames []string, policyMap map[string][]string) string {
@@ -219,13 +229,4 @@ func buildCommand(roleNames []string, policyMap map[string][]string) string {
 		commands = append(commands, detachPolicy, deleteRole)
 	}
 	return strings.Join(commands, "\n\n")
-}
-
-func getRoleNames(operatorIAMRoles []*cmv1.OperatorIAMRole) []string {
-	roleNames := []string{}
-	for _, role := range operatorIAMRoles {
-		s := strings.Split(role.RoleARN(), "/")[1]
-		roleNames = append(roleNames, s)
-	}
-	return roleNames
 }
