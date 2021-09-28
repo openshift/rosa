@@ -169,8 +169,12 @@ func run(cmd *cobra.Command, _ []string) {
 	// Check to see if IAM operator roles have already created
 	missingRoles, err := validateOperatorRoles(awsClient, cluster)
 	if err != nil {
-		reporter.Errorf("Unable to find validate operator roles exist: %s", err)
-		os.Exit(1)
+		if strings.Contains(err.Error(), "AccessDenied") {
+			reporter.Debugf("Failed to verify if operator roles exist: %s", err)
+		} else {
+			reporter.Errorf("Failed to verify if operator roles exist: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	if len(missingRoles) == 0 &&
