@@ -154,7 +154,7 @@ type PolicyStatementPrincipal struct {
 	// You can specify an individual IAM role ARN (or array of role ARNs) as the principal.
 	// In IAM roles, the Principal element in the role's trust policy specifies who can assume the role.
 	// When you specify more than one principal in the element, you grant permissions to each principal.
-	AWS []string `json:"AWS,omitempty"`
+	AWS interface{} `json:"AWS,omitempty"`
 	// A federated principal uses a web identity token or SAML federation
 	Federated string `json:"Federated,omitempty"`
 }
@@ -239,11 +239,12 @@ func (c *awsClient) updateAssumeRolePolicyPrincipals(policy string, role *iam.Ro
 	principals := []string{}
 	hasMultiplePrincipals := false
 	for _, statement := range newPolicyDoc.Statement {
+		awsPrinciples := getAWSPrinciple(statement.Principal.AWS)
 		// There is no AWS principal to add, nothing to do here
-		if len(statement.Principal.AWS) == 0 {
+		if len(awsPrinciples) == 0 {
 			return policy, false, nil
 		}
-		for _, trust := range statement.Principal.AWS {
+		for _, trust := range awsPrinciples {
 			// Trusted principal already exists, nothing to do here
 			if strings.Contains(oldPolicy, trust) {
 				return policy, false, nil
@@ -680,12 +681,6 @@ func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
 	return data, nil
 }
 
-/**
-1) Get the trust
-2) Check with the account
-3) Yes -->
-*/
-
 func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error) {
 	roleList := []Role{}
 	roles, err := c.ListRoles()
@@ -706,11 +701,13 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 		statements := policyDoc.Statement
 		for _, statement := range statements {
 			awsPriciple := getAWSPrinciple(statement.Principal.AWS)
+			if len(awsPriciple) > 1 {
+				break
+			}
 			for _, a := range awsPriciple {
-				str := strings.Split(a, "::")
-				if len(str) > 1 {
-					e := strings.Split(str[1], ":")
-					if e[0] == JumpAccounts[env] {
+				str := strings.Split(a, ":")
+				if len(str) > 4 {
+					if str[4] == JumpAccounts[env] {
 						roles, err := c.buildRoles(aws.StringValue(role.RoleName), accountID)
 						if err != nil {
 							return roleList, err

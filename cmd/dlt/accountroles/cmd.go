@@ -69,7 +69,6 @@ func init() {
 		"",
 		"Account role name to be deleted.",
 	)
-	Cmd.MarkFlagRequired("roleName")
 
 	confirm.AddFlag(flags)
 }
@@ -134,7 +133,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		for _, role := range roles {
-			if checkIfRoleExists(clusters, role) {
+			if !checkIfRoleExists(clusters, role) {
 				finalRoleList = append(finalRoleList, role.RoleName)
 			}
 		}
