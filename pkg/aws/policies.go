@@ -471,7 +471,17 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 				}
 			case tags.OpenShiftVersion:
 				isTagged = true
-				if tagValue != version {
+				clusterVersion, err := semver.NewVersion(version)
+				if err != nil {
+					skip = true
+					break
+				}
+				policyVersion, err := semver.NewVersion(tagValue)
+				if err != nil {
+					skip = true
+					break
+				}
+				if policyVersion.LessThan(clusterVersion) {
 					skip = true
 					break
 				}
