@@ -2,6 +2,22 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.3 Sep 30 2021
+
+- add rosa list account roles
+- hack: Add script to list JIRA tickets addressed on current release
+- add disable workload monitoring to ROSA
+- update user tag regexp to include unicode spaces
+- cluster: Support custom properties
+- Remove ROSA init account command
+- Add StopInstances action to support Hibernation
+- add kmskey for sts
+- RemoveSTSfrominit
+- Bump OCM SDK to v0.1.209
+- aws: Silently ignore AccessDenied errors when validating resources
+- SDA-4829 update getThumbprints to use http package instead of tls
+- policies: Allow compatible policies to create clusters
+
 == 1.1.2 Sep 1 2021
 
 - add check and prompt for required true addon parameters
