@@ -84,9 +84,20 @@ func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 	return modes, cobra.ShellCompDirectiveDefault
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	// Allow the command to be called programmatically
+	skipInteractive := false
+	if len(argv) == 2 && !cmd.Flag("cluster").Changed {
+		args.clusterKey = argv[0]
+		args.mode = argv[1]
+
+		if args.mode != "" {
+			skipInteractive = true
+		}
+	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
@@ -148,47 +159,8 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Check to see if IAM operator roles have already created
-	missingRoles, err := validateOperatorRoles(awsClient, cluster)
-	if err != nil {
-		if strings.Contains(err.Error(), "AccessDenied") {
-			reporter.Debugf("Failed to verify if operator roles exist: %s", err)
-		} else {
-			reporter.Errorf("Failed to verify if operator roles exist: %s", err)
-			os.Exit(1)
-		}
-	}
-
-	if len(missingRoles) > 0 {
-		reporter.Errorf("Unable to find all required IAM roles for operators:\n%s\n\nSee 'rosa create operator-roles --help'",
-			strings.Join(missingRoles, "\n"))
-		os.Exit(1)
-	}
-
-	if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
-		reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
-			clusterKey, cluster.State())
-		os.Exit(0)
-	}
-
-	oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
-	oidcProviderExists, err := awsClient.HasOpenIDConnectProvider(oidcEndpointURL, creator.AccountID)
-	if err != nil {
-		if strings.Contains(err.Error(), "AccessDenied") {
-			reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
-		} else {
-			reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
-			os.Exit(1)
-		}
-	}
-	if oidcProviderExists {
-		reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
-			"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
-		os.Exit(1)
-	}
-
 	mode := args.mode
-	if interactive.Enabled() {
+	if interactive.Enabled() && !skipInteractive {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
@@ -204,6 +176,46 @@ func run(cmd *cobra.Command, _ []string) {
 
 	switch mode {
 	case "auto":
+		// Check to see if IAM operator roles have already created
+		missingRoles, err := validateOperatorRoles(awsClient, cluster)
+		if err != nil {
+			if strings.Contains(err.Error(), "AccessDenied") {
+				reporter.Debugf("Failed to verify if operator roles exist: %s", err)
+			} else {
+				reporter.Errorf("Failed to verify if operator roles exist: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		if len(missingRoles) > 0 {
+			reporter.Errorf("Unable to find all required IAM roles for operators:\n%s\n\nSee "+
+				"'rosa create operator-roles --help'",
+				strings.Join(missingRoles, "\n"))
+			os.Exit(1)
+		}
+
+		if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
+			reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
+				clusterKey, cluster.State())
+			os.Exit(0)
+		}
+
+		oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
+		oidcProviderExists, err := awsClient.HasOpenIDConnectProvider(oidcEndpointURL, creator.AccountID)
+		if err != nil {
+			if strings.Contains(err.Error(), "AccessDenied") {
+				reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
+			} else {
+				reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
+				os.Exit(1)
+			}
+		}
+		if oidcProviderExists {
+			reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
+				"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
+			os.Exit(1)
+		}
+
 		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto")
 		reporter.Infof("Creating OIDC provider using '%s'", creator.ARN)
 		if !confirm.Prompt(true, "Create the OIDC provider for cluster '%s'?", clusterKey) {

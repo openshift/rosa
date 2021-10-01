@@ -102,9 +102,21 @@ func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 	return modes, cobra.ShellCompDirectiveDefault
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	// Allow the command to be called programmatically
+	skipInteractive := false
+	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
+		args.clusterKey = argv[0]
+		args.mode = argv[1]
+		args.permissionsBoundary = argv[2]
+
+		if args.mode != "" {
+			skipInteractive = true
+		}
+	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
@@ -119,7 +131,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !skipInteractive {
 		interactive.Enable()
 	}
 
