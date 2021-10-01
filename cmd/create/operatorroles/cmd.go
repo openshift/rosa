@@ -74,7 +74,8 @@ func init() {
 		&args.prefix,
 		"prefix",
 		"",
-		"User-defined prefix for generated AWS operator policies. Leave empty to attempt to find them automatically.",
+		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
+			"Leave empty to use an auto-generated one.",
 	)
 
 	flags.StringVar(
@@ -177,9 +178,21 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
 		os.Exit(1)
 	}
+	operatorRolesPrefix := args.prefix
+	if len(cluster.AWS().STS().OperatorIAMRoles()) > 0 {
+		currentPrefix := getPrefix(cluster.AWS().STS().OperatorIAMRoles())
+		//If the user provides in args we validate
+		if operatorRolesPrefix != "" && currentPrefix != operatorRolesPrefix {
+			reporter.Errorf("Cannot modify the existing prefix %s", operatorRolesPrefix)
+			os.Exit(1)
+		}
+		operatorRolesPrefix = currentPrefix
+	} else if operatorRolesPrefix == "" {
+		operatorRolesPrefix = createRolePrefix(cluster.Name())
+	}
 
 	// Check to see if IAM operator roles have already created
-	missingRoles, err := validateOperatorRoles(awsClient, cluster)
+	missingRoles, err := validateOperatorRoleWithRoleName(awsClient, operatorRolesPrefix)
 	if err != nil {
 		if strings.Contains(err.Error(), "AccessDenied") {
 			reporter.Debugf("Failed to verify if operator roles exist: %s", err)
@@ -195,29 +208,33 @@ func run(cmd *cobra.Command, argv []string) {
 			clusterKey, cluster.State())
 		os.Exit(0)
 	}
-
-	prefix := args.prefix
-	if interactive.Enabled() {
-		prefix, err = interactive.GetString(interactive.Input{
-			Question: "Operator policy prefix",
+	//We dont ask for the prefix if the user is attempting to create only the missing roles
+	if interactive.Enabled() && len(cluster.AWS().STS().OperatorIAMRoles()) == 0 {
+		operatorRolesPrefix, err = interactive.GetString(interactive.Input{
+			Question: "Operator roles prefix",
 			Help:     cmd.Flags().Lookup("prefix").Usage,
-			Default:  prefix,
+			Required: true,
+			Default:  operatorRolesPrefix,
 			Validators: []interactive.Validator{
 				interactive.RegExp(aws.RoleNameRE.String()),
 				interactive.MaxLength(32),
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid operator policy prefix: %s", err)
+			reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
 			os.Exit(1)
 		}
 	}
-	if len(prefix) > 32 {
+	if len(operatorRolesPrefix) == 0 {
+		reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
+		os.Exit(1)
+	}
+	if len(operatorRolesPrefix) > 32 {
 		reporter.Errorf("Expected a prefix with no more than 32 characters")
 		os.Exit(1)
 	}
-	if prefix != "" && !aws.RoleNameRE.MatchString(prefix) {
-		reporter.Errorf("Expected a valid operator policy prefix matching %s", aws.RoleNameRE.String())
+	if !aws.RoleNameRE.MatchString(operatorRolesPrefix) {
+		reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
 
@@ -259,11 +276,19 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	roleARN := cluster.AWS().STS().RoleARN()
+	roleName := strings.Split(roleARN, "/")
+	accountRolesPrefix := ""
+	if len(roleName) > 1 {
+		accountRolesPrefix = strings.Split(roleName[1], "-Installer-Role")[0]
+	}
+
 	switch mode {
 	case "auto":
 		ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto")
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
-		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID)
+		err = createRoles(reporter, awsClient, accountRolesPrefix, operatorRolesPrefix, permissionsBoundary,
+			cluster, creator.AccountID)
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
 			os.Exit(1)
@@ -271,7 +296,8 @@ func run(cmd *cobra.Command, argv []string) {
 	case "manual":
 		ocmClient.LogEvent("ROSACreateOperatorRolesModeManual")
 
-		commands, err := buildCommands(reporter, prefix, permissionsBoundary, cluster, creator.AccountID)
+		commands, err := buildCommands(reporter, accountRolesPrefix, operatorRolesPrefix, permissionsBoundary, cluster,
+			creator.AccountID)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -286,15 +312,51 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
 		os.Exit(1)
 	}
+
+	operatorIAMRoleList := []ocm.OperatorIAMRole{}
+	for _, operator := range aws.CredentialRequests {
+		operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
+			Name:      operator.Name,
+			Namespace: operator.Namespace,
+			RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, creator),
+		})
+	}
+	clusterConfig := ocm.Spec{
+		OperatorIAMRoles: operatorIAMRoleList,
+	}
+	err = ocmClient.UpdateCluster(clusterKey, creator, clusterConfig)
+	if err != nil {
+		reporter.Errorf("Error updating the cluster with the operator roles %v", err)
+	}
+}
+
+func getPrefix(operatorRoles []*cmv1.OperatorIAMRole) string {
+	for _, operatorRole := range operatorRoles {
+		for _, operator := range aws.CredentialRequests {
+			if operatorRole.Name() == operator.Name {
+				p := strings.Split(operatorRole.RoleARN(), fmt.Sprintf("-%s-%s", operator.Namespace, operator.Name))
+				if len(p) > 0 {
+					prefixArr := strings.Split(p[0], "/")
+					if len(prefixArr) > 0 {
+						return prefixArr[1]
+					}
+				}
+			}
+		}
+	}
+	return ""
 }
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
-	prefix string, permissionsBoundary string,
+	accountRolesPrefix string, operatorRolesPrefix string, permissionsBoundary string,
 	cluster *cmv1.Cluster, accountID string) error {
 	version := getVersionMinor(cluster)
 
 	for _, operator := range aws.CredentialRequests {
-		roleName := getRoleName(cluster, operator)
+		roleName, err := getRoleName(operatorRolesPrefix, operator)
+		if err != nil {
+			return err
+		}
 		if roleName == "" {
 			return fmt.Errorf("Failed to find operator IAM role")
 		}
@@ -319,18 +381,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			return err
 		}
 		reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
-
-		policyARN := ""
-		if prefix == "" {
-			policyARN, err = awsClient.FindPolicyARN(operator, version)
-			if err != nil {
-				return err
-			}
-		}
-		if policyARN == "" {
-			policyARN = getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		}
-
+		policyARN := getPolicyARN(accountID, accountRolesPrefix, operator.Namespace, operator.Name)
 		reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
 		err = awsClient.AttachRolePolicy(roleName, policyARN)
 		if err != nil {
@@ -343,13 +394,16 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 }
 
 func buildCommands(reporter *rprtr.Object,
-	prefix string, permissionsBoundary string,
+	accountRolesPrefix string, operatorRolesPrefix string, permissionsBoundary string,
 	cluster *cmv1.Cluster, accountID string) (string, error) {
 	commands := []string{}
 
 	for credrequest, operator := range aws.CredentialRequests {
-		roleName := getRoleName(cluster, operator)
-		policyARN := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		roleName, err := getRoleName(operatorRolesPrefix, operator)
+		if err != nil {
+			return roleName, err
+		}
+		policyARN := getPolicyARN(accountID, accountRolesPrefix, operator.Namespace, operator.Name)
 		version := getVersionMinor(cluster)
 
 		policy, err := generateRolePolicyDoc(cluster, accountID, operator)
@@ -368,7 +422,7 @@ func buildCommands(reporter *rprtr.Object,
 			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.ClusterID, cluster.ID(),
 			tags.OpenShiftVersion, version,
-			tags.RolePrefix, prefix,
+			tags.RolePrefix, accountRolesPrefix,
 			"operator_namespace", operator.Namespace,
 			"operator_name", operator.Name,
 		)
@@ -390,6 +444,17 @@ func buildCommands(reporter *rprtr.Object,
 	}
 
 	return strings.Join(commands, "\n\n"), nil
+}
+
+func getRoleName(operatorRolesPrefix string, operator aws.Operator) (string, error) {
+	roleName := fmt.Sprintf("%s-%s-%s", operatorRolesPrefix, operator.Namespace, operator.Name)
+	if len(roleName) > 64 {
+		roleName = roleName[0:64]
+	}
+	if roleName == "" {
+		return "", fmt.Errorf("Failed to find operator IAM role")
+	}
+	return roleName, nil
 }
 
 func generateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator aws.Operator) (string, error) {
@@ -437,15 +502,6 @@ func saveDocument(doc string, filename string) error {
 	return nil
 }
 
-func getRoleName(cluster *cmv1.Cluster, operator aws.Operator) string {
-	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
-		if role.Namespace() == operator.Namespace && role.Name() == operator.Name {
-			return strings.SplitN(role.RoleARN(), "/", 2)[1]
-		}
-	}
-	return ""
-}
-
 func getPolicyARN(accountID string, prefix string, namespace string, name string) string {
 	if prefix == "" {
 		prefix = aws.DefaultPrefix
@@ -470,29 +526,33 @@ func getVersionMinor(cluster *cmv1.Cluster) string {
 	return fmt.Sprintf("%d.%d", segments[0], segments[1])
 }
 
-func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]string, error) {
+func validateOperatorRoleWithRoleName(awsClient aws.Client, prefix string) ([]string, error) {
 	var missingRoles []string
 
-	operatorIAMRoles := cluster.AWS().STS().OperatorIAMRoles()
-
-	if len(operatorIAMRoles) == 0 {
-		return missingRoles, fmt.Errorf("No Operator IAM roles found for cluster %s", cluster.Name())
-	}
-
-	for _, operatorIAMRole := range operatorIAMRoles {
-		roleARN := operatorIAMRole.RoleARN()
-
-		roleName := strings.Split(roleARN, "/")[1]
-
-		exists, err := awsClient.CheckRoleExists(roleName)
+	for _, operator := range aws.CredentialRequests {
+		role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace, operator.Name)
+		if len(role) > 64 {
+			role = role[0:64]
+		}
+		exists, err := awsClient.CheckRoleExists(role)
 		if err != nil {
 			return missingRoles, err
 		}
-
 		if !exists {
-			missingRoles = append(missingRoles, roleName)
+			missingRoles = append(missingRoles, role)
 		}
 	}
-
 	return missingRoles, nil
+}
+
+func createRolePrefix(clusterName string) string {
+	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
+}
+
+func getOperatorRoleArn(prefix string, operator aws.Operator, creator *aws.Creator) string {
+	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace, operator.Name)
+	if len(role) > 64 {
+		role = role[0:64]
+	}
+	return fmt.Sprintf("arn:aws:iam::%s:role/%s", creator.AccountID, role)
 }

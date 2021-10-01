@@ -209,7 +209,8 @@ func init() {
 		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
 			"Leave empty to use an auto-generated one.",
 	)
-
+	flags.MarkDeprecated("operator-roles-prefix", "instead run 'rosa create operator-roles' "+
+		"after creating this cluster")
 	flags.StringSliceVar(
 		&args.tags,
 		"tags",
@@ -796,49 +797,25 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorRolesPrefix := args.operatorRolesPrefix
-	if isSTS {
-		if operatorRolesPrefix == "" {
-			operatorRolesPrefix = getRolePrefix(clusterName)
-		}
-		if interactive.Enabled() {
-			operatorRolesPrefix, err = interactive.GetString(interactive.Input{
-				Question: "Operator roles prefix",
-				Help:     cmd.Flags().Lookup("operator-roles-prefix").Usage,
-				Required: true,
-				Default:  operatorRolesPrefix,
-				Validators: []interactive.Validator{
-					interactive.RegExp(aws.RoleNameRE.String()),
-					interactive.MaxLength(32),
-				},
-			})
-			if err != nil {
-				reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
-				os.Exit(1)
-			}
-		}
-		if len(operatorRolesPrefix) == 0 {
-			reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
-			os.Exit(1)
-		}
-		if len(operatorRolesPrefix) > 32 {
-			reporter.Errorf("Expected a prefix with no more than 32 characters")
-			os.Exit(1)
-		}
-		if !aws.RoleNameRE.MatchString(operatorRolesPrefix) {
-			reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
-			os.Exit(1)
-		}
-	}
-
 	operatorIAMRoles := args.operatorIAMRoles
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
-		for _, operator := range aws.CredentialRequests {
-			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
-				Name:      operator.Name,
-				Namespace: operator.Namespace,
-				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator),
-			})
+		if cmd.Flags().Changed("operator-roles-prefix") {
+			if len(operatorRolesPrefix) > 32 {
+				reporter.Errorf("Expected a prefix with no more than 32 characters")
+				os.Exit(1)
+			}
+			if !aws.RoleNameRE.MatchString(operatorRolesPrefix) {
+				reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
+				os.Exit(1)
+			}
+			for _, operator := range aws.CredentialRequests {
+				operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
+					Name:      operator.Name,
+					Namespace: operator.Namespace,
+					RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator),
+				})
+			}
 		}
 		// If user insists on using the deprecated --operator-iam-roles
 		// override the values to support the legacy documentation
@@ -1775,10 +1752,6 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 		command += " --disable-workload-monitoring"
 	}
 	return command
-}
-
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
 }
 
 func getVersionMinor(ver string) string {

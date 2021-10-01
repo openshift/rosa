@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -126,7 +125,7 @@ func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
 	if err != nil {
 		return nil, err
 	}
-	acctResponse, err := c.ocm.AccountsMgmt().V1().CurrentAccount().
+	/*acctResponse, err := c.ocm.AccountsMgmt().V1().CurrentAccount().
 		Get().
 		Send()
 	if err != nil {
@@ -144,15 +143,16 @@ func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
 		Send()
 	if err != nil {
 		return nil, handleErr(quotaCostResponse.Error(), err)
-	}
+	}*/
 	var availableMachineTypes []*MachineType
-	quotaCosts := quotaCostResponse.Items()
+	//quotaCosts := quotaCostResponse.Items()
 
 	for _, machineType := range machineTypes {
 		availableMachineType := &MachineType{
 			MachineType: machineType,
+			Available:   true,
 		}
-		if machineType.Category() == AcceleratedComputing {
+		/*if machineType.Category() == AcceleratedComputing {
 			quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
 				for _, relatedResource := range quotaCost.RelatedResources() {
 					if machineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
@@ -166,7 +166,7 @@ func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
 			})
 		} else {
 			availableMachineType.Available = true
-		}
+		}*/
 		availableMachineTypes = append(availableMachineTypes, availableMachineType)
 	}
 	return availableMachineTypes, nil

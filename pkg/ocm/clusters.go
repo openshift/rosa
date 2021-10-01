@@ -304,6 +304,21 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		)
 	}
 
+	if len(config.OperatorIAMRoles) > 0 {
+		roles := []*cmv1.OperatorIAMRoleBuilder{}
+		for _, role := range config.OperatorIAMRoles {
+			roles = append(roles, cmv1.NewOperatorIAMRole().
+				Name(role.Name).
+				Namespace(role.Namespace).
+				RoleARN(role.RoleARN),
+			)
+		}
+		stsBuilder := cmv1.NewSTS().OperatorIAMRoles(roles...)
+		awsBuilder := cmv1.NewAWS().
+			AccountID(creator.AccountID).STS(stsBuilder)
+		clusterBuilder.AWS(awsBuilder)
+	}
+
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
 		return err
