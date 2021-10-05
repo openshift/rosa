@@ -722,6 +722,36 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// combine role arns to list
+	roleARNs := []string{
+		roleARN,
+		supportRoleARN,
+		masterRoleARN,
+		workerRoleARN,
+	}
+
+	// iterate and validate role arns against openshift version
+	for _, ARN := range roleARNs {
+		// get role from arn
+		role, err := awsClient.GetRoleByARN(ARN)
+		if err != nil {
+			reporter.Errorf("Could not get Role '%s' : %v", ARN, err)
+			os.Exit(1)
+		}
+
+		validVersion, err := awsClient.HasCompatibleVersionTags(role.Tags, getVersionMinor(version))
+		if err != nil {
+			reporter.Errorf("Could not validate Role '%s' : %v", ARN, err)
+			os.Exit(1)
+		}
+		if !validVersion {
+			reporter.Errorf("Account role '%s' is not compatible with version %s. "+
+				"Run 'rosa create account-roles' to create compatible roles and try again.",
+				ARN, version)
+			os.Exit(1)
+		}
+	}
+
 	operatorRolesPrefix := args.operatorRolesPrefix
 	if isSTS {
 		if operatorRolesPrefix == "" {
