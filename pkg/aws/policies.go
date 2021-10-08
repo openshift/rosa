@@ -313,7 +313,7 @@ func (c *awsClient) isRoleCompatible(name string, version string) (bool, error) 
 		return false, err
 	}
 
-	return hasCompatibleTags(output.Tags, version)
+	return c.HasCompatibleVersionTags(output.Tags, version)
 }
 
 func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy string) error {
@@ -405,10 +405,10 @@ func (c *awsClient) isPolicyCompatible(policyArn string, version string) (bool, 
 		return false, err
 	}
 
-	return hasCompatibleTags(output.Tags, version)
+	return c.HasCompatibleVersionTags(output.Tags, version)
 }
 
-func hasCompatibleTags(iamTags []*iam.Tag, version string) (bool, error) {
+func (c *awsClient) HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error) {
 	if len(iamTags) == 0 {
 		return false, nil
 	}

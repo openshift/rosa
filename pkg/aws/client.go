@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -86,6 +87,8 @@ type Client interface {
 	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListAccountRoles(version string) ([]Role, error)
+	GetRoleByARN(roleARN string) (*iam.Role, error)
+	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -576,4 +579,31 @@ func (c *awsClient) CheckRoleExists(roleName string) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
+	// validate arn
+	parsedARN, err := arn.Parse(roleARN)
+	if err != nil {
+		return nil, fmt.Errorf("expected a valid IAM role ARN: %s", err)
+	}
+
+	// validate arn is for a role resource
+	resource := parsedARN.Resource
+	isRole := strings.Contains(resource, "role/")
+	if !isRole {
+		return nil, fmt.Errorf("expected ARN '%s' to be IAM role resource", roleARN)
+	}
+
+	// get resource name
+	resourceSplit := strings.Split(resource, "/")
+	roleName := resourceSplit[1]
+
+	roleOutput, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return roleOutput.Role, nil
 }
