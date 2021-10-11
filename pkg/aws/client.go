@@ -82,7 +82,7 @@ type Client interface {
 	PutRolePolicy(roleName string, policyName string, policy string) error
 	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string) (string, error)
 	AttachRolePolicy(roleName string, policyARN string) error
-	CreateOpenIDConnectProvider(issuerURL string, thumbprint string) (string, error)
+	CreateOpenIDConnectProvider(issuerURL string, thumbprint string, clusterID string) (string, error)
 	DeleteOpenIDConnectProvider(providerURL string) error
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
@@ -91,12 +91,14 @@ type Client interface {
 	GetRoleByARN(roleARN string) (*iam.Role, error)
 	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
 	DeleteOperatorRole(roles string) error
-	GetOperatorRolesFromAccount(roles []string) ([]string, error)
+	GetOperatorRolesFromAccount(clusterID string) ([]string, error)
 	GetPolicies(roles []string) (map[string][]string, error)
 	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
-	GetAccountRoleForCurrentEnv(env string, roleName string) (string, error)
+	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
+	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string) ([]Role, error)
 	DeleteAccountRole(roles string) error
 	GetAccountRolePolicies(roles []string) (map[string]string, error)
+	GetOpenIDConnectProvider(clusterID string) (string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.

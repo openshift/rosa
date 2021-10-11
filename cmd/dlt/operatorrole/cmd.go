@@ -18,18 +18,20 @@ package operatorrole
 
 import (
 	"fmt"
-
 	"os"
 	"strings"
+	"time"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/briandowns/spinner"
+	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
-	"github.com/spf13/cobra"
 )
 
 var modes []string = []string{"auto", "manual"}
@@ -57,10 +59,9 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster (deleted/archived) to delete the operator ID from (required).",
+		"ID of the cluster (deleted/archived) to delete the operator roles from (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
-
 	flags.StringVar(
 		&args.mode,
 		"mode",
@@ -77,9 +78,13 @@ func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 	return modes, cobra.ShellCompDirectiveDefault
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
+		args.clusterKey = argv[0]
+	}
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
@@ -125,22 +130,30 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	clusters, err := ocmClient.GetArchivedCluster(clusterKey, creator)
-	if err != nil || len(clusters) == 0 || (len(clusters) == 1 && clusters[0] == nil) {
-		c, err := ocmClient.GetCluster(clusterKey, creator)
-		if err != nil {
-			reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		}
-		if c != nil && c.ID() != "" {
-			reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
-				"uninstalled clusters", c.ID(), c.State())
-			os.Exit(1)
-		}
 
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+	reporter.Debugf("Loading cluster '%s'", clusterKey)
+	c, err := ocmClient.GetClusterByID(clusterKey, creator)
+	if err != nil {
+		if errors.GetType(err) != errors.NotFound {
+			reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+	}
+	if c != nil && c.ID() != "" {
+		reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
+			"uninstalled clusters", c.ID(), c.State())
 		os.Exit(1)
+	}
+	env, err := ocm.GetEnv()
+	if err != nil {
+		reporter.Errorf("Error getting environment %s", err)
+		os.Exit(1)
+	}
+	if env != "production" {
+		if !confirm.Prompt(true, "You are running delete operation from staging. Please ensure "+
+			"there are no clusters using these operator roles in the production. Are you sure you want to proceed?") {
+			os.Exit(1)
+		}
 	}
 	mode := args.mode
 	if interactive.Enabled() {
@@ -156,27 +169,28 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
-	rolesList := []string{}
-	for _, cluster := range clusters {
-		roleNames := getRoleNames(cluster.AWS().STS().OperatorIAMRoles())
-		roles, err := awsClient.GetOperatorRolesFromAccount(roleNames)
-		if err != nil {
-			reporter.Errorf("Error when fetching the roles from aws account: %v", err)
-			os.Exit(1)
-		}
-		rolesList = append(rolesList, roles...)
+	var spin *spinner.Spinner
+	if reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
+	if spin != nil {
+		reporter.Infof("Fetching operator roles for the cluster: %s", clusterKey)
+		spin.Start()
 	}
 
-	if len(rolesList) == 0 {
-		reporter.Errorf("There are no operator roles to delete from aws account")
+	roles, err := awsClient.GetOperatorRolesFromAccount(clusterKey)
+	if len(roles) == 0 {
+		reporter.Errorf("There are no operator roles to delete for the cluster '%s'", clusterKey)
 		os.Exit(1)
+	}
+	if spin != nil {
+		spin.Stop()
 	}
 
 	switch mode {
 	case "auto":
 		ocmClient.LogEvent("ROSADeleteOperatorroleModeAuto")
-		for _, role := range rolesList {
+		for _, role := range roles {
 			if !confirm.Prompt(true, "Delete the operator roles  '%s'?", role) {
 				continue
 			}
@@ -188,12 +202,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	case "manual":
 		ocmClient.LogEvent("ROSADeleteOperatorroleModeManual")
-		policyMap, err := awsClient.GetPolicies(rolesList)
+		policyMap, err := awsClient.GetPolicies(roles)
 		if err != nil {
 			reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
-		commands := buildCommand(rolesList, policyMap)
+		commands := buildCommand(roles, policyMap)
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to delete the Operator roles:\n")
 		}
@@ -204,29 +218,17 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func getRoleNames(operatorIAMRoles []*cmv1.OperatorIAMRole) []string {
-	roleNames := []string{}
-	for _, role := range operatorIAMRoles {
-		s := strings.Split(role.RoleARN(), "/")[1]
-		roleNames = append(roleNames, s)
-	}
-	return roleNames
-}
-
 func buildCommand(roleNames []string, policyMap map[string][]string) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
 		policyARN := policyMap[roleName]
 		detachPolicy := ""
 		if len(policyARN) > 0 {
-			detachPolicy = fmt.Sprintf("aws iam detach-role-policy \\\n"+
-				"\t--role-name  %s  --policy-arn  %s  \n\n",
+			detachPolicy = fmt.Sprintf("\taws iam detach-role-policy --role-name  %s --policy-arn  %s",
 				roleName, policyARN[0])
 		}
-		deleteRole := fmt.Sprintf("aws iam delete-role \\\n"+
-			"\t--role-name  %s \n\n",
-			roleName)
+		deleteRole := fmt.Sprintf("\taws iam delete-role --role-name  %s", roleName)
 		commands = append(commands, detachPolicy, deleteRole)
 	}
-	return strings.Join(commands, "\n\n")
+	return strings.Join(commands, "\n")
 }

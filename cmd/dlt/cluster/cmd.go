@@ -21,11 +21,12 @@ import (
 	"os"
 	"strings"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	uninstallLogs "github.com/openshift/rosa/cmd/logs/uninstall"
-
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -35,6 +36,7 @@ import (
 var args struct {
 	// Watch logs during cluster uninstallation
 	watch bool
+	mode  string
 }
 
 var Cmd = &cobra.Command{
@@ -111,51 +113,40 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	reporter.Infof("Cluster '%s' will start uninstalling now", clusterKey)
 
-	if args.watch {
-		uninstallLogs.Cmd.Run(uninstallLogs.Cmd, []string{clusterKey})
-	} else {
-		reporter.Infof(
-			"To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",
-			clusterKey,
-		)
-	}
-
 	if cluster.AWS().STS().RoleARN() != "" {
+		interactive.Enable()
 		reporter.Infof(
 			"Your cluster '%s' will be deleted but the following object may remain",
 			clusterKey,
 		)
-		accountRoles := []string{}
-		accountRoles = append(accountRoles, cluster.AWS().STS().RoleARN())
-		if cluster.AWS().STS().SupportRoleARN() != "" {
-			accountRoles = append(accountRoles, cluster.AWS().STS().SupportRoleARN())
-		}
-		if cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN() != "" {
-			accountRoles = append(accountRoles, cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN())
-		}
-		if cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN() != "" {
-			accountRoles = append(accountRoles, cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN())
-		}
-		operatorRoles := []string{}
 		if len(cluster.AWS().STS().OperatorIAMRoles()) > 0 {
+			str := "Operator IAM Roles:"
 			for _, operatorIAMRole := range cluster.AWS().STS().OperatorIAMRoles() {
-				operatorRoles = append(operatorRoles, operatorIAMRole.RoleARN())
+				str = fmt.Sprintf("%s"+
+					" - %s\n", str,
+					operatorIAMRole.RoleARN())
 			}
+			reporter.Infof("%s", str)
 		}
-		reporter.Infof("Account Roles:\t\n%s", strings.Join(accountRoles, "\n"))
-		reporter.Infof("Operator IAM Roles:\n%s", strings.Join(operatorRoles, "\n"))
-		reporter.Infof("Delete these with `rosa delete operator-roles -c %s", clusterKey)
-		reporter.Infof("Delete these with `rosa delete oidc-provider -c %s", clusterKey)
-
-		accountRolesCmd := []string{}
-		for _, role := range accountRoles {
-			roleName := strings.Split(role, "/")
-			if len(roleName) > 1 {
-				accountRolesCmd = append(accountRolesCmd, fmt.Sprintf("rosa delete account-roles --role-name%s\n",
-					roleName[1]))
-			}
-		}
-		reporter.Infof("Only if you're certain you should delete account-roles with \n %s",
-			strings.Join(accountRolesCmd, "\n"))
+		reporter.Infof("OIDC Provider : %s\n", cluster.AWS().STS().OIDCEndpointURL())
+		reporter.Infof("Once the cluster is uninstalled use the following commands to remove the " +
+			"above aws resource.\n")
+		commands := buildCommands(cluster)
+		fmt.Print(commands, "\n")
 	}
+	if args.watch {
+		uninstallLogs.Cmd.Run(uninstallLogs.Cmd, []string{clusterKey})
+	} else {
+		reporter.Infof("To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",
+			clusterKey,
+		)
+	}
+}
+
+func buildCommands(cluster *cmv1.Cluster) string {
+	commands := []string{}
+	deleteOperatorRole := fmt.Sprintf("\trosa delete operator-roles -c %s", cluster.ID())
+	deleteOIDCProvider := fmt.Sprintf("\trosa delete oidc-provider -c %s", cluster.ID())
+	commands = append(commands, deleteOperatorRole, deleteOIDCProvider)
+	return strings.Join(commands, "\n")
 }

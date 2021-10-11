@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
 const (
@@ -30,7 +31,8 @@ const (
 	OIDCClientIDSTSAWS    = "sts.amazonaws.com"
 )
 
-func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint string) (string, error) {
+func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint string, clusterID string) (
+	string, error) {
 	output, err := c.iamClient.CreateOpenIDConnectProvider(&iam.CreateOpenIDConnectProviderInput{
 		ClientIDList: []*string{
 			aws.String(OIDCClientIDOpenShift),
@@ -38,6 +40,12 @@ func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint s
 		},
 		ThumbprintList: []*string{aws.String(thumbprint)},
 		Url:            aws.String(providerURL),
+		Tags: []*iam.Tag{
+			{
+				Key:   aws.String(tags.ClusterID),
+				Value: aws.String(clusterID),
+			},
+		},
 	})
 	if err != nil {
 		return "", err

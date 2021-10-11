@@ -18,17 +18,15 @@ package oidcprovider
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"net/url"
-	"os"
-	"strings"
-
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
+	"os"
 )
 
 var modes []string = []string{"auto", "manual"}
@@ -56,7 +54,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"Name or ID of the cluster (deleted/archived) to delete the OIDC provider from (required).",
+		"ID of the cluster (deleted/archived) to delete the OIDC provider from (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 
@@ -76,17 +74,18 @@ func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 	return modes, cobra.ShellCompDirectiveDefault
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
+	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
+		args.clusterKey = argv[0]
+	}
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := args.clusterKey
 	if !ocm.IsValidClusterKey(clusterKey) {
 		reporter.Errorf(
-			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
-				"must contain only letters, digits, dashes and underscores",
+			"Cluster identifier '%s' isn't valid",
 			clusterKey,
 		)
 		os.Exit(1)
@@ -122,36 +121,28 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	clusters, err := ocmClient.GetArchivedCluster(clusterKey, creator)
-	// if err is nil or clusters list is empty or nil we check for cluster in "active" state
-	if err != nil || len(clusters) == 0 || (len(clusters) == 1 && clusters[0] == nil) {
-		c, err := ocmClient.GetCluster(clusterKey, creator)
-		if err != nil {
-			reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		}
-		if c != nil && c.ID() != "" {
-			reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
-				"uninstalled clusters", c.ID(), c.State())
-			os.Exit(1)
-		}
 
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+	c, err := ocmClient.GetClusterByID(clusterKey, creator)
+	if err != nil {
+		if errors.GetType(err) != errors.NotFound {
+			reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+	}
+	if c != nil && c.ID() != "" {
+		reporter.Errorf("Cluster '%s' is in '%s' state. OIDC provider can be deleted only for the "+
+			"uninstalled clusters", c.ID(), c.State())
 		os.Exit(1)
 	}
-	providerARNList := []string{}
-	for _, cluster := range clusters {
-		oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
-		if oidcEndpointURL == "" {
-			reporter.Errorf("Cluster '%s' doesn't have OIDC provider associated with it.Skipping!!", clusterKey)
-			continue
-		}
-		providerARN, err := getOIDCProviderARN(oidcEndpointURL, creator.AccountID)
-		if err != nil {
-			reporter.Errorf("Failed to get the OIDC provider for cluster '%s'.", clusterKey)
-			os.Exit(1)
-		}
-		providerARNList = append(providerARNList, providerARN)
+
+	providerARN, err := awsClient.GetOpenIDConnectProvider(clusterKey)
+	if err != nil {
+		reporter.Errorf("Failed to get the OIDC provider for cluster '%s'.", clusterKey)
+		os.Exit(1)
+	}
+	if providerARN == "" {
+		reporter.Errorf("Cluster '%s' doesn't have OIDC provider associated with it.", clusterKey)
+		os.Exit(1)
 	}
 
 	// Determine if interactive mode is needed
@@ -176,19 +167,19 @@ func run(cmd *cobra.Command, _ []string) {
 	switch mode {
 	case "auto":
 		ocmClient.LogEvent("ROSADeleteOIDCProviderModeAuto")
-		for _, providerARN := range providerARNList {
-			if !confirm.Prompt(true, "Delete the OIDC provider '%s'?", providerARN) {
-				continue
-			}
-			err := awsClient.DeleteOpenIDConnectProvider(providerARN)
-			if err != nil {
-				reporter.Errorf("There was an error deleting the OIDC provider: %s", err)
-				continue
-			}
+
+		if !confirm.Prompt(true, "Delete the OIDC provider '%s'?", providerARN) {
+			os.Exit(1)
 		}
+		err := awsClient.DeleteOpenIDConnectProvider(providerARN)
+		if err != nil {
+			reporter.Errorf("There was an error deleting the OIDC provider: %s", err)
+			os.Exit(1)
+		}
+
 	case "manual":
 		ocmClient.LogEvent("ROSADeleteOIDCProviderModeManual")
-		commands := buildCommand(providerARNList)
+		commands := buildCommand(providerARN)
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to delete the OIDC provider:\n")
 		}
@@ -199,23 +190,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func buildCommand(providerARNList []string) string {
-	commands := []string{}
-	for _, providerARN := range providerARNList {
-		providerARNCmd := fmt.Sprintf("aws iam delete-open-id-connect-provider \\\n"+
-			"\t--open-id-connect-provider-arn %s \n\n",
-			providerARN)
-		commands = append(commands, providerARNCmd)
-	}
-	return strings.Join(commands, "\n\n")
-}
-
-func getOIDCProviderARN(oidcEndpointURL string, accountID string) (string, error) {
-	parsedIssuerURL, err := url.ParseRequestURI(oidcEndpointURL)
-	if err != nil {
-		return "", err
-	}
-	providerURL := fmt.Sprintf("%s%s", parsedIssuerURL.Host, parsedIssuerURL.Path)
-	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, providerURL)
-	return oidcProviderARN, nil
+func buildCommand(providerARN string) string {
+	return fmt.Sprintf("aws iam delete-open-id-connect-provider \\\n"+
+		"\t--open-id-connect-provider-arn %s \n\n",
+		providerARN)
 }

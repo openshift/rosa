@@ -37,15 +37,16 @@ var modes []string = []string{"auto", "manual"}
 var args struct {
 	roleName string
 	mode     string
+	prefix   string
 }
 
 var Cmd = &cobra.Command{
 	Use:     "account-roles",
-	Aliases: []string{"accountrole,account-role"},
+	Aliases: []string{"accountroles", "accountrole", "account-role"},
 	Short:   "Delete Account Roles",
-	Long:    "Cleans up account roles from the current aws account.",
+	Long:    "Cleans up account roles from the current AWS account.",
 	Example: `  # Delete Account roles"
-  rosa delete account-roles`,
+  rosa delete account-roles [-r role-name | -p prefix]`,
 	Run: run,
 }
 
@@ -65,9 +66,17 @@ func init() {
 	flags.StringVarP(
 		&args.roleName,
 		"role-name",
-		"c",
+		"r",
 		"",
 		"Account role name to be deleted.",
+	)
+
+	flags.StringVarP(
+		&args.prefix,
+		"prefix",
+		"p",
+		"",
+		"Prefix of the account roles to be deleted.",
 	)
 
 	confirm.AddFlag(flags)
@@ -80,6 +89,16 @@ func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	if cmd.Flags().Changed("prefix") && cmd.Flags().Changed("role-name") {
+		reporter.Errorf("Provide either account role prefix '-p' or role name '-r' not both")
+		os.Exit(1)
+	}
+
+	if args.roleName == "" && args.prefix == "" {
+		reporter.Errorf("Option account role prefix '-p' or role name '-r' is mandatory")
+		os.Exit(1)
+	}
 
 	// Determine if interactive mode is needed
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
@@ -120,16 +139,25 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Failed to get IAM credentials: %s", err)
 		os.Exit(1)
 	}
-	clusters, err := ocmClient.GetClusters(creator, 1000)
+	clusters, err := ocmClient.GetAllClusters(creator)
 	if err != nil {
 		reporter.Errorf("Error getting clusters %s", err)
 		os.Exit(1)
 	}
 	finalRoleList := []string{}
-	if args.roleName == "" {
-		roles, err := awsClient.GetAccountRolesForCurrentEnv(env, creator.AccountID)
+	if args.roleName != "" {
+		role, err := awsClient.GetAccountRoleForCurrentEnv(env, args.roleName)
 		if err != nil {
-			reporter.Errorf("Error getting roles: %s", err)
+			reporter.Errorf("Error getting role: %s", err)
+			os.Exit(1)
+		}
+		if !checkIfRoleExists(clusters, role) {
+			finalRoleList = append(finalRoleList, role.RoleName)
+		}
+	} else if args.prefix != "" {
+		roles, err := awsClient.GetAccountRoleForCurrentEnvWithPrefix(env, args.prefix)
+		if err != nil {
+			reporter.Errorf("Error getting role: %s", err)
 			os.Exit(1)
 		}
 		for _, role := range roles {
@@ -137,19 +165,11 @@ func run(cmd *cobra.Command, _ []string) {
 				finalRoleList = append(finalRoleList, role.RoleName)
 			}
 		}
-		if len(finalRoleList) == 0 {
-			reporter.Errorf("There are no roles to be deleted")
-			os.Exit(1)
-		}
-	} else {
-		role, err := awsClient.GetAccountRoleForCurrentEnv(env, args.roleName)
-		if err != nil {
-			reporter.Errorf("Error getting role: %s", err)
-			os.Exit(1)
-		}
-		finalRoleList = append(finalRoleList, role)
 	}
-
+	if len(finalRoleList) == 0 {
+		reporter.Errorf("There are no roles to be deleted")
+		os.Exit(1)
+	}
 	// Determine if interactive mode is needed
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		interactive.Enable()
@@ -177,7 +197,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			err := awsClient.DeleteAccountRole(role)
 			if err != nil {
-				reporter.Errorf("There was an error deleting the OIDC provider: %s", err)
+				reporter.Errorf("There was an error deleting the account roles: %s", err)
 				continue
 			}
 		}
@@ -190,7 +210,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		commands := buildCommand(finalRoleList, policyMap)
 		if reporter.IsTerminal() {
-			reporter.Infof("Run the following commands to delete the Operator roles:\n")
+			reporter.Infof("Run the following commands to delete the account roles:\n")
 		}
 		fmt.Println(commands)
 	}
@@ -211,14 +231,17 @@ func checkIfRoleExists(clusters []*cmv1.Cluster, role aws.Role) bool {
 func buildCommand(roleNames []string, policyMap map[string]string) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
-		deletePolicy := fmt.Sprintf("aws iam delete-role-policy \\\n"+
-			"\t--role-name  %s  --policy-name  %s  \n\n",
-			roleName, policyMap[roleName])
-
-		deleteRole := fmt.Sprintf("aws iam delete-role \\\n"+
-			"\t--role-name  %s \n\n",
-			roleName)
-		commands = append(commands, deletePolicy, deleteRole)
+		deletePolicy := ""
+		if policyMap[roleName] != "" {
+			policies := strings.Split(policyMap[roleName], ",")
+			for _, policy := range policies {
+				deletePolicy = fmt.Sprintf("\taws iam delete-role-policy --role-name  %s  --policy-name  %s",
+					roleName, policy)
+				commands = append(commands, deletePolicy)
+			}
+		}
+		deleteRole := fmt.Sprintf("\taws iam delete-role --role-name  %s", roleName)
+		commands = append(commands, deleteRole)
 	}
-	return strings.Join(commands, "\n\n")
+	return strings.Join(commands, "\n")
 }
