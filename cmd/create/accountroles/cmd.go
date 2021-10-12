@@ -267,7 +267,7 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
 
-		commands := buildCommands(prefix, permissionsBoundary)
+		commands := buildCommands(prefix, permissionsBoundary, creator.AccountID)
 		fmt.Println(commands)
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
@@ -342,11 +342,12 @@ func saveDocument(doc []byte, filename string) error {
 	return nil
 }
 
-func buildCommands(prefix string, permissionsBoundary string) string {
+func buildCommands(prefix string, permissionsBoundary string, accountID string) string {
 	commands := []string{}
 
 	for file, role := range aws.AccountRoles {
 		name := getRoleName(prefix, role.Name)
+		policyName := fmt.Sprintf("%s-Policy", name)
 		iamTags := fmt.Sprintf(
 			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.OpenShiftVersion, aws.DefaultPolicyVersion,
@@ -363,12 +364,16 @@ func buildCommands(prefix string, permissionsBoundary string) string {
 			"%s"+
 			"\t--tags %s",
 			name, file, permBoundaryFlag, iamTags)
-		putRolePolicy := fmt.Sprintf("aws iam put-role-policy \\\n"+
+		createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
+			"\t--policy-name %s \\\n"+
+			"\t--policy-document file://sts_%s_permission_policy.json"+
+			"\t--tags %s",
+			policyName, file, iamTags)
+		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
-			"\t--policy-name %s-Policy \\\n"+
-			"\t--policy-document file://sts_%s_permission_policy.json",
-			name, name, file)
-		commands = append(commands, createRole, putRolePolicy)
+			"\t--policy-arn %s",
+			name, getPolicyARN(accountID, policyName))
+		commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	}
 
 	for credrequest, operator := range aws.CredentialRequests {
@@ -396,6 +401,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	accountID string, env string) error {
 	for file, role := range aws.AccountRoles {
 		name := getRoleName(prefix, role.Name)
+		policyARN := getPolicyARN(accountID, fmt.Sprintf("%s-Policy", name))
 
 		if !confirm.Prompt(true, "Create the '%s' role?", name) {
 			continue
@@ -411,6 +417,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			return err
 		}
 
+		reporter.Debugf("Creating role '%s'", name)
 		roleARN, err := awsClient.EnsureRole(name, string(policy), permissionsBoundary,
 			aws.DefaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: aws.DefaultPolicyVersion,
@@ -430,8 +437,19 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			return err
 		}
 
+		reporter.Debugf("Creating permission policy '%s'", policyARN)
+		policyARN, err = awsClient.EnsurePolicy(policyARN, string(policy),
+			aws.DefaultPolicyVersion, map[string]string{
+				tags.OpenShiftVersion: aws.DefaultPolicyVersion,
+				tags.RolePrefix:       prefix,
+				tags.RoleType:         file,
+			})
+		if err != nil {
+			return err
+		}
+
 		reporter.Debugf("Attaching permission policy to role '%s'", filename)
-		err = awsClient.PutRolePolicy(name, fmt.Sprintf("%s-Policy", name), string(policy))
+		err = awsClient.AttachRolePolicy(name, policyARN)
 		if err != nil {
 			return err
 		}
@@ -439,7 +457,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 
 	if confirm.Prompt(true, "Create the operator policies?") {
 		for credrequest, operator := range aws.CredentialRequests {
-			policyArn := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+			policyARN := getOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
 
 			filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
 			path := fmt.Sprintf("templates/policies/%s", filename)
@@ -449,7 +467,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 				return err
 			}
 
-			policyArn, err = awsClient.EnsurePolicy(policyArn, string(policy),
+			policyARN, err = awsClient.EnsurePolicy(policyARN, string(policy),
 				aws.DefaultPolicyVersion, map[string]string{
 					tags.OpenShiftVersion: aws.DefaultPolicyVersion,
 					tags.RolePrefix:       prefix,
@@ -459,7 +477,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			if err != nil {
 				return err
 			}
-			reporter.Infof("Created policy with ARN '%s'", policyArn)
+			reporter.Infof("Created policy with ARN '%s'", policyARN)
 		}
 	}
 
@@ -482,6 +500,10 @@ func getPolicyName(prefix string, namespace string, name string) string {
 	return policy
 }
 
-func getPolicyARN(accountID string, prefix string, namespace string, name string) string {
-	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, getPolicyName(prefix, namespace, name))
+func getOperatorPolicyARN(accountID string, prefix string, namespace string, name string) string {
+	return getPolicyARN(accountID, getPolicyName(prefix, namespace, name))
+}
+
+func getPolicyARN(accountID string, name string) string {
+	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, name)
 }
