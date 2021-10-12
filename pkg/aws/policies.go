@@ -101,7 +101,7 @@ type Policy struct {
 
 var AccountRoles map[string]AccountRole = map[string]AccountRole{
 	"installer":             {Name: "Installer", Flag: "role-arn"},
-	"instance_controlplane": {Name: "ControlPlane", Flag: "master-iam-role"},
+	"instance_controlplane": {Name: "ControlPlane", Flag: "controlplane-iam-role"},
 	"instance_worker":       {Name: "Worker", Flag: "worker-iam-role"},
 	"support":               {Name: "Support", Flag: "support-role-arn"},
 }
