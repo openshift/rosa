@@ -379,8 +379,6 @@ func buildCommands(reporter *rprtr.Object,
 }
 
 func generateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator aws.Operator) (string, error) {
-	version := getVersionMinor(cluster)
-
 	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
 	if err != nil {
 		return "", err
@@ -395,7 +393,7 @@ func generateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator aws
 			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace, sa))
 	}
 
-	path := fmt.Sprintf("templates/policies/%s/operator_iam_role_policy.json", version)
+	path := "templates/policies/operator_iam_role_policy.json"
 	policy, err := aws.ReadPolicyDocument(path, map[string]string{
 		"oidc_provider_arn": oidcProviderARN,
 		"issuer_url":        issuerURL,

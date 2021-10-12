@@ -33,6 +33,7 @@ import (
 )
 
 var DefaultPrefix = "ManagedOpenShift"
+var DefaultPolicyVersion = "4.9"
 
 type Operator struct {
 	Name                string
