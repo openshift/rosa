@@ -100,11 +100,11 @@ var args struct {
 	sts bool
 
 	// Account IAM Roles
-	roleARN        string
-	externalID     string
-	supportRoleARN string
-	masterRoleARN  string
-	workerRoleARN  string
+	roleARN             string
+	externalID          string
+	supportRoleARN      string
+	controlPlaneRoleARN string
+	workerRoleARN       string
 
 	// Operator IAM Roles
 	operatorIAMRoles    []string
@@ -173,10 +173,10 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.masterRoleARN,
-		"master-iam-role",
+		&args.controlPlaneRoleARN,
+		"controlplane-iam-role",
 		"",
-		"The IAM role ARN that will be attached to master instances.",
+		"The IAM role ARN that will be attached to control plane instances.",
 	)
 
 	flags.StringVar(
@@ -509,7 +509,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// AWS ARN Role
 	roleARN := args.roleARN
 	supportRoleARN := args.supportRoleARN
-	masterRoleARN := args.masterRoleARN
+	controlPlaneRoleARN := args.controlPlaneRoleARN
 	workerRoleARN := args.workerRoleARN
 
 	isSTS = isSTS || awsCreator.IsSTS
@@ -585,7 +585,7 @@ func run(cmd *cobra.Command, _ []string) {
 			case "support":
 				supportRoleARN = selectedARN
 			case "instance_controlplane":
-				masterRoleARN = selectedARN
+				controlPlaneRoleARN = selectedARN
 			case "instance_worker":
 				workerRoleARN = selectedARN
 			}
@@ -666,33 +666,33 @@ func run(cmd *cobra.Command, _ []string) {
 	// Instance IAM Roles
 	// Ensure interactive mode if missing required role ARNs on STS clusters
 	if isSTS && !hasRoles && !interactive.Enabled() {
-		if masterRoleARN == "" || workerRoleARN == "" {
+		if controlPlaneRoleARN == "" || workerRoleARN == "" {
 			interactive.Enable()
 		}
 	}
 	if isSTS && !hasRoles && interactive.Enabled() {
-		masterRoleARN, err = interactive.GetString(interactive.Input{
-			Question: "Master IAM Role ARN",
-			Help:     cmd.Flags().Lookup("master-iam-role").Usage,
-			Default:  masterRoleARN,
+		controlPlaneRoleARN, err = interactive.GetString(interactive.Input{
+			Question: "Control plane IAM Role ARN",
+			Help:     cmd.Flags().Lookup("controlplane-iam-role").Usage,
+			Default:  controlPlaneRoleARN,
 			Required: true,
 			Validators: []interactive.Validator{
 				aws.ARNValidator,
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid master IAM role ARN: %s", err)
+			reporter.Errorf("Expected a valid control plane IAM role ARN: %s", err)
 			os.Exit(1)
 		}
 	}
-	if masterRoleARN != "" {
-		_, err = arn.Parse(masterRoleARN)
+	if controlPlaneRoleARN != "" {
+		_, err = arn.Parse(controlPlaneRoleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid master instance IAM role ARN: %s", err)
+			reporter.Errorf("Expected a valid control plane instance IAM role ARN: %s", err)
 			os.Exit(1)
 		}
 	} else if roleARN != "" {
-		reporter.Errorf("Master instance IAM role ARN is required: %s", err)
+		reporter.Errorf("Control plane instance IAM role ARN is required: %s", err)
 		os.Exit(1)
 	}
 
@@ -726,7 +726,7 @@ func run(cmd *cobra.Command, _ []string) {
 	roleARNs := []string{
 		roleARN,
 		supportRoleARN,
-		masterRoleARN,
+		controlPlaneRoleARN,
 		workerRoleARN,
 	}
 
@@ -1387,7 +1387,7 @@ func run(cmd *cobra.Command, _ []string) {
 		ExternalID:                externalID,
 		SupportRoleARN:            supportRoleARN,
 		OperatorIAMRoles:          operatorIAMRoleList,
-		MasterRoleARN:             masterRoleARN,
+		ControlPlaneRoleARN:       controlPlaneRoleARN,
 		WorkerRoleARN:             workerRoleARN,
 		Tags:                      tagsList,
 		KMSKeyArn:                 kmsKeyARN,
@@ -1625,7 +1625,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	if spec.RoleARN != "" {
 		command += fmt.Sprintf(" --role-arn %s", spec.RoleARN)
 		command += fmt.Sprintf(" --support-role-arn %s", spec.SupportRoleARN)
-		command += fmt.Sprintf(" --master-iam-role %s", spec.MasterRoleARN)
+		command += fmt.Sprintf(" --controlplane-iam-role %s", spec.ControlPlaneRoleARN)
 		command += fmt.Sprintf(" --worker-iam-role %s", spec.WorkerRoleARN)
 	}
 	if spec.ExternalID != "" {

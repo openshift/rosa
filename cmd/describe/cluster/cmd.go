@@ -219,7 +219,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if minNodes == maxNodes {
 		nodesStr = fmt.Sprintf(""+
 			"Nodes:\n"+
-			" - Master:                  %d\n"+
+			" - Control plane:           %d\n"+
 			" - Infra:                   %d\n"+
 			" - Compute:                 %d\n",
 			cluster.Nodes().Master(),
@@ -229,7 +229,7 @@ func run(cmd *cobra.Command, argv []string) {
 	} else {
 		nodesStr = fmt.Sprintf(""+
 			"Nodes:\n"+
-			" - Master:                  %d\n"+
+			" - Control plane:           %d\n"+
 			" - Infra:                   %d\n"+
 			" - Compute (Autoscaled):    %d-%d\n",
 			cluster.Nodes().Master(),
@@ -295,7 +295,7 @@ func run(cmd *cobra.Command, argv []string) {
 			str = fmt.Sprintf("%sInstance IAM Roles:\n", str)
 			if cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN() != "" {
 				str = fmt.Sprintf("%s"+
-					" - Master:                  %s\n", str,
+					" - Control plane:           %s\n", str,
 					cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN())
 			}
 			if cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN() != "" {

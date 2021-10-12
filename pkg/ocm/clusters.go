@@ -80,12 +80,12 @@ type Spec struct {
 	DisableSCPChecks *bool
 
 	// STS
-	RoleARN          string
-	ExternalID       string
-	SupportRoleARN   string
-	OperatorIAMRoles []OperatorIAMRole
-	MasterRoleARN    string
-	WorkerRoleARN    string
+	RoleARN             string
+	ExternalID          string
+	SupportRoleARN      string
+	OperatorIAMRoles    []OperatorIAMRole
+	ControlPlaneRoleARN string
+	WorkerRoleARN       string
 
 	NodeDrainGracePeriodInMinutes float64
 }
@@ -528,8 +528,8 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 			stsBuilder = stsBuilder.OperatorIAMRoles(roles...)
 		}
 		instanceIAMRolesBuilder := cmv1.NewInstanceIAMRoles()
-		if config.MasterRoleARN != "" {
-			instanceIAMRolesBuilder.MasterRoleARN(config.MasterRoleARN)
+		if config.ControlPlaneRoleARN != "" {
+			instanceIAMRolesBuilder.MasterRoleARN(config.ControlPlaneRoleARN)
 		}
 		if config.WorkerRoleARN != "" {
 			instanceIAMRolesBuilder.WorkerRoleARN(config.WorkerRoleARN)
