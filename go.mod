@@ -16,7 +16,7 @@ require (
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.16.0
-	github.com/openshift-online/ocm-sdk-go v0.1.209
+	github.com/openshift-online/ocm-sdk-go v0.1.212
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5

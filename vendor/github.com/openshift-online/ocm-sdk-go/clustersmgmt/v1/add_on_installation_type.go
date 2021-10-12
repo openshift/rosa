@@ -50,6 +50,7 @@ type AddOnInstallation struct {
 	state             AddOnInstallationState
 	stateDescription  string
 	updatedTimestamp  time.Time
+	version           *AddOnVersion
 }
 
 // Kind returns the name of the type of the object.
@@ -289,6 +290,29 @@ func (o *AddOnInstallation) GetUpdatedTimestamp() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.updatedTimestamp
+	}
+	return
+}
+
+// Version returns the value of the 'version' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Link to the installed version of this add-on.
+func (o *AddOnInstallation) Version() *AddOnVersion {
+	if o != nil && o.bitmap_&2048 != 0 {
+		return o.version
+	}
+	return nil
+}
+
+// GetVersion returns the value of the 'version' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Link to the installed version of this add-on.
+func (o *AddOnInstallation) GetVersion() (value *AddOnVersion, ok bool) {
+	ok = o != nil && o.bitmap_&2048 != 0
+	if ok {
+		value = o.version
 	}
 	return
 }

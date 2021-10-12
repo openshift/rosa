@@ -38,6 +38,7 @@ type AddOnInstallationBuilder struct {
 	state             AddOnInstallationState
 	stateDescription  string
 	updatedTimestamp  time.Time
+	version           *AddOnVersionBuilder
 }
 
 // NewAddOnInstallation creates a new builder of 'add_on_installation' objects.
@@ -181,6 +182,19 @@ func (b *AddOnInstallationBuilder) UpdatedTimestamp(value time.Time) *AddOnInsta
 	return b
 }
 
+// Version sets the value of the 'version' attribute to the given value.
+//
+// Representation of an add-on version.
+func (b *AddOnInstallationBuilder) Version(value *AddOnVersionBuilder) *AddOnInstallationBuilder {
+	b.version = value
+	if value != nil {
+		b.bitmap_ |= 2048
+	} else {
+		b.bitmap_ &^= 2048
+	}
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *AddOnInstallationBuilder) Copy(object *AddOnInstallation) *AddOnInstallationBuilder {
 	if object == nil {
@@ -209,6 +223,11 @@ func (b *AddOnInstallationBuilder) Copy(object *AddOnInstallation) *AddOnInstall
 	b.state = object.state
 	b.stateDescription = object.stateDescription
 	b.updatedTimestamp = object.updatedTimestamp
+	if object.version != nil {
+		b.version = NewAddOnVersion().Copy(object.version)
+	} else {
+		b.version = nil
+	}
 	return b
 }
 
@@ -241,5 +260,11 @@ func (b *AddOnInstallationBuilder) Build() (object *AddOnInstallation, err error
 	object.state = b.state
 	object.stateDescription = b.stateDescription
 	object.updatedTimestamp = b.updatedTimestamp
+	if b.version != nil {
+		object.version, err = b.version.Build()
+		if err != nil {
+			return
+		}
+	}
 	return
 }

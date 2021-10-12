@@ -32,6 +32,11 @@ type Server interface {
 	//
 	// Reference to the resource that manages the collection of cluster logs.
 	ClusterLogs() ClusterLogsServer
+
+	// Clusters returns the target 'clusters' resource.
+	//
+	// Reference to the resource that manages the collection of clusters for clusters logs.
+	Clusters() ClustersServer
 }
 
 // Dispatch navigates the servers tree rooted at the given server
@@ -53,6 +58,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchClusterLogs(w, r, target, segments[1:])
+	case "clusters":
+		target := server.Clusters()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchClusters(w, r, target, segments[1:])
 	default:
 		errors.SendNotFound(w, r)
 		return

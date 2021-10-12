@@ -51,6 +51,7 @@ type AddOn struct {
 	resourceName         string
 	subOperators         []*AddOnSubOperator
 	targetNamespace      string
+	version              *AddOnVersion
 	enabled              bool
 	hasExternalResources bool
 	hidden               bool
@@ -477,6 +478,29 @@ func (o *AddOn) GetTargetNamespace() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&262144 != 0
 	if ok {
 		value = o.targetNamespace
+	}
+	return
+}
+
+// Version returns the value of the 'version' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Link to the current default version of this add-on.
+func (o *AddOn) Version() *AddOnVersion {
+	if o != nil && o.bitmap_&524288 != 0 {
+		return o.version
+	}
+	return nil
+}
+
+// GetVersion returns the value of the 'version' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Link to the current default version of this add-on.
+func (o *AddOn) GetVersion() (value *AddOnVersion, ok bool) {
+	ok = o != nil && o.bitmap_&524288 != 0
+	if ok {
+		value = o.version
 	}
 	return
 }

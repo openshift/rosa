@@ -27,80 +27,75 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/errors"
 )
 
-// AddOnServer represents the interface the manages the 'add_on' resource.
-type AddOnServer interface {
+// AddOnVersionServer represents the interface the manages the 'add_on_version' resource.
+type AddOnVersionServer interface {
 
 	// Delete handles a request for the 'delete' method.
 	//
-	// Deletes the add-on.
-	Delete(ctx context.Context, request *AddOnDeleteServerRequest, response *AddOnDeleteServerResponse) error
+	// Deletes the add-on version.
+	Delete(ctx context.Context, request *AddOnVersionDeleteServerRequest, response *AddOnVersionDeleteServerResponse) error
 
 	// Get handles a request for the 'get' method.
 	//
-	// Retrieves the details of the add-on.
-	Get(ctx context.Context, request *AddOnGetServerRequest, response *AddOnGetServerResponse) error
+	// Retrieves the details of the add-on version.
+	Get(ctx context.Context, request *AddOnVersionGetServerRequest, response *AddOnVersionGetServerResponse) error
 
 	// Update handles a request for the 'update' method.
 	//
-	// Updates the add-on.
-	Update(ctx context.Context, request *AddOnUpdateServerRequest, response *AddOnUpdateServerResponse) error
-
-	// Versions returns the target 'add_on_versions' resource.
-	//
-	// Reference to the resource that manages the collection of addon versions.
-	Versions() AddOnVersionsServer
+	// Updates the add-on version.
+	Update(ctx context.Context, request *AddOnVersionUpdateServerRequest, response *AddOnVersionUpdateServerResponse) error
 }
 
-// AddOnDeleteServerRequest is the request for the 'delete' method.
-type AddOnDeleteServerRequest struct {
+// AddOnVersionDeleteServerRequest is the request for the 'delete' method.
+type AddOnVersionDeleteServerRequest struct {
 }
 
-// AddOnDeleteServerResponse is the response for the 'delete' method.
-type AddOnDeleteServerResponse struct {
+// AddOnVersionDeleteServerResponse is the response for the 'delete' method.
+type AddOnVersionDeleteServerResponse struct {
 	status int
 	err    *errors.Error
 }
 
 // Status sets the status code.
-func (r *AddOnDeleteServerResponse) Status(value int) *AddOnDeleteServerResponse {
+func (r *AddOnVersionDeleteServerResponse) Status(value int) *AddOnVersionDeleteServerResponse {
 	r.status = value
 	return r
 }
 
-// AddOnGetServerRequest is the request for the 'get' method.
-type AddOnGetServerRequest struct {
+// AddOnVersionGetServerRequest is the request for the 'get' method.
+type AddOnVersionGetServerRequest struct {
 }
 
-// AddOnGetServerResponse is the response for the 'get' method.
-type AddOnGetServerResponse struct {
+// AddOnVersionGetServerResponse is the response for the 'get' method.
+type AddOnVersionGetServerResponse struct {
 	status int
 	err    *errors.Error
-	body   *AddOn
+	body   *AddOnVersion
 }
 
 // Body sets the value of the 'body' parameter.
 //
 //
-func (r *AddOnGetServerResponse) Body(value *AddOn) *AddOnGetServerResponse {
+func (r *AddOnVersionGetServerResponse) Body(value *AddOnVersion) *AddOnVersionGetServerResponse {
 	r.body = value
 	return r
 }
 
 // Status sets the status code.
-func (r *AddOnGetServerResponse) Status(value int) *AddOnGetServerResponse {
+func (r *AddOnVersionGetServerResponse) Status(value int) *AddOnVersionGetServerResponse {
 	r.status = value
 	return r
 }
 
-// AddOnUpdateServerRequest is the request for the 'update' method.
-type AddOnUpdateServerRequest struct {
-	body *AddOn
+// AddOnVersionUpdateServerRequest is the request for the 'update' method.
+type AddOnVersionUpdateServerRequest struct {
+	body *AddOnVersion
 }
 
 // Body returns the value of the 'body' parameter.
 //
 //
-func (r *AddOnUpdateServerRequest) Body() *AddOn {
+func (r *AddOnVersionUpdateServerRequest) Body() *AddOnVersion {
 	if r == nil {
 		return nil
 	}
@@ -111,7 +106,7 @@ func (r *AddOnUpdateServerRequest) Body() *AddOn {
 // a flag indicating if the parameter has a value.
 //
 //
-func (r *AddOnUpdateServerRequest) GetBody() (value *AddOn, ok bool) {
+func (r *AddOnVersionUpdateServerRequest) GetBody() (value *AddOnVersion, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -119,41 +114,41 @@ func (r *AddOnUpdateServerRequest) GetBody() (value *AddOn, ok bool) {
 	return
 }
 
-// AddOnUpdateServerResponse is the response for the 'update' method.
-type AddOnUpdateServerResponse struct {
+// AddOnVersionUpdateServerResponse is the response for the 'update' method.
+type AddOnVersionUpdateServerResponse struct {
 	status int
 	err    *errors.Error
-	body   *AddOn
+	body   *AddOnVersion
 }
 
 // Body sets the value of the 'body' parameter.
 //
 //
-func (r *AddOnUpdateServerResponse) Body(value *AddOn) *AddOnUpdateServerResponse {
+func (r *AddOnVersionUpdateServerResponse) Body(value *AddOnVersion) *AddOnVersionUpdateServerResponse {
 	r.body = value
 	return r
 }
 
 // Status sets the status code.
-func (r *AddOnUpdateServerResponse) Status(value int) *AddOnUpdateServerResponse {
+func (r *AddOnVersionUpdateServerResponse) Status(value int) *AddOnVersionUpdateServerResponse {
 	r.status = value
 	return r
 }
 
-// dispatchAddOn navigates the servers tree rooted at the given server
+// dispatchAddOnVersion navigates the servers tree rooted at the given server
 // till it finds one that matches the given set of path segments, and then invokes
 // the corresponding server.
-func dispatchAddOn(w http.ResponseWriter, r *http.Request, server AddOnServer, segments []string) {
+func dispatchAddOnVersion(w http.ResponseWriter, r *http.Request, server AddOnVersionServer, segments []string) {
 	if len(segments) == 0 {
 		switch r.Method {
 		case "DELETE":
-			adaptAddOnDeleteRequest(w, r, server)
+			adaptAddOnVersionDeleteRequest(w, r, server)
 			return
 		case "GET":
-			adaptAddOnGetRequest(w, r, server)
+			adaptAddOnVersionGetRequest(w, r, server)
 			return
 		case "PATCH":
-			adaptAddOnUpdateRequest(w, r, server)
+			adaptAddOnVersionUpdateRequest(w, r, server)
 			return
 		default:
 			errors.SendMethodNotAllowed(w, r)
@@ -161,25 +156,18 @@ func dispatchAddOn(w http.ResponseWriter, r *http.Request, server AddOnServer, s
 		}
 	}
 	switch segments[0] {
-	case "versions":
-		target := server.Versions()
-		if target == nil {
-			errors.SendNotFound(w, r)
-			return
-		}
-		dispatchAddOnVersions(w, r, target, segments[1:])
 	default:
 		errors.SendNotFound(w, r)
 		return
 	}
 }
 
-// adaptAddOnDeleteRequest translates the given HTTP request into a call to
+// adaptAddOnVersionDeleteRequest translates the given HTTP request into a call to
 // the corresponding method of the given server. Then it translates the
 // results returned by that method into an HTTP response.
-func adaptAddOnDeleteRequest(w http.ResponseWriter, r *http.Request, server AddOnServer) {
-	request := &AddOnDeleteServerRequest{}
-	err := readAddOnDeleteRequest(request, r)
+func adaptAddOnVersionDeleteRequest(w http.ResponseWriter, r *http.Request, server AddOnVersionServer) {
+	request := &AddOnVersionDeleteServerRequest{}
+	err := readAddOnVersionDeleteRequest(request, r)
 	if err != nil {
 		glog.Errorf(
 			"Can't read request for method '%s' and path '%s': %v",
@@ -188,7 +176,7 @@ func adaptAddOnDeleteRequest(w http.ResponseWriter, r *http.Request, server AddO
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	response := &AddOnDeleteServerResponse{}
+	response := &AddOnVersionDeleteServerResponse{}
 	response.status = 204
 	err = server.Delete(r.Context(), request, response)
 	if err != nil {
@@ -199,7 +187,7 @@ func adaptAddOnDeleteRequest(w http.ResponseWriter, r *http.Request, server AddO
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	err = writeAddOnDeleteResponse(response, w)
+	err = writeAddOnVersionDeleteResponse(response, w)
 	if err != nil {
 		glog.Errorf(
 			"Can't write response for method '%s' and path '%s': %v",
@@ -209,12 +197,12 @@ func adaptAddOnDeleteRequest(w http.ResponseWriter, r *http.Request, server AddO
 	}
 }
 
-// adaptAddOnGetRequest translates the given HTTP request into a call to
+// adaptAddOnVersionGetRequest translates the given HTTP request into a call to
 // the corresponding method of the given server. Then it translates the
 // results returned by that method into an HTTP response.
-func adaptAddOnGetRequest(w http.ResponseWriter, r *http.Request, server AddOnServer) {
-	request := &AddOnGetServerRequest{}
-	err := readAddOnGetRequest(request, r)
+func adaptAddOnVersionGetRequest(w http.ResponseWriter, r *http.Request, server AddOnVersionServer) {
+	request := &AddOnVersionGetServerRequest{}
+	err := readAddOnVersionGetRequest(request, r)
 	if err != nil {
 		glog.Errorf(
 			"Can't read request for method '%s' and path '%s': %v",
@@ -223,7 +211,7 @@ func adaptAddOnGetRequest(w http.ResponseWriter, r *http.Request, server AddOnSe
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	response := &AddOnGetServerResponse{}
+	response := &AddOnVersionGetServerResponse{}
 	response.status = 200
 	err = server.Get(r.Context(), request, response)
 	if err != nil {
@@ -234,7 +222,7 @@ func adaptAddOnGetRequest(w http.ResponseWriter, r *http.Request, server AddOnSe
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	err = writeAddOnGetResponse(response, w)
+	err = writeAddOnVersionGetResponse(response, w)
 	if err != nil {
 		glog.Errorf(
 			"Can't write response for method '%s' and path '%s': %v",
@@ -244,12 +232,12 @@ func adaptAddOnGetRequest(w http.ResponseWriter, r *http.Request, server AddOnSe
 	}
 }
 
-// adaptAddOnUpdateRequest translates the given HTTP request into a call to
+// adaptAddOnVersionUpdateRequest translates the given HTTP request into a call to
 // the corresponding method of the given server. Then it translates the
 // results returned by that method into an HTTP response.
-func adaptAddOnUpdateRequest(w http.ResponseWriter, r *http.Request, server AddOnServer) {
-	request := &AddOnUpdateServerRequest{}
-	err := readAddOnUpdateRequest(request, r)
+func adaptAddOnVersionUpdateRequest(w http.ResponseWriter, r *http.Request, server AddOnVersionServer) {
+	request := &AddOnVersionUpdateServerRequest{}
+	err := readAddOnVersionUpdateRequest(request, r)
 	if err != nil {
 		glog.Errorf(
 			"Can't read request for method '%s' and path '%s': %v",
@@ -258,7 +246,7 @@ func adaptAddOnUpdateRequest(w http.ResponseWriter, r *http.Request, server AddO
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	response := &AddOnUpdateServerResponse{}
+	response := &AddOnVersionUpdateServerResponse{}
 	response.status = 200
 	err = server.Update(r.Context(), request, response)
 	if err != nil {
@@ -269,7 +257,7 @@ func adaptAddOnUpdateRequest(w http.ResponseWriter, r *http.Request, server AddO
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	err = writeAddOnUpdateResponse(response, w)
+	err = writeAddOnVersionUpdateResponse(response, w)
 	if err != nil {
 		glog.Errorf(
 			"Can't write response for method '%s' and path '%s': %v",

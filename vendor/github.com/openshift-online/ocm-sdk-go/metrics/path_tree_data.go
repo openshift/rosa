@@ -122,71 +122,9 @@ var pathTreeData = `{
     "clusters_mgmt": {
       "v1": {
         "addons": {
-          "-": null
-        },
-        "archived_clusters": {
           "-": {
-            "addon_inquiries": {
+            "versions": {
               "-": null
-            },
-            "addons": {
-              "-": null
-            },
-            "aws_infrastructure_access_role_grants": {
-              "-": null
-            },
-            "clusterdeployment": null,
-            "credentials": null,
-            "external_configuration": {
-              "labels": {
-                "-": null
-              },
-              "syncsets": {
-                "-": null
-              }
-            },
-            "groups": {
-              "-": {
-                "users": {
-                  "-": null
-                }
-              }
-            },
-            "hibernate": null,
-            "identity_providers": {
-              "-": null
-            },
-            "ingresses": {
-              "-": null
-            },
-            "limited_support_reasons": {
-              "-": null
-            },
-            "logs": {
-              "install": null,
-              "uninstall": null
-            },
-            "machine_pools": {
-              "-": null
-            },
-            "metric_queries": {
-              "alerts": null,
-              "cluster_operators": null,
-              "cpu_total_by_node_roles_os": null,
-              "nodes": null,
-              "socket_total_by_node_roles_os": null
-            },
-            "product": null,
-            "provision_shard": null,
-            "resources": {
-              "live": null
-            },
-            "resume": null,
-            "status": null,
-            "upgrade_policies": {
-              "-": {
-                "state": null
-              }
             }
           }
         },
@@ -316,6 +254,13 @@ var pathTreeData = `{
       "v1": {
         "cluster_logs": {
           "-": null
+        },
+        "clusters": {
+          "-": {
+            "cluster_logs": {
+              "-": null
+            }
+          }
         }
       }
     }
