@@ -732,6 +732,9 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// iterate and validate role arns against openshift version
 	for _, ARN := range roleARNs {
+		if ARN == "" {
+			continue
+		}
 		// get role from arn
 		role, err := awsClient.GetRoleByARN(ARN)
 		if err != nil {
