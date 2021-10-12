@@ -210,6 +210,15 @@ func writeAddOn(object *AddOn, stream *jsoniter.Stream) {
 		stream.WriteString(object.targetNamespace)
 		count++
 	}
+	present_ = object.bitmap_&524288 != 0 && object.version != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("version")
+		writeAddOnVersion(object.version, stream)
+		count++
+	}
 	stream.WriteObjectEnd()
 }
 
@@ -330,6 +339,10 @@ func readAddOn(iterator *jsoniter.Iterator) *AddOn {
 			value := iterator.ReadString()
 			object.targetNamespace = value
 			object.bitmap_ |= 262144
+		case "version":
+			value := readAddOnVersion(iterator)
+			object.version = value
+			object.bitmap_ |= 524288
 		default:
 			iterator.ReadAny()
 		}

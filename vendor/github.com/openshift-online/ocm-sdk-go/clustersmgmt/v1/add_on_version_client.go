@@ -26,7 +26,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -34,19 +33,19 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// AddOnClient is the client of the 'add_on' resource.
+// AddOnVersionClient is the client of the 'add_on_version' resource.
 //
-// Manages a specific add-on.
-type AddOnClient struct {
+// Manages a specific add-on version.
+type AddOnVersionClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewAddOnClient creates a new client for the 'add_on'
+// NewAddOnVersionClient creates a new client for the 'add_on_version'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewAddOnClient(transport http.RoundTripper, path string) *AddOnClient {
-	return &AddOnClient{
+func NewAddOnVersionClient(transport http.RoundTripper, path string) *AddOnVersionClient {
+	return &AddOnVersionClient{
 		transport: transport,
 		path:      path,
 	}
@@ -54,9 +53,9 @@ func NewAddOnClient(transport http.RoundTripper, path string) *AddOnClient {
 
 // Delete creates a request for the 'delete' method.
 //
-// Deletes the add-on.
-func (c *AddOnClient) Delete() *AddOnDeleteRequest {
-	return &AddOnDeleteRequest{
+// Deletes the add-on version.
+func (c *AddOnVersionClient) Delete() *AddOnVersionDeleteRequest {
+	return &AddOnVersionDeleteRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -64,9 +63,9 @@ func (c *AddOnClient) Delete() *AddOnDeleteRequest {
 
 // Get creates a request for the 'get' method.
 //
-// Retrieves the details of the add-on.
-func (c *AddOnClient) Get() *AddOnGetRequest {
-	return &AddOnGetRequest{
+// Retrieves the details of the add-on version.
+func (c *AddOnVersionClient) Get() *AddOnVersionGetRequest {
+	return &AddOnVersionGetRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -74,53 +73,43 @@ func (c *AddOnClient) Get() *AddOnGetRequest {
 
 // Update creates a request for the 'update' method.
 //
-// Updates the add-on.
-func (c *AddOnClient) Update() *AddOnUpdateRequest {
-	return &AddOnUpdateRequest{
+// Updates the add-on version.
+func (c *AddOnVersionClient) Update() *AddOnVersionUpdateRequest {
+	return &AddOnVersionUpdateRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// Versions returns the target 'add_on_versions' resource.
-//
-// Reference to the resource that manages the collection of addon versions.
-func (c *AddOnClient) Versions() *AddOnVersionsClient {
-	return NewAddOnVersionsClient(
-		c.transport,
-		path.Join(c.path, "versions"),
-	)
-}
-
-// AddOnPollRequest is the request for the Poll method.
-type AddOnPollRequest struct {
-	request    *AddOnGetRequest
+// AddOnVersionPollRequest is the request for the Poll method.
+type AddOnVersionPollRequest struct {
+	request    *AddOnVersionGetRequest
 	interval   time.Duration
 	statuses   []int
 	predicates []func(interface{}) bool
 }
 
 // Parameter adds a query parameter to all the requests that will be used to retrieve the object.
-func (r *AddOnPollRequest) Parameter(name string, value interface{}) *AddOnPollRequest {
+func (r *AddOnVersionPollRequest) Parameter(name string, value interface{}) *AddOnVersionPollRequest {
 	r.request.Parameter(name, value)
 	return r
 }
 
 // Header adds a request header to all the requests that will be used to retrieve the object.
-func (r *AddOnPollRequest) Header(name string, value interface{}) *AddOnPollRequest {
+func (r *AddOnVersionPollRequest) Header(name string, value interface{}) *AddOnVersionPollRequest {
 	r.request.Header(name, value)
 	return r
 }
 
 // Interval sets the polling interval. This parameter is mandatory and must be greater than zero.
-func (r *AddOnPollRequest) Interval(value time.Duration) *AddOnPollRequest {
+func (r *AddOnVersionPollRequest) Interval(value time.Duration) *AddOnVersionPollRequest {
 	r.interval = value
 	return r
 }
 
 // Status set the expected status of the response. Multiple values can be set calling this method
 // multiple times. The response will be considered successful if the status is any of those values.
-func (r *AddOnPollRequest) Status(value int) *AddOnPollRequest {
+func (r *AddOnVersionPollRequest) Status(value int) *AddOnVersionPollRequest {
 	r.statuses = append(r.statuses, value)
 	return r
 }
@@ -128,9 +117,9 @@ func (r *AddOnPollRequest) Status(value int) *AddOnPollRequest {
 // Predicate adds a predicate that the response should satisfy be considered successful. Multiple
 // predicates can be set calling this method multiple times. The response will be considered successful
 // if all the predicates are satisfied.
-func (r *AddOnPollRequest) Predicate(value func(*AddOnGetResponse) bool) *AddOnPollRequest {
+func (r *AddOnVersionPollRequest) Predicate(value func(*AddOnVersionGetResponse) bool) *AddOnVersionPollRequest {
 	r.predicates = append(r.predicates, func(response interface{}) bool {
-		return value(response.(*AddOnGetResponse))
+		return value(response.(*AddOnVersionGetResponse))
 	})
 	return r
 }
@@ -140,11 +129,11 @@ func (r *AddOnPollRequest) Predicate(value func(*AddOnGetResponse) bool) *AddOnP
 // method return nil.
 //
 // The context must have a timeout or deadline, otherwise this method will immediately return an error.
-func (r *AddOnPollRequest) StartContext(ctx context.Context) (response *AddOnPollResponse, err error) {
+func (r *AddOnVersionPollRequest) StartContext(ctx context.Context) (response *AddOnVersionPollResponse, err error) {
 	result, err := helpers.PollContext(ctx, r.interval, r.statuses, r.predicates, r.task)
 	if result != nil {
-		response = &AddOnPollResponse{
-			response: result.(*AddOnGetResponse),
+		response = &AddOnVersionPollResponse{
+			response: result.(*AddOnVersionGetResponse),
 		}
 	}
 	return
@@ -152,7 +141,7 @@ func (r *AddOnPollRequest) StartContext(ctx context.Context) (response *AddOnPol
 
 // task adapts the types of the request/response types so that they can be used with the generic
 // polling function from the helpers package.
-func (r *AddOnPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
+func (r *AddOnVersionPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
 	response, err := r.request.SendContext(ctx)
 	if response != nil {
 		status = response.Status()
@@ -161,13 +150,13 @@ func (r *AddOnPollRequest) task(ctx context.Context) (status int, result interfa
 	return
 }
 
-// AddOnPollResponse is the response for the Poll method.
-type AddOnPollResponse struct {
-	response *AddOnGetResponse
+// AddOnVersionPollResponse is the response for the Poll method.
+type AddOnVersionPollResponse struct {
+	response *AddOnVersionGetResponse
 }
 
 // Status returns the response status code.
-func (r *AddOnPollResponse) Status() int {
+func (r *AddOnVersionPollResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -175,7 +164,7 @@ func (r *AddOnPollResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *AddOnPollResponse) Header() http.Header {
+func (r *AddOnVersionPollResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -183,7 +172,7 @@ func (r *AddOnPollResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *AddOnPollResponse) Error() *errors.Error {
+func (r *AddOnVersionPollResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -193,7 +182,7 @@ func (r *AddOnPollResponse) Error() *errors.Error {
 // Body returns the value of the 'body' parameter.
 //
 //
-func (r *AddOnPollResponse) Body() *AddOn {
+func (r *AddOnVersionPollResponse) Body() *AddOnVersion {
 	return r.response.Body()
 }
 
@@ -201,20 +190,20 @@ func (r *AddOnPollResponse) Body() *AddOn {
 // a flag indicating if the parameter has a value.
 //
 //
-func (r *AddOnPollResponse) GetBody() (value *AddOn, ok bool) {
+func (r *AddOnVersionPollResponse) GetBody() (value *AddOnVersion, ok bool) {
 	return r.response.GetBody()
 }
 
 // Poll creates a request to repeatedly retrieve the object till the response has one of a given set
 // of states and satisfies a set of predicates.
-func (c *AddOnClient) Poll() *AddOnPollRequest {
-	return &AddOnPollRequest{
+func (c *AddOnVersionClient) Poll() *AddOnVersionPollRequest {
+	return &AddOnVersionPollRequest{
 		request: c.Get(),
 	}
 }
 
-// AddOnDeleteRequest is the request for the 'delete' method.
-type AddOnDeleteRequest struct {
+// AddOnVersionDeleteRequest is the request for the 'delete' method.
+type AddOnVersionDeleteRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -222,13 +211,13 @@ type AddOnDeleteRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *AddOnDeleteRequest) Parameter(name string, value interface{}) *AddOnDeleteRequest {
+func (r *AddOnVersionDeleteRequest) Parameter(name string, value interface{}) *AddOnVersionDeleteRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *AddOnDeleteRequest) Header(name string, value interface{}) *AddOnDeleteRequest {
+func (r *AddOnVersionDeleteRequest) Header(name string, value interface{}) *AddOnVersionDeleteRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
@@ -237,12 +226,12 @@ func (r *AddOnDeleteRequest) Header(name string, value interface{}) *AddOnDelete
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *AddOnDeleteRequest) Send() (result *AddOnDeleteResponse, err error) {
+func (r *AddOnVersionDeleteRequest) Send() (result *AddOnVersionDeleteResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *AddOnDeleteRequest) SendContext(ctx context.Context) (result *AddOnDeleteResponse, err error) {
+func (r *AddOnVersionDeleteRequest) SendContext(ctx context.Context) (result *AddOnVersionDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -262,7 +251,7 @@ func (r *AddOnDeleteRequest) SendContext(ctx context.Context) (result *AddOnDele
 		return
 	}
 	defer response.Body.Close()
-	result = &AddOnDeleteResponse{}
+	result = &AddOnVersionDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
@@ -276,15 +265,15 @@ func (r *AddOnDeleteRequest) SendContext(ctx context.Context) (result *AddOnDele
 	return
 }
 
-// AddOnDeleteResponse is the response for the 'delete' method.
-type AddOnDeleteResponse struct {
+// AddOnVersionDeleteResponse is the response for the 'delete' method.
+type AddOnVersionDeleteResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
 }
 
 // Status returns the response status code.
-func (r *AddOnDeleteResponse) Status() int {
+func (r *AddOnVersionDeleteResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -292,7 +281,7 @@ func (r *AddOnDeleteResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *AddOnDeleteResponse) Header() http.Header {
+func (r *AddOnVersionDeleteResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -300,15 +289,15 @@ func (r *AddOnDeleteResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *AddOnDeleteResponse) Error() *errors.Error {
+func (r *AddOnVersionDeleteResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
 	return r.err
 }
 
-// AddOnGetRequest is the request for the 'get' method.
-type AddOnGetRequest struct {
+// AddOnVersionGetRequest is the request for the 'get' method.
+type AddOnVersionGetRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -316,13 +305,13 @@ type AddOnGetRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *AddOnGetRequest) Parameter(name string, value interface{}) *AddOnGetRequest {
+func (r *AddOnVersionGetRequest) Parameter(name string, value interface{}) *AddOnVersionGetRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *AddOnGetRequest) Header(name string, value interface{}) *AddOnGetRequest {
+func (r *AddOnVersionGetRequest) Header(name string, value interface{}) *AddOnVersionGetRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
@@ -331,12 +320,12 @@ func (r *AddOnGetRequest) Header(name string, value interface{}) *AddOnGetReques
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *AddOnGetRequest) Send() (result *AddOnGetResponse, err error) {
+func (r *AddOnVersionGetRequest) Send() (result *AddOnVersionGetResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *AddOnGetRequest) SendContext(ctx context.Context) (result *AddOnGetResponse, err error) {
+func (r *AddOnVersionGetRequest) SendContext(ctx context.Context) (result *AddOnVersionGetResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -356,7 +345,7 @@ func (r *AddOnGetRequest) SendContext(ctx context.Context) (result *AddOnGetResp
 		return
 	}
 	defer response.Body.Close()
-	result = &AddOnGetResponse{}
+	result = &AddOnVersionGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
@@ -367,23 +356,23 @@ func (r *AddOnGetRequest) SendContext(ctx context.Context) (result *AddOnGetResp
 		err = result.err
 		return
 	}
-	err = readAddOnGetResponse(result, response.Body)
+	err = readAddOnVersionGetResponse(result, response.Body)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// AddOnGetResponse is the response for the 'get' method.
-type AddOnGetResponse struct {
+// AddOnVersionGetResponse is the response for the 'get' method.
+type AddOnVersionGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *AddOn
+	body   *AddOnVersion
 }
 
 // Status returns the response status code.
-func (r *AddOnGetResponse) Status() int {
+func (r *AddOnVersionGetResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -391,7 +380,7 @@ func (r *AddOnGetResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *AddOnGetResponse) Header() http.Header {
+func (r *AddOnVersionGetResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -399,7 +388,7 @@ func (r *AddOnGetResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *AddOnGetResponse) Error() *errors.Error {
+func (r *AddOnVersionGetResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -409,7 +398,7 @@ func (r *AddOnGetResponse) Error() *errors.Error {
 // Body returns the value of the 'body' parameter.
 //
 //
-func (r *AddOnGetResponse) Body() *AddOn {
+func (r *AddOnVersionGetResponse) Body() *AddOnVersion {
 	if r == nil {
 		return nil
 	}
@@ -420,7 +409,7 @@ func (r *AddOnGetResponse) Body() *AddOn {
 // a flag indicating if the parameter has a value.
 //
 //
-func (r *AddOnGetResponse) GetBody() (value *AddOn, ok bool) {
+func (r *AddOnVersionGetResponse) GetBody() (value *AddOnVersion, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -428,23 +417,23 @@ func (r *AddOnGetResponse) GetBody() (value *AddOn, ok bool) {
 	return
 }
 
-// AddOnUpdateRequest is the request for the 'update' method.
-type AddOnUpdateRequest struct {
+// AddOnVersionUpdateRequest is the request for the 'update' method.
+type AddOnVersionUpdateRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
-	body      *AddOn
+	body      *AddOnVersion
 }
 
 // Parameter adds a query parameter.
-func (r *AddOnUpdateRequest) Parameter(name string, value interface{}) *AddOnUpdateRequest {
+func (r *AddOnVersionUpdateRequest) Parameter(name string, value interface{}) *AddOnVersionUpdateRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *AddOnUpdateRequest) Header(name string, value interface{}) *AddOnUpdateRequest {
+func (r *AddOnVersionUpdateRequest) Header(name string, value interface{}) *AddOnVersionUpdateRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
@@ -452,7 +441,7 @@ func (r *AddOnUpdateRequest) Header(name string, value interface{}) *AddOnUpdate
 // Body sets the value of the 'body' parameter.
 //
 //
-func (r *AddOnUpdateRequest) Body(value *AddOn) *AddOnUpdateRequest {
+func (r *AddOnVersionUpdateRequest) Body(value *AddOnVersion) *AddOnVersionUpdateRequest {
 	r.body = value
 	return r
 }
@@ -461,16 +450,16 @@ func (r *AddOnUpdateRequest) Body(value *AddOn) *AddOnUpdateRequest {
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *AddOnUpdateRequest) Send() (result *AddOnUpdateResponse, err error) {
+func (r *AddOnVersionUpdateRequest) Send() (result *AddOnVersionUpdateResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *AddOnUpdateRequest) SendContext(ctx context.Context) (result *AddOnUpdateResponse, err error) {
+func (r *AddOnVersionUpdateRequest) SendContext(ctx context.Context) (result *AddOnVersionUpdateResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	buffer := &bytes.Buffer{}
-	err = writeAddOnUpdateRequest(r, buffer)
+	err = writeAddOnVersionUpdateRequest(r, buffer)
 	if err != nil {
 		return
 	}
@@ -492,7 +481,7 @@ func (r *AddOnUpdateRequest) SendContext(ctx context.Context) (result *AddOnUpda
 		return
 	}
 	defer response.Body.Close()
-	result = &AddOnUpdateResponse{}
+	result = &AddOnVersionUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
@@ -503,7 +492,7 @@ func (r *AddOnUpdateRequest) SendContext(ctx context.Context) (result *AddOnUpda
 		err = result.err
 		return
 	}
-	err = readAddOnUpdateResponse(result, response.Body)
+	err = readAddOnVersionUpdateResponse(result, response.Body)
 	if err != nil {
 		return
 	}
@@ -512,24 +501,24 @@ func (r *AddOnUpdateRequest) SendContext(ctx context.Context) (result *AddOnUpda
 
 // marshall is the method used internally to marshal requests for the
 // 'update' method.
-func (r *AddOnUpdateRequest) marshal(writer io.Writer) error {
+func (r *AddOnVersionUpdateRequest) marshal(writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	r.stream(stream)
 	return stream.Error
 }
-func (r *AddOnUpdateRequest) stream(stream *jsoniter.Stream) {
+func (r *AddOnVersionUpdateRequest) stream(stream *jsoniter.Stream) {
 }
 
-// AddOnUpdateResponse is the response for the 'update' method.
-type AddOnUpdateResponse struct {
+// AddOnVersionUpdateResponse is the response for the 'update' method.
+type AddOnVersionUpdateResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *AddOn
+	body   *AddOnVersion
 }
 
 // Status returns the response status code.
-func (r *AddOnUpdateResponse) Status() int {
+func (r *AddOnVersionUpdateResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -537,7 +526,7 @@ func (r *AddOnUpdateResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *AddOnUpdateResponse) Header() http.Header {
+func (r *AddOnVersionUpdateResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -545,7 +534,7 @@ func (r *AddOnUpdateResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *AddOnUpdateResponse) Error() *errors.Error {
+func (r *AddOnVersionUpdateResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -555,7 +544,7 @@ func (r *AddOnUpdateResponse) Error() *errors.Error {
 // Body returns the value of the 'body' parameter.
 //
 //
-func (r *AddOnUpdateResponse) Body() *AddOn {
+func (r *AddOnVersionUpdateResponse) Body() *AddOnVersion {
 	if r == nil {
 		return nil
 	}
@@ -566,7 +555,7 @@ func (r *AddOnUpdateResponse) Body() *AddOn {
 // a flag indicating if the parameter has a value.
 //
 //
-func (r *AddOnUpdateResponse) GetBody() (value *AddOn, ok bool) {
+func (r *AddOnVersionUpdateResponse) GetBody() (value *AddOnVersion, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body

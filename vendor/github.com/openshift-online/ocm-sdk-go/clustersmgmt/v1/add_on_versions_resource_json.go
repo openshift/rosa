@@ -26,9 +26,29 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-func readArchivedClustersListRequest(request *ArchivedClustersListServerRequest, r *http.Request) error {
+func readAddOnVersionsAddRequest(request *AddOnVersionsAddServerRequest, r *http.Request) error {
+	var err error
+	request.body, err = UnmarshalAddOnVersion(r.Body)
+	return err
+}
+func writeAddOnVersionsAddRequest(request *AddOnVersionsAddRequest, writer io.Writer) error {
+	return MarshalAddOnVersion(request.body, writer)
+}
+func readAddOnVersionsAddResponse(response *AddOnVersionsAddResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalAddOnVersion(reader)
+	return err
+}
+func writeAddOnVersionsAddResponse(response *AddOnVersionsAddServerResponse, w http.ResponseWriter) error {
+	return MarshalAddOnVersion(response.body, w)
+}
+func readAddOnVersionsListRequest(request *AddOnVersionsListServerRequest, r *http.Request) error {
 	var err error
 	query := r.URL.Query()
+	request.order, err = helpers.ParseString(query, "order")
+	if err != nil {
+		return err
+	}
 	request.page, err = helpers.ParseInteger(query, "page")
 	if err != nil {
 		return err
@@ -49,10 +69,10 @@ func readArchivedClustersListRequest(request *ArchivedClustersListServerRequest,
 	}
 	return nil
 }
-func writeArchivedClustersListRequest(request *ArchivedClustersListRequest, writer io.Writer) error {
+func writeAddOnVersionsListRequest(request *AddOnVersionsListRequest, writer io.Writer) error {
 	return nil
 }
-func readArchivedClustersListResponse(response *ArchivedClustersListResponse, reader io.Reader) error {
+func readAddOnVersionsListResponse(response *AddOnVersionsListResponse, reader io.Reader) error {
 	iterator, err := helpers.NewIterator(reader)
 	if err != nil {
 		return err
@@ -73,8 +93,8 @@ func readArchivedClustersListResponse(response *ArchivedClustersListResponse, re
 			value := iterator.ReadInt()
 			response.total = &value
 		case "items":
-			items := readClusterList(iterator)
-			response.items = &ClusterList{
+			items := readAddOnVersionList(iterator)
+			response.items = &AddOnVersionList{
 				items: items,
 			}
 		default:
@@ -83,14 +103,14 @@ func readArchivedClustersListResponse(response *ArchivedClustersListResponse, re
 	}
 	return iterator.Error
 }
-func writeArchivedClustersListResponse(response *ArchivedClustersListServerResponse, w http.ResponseWriter) error {
+func writeAddOnVersionsListResponse(response *AddOnVersionsListServerResponse, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.status)
 	stream := helpers.NewStream(w)
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	count := 1
-	stream.WriteString(ClusterListKind)
+	stream.WriteString(AddOnVersionListKind)
 	if response.items != nil && response.items.href != "" {
 		stream.WriteMore()
 		stream.WriteObjectField("href")
@@ -127,7 +147,7 @@ func writeArchivedClustersListResponse(response *ArchivedClustersListServerRespo
 				stream.WriteMore()
 			}
 			stream.WriteObjectField("items")
-			writeClusterList(response.items.items, stream)
+			writeAddOnVersionList(response.items.items, stream)
 			count++
 		}
 	}

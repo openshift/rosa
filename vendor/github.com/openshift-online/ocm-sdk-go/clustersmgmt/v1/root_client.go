@@ -91,16 +91,6 @@ func (c *Client) Addons() *AddOnsClient {
 	)
 }
 
-// ArchivedClusters returns the target 'archived_clusters' resource.
-//
-// Reference to limited support reason templates.
-func (c *Client) ArchivedClusters() *ArchivedClustersClient {
-	return NewArchivedClustersClient(
-		c.transport,
-		path.Join(c.path, "archived_clusters"),
-	)
-}
-
 // CloudProviders returns the target 'cloud_providers' resource.
 //
 // Reference to the resource that manages the collection of cloud providers.

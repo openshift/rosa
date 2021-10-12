@@ -3,6 +3,25 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.212 Oct 12 2021
+
+- Fix typo in HTTP internal server error message
+- Copy data package from CLI
+- Add support for digging inside maps
+- Replace expired CA certs for windows
+- Update model to 0.0.149
+** Add Addon Versions
+
+== 0.1.211 Oct 05 2021
+
+- Update to model 0.0.148:
+** Revert archived clusters endpoint.
+
+== 0.1.210 Sep 27 2021
+
+- Update to model 0.0.147:
+** Add missing connection to clusters collection in the `service_logs` service.
+
 == 0.1.209 Sep 21 2021
 
 - Avoid hard-coded private keys

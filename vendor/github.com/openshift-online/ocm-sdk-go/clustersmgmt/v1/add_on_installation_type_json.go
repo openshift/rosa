@@ -139,6 +139,15 @@ func writeAddOnInstallation(object *AddOnInstallation, stream *jsoniter.Stream) 
 		stream.WriteString((object.updatedTimestamp).Format(time.RFC3339))
 		count++
 	}
+	present_ = object.bitmap_&2048 != 0 && object.version != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("version")
+		writeAddOnVersion(object.version, stream)
+		count++
+	}
 	stream.WriteObjectEnd()
 }
 
@@ -235,6 +244,10 @@ func readAddOnInstallation(iterator *jsoniter.Iterator) *AddOnInstallation {
 			}
 			object.updatedTimestamp = value
 			object.bitmap_ |= 1024
+		case "version":
+			value := readAddOnVersion(iterator)
+			object.version = value
+			object.bitmap_ |= 2048
 		default:
 			iterator.ReadAny()
 		}
