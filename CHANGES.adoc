@@ -2,6 +2,15 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.4 Oct 13 2021
+
+- SDA-4744 : Add account role validation on cluster create
+- create-cluster: Do not validate Role ARN on IAM clusters
+- sts: Rename master instance role to control plane
+- Bump OCM SDK
+- Don't print info logs when redirecting `create account-roles`
+- SDA-4773 : Support --mode on create cluster --sts
+
 == 1.1.3 Sep 30 2021
 
 - add rosa list account roles
