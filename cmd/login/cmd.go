@@ -345,7 +345,9 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 			return fmt.Errorf("Failed to get username: %v", err)
 		}
 
-		reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
+		if reporter.IsTerminal() {
+			reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
+		}
 		return nil
 	}
 

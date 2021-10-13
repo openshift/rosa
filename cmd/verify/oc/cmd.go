@@ -40,7 +40,9 @@ func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 
 	// Verify whether `oc` is installed
-	reporter.Infof("Verifying whether OpenShift command-line tool is available...")
+	if reporter.IsTerminal() {
+		reporter.Infof("Verifying whether OpenShift command-line tool is available...")
+	}
 
 	output, err := exec.Command("oc", "version").Output()
 	if output == nil && err != nil {
@@ -64,5 +66,7 @@ func run(_ *cobra.Command, _ []string) {
 		return
 	}
 
-	reporter.Infof("Current OpenShift %s", version)
+	if reporter.IsTerminal() {
+		reporter.Infof("Current OpenShift %s", version)
+	}
 }

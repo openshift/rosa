@@ -83,7 +83,9 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 		return err
 	}
 
-	reporter.Infof("Validating AWS quota...")
+	if reporter.IsTerminal() {
+		reporter.Infof("Validating AWS quota...")
+	}
 	_, err = client.ValidateQuota()
 	if err != nil {
 		ocmClient.LogEvent("ROSAVerifyQuotaInsufficient")
@@ -91,8 +93,10 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 		reporter.Errorf("%v", err)
 		return err
 	}
-	reporter.Infof("AWS quota ok. " +
-		"If cluster installation fails, validate actual AWS resource usage against " +
-		"https://docs.openshift.com/rosa/rosa_getting_started/rosa-required-aws-service-quotas.html")
+	if reporter.IsTerminal() {
+		reporter.Infof("AWS quota ok. " +
+			"If cluster installation fails, validate actual AWS resource usage against " +
+			"https://docs.openshift.com/rosa/rosa_getting_started/rosa-required-aws-service-quotas.html")
+	}
 	return nil
 }

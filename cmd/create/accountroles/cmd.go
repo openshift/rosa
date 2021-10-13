@@ -144,7 +144,9 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Validate AWS credentials for current user
-	reporter.Infof("Validating AWS credentials...")
+	if reporter.IsTerminal() {
+		reporter.Infof("Validating AWS credentials...")
+	}
 	ok, err := awsClient.ValidateCredentials()
 	if err != nil {
 		ocmClient.LogEvent("ROSAInitCredentialsFailed")
@@ -156,7 +158,9 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("AWS credentials are invalid")
 		os.Exit(1)
 	}
-	reporter.Infof("AWS credentials are valid!")
+	if reporter.IsTerminal() {
+		reporter.Infof("AWS credentials are valid!")
+	}
 
 	creator, err := awsClient.GetCreator()
 	if err != nil {
@@ -178,7 +182,9 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	reporter.Infof("Starting to create the account roles!")
+	if reporter.IsTerminal() {
+		reporter.Infof("Starting to create the account roles!")
+	}
 	// OpenShift version:
 	version := args.version
 	versionList, err := ocm.GetVersionMinorList(ocmClient)
