@@ -206,6 +206,15 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Expected a valid operator policy prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
+	// if prefix is empty, get prefix from cluster role ARN
+	if prefix == "" {
+		foundPrefix, exists := getPrefixFromAccountRole(cluster)
+		if !exists {
+			reporter.Errorf("Failed to find prefix from Account Role '%s'", aws.InstallerAccountRole)
+			os.Exit(1)
+		}
+		prefix = foundPrefix
+	}
 
 	permissionsBoundary := args.permissionsBoundary
 	if interactive.Enabled() {
@@ -481,4 +490,20 @@ func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]strin
 	}
 
 	return missingRoles, nil
+}
+
+func getPrefixFromAccountRole(cluster *cmv1.Cluster) (string, bool) {
+	role, exists := aws.AccountRoles[aws.InstallerAccountRole]
+	if !exists {
+		return "", false
+	}
+	splitARN := strings.Split(cluster.AWS().STS().RoleARN(), "role/")
+	if len(splitARN) != 2 {
+		return "", false
+	}
+	splitRoleName := strings.Split(splitARN[1], fmt.Sprintf("-%s", role.Name))
+	if len(splitRoleName) != 2 {
+		return "", false
+	}
+	return splitRoleName[0], true
 }

@@ -99,11 +99,18 @@ type Policy struct {
 	PolicyDocument PolicyDocument `json:"PolicyDocument,omitempty"`
 }
 
+const (
+	InstallerAccountRole    = "installer"
+	ControlPlaneAccountRole = "instance_controlplane"
+	WorkerAccountRole       = "instance_worker"
+	SupportAccountRole      = "support"
+)
+
 var AccountRoles map[string]AccountRole = map[string]AccountRole{
-	"installer":             {Name: "Installer", Flag: "role-arn"},
-	"instance_controlplane": {Name: "ControlPlane", Flag: "controlplane-iam-role"},
-	"instance_worker":       {Name: "Worker", Flag: "worker-iam-role"},
-	"support":               {Name: "Support", Flag: "support-role-arn"},
+	InstallerAccountRole:    {Name: "Installer", Flag: "role-arn"},
+	ControlPlaneAccountRole: {Name: "ControlPlane", Flag: "controlplane-iam-role"},
+	WorkerAccountRole:       {Name: "Worker", Flag: "worker-iam-role"},
+	SupportAccountRole:      {Name: "Support", Flag: "support-role-arn"},
 }
 
 var roleTypeMap = map[string]string{
