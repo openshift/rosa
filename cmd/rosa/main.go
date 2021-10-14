@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/openshift/rosa/cmd/wait"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -81,6 +82,7 @@ func init() {
 	root.AddCommand(whoami.Cmd)
 	root.AddCommand(hibernate.Cmd)
 	root.AddCommand(resume.Cmd)
+	root.AddCommand(wait.Cmd)
 }
 
 func main() {
