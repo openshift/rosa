@@ -39,7 +39,6 @@ import (
 var modes []string = []string{"auto", "manual"}
 
 var args struct {
-	clusterKey          string
 	prefix              string
 	permissionsBoundary string
 	mode                string
@@ -61,14 +60,7 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVarP(
-		&args.clusterKey,
-		"cluster",
-		"c",
-		"",
-		"Name or ID of the cluster to create the roles for (required).",
-	)
-	Cmd.MarkFlagRequired("cluster")
+	ocm.AddClusterFlag(Cmd)
 
 	flags.StringVar(
 		&args.prefix,
@@ -102,24 +94,30 @@ func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 	return modes, cobra.ShellCompDirectiveDefault
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Check that the cluster key (name, identifier or external identifier) given by the user
-	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
-		reporter.Errorf(
-			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
-				"must contain only letters, digits, dashes and underscores",
-			clusterKey,
-		)
+	// Allow the command to be called programmatically
+	skipInteractive := false
+	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
+		ocm.SetClusterKey(argv[0])
+		args.mode = argv[1]
+		args.permissionsBoundary = argv[2]
+
+		if args.mode != "" {
+			skipInteractive = true
+		}
+	}
+
+	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !skipInteractive {
 		interactive.Enable()
 	}
 

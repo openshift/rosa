@@ -32,7 +32,6 @@ import (
 )
 
 var args struct {
-	clusterKey string
 	private    bool
 	labelMatch string
 }
@@ -56,14 +55,7 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVarP(
-		&args.clusterKey,
-		"cluster",
-		"c",
-		"",
-		"Name or ID of the cluster to add the ingress to (required).",
-	)
-	Cmd.MarkFlagRequired("cluster")
+	ocm.AddClusterFlag(Cmd)
 
 	flags.BoolVar(
 		&args.private,
@@ -87,20 +79,13 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Check that the cluster key (name, identifier or external identifier) given by the user
-	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
-		reporter.Errorf(
-			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
-				"must contain only letters, digits, dashes and underscores",
-			clusterKey,
-		)
+	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	labelMatch := args.labelMatch
-	var err error
 	if interactive.Enabled() {
 		labelMatch, err = interactive.GetString(interactive.Input{
 			Question: "Label match for ingress",
