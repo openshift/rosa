@@ -39,10 +39,6 @@ const (
 	ProductionEnv = "https://api.openshift.com"
 )
 
-var args struct {
-	clusterKey string
-}
-
 var Cmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Show details of a cluster",
@@ -53,39 +49,26 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	flags := Cmd.Flags()
-
 	output.AddFlag(Cmd)
-
-	flags.StringVarP(
-		&args.clusterKey,
-		"cluster",
-		"c",
-		"",
-		"Name or ID of the cluster to describe.",
-	)
-	Cmd.MarkFlagRequired("cluster")
+	ocm.AddClusterFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
+	var clusterKey string
+	var err error
+
 	// Allow the command to be called programmatically
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
-		args.clusterKey = argv[0]
-	}
-
-	clusterKey := args.clusterKey
-	// Check that the cluster key (name, identifier or external identifier) given by the user
-	// is reasonably safe so that there is no risk of SQL injection:
-	if !ocm.IsValidClusterKey(clusterKey) {
-		reporter.Errorf(
-			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
-				"must contain only letters, digits, dashes and underscores",
-			clusterKey,
-		)
-		os.Exit(1)
+		clusterKey = argv[0]
+	} else {
+		clusterKey, err = ocm.GetClusterKey()
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 	}
 
 	// Create the AWS client:

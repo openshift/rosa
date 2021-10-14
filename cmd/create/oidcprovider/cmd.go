@@ -40,8 +40,7 @@ import (
 var modes []string = []string{"auto", "manual"}
 
 var args struct {
-	clusterKey string
-	mode       string
+	mode string
 }
 
 var Cmd = &cobra.Command{
@@ -57,14 +56,7 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVarP(
-		&args.clusterKey,
-		"cluster",
-		"c",
-		"",
-		"Name or ID of the cluster to create the OIDC provider for (required).",
-	)
-	Cmd.MarkFlagRequired("cluster")
+	ocm.AddClusterFlag(Cmd)
 
 	flags.StringVar(
 		&args.mode,
@@ -91,7 +83,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Allow the command to be called programmatically
 	skipInteractive := false
 	if len(argv) == 2 && !cmd.Flag("cluster").Changed {
-		args.clusterKey = argv[0]
+		ocm.SetClusterKey(argv[0])
 		args.mode = argv[1]
 
 		if args.mode != "" {
@@ -99,15 +91,9 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	// Check that the cluster key (name, identifier or external identifier) given by the user
-	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
-		reporter.Errorf(
-			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
-				"must contain only letters, digits, dashes and underscores",
-			clusterKey,
-		)
+	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 

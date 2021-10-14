@@ -35,10 +35,6 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var args struct {
-	clusterKey string
-}
-
 var Cmd = &cobra.Command{
 	Use:     "addon ID",
 	Aliases: []string{"addons", "add-on", "add-ons"},
@@ -62,16 +58,7 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	flags := Cmd.Flags()
-
-	flags.StringVarP(
-		&args.clusterKey,
-		"cluster",
-		"c",
-		"",
-		"Name or ID of the cluster to edit the addon parameters of (required).",
-	)
-	Cmd.MarkFlagRequired("cluster")
+	ocm.AddClusterFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -83,15 +70,9 @@ func run(cmd *cobra.Command, argv []string) {
 	argv = cmd.Flags().Args()
 	addOnID := argv[0]
 
-	// Check that the cluster key (name, identifier or external identifier) given by the user
-	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
-		reporter.Errorf(
-			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
-				"must contain only letters, digits, dashes and underscores",
-			clusterKey,
-		)
+	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 

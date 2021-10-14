@@ -24,17 +24,64 @@ import (
 
 var Cmd = &cobra.Command{
 	Use:   "completion",
-	Short: "Generates bash completion scripts",
-	Long: `To load completion run
+	Short: "Generates completion scripts",
+	Long: `To load completions:
 
-. <(rosa completion)
+Bash:
 
-To configure your bash shell to load completions for each session add to your bashrc
+  $ source <(rosa completion bash)
 
-# ~/.bashrc or ~/.profile
-. <(rosa completion)
+  # To load completions for each session, execute once:
+  # Linux:
+  $ rosa completion bash > /etc/bash_completion.d/rosa
+  # macOS:
+  $ rosa completion bash > /usr/local/etc/bash_completion.d/rosa
+
+Zsh:
+
+  # If shell completion is not already enabled in your environment,
+  # you will need to enable it.  You can execute the following once:
+
+  $ echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+  # To load completions for each session, execute once:
+  $ rosa completion zsh > "${fpath[1]}/_rosa"
+
+  # You will need to start a new shell for this setup to take effect.
+
+fish:
+
+  $ rosa completion fish | source
+
+  # To load completions for each session, execute once:
+  $ rosa completion fish > ~/.config/fish/completions/rosa.fish
+
+PowerShell:
+
+  PS> rosa completion powershell | Out-String | Invoke-Expression
+
+  # To load completions for every new session, run:
+  PS> rosa completion powershell > rosa.ps1
+  # and source this file from your PowerShell profile.
 `,
+	DisableFlagsInUseLine: true,
+	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
+	Args:                  cobra.OnlyValidArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Root().GenBashCompletion(os.Stdout)
+		if len(args) == 0 {
+			// Default to bash for backwards compatibility
+			cmd.Root().GenBashCompletion(os.Stdout)
+			return
+		}
+		switch args[0] {
+		case "bash":
+			cmd.Root().GenBashCompletion(os.Stdout)
+		case "zsh":
+			cmd.Root().GenZshCompletion(os.Stdout)
+		case "fish":
+			cmd.Root().GenFishCompletion(os.Stdout, true)
+		case "powershell":
+			cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
+		}
 	},
 }
