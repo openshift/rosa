@@ -100,10 +100,11 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Allow the command to be called programmatically
 	skipInteractive := false
-	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
+	if len(argv) == 4 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		args.mode = argv[1]
 		args.permissionsBoundary = argv[2]
+		args.prefix = argv[3]
 
 		if args.mode != "" {
 			skipInteractive = true

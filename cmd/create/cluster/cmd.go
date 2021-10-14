@@ -584,52 +584,98 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	hasRoles := false
+	rolePrefix := aws.DefaultPrefix
 
 	if isSTS && roleARN == "" {
 		minor := getVersionMinor(version)
-		// Attempt to find account roles using AWS resource tags
-		for roleType, role := range aws.AccountRoles {
-			roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
+		role := aws.AccountRoles[aws.InstallerAccountRole]
+
+		// Find all installer roles in the current account using AWS resource tags
+		roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+		if err != nil {
+			reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+			os.Exit(1)
+		}
+
+		if len(roleARNs) > 1 {
+			defaultRoleARN := roleARNs[0]
+			// Prioritize roles with the default prefix
+			for _, rARN := range roleARNs {
+				if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)) {
+					defaultRoleARN = rARN
+				}
+			}
+			reporter.Warnf("More than one %s role found", role.Name)
+			roleARN, err = interactive.GetOption(interactive.Input{
+				Question: fmt.Sprintf("%s role ARN", role.Name),
+				Help:     cmd.Flags().Lookup(role.Flag).Usage,
+				Options:  roleARNs,
+				Default:  defaultRoleARN,
+				Required: true,
+			})
 			if err != nil {
-				reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+				reporter.Errorf("Expected a valid role ARN: %s", err)
 				os.Exit(1)
 			}
-			selectedARN := ""
-			if len(roleARNs) > 1 {
-				reporter.Warnf("More than one %s role found", role.Name)
-				selectedARN, err = interactive.GetOption(interactive.Input{
-					Question: fmt.Sprintf("%s role ARN", role.Name),
-					Help:     cmd.Flags().Lookup(role.Flag).Usage,
-					Options:  roleARNs,
-					Default:  roleARNs[0],
-					Required: true,
-				})
+		} else if len(roleARNs) == 1 {
+			if !output.HasFlag() || reporter.IsTerminal() {
+				reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
+			}
+			roleARN = roleARNs[0]
+		} else {
+			reporter.Warnf("No account roles found. You will need to manually set them in the " +
+				"next steps or run 'rosa create account-roles' to create them first.")
+			interactive.Enable()
+		}
+
+		if roleARN != "" {
+			// Get role prefix
+			rolePrefix, err = getAccountRolePrefix(roleARN, role)
+			if err != nil {
+				reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+				os.Exit(1)
+			}
+			reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
+
+			hasRoles = true
+			for roleType, role := range aws.AccountRoles {
+				if roleType == aws.InstallerAccountRole {
+					// Already dealt with
+					continue
+				}
+				roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
 				if err != nil {
-					reporter.Errorf("Expected a valid role ARN: %s", err)
+					reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 					os.Exit(1)
 				}
-			} else if len(roleARNs) == 1 {
-				if !output.HasFlag() || reporter.IsTerminal() {
-					reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
+				selectedARN := ""
+				for _, rARN := range roleARNs {
+					if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name)) {
+						selectedARN = rARN
+					}
 				}
-				selectedARN = roleARNs[0]
-			} else {
-				reporter.Warnf("No account roles found. You will need to manually set them in the " +
-					"next steps or run 'rosa create account-roles' to create them first.")
-				interactive.Enable()
-				break
+				if selectedARN == "" {
+					reporter.Warnf("No %s account roles found. You will need to manually set "+
+						"them in the next steps or run 'rosa create account-roles' to create "+
+						"them first.", role.Name)
+					interactive.Enable()
+					hasRoles = false
+					break
+				}
+				if !output.HasFlag() || reporter.IsTerminal() {
+					reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
+				}
+				switch roleType {
+				case aws.InstallerAccountRole:
+					roleARN = selectedARN
+				case aws.SupportAccountRole:
+					supportRoleARN = selectedARN
+				case aws.ControlPlaneAccountRole:
+					controlPlaneRoleARN = selectedARN
+				case aws.WorkerAccountRole:
+					workerRoleARN = selectedARN
+				}
 			}
-			switch roleType {
-			case "installer":
-				roleARN = selectedARN
-			case "support":
-				supportRoleARN = selectedARN
-			case "instance_controlplane":
-				controlPlaneRoleARN = selectedARN
-			case "instance_worker":
-				workerRoleARN = selectedARN
-			}
-			hasRoles = true
 		}
 	}
 
@@ -655,6 +701,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		isSTS = true
+	}
+
+	if !isSTS && mode != "" {
+		reporter.Warnf("--mode is only valid for STS clusters")
 	}
 
 	externalID := args.externalID
@@ -1502,10 +1552,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS {
 		if mode != "" {
 			reporter.Infof("Preparing to create operator roles.")
-			operatorroles.Cmd.Run(operatorroles.Cmd, []string{
-				clusterName,
-				mode,
-				permissionsBoundary})
+			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary, rolePrefix})
 			reporter.Infof("Preparing to create OIDC Provider.")
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode})
 		} else {
@@ -1516,13 +1563,15 @@ func run(cmd *cobra.Command, _ []string) {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
 			}
 
+			if rolePrefix != aws.DefaultPrefix {
+				rolesCMD = fmt.Sprintf("%s --prefix %s", rolesCMD, rolePrefix)
+			}
+
 			reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
 				"\t%s\n"+
 				"\t%s\n",
 				rolesCMD, oidcCMD)
 		}
-	} else if mode != "" {
-		reporter.Warnf("--mode is only valid for STS clusters")
 	}
 }
 
@@ -1589,6 +1638,16 @@ func getOperatorRoleArn(prefix string, operator aws.Operator, creator *aws.Creat
 		role = role[0:64]
 	}
 	return fmt.Sprintf("arn:aws:iam::%s:role/%s", creator.AccountID, role)
+}
+
+func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
+	parsedARN, err := arn.Parse(roleARN)
+	if err != nil {
+		return "", err
+	}
+	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
+	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	return rolePrefix, nil
 }
 
 // Validate OpenShift versions
