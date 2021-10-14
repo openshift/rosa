@@ -584,7 +584,6 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	hasRoles := false
-	rolePrefix := aws.DefaultPrefix
 
 	if isSTS && roleARN == "" {
 		minor := getVersionMinor(version)
@@ -630,7 +629,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 		if roleARN != "" {
 			// Get role prefix
-			rolePrefix, err = getAccountRolePrefix(roleARN, role)
+			rolePrefix, err := getAccountRolePrefix(roleARN, role)
 			if err != nil {
 				reporter.Errorf("Failed to find prefix from %s account role", role.Name)
 				os.Exit(1)
@@ -1552,7 +1551,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS {
 		if mode != "" {
 			reporter.Infof("Preparing to create operator roles.")
-			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary, rolePrefix})
+			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
 			reporter.Infof("Preparing to create OIDC Provider.")
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode})
 		} else {
@@ -1561,10 +1560,6 @@ func run(cmd *cobra.Command, _ []string) {
 
 			if permissionsBoundary != "" {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
-			}
-
-			if rolePrefix != aws.DefaultPrefix {
-				rolesCMD = fmt.Sprintf("%s --prefix %s", rolesCMD, rolePrefix)
 			}
 
 			reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
