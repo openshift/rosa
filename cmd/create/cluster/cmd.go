@@ -522,7 +522,6 @@ func run(cmd *cobra.Command, _ []string) {
 		isIAM = !isSTS
 	}
 
-	mode := args.mode
 	permissionsBoundary := args.operatorRolesPermissionsBoundary
 	if permissionsBoundary != "" {
 		_, err := arn.Parse(permissionsBoundary)
@@ -583,8 +582,28 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	hasRoles := false
+	mode := args.mode
+	// warn if mode is used for non sts cluster
+	if !isSTS && mode != "" {
+		reporter.Warnf("--mode is only valid for STS clusters")
+	}
 
+	// validate mode passed is allowed value
+	if isSTS {
+		modeIsValid := false
+		for _, m := range modes {
+			if m == mode {
+				modeIsValid = true
+				break
+			}
+		}
+		if !modeIsValid {
+			reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, modes)
+			os.Exit(1)
+		}
+	}
+
+	hasRoles := false
 	if isSTS && roleARN == "" {
 		minor := getVersionMinor(version)
 		role := aws.AccountRoles[aws.InstallerAccountRole]
