@@ -80,6 +80,7 @@ type Spec struct {
 	DisableSCPChecks *bool
 
 	// STS
+	IsSTS               bool
 	RoleARN             string
 	ExternalID          string
 	SupportRoleARN      string
