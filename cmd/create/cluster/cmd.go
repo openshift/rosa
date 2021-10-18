@@ -1423,6 +1423,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:         availabilityZones,
 		SubnetIds:                 subnetIDs,
 		PrivateLink:               &privateLink,
+		IsSTS:                     isSTS,
 		RoleARN:                   roleARN,
 		ExternalID:                externalID,
 		SupportRoleARN:            supportRoleARN,
@@ -1688,6 +1689,9 @@ func parseSubnet(subnetOption string) string {
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
+	if spec.IsSTS {
+		command += " --sts"
+	}
 	if spec.RoleARN != "" {
 		command += fmt.Sprintf(" --role-arn %s", spec.RoleARN)
 		command += fmt.Sprintf(" --support-role-arn %s", spec.SupportRoleARN)
