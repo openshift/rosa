@@ -589,7 +589,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// validate mode passed is allowed value
-	if isSTS {
+	if isSTS && mode != "" {
 		modeIsValid := false
 		for _, m := range modes {
 			if m == mode {
