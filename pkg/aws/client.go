@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
@@ -236,14 +237,8 @@ func (b *ClientBuilder) Build() (Client, error) {
 
 	// Update session config
 	sess = sess.Copy(&aws.Config{
-		// MaxRetries to limit the number of attempts on failed API calls
-		MaxRetries: aws.Int(25),
-		// Set MinThrottleDelay to 1 second
-		Retryer: client.DefaultRetryer{
-			NumMaxRetries:    5,
-			MinThrottleDelay: 1 * time.Second,
-		},
-		Logger: logger,
+		Retryer: buildCustomRetryer(),
+		Logger:  logger,
 		HTTPClient: &http.Client{
 			Transport: http.DefaultTransport,
 		},
@@ -606,4 +601,28 @@ func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
 		return nil, err
 	}
 	return roleOutput.Role, nil
+}
+
+// CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
+// additional custom features
+type CustomRetryer struct {
+	client.DefaultRetryer
+}
+
+// ShouldRetry overrides the SDK's built in DefaultRetryer adding customization
+// to not retry 5xx status codes.
+func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
+	if req.HTTPResponse.StatusCode >= 500 {
+		return false
+	}
+	return r.DefaultRetryer.ShouldRetry(req)
+}
+
+func buildCustomRetryer() CustomRetryer {
+	return CustomRetryer{
+		DefaultRetryer: client.DefaultRetryer{
+			NumMaxRetries:    25,
+			MinThrottleDelay: 1 * time.Second,
+		},
+	}
 }
