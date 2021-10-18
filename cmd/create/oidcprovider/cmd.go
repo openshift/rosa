@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -241,7 +242,7 @@ func createProvider(reporter *rprtr.Object, awsClient aws.Client, cluster *cmv1.
 	}
 	reporter.Debugf("Using thumbprint '%s'", thumbprint)
 
-	oidcProviderARN, err := awsClient.CreateOpenIDConnectProvider(oidcEndpointURL, thumbprint)
+	oidcProviderARN, err := awsClient.CreateOpenIDConnectProvider(oidcEndpointURL, thumbprint, cluster.ID())
 	if err != nil {
 		return err
 	}
@@ -261,11 +262,15 @@ func buildCommands(reporter *rprtr.Object, cluster *cmv1.Cluster) (string, error
 	}
 	reporter.Debugf("Using thumbprint '%s'", thumbprint)
 
+	tag := fmt.Sprintf(
+		"Key=%s,Value=%s",
+		tags.ClusterID, cluster.ID())
 	createOpenIDConnectProvider := fmt.Sprintf("aws iam create-open-id-connect-provider \\\n"+
 		"\t--url %s \\\n"+
 		"\t--client-id-list %s %s \\\n"+
-		"\t--thumbprint-list %s",
-		oidcEndpointURL, aws.OIDCClientIDOpenShift, aws.OIDCClientIDSTSAWS, thumbprint)
+		"\t--thumbprint-list %s \\\n"+
+		"\t --tag %s",
+		oidcEndpointURL, aws.OIDCClientIDOpenShift, aws.OIDCClientIDSTSAWS, thumbprint, tag)
 	commands = append(commands, createOpenIDConnectProvider)
 
 	return strings.Join(commands, "\n\n"), nil
