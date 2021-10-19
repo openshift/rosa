@@ -197,7 +197,14 @@ func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.
 }
 
 func (c *Client) GetAllClusters(creator *aws.Creator) (clusters []*cmv1.Cluster, err error) {
-	return c.GetClusters(creator, 0)
+	query := getClusterFilter(creator)
+	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
+	response, err := request.Send()
+
+	if err != nil {
+		return clusters, err
+	}
+	return response.Items().Slice(), nil
 }
 
 func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {

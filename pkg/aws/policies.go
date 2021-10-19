@@ -97,6 +97,12 @@ type Role struct {
 	Policy     []Policy `json:"Policy,omitempty"`
 }
 
+type PolicyDetail struct {
+	PolicyName string
+	PolicyArn  string
+	PolicType  string
+}
+
 type Policy struct {
 	PolicyName     string         `json:"PolicyName,omitempty"`
 	PolicyDocument PolicyDocument `json:"PolicyDocument,omitempty"`
@@ -743,6 +749,26 @@ func (c *awsClient) DeleteRole(role string, r *string) error {
 	return nil
 }
 
+func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
+	instanceProfiles := []string{}
+	profiles, err := c.iamClient.ListInstanceProfilesForRole(&iam.ListInstanceProfilesForRoleInput{
+		RoleName: aws.String(r),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return instanceProfiles, nil
+			}
+		}
+		return nil, err
+	}
+	for _, profile := range profiles.InstanceProfiles {
+		instanceProfiles = append(instanceProfiles, aws.StringValue(profile.InstanceProfileName))
+	}
+	return instanceProfiles, nil
+}
+
 func (c *awsClient) DeleteAccountRole(roleName string) error {
 	role := aws.String(roleName)
 	err := c.deleteAccountRolePolicies(role)
@@ -762,31 +788,51 @@ func (c *awsClient) DeleteAccountRole(roleName string) error {
 }
 
 func (c *awsClient) deleteAccountRolePolicies(role *string) error {
-	policies, err := c.getAccountRolePolicy(role)
+	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+		RoleName: role,
+	})
 	if err != nil {
 		return err
 	}
-	for _, policyName := range policies {
-		if policyName != "" {
-			_, err = c.iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
-				PolicyName: aws.String(policyName),
-				RoleName:   role,
-			})
-			if err != nil {
-				return err
+	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
+		_, err = c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
+			PolicyArn: policy.PolicyArn,
+			RoleName:  role,
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					continue
+				}
 			}
+			return err
+		}
+	}
+	listRolePolicyOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{RoleName: role})
+	if err != nil {
+		return err
+	}
+	for _, policyName := range listRolePolicyOutput.PolicyNames {
+		_, err = c.iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
+			PolicyName: policyName,
+			RoleName:   role,
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					continue
+				}
+			}
+			return err
 		}
 	}
 	return nil
 }
-
-/**
-get both role and inline policies
-*/
-func (c *awsClient) getAccountRolePolicy(role *string) ([]string, error) {
-	policies := []string{}
-	rolePolicyOutput, err := c.iamClient.GetRolePolicy(&iam.GetRolePolicyInput{RoleName: role,
-		PolicyName: aws.String(fmt.Sprintf("%s-Policy", aws.StringValue(role)))})
+func (c *awsClient) getAccountRoleAttachedPolicy(role *string) ([]PolicyDetail, error) {
+	policies := []PolicyDetail{}
+	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{RoleName: role})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -799,15 +845,36 @@ func (c *awsClient) getAccountRolePolicy(role *string) ([]string, error) {
 			return policies, err
 		}
 	}
-	policies = append(policies, aws.StringValue(rolePolicyOutput.PolicyName))
-
-	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{RoleName: role})
-	if err != nil {
-		return nil, err
-	}
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
-		policies = append(policies, aws.StringValue(policy.PolicyName))
+		policyDetail := PolicyDetail{
+			PolicyName: aws.StringValue(policy.PolicyName),
+			PolicyArn:  aws.StringValue(policy.PolicyArn),
+			PolicType:  Attached,
+		}
+		policies = append(policies, policyDetail)
 	}
+
+	rolePolicyOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{RoleName: role})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				break
+			default:
+				return policies, err
+			}
+		} else {
+			return policies, err
+		}
+	}
+	for _, policy := range rolePolicyOutput.PolicyNames {
+		policyDetail := PolicyDetail{
+			PolicyName: aws.StringValue(policy),
+			PolicType:  Inline,
+		}
+		policies = append(policies, policyDetail)
+	}
+
 	return policies, nil
 }
 
@@ -1012,7 +1079,7 @@ func (c *awsClient) GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix
 		role, err := c.GetAccountRoleForCurrentEnv(env, fmt.Sprintf("%s-%s-Role", rolePrefix, prefix.Name))
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
-				return roleList, err
+				return nil, err
 			}
 		}
 		roleList = append(roleList, role)
@@ -1065,10 +1132,10 @@ func getAWSPrincipals(awsPrinciple interface{}) []string {
 	return awsArr
 }
 
-func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string]string, error) {
-	roleMap := make(map[string]string)
+func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error) {
+	roleMap := make(map[string][]PolicyDetail)
 	for _, role := range roles {
-		policies, err := c.getAccountRolePolicy(aws.String(role))
+		policies, err := c.getAccountRoleAttachedPolicy(aws.String(role))
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
@@ -1078,15 +1145,7 @@ func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string]string, e
 			}
 			return roleMap, err
 		}
-		policyStr := ""
-		for _, policyName := range policies {
-			if policyStr == "" {
-				policyStr = policyName
-			} else {
-				policyStr = policyStr + "," + policyName
-			}
-		}
-		roleMap[role] = policyStr
+		roleMap[role] = policies
 	}
 	return roleMap, nil
 }
