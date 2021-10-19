@@ -1459,7 +1459,7 @@ func run(cmd *cobra.Command, _ []string) {
 		disableWorkloadMonitoring, err = interactive.GetBool(interactive.Input{
 			Question: "Disable Workload monitoring",
 			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
-			Default:  false,
+			Default:  disableWorkloadMonitoring,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
