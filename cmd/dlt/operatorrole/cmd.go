@@ -180,8 +180,11 @@ func run(cmd *cobra.Command, argv []string) {
 
 	roles, err := awsClient.GetOperatorRolesFromAccount(clusterKey)
 	if len(roles) == 0 {
-		reporter.Errorf("There are no operator roles to delete for the cluster '%s'", clusterKey)
-		os.Exit(1)
+		if spin != nil {
+			spin.Stop()
+		}
+		reporter.Infof("There are no operator roles to delete for the cluster '%s'", clusterKey)
+		return
 	}
 	if spin != nil {
 		spin.Stop()
