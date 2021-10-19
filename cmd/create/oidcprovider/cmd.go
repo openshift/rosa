@@ -163,23 +163,6 @@ func run(cmd *cobra.Command, argv []string) {
 
 	switch mode {
 	case "auto":
-		// Check to see if IAM operator roles have already created
-		missingRoles, err := validateOperatorRoles(awsClient, cluster)
-		if err != nil {
-			if strings.Contains(err.Error(), "AccessDenied") {
-				reporter.Debugf("Failed to verify if operator roles exist: %s", err)
-			} else {
-				reporter.Errorf("Failed to verify if operator roles exist: %s", err)
-				os.Exit(1)
-			}
-		}
-
-		if len(missingRoles) > 0 {
-			reporter.Errorf("Unable to find all required IAM roles for operators:\n%s\n\nSee "+
-				"'rosa create operator-roles --help'",
-				strings.Join(missingRoles, "\n"))
-			os.Exit(1)
-		}
 
 		if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
 			reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
@@ -308,31 +291,4 @@ func sha1Hash(data []byte) string {
 	hasher.Write(data)
 	hashed := hasher.Sum(nil)
 	return hex.EncodeToString(hashed)
-}
-
-func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]string, error) {
-	var missingRoles []string
-
-	operatorIAMRoles := cluster.AWS().STS().OperatorIAMRoles()
-
-	if len(operatorIAMRoles) == 0 {
-		return missingRoles, fmt.Errorf("No Operator IAM roles found for cluster '%s'", cluster.Name())
-	}
-
-	for _, operatorIAMRole := range operatorIAMRoles {
-		roleARN := operatorIAMRole.RoleARN()
-
-		roleName := strings.Split(roleARN, "/")[1]
-
-		exists, err := awsClient.CheckRoleExists(roleName)
-		if err != nil {
-			return missingRoles, err
-		}
-
-		if !exists {
-			missingRoles = append(missingRoles, roleName)
-		}
-	}
-
-	return missingRoles, nil
 }
