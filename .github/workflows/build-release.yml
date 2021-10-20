@@ -41,5 +41,5 @@ jobs:
         run: which rosa
 
       - name: Generate release
-        run: gh release create v${{ github.event.inputs.releaseTag }} ./rosa
+        run: gh release create v${{ github.event.inputs.releaseTag }} $(which rosa)
 
