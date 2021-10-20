@@ -39,7 +39,6 @@ import (
 var modes []string = []string{"auto", "manual"}
 
 var args struct {
-	prefix              string
 	permissionsBoundary string
 	mode                string
 }
@@ -61,13 +60,6 @@ func init() {
 	flags := Cmd.Flags()
 
 	ocm.AddClusterFlag(Cmd)
-
-	flags.StringVar(
-		&args.prefix,
-		"prefix",
-		"",
-		"User-defined prefix for generated AWS operator policies. Leave empty to attempt to find them automatically.",
-	)
 
 	flags.StringVar(
 		&args.permissionsBoundary,
@@ -182,28 +174,9 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	prefix := args.prefix
-	if interactive.Enabled() {
-		prefix, err = interactive.GetString(interactive.Input{
-			Question: "Operator policy prefix",
-			Help:     cmd.Flags().Lookup("prefix").Usage,
-			Default:  prefix,
-			Validators: []interactive.Validator{
-				interactive.RegExp(aws.RoleNameRE.String()),
-				interactive.MaxLength(32),
-			},
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid operator policy prefix: %s", err)
-			os.Exit(1)
-		}
-	}
-	if len(prefix) > 32 {
-		reporter.Errorf("Expected a prefix with no more than 32 characters")
-		os.Exit(1)
-	}
-	if prefix != "" && !aws.RoleNameRE.MatchString(prefix) {
-		reporter.Errorf("Expected a valid operator policy prefix matching %s", aws.RoleNameRE.String())
+	prefix, err := getPrefixFromAccountRole(cluster)
+	if err != nil {
+		reporter.Errorf("Failed to find prefix from %s account role", aws.InstallerAccountRole)
 		os.Exit(1)
 	}
 
@@ -379,8 +352,6 @@ func buildCommands(reporter *rprtr.Object,
 }
 
 func generateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator aws.Operator) (string, error) {
-	version := getVersionMinor(cluster)
-
 	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
 	if err != nil {
 		return "", err
@@ -395,7 +366,7 @@ func generateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator aws
 			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace, sa))
 	}
 
-	path := fmt.Sprintf("templates/policies/%s/operator_iam_role_policy.json", version)
+	path := "templates/policies/operator_iam_role_policy.json"
 	policy, err := aws.ReadPolicyDocument(path, map[string]string{
 		"oidc_provider_arn": oidcProviderARN,
 		"issuer_url":        issuerURL,
@@ -481,4 +452,15 @@ func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]strin
 	}
 
 	return missingRoles, nil
+}
+
+func getPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
+	role := aws.AccountRoles[aws.InstallerAccountRole]
+	parsedARN, err := arn.Parse(cluster.AWS().STS().RoleARN())
+	if err != nil {
+		return "", err
+	}
+	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
+	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	return rolePrefix, nil
 }

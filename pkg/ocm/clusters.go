@@ -17,7 +17,6 @@ limitations under the License.
 package ocm
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -30,6 +29,7 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	errors "github.com/zgalor/weberr"
 )
 
 // Spec is the configuration for a cluster spec.
@@ -80,6 +80,7 @@ type Spec struct {
 	DisableSCPChecks *bool
 
 	// STS
+	IsSTS               bool
 	RoleARN             string
 	ExternalID          string
 	SupportRoleARN      string
@@ -162,19 +163,27 @@ func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 	return clusterObject, nil
 }
 
+/**
+pass 0 to get all clusters
+*/
 func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.Cluster, err error) {
-	if count < 1 {
-		err = errors.New("Cannot fetch fewer than 1 cluster")
+	if count < 0 {
+		err = errors.Errorf("Invalid Cluster count")
 		return
 	}
 	query := getClusterFilter(creator)
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1
 	for {
-		response, err := request.Page(page).Size(count).Send()
+		clusterRequestList := request.Page(page)
+		if count > 0 {
+			clusterRequestList = clusterRequestList.Size(count)
+		}
+		response, err := clusterRequestList.Send()
 		if err != nil {
 			return clusters, err
 		}
+
 		response.Items().Each(func(cluster *cmv1.Cluster) bool {
 			clusters = append(clusters, cluster)
 			return true
@@ -185,6 +194,10 @@ func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.
 		page++
 	}
 	return clusters, nil
+}
+
+func (c *Client) GetAllClusters(creator *aws.Creator) (clusters []*cmv1.Cluster, err error) {
+	return c.GetClusters(creator, 0)
 }
 
 func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
@@ -203,11 +216,35 @@ func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Clus
 
 	switch response.Total() {
 	case 0:
-		return nil, fmt.Errorf("There is no cluster with identifier or name '%s'", clusterKey)
+		return nil, errors.NotFound.Errorf("There is no cluster with identifier or name '%s'", clusterKey)
 	case 1:
 		return response.Items().Slice()[0], nil
 	default:
 		return nil, fmt.Errorf("There are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
+	}
+}
+
+func (c *Client) GetClusterByID(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
+	query := fmt.Sprintf("%s AND id = '%s'",
+		getClusterFilter(creator),
+		clusterKey,
+	)
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().List().
+		Search(query).
+		Page(1).
+		Size(1).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	switch response.Total() {
+	case 0:
+		return nil, errors.NotFound.Errorf("There is no cluster with identifier '%s'", clusterKey)
+	case 1:
+		return response.Items().Slice()[0], nil
+	default:
+		return nil, fmt.Errorf("There are %d clusters with identifier '%s'", response.Total(), clusterKey)
 	}
 }
 
@@ -225,6 +262,37 @@ func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cl
 		return cluster, err
 	}
 	return response.Items().Get(0), nil
+}
+
+func (c *Client) IsSTSClusterExists(creator *aws.Creator, count int, roleARN string) (exists bool, err error) {
+	if count < 1 {
+		err = errors.Errorf("Cannot fetch fewer than 1 cluster")
+		return
+	}
+	query := fmt.Sprintf(
+		"product.id = 'rosa' AND ("+
+			"properties.%s LIKE '%%:%s:%%' OR "+
+			"aws.sts.role_arn = '%s' OR "+
+			"aws.sts.support_role_arn = '%s' OR "+
+			"aws.sts.instance_iam_roles.master_role_arn = '%s' OR "+
+			"aws.sts.instance_iam_roles.worker_role_arn = '%s')",
+		properties.CreatorARN,
+		creator.AccountID,
+		roleARN,
+		roleARN,
+		roleARN,
+		roleARN,
+	)
+	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
+	page := 1
+	response, err := request.Page(page).Size(count).Send()
+	if err != nil {
+		return false, err
+	}
+	if response.Total() > 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (c *Client) GetClusterStatus(clusterID string) (*cmv1.ClusterStatus, error) {

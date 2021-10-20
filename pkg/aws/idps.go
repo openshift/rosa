@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
 const (
@@ -30,7 +31,8 @@ const (
 	OIDCClientIDSTSAWS    = "sts.amazonaws.com"
 )
 
-func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint string) (string, error) {
+func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint string, clusterID string) (
+	string, error) {
 	output, err := c.iamClient.CreateOpenIDConnectProvider(&iam.CreateOpenIDConnectProviderInput{
 		ClientIDList: []*string{
 			aws.String(OIDCClientIDOpenShift),
@@ -38,6 +40,12 @@ func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint s
 		},
 		ThumbprintList: []*string{aws.String(thumbprint)},
 		Url:            aws.String(providerURL),
+		Tags: []*iam.Tag{
+			{
+				Key:   aws.String(tags.ClusterID),
+				Value: aws.String(clusterID),
+			},
+		},
 	})
 	if err != nil {
 		return "", err
@@ -52,6 +60,7 @@ func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string)
 		return false, err
 	}
 	providerURL := fmt.Sprintf("%s%s", parsedIssuerURL.Host, parsedIssuerURL.Path)
+
 	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, providerURL)
 	output, err := c.iamClient.GetOpenIDConnectProvider(&iam.GetOpenIDConnectProviderInput{
 		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
@@ -70,4 +79,21 @@ func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string)
 		return false, fmt.Errorf("The OIDC provider exists but is misconfigured")
 	}
 	return true, nil
+}
+
+func (c *awsClient) DeleteOpenIDConnectProvider(oidcProviderARN string) error {
+	_, err := c.iamClient.DeleteOpenIDConnectProvider(&iam.DeleteOpenIDConnectProviderInput{
+		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return fmt.Errorf("OIDC provider '%s' does not exists",
+					oidcProviderARN)
+			}
+		}
+		return err
+	}
+	return nil
 }

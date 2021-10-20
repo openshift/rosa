@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
@@ -82,13 +83,23 @@ type Client interface {
 	PutRolePolicy(roleName string, policyName string, policy string) error
 	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string) (string, error)
 	AttachRolePolicy(roleName string, policyARN string) error
-	CreateOpenIDConnectProvider(issuerURL string, thumbprint string) (string, error)
+	CreateOpenIDConnectProvider(issuerURL string, thumbprint string, clusterID string) (string, error)
+	DeleteOpenIDConnectProvider(providerURL string) error
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListAccountRoles(version string) ([]Role, error)
 	GetRoleByARN(roleARN string) (*iam.Role, error)
 	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
+	DeleteOperatorRole(roles string) error
+	GetOperatorRolesFromAccount(clusterID string) ([]string, error)
+	GetPolicies(roles []string) (map[string][]string, error)
+	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
+	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
+	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string) ([]Role, error)
+	DeleteAccountRole(roles string) error
+	GetAccountRolePolicies(roles []string) (map[string]string, error)
+	GetOpenIDConnectProvider(clusterID string) (string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -236,14 +247,8 @@ func (b *ClientBuilder) Build() (Client, error) {
 
 	// Update session config
 	sess = sess.Copy(&aws.Config{
-		// MaxRetries to limit the number of attempts on failed API calls
-		MaxRetries: aws.Int(25),
-		// Set MinThrottleDelay to 1 second
-		Retryer: client.DefaultRetryer{
-			NumMaxRetries:    5,
-			MinThrottleDelay: 1 * time.Second,
-		},
-		Logger: logger,
+		Retryer: buildCustomRetryer(),
+		Logger:  logger,
 		HTTPClient: &http.Client{
 			Transport: http.DefaultTransport,
 		},
@@ -606,4 +611,28 @@ func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
 		return nil, err
 	}
 	return roleOutput.Role, nil
+}
+
+// CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
+// additional custom features
+type CustomRetryer struct {
+	client.DefaultRetryer
+}
+
+// ShouldRetry overrides the SDK's built in DefaultRetryer adding customization
+// to not retry 5xx status codes.
+func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
+	if req.HTTPResponse.StatusCode >= 500 {
+		return false
+	}
+	return r.DefaultRetryer.ShouldRetry(req)
+}
+
+func buildCustomRetryer() CustomRetryer {
+	return CustomRetryer{
+		DefaultRetryer: client.DefaultRetryer{
+			NumMaxRetries:    25,
+			MinThrottleDelay: 1 * time.Second,
+		},
+	}
 }
