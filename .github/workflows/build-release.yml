@@ -21,5 +21,10 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v2
 
-      - name: debug
-        run: find .
+      - name: Make build
+        run: make install
+
+      - name: Check build
+        run: rosa version
+
+
