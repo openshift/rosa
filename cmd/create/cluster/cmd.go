@@ -522,7 +522,6 @@ func run(cmd *cobra.Command, _ []string) {
 		isIAM = !isSTS
 	}
 
-	mode := args.mode
 	permissionsBoundary := args.operatorRolesPermissionsBoundary
 	if permissionsBoundary != "" {
 		_, err := arn.Parse(permissionsBoundary)
@@ -583,53 +582,118 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	hasRoles := false
+	mode := args.mode
+	// warn if mode is used for non sts cluster
+	if !isSTS && mode != "" {
+		reporter.Warnf("--mode is only valid for STS clusters")
+	}
 
-	if isSTS && roleARN == "" {
-		minor := getVersionMinor(version)
-		// Attempt to find account roles using AWS resource tags
-		for roleType, role := range aws.AccountRoles {
-			roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
-			if err != nil {
-				reporter.Errorf("Failed to find %s role: %s", role.Name, err)
-				os.Exit(1)
-			}
-			selectedARN := ""
-			if len(roleARNs) > 1 {
-				reporter.Warnf("More than one %s role found", role.Name)
-				selectedARN, err = interactive.GetOption(interactive.Input{
-					Question: fmt.Sprintf("%s role ARN", role.Name),
-					Help:     cmd.Flags().Lookup(role.Flag).Usage,
-					Options:  roleARNs,
-					Default:  roleARNs[0],
-					Required: true,
-				})
-				if err != nil {
-					reporter.Errorf("Expected a valid role ARN: %s", err)
-					os.Exit(1)
-				}
-			} else if len(roleARNs) == 1 {
-				if !output.HasFlag() || reporter.IsTerminal() {
-					reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
-				}
-				selectedARN = roleARNs[0]
-			} else {
-				reporter.Warnf("No account roles found. You will need to manually set them in the " +
-					"next steps or run 'rosa create account-roles' to create them first.")
-				interactive.Enable()
+	// validate mode passed is allowed value
+	if isSTS && mode != "" {
+		modeIsValid := false
+		for _, m := range modes {
+			if m == mode {
+				modeIsValid = true
 				break
 			}
-			switch roleType {
-			case "installer":
-				roleARN = selectedARN
-			case "support":
-				supportRoleARN = selectedARN
-			case "instance_controlplane":
-				controlPlaneRoleARN = selectedARN
-			case "instance_worker":
-				workerRoleARN = selectedARN
+		}
+		if !modeIsValid {
+			reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, modes)
+			os.Exit(1)
+		}
+	}
+
+	hasRoles := false
+	if isSTS && roleARN == "" {
+		minor := getVersionMinor(version)
+		role := aws.AccountRoles[aws.InstallerAccountRole]
+
+		// Find all installer roles in the current account using AWS resource tags
+		roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+		if err != nil {
+			reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+			os.Exit(1)
+		}
+
+		if len(roleARNs) > 1 {
+			defaultRoleARN := roleARNs[0]
+			// Prioritize roles with the default prefix
+			for _, rARN := range roleARNs {
+				if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)) {
+					defaultRoleARN = rARN
+				}
 			}
+			reporter.Warnf("More than one %s role found", role.Name)
+			roleARN, err = interactive.GetOption(interactive.Input{
+				Question: fmt.Sprintf("%s role ARN", role.Name),
+				Help:     cmd.Flags().Lookup(role.Flag).Usage,
+				Options:  roleARNs,
+				Default:  defaultRoleARN,
+				Required: true,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid role ARN: %s", err)
+				os.Exit(1)
+			}
+		} else if len(roleARNs) == 1 {
+			if !output.HasFlag() || reporter.IsTerminal() {
+				reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
+			}
+			roleARN = roleARNs[0]
+		} else {
+			reporter.Warnf("No account roles found. You will need to manually set them in the " +
+				"next steps or run 'rosa create account-roles' to create them first.")
+			interactive.Enable()
+		}
+
+		if roleARN != "" {
+			// Get role prefix
+			rolePrefix, err := getAccountRolePrefix(roleARN, role)
+			if err != nil {
+				reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+				os.Exit(1)
+			}
+			reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
+
 			hasRoles = true
+			for roleType, role := range aws.AccountRoles {
+				if roleType == aws.InstallerAccountRole {
+					// Already dealt with
+					continue
+				}
+				roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
+				if err != nil {
+					reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+					os.Exit(1)
+				}
+				selectedARN := ""
+				for _, rARN := range roleARNs {
+					if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name)) {
+						selectedARN = rARN
+					}
+				}
+				if selectedARN == "" {
+					reporter.Warnf("No %s account roles found. You will need to manually set "+
+						"them in the next steps or run 'rosa create account-roles' to create "+
+						"them first.", role.Name)
+					interactive.Enable()
+					hasRoles = false
+					break
+				}
+				if !output.HasFlag() || reporter.IsTerminal() {
+					reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
+				}
+				switch roleType {
+				case aws.InstallerAccountRole:
+					roleARN = selectedARN
+				case aws.SupportAccountRole:
+					supportRoleARN = selectedARN
+				case aws.ControlPlaneAccountRole:
+					controlPlaneRoleARN = selectedARN
+				case aws.WorkerAccountRole:
+					workerRoleARN = selectedARN
+				}
+			}
 		}
 	}
 
@@ -655,6 +719,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		isSTS = true
+	}
+
+	if !isSTS && mode != "" {
+		reporter.Warnf("--mode is only valid for STS clusters")
 	}
 
 	externalID := args.externalID
@@ -1391,7 +1459,7 @@ func run(cmd *cobra.Command, _ []string) {
 		disableWorkloadMonitoring, err = interactive.GetBool(interactive.Input{
 			Question: "Disable Workload monitoring",
 			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
-			Default:  false,
+			Default:  disableWorkloadMonitoring,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
@@ -1423,6 +1491,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:         availabilityZones,
 		SubnetIds:                 subnetIDs,
 		PrivateLink:               &privateLink,
+		IsSTS:                     isSTS,
 		RoleARN:                   roleARN,
 		ExternalID:                externalID,
 		SupportRoleARN:            supportRoleARN,
@@ -1502,10 +1571,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS {
 		if mode != "" {
 			reporter.Infof("Preparing to create operator roles.")
-			operatorroles.Cmd.Run(operatorroles.Cmd, []string{
-				clusterName,
-				mode,
-				permissionsBoundary})
+			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
 			reporter.Infof("Preparing to create OIDC Provider.")
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode})
 		} else {
@@ -1521,8 +1587,6 @@ func run(cmd *cobra.Command, _ []string) {
 				"\t%s\n",
 				rolesCMD, oidcCMD)
 		}
-	} else if mode != "" {
-		reporter.Warnf("--mode is only valid for STS clusters")
 	}
 }
 
@@ -1589,6 +1653,16 @@ func getOperatorRoleArn(prefix string, operator aws.Operator, creator *aws.Creat
 		role = role[0:64]
 	}
 	return fmt.Sprintf("arn:aws:iam::%s:role/%s", creator.AccountID, role)
+}
+
+func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
+	parsedARN, err := arn.Parse(roleARN)
+	if err != nil {
+		return "", err
+	}
+	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
+	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	return rolePrefix, nil
 }
 
 // Validate OpenShift versions
@@ -1688,6 +1762,9 @@ func parseSubnet(subnetOption string) string {
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
+	if spec.IsSTS {
+		command += " --sts"
+	}
 	if spec.RoleARN != "" {
 		command += fmt.Sprintf(" --role-arn %s", spec.RoleARN)
 		command += fmt.Sprintf(" --support-role-arn %s", spec.SupportRoleARN)
