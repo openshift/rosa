@@ -31,5 +31,10 @@ jobs:
       - name: Check build OK
         run: rosa version
 
+      - name: Login to Github CLI
+        run: echo ${{env.GIHTUB_TOKEN}} | gh auth login --with-token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate release
         run: gh release create v${{ github.event.inputs.releaseTag }} ./rosa
