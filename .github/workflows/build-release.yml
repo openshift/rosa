@@ -27,4 +27,3 @@ jobs:
       - name: Check build
         run: rosa version
 
-
