@@ -34,11 +34,12 @@ jobs:
       - name: Login to Github CLI
         run: echo  ${{ secrets.GITHUB_TOKEN }}| gh auth login --with-token
 
-      - name: Generate release
-        run: gh release create v${{ github.event.inputs.releaseTag }} ./rosa
-
       - name: ls
-        run: ls
+        run: ls -liah
 
       - name: whereis rosa
         run: which rosa
+
+      - name: Generate release
+        run: gh release create v${{ github.event.inputs.releaseTag }} ./rosa
+
