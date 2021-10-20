@@ -30,3 +30,6 @@ jobs:
 
       - name: Check build OK
         run: rosa version
+
+      - name: Generate release
+        run: gh release create v${{ github.event.inputs.releaseTag }} ./rosa
