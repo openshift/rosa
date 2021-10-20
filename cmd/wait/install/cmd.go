@@ -132,6 +132,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 		clusterState := cluster.State()
 		clusterName := cluster.DisplayName()
+		fmt.Fprintf(os.Stdout, "Cluster %s state is %s\n", clusterName, clusterState)
 
 		switch cluster.State() {
 		case cmv1.ClusterStateReady,
@@ -146,9 +147,10 @@ func run(cmd *cobra.Command, argv []string) {
 		if n > maxInterval {
 			done = true
 		}
-		fmt.Fprintf(os.Stdout, "Cluster %s state is %s\n", clusterName, clusterState)
-		fmt.Fprintf(os.Stdout, "Waiting (%d s/%d s) for install on cluster %s ...\n", n, maxInterval, clusterKey)
-		time.Sleep(time.Duration(pollInterval) * time.Second)
-		n += pollInterval
+		if !done {
+			fmt.Fprintf(os.Stdout, "Waiting (%d s/%d s) for install on cluster %s ...\n", n, maxInterval, clusterKey)
+			time.Sleep(time.Duration(pollInterval) * time.Second)
+			n += pollInterval
+		}
 	}
 }
