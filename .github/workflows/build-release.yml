@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: debug
-        run: echo Hello ROSA version ${{ github.event.inputs..releaseTag }}
+        run: echo Hello ROSA version ${{ github.event.inputs.releaseTag }}
 
       - name: checkout repo
         uses: actions/checkout@v2
