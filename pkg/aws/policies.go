@@ -904,11 +904,11 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 		}
 		statements := policyDoc.Statement
 		for _, statement := range statements {
-			awsPriciple := getAWSPrincipals(statement.Principal.AWS)
-			if len(awsPriciple) > 1 {
+			awsPrincipal := getAWSPrincipals(statement.Principal.AWS)
+			if len(awsPrincipal) > 1 {
 				break
 			}
-			for _, a := range awsPriciple {
+			for _, a := range awsPrincipal {
 				str := strings.Split(a, ":")
 				if len(str) > 4 {
 					if str[4] == JumpAccounts[env] {
@@ -962,8 +962,8 @@ func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Ro
 	}
 	statements := policyDoc.Statement
 	for _, statement := range statements {
-		awsPriciple := getAWSPrincipals(statement.Principal.AWS)
-		for _, a := range awsPriciple {
+		awsPrincipal := getAWSPrincipals(statement.Principal.AWS)
+		for _, a := range awsPrincipal {
 			str := strings.Split(a, ":")
 			if len(str) > 4 {
 				if str[4] == JumpAccounts[env] {
@@ -1049,18 +1049,21 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 	return roles, nil
 }
 
-func getAWSPrincipals(awsPrinciple interface{}) []string {
+func getAWSPrincipals(awsPrincipal interface{}) []string {
 	var awsArr []string
-	switch reflect.TypeOf(awsPrinciple).Kind() {
+	if awsPrincipal == nil {
+		return awsArr
+	}
+	switch reflect.TypeOf(awsPrincipal).Kind() {
 	case reflect.Slice:
-		value := reflect.ValueOf(awsPrinciple)
+		value := reflect.ValueOf(awsPrincipal)
 		awsArr = make([]string, value.Len())
 		for i := 0; i < value.Len(); i++ {
 			awsArr[i] = value.Index(i).Interface().(string)
 		}
 	case reflect.String:
 		awsArr = make([]string, 1)
-		awsArr[0] = awsPrinciple.(string)
+		awsArr[0] = awsPrincipal.(string)
 	}
 	return awsArr
 }
