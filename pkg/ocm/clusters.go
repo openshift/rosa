@@ -87,6 +87,7 @@ type Spec struct {
 	OperatorIAMRoles    []OperatorIAMRole
 	ControlPlaneRoleARN string
 	WorkerRoleARN       string
+	Mode                string
 
 	NodeDrainGracePeriodInMinutes float64
 }

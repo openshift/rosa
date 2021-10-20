@@ -1498,6 +1498,7 @@ func run(cmd *cobra.Command, _ []string) {
 		OperatorIAMRoles:          operatorIAMRoleList,
 		ControlPlaneRoleARN:       controlPlaneRoleARN,
 		WorkerRoleARN:             workerRoleARN,
+		Mode:                      mode,
 		Tags:                      tagsList,
 		KMSKeyArn:                 kmsKeyARN,
 		DisableWorkloadMonitoring: disableWorkloadMonitoring,
@@ -1764,6 +1765,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.IsSTS {
 		command += " --sts"
+		if spec.Mode != "" {
+			command += fmt.Sprintf(" --mode %s", spec.Mode)
+		}
 	}
 	if spec.RoleARN != "" {
 		command += fmt.Sprintf(" --role-arn %s", spec.RoleARN)

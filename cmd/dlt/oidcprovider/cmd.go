@@ -141,8 +141,8 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if providerARN == "" {
-		reporter.Errorf("Cluster '%s' doesn't have OIDC provider associated with it.", clusterKey)
-		os.Exit(1)
+		reporter.Infof("Cluster '%s' doesn't have OIDC provider associated with it.", clusterKey)
+		return
 	}
 
 	// Determine if interactive mode is needed
