@@ -1,0 +1,25 @@
+name: build-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      releaseTag:
+        description: 'Release tag'
+        required: true
+        default: '0.0.1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-west-2
+
+    steps:
+      - name: debug
+        run: echo Hello ROSA ${{ inputs.releaseTag }}
+
+      - name: checkout repo
+        uses: actions/checkout@v2
+
+      - name: debug
+        run: echo kbum world
