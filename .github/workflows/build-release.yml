@@ -25,5 +25,5 @@ jobs:
         run: make install
 
       - name: Check build
-        run: rosa version
+        run: ./cmd/rosa version
 
