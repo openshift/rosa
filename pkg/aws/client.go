@@ -58,6 +58,8 @@ const (
 	// Since CloudFormation stacks are region-dependent, we hard-code OCM's default region and
 	// then use it to ensure that the user always gets the stack from the same region.
 	DefaultRegion = "us-east-1"
+	Inline        = "inline"
+	Attached      = "attached"
 )
 
 // Client defines a client interface
@@ -98,8 +100,9 @@ type Client interface {
 	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
 	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string) ([]Role, error)
 	DeleteAccountRole(roles string) error
-	GetAccountRolePolicies(roles []string) (map[string]string, error)
+	GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error)
 	GetOpenIDConnectProvider(clusterID string) (string, error)
+	GetInstanceProfilesForRole(role string) ([]string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
