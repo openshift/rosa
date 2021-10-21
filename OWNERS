@@ -1,17 +1,23 @@
 reviewers:
-- jharrington22
-- vkareh
-- igoihman
-- pvasant
 - ciaranRoche
-- zgalor
-- cben
-- jhernand
-approvers:
+- igoihman
 - jharrington22
+- pvasant
 - vkareh
+- zgalor
+approvers:
+- ciaranRoche
 - igoihman
 - jeremyeder
-maintainers:
 - jharrington22
+- jhernand
+- pvasant
 - vkareh
+- zgalor
+maintainers:
+- ciaranRoche
+- igoihman
+- jharrington22
+- pvasant
+- vkareh
+- zgalor
