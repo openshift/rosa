@@ -2,6 +2,30 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.5 Oct 21 2021
+
+- Autocomplete cluster names on --cluster flag
+- completion: Add providers for various shells
+- account-roles: Merge compatible policies
+- account-roles: Attach permission policies to roles
+- delete oidc provider and operator roles
+- added account role deletion
+- sts: Group account roles by prefix
+- SDA-4911 : Fix creating operator roles prefix
+- SDA-4916 add validation to sts cluster create mode flag
+- Unhide Spot instances
+- print spot instances when listing machinepools
+- fix sts mode validation
+- Add '--sts' to interactive command output
+- SDA-4912 add retryer to aws client
+- Update delete cluster
+- removed operator roles check from oidcprovider
+- updated
+- create-cluster: Respect disable-uwm flag default
+- add --mode to create command output
+- aws: Fix NPE when fetching AWS statement principals
+- fix issue with delete account roles for older rosa
+
 == 1.1.4 Oct 13 2021
 
 - SDA-4744 : Add account role validation on cluster create
