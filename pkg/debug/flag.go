@@ -32,7 +32,7 @@ func AddFlag(flags *pflag.FlagSet) {
 	)
 }
 
-// Enabled retursn a boolean flag that indicates if the debug mode is enabled.
+// Enabled returns a boolean flag that indicates if the debug mode is enabled.
 func Enabled() bool {
 	return enabled
 }

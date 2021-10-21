@@ -88,6 +88,12 @@ type Spec struct {
 	WorkerRoleARN    string
 
 	NodeDrainGracePeriodInMinutes float64
+
+	ProxyEnabled              bool
+	HTTPProxy                 string
+	HTTPSProxy                string
+	AdditionalTrustBundleFile string
+	AdditionalTrustBundle     string
 }
 
 type OperatorIAMRole struct {
@@ -569,6 +575,21 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 			Enabled(true).
 			DisableSCPChecks(true),
 		)
+	}
+
+	if config.HTTPProxy != "" || config.HTTPSProxy != "" {
+		proxyBuilder := cmv1.NewProxy()
+		if config.HTTPProxy != "" {
+			proxyBuilder.HTTPProxy(config.HTTPProxy)
+		}
+		if config.HTTPSProxy != "" {
+			proxyBuilder.HTTPSProxy(config.HTTPSProxy)
+		}
+		clusterBuilder = clusterBuilder.Proxy(proxyBuilder)
+	}
+
+	if config.AdditionalTrustBundle != "" {
+		clusterBuilder = clusterBuilder.AdditionalTrustBundle(config.AdditionalTrustBundle)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()

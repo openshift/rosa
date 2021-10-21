@@ -17,11 +17,13 @@ limitations under the License.
 package ocm
 
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -29,6 +31,7 @@ import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
+	"github.com/openshift/rosa/pkg/interactive"
 )
 
 func init() {
@@ -68,6 +71,44 @@ func ClusterNameValidator(name interface{}) error {
 		return nil
 	}
 	return fmt.Errorf("can only validate strings, got %v", name)
+}
+
+func ValidateHTTPProxy(httpProxy string) interactive.Validator {
+	return func(val interface{}) error {
+		if httpProxy != "" {
+			url, err := url.ParseRequestURI(httpProxy)
+			if err != nil {
+				return fmt.Errorf("Invalid 'http-proxy' value '%s'", httpProxy)
+			}
+			if url.Scheme != "http" {
+				return fmt.Errorf("http-proxy' "+
+					"scheme is not 'http': '%s'", httpProxy)
+			}
+		}
+		return nil
+	}
+}
+
+func ValidateHTTPSProxy(httpsProxy string) interactive.Validator {
+	return func(val interface{}) error {
+		if httpsProxy != "" {
+			_, err := url.ParseRequestURI(httpsProxy)
+			if err != nil {
+				return fmt.Errorf("Invalid 'https-proxy' value '%s'", httpsProxy)
+			}
+		}
+		return nil
+	}
+}
+
+func ValidateAdditionalTrustBundle(additionalTrustBundle string) (err error) {
+	if additionalTrustBundle != "" {
+		additionalTrustBundleBytes := []byte(additionalTrustBundle)
+		if !x509.NewCertPool().AppendCertsFromPEM(additionalTrustBundleBytes) {
+			return fmt.Errorf("Failed to parse additional_trust_bundle")
+		}
+	}
+	return nil
 }
 
 func IsValidUsername(username string) bool {
