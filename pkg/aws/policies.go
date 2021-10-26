@@ -749,7 +749,7 @@ func (c *awsClient) DeleteRole(role string, r *string) error {
 	return nil
 }
 
-func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
+func (c *awsClient) getInstanceProfilesForRole(r string) ([]string, error) {
 	instanceProfiles := []string{}
 	profiles, err := c.iamClient.ListInstanceProfilesForRole(&iam.ListInstanceProfilesForRoleInput{
 		RoleName: aws.String(r),
@@ -777,6 +777,21 @@ func (c *awsClient) DeleteAccountRole(roleName string) error {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
 				//do nothing
+				break
+			default:
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	err = c.removeInstanceProfileFromRole(role)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				//do nothing
+				break
 			default:
 				return err
 			}
@@ -785,6 +800,23 @@ func (c *awsClient) DeleteAccountRole(roleName string) error {
 		}
 	}
 	return c.DeleteRole(roleName, role)
+}
+
+func (c *awsClient) removeInstanceProfileFromRole(role *string) error {
+	instanceProfiles, err := c.getInstanceProfilesForRole(aws.StringValue(role))
+	if err != nil {
+		return err
+	}
+	for _, instanceProfile := range instanceProfiles {
+		_, err = c.iamClient.RemoveRoleFromInstanceProfile(&iam.RemoveRoleFromInstanceProfileInput{
+			InstanceProfileName: aws.String(instanceProfile),
+			RoleName:            role,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *awsClient) deleteAccountRolePolicies(role *string) error {
@@ -1184,4 +1216,22 @@ func (c *awsClient) GetOpenIDConnectProvider(clusterID string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func (c *awsClient) GetInstanceProfilesForRoles(roles []string) (map[string][]string, error) {
+	instanceProfileMap := make(map[string][]string)
+	for _, role := range roles {
+		instanceProfiles, err := c.getInstanceProfilesForRole(role)
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					continue
+				}
+			}
+			return nil, err
+		}
+		instanceProfileMap[role] = instanceProfiles
+	}
+	return instanceProfileMap, nil
 }

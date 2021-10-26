@@ -151,18 +151,6 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("There are no roles to be deleted")
 		os.Exit(1)
 	}
-	for _, role := range finalRoleList {
-		instanceProfiles, err := awsClient.GetInstanceProfilesForRole(role)
-		if err != nil {
-			reporter.Errorf("Error checking for instance roles: %s", err)
-			os.Exit(1)
-		}
-		if len(instanceProfiles) > 0 {
-			reporter.Errorf("Instance Profiles are attached to the role. Please make sure it is deleted: %s",
-				strings.Join(instanceProfiles, ","))
-			os.Exit(1)
-		}
-	}
 
 	// Determine if interactive mode is needed
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
@@ -202,7 +190,13 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
-		commands := buildCommand(finalRoleList, policyMap)
+		instanceProfileRoles, err := awsClient.GetInstanceProfilesForRoles(finalRoleList)
+		if err != nil {
+			reporter.Errorf("There was an error getting the instance policy: %v", err)
+			os.Exit(1)
+		}
+
+		commands := buildCommand(finalRoleList, policyMap, instanceProfileRoles)
 
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to delete the account roles:\n")
@@ -226,7 +220,8 @@ func checkIfRoleAssociated(clusters []*cmv1.Cluster, role aws.Role) string {
 	return ""
 }
 
-func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail) string {
+func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail,
+	instanceProfileRoles map[string][]string) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
 		policyDetails := policyMap[roleName]
@@ -241,6 +236,13 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail) s
 					roleName, policyDetail.PolicyName)
 				commands = append(commands, deletePolicy)
 			}
+		}
+		instanceProfiles := instanceProfileRoles[roleName]
+		for _, instanceProfile := range instanceProfiles {
+			removePolicy := fmt.Sprintf("\taws iam remove-role-from-instance-profile --role-name  %s  "+
+				"--instance-profile-name  %s",
+				roleName, instanceProfile)
+			commands = append(commands, removePolicy)
 		}
 		deleteRole := fmt.Sprintf("\taws iam delete-role --role-name  %s", roleName)
 		commands = append(commands, deleteRole)

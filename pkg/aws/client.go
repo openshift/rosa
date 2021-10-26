@@ -102,7 +102,7 @@ type Client interface {
 	DeleteAccountRole(roles string) error
 	GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error)
 	GetOpenIDConnectProvider(clusterID string) (string, error)
-	GetInstanceProfilesForRole(role string) ([]string, error)
+	GetInstanceProfilesForRoles(roles []string) (map[string][]string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
