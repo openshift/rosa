@@ -44,5 +44,5 @@ jobs:
         run: tar -cvf rosa-${{ github.event.inputs.releaseTag }}.tar.gz $(which rosa)
 
       - name: Generate release
-        run: gh release create rosa-${{ github.event.inputs.releaseTag }} rosa-{{ github.event.inputs.releaseTag }}.tar.gz
+        run: gh release create rosa-${{ github.event.inputs.releaseTag }} rosa-${{ github.event.inputs.releaseTag }}.tar.gz
 
