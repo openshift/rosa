@@ -6,7 +6,7 @@ on:
       releaseTag:
         description: 'Release tag'
         required: true
-        default: '0.0.1'
+        default: '0.0.3'
 
 jobs:
   build:
@@ -39,7 +39,10 @@ jobs:
 
       - name: whereis rosa
         run: which rosa
+      
+      - name: Create tar bundle
+        run: tar -cvf rosa-{{ github.event.inputs.releaseTag }}.tar.gz $(which rosa)
 
       - name: Generate release
-        run: gh release create v${{ github.event.inputs.releaseTag }} $(which rosa)
+        run: gh release create v${{ github.event.inputs.releaseTag }} rosa-{{ github.event.inputs.releaseTag }}.tar.gz
 
