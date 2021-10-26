@@ -1,12 +1,10 @@
 name: build-release
 
 on:
-  workflow_dispatch:
-    inputs:
-      releaseTag:
-        description: 'Release tag'
-        required: true
-        default: '0.0.3'
+  push:
+    branches:
+      - master
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -16,7 +14,7 @@ jobs:
 
     steps:
       - name: debug
-        run: echo Hello ROSA version ${{ github.event.inputs.releaseTag }}
+        run: echo Hello ROSA
 
       - name: checkout repo
         uses: actions/checkout@v2
@@ -41,8 +39,8 @@ jobs:
         run: which rosa
       
       - name: Create tar bundle
-        run: tar -C $(dirname $(which rosa)) -czvf rosa-${{ github.event.inputs.releaseTag }}.tar.gz rosa
+        run: tar -C $(dirname $(which rosa)) -czvf rosa.tar.gz rosa
 
       - name: Generate release
-        run: gh release create rosa-${{ github.event.inputs.releaseTag }} rosa-${{ github.event.inputs.releaseTag }}.tar.gz
+        run: gh release create rosa-$(date +%Y%m%d_%H%M%S) rosa.tar.gz
 

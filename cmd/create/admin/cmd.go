@@ -52,6 +52,7 @@ func init() {
 	ocm.AddClusterFlag(Cmd)
 
 	flags := Cmd.Flags()
+
 	flags.StringVarP(
 		&args.password,
 		"password",
@@ -123,13 +124,17 @@ func run(cmd *cobra.Command, _ []string) {
 	// TODO: Verify that the user does not already exist
 
 	password := args.password
-	if len(password) > 0 {
+	if len(password) == 0 {
+		reporter.Debugf("Generating random password")
 		password, err = generateRandomPassword(23)
 		if err != nil {
 			reporter.Errorf("Failed to generate a random password")
 			os.Exit(1)
 		}
+	} else {
+		reporter.Debugf("Using user provided password")
 	}
+
 	// Add admin user to the cluster-admins group:
 	reporter.Debugf("Adding '%s' user to cluster '%s'", username, clusterKey)
 	user, err := cmv1.NewUser().ID(username).Build()
