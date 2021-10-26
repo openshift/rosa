@@ -18,6 +18,7 @@ package operatorrole
 
 import (
 	"fmt"
+
 	"os"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -59,7 +61,7 @@ func init() {
 		"cluster",
 		"c",
 		"",
-		"ID of the cluster (deleted/archived) to delete the operator roles from (required).",
+		"ID or Name of the cluster (deleted/archived) to delete the operator roles from (required).",
 	)
 	Cmd.MarkFlagRequired("cluster")
 	flags.StringVar(
@@ -85,7 +87,10 @@ func run(cmd *cobra.Command, argv []string) {
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
 		args.clusterKey = argv[0]
 	}
-
+	if !arguments.IsValidMode(modes, args.mode) {
+		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		os.Exit(1)
+	}
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := args.clusterKey
@@ -132,18 +137,31 @@ func run(cmd *cobra.Command, argv []string) {
 	}()
 
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	c, err := ocmClient.GetClusterByID(clusterKey, creator)
+	sub, err := ocmClient.GetClusterUsingSubscription(clusterKey, creator)
+	if err != nil {
+		if errors.GetType(err) == errors.Conflict {
+			reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
+				"use cluster ID instead", clusterKey)
+			os.Exit(1)
+		}
+		reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	c, err := ocmClient.GetClusterByID(sub.ClusterID(), creator)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
 			reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 	}
+
 	if c != nil && c.ID() != "" {
 		reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
 			"uninstalled clusters", c.ID(), c.State())
 		os.Exit(1)
 	}
+
 	env, err := ocm.GetEnv()
 	if err != nil {
 		reporter.Errorf("Error getting environment %s", err)
@@ -178,7 +196,7 @@ func run(cmd *cobra.Command, argv []string) {
 		spin.Start()
 	}
 
-	roles, err := awsClient.GetOperatorRolesFromAccount(clusterKey)
+	roles, err := awsClient.GetOperatorRolesFromAccount(sub.ClusterID())
 	if len(roles) == 0 {
 		if spin != nil {
 			spin.Stop()

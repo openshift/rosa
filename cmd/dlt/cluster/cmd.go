@@ -116,7 +116,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if cluster.AWS().STS().RoleARN() != "" {
 		interactive.Enable()
 		reporter.Infof(
-			"Your cluster '%s' will be deleted but the following object may remain",
+			"Your cluster '%s' will be deleted but the following objects may remain",
 			clusterKey,
 		)
 		if len(cluster.AWS().STS().OperatorIAMRoles()) > 0 {
@@ -130,7 +130,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		reporter.Infof("OIDC Provider : %s\n", cluster.AWS().STS().OIDCEndpointURL())
 		reporter.Infof("Once the cluster is uninstalled use the following commands to remove the " +
-			"above aws resource.\n")
+			"above aws resources.\n")
 		commands := buildCommands(cluster)
 		fmt.Print(commands, "\n")
 	}
