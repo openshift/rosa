@@ -215,6 +215,7 @@ func run(cmd *cobra.Command, argv []string) {
 				machinePoolID, clusterKey, err)
 			os.Exit(1)
 		}
+		reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
 
 		os.Exit(0)
 	}
