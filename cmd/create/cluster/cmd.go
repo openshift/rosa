@@ -19,6 +19,7 @@ package cluster
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"regexp"
@@ -117,6 +118,12 @@ var args struct {
 	operatorIAMRoles                 []string
 	operatorRolesPrefix              string
 	operatorRolesPermissionsBoundary string
+
+	// Proxy
+	proxyEnabled              bool
+	httpProxy                 *string
+	httpsProxy                *string
+	additionalTrustBundleFile string
 
 	tags []string
 }
@@ -254,6 +261,31 @@ func init() {
 		"Add etcd encryption. By default etcd data is encrypted at rest. "+
 			"This option configures etcd encryption on top of existing storage encryption.",
 	)
+
+	flags.BoolVar(
+		&args.proxyEnabled,
+		"proxy-enabled",
+		false,
+		"whether cluster-wide proxy is enabled or not.")
+
+	args.httpProxy = new(string)
+	flags.StringVar(args.httpProxy,
+		"http-proxy",
+		"",
+		"A proxy URL to use for creating HTTP connections outside the cluster. The URL scheme must be http.")
+
+	args.httpsProxy = new(string)
+	flags.StringVar(args.httpsProxy,
+		"https-proxy",
+		"",
+		"A proxy URL to use for creating HTTPS connections outside the cluster.")
+
+	flags.StringVar(
+		&args.additionalTrustBundleFile,
+		"additional-trust-bundle-file",
+		"",
+		"A file contains a PEM-encoded X.509 certificate bundle that will be "+
+			"added to the nodes' trusted certificate store.")
 
 	flags.BoolVar(&args.enableCustomerManagedKey,
 		"enable-customer-managed-key",
@@ -1467,6 +1499,76 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	// proxy
+	proxyEnabled := args.proxyEnabled
+	httpProxy := args.httpProxy
+	httpsProxy := args.httpsProxy
+	additionalTrustBundleFile := args.additionalTrustBundleFile
+	if useExistingVPC && interactive.Enabled() {
+		proxyEnabled, err = interactive.GetBool(interactive.Input{
+			Question: "Use cluster-wide proxy? [y/N]",
+			Help:     cmd.Flags().Lookup("proxy-enabled").Usage,
+			Default:  false,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	additionalTrustBundle := ""
+	if interactive.Enabled() && proxyEnabled {
+		*httpProxy, err = interactive.GetString(interactive.Input{
+			Question: "HTTP proxy",
+			Help:     cmd.Flags().Lookup("http-proxy").Usage,
+			Default:  "",
+			Validators: []interactive.Validator{
+				ocm.ValidateHTTPProxy(*httpProxy),
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid http proxy: %s", err)
+			os.Exit(1)
+		}
+
+		*httpsProxy, err = interactive.GetString(interactive.Input{
+			Question: "HTTPS proxy",
+			Help:     cmd.Flags().Lookup("https-proxy").Usage,
+			Default:  "",
+			Validators: []interactive.Validator{
+				ocm.ValidateHTTPSProxy(*httpsProxy),
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid https proxy: %s", err)
+			os.Exit(1)
+		}
+
+		additionalTrustBundleFile, err = interactive.GetCert(interactive.Input{
+			Question: "Additional trust bundle file path",
+			Help:     cmd.Flags().Lookup("additional-trust-bundle-file").Usage,
+			Default:  additionalTrustBundleFile,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
+			os.Exit(1)
+		}
+	}
+	// Get certificate contents
+	if additionalTrustBundleFile != "" {
+		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
+		if err != nil {
+			reporter.Errorf("Expected a valid additional-trust-bundle: %s", err)
+			os.Exit(1)
+		}
+		additionalTrustBundle = string(cert)
+		err = ocm.ValidateAdditionalTrustBundle(additionalTrustBundle)
+		if err != nil {
+			reporter.Errorf("Expected a valid additional trust bundle: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	clusterConfig := ocm.Spec{
 		Name:                      clusterName,
 		Region:                    region,
@@ -1475,6 +1577,11 @@ func run(cmd *cobra.Command, _ []string) {
 		ChannelGroup:              channelGroup,
 		Flavour:                   args.flavour,
 		EtcdEncryption:            args.etcdEncryption,
+		ProxyEnabled:              proxyEnabled,
+		HTTPProxy:                 *httpProxy,
+		HTTPSProxy:                *httpsProxy,
+		AdditionalTrustBundle:     additionalTrustBundle,
+		AdditionalTrustBundleFile: additionalTrustBundleFile,
 		Expiration:                expiration,
 		ComputeMachineType:        computeMachineType,
 		ComputeNodes:              computeNodes,
@@ -1848,6 +1955,18 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	}
 	if spec.EtcdEncryption {
 		command += " --etcd-encryption"
+	}
+
+	if spec.ProxyEnabled {
+		if spec.HTTPProxy != "" {
+			command += fmt.Sprintf(" --http-proxy %s", spec.HTTPProxy)
+		}
+		if spec.HTTPSProxy != "" {
+			command += fmt.Sprintf(" --https-proxy %s", spec.HTTPSProxy)
+		}
+	}
+	if spec.AdditionalTrustBundle != "" {
+		command += fmt.Sprintf(" --additional-trust-bundle-file %s", spec.AdditionalTrustBundleFile)
 	}
 	if spec.KMSKeyArn != "" {
 		command += fmt.Sprintf(" --kms-key-arn %s", spec.KMSKeyArn)
