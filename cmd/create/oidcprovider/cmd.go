@@ -163,13 +163,11 @@ func run(cmd *cobra.Command, argv []string) {
 
 	switch mode {
 	case "auto":
-
 		if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
 			reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 				clusterKey, cluster.State())
 			os.Exit(0)
 		}
-
 		oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
 		oidcProviderExists, err := awsClient.HasOpenIDConnectProvider(oidcEndpointURL, creator.AccountID)
 		if err != nil {
@@ -185,8 +183,6 @@ func run(cmd *cobra.Command, argv []string) {
 				"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
 			os.Exit(1)
 		}
-
-		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto")
 		reporter.Infof("Creating OIDC provider using '%s'", creator.ARN)
 		if !confirm.Prompt(true, "Create the OIDC provider for cluster '%s'?", clusterKey) {
 			os.Exit(0)
@@ -196,6 +192,7 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Errorf("There was an error creating the OIDC provider: %s", err)
 			os.Exit(1)
 		}
+		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto")
 	case "manual":
 		ocmClient.LogEvent("ROSACreateOIDCProviderModeManual")
 
