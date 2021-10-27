@@ -120,9 +120,9 @@ var args struct {
 	operatorRolesPermissionsBoundary string
 
 	// Proxy
-	proxyEnabled              bool
-	httpProxy                 *string
-	httpsProxy                *string
+	enableProxy               bool
+	httpProxy                 string
+	httpsProxy                string
 	additionalTrustBundleFile string
 
 	tags []string
@@ -263,22 +263,24 @@ func init() {
 	)
 
 	flags.BoolVar(
-		&args.proxyEnabled,
-		"proxy-enabled",
+		&args.enableProxy,
+		"enable-proxy",
 		false,
 		"whether cluster-wide proxy is enabled or not.")
 
-	args.httpProxy = new(string)
-	flags.StringVar(args.httpProxy,
+	flags.StringVar(
+		&args.httpProxy,
 		"http-proxy",
 		"",
-		"A proxy URL to use for creating HTTP connections outside the cluster. The URL scheme must be http.")
+		"A proxy URL to use for creating HTTP connections outside the cluster. The URL scheme must be http.",
+	)
 
-	args.httpsProxy = new(string)
-	flags.StringVar(args.httpsProxy,
+	flags.StringVar(
+		&args.httpsProxy,
 		"https-proxy",
 		"",
-		"A proxy URL to use for creating HTTPS connections outside the cluster.")
+		"A proxy URL to use for creating HTTPS connections outside the cluster.",
+	)
 
 	flags.StringVar(
 		&args.additionalTrustBundleFile,
@@ -1499,16 +1501,19 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// proxy
-	proxyEnabled := args.proxyEnabled
+	// Cluster-wide proxy configuration
+	enableProxy := args.enableProxy
 	httpProxy := args.httpProxy
 	httpsProxy := args.httpsProxy
 	additionalTrustBundleFile := args.additionalTrustBundleFile
+	if httpProxy != "" || httpsProxy != "" || additionalTrustBundleFile != "" {
+		enableProxy = true
+	}
 	if useExistingVPC && interactive.Enabled() {
-		proxyEnabled, err = interactive.GetBool(interactive.Input{
-			Question: "Use cluster-wide proxy? [y/N]",
-			Help:     cmd.Flags().Lookup("proxy-enabled").Usage,
-			Default:  false,
+		enableProxy, err = interactive.GetBool(interactive.Input{
+			Question: "Use cluster-wide proxy",
+			Help:     cmd.Flags().Lookup("enable-proxy").Usage,
+			Default:  enableProxy,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
@@ -1516,57 +1521,74 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	additionalTrustBundle := ""
-	if interactive.Enabled() && proxyEnabled {
-		*httpProxy, err = interactive.GetString(interactive.Input{
+	if enableProxy && interactive.Enabled() {
+		httpProxy, err = interactive.GetString(interactive.Input{
 			Question: "HTTP proxy",
 			Help:     cmd.Flags().Lookup("http-proxy").Usage,
-			Default:  "",
+			Default:  httpProxy,
 			Validators: []interactive.Validator{
-				ocm.ValidateHTTPProxy(*httpProxy),
+				ocm.ValidateHTTPProxy,
 			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid http proxy: %s", err)
 			os.Exit(1)
 		}
+	}
+	err = ocm.ValidateHTTPProxy(httpProxy)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 
-		*httpsProxy, err = interactive.GetString(interactive.Input{
+	if enableProxy && interactive.Enabled() {
+		httpsProxy, err = interactive.GetString(interactive.Input{
 			Question: "HTTPS proxy",
 			Help:     cmd.Flags().Lookup("https-proxy").Usage,
-			Default:  "",
+			Default:  httpsProxy,
 			Validators: []interactive.Validator{
-				ocm.ValidateHTTPSProxy(*httpsProxy),
+				interactive.IsURL,
 			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid https proxy: %s", err)
 			os.Exit(1)
 		}
+	}
+	err = interactive.IsURL(httpsProxy)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 
+	if enableProxy && interactive.Enabled() {
 		additionalTrustBundleFile, err = interactive.GetCert(interactive.Input{
 			Question: "Additional trust bundle file path",
 			Help:     cmd.Flags().Lookup("additional-trust-bundle-file").Usage,
 			Default:  additionalTrustBundleFile,
+			Validators: []interactive.Validator{
+				ocm.ValidateAdditionalTrustBundle,
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
 			os.Exit(1)
 		}
 	}
+	err = ocm.ValidateAdditionalTrustBundle(additionalTrustBundleFile)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 	// Get certificate contents
+	additionalTrustBundle := ""
 	if additionalTrustBundleFile != "" {
 		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
 		if err != nil {
-			reporter.Errorf("Expected a valid additional-trust-bundle: %s", err)
+			reporter.Errorf("Failed to read additional trust bundle file: %s", err)
 			os.Exit(1)
 		}
 		additionalTrustBundle = string(cert)
-		err = ocm.ValidateAdditionalTrustBundle(additionalTrustBundle)
-		if err != nil {
-			reporter.Errorf("Expected a valid additional trust bundle: %s", err)
-			os.Exit(1)
-		}
 	}
 
 	clusterConfig := ocm.Spec{
@@ -1577,9 +1599,9 @@ func run(cmd *cobra.Command, _ []string) {
 		ChannelGroup:              channelGroup,
 		Flavour:                   args.flavour,
 		EtcdEncryption:            args.etcdEncryption,
-		ProxyEnabled:              proxyEnabled,
-		HTTPProxy:                 *httpProxy,
-		HTTPSProxy:                *httpsProxy,
+		ProxyEnabled:              enableProxy,
+		HTTPProxy:                 httpProxy,
+		HTTPSProxy:                httpsProxy,
 		AdditionalTrustBundle:     additionalTrustBundle,
 		AdditionalTrustBundleFile: additionalTrustBundleFile,
 		Expiration:                expiration,
