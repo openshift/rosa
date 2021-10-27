@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -31,7 +32,6 @@ import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
-	"github.com/openshift/rosa/pkg/interactive"
 )
 
 func init() {
@@ -73,42 +73,43 @@ func ClusterNameValidator(name interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", name)
 }
 
-func ValidateHTTPProxy(httpProxy string) interactive.Validator {
-	return func(val interface{}) error {
-		if httpProxy != "" {
-			url, err := url.ParseRequestURI(httpProxy)
-			if err != nil {
-				return fmt.Errorf("Invalid 'http-proxy' value '%s'", httpProxy)
-			}
-			if url.Scheme != "http" {
-				return fmt.Errorf("http-proxy' "+
-					"scheme is not 'http': '%s'", httpProxy)
-			}
+func ValidateHTTPProxy(val interface{}) error {
+	if httpProxy, ok := val.(string); ok {
+		if httpProxy == "" {
+			return nil
+		}
+		url, err := url.ParseRequestURI(httpProxy)
+		if err != nil {
+			return fmt.Errorf("Invalid http-proxy value '%s'", httpProxy)
+		}
+		if url.Scheme != "http" {
+			return errors.New("Expected http-proxy to have an http:// scheme")
 		}
 		return nil
 	}
+	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
-func ValidateHTTPSProxy(httpsProxy string) interactive.Validator {
-	return func(val interface{}) error {
-		if httpsProxy != "" {
-			_, err := url.ParseRequestURI(httpsProxy)
-			if err != nil {
-				return fmt.Errorf("Invalid 'https-proxy' value '%s'", httpsProxy)
-			}
+func ValidateAdditionalTrustBundle(val interface{}) error {
+	if additionalTrustBundleFile, ok := val.(string); ok {
+		if additionalTrustBundleFile == "" {
+			return nil
 		}
-		return nil
-	}
-}
-
-func ValidateAdditionalTrustBundle(additionalTrustBundle string) (err error) {
-	if additionalTrustBundle != "" {
+		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
+		if err != nil {
+			return err
+		}
+		additionalTrustBundle := string(cert)
+		if additionalTrustBundle == "" {
+			return errors.New("Trust bundle file is empty")
+		}
 		additionalTrustBundleBytes := []byte(additionalTrustBundle)
 		if !x509.NewCertPool().AppendCertsFromPEM(additionalTrustBundleBytes) {
-			return fmt.Errorf("Failed to parse additional_trust_bundle")
+			return errors.New("Failed to parse trust bundle")
 		}
+		return nil
 	}
-	return nil
+	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
 func IsValidUsername(username string) bool {
