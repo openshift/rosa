@@ -43,6 +43,7 @@ import (
 	"github.com/openshift/rosa/cmd/upgrade"
 	"github.com/openshift/rosa/cmd/verify"
 	"github.com/openshift/rosa/cmd/version"
+	"github.com/openshift/rosa/cmd/wait"
 	"github.com/openshift/rosa/cmd/whoami"
 	"github.com/openshift/rosa/pkg/arguments"
 )
@@ -81,6 +82,7 @@ func init() {
 	root.AddCommand(whoami.Cmd)
 	root.AddCommand(hibernate.Cmd)
 	root.AddCommand(resume.Cmd)
+	root.AddCommand(wait.Cmd)
 }
 
 func main() {
