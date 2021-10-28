@@ -18,6 +18,9 @@ package install
 
 import (
 	"fmt"
+	"os"
+	"time"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
@@ -25,8 +28,6 @@ import (
 	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/spf13/cobra"
-	"os"
-	"time"
 )
 
 var Cmd = &cobra.Command{
@@ -134,15 +135,17 @@ func run(cmd *cobra.Command, argv []string) {
 		clusterName := cluster.DisplayName()
 		fmt.Fprintf(os.Stdout, "Cluster %s state is %s\n", clusterName, clusterState)
 
-		switch cluster.State() {
+		switch clusterState {
 		case cmv1.ClusterStateReady,
 			cmv1.ClusterStateUninstalling,
 			cmv1.ClusterStateResuming,
 			cmv1.ClusterStatePoweringDown,
 			cmv1.ClusterStateHibernating,
-			cmv1.ClusterStateError,
 			cmv1.ClusterStateUnknown:
 			done = true
+		case cmv1.ClusterStateError:
+			reporter.Errorf("Unable to proceed in error state.")
+			os.Exit(1)
 		}
 		if n > maxInterval {
 			done = true
