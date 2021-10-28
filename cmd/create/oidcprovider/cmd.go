@@ -190,22 +190,33 @@ func run(cmd *cobra.Command, argv []string) {
 		err = createProvider(reporter, awsClient, cluster)
 		if err != nil {
 			reporter.Errorf("There was an error creating the OIDC provider: %s", err)
+			ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
+				ocm.ClusterID: clusterKey,
+				ocm.Response:  ocm.Failure,
+			})
 			os.Exit(1)
 		}
-		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto")
+		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
+			ocm.ClusterID: clusterKey,
+			ocm.Response:  ocm.Success,
+		})
 	case "manual":
-		ocmClient.LogEvent("ROSACreateOIDCProviderModeManual")
 
 		commands, err := buildCommands(reporter, cluster)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
+			ocmClient.LogEvent("ROSACreateOIDCProviderModeManual", map[string]string{
+				ocm.ClusterID: clusterKey,
+				ocm.Response:  ocm.Failure,
+			})
 		}
-
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to create the OIDC provider:\n")
 		}
-
+		ocmClient.LogEvent("ROSACreateOIDCProviderModeManual", map[string]string{
+			ocm.ClusterID: clusterKey,
+		})
 		fmt.Println(commands)
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", modes)

@@ -220,27 +220,38 @@ func run(cmd *cobra.Command, argv []string) {
 
 	switch mode {
 	case "auto":
-		ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto")
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID)
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
+			ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
+				ocm.ClusterID: clusterKey,
+				ocm.Response:  ocm.Failure,
+			})
 			os.Exit(1)
 		}
+		ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
+			ocm.ClusterID: clusterKey,
+			ocm.Response:  ocm.Success,
+		})
 	case "manual":
-		ocmClient.LogEvent("ROSACreateOperatorRolesModeManual")
-
 		commands, err := buildCommands(reporter, prefix, permissionsBoundary, cluster, creator.AccountID)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
+			ocmClient.LogEvent("ROSACreateOperatorRolesModeManual", map[string]string{
+				ocm.ClusterID: clusterKey,
+				ocm.Response:  ocm.Failure,
+			})
 		}
-
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to create the operator roles:\n")
 		}
-
+		ocmClient.LogEvent("ROSACreateOperatorRolesModeManual", map[string]string{
+			ocm.ClusterID: clusterKey,
+		})
 		fmt.Println(commands)
+
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
 		os.Exit(1)

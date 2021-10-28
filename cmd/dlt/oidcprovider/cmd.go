@@ -180,8 +180,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	switch mode {
 	case "auto":
-		ocmClient.LogEvent("ROSADeleteOIDCProviderModeAuto")
-
+		ocmClient.LogEvent("ROSADeleteOIDCProviderModeAuto", nil)
 		if !confirm.Prompt(true, "Delete the OIDC provider '%s'?", providerARN) {
 			os.Exit(1)
 		}
@@ -192,7 +191,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 	case "manual":
-		ocmClient.LogEvent("ROSADeleteOIDCProviderModeManual")
+		ocmClient.LogEvent("ROSADeleteOIDCProviderModeManual", nil)
 		commands := buildCommand(providerARN)
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to delete the OIDC provider:\n")

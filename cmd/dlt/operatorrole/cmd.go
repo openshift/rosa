@@ -210,7 +210,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	switch mode {
 	case "auto":
-		ocmClient.LogEvent("ROSADeleteOperatorroleModeAuto")
+		ocmClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
 		for _, role := range roles {
 			if !confirm.Prompt(true, "Delete the operator roles  '%s'?", role) {
 				continue
@@ -222,7 +222,7 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 		}
 	case "manual":
-		ocmClient.LogEvent("ROSADeleteOperatorroleModeManual")
+		ocmClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
 		policyMap, err := awsClient.GetPolicies(roles)
 		if err != nil {
 			reporter.Errorf("There was an error getting the policy: %v", err)

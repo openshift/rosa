@@ -31,6 +31,7 @@ type AddOnInstallationBuilder struct {
 	id                string
 	href              string
 	addon             *AddOnBuilder
+	addonVersion      *AddOnVersionBuilder
 	cluster           *ClusterBuilder
 	creationTimestamp time.Time
 	operatorVersion   string
@@ -38,7 +39,6 @@ type AddOnInstallationBuilder struct {
 	state             AddOnInstallationState
 	stateDescription  string
 	updatedTimestamp  time.Time
-	version           *AddOnVersionBuilder
 }
 
 // NewAddOnInstallation creates a new builder of 'add_on_installation' objects.
@@ -75,6 +75,19 @@ func (b *AddOnInstallationBuilder) Addon(value *AddOnBuilder) *AddOnInstallation
 		b.bitmap_ |= 8
 	} else {
 		b.bitmap_ &^= 8
+	}
+	return b
+}
+
+// AddonVersion sets the value of the 'addon_version' attribute to the given value.
+//
+// Representation of an add-on version.
+func (b *AddOnInstallationBuilder) AddonVersion(value *AddOnVersionBuilder) *AddOnInstallationBuilder {
+	b.addonVersion = value
+	if value != nil {
+		b.bitmap_ |= 16
+	} else {
+		b.bitmap_ &^= 16
 	}
 	return b
 }
@@ -121,9 +134,9 @@ func (b *AddOnInstallationBuilder) Addon(value *AddOnBuilder) *AddOnInstallation
 func (b *AddOnInstallationBuilder) Cluster(value *ClusterBuilder) *AddOnInstallationBuilder {
 	b.cluster = value
 	if value != nil {
-		b.bitmap_ |= 16
+		b.bitmap_ |= 32
 	} else {
-		b.bitmap_ &^= 16
+		b.bitmap_ &^= 32
 	}
 	return b
 }
@@ -133,7 +146,7 @@ func (b *AddOnInstallationBuilder) Cluster(value *ClusterBuilder) *AddOnInstalla
 //
 func (b *AddOnInstallationBuilder) CreationTimestamp(value time.Time) *AddOnInstallationBuilder {
 	b.creationTimestamp = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -142,7 +155,7 @@ func (b *AddOnInstallationBuilder) CreationTimestamp(value time.Time) *AddOnInst
 //
 func (b *AddOnInstallationBuilder) OperatorVersion(value string) *AddOnInstallationBuilder {
 	b.operatorVersion = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -151,7 +164,7 @@ func (b *AddOnInstallationBuilder) OperatorVersion(value string) *AddOnInstallat
 //
 func (b *AddOnInstallationBuilder) Parameters(value *AddOnInstallationParameterListBuilder) *AddOnInstallationBuilder {
 	b.parameters = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -160,7 +173,7 @@ func (b *AddOnInstallationBuilder) Parameters(value *AddOnInstallationParameterL
 // Representation of an add-on installation State field.
 func (b *AddOnInstallationBuilder) State(value AddOnInstallationState) *AddOnInstallationBuilder {
 	b.state = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -169,7 +182,7 @@ func (b *AddOnInstallationBuilder) State(value AddOnInstallationState) *AddOnIns
 //
 func (b *AddOnInstallationBuilder) StateDescription(value string) *AddOnInstallationBuilder {
 	b.stateDescription = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -178,20 +191,7 @@ func (b *AddOnInstallationBuilder) StateDescription(value string) *AddOnInstalla
 //
 func (b *AddOnInstallationBuilder) UpdatedTimestamp(value time.Time) *AddOnInstallationBuilder {
 	b.updatedTimestamp = value
-	b.bitmap_ |= 1024
-	return b
-}
-
-// Version sets the value of the 'version' attribute to the given value.
-//
-// Representation of an add-on version.
-func (b *AddOnInstallationBuilder) Version(value *AddOnVersionBuilder) *AddOnInstallationBuilder {
-	b.version = value
-	if value != nil {
-		b.bitmap_ |= 2048
-	} else {
-		b.bitmap_ &^= 2048
-	}
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -208,6 +208,11 @@ func (b *AddOnInstallationBuilder) Copy(object *AddOnInstallation) *AddOnInstall
 	} else {
 		b.addon = nil
 	}
+	if object.addonVersion != nil {
+		b.addonVersion = NewAddOnVersion().Copy(object.addonVersion)
+	} else {
+		b.addonVersion = nil
+	}
 	if object.cluster != nil {
 		b.cluster = NewCluster().Copy(object.cluster)
 	} else {
@@ -223,11 +228,6 @@ func (b *AddOnInstallationBuilder) Copy(object *AddOnInstallation) *AddOnInstall
 	b.state = object.state
 	b.stateDescription = object.stateDescription
 	b.updatedTimestamp = object.updatedTimestamp
-	if object.version != nil {
-		b.version = NewAddOnVersion().Copy(object.version)
-	} else {
-		b.version = nil
-	}
 	return b
 }
 
@@ -239,6 +239,12 @@ func (b *AddOnInstallationBuilder) Build() (object *AddOnInstallation, err error
 	object.bitmap_ = b.bitmap_
 	if b.addon != nil {
 		object.addon, err = b.addon.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.addonVersion != nil {
+		object.addonVersion, err = b.addonVersion.Build()
 		if err != nil {
 			return
 		}
@@ -260,11 +266,5 @@ func (b *AddOnInstallationBuilder) Build() (object *AddOnInstallation, err error
 	object.state = b.state
 	object.stateDescription = b.stateDescription
 	object.updatedTimestamp = b.updatedTimestamp
-	if b.version != nil {
-		object.version, err = b.version.Build()
-		if err != nil {
-			return
-		}
-	}
 	return
 }

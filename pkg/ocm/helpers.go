@@ -41,6 +41,11 @@ func init() {
 const (
 	ANY                 = "any"
 	HibernateCapability = "capability.organization.hibernate_cluster"
+	//Pendo Events
+	Success   = "Success"
+	Failure   = "Failure"
+	Response  = "Response"
+	ClusterID = "ClusterID"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
@@ -172,8 +177,8 @@ func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPN
 	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix
 }
 
-func (c *Client) LogEvent(key string) {
-	event, err := cmv1.NewEvent().Key(key).Build()
+func (c *Client) LogEvent(key string, body map[string]string) {
+	event, err := cmv1.NewEvent().Key(key).Body(body).Build()
 	if err == nil {
 		_, _ = c.ocm.ClustersMgmt().V1().
 			Events().
