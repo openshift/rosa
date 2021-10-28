@@ -50,8 +50,6 @@ import (
 //nolint
 var kmsArnRE = regexp.MustCompile(`^arn:aws:kms:[\w-]+:\d{12}:key\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
-var modes = []string{"auto", "manual"}
-
 var args struct {
 	// Watch logs during cluster installation
 	watch bool
@@ -103,9 +101,6 @@ var args struct {
 
 	// Force STS mode for interactive and validation
 	sts bool
-
-	// How to perform the create cluster sts auto or manual
-	mode string
 
 	// Account IAM Roles
 	roleARN             string
@@ -441,16 +436,6 @@ func init() {
 	flags.MarkHidden("properties")
 
 	flags.StringVar(
-		&args.mode,
-		"mode",
-		"",
-		"When creating STS clusters, operations that create resources in the AWS account have "+
-			"two modes:\n\tauto: Resources will be created using the current AWS account\n\tmanual: "+
-			"Resource files will be saved in the current directory and necessary commands will be output",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
-
-	flags.StringVar(
 		&args.operatorRolesPermissionsBoundary,
 		"permissions-boundary",
 		"",
@@ -458,12 +443,9 @@ func init() {
 			"roles in STS clusters.",
 	)
 
+	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -610,23 +592,23 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	mode := args.mode
+	mode, err := aws.GetMode()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	// warn if mode is used for non sts cluster
 	if !isSTS && mode != "" {
 		reporter.Warnf("--mode is only valid for STS clusters")
 	}
 
 	// validate mode passed is allowed value
+
 	if isSTS && mode != "" {
-		modeIsValid := false
-		for _, m := range modes {
-			if m == mode {
-				modeIsValid = true
-				break
-			}
-		}
-		if !modeIsValid {
-			reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, modes)
+		isValidMode := arguments.IsValidMode(aws.Modes, mode)
+		if !isValidMode {
+			reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, aws.Modes)
 			os.Exit(1)
 		}
 	}

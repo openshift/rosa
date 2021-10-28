@@ -25,7 +25,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -34,12 +33,6 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
-
-var modes []string = []string{"auto", "manual"}
-
-var args struct {
-	mode string
-}
 
 var Cmd = &cobra.Command{
 	Use:     "operator-roles",
@@ -54,31 +47,30 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVar(
-		&args.mode,
-		"mode",
-		modes[0],
-		"How to perform the operation. Valid options are:\n"+
-			"auto: Operator IAM roles will be upgraded automatically to the latest version\n"+
-			"manual: Command to upgrade the operator IAM roles will be output which can be used to upgrade manually",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
-
+	aws.AddModeFlag(Cmd)
 	ocm.AddClusterFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	if !arguments.IsValidMode(modes, args.mode) {
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+	// Allow the command to be called programmatically
+	skipInteractive := false
+	if len(argv) == 2 && !cmd.Flag("cluster").Changed {
+		ocm.SetClusterKey(argv[0])
+		aws.SetModeKey(argv[1])
+
+		if argv[1] != "" {
+			skipInteractive = true
+		}
+	}
+
+	mode, err := aws.GetMode()
+	if err != nil {
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -134,19 +126,21 @@ func run(cmd *cobra.Command, argv []string) {
 			clusterKey)
 	}
 	//Check if account roles are up-to-date
-	isAccountRoleUpgradeNeed, err := awsClient.IsUpgradedNeededForRole(prefix, creator.AccountID)
+	isAccountRoleUpgradeNeed, err := awsClient.IsUpgradedNeededForRole(
+		prefix, creator.AccountID, aws.DefaultPolicyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if isAccountRoleUpgradeNeed {
 		reporter.Infof("Account roles with prefix '%s' need to be upgraded before operator roles. "+
-			"Use rosa upgrade account-roles --prefix %s", prefix, prefix)
+			"Roles can be upgraded with the following command :"+
+			"\n\n\trosa upgrade account-roles --prefix %s\n", prefix, prefix)
 		os.Exit(1)
 	}
 
-	isUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRole(cluster, aws.DefaultPolicyVersion,
-		creator.AccountID)
+	isUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRole(cluster,
+		creator.AccountID, aws.DefaultPolicyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -161,13 +155,13 @@ func run(cmd *cobra.Command, argv []string) {
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		interactive.Enable()
 	}
-	mode := args.mode
-	if interactive.Enabled() {
+
+	if interactive.Enabled() && !skipInteractive {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Operator IAM role upgrade mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  mode,
-			Options:  modes,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
@@ -176,13 +170,13 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 	switch mode {
-	case "auto":
+	case aws.ModeAuto:
 		err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, cluster, prefix)
 		if err != nil {
 			reporter.Errorf("Error upgrading the role polices: %s", err)
 			os.Exit(1)
 		}
-	case "manual":
+	case aws.ModeManual:
 		err = aws.GenerateOperatorPolicyFiles(reporter)
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
@@ -199,7 +193,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }

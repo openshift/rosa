@@ -37,12 +37,9 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var modes []string = []string{"auto", "manual"}
-
 var args struct {
 	prefix              string
 	permissionsBoundary string
-	mode                string
 }
 
 var Cmd = &cobra.Command{
@@ -75,32 +72,26 @@ func init() {
 		"The ARN of the policy that is used to set the permissions boundary for the account roles.",
 	)
 
-	flags.StringVar(
-		&args.mode,
-		"mode",
-		modes[0],
-		"How to perform the operation. Valid options are:\n"+
-			"auto: Roles and policies will be created using the current AWS account\n"+
-			"manual: Policy documents will be saved in the current directory",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
+	aws.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
+	mode, err := aws.GetMode()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	// If necessary, call `login` as part of `init`. We do this before
 	// other validations to get the prompt out of the way before performing
 	// longer checks.
-	err := login.Call(cmd, argv, reporter)
+	err = login.Call(cmd, argv, reporter)
 	if err != nil {
 		reporter.Errorf("Failed to login to OCM: %v", err)
 		os.Exit(1)
@@ -228,13 +219,12 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	mode := args.mode
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  mode,
-			Options:  modes,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
@@ -244,7 +234,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	switch mode {
-	case "auto":
+	case aws.ModeAuto:
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, creator.AccountID, env)
 		if err != nil {
@@ -259,7 +249,7 @@ func run(cmd *cobra.Command, argv []string) {
 		ocmClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 		})
-	case "manual":
+	case aws.ModeManual:
 		err = aws.GeneratePolicyFiles(reporter, env)
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
@@ -275,7 +265,7 @@ func run(cmd *cobra.Command, argv []string) {
 		commands := buildCommands(prefix, permissionsBoundary, creator.AccountID)
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }
