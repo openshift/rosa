@@ -174,7 +174,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	prefix, err := getPrefixFromAccountRole(cluster)
+	prefix, err := aws.GetPrefixFromAccountRole(cluster)
 	if err != nil {
 		reporter.Errorf("Failed to find prefix from %s account role", aws.InstallerAccountRole)
 		os.Exit(1)
@@ -463,15 +463,4 @@ func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]strin
 	}
 
 	return missingRoles, nil
-}
-
-func getPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
-	role := aws.AccountRoles[aws.InstallerAccountRole]
-	parsedARN, err := arn.Parse(cluster.AWS().STS().RoleARN())
-	if err != nil {
-		return "", err
-	}
-	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
-	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
-	return rolePrefix, nil
 }

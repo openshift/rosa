@@ -15,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -257,5 +259,136 @@ func prettyPrint(reqBodyBytes *bytes.Buffer, b *bytes.Buffer) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func GetRoleName(prefix string, role string) string {
+	name := fmt.Sprintf("%s-%s-Role", prefix, role)
+	if len(name) > 64 {
+		name = name[0:64]
+	}
+	return name
+}
+
+func GetPolicyName(prefix string, namespace string, name string) string {
+	policy := fmt.Sprintf("%s-%s-%s", prefix, namespace, name)
+	if len(policy) > 64 {
+		policy = policy[0:64]
+	}
+	return policy
+}
+
+func GetOperatorPolicyARN(accountID string, prefix string, namespace string, name string) string {
+	return GetPolicyARN(accountID, GetPolicyName(prefix, namespace, name))
+}
+
+func GetPolicyARN(accountID string, name string) string {
+	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, name)
+}
+
+func GetOperatorRoleName(cluster *cmv1.Cluster, operator Operator) string {
+	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
+		if role.Namespace() == operator.Namespace && role.Name() == operator.Name {
+			return strings.SplitN(role.RoleARN(), "/", 2)[1]
+		}
+	}
+	return ""
+}
+
+func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
+	role := AccountRoles[InstallerAccountRole]
+	parsedARN, err := arn.Parse(cluster.AWS().STS().RoleARN())
+	if err != nil {
+		return "", err
+	}
+	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
+	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	return rolePrefix, nil
+}
+
+func GeneratePolicyFiles(reporter *rprtr.Object, env string) error {
+	for file := range AccountRoles {
+		filename := fmt.Sprintf("sts_%s_trust_policy.json", file)
+		path := fmt.Sprintf("templates/policies/%s", filename)
+
+		policy, err := ReadPolicyDocument(path, map[string]string{
+			"aws_account_id": JumpAccounts[env],
+		})
+		if err != nil {
+			return err
+		}
+
+		reporter.Debugf("Saving '%s' to the current directory", filename)
+		err = saveDocument(policy, filename)
+		if err != nil {
+			return err
+		}
+
+		filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
+		path = fmt.Sprintf("templates/policies/%s", filename)
+
+		policy, err = ReadPolicyDocument(path)
+		if err != nil {
+			return err
+		}
+
+		reporter.Debugf("Saving '%s' to the current directory", filename)
+		err = saveDocument(policy, filename)
+		if err != nil {
+			return err
+		}
+	}
+
+	for credrequest := range CredentialRequests {
+		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
+		path := fmt.Sprintf("templates/policies/%s", filename)
+
+		policy, err := ReadPolicyDocument(path)
+		if err != nil {
+			return err
+		}
+
+		reporter.Debugf("Saving '%s' to the current directory", filename)
+		err = saveDocument(policy, filename)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func saveDocument(doc []byte, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.Write(doc)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GenerateOperatorPolicyFiles(reporter *rprtr.Object) error {
+	for credrequest := range CredentialRequests {
+		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
+		path := fmt.Sprintf("templates/policies/%s", filename)
+
+		policy, err := ReadPolicyDocument(path)
+		if err != nil {
+			return err
+		}
+
+		reporter.Debugf("Saving '%s' to the current directory", filename)
+		err = saveDocument(policy, filename)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
