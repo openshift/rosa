@@ -33,8 +33,8 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "permissions",
 	Aliases: []string{"scp"},
-	Short:   "Verify AWS permissions are ok for cluster install",
-	Long:    "Verify AWS permissions needed to create a cluster are configured as expected",
+	Short:   "Verify AWS permissions are ok for non-STS cluster install",
+	Long:    "Verify AWS permissions needed to create a non-STS cluster are configured as expected",
 	Example: `  # Verify AWS permissions are configured correctly
   rosa verify permissions
 
@@ -85,6 +85,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	reporter.Infof("Verifying permissions for non-STS clusters")
 	reporter.Infof("Validating SCP policies...")
 	ok, err := client.ValidateSCP(nil)
 	if err != nil {
