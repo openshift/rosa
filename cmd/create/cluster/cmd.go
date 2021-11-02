@@ -292,7 +292,7 @@ func init() {
 	flags.BoolVar(&args.enableCustomerManagedKey,
 		"enable-customer-managed-key",
 		false,
-		"Enable to specific your KMS Key to encrypt EBS instance volumes. By default account’s default "+
+		"Enable to specify your KMS Key to encrypt EBS instance volumes. By default account’s default "+
 			"KMS key for that particular region is used.")
 
 	flags.StringVar(&args.kmsKeyARN,
