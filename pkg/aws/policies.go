@@ -238,6 +238,25 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 	return roleArn, nil
 }
 
+func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
+	_, err = c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(name),
+	})
+	if err == nil {
+		// If we found an existing role with this name we want to error
+		return fmt.Errorf("A role named '%s' already exists. "+
+			"Please delete the existing role, or provide a different prefix", name)
+	}
+
+	if aerr, ok := err.(awserr.Error); ok {
+		switch aerr.Code() {
+		case iam.ErrCodeNoSuchEntityException:
+			// This is what we want
+			return nil
+		}
+	}
+	return fmt.Errorf("Error validating role name '%s': %v", name, err)
+}
 func (c *awsClient) updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bool, error) {
 	oldPolicy, err := url.QueryUnescape(aws.StringValue(role.AssumeRolePolicyDocument))
 	if err != nil {
