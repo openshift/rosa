@@ -1,0 +1,293 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters" : {
+      "AWSAccountID": {
+        "Description": "AWS Account ID",
+        "Type": "Number"
+      },
+      "Prefix": {
+        "Description": "Role and Policy name prefix",
+        "Type": "String",
+        "AllowedPattern": "^[a-zA-Z0-9-_]*$",
+        "MaxLength": 32
+      }
+    },
+    "Resources": {
+        "RHManagedOpenShiftInstallerRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Installer-Role" ]] },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                               "AWS": { "Fn::Join" : [ "", [ "arn:aws:iam::", { "Ref": "AWSAccountID" }, ":role/RH-Managed-OpenShift-Installer" ]]}
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Tags": [
+                    {"Key": "red-hat-managed", "Value": "true"},
+                    {"Key": "rosa_openshift_version", "Value": { "Ref": "OpenShiftVersion" } },
+                    {"Key": "rosa_role_prefix", "Value": { "Ref": "Prefix" } },
+                    {"Key": "rosa_role_type", "Value": "installer"}
+                ]
+            }
+        },
+        "RHManagedOpenShiftSupportRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Support-Role" ]] },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": { "Fn::Join" : [ "", [ "arn:aws:iam::", { "Ref": "AWSAccountID" }, ":role/RH-Technical-Support-Access" ]]}
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Tags": [
+                    {"Key": "red-hat-managed", "Value": "true"},
+                    {"Key": "rosa_openshift_version", "Value": { "Ref": "OpenShiftVersion" } },
+                    {"Key": "rosa_role_prefix", "Value": { "Ref": "Prefix" } },
+                    {"Key": "rosa_role_type", "Value": "support"}
+                ]
+            }
+        },
+        "RHManagedOpenShiftControlPlaneRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-ControlPlane-Role" ]] },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                       "ec2.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Tags": [
+                    {"Key": "red-hat-managed", "Value": "true"},
+                    {"Key": "rosa_openshift_version", "Value": { "Ref": "OpenShiftVersion" } },
+                    {"Key": "rosa_role_prefix", "Value": { "Ref": "Prefix" } },
+                    {"Key": "rosa_role_type", "Value": "instance_controlplane"}
+                ]
+            }
+        },
+        "RHManagedOpenShiftWorkerRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Worker-Role" ]] },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                       "ec2.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Tags": [
+                    {"Key": "red-hat-managed", "Value": "true"},
+                    {"Key": "rosa_openshift_version", "Value": { "Ref": "OpenShiftVersion" } },
+                    {"Key": "rosa_role_prefix", "Value": { "Ref": "Prefix" } },
+                    {"Key": "rosa_role_type", "Value": "instance_worker"}
+                ]
+            }
+        },
+        "RHManagedOpenShiftInstallerPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Installer-Role-Policy" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "RHManagedOpenShiftInstallerRole"
+                    }
+                ]
+            }
+        },
+        "RHManagedOpenShiftSupportPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Support-Role-Policy" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "RHManagedOpenShiftSupportRole"
+                    }
+                ]
+            }
+        },
+        "RHManagedOpenShiftControlPlanePolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-ControlPlane-Role-Policy" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "RHManagedOpenShiftControlPlaneRole"
+                    }
+                ]
+            }
+        },
+        "RHManagedOpenShiftWorkerPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Worker-Role-Policy" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "RHManagedOpenShiftWorkerRole"
+                    }
+                ]
+            }
+        },
+        "RHManagedOpenShiftMacineAPIOperatorPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-machine-api-aws-cloud-credentials" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "RHManagedOpenShiftCloudCredentialOperatorPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-cloud-credential-operator-cloud-crede" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "RHManagedOpenShiftImageRegistryOperatorPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-image-registry-installer-cloud-creden" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "RHManagedOpenShiftIngressOperatorPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-ingress-operator-cloud-credentials" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "RHManagedOpenShiftClusterCSIDriversEBSPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-cluster-csi-drivers-ebs-cloud-credent" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}
