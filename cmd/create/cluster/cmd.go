@@ -965,6 +965,15 @@ func run(cmd *cobra.Command, _ []string) {
 				})
 			}
 		}
+		// Validate the role names are available on AWS
+		for _, role := range operatorIAMRoleList {
+			name := strings.SplitN(role.RoleARN, "/", 2)[1]
+			err := awsClient.ValidateRoleNameAvailable(name)
+			if err != nil {
+				reporter.Errorf("Error validating role: %v", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	// Custom tags for AWS resources
