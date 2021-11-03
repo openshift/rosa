@@ -184,7 +184,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	switch mode {
 	case "auto":
-		ocmClient.LogEvent("ROSADeleteAccountRoleModeAuto")
+		ocmClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
 		for _, role := range finalRoleList {
 			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
 				continue
@@ -196,7 +196,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	case "manual":
-		ocmClient.LogEvent("ROSADeleteAccountRoleModeManual")
+		ocmClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
 		policyMap, err := awsClient.GetAccountRolePolicies(finalRoleList)
 		if err != nil {
 			reporter.Errorf("There was an error getting the policy: %v", err)

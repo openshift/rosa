@@ -251,6 +251,14 @@ func (t *roundTripper) RoundTrip(request *http.Request) (response *http.Response
 					request.Method, request.URL, err,
 				)
 				continue
+			case strings.Contains(message, "REFUSED_STREAM"):
+				t.logger.Warn(
+					ctx,
+					"Request for method %s and URL '%s' failed with refused stream, "+
+						"will try again: %v",
+					request.Method, request.URL, err,
+				)
+				continue
 			default:
 				// For any other error we just report it to the caller:
 				err = fmt.Errorf("can't send request: %w", err)

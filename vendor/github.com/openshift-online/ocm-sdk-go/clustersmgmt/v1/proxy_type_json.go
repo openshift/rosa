@@ -58,15 +58,6 @@ func writeProxy(object *Proxy, stream *jsoniter.Stream) {
 		stream.WriteString(object.httpsProxy)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("no_proxy")
-		stream.WriteString(object.noProxy)
-		count++
-	}
 	stream.WriteObjectEnd()
 }
 
@@ -102,10 +93,6 @@ func readProxy(iterator *jsoniter.Iterator) *Proxy {
 			value := iterator.ReadString()
 			object.httpsProxy = value
 			object.bitmap_ |= 2
-		case "no_proxy":
-			value := iterator.ReadString()
-			object.noProxy = value
-			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

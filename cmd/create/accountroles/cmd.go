@@ -141,12 +141,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	ok, err := awsClient.ValidateCredentials()
 	if err != nil {
-		ocmClient.LogEvent("ROSAInitCredentialsFailed")
+		ocmClient.LogEvent("ROSAInitCredentialsFailed", nil)
 		reporter.Errorf("Error validating AWS credentials: %v", err)
 		os.Exit(1)
 	}
 	if !ok {
-		ocmClient.LogEvent("ROSAInitCredentialsInvalid")
+		ocmClient.LogEvent("ROSAInitCredentialsInvalid", nil)
 		reporter.Errorf("AWS credentials are invalid")
 		os.Exit(1)
 	}
@@ -245,28 +245,33 @@ func run(cmd *cobra.Command, argv []string) {
 
 	switch mode {
 	case "auto":
-		ocmClient.LogEvent("ROSACreateAccountRolesModeAuto")
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, creator.AccountID, env)
 		if err != nil {
 			reporter.Errorf("There was an error creating the account roles: %s", err)
+			ocmClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
+				ocm.Response: ocm.Failure,
+			})
 			os.Exit(1)
 		}
 		reporter.Infof("To create a cluster with these roles, run the following command:\n" +
 			"rosa create cluster --sts")
+		ocmClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
+			ocm.Response: ocm.Success,
+		})
 	case "manual":
-		ocmClient.LogEvent("ROSACreateAccountRolesModeManual")
 		err = generatePolicyFiles(reporter, env)
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
+			ocmClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
+				ocm.Response: ocm.Failure,
+			})
 			os.Exit(1)
 		}
-
 		if reporter.IsTerminal() {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
-
 		commands := buildCommands(prefix, permissionsBoundary, creator.AccountID)
 		fmt.Println(commands)
 	default:

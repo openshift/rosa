@@ -3,6 +3,18 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.214 Oct 27 2021
+- Update to model 0.0.150:
+** Fix addon installation version (addon_version vs version)
+** Remove no_proxy attribute from SDK
+** Add body to the external tracking event
+
+== 0.1.213 Oct 26 2021
+
+- Update to model 0.0.42
+** Accept iterator as parameter in `helpers.NewIterator`
+- Retry when `REFUSED_STREAM`
+
 == 0.1.212 Oct 12 2021
 
 - Fix typo in HTTP internal server error message

@@ -79,7 +79,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		// FIXME Hack to capture errors due to using STS accounts
 		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
-			ocmClient.LogEvent("ROSAInitCredentialsSTS")
+			ocmClient.LogEvent("ROSAInitCredentialsSTS", nil)
 		}
 		reporter.Errorf("Error creating AWS client: %v", err)
 		os.Exit(1)
@@ -89,7 +89,7 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter.Infof("Validating SCP policies...")
 	ok, err := client.ValidateSCP(nil)
 	if err != nil {
-		ocmClient.LogEvent("ROSAVerifyPermissionsSCPFailed")
+		ocmClient.LogEvent("ROSAVerifyPermissionsSCPFailed", nil)
 		reporter.Errorf("Unable to validate SCP policies. Make sure that an organizational " +
 			"SCP is not preventing this account from performing the required checks")
 		if strings.Contains(err.Error(), "Throttling: Rate exceeded") {
@@ -100,7 +100,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if !ok {
-		ocmClient.LogEvent("ROSAVerifyPermissionsSCPInvalid")
+		ocmClient.LogEvent("ROSAVerifyPermissionsSCPInvalid", nil)
 		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
 	}
 	reporter.Infof("AWS SCP policies ok")

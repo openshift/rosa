@@ -22,6 +22,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 import (
 	"io"
 	"net/http"
+	"sort"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -40,7 +41,36 @@ func writeEvent(object *Event, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&1 != 0 && object.body != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("body")
+		if object.body != nil {
+			stream.WriteObjectStart()
+			keys := make([]string, len(object.body))
+			i := 0
+			for key := range object.body {
+				keys[i] = key
+				i++
+			}
+			sort.Strings(keys)
+			for i, key := range keys {
+				if i > 0 {
+					stream.WriteMore()
+				}
+				item := object.body[key]
+				stream.WriteObjectField(key)
+				stream.WriteString(item)
+			}
+			stream.WriteObjectEnd()
+		} else {
+			stream.WriteNil()
+		}
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -76,10 +106,22 @@ func readEvent(iterator *jsoniter.Iterator) *Event {
 			break
 		}
 		switch field {
+		case "body":
+			value := map[string]string{}
+			for {
+				key := iterator.ReadObject()
+				if key == "" {
+					break
+				}
+				item := iterator.ReadString()
+				value[key] = item
+			}
+			object.body = value
+			object.bitmap_ |= 1
 		case "key":
 			value := iterator.ReadString()
 			object.key = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()
 		}

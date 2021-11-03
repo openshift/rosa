@@ -77,7 +77,7 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 	if err != nil {
 		// FIXME Hack to capture errors due to using STS accounts
 		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
-			ocmClient.LogEvent("ROSAInitCredentialsSTS")
+			ocmClient.LogEvent("ROSAInitCredentialsSTS", nil)
 		}
 		reporter.Errorf("Error creating AWS client: %v", err)
 		return err
@@ -88,7 +88,7 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 	}
 	_, err = client.ValidateQuota()
 	if err != nil {
-		ocmClient.LogEvent("ROSAVerifyQuotaInsufficient")
+		ocmClient.LogEvent("ROSAVerifyQuotaInsufficient", nil)
 		reporter.Errorf("Insufficient AWS quotas")
 		reporter.Errorf("%v", err)
 		return err
