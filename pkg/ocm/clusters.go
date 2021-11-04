@@ -92,7 +92,7 @@ type Spec struct {
 
 	NodeDrainGracePeriodInMinutes float64
 
-	ProxyEnabled              bool
+	EnableProxy               bool
 	HTTPProxy                 string
 	HTTPSProxy                string
 	AdditionalTrustBundleFile string

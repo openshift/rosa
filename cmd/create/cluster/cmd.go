@@ -262,12 +262,6 @@ func init() {
 			"This option configures etcd encryption on top of existing storage encryption.",
 	)
 
-	flags.BoolVar(
-		&args.enableProxy,
-		"enable-proxy",
-		false,
-		"whether cluster-wide proxy is enabled or not.")
-
 	flags.StringVar(
 		&args.httpProxy,
 		"http-proxy",
@@ -1139,6 +1133,17 @@ func run(cmd *cobra.Command, _ []string) {
 		useExistingVPC = true
 	}
 
+	// cluster-wide proxy values set here as we need to know whather to skip the "Install
+	// into an existing VPC" question
+	enableProxy := false
+	httpProxy := args.httpProxy
+	httpsProxy := args.httpsProxy
+	additionalTrustBundleFile := args.additionalTrustBundleFile
+	if httpProxy != "" || httpsProxy != "" || additionalTrustBundleFile != "" {
+		useExistingVPC = true
+		enableProxy = true
+	}
+
 	// Subnet IDs
 	subnetIDs := args.subnetIDs
 	subnetsProvided := len(subnetIDs) > 0
@@ -1149,6 +1154,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if privateLink {
 			existingVPCHelp += "For PrivateLink, only a private subnet per availability zone is needed."
 		}
+
 		useExistingVPC, err = interactive.GetBool(interactive.Input{
 			Question: "Install into an existing VPC",
 			Help:     existingVPCHelp,
@@ -1511,18 +1517,12 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Cluster-wide proxy configuration
-	enableProxy := args.enableProxy
-	httpProxy := args.httpProxy
-	httpsProxy := args.httpsProxy
-	additionalTrustBundleFile := args.additionalTrustBundleFile
-	if httpProxy != "" || httpsProxy != "" || additionalTrustBundleFile != "" {
-		enableProxy = true
-	}
-	if useExistingVPC && interactive.Enabled() {
+	if useExistingVPC && !enableProxy && interactive.Enabled() {
 		enableProxy, err = interactive.GetBool(interactive.Input{
 			Question: "Use cluster-wide proxy",
-			Help:     cmd.Flags().Lookup("enable-proxy").Usage,
-			Default:  enableProxy,
+			Help: "To install cluster-wide proxy, you need to set one of the following attributes: 'http-proxy', " +
+				"'https-proxy', additional-trust-bundle",
+			Default: enableProxy,
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
@@ -1589,6 +1589,7 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+
 	// Get certificate contents
 	additionalTrustBundle := ""
 	if additionalTrustBundleFile != "" {
@@ -1600,6 +1601,11 @@ func run(cmd *cobra.Command, _ []string) {
 		additionalTrustBundle = string(cert)
 	}
 
+	if enableProxy && httpProxy == "" && httpsProxy == "" && additionalTrustBundleFile == "" {
+		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy, additional-trust-bundle")
+		os.Exit(1)
+	}
+
 	clusterConfig := ocm.Spec{
 		Name:                      clusterName,
 		Region:                    region,
@@ -1608,7 +1614,7 @@ func run(cmd *cobra.Command, _ []string) {
 		ChannelGroup:              channelGroup,
 		Flavour:                   args.flavour,
 		EtcdEncryption:            args.etcdEncryption,
-		ProxyEnabled:              enableProxy,
+		EnableProxy:               enableProxy,
 		HTTPProxy:                 httpProxy,
 		HTTPSProxy:                httpsProxy,
 		AdditionalTrustBundle:     additionalTrustBundle,
@@ -1988,7 +1994,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 		command += " --etcd-encryption"
 	}
 
-	if spec.ProxyEnabled {
+	if spec.EnableProxy {
 		if spec.HTTPProxy != "" {
 			command += fmt.Sprintf(" --http-proxy %s", spec.HTTPProxy)
 		}
