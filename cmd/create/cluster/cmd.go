@@ -1615,10 +1615,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Flavour:                   args.flavour,
 		EtcdEncryption:            args.etcdEncryption,
 		EnableProxy:               enableProxy,
-		HTTPProxy:                 httpProxy,
-		HTTPSProxy:                httpsProxy,
 		AdditionalTrustBundle:     additionalTrustBundle,
-		AdditionalTrustBundleFile: additionalTrustBundleFile,
 		Expiration:                expiration,
 		ComputeMachineType:        computeMachineType,
 		ComputeNodes:              computeNodes,
@@ -1646,6 +1643,17 @@ func run(cmd *cobra.Command, _ []string) {
 		Tags:                      tagsList,
 		KMSKeyArn:                 kmsKeyARN,
 		DisableWorkloadMonitoring: disableWorkloadMonitoring,
+	}
+
+	if httpProxy != "" {
+		clusterConfig.HTTPProxy = &httpProxy
+	}
+	if httpsProxy != "" {
+		clusterConfig.HTTPSProxy = &httpsProxy
+	}
+	if additionalTrustBundleFile != "" {
+		clusterConfig.AdditionalTrustBundleFile = &additionalTrustBundleFile
+		clusterConfig.AdditionalTrustBundle = additionalTrustBundle
 	}
 
 	props := args.properties
@@ -1995,15 +2003,15 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	}
 
 	if spec.EnableProxy {
-		if spec.HTTPProxy != "" {
-			command += fmt.Sprintf(" --http-proxy %s", spec.HTTPProxy)
+		if spec.HTTPProxy != nil && *spec.HTTPProxy != "" {
+			command += fmt.Sprintf(" --http-proxy %s", *spec.HTTPProxy)
 		}
-		if spec.HTTPSProxy != "" {
-			command += fmt.Sprintf(" --https-proxy %s", spec.HTTPSProxy)
+		if spec.HTTPSProxy != nil && *spec.HTTPSProxy != "" {
+			command += fmt.Sprintf(" --https-proxy %s", *spec.HTTPSProxy)
 		}
 	}
-	if spec.AdditionalTrustBundle != "" {
-		command += fmt.Sprintf(" --additional-trust-bundle-file %s", spec.AdditionalTrustBundleFile)
+	if spec.AdditionalTrustBundleFile != nil && *spec.AdditionalTrustBundleFile != "" {
+		command += fmt.Sprintf(" --additional-trust-bundle-file %s", *spec.AdditionalTrustBundleFile)
 	}
 	if spec.KMSKeyArn != "" {
 		command += fmt.Sprintf(" --kms-key-arn %s", spec.KMSKeyArn)

@@ -93,9 +93,9 @@ type Spec struct {
 	NodeDrainGracePeriodInMinutes float64
 
 	EnableProxy               bool
-	HTTPProxy                 string
-	HTTPSProxy                string
-	AdditionalTrustBundleFile string
+	HTTPProxy                 *string
+	HTTPSProxy                *string
+	AdditionalTrustBundleFile *string
 	AdditionalTrustBundle     string
 }
 
@@ -677,13 +677,13 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		)
 	}
 
-	if config.HTTPProxy != "" || config.HTTPSProxy != "" {
+	if config.HTTPProxy != nil || config.HTTPSProxy != nil {
 		proxyBuilder := cmv1.NewProxy()
-		if config.HTTPProxy != "" {
-			proxyBuilder.HTTPProxy(config.HTTPProxy)
+		if config.HTTPProxy != nil {
+			proxyBuilder.HTTPProxy(*config.HTTPProxy)
 		}
-		if config.HTTPSProxy != "" {
-			proxyBuilder.HTTPSProxy(config.HTTPSProxy)
+		if config.HTTPSProxy != nil {
+			proxyBuilder.HTTPSProxy(*config.HTTPSProxy)
 		}
 		clusterBuilder = clusterBuilder.Proxy(proxyBuilder)
 	}
