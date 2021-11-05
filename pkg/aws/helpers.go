@@ -297,13 +297,21 @@ func GetOperatorRoleName(cluster *cmv1.Cluster, operator Operator) string {
 
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
 	role := AccountRoles[InstallerAccountRole]
+	roleName, err := GetAccountRoleName(cluster)
+	if err != nil {
+		return "", err
+	}
+	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	return rolePrefix, nil
+}
+
+func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	parsedARN, err := arn.Parse(cluster.AWS().STS().RoleARN())
 	if err != nil {
 		return "", err
 	}
 	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
-	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
-	return rolePrefix, nil
+	return roleName, nil
 }
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string) error {

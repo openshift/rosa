@@ -109,6 +109,8 @@ type Client interface {
 	IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, accountID string, version string) (bool, error)
 	UpdateTag(roleName string) error
 	IsPolicyCompatible(policyArn string, version string) (bool, error)
+	GetAccountRoleVersion(roleName string) (string, error)
+	IsPolicyExists(policyARN string) (*iam.GetPolicyOutput, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
