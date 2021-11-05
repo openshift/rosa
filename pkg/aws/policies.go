@@ -468,6 +468,38 @@ func (c *awsClient) HasCompatibleVersionTags(iamTags []*iam.Tag, version string)
 	return false, nil
 }
 
+func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []*iam.Tag, version string) (bool, error) {
+	if len(iamTags) == 0 {
+		return false, nil
+	}
+	for _, tag := range iamTags {
+		if aws.StringValue(tag.Key) == tags.OpenShiftVersion {
+			if version == aws.StringValue(tag.Value) {
+				return true, nil
+			}
+
+			upgradeVersion, err := semver.NewVersion(version)
+			if err != nil {
+				return false, err
+			}
+
+			currentVersion, err := semver.NewVersion(aws.StringValue(tag.Value))
+			if err != nil {
+				return false, err
+			}
+
+			upgradeVersionSegments := upgradeVersion.Segments64()
+			c, err := semver.NewConstraint(fmt.Sprintf(">= %d.%d",
+				upgradeVersionSegments[0], upgradeVersionSegments[1]))
+			if err != nil {
+				return false, err
+			}
+			return c.Check(currentVersion), nil
+		}
+	}
+	return false, nil
+}
+
 func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
 	_, err := c.iamClient.AttachRolePolicy(&iam.AttachRolePolicyInput{
 		RoleName:  aws.String(roleName),
@@ -1206,7 +1238,7 @@ func (c *awsClient) GetOpenIDConnectProvider(clusterID string) (string, error) {
 	return "", nil
 }
 
-func (c *awsClient) IsUpgradedNeededForRole(prefix string, accountID string) (bool, error) {
+func (c *awsClient) IsUpgradedNeededForRole(prefix string, accountID string, version string) (bool, error) {
 	for _, accountRole := range AccountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
 		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
@@ -1222,7 +1254,7 @@ func (c *awsClient) IsUpgradedNeededForRole(prefix string, accountID string) (bo
 			return false, err
 		}
 		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(aws.StringValue(role.Role.RoleName),
-			DefaultPolicyVersion, accountID)
+			version, accountID)
 
 		if err != nil {
 			return false, err
@@ -1256,7 +1288,8 @@ func (c *awsClient) UpdateTag(roleName string) error {
 	return nil
 }
 
-func (c *awsClient) IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, version, accountID string) (bool, error) {
+func (c *awsClient) IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, accountID string, version string) (
+	bool, error) {
 	for _, operator := range cluster.AWS().STS().OperatorIAMRoles() {
 		roleName := strings.SplitN(operator.RoleARN(), "/", 2)[1]
 		_, err := c.iamClient.GetRole(&iam.GetRoleInput{
@@ -1272,7 +1305,7 @@ func (c *awsClient) IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, versi
 			}
 			return false, err
 		}
-		isCompatible, err := c.ValidateClusterOperatorRolesVersion(cluster, DefaultPolicyVersion, accountID)
+		isCompatible, err := c.validateClusterOperatorRolesVersion(cluster, version, accountID)
 		if err != nil {
 			return false, err
 		}
@@ -1283,15 +1316,16 @@ func (c *awsClient) IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, versi
 	return true, nil
 }
 
-/**
-TODO: this is done in PR 509. Need to resolve conflict when merging other PR
-*/
-
-// ValidateClusterOperatorRolesVersion ensures all operator roles for a cluster is compatible with a specific
+// validateClusterOperatorRolesVersion ensures all operator roles for a cluster is compatible with a specific
 // openshift version
-func (c *awsClient) ValidateClusterOperatorRolesVersion(cluster *cmv1.Cluster, version string, accountID string) (
+func (c *awsClient) validateClusterOperatorRolesVersion(cluster *cmv1.Cluster, version string, accountID string) (
 	bool, error) {
-	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
+	operatorRoles, hasOperatorRoles := cluster.AWS().STS().GetOperatorIAMRoles()
+	if !hasOperatorRoles {
+		return false, errors.Errorf("Can not validate cluster roles, operator roles for cluster '%s' does not exist",
+			cluster.Name())
+	}
+	for _, role := range operatorRoles {
 		isCompatible, err := c.validateOperatorRoleUpgradeVersionCompatibility(role, cluster, version, accountID)
 		if err != nil {
 			return false, errors.Errorf("Error checking role '%s' compatibility : %v", role.Name(), err)
@@ -1377,33 +1411,4 @@ func (c *awsClient) isRolePoliciesCompatibleForUpgrade(policyARN string, version
 		return false, err
 	}
 	return c.hasCompatibleMajorMinorVersionTags(policyTagOutput.Tags, version)
-}
-
-func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []*iam.Tag, version string) (bool, error) {
-	if len(iamTags) == 0 {
-		return false, nil
-	}
-	for _, tag := range iamTags {
-		if aws.StringValue(tag.Key) == tags.OpenShiftVersion {
-			if version == aws.StringValue(tag.Value) {
-				return true, nil
-			}
-			upgradeVersion, err := semver.NewVersion(version)
-			if err != nil {
-				return false, err
-			}
-			currentVersion, err := semver.NewVersion(aws.StringValue(tag.Value))
-			if err != nil {
-				return false, err
-			}
-			upgradeVersionSegments := upgradeVersion.Segments64()
-			c, err := semver.NewConstraint(fmt.Sprintf(">= %d.%d",
-				upgradeVersionSegments[0], upgradeVersionSegments[1]))
-			if err != nil {
-				return false, err
-			}
-			return c.Check(currentVersion), nil
-		}
-	}
-	return false, nil
 }

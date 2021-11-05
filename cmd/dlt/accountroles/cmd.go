@@ -32,10 +32,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var modes []string = []string{"auto", "manual"}
-
 var args struct {
-	mode   string
 	prefix string
 }
 
@@ -52,16 +49,6 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVar(
-		&args.mode,
-		"mode",
-		modes[0],
-		"How to perform the operation. Valid options are:\n"+
-			"auto: Account roles will be deleted automatically using the current AWS account\n"+
-			"manual: Command to delete the account roles will be output which can be used to delete manually",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
-
 	flags.StringVarP(
 		&args.prefix,
 		"prefix",
@@ -70,11 +57,9 @@ func init() {
 		"Prefix of the account roles to be deleted.",
 	)
 	Cmd.MarkFlagRequired("prefix")
-	confirm.AddFlag(flags)
-}
 
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
+	aws.AddModeFlag(Cmd)
+	confirm.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -84,6 +69,12 @@ func run(cmd *cobra.Command, _ []string) {
 	// Determine if interactive mode is needed
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		interactive.Enable()
+	}
+
+	mode, err := aws.GetMode()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 
 	// Create the AWS client:
@@ -164,17 +155,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
-		interactive.Enable()
-	}
-	mode := args.mode
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Account role deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  mode,
-			Options:  modes,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
@@ -183,7 +169,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	switch mode {
-	case "auto":
+	case aws.ModeAuto:
 		ocmClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
 		for _, role := range finalRoleList {
 			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
@@ -195,7 +181,7 @@ func run(cmd *cobra.Command, _ []string) {
 				continue
 			}
 		}
-	case "manual":
+	case aws.ModeManual:
 		ocmClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
 		policyMap, err := awsClient.GetAccountRolePolicies(finalRoleList)
 		if err != nil {
@@ -209,7 +195,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }

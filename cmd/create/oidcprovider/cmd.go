@@ -38,12 +38,6 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var modes []string = []string{"auto", "manual"}
-
-var args struct {
-	mode string
-}
-
 var Cmd = &cobra.Command{
 	Use:     "oidc-provider",
 	Aliases: []string{"oidcprovider"},
@@ -58,23 +52,10 @@ func init() {
 	flags := Cmd.Flags()
 
 	ocm.AddClusterFlag(Cmd)
-
-	flags.StringVar(
-		&args.mode,
-		"mode",
-		modes[0],
-		"How to perform the operation. Valid options are:\n"+
-			"auto: OIDC provider will be created using the current AWS account\n"+
-			"manual: Command to create the OIDC provider will be output",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
+	aws.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -85,14 +66,20 @@ func run(cmd *cobra.Command, argv []string) {
 	skipInteractive := false
 	if len(argv) == 2 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
-		args.mode = argv[1]
+		aws.SetModeKey(argv[1])
 
-		if args.mode != "" {
+		if argv[1] != "" {
 			skipInteractive = true
 		}
 	}
 
 	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	mode, err := aws.GetMode()
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -146,13 +133,12 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	mode := args.mode
 	if interactive.Enabled() && !skipInteractive {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  mode,
-			Options:  modes,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
@@ -162,7 +148,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	switch mode {
-	case "auto":
+	case aws.ModeAuto:
 		if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
 			reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 				clusterKey, cluster.State())
@@ -200,7 +186,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.ClusterID: clusterKey,
 			ocm.Response:  ocm.Success,
 		})
-	case "manual":
+	case aws.ModeManual:
 
 		commands, err := buildCommands(reporter, cluster)
 		if err != nil {
@@ -219,7 +205,7 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }

@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -36,11 +35,8 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var modes []string = []string{"auto", "manual"}
-
 var args struct {
 	clusterKey string
-	mode       string
 }
 
 var Cmd = &cobra.Command{
@@ -63,21 +59,8 @@ func init() {
 		"",
 		"ID or Name of the cluster (deleted/archived) to delete the operator roles from (required).",
 	)
-	Cmd.MarkFlagRequired("cluster")
-	flags.StringVar(
-		&args.mode,
-		"mode",
-		modes[0],
-		"How to perform the operation. Valid options are:\n"+
-			"auto: Operator roles will be deleted automatically using the current AWS account\n"+
-			"manual: Command to delete the operator roles will be output which can be used to delete manually",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
+	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -87,10 +70,13 @@ func run(cmd *cobra.Command, argv []string) {
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
 		args.clusterKey = argv[0]
 	}
-	if !arguments.IsValidMode(modes, args.mode) {
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+
+	mode, err := aws.GetMode()
+	if err != nil {
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := args.clusterKey
@@ -173,13 +159,13 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
-	mode := args.mode
+
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Operator roles deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  mode,
-			Options:  modes,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
@@ -209,7 +195,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	switch mode {
-	case "auto":
+	case aws.ModeAuto:
 		ocmClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
 		for _, role := range roles {
 			if !confirm.Prompt(true, "Delete the operator roles  '%s'?", role) {
@@ -221,7 +207,7 @@ func run(cmd *cobra.Command, argv []string) {
 				continue
 			}
 		}
-	case "manual":
+	case aws.ModeManual:
 		ocmClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
 		policyMap, err := awsClient.GetPolicies(roles)
 		if err != nil {
@@ -234,7 +220,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }
