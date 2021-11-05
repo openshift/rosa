@@ -48,6 +48,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
 )
 
@@ -62,6 +63,13 @@ const (
 	Inline        = "inline"
 	Attached      = "attached"
 )
+
+// addROSAVersionToUserAgent is a named handler that will add ROSA CLI
+// version information to requests made by the AWS SDK.
+var addROSAVersionToUserAgent = request.NamedHandler{
+	Name: "rosa.ROSAVersionUserAgentHandler",
+	Fn:   request.MakeAddToUserAgentHandler(info.UserAgent, info.Version),
+}
 
 // Client defines a client interface
 type Client interface {
@@ -233,6 +241,9 @@ func (b *ClientBuilder) Build() (Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Add ROSACLI as user-agent
+	sess.Handlers.Build.PushFrontNamed(addROSAVersionToUserAgent)
 
 	if profile.Profile() != "" {
 		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
