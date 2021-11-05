@@ -36,7 +36,7 @@ func AddModeFlag(cmd *cobra.Command) {
 		&mode,
 		"mode",
 		"m",
-		"",
+		ModeAuto,
 		"How to perform the operation. Valid options are:\n"+
 			"auto: Resource changes will be automatic applied using the current AWS account\n\n"+
 			"manual: Commands necessary to modify AWS resources will be output to be run manually",
