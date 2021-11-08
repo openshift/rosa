@@ -159,7 +159,7 @@ func run(cmd *cobra.Command, _ []string) {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Account role deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  mode,
+			Default:  aws.ModeAuto,
 			Options:  aws.Modes,
 			Required: true,
 		})

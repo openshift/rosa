@@ -140,7 +140,7 @@ func run(cmd *cobra.Command, argv []string) {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  mode,
+			Default:  aws.ModeAuto,
 			Options:  aws.Modes,
 			Required: true,
 		})

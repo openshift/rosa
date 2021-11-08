@@ -223,7 +223,7 @@ func run(cmd *cobra.Command, argv []string) {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  mode,
+			Default:  aws.ModeAuto,
 			Options:  aws.Modes,
 			Required: true,
 		})
@@ -232,7 +232,6 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
-
 	switch mode {
 	case aws.ModeAuto:
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
