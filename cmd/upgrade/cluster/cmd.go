@@ -268,10 +268,14 @@ func run(cmd *cobra.Command, _ []string) {
 
 		if isAccountRoleUpgradeNeeded || isOperatorRoleUpgradeNeeded {
 			if mode != "" {
-				reporter.Infof("Preparing to upgrade account roles.")
-				accountroles.Cmd.Run(accountroles.Cmd, []string{prefix, mode})
-				reporter.Infof("Preparing to upgrade operator roles.")
-				operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterKey, mode})
+				if isAccountRoleUpgradeNeeded {
+					reporter.Infof("Preparing to upgrade account roles.")
+					accountroles.Cmd.Run(accountroles.Cmd, []string{prefix, mode})
+				}
+				if isOperatorRoleUpgradeNeeded {
+					reporter.Infof("Preparing to upgrade operator roles.")
+					operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterKey, mode})
+				}
 			} else {
 				reporter.Infof("Cluster Roles are not valid with upgrade version %s. "+
 					"Run the following command(s) to upgrade Cluster Roles:\n\n"+
