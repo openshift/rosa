@@ -59,6 +59,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Allow the command to be called programmatically
 	skipInteractive := false
+	isProgrammaticallyCalled := false
 	if len(argv) == 2 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		aws.SetModeKey(argv[1])
@@ -66,6 +67,8 @@ func run(cmd *cobra.Command, argv []string) {
 		if argv[1] != "" {
 			skipInteractive = true
 		}
+
+		isProgrammaticallyCalled = true
 	}
 
 	mode, err := aws.GetMode()
@@ -132,7 +135,7 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	if isAccountRoleUpgradeNeed {
+	if isAccountRoleUpgradeNeed && !isProgrammaticallyCalled {
 		reporter.Infof("Account roles with prefix '%s' need to be upgraded before operator roles. "+
 			"Roles can be upgraded with the following command :"+
 			"\n\n\trosa upgrade account-roles --prefix %s\n", prefix, prefix)
@@ -185,6 +188,9 @@ func run(cmd *cobra.Command, argv []string) {
 		if reporter.IsTerminal() {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to upgrade the operator IAM policies:\n")
+			if isAccountRoleUpgradeNeed && isProgrammaticallyCalled {
+				reporter.Warnf("Operator roles MUST only be upgraded after Account Roles upgrade has completed.\n")
+			}
 		}
 		commands, err := buildCommands(prefix, creator.AccountID, cluster, awsClient)
 		if err != nil {
