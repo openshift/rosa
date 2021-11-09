@@ -276,6 +276,12 @@ func run(cmd *cobra.Command, _ []string) {
 					reporter.Infof("Preparing to upgrade operator roles.")
 					operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterKey, mode})
 				}
+				if mode == aws.ModeManual {
+					reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
+						" once cluster roles have been upgraded : \n\n"+
+						"\trosa upgrade cluster --cluster %s\n", clusterKey)
+					os.Exit(0)
+				}
 			} else {
 				reporter.Infof("Cluster Roles are not valid with upgrade version %s. "+
 					"Run the following command(s) to upgrade Cluster Roles:\n\n"+
