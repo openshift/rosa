@@ -367,9 +367,7 @@ func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy str
 
 func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	version string, tagList map[string]string) (string, error) {
-	output, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{
-		PolicyArn: aws.String(policyArn),
-	})
+	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -408,6 +406,13 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	}
 
 	return policyArn, nil
+}
+
+func (c *awsClient) IsPolicyExists(policyArn string) (*iam.GetPolicyOutput, error) {
+	output, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{
+		PolicyArn: aws.String(policyArn),
+	})
+	return output, err
 }
 
 func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string) (string, error) {
@@ -882,7 +887,7 @@ func (c *awsClient) deleteAccountRolePolicies(role *string) error {
 	}
 	return nil
 }
-func (c *awsClient) getAccountRoleAttachedPolicy(role *string) ([]PolicyDetail, error) {
+func (c *awsClient) getAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	policies := []PolicyDetail{}
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{RoleName: role})
 	if err != nil {
@@ -1190,7 +1195,7 @@ func getAWSPrincipals(awsPrincipal interface{}) []string {
 func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error) {
 	roleMap := make(map[string][]PolicyDetail)
 	for _, role := range roles {
-		policies, err := c.getAccountRoleAttachedPolicy(aws.String(role))
+		policies, err := c.getAttachedPolicy(aws.String(role))
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
@@ -1254,7 +1259,7 @@ func (c *awsClient) IsUpgradedNeededForRole(prefix string, accountID string, ver
 			return false, err
 		}
 		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(aws.StringValue(role.Role.RoleName),
-			version, accountID)
+			version)
 
 		if err != nil {
 			return false, err
@@ -1305,102 +1310,42 @@ func (c *awsClient) IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, accou
 			}
 			return false, err
 		}
-		isCompatible, err := c.validateClusterOperatorRolesVersion(cluster, version, accountID)
+		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(roleName, version)
 		if err != nil {
 			return false, err
 		}
-		if isCompatible {
-			return false, nil
+		if !isCompatible {
+			return true, nil
+		}
+		//This will not be true for the new clusters but for the older ones if there are any mismatch we should still
+		//make it up-to-date
+		isCompatible, err = c.isRoleCompatible(roleName, version)
+		if err != nil {
+			return false, err
+		}
+		if !isCompatible {
+			return true, nil
 		}
 	}
-	return true, nil
+	return false, nil
 }
 
-// validateClusterOperatorRolesVersion ensures all operator roles for a cluster is compatible with a specific
-// openshift version
-func (c *awsClient) validateClusterOperatorRolesVersion(cluster *cmv1.Cluster, version string, accountID string) (
-	bool, error) {
-	operatorRoles, hasOperatorRoles := cluster.AWS().STS().GetOperatorIAMRoles()
-	if !hasOperatorRoles {
-		return false, errors.Errorf("Can not validate cluster roles, operator roles for cluster '%s' does not exist",
-			cluster.Name())
+func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
+	version string) (bool, error) {
+	attachedPolicies, err := c.getAttachedPolicy(aws.String(roleName))
+	if err != nil {
+		return false, err
 	}
-	for _, role := range operatorRoles {
-		isCompatible, err := c.validateOperatorRoleUpgradeVersionCompatibility(role, cluster, version, accountID)
+	for _, attachedPolicy := range attachedPolicies {
+		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(attachedPolicy.PolicyArn, version)
 		if err != nil {
-			return false, errors.Errorf("Error checking role '%s' compatibility : %v", role.Name(), err)
+			return false, errors.Errorf("Failed to validate role polices : %v", err)
 		}
 		if !isCompatible {
 			return false, nil
 		}
 	}
 	return true, nil
-}
-
-func (c *awsClient) validateOperatorRoleUpgradeVersionCompatibility(role *cmv1.OperatorIAMRole, cluster *cmv1.Cluster,
-	version string, accountID string) (bool, error) {
-	roleName := strings.Split(role.RoleARN(), "/")[1]
-	isCompatible, err := c.isRoleCompatibleForUpgrade(roleName, version)
-	if err != nil {
-		return false, errors.Errorf("Error checking role '%s' compatibility : %v", roleName, err)
-	}
-	if !isCompatible {
-		return false, nil
-	}
-	prefix, err := GetPrefixFromAccountRole(cluster)
-	if err != nil {
-		return false, err
-	}
-	policy := fmt.Sprintf("%s-%s-%s", prefix, role.Namespace(), role.Name())
-	if len(policy) > 64 {
-		policy = policy[0:64]
-	}
-
-	rolePolicyARN := fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, policy)
-	isCompatible, err = c.isRolePoliciesCompatibleForUpgrade(rolePolicyARN, version)
-	if err != nil {
-		return false, errors.Errorf("Failed to validate role polices : %v", err)
-	}
-
-	if !isCompatible {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string, version string, accountID string) (
-	bool, error) {
-	isCompatible, err := c.isRoleCompatibleForUpgrade(roleName, version)
-	if err != nil {
-		return false, errors.Errorf("Error checking role '%s' compatibility : %v", roleName, err)
-	}
-
-	if !isCompatible {
-		return false, nil
-	}
-
-	rolePolicyARN := fmt.Sprintf("arn:aws:iam::%s:policy/%s-Policy", accountID, roleName)
-	isCompatible, err = c.isRolePoliciesCompatibleForUpgrade(rolePolicyARN, version)
-	if err != nil {
-		return false, errors.Errorf("Failed to validate role polices : %v", err)
-	}
-
-	if !isCompatible {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (c *awsClient) isRoleCompatibleForUpgrade(name string, version string) (bool, error) {
-	output, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
-		RoleName: aws.String(name),
-	})
-	if err != nil {
-		return false, err
-	}
-	return c.hasCompatibleMajorMinorVersionTags(output.Tags, version)
 }
 
 func (c *awsClient) isRolePoliciesCompatibleForUpgrade(policyARN string, version string) (bool, error) {
@@ -1411,4 +1356,15 @@ func (c *awsClient) isRolePoliciesCompatibleForUpgrade(policyARN string, version
 		return false, err
 	}
 	return c.hasCompatibleMajorMinorVersionTags(policyTagOutput.Tags, version)
+}
+
+func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
+	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return "", err
+	}
+	_, version := GetTagValues(role.Role.Tags)
+	return version, nil
 }
