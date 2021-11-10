@@ -19,19 +19,21 @@ package cluster
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/spf13/cobra"
-
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/spf13/cobra"
 )
+
+const doubleQuotesToRemove = "\"\""
 
 var args struct {
 	// Basic options
@@ -41,6 +43,9 @@ var args struct {
 	// Networking options
 	private                   bool
 	disableWorkloadMonitoring bool
+	httpProxy                 string
+	httpsProxy                string
+	additionalTrustBundleFile string
 }
 
 var Cmd = &cobra.Command{
@@ -92,6 +97,26 @@ func init() {
 		"Enables you to monitor your own projects in isolation from Red Hat Site Reliability Engineer (SRE) "+
 			"platform metrics.",
 	)
+	flags.StringVar(
+		&args.httpProxy,
+		"http-proxy",
+		"",
+		"A proxy URL to use for creating HTTP connections outside the cluster. The URL scheme must be http.",
+	)
+
+	flags.StringVar(
+		&args.httpsProxy,
+		"https-proxy",
+		"",
+		"A proxy URL to use for creating HTTPS connections outside the cluster.",
+	)
+
+	flags.StringVar(
+		&args.additionalTrustBundleFile,
+		"additional-trust-bundle-file",
+		"",
+		"A file contains a PEM-encoded X.509 certificate bundle that will be "+
+			"added to the nodes' trusted certificate store.")
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -167,6 +192,47 @@ func run(cmd *cobra.Command, _ []string) {
 			"Any optional fields can be ignored and will not be updated.")
 	}
 
+	/*There are three possible options of input from the user when a prompt shows up:
+	1) The user presses the 'enter' button ---> interactive 'getString' method returns either an existing value if exists
+	   (the one that shows up as part of the question, i.e. - ? HTTP proxy: http://site.com),
+	   or double quotes ("") if no existing value. In that case, we send to OCM nil as we do not want any change.
+	2) In case the user wants to remove an existing value, an empty string ("") should be entered by the user -->
+	   interactive 'getString' method returns "\"\"". In that case, we send OCM double quotes to remove the existing value.
+	3) The user enters any other value ---> a simple and straightforward case. */
+
+	enableProxy := false
+	useExistingVPC := false
+	var httpProxy *string
+	var httpProxyValue string
+	if cmd.Flags().Changed("http-proxy") {
+		httpProxyValue = args.httpProxy
+		httpProxy = &httpProxyValue
+	}
+	var httpsProxy *string
+	var httpsProxyValue string
+	if cmd.Flags().Changed("https-proxy") {
+		httpsProxyValue = args.httpsProxy
+		httpsProxy = &httpsProxyValue
+	}
+	var additionalTrustBundleFile *string
+	var additionalTrustBundleFileValue string
+	if cmd.Flags().Changed("additional-trust-bundle-file") {
+		additionalTrustBundleFileValue = args.additionalTrustBundleFile
+		additionalTrustBundleFile = &additionalTrustBundleFileValue
+	}
+
+	if httpProxy != nil || httpsProxy != nil || additionalTrustBundleFile != nil {
+		enableProxy = true
+		useExistingVPC = true
+	}
+
+	if len(cluster.AWS().SubnetIDs()) == 0 &&
+		((httpProxy != nil && *httpProxy != "") || (httpsProxy != nil && *httpsProxy != "") ||
+			(additionalTrustBundleFile != nil && *additionalTrustBundleFile != "")) {
+		reporter.Errorf("Cluster-wide proxy is not supported on clusters using the default VPC")
+		os.Exit(1)
+	}
+
 	var private *bool
 	var privateValue bool
 	if cmd.Flags().Changed("private") {
@@ -220,10 +286,205 @@ func run(cmd *cobra.Command, _ []string) {
 		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
 	}
 
+	if len(cluster.AWS().SubnetIDs()) > 0 {
+		useExistingVPC = true
+	}
+	if useExistingVPC && !enableProxy && interactive.Enabled() {
+		enableProxyValue, err := interactive.GetBool(interactive.Input{
+			Question: "Update cluster-wide proxy",
+			Help: "To install cluster-wide proxy, you need to set one of the following attributes: 'http-proxy', " +
+				"'https-proxy', additional-trust-bundle",
+			Default: enableProxy,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
+			os.Exit(1)
+		}
+		enableProxy = enableProxyValue
+	}
+	if enableProxy && interactive.Enabled() {
+		err = interactive.PrintHelp(interactive.Help{
+			Message: "To remove any existing cluster-wide proxy value or an existing additional-trust-bundle value, " +
+				"enter a set of double quotes (\"\")",
+		})
+		if err != nil {
+			return
+		}
+	}
+
+	/*******  HTTPProxy *******/
+	if enableProxy && interactive.Enabled() {
+		var def string
+		if cluster.Proxy() != nil {
+			def = cluster.Proxy().HTTPProxy()
+		}
+		if httpProxy != nil {
+			def = *httpProxy
+			if def == "" {
+				// received double quotes from the user. need to remove the existing value
+				def = doubleQuotesToRemove
+			}
+		}
+		httpProxyValue, err = interactive.GetString(interactive.Input{
+			Question: "HTTP proxy",
+			Help:     cmd.Flags().Lookup("http-proxy").Usage,
+			Default:  def,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid http proxy: %s", err)
+			os.Exit(1)
+		}
+
+		if len(httpProxyValue) == 0 {
+			//user skipped the prompt by pressing 'enter'
+			httpProxy = nil
+		} else if httpProxyValue == doubleQuotesToRemove {
+			//user entered double quotes ("") to remove the existing value
+			httpProxy = new(string)
+			*httpProxy = ""
+		} else {
+			httpProxy = &httpProxyValue
+		}
+	}
+	if httpProxy != nil && *httpProxy != doubleQuotesToRemove {
+		err = ocm.ValidateHTTPProxy(*httpProxy)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
+	/******* HTTPSProxy *******/
+	if enableProxy && interactive.Enabled() {
+		var def string
+		if cluster.Proxy() != nil {
+			def = cluster.Proxy().HTTPSProxy()
+		}
+		if httpsProxy != nil {
+			def = *httpsProxy
+			if def == "" {
+				// received double quotes from the iser. need to remove the existing value
+				def = doubleQuotesToRemove
+			}
+		}
+		httpsProxyValue, err = interactive.GetString(interactive.Input{
+			Question: "HTTPS proxy",
+			Help:     cmd.Flags().Lookup("https-proxy").Usage,
+			Default:  def,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid https proxy: %s", err)
+			os.Exit(1)
+		}
+		if len(httpsProxyValue) == 0 {
+			//user skipped the prompt by pressing 'enter'
+			httpsProxy = nil
+		} else if httpsProxyValue == doubleQuotesToRemove {
+			//user entered double quotes ("") to remove the existing value
+			httpsProxy = new(string)
+			*httpsProxy = ""
+		} else {
+			httpsProxy = &httpsProxyValue
+		}
+	}
+	if httpsProxy != nil && *httpsProxy != doubleQuotesToRemove {
+		err = interactive.IsURL(*httpsProxy)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
+	/*******  AdditionalTrustBundle *******/
+	updateAdditionalTrustBundle := false
+	if additionalTrustBundleFile != nil {
+		updateAdditionalTrustBundle = true
+	}
+	if useExistingVPC && enableProxy && !updateAdditionalTrustBundle && additionalTrustBundleFile == nil &&
+		interactive.Enabled() {
+		updateAdditionalTrustBundleValue, err := interactive.GetBool(interactive.Input{
+			Question: "Update additional trust bundle",
+			Default:  updateAdditionalTrustBundle,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid -update-additional-trust-bundle value: %s", err)
+			os.Exit(1)
+		}
+		updateAdditionalTrustBundle = updateAdditionalTrustBundleValue
+	}
+	if enableProxy && updateAdditionalTrustBundle && interactive.Enabled() {
+		var def string
+		if cluster.AdditionalTrustBundle() == "REDACTED" {
+			def = "REDACTED"
+		}
+		if additionalTrustBundleFile != nil {
+			def = *additionalTrustBundleFile
+			if def == "" {
+				// received double quotes from the iser. need to remove the existing value
+				def = doubleQuotesToRemove
+			}
+		}
+		additionalTrustBundleFileValue, err = interactive.GetCert(interactive.Input{
+			Question: "Additional trust bundle file path",
+			Help:     cmd.Flags().Lookup("additional-trust-bundle-file").Usage,
+			Default:  def,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
+			os.Exit(1)
+		}
+
+		if len(additionalTrustBundleFileValue) == 0 {
+			//user skipped the prompt by pressing 'enter'
+			additionalTrustBundleFile = nil
+		} else if additionalTrustBundleFileValue == doubleQuotesToRemove {
+			//user entered double quotes ("") to remove the existing value
+			additionalTrustBundleFile = new(string)
+			*additionalTrustBundleFile = ""
+		} else {
+			additionalTrustBundleFile = &additionalTrustBundleFileValue
+		}
+	}
+	if additionalTrustBundleFile != nil && *additionalTrustBundleFile != doubleQuotesToRemove {
+		err = ocm.ValidateAdditionalTrustBundle(*additionalTrustBundleFile)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
+	if enableProxy && httpProxy == nil && httpsProxy == nil && additionalTrustBundleFile == nil {
+		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy, additional-trust-bundle")
+		os.Exit(1)
+	}
+
 	clusterConfig := ocm.Spec{
 		Expiration:                expiration,
 		Private:                   private,
 		DisableWorkloadMonitoring: disableWorkloadMonitoring,
+	}
+
+	if httpProxy != nil {
+		clusterConfig.HTTPProxy = httpProxy
+	}
+	if httpsProxy != nil {
+		clusterConfig.HTTPSProxy = httpsProxy
+	}
+	if additionalTrustBundleFile != nil {
+		clusterConfig.AdditionalTrustBundle = new(string)
+		if *additionalTrustBundleFile == doubleQuotesToRemove {
+			*clusterConfig.AdditionalTrustBundle = *additionalTrustBundleFile
+		} else {
+			// Get certificate contents
+			if len(*additionalTrustBundleFile) > 0 {
+				cert, err := ioutil.ReadFile(*additionalTrustBundleFile)
+				if err != nil {
+					reporter.Errorf("Failed to read additional trust bundle file: %s", err)
+					os.Exit(1)
+				}
+				*clusterConfig.AdditionalTrustBundle = string(cert)
+			}
+		}
 	}
 
 	reporter.Debugf("Updating cluster '%s'", clusterKey)

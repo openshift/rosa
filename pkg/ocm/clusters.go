@@ -96,7 +96,7 @@ type Spec struct {
 	HTTPProxy                 *string
 	HTTPSProxy                *string
 	AdditionalTrustBundleFile *string
-	AdditionalTrustBundle     string
+	AdditionalTrustBundle     *string
 }
 
 type OperatorIAMRole struct {
@@ -414,6 +414,21 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
 	}
 
+	if config.HTTPProxy != nil || config.HTTPSProxy != nil {
+		clusterProxyBuilder := cmv1.NewProxy()
+		if config.HTTPProxy != nil {
+			clusterProxyBuilder = clusterProxyBuilder.HTTPProxy(*config.HTTPProxy)
+		}
+		if config.HTTPSProxy != nil {
+			clusterProxyBuilder = clusterProxyBuilder.HTTPSProxy(*config.HTTPSProxy)
+		}
+		clusterBuilder = clusterBuilder.Proxy(clusterProxyBuilder)
+	}
+
+	if config.AdditionalTrustBundle != nil {
+		clusterBuilder = clusterBuilder.AdditionalTrustBundle(*config.AdditionalTrustBundle)
+	}
+
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
 		return err
@@ -695,8 +710,8 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		clusterBuilder = clusterBuilder.Proxy(proxyBuilder)
 	}
 
-	if config.AdditionalTrustBundle != "" {
-		clusterBuilder = clusterBuilder.AdditionalTrustBundle(config.AdditionalTrustBundle)
+	if config.AdditionalTrustBundle != nil {
+		clusterBuilder = clusterBuilder.AdditionalTrustBundle(*config.AdditionalTrustBundle)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()

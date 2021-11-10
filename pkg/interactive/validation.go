@@ -28,6 +28,8 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 )
 
+const doubleQuotesToRemove = "\"\""
+
 type Validator survey.Validator
 
 var required = survey.Required
@@ -46,6 +48,9 @@ func compose(validators []Validator) survey.Validator {
 
 // IsURL validates whether the given value is a valid URL
 func IsURL(val interface{}) error {
+	if val == nil {
+		return nil
+	}
 	if s, ok := val.(string); ok {
 		if s == "" {
 			return nil
@@ -63,6 +68,9 @@ func IsCert(filepath interface{}) error {
 	}
 	if s, ok := filepath.(string); ok {
 		if s == "" {
+			return nil
+		}
+		if s == doubleQuotesToRemove {
 			return nil
 		}
 		validExtension, err := regexp.MatchString("\\.(pem|ca-bundle|ce?rt?|key)$", s)

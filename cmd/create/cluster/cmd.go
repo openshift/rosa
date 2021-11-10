@@ -1581,14 +1581,15 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Get certificate contents
-	additionalTrustBundle := ""
+	var additionalTrustBundle *string
 	if additionalTrustBundleFile != "" {
 		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
 		if err != nil {
 			reporter.Errorf("Failed to read additional trust bundle file: %s", err)
 			os.Exit(1)
 		}
-		additionalTrustBundle = string(cert)
+		additionalTrustBundle = new(string)
+		*additionalTrustBundle = string(cert)
 	}
 
 	if enableProxy && httpProxy == "" && httpsProxy == "" && additionalTrustBundleFile == "" {
