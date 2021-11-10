@@ -69,7 +69,6 @@ func init() {
 		23,
 		"Password length of generated password",
 	)
-
 }
 
 func run(cmd *cobra.Command, _ []string) {
