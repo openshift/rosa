@@ -270,6 +270,14 @@ func GetRoleName(prefix string, role string) string {
 	return name
 }
 
+func GetUserRoleName(prefix string, role string, userName string) string {
+	name := fmt.Sprintf("%s-%s-%s-Role", prefix, role, userName)
+	if len(name) > 64 {
+		name = name[0:64]
+	}
+	return name
+}
+
 func GetPolicyName(prefix string, namespace string, name string) string {
 	policy := fmt.Sprintf("%s-%s-%s", prefix, namespace, name)
 	if len(policy) > 64 {
@@ -327,7 +335,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string) error {
 		}
 
 		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = saveDocument(policy, filename)
+		err = SaveDocument(policy, filename)
 		if err != nil {
 			return err
 		}
@@ -341,7 +349,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string) error {
 		}
 
 		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = saveDocument(policy, filename)
+		err = SaveDocument(policy, filename)
 		if err != nil {
 			return err
 		}
@@ -357,7 +365,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string) error {
 		}
 
 		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = saveDocument(policy, filename)
+		err = SaveDocument(policy, filename)
 		if err != nil {
 			return err
 		}
@@ -366,7 +374,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string) error {
 	return nil
 }
 
-func saveDocument(doc []byte, filename string) error {
+func SaveDocument(doc []byte, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -392,7 +400,7 @@ func GenerateOperatorPolicyFiles(reporter *rprtr.Object) error {
 		}
 
 		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = saveDocument(policy, filename)
+		err = SaveDocument(policy, filename)
 		if err != nil {
 			return err
 		}

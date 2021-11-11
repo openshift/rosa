@@ -40,3 +40,5 @@ const RoleType = prefix + "role_type"
 
 // RolePrefix is the name of the tag that will contain the user-set prefix of the role (installer, support, etc.)
 const RolePrefix = prefix + "role_prefix"
+
+const Environment = prefix + "environment"
