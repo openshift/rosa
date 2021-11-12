@@ -133,7 +133,7 @@ func run(cmd *cobra.Command, argv []string) {
 		clusterState := cluster.State()
 		stateName := string(clusterState)
 		clusterName := cluster.DisplayName()
-		reporter.Infof("Cluster %s state is %s\n", clusterName, stateName)
+		reporter.Infof("Cluster %s state is %s", clusterName, stateName)
 
 		done = elapsed > maxInterval || contains(targetStates, stateName)
 
@@ -143,7 +143,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		if !done {
-			reporter.Infof("Waiting for state [%s] on cluster %s. (%d/%d s)\n",
+			reporter.Infof("Waiting for state [%s] on cluster %s. (%d/%d s)",
 				targetStatesStr, clusterKey, elapsed, maxInterval)
 			time.Sleep(time.Duration(pollInterval) * time.Second)
 			elapsed += pollInterval
