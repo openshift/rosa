@@ -318,3 +318,50 @@ func (c *Client) LinkAccountRole(accountID string, roleARN string) error {
 	}
 	return err
 }
+
+func (c *Client) LinkOrgToRole(orgID string, roleARN string) error {
+	labels, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).Labels().List().Send()
+	if err != nil {
+		return err
+	}
+	existingARN := ""
+	if labels.Items().Len() > 0 {
+		labels.Items().Range(func(index int, item *amsv1.Label) bool {
+			if item.Key() == "sts_ocm_role" {
+				existingARN = item.Value()
+				return true
+			}
+			return false
+		})
+	}
+	exists := false
+	if existingARN != "" {
+		existingARNArr := strings.Split(existingARN, ",")
+		if len(existingARNArr) > 0 {
+			for _, value := range existingARNArr {
+				if value == roleARN {
+					exists = true
+					break
+				}
+			}
+		}
+	}
+	if exists {
+		return nil
+	}
+
+	if existingARN != "" {
+		roleARN = existingARN + "," + roleARN
+	}
+	labelBuilder, err := amsv1.NewLabel().Key("sts_ocm_role").Value(roleARN).Build()
+	if err != nil {
+		return err
+	}
+
+	_, err = c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).Labels().Add().
+		Body(labelBuilder).Send()
+	if err != nil {
+		return err
+	}
+	return nil
+}

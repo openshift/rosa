@@ -19,6 +19,7 @@ package link
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/link/ocmrole"
 	"github.com/openshift/rosa/cmd/link/userrole"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -33,6 +34,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(userrole.Cmd)
+	Cmd.AddCommand(ocmrole.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
