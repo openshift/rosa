@@ -190,6 +190,14 @@ func init() {
 	)
 
 	flags.StringVar(
+		&args.controlPlaneRoleARN,
+		"master-iam-role",
+		"",
+		"The IAM role ARN that will be attached to master instances.",
+	)
+	flags.MarkDeprecated("master-iam-role", "use --controlplane-iam-role instead")
+
+	flags.StringVar(
 		&args.workerRoleARN,
 		"worker-iam-role",
 		"",
