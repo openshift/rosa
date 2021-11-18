@@ -123,6 +123,9 @@ var AccountRoles map[string]AccountRole = map[string]AccountRole{
 	SupportAccountRole:      {Name: "Support", Flag: "support-role-arn"},
 }
 
+var OCMUserRole = "User"
+var OCMUserRolePolicyFile = "ocm_user"
+
 var roleTypeMap = map[string]string{
 	"installer":             "Installer",
 	"support":               "Support",
