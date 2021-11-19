@@ -294,6 +294,10 @@ func GetPolicyARN(accountID string, name string) string {
 	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, name)
 }
 
+func GetRoleARN(accountID string, name string) string {
+	return fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, name)
+}
+
 func GetOperatorRoleName(cluster *cmv1.Cluster, operator Operator) string {
 	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
 		if role.Namespace() == operator.Namespace && role.Name() == operator.Name {

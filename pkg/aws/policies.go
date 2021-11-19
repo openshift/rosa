@@ -125,6 +125,8 @@ var AccountRoles map[string]AccountRole = map[string]AccountRole{
 
 var OCMUserRole = "User"
 var OCMUserRolePolicyFile = "ocm_user"
+var OCMRole = "OCM"
+var OCMRolePolicyFile = "ocm"
 
 var roleTypeMap = map[string]string{
 	"installer":             "Installer",

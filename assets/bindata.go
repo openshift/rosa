@@ -16,6 +16,8 @@
 // templates/policies/sts_instance_controlplane_trust_policy.json
 // templates/policies/sts_instance_worker_permission_policy.json
 // templates/policies/sts_instance_worker_trust_policy.json
+// templates/policies/sts_ocm_permission_policy.json
+// templates/policies/sts_ocm_trust_policy.json
 // templates/policies/sts_ocm_user_trust_policy.json
 // templates/policies/sts_support_permission_policy.json
 // templates/policies/sts_support_trust_policy.json
@@ -924,6 +926,75 @@ func templatesPoliciesSts_instance_worker_trust_policyJson() (*asset, error) {
 	return a, nil
 }
 
+var _templatesPoliciesSts_ocm_permission_policyJson = []byte(`{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListRoles",
+        "iam:GetRole",
+        "iam:ListRoleTags",
+        "iam:GetOpenIDConnectProvider",
+        "ec2:DescribeSubnets",
+        "sts:AssumeRole",
+        "sts:AssumeRoleWithWebIdentity"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+`)
+
+func templatesPoliciesSts_ocm_permission_policyJsonBytes() ([]byte, error) {
+	return _templatesPoliciesSts_ocm_permission_policyJson, nil
+}
+
+func templatesPoliciesSts_ocm_permission_policyJson() (*asset, error) {
+	bytes, err := templatesPoliciesSts_ocm_permission_policyJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "templates/policies/sts_ocm_permission_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _templatesPoliciesSts_ocm_trust_policyJson = []byte(`{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::%{aws_account_id}:role/RH-Managed-OpenShift-Installer"
+        ]
+      },
+      "Action": [
+        "sts:AssumeRole"
+      ],
+      "Condition": {"StringEquals": {"sts:ExternalId": "%{ocm_organization_id}"}}
+    }
+  ]
+}
+`)
+
+func templatesPoliciesSts_ocm_trust_policyJsonBytes() ([]byte, error) {
+	return _templatesPoliciesSts_ocm_trust_policyJson, nil
+}
+
+func templatesPoliciesSts_ocm_trust_policyJson() (*asset, error) {
+	bytes, err := templatesPoliciesSts_ocm_trust_policyJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "templates/policies/sts_ocm_trust_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _templatesPoliciesSts_ocm_user_trust_policyJson = []byte(`{
   "Version": "2012-10-17",
   "Statement": [
@@ -1222,6 +1293,8 @@ var _bindata = map[string]func() (*asset, error){
 	"templates/policies/sts_instance_controlplane_trust_policy.json":                                            templatesPoliciesSts_instance_controlplane_trust_policyJson,
 	"templates/policies/sts_instance_worker_permission_policy.json":                                             templatesPoliciesSts_instance_worker_permission_policyJson,
 	"templates/policies/sts_instance_worker_trust_policy.json":                                                  templatesPoliciesSts_instance_worker_trust_policyJson,
+	"templates/policies/sts_ocm_permission_policy.json":                                                         templatesPoliciesSts_ocm_permission_policyJson,
+	"templates/policies/sts_ocm_trust_policy.json":                                                              templatesPoliciesSts_ocm_trust_policyJson,
 	"templates/policies/sts_ocm_user_trust_policy.json":                                                         templatesPoliciesSts_ocm_user_trust_policyJson,
 	"templates/policies/sts_support_permission_policy.json":                                                     templatesPoliciesSts_support_permission_policyJson,
 	"templates/policies/sts_support_trust_policy.json":                                                          templatesPoliciesSts_support_trust_policyJson,
@@ -1286,6 +1359,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 			"sts_instance_controlplane_trust_policy.json":                                            &bintree{templatesPoliciesSts_instance_controlplane_trust_policyJson, map[string]*bintree{}},
 			"sts_instance_worker_permission_policy.json":                                             &bintree{templatesPoliciesSts_instance_worker_permission_policyJson, map[string]*bintree{}},
 			"sts_instance_worker_trust_policy.json":                                                  &bintree{templatesPoliciesSts_instance_worker_trust_policyJson, map[string]*bintree{}},
+			"sts_ocm_permission_policy.json":                                                         &bintree{templatesPoliciesSts_ocm_permission_policyJson, map[string]*bintree{}},
+			"sts_ocm_trust_policy.json":                                                              &bintree{templatesPoliciesSts_ocm_trust_policyJson, map[string]*bintree{}},
 			"sts_ocm_user_trust_policy.json":                                                         &bintree{templatesPoliciesSts_ocm_user_trust_policyJson, map[string]*bintree{}},
 			"sts_support_permission_policy.json":                                                     &bintree{templatesPoliciesSts_support_permission_policyJson, map[string]*bintree{}},
 			"sts_support_trust_policy.json":                                                          &bintree{templatesPoliciesSts_support_trust_policyJson, map[string]*bintree{}},
