@@ -26,46 +26,46 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalResourceList writes a list of values of the 'resource' type to
+// MarshalClusterResourcesList writes a list of values of the 'cluster_resources' type to
 // the given writer.
-func MarshalResourceList(list []*Resource, writer io.Writer) error {
+func MarshalClusterResourcesList(list []*ClusterResources, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeResourceList(list, stream)
+	writeClusterResourcesList(list, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeResourceList writes a list of value of the 'resource' type to
+// writeClusterResourcesList writes a list of value of the 'cluster_resources' type to
 // the given stream.
-func writeResourceList(list []*Resource, stream *jsoniter.Stream) {
+func writeClusterResourcesList(list []*ClusterResources, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeResource(value, stream)
+		writeClusterResources(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalResourceList reads a list of values of the 'resource' type
+// UnmarshalClusterResourcesList reads a list of values of the 'cluster_resources' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalResourceList(source interface{}) (items []*Resource, err error) {
+func UnmarshalClusterResourcesList(source interface{}) (items []*ClusterResources, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readResourceList(iterator)
+	items = readClusterResourcesList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readResourceList reads list of values of the ''resource' type from
+// readClusterResourcesList reads list of values of the ''cluster_resources' type from
 // the given iterator.
-func readResourceList(iterator *jsoniter.Iterator) []*Resource {
-	list := []*Resource{}
+func readClusterResourcesList(iterator *jsoniter.Iterator) []*ClusterResources {
+	list := []*ClusterResources{}
 	for iterator.ReadArray() {
-		item := readResource(iterator)
+		item := readClusterResources(iterator)
 		list = append(list, item)
 	}
 	return list

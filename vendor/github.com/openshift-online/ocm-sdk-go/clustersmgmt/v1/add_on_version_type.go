@@ -39,6 +39,7 @@ type AddOnVersion struct {
 	id                string
 	href              string
 	availableUpgrades []string
+	channel           string
 	parameters        *AddOnParameterList
 	requirements      []*AddOnRequirement
 	sourceImage       string
@@ -126,12 +127,35 @@ func (o *AddOnVersion) GetAvailableUpgrades() (value []string, ok bool) {
 	return
 }
 
+// Channel returns the value of the 'channel' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The specific addon catalog source channel of packages
+func (o *AddOnVersion) Channel() string {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.channel
+	}
+	return ""
+}
+
+// GetChannel returns the value of the 'channel' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The specific addon catalog source channel of packages
+func (o *AddOnVersion) GetChannel() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.channel
+	}
+	return
+}
+
 // Enabled returns the value of the 'enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Indicates if this add-on version can be added to clusters.
 func (o *AddOnVersion) Enabled() bool {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.enabled
 	}
 	return false
@@ -142,7 +166,7 @@ func (o *AddOnVersion) Enabled() bool {
 //
 // Indicates if this add-on version can be added to clusters.
 func (o *AddOnVersion) GetEnabled() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.enabled
 	}
@@ -154,7 +178,7 @@ func (o *AddOnVersion) GetEnabled() (value bool, ok bool) {
 //
 // List of parameters for this add-on version.
 func (o *AddOnVersion) Parameters() *AddOnParameterList {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.parameters
 	}
 	return nil
@@ -165,7 +189,7 @@ func (o *AddOnVersion) Parameters() *AddOnParameterList {
 //
 // List of parameters for this add-on version.
 func (o *AddOnVersion) GetParameters() (value *AddOnParameterList, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.parameters
 	}
@@ -177,7 +201,7 @@ func (o *AddOnVersion) GetParameters() (value *AddOnParameterList, ok bool) {
 //
 // List of requirements for this add-on version.
 func (o *AddOnVersion) Requirements() []*AddOnRequirement {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.requirements
 	}
 	return nil
@@ -188,7 +212,7 @@ func (o *AddOnVersion) Requirements() []*AddOnRequirement {
 //
 // List of requirements for this add-on version.
 func (o *AddOnVersion) GetRequirements() (value []*AddOnRequirement, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.requirements
 	}
@@ -200,7 +224,7 @@ func (o *AddOnVersion) GetRequirements() (value []*AddOnRequirement, ok bool) {
 //
 // The catalog source image for this add-on version.
 func (o *AddOnVersion) SourceImage() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.sourceImage
 	}
 	return ""
@@ -211,7 +235,7 @@ func (o *AddOnVersion) SourceImage() string {
 //
 // The catalog source image for this add-on version.
 func (o *AddOnVersion) GetSourceImage() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.sourceImage
 	}
@@ -223,7 +247,7 @@ func (o *AddOnVersion) GetSourceImage() (value string, ok bool) {
 //
 // List of sub operators for this add-on version.
 func (o *AddOnVersion) SubOperators() []*AddOnSubOperator {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.subOperators
 	}
 	return nil
@@ -234,7 +258,7 @@ func (o *AddOnVersion) SubOperators() []*AddOnSubOperator {
 //
 // List of sub operators for this add-on version.
 func (o *AddOnVersion) GetSubOperators() (value []*AddOnSubOperator, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.subOperators
 	}

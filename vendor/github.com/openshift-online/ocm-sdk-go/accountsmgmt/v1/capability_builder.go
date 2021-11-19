@@ -34,6 +34,11 @@ func NewCapability() *CapabilityBuilder {
 	return &CapabilityBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *CapabilityBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Inherited sets the value of the 'inherited' attribute to the given value.
 //
 //

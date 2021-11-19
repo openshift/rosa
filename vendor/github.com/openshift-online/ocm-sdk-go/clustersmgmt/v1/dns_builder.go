@@ -32,6 +32,11 @@ func NewDNS() *DNSBuilder {
 	return &DNSBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *DNSBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // BaseDomain sets the value of the 'base_domain' attribute to the given value.
 //
 //

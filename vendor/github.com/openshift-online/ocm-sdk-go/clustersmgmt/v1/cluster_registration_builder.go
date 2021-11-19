@@ -34,6 +34,11 @@ func NewClusterRegistration() *ClusterRegistrationBuilder {
 	return &ClusterRegistrationBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterRegistrationBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // ExternalID sets the value of the 'external_ID' attribute to the given value.
 //
 //

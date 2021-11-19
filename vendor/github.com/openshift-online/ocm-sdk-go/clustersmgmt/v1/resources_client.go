@@ -58,11 +58,11 @@ func (c *ResourcesClient) Get() *ResourcesGetRequest {
 	}
 }
 
-// Live returns the target 'resource' resource.
+// Live returns the target 'cluster_resources' resource.
 //
 // Retrieves a list of currently available resources for a cluster
-func (c *ResourcesClient) Live() *ResourceClient {
-	return NewResourceClient(
+func (c *ResourcesClient) Live() *ClusterResourcesClient {
+	return NewClusterResourcesClient(
 		c.transport,
 		path.Join(c.path, "live"),
 	)
@@ -169,7 +169,7 @@ func (r *ResourcesPollResponse) Error() *errors.Error {
 // Body returns the value of the 'body' parameter.
 //
 // List of cluster resources
-func (r *ResourcesPollResponse) Body() *Resource {
+func (r *ResourcesPollResponse) Body() *ClusterResources {
 	return r.response.Body()
 }
 
@@ -177,7 +177,7 @@ func (r *ResourcesPollResponse) Body() *Resource {
 // a flag indicating if the parameter has a value.
 //
 // List of cluster resources
-func (r *ResourcesPollResponse) GetBody() (value *Resource, ok bool) {
+func (r *ResourcesPollResponse) GetBody() (value *ClusterResources, ok bool) {
 	return r.response.GetBody()
 }
 
@@ -242,7 +242,7 @@ func (r *ResourcesGetRequest) SendContext(ctx context.Context) (result *Resource
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -261,7 +261,7 @@ type ResourcesGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *Resource
+	body   *ClusterResources
 }
 
 // Status returns the response status code.
@@ -291,7 +291,7 @@ func (r *ResourcesGetResponse) Error() *errors.Error {
 // Body returns the value of the 'body' parameter.
 //
 // List of cluster resources
-func (r *ResourcesGetResponse) Body() *Resource {
+func (r *ResourcesGetResponse) Body() *ClusterResources {
 	if r == nil {
 		return nil
 	}
@@ -302,7 +302,7 @@ func (r *ResourcesGetResponse) Body() *Resource {
 // a flag indicating if the parameter has a value.
 //
 // List of cluster resources
-func (r *ResourcesGetResponse) GetBody() (value *Resource, ok bool) {
+func (r *ResourcesGetResponse) GetBody() (value *ClusterResources, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body

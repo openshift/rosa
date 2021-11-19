@@ -55,6 +55,11 @@ func (b *PermissionBuilder) HREF(value string) *PermissionBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *PermissionBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Action sets the value of the 'action' attribute to the given value.
 //
 // Possible actions for a permission.

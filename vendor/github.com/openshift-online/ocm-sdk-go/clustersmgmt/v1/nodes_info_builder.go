@@ -32,6 +32,11 @@ func NewNodesInfo() *NodesInfoBuilder {
 	return &NodesInfoBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *NodesInfoBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Nodes sets the value of the 'nodes' attribute to the given values.
 //
 //

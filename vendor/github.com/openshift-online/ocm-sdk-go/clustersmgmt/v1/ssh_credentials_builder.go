@@ -33,6 +33,11 @@ func NewSSHCredentials() *SSHCredentialsBuilder {
 	return &SSHCredentialsBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SSHCredentialsBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // PrivateKey sets the value of the 'private_key' attribute to the given value.
 //
 //

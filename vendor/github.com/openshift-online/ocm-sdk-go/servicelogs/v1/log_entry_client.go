@@ -241,7 +241,7 @@ func (r *LogEntryDeleteRequest) SendContext(ctx context.Context) (result *LogEnt
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -335,7 +335,7 @@ func (r *LogEntryGetRequest) SendContext(ctx context.Context) (result *LogEntryG
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}

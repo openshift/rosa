@@ -145,7 +145,7 @@ func (r *QueuesListRequest) SendContext(ctx context.Context) (result *QueuesList
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}

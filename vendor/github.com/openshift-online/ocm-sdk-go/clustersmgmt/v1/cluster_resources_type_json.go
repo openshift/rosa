@@ -29,23 +29,23 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalResource writes a value of the 'resource' type to the given writer.
-func MarshalResource(object *Resource, writer io.Writer) error {
+// MarshalClusterResources writes a value of the 'cluster_resources' type to the given writer.
+func MarshalClusterResources(object *ClusterResources, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeResource(object, stream)
+	writeClusterResources(object, stream)
 	stream.Flush()
 	return stream.Error
 }
 
-// writeResource writes a value of the 'resource' type to the given stream.
-func writeResource(object *Resource, stream *jsoniter.Stream) {
+// writeClusterResources writes a value of the 'cluster_resources' type to the given stream.
+func writeClusterResources(object *ClusterResources, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	if object.bitmap_&1 != 0 {
-		stream.WriteString(ResourceLinkKind)
+		stream.WriteString(ClusterResourcesLinkKind)
 	} else {
-		stream.WriteString(ResourceKind)
+		stream.WriteString(ClusterResourcesKind)
 	}
 	count++
 	if object.bitmap_&2 != 0 {
@@ -115,9 +115,9 @@ func writeResource(object *Resource, stream *jsoniter.Stream) {
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalResource reads a value of the 'resource' type from the given
+// UnmarshalClusterResources reads a value of the 'cluster_resources' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalResource(source interface{}) (object *Resource, err error) {
+func UnmarshalClusterResources(source interface{}) (object *ClusterResources, err error) {
 	if source == http.NoBody {
 		return
 	}
@@ -125,14 +125,14 @@ func UnmarshalResource(source interface{}) (object *Resource, err error) {
 	if err != nil {
 		return
 	}
-	object = readResource(iterator)
+	object = readClusterResources(iterator)
 	err = iterator.Error
 	return
 }
 
-// readResource reads a value of the 'resource' type from the given iterator.
-func readResource(iterator *jsoniter.Iterator) *Resource {
-	object := &Resource{}
+// readClusterResources reads a value of the 'cluster_resources' type from the given iterator.
+func readClusterResources(iterator *jsoniter.Iterator) *ClusterResources {
+	object := &ClusterResources{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
@@ -141,7 +141,7 @@ func readResource(iterator *jsoniter.Iterator) *Resource {
 		switch field {
 		case "kind":
 			value := iterator.ReadString()
-			if value == ResourceLinkKind {
+			if value == ClusterResourcesLinkKind {
 				object.bitmap_ |= 1
 			}
 		case "id":

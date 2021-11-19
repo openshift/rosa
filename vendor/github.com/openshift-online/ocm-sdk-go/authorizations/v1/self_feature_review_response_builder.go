@@ -33,6 +33,11 @@ func NewSelfFeatureReviewResponse() *SelfFeatureReviewResponseBuilder {
 	return &SelfFeatureReviewResponseBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SelfFeatureReviewResponseBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Enabled sets the value of the 'enabled' attribute to the given value.
 //
 //

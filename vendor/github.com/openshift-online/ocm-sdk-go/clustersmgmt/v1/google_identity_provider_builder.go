@@ -34,6 +34,11 @@ func NewGoogleIdentityProvider() *GoogleIdentityProviderBuilder {
 	return &GoogleIdentityProviderBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *GoogleIdentityProviderBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // ClientID sets the value of the 'client_ID' attribute to the given value.
 //
 //

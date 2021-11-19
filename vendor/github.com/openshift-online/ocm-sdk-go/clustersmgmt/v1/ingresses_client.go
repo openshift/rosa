@@ -22,13 +22,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -159,7 +157,7 @@ func (r *IngressesAddRequest) SendContext(ctx context.Context) (result *Ingresse
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -171,16 +169,6 @@ func (r *IngressesAddRequest) SendContext(ctx context.Context) (result *Ingresse
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'add' method.
-func (r *IngressesAddRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *IngressesAddRequest) stream(stream *jsoniter.Stream) {
 }
 
 // IngressesAddResponse is the response for the 'add' method.
@@ -314,7 +302,7 @@ func (r *IngressesListRequest) SendContext(ctx context.Context) (result *Ingress
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -519,7 +507,7 @@ func (r *IngressesUpdateRequest) SendContext(ctx context.Context) (result *Ingre
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -531,16 +519,6 @@ func (r *IngressesUpdateRequest) SendContext(ctx context.Context) (result *Ingre
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'update' method.
-func (r *IngressesUpdateRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *IngressesUpdateRequest) stream(stream *jsoniter.Stream) {
 }
 
 // IngressesUpdateResponse is the response for the 'update' method.

@@ -33,6 +33,11 @@ func NewEvent() *EventBuilder {
 	return &EventBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *EventBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Body sets the value of the 'body' attribute to the given value.
 //
 //

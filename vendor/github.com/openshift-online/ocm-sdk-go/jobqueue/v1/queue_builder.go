@@ -62,6 +62,11 @@ func (b *QueueBuilder) HREF(value string) *QueueBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *QueueBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
 //
 //

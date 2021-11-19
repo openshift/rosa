@@ -61,6 +61,11 @@ func (b *MachinePoolBuilder) HREF(value string) *MachinePoolBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *MachinePoolBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // AWS sets the value of the 'AWS' attribute to the given value.
 //
 // Representation of aws machine pool specific parameters.

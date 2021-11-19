@@ -32,6 +32,11 @@ func NewTokenAuthorizationRequest() *TokenAuthorizationRequestBuilder {
 	return &TokenAuthorizationRequestBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *TokenAuthorizationRequestBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // AuthorizationToken sets the value of the 'authorization_token' attribute to the given value.
 //
 //

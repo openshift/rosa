@@ -39,6 +39,11 @@ func NewCPUTotalNodeRoleOSMetricNode() *CPUTotalNodeRoleOSMetricNodeBuilder {
 	return &CPUTotalNodeRoleOSMetricNodeBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *CPUTotalNodeRoleOSMetricNodeBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // CPUTotal sets the value of the 'CPU_total' attribute to the given value.
 //
 //

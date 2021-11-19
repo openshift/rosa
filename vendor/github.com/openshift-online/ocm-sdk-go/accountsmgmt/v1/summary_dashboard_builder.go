@@ -54,6 +54,11 @@ func (b *SummaryDashboardBuilder) HREF(value string) *SummaryDashboardBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SummaryDashboardBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Metrics sets the value of the 'metrics' attribute to the given values.
 //
 //

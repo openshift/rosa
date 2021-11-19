@@ -55,6 +55,11 @@ func (b *CloudProviderBuilder) HREF(value string) *CloudProviderBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *CloudProviderBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // DisplayName sets the value of the 'display_name' attribute to the given value.
 //
 //

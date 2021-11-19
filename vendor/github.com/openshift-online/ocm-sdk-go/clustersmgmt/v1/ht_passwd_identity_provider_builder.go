@@ -33,6 +33,11 @@ func NewHTPasswdIdentityProvider() *HTPasswdIdentityProviderBuilder {
 	return &HTPasswdIdentityProviderBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *HTPasswdIdentityProviderBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Password sets the value of the 'password' attribute to the given value.
 //
 //

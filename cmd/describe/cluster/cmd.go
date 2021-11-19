@@ -329,6 +329,12 @@ func run(cmd *cobra.Command, argv []string) {
 			str,
 			getUseworkloadMonitoring(cluster.DisableUserWorkloadMonitoring()))
 	}
+	if cluster.FIPS() {
+		str = fmt.Sprintf("%s"+
+			"FIPS mode:                  %s\n",
+			str,
+			"enabled")
+	}
 	if detailsPage != "" {
 		str = fmt.Sprintf("%s"+
 			"Details Page:               %s%s\n", str,

@@ -22,13 +22,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -255,7 +253,7 @@ func (r *ResourceQuotaDeleteRequest) SendContext(ctx context.Context) (result *R
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -349,7 +347,7 @@ func (r *ResourceQuotaGetRequest) SendContext(ctx context.Context) (result *Reso
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -485,7 +483,7 @@ func (r *ResourceQuotaUpdateRequest) SendContext(ctx context.Context) (result *R
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -497,16 +495,6 @@ func (r *ResourceQuotaUpdateRequest) SendContext(ctx context.Context) (result *R
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'update' method.
-func (r *ResourceQuotaUpdateRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *ResourceQuotaUpdateRequest) stream(stream *jsoniter.Stream) {
 }
 
 // ResourceQuotaUpdateResponse is the response for the 'update' method.

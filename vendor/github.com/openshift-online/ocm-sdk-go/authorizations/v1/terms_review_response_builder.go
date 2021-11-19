@@ -37,6 +37,11 @@ func NewTermsReviewResponse() *TermsReviewResponseBuilder {
 	return &TermsReviewResponseBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *TermsReviewResponseBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // AccountId sets the value of the 'account_id' attribute to the given value.
 //
 //

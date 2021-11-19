@@ -22,13 +22,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/jobqueue/v1
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -148,7 +146,7 @@ func (r *JobFailureRequest) SendContext(ctx context.Context) (result *JobFailure
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -156,16 +154,6 @@ func (r *JobFailureRequest) SendContext(ctx context.Context) (result *JobFailure
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'failure' method.
-func (r *JobFailureRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *JobFailureRequest) stream(stream *jsoniter.Stream) {
 }
 
 // JobFailureResponse is the response for the 'failure' method.
@@ -267,7 +255,7 @@ func (r *JobSuccessRequest) SendContext(ctx context.Context) (result *JobSuccess
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -275,16 +263,6 @@ func (r *JobSuccessRequest) SendContext(ctx context.Context) (result *JobSuccess
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'success' method.
-func (r *JobSuccessRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *JobSuccessRequest) stream(stream *jsoniter.Stream) {
 }
 
 // JobSuccessResponse is the response for the 'success' method.

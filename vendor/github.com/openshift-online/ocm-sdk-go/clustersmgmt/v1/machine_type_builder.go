@@ -61,6 +61,11 @@ func (b *MachineTypeBuilder) HREF(value string) *MachineTypeBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *MachineTypeBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // CCSOnly sets the value of the 'CCS_only' attribute to the given value.
 //
 //

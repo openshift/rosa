@@ -34,6 +34,11 @@ func NewClusterAuthorizationResponse() *ClusterAuthorizationResponseBuilder {
 	return &ClusterAuthorizationResponseBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterAuthorizationResponseBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Allowed sets the value of the 'allowed' attribute to the given value.
 //
 //

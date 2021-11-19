@@ -22,13 +22,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -255,7 +253,7 @@ func (r *RoleBindingDeleteRequest) SendContext(ctx context.Context) (result *Rol
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -349,7 +347,7 @@ func (r *RoleBindingGetRequest) SendContext(ctx context.Context) (result *RoleBi
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -485,7 +483,7 @@ func (r *RoleBindingUpdateRequest) SendContext(ctx context.Context) (result *Rol
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -497,16 +495,6 @@ func (r *RoleBindingUpdateRequest) SendContext(ctx context.Context) (result *Rol
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'update' method.
-func (r *RoleBindingUpdateRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *RoleBindingUpdateRequest) stream(stream *jsoniter.Stream) {
 }
 
 // RoleBindingUpdateResponse is the response for the 'update' method.

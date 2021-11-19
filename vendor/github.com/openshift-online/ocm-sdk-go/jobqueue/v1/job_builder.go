@@ -63,6 +63,11 @@ func (b *JobBuilder) HREF(value string) *JobBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *JobBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // AbandonedAt sets the value of the 'abandoned_at' attribute to the given value.
 //
 //

@@ -33,6 +33,11 @@ func NewFeatureReviewRequest() *FeatureReviewRequestBuilder {
 	return &FeatureReviewRequestBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *FeatureReviewRequestBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // AccountUsername sets the value of the 'account_username' attribute to the given value.
 //
 //

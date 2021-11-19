@@ -64,6 +64,11 @@ func (b *VersionBuilder) HREF(value string) *VersionBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *VersionBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // ROSAEnabled sets the value of the 'ROSA_enabled' attribute to the given value.
 //
 //

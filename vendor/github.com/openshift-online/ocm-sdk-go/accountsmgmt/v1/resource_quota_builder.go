@@ -63,6 +63,11 @@ func (b *ResourceQuotaBuilder) HREF(value string) *ResourceQuotaBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ResourceQuotaBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // SKU sets the value of the 'SKU' attribute to the given value.
 //
 //

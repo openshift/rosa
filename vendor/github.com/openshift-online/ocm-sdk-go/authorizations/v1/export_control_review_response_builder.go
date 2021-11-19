@@ -32,6 +32,11 @@ func NewExportControlReviewResponse() *ExportControlReviewResponseBuilder {
 	return &ExportControlReviewResponseBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ExportControlReviewResponseBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Restricted sets the value of the 'restricted' attribute to the given value.
 //
 //

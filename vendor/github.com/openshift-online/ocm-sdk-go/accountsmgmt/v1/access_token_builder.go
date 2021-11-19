@@ -32,6 +32,11 @@ func NewAccessToken() *AccessTokenBuilder {
 	return &AccessTokenBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AccessTokenBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Auths sets the value of the 'auths' attribute to the given value.
 //
 //

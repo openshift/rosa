@@ -58,6 +58,11 @@ func (b *ProvisionShardBuilder) HREF(value string) *ProvisionShardBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ProvisionShardBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // AWSAccountOperatorConfig sets the value of the 'AWS_account_operator_config' attribute to the given value.
 //
 // Representation of a server config

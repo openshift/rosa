@@ -32,6 +32,11 @@ func NewFeatureToggleQueryRequest() *FeatureToggleQueryRequestBuilder {
 	return &FeatureToggleQueryRequestBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *FeatureToggleQueryRequestBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // OrganizationID sets the value of the 'organization_ID' attribute to the given value.
 //
 //

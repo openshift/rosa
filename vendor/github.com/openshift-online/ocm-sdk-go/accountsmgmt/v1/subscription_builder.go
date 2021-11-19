@@ -90,6 +90,11 @@ func (b *SubscriptionBuilder) HREF(value string) *SubscriptionBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SubscriptionBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Capabilities sets the value of the 'capabilities' attribute to the given values.
 //
 //

@@ -24,17 +24,17 @@ import (
 	"net/http"
 )
 
-func readResourceGetRequest(request *ResourceGetServerRequest, r *http.Request) error {
+func readClusterResourcesGetRequest(request *ClusterResourcesGetServerRequest, r *http.Request) error {
 	return nil
 }
-func writeResourceGetRequest(request *ResourceGetRequest, writer io.Writer) error {
+func writeClusterResourcesGetRequest(request *ClusterResourcesGetRequest, writer io.Writer) error {
 	return nil
 }
-func readResourceGetResponse(response *ResourceGetResponse, reader io.Reader) error {
+func readClusterResourcesGetResponse(response *ClusterResourcesGetResponse, reader io.Reader) error {
 	var err error
-	response.body, err = UnmarshalResource(reader)
+	response.body, err = UnmarshalClusterResources(reader)
 	return err
 }
-func writeResourceGetResponse(response *ResourceGetServerResponse, w http.ResponseWriter) error {
-	return MarshalResource(response.body, w)
+func writeClusterResourcesGetResponse(response *ClusterResourcesGetServerResponse, w http.ResponseWriter) error {
+	return MarshalClusterResources(response.body, w)
 }

@@ -33,6 +33,11 @@ func NewAddOnParameterOption() *AddOnParameterOptionBuilder {
 	return &AddOnParameterOptionBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AddOnParameterOptionBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Name sets the value of the 'name' attribute to the given value.
 //
 //

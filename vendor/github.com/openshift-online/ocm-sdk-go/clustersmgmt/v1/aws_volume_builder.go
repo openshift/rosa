@@ -34,6 +34,11 @@ func NewAWSVolume() *AWSVolumeBuilder {
 	return &AWSVolumeBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AWSVolumeBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // IOPS sets the value of the 'IOPS' attribute to the given value.
 //
 //

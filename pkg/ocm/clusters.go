@@ -44,7 +44,9 @@ type Spec struct {
 	Expiration                time.Time
 	Flavour                   string
 	DisableWorkloadMonitoring *bool
+
 	//Encryption
+	FIPS           bool
 	EtcdEncryption bool
 	KMSKeyArn      string
 	// Scaling config
@@ -547,6 +549,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 			cmv1.NewCloudRegion().
 				ID(config.Region),
 		).
+		FIPS(config.FIPS).
 		EtcdEncryption(config.EtcdEncryption).
 		Properties(clusterProperties)
 

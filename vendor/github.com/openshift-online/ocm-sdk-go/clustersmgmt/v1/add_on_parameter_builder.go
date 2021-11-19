@@ -63,6 +63,11 @@ func (b *AddOnParameterBuilder) HREF(value string) *AddOnParameterBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AddOnParameterBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Addon sets the value of the 'addon' attribute to the given value.
 //
 // Representation of an add-on that can be installed in a cluster.

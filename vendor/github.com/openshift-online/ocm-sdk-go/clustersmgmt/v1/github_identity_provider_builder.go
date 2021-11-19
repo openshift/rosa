@@ -37,6 +37,11 @@ func NewGithubIdentityProvider() *GithubIdentityProviderBuilder {
 	return &GithubIdentityProviderBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *GithubIdentityProviderBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // CA sets the value of the 'CA' attribute to the given value.
 //
 //

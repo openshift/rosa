@@ -35,6 +35,11 @@ func NewClusterMetricsNodes() *ClusterMetricsNodesBuilder {
 	return &ClusterMetricsNodesBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterMetricsNodesBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Compute sets the value of the 'compute' attribute to the given value.
 //
 //

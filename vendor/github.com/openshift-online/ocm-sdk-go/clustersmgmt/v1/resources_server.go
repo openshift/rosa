@@ -35,10 +35,10 @@ type ResourcesServer interface {
 	// Retrieves a list of resources for a cluster in error state
 	Get(ctx context.Context, request *ResourcesGetServerRequest, response *ResourcesGetServerResponse) error
 
-	// Live returns the target 'resource' resource.
+	// Live returns the target 'cluster_resources' resource.
 	//
 	// Retrieves a list of currently available resources for a cluster
-	Live() ResourceServer
+	Live() ClusterResourcesServer
 }
 
 // ResourcesGetServerRequest is the request for the 'get' method.
@@ -49,13 +49,13 @@ type ResourcesGetServerRequest struct {
 type ResourcesGetServerResponse struct {
 	status int
 	err    *errors.Error
-	body   *Resource
+	body   *ClusterResources
 }
 
 // Body sets the value of the 'body' parameter.
 //
 // List of cluster resources
-func (r *ResourcesGetServerResponse) Body(value *Resource) *ResourcesGetServerResponse {
+func (r *ResourcesGetServerResponse) Body(value *ClusterResources) *ResourcesGetServerResponse {
 	r.body = value
 	return r
 }
@@ -87,7 +87,7 @@ func dispatchResources(w http.ResponseWriter, r *http.Request, server ResourcesS
 			errors.SendNotFound(w, r)
 			return
 		}
-		dispatchResource(w, r, target, segments[1:])
+		dispatchClusterResources(w, r, target, segments[1:])
 	default:
 		errors.SendNotFound(w, r)
 		return

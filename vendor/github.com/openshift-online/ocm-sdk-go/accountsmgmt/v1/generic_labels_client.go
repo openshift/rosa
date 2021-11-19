@@ -22,13 +22,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -153,7 +151,7 @@ func (r *GenericLabelsAddRequest) SendContext(ctx context.Context) (result *Gene
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -165,16 +163,6 @@ func (r *GenericLabelsAddRequest) SendContext(ctx context.Context) (result *Gene
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'add' method.
-func (r *GenericLabelsAddRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *GenericLabelsAddRequest) stream(stream *jsoniter.Stream) {
 }
 
 // GenericLabelsAddResponse is the response for the 'add' method.
@@ -311,7 +299,7 @@ func (r *GenericLabelsListRequest) SendContext(ctx context.Context) (result *Gen
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}

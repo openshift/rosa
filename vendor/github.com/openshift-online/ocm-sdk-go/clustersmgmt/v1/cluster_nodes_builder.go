@@ -39,6 +39,11 @@ func NewClusterNodes() *ClusterNodesBuilder {
 	return &ClusterNodesBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterNodesBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // AutoscaleCompute sets the value of the 'autoscale_compute' attribute to the given value.
 //
 // Representation of a autoscaling in a machine pool.

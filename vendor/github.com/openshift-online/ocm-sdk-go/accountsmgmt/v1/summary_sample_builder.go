@@ -33,6 +33,11 @@ func NewSummarySample() *SummarySampleBuilder {
 	return &SummarySampleBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SummarySampleBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Time sets the value of the 'time' attribute to the given value.
 //
 //

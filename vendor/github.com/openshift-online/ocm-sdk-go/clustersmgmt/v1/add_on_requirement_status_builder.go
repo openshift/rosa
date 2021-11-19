@@ -33,6 +33,11 @@ func NewAddOnRequirementStatus() *AddOnRequirementStatusBuilder {
 	return &AddOnRequirementStatusBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AddOnRequirementStatusBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // ErrorMsgs sets the value of the 'error_msgs' attribute to the given values.
 //
 //

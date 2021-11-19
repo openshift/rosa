@@ -32,9 +32,9 @@ func writeResourcesGetRequest(request *ResourcesGetRequest, writer io.Writer) er
 }
 func readResourcesGetResponse(response *ResourcesGetResponse, reader io.Reader) error {
 	var err error
-	response.body, err = UnmarshalResource(reader)
+	response.body, err = UnmarshalClusterResources(reader)
 	return err
 }
 func writeResourcesGetResponse(response *ResourcesGetServerResponse, w http.ResponseWriter) error {
-	return MarshalResource(response.body, w)
+	return MarshalClusterResources(response.body, w)
 }
