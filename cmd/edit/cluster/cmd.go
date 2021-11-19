@@ -39,7 +39,8 @@ var args struct {
 	expirationDuration time.Duration
 
 	// Networking options
-	private bool
+	private                   bool
+	disableWorkloadMonitoring bool
 }
 
 var Cmd = &cobra.Command{
@@ -83,6 +84,13 @@ func init() {
 		"private",
 		false,
 		"Restrict master API endpoint to direct, private connectivity.",
+	)
+	flags.BoolVar(
+		&args.disableWorkloadMonitoring,
+		"disable-workload-monitoring",
+		false,
+		"Enables you to monitor your own projects in isolation from Red Hat Site Reliability Engineer (SRE) "+
+			"platform metrics.",
 	)
 }
 
@@ -189,9 +197,33 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	var disableWorkloadMonitoring *bool
+	var disableWorkloadMonitoringValue bool
+
+	if cmd.Flags().Changed("disable-workload-monitoring") {
+		disableWorkloadMonitoringValue = args.disableWorkloadMonitoring
+		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
+	} else if interactive.Enabled() {
+		disableWorkloadMonitoringValue = cluster.DisableUserWorkloadMonitoring()
+	}
+
+	if interactive.Enabled() {
+		disableWorkloadMonitoringValue, err = interactive.GetBool(interactive.Input{
+			Question: "Disable Workload monitoring",
+			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
+			Default:  disableWorkloadMonitoringValue,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
+			os.Exit(1)
+		}
+		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
+	}
+
 	clusterConfig := ocm.Spec{
-		Expiration: expiration,
-		Private:    private,
+		Expiration:                expiration,
+		Private:                   private,
+		DisableWorkloadMonitoring: disableWorkloadMonitoring,
 	}
 
 	reporter.Debugf("Updating cluster '%s'", clusterKey)
