@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2020 Red Hat, Inc.
+Copyright (c) 2021 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,31 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package upgrade
+package link
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/upgrade/accountroles"
-	"github.com/openshift/rosa/cmd/upgrade/cluster"
-	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
+	"github.com/openshift/rosa/cmd/link/ocmrole"
+	"github.com/openshift/rosa/cmd/link/userrole"
 	"github.com/openshift/rosa/pkg/arguments"
-	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
 
 var Cmd = &cobra.Command{
-	Use:   "upgrade",
-	Short: "Upgrade a resource",
-	Long:  "Upgrade a resource",
+	Use:     "link",
+	Aliases: []string{"associate"},
+	Short:   "Link a resource from stdin",
+	Long:    "Link a resource from stdin",
 }
 
 func init() {
-	Cmd.AddCommand(cluster.Cmd)
-	Cmd.AddCommand(accountroles.Cmd)
-	Cmd.AddCommand(operatorroles.Cmd)
+	Cmd.AddCommand(userrole.Cmd)
+	Cmd.AddCommand(ocmrole.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
-	interactive.AddFlag(flags)
+	confirm.AddFlag(flags)
 }

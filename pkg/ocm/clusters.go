@@ -22,6 +22,7 @@ import (
 	"os"
 	"time"
 
+	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -90,6 +91,12 @@ type Spec struct {
 	Mode                string
 
 	NodeDrainGracePeriodInMinutes float64
+
+	EnableProxy               bool
+	HTTPProxy                 *string
+	HTTPSProxy                *string
+	AdditionalTrustBundleFile *string
+	AdditionalTrustBundle     string
 }
 
 type OperatorIAMRole struct {
@@ -253,6 +260,29 @@ func (c *Client) GetClusterByID(clusterKey string, creator *aws.Creator) (*cmv1.
 		return response.Items().Slice()[0], nil
 	default:
 		return nil, fmt.Errorf("There are %d clusters with identifier '%s'", response.Total(), clusterKey)
+	}
+}
+
+func (c *Client) GetClusterUsingSubscription(clusterKey string, creator *aws.Creator) (*amv1.Subscription, error) {
+	query := fmt.Sprintf("plan.id = 'MOA' AND (display_name  = '%s' OR "+
+		"cluster_id = '%s') AND status = 'Deprovisioned'", clusterKey, clusterKey)
+	response, err := c.ocm.AccountsMgmt().V1().Subscriptions().List().
+		Search(query).
+		Page(1).
+		Size(1).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	switch response.Total() {
+	case 0:
+		return nil, errors.NotFound.Errorf("There is no cluster with identifier '%s'", clusterKey)
+	case 1:
+		return response.Items().Slice()[0], nil
+	default:
+		return nil, errors.Conflict.Errorf("There are %d clusters with identifier '%s'", response.Total(),
+			clusterKey)
 	}
 }
 
@@ -645,6 +675,21 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 			Enabled(true).
 			DisableSCPChecks(true),
 		)
+	}
+
+	if config.HTTPProxy != nil || config.HTTPSProxy != nil {
+		proxyBuilder := cmv1.NewProxy()
+		if config.HTTPProxy != nil {
+			proxyBuilder.HTTPProxy(*config.HTTPProxy)
+		}
+		if config.HTTPSProxy != nil {
+			proxyBuilder.HTTPSProxy(*config.HTTPSProxy)
+		}
+		clusterBuilder = clusterBuilder.Proxy(proxyBuilder)
+	}
+
+	if config.AdditionalTrustBundle != "" {
+		clusterBuilder = clusterBuilder.AdditionalTrustBundle(config.AdditionalTrustBundle)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()

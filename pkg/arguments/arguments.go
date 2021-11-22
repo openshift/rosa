@@ -128,3 +128,12 @@ func AddRegionFlag(fs *pflag.FlagSet) {
 func GetRegion() string {
 	return region.Region()
 }
+
+func IsValidMode(modes []string, mode string) bool {
+	for _, modeValue := range modes {
+		if mode == modeValue {
+			return true
+		}
+	}
+	return false
+}

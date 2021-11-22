@@ -259,6 +259,24 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Network().HostPrefix(),
 	)
 
+	if cluster.Proxy() != nil && (cluster.Proxy().HTTPProxy() != "" || cluster.Proxy().HTTPSProxy() != "") {
+		str = fmt.Sprintf("%s"+"Proxy:\n", str)
+		if cluster.Proxy().HTTPProxy() != "" {
+			str = fmt.Sprintf("%s"+
+				" - HTTPProxy:               %s\n", str,
+				cluster.Proxy().HTTPProxy())
+		}
+		if cluster.Proxy().HTTPSProxy() != "" {
+			str = fmt.Sprintf("%s"+
+				" - HTTPSProxy:              %s\n", str,
+				cluster.Proxy().HTTPSProxy())
+		}
+	}
+
+	if cluster.AdditionalTrustBundle() != "" {
+		str = fmt.Sprintf("%s"+"Additional trust bundle:    REDACTED\n", str)
+	}
+
 	if cluster.AWS().STS().RoleARN() != "" {
 		str = fmt.Sprintf("%s"+
 			"STS Role ARN:               %s\n", str,

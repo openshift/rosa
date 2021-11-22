@@ -26,7 +26,6 @@ type Proxy struct {
 	bitmap_    uint32
 	httpProxy  string
 	httpsProxy string
-	noProxy    string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -76,31 +75,6 @@ func (o *Proxy) GetHTTPSProxy() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.httpsProxy
-	}
-	return
-}
-
-// NoProxy returns the value of the 'no_proxy' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// NoProxy is a comma-separated list of domains and CIDRs for which
-// the proxy should not be used.
-func (o *Proxy) NoProxy() string {
-	if o != nil && o.bitmap_&4 != 0 {
-		return o.noProxy
-	}
-	return ""
-}
-
-// GetNoProxy returns the value of the 'no_proxy' attribute and
-// a flag indicating if the attribute has a value.
-//
-// NoProxy is a comma-separated list of domains and CIDRs for which
-// the proxy should not be used.
-func (o *Proxy) GetNoProxy() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
-	if ok {
-		value = o.noProxy
 	}
 	return
 }

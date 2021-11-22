@@ -38,12 +38,6 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var modes []string = []string{"auto", "manual"}
-
-var args struct {
-	mode string
-}
-
 var Cmd = &cobra.Command{
 	Use:     "oidc-provider",
 	Aliases: []string{"oidcprovider"},
@@ -58,23 +52,10 @@ func init() {
 	flags := Cmd.Flags()
 
 	ocm.AddClusterFlag(Cmd)
-
-	flags.StringVar(
-		&args.mode,
-		"mode",
-		modes[0],
-		"How to perform the operation. Valid options are:\n"+
-			"auto: OIDC provider will be created using the current AWS account\n"+
-			"manual: Command to create the OIDC provider will be output",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
+	aws.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -85,14 +66,20 @@ func run(cmd *cobra.Command, argv []string) {
 	skipInteractive := false
 	if len(argv) == 2 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
-		args.mode = argv[1]
+		aws.SetModeKey(argv[1])
 
-		if args.mode != "" {
+		if argv[1] != "" {
 			skipInteractive = true
 		}
 	}
 
 	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	mode, err := aws.GetMode()
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -146,13 +133,12 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	mode := args.mode
 	if interactive.Enabled() && !skipInteractive {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  mode,
-			Options:  modes,
+			Default:  aws.ModeAuto,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
@@ -162,14 +148,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	switch mode {
-	case "auto":
-
+	case aws.ModeAuto:
 		if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
 			reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 				clusterKey, cluster.State())
 			os.Exit(0)
 		}
-
 		oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
 		oidcProviderExists, err := awsClient.HasOpenIDConnectProvider(oidcEndpointURL, creator.AccountID)
 		if err != nil {
@@ -185,8 +169,6 @@ func run(cmd *cobra.Command, argv []string) {
 				"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
 			os.Exit(1)
 		}
-
-		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto")
 		reporter.Infof("Creating OIDC provider using '%s'", creator.ARN)
 		if !confirm.Prompt(true, "Create the OIDC provider for cluster '%s'?", clusterKey) {
 			os.Exit(0)
@@ -194,24 +176,36 @@ func run(cmd *cobra.Command, argv []string) {
 		err = createProvider(reporter, awsClient, cluster)
 		if err != nil {
 			reporter.Errorf("There was an error creating the OIDC provider: %s", err)
+			ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
+				ocm.ClusterID: clusterKey,
+				ocm.Response:  ocm.Failure,
+			})
 			os.Exit(1)
 		}
-	case "manual":
-		ocmClient.LogEvent("ROSACreateOIDCProviderModeManual")
+		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
+			ocm.ClusterID: clusterKey,
+			ocm.Response:  ocm.Success,
+		})
+	case aws.ModeManual:
 
 		commands, err := buildCommands(reporter, cluster)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
+			ocmClient.LogEvent("ROSACreateOIDCProviderModeManual", map[string]string{
+				ocm.ClusterID: clusterKey,
+				ocm.Response:  ocm.Failure,
+			})
 		}
-
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to create the OIDC provider:\n")
 		}
-
+		ocmClient.LogEvent("ROSACreateOIDCProviderModeManual", map[string]string{
+			ocm.ClusterID: clusterKey,
+		})
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }

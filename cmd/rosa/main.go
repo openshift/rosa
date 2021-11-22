@@ -33,6 +33,7 @@ import (
 	"github.com/openshift/rosa/cmd/hibernate"
 	"github.com/openshift/rosa/cmd/initialize"
 	"github.com/openshift/rosa/cmd/install"
+	"github.com/openshift/rosa/cmd/link"
 	"github.com/openshift/rosa/cmd/list"
 	"github.com/openshift/rosa/cmd/login"
 	"github.com/openshift/rosa/cmd/logout"
@@ -83,6 +84,7 @@ func init() {
 	root.AddCommand(hibernate.Cmd)
 	root.AddCommand(resume.Cmd)
 	root.AddCommand(wait.Cmd)
+	root.AddCommand(link.Cmd)
 }
 
 func main() {

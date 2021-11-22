@@ -23,9 +23,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/upgrade/accountroles"
+	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
@@ -67,6 +70,7 @@ func init() {
 	flags.SortFlags = false
 
 	ocm.AddClusterFlag(Cmd)
+	aws.AddModeFlag(Cmd)
 
 	flags.StringVar(
 		&args.version,
@@ -105,6 +109,12 @@ func run(cmd *cobra.Command, _ []string) {
 	logger := logging.CreateLoggerOrExit(reporter)
 
 	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	mode, err := aws.GetMode()
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -150,6 +160,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if cluster.State() != cmv1.ClusterStateReady {
 		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		os.Exit(1)
+	}
+
+	_, isSTS := cluster.AWS().STS().GetRoleARN()
+	if !isSTS && mode != "" {
+		reporter.Errorf("The 'mode' option is only supported for STS clusters")
 		os.Exit(1)
 	}
 
@@ -213,6 +229,68 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if scheduleDate == "" || scheduleTime == "" {
 		interactive.Enable()
+	}
+
+	// if cluster is sts validate roles are compatible with upgrade version
+	if isSTS {
+		var spin *spinner.Spinner
+		if reporter.IsTerminal() {
+			spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		}
+
+		reporter.Infof("Ensuring cluster roles and policies are compatible with upgrade.")
+		if spin != nil {
+			spin.Start()
+		}
+
+		prefix, err := aws.GetPrefixFromAccountRole(cluster)
+		if err != nil {
+			reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
+			os.Exit(1)
+		}
+
+		isAccountRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForRole(prefix, awsCreator.AccountID, version)
+		if err != nil {
+			reporter.Errorf("Could not validate '%s' clusters account roles : %v", clusterKey, err)
+			os.Exit(1)
+		}
+
+		isOperatorRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRole(cluster,
+			awsCreator.AccountID, version)
+		if err != nil {
+			reporter.Errorf("Could not validate '%s' clusters operator roles : %v", clusterKey, err)
+			os.Exit(1)
+		}
+
+		if spin != nil {
+			spin.Stop()
+		}
+
+		if isAccountRoleUpgradeNeeded || isOperatorRoleUpgradeNeeded {
+			if mode != "" {
+				if isAccountRoleUpgradeNeeded {
+					reporter.Infof("Preparing to upgrade account roles.")
+					accountroles.Cmd.Run(accountroles.Cmd, []string{prefix, mode})
+				}
+				if isOperatorRoleUpgradeNeeded {
+					reporter.Infof("Preparing to upgrade operator roles.")
+					operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterKey, mode})
+				}
+				if mode == aws.ModeManual {
+					reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
+						" once cluster roles have been upgraded : \n\n"+
+						"\trosa upgrade cluster --cluster %s\n", clusterKey)
+					os.Exit(0)
+				}
+			} else {
+				reporter.Infof("Cluster Roles are not valid with upgrade version %s. "+
+					"Run the following command(s) to upgrade Cluster Roles:\n\n"+
+					"\t%s\n",
+					version,
+					buildRoleUpgradeCommand(isAccountRoleUpgradeNeeded, isOperatorRoleUpgradeNeeded, clusterKey, prefix))
+				os.Exit(0)
+			}
+		}
 	}
 
 	// Set the default next run within the next 10 minutes
@@ -363,4 +441,18 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Infof("Upgrade successfully scheduled for cluster '%s'", clusterKey)
+}
+
+func buildRoleUpgradeCommand(isAccountRoleUpgradeNeeded bool, isOperatorRoleUpgradeNeeded bool,
+	clusterKey string, prefix string) string {
+	accountRoleCmd := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
+	operatorRoleCmd := fmt.Sprintf("rosa upgrade operator-roles --cluster %s", clusterKey)
+
+	if isAccountRoleUpgradeNeeded && isOperatorRoleUpgradeNeeded {
+		return fmt.Sprintf("%s\n\t%s", accountRoleCmd, operatorRoleCmd)
+	}
+	if isAccountRoleUpgradeNeeded {
+		return accountRoleCmd
+	}
+	return operatorRoleCmd
 }

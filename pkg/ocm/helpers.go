@@ -17,11 +17,14 @@ limitations under the License.
 package ocm
 
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -38,6 +41,11 @@ func init() {
 const (
 	ANY                 = "any"
 	HibernateCapability = "capability.organization.hibernate_cluster"
+	//Pendo Events
+	Success   = "Success"
+	Failure   = "Failure"
+	Response  = "Response"
+	ClusterID = "ClusterID"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
@@ -68,6 +76,45 @@ func ClusterNameValidator(name interface{}) error {
 		return nil
 	}
 	return fmt.Errorf("can only validate strings, got %v", name)
+}
+
+func ValidateHTTPProxy(val interface{}) error {
+	if httpProxy, ok := val.(string); ok {
+		if httpProxy == "" {
+			return nil
+		}
+		url, err := url.ParseRequestURI(httpProxy)
+		if err != nil {
+			return fmt.Errorf("Invalid http-proxy value '%s'", httpProxy)
+		}
+		if url.Scheme != "http" {
+			return errors.New("Expected http-proxy to have an http:// scheme")
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
+}
+
+func ValidateAdditionalTrustBundle(val interface{}) error {
+	if additionalTrustBundleFile, ok := val.(string); ok {
+		if additionalTrustBundleFile == "" {
+			return nil
+		}
+		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
+		if err != nil {
+			return err
+		}
+		additionalTrustBundle := string(cert)
+		if additionalTrustBundle == "" {
+			return errors.New("Trust bundle file is empty")
+		}
+		additionalTrustBundleBytes := []byte(additionalTrustBundle)
+		if !x509.NewCertPool().AppendCertsFromPEM(additionalTrustBundleBytes) {
+			return errors.New("Failed to parse trust bundle")
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
 func IsValidUsername(username string) bool {
@@ -130,8 +177,8 @@ func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPN
 	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix
 }
 
-func (c *Client) LogEvent(key string) {
-	event, err := cmv1.NewEvent().Key(key).Build()
+func (c *Client) LogEvent(key string, body map[string]string) {
+	event, err := cmv1.NewEvent().Key(key).Body(body).Build()
 	if err == nil {
 		_, _ = c.ocm.ClustersMgmt().V1().
 			Events().
@@ -225,4 +272,96 @@ func RandomLabel(size int) string {
 		}
 	}
 	return string(chars)
+}
+
+func (c *Client) LinkAccountRole(accountID string, roleARN string) error {
+	labels, err := c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).Labels().List().Send()
+	if err != nil {
+		return err
+	}
+	existingARN := ""
+	if labels.Items().Len() > 0 {
+		labels.Items().Range(func(index int, item *amsv1.Label) bool {
+			if item.Key() == "sts_user_role" {
+				existingARN = item.Value()
+				return true
+			}
+			return false
+		})
+	}
+	exists := false
+	if existingARN != "" {
+		existingARNArr := strings.Split(existingARN, ",")
+		if len(existingARNArr) > 0 {
+			for _, value := range existingARNArr {
+				if value == roleARN {
+					exists = true
+					break
+				}
+			}
+		}
+	}
+	if exists {
+		return nil
+	}
+	if existingARN != "" {
+		roleARN = existingARN + "," + roleARN
+	}
+	labelBuilder, err := amsv1.NewLabel().Key("sts_user_role").Value(roleARN).Build()
+	if err != nil {
+		return err
+	}
+	_, err = c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).Labels().Add().
+		Body(labelBuilder).Send()
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func (c *Client) LinkOrgToRole(orgID string, roleARN string) error {
+	labels, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).Labels().List().Send()
+	if err != nil {
+		return err
+	}
+	existingARN := ""
+	if labels.Items().Len() > 0 {
+		labels.Items().Range(func(index int, item *amsv1.Label) bool {
+			if item.Key() == "sts_ocm_role" {
+				existingARN = item.Value()
+				return true
+			}
+			return false
+		})
+	}
+	exists := false
+	if existingARN != "" {
+		existingARNArr := strings.Split(existingARN, ",")
+		if len(existingARNArr) > 0 {
+			for _, value := range existingARNArr {
+				if value == roleARN {
+					exists = true
+					break
+				}
+			}
+		}
+	}
+	if exists {
+		return nil
+	}
+
+	if existingARN != "" {
+		roleARN = existingARN + "," + roleARN
+	}
+	labelBuilder, err := amsv1.NewLabel().Key("sts_ocm_role").Value(roleARN).Build()
+	if err != nil {
+		return err
+	}
+
+	_, err = c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).Labels().Add().
+		Body(labelBuilder).Send()
+	if err != nil {
+		return err
+	}
+	return nil
 }

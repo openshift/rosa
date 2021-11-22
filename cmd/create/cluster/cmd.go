@@ -19,6 +19,7 @@ package cluster
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"regexp"
@@ -48,8 +49,6 @@ import (
 
 //nolint
 var kmsArnRE = regexp.MustCompile(`^arn:aws:kms:[\w-]+:\d{12}:key\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
-
-var modes = []string{"auto", "manual"}
 
 var args struct {
 	// Watch logs during cluster installation
@@ -103,9 +102,6 @@ var args struct {
 	// Force STS mode for interactive and validation
 	sts bool
 
-	// How to perform the create cluster sts auto or manual
-	mode string
-
 	// Account IAM Roles
 	roleARN             string
 	externalID          string
@@ -117,6 +113,12 @@ var args struct {
 	operatorIAMRoles                 []string
 	operatorRolesPrefix              string
 	operatorRolesPermissionsBoundary string
+
+	// Proxy
+	enableProxy               bool
+	httpProxy                 string
+	httpsProxy                string
+	additionalTrustBundleFile string
 
 	tags []string
 }
@@ -188,6 +190,14 @@ func init() {
 	)
 
 	flags.StringVar(
+		&args.controlPlaneRoleARN,
+		"master-iam-role",
+		"",
+		"The IAM role ARN that will be attached to master instances.",
+	)
+	flags.MarkDeprecated("master-iam-role", "use --controlplane-iam-role instead")
+
+	flags.StringVar(
 		&args.workerRoleARN,
 		"worker-iam-role",
 		"",
@@ -255,10 +265,31 @@ func init() {
 			"This option configures etcd encryption on top of existing storage encryption.",
 	)
 
+	flags.StringVar(
+		&args.httpProxy,
+		"http-proxy",
+		"",
+		"A proxy URL to use for creating HTTP connections outside the cluster. The URL scheme must be http.",
+	)
+
+	flags.StringVar(
+		&args.httpsProxy,
+		"https-proxy",
+		"",
+		"A proxy URL to use for creating HTTPS connections outside the cluster.",
+	)
+
+	flags.StringVar(
+		&args.additionalTrustBundleFile,
+		"additional-trust-bundle-file",
+		"",
+		"A file contains a PEM-encoded X.509 certificate bundle that will be "+
+			"added to the nodes' trusted certificate store.")
+
 	flags.BoolVar(&args.enableCustomerManagedKey,
 		"enable-customer-managed-key",
 		false,
-		"Enable to specific your KMS Key to encrypt EBS instance volumes. By default account’s default "+
+		"Enable to specify your KMS Key to encrypt EBS instance volumes. By default account’s default "+
 			"KMS key for that particular region is used.")
 
 	flags.StringVar(&args.kmsKeyARN,
@@ -413,16 +444,6 @@ func init() {
 	flags.MarkHidden("properties")
 
 	flags.StringVar(
-		&args.mode,
-		"mode",
-		"",
-		"When creating STS clusters, operations that create resources in the AWS account have "+
-			"two modes:\n\tauto: Resources will be created using the current AWS account\n\tmanual: "+
-			"Resource files will be saved in the current directory and necessary commands will be output",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
-
-	flags.StringVar(
 		&args.operatorRolesPermissionsBoundary,
 		"permissions-boundary",
 		"",
@@ -430,12 +451,9 @@ func init() {
 			"roles in STS clusters.",
 	)
 
+	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -582,23 +600,23 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	mode := args.mode
+	mode, err := aws.GetMode()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	// warn if mode is used for non sts cluster
 	if !isSTS && mode != "" {
 		reporter.Warnf("--mode is only valid for STS clusters")
 	}
 
 	// validate mode passed is allowed value
+
 	if isSTS && mode != "" {
-		modeIsValid := false
-		for _, m := range modes {
-			if m == mode {
-				modeIsValid = true
-				break
-			}
-		}
-		if !modeIsValid {
-			reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, modes)
+		isValidMode := arguments.IsValidMode(aws.Modes, mode)
+		if !isValidMode {
+			reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, aws.Modes)
 			os.Exit(1)
 		}
 	}
@@ -931,6 +949,15 @@ func run(cmd *cobra.Command, _ []string) {
 				})
 			}
 		}
+		// Validate the role names are available on AWS
+		for _, role := range operatorIAMRoleList {
+			name := strings.SplitN(role.RoleARN, "/", 2)[1]
+			err := awsClient.ValidateRoleNameAvailable(name)
+			if err != nil {
+				reporter.Errorf("Error validating role: %v", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	// Custom tags for AWS resources
@@ -1096,6 +1123,17 @@ func run(cmd *cobra.Command, _ []string) {
 		useExistingVPC = true
 	}
 
+	// cluster-wide proxy values set here as we need to know whather to skip the "Install
+	// into an existing VPC" question
+	enableProxy := false
+	httpProxy := args.httpProxy
+	httpsProxy := args.httpsProxy
+	additionalTrustBundleFile := args.additionalTrustBundleFile
+	if httpProxy != "" || httpsProxy != "" || additionalTrustBundleFile != "" {
+		useExistingVPC = true
+		enableProxy = true
+	}
+
 	// Subnet IDs
 	subnetIDs := args.subnetIDs
 	subnetsProvided := len(subnetIDs) > 0
@@ -1106,6 +1144,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if privateLink {
 			existingVPCHelp += "For PrivateLink, only a private subnet per availability zone is needed."
 		}
+
 		useExistingVPC, err = interactive.GetBool(interactive.Input{
 			Question: "Install into an existing VPC",
 			Help:     existingVPCHelp,
@@ -1467,6 +1506,96 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	// Cluster-wide proxy configuration
+	if useExistingVPC && !enableProxy && interactive.Enabled() {
+		enableProxy, err = interactive.GetBool(interactive.Input{
+			Question: "Use cluster-wide proxy",
+			Help: "To install cluster-wide proxy, you need to set one of the following attributes: 'http-proxy', " +
+				"'https-proxy', additional-trust-bundle",
+			Default: enableProxy,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if enableProxy && interactive.Enabled() {
+		httpProxy, err = interactive.GetString(interactive.Input{
+			Question: "HTTP proxy",
+			Help:     cmd.Flags().Lookup("http-proxy").Usage,
+			Default:  httpProxy,
+			Validators: []interactive.Validator{
+				ocm.ValidateHTTPProxy,
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid http proxy: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = ocm.ValidateHTTPProxy(httpProxy)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if enableProxy && interactive.Enabled() {
+		httpsProxy, err = interactive.GetString(interactive.Input{
+			Question: "HTTPS proxy",
+			Help:     cmd.Flags().Lookup("https-proxy").Usage,
+			Default:  httpsProxy,
+			Validators: []interactive.Validator{
+				interactive.IsURL,
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid https proxy: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = interactive.IsURL(httpsProxy)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if enableProxy && interactive.Enabled() {
+		additionalTrustBundleFile, err = interactive.GetCert(interactive.Input{
+			Question: "Additional trust bundle file path",
+			Help:     cmd.Flags().Lookup("additional-trust-bundle-file").Usage,
+			Default:  additionalTrustBundleFile,
+			Validators: []interactive.Validator{
+				ocm.ValidateAdditionalTrustBundle,
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = ocm.ValidateAdditionalTrustBundle(additionalTrustBundleFile)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	// Get certificate contents
+	additionalTrustBundle := ""
+	if additionalTrustBundleFile != "" {
+		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
+		if err != nil {
+			reporter.Errorf("Failed to read additional trust bundle file: %s", err)
+			os.Exit(1)
+		}
+		additionalTrustBundle = string(cert)
+	}
+
+	if enableProxy && httpProxy == "" && httpsProxy == "" && additionalTrustBundleFile == "" {
+		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy, additional-trust-bundle")
+		os.Exit(1)
+	}
+
 	clusterConfig := ocm.Spec{
 		Name:                      clusterName,
 		Region:                    region,
@@ -1475,6 +1604,8 @@ func run(cmd *cobra.Command, _ []string) {
 		ChannelGroup:              channelGroup,
 		Flavour:                   args.flavour,
 		EtcdEncryption:            args.etcdEncryption,
+		EnableProxy:               enableProxy,
+		AdditionalTrustBundle:     additionalTrustBundle,
 		Expiration:                expiration,
 		ComputeMachineType:        computeMachineType,
 		ComputeNodes:              computeNodes,
@@ -1502,6 +1633,17 @@ func run(cmd *cobra.Command, _ []string) {
 		Tags:                      tagsList,
 		KMSKeyArn:                 kmsKeyARN,
 		DisableWorkloadMonitoring: disableWorkloadMonitoring,
+	}
+
+	if httpProxy != "" {
+		clusterConfig.HTTPProxy = &httpProxy
+	}
+	if httpsProxy != "" {
+		clusterConfig.HTTPSProxy = &httpsProxy
+	}
+	if additionalTrustBundleFile != "" {
+		clusterConfig.AdditionalTrustBundleFile = &additionalTrustBundleFile
+		clusterConfig.AdditionalTrustBundle = additionalTrustBundle
 	}
 
 	props := args.properties
@@ -1848,6 +1990,18 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	}
 	if spec.EtcdEncryption {
 		command += " --etcd-encryption"
+	}
+
+	if spec.EnableProxy {
+		if spec.HTTPProxy != nil && *spec.HTTPProxy != "" {
+			command += fmt.Sprintf(" --http-proxy %s", *spec.HTTPProxy)
+		}
+		if spec.HTTPSProxy != nil && *spec.HTTPSProxy != "" {
+			command += fmt.Sprintf(" --https-proxy %s", *spec.HTTPSProxy)
+		}
+	}
+	if spec.AdditionalTrustBundleFile != nil && *spec.AdditionalTrustBundleFile != "" {
+		command += fmt.Sprintf(" --additional-trust-bundle-file %s", *spec.AdditionalTrustBundleFile)
 	}
 	if spec.KMSKeyArn != "" {
 		command += fmt.Sprintf(" --kms-key-arn %s", spec.KMSKeyArn)

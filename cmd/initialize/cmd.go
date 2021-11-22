@@ -130,7 +130,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		// FIXME Hack to capture errors due to using STS accounts
 		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
-			ocmClient.LogEvent("ROSAInitCredentialsSTS")
+			ocmClient.LogEvent("ROSAInitCredentialsSTS", nil)
 		}
 		reporter.Errorf("Error creating AWS client: %v", err)
 		os.Exit(1)
@@ -140,12 +140,12 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter.Infof("Validating AWS credentials...")
 	ok, err := client.ValidateCredentials()
 	if err != nil {
-		ocmClient.LogEvent("ROSAInitCredentialsFailed")
+		ocmClient.LogEvent("ROSAInitCredentialsFailed", nil)
 		reporter.Errorf("Error validating AWS credentials: %v", err)
 		os.Exit(1)
 	}
 	if !ok {
-		ocmClient.LogEvent("ROSAInitCredentialsInvalid")
+		ocmClient.LogEvent("ROSAInitCredentialsInvalid", nil)
 		reporter.Errorf("AWS credentials are invalid")
 		os.Exit(1)
 	}
@@ -193,7 +193,7 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
 	created, err := cfClient.EnsureOsdCcsAdminUser(aws.OsdCcsAdminStackName, aws.AdminUserName, awsRegion)
 	if err != nil {
-		ocmClient.LogEvent("ROSAInitCreateStackFailed")
+		ocmClient.LogEvent("ROSAInitCreateStackFailed", nil)
 		reporter.Errorf("Failed to create user '%s': %v", aws.AdminUserName, err)
 		os.Exit(1)
 	}
@@ -210,7 +210,7 @@ func run(cmd *cobra.Command, argv []string) {
 		target := aws.AdminUserName
 		isValid, err := client.ValidateSCP(&target)
 		if !isValid {
-			ocmClient.LogEvent("ROSAInitSCPPoliciesFailed")
+			ocmClient.LogEvent("ROSAInitSCPPoliciesFailed", nil)
 			reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)
 			os.Exit(1)
 		}
@@ -223,7 +223,7 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter.Infof("Validating cluster creation...")
 	err = simulateCluster(ocmClient, region.Region())
 	if err != nil {
-		ocmClient.LogEvent("ROSAInitDryRunFailed")
+		ocmClient.LogEvent("ROSAInitDryRunFailed", nil)
 		reporter.Warnf("Cluster creation failed. "+
 			"If you create a cluster, it should fail with the following error:\n%s", err)
 	} else {
@@ -238,7 +238,7 @@ func deleteStack(awsClient aws.Client, ocmClient *ocm.Client) error {
 	// Get creator ARN to determine existing clusters:
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
-		ocmClient.LogEvent("ROSAInitGetCreatorFailed")
+		ocmClient.LogEvent("ROSAInitGetCreatorFailed", nil)
 		return fmt.Errorf("Failed to get AWS creator: %v", err)
 	}
 
@@ -255,7 +255,7 @@ func deleteStack(awsClient aws.Client, ocmClient *ocm.Client) error {
 	// Delete the CloudFormation stack
 	err = awsClient.DeleteOsdCcsAdminUser(aws.OsdCcsAdminStackName)
 	if err != nil {
-		ocmClient.LogEvent("ROSAInitDeleteStackFailed")
+		ocmClient.LogEvent("ROSAInitDeleteStackFailed", nil)
 		return fmt.Errorf("Failed to delete user '%s': %v", aws.AdminUserName, err)
 	}
 

@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	semver "github.com/hashicorp/go-version"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/assets"
@@ -121,6 +122,11 @@ var AccountRoles map[string]AccountRole = map[string]AccountRole{
 	WorkerAccountRole:       {Name: "Worker", Flag: "worker-iam-role"},
 	SupportAccountRole:      {Name: "Support", Flag: "support-role-arn"},
 }
+
+var OCMUserRole = "User"
+var OCMUserRolePolicyFile = "ocm_user"
+var OCMRole = "OCM"
+var OCMRolePolicyFile = "ocm"
 
 var roleTypeMap = map[string]string{
 	"installer":             "Installer",
@@ -238,6 +244,25 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 	return roleArn, nil
 }
 
+func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
+	_, err = c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(name),
+	})
+	if err == nil {
+		// If we found an existing role with this name we want to error
+		return fmt.Errorf("A role named '%s' already exists. "+
+			"Please delete the existing role, or provide a different prefix", name)
+	}
+
+	if aerr, ok := err.(awserr.Error); ok {
+		switch aerr.Code() {
+		case iam.ErrCodeNoSuchEntityException:
+			// This is what we want
+			return nil
+		}
+	}
+	return fmt.Errorf("Error validating role name '%s': %v", name, err)
+}
 func (c *awsClient) updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bool, error) {
 	oldPolicy, err := url.QueryUnescape(aws.StringValue(role.AssumeRolePolicyDocument))
 	if err != nil {
@@ -347,9 +372,7 @@ func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy str
 
 func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	version string, tagList map[string]string) (string, error) {
-	output, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{
-		PolicyArn: aws.String(policyArn),
-	})
+	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -363,7 +386,7 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 
 	policyArn = aws.StringValue(output.Policy.Arn)
 
-	isCompatible, err := c.isPolicyCompatible(policyArn, version)
+	isCompatible, err := c.IsPolicyCompatible(policyArn, version)
 	if err != nil {
 		return policyArn, err
 	}
@@ -390,6 +413,13 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	return policyArn, nil
 }
 
+func (c *awsClient) IsPolicyExists(policyArn string) (*iam.GetPolicyOutput, error) {
+	output, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{
+		PolicyArn: aws.String(policyArn),
+	})
+	return output, err
+}
+
 func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string) (string, error) {
 	parsedArn, err := arn.Parse(policyArn)
 	if err != nil {
@@ -414,7 +444,7 @@ func (c *awsClient) createPolicy(policyArn string, document string, tagList map[
 	return aws.StringValue(output.Policy.Arn), nil
 }
 
-func (c *awsClient) isPolicyCompatible(policyArn string, version string) (bool, error) {
+func (c *awsClient) IsPolicyCompatible(policyArn string, version string) (bool, error) {
 	output, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
 		PolicyArn: aws.String(policyArn),
 	})
@@ -443,6 +473,38 @@ func (c *awsClient) HasCompatibleVersionTags(iamTags []*iam.Tag, version string)
 				return false, err
 			}
 			return currentVersion.GreaterThanOrEqual(wantedVersion), nil
+		}
+	}
+	return false, nil
+}
+
+func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []*iam.Tag, version string) (bool, error) {
+	if len(iamTags) == 0 {
+		return false, nil
+	}
+	for _, tag := range iamTags {
+		if aws.StringValue(tag.Key) == tags.OpenShiftVersion {
+			if version == aws.StringValue(tag.Value) {
+				return true, nil
+			}
+
+			upgradeVersion, err := semver.NewVersion(version)
+			if err != nil {
+				return false, err
+			}
+
+			currentVersion, err := semver.NewVersion(aws.StringValue(tag.Value))
+			if err != nil {
+				return false, err
+			}
+
+			upgradeVersionSegments := upgradeVersion.Segments64()
+			c, err := semver.NewConstraint(fmt.Sprintf(">= %d.%d",
+				upgradeVersionSegments[0], upgradeVersionSegments[1]))
+			if err != nil {
+				return false, err
+			}
+			return c.Check(currentVersion), nil
 		}
 	}
 	return false, nil
@@ -830,7 +892,7 @@ func (c *awsClient) deleteAccountRolePolicies(role *string) error {
 	}
 	return nil
 }
-func (c *awsClient) getAccountRoleAttachedPolicy(role *string) ([]PolicyDetail, error) {
+func (c *awsClient) getAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	policies := []PolicyDetail{}
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{RoleName: role})
 	if err != nil {
@@ -1138,7 +1200,7 @@ func getAWSPrincipals(awsPrincipal interface{}) []string {
 func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error) {
 	roleMap := make(map[string][]PolicyDetail)
 	for _, role := range roles {
-		policies, err := c.getAccountRoleAttachedPolicy(aws.String(role))
+		policies, err := c.getAttachedPolicy(aws.String(role))
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
@@ -1184,4 +1246,130 @@ func (c *awsClient) GetOpenIDConnectProvider(clusterID string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func (c *awsClient) IsUpgradedNeededForRole(prefix string, accountID string, version string) (bool, error) {
+	for _, accountRole := range AccountRoles {
+		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
+		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+			RoleName: aws.String(roleName),
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					return false, errors.NotFound.Errorf("Roles with the prefix'%s' not found", prefix)
+				}
+			}
+			return false, err
+		}
+		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(aws.StringValue(role.Role.RoleName),
+			version)
+
+		if err != nil {
+			return false, err
+		}
+		if !isCompatible {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c *awsClient) UpdateTag(roleName string) error {
+	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = c.iamClient.TagRole(&iam.TagRoleInput{
+		RoleName: role.Role.RoleName,
+		Tags: []*iam.Tag{
+			{
+				Key:   aws.String(tags.OpenShiftVersion),
+				Value: aws.String(DefaultPolicyVersion),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *awsClient) IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, accountID string, version string) (
+	bool, error) {
+	for _, operator := range cluster.AWS().STS().OperatorIAMRoles() {
+		roleName := strings.SplitN(operator.RoleARN(), "/", 2)[1]
+		_, err := c.iamClient.GetRole(&iam.GetRoleInput{
+			RoleName: aws.String(roleName),
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					return false, errors.NotFound.Errorf("Operator Role does not exists for the "+
+						"cluster '%s'", cluster.ID())
+				}
+			}
+			return false, err
+		}
+		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(roleName, version)
+		if err != nil {
+			return false, err
+		}
+		if !isCompatible {
+			return true, nil
+		}
+		//This will not be true for the new clusters but for the older ones if there are any mismatch we should still
+		//make it up-to-date
+		isCompatible, err = c.isRoleCompatible(roleName, version)
+		if err != nil {
+			return false, err
+		}
+		if !isCompatible {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
+	version string) (bool, error) {
+	attachedPolicies, err := c.getAttachedPolicy(aws.String(roleName))
+	if err != nil {
+		return false, err
+	}
+	for _, attachedPolicy := range attachedPolicies {
+		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(attachedPolicy.PolicyArn, version)
+		if err != nil {
+			return false, errors.Errorf("Failed to validate role polices : %v", err)
+		}
+		if !isCompatible {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (c *awsClient) isRolePoliciesCompatibleForUpgrade(policyARN string, version string) (bool, error) {
+	policyTagOutput, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
+		PolicyArn: aws.String(policyARN),
+	})
+	if err != nil {
+		return false, err
+	}
+	return c.hasCompatibleMajorMinorVersionTags(policyTagOutput.Tags, version)
+}
+
+func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
+	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return "", err
+	}
+	_, version := GetTagValues(role.Role.Tags)
+	return version, nil
 }

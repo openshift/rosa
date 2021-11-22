@@ -18,6 +18,7 @@ package oidcprovider
 
 import (
 	"fmt"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -28,13 +29,6 @@ import (
 	errors "github.com/zgalor/weberr"
 	"os"
 )
-
-var modes []string = []string{"auto", "manual"}
-
-var args struct {
-	clusterKey string
-	mode       string
-}
 
 var Cmd = &cobra.Command{
 	Use:     "oidc-provider",
@@ -49,47 +43,30 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVarP(
-		&args.clusterKey,
-		"cluster",
-		"c",
-		"",
-		"ID of the cluster (deleted/archived) to delete the OIDC provider from (required).",
-	)
-	Cmd.MarkFlagRequired("cluster")
-
-	flags.StringVar(
-		&args.mode,
-		"mode",
-		modes[0],
-		"How to perform the operation. Valid options are:\n"+
-			"auto: OIDC provider will be deleted using the current AWS account\n"+
-			"manual: Command to delete the OIDC provider will be output",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
+	ocm.AddClusterFlag(Cmd)
+	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
-		args.clusterKey = argv[0]
+		ocm.SetClusterKey(argv[0])
 	}
-	// Check that the cluster key (name, identifier or external identifier) given by the user
-	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
-		reporter.Errorf(
-			"Cluster identifier '%s' isn't valid",
-			clusterKey,
-		)
+
+	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+
+	mode, err := aws.GetMode()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
 		Logger(logger).
@@ -121,8 +98,17 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-
-	c, err := ocmClient.GetClusterByID(clusterKey, creator)
+	sub, err := ocmClient.GetClusterUsingSubscription(clusterKey, creator)
+	if err != nil {
+		if errors.GetType(err) == errors.Conflict {
+			reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
+				"use cluster ID instead", clusterKey)
+			os.Exit(1)
+		}
+		reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+	c, err := ocmClient.GetClusterByID(sub.ClusterID(), creator)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
 			reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
@@ -135,7 +121,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	providerARN, err := awsClient.GetOpenIDConnectProvider(clusterKey)
+	providerARN, err := awsClient.GetOpenIDConnectProvider(sub.ClusterID())
 	if err != nil {
 		reporter.Errorf("Failed to get the OIDC provider for cluster '%s'.", clusterKey)
 		os.Exit(1)
@@ -149,13 +135,13 @@ func run(cmd *cobra.Command, argv []string) {
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		interactive.Enable()
 	}
-	mode := args.mode
+
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  mode,
-			Options:  modes,
+			Default:  aws.ModeAuto,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
@@ -163,11 +149,9 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
-
 	switch mode {
-	case "auto":
-		ocmClient.LogEvent("ROSADeleteOIDCProviderModeAuto")
-
+	case aws.ModeAuto:
+		ocmClient.LogEvent("ROSADeleteOIDCProviderModeAuto", nil)
 		if !confirm.Prompt(true, "Delete the OIDC provider '%s'?", providerARN) {
 			os.Exit(1)
 		}
@@ -177,15 +161,15 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 
-	case "manual":
-		ocmClient.LogEvent("ROSADeleteOIDCProviderModeManual")
+	case aws.ModeManual:
+		ocmClient.LogEvent("ROSADeleteOIDCProviderModeManual", nil)
 		commands := buildCommand(providerARN)
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to delete the OIDC provider:\n")
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }

@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
-	semver "github.com/hashicorp/go-version"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -36,11 +35,8 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var modes []string = []string{"auto", "manual"}
-
 var args struct {
 	permissionsBoundary string
-	mode                string
 }
 
 var Cmd = &cobra.Command{
@@ -68,22 +64,9 @@ func init() {
 		"The ARN of the policy that is used to set the permissions boundary for the operator roles.",
 	)
 
-	flags.StringVar(
-		&args.mode,
-		"mode",
-		modes[0],
-		"How to perform the operation. Valid options are:\n"+
-			"auto: Roles will be created using the current AWS account\n"+
-			"manual: Role files will be saved in the current directory",
-	)
-	Cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
-
+	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
-}
-
-func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return modes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -94,15 +77,22 @@ func run(cmd *cobra.Command, argv []string) {
 	skipInteractive := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
-		args.mode = argv[1]
+		aws.SetModeKey(argv[1])
 		args.permissionsBoundary = argv[2]
 
-		if args.mode != "" {
+		// if mode is empty skip interactive is true
+		if argv[1] != "" {
 			skipInteractive = true
 		}
 	}
 
 	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	mode, err := aws.GetMode()
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -174,7 +164,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	prefix, err := getPrefixFromAccountRole(cluster)
+	prefix, err := aws.GetPrefixFromAccountRole(cluster)
 	if err != nil {
 		reporter.Errorf("Failed to find prefix from %s account role", aws.InstallerAccountRole)
 		os.Exit(1)
@@ -203,13 +193,12 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	mode := args.mode
-	if interactive.Enabled() {
+	if interactive.Enabled() && !skipInteractive {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  mode,
-			Options:  modes,
+			Default:  aws.ModeAuto,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
@@ -218,77 +207,107 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	roleName, err := aws.GetAccountRoleName(cluster)
+	if err != nil {
+		reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
+		os.Exit(1)
+	}
+	accountRoleVersion, err := awsClient.GetAccountRoleVersion(roleName)
+	if err != nil {
+		reporter.Errorf("Error getting account role version %s", err)
+		os.Exit(1)
+	}
 	switch mode {
-	case "auto":
-		ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto")
+	case aws.ModeAuto:
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
-		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID)
+		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID,
+			accountRoleVersion)
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
+			ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
+				ocm.ClusterID: clusterKey,
+				ocm.Response:  ocm.Failure,
+			})
 			os.Exit(1)
 		}
-	case "manual":
-		ocmClient.LogEvent("ROSACreateOperatorRolesModeManual")
-
-		commands, err := buildCommands(reporter, prefix, permissionsBoundary, cluster, creator.AccountID)
+		ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
+			ocm.ClusterID: clusterKey,
+			ocm.Response:  ocm.Success,
+		})
+	case aws.ModeManual:
+		commands, err := buildCommands(reporter, prefix, permissionsBoundary, cluster, creator.AccountID, awsClient,
+			accountRoleVersion)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
+			ocmClient.LogEvent("ROSACreateOperatorRolesModeManual", map[string]string{
+				ocm.ClusterID: clusterKey,
+				ocm.Response:  ocm.Failure,
+			})
 		}
-
 		if reporter.IsTerminal() {
 			reporter.Infof("Run the following commands to create the operator roles:\n")
 		}
-
+		ocmClient.LogEvent("ROSACreateOperatorRolesModeManual", map[string]string{
+			ocm.ClusterID: clusterKey,
+		})
 		fmt.Println(commands)
+
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountID string) error {
-	version := getVersionMinor(cluster)
-
-	for _, operator := range aws.CredentialRequests {
+	cluster *cmv1.Cluster, accountID string, accountRoleVersion string) error {
+	for credrequest, operator := range aws.CredentialRequests {
 		roleName := getRoleName(cluster, operator)
 		if roleName == "" {
 			return fmt.Errorf("Failed to find operator IAM role")
 		}
-
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 			continue
+		}
+		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+
+		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
+		path := fmt.Sprintf("templates/policies/%s", filename)
+
+		policyDoc, err := aws.ReadPolicyDocument(path)
+		if err != nil {
+			return err
+		}
+
+		policyARN, err = awsClient.EnsurePolicy(policyARN, string(policyDoc),
+			aws.DefaultPolicyVersion, map[string]string{
+				tags.OpenShiftVersion: accountRoleVersion,
+				tags.RolePrefix:       prefix,
+				"operator_namespace":  operator.Namespace,
+				"operator_name":       operator.Name,
+			})
+		if err != nil {
+			return err
 		}
 
 		policy, err := generateRolePolicyDoc(cluster, accountID, operator)
 		if err != nil {
 			return err
 		}
-
 		reporter.Debugf("Creating role '%s'", roleName)
-		roleARN, err := awsClient.EnsureRole(roleName, policy, permissionsBoundary, version, map[string]string{
-			tags.ClusterID:        cluster.ID(),
-			tags.OpenShiftVersion: version,
-			"operator_namespace":  operator.Namespace,
-			"operator_name":       operator.Name,
-		})
+
+		roleARN, err := awsClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
+			map[string]string{
+				tags.ClusterID:        cluster.ID(),
+				tags.OpenShiftVersion: accountRoleVersion,
+				"operator_namespace":  operator.Namespace,
+				"operator_name":       operator.Name,
+			})
 		if err != nil {
 			return err
 		}
 		reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
-
-		policyARN := ""
-		if prefix == "" {
-			policyARN, err = awsClient.FindPolicyARN(operator, version)
-			if err != nil {
-				return err
-			}
-		}
-		if policyARN == "" {
-			policyARN = getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		}
 
 		reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
 		err = awsClient.AttachRolePolicy(roleName, policyARN)
@@ -303,13 +322,30 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 
 func buildCommands(reporter *rprtr.Object,
 	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountID string) (string, error) {
+	cluster *cmv1.Cluster, accountID string, awsClient aws.Client, accountRoleVersion string) (string, error) {
 	commands := []string{}
 
 	for credrequest, operator := range aws.CredentialRequests {
 		roleName := getRoleName(cluster, operator)
+
+		name := aws.GetPolicyName(prefix, operator.Namespace, operator.Name)
+		_, err := awsClient.IsPolicyExists(name)
+		if err != nil {
+			iamTags := fmt.Sprintf(
+				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+				tags.OpenShiftVersion, accountRoleVersion,
+				tags.RolePrefix, prefix,
+				"operator_namespace", operator.Namespace,
+				"operator_name", operator.Name,
+			)
+			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
+				"\t--policy-name %s \\\n"+
+				"\t--policy-document file://openshift_%s_policy.json \\\n"+
+				"\t--tags %s",
+				name, credrequest, iamTags)
+			commands = append(commands, createPolicy)
+		}
 		policyARN := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		version := getVersionMinor(cluster)
 
 		policy, err := generateRolePolicyDoc(cluster, accountID, operator)
 		if err != nil {
@@ -326,7 +362,7 @@ func buildCommands(reporter *rprtr.Object,
 		iamTags := fmt.Sprintf(
 			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.ClusterID, cluster.ID(),
-			tags.OpenShiftVersion, version,
+			tags.OpenShiftVersion, accountRoleVersion,
 			tags.RolePrefix, prefix,
 			"operator_namespace", operator.Namespace,
 			"operator_name", operator.Name,
@@ -414,19 +450,6 @@ func getPolicyARN(accountID string, prefix string, namespace string, name string
 	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, policy)
 }
 
-func getVersionMinor(cluster *cmv1.Cluster) string {
-	// FIXME: OCM has a bug that prevents it from
-	// returning the version Raw ID, so we extract it ourselves
-	rawID := strings.Replace(cluster.Version().ID(), "openshift-v", "", 1)
-	version, err := semver.NewVersion(rawID)
-	if err != nil {
-		segments := strings.Split(rawID, ".")
-		return fmt.Sprintf("%s.%s", segments[0], segments[1])
-	}
-	segments := version.Segments()
-	return fmt.Sprintf("%d.%d", segments[0], segments[1])
-}
-
 func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]string, error) {
 	var missingRoles []string
 
@@ -452,15 +475,4 @@ func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]strin
 	}
 
 	return missingRoles, nil
-}
-
-func getPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
-	role := aws.AccountRoles[aws.InstallerAccountRole]
-	parsedARN, err := arn.Parse(cluster.AWS().STS().RoleARN())
-	if err != nil {
-		return "", err
-	}
-	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
-	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
-	return rolePrefix, nil
 }

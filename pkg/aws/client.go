@@ -42,11 +42,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
 )
 
@@ -61,6 +63,13 @@ const (
 	Inline        = "inline"
 	Attached      = "attached"
 )
+
+// addROSAVersionToUserAgent is a named handler that will add ROSA CLI
+// version information to requests made by the AWS SDK.
+var addROSAVersionToUserAgent = request.NamedHandler{
+	Name: "rosa.ROSAVersionUserAgentHandler",
+	Fn:   request.MakeAddToUserAgentHandler(info.UserAgent, info.Version),
+}
 
 // Client defines a client interface
 type Client interface {
@@ -82,6 +91,7 @@ type Client interface {
 	GetClusterRegionTagForUser(username string) (string, error)
 	EnsureRole(name string, policy string, permissionsBoundary string,
 		version string, tagList map[string]string) (string, error)
+	ValidateRoleNameAvailable(name string) (err error)
 	PutRolePolicy(roleName string, policyName string, policy string) error
 	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string) (string, error)
 	AttachRolePolicy(roleName string, policyARN string) error
@@ -103,6 +113,12 @@ type Client interface {
 	GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error)
 	GetOpenIDConnectProvider(clusterID string) (string, error)
 	GetInstanceProfilesForRole(role string) ([]string, error)
+	IsUpgradedNeededForRole(rolePrefix string, accountID string, version string) (bool, error)
+	IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, accountID string, version string) (bool, error)
+	UpdateTag(roleName string) error
+	IsPolicyCompatible(policyArn string, version string) (bool, error)
+	GetAccountRoleVersion(roleName string) (string, error)
+	IsPolicyExists(policyARN string) (*iam.GetPolicyOutput, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -227,6 +243,9 @@ func (b *ClientBuilder) Build() (Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Add ROSACLI as user-agent
+	sess.Handlers.Build.PushFrontNamed(addROSAVersionToUserAgent)
 
 	if profile.Profile() != "" {
 		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
