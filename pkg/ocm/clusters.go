@@ -43,7 +43,7 @@ type Spec struct {
 	ChannelGroup              string
 	Expiration                time.Time
 	Flavour                   string
-	DisableWorkloadMonitoring bool
+	DisableWorkloadMonitoring *bool
 	//Encryption
 	EtcdEncryption bool
 	KMSKeyArn      string
@@ -410,6 +410,10 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		)
 	}
 
+	if config.DisableWorkloadMonitoring != nil {
+		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
+	}
+
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
 		return err
@@ -529,8 +533,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 				ID(config.Region),
 		).
 		EtcdEncryption(config.EtcdEncryption).
-		Properties(clusterProperties).
-		DisableUserWorkloadMonitoring(config.DisableWorkloadMonitoring)
+		Properties(clusterProperties)
+
+	if config.DisableWorkloadMonitoring != nil {
+		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
+	}
 
 	if config.Flavour != "" {
 		clusterBuilder = clusterBuilder.Flavour(

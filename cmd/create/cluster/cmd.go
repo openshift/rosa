@@ -1632,7 +1632,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Mode:                      mode,
 		Tags:                      tagsList,
 		KMSKeyArn:                 kmsKeyARN,
-		DisableWorkloadMonitoring: disableWorkloadMonitoring,
+		DisableWorkloadMonitoring: &disableWorkloadMonitoring,
 	}
 
 	if httpProxy != "" {
@@ -2006,7 +2006,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	if spec.KMSKeyArn != "" {
 		command += fmt.Sprintf(" --kms-key-arn %s", spec.KMSKeyArn)
 	}
-	if spec.DisableWorkloadMonitoring {
+	if spec.DisableWorkloadMonitoring != nil && *spec.DisableWorkloadMonitoring {
 		command += " --disable-workload-monitoring"
 	}
 	return command
