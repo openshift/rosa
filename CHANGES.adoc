@@ -2,6 +2,34 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.6 Nov 22 2021
+
+- Update OWNERS file
+- ROSA: Support cluster-wide proxy during cluster creation
+- Add missing update message for default machine pool
+- Handle minor issues in delete handling
+- clusters: Fix proxy config validations
+- updated pendo event for rosa
+- Clarify `verify permissions` cmd is only for non-STS clusters
+- fix minor typo
+- Check for pre-existing operator roles and error if they exist
+- add rosa upgrade account/operator role
+- removed --enable_proxy argument
+- changing cluster proxy attirbutes to pointers
+- aws: Add ROSACLI/version to User-Agent string
+- validate sts roles on sts cluster upgrade
+- fix interactive setting of `mode` option
+- SDA-5022 : fix operator role upgrade being blocked by account role upgrade
+- SDA-5017 : improve cluster upgrade manual mode to print operator role commands
+- SDA-5018 : improve cluster upgrade manual flow to prompt user to upgrade roles
+- clean/fix role validation for upgrade
+- Added support for master-iam-role
+- Add ocm user role
+- STS: Create OCM Role
+- added support for operator prefix
+- add interactive mode for link user/ocm role
+- added edit support for UVM
+
 == 1.1.5 Oct 21 2021
 
 - Autocomplete cluster names on --cluster flag
