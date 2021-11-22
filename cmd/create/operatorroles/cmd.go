@@ -36,6 +36,7 @@ import (
 )
 
 var args struct {
+	prefix              string
 	permissionsBoundary string
 }
 
@@ -56,6 +57,14 @@ func init() {
 	flags := Cmd.Flags()
 
 	ocm.AddClusterFlag(Cmd)
+
+	flags.StringVar(
+		&args.prefix,
+		"prefix",
+		"",
+		"User-defined prefix for generated AWS operator policies. Leave empty to attempt to find them automatically.",
+	)
+	flags.MarkDeprecated("prefix", "skip --prefix;rosa auto-detects prefix")
 
 	flags.StringVar(
 		&args.permissionsBoundary,
