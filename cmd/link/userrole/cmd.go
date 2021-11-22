@@ -19,8 +19,10 @@ package userrole
 import (
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -51,7 +53,7 @@ func init() {
 		"",
 		"Role ARN to associate the OCM account to",
 	)
-	Cmd.MarkFlagRequired("role-arn")
+
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
@@ -81,16 +83,50 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		reporter.Errorf("Error getting current account: %v", err)
 	}
-	if !confirm.Prompt(true, "Link the '%s' role with account '%s'?", args.roleArn, currentAccount.ID()) {
+
+	if reporter.IsTerminal() {
+		reporter.Infof("Linking User role")
+	}
+
+	// Determine if interactive mode is needed
+	if !interactive.Enabled() && !cmd.Flags().Changed("role-arn") {
+		interactive.Enable()
+	}
+
+	roleArn := args.roleArn
+	if interactive.Enabled() {
+		roleArn, err = interactive.GetString(interactive.Input{
+			Question: "User Role ARN",
+			Help:     cmd.Flags().Lookup("role-arn").Usage,
+			Default:  roleArn,
+			Required: true,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
+			os.Exit(1)
+		}
+	}
+	if roleArn != "" {
+		_, err := arn.Parse(roleArn)
+		if err != nil {
+			reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if !confirm.Prompt(true, "Link the '%s' role with account '%s'?", roleArn, currentAccount.ID()) {
 		os.Exit(0)
 	}
 
-	err = ocmClient.LinkAccountRole(currentAccount.ID(), args.roleArn)
+	err = ocmClient.LinkAccountRole(currentAccount.ID(), roleArn)
 	if err != nil {
 		reporter.Errorf("Unable to link role arn '%s' with the account id : '%s' : %v",
 			args.roleArn, currentAccount.ID(), err)
 		return err
 	}
-	reporter.Infof("Successfully linked role-arn '%s' with account '%s'", args.roleArn, currentAccount.ID())
+	reporter.Infof("Successfully linked role-arn '%s' with account '%s'", roleArn, currentAccount.ID())
 	return nil
 }

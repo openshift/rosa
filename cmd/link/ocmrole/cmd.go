@@ -16,8 +16,10 @@ package ocmrole
 import (
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -48,7 +50,7 @@ func init() {
 		"",
 		"Role ARN to associate the ocm organization account to",
 	)
-	Cmd.MarkFlagRequired("role-arn")
+
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
@@ -78,16 +80,49 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		reporter.Errorf("Error getting organization account: %v", err)
 	}
-	if !confirm.Prompt(true, "Link the '%s' role with organization '%s'?", args.roleArn, orgAccount) {
+	if reporter.IsTerminal() {
+		reporter.Infof("Linking OCM role")
+	}
+
+	// Determine if interactive mode is needed
+	if !interactive.Enabled() && !cmd.Flags().Changed("role-arn") {
+		interactive.Enable()
+	}
+
+	roleArn := args.roleArn
+	if interactive.Enabled() {
+		roleArn, err = interactive.GetString(interactive.Input{
+			Question: "OCM Role ARN",
+			Help:     cmd.Flags().Lookup("role-arn").Usage,
+			Default:  roleArn,
+			Required: true,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid ocm role ARN to link to a current organization: %s", err)
+			os.Exit(1)
+		}
+	}
+	if roleArn != "" {
+		_, err := arn.Parse(roleArn)
+		if err != nil {
+			reporter.Errorf("Expected a valid ocm role ARN to link to a current organization: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if !confirm.Prompt(true, "Link the '%s' role with organization '%s'?", roleArn, orgAccount) {
 		os.Exit(0)
 	}
 
-	err = ocmClient.LinkOrgToRole(orgAccount, args.roleArn)
+	err = ocmClient.LinkOrgToRole(orgAccount, roleArn)
 	if err != nil {
 		reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",
 			args.roleArn, orgAccount, err)
 		return err
 	}
-	reporter.Infof("Successfully linked role-arn '%s' with organization account '%s'", args.roleArn, orgAccount)
+	reporter.Infof("Successfully linked role-arn '%s' with organization account '%s'", roleArn, orgAccount)
 	return nil
 }
