@@ -216,7 +216,7 @@ func run(cmd *cobra.Command, argv []string) {
 		ocmClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 		})
-		err = linkocmrole.Cmd.RunE(cmd, []string{roleARN})
+		err = linkocmrole.Cmd.RunE(linkocmrole.Cmd, []string{roleARN})
 		if err != nil {
 			reporter.Errorf("Unable to link role arn '%s' with the organization account id : '%s' : %v",
 				roleARN, orgID, err)

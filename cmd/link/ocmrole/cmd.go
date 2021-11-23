@@ -84,12 +84,13 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		reporter.Infof("Linking OCM role")
 	}
 
+	roleArn := args.roleArn
+
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("role-arn") {
+	if !interactive.Enabled() && roleArn == "" {
 		interactive.Enable()
 	}
 
-	roleArn := args.roleArn
 	if interactive.Enabled() {
 		roleArn, err = interactive.GetString(interactive.Input{
 			Question: "OCM Role ARN",
