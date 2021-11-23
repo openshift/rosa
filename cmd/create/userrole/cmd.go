@@ -211,7 +211,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Response: ocm.Success,
 		})
 
-		err = linkuser.Cmd.RunE(cmd, []string{roleARN})
+		err = linkuser.Cmd.RunE(linkuser.Cmd, []string{roleARN})
 		if err != nil {
 			reporter.Errorf("Unable to link role arn '%s' with the account id : '%s' : %v",
 				roleARN, currentAccount.ID(), err)
