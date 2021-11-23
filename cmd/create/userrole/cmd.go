@@ -23,7 +23,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
-	errors "github.com/zgalor/weberr"
 
 	linkuser "github.com/openshift/rosa/cmd/link/userrole"
 	"github.com/openshift/rosa/pkg/aws"
@@ -278,15 +277,16 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	if err != nil {
 		return "", err
 	}
-	exists, err := awsClient.CheckRoleExists(roleName)
+	exists, roleARN, err := awsClient.CheckRoleExists(roleName)
 	if err != nil {
 		return "", err
 	}
 	if exists {
-		return "", errors.Errorf("Role '%s' already exists", roleName)
+		reporter.Warnf("Role '%s' already exists", roleName)
+		return roleARN, nil
 	}
 	reporter.Debugf("Creating role '%s'", roleName)
-	roleARN, err := awsClient.EnsureRole(roleName, string(policy), permissionsBoundary,
+	roleARN, err = awsClient.EnsureRole(roleName, string(policy), permissionsBoundary,
 		"", map[string]string{
 			tags.RolePrefix:  prefix,
 			tags.RoleType:    aws.OCMUserRole,

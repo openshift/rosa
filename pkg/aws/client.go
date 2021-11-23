@@ -76,7 +76,7 @@ type Client interface {
 	CheckAdminUserNotExisting(userName string) (err error)
 	CheckAdminUserExists(userName string) (err error)
 	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, stackStatus *string, err error)
-	CheckRoleExists(roleName string) (bool, error)
+	CheckRoleExists(roleName string) (bool, string, error)
 	GetIAMCredentials() (credentials.Value, error)
 	GetRegion() string
 	ValidateCredentials() (isValid bool, err error)
@@ -591,21 +591,21 @@ func (c *awsClient) DeleteAccessKeys(username string) error {
 
 // CheckRoleExists checks to see if an IAM role with the same name
 // already exists
-func (c *awsClient) CheckRoleExists(roleName string) (bool, error) {
-	_, err := c.iamClient.GetRole(&iam.GetRoleInput{
+func (c *awsClient) CheckRoleExists(roleName string) (bool, string, error) {
+	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				return false, nil
+				return false, "", nil
 			default:
-				return false, err
+				return false, "", err
 			}
 		}
 	}
-	return true, nil
+	return true, aws.StringValue(role.Role.Arn), nil
 }
 
 func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {

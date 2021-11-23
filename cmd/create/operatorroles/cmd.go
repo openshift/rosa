@@ -461,27 +461,20 @@ func getPolicyARN(accountID string, prefix string, namespace string, name string
 
 func validateOperatorRoles(awsClient aws.Client, cluster *cmv1.Cluster) ([]string, error) {
 	var missingRoles []string
-
 	operatorIAMRoles := cluster.AWS().STS().OperatorIAMRoles()
-
 	if len(operatorIAMRoles) == 0 {
 		return missingRoles, fmt.Errorf("No Operator IAM roles found for cluster %s", cluster.Name())
 	}
-
 	for _, operatorIAMRole := range operatorIAMRoles {
 		roleARN := operatorIAMRole.RoleARN()
-
 		roleName := strings.Split(roleARN, "/")[1]
-
-		exists, err := awsClient.CheckRoleExists(roleName)
+		exists, _, err := awsClient.CheckRoleExists(roleName)
 		if err != nil {
 			return missingRoles, err
 		}
-
 		if !exists {
 			missingRoles = append(missingRoles, roleName)
 		}
 	}
-
 	return missingRoles, nil
 }
