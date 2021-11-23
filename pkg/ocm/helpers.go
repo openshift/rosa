@@ -202,17 +202,20 @@ func (c *Client) GetCurrentAccount() (*amsv1.Account, error) {
 	return response.Body(), nil
 }
 
-func (c *Client) GetCurrentOrganization() (string, error) {
+func (c *Client) GetCurrentOrganization() (id string, externalID string, err error) {
 	acctResponse, err := c.GetCurrentAccount()
 
 	if err != nil {
-		return "", err
+		return
 	}
-	return acctResponse.Organization().ID(), nil
+	id = acctResponse.Organization().ID()
+	externalID = acctResponse.Organization().ExternalID()
+
+	return
 }
 
 func (c *Client) IsHibernateCapabilityEnabled() error {
-	organizationID, err := c.GetCurrentOrganization()
+	organizationID, _, err := c.GetCurrentOrganization()
 	if err != nil {
 		return err
 	}
