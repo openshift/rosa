@@ -49,7 +49,8 @@ var Cmd = &cobra.Command{
 
   # Create ocm role with a specific permissions boundary
   rosa create ocm-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	Run: run,
+	Run:    run,
+	Hidden: true,
 }
 
 func init() {

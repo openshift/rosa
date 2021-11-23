@@ -18,6 +18,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -28,7 +29,8 @@ import (
 )
 
 var args struct {
-	roleArn string
+	roleArn        string
+	organizationID string
 }
 
 var Cmd = &cobra.Command{
@@ -48,7 +50,13 @@ func init() {
 		&args.roleArn,
 		"role-arn",
 		"",
-		"Role ARN to associate the ocm organization account to",
+		"Role ARN to associate the OCM organization account to",
+	)
+	flags.StringVar(
+		&args.organizationID,
+		"organization-id",
+		"",
+		"OCM organization id to associate the ocm role ARN",
 	)
 
 	confirm.AddFlag(flags)
@@ -79,7 +87,15 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	orgAccount, _, err := ocmClient.GetCurrentOrganization()
 	if err != nil {
 		reporter.Errorf("Error getting organization account: %v", err)
+		return err
 	}
+
+	if args.organizationID != "" && orgAccount != args.organizationID {
+		reporter.Errorf("Invalid organization ID '%s'. "+
+			"It doesnt match with the user session '%s'.", args.organizationID, orgAccount)
+		return err
+	}
+
 	if reporter.IsTerminal() {
 		reporter.Infof("Linking OCM role")
 	}
@@ -113,13 +129,18 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			os.Exit(1)
 		}
 	}
-
 	if !confirm.Prompt(true, "Link the '%s' role with organization '%s'?", roleArn, orgAccount) {
 		os.Exit(0)
 	}
 
 	err = ocmClient.LinkOrgToRole(orgAccount, roleArn)
 	if err != nil {
+		if errors.GetType(err) == errors.Forbidden {
+			reporter.Errorf("Only organization admin can run this command. "+
+				"Please ask someone with the organization admin role to run the following command \n\n"+
+				"\t rosa link ocm-role --role-arn %s --organization-id %s", roleArn, orgAccount)
+			return err
+		}
 		reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",
 			args.roleArn, orgAccount, err)
 		return err

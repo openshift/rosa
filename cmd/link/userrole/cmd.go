@@ -20,18 +20,18 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/spf13/cobra"
-
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/spf13/cobra"
 )
 
 var args struct {
-	roleArn string
+	roleArn   string
+	accountID string
 }
 
 var Cmd = &cobra.Command{
@@ -54,6 +54,12 @@ func init() {
 		"Role ARN to associate the OCM account to",
 	)
 
+	flags.StringVar(
+		&args.accountID,
+		"account-id",
+		"",
+		"OCM account id to associate the user role ARN",
+	)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
@@ -79,9 +85,14 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
-	currentAccount, err := ocmClient.GetCurrentAccount()
-	if err != nil {
-		reporter.Errorf("Error getting current account: %v", err)
+
+	accountID := args.accountID
+	if accountID == "" {
+		currentAccount, err := ocmClient.GetCurrentAccount()
+		if err != nil {
+			reporter.Errorf("Error getting current account: %v", err)
+		}
+		accountID = currentAccount.ID()
 	}
 
 	if reporter.IsTerminal() {
@@ -118,16 +129,16 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		}
 	}
 
-	if !confirm.Prompt(true, "Link the '%s' role with account '%s'?", roleArn, currentAccount.ID()) {
+	if !confirm.Prompt(true, "Link the '%s' role with account '%s'?", roleArn, accountID) {
 		os.Exit(0)
 	}
 
-	err = ocmClient.LinkAccountRole(currentAccount.ID(), roleArn)
+	err = ocmClient.LinkAccountRole(accountID, roleArn)
 	if err != nil {
 		reporter.Errorf("Unable to link role arn '%s' with the account id : '%s' : %v",
-			args.roleArn, currentAccount.ID(), err)
+			args.roleArn, accountID, err)
 		return err
 	}
-	reporter.Infof("Successfully linked role-arn '%s' with account '%s'", roleArn, currentAccount.ID())
+	reporter.Infof("Successfully linked role-arn '%s' with account '%s'", roleArn, accountID)
 	return nil
 }
