@@ -270,6 +270,14 @@ func GetRoleName(prefix string, role string) string {
 	return name
 }
 
+func GetOCMRoleName(prefix string, role string, postfix string) string {
+	name := fmt.Sprintf("%s-%s-Role-%s", prefix, role, postfix)
+	if len(name) > 64 {
+		name = name[0:64]
+	}
+	return name
+}
+
 func GetUserRoleName(prefix string, role string, userName string) string {
 	name := fmt.Sprintf("%s-%s-%s-Role", prefix, role, userName)
 	if len(name) > 64 {

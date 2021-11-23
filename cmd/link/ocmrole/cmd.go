@@ -76,7 +76,7 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
-	orgAccount, err := ocmClient.GetCurrentOrganization()
+	orgAccount, _, err := ocmClient.GetCurrentOrganization()
 	if err != nil {
 		reporter.Errorf("Error getting organization account: %v", err)
 	}
