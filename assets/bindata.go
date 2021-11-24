@@ -937,6 +937,7 @@ var _templatesPoliciesSts_ocm_permission_policyJson = []byte(`{
         "iam:ListRoleTags",
         "iam:GetOpenIDConnectProvider",
         "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
         "sts:AssumeRole",
         "sts:AssumeRoleWithWebIdentity"
       ],
