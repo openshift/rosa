@@ -278,20 +278,12 @@ func RandomLabel(size int) string {
 }
 
 func (c *Client) LinkAccountRole(accountID string, roleARN string) error {
-	labels, err := c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).Labels().List().Send()
-	if err != nil {
-		return err
+	resp, err := c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).
+		Labels().Labels("sts_user_role").Get().Send()
+	if err != nil && resp.Status() != 404 {
+		return handleErr(resp.Error(), err)
 	}
-	existingARN := ""
-	if labels.Items().Len() > 0 {
-		labels.Items().Range(func(index int, item *amsv1.Label) bool {
-			if item.Key() == "sts_user_role" {
-				existingARN = item.Value()
-				return true
-			}
-			return false
-		})
-	}
+	existingARN := resp.Body().Value()
 	exists := false
 	if existingARN != "" {
 		existingARNArr := strings.Split(existingARN, ",")
@@ -314,29 +306,21 @@ func (c *Client) LinkAccountRole(accountID string, roleARN string) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).Labels().Add().
-		Body(labelBuilder).Send()
+	_, err = c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).
+		Labels().Add().Body(labelBuilder).Send()
 	if err != nil {
-		return err
+		return handleErr(resp.Error(), err)
 	}
 	return err
 }
 
 func (c *Client) LinkOrgToRole(orgID string, roleARN string) error {
-	labels, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).Labels().List().Send()
-	if err != nil {
-		return err
+	resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
+		Labels().Labels("sts_ocm_role").Get().Send()
+	if err != nil && resp.Status() != 404 {
+		return handleErr(resp.Error(), err)
 	}
-	existingARN := ""
-	if labels.Items().Len() > 0 {
-		labels.Items().Range(func(index int, item *amsv1.Label) bool {
-			if item.Key() == "sts_ocm_role" {
-				existingARN = item.Value()
-				return true
-			}
-			return false
-		})
-	}
+	existingARN := resp.Body().Value()
 	exists := false
 	if existingARN != "" {
 		existingARNArr := strings.Split(existingARN, ",")
@@ -361,10 +345,10 @@ func (c *Client) LinkOrgToRole(orgID string, roleARN string) error {
 		return err
 	}
 
-	_, err = c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).Labels().Add().
-		Body(labelBuilder).Send()
+	_, err = c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
+		Labels().Add().Body(labelBuilder).Send()
 	if err != nil {
-		return err
+		return handleErr(resp.Error(), err)
 	}
 	return nil
 }
