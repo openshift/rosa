@@ -56,6 +56,11 @@ func (b *SkuRuleBuilder) HREF(value string) *SkuRuleBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SkuRuleBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Allowed sets the value of the 'allowed' attribute to the given value.
 //
 //

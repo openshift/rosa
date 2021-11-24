@@ -54,6 +54,11 @@ func (b *AWSMachinePoolBuilder) HREF(value string) *AWSMachinePoolBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AWSMachinePoolBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // SpotMarketOptions sets the value of the 'spot_market_options' attribute to the given value.
 //
 // Spot market options for AWS machine pool.

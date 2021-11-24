@@ -35,6 +35,11 @@ func NewNetwork() *NetworkBuilder {
 	return &NetworkBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *NetworkBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // HostPrefix sets the value of the 'host_prefix' attribute to the given value.
 //
 //

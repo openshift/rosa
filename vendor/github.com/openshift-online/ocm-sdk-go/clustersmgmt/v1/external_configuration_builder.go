@@ -33,6 +33,11 @@ func NewExternalConfiguration() *ExternalConfigurationBuilder {
 	return &ExternalConfigurationBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ExternalConfigurationBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Labels sets the value of the 'labels' attribute to the given values.
 //
 //

@@ -27,48 +27,48 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/errors"
 )
 
-// ResourceServer represents the interface the manages the 'resource' resource.
-type ResourceServer interface {
+// ClusterResourcesServer represents the interface the manages the 'cluster_resources' resource.
+type ClusterResourcesServer interface {
 
 	// Get handles a request for the 'get' method.
 	//
 	// Retrieves currently available cluster resources
-	Get(ctx context.Context, request *ResourceGetServerRequest, response *ResourceGetServerResponse) error
+	Get(ctx context.Context, request *ClusterResourcesGetServerRequest, response *ClusterResourcesGetServerResponse) error
 }
 
-// ResourceGetServerRequest is the request for the 'get' method.
-type ResourceGetServerRequest struct {
+// ClusterResourcesGetServerRequest is the request for the 'get' method.
+type ClusterResourcesGetServerRequest struct {
 }
 
-// ResourceGetServerResponse is the response for the 'get' method.
-type ResourceGetServerResponse struct {
+// ClusterResourcesGetServerResponse is the response for the 'get' method.
+type ClusterResourcesGetServerResponse struct {
 	status int
 	err    *errors.Error
-	body   *Resource
+	body   *ClusterResources
 }
 
 // Body sets the value of the 'body' parameter.
 //
 // List of cluster resources
-func (r *ResourceGetServerResponse) Body(value *Resource) *ResourceGetServerResponse {
+func (r *ClusterResourcesGetServerResponse) Body(value *ClusterResources) *ClusterResourcesGetServerResponse {
 	r.body = value
 	return r
 }
 
 // Status sets the status code.
-func (r *ResourceGetServerResponse) Status(value int) *ResourceGetServerResponse {
+func (r *ClusterResourcesGetServerResponse) Status(value int) *ClusterResourcesGetServerResponse {
 	r.status = value
 	return r
 }
 
-// dispatchResource navigates the servers tree rooted at the given server
+// dispatchClusterResources navigates the servers tree rooted at the given server
 // till it finds one that matches the given set of path segments, and then invokes
 // the corresponding server.
-func dispatchResource(w http.ResponseWriter, r *http.Request, server ResourceServer, segments []string) {
+func dispatchClusterResources(w http.ResponseWriter, r *http.Request, server ClusterResourcesServer, segments []string) {
 	if len(segments) == 0 {
 		switch r.Method {
 		case "GET":
-			adaptResourceGetRequest(w, r, server)
+			adaptClusterResourcesGetRequest(w, r, server)
 			return
 		default:
 			errors.SendMethodNotAllowed(w, r)
@@ -82,12 +82,12 @@ func dispatchResource(w http.ResponseWriter, r *http.Request, server ResourceSer
 	}
 }
 
-// adaptResourceGetRequest translates the given HTTP request into a call to
+// adaptClusterResourcesGetRequest translates the given HTTP request into a call to
 // the corresponding method of the given server. Then it translates the
 // results returned by that method into an HTTP response.
-func adaptResourceGetRequest(w http.ResponseWriter, r *http.Request, server ResourceServer) {
-	request := &ResourceGetServerRequest{}
-	err := readResourceGetRequest(request, r)
+func adaptClusterResourcesGetRequest(w http.ResponseWriter, r *http.Request, server ClusterResourcesServer) {
+	request := &ClusterResourcesGetServerRequest{}
+	err := readClusterResourcesGetRequest(request, r)
 	if err != nil {
 		glog.Errorf(
 			"Can't read request for method '%s' and path '%s': %v",
@@ -96,7 +96,7 @@ func adaptResourceGetRequest(w http.ResponseWriter, r *http.Request, server Reso
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	response := &ResourceGetServerResponse{}
+	response := &ClusterResourcesGetServerResponse{}
 	response.status = 200
 	err = server.Get(r.Context(), request, response)
 	if err != nil {
@@ -107,7 +107,7 @@ func adaptResourceGetRequest(w http.ResponseWriter, r *http.Request, server Reso
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	err = writeResourceGetResponse(response, w)
+	err = writeClusterResourcesGetResponse(response, w)
 	if err != nil {
 		glog.Errorf(
 			"Can't write response for method '%s' and path '%s': %v",

@@ -54,6 +54,11 @@ func (b *ServerConfigBuilder) HREF(value string) *ServerConfigBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ServerConfigBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Server sets the value of the 'server' attribute to the given value.
 //
 //

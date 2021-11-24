@@ -59,6 +59,11 @@ func (b *CloudRegionBuilder) HREF(value string) *CloudRegionBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *CloudRegionBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // CCSOnly sets the value of the 'CCS_only' attribute to the given value.
 //
 //

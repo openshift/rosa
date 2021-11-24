@@ -55,6 +55,11 @@ func (b *MachinePoolAutoscalingBuilder) HREF(value string) *MachinePoolAutoscali
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *MachinePoolAutoscalingBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // MaxReplicas sets the value of the 'max_replicas' attribute to the given value.
 //
 //

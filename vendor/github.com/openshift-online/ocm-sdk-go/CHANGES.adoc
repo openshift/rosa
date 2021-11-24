@@ -3,6 +3,35 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+== 0.1.219 Nov 22 2021
+
+- Update to model 0.0.153:
+** Enable FIPS mode
+
+== 0.1.218 Nov 22 2021
+
+- Update to metamodel 0.0.44:
+** Check for loops in locator paths.
+** Add `Empty` method to builders.
+
+== 0.1.217 Nov 18 2021
+
+- Update to model 0.0.152
+** Update type `resource` to `clusterResources`
+** Revert "Add Name field to LDAP identity provider"
+** Remove addon install mode `singleNamespace` 
+** Add addon install mode `ownNamespace`
+** Add channel to addon version class
+
+== 0.1.216 Nov 15 2021
+
+- Update to metamodel 0.0.43:
+** Add `status` attribute to errors.
+
+== 0.1.215 Nov 7 2021
+- Update to model 0.0.151:
+** Add Name field to LDAP identity provider
+
 == 0.1.214 Oct 27 2021
 - Update to model 0.0.150:
 ** Fix addon installation version (addon_version vs version)

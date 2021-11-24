@@ -43,6 +43,11 @@ func NewReservedResource() *ReservedResourceBuilder {
 	return &ReservedResourceBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ReservedResourceBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // BYOC sets the value of the 'BYOC' attribute to the given value.
 //
 //

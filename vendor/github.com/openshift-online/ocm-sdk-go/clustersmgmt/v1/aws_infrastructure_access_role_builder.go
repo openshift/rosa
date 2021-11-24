@@ -56,6 +56,11 @@ func (b *AWSInfrastructureAccessRoleBuilder) HREF(value string) *AWSInfrastructu
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AWSInfrastructureAccessRoleBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Description sets the value of the 'description' attribute to the given value.
 //
 //

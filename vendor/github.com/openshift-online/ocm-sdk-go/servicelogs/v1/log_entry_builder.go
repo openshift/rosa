@@ -65,6 +65,11 @@ func (b *LogEntryBuilder) HREF(value string) *LogEntryBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *LogEntryBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // ClusterUUID sets the value of the 'cluster_UUID' attribute to the given value.
 //
 //

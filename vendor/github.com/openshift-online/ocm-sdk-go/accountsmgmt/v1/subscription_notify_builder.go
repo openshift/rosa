@@ -41,6 +41,11 @@ func NewSubscriptionNotify() *SubscriptionNotifyBuilder {
 	return &SubscriptionNotifyBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SubscriptionNotifyBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // BccAddress sets the value of the 'bcc_address' attribute to the given value.
 //
 //

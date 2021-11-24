@@ -23,10 +23,10 @@ import (
 	time "time"
 )
 
-// ResourceBuilder contains the data and logic needed to build 'resource' objects.
+// ClusterResourcesBuilder contains the data and logic needed to build 'cluster_resources' objects.
 //
-// A Resource which belongs to a cluster, example Cluster Deployment.
-type ResourceBuilder struct {
+// Cluster Resource which belongs to a cluster, example Cluster Deployment.
+type ClusterResourcesBuilder struct {
 	bitmap_           uint32
 	id                string
 	href              string
@@ -35,35 +35,40 @@ type ResourceBuilder struct {
 	resources         map[string]string
 }
 
-// NewResource creates a new builder of 'resource' objects.
-func NewResource() *ResourceBuilder {
-	return &ResourceBuilder{}
+// NewClusterResources creates a new builder of 'cluster_resources' objects.
+func NewClusterResources() *ClusterResourcesBuilder {
+	return &ClusterResourcesBuilder{}
 }
 
 // Link sets the flag that indicates if this is a link.
-func (b *ResourceBuilder) Link(value bool) *ResourceBuilder {
+func (b *ClusterResourcesBuilder) Link(value bool) *ClusterResourcesBuilder {
 	b.bitmap_ |= 1
 	return b
 }
 
 // ID sets the identifier of the object.
-func (b *ResourceBuilder) ID(value string) *ResourceBuilder {
+func (b *ClusterResourcesBuilder) ID(value string) *ClusterResourcesBuilder {
 	b.id = value
 	b.bitmap_ |= 2
 	return b
 }
 
 // HREF sets the link to the object.
-func (b *ResourceBuilder) HREF(value string) *ResourceBuilder {
+func (b *ClusterResourcesBuilder) HREF(value string) *ClusterResourcesBuilder {
 	b.href = value
 	b.bitmap_ |= 4
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterResourcesBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // ClusterID sets the value of the 'cluster_ID' attribute to the given value.
 //
 //
-func (b *ResourceBuilder) ClusterID(value string) *ResourceBuilder {
+func (b *ClusterResourcesBuilder) ClusterID(value string) *ClusterResourcesBuilder {
 	b.clusterID = value
 	b.bitmap_ |= 8
 	return b
@@ -72,7 +77,7 @@ func (b *ResourceBuilder) ClusterID(value string) *ResourceBuilder {
 // CreationTimestamp sets the value of the 'creation_timestamp' attribute to the given value.
 //
 //
-func (b *ResourceBuilder) CreationTimestamp(value time.Time) *ResourceBuilder {
+func (b *ClusterResourcesBuilder) CreationTimestamp(value time.Time) *ClusterResourcesBuilder {
 	b.creationTimestamp = value
 	b.bitmap_ |= 16
 	return b
@@ -81,7 +86,7 @@ func (b *ResourceBuilder) CreationTimestamp(value time.Time) *ResourceBuilder {
 // Resources sets the value of the 'resources' attribute to the given value.
 //
 //
-func (b *ResourceBuilder) Resources(value map[string]string) *ResourceBuilder {
+func (b *ClusterResourcesBuilder) Resources(value map[string]string) *ClusterResourcesBuilder {
 	b.resources = value
 	if value != nil {
 		b.bitmap_ |= 32
@@ -92,7 +97,7 @@ func (b *ResourceBuilder) Resources(value map[string]string) *ResourceBuilder {
 }
 
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
-func (b *ResourceBuilder) Copy(object *Resource) *ResourceBuilder {
+func (b *ClusterResourcesBuilder) Copy(object *ClusterResources) *ClusterResourcesBuilder {
 	if object == nil {
 		return b
 	}
@@ -112,9 +117,9 @@ func (b *ResourceBuilder) Copy(object *Resource) *ResourceBuilder {
 	return b
 }
 
-// Build creates a 'resource' object using the configuration stored in the builder.
-func (b *ResourceBuilder) Build() (object *Resource, err error) {
-	object = new(Resource)
+// Build creates a 'cluster_resources' object using the configuration stored in the builder.
+func (b *ClusterResourcesBuilder) Build() (object *ClusterResources, err error) {
+	object = new(ClusterResources)
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_

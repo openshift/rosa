@@ -37,6 +37,11 @@ func (b *SubscriptionNotifyListBuilder) Items(values ...*SubscriptionNotifyBuild
 	return b
 }
 
+// Empty returns true if the list is empty.
+func (b *SubscriptionNotifyListBuilder) Empty() bool {
+	return b == nil || len(b.items) == 0
+}
+
 // Copy copies the items of the given list into this builder, discarding any previous items.
 func (b *SubscriptionNotifyListBuilder) Copy(list *SubscriptionNotifyList) *SubscriptionNotifyListBuilder {
 	if list == nil || list.items == nil {

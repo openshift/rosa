@@ -55,6 +55,11 @@ func (b *CCSBuilder) HREF(value string) *CCSBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *CCSBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // DisableSCPChecks sets the value of the 'disable_SCP_checks' attribute to the given value.
 //
 //

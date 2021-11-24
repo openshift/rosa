@@ -22,13 +22,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -149,7 +147,7 @@ func (r *RegistryCredentialsAddRequest) SendContext(ctx context.Context) (result
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -161,16 +159,6 @@ func (r *RegistryCredentialsAddRequest) SendContext(ctx context.Context) (result
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'add' method.
-func (r *RegistryCredentialsAddRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *RegistryCredentialsAddRequest) stream(stream *jsoniter.Stream) {
 }
 
 // RegistryCredentialsAddResponse is the response for the 'add' method.
@@ -353,7 +341,7 @@ func (r *RegistryCredentialsListRequest) SendContext(ctx context.Context) (resul
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}

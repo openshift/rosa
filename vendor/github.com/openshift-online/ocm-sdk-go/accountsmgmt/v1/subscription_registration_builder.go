@@ -36,6 +36,11 @@ func NewSubscriptionRegistration() *SubscriptionRegistrationBuilder {
 	return &SubscriptionRegistrationBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SubscriptionRegistrationBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // ClusterUUID sets the value of the 'cluster_UUID' attribute to the given value.
 //
 //

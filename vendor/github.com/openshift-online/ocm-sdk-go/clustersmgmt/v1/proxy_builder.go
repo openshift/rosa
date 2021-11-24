@@ -33,6 +33,11 @@ func NewProxy() *ProxyBuilder {
 	return &ProxyBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ProxyBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // HTTPProxy sets the value of the 'HTTP_proxy' attribute to the given value.
 //
 //

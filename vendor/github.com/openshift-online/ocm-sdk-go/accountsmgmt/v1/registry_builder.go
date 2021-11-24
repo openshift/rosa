@@ -65,6 +65,11 @@ func (b *RegistryBuilder) HREF(value string) *RegistryBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *RegistryBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // URL sets the value of the 'URL' attribute to the given value.
 //
 //

@@ -32,6 +32,11 @@ func NewTokenAuthorizationResponse() *TokenAuthorizationResponseBuilder {
 	return &TokenAuthorizationResponseBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *TokenAuthorizationResponseBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Account sets the value of the 'account' attribute to the given value.
 //
 //

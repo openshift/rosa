@@ -41,6 +41,11 @@ func NewGCP() *GCPBuilder {
 	return &GCPBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *GCPBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // AuthURI sets the value of the 'auth_URI' attribute to the given value.
 //
 //

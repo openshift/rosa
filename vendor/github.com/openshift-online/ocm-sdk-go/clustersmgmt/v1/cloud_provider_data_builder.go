@@ -36,6 +36,11 @@ func NewCloudProviderData() *CloudProviderDataBuilder {
 	return &CloudProviderDataBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *CloudProviderDataBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // AWS sets the value of the 'AWS' attribute to the given value.
 //
 // _Amazon Web Services_ specific settings of a cluster.

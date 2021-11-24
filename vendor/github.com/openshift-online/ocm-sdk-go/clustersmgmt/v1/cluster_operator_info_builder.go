@@ -40,6 +40,11 @@ func NewClusterOperatorInfo() *ClusterOperatorInfoBuilder {
 	return &ClusterOperatorInfoBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterOperatorInfoBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Condition sets the value of the 'condition' attribute to the given value.
 //
 // Overall state of a cluster operator.

@@ -33,6 +33,11 @@ func NewCloudVPC() *CloudVPCBuilder {
 	return &CloudVPCBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *CloudVPCBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Name sets the value of the 'name' attribute to the given value.
 //
 //

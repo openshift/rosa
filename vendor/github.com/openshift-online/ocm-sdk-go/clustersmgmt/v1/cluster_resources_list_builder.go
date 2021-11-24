@@ -19,48 +19,53 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// ResourceListBuilder contains the data and logic needed to build
-// 'resource' objects.
-type ResourceListBuilder struct {
-	items []*ResourceBuilder
+// ClusterResourcesListBuilder contains the data and logic needed to build
+// 'cluster_resources' objects.
+type ClusterResourcesListBuilder struct {
+	items []*ClusterResourcesBuilder
 }
 
-// NewResourceList creates a new builder of 'resource' objects.
-func NewResourceList() *ResourceListBuilder {
-	return new(ResourceListBuilder)
+// NewClusterResourcesList creates a new builder of 'cluster_resources' objects.
+func NewClusterResourcesList() *ClusterResourcesListBuilder {
+	return new(ClusterResourcesListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *ResourceListBuilder) Items(values ...*ResourceBuilder) *ResourceListBuilder {
-	b.items = make([]*ResourceBuilder, len(values))
+func (b *ClusterResourcesListBuilder) Items(values ...*ClusterResourcesBuilder) *ClusterResourcesListBuilder {
+	b.items = make([]*ClusterResourcesBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
+// Empty returns true if the list is empty.
+func (b *ClusterResourcesListBuilder) Empty() bool {
+	return b == nil || len(b.items) == 0
+}
+
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *ResourceListBuilder) Copy(list *ResourceList) *ResourceListBuilder {
+func (b *ClusterResourcesListBuilder) Copy(list *ClusterResourcesList) *ClusterResourcesListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*ResourceBuilder, len(list.items))
+		b.items = make([]*ClusterResourcesBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewResource().Copy(v)
+			b.items[i] = NewClusterResources().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'resource' objects using the
+// Build creates a list of 'cluster_resources' objects using the
 // configuration stored in the builder.
-func (b *ResourceListBuilder) Build() (list *ResourceList, err error) {
-	items := make([]*Resource, len(b.items))
+func (b *ClusterResourcesListBuilder) Build() (list *ClusterResourcesList, err error) {
+	items := make([]*ClusterResources, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(ResourceList)
+	list = new(ClusterResourcesList)
 	list.items = items
 	return
 }

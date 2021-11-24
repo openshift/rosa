@@ -60,6 +60,11 @@ func (b *ClusterStatusBuilder) HREF(value string) *ClusterStatusBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterStatusBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // DNSReady sets the value of the 'DNS_ready' attribute to the given value.
 //
 //

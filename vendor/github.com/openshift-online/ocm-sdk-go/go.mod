@@ -12,7 +12,7 @@ require (
 	github.com/jackc/pgx/v4 v4.12.0
 	github.com/json-iterator/go v1.1.10
 	github.com/lib/pq v1.10.2
-	github.com/microcosm-cc/bluemonday v1.0.15
+	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.16.0
 	github.com/prometheus/client_golang v1.9.0

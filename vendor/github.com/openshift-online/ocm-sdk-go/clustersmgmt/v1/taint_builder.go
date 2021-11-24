@@ -34,6 +34,11 @@ func NewTaint() *TaintBuilder {
 	return &TaintBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *TaintBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Effect sets the value of the 'effect' attribute to the given value.
 //
 //

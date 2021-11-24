@@ -64,6 +64,11 @@ func (b *RegistryCredentialBuilder) HREF(value string) *RegistryCredentialBuilde
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *RegistryCredentialBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Account sets the value of the 'account' attribute to the given value.
 //
 //

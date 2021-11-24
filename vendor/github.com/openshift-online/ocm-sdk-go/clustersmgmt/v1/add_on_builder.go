@@ -70,6 +70,11 @@ func (b *AddOnBuilder) HREF(value string) *AddOnBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AddOnBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Description sets the value of the 'description' attribute to the given value.
 //
 //

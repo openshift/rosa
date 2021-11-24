@@ -241,7 +241,7 @@ func (r *AWSInfrastructureAccessRoleGrantDeleteRequest) SendContext(ctx context.
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -335,7 +335,7 @@ func (r *AWSInfrastructureAccessRoleGrantGetRequest) SendContext(ctx context.Con
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}

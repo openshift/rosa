@@ -54,6 +54,11 @@ func (b *ClusterDeploymentBuilder) HREF(value string) *ClusterDeploymentBuilder 
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterDeploymentBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Content sets the value of the 'content' attribute to the given value.
 //
 //

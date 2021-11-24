@@ -37,6 +37,11 @@ func NewAWSFlavour() *AWSFlavourBuilder {
 	return &AWSFlavourBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AWSFlavourBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // ComputeInstanceType sets the value of the 'compute_instance_type' attribute to the given value.
 //
 //

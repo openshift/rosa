@@ -59,6 +59,11 @@ func (b *ResourceBuilder) HREF(value string) *ResourceBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ResourceBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // BYOC sets the value of the 'BYOC' attribute to the given value.
 //
 //

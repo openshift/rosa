@@ -34,6 +34,11 @@ func NewOpenIDClaims() *OpenIDClaimsBuilder {
 	return &OpenIDClaimsBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *OpenIDClaimsBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Email sets the value of the 'email' attribute to the given values.
 //
 //

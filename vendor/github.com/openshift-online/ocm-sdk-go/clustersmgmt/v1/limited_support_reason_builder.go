@@ -62,6 +62,11 @@ func (b *LimitedSupportReasonBuilder) HREF(value string) *LimitedSupportReasonBu
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *LimitedSupportReasonBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // CreationTimestamp sets the value of the 'creation_timestamp' attribute to the given value.
 //
 //

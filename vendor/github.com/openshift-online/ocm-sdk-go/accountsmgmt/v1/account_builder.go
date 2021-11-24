@@ -69,6 +69,11 @@ func (b *AccountBuilder) HREF(value string) *AccountBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AccountBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // BanCode sets the value of the 'ban_code' attribute to the given value.
 //
 //

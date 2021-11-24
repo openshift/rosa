@@ -58,6 +58,11 @@ func (b *IngressBuilder) HREF(value string) *IngressBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *IngressBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // DNSName sets the value of the 'DNS_name' attribute to the given value.
 //
 //

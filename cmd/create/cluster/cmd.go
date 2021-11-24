@@ -79,6 +79,7 @@ var args struct {
 
 	//Encryption
 	etcdEncryption           bool
+	fips                     bool
 	enableCustomerManagedKey bool
 	kmsKeyARN                string
 	// Scaling options
@@ -264,6 +265,13 @@ func init() {
 		"Add etcd encryption. By default etcd data is encrypted at rest. "+
 			"This option configures etcd encryption on top of existing storage encryption.",
 	)
+	flags.BoolVar(
+		&args.fips,
+		"fips",
+		false,
+		"Create cluster that uses FIPS Validated / Modules in Process cryptographic libraries.",
+	)
+	flags.MarkHidden("fips")
 
 	flags.StringVar(
 		&args.httpProxy,
@@ -1493,6 +1501,39 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	fips := args.fips
+	if interactive.Enabled() && fips {
+		fips, err = interactive.GetBool(interactive.Input{
+			Question: "Enable FIPS support",
+			Help:     cmd.Flags().Lookup("fips").Usage,
+			Default:  fips,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid fips value: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	etcdEncryption := args.etcdEncryption
+	if interactive.Enabled() && !fips {
+		etcdEncryption, err = interactive.GetBool(interactive.Input{
+			Question: "Encrypt etcd data",
+			Help:     cmd.Flags().Lookup("etcd-encryption").Usage,
+			Default:  etcdEncryption,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid etcd-encryption value: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	if fips && cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
+		reporter.Errorf("etcd encryption cannot be disabled on clusters with FIPS mode")
+		os.Exit(1)
+	} else {
+		etcdEncryption = true
+	}
+
 	disableWorkloadMonitoring := args.disableWorkloadMonitoring
 	if interactive.Enabled() {
 		disableWorkloadMonitoring, err = interactive.GetBool(interactive.Input{
@@ -1604,7 +1645,8 @@ func run(cmd *cobra.Command, _ []string) {
 		Version:                   version,
 		ChannelGroup:              channelGroup,
 		Flavour:                   args.flavour,
-		EtcdEncryption:            args.etcdEncryption,
+		FIPS:                      fips,
+		EtcdEncryption:            etcdEncryption,
 		EnableProxy:               enableProxy,
 		AdditionalTrustBundle:     additionalTrustBundle,
 		Expiration:                expiration,
@@ -1989,7 +2031,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	if len(spec.SubnetIds) > 0 {
 		command += fmt.Sprintf(" --subnet-ids %s", strings.Join(spec.SubnetIds, ","))
 	}
-	if spec.EtcdEncryption {
+	if spec.FIPS {
+		command += " --fips"
+	} else if spec.EtcdEncryption {
 		command += " --etcd-encryption"
 	}
 

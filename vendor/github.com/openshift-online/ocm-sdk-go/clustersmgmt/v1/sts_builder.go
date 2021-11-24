@@ -37,6 +37,11 @@ func NewSTS() *STSBuilder {
 	return &STSBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *STSBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // OIDCEndpointURL sets the value of the 'OIDC_endpoint_URL' attribute to the given value.
 //
 //

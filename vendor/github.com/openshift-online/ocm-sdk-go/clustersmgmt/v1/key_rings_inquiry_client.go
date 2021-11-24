@@ -22,12 +22,10 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -158,7 +156,7 @@ func (r *KeyRingsInquirySearchRequest) SendContext(ctx context.Context) (result 
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -170,16 +168,6 @@ func (r *KeyRingsInquirySearchRequest) SendContext(ctx context.Context) (result 
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'search' method.
-func (r *KeyRingsInquirySearchRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *KeyRingsInquirySearchRequest) stream(stream *jsoniter.Stream) {
 }
 
 // KeyRingsInquirySearchResponse is the response for the 'search' method.

@@ -39,6 +39,11 @@ func NewClusterUpgrade() *ClusterUpgradeBuilder {
 	return &ClusterUpgradeBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterUpgradeBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Available sets the value of the 'available' attribute to the given value.
 //
 //

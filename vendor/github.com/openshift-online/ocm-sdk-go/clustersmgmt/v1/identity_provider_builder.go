@@ -64,6 +64,11 @@ func (b *IdentityProviderBuilder) HREF(value string) *IdentityProviderBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *IdentityProviderBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // LDAP sets the value of the 'LDAP' attribute to the given value.
 //
 // Details for `ldap` identity providers.

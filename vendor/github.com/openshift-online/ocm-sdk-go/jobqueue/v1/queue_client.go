@@ -22,14 +22,12 @@ package v1 // github.com/openshift-online/ocm-sdk-go/jobqueue/v1
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 	time "time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
@@ -266,7 +264,7 @@ func (r *QueueGetRequest) SendContext(ctx context.Context) (result *QueueGetResp
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -387,7 +385,7 @@ func (r *QueuePopRequest) SendContext(ctx context.Context) (result *QueuePopResp
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -734,7 +732,7 @@ func (r *QueuePushRequest) SendContext(ctx context.Context) (result *QueuePushRe
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -746,16 +744,6 @@ func (r *QueuePushRequest) SendContext(ctx context.Context) (result *QueuePushRe
 		return
 	}
 	return
-}
-
-// marshall is the method used internally to marshal requests for the
-// 'push' method.
-func (r *QueuePushRequest) marshal(writer io.Writer) error {
-	stream := helpers.NewStream(writer)
-	r.stream(stream)
-	return stream.Error
-}
-func (r *QueuePushRequest) stream(stream *jsoniter.Stream) {
 }
 
 // QueuePushResponse is the response for the 'push' method.

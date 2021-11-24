@@ -54,6 +54,11 @@ func (b *FeatureToggleBuilder) HREF(value string) *FeatureToggleBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *FeatureToggleBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Enabled sets the value of the 'enabled' attribute to the given value.
 //
 //

@@ -37,6 +37,11 @@ func NewSelfAccessReviewRequest() *SelfAccessReviewRequestBuilder {
 	return &SelfAccessReviewRequestBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *SelfAccessReviewRequestBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Action sets the value of the 'action' attribute to the given value.
 //
 //

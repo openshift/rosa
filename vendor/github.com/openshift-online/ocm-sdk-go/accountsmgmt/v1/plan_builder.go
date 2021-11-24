@@ -56,6 +56,11 @@ func (b *PlanBuilder) HREF(value string) *PlanBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *PlanBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // Category sets the value of the 'category' attribute to the given value.
 //
 //

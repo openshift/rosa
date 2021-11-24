@@ -33,6 +33,11 @@ func NewClusterAPI() *ClusterAPIBuilder {
 	return &ClusterAPIBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *ClusterAPIBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // URL sets the value of the 'URL' attribute to the given value.
 //
 //

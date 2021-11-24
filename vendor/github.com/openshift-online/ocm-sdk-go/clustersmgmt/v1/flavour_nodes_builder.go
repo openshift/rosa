@@ -32,6 +32,11 @@ func NewFlavourNodes() *FlavourNodesBuilder {
 	return &FlavourNodesBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *FlavourNodesBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // Master sets the value of the 'master' attribute to the given value.
 //
 //

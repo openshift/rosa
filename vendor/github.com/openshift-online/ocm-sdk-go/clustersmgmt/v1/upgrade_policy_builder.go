@@ -63,6 +63,11 @@ func (b *UpgradePolicyBuilder) HREF(value string) *UpgradePolicyBuilder {
 	return b
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *UpgradePolicyBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
 // ClusterID sets the value of the 'cluster_ID' attribute to the given value.
 //
 //

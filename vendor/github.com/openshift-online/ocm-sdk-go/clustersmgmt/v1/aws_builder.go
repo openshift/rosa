@@ -39,6 +39,11 @@ func NewAWS() *AWSBuilder {
 	return &AWSBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *AWSBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // KMSKeyArn sets the value of the 'KMS_key_arn' attribute to the given value.
 //
 //

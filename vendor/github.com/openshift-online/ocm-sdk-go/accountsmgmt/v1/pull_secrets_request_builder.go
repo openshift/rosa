@@ -32,6 +32,11 @@ func NewPullSecretsRequest() *PullSecretsRequestBuilder {
 	return &PullSecretsRequestBuilder{}
 }
 
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *PullSecretsRequestBuilder) Empty() bool {
+	return b == nil || b.bitmap_ == 0
+}
+
 // ExternalResourceId sets the value of the 'external_resource_id' attribute to the given value.
 //
 //

@@ -241,7 +241,7 @@ func (r *LimitedSupportReasonDeleteRequest) SendContext(ctx context.Context) (re
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
@@ -335,7 +335,7 @@ func (r *LimitedSupportReasonGetRequest) SendContext(ctx context.Context) (resul
 	result.status = response.StatusCode
 	result.header = response.Header
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalError(response.Body)
+		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
 		if err != nil {
 			return
 		}
