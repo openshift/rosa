@@ -160,7 +160,7 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Errorf("There was an error deleting the OIDC provider: %s", err)
 			os.Exit(1)
 		}
-
+		reporter.Infof("Successfully deleted the OIDC provider %s", providerARN)
 	case aws.ModeManual:
 		ocmClient.LogEvent("ROSADeleteOIDCProviderModeManual", nil)
 		commands := buildCommand(providerARN)
