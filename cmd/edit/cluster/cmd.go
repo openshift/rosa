@@ -131,7 +131,8 @@ func run(cmd *cobra.Command, _ []string) {
 	// Enable interactive mode if no flags have been set
 	if !interactive.Enabled() {
 		changedFlags := false
-		for _, flag := range []string{"expiration-time", "expiration", "private"} {
+		for _, flag := range []string{"expiration-time", "expiration", "private",
+			"disable-workload-monitoring", "http-proxy", "https-proxy", "additional-trust-bundle-file"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
@@ -284,6 +285,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
+	} else if disableWorkloadMonitoringValue {
+		if !confirm.Confirm("disable workload monitoring for your cluster %s", clusterKey) {
+			os.Exit(0)
+		}
 	}
 
 	if len(cluster.AWS().SubnetIDs()) > 0 {

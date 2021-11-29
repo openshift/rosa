@@ -207,6 +207,7 @@ func run(cmd *cobra.Command, argv []string) {
 				continue
 			}
 		}
+		reporter.Infof("Successfully deleted the operator roles")
 	case aws.ModeManual:
 		ocmClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
 		policyMap, err := awsClient.GetPolicies(roles)

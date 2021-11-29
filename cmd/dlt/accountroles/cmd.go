@@ -181,6 +181,7 @@ func run(cmd *cobra.Command, _ []string) {
 				continue
 			}
 		}
+		reporter.Infof("Successfully deleted the account roles")
 	case aws.ModeManual:
 		ocmClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
 		policyMap, err := awsClient.GetAccountRolePolicies(finalRoleList)
