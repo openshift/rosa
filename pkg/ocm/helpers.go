@@ -18,7 +18,6 @@ package ocm
 
 import (
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -28,6 +27,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	errors "github.com/zgalor/weberr"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -88,7 +89,7 @@ func ValidateHTTPProxy(val interface{}) error {
 			return fmt.Errorf("Invalid http-proxy value '%s'", httpProxy)
 		}
 		if url.Scheme != "http" {
-			return errors.New("Expected http-proxy to have an http:// scheme")
+			return errors.Errorf("%s", "Expected http-proxy to have an http:// scheme")
 		}
 		return nil
 	}
@@ -106,11 +107,11 @@ func ValidateAdditionalTrustBundle(val interface{}) error {
 		}
 		additionalTrustBundle := string(cert)
 		if additionalTrustBundle == "" {
-			return errors.New("Trust bundle file is empty")
+			return errors.Errorf("%s", "Trust bundle file is empty")
 		}
 		additionalTrustBundleBytes := []byte(additionalTrustBundle)
 		if !x509.NewCertPool().AppendCertsFromPEM(additionalTrustBundleBytes) {
-			return errors.New("Failed to parse trust bundle")
+			return errors.Errorf("%s", "Failed to parse trust bundle")
 		}
 		return nil
 	}
@@ -148,7 +149,7 @@ func handleErr(res *ocmerrors.Error, err error) error {
 			"Go to https://www.redhat.com/wapps/tnc/ackrequired?site=ocm&event=register\n" +
 			"Once you accept the terms, you will need to retry the action that was blocked."
 	}
-	return errors.New(msg)
+	return errors.Errorf("%s", msg)
 }
 
 func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
@@ -281,6 +282,9 @@ func (c *Client) LinkAccountRole(accountID string, roleARN string) error {
 	resp, err := c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).
 		Labels().Labels("sts_user_role").Get().Send()
 	if err != nil && resp.Status() != 404 {
+		if resp.Status() == 403 {
+			return errors.Forbidden.UserErrorf("%v", err)
+		}
 		return handleErr(resp.Error(), err)
 	}
 	existingARN := resp.Body().Value()
@@ -318,6 +322,9 @@ func (c *Client) LinkOrgToRole(orgID string, roleARN string) error {
 	resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
 		Labels().Labels("sts_ocm_role").Get().Send()
 	if err != nil && resp.Status() != 404 {
+		if resp.Status() == 403 {
+			return errors.Forbidden.UserErrorf("%v", err)
+		}
 		return handleErr(resp.Error(), err)
 	}
 	existingARN := resp.Body().Value()

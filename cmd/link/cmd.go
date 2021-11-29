@@ -30,6 +30,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"associate"},
 	Short:   "Link a resource from stdin",
 	Long:    "Link a resource from stdin",
+	Hidden:  true,
 }
 
 func init() {
