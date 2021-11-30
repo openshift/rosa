@@ -15,6 +15,7 @@ package ocmrole
 
 import (
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
@@ -135,7 +136,7 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 
 	err = ocmClient.LinkOrgToRole(orgAccount, roleArn)
 	if err != nil {
-		if errors.GetType(err) == errors.Forbidden {
+		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
 			reporter.Errorf("Only organization admin can run this command. "+
 				"Please ask someone with the organization admin role to run the following command \n\n"+
 				"\t rosa link ocm-role --role-arn %s --organization-id %s", roleArn, orgAccount)
