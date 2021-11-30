@@ -18,15 +18,19 @@ package userrole
 
 import (
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+
 	rprtr "github.com/openshift/rosa/pkg/reporter"
-	"github.com/spf13/cobra"
 )
 
 var args struct {
@@ -135,6 +139,12 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 
 	err = ocmClient.LinkAccountRole(accountID, roleArn)
 	if err != nil {
+		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
+			reporter.Errorf("Only organization admin can run this command. "+
+				"Please ask someone with the organization admin role to run the following command \n\n"+
+				"\t rosa link user-role --role-arn %s --account-id %s", roleArn, accountID)
+			return err
+		}
 		reporter.Errorf("Unable to link role arn '%s' with the account id : '%s' : %v",
 			args.roleArn, accountID, err)
 		return err
