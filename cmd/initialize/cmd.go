@@ -49,7 +49,7 @@ var Cmd = &cobra.Command{
 	Short: "Applies templates to support Red Hat OpenShift Service on AWS",
 	Long: "Applies templates to support Red Hat OpenShift Service on AWS. If you are not\n" +
 		"yet logged in to OCM, it will prompt you for credentials.",
-	Example: `  # Configure your AWS account to allow ROSA clusters
+	Example: `  # Configure your AWS account to allow IAM (non-STS) ROSA clusters
   rosa init
 
   # Configure a new AWS account using pre-existing OCM credentials
