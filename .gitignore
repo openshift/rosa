@@ -10,3 +10,4 @@ docs/
 /rosa-windows-amd64.sha256
 /*policy.json
 .envrc
+.env
