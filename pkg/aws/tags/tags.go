@@ -43,3 +43,6 @@ const RolePrefix = prefix + "role_prefix"
 
 // Environment is the name of the tag that will contain the environment of the role (integration/staging/production)
 const Environment = prefix + "environment"
+
+// AdminRole tags the role as admin (true/false)
+const AdminRole = prefix + "admin_role"
