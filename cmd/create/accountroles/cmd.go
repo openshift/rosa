@@ -247,6 +247,7 @@ func run(cmd *cobra.Command, argv []string) {
 			"rosa create cluster --sts")
 		ocmClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
+			ocm.Version:  aws.DefaultPolicyVersion,
 		})
 	case aws.ModeManual:
 		err = aws.GeneratePolicyFiles(reporter, env)
@@ -262,6 +263,9 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
 		commands := buildCommands(prefix, permissionsBoundary, creator.AccountID)
+		ocmClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
+			ocm.Version: aws.DefaultPolicyVersion,
+		})
 		fmt.Println(commands)
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)

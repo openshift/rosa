@@ -47,6 +47,7 @@ const (
 	Failure   = "Failure"
 	Response  = "Response"
 	ClusterID = "ClusterID"
+	Version   = "Version"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
