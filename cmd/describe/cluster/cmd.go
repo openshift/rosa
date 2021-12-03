@@ -221,6 +221,14 @@ func run(cmd *cobra.Command, argv []string) {
 		)
 	}
 
+	networkType := ""
+	if cluster.Network().Type() != ocm.NetworkTypes[0] {
+		networkType = fmt.Sprintf(
+			" - Type:                    %s\n",
+			cluster.Network().Type(),
+		)
+	}
+
 	// Print short cluster description:
 	str = fmt.Sprintf(""+
 		"Name:                       %s\n"+
@@ -236,6 +244,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"Multi-AZ:                   %t\n"+
 		"%s"+
 		"Network:\n"+
+		"%s"+
 		" - Service CIDR:            %s\n"+
 		" - Machine CIDR:            %s\n"+
 		" - Pod CIDR:                %s\n"+
@@ -253,6 +262,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.MultiAZ(),
 
 		nodesStr,
+		networkType,
 		cluster.Network().ServiceCIDR(),
 		cluster.Network().MachineCIDR(),
 		cluster.Network().PodCIDR(),

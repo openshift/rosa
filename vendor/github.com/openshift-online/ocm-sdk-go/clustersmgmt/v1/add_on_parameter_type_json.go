@@ -152,6 +152,15 @@ func writeAddOnParameter(object *AddOnParameter, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("validation_err_msg")
+		stream.WriteString(object.validationErrMsg)
+		count++
+	}
+	present_ = object.bitmap_&8192 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("value_type")
 		stream.WriteString(object.valueType)
 	}
@@ -229,10 +238,14 @@ func readAddOnParameter(iterator *jsoniter.Iterator) *AddOnParameter {
 			value := iterator.ReadString()
 			object.validation = value
 			object.bitmap_ |= 2048
+		case "validation_err_msg":
+			value := iterator.ReadString()
+			object.validationErrMsg = value
+			object.bitmap_ |= 4096
 		case "value_type":
 			value := iterator.ReadString()
 			object.valueType = value
-			object.bitmap_ |= 4096
+			object.bitmap_ |= 8192
 		default:
 			iterator.ReadAny()
 		}

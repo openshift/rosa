@@ -90,10 +90,11 @@ var args struct {
 	maxReplicas        int
 
 	// Networking options
-	hostPrefix  int
+	networkType string
 	machineCIDR net.IPNet
 	serviceCIDR net.IPNet
 	podCIDR     net.IPNet
+	hostPrefix  int
 
 	// The Subnet IDs to use when installing the cluster.
 	// SubnetIDs should come in pairs; two per availability zone, one private and one public,
@@ -375,6 +376,15 @@ func init() {
 		"Maximum number of compute nodes.",
 	)
 
+	flags.StringVar(
+		&args.networkType,
+		"network-type",
+		ocm.NetworkTypes[0],
+		"The main controller responsible for rendering the core networking components.",
+	)
+	flags.MarkHidden("network-type")
+	Cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
+
 	flags.IPNetVar(
 		&args.machineCIDR,
 		"machine-cidr",
@@ -462,6 +472,10 @@ func init() {
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
+}
+
+func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return ocm.NetworkTypes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -1421,6 +1435,22 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
+
+	// Network Type:
+	networkType := args.networkType
+	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
+		networkType, err = interactive.GetOption(interactive.Input{
+			Question: "Network Type",
+			Help:     cmd.Flags().Lookup("network-type").Usage,
+			Options:  ocm.NetworkTypes,
+			Default:  networkType,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid network type: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	var dMachinecidr *net.IPNet
 	var dPodcidr *net.IPNet
 	var dServicecidr *net.IPNet
@@ -1656,6 +1686,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Autoscaling:               autoscaling,
 		MinReplicas:               minReplicas,
 		MaxReplicas:               maxReplicas,
+		NetworkType:               networkType,
 		MachineCIDR:               machineCIDR,
 		ServiceCIDR:               serviceCIDR,
 		PodCIDR:                   podCIDR,
@@ -2012,6 +2043,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 		command += fmt.Sprintf(" --compute-machine-type %s", spec.ComputeMachineType)
 	}
 
+	if spec.NetworkType != ocm.NetworkTypes[0] {
+		command += fmt.Sprintf(" --network-type %s", spec.NetworkType)
+	}
 	if !ocm.IsEmptyCIDR(spec.MachineCIDR) {
 		command += fmt.Sprintf(" --machine-cidr %s", spec.MachineCIDR.String())
 	}

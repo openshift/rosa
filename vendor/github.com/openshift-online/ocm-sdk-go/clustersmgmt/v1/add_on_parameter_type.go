@@ -35,19 +35,20 @@ const AddOnParameterNilKind = "AddOnParameterNil"
 //
 // Representation of an add-on parameter.
 type AddOnParameter struct {
-	bitmap_      uint32
-	id           string
-	href         string
-	addon        *AddOn
-	defaultValue string
-	description  string
-	name         string
-	options      []*AddOnParameterOption
-	validation   string
-	valueType    string
-	editable     bool
-	enabled      bool
-	required     bool
+	bitmap_          uint32
+	id               string
+	href             string
+	addon            *AddOn
+	defaultValue     string
+	description      string
+	name             string
+	options          []*AddOnParameterOption
+	validation       string
+	validationErrMsg string
+	valueType        string
+	editable         bool
+	enabled          bool
+	required         bool
 }
 
 // Kind returns the name of the type of the object.
@@ -314,12 +315,35 @@ func (o *AddOnParameter) GetValidation() (value string, ok bool) {
 	return
 }
 
+// ValidationErrMsg returns the value of the 'validation_err_msg' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Error message to return should the parameter be invalid.
+func (o *AddOnParameter) ValidationErrMsg() string {
+	if o != nil && o.bitmap_&4096 != 0 {
+		return o.validationErrMsg
+	}
+	return ""
+}
+
+// GetValidationErrMsg returns the value of the 'validation_err_msg' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Error message to return should the parameter be invalid.
+func (o *AddOnParameter) GetValidationErrMsg() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&4096 != 0
+	if ok {
+		value = o.validationErrMsg
+	}
+	return
+}
+
 // ValueType returns the value of the 'value_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Type of value of the add-on parameter.
 func (o *AddOnParameter) ValueType() string {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&8192 != 0 {
 		return o.valueType
 	}
 	return ""
@@ -330,7 +354,7 @@ func (o *AddOnParameter) ValueType() string {
 //
 // Type of value of the add-on parameter.
 func (o *AddOnParameter) GetValueType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&8192 != 0
 	if ok {
 		value = o.valueType
 	}

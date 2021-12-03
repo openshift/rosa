@@ -77,6 +77,15 @@ func writeNetwork(object *Network, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("service_cidr")
 		stream.WriteString(object.serviceCIDR)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("type")
+		stream.WriteString(object.type_)
 	}
 	stream.WriteObjectEnd()
 }
@@ -121,6 +130,10 @@ func readNetwork(iterator *jsoniter.Iterator) *Network {
 			value := iterator.ReadString()
 			object.serviceCIDR = value
 			object.bitmap_ |= 8
+		case "type":
+			value := iterator.ReadString()
+			object.type_ = value
+			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()
 		}

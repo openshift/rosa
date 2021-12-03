@@ -28,6 +28,7 @@ type Network struct {
 	machineCIDR string
 	podCIDR     string
 	serviceCIDR string
+	type_       string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -123,6 +124,29 @@ func (o *Network) GetServiceCIDR() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.serviceCIDR
+	}
+	return
+}
+
+// Type returns the value of the 'type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The main controller responsible for rendering the core networking components.
+func (o *Network) Type() string {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.type_
+	}
+	return ""
+}
+
+// GetType returns the value of the 'type' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The main controller responsible for rendering the core networking components.
+func (o *Network) GetType() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.type_
 	}
 	return
 }
