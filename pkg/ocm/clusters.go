@@ -142,7 +142,6 @@ func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
 		Logger(logger).
-		Region(aws.DefaultRegion).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create AWS client: %v", err)

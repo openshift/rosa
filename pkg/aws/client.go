@@ -485,7 +485,6 @@ func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
 		// Create the AWS client
 		_, err := NewClient().
 			Logger(logger).
-			Region(DefaultRegion).
 			AccessKeys(AccessKey).
 			Build()
 
