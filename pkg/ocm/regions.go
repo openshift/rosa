@@ -48,7 +48,6 @@ func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.
 	} else {
 		awsClient, err := aws.NewClient().
 			Logger(logger).
-			Region(aws.DefaultRegion).
 			Build()
 		if err != nil {
 			return nil, fmt.Errorf("Error creating AWS client: %v", err)
