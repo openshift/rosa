@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	errors "github.com/zgalor/weberr"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -319,44 +320,86 @@ func (c *Client) LinkAccountRole(accountID string, roleARN string) error {
 	return err
 }
 
-func (c *Client) LinkOrgToRole(orgID string, roleARN string) error {
-	resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
-		Labels().Labels("sts_ocm_role").Get().Send()
-	if err != nil && resp.Status() != 404 {
-		if resp.Status() == 403 {
-			return errors.Forbidden.UserErrorf("%v", err)
-		}
-		return handleErr(resp.Error(), err)
+func (c *Client) LinkOrgToRole(orgID string, roleARN string) (bool, error) {
+	parsedARN, err := arn.Parse(roleARN)
+	if err != nil {
+		return false, err
 	}
-	existingARN := resp.Body().Value()
-	exists := false
-	if existingARN != "" {
-		existingARNArr := strings.Split(existingARN, ",")
-		if len(existingARNArr) > 0 {
-			for _, value := range existingARNArr {
-				if value == roleARN {
-					exists = true
-					break
-				}
-			}
-		}
+	exists, existingARN, selectedARN, err := c.CheckIfAWSAccountExists(orgID, parsedARN.AccountID)
+	if err != nil {
+		return false, err
 	}
 	if exists {
-		return nil
+		if selectedARN != roleARN {
+			return false, errors.UserErrorf("User organization '%s' has role-arn '%s' associated. "+
+				"Only one role can be linked per AWS account per organization", orgID, selectedARN)
+		}
+		return false, nil
 	}
-
 	if existingARN != "" {
 		roleARN = existingARN + "," + roleARN
 	}
 	labelBuilder, err := amsv1.NewLabel().Key("sts_ocm_role").Value(roleARN).Build()
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	_, err = c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
+	resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
 		Labels().Add().Body(labelBuilder).Send()
 	if err != nil {
-		return handleErr(resp.Error(), err)
+		return false, handleErr(resp.Error(), err)
 	}
-	return nil
+	return true, nil
+}
+
+func (c *Client) CheckIfAWSAccountExists(orgID string, awsAccountID string) (bool, string, string, error) {
+	resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
+		Labels().Labels("sts_ocm_role").Get().Send()
+	if err != nil && resp.Status() != 404 {
+		if resp.Status() == 403 {
+			return false, "", "", errors.Forbidden.UserErrorf("%v", err)
+		}
+		return false, "", "", handleErr(resp.Error(), err)
+	}
+	existingARN := resp.Body().Value()
+	exists := false
+	selectedARN := ""
+	if existingARN != "" {
+		existingARNArr := strings.Split(existingARN, ",")
+		if len(existingARNArr) > 0 {
+			for _, value := range existingARNArr {
+				parsedARN, err := arn.Parse(value)
+				if err != nil {
+					return false, "", "", err
+				}
+				if parsedARN.AccountID == awsAccountID {
+					exists = true
+					selectedARN = value
+					break
+				}
+			}
+		}
+	}
+	return exists, existingARN, selectedARN, nil
+}
+
+/**
+We should allow only one role per aws account per organization
+If the user request same ocm role we should let them proceed to ensure they can add admin role
+if not exists or attach policies or link etc
+if the user request diff ocm role name we error out
+*/
+func (c *Client) CheckRoleExists(orgID string, roleName string, awsAccountID string) (bool, string, error) {
+	exists, _, selectedARN, err := c.CheckIfAWSAccountExists(orgID, awsAccountID)
+	if err != nil {
+		return false, "", err
+	}
+	if !exists {
+		return false, "", nil
+	}
+	existingRole := strings.SplitN(selectedARN, "/", 2)
+	if len(existingRole) > 1 && existingRole[1] == roleName {
+		return false, "", nil
+	}
+	return true, existingRole[1], nil
 }

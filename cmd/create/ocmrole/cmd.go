@@ -223,10 +223,24 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	roleNameRequested := aws.GetOCMRoleName(prefix, aws.OCMRole, externalID)
+
+	exists, existingRole, err := ocmClient.CheckRoleExists(orgID, roleNameRequested, creator.AccountID)
+
+	if err != nil {
+		reporter.Errorf("Error checking existing ocm-role: %v", err)
+		os.Exit(1)
+	}
+	if exists {
+		reporter.Errorf("User organization '%s' has ocm-role  '%s' for aws account %s. "+
+			"Only one role can be created per AWS account  per organization",
+			orgID, existingRole, creator.AccountID)
+		os.Exit(1)
+	}
 	switch mode {
 	case aws.ModeAuto:
 		reporter.Infof("Creating role using '%s'", creator.ARN)
-		roleARN, err := createRoles(reporter, awsClient, prefix, externalID, permissionsBoundary, creator.AccountID,
+		roleARN, err := createRoles(reporter, awsClient, prefix, roleNameRequested, permissionsBoundary, creator.AccountID,
 			orgID, env, isAdmin)
 		if err != nil {
 			reporter.Errorf("There was an error creating the ocm role: %s", err)
@@ -257,7 +271,7 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to create the ocm role and policies:\n")
 		}
-		commands := buildCommands(prefix, externalID, permissionsBoundary, creator.AccountID, env, isAdmin)
+		commands := buildCommands(prefix, roleNameRequested, permissionsBoundary, creator.AccountID, env, isAdmin)
 		fmt.Println(commands)
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
@@ -265,11 +279,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func buildCommands(prefix string, postfix string, permissionsBoundary string,
+func buildCommands(prefix string, roleName string, permissionsBoundary string,
 	accountID string, env string, isAdmin bool) string {
 	commands := []string{}
-	name := aws.GetOCMRoleName(prefix, aws.OCMRole, postfix)
-	policyName := fmt.Sprintf("%s-Policy", name)
+	policyName := fmt.Sprintf("%s-Policy", roleName)
 	iamTags := fmt.Sprintf(
 		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 		tags.RolePrefix, prefix,
@@ -291,7 +304,7 @@ func buildCommands(prefix string, postfix string, permissionsBoundary string,
 		"\t--assume-role-policy-document file://sts_%s_trust_policy.json \\\n"+
 		"%s"+
 		"\t--tags %s%s",
-		name, aws.OCMRolePolicyFile, permBoundaryFlag, iamTags, adminTags)
+		roleName, aws.OCMRolePolicyFile, permBoundaryFlag, iamTags, adminTags)
 	createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 		"\t--policy-name %s \\\n"+
 		"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
@@ -300,12 +313,12 @@ func buildCommands(prefix string, postfix string, permissionsBoundary string,
 	attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 		"\t--role-name %s \\\n"+
 		"\t--policy-arn %s",
-		name, aws.GetPolicyARN(accountID, policyName))
+		roleName, aws.GetPolicyARN(accountID, policyName))
 
 	commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	if isAdmin {
 		adminTags := fmt.Sprintf("Key=%s,Value=%v", tags.AdminRole, true)
-		policyName := fmt.Sprintf("%s-Admin-Policy", name)
+		policyName := fmt.Sprintf("%s-Admin-Policy", roleName)
 
 		createAdminPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 			"\t--policy-name %s \\\n"+
@@ -315,21 +328,20 @@ func buildCommands(prefix string, postfix string, permissionsBoundary string,
 		attachRoleAdminPolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--policy-arn %s",
-			name, aws.GetPolicyARN(accountID, policyName))
+			roleName, aws.GetPolicyARN(accountID, policyName))
 
 		commands = append(commands, createAdminPolicy, attachRoleAdminPolicy)
 	}
 
 	linkRole := fmt.Sprintf("rosa link ocm-role --role-arn %s",
-		aws.GetRoleARN(accountID, name))
+		aws.GetRoleARN(accountID, roleName))
 	commands = append(commands, linkRole)
 
 	return strings.Join(commands, "\n\n")
 }
 
-func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, postfix string,
+func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, roleName string,
 	permissionsBoundary string, accountID string, orgID string, env string, isAdmin bool) (string, error) {
-	roleName := aws.GetOCMRoleName(prefix, aws.OCMRole, postfix)
 	policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName))
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
