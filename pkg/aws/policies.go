@@ -1378,3 +1378,20 @@ func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
 	_, version := GetTagValues(role.Role.Tags)
 	return version, nil
 }
+
+func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
+	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	for _, tag := range role.Role.Tags {
+		if aws.StringValue(tag.Key) == tags.AdminRole && aws.StringValue(tag.Value) == "true" {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}

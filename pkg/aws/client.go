@@ -120,6 +120,7 @@ type Client interface {
 	IsPolicyCompatible(policyArn string, version string) (bool, error)
 	GetAccountRoleVersion(roleName string) (string, error)
 	IsPolicyExists(policyARN string) (*iam.GetPolicyOutput, error)
+	IsAdminRole(roleName string) (bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -606,6 +607,7 @@ func (c *awsClient) CheckRoleExists(roleName string) (bool, string, error) {
 			}
 		}
 	}
+
 	return true, aws.StringValue(role.Role.Arn), nil
 }
 

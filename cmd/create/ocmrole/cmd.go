@@ -351,10 +351,29 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, po
 		return "", err
 	}
 	if exists {
+		isExistingRoleAdmin, err := awsClient.IsAdminRole(roleName)
+		if err != nil {
+			return "", err
+		}
 		reporter.Warnf("Role '%s' already exists", roleName)
-		return roleARN, nil
+
+		if !isAdmin {
+			if isExistingRoleAdmin {
+				return "", fmt.Errorf("The existing role is an admin role."+
+					" To remove admin capabilities please delete the admin policy and the '%s' tag",
+					tags.AdminRole)
+			}
+			return roleARN, nil
+		}
+
+		if isExistingRoleAdmin {
+			return roleARN, nil
+		}
+
+		if !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
+			return roleARN, nil
+		}
 	}
-	reporter.Debugf("Creating role '%s'", roleName)
 
 	iamTags := map[string]string{
 		tags.RolePrefix:  prefix,
@@ -362,18 +381,22 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, po
 		tags.Environment: env,
 	}
 
-	roleARN, err = awsClient.EnsureRole(roleName, string(policy), permissionsBoundary,
-		"", iamTags)
-	if err != nil {
-		return "", err
-	}
-	reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
+	if !exists {
+		reporter.Debugf("Creating role '%s'", roleName)
 
-	// create and attach the permission policy to the role
-	filename = fmt.Sprintf("sts_%s_permission_policy.json", aws.OCMRolePolicyFile)
-	err = createPermissionPolicy(reporter, awsClient, policyARN, iamTags, roleName, filename)
-	if err != nil {
-		return "", err
+		roleARN, err = awsClient.EnsureRole(roleName, string(policy), permissionsBoundary,
+			"", iamTags)
+		if err != nil {
+			return "", err
+		}
+		reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
+
+		// create and attach the permission policy to the role
+		filename = fmt.Sprintf("sts_%s_permission_policy.json", aws.OCMRolePolicyFile)
+		err = createPermissionPolicy(reporter, awsClient, policyARN, iamTags, roleName, filename)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if isAdmin {
