@@ -127,6 +127,7 @@ var OCMUserRole = "User"
 var OCMUserRolePolicyFile = "ocm_user"
 var OCMRole = "OCM"
 var OCMRolePolicyFile = "ocm"
+var OCMAdminRolePolicyFile = "ocm_admin"
 
 var roleTypeMap = map[string]string{
 	"installer":             "Installer",
@@ -1277,6 +1278,10 @@ func (c *awsClient) IsUpgradedNeededForRole(prefix string, accountID string, ver
 }
 
 func (c *awsClient) UpdateTag(roleName string) error {
+	return c.AddRoleTag(roleName, tags.OpenShiftVersion, DefaultPolicyVersion)
+}
+
+func (c *awsClient) AddRoleTag(roleName string, key string, value string) error {
 	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
@@ -1287,8 +1292,8 @@ func (c *awsClient) UpdateTag(roleName string) error {
 		RoleName: role.Role.RoleName,
 		Tags: []*iam.Tag{
 			{
-				Key:   aws.String(tags.OpenShiftVersion),
-				Value: aws.String(DefaultPolicyVersion),
+				Key:   aws.String(key),
+				Value: aws.String(value),
 			},
 		},
 	})
@@ -1372,4 +1377,21 @@ func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
 	}
 	_, version := GetTagValues(role.Role.Tags)
 	return version, nil
+}
+
+func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
+	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	for _, tag := range role.Role.Tags {
+		if aws.StringValue(tag.Key) == tags.AdminRole && aws.StringValue(tag.Value) == "true" {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

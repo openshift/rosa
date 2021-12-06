@@ -248,6 +248,15 @@ func GetTagValues(tagsValue []*iam.Tag) (roleType string, version string) {
 	return
 }
 
+func IsAdminTag(tagsValue []*iam.Tag) bool {
+	for _, tag := range tagsValue {
+		if aws.StringValue(tag.Key) == tags.AdminRole && aws.StringValue(tag.Value) == "true" {
+			return true
+		}
+	}
+	return false
+}
+
 func MarshalRoles(role []Role, b *bytes.Buffer) error {
 	reqBodyBytes := new(bytes.Buffer)
 	json.NewEncoder(reqBodyBytes).Encode(role)
