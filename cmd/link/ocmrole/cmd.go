@@ -134,7 +134,7 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		os.Exit(0)
 	}
 
-	err = ocmClient.LinkOrgToRole(orgAccount, roleArn)
+	linked, err := ocmClient.LinkOrgToRole(orgAccount, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
 			reporter.Errorf("Only organization admin can run this command. "+
@@ -145,6 +145,10 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",
 			args.roleArn, orgAccount, err)
 		return err
+	}
+	if !linked {
+		reporter.Infof("Role-arn '%s' is already linked with the organization account '%s'", roleArn, orgAccount)
+		os.Exit(0)
 	}
 	reporter.Infof("Successfully linked role-arn '%s' with organization account '%s'", roleArn, orgAccount)
 	return nil
