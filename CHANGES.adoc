@@ -2,6 +2,28 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.7 Dec 7 2021
+
+- Fix crash when calling link cmd internally
+- Fix call to link cmd
+- Add org external id to ocm role name
+- ROSA: Support editing cluster-wide proxy
+- link: Allow linking multiple role ARNs
+- create-cluster: Allow FIPS mode support
+- ocm-role: Add permission to describe VPCs
+- add org admin validation for ocm-role
+- improve UX in ROSA edit cluster and ROSA delete roles
+- Change rosa init help message
+- fix org admin validation
+- Ignore .envrc (DirEnv)
+- Ignoring environment config
+- add permission for describe region and route tables
+- aws: Remove hard dependency on default region
+- Add pendo eventor account roles manual mode
+- Add --admin option to create ocm-role command
+- Make `--admin` flag idempotent
+- added validation for ocm-role
+
 == 1.1.6 Nov 22 2021
 
 - Update OWNERS file
