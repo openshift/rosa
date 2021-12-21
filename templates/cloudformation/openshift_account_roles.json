@@ -5,6 +5,10 @@
         "Description": "AWS Account ID",
         "Type": "Number"
       },
+      "ROSAVersion": {
+        "Description": "ROSA version",
+        "Type": "Number"
+      },
       "Prefix": {
         "Description": "Role and Policy name prefix",
         "Type": "String",
@@ -34,7 +38,7 @@
                 "Path": "/",
                 "Tags": [
                     {"Key": "red-hat-managed", "Value": "true"},
-                    {"Key": "rosa_openshift_version", "Value": { "Ref": "OpenShiftVersion" } },
+                    {"Key": "rosa_openshift_version", "Value": { "Ref": "ROSAVersion" } },
                     {"Key": "rosa_role_prefix", "Value": { "Ref": "Prefix" } },
                     {"Key": "rosa_role_type", "Value": "installer"}
                 ]
@@ -61,7 +65,7 @@
                 "Path": "/",
                 "Tags": [
                     {"Key": "red-hat-managed", "Value": "true"},
-                    {"Key": "rosa_openshift_version", "Value": { "Ref": "OpenShiftVersion" } },
+                    {"Key": "rosa_openshift_version", "Value": { "Ref": "ROSAVersion" } },
                     {"Key": "rosa_role_prefix", "Value": { "Ref": "Prefix" } },
                     {"Key": "rosa_role_type", "Value": "support"}
                 ]
@@ -90,7 +94,7 @@
                 "Path": "/",
                 "Tags": [
                     {"Key": "red-hat-managed", "Value": "true"},
-                    {"Key": "rosa_openshift_version", "Value": { "Ref": "OpenShiftVersion" } },
+                    {"Key": "rosa_openshift_version", "Value": { "Ref": "ROSAVersion" } },
                     {"Key": "rosa_role_prefix", "Value": { "Ref": "Prefix" } },
                     {"Key": "rosa_role_type", "Value": "instance_controlplane"}
                 ]
@@ -119,7 +123,7 @@
                 "Path": "/",
                 "Tags": [
                     {"Key": "red-hat-managed", "Value": "true"},
-                    {"Key": "rosa_openshift_version", "Value": { "Ref": "OpenShiftVersion" } },
+                    {"Key": "rosa_openshift_version", "Value": { "Ref": "ROSAVersion" } },
                     {"Key": "rosa_role_prefix", "Value": { "Ref": "Prefix" } },
                     {"Key": "rosa_role_type", "Value": "instance_worker"}
                 ]

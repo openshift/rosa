@@ -1,0 +1,185 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters" : {
+      "OIDCProviderARN": {
+        "Description": "OIDC Provider ARN",
+        "Type": "String"
+      },
+      "IssuerURL": {
+        "Description": "OIDC Issuer URL",
+        "Type": "String"
+      },
+      "CloudCredentialOperatorSAName": {
+        "Description": "Service Account Name",
+        "Type": "String",
+        "Default": "cloud-credential-operator"
+      },
+      "MachineAPIOperatorSAName": {
+        "Description": "Service Account Name",
+        "Type": "String",
+        "Default": "machine-api-controllers"
+      },
+      "ImageRegistryOperatorSAName": {
+        "Description": "Service Account Name",
+        "Type": "String",
+        "Default": "cluster-image-registry-operator, registry"
+      },
+      "IngressOperatorSAName": {
+        "Description": "Service Account Name",
+        "Type": "String",
+        "Default": "ingress-operator"
+      },
+      "ClusterCSIDriverEBSSAName": {
+        "Description": "Service Account Name",
+        "Type": "String",
+        "Default": "aws-ebs-csi-driver-operator, aws-ebs-csi-driver-controller-sa"
+      },
+      "CloudCredentialOperatorRoleName": {
+        "Description": "OIDC Provider ARN",
+        "Type": "String"
+      },
+      "MachineAPIOperatorRoleName": {
+        "Description": "OIDC Provider ARN",
+        "Type": "String"
+      },
+      "ImageRegistryOperatorRoleName": {
+        "Description": "OIDC Provider ARN",
+        "Type": "String"
+      },
+      "IngressOperatorRoleName": {
+        "Description": "OIDC Provider ARN",
+        "Type": "String"
+      },
+      "ClusterCSIDriverEBSRoleName": {
+        "Description": "OIDC Provider ARN",
+        "Type": "String"
+      }
+    },
+    "Resources": {
+        "CloudCredentialOperatorRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+            	"RoleName": { "Ref": "CloudCredentialOperatorRoleName" },
+                "AssumeRolePolicyDocument": {
+					"Fn::Sub": "{ { \"Version\": \"2012-10-17\", \"Statement\": [ { \"Effect\": \"Allow\", \"Principal\": { \"Federated\": [ \"${OIDCProviderARN}\" ] }, \"Action\": [ \"sts:AssumeRoleWithWebIdentity\" ], \"Condition\": { \"StringEquals\": { \"${IssuerURL}:sub\":  \"${CloudCredentialOperatorSAName}\" } }  } ] }"
+                }, 
+				"Tags":
+					[
+						{"Key": "red-hat-managed", "Value": "true"}
+					]
+				}
+        },
+        "MachineAPIOperatorRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+            	"RoleName": { "Ref": "MachineAPIOperatorRoleName" },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Federated": [
+                    				{ "Ref": "OIDCProviderARN" }
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRoleWithWebIdentity"
+                            ],
+                            "Condition": {
+                                    "StringEquals": { "Fn::Join" : [ "", [ { "Ref": "IssuerURL" }, ":sub: ", { "Ref": "MachineAPIOperatorSAName" } ]] }
+                            }
+                        }
+                    ]
+                },
+            	"Tags": [ 
+            	    {"Key": "red-hat-managed", "Value": "true"}
+            	]
+            }
+        },
+        "ImageRegistryOperatorRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+            	"RoleName": { "Ref": "ImageRegistryOperatorRoleName" },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Federated": [
+                    				{ "Ref": "OIDCProviderARN" }
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRoleWithWebIdentity"
+                            ],
+                            "Condition": {
+                                    "StringEquals": { "Fn::Join" : [ "", [ { "Ref": "IssuerURL" }, ":sub: ", { "Ref": "ImageRegistryOperatorSAName" }]] }
+                            }
+                        }
+                    ]
+                },
+            	"Tags": [ 
+            	    {"Key": "red-hat-managed", "Value": "true"}
+            	]
+            }
+        },
+        "IngressOperatorRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+            	"RoleName": { "Ref": "IngressOperatorRoleName" },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Federated": [
+                    				{ "Ref": "OIDCProviderARN" }
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRoleWithWebIdentity"
+                            ],
+                            "Condition": {
+                                    "StringEquals": { "Fn::Join" : [ "", [ { "Ref": "IssuerURL" }, ":sub: ", { "Ref": "IngressOperatorSAName" } ]] }
+                            }
+                        }
+                    ]
+                },
+            	"Tags": [ 
+                	{"Key": "red-hat-managed", "Value": "true"}
+            	]
+            }
+        },
+        "ClusterCSIDriverEBSRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+            	"RoleName": { "Ref": "ClusterCSIDriverEBSRoleName" },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Federated": [
+                    				{ "Ref": "OIDCProviderARN" }
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRoleWithWebIdentity"
+                            ],
+                            "Condition": {
+                                    "Fn::Sub": "${IssuerURL}:sub: ${ClusterCSIDriverEBSSAName}"
+                            }
+                        }
+                    ]
+                },
+            	"Tags": [ 
+            	    {"Key": "red-hat-managed", "Value": "true"}
+            	]
+            }
+        }
+    }
+}

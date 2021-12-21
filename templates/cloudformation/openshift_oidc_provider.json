@@ -3,22 +3,22 @@
     "Parameters" : {
       "AWSAccountID": {
         "Description": "AWS Account ID",
-        "Type": "Number",
-        "AllowedPattern": "^[0-9]{12}$"
+        "Type": "Number"
       },
       "ClientIDOpenShift": {
         "Description": "OIDC Client ID OpenShift",
         "Type": "String",
         "Default": "openshift"
       },
-      "ClientIDSTSAWS": { 
+      "ClientIDAWSSTS": { 
         "Description": "OIDC Client ID AWS STS",
-        "Type": "string",
-        "AllowedPattern": "sts.amazonaws.com"
+        "Type": "String",
+        "Default": "sts.amazonaws.com"
       },
       "Thumbprint": {
         "Description": "Thumbprint",
-        "Type": "String"
+        "Type": "String",
+		"Default": "a9d53002e97e00e043244f3d170d6f4c414104fd"
       },
       "IssuerURL": {
         "Description": "OIDC Issuer URL",
@@ -31,7 +31,7 @@
             "Properties": {
                 "ClientIdList": [ { "Ref": "ClientIDOpenShift" }, { "Ref": "ClientIDAWSSTS" } ],
                 "ThumbprintList": [ { "Ref": "Thumbprint"} ], 
-                "Url": { "Ref": "ProviderURL" },
+                "Url": { "Ref": "IssuerURL" },
                 "Tags": [ {"Key": "red-hat-managed", "Value": "true"} ]
             }
         }
