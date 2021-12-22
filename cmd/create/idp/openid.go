@@ -39,10 +39,11 @@ func buildOpenidIdp(cmd *cobra.Command,
 	name := args.openidName
 	username := args.openidUsername
 
-	isInteractive := clientID == "" || clientSecret == "" || issuerURL == "" ||
-		(email == "" && name == "" && username == "")
+	if clientID == "" || clientSecret == "" || issuerURL == "" || (email == "" && name == "" && username == "") {
+		interactive.Enable()
+	}
 
-	if isInteractive {
+	if interactive.Enabled() {
 		instructionsURL := "https://docs.openshift.com/dedicated/identity_providers/" +
 			"config-identity-providers.html#config-openid-idp_config-identity-providers"
 		oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
@@ -61,7 +62,7 @@ func buildOpenidIdp(cmd *cobra.Command,
 		}
 	}
 
-	if isInteractive {
+	if interactive.Enabled() {
 		clientID, err = interactive.GetString(interactive.Input{
 			Question: "Client ID",
 			Help:     "Paste the Client ID provided by the OpenID provider when registering your application.",
@@ -73,7 +74,7 @@ func buildOpenidIdp(cmd *cobra.Command,
 		}
 	}
 
-	if isInteractive && clientSecret == "" {
+	if interactive.Enabled() && clientSecret == "" {
 		clientSecret, err = interactive.GetPassword(interactive.Input{
 			Question: "Client Secret",
 			Help:     "Paste the Client Secret provided by the OpenID provider when registering your application.",
@@ -84,7 +85,7 @@ func buildOpenidIdp(cmd *cobra.Command,
 		}
 	}
 
-	if isInteractive {
+	if interactive.Enabled() {
 		issuerURL, err = interactive.GetString(interactive.Input{
 			Question: "Issuer URL",
 			Help:     cmd.Flags().Lookup("issuer-url").Usage,
@@ -131,7 +132,7 @@ func buildOpenidIdp(cmd *cobra.Command,
 		return idpBuilder, err
 	}
 
-	if isInteractive {
+	if interactive.Enabled() {
 		err = interactive.PrintHelp(interactive.Help{
 			Message: `You can indicate which claims to use as the user’s preferred user name, display name, and email address.
   At least one claim must be configured to use as the user’s identity. Enter multiple values separated by commas.`,

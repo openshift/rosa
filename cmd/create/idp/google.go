@@ -35,6 +35,10 @@ func buildGoogleIdp(cmd *cobra.Command,
 	clientSecret := args.clientSecret
 
 	if clientID == "" || clientSecret == "" {
+		interactive.Enable()
+	}
+
+	if interactive.Enabled() {
 		instructionsURL := "https://console.developers.google.com/projectcreate"
 		consoleURL := cluster.Console().URL()
 		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
@@ -74,18 +78,24 @@ func buildGoogleIdp(cmd *cobra.Command,
 		}
 	}
 
-	mappingMethod, err := getMappingMethod(cmd, args.mappingMethod)
-	if err != nil {
-		return idpBuilder, err
-	}
-
 	// Create Google IDP
 	googleIDP := cmv1.NewGoogleIdentityProvider().
 		ClientID(clientID).
 		ClientSecret(clientSecret)
 
+	mappingMethod := args.mappingMethod
 	hostedDomain := args.googleHostedDomain
-	if interactive.Enabled() || (mappingMethod != "lookup" && hostedDomain == "") {
+
+	mappingMethod, err = getMappingMethod(cmd, mappingMethod)
+	if err != nil {
+		return idpBuilder, err
+	}
+
+	if mappingMethod != "lookup" && hostedDomain == "" {
+		interactive.Enable()
+	}
+
+	if interactive.Enabled() {
 		hostedDomain, err = interactive.GetString(interactive.Input{
 			Question: "Hosted domain",
 			Help:     cmd.Flags().Lookup("hosted-domain").Usage,
