@@ -280,6 +280,11 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
+	ocmClient.LogEvent("ROSALoginSuccess", map[string]string{
+		ocm.Response: ocm.Success,
+		ocm.Username: username,
+		ocm.URL:      cfg.URL,
+	})
 }
 
 func reattemptLogin(cmd *cobra.Command, argv []string) {
