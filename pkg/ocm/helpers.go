@@ -49,6 +49,8 @@ const (
 	Response  = "Response"
 	ClusterID = "ClusterID"
 	Version   = "Version"
+	Username  = "Username"
+	URL       = "URL"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
