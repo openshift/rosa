@@ -31,7 +31,10 @@ import (
 func MarshalResourceList(list []*Resource, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeResourceList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

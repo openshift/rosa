@@ -31,7 +31,10 @@ import (
 func MarshalListeningMethodList(list []ListeningMethod, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeListeningMethodList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

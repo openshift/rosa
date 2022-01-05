@@ -31,7 +31,10 @@ import (
 func MarshalClusterCredentials(object *ClusterCredentials, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterCredentials(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -88,7 +91,6 @@ func writeClusterCredentials(object *ClusterCredentials, stream *jsoniter.Stream
 		}
 		stream.WriteObjectField("kubeconfig")
 		stream.WriteString(object.kubeconfig)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

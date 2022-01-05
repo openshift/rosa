@@ -31,7 +31,10 @@ import (
 func MarshalQuotaSummaryList(list []*QuotaSummary, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeQuotaSummaryList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

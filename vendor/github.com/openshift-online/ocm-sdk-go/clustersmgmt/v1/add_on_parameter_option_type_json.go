@@ -31,7 +31,10 @@ import (
 func MarshalAddOnParameterOption(object *AddOnParameterOption, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnParameterOption(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeAddOnParameterOption(object *AddOnParameterOption, stream *jsoniter.St
 		}
 		stream.WriteObjectField("value")
 		stream.WriteString(object.value)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

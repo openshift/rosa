@@ -31,7 +31,10 @@ import (
 func MarshalSummarySampleList(list []*SummarySample, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSummarySampleList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

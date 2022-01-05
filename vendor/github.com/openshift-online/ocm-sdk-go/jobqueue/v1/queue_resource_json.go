@@ -180,7 +180,10 @@ func writeQueuePopResponse(response *QueuePopServerResponse, w http.ResponseWrit
 		count++
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 func readQueuePushRequest(request *QueuePushServerRequest, r *http.Request) error {
@@ -261,7 +264,10 @@ func writeQueuePushRequest(request *QueuePushRequest, writer io.Writer) error {
 		count++
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 func readQueuePushResponse(response *QueuePushResponse, reader io.Reader) error {
@@ -397,6 +403,9 @@ func writeQueuePushResponse(response *QueuePushServerResponse, w http.ResponseWr
 		count++
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }

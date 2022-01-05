@@ -31,7 +31,10 @@ import (
 func MarshalExportControlReviewRequest(object *ExportControlReviewRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeExportControlReviewRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeExportControlReviewRequest(object *ExportControlReviewRequest, stream 
 		}
 		stream.WriteObjectField("account_username")
 		stream.WriteString(object.accountUsername)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

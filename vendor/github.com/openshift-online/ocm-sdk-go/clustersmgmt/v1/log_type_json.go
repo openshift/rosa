@@ -31,7 +31,10 @@ import (
 func MarshalLog(object *Log, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLog(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeLog(object *Log, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("content")
 		stream.WriteString(object.content)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

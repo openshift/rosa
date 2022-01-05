@@ -31,7 +31,10 @@ import (
 func MarshalPullSecretsRequest(object *PullSecretsRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writePullSecretsRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writePullSecretsRequest(object *PullSecretsRequest, stream *jsoniter.Stream
 		}
 		stream.WriteObjectField("external_resource_id")
 		stream.WriteString(object.externalResourceId)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

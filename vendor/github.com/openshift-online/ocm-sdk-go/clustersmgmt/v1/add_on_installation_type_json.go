@@ -32,7 +32,10 @@ import (
 func MarshalAddOnInstallation(object *AddOnInstallation, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnInstallation(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -146,7 +149,6 @@ func writeAddOnInstallation(object *AddOnInstallation, stream *jsoniter.Stream) 
 		}
 		stream.WriteObjectField("updated_timestamp")
 		stream.WriteString((object.updatedTimestamp).Format(time.RFC3339))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -32,7 +32,10 @@ import (
 func MarshalAccessToken(object *AccessToken, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAccessToken(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -68,7 +71,6 @@ func writeAccessToken(object *AccessToken, stream *jsoniter.Stream) {
 		} else {
 			stream.WriteNil()
 		}
-		count++
 	}
 	stream.WriteObjectEnd()
 }

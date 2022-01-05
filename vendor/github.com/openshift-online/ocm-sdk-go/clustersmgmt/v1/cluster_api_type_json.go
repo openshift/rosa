@@ -31,7 +31,10 @@ import (
 func MarshalClusterAPI(object *ClusterAPI, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterAPI(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeClusterAPI(object *ClusterAPI, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("listening")
 		stream.WriteString(string(object.listening))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -32,7 +32,10 @@ import (
 func MarshalAddOnRequirement(object *AddOnRequirement, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnRequirement(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -104,7 +107,6 @@ func writeAddOnRequirement(object *AddOnRequirement, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("status")
 		writeAddOnRequirementStatus(object.status, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

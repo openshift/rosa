@@ -31,7 +31,10 @@ import (
 func MarshalAWSMachinePool(object *AWSMachinePool, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAWSMachinePool(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeAWSMachinePool(object *AWSMachinePool, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("spot_market_options")
 		writeAWSSpotMarketOptions(object.spotMarketOptions, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalProvisionShard(object *ProvisionShard, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeProvisionShard(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -106,7 +109,6 @@ func writeProvisionShard(object *ProvisionShard, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("hive_config")
 		writeServerConfig(object.hiveConfig, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

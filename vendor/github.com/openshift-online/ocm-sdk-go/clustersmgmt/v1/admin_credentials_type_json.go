@@ -31,7 +31,10 @@ import (
 func MarshalAdminCredentials(object *AdminCredentials, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAdminCredentials(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeAdminCredentials(object *AdminCredentials, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("user")
 		stream.WriteString(object.user)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

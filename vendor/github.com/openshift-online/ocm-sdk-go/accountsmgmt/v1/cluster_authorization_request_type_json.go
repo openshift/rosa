@@ -31,7 +31,10 @@ import (
 func MarshalClusterAuthorizationRequest(object *ClusterAuthorizationRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterAuthorizationRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -164,7 +167,6 @@ func writeClusterAuthorizationRequest(object *ClusterAuthorizationRequest, strea
 		}
 		stream.WriteObjectField("resources")
 		writeReservedResourceList(object.resources, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

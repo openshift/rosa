@@ -31,7 +31,10 @@ import (
 func MarshalClusterAuthorizationResponse(object *ClusterAuthorizationResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterAuthorizationResponse(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeClusterAuthorizationResponse(object *ClusterAuthorizationResponse, str
 		}
 		stream.WriteObjectField("subscription")
 		writeSubscription(object.subscription, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

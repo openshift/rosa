@@ -250,10 +250,9 @@ func (r *ClustersListRequest) Header(name string, value interface{}) *ClustersLi
 // the names of the columns of a table. For example, in order to sort the clusters
 // descending by region identifier the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // region.id desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -280,10 +279,9 @@ func (r *ClustersListRequest) Page(value int) *ClustersListRequest {
 // clusters with a name starting with `my` in the `us-east-1` region the value
 // should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'my%' and region.id = 'us-east-1'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // clusters that the user has permission to see will be returned.

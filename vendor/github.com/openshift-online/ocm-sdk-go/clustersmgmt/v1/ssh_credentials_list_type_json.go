@@ -31,7 +31,10 @@ import (
 func MarshalSSHCredentialsList(list []*SSHCredentials, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSSHCredentialsList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

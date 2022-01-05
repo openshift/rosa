@@ -31,7 +31,10 @@ import (
 func MarshalExportControlReviewResponse(object *ExportControlReviewResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeExportControlReviewResponse(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeExportControlReviewResponse(object *ExportControlReviewResponse, strea
 		}
 		stream.WriteObjectField("restricted")
 		stream.WriteBool(object.restricted)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

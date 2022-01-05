@@ -31,7 +31,10 @@ import (
 func MarshalFeatureReviewRequest(object *FeatureReviewRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeFeatureReviewRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeFeatureReviewRequest(object *FeatureReviewRequest, stream *jsoniter.St
 		}
 		stream.WriteObjectField("feature")
 		stream.WriteString(object.feature)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

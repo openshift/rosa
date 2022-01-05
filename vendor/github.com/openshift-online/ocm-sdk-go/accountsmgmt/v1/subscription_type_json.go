@@ -32,7 +32,10 @@ import (
 func MarshalSubscription(object *Subscription, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSubscription(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -359,7 +362,6 @@ func writeSubscription(object *Subscription, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("usage")
 		stream.WriteString(object.usage)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

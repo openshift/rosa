@@ -42,12 +42,12 @@ func (o *DNS) Empty() bool {
 // cluster is `mycluster` and the base domain is `example.com` then the following DNS
 // records will be created:
 //
-// ....
+// ```
 // mycluster-api.example.com
 // mycluster-etcd-0.example.com
 // mycluster-etcd-1.example.com
 // mycluster-etcd-3.example.com
-// ....
+// ```
 //
 // The exact number, type and names of the created DNS record depends on the characteristics
 // of the cluster, and may be different for different versions of _OpenShift_. Please don't
@@ -57,15 +57,13 @@ func (o *DNS) Empty() bool {
 // attribute. For example, if the identifier of the cluster is `123` send a request like
 // this:
 //
-// [source,http]
-// ----
+// ```http
 // GET /api/clusters_mgmt/v1/clusters/123 HTTP/1.1
-// ----
+// ```
 //
 // That will return a response like this, including the `api.url` attribute:
 //
-// [source,json]
-// ----
+// ```json
 // {
 //     "kind": "Cluster",
 //     "id": "123",
@@ -75,7 +73,7 @@ func (o *DNS) Empty() bool {
 //     },
 //     ...
 // }
-// ----
+// ```
 //
 // When the cluster is created in Amazon Web Services it is necessary to create this base
 // DNS domain in advance, using AWS Route53 (https://console.aws.amazon.com/route53).
@@ -96,12 +94,12 @@ func (o *DNS) BaseDomain() string {
 // cluster is `mycluster` and the base domain is `example.com` then the following DNS
 // records will be created:
 //
-// ....
+// ```
 // mycluster-api.example.com
 // mycluster-etcd-0.example.com
 // mycluster-etcd-1.example.com
 // mycluster-etcd-3.example.com
-// ....
+// ```
 //
 // The exact number, type and names of the created DNS record depends on the characteristics
 // of the cluster, and may be different for different versions of _OpenShift_. Please don't
@@ -111,15 +109,13 @@ func (o *DNS) BaseDomain() string {
 // attribute. For example, if the identifier of the cluster is `123` send a request like
 // this:
 //
-// [source,http]
-// ----
+// ```http
 // GET /api/clusters_mgmt/v1/clusters/123 HTTP/1.1
-// ----
+// ```
 //
 // That will return a response like this, including the `api.url` attribute:
 //
-// [source,json]
-// ----
+// ```json
 // {
 //     "kind": "Cluster",
 //     "id": "123",
@@ -129,7 +125,7 @@ func (o *DNS) BaseDomain() string {
 //     },
 //     ...
 // }
-// ----
+// ```
 //
 // When the cluster is created in Amazon Web Services it is necessary to create this base
 // DNS domain in advance, using AWS Route53 (https://console.aws.amazon.com/route53).

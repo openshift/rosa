@@ -31,7 +31,10 @@ import (
 func MarshalJobList(list []*Job, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeJobList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

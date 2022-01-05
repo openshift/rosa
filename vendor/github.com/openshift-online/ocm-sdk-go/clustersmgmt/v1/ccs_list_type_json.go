@@ -31,7 +31,10 @@ import (
 func MarshalCCSList(list []*CCS, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCCSList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

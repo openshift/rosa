@@ -32,7 +32,10 @@ import (
 func MarshalIngress(object *Ingress, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeIngress(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -127,7 +130,6 @@ func writeIngress(object *Ingress, stream *jsoniter.Stream) {
 		} else {
 			stream.WriteNil()
 		}
-		count++
 	}
 	stream.WriteObjectEnd()
 }

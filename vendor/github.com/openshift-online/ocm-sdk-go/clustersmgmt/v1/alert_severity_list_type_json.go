@@ -31,7 +31,10 @@ import (
 func MarshalAlertSeverityList(list []AlertSeverity, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAlertSeverityList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

@@ -31,7 +31,10 @@ import (
 func MarshalNetworkList(list []*Network, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeNetworkList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

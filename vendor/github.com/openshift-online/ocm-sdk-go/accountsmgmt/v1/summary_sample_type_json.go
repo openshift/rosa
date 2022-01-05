@@ -31,7 +31,10 @@ import (
 func MarshalSummarySample(object *SummarySample, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSummarySample(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeSummarySample(object *SummarySample, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("value")
 		stream.WriteFloat64(object.value)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

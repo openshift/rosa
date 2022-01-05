@@ -42,19 +42,17 @@ func (o *ClusterRegistration) Empty() bool {
 // For example, to register a cluster that has been provisioned outside
 // of this service, send a a request like this:
 //
-// [source,http]
-// ----
+// ```http
 // POST /api/clusters_mgmt/v1/register_cluster HTTP/1.1
-// ----
+// ```
 //
 // With a request body like this:
 //
-// [source,json]
-// ----
+// ```json
 // {
 //   "external_id": "d656aecf-11a6-4782-ad86-8f72638449ba"
 // }
-// ----
+// ```
 func (o *ClusterRegistration) ExternalID() string {
 	if o != nil && o.bitmap_&1 != 0 {
 		return o.externalID
@@ -70,19 +68,17 @@ func (o *ClusterRegistration) ExternalID() string {
 // For example, to register a cluster that has been provisioned outside
 // of this service, send a a request like this:
 //
-// [source,http]
-// ----
+// ```http
 // POST /api/clusters_mgmt/v1/register_cluster HTTP/1.1
-// ----
+// ```
 //
 // With a request body like this:
 //
-// [source,json]
-// ----
+// ```json
 // {
 //   "external_id": "d656aecf-11a6-4782-ad86-8f72638449ba"
 // }
-// ----
+// ```
 func (o *ClusterRegistration) GetExternalID() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {

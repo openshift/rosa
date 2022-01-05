@@ -168,10 +168,9 @@ func (r *SubscriptionsListRequest) Labels(value string) *SubscriptionsListReques
 // a SQL statement. For example, in order to sort the
 // subscriptions descending by name identifier the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -197,10 +196,9 @@ func (r *SubscriptionsListRequest) Page(value int) *SubscriptionsListRequest {
 // of the names of the columns of a table. For example, in order to retrieve all the
 // subscriptions for managed clusters the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // managed = 't'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // clusters that the user has permission to see will be returned.

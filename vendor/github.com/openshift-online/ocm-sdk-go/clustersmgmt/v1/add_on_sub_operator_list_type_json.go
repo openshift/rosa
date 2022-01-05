@@ -31,7 +31,10 @@ import (
 func MarshalAddOnSubOperatorList(list []*AddOnSubOperator, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnSubOperatorList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

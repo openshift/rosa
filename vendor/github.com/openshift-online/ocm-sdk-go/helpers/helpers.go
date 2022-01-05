@@ -113,6 +113,7 @@ func PollContext(
 	// Create a cancellable context so that we can explicitly cancel it when we know that the next
 	// iteration of the loop will be after the deadline:
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	// If no expected status has been explicitly specified then add the default:
 	if len(statuses) == 0 {

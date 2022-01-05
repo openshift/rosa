@@ -132,6 +132,9 @@ func writeAvailableRegionsSearchResponse(response *AvailableRegionsSearchServerR
 		}
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }

@@ -31,7 +31,10 @@ import (
 func MarshalSubscriptionRegistration(object *SubscriptionRegistration, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSubscriptionRegistration(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -83,7 +86,6 @@ func writeSubscriptionRegistration(object *SubscriptionRegistration, stream *jso
 		}
 		stream.WriteObjectField("status")
 		stream.WriteString(object.status)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

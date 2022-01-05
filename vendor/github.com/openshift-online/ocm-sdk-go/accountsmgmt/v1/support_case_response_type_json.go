@@ -31,7 +31,10 @@ import (
 func MarshalSupportCaseResponse(object *SupportCaseResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSupportCaseResponse(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -142,7 +145,6 @@ func writeSupportCaseResponse(object *SupportCaseResponse, stream *jsoniter.Stre
 		}
 		stream.WriteObjectField("summary")
 		stream.WriteString(object.summary)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

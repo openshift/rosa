@@ -148,6 +148,9 @@ func writeRolesListResponse(response *RolesListServerResponse, w http.ResponseWr
 		}
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }

@@ -31,7 +31,10 @@ import (
 func MarshalSkuRule(object *SkuRule, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSkuRule(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -88,7 +91,6 @@ func writeSkuRule(object *SkuRule, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("sku")
 		stream.WriteString(object.sku)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

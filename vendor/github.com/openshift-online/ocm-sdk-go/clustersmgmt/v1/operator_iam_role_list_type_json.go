@@ -31,7 +31,10 @@ import (
 func MarshalOperatorIAMRoleList(list []*OperatorIAMRole, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeOperatorIAMRoleList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

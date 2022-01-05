@@ -31,7 +31,10 @@ import (
 func MarshalPermission(object *Permission, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writePermission(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -79,7 +82,6 @@ func writePermission(object *Permission, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("resource_type")
 		stream.WriteString(object.resourceType)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

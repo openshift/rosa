@@ -32,7 +32,10 @@ import (
 func MarshalOpenIDIdentityProvider(object *OpenIDIdentityProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeOpenIDIdentityProvider(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -122,7 +125,6 @@ func writeOpenIDIdentityProvider(object *OpenIDIdentityProvider, stream *jsonite
 		}
 		stream.WriteObjectField("issuer")
 		stream.WriteString(object.issuer)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

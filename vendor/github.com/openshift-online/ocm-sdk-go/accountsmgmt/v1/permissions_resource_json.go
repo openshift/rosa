@@ -144,6 +144,9 @@ func writePermissionsListResponse(response *PermissionsListServerResponse, w htt
 		}
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }

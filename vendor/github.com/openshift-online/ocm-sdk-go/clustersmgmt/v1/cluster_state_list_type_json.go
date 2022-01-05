@@ -31,7 +31,10 @@ import (
 func MarshalClusterStateList(list []ClusterState, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterStateList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

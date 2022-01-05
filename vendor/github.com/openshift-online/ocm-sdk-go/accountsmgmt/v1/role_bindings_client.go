@@ -255,10 +255,9 @@ func (r *RoleBindingsListRequest) Page(value int) *RoleBindingsListRequest {
 // instead of the names of the columns of a table. For example, in order to
 // retrieve role bindings with role_id AuthenticatedUser:
 //
-// [source,sql]
-// ----
+// ```sql
 // role_id = 'AuthenticatedUser'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.

@@ -31,7 +31,10 @@ import (
 func MarshalAlertInfoList(list []*AlertInfo, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAlertInfoList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

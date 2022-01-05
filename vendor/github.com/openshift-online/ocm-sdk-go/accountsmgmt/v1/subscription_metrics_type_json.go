@@ -31,7 +31,10 @@ import (
 func MarshalSubscriptionMetrics(object *SubscriptionMetrics, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSubscriptionMetrics(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -236,7 +239,6 @@ func writeSubscriptionMetrics(object *SubscriptionMetrics, stream *jsoniter.Stre
 		}
 		stream.WriteObjectField("upgrade")
 		writeClusterUpgrade(object.upgrade, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

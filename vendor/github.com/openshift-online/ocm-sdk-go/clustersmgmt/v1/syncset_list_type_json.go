@@ -31,7 +31,10 @@ import (
 func MarshalSyncsetList(list []*Syncset, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSyncsetList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

@@ -31,7 +31,10 @@ import (
 func MarshalAccountList(list []*Account, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAccountList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

@@ -31,7 +31,10 @@ import (
 func MarshalAWSInfrastructureAccessRoleStateList(list []AWSInfrastructureAccessRoleState, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAWSInfrastructureAccessRoleStateList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

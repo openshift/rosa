@@ -31,7 +31,10 @@ import (
 func MarshalCloudProviderDataList(list []*CloudProviderData, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCloudProviderDataList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

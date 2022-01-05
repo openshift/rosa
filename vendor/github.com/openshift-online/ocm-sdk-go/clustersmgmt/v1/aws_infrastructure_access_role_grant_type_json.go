@@ -31,7 +31,10 @@ import (
 func MarshalAWSInfrastructureAccessRoleGrant(object *AWSInfrastructureAccessRoleGrant, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAWSInfrastructureAccessRoleGrant(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -106,7 +109,6 @@ func writeAWSInfrastructureAccessRoleGrant(object *AWSInfrastructureAccessRoleGr
 		}
 		stream.WriteObjectField("user_arn")
 		stream.WriteString(object.userARN)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

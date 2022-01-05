@@ -31,7 +31,10 @@ import (
 func MarshalCloudProviderData(object *CloudProviderData, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCloudProviderData(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -83,7 +86,6 @@ func writeCloudProviderData(object *CloudProviderData, stream *jsoniter.Stream) 
 		}
 		stream.WriteObjectField("region")
 		writeCloudRegion(object.region, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

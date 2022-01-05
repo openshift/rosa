@@ -31,7 +31,10 @@ import (
 func MarshalCloudVPC(object *CloudVPC, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCloudVPC(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -40,7 +43,16 @@ func writeCloudVPC(object *CloudVPC, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&1 != 0 && object.awsSubnets != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("aws_subnets")
+		writeSubnetworkList(object.awsSubnets, stream)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -49,14 +61,13 @@ func writeCloudVPC(object *CloudVPC, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0 && object.subnets != nil
+	present_ = object.bitmap_&4 != 0 && object.subnets != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("subnets")
 		writeStringList(object.subnets, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }
@@ -85,14 +96,18 @@ func readCloudVPC(iterator *jsoniter.Iterator) *CloudVPC {
 			break
 		}
 		switch field {
+		case "aws_subnets":
+			value := readSubnetworkList(iterator)
+			object.awsSubnets = value
+			object.bitmap_ |= 1
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		case "subnets":
 			value := readStringList(iterator)
 			object.subnets = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

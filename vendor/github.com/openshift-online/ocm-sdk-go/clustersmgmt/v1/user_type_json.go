@@ -31,7 +31,10 @@ import (
 func MarshalUser(object *User, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeUser(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -60,7 +63,6 @@ func writeUser(object *User, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("href")
 		stream.WriteString(object.href)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

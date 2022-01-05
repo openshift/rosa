@@ -31,7 +31,10 @@ import (
 func MarshalNodesInfoList(list []*NodesInfo, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeNodesInfoList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

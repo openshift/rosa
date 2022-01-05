@@ -31,7 +31,10 @@ import (
 func MarshalProductList(list []*Product, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeProductList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

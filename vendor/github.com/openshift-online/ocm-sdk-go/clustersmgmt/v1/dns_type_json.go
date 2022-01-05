@@ -31,7 +31,10 @@ import (
 func MarshalDNS(object *DNS, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeDNS(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeDNS(object *DNS, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("base_domain")
 		stream.WriteString(object.baseDomain)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -248,10 +248,9 @@ func (r *FlavoursListRequest) Header(name string, value interface{}) *FlavoursLi
 // the names of the columns of a table. For example, in order to sort the flavours
 // descending by name the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -277,10 +276,9 @@ func (r *FlavoursListRequest) Page(value int) *FlavoursListRequest {
 // the names of the columns of a table. For example, in order to retrieve all the
 // flavours with a name starting with `my`the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'my%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the flavours
 // that the user has permission to see will be returned.

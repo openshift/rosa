@@ -31,7 +31,10 @@ import (
 func MarshalAWSSpotMarketOptions(object *AWSSpotMarketOptions, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAWSSpotMarketOptions(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeAWSSpotMarketOptions(object *AWSSpotMarketOptions, stream *jsoniter.St
 		}
 		stream.WriteObjectField("max_price")
 		stream.WriteFloat64(object.maxPrice)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

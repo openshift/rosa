@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
@@ -77,6 +78,16 @@ func (c *IdentityProviderClient) Update() *IdentityProviderUpdateRequest {
 		transport: c.transport,
 		path:      c.path,
 	}
+}
+
+// HtpasswdUsers returns the target 'HT_passwd_users' resource.
+//
+// Reference to the resource that manages the collection of _HTPasswd_ IDP users
+func (c *IdentityProviderClient) HtpasswdUsers() *HTPasswdUsersClient {
+	return NewHTPasswdUsersClient(
+		c.transport,
+		path.Join(c.path, "htpasswd_users"),
+	)
 }
 
 // IdentityProviderPollRequest is the request for the Poll method.

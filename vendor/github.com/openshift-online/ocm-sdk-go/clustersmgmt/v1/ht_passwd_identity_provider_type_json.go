@@ -31,7 +31,10 @@ import (
 func MarshalHTPasswdIdentityProvider(object *HTPasswdIdentityProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeHTPasswdIdentityProvider(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -57,6 +60,17 @@ func writeHTPasswdIdentityProvider(object *HTPasswdIdentityProvider, stream *jso
 		stream.WriteObjectField("username")
 		stream.WriteString(object.username)
 		count++
+	}
+	present_ = object.bitmap_&4 != 0 && object.users != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("users")
+		stream.WriteObjectStart()
+		stream.WriteObjectField("items")
+		writeHTPasswdUserList(object.users.items, stream)
+		stream.WriteObjectEnd()
 	}
 	stream.WriteObjectEnd()
 }
@@ -93,6 +107,27 @@ func readHTPasswdIdentityProvider(iterator *jsoniter.Iterator) *HTPasswdIdentity
 			value := iterator.ReadString()
 			object.username = value
 			object.bitmap_ |= 2
+		case "users":
+			value := &HTPasswdUserList{}
+			for {
+				field := iterator.ReadObject()
+				if field == "" {
+					break
+				}
+				switch field {
+				case "kind":
+					text := iterator.ReadString()
+					value.link = text == HTPasswdUserListLinkKind
+				case "href":
+					value.href = iterator.ReadString()
+				case "items":
+					value.items = readHTPasswdUserList(iterator)
+				default:
+					iterator.ReadAny()
+				}
+			}
+			object.users = value
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

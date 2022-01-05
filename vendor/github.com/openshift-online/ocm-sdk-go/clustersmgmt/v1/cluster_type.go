@@ -43,8 +43,7 @@ const ClusterNilKind = "ClusterNil"
 // cluster is retrieved it will be a link to the cloud provider, containing only
 // the kind, id and href attributes:
 //
-// [source,json]
-// ----
+// ```json
 // {
 //   "cloud_provider": {
 //     "kind": "CloudProviderLink",
@@ -52,19 +51,18 @@ const ClusterNilKind = "ClusterNil"
 //     "href": "/api/clusters_mgmt/v1/cloud_providers/123"
 //   }
 // }
-// ----
+// ```
 //
 // When a cluster is created this is optional, and if used it should contain the
 // identifier of the cloud provider to use:
 //
-// [source,json]
-// ----
+// ```json
 // {
 //   "cloud_provider": {
 //     "id": "123",
 //   }
 // }
-// ----
+// ```
 //
 // If not included, then the cluster will be created using the default cloud
 // provider, which is currently Amazon Web Services.
@@ -484,7 +482,7 @@ func (o *Cluster) GetConsole() (value *ClusterConsole, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Date and time when the cluster was initially created, using the
-// format defined in https://www.ietf.org/rfc/rfc3339.txt[RC3339].
+// format defined in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt).
 func (o *Cluster) CreationTimestamp() time.Time {
 	if o != nil && o.bitmap_&65536 != 0 {
 		return o.creationTimestamp
@@ -496,7 +494,7 @@ func (o *Cluster) CreationTimestamp() time.Time {
 // a flag indicating if the attribute has a value.
 //
 // Date and time when the cluster was initially created, using the
-// format defined in https://www.ietf.org/rfc/rfc3339.txt[RC3339].
+// format defined in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt).
 func (o *Cluster) GetCreationTimestamp() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&65536 != 0
 	if ok {
@@ -584,7 +582,7 @@ func (o *Cluster) GetEtcdEncryption() (value bool, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Date and time when the cluster will be automatically deleted, using the format defined in
-// https://www.ietf.org/rfc/rfc3339.txt[RFC3339]. If no timestamp is provided, the cluster
+// [RFC3339](https://www.ietf.org/rfc/rfc3339.txt). If no timestamp is provided, the cluster
 // will never expire.
 //
 // This option is unsupported.
@@ -599,7 +597,7 @@ func (o *Cluster) ExpirationTimestamp() time.Time {
 // a flag indicating if the attribute has a value.
 //
 // Date and time when the cluster will be automatically deleted, using the format defined in
-// https://www.ietf.org/rfc/rfc3339.txt[RFC3339]. If no timestamp is provided, the cluster
+// [RFC3339](https://www.ietf.org/rfc/rfc3339.txt). If no timestamp is provided, the cluster
 // will never expire.
 //
 // This option is unsupported.

@@ -31,7 +31,10 @@ import (
 func MarshalQuotaCost(object *QuotaCost, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeQuotaCost(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -83,7 +86,6 @@ func writeQuotaCost(object *QuotaCost, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("related_resources")
 		writeRelatedResourceList(object.relatedResources, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

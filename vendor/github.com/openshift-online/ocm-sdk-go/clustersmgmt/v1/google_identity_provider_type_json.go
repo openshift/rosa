@@ -31,7 +31,10 @@ import (
 func MarshalGoogleIdentityProvider(object *GoogleIdentityProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeGoogleIdentityProvider(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeGoogleIdentityProvider(object *GoogleIdentityProvider, stream *jsonite
 		}
 		stream.WriteObjectField("hosted_domain")
 		stream.WriteString(object.hostedDomain)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

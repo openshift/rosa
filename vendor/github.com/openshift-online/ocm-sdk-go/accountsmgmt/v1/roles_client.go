@@ -255,10 +255,9 @@ func (r *RolesListRequest) Page(value int) *RolesListRequest {
 // instead of the names of the columns of a table. For example, in order to
 // retrieve roles named starting with `Organization`:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'Organization%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.

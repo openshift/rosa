@@ -31,7 +31,10 @@ import (
 func MarshalSTS(object *STS, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSTS(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -92,7 +95,6 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("support_role_arn")
 		stream.WriteString(object.supportRoleARN)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

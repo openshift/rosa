@@ -31,7 +31,10 @@ import (
 func MarshalSelfCapabilityReviewRequestList(list []*SelfCapabilityReviewRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSelfCapabilityReviewRequestList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

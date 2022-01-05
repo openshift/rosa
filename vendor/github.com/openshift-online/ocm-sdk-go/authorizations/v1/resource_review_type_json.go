@@ -31,7 +31,10 @@ import (
 func MarshalResourceReview(object *ResourceReview, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeResourceReview(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -101,7 +104,6 @@ func writeResourceReview(object *ResourceReview, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("subscription_ids")
 		writeStringList(object.subscriptionIDs, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

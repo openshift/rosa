@@ -31,7 +31,10 @@ import (
 func MarshalTemplateParameter(object *TemplateParameter, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeTemplateParameter(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeTemplateParameter(object *TemplateParameter, stream *jsoniter.Stream) 
 		}
 		stream.WriteObjectField("name")
 		stream.WriteString(object.name)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

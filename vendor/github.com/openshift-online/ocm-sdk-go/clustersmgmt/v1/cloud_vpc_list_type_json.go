@@ -31,7 +31,10 @@ import (
 func MarshalCloudVPCList(list []*CloudVPC, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCloudVPCList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

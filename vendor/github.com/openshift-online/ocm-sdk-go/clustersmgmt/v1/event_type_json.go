@@ -32,7 +32,10 @@ import (
 func MarshalEvent(object *Event, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeEvent(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -77,7 +80,6 @@ func writeEvent(object *Event, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("key")
 		stream.WriteString(object.key)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

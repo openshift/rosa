@@ -31,7 +31,10 @@ import (
 func MarshalLDAPAttributes(object *LDAPAttributes, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLDAPAttributes(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -74,7 +77,6 @@ func writeLDAPAttributes(object *LDAPAttributes, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("preferred_username")
 		writeStringList(object.preferredUsername, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

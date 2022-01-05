@@ -31,7 +31,10 @@ import (
 func MarshalNodeInfo(object *NodeInfo, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeNodeInfo(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeNodeInfo(object *NodeInfo, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("type")
 		stream.WriteString(string(object.type_))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

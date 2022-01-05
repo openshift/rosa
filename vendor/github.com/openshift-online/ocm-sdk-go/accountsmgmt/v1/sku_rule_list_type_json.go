@@ -31,7 +31,10 @@ import (
 func MarshalSkuRuleList(list []*SkuRule, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSkuRuleList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

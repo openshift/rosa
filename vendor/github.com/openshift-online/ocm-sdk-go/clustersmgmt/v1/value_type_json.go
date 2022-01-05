@@ -31,7 +31,10 @@ import (
 func MarshalValue(object *Value, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeValue(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeValue(object *Value, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("value")
 		stream.WriteFloat64(object.value)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalNetwork(object *Network, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeNetwork(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -74,7 +77,6 @@ func writeNetwork(object *Network, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("service_cidr")
 		stream.WriteString(object.serviceCIDR)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

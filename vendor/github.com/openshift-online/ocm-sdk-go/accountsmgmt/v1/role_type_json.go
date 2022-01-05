@@ -31,7 +31,10 @@ import (
 func MarshalRole(object *Role, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeRole(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -79,7 +82,6 @@ func writeRole(object *Role, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("permissions")
 		writePermissionList(object.permissions, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

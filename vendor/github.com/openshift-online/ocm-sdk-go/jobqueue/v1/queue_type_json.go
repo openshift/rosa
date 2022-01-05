@@ -32,7 +32,10 @@ import (
 func MarshalQueue(object *Queue, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeQueue(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -107,7 +110,6 @@ func writeQueue(object *Queue, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("updated_at")
 		stream.WriteString((object.updatedAt).Format(time.RFC3339))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalAddOnRequirementStatus(object *AddOnRequirementStatus, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnRequirementStatus(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeAddOnRequirementStatus(object *AddOnRequirementStatus, stream *jsonite
 		}
 		stream.WriteObjectField("fulfilled")
 		stream.WriteBool(object.fulfilled)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

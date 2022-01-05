@@ -31,7 +31,10 @@ import (
 func MarshalUpgradePolicyStateList(list []*UpgradePolicyState, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeUpgradePolicyStateList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

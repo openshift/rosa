@@ -31,7 +31,10 @@ import (
 func MarshalLDAPIdentityProvider(object *LDAPIdentityProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLDAPIdentityProvider(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -92,7 +95,6 @@ func writeLDAPIdentityProvider(object *LDAPIdentityProvider, stream *jsoniter.St
 		}
 		stream.WriteObjectField("insecure")
 		stream.WriteBool(object.insecure)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

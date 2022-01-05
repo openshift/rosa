@@ -31,7 +31,10 @@ import (
 func MarshalLimitedSupportReasonTemplateList(list []*LimitedSupportReasonTemplate, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLimitedSupportReasonTemplateList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

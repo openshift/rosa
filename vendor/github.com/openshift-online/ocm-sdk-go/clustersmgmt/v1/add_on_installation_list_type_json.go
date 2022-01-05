@@ -31,7 +31,10 @@ import (
 func MarshalAddOnInstallationList(list []*AddOnInstallation, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnInstallationList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

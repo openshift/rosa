@@ -31,7 +31,10 @@ import (
 func MarshalOperatorIAMRole(object *OperatorIAMRole, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeOperatorIAMRole(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeOperatorIAMRole(object *OperatorIAMRole, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("role_arn")
 		stream.WriteString(object.roleARN)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

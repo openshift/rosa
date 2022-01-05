@@ -31,7 +31,10 @@ import (
 func MarshalGitlabIdentityProvider(object *GitlabIdentityProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeGitlabIdentityProvider(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -74,7 +77,6 @@ func writeGitlabIdentityProvider(object *GitlabIdentityProvider, stream *jsonite
 		}
 		stream.WriteObjectField("client_secret")
 		stream.WriteString(object.clientSecret)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

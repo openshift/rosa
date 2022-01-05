@@ -44,6 +44,11 @@ type IdentityProviderServer interface {
 	//
 	// Update identity provider in the cluster.
 	Update(ctx context.Context, request *IdentityProviderUpdateServerRequest, response *IdentityProviderUpdateServerResponse) error
+
+	// HtpasswdUsers returns the target 'HT_passwd_users' resource.
+	//
+	// Reference to the resource that manages the collection of _HTPasswd_ IDP users
+	HtpasswdUsers() HTPasswdUsersServer
 }
 
 // IdentityProviderDeleteServerRequest is the request for the 'delete' method.
@@ -156,6 +161,13 @@ func dispatchIdentityProvider(w http.ResponseWriter, r *http.Request, server Ide
 		}
 	}
 	switch segments[0] {
+	case "htpasswd_users":
+		target := server.HtpasswdUsers()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchHTPasswdUsers(w, r, target, segments[1:])
 	default:
 		errors.SendNotFound(w, r)
 		return

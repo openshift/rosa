@@ -31,7 +31,10 @@ import (
 func MarshalCapability(object *Capability, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCapability(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeCapability(object *Capability, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("value")
 		stream.WriteString(object.value)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -32,7 +32,10 @@ import (
 func MarshalVersion(object *Version, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeVersion(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -125,7 +128,6 @@ func writeVersion(object *Version, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("raw_id")
 		stream.WriteString(object.rawID)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

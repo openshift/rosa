@@ -31,7 +31,10 @@ import (
 func MarshalIdentityProviderMappingMethodList(list []IdentityProviderMappingMethod, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeIdentityProviderMappingMethodList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

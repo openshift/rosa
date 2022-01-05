@@ -31,7 +31,10 @@ import (
 func MarshalRegistryList(list []*Registry, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeRegistryList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

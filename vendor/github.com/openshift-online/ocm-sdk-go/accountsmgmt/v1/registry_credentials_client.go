@@ -247,10 +247,9 @@ func (r *RegistryCredentialsListRequest) Header(name string, value interface{}) 
 // a SQL statement. For example, in order to sort the
 // RegistryCredentials descending by username the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // username desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -276,10 +275,9 @@ func (r *RegistryCredentialsListRequest) Page(value int) *RegistryCredentialsLis
 // of the names of the columns of a table. For example, in order to retrieve all the
 // RegistryCredentials for a user the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // username = 'abcxyz...'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // RegistryCredentials that the user has permission to see will be returned.

@@ -31,7 +31,10 @@ import (
 func MarshalAWSFlavour(object *AWSFlavour, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAWSFlavour(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -92,7 +95,6 @@ func writeAWSFlavour(object *AWSFlavour, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("worker_volume")
 		writeAWSVolume(object.workerVolume, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }
