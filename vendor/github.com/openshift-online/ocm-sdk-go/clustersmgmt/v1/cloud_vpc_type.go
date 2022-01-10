@@ -23,9 +23,10 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Description of a cloud provider virtual private cloud.
 type CloudVPC struct {
-	bitmap_ uint32
-	name    string
-	subnets []string
+	bitmap_    uint32
+	awsSubnets []*Subnetwork
+	name       string
+	subnets    []string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -33,12 +34,35 @@ func (o *CloudVPC) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
+// AWSSubnets returns the value of the 'AWS_subnets' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// List of subnetworks
+func (o *CloudVPC) AWSSubnets() []*Subnetwork {
+	if o != nil && o.bitmap_&1 != 0 {
+		return o.awsSubnets
+	}
+	return nil
+}
+
+// GetAWSSubnets returns the value of the 'AWS_subnets' attribute and
+// a flag indicating if the attribute has a value.
+//
+// List of subnetworks
+func (o *CloudVPC) GetAWSSubnets() (value []*Subnetwork, ok bool) {
+	ok = o != nil && o.bitmap_&1 != 0
+	if ok {
+		value = o.awsSubnets
+	}
+	return
+}
+
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Name of virtual private cloud
 func (o *CloudVPC) Name() string {
-	if o != nil && o.bitmap_&1 != 0 {
+	if o != nil && o.bitmap_&2 != 0 {
 		return o.name
 	}
 	return ""
@@ -49,7 +73,7 @@ func (o *CloudVPC) Name() string {
 //
 // Name of virtual private cloud
 func (o *CloudVPC) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1 != 0
+	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.name
 	}
@@ -61,7 +85,7 @@ func (o *CloudVPC) GetName() (value string, ok bool) {
 //
 // List of subnets used by the virtual private cloud.
 func (o *CloudVPC) Subnets() []string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.subnets
 	}
 	return nil
@@ -72,7 +96,7 @@ func (o *CloudVPC) Subnets() []string {
 //
 // List of subnets used by the virtual private cloud.
 func (o *CloudVPC) GetSubnets() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.subnets
 	}

@@ -31,7 +31,10 @@ import (
 func MarshalServerConfig(object *ServerConfig, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeServerConfig(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeServerConfig(object *ServerConfig, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("server")
 		stream.WriteString(object.server)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

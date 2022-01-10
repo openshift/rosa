@@ -31,7 +31,10 @@ import (
 func MarshalPlan(object *Plan, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writePlan(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -88,7 +91,6 @@ func writePlan(object *Plan, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("type")
 		stream.WriteString(object.type_)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

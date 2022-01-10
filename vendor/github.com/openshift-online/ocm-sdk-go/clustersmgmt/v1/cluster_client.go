@@ -162,6 +162,16 @@ func (c *ClusterClient) ExternalConfiguration() *ExternalConfigurationClient {
 	)
 }
 
+// GateAgreements returns the target 'version_gate_agreements' resource.
+//
+// Reference to cluster's agreed version gate.
+func (c *ClusterClient) GateAgreements() *VersionGateAgreementsClient {
+	return NewVersionGateAgreementsClient(
+		c.transport,
+		path.Join(c.path, "gate_agreements"),
+	)
+}
+
 // Groups returns the target 'groups' resource.
 //
 // Reference to the resource that manages the collection of groups.

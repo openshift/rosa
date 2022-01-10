@@ -100,10 +100,9 @@ func (r *VersionsListRequest) Header(name string, value interface{}) *VersionsLi
 // the names of the columns of a table. For example, in order to sort the versions
 // descending by identifier the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // id desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -129,10 +128,9 @@ func (r *VersionsListRequest) Page(value int) *VersionsListRequest {
 // the names of the columns of a table. For example, in order to retrieve all the
 // versions that are enabled:
 //
-// [source,sql]
-// ----
+// ```sql
 // enabled = 't'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the versions
 // that the user has permission to see will be returned.

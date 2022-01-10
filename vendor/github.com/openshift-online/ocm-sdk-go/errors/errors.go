@@ -383,7 +383,10 @@ func readError(iterator *jsoniter.Iterator) *Error {
 func MarshalError(e *Error, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeError(e, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 func writeError(e *Error, stream *jsoniter.Stream) {

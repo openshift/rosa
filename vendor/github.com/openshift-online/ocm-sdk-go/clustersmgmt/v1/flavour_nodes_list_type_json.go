@@ -31,7 +31,10 @@ import (
 func MarshalFlavourNodesList(list []*FlavourNodes, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeFlavourNodesList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

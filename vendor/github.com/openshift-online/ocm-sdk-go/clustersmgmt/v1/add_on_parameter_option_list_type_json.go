@@ -31,7 +31,10 @@ import (
 func MarshalAddOnParameterOptionList(list []*AddOnParameterOption, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnParameterOptionList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

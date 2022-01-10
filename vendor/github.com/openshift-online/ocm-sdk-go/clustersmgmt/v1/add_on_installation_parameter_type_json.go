@@ -31,7 +31,10 @@ import (
 func MarshalAddOnInstallationParameter(object *AddOnInstallationParameter, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnInstallationParameter(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeAddOnInstallationParameter(object *AddOnInstallationParameter, stream 
 		}
 		stream.WriteObjectField("value")
 		stream.WriteString(object.value)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

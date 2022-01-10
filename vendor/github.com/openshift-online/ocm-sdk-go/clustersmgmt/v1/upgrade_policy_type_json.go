@@ -32,7 +32,10 @@ import (
 func MarshalUpgradePolicy(object *UpgradePolicy, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeUpgradePolicy(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -116,7 +119,6 @@ func writeUpgradePolicy(object *UpgradePolicy, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("version")
 		stream.WriteString(object.version)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

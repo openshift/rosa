@@ -32,7 +32,10 @@ import (
 func MarshalClusterNodes(object *ClusterNodes, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterNodes(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -131,7 +134,6 @@ func writeClusterNodes(object *ClusterNodes, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("total")
 		stream.WriteInt(object.total)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

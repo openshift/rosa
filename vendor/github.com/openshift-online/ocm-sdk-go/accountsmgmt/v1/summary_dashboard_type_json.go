@@ -31,7 +31,10 @@ import (
 func MarshalSummaryDashboard(object *SummaryDashboard, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSummaryDashboard(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeSummaryDashboard(object *SummaryDashboard, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("metrics")
 		writeSummaryMetricsList(object.metrics, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

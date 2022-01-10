@@ -31,7 +31,10 @@ import (
 func MarshalFeatureReviewResponseList(list []*FeatureReviewResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeFeatureReviewResponseList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

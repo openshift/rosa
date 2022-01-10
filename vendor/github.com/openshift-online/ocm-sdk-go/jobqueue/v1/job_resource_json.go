@@ -74,7 +74,10 @@ func writeJobFailureRequest(request *JobFailureRequest, writer io.Writer) error 
 		count++
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 func readJobFailureResponse(response *JobFailureResponse, reader io.Reader) error {
@@ -120,7 +123,10 @@ func writeJobSuccessRequest(request *JobSuccessRequest, writer io.Writer) error 
 		count++
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 func readJobSuccessResponse(response *JobSuccessResponse, reader io.Reader) error {

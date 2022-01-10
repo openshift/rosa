@@ -31,7 +31,10 @@ import (
 func MarshalQuotaSummary(object *QuotaSummary, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeQuotaSummary(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -101,7 +104,6 @@ func writeQuotaSummary(object *QuotaSummary, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("resource_type")
 		stream.WriteString(object.resourceType)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

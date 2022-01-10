@@ -248,10 +248,9 @@ func (r *AddOnInstallationsListRequest) Header(name string, value interface{}) *
 // instead of the names of the columns of a table. For example, in order to sort the
 // add-on installations descending by name the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -277,10 +276,9 @@ func (r *AddOnInstallationsListRequest) Page(value int) *AddOnInstallationsListR
 // instead of the names of the columns of a table. For example, in order to retrieve
 // all the add-on installations with a name starting with `my` the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'my%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the add-on
 // installations that the user has permission to see will be returned.

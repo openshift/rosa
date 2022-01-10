@@ -31,7 +31,10 @@ import (
 func MarshalSocketTotalsNodeRoleOSMetricNode(object *SocketTotalsNodeRoleOSMetricNode, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSocketTotalsNodeRoleOSMetricNode(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeSocketTotalsNodeRoleOSMetricNode(object *SocketTotalsNodeRoleOSMetricN
 		}
 		stream.WriteObjectField("socket_totals")
 		writeSocketTotalNodeRoleOSMetricNodeList(object.socketTotals, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

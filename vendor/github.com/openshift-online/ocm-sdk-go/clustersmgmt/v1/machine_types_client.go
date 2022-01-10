@@ -89,10 +89,9 @@ func (r *MachineTypesListRequest) Header(name string, value interface{}) *Machin
 // instead of the names of the columns of a table. For example, in order to sort the
 // machine types descending by name identifier the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -118,10 +117,9 @@ func (r *MachineTypesListRequest) Page(value int) *MachineTypesListRequest {
 // instead of the names of the columns of a table. For example, in order to retrieve
 // all the machine types with a name starting with `A` the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'A%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the machine
 // types that the user has permission to see will be returned.

@@ -26,6 +26,7 @@ type HTPasswdIdentityProvider struct {
 	bitmap_  uint32
 	password string
 	username string
+	users    *HTPasswdUserList
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -75,6 +76,29 @@ func (o *HTPasswdIdentityProvider) GetUsername() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.username
+	}
+	return
+}
+
+// Users returns the value of the 'users' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Link to the collection of _HTPasswd_ users.
+func (o *HTPasswdIdentityProvider) Users() *HTPasswdUserList {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.users
+	}
+	return nil
+}
+
+// GetUsers returns the value of the 'users' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Link to the collection of _HTPasswd_ users.
+func (o *HTPasswdIdentityProvider) GetUsers() (value *HTPasswdUserList, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.users
 	}
 	return
 }

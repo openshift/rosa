@@ -31,7 +31,10 @@ import (
 func MarshalTokenAuthorizationResponse(object *TokenAuthorizationResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeTokenAuthorizationResponse(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeTokenAuthorizationResponse(object *TokenAuthorizationResponse, stream 
 		}
 		stream.WriteObjectField("account")
 		writeAccount(object.account, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalSelfAccessReviewResponse(object *SelfAccessReviewResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSelfAccessReviewResponse(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -101,7 +104,6 @@ func writeSelfAccessReviewResponse(object *SelfAccessReviewResponse, stream *jso
 		}
 		stream.WriteObjectField("subscription_id")
 		stream.WriteString(object.subscriptionID)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

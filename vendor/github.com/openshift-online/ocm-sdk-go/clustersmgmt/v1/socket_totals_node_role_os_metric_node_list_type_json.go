@@ -31,7 +31,10 @@ import (
 func MarshalSocketTotalsNodeRoleOSMetricNodeList(list []*SocketTotalsNodeRoleOSMetricNode, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSocketTotalsNodeRoleOSMetricNodeList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

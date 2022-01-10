@@ -33,7 +33,10 @@ import (
 func MarshalClusterResources(object *ClusterResources, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterResources(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -110,7 +113,6 @@ func writeClusterResources(object *ClusterResources, stream *jsoniter.Stream) {
 		} else {
 			stream.WriteNil()
 		}
-		count++
 	}
 	stream.WriteObjectEnd()
 }

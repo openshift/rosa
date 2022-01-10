@@ -22,12 +22,13 @@ export GOPROXY=https://proxy.golang.org
 export CGO_ENABLED=0
 
 # Details of the model to use:
-model_version:=v0.0.153
+model_version:=v0.0.167
 model_url:=https://github.com/openshift-online/ocm-api-model.git
 
 # Details of the metamodel to use:
-metamodel_version:=v0.0.44
-metamodel_url:=https://github.com/openshift-online/ocm-api-metamodel.git
+metamodel_version:=v0.0.46
+metamodel_url:=https://github.com/openshift-online/ocm-api-metamodel/releases/download/$(metamodel_version)/metamodel-linux-amd64
+metamodel_sum:=4177653d91c1279b43f6ae301afd4a3c8a53d330d312f5d7ef22b58f9c656cda
 
 .PHONY: examples
 examples:
@@ -60,11 +61,11 @@ generate: model metamodel
 		job_queue \
 		helpers \
 		openapi
-	metamodel/metamodel generate go \
+	./metamodel generate go \
 		--model=model/model \
 		--base=github.com/openshift-online/ocm-sdk-go \
 		--output=.
-	metamodel/metamodel generate openapi \
+	./metamodel generate openapi \
 		--model=model/model \
 		--output=openapi
 
@@ -80,23 +81,14 @@ model:
 		git checkout -B build "$(model_version)"; \
 	fi
 
-.PHONY: metamodel
 metamodel:
-	rm -rf "$@"
-	if [ -d "$(metamodel_url)" ]; then \
-		cp -r "$(metamodel_url)" "$@"; \
-	else \
-		git clone "$(metamodel_url)" "$@"; \
-		cd "$@"; \
-		git fetch --tags origin; \
-		git checkout -B build "$(metamodel_version)"; \
-	fi
-	make -C "$@"
+	wget --progress=dot:giga --output-document="$@" "$(metamodel_url)"
+	echo "$(metamodel_sum) $@" | sha256sum --check
+	chmod +x "$@"
 
 .PHONY: clean
 clean:
 	rm -rf \
-		.gobin \
 		metamodel \
 		model \
 		$(NULL)

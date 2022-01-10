@@ -31,7 +31,10 @@ import (
 func MarshalLDAPIdentityProviderList(list []*LDAPIdentityProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLDAPIdentityProviderList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

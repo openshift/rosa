@@ -31,7 +31,10 @@ import (
 func MarshalLabelList(list []*Label, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLabelList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

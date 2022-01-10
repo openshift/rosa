@@ -31,7 +31,10 @@ import (
 func MarshalMachineType(object *MachineType, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeMachineType(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -133,7 +136,6 @@ func writeMachineType(object *MachineType, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("size")
 		stream.WriteString(string(object.size))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

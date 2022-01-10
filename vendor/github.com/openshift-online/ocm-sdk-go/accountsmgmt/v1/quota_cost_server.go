@@ -74,10 +74,9 @@ func (r *QuotaCostListServerRequest) GetPage() (value int, ok bool) {
 // cost instead of the names of the columns of a table. For example, in order
 // to retrieve the quota cost for all add-ons:
 //
-// [source,sql]
-// ----
+// ```sql
 // quota_id LIKE 'add-on%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.
@@ -98,10 +97,9 @@ func (r *QuotaCostListServerRequest) Search() string {
 // cost instead of the names of the columns of a table. For example, in order
 // to retrieve the quota cost for all add-ons:
 //
-// [source,sql]
-// ----
+// ```sql
 // quota_id LIKE 'add-on%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.

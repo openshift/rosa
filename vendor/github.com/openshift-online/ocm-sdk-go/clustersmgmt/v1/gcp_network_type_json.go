@@ -31,7 +31,10 @@ import (
 func MarshalGCPNetwork(object *GCPNetwork, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeGCPNetwork(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeGCPNetwork(object *GCPNetwork, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("control_plane_subnet")
 		stream.WriteString(object.controlPlaneSubnet)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

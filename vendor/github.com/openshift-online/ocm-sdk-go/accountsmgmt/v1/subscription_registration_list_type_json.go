@@ -31,7 +31,10 @@ import (
 func MarshalSubscriptionRegistrationList(list []*SubscriptionRegistration, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSubscriptionRegistrationList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

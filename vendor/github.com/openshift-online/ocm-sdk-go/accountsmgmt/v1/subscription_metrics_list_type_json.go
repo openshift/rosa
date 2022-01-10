@@ -31,7 +31,10 @@ import (
 func MarshalSubscriptionMetricsList(list []*SubscriptionMetrics, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSubscriptionMetricsList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

@@ -31,7 +31,10 @@ import (
 func MarshalSSHCredentials(object *SSHCredentials, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSSHCredentials(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeSSHCredentials(object *SSHCredentials, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("public_key")
 		stream.WriteString(object.publicKey)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

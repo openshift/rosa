@@ -31,7 +31,10 @@ import (
 func MarshalSelfFeatureReviewRequest(object *SelfFeatureReviewRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSelfFeatureReviewRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeSelfFeatureReviewRequest(object *SelfFeatureReviewRequest, stream *jso
 		}
 		stream.WriteObjectField("feature")
 		stream.WriteString(object.feature)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

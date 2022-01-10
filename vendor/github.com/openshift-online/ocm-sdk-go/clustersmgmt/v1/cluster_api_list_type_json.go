@@ -31,7 +31,10 @@ import (
 func MarshalClusterAPIList(list []*ClusterAPI, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterAPIList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

@@ -31,7 +31,10 @@ import (
 func MarshalOpenIDClaimsList(list []*OpenIDClaims, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeOpenIDClaimsList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

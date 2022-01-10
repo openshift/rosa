@@ -32,7 +32,10 @@ import (
 func MarshalAccount(object *Account, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAccount(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -170,7 +173,6 @@ func writeAccount(object *Account, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("username")
 		stream.WriteString(object.username)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

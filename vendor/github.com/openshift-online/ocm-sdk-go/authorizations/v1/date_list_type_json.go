@@ -32,7 +32,10 @@ import (
 func MarshalDateList(list []time.Time, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeDateList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

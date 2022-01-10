@@ -31,7 +31,10 @@ import (
 func MarshalKeyRing(object *KeyRing, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeKeyRing(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeKeyRing(object *KeyRing, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("name")
 		stream.WriteString(object.name)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

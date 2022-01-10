@@ -31,7 +31,10 @@ import (
 func MarshalResourceReviewRequest(object *ResourceReviewRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeResourceReviewRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -74,7 +77,6 @@ func writeResourceReviewRequest(object *ResourceReviewRequest, stream *jsoniter.
 		}
 		stream.WriteObjectField("resource_type")
 		stream.WriteString(object.resourceType)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

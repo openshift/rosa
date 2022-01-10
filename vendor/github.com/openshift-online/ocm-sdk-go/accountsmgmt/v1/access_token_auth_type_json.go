@@ -31,7 +31,10 @@ import (
 func MarshalAccessTokenAuth(object *AccessTokenAuth, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAccessTokenAuth(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeAccessTokenAuth(object *AccessTokenAuth, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("email")
 		stream.WriteString(object.email)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

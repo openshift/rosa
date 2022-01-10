@@ -31,7 +31,10 @@ import (
 func MarshalCapabilityReviewRequest(object *CapabilityReviewRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCapabilityReviewRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -101,7 +104,6 @@ func writeCapabilityReviewRequest(object *CapabilityReviewRequest, stream *jsoni
 		}
 		stream.WriteObjectField("type")
 		stream.WriteString(object.type_)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -171,6 +171,16 @@ func (c *Client) ProvisionShards() *ProvisionShardsClient {
 	)
 }
 
+// VersionGates returns the target 'version_gates' resource.
+//
+// Reference to version gates.
+func (c *Client) VersionGates() *VersionGatesClient {
+	return NewVersionGatesClient(
+		c.transport,
+		path.Join(c.path, "version_gates"),
+	)
+}
+
 // Versions returns the target 'versions' resource.
 //
 // Reference to the resource that manage the collection of versions.

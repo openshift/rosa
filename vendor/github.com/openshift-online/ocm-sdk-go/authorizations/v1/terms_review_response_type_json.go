@@ -31,7 +31,10 @@ import (
 func MarshalTermsReviewResponse(object *TermsReviewResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeTermsReviewResponse(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -83,7 +86,6 @@ func writeTermsReviewResponse(object *TermsReviewResponse, stream *jsoniter.Stre
 		}
 		stream.WriteObjectField("terms_required")
 		stream.WriteBool(object.termsRequired)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -32,7 +32,10 @@ import (
 func MarshalReservedResource(object *ReservedResource, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeReservedResource(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -111,7 +114,6 @@ func writeReservedResource(object *ReservedResource, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("updated_at")
 		stream.WriteString((object.updatedAt).Format(time.RFC3339))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

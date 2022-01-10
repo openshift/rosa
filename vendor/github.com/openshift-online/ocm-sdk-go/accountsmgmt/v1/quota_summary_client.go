@@ -97,10 +97,9 @@ func (r *QuotaSummaryListRequest) Page(value int) *QuotaSummaryListRequest {
 // to retrieve the quota summary for clusters that run in multiple availability
 // zones:
 //
-// [source,sql]
-// ----
+// ```sql
 // availability_zone_type = 'multi'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.

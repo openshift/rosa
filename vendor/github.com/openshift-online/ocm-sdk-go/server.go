@@ -29,6 +29,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 	"github.com/openshift-online/ocm-sdk-go/jobqueue"
 	"github.com/openshift-online/ocm-sdk-go/servicelogs"
+	"github.com/openshift-online/ocm-sdk-go/statusboard"
 )
 
 // Server is the interface of the top level server.
@@ -48,6 +49,9 @@ type Server interface {
 
 	// ServiceLogs returns the server for service 'service_logs'.
 	ServiceLogs() servicelogs.Server
+
+	// StatusBoard returns the server for service 'status_board'.
+	StatusBoard() statusboard.Server
 }
 
 // Dispatch navigates the servers tree till it finds one that matches the given set
@@ -101,6 +105,13 @@ func dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 				return
 			}
 			servicelogs.Dispatch(w, r, service, segments[1:])
+		case "status_board":
+			service := server.StatusBoard()
+			if service == nil {
+				errors.SendNotFound(w, r)
+				return
+			}
+			statusboard.Dispatch(w, r, service, segments[1:])
 		default:
 			errors.SendNotFound(w, r)
 			return

@@ -119,7 +119,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	operatorRoles, hasOperatorRoles := cluster.AWS().STS().GetOperatorIAMRoles()
-	if !hasOperatorRoles || len(operatorRoles) < 0 {
+	if !hasOperatorRoles || len(operatorRoles) == 0 {
 		reporter.Errorf("Cluster '%s' doesnt have any operator roles associated with it",
 			clusterKey)
 	}

@@ -110,10 +110,9 @@ type ClusterLogsListServerRequest struct {
 // a SQL statement. For example, in order to sort the
 // cluster logs descending by name identifier the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -133,10 +132,9 @@ func (r *ClusterLogsListServerRequest) Order() string {
 // a SQL statement. For example, in order to sort the
 // cluster logs descending by name identifier the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -179,10 +177,9 @@ func (r *ClusterLogsListServerRequest) GetPage() (value int, ok bool) {
 // instead of the names of the columns of a table. For example, in order to
 // retrieve cluster logs with service_name starting with my:
 //
-// [source,sql]
-// ----
+// ```sql
 // service_name like 'my%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.
@@ -203,10 +200,9 @@ func (r *ClusterLogsListServerRequest) Search() string {
 // instead of the names of the columns of a table. For example, in order to
 // retrieve cluster logs with service_name starting with my:
 //
-// [source,sql]
-// ----
+// ```sql
 // service_name like 'my%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.

@@ -31,7 +31,10 @@ import (
 func MarshalAWSVolume(object *AWSVolume, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAWSVolume(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeAWSVolume(object *AWSVolume, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("type")
 		stream.WriteString(object.type_)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalEncryptionKeyList(list []*EncryptionKey, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeEncryptionKeyList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

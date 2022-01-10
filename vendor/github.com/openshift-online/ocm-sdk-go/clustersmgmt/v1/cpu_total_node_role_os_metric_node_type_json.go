@@ -32,7 +32,10 @@ import (
 func MarshalCPUTotalNodeRoleOSMetricNode(object *CPUTotalNodeRoleOSMetricNode, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCPUTotalNodeRoleOSMetricNode(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -75,7 +78,6 @@ func writeCPUTotalNodeRoleOSMetricNode(object *CPUTotalNodeRoleOSMetricNode, str
 		}
 		stream.WriteObjectField("time")
 		stream.WriteString((object.time).Format(time.RFC3339))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

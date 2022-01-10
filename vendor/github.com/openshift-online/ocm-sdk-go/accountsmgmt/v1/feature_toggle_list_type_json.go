@@ -31,7 +31,10 @@ import (
 func MarshalFeatureToggleList(list []*FeatureToggle, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeFeatureToggleList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

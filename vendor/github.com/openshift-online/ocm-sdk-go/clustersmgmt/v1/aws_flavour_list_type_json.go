@@ -31,7 +31,10 @@ import (
 func MarshalAWSFlavourList(list []*AWSFlavour, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAWSFlavourList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

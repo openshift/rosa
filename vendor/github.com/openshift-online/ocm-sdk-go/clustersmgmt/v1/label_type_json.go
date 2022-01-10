@@ -31,7 +31,10 @@ import (
 func MarshalLabel(object *Label, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLabel(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -79,7 +82,6 @@ func writeLabel(object *Label, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("value")
 		stream.WriteString(object.value)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

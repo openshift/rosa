@@ -144,7 +144,10 @@ func writeIngressesListResponse(response *IngressesListServerResponse, w http.Re
 		}
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 func readIngressesUpdateRequest(request *IngressesUpdateServerRequest, r *http.Request) error {

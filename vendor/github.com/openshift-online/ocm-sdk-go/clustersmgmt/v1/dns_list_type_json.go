@@ -31,7 +31,10 @@ import (
 func MarshalDNSList(list []*DNS, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeDNSList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

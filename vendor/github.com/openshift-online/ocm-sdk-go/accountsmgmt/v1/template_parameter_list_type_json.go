@@ -31,7 +31,10 @@ import (
 func MarshalTemplateParameterList(list []*TemplateParameter, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeTemplateParameterList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

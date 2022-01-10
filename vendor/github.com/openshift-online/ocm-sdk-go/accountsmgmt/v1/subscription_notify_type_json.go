@@ -31,7 +31,10 @@ import (
 func MarshalSubscriptionNotify(object *SubscriptionNotify, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSubscriptionNotify(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -119,7 +122,6 @@ func writeSubscriptionNotify(object *SubscriptionNotify, stream *jsoniter.Stream
 		}
 		stream.WriteObjectField("template_parameters")
 		writeTemplateParameterList(object.templateParameters, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

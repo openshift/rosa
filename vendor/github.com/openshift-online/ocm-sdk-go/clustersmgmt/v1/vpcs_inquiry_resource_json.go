@@ -132,6 +132,9 @@ func writeVpcsInquirySearchResponse(response *VpcsInquirySearchServerResponse, w
 		}
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }

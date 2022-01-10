@@ -31,7 +31,10 @@ import (
 func MarshalExternalConfiguration(object *ExternalConfiguration, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeExternalConfiguration(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -62,7 +65,6 @@ func writeExternalConfiguration(object *ExternalConfiguration, stream *jsoniter.
 		stream.WriteObjectField("items")
 		writeSyncsetList(object.syncsets.items, stream)
 		stream.WriteObjectEnd()
-		count++
 	}
 	stream.WriteObjectEnd()
 }

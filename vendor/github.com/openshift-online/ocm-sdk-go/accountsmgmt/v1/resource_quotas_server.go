@@ -132,10 +132,9 @@ func (r *ResourceQuotasListServerRequest) GetPage() (value int, ok bool) {
 // instead of the names of the columns of a table. For example, in order to
 // retrieve resource quota with resource_type cluster.aws:
 //
-// [source,sql]
-// ----
+// ```sql
 // resource_type = 'cluster.aws'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.
@@ -156,10 +155,9 @@ func (r *ResourceQuotasListServerRequest) Search() string {
 // instead of the names of the columns of a table. For example, in order to
 // retrieve resource quota with resource_type cluster.aws:
 //
-// [source,sql]
-// ----
+// ```sql
 // resource_type = 'cluster.aws'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.

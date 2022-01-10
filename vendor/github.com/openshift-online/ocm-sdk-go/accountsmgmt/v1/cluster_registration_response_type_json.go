@@ -31,7 +31,10 @@ import (
 func MarshalClusterRegistrationResponse(object *ClusterRegistrationResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterRegistrationResponse(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -74,7 +77,6 @@ func writeClusterRegistrationResponse(object *ClusterRegistrationResponse, strea
 		}
 		stream.WriteObjectField("expires_at")
 		stream.WriteString(object.expiresAt)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

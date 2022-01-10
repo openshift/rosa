@@ -31,7 +31,10 @@ import (
 func MarshalRegistryCredentialList(list []*RegistryCredential, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeRegistryCredentialList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

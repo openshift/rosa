@@ -32,7 +32,10 @@ import (
 func MarshalLimitedSupportReason(object *LimitedSupportReason, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLimitedSupportReason(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -107,7 +110,6 @@ func writeLimitedSupportReason(object *LimitedSupportReason, stream *jsoniter.St
 		}
 		stream.WriteObjectField("template")
 		writeLimitedSupportReasonTemplate(object.template, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

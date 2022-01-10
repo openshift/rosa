@@ -58,10 +58,9 @@ type CloudProvidersListServerRequest struct {
 // instead of the names of the columns of a table. For example, in order to sort the
 // clusters descending by name identifier the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -82,10 +81,9 @@ func (r *CloudProvidersListServerRequest) Order() string {
 // instead of the names of the columns of a table. For example, in order to sort the
 // clusters descending by name identifier the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -128,10 +126,9 @@ func (r *CloudProvidersListServerRequest) GetPage() (value int, ok bool) {
 // instead of the names of the columns of a table. For example, in order to retrieve
 // all the cloud providers with a name starting with `A` the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'A%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the clusters
 // that the user has permission to see will be returned.
@@ -152,10 +149,9 @@ func (r *CloudProvidersListServerRequest) Search() string {
 // instead of the names of the columns of a table. For example, in order to retrieve
 // all the cloud providers with a name starting with `A` the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'A%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the clusters
 // that the user has permission to see will be returned.

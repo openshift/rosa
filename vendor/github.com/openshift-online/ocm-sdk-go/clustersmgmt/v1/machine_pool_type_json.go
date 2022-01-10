@@ -32,7 +32,10 @@ import (
 func MarshalMachinePool(object *MachinePool, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeMachinePool(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -154,7 +157,6 @@ func writeMachinePool(object *MachinePool, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("taints")
 		writeTaintList(object.taints, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

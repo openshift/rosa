@@ -58,10 +58,9 @@ type AWSInfrastructureAccessRolesListServerRequest struct {
 // the names of the columns of a table. For example, in order to sort the roles
 // descending by dislay_name the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // display_name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -82,10 +81,9 @@ func (r *AWSInfrastructureAccessRolesListServerRequest) Order() string {
 // the names of the columns of a table. For example, in order to sort the roles
 // descending by dislay_name the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // display_name desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -128,10 +126,9 @@ func (r *AWSInfrastructureAccessRolesListServerRequest) GetPage() (value int, ok
 // the names of the columns of a table. For example, in order to retrieve all the
 // role with a name starting with `my`the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // display_name like 'my%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the roles
 // that the user has permission to see will be returned.
@@ -152,10 +149,9 @@ func (r *AWSInfrastructureAccessRolesListServerRequest) Search() string {
 // the names of the columns of a table. For example, in order to retrieve all the
 // role with a name starting with `my`the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // display_name like 'my%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the roles
 // that the user has permission to see will be returned.

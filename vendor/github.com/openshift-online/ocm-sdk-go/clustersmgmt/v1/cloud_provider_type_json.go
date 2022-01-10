@@ -31,7 +31,10 @@ import (
 func MarshalCloudProvider(object *CloudProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCloudProvider(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -79,7 +82,6 @@ func writeCloudProvider(object *CloudProvider, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("name")
 		stream.WriteString(object.name)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

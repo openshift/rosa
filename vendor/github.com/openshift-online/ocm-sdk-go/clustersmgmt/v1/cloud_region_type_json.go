@@ -31,7 +31,10 @@ import (
 func MarshalCloudRegion(object *CloudRegion, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCloudRegion(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -115,7 +118,6 @@ func writeCloudRegion(object *CloudRegion, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("supports_multi_az")
 		stream.WriteBool(object.supportsMultiAZ)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalTaint(object *Taint, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeTaint(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeTaint(object *Taint, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("value")
 		stream.WriteString(object.value)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

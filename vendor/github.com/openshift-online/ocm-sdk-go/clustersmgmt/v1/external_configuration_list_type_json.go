@@ -31,7 +31,10 @@ import (
 func MarshalExternalConfigurationList(list []*ExternalConfiguration, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeExternalConfigurationList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

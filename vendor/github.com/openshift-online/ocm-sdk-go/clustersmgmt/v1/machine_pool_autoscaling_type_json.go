@@ -31,7 +31,10 @@ import (
 func MarshalMachinePoolAutoscaling(object *MachinePoolAutoscaling, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeMachinePoolAutoscaling(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -79,7 +82,6 @@ func writeMachinePoolAutoscaling(object *MachinePoolAutoscaling, stream *jsonite
 		}
 		stream.WriteObjectField("min_replicas")
 		stream.WriteInt(object.minReplicas)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

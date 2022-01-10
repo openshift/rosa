@@ -31,7 +31,10 @@ import (
 func MarshalUpgradePolicyState(object *UpgradePolicyState, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeUpgradePolicyState(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -79,7 +82,6 @@ func writeUpgradePolicyState(object *UpgradePolicyState, stream *jsoniter.Stream
 		}
 		stream.WriteObjectField("value")
 		stream.WriteString(string(object.value))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

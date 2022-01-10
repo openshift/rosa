@@ -164,6 +164,9 @@ var pathTreeData = `{
                 "-": null
               }
             },
+            "gate_agreements": {
+              "-": null
+            },
             "groups": {
               "-": {
                 "users": {
@@ -173,7 +176,11 @@ var pathTreeData = `{
             },
             "hibernate": null,
             "identity_providers": {
-              "-": null
+              "-": {
+                "htpasswd_users": {
+                  "-": null
+                }
+              }
             },
             "ingresses": {
               "-": null
@@ -229,6 +236,9 @@ var pathTreeData = `{
         "provision_shards": {
           "-": null
         },
+        "version_gates": {
+          "-": null
+        },
         "versions": {
           "-": null
         }
@@ -261,6 +271,55 @@ var pathTreeData = `{
               "-": null
             }
           }
+        }
+      }
+    },
+    "status_board": {
+      "v1": {
+        "application_dependencies": {
+          "-": null
+        },
+        "applications": {
+          "-": {
+            "services": {
+              "-": {
+                "statuses": {
+                  "-": null
+                }
+              }
+            }
+          }
+        },
+        "peer_dependencies": {
+          "-": null
+        },
+        "products": {
+          "-": {
+            "applications": {
+              "-": {
+                "services": {
+                  "-": {
+                    "statuses": {
+                      "-": null
+                    }
+                  }
+                }
+              }
+            },
+            "updates": {
+              "-": null
+            }
+          }
+        },
+        "services": {
+          "-": {
+            "statuses": {
+              "-": null
+            }
+          }
+        },
+        "statuses": {
+          "-": null
         }
       }
     }

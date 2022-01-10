@@ -110,8 +110,7 @@ func (b *MachinePoolBuilder) AvailabilityZones(values ...string) *MachinePoolBui
 // cluster is retrieved it will be a link to the cloud provider, containing only
 // the kind, id and href attributes:
 //
-// [source,json]
-// ----
+// ```json
 // {
 //   "cloud_provider": {
 //     "kind": "CloudProviderLink",
@@ -119,19 +118,18 @@ func (b *MachinePoolBuilder) AvailabilityZones(values ...string) *MachinePoolBui
 //     "href": "/api/clusters_mgmt/v1/cloud_providers/123"
 //   }
 // }
-// ----
+// ```
 //
 // When a cluster is created this is optional, and if used it should contain the
 // identifier of the cloud provider to use:
 //
-// [source,json]
-// ----
+// ```json
 // {
 //   "cloud_provider": {
 //     "id": "123",
 //   }
 // }
-// ----
+// ```
 //
 // If not included, then the cluster will be created using the default cloud
 // provider, which is currently Amazon Web Services.

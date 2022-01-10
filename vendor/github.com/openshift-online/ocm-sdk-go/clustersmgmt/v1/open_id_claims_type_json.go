@@ -31,7 +31,10 @@ import (
 func MarshalOpenIDClaims(object *OpenIDClaims, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeOpenIDClaims(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeOpenIDClaims(object *OpenIDClaims, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("preferred_username")
 		writeStringList(object.preferredUsername, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

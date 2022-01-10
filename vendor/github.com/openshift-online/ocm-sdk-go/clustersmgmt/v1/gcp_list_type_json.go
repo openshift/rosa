@@ -31,7 +31,10 @@ import (
 func MarshalGCPList(list []*GCP, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeGCPList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

@@ -31,7 +31,10 @@ import (
 func MarshalIdentityProvider(object *IdentityProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeIdentityProvider(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -160,7 +163,6 @@ func writeIdentityProvider(object *IdentityProvider, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("type")
 		stream.WriteString(string(object.type_))
-		count++
 	}
 	stream.WriteObjectEnd()
 }

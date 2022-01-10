@@ -31,7 +31,10 @@ import (
 func MarshalFlavourNodes(object *FlavourNodes, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeFlavourNodes(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeFlavourNodes(object *FlavourNodes, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("master")
 		stream.WriteInt(object.master)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

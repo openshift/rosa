@@ -31,7 +31,10 @@ import (
 func MarshalClusterRegistrationRequest(object *ClusterRegistrationRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterRegistrationRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeClusterRegistrationRequest(object *ClusterRegistrationRequest, stream 
 		}
 		stream.WriteObjectField("cluster_id")
 		stream.WriteString(object.clusterID)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

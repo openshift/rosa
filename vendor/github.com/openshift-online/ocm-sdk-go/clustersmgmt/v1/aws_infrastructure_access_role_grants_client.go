@@ -249,10 +249,9 @@ func (r *AWSInfrastructureAccessRoleGrantsListRequest) Header(name string, value
 // instead of the names of the columns of a table. For example, in order to sort the
 // AWS infrastructure access role grants descending by user ARN the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // user_arn desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -278,10 +277,9 @@ func (r *AWSInfrastructureAccessRoleGrantsListRequest) Page(value int) *AWSInfra
 // instead of the names of the columns of a table. For example, in order to retrieve
 // all the AWS infrastructure access role grants with a user ARN starting with `user` the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // user_arn like '%user'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the AWS
 // infrastructure access role grants that the user has permission to see will be returned.

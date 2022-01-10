@@ -31,7 +31,10 @@ import (
 func MarshalSTSList(list []*STS, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSTSList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

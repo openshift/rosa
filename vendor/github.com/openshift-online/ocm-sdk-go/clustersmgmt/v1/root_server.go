@@ -89,6 +89,11 @@ type Server interface {
 	// Reference to the resource that manages the collection of provision shards.
 	ProvisionShards() ProvisionShardsServer
 
+	// VersionGates returns the target 'version_gates' resource.
+	//
+	// Reference to version gates.
+	VersionGates() VersionGatesServer
+
 	// Versions returns the target 'versions' resource.
 	//
 	// Reference to the resource that manage the collection of versions.
@@ -191,6 +196,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchProvisionShards(w, r, target, segments[1:])
+	case "version_gates":
+		target := server.VersionGates()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchVersionGates(w, r, target, segments[1:])
 	case "versions":
 		target := server.Versions()
 		if target == nil {

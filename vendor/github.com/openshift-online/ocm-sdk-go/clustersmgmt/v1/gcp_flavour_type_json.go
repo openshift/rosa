@@ -31,7 +31,10 @@ import (
 func MarshalGCPFlavour(object *GCPFlavour, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeGCPFlavour(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeGCPFlavour(object *GCPFlavour, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("master_instance_type")
 		stream.WriteString(object.masterInstanceType)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

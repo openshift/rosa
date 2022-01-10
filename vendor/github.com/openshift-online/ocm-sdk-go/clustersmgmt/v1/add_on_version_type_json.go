@@ -31,7 +31,10 @@ import (
 func MarshalAddOnVersion(object *AddOnVersion, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnVersion(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -127,7 +130,6 @@ func writeAddOnVersion(object *AddOnVersion, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("sub_operators")
 		writeAddOnSubOperatorList(object.subOperators, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -454,7 +454,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if spotMaxPrice != "on-demand" {
-		price, _ := strconv.ParseFloat(spotMaxPrice, 8)
+		price, _ := strconv.ParseFloat(spotMaxPrice, 64)
 		maxPrice = &price
 	}
 
@@ -539,7 +539,7 @@ func spotMaxPriceValidator(val interface{}) error {
 	if spotMaxPrice == "on-demand" {
 		return nil
 	}
-	price, err := strconv.ParseFloat(spotMaxPrice, 8)
+	price, err := strconv.ParseFloat(spotMaxPrice, 64)
 	if err != nil {
 		return fmt.Errorf("Expected a numeric value for spot max price")
 	}

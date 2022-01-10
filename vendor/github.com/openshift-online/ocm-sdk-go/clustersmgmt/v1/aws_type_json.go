@@ -32,7 +32,10 @@ import (
 func MarshalAWS(object *AWS, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAWS(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -131,7 +134,6 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		} else {
 			stream.WriteNil()
 		}
-		count++
 	}
 	stream.WriteObjectEnd()
 }

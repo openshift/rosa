@@ -31,7 +31,10 @@ import (
 func MarshalFeatureToggle(object *FeatureToggle, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeFeatureToggle(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeFeatureToggle(object *FeatureToggle, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("enabled")
 		stream.WriteBool(object.enabled)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

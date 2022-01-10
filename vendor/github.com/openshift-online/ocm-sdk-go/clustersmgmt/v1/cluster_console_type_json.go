@@ -31,7 +31,10 @@ import (
 func MarshalClusterConsole(object *ClusterConsole, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterConsole(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeClusterConsole(object *ClusterConsole, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("url")
 		stream.WriteString(object.url)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

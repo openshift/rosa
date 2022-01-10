@@ -31,7 +31,10 @@ import (
 func MarshalAccessReviewResponse(object *AccessReviewResponse, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAccessReviewResponse(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -110,7 +113,6 @@ func writeAccessReviewResponse(object *AccessReviewResponse, stream *jsoniter.St
 		}
 		stream.WriteObjectField("subscription_id")
 		stream.WriteString(object.subscriptionID)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

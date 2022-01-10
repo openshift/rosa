@@ -31,7 +31,10 @@ import (
 func MarshalCloudRegionList(list []*CloudRegion, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCloudRegionList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

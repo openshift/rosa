@@ -31,7 +31,10 @@ import (
 func MarshalSyncset(object *Syncset, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSyncset(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeSyncset(object *Syncset, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("resources")
 		writeInterfaceList(object.resources, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

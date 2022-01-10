@@ -31,7 +31,10 @@ import (
 func MarshalAlertsInfo(object *AlertsInfo, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAlertsInfo(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeAlertsInfo(object *AlertsInfo, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("alerts")
 		writeAlertInfoList(object.alerts, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

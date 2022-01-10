@@ -31,7 +31,10 @@ import (
 func MarshalGithubIdentityProvider(object *GithubIdentityProvider, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeGithubIdentityProvider(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -92,7 +95,6 @@ func writeGithubIdentityProvider(object *GithubIdentityProvider, stream *jsonite
 		}
 		stream.WriteObjectField("teams")
 		writeStringList(object.teams, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

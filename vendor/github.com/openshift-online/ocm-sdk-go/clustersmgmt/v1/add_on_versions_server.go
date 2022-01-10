@@ -111,10 +111,9 @@ type AddOnVersionsListServerRequest struct {
 // the names of the columns of a table. For example, in order to sort the add-on
 // versions descending by id the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // id desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -135,10 +134,9 @@ func (r *AddOnVersionsListServerRequest) Order() string {
 // the names of the columns of a table. For example, in order to sort the add-on
 // versions descending by id the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // id desc
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then the order of the
 // results is undefined.
@@ -181,10 +179,9 @@ func (r *AddOnVersionsListServerRequest) GetPage() (value int, ok bool) {
 // of the names of the columns of a table. For example, in order to retrieve all the
 // add-on versions with an id starting with `0.1` the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // id like '0.1.%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the add-on
 // versions that the user has permission to see will be returned.
@@ -205,10 +202,9 @@ func (r *AddOnVersionsListServerRequest) Search() string {
 // of the names of the columns of a table. For example, in order to retrieve all the
 // add-on versions with an id starting with `0.1` the value should be:
 //
-// [source,sql]
-// ----
+// ```sql
 // id like '0.1.%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the add-on
 // versions that the user has permission to see will be returned.

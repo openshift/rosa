@@ -31,7 +31,10 @@ import (
 func MarshalSKU(object *SKU, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSKU(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -106,7 +109,6 @@ func writeSKU(object *SKU, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("resources")
 		writeResourceList(object.resources, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalAddOnSubOperator(object *AddOnSubOperator, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeAddOnSubOperator(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -65,7 +68,6 @@ func writeAddOnSubOperator(object *AddOnSubOperator, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("operator_namespace")
 		stream.WriteString(object.operatorNamespace)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

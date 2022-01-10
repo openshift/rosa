@@ -136,6 +136,9 @@ func writeCloudProvidersListResponse(response *CloudProvidersListServerResponse,
 		}
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }

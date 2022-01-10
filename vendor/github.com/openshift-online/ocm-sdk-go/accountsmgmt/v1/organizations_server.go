@@ -188,10 +188,9 @@ func (r *OrganizationsListServerRequest) GetPage() (value int, ok bool) {
 // instead of the names of the columns of a table. For example, in order to
 // retrieve organizations with name starting with my:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'my%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.
@@ -212,10 +211,9 @@ func (r *OrganizationsListServerRequest) Search() string {
 // instead of the names of the columns of a table. For example, in order to
 // retrieve organizations with name starting with my:
 //
-// [source,sql]
-// ----
+// ```sql
 // name like 'my%'
-// ----
+// ```
 //
 // If the parameter isn't provided, or if the value is empty, then all the
 // items that the user has permission to see will be returned.

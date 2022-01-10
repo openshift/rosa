@@ -31,7 +31,10 @@ import (
 func MarshalProxy(object *Proxy, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeProxy(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeProxy(object *Proxy, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("https_proxy")
 		stream.WriteString(object.httpsProxy)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

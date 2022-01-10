@@ -31,7 +31,10 @@ import (
 func MarshalCPUTotalNodeRoleOSMetricNodeList(list []*CPUTotalNodeRoleOSMetricNode, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeCPUTotalNodeRoleOSMetricNodeList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

@@ -31,7 +31,10 @@ import (
 func MarshalSelfTermsReviewRequest(object *SelfTermsReviewRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeSelfTermsReviewRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -56,7 +59,6 @@ func writeSelfTermsReviewRequest(object *SelfTermsReviewRequest, stream *jsonite
 		}
 		stream.WriteObjectField("site_code")
 		stream.WriteString(object.siteCode)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

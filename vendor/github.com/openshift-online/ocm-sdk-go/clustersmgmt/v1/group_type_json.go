@@ -31,7 +31,10 @@ import (
 func MarshalGroup(object *Group, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeGroup(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -73,7 +76,6 @@ func writeGroup(object *Group, stream *jsoniter.Stream) {
 		stream.WriteObjectField("items")
 		writeUserList(object.users.items, stream)
 		stream.WriteObjectEnd()
-		count++
 	}
 	stream.WriteObjectEnd()
 }

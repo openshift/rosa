@@ -144,6 +144,9 @@ func writeSyncsetsListResponse(response *SyncsetsListServerResponse, w http.Resp
 		}
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }

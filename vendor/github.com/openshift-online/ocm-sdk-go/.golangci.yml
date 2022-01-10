@@ -21,6 +21,7 @@ run:
   - clustersmgmt
   - servicelogs
   - jobqueue
+  - statusboard
   - errors
   - helpers
   - metamodel

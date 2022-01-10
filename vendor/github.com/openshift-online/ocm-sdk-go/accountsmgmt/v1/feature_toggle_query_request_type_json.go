@@ -31,7 +31,10 @@ import (
 func MarshalFeatureToggleQueryRequest(object *FeatureToggleQueryRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeFeatureToggleQueryRequest(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeFeatureToggleQueryRequest(object *FeatureToggleQueryRequest, stream *j
 		}
 		stream.WriteObjectField("organization_id")
 		stream.WriteString(object.organizationID)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalLongList(list []int64, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeLongList(list, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 

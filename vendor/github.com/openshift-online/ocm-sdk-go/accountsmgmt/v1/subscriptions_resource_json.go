@@ -152,7 +152,10 @@ func writeSubscriptionsListResponse(response *SubscriptionsListServerResponse, w
 		}
 	}
 	stream.WriteObjectEnd()
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 func readSubscriptionsPostRequest(request *SubscriptionsPostServerRequest, r *http.Request) error {

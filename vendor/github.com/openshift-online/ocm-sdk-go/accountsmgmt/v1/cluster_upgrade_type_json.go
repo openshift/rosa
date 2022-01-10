@@ -32,7 +32,10 @@ import (
 func MarshalClusterUpgrade(object *ClusterUpgrade, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterUpgrade(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -75,7 +78,6 @@ func writeClusterUpgrade(object *ClusterUpgrade, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("version")
 		stream.WriteString(object.version)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

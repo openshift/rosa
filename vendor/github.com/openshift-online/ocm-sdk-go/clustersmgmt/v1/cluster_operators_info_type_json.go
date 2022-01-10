@@ -31,7 +31,10 @@ import (
 func MarshalClusterOperatorsInfo(object *ClusterOperatorsInfo, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeClusterOperatorsInfo(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -47,7 +50,6 @@ func writeClusterOperatorsInfo(object *ClusterOperatorsInfo, stream *jsoniter.St
 		}
 		stream.WriteObjectField("operators")
 		writeClusterOperatorInfoList(object.operators, stream)
-		count++
 	}
 	stream.WriteObjectEnd()
 }

@@ -31,7 +31,10 @@ import (
 func MarshalEncryptionKey(object *EncryptionKey, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
 	writeEncryptionKey(object, stream)
-	stream.Flush()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
 	return stream.Error
 }
 
@@ -70,7 +73,6 @@ func writeEncryptionKey(object *EncryptionKey, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("name")
 		stream.WriteString(object.name)
-		count++
 	}
 	stream.WriteObjectEnd()
 }
