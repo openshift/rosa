@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	semver "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/completion"
@@ -46,6 +47,9 @@ import (
 	"github.com/openshift/rosa/cmd/version"
 	"github.com/openshift/rosa/cmd/whoami"
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
 var root = &cobra.Command{
@@ -58,6 +62,8 @@ func init() {
 	// Add the command line flags:
 	fs := root.PersistentFlags()
 	arguments.AddDebugFlag(fs)
+
+	CheckROSACliVersion()
 
 	// Register the subcommands:
 	root.AddCommand(completion.Cmd)
@@ -92,5 +98,35 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to execute root command: %s\n", err)
 		os.Exit(1)
+	}
+}
+
+func CheckROSACliVersion() {
+	reporter := reporter.CreateReporterOrExit()
+	genericErrorMessage := "We could not determine the latest ROSA cli version. Goto " +
+		"'https://console.redhat.com/openshift/create/rosa/welcome' if you wish to check and update your client"
+	latestTag, err := ocm.GetLatestROSACliVersion()
+	if err != nil {
+		reporter.Debugf("%s", err)
+		reporter.Infof("%s", genericErrorMessage)
+		return
+	}
+	if latestTag != "" && info.Version != latestTag {
+		latestVersion, err := semver.NewVersion(latestTag)
+		if err != nil {
+			reporter.Debugf("%s", err)
+			reporter.Infof("%s", genericErrorMessage)
+			return
+		}
+		currentVersion, err := semver.NewVersion(info.Version)
+		if err != nil {
+			reporter.Debugf("%s", err)
+			reporter.Infof("%s", genericErrorMessage)
+			return
+		}
+		if currentVersion.LessThanOrEqual(latestVersion) {
+			reporter.Infof("A newer version of rosa cli '%s' is available for download. Goto "+
+				"'https://console.redhat.com/openshift/create/rosa/welcome' if you wish to update", latestTag)
+		}
 	}
 }

@@ -17,8 +17,10 @@ limitations under the License.
 package ocm
 
 import (
+	"bufio"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -35,6 +37,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 )
+
+const ROSADownloadURL = "https://mirror.openshift.com/pub/openshift-v4/clients/rosa"
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -404,4 +408,34 @@ func (c *Client) CheckRoleExists(orgID string, roleName string, awsAccountID str
 		return false, "", nil
 	}
 	return true, existingRole[1], nil
+}
+
+func GetLatestROSACliVersion() (string, error) {
+	resp, err := http.Get(ROSADownloadURL)
+	if err != nil {
+		return "", err
+	}
+	lines, err := ReadResponse(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	//get the last but 1 for the latest tag
+	i := len(lines) - 2
+	//grep the version information
+	re := regexp.MustCompile("[0-9]+")
+	return strings.Join(re.FindAllString(lines[i], -1), "."), nil
+}
+
+func ReadResponse(r io.Reader) ([]string, error) {
+	var lines []string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), "a href") {
+			lines = append(lines, scanner.Text())
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return lines, nil
 }
