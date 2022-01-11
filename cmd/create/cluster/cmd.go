@@ -1526,12 +1526,13 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
-	if fips && cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
-		reporter.Errorf("etcd encryption cannot be disabled on clusters with FIPS mode")
-		os.Exit(1)
-	} else {
-		etcdEncryption = true
+	if fips {
+		if cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
+			reporter.Errorf("etcd encryption cannot be disabled on clusters with FIPS mode")
+			os.Exit(1)
+		} else {
+			etcdEncryption = true
+		}
 	}
 
 	disableWorkloadMonitoring := args.disableWorkloadMonitoring
