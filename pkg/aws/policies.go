@@ -356,7 +356,7 @@ func (c *awsClient) isRoleCompatible(name string, version string) (bool, error) 
 		return false, err
 	}
 
-	return c.HasCompatibleVersionTags(output.Tags, version)
+	return c.hasCompatibleMajorMinorVersionTags(output.Tags, version)
 }
 
 func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy string) error {
