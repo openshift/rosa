@@ -28,7 +28,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/upgrade/accountroles"
-	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
@@ -249,13 +248,13 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		isAccountRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForRole(prefix, awsCreator.AccountID, version)
+		isAccountRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix, version)
 		if err != nil {
 			reporter.Errorf("Could not validate '%s' clusters account roles : %v", clusterKey, err)
 			os.Exit(1)
 		}
 
-		isOperatorRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRole(cluster,
+		isOperatorRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRolePolicies(cluster,
 			awsCreator.AccountID, version)
 		if err != nil {
 			reporter.Errorf("Could not validate '%s' clusters operator roles : %v", clusterKey, err)
@@ -267,27 +266,26 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if isAccountRoleUpgradeNeeded || isOperatorRoleUpgradeNeeded {
-			if mode != "" {
-				if isAccountRoleUpgradeNeeded {
-					reporter.Infof("Preparing to upgrade account roles.")
-					accountroles.Cmd.Run(accountroles.Cmd, []string{prefix, mode})
+			reporter.Infof("Account and operator roles needed upgrade")
+			if interactive.Enabled() || mode == "" {
+				mode, err = interactive.GetOption(interactive.Input{
+					Question: "Upgrade mode",
+					Help:     cmd.Flags().Lookup("mode").Usage,
+					Default:  aws.ModeAuto,
+					Options:  aws.Modes,
+					Required: true,
+				})
+				if err != nil {
+					reporter.Errorf("Expected a valid cluster upgrade mode: %s", err)
+					os.Exit(1)
 				}
-				if isOperatorRoleUpgradeNeeded {
-					reporter.Infof("Preparing to upgrade operator roles.")
-					operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterKey, mode})
-				}
-				if mode == aws.ModeManual {
-					reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
-						" once cluster roles have been upgraded : \n\n"+
-						"\trosa upgrade cluster --cluster %s\n", clusterKey)
-					os.Exit(0)
-				}
-			} else {
-				reporter.Infof("Cluster Roles are not valid with upgrade version %s. "+
-					"Run the following command(s) to upgrade Cluster Roles:\n\n"+
-					"\t%s\n",
-					version,
-					buildRoleUpgradeCommand(isAccountRoleUpgradeNeeded, isOperatorRoleUpgradeNeeded, clusterKey, prefix))
+			}
+			reporter.Infof("Preparing to upgrade role policies")
+			accountroles.Cmd.Run(accountroles.Cmd, []string{prefix, mode})
+			if mode == aws.ModeManual {
+				reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
+					" once account and operator roles have been upgraded : \n\n"+
+					"\trosa upgrade cluster --cluster %s\n", clusterKey)
 				os.Exit(0)
 			}
 		}
@@ -441,18 +439,4 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Infof("Upgrade successfully scheduled for cluster '%s'", clusterKey)
-}
-
-func buildRoleUpgradeCommand(isAccountRoleUpgradeNeeded bool, isOperatorRoleUpgradeNeeded bool,
-	clusterKey string, prefix string) string {
-	accountRoleCmd := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
-	operatorRoleCmd := fmt.Sprintf("rosa upgrade operator-roles --cluster %s", clusterKey)
-
-	if isAccountRoleUpgradeNeeded && isOperatorRoleUpgradeNeeded {
-		return fmt.Sprintf("%s\n\t%s", accountRoleCmd, operatorRoleCmd)
-	}
-	if isAccountRoleUpgradeNeeded {
-		return accountRoleCmd
-	}
-	return operatorRoleCmd
 }

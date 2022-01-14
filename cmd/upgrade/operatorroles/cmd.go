@@ -129,8 +129,8 @@ func run(cmd *cobra.Command, argv []string) {
 			clusterKey)
 	}
 	//Check if account roles are up-to-date
-	isAccountRoleUpgradeNeed, err := awsClient.IsUpgradedNeededForRole(
-		prefix, creator.AccountID, aws.DefaultPolicyVersion)
+	isAccountRoleUpgradeNeed, err := awsClient.IsUpgradedNeededForAccountRolePolicies(
+		prefix, aws.DefaultPolicyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -142,7 +142,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	isUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRole(cluster,
+	isUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRolePolicies(cluster,
 		creator.AccountID, aws.DefaultPolicyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)

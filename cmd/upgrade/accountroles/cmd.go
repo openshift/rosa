@@ -122,12 +122,22 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	isUpgradeNeed, err := awsClient.IsUpgradedNeededForRole(prefix, creator.AccountID, aws.DefaultPolicyVersion)
+	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
+		aws.DefaultPolicyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	if !isUpgradeNeed {
+
+	isUpgradeNeedForOperatorRolePolicies, err := awsClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
+		creator.AccountID,
+		aws.DefaultPolicyVersion)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if !isUpgradeNeedForAccountRolePolicies && !isUpgradeNeedForOperatorRolePolicies {
 		reporter.Infof("Account role with the prefix '%s' is already up-to-date.", prefix)
 		os.Exit(0)
 	}

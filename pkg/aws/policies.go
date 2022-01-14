@@ -1249,7 +1249,7 @@ func (c *awsClient) GetOpenIDConnectProvider(clusterID string) (string, error) {
 	return "", nil
 }
 
-func (c *awsClient) IsUpgradedNeededForRole(prefix string, accountID string, version string) (bool, error) {
+func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, version string) (bool, error) {
 	for _, accountRole := range AccountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
 		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
@@ -1303,7 +1303,7 @@ func (c *awsClient) AddRoleTag(roleName string, key string, value string) error 
 	return nil
 }
 
-func (c *awsClient) IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, accountID string, version string) (
+func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluster, accountID string, version string) (
 	bool, error) {
 	for _, operator := range cluster.AWS().STS().OperatorIAMRoles() {
 		roleName := strings.SplitN(operator.RoleARN(), "/", 2)[1]
@@ -1327,9 +1327,15 @@ func (c *awsClient) IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, accou
 		if !isCompatible {
 			return true, nil
 		}
-		//This will not be true for the new clusters but for the older ones if there are any mismatch we should still
-		//make it up-to-date
-		isCompatible, err = c.isRoleCompatible(roleName, version)
+	}
+	return false, nil
+}
+
+func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix string, accountID string,
+	version string) (bool, error) {
+	for _, operator := range CredentialRequests {
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(policyARN, version)
 		if err != nil {
 			return false, err
 		}
