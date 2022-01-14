@@ -61,7 +61,7 @@ var Cmd = &cobra.Command{
   rosa upgrade cluster --cluster=mycluster --interactive
 
   # Schedule a cluster upgrade within the hour
-  rosa upgade cluster -c mycluster --version 4.5.20`,
+  rosa upgrade cluster -c mycluster --version 4.5.20`,
 	Run: run,
 }
 
