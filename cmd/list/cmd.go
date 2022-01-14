@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/accountroles"
 	"github.com/openshift/rosa/cmd/list/addon"
 	"github.com/openshift/rosa/cmd/list/cluster"
+	"github.com/openshift/rosa/cmd/list/gates"
 	"github.com/openshift/rosa/cmd/list/idp"
 	"github.com/openshift/rosa/cmd/list/ingress"
 	"github.com/openshift/rosa/cmd/list/instancetypes"
@@ -42,6 +43,7 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.AddCommand(addon.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(gates.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)

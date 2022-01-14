@@ -73,6 +73,10 @@ func Print(resource interface{}) error {
 		if versions, ok := resource.([]*cmv1.Version); ok {
 			cmv1.MarshalVersionList(versions, &b)
 		}
+	case "[]*v1.VersionGate":
+		if versionGate, ok := resource.(*cmv1.VersionGate); ok {
+			cmv1.MarshalVersionGate(versionGate, &b)
+		}
 	case "[]aws.Role":
 		{
 			if roles, ok := resource.([]aws.Role); ok {
