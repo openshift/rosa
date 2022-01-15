@@ -278,7 +278,7 @@ func (c *Client) GetClusterUsingSubscription(clusterKey string, creator *aws.Cre
 
 	switch response.Total() {
 	case 0:
-		return nil, errors.NotFound.Errorf("There is no cluster with identifier '%s'", clusterKey)
+		return nil, nil
 	case 1:
 		return response.Items().Slice()[0], nil
 	default:
