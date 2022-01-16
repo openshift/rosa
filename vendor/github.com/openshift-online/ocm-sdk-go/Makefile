@@ -22,13 +22,11 @@ export GOPROXY=https://proxy.golang.org
 export CGO_ENABLED=0
 
 # Details of the model to use:
-model_version:=v0.0.167
+model_version:=v0.0.168
 model_url:=https://github.com/openshift-online/ocm-api-model.git
 
 # Details of the metamodel to use:
-metamodel_version:=v0.0.46
-metamodel_url:=https://github.com/openshift-online/ocm-api-metamodel/releases/download/$(metamodel_version)/metamodel-linux-amd64
-metamodel_sum:=4177653d91c1279b43f6ae301afd4a3c8a53d330d312f5d7ef22b58f9c656cda
+metamodel_version:=v0.0.49
 
 .PHONY: examples
 examples:
@@ -61,11 +59,11 @@ generate: model metamodel
 		job_queue \
 		helpers \
 		openapi
-	./metamodel generate go \
+	metamodel generate go \
 		--model=model/model \
 		--base=github.com/openshift-online/ocm-sdk-go \
 		--output=.
-	./metamodel generate openapi \
+	metamodel generate openapi \
 		--model=model/model \
 		--output=openapi
 
@@ -81,10 +79,9 @@ model:
 		git checkout -B build "$(model_version)"; \
 	fi
 
+.PHONY: metamodel
 metamodel:
-	wget --progress=dot:giga --output-document="$@" "$(metamodel_url)"
-	echo "$(metamodel_sum) $@" | sha256sum --check
-	chmod +x "$@"
+	go install github.com/openshift-online/ocm-api-metamodel/cmd/metamodel@$(metamodel_version)
 
 .PHONY: clean
 clean:

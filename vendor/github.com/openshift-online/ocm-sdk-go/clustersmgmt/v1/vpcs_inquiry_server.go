@@ -32,9 +32,9 @@ type VpcsInquiryServer interface {
 
 	// Search handles a request for the 'search' method.
 	//
-	// Retrieves the list of available regions of the cloud provider.
+	// Retrieves the list of available vpcs of the cloud provider for specific region.
 	// IMPORTANT: This collection doesn't currently support paging or searching, so the returned
-	// `page` will always be 1 and `size` and `total` will always be the total number of available regions
+	// `page` will always be 1 and `size` and `total` will always be the total number of available vpcs
 	// of the provider.
 	Search(ctx context.Context, request *VpcsInquirySearchServerRequest, response *VpcsInquirySearchServerResponse) error
 }
@@ -96,7 +96,7 @@ func (r *VpcsInquirySearchServerRequest) GetPage() (value int, ok bool) {
 //
 // Number of items that will be contained in the returned page. As this collection
 // doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
+// vpcs of the provider.
 func (r *VpcsInquirySearchServerRequest) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -109,7 +109,7 @@ func (r *VpcsInquirySearchServerRequest) Size() int {
 //
 // Number of items that will be contained in the returned page. As this collection
 // doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
+// vpcs of the provider.
 func (r *VpcsInquirySearchServerRequest) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -149,7 +149,7 @@ func (r *VpcsInquirySearchServerResponse) Page(value int) *VpcsInquirySearchServ
 //
 // Number of items that will be contained in the returned page. As this collection
 // doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
+// vpcs of the provider.
 func (r *VpcsInquirySearchServerResponse) Size(value int) *VpcsInquirySearchServerResponse {
 	r.size = &value
 	return r
@@ -159,7 +159,7 @@ func (r *VpcsInquirySearchServerResponse) Size(value int) *VpcsInquirySearchServ
 //
 // Total number of items of the collection that match the search criteria,
 // regardless of the size of the page. As this collection doesn't support paging or
-// searching the result will always be the total number of available regions of the provider.
+// searching the result will always be the total number of available vpcs of the provider.
 func (r *VpcsInquirySearchServerResponse) Total(value int) *VpcsInquirySearchServerResponse {
 	r.total = &value
 	return r

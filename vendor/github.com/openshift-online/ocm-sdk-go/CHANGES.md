@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.235 Jan 11 2022
+
+- Install metamodel with `go install`
+- Update to model v0.0.168
+  - Fix description of various API attributes
+  - OVN: Add network type selection
+  - adding field to hold validation error message
+
 ## 0.1.234 Jan 4 2022
 
 - Update to version 4 of JWT library.

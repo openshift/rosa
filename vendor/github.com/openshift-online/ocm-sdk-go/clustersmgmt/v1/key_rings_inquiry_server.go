@@ -32,7 +32,7 @@ type KeyRingsInquiryServer interface {
 
 	// Search handles a request for the 'search' method.
 	//
-	// Retrieves the list of available regions of the cloud provider.
+	// Retrieves the list of available key rings of the cloud provider.
 	// IMPORTANT: This collection doesn't currently support paging or searching, so the returned
 	// `page` will always be 1 and `size` and `total` will always be the total number of available regions
 	// of the provider.
@@ -96,7 +96,7 @@ func (r *KeyRingsInquirySearchServerRequest) GetPage() (value int, ok bool) {
 //
 // Number of items that will be contained in the returned page. As this collection
 // doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
+// key rings of the provider.
 func (r *KeyRingsInquirySearchServerRequest) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -109,7 +109,7 @@ func (r *KeyRingsInquirySearchServerRequest) Size() int {
 //
 // Number of items that will be contained in the returned page. As this collection
 // doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
+// key rings of the provider.
 func (r *KeyRingsInquirySearchServerRequest) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -149,7 +149,7 @@ func (r *KeyRingsInquirySearchServerResponse) Page(value int) *KeyRingsInquirySe
 //
 // Number of items that will be contained in the returned page. As this collection
 // doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
+// key rings of the provider.
 func (r *KeyRingsInquirySearchServerResponse) Size(value int) *KeyRingsInquirySearchServerResponse {
 	r.size = &value
 	return r
@@ -159,7 +159,7 @@ func (r *KeyRingsInquirySearchServerResponse) Size(value int) *KeyRingsInquirySe
 //
 // Total number of items of the collection that match the search criteria,
 // regardless of the size of the page. As this collection doesn't support paging or
-// searching the result will always be the total number of available regions of the provider.
+// searching the result will always be the total number of available key rings of the provider.
 func (r *KeyRingsInquirySearchServerResponse) Total(value int) *KeyRingsInquirySearchServerResponse {
 	r.total = &value
 	return r

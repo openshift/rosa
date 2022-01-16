@@ -33,6 +33,8 @@ import (
 	errors "github.com/zgalor/weberr"
 )
 
+var NetworkTypes = []string{"OpenShiftSDN", "OVNKubernetes"}
+
 // Spec is the configuration for a cluster spec.
 type Spec struct {
 	// Basic configs
@@ -63,6 +65,7 @@ type Spec struct {
 	AvailabilityZones []string
 
 	// Network config
+	NetworkType string
 	MachineCIDR net.IPNet
 	ServiceCIDR net.IPNet
 	PodCIDR     net.IPNet
@@ -604,11 +607,15 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}
 
-	if !IsEmptyCIDR(config.MachineCIDR) ||
+	if config.NetworkType != "" ||
+		!IsEmptyCIDR(config.MachineCIDR) ||
 		!IsEmptyCIDR(config.ServiceCIDR) ||
 		!IsEmptyCIDR(config.PodCIDR) ||
 		config.HostPrefix != 0 {
 		networkBuilder := cmv1.NewNetwork()
+		if config.NetworkType != "" {
+			networkBuilder = networkBuilder.Type(config.NetworkType)
+		}
 		if !IsEmptyCIDR(config.MachineCIDR) {
 			networkBuilder = networkBuilder.MachineCIDR(config.MachineCIDR.String())
 		}
