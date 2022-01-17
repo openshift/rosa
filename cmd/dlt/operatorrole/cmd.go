@@ -133,8 +133,11 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
-
-	c, err := ocmClient.GetClusterByID(sub.ClusterID(), creator)
+	clusterID := clusterKey
+	if sub != nil {
+		clusterID = sub.ClusterID()
+	}
+	c, err := ocmClient.GetClusterByID(clusterID, creator)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
 			reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
