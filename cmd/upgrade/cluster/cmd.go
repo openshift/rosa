@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/rosa/pkg/interactive/confirm"
+
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -426,6 +428,31 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
+	}
+
+	// check if the cluster upgrade requires gate agreements
+	gates, err := ocmClient.GetMissingGateAgreements(cluster.ID(), upgradePolicy)
+	if err != nil {
+		reporter.Errorf("Failed to check for missing gate agreements upgrade for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	for _, gate := range gates {
+		reporter.Infof("Gate: %v", gate)
+		if !gate.STSOnly() {
+			// for non sts gates we require user agreement
+			if !confirm.Prompt(true,
+				"I acknowledge that my workloads are no longer using removed APIs. (Background:'%s)",
+				gate.Description()) {
+				os.Exit(0)
+			}
+		}
+		err = ocmClient.AckVersionGate(cluster.ID(), gate.ID())
+		if err != nil {
+			reporter.Errorf("Failed to acknowledge version gate '%s' for cluster '%s': %v",
+				gate.ID(), clusterKey, err)
+			os.Exit(1)
+		}
 	}
 
 	err = ocmClient.ScheduleUpgrade(cluster.ID(), upgradePolicy)

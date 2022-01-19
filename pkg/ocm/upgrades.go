@@ -17,6 +17,8 @@ limitations under the License.
 package ocm
 
 import (
+	"fmt"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -95,4 +97,80 @@ func (c *Client) CancelUpgrade(clusterID string) (bool, error) {
 		return false, handleErr(response.Error(), err)
 	}
 	return true, nil
+}
+
+func (c *Client) GetMissingGateAgreements(
+	clusterID string,
+	upgradePolicy *cmv1.UpgradePolicy) ([]*cmv1.VersionGate, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		UpgradePolicies().
+		Add().
+		Parameter("dryRun", true).
+		Body(upgradePolicy).
+		Send()
+	if err == nil {
+		return []*cmv1.VersionGate{}, nil
+	}
+
+	// parse gates list
+	details, ok := response.Error().GetDetails()
+	if !ok {
+		return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
+	}
+
+	listOfMaps, ok := details.([]interface{})
+	if !ok {
+		return []*cmv1.VersionGate{}, fmt.Errorf("Failed to parse gates")
+	}
+
+	gates := make([]*cmv1.VersionGate, 0)
+	for _, object := range listOfMaps {
+		gateAsMap, ok := object.(map[string]interface{})
+		if !ok {
+			return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
+		}
+
+		gate, err := gateFromMap(gateAsMap)
+		if err != nil {
+			return []*cmv1.VersionGate{}, fmt.Errorf("failed to read gate")
+		}
+		gates = append(gates, gate)
+	}
+
+	return gates, nil
+}
+
+func (c *Client) AckVersionGate(
+	clusterID string,
+	gateID string) error {
+
+	agreement, err := cmv1.NewVersionGateAgreement().
+		VersionGate(cmv1.NewVersionGate().ID(gateID)).
+		Build()
+	if err != nil {
+		return err
+	}
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		GateAgreements().
+		Add().
+		Body(agreement).
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
+func gateFromMap(gateMap map[string]interface{}) (*cmv1.VersionGate, error) {
+	id := gateMap["id"].(string)
+	desc := gateMap["description"].(string)
+	stsOnly := gateMap["sts_only"].(bool)
+
+	gate, err := cmv1.NewVersionGate().ID(id).Description(desc).STSOnly(stsOnly).Build()
+	if err != nil {
+		return nil, err
+	}
+	return gate, nil
 }
