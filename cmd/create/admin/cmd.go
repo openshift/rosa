@@ -40,12 +40,24 @@ var Cmd = &cobra.Command{
 	Short: "Creates an admin user to login to the cluster",
 	Long:  "Creates a cluster-admin user with an auto-generated password to login to the cluster",
 	Example: `  # Create an admin user to login to the cluster
-  rosa create admin --cluster=mycluster`,
+  rosa create admin -c mycluster -p MasterKey123`,
 	Run: run,
+}
+
+var args struct {
+	passwordArg string
 }
 
 func init() {
 	ocm.AddClusterFlag(Cmd)
+	flags := Cmd.Flags()
+	flags.StringVarP(
+		&args.passwordArg,
+		"password",
+		"p",
+		"",
+		"Choice of password for admin user.",
+	)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -107,11 +119,18 @@ func run(cmd *cobra.Command, _ []string) {
 	// TODO: Verify that the htpasswd IdP does not already exist
 
 	// TODO: Verify that the user does not already exist
-
-	password, err := generateRandomPassword(23)
-	if err != nil {
-		reporter.Errorf("Failed to generate a random password")
-		os.Exit(1)
+	var password string
+	passwordArg := args.passwordArg
+	if len(passwordArg) == 0 {
+		reporter.Debugf("Generating random password")
+		password, err = generateRandomPassword(23)
+		if err != nil {
+			reporter.Errorf("Failed to generate a random password")
+			os.Exit(1)
+		}
+	} else {
+		password = passwordArg
+		reporter.Debugf("Using user provided password")
 	}
 
 	// Add admin user to the cluster-admins group:
