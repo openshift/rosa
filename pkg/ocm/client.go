@@ -24,6 +24,7 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/sirupsen/logrus"
 
+	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
 )
 
@@ -89,6 +90,7 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 	// values in the configuration, so that default values won't be overridden:
 	builder := sdk.NewConnectionBuilder()
 	builder.Logger(logger)
+	builder.Agent(info.UserAgent + "/" + info.Version + " " + sdk.DefaultAgent)
 	if b.cfg.TokenURL != "" {
 		builder.TokenURL(b.cfg.TokenURL)
 	}
