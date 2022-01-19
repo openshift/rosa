@@ -314,14 +314,18 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Grab all the IDP information interactively if necessary
+	idpType := args.idpType
+	if idpType == "" {
+		interactive.Enable()
+	}
+
 	if interactive.Enabled() {
 		reporter.Infof("Interactive mode enabled.\n" +
 			"Any optional fields can be left empty and a default will be selected.")
 	}
 
-	// Grab all the IDP information interactively if necessary
-	idpType := args.idpType
-	if idpType == "" {
+	if interactive.Enabled() {
 		if idpType == "" {
 			idpType = validIdps[0]
 		}

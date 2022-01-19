@@ -36,7 +36,11 @@ func buildGitlabIdp(cmd *cobra.Command,
 	clientSecret := args.clientSecret
 	gitlabURL := args.gitlabURL
 
-	if !cmd.Flags().Changed("host-url") {
+	if clientID == "" || clientSecret == "" {
+		interactive.Enable()
+	}
+
+	if interactive.Enabled() {
 		gitlabURL, err = interactive.GetString(interactive.Input{
 			Question: "URL",
 			Help:     cmd.Flags().Lookup("host-url").Usage,
@@ -56,7 +60,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 		return idpBuilder, err
 	}
 
-	if clientID == "" || clientSecret == "" {
+	if interactive.Enabled() {
 		instructionsURL := fmt.Sprintf("%s/profile/applications", gitlabURL)
 		consoleURL := cluster.Console().URL()
 		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
@@ -102,7 +106,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 	}
 
 	caPath := args.caPath
-	if interactive.Enabled() && cmd.Flags().Changed("host-url") {
+	if interactive.Enabled() && gitlabURL != cmd.Flags().Lookup("host-url").DefValue {
 		caPath, err = interactive.GetCert(interactive.Input{
 			Question: "CA file path",
 			Help:     cmd.Flags().Lookup("ca").Usage,

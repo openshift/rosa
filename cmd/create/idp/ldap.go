@@ -36,6 +36,10 @@ func buildLdapIdp(cmd *cobra.Command,
 	ldapIDs := args.ldapIDs
 
 	if ldapURL == "" || ldapIDs == "" {
+		interactive.Enable()
+	}
+
+	if interactive.Enabled() {
 		instructionsURL := "https://docs.openshift.com/dedicated/identity_providers/" +
 			"config-identity-providers.html#config-ldap-idp_config-identity-providers"
 		err = interactive.PrintHelp(interactive.Help{
@@ -51,7 +55,7 @@ func buildLdapIdp(cmd *cobra.Command,
 		}
 	}
 
-	if ldapURL == "" {
+	if interactive.Enabled() {
 		ldapURL, err = interactive.GetString(interactive.Input{
 			Question: "LDAP URL",
 			Help:     cmd.Flags().Lookup("url").Usage,
@@ -150,7 +154,7 @@ func buildLdapIdp(cmd *cobra.Command,
 		}
 	}
 
-	if ldapIDs == "" {
+	if interactive.Enabled() {
 		ldapIDs, err = interactive.GetString(interactive.Input{
 			Question: "ID",
 			Help:     cmd.Flags().Lookup("id-attributes").Usage,
@@ -160,6 +164,9 @@ func buildLdapIdp(cmd *cobra.Command,
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 		}
+	}
+	if ldapIDs == "" {
+		return idpBuilder, fmt.Errorf("LDAP ID is required")
 	}
 
 	ldapUsernames := args.ldapUsernames
