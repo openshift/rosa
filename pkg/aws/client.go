@@ -113,8 +113,9 @@ type Client interface {
 	GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error)
 	GetOpenIDConnectProvider(clusterID string) (string, error)
 	GetInstanceProfilesForRole(role string) ([]string, error)
-	IsUpgradedNeededForRole(rolePrefix string, accountID string, version string) (bool, error)
-	IsUpgradedNeededForOperatorRole(cluster *cmv1.Cluster, accountID string, version string) (bool, error)
+	IsUpgradedNeededForAccountRolePolicies(rolePrefix string, version string) (bool, error)
+	IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluster, accountID string, version string) (bool, error)
+	IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(rolePrefix string, accountID string, version string) (bool, error)
 	UpdateTag(roleName string) error
 	AddRoleTag(roleName string, key string, value string) error
 	IsPolicyCompatible(policyArn string, version string) (bool, error)
