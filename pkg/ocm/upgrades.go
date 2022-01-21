@@ -17,6 +17,7 @@ limitations under the License.
 package ocm
 
 import (
+	"encoding/json"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -49,7 +50,6 @@ func (c *Client) GetScheduledUpgrade(clusterID string) (*cmv1.UpgradePolicy, *cm
 	if err != nil {
 		return nil, nil, err
 	}
-
 	for _, upgradePolicy := range upgradePolicies {
 		if upgradePolicy.ScheduleType() == "manual" && upgradePolicy.UpgradeType() == "OSD" {
 			state, err := c.ocm.ClustersMgmt().V1().
@@ -95,4 +95,52 @@ func (c *Client) CancelUpgrade(clusterID string) (bool, error) {
 		return false, handleErr(response.Error(), err)
 	}
 	return true, nil
+}
+
+func (c *Client) GetMissingGateAgreements(
+	clusterID string,
+	upgradePolicy *cmv1.UpgradePolicy) ([]*cmv1.VersionGate, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).UpgradePolicies().Add().Parameter("dryRun", true).Body(upgradePolicy).Send()
+
+	if err != nil {
+		if response.Error() != nil {
+			// parse gates list
+			errorDetails, ok := response.Error().GetDetails()
+			if !ok {
+				return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
+			}
+			data, err := json.Marshal(errorDetails)
+			if err != nil {
+				return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
+			}
+			gates, err := cmv1.UnmarshalVersionGateList(data)
+			if err != nil {
+				return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
+			}
+			return gates, nil
+		}
+	}
+	return []*cmv1.VersionGate{}, nil
+}
+
+func (c *Client) AckVersionGate(
+	clusterID string,
+	gateID string) error {
+	agreement, err := cmv1.NewVersionGateAgreement().
+		VersionGate(cmv1.NewVersionGate().ID(gateID)).
+		Build()
+	if err != nil {
+		return err
+	}
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		GateAgreements().
+		Add().
+		Body(agreement).
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
 }

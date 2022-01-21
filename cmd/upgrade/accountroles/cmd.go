@@ -163,18 +163,23 @@ func run(cmd *cobra.Command, argv []string) {
 	switch mode {
 	case aws.ModeAuto:
 		reporter.Infof("Starting to upgrade the policies")
-		err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID)
-		if err != nil {
-			reporter.Errorf("Error upgrading the role polices: %s", err)
-			os.Exit(1)
+		if isUpgradeNeedForAccountRolePolicies {
+			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID)
+			if err != nil {
+				reporter.Errorf("Error upgrading the role polices: %s", err)
+				os.Exit(1)
+			}
 		}
-		err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix)
-		if err != nil {
-			reporter.Errorf("Error upgrading the operator role polices: %s", err)
-			os.Exit(1)
+		if isUpgradeNeedForOperatorRolePolicies {
+			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix)
+			if err != nil {
+				reporter.Errorf("Error upgrading the operator role polices: %s", err)
+				os.Exit(1)
+			}
 		}
 	case aws.ModeManual:
-		err = aws.GeneratePolicyFiles(reporter, env)
+		err = aws.GeneratePolicyFiles(reporter, env, isUpgradeNeedForAccountRolePolicies,
+			isUpgradeNeedForOperatorRolePolicies)
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -183,7 +188,8 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to upgrade the account role policies:\n")
 		}
-		commands := buildCommands(prefix, creator.AccountID)
+		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
+			isUpgradeNeedForOperatorRolePolicies)
 		fmt.Println(commands)
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
@@ -252,49 +258,54 @@ func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, a
 	return nil
 }
 
-func buildCommands(prefix string, accountID string) string {
+func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRolePolicies bool,
+	isUpgradeNeedForOperatorRolePolicies bool) string {
 	commands := []string{}
-	for file, role := range aws.AccountRoles {
-		name := aws.GetRoleName(prefix, role.Name)
-		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name))
-		policyTags := fmt.Sprintf(
-			"Key=%s,Value=%s",
-			tags.OpenShiftVersion, aws.DefaultPolicyVersion,
-		)
-		createPolicyVersion := fmt.Sprintf("aws iam create-policy-version \\\n"+
-			"\t--policy-arn %s \\\n"+
-			"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
-			"\t--set-as-default",
-			policyARN, file)
-		tagPolicies := fmt.Sprintf("aws iam tag-policy \\\n"+
-			"\t--tags %s \\\n"+
-			"\t--policy-arn %s",
-			policyTags, policyARN)
-		iamRoleTags := fmt.Sprintf(
-			"Key=%s,Value=%s",
-			tags.OpenShiftVersion, aws.DefaultPolicyVersion)
-		tagRole := fmt.Sprintf("aws iam tag-role \\\n"+
-			"\t--tags %s \\\n"+
-			"\t--role-name %s",
-			iamRoleTags, name)
-		commands = append(commands, createPolicyVersion, tagPolicies, tagRole)
+	if isUpgradeNeedForAccountRolePolicies {
+		for file, role := range aws.AccountRoles {
+			name := aws.GetRoleName(prefix, role.Name)
+			policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name))
+			policyTags := fmt.Sprintf(
+				"Key=%s,Value=%s",
+				tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+			)
+			createPolicyVersion := fmt.Sprintf("aws iam create-policy-version \\\n"+
+				"\t--policy-arn %s \\\n"+
+				"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
+				"\t--set-as-default",
+				policyARN, file)
+			tagPolicies := fmt.Sprintf("aws iam tag-policy \\\n"+
+				"\t--tags %s \\\n"+
+				"\t--policy-arn %s",
+				policyTags, policyARN)
+			iamRoleTags := fmt.Sprintf(
+				"Key=%s,Value=%s",
+				tags.OpenShiftVersion, aws.DefaultPolicyVersion)
+			tagRole := fmt.Sprintf("aws iam tag-role \\\n"+
+				"\t--tags %s \\\n"+
+				"\t--role-name %s",
+				iamRoleTags, name)
+			commands = append(commands, createPolicyVersion, tagPolicies, tagRole)
+		}
 	}
-	for credrequest, operator := range aws.CredentialRequests {
-		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		policTags := fmt.Sprintf(
-			"Key=%s,Value=%s",
-			tags.OpenShiftVersion, aws.DefaultPolicyVersion,
-		)
-		createPolicy := fmt.Sprintf("aws iam create-policy-version \\\n"+
-			"\t--policy-arn %s \\\n"+
-			"\t--policy-document file://openshift_%s_policy.json \\\n"+
-			"\t--set-as-default",
-			policyARN, credrequest)
-		tagPolicy := fmt.Sprintf("aws iam tag-policy \\\n"+
-			"\t--tags %s \\\n"+
-			"\t--policy-arn %s",
-			policTags, policyARN)
-		commands = append(commands, createPolicy, tagPolicy)
+	if isUpgradeNeedForOperatorRolePolicies {
+		for credrequest, operator := range aws.CredentialRequests {
+			policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+			policTags := fmt.Sprintf(
+				"Key=%s,Value=%s",
+				tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+			)
+			createPolicy := fmt.Sprintf("aws iam create-policy-version \\\n"+
+				"\t--policy-arn %s \\\n"+
+				"\t--policy-document file://openshift_%s_policy.json \\\n"+
+				"\t--set-as-default",
+				policyARN, credrequest)
+			tagPolicy := fmt.Sprintf("aws iam tag-policy \\\n"+
+				"\t--tags %s \\\n"+
+				"\t--policy-arn %s",
+				policTags, policyARN)
+			commands = append(commands, createPolicy, tagPolicy)
+		}
 	}
 	return strings.Join(commands, "\n\n")
 }

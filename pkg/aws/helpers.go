@@ -343,55 +343,51 @@ func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	return roleName, nil
 }
 
-func GeneratePolicyFiles(reporter *rprtr.Object, env string) error {
-	for file := range AccountRoles {
-		filename := fmt.Sprintf("sts_%s_trust_policy.json", file)
-		path := fmt.Sprintf("templates/policies/%s", filename)
-
-		policy, err := ReadPolicyDocument(path, map[string]string{
-			"aws_account_id": JumpAccounts[env],
-		})
-		if err != nil {
-			return err
-		}
-
-		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = SaveDocument(policy, filename)
-		if err != nil {
-			return err
-		}
-
-		filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
-		path = fmt.Sprintf("templates/policies/%s", filename)
-
-		policy, err = ReadPolicyDocument(path)
-		if err != nil {
-			return err
-		}
-
-		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = SaveDocument(policy, filename)
-		if err != nil {
-			return err
+func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
+	generateOperatorRolePolicies bool) error {
+	if generateAccountRolePolicies {
+		for file := range AccountRoles {
+			filename := fmt.Sprintf("sts_%s_trust_policy.json", file)
+			path := fmt.Sprintf("templates/policies/%s", filename)
+			policy, err := ReadPolicyDocument(path, map[string]string{
+				"aws_account_id": JumpAccounts[env],
+			})
+			if err != nil {
+				return err
+			}
+			reporter.Debugf("Saving '%s' to the current directory", filename)
+			err = SaveDocument(policy, filename)
+			if err != nil {
+				return err
+			}
+			filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
+			path = fmt.Sprintf("templates/policies/%s", filename)
+			policy, err = ReadPolicyDocument(path)
+			if err != nil {
+				return err
+			}
+			reporter.Debugf("Saving '%s' to the current directory", filename)
+			err = SaveDocument(policy, filename)
+			if err != nil {
+				return err
+			}
 		}
 	}
-
-	for credrequest := range CredentialRequests {
-		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
-		path := fmt.Sprintf("templates/policies/%s", filename)
-
-		policy, err := ReadPolicyDocument(path)
-		if err != nil {
-			return err
-		}
-
-		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = SaveDocument(policy, filename)
-		if err != nil {
-			return err
+	if generateOperatorRolePolicies {
+		for credrequest := range CredentialRequests {
+			filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
+			path := fmt.Sprintf("templates/policies/%s", filename)
+			policy, err := ReadPolicyDocument(path)
+			if err != nil {
+				return err
+			}
+			reporter.Debugf("Saving '%s' to the current directory", filename)
+			err = SaveDocument(policy, filename)
+			if err != nil {
+				return err
+			}
 		}
 	}
-
 	return nil
 }
 

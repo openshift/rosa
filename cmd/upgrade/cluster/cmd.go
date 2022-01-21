@@ -25,11 +25,13 @@ import (
 
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/upgrade/accountroles"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -225,7 +227,6 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Expected a valid version to upgrade to")
 		os.Exit(1)
 	}
-
 	if scheduleDate == "" || scheduleTime == "" {
 		interactive.Enable()
 	}
@@ -236,18 +237,16 @@ func run(cmd *cobra.Command, _ []string) {
 		if reporter.IsTerminal() {
 			spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 		}
-
-		reporter.Infof("Ensuring cluster roles and policies are compatible with upgrade.")
+		reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
+			" are compatible with upgrade.", cluster.ID())
 		if spin != nil {
 			spin.Start()
 		}
-
 		prefix, err := aws.GetPrefixFromAccountRole(cluster)
 		if err != nil {
 			reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
 			os.Exit(1)
 		}
-
 		isAccountRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix, version)
 		if err != nil {
 			reporter.Errorf("Could not validate '%s' clusters account roles : %v", clusterKey, err)
@@ -260,13 +259,11 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Could not validate '%s' clusters operator roles : %v", clusterKey, err)
 			os.Exit(1)
 		}
-
 		if spin != nil {
 			spin.Stop()
 		}
-
 		if isAccountRoleUpgradeNeeded || isOperatorRoleUpgradeNeeded {
-			reporter.Infof("Account and operator roles needed upgrade")
+			reporter.Infof("Account and/or operator roles needed upgrade")
 			if interactive.Enabled() || mode == "" {
 				mode, err = interactive.GetOption(interactive.Input{
 					Question: "Upgrade mode",
@@ -280,7 +277,6 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 			}
-			reporter.Infof("Preparing to upgrade role policies")
 			accountroles.Cmd.Run(accountroles.Cmd, []string{prefix, mode})
 			if mode == aws.ModeManual {
 				reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
@@ -288,9 +284,25 @@ func run(cmd *cobra.Command, _ []string) {
 					"\trosa upgrade cluster --cluster %s\n", clusterKey)
 				os.Exit(0)
 			}
+		} else {
+			reporter.Infof("Account and operator roles are up-to-date")
 		}
 	}
 
+	upgradePolicyBuilder := cmv1.NewUpgradePolicy().
+		ScheduleType("manual").
+		Version(version)
+
+	upgradePolicy, err := upgradePolicyBuilder.Build()
+	if err != nil {
+		reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+	err = checkAndAckMissingAgreements(ocmClient, cluster, upgradePolicy, reporter, clusterKey)
+	if err != nil {
+		reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
 	// Set the default next run within the next 10 minutes
 	now := time.Now().UTC().Add(time.Minute * 10)
 	if scheduleDate == "" {
@@ -355,10 +367,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	upgradePolicyBuilder := cmv1.NewUpgradePolicy().
-		ScheduleType("manual").
-		Version(version).
-		NextRun(nextRun)
+	upgradePolicyBuilder = upgradePolicyBuilder.NextRun(nextRun)
 
 	nodeDrainGracePeriod := ""
 	// Determine if the cluster already has a node drain grace period set and use that as the default
@@ -420,7 +429,7 @@ func run(cmd *cobra.Command, _ []string) {
 		NodeDrainGracePeriodInMinutes: nodeDrainValue,
 	}
 
-	upgradePolicy, err := upgradePolicyBuilder.Build()
+	upgradePolicy, err = upgradePolicyBuilder.Build()
 	if err != nil {
 		reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -439,4 +448,44 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Infof("Upgrade successfully scheduled for cluster '%s'", clusterKey)
+}
+
+func checkAndAckMissingAgreements(ocmClient *ocm.Client, cluster *cmv1.Cluster, upgradePolicy *cmv1.UpgradePolicy,
+	reporter *rprtr.Object, clusterKey string) error {
+	// check if the cluster upgrade requires gate agreements
+	gates, err := ocmClient.GetMissingGateAgreements(cluster.ID(), upgradePolicy)
+	if err != nil {
+		return errors.Errorf("Failed to check for missing gate agreements upgrade for "+
+			"cluster '%s': %v", clusterKey, err)
+	}
+	isWarningDisplayed := false
+	for _, gate := range gates {
+		if !gate.STSOnly() {
+			if !isWarningDisplayed {
+				reporter.Warnf("Missing required acknowledgements to schedule upgrade. \n")
+				isWarningDisplayed = true
+			}
+			err = interactive.PrintHelp(interactive.Help{
+				Message: "Read the below description and acknowledge to proceed with upgrade",
+				Steps: []string{
+					fmt.Sprintf("Description: %s\n"+
+						"    URL:         %s\n", gate.Description(), gate.DocumentationURL()),
+				},
+			})
+			if err != nil {
+				return errors.Errorf("Failed to get version gate '%s' for cluster '%s': %v",
+					gate.ID(), clusterKey, err)
+			}
+			// for non sts gates we require user agreement
+			if !confirm.Prompt(true, "I acknowledge") {
+				os.Exit(0)
+			}
+		}
+		err = ocmClient.AckVersionGate(cluster.ID(), gate.ID())
+		if err != nil {
+			return errors.Errorf("Failed to acknowledge version gate '%s' for cluster '%s': %v",
+				gate.ID(), clusterKey, err)
+		}
+	}
+	return err
 }
