@@ -277,7 +277,14 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 			}
-			accountroles.Cmd.Run(accountroles.Cmd, []string{prefix, mode})
+			err := accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode})
+			if err != nil {
+				reporter.Infof("Account and/Or Operator Role policies are not valid with upgrade version %s. "+
+					"Run the following command(s) to upgrade the roles:\n\n"+
+					"\t%s\n",
+					version, fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix))
+				mode = aws.ModeManual
+			}
 			if mode == aws.ModeManual {
 				reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
 					" once account and operator roles have been upgraded : \n\n"+
