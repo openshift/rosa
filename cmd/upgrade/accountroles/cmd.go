@@ -34,7 +34,8 @@ import (
 )
 
 var args struct {
-	prefix string
+	prefix                      string
+	isInvokedFromClusterUpgrade bool
 }
 
 var Cmd = &cobra.Command{
@@ -44,7 +45,7 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade account-wide IAM roles to the latest version before upgrading your cluster.",
 	Example: `  # Upgrade account roles for ROSA STS clusters
   rosa upgrade account-roles`,
-	Run: run,
+	RunE: run,
 }
 
 func init() {
@@ -64,10 +65,11 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, argv []string) error {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
+	isInvokedFromClusterUpgrade := false
 	skipInteractive := false
 	if len(argv) == 2 && !cmd.Flag("prefix").Changed {
 		args.prefix = argv[0]
@@ -76,8 +78,9 @@ func run(cmd *cobra.Command, argv []string) {
 		if argv[1] != "" {
 			skipInteractive = true
 		}
+		isInvokedFromClusterUpgrade = true
 	}
-
+	args.isInvokedFromClusterUpgrade = isInvokedFromClusterUpgrade
 	mode, err := aws.GetMode()
 	if err != nil {
 		reporter.Errorf("%s", err)
@@ -166,6 +169,9 @@ func run(cmd *cobra.Command, argv []string) {
 		if isUpgradeNeedForAccountRolePolicies {
 			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID)
 			if err != nil {
+				if args.isInvokedFromClusterUpgrade {
+					return err
+				}
 				reporter.Errorf("Error upgrading the role polices: %s", err)
 				os.Exit(1)
 			}
@@ -173,6 +179,9 @@ func run(cmd *cobra.Command, argv []string) {
 		if isUpgradeNeedForOperatorRolePolicies {
 			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix)
 			if err != nil {
+				if args.isInvokedFromClusterUpgrade {
+					return err
+				}
 				reporter.Errorf("Error upgrading the operator role polices: %s", err)
 				os.Exit(1)
 			}
@@ -195,6 +204,7 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
+	return err
 }
 
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string) error {
@@ -202,6 +212,10 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 		name := aws.GetRoleName(prefix, role.Name)
 		if !confirm.Prompt(true, "Upgrade the '%s' role polices to version %s?", name,
 			aws.DefaultPolicyVersion) {
+			if args.isInvokedFromClusterUpgrade {
+				return reporter.Errorf("Account roles need to be upgraded to proceed" +
+					"")
+			}
 			continue
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy.json", file)
@@ -232,6 +246,10 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 
 func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, accountID string, prefix string) error {
 	if !confirm.Prompt(true, "Upgrade the operator role policies to version %s?", aws.DefaultPolicyVersion) {
+		if args.isInvokedFromClusterUpgrade {
+			return reporter.Errorf("Operator roles need to be upgraded to proceed" +
+				"")
+		}
 		return nil
 	}
 	for credrequest, operator := range aws.CredentialRequests {
