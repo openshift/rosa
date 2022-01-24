@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	semver "github.com/hashicorp/go-version"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -305,7 +306,7 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
-	err = checkAndAckMissingAgreements(ocmClient, cluster, upgradePolicy, reporter, clusterKey)
+	err = checkAndAckMissingAgreements(ocmClient, cluster, upgradePolicy, reporter, clusterKey, version)
 	if err != nil {
 		reporter.Errorf("%v", err)
 		os.Exit(1)
@@ -458,7 +459,7 @@ func run(cmd *cobra.Command, _ []string) {
 }
 
 func checkAndAckMissingAgreements(ocmClient *ocm.Client, cluster *cmv1.Cluster, upgradePolicy *cmv1.UpgradePolicy,
-	reporter *rprtr.Object, clusterKey string) error {
+	reporter *rprtr.Object, clusterKey string, version string) error {
 	// check if the cluster upgrade requires gate agreements
 	gates, err := ocmClient.GetMissingGateAgreements(cluster.ID(), upgradePolicy)
 	if err != nil {
@@ -467,6 +468,14 @@ func checkAndAckMissingAgreements(ocmClient *ocm.Client, cluster *cmv1.Cluster, 
 	}
 	isWarningDisplayed := false
 	for _, gate := range gates {
+		isValidGateVersion, err := checkGateVersion(gate.VersionRawIDPrefix(), version)
+		if err != nil {
+			return errors.Errorf("Failed validate the gate version %s", gate.VersionRawIDPrefix())
+		}
+		if !isValidGateVersion {
+			reporter.Debugf("Gate version is not applicable %s", gate.VersionRawIDPrefix())
+			continue
+		}
 		if !gate.STSOnly() {
 			if !isWarningDisplayed {
 				reporter.Warnf("Missing required acknowledgements to schedule upgrade. \n")
@@ -495,4 +504,34 @@ func checkAndAckMissingAgreements(ocmClient *ocm.Client, cluster *cmv1.Cluster, 
 		}
 	}
 	return err
+}
+
+func checkGateVersion(gVersion string, uVersion string) (bool, error) {
+	if gVersion == uVersion {
+		return true, nil
+	}
+	upgradeVersion, err := semver.NewVersion(uVersion)
+	if err != nil {
+		return false, err
+	}
+
+	gateVersion, err := semver.NewVersion(gVersion)
+	if err != nil {
+		return false, err
+	}
+	upgradeVersionSegments := upgradeVersion.Segments64()
+	gateVersionSegments := gateVersion.Segments64()
+
+	gateMajorMinorVersion := fmt.Sprintf("%d.%d", gateVersionSegments[0], gateVersionSegments[1])
+	ver, err := semver.NewVersion(gateMajorMinorVersion)
+	if err != nil {
+		return false, err
+	}
+	c, err := semver.NewConstraint(fmt.Sprintf("=%d.%d",
+		upgradeVersionSegments[0], upgradeVersionSegments[1]))
+
+	if err != nil {
+		return false, err
+	}
+	return c.Check(ver), nil
 }
