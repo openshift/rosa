@@ -27,6 +27,7 @@ import (
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -34,28 +35,47 @@ import (
 )
 
 var args struct {
-	version string
-	gate    string
+	version    string
+	gate       string
+	clusterKey string
 }
 
 var Cmd = &cobra.Command{
 	Use:     "gates",
 	Aliases: []string{"gates"},
 	Short:   "List available OCP Gates",
-	Long:    "List available OCP Gates.",
-	Example: `  # List all available OCP Gates 
-  rosa list gates --version 4.9`,
-	Run: run,
-}
+	Long:    "List available OCP Gates for a specific OCP release or by cluster upgrade version",
+	Example: `  # List all OCP gates for OCP version
+  rosa list gates --version 4.9
+
+  # List all STS gates for OCP version
+  rosa list gates --gate sts --version 4.9
+
+  # List all OCP gates for OCP version
+  rosa list gates --gate ocp --version 4.9
+
+  # List available gates for cluster upgrade version
+  rosa list gates -c <cluster_id> --version 4.9.15`,
+	Run: run}
 
 func init() {
 	flags := Cmd.Flags()
+
+	flags.StringVarP(
+		&args.clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster.",
+	)
+
 	flags.StringVar(
 		&args.version,
 		"version",
 		"",
 		"OCP version",
 	)
+
 	flags.StringVar(
 		&args.gate,
 		"gate",
@@ -73,11 +93,23 @@ const (
 	GateOCP = "ocp"
 )
 
-var Gates = []string{GateSTS, GateOCP}
+var (
+	Gates        = []string{GateSTS, GateOCP}
+	versionGates = []*v1.VersionGate{}
+)
 
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	// Create the AWS client:
+	awsClient, err := aws.NewClient().
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create AWS client: %v", err)
+		os.Exit(1)
+	}
 
 	// Create the client for the OCM API:
 	ocmClient, err := ocm.NewClient().
@@ -94,47 +126,94 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}()
 
-	var versionGates []*v1.VersionGate
-
 	version, err := parseMajorMinor(args.version)
 	if err != nil {
 		reporter.Errorf("Unable to parse version %s: %v", version, err)
 	}
 
-	// Query OCM for available OCP gates
-	reporter.Debugf("Fetching available gates")
-	switch args.gate {
-	case GateSTS:
-		versionGates, err = ocmClient.ListStsGates(version)
+	if args.clusterKey != "" {
+		awsCreator, err := awsClient.GetCreator()
 		if err != nil {
-			reporter.Errorf("Failed to fetch available %s gates for OCP version %s: %v", args.gate, args.version, err)
+			reporter.Errorf("Failed to get AWS creator: %v", err)
 			os.Exit(1)
 		}
-	case GateOCP:
-		versionGates, err = ocmClient.ListOcpGates(version)
+
+		ocm.SetClusterKey(args.clusterKey)
+
+		clusterKey, err := ocm.GetClusterKey()
 		if err != nil {
-			reporter.Errorf("Failed to fetch available %s gates for OCP version %s: %v", args.gate, args.version, err)
+			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-	case "":
-		versionGates, err = ocmClient.ListAllOcpGates(version)
+
+		// Try to find the cluster:
+		reporter.Debugf("Loading cluster '%s'", clusterKey)
+		cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
 		if err != nil {
-			reporter.Errorf("Failed to fetch available %s gates for OCP version %s: %v", args.gate, args.version, err)
+			reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
-	default:
-		reporter.Errorf("Invalid gate. Allowed values are %s and \"\" for all", strings.Join(Gates, ","))
-		os.Exit(1)
+
+		if cluster.State() != v1.ClusterStateReady {
+			reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+			os.Exit(1)
+		}
+
+		upgradePolicyBuilder := v1.NewUpgradePolicy().
+			ScheduleType("manual").
+			Version(args.version)
+
+		upgradePolicy, err := upgradePolicyBuilder.Build()
+		if err != nil {
+			reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+
+		// check if the cluster upgrade requires gate agreements
+		versionGates, err = ocmClient.GetMissingGateAgreements(cluster.ID(), upgradePolicy)
+		if err != nil {
+			reporter.Errorf("Failed to check for missing gate agreements upgrade for "+
+				"cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
 	}
 
-	if err != nil {
-		reporter.Errorf("Failed to fetch available OCP gates for OCP version %s: %v", err, args.version)
-		os.Exit(1)
-	}
+	if args.clusterKey == "" {
+		// Query OCM for available OCP gates
+		reporter.Debugf("Fetching available gates")
+		switch args.gate {
+		case GateSTS:
+			versionGates, err = ocmClient.ListStsGates(version)
+			if err != nil {
+				reporter.Errorf("Failed to fetch available %s gates for OCP version %s: %v", args.gate, args.version, err)
+				os.Exit(1)
+			}
+		case GateOCP:
+			versionGates, err = ocmClient.ListOcpGates(version)
+			if err != nil {
+				reporter.Errorf("Failed to fetch available %s gates for OCP version %s: %v", args.gate, args.version, err)
+				os.Exit(1)
+			}
+		case "":
+			versionGates, err = ocmClient.ListAllOcpGates(version)
+			if err != nil {
+				reporter.Errorf("Failed to fetch available %s gates for OCP version %s: %v", args.gate, args.version, err)
+				os.Exit(1)
+			}
+		default:
+			reporter.Errorf("Invalid gate. Allowed values are %s and \"\" for all", strings.Join(Gates, ","))
+			os.Exit(1)
+		}
 
-	if len(versionGates) == 0 {
-		reporter.Warnf("There are no gates for OCP version %s", args.version)
-		os.Exit(1)
+		if err != nil {
+			reporter.Errorf("Failed to fetch available OCP gates for OCP version %s: %v", err, args.version)
+			os.Exit(1)
+		}
+
+		if len(versionGates) == 0 {
+			reporter.Warnf("There are no gates for OCP version %s", args.version)
+			os.Exit(1)
+		}
 	}
 
 	if output.HasFlag() {
