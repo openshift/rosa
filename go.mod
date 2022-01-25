@@ -14,9 +14,9 @@ require (
 	github.com/hashicorp/go-version v1.3.0
 	github.com/mattn/go-colorable v0.1.7 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
-	github.com/onsi/ginkgo/v2 v2.0.0
+	github.com/onsi/ginkgo/v2 v2.1.0
 	github.com/onsi/gomega v1.17.0
-	github.com/openshift-online/ocm-sdk-go v0.1.235
+	github.com/openshift-online/ocm-sdk-go v0.1.236
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.1.3

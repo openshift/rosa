@@ -472,12 +472,18 @@ func checkAndAckMissingAgreements(ocmClient *ocm.Client, cluster *cmv1.Cluster, 
 				reporter.Warnf("Missing required acknowledgements to schedule upgrade. \n")
 				isWarningDisplayed = true
 			}
+			str := fmt.Sprintf("Description: %s\n", gate.Description())
+
+			if gate.WarningMessage() != "" {
+				str = fmt.Sprintf("%s"+
+					"    Warning:     %s\n", str, gate.WarningMessage())
+			}
+			str = fmt.Sprintf("%s"+
+				"    URL:         %s\n", str, gate.DocumentationURL())
+
 			err = interactive.PrintHelp(interactive.Help{
 				Message: "Read the below description and acknowledge to proceed with upgrade",
-				Steps: []string{
-					fmt.Sprintf("Description: %s\n"+
-						"    URL:         %s\n", gate.Description(), gate.DocumentationURL()),
-				},
+				Steps:   []string{str},
 			})
 			if err != nil {
 				return errors.Errorf("Failed to get version gate '%s' for cluster '%s': %v",

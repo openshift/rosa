@@ -128,6 +128,15 @@ func writeVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("version_raw_id_prefix")
 		stream.WriteString(object.versionRawIDPrefix)
+		count++
+	}
+	present_ = object.bitmap_&1024 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("warning_message")
+		stream.WriteString(object.warningMessage)
 	}
 	stream.WriteObjectEnd()
 }
@@ -199,6 +208,10 @@ func readVersionGate(iterator *jsoniter.Iterator) *VersionGate {
 			value := iterator.ReadString()
 			object.versionRawIDPrefix = value
 			object.bitmap_ |= 512
+		case "warning_message":
+			value := iterator.ReadString()
+			object.warningMessage = value
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}

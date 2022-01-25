@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.236 Jan 25 2022
+- Update to model v0.0.169
+  - Version gate type: Add warning message field
+
 ## 0.1.235 Jan 11 2022
 
 - Install metamodel with `go install`

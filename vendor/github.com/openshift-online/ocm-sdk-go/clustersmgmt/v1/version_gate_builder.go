@@ -36,6 +36,7 @@ type VersionGateBuilder struct {
 	label              string
 	value              string
 	versionRawIDPrefix string
+	warningMessage     string
 	stsOnly            bool
 }
 
@@ -132,6 +133,15 @@ func (b *VersionGateBuilder) VersionRawIDPrefix(value string) *VersionGateBuilde
 	return b
 }
 
+// WarningMessage sets the value of the 'warning_message' attribute to the given value.
+//
+//
+func (b *VersionGateBuilder) WarningMessage(value string) *VersionGateBuilder {
+	b.warningMessage = value
+	b.bitmap_ |= 1024
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *VersionGateBuilder) Copy(object *VersionGate) *VersionGateBuilder {
 	if object == nil {
@@ -147,6 +157,7 @@ func (b *VersionGateBuilder) Copy(object *VersionGate) *VersionGateBuilder {
 	b.label = object.label
 	b.value = object.value
 	b.versionRawIDPrefix = object.versionRawIDPrefix
+	b.warningMessage = object.warningMessage
 	return b
 }
 
@@ -163,5 +174,6 @@ func (b *VersionGateBuilder) Build() (object *VersionGate, err error) {
 	object.label = b.label
 	object.value = b.value
 	object.versionRawIDPrefix = b.versionRawIDPrefix
+	object.warningMessage = b.warningMessage
 	return
 }
