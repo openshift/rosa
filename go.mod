@@ -17,6 +17,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.0.0
 	github.com/onsi/gomega v1.17.0
 	github.com/openshift-online/ocm-sdk-go v0.1.235
+	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
