@@ -48,6 +48,7 @@ type VersionGate struct {
 	label              string
 	value              string
 	versionRawIDPrefix string
+	warningMessage     string
 	stsOnly            bool
 }
 
@@ -267,6 +268,29 @@ func (o *VersionGate) GetVersionRawIDPrefix() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.versionRawIDPrefix
+	}
+	return
+}
+
+// WarningMessage returns the value of the 'warning_message' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// WarningMessage is a warning that will be displayed to the user before they acknowledge the gate
+func (o *VersionGate) WarningMessage() string {
+	if o != nil && o.bitmap_&1024 != 0 {
+		return o.warningMessage
+	}
+	return ""
+}
+
+// GetWarningMessage returns the value of the 'warning_message' attribute and
+// a flag indicating if the attribute has a value.
+//
+// WarningMessage is a warning that will be displayed to the user before they acknowledge the gate
+func (o *VersionGate) GetWarningMessage() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&1024 != 0
+	if ok {
+		value = o.warningMessage
 	}
 	return
 }

@@ -22,7 +22,7 @@ export GOPROXY=https://proxy.golang.org
 export CGO_ENABLED=0
 
 # Details of the model to use:
-model_version:=v0.0.168
+model_version:=v0.0.169
 model_url:=https://github.com/openshift-online/ocm-api-model.git
 
 # Details of the metamodel to use:
@@ -37,7 +37,7 @@ examples:
 
 .PHONY: test tests
 test tests:
-	ginkgo -r
+	ginkgo run -r
 
 .PHONY: fmt
 fmt:
