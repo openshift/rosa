@@ -308,10 +308,9 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 
 		roleARN, err := awsClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
 			map[string]string{
-				tags.ClusterID:        cluster.ID(),
-				tags.OpenShiftVersion: accountRoleVersion,
-				"operator_namespace":  operator.Namespace,
-				"operator_name":       operator.Name,
+				tags.ClusterID:       cluster.ID(),
+				"operator_namespace": operator.Namespace,
+				"operator_name":      operator.Name,
 			})
 		if err != nil {
 			return err
@@ -336,9 +335,9 @@ func buildCommands(reporter *rprtr.Object,
 
 	for credrequest, operator := range aws.CredentialRequests {
 		roleName := getRoleName(cluster, operator)
-
+		policyARN := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
 		name := aws.GetPolicyName(prefix, operator.Namespace, operator.Name)
-		_, err := awsClient.IsPolicyExists(name)
+		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			iamTags := fmt.Sprintf(
 				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
@@ -354,24 +353,19 @@ func buildCommands(reporter *rprtr.Object,
 				name, credrequest, iamTags)
 			commands = append(commands, createPolicy)
 		}
-		policyARN := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-
 		policy, err := generateRolePolicyDoc(cluster, accountID, operator)
 		if err != nil {
 			return "", err
 		}
-
 		filename := fmt.Sprintf("operator_%s_policy.json", credrequest)
 		reporter.Debugf("Saving '%s' to the current directory", filename)
 		err = saveDocument(policy, filename)
 		if err != nil {
 			return "", err
 		}
-
 		iamTags := fmt.Sprintf(
-			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.ClusterID, cluster.ID(),
-			tags.OpenShiftVersion, accountRoleVersion,
 			tags.RolePrefix, prefix,
 			"operator_namespace", operator.Namespace,
 			"operator_name", operator.Name,
@@ -392,7 +386,6 @@ func buildCommands(reporter *rprtr.Object,
 			roleName, policyARN)
 		commands = append(commands, createRole, attachRolePolicy)
 	}
-
 	return strings.Join(commands, "\n\n"), nil
 }
 
