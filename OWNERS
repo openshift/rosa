@@ -3,6 +3,7 @@ reviewers:
 - igoihman
 - jharrington22
 - pvasant
+- tbrisker
 - vkareh
 - zgalor
 approvers:
@@ -12,6 +13,7 @@ approvers:
 - jharrington22
 - jhernand
 - pvasant
+- tbrisker
 - vkareh
 - zgalor
 maintainers:
@@ -19,5 +21,6 @@ maintainers:
 - igoihman
 - jharrington22
 - pvasant
+- tbrisker
 - vkareh
 - zgalor
