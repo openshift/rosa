@@ -62,6 +62,9 @@ func ValidateMachineType(machineType string, machineTypes []*MachineType, multiA
 		// Check and set the cluster machineType
 		hasMachineType := false
 		for _, v := range machineTypes {
+			if !v.Available {
+				continue
+			}
 			machineTypeList = append(machineTypeList, v.MachineType.ID())
 			if v.MachineType.ID() == machineType {
 				if v.MachineType.Category() == AcceleratedComputing && v.AvailableQuota < getDefaultNodes(multiAZ) {
