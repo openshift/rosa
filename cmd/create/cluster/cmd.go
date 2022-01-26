@@ -1451,10 +1451,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	var dMachinecidr *net.IPNet
-	var dPodcidr *net.IPNet
-	var dServicecidr *net.IPNet
 	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocmClient.GetDefaultClusterFlavors(args.flavour)
+	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
+		reporter.Errorf("Error retrieving default cluster flavors")
+		os.Exit(1)
+	}
 
 	// Machine CIDR:
 	machineCIDR := args.machineCIDR
