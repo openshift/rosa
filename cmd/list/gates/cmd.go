@@ -27,6 +27,7 @@ import (
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/nathan-fiscaletti/consolesize-go"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -226,17 +227,30 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "Gate Description\t\tSTS\t\tOCP Version\t\tDocumentation URL\n")
+	cols, _ := consolesize.GetConsoleSize()
+	descriptionSize := float64(cols) * 0.30
+	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+	fmt.Fprintln(writer, "Gate Description\tSTS\tOCP Version\tDocumentation URL\t")
 
 	for _, gate := range versionGates {
-		fmt.Fprintf(writer,
-			"%s\t\t%t\t\t%s\t\t%s\n",
-			gate.Description(),
-			gate.STSOnly(),
-			gate.VersionRawIDPrefix(),
-			gate.DocumentationURL(),
-		)
+		wrappedDescription := wordWrap(strings.TrimSuffix(gate.Description(), "\n"), int(descriptionSize))
+
+		for i, line := range strings.Split(wrappedDescription, "\n") {
+			if i == 0 {
+				fmt.Fprintf(writer,
+					"%s\t%t\t%s\t%s\t\n",
+					line,
+					gate.STSOnly(),
+					gate.VersionRawIDPrefix(),
+					gate.DocumentationURL(),
+				)
+			} else {
+				fmt.Fprintf(writer,
+					"%s\t \t \t \t\n",
+					line,
+				)
+			}
+		}
 	}
 	writer.Flush()
 }
@@ -249,4 +263,23 @@ func parseMajorMinor(version string) (string, error) {
 	versionSplit := parsedVersion.Segments64()
 	return fmt.Sprintf("%d.%d",
 		versionSplit[0], versionSplit[1]), err
+}
+
+func wordWrap(text string, lineWidth int) (wrapped string) {
+	words := strings.Fields(strings.TrimSpace(text))
+	if len(words) == 0 {
+		return text
+	}
+	wrapped = words[0]
+	spaceLeft := lineWidth - len(wrapped)
+	for _, word := range words[1:] {
+		if len(word)+1 > spaceLeft {
+			wrapped += "\n" + word
+			spaceLeft = lineWidth - len(word)
+		} else {
+			wrapped += " " + word
+			spaceLeft -= 1 + len(word)
+		}
+	}
+	return
 }
