@@ -2,6 +2,37 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.8 Jan 27 2022
+
+- Adding password argument to create admin
+- Add stop and run instance permissions for support
+- Send rosa cli login event to pendo
+- Generate static assets for STS support permissions
+- Fix linter errors
+- Update to version 4 of JWT library
+- Update to Ginkgo 2
+- Bump go version to 1.16
+- fix etcdEncryption
+- OVN: Add network type selection
+- fixed issue with operator role upgrade
+- fixed upgade' to 'upgrade'
+- fix issue with delete operatorrole/oidcprovider role
+- clean up upgrade command
+- idp: Enable interactive mode when missing required flags
+- add rosa cli version to header
+- Add gate support in rosa cli cluster upgrade
+- Add version gate ackto ROSA
+- updated
+- remove openshift version from operator role name
+- Fix missing vendored module
+- Addsupportforwarningmessage
+- Avoid nil pointer dereference in cluster create
+- Verify chosen machine pool type is available
+- Revert "Verify chosen machine pool type is available"
+- ocp: Add ack gate support
+- ocp: Add cluster flag for list gates
+- ocp: Add word wrapping to list gates output
+
 == 1.1.7 Dec 7 2021
 
 - Fix crash when calling link cmd internally
