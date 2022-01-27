@@ -538,7 +538,7 @@ func run(cmd *cobra.Command, _ []string) {
 		isSTS, err = interactive.GetBool(interactive.Input{
 			Question: "Deploy cluster using AWS STS",
 			Help:     cmd.Flags().Lookup("sts").Usage,
-			Default:  isSTS,
+			Default:  true,
 			Required: true,
 		})
 		if err != nil {
