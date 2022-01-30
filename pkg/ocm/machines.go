@@ -89,18 +89,6 @@ func ValidateMachineType(machineType string, machineTypes MachineTypeList, multi
 	return machineType, nil
 }
 
-func GetAvailableMachineTypeList(machineTypes MachineTypeList, multiAZ bool) (machineTypeList []string) {
-	for _, v := range machineTypes {
-		if !v.Available {
-			continue
-		}
-		if v.MachineType.Category() != AcceleratedComputing || v.AvailableQuota > getDefaultNodes(multiAZ) {
-			machineTypeList = append(machineTypeList, v.MachineType.ID())
-		}
-	}
-	return
-}
-
 func getDefaultNodes(multiAZ bool) int {
 	minimumNodes := 2
 	if multiAZ {
@@ -213,4 +201,12 @@ func (mtl *MachineTypeList) Each(f func(item *MachineType) bool) {
 			break
 		}
 	}
+}
+
+func (mtl *MachineTypeList) GetAvailableIDs(multiAZ bool) (machineTypeList []string) {
+	list := mtl.Filter(func(mt *MachineType) bool {
+		return mt.Available &&
+			(mt.MachineType.Category() != AcceleratedComputing || mt.AvailableQuota > getDefaultNodes(multiAZ))
+	})
+	return list.IDs()
 }

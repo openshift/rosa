@@ -1300,7 +1300,7 @@ func run(cmd *cobra.Command, _ []string) {
 		computeMachineType, err = interactive.GetOption(interactive.Input{
 			Question: "Compute nodes instance type",
 			Help:     cmd.Flags().Lookup("compute-machine-type").Usage,
-			Options:  ocm.GetAvailableMachineTypeList(computeMachineTypeList, multiAZ),
+			Options:  computeMachineTypeList.GetAvailableIDs(multiAZ),
 			Default:  computeMachineType,
 		})
 		if err != nil {

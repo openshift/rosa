@@ -345,7 +345,7 @@ func run(cmd *cobra.Command, _ []string) {
 		instanceType, err = interactive.GetOption(interactive.Input{
 			Question: "Instance type",
 			Help:     cmd.Flags().Lookup("instance-type").Usage,
-			Options:  ocm.GetAvailableMachineTypeList(instanceTypeList, cluster.MultiAZ()),
+			Options:  instanceTypeList.GetAvailableIDs(cluster.MultiAZ()),
 			Default:  instanceType,
 			Required: true,
 		})
