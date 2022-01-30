@@ -115,7 +115,7 @@ func ValidateAdditionalTrustBundle(val interface{}) error {
 		}
 		additionalTrustBundleBytes := []byte(additionalTrustBundle)
 		if !x509.NewCertPool().AppendCertsFromPEM(additionalTrustBundleBytes) {
-			return errors.Errorf("%s", "Failed to parse trust bundle")
+			return errors.Errorf("%s", "Failed to parse additional trust bundle")
 		}
 		return nil
 	}
