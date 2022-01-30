@@ -1308,7 +1308,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	computeMachineType, err = ocm.ValidateMachineType(computeMachineType, computeMachineTypeList, multiAZ)
+	err = computeMachineTypeList.ValidateMachineType(computeMachineType, multiAZ)
 	if err != nil {
 		reporter.Errorf("Expected a valid machine type: %s", err)
 		os.Exit(1)

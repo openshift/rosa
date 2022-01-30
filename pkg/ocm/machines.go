@@ -63,32 +63,6 @@ func (c *Client) GetMachineTypes() (machineTypes MachineTypeList, err error) {
 	return
 }
 
-// Validate AWS machine types
-func ValidateMachineType(machineType string, machineTypes MachineTypeList, multiAZ bool) (string, error) {
-	if machineType != "" {
-		var machineTypeList []string
-		// Check and set the cluster machineType
-		hasMachineType := false
-		for _, v := range machineTypes {
-			machineTypeList = append(machineTypeList, v.MachineType.ID())
-			if v.MachineType.ID() == machineType {
-				if v.MachineType.Category() == AcceleratedComputing && v.AvailableQuota < getDefaultNodes(multiAZ) {
-					err := fmt.Errorf("Insufficient quota for instance type: %s", machineType)
-					return machineType, err
-				}
-				hasMachineType = true
-			}
-		}
-		if !hasMachineType {
-			allMachineTypes := strings.Join(machineTypeList, " ")
-			err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
-			return machineType, err
-		}
-	}
-
-	return machineType, nil
-}
-
 func getDefaultNodes(multiAZ bool) int {
 	minimumNodes := 2
 	if multiAZ {
@@ -209,4 +183,25 @@ func (mtl *MachineTypeList) GetAvailableIDs(multiAZ bool) (machineTypeList []str
 			(mt.MachineType.Category() != AcceleratedComputing || mt.AvailableQuota > getDefaultNodes(multiAZ))
 	})
 	return list.IDs()
+}
+
+// Validate AWS machine type is available with enough quota in the list
+func (mtl *MachineTypeList) ValidateMachineType(machineType string, multiAZ bool) error {
+	if machineType == "" {
+		return nil
+	}
+	v := mtl.Find(machineType)
+
+	if v == nil {
+		allMachineTypes := strings.Join(mtl.IDs(), " ")
+		err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
+		return err
+	}
+
+	if v.MachineType.Category() == AcceleratedComputing && v.AvailableQuota < getDefaultNodes(multiAZ) {
+		err := fmt.Errorf("Insufficient quota for instance type: %s", machineType)
+		return err
+	}
+
+	return nil
 }
