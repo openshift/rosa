@@ -81,20 +81,6 @@ func ValidateMachineType(machineType string, machineTypes []*MachineType, multiA
 	return machineType, nil
 }
 
-func (c *Client) GetMachineTypeList() (machineTypeList []string, err error) {
-	machineTypes, err := c.GetMachineTypes()
-	if err != nil {
-		err = fmt.Errorf("Failed to retrieve machine types: %s", err)
-		return
-	}
-
-	for _, v := range machineTypes {
-		machineTypeList = append(machineTypeList, v.ID())
-	}
-
-	return
-}
-
 func GetAvailableMachineTypeList(machineTypes []*MachineType, multiAZ bool) (machineTypeList []string) {
 	for _, v := range machineTypes {
 		if !v.Available {
