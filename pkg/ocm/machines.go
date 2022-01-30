@@ -27,13 +27,13 @@ import (
 
 const AcceleratedComputing = "accelerated_computing"
 
-func (c *Client) GetMachineTypes() (machineTypes []*cmv1.MachineType, err error) {
+func (c *Client) GetMachineTypes() (machineTypes MachineTypeList, err error) {
 	collection := c.ocm.ClustersMgmt().V1().MachineTypes()
 	page := 1
 	size := 100
 	for {
 		var response *cmv1.MachineTypesListResponse
-		response, err = collection.List().
+		response, err := collection.List().
 			Search("cloud_provider.id = 'aws'").
 			Order("cpu asc").
 			Page(page).
@@ -46,12 +46,20 @@ func (c *Client) GetMachineTypes() (machineTypes []*cmv1.MachineType, err error)
 			}
 			return nil, errors.New(errMsg)
 		}
-		machineTypes = append(machineTypes, response.Items().Slice()...)
+
+		response.Items().Each(func(item *cmv1.MachineType) bool {
+			machineTypes = append(machineTypes, &MachineType{
+				MachineType: item,
+			})
+			return true
+		})
+
 		if response.Size() < size {
 			break
 		}
 		page++
 	}
+
 	return
 }
 
@@ -112,6 +120,34 @@ func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	quotaCosts, err := c.getQuotaCosts()
+	if err != nil {
+		return nil, err
+	}
+
+	machineTypes.Each(func(machineType *MachineType) bool {
+		if machineType.MachineType.Category() != AcceleratedComputing {
+			machineType.Available = true
+			return true
+		}
+		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
+			for _, relatedResource := range quotaCost.RelatedResources() {
+				if machineType.MachineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
+					availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
+					machineType.Available = availableQuota > 1
+					machineType.AvailableQuota = availableQuota
+					return false
+				}
+			}
+			return true
+		})
+		return true
+	})
+	return machineTypes, nil
+}
+
+func (c *Client) getQuotaCosts() (*amsv1.QuotaCostList, error) {
 	acctResponse, err := c.ocm.AccountsMgmt().V1().CurrentAccount().
 		Get().
 		Send()
@@ -131,31 +167,8 @@ func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
 	if err != nil {
 		return nil, handleErr(quotaCostResponse.Error(), err)
 	}
-	var availableMachineTypes MachineTypeList
 	quotaCosts := quotaCostResponse.Items()
-
-	for _, machineType := range machineTypes {
-		availableMachineType := &MachineType{
-			MachineType: machineType,
-		}
-		if machineType.Category() == AcceleratedComputing {
-			quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
-				for _, relatedResource := range quotaCost.RelatedResources() {
-					if machineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
-						availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
-						availableMachineType.Available = availableQuota > 1
-						availableMachineType.AvailableQuota = availableQuota
-						return false
-					}
-				}
-				return true
-			})
-		} else {
-			availableMachineType.Available = true
-		}
-		availableMachineTypes = append(availableMachineTypes, availableMachineType)
-	}
-	return availableMachineTypes, nil
+	return quotaCosts, nil
 }
 
 // A list of MachineTypes with additional information
@@ -191,11 +204,13 @@ func (mtl *MachineTypeList) Filter(fn func(*MachineType) bool) MachineTypeList {
 	return res
 }
 
-// Map returns a new MachineTypeList with fn applied to each element
-func (mtl *MachineTypeList) Map(fn func(*MachineType) *MachineType) MachineTypeList {
-	res := make(MachineTypeList, len(*mtl))
-	for _, v := range *mtl {
-		res = append(res, fn(v))
+// Each runs the given function for each item of the list, in order. If the function
+// returns false the iteration stops, otherwise it continues till all the elements
+// of the list have been processed.
+func (mtl *MachineTypeList) Each(f func(item *MachineType) bool) {
+	for _, item := range *mtl {
+		if !f(item) {
+			break
+		}
 	}
-	return res
 }
