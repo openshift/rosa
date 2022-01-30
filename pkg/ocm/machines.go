@@ -88,24 +88,7 @@ func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
 		return nil, err
 	}
 
-	machineTypes.Each(func(machineType *MachineType) bool {
-		if machineType.MachineType.Category() != AcceleratedComputing {
-			machineType.Available = true
-			return true
-		}
-		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
-			for _, relatedResource := range quotaCost.RelatedResources() {
-				if machineType.MachineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
-					availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
-					machineType.Available = availableQuota > 1
-					machineType.AvailableQuota = availableQuota
-					return false
-				}
-			}
-			return true
-		})
-		return true
-	})
+	machineTypes.UpdateAvailableQuota(quotaCosts)
 	return machineTypes, nil
 }
 
@@ -166,14 +149,23 @@ func (mtl *MachineTypeList) Filter(fn func(*MachineType) bool) MachineTypeList {
 	return res
 }
 
-// Each runs the given function for each item of the list, in order. If the function
-// returns false the iteration stops, otherwise it continues till all the elements
-// of the list have been processed.
-func (mtl *MachineTypeList) Each(f func(item *MachineType) bool) {
-	for _, item := range *mtl {
-		if !f(item) {
-			break
+func (mtl *MachineTypeList) UpdateAvailableQuota(quotaCosts *amsv1.QuotaCostList) {
+	for _, machineType := range *mtl {
+		if machineType.MachineType.Category() != AcceleratedComputing {
+			machineType.Available = true
+			continue
 		}
+		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
+			for _, relatedResource := range quotaCost.RelatedResources() {
+				if machineType.MachineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
+					availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
+					machineType.Available = availableQuota > 1
+					machineType.AvailableQuota = availableQuota
+					return false
+				}
+			}
+			return true
+		})
 	}
 }
 
