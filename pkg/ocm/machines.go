@@ -56,7 +56,7 @@ func (c *Client) GetMachineTypes() (machineTypes []*cmv1.MachineType, err error)
 }
 
 // Validate AWS machine types
-func ValidateMachineType(machineType string, machineTypes []*MachineType, multiAZ bool) (string, error) {
+func ValidateMachineType(machineType string, machineTypes MachineTypeList, multiAZ bool) (string, error) {
 	if machineType != "" {
 		var machineTypeList []string
 		// Check and set the cluster machineType
@@ -81,7 +81,7 @@ func ValidateMachineType(machineType string, machineTypes []*MachineType, multiA
 	return machineType, nil
 }
 
-func GetAvailableMachineTypeList(machineTypes []*MachineType, multiAZ bool) (machineTypeList []string) {
+func GetAvailableMachineTypeList(machineTypes MachineTypeList, multiAZ bool) (machineTypeList []string) {
 	for _, v := range machineTypes {
 		if !v.Available {
 			continue
@@ -107,7 +107,7 @@ type MachineType struct {
 	AvailableQuota int
 }
 
-func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
+func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
 	machineTypes, err := c.GetMachineTypes()
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
 	if err != nil {
 		return nil, handleErr(quotaCostResponse.Error(), err)
 	}
-	var availableMachineTypes []*MachineType
+	var availableMachineTypes MachineTypeList
 	quotaCosts := quotaCostResponse.Items()
 
 	for _, machineType := range machineTypes {
@@ -156,4 +156,46 @@ func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
 		availableMachineTypes = append(availableMachineTypes, availableMachineType)
 	}
 	return availableMachineTypes, nil
+}
+
+// A list of MachineTypes with additional information
+type MachineTypeList []*MachineType
+
+// IDs extracts list of IDs from a MachineTypeList
+func (mtl *MachineTypeList) IDs() []string {
+	res := make([]string, len(*mtl))
+	for i, v := range *mtl {
+		res[i] = v.MachineType.ID()
+	}
+	return res
+}
+
+// Find returns the first MachineType matching the ID
+func (mtl *MachineTypeList) Find(id string) *MachineType {
+	for _, v := range *mtl {
+		if v.MachineType.ID() == id {
+			return v
+		}
+	}
+	return nil
+}
+
+// Filter returns a new MachineTypeList with only elements for which fn returned true
+func (mtl *MachineTypeList) Filter(fn func(*MachineType) bool) MachineTypeList {
+	var res MachineTypeList
+	for _, v := range *mtl {
+		if fn(v) {
+			res = append(res, v)
+		}
+	}
+	return res
+}
+
+// Map returns a new MachineTypeList with fn applied to each element
+func (mtl *MachineTypeList) Map(fn func(*MachineType) *MachineType) MachineTypeList {
+	res := make(MachineTypeList, len(*mtl))
+	for _, v := range *mtl {
+		res = append(res, fn(v))
+	}
+	return res
 }
