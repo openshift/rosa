@@ -74,7 +74,11 @@ func getDefaultNodes(multiAZ bool) int {
 type MachineType struct {
 	MachineType    *cmv1.MachineType
 	Available      bool
-	AvailableQuota int
+	availableQuota int
+}
+
+func (mt MachineType) HasQuota(multiAZ bool) bool {
+	return mt.MachineType.Category() != AcceleratedComputing || mt.availableQuota > getDefaultNodes(multiAZ)
 }
 
 func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
@@ -160,7 +164,7 @@ func (mtl *MachineTypeList) UpdateAvailableQuota(quotaCosts *amsv1.QuotaCostList
 				if machineType.MachineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
 					availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
 					machineType.Available = availableQuota > 1
-					machineType.AvailableQuota = availableQuota
+					machineType.availableQuota = availableQuota
 					return false
 				}
 			}
@@ -171,8 +175,7 @@ func (mtl *MachineTypeList) UpdateAvailableQuota(quotaCosts *amsv1.QuotaCostList
 
 func (mtl *MachineTypeList) GetAvailableIDs(multiAZ bool) (machineTypeList []string) {
 	list := mtl.Filter(func(mt *MachineType) bool {
-		return mt.Available &&
-			(mt.MachineType.Category() != AcceleratedComputing || mt.AvailableQuota > getDefaultNodes(multiAZ))
+		return mt.Available && mt.HasQuota(multiAZ)
 	})
 	return list.IDs()
 }
@@ -190,7 +193,7 @@ func (mtl *MachineTypeList) ValidateMachineType(machineType string, multiAZ bool
 		return err
 	}
 
-	if v.MachineType.Category() == AcceleratedComputing && v.AvailableQuota < getDefaultNodes(multiAZ) {
+	if !v.HasQuota(multiAZ) {
 		err := fmt.Errorf("Insufficient quota for instance type: %s", machineType)
 		return err
 	}
