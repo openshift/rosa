@@ -1198,6 +1198,8 @@ var _templatesPoliciesSts_support_permission_policyJson = []byte(`{
                 "elasticloadbalancing:DescribeTargetGroupAttributes",
                 "elasticloadbalancing:DescribeTargetGroups",
                 "elasticloadbalancing:DescribeTargetHealth",
+                "iam:GetRole",
+                "iam:ListRoles",
                 "route53:GetHostedZone",
                 "route53:GetHostedZoneCount",
                 "route53:ListHostedZones",
