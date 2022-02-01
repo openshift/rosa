@@ -2,6 +2,13 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.9 Jan 31 2022
+
+- ROSA CLI Interactive install - make the choice default STS
+- Add IAM List and Get role permissions to support policy
+- The attribute name in error message should be same with the correct proxy attribute in body
+- Fix bug - remove duplicated error message when deleting a cluster
+
 == 1.1.8 Jan 27 2022
 
 - Adding password argument to create admin
