@@ -259,6 +259,10 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	case aws.ModeManual:
 		ocmClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{})
+		_, _, err = checkRoleExists(reporter, awsClient, roleNameRequested, isAdmin, aws.ModeManual)
+		if err != nil {
+			reporter.Warnf("Creating ocm role '%s' should fail: %s", roleNameRequested, err)
+		}
 		err = generateOcmRolePolicyFiles(reporter, env, orgID, isAdmin)
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
@@ -358,33 +362,12 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ro
 		return "", err
 	}
 
-	exists, roleARN, err := awsClient.CheckRoleExists(roleName)
+	roleARN, exists, err := checkRoleExists(reporter, awsClient, roleName, isAdmin, aws.ModeAuto)
 	if err != nil {
 		return "", err
 	}
 	if exists {
-		isExistingRoleAdmin, err := awsClient.IsAdminRole(roleName)
-		if err != nil {
-			return "", err
-		}
-		reporter.Warnf("Role '%s' already exists", roleName)
-
-		if !isAdmin {
-			if isExistingRoleAdmin {
-				return "", fmt.Errorf("The existing role is an admin role."+
-					" To remove admin capabilities please delete the admin policy and the '%s' tag",
-					tags.AdminRole)
-			}
-			return roleARN, nil
-		}
-
-		if isExistingRoleAdmin {
-			return roleARN, nil
-		}
-
-		if !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
-			return roleARN, nil
-		}
+		return roleARN, nil
 	}
 
 	iamTags := map[string]string{
@@ -498,4 +481,38 @@ func createPermissionPolicy(reporter *rprtr.Object, awsClient aws.Client, policy
 	}
 
 	return nil
+}
+
+func checkRoleExists(reporter *rprtr.Object, awsClient aws.Client, roleName string, isAdmin bool,
+	mode string) (string, bool, error) {
+	exists, roleARN, err := awsClient.CheckRoleExists(roleName)
+	if err != nil {
+		return "", false, err
+	}
+	if exists {
+		isExistingRoleAdmin, err := awsClient.IsAdminRole(roleName)
+		if err != nil {
+			return "", true, err
+		}
+		reporter.Warnf("Role '%s' already exists", roleName)
+
+		if !isAdmin {
+			if isExistingRoleAdmin {
+				return "", true, fmt.Errorf("the existing role is an admin role."+
+					" To remove admin capabilities please delete the admin policy and the '%s' tag",
+					tags.AdminRole)
+			}
+			return roleARN, true, nil
+		}
+
+		if isExistingRoleAdmin {
+			return roleARN, true, nil
+		}
+
+		if mode == aws.ModeAuto && !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
+			return roleARN, true, nil
+		}
+	}
+
+	return "", false, nil
 }
