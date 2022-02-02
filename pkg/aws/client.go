@@ -100,6 +100,7 @@ type Client interface {
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
+	ListOCMRoles() ([]Role, error)
 	ListAccountRoles(version string) ([]Role, error)
 	GetRoleByARN(roleARN string) (*iam.Role, error)
 	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)

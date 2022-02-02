@@ -51,6 +51,8 @@ const (
 	Version   = "Version"
 	Username  = "Username"
 	URL       = "URL"
+
+	OCMRoleLabel = "sts_ocm_role"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
@@ -342,7 +344,7 @@ func (c *Client) LinkOrgToRole(orgID string, roleARN string) (bool, error) {
 	if existingARN != "" {
 		roleARN = existingARN + "," + roleARN
 	}
-	labelBuilder, err := amsv1.NewLabel().Key("sts_ocm_role").Value(roleARN).Build()
+	labelBuilder, err := amsv1.NewLabel().Key(OCMRoleLabel).Value(roleARN).Build()
 	if err != nil {
 		return false, err
 	}
@@ -355,9 +357,19 @@ func (c *Client) LinkOrgToRole(orgID string, roleARN string) (bool, error) {
 	return true, nil
 }
 
+func (c *Client) GetLinkedRoles(orgID string) ([]string, error) {
+	resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
+		Labels().Labels(OCMRoleLabel).Get().Send()
+	if err != nil && resp.Status() != http.StatusNotFound {
+		return nil, err
+	}
+
+	return strings.Split(resp.Body().Value(), ","), nil
+}
+
 func (c *Client) CheckIfAWSAccountExists(orgID string, awsAccountID string) (bool, string, string, error) {
 	resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
-		Labels().Labels("sts_ocm_role").Get().Send()
+		Labels().Labels(OCMRoleLabel).Get().Send()
 	if err != nil && resp.Status() != 404 {
 		if resp.Status() == 403 {
 			return false, "", "", errors.Forbidden.UserErrorf("%v", err)
