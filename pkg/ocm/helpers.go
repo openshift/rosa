@@ -34,6 +34,8 @@ import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
+
+	"github.com/openshift/rosa/pkg/helper"
 )
 
 func init() {
@@ -324,6 +326,41 @@ func (c *Client) LinkAccountRole(accountID string, roleARN string) error {
 		return handleErr(resp.Error(), err)
 	}
 	return err
+}
+
+func (c *Client) UnlinkOCMRoleFromOrg(orgID string, roleARN string) error {
+	linkedRoles, err := c.GetOrganizationLinkedOCMRoles(orgID)
+	if err != nil {
+		return err
+	}
+
+	if helper.Contains(linkedRoles, roleARN) {
+		linkedRoles = helper.RemoveStrFromSlice(linkedRoles, roleARN)
+
+		if len(linkedRoles) > 0 {
+			newRoleARN := strings.Join(linkedRoles, ",")
+			label, err := amsv1.NewLabel().Key(OCMRoleLabel).Value(newRoleARN).Build()
+			if err != nil {
+				return err
+			}
+
+			resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).Labels().
+				Labels(OCMRoleLabel).Update().Body(label).Send()
+			if err != nil {
+				return handleErr(resp.Error(), err)
+			}
+		} else {
+			resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).Labels().
+				Labels(OCMRoleLabel).Delete().Send()
+			if err != nil {
+				return handleErr(resp.Error(), err)
+			}
+		}
+
+		return nil
+	}
+
+	return errors.UserErrorf("Role-arn '%s' is not linked with the organization account '%s'", roleARN, orgID)
 }
 
 func (c *Client) LinkOrgToRole(orgID string, roleARN string) (bool, error) {

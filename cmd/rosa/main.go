@@ -41,6 +41,7 @@ import (
 	"github.com/openshift/rosa/cmd/resume"
 	"github.com/openshift/rosa/cmd/revoke"
 	"github.com/openshift/rosa/cmd/uninstall"
+	"github.com/openshift/rosa/cmd/unlink"
 	"github.com/openshift/rosa/cmd/upgrade"
 	"github.com/openshift/rosa/cmd/verify"
 	"github.com/openshift/rosa/cmd/version"
@@ -83,6 +84,7 @@ func init() {
 	root.AddCommand(hibernate.Cmd)
 	root.AddCommand(resume.Cmd)
 	root.AddCommand(link.Cmd)
+	root.AddCommand(unlink.Cmd)
 }
 
 func main() {
