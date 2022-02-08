@@ -95,6 +95,8 @@ type Role struct {
 	RolePrefix string   `json:"RolePrefix,omitempty"`
 	RoleName   string   `json:"RoleName,omitempty"`
 	RoleARN    string   `json:"RoleARN,omitempty"`
+	Linked     string   `json:"Linked,omitempty"`
+	Admin      string   `json:"Admin,omitempty"`
 	Policy     []Policy `json:"Policy,omitempty"`
 }
 
@@ -114,6 +116,7 @@ const (
 	ControlPlaneAccountRole = "instance_controlplane"
 	WorkerAccountRole       = "instance_worker"
 	SupportAccountRole      = "support"
+	OCMRole                 = "OCM"
 )
 
 var AccountRoles map[string]AccountRole = map[string]AccountRole{
@@ -125,7 +128,6 @@ var AccountRoles map[string]AccountRole = map[string]AccountRole{
 
 var OCMUserRole = "User"
 var OCMUserRolePolicyFile = "ocm_user"
-var OCMRole = "OCM"
 var OCMRolePolicyFile = "ocm"
 var OCMAdminRolePolicyFile = "ocm_admin"
 
@@ -674,6 +676,83 @@ func parsePolicyDocument(path string) (PolicyDocument, error) {
 	return doc, nil
 }
 
+func roleHasTag(roleTags []*iam.Tag, tagKey string, tagValue string) bool {
+	for _, tag := range roleTags {
+		if aws.StringValue(tag.Key) == tagKey && aws.StringValue(tag.Value) == tagValue {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isOCMRole(roleName *string) bool {
+	return strings.Contains(aws.StringValue(roleName), fmt.Sprintf("%s-Role", OCMRole))
+}
+
+func (c *awsClient) ListOCMRoles() ([]Role, error) {
+	var ocmRoles []Role
+	roles, err := c.ListRoles()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, role := range roles {
+		if isOCMRole(role.RoleName) {
+			var ocmRole Role
+			ocmRole.RoleName = aws.StringValue(role.RoleName)
+			ocmRole.RoleARN = aws.StringValue(role.Arn)
+
+			roleTags, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+				RoleName: role.RoleName,
+			})
+			if err != nil {
+				return nil, err
+			}
+			if roleHasTag(roleTags.Tags, tags.AdminRole, "true") {
+				ocmRole.Admin = "Yes"
+			} else {
+				ocmRole.Admin = "No"
+			}
+
+			ocmRoles = append(ocmRoles, ocmRole)
+		}
+	}
+
+	return ocmRoles, nil
+}
+
+func (c *awsClient) listPolicies(role *iam.Role) ([]Policy, error) {
+	policiesOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{
+		RoleName: role.RoleName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var policies []Policy
+	for _, policyName := range policiesOutput.PolicyNames {
+		policyOutput, err := c.iamClient.GetRolePolicy(&iam.GetRolePolicyInput{
+			PolicyName: policyName,
+			RoleName:   role.RoleName,
+		})
+		if err != nil {
+			return nil, err
+		}
+		policyDoc, err := getPolicyDocument(policyOutput.PolicyDocument)
+		if err != nil {
+			return nil, err
+		}
+		policy := Policy{
+			PolicyName:     aws.StringValue(policyOutput.PolicyName),
+			PolicyDocument: policyDoc,
+		}
+		policies = append(policies, policy)
+	}
+
+	return policies, nil
+}
+
 func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 	accountRoles := []Role{}
 	roles, err := c.ListRoles()
@@ -681,7 +760,7 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 		return accountRoles, err
 	}
 	for _, role := range roles {
-		if !checkIfROSARole(role.RoleName) {
+		if !checkIfAccountRole(role.RoleName) {
 			continue
 		}
 		accountRole := Role{}
@@ -712,32 +791,12 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 		if isTagged && !skip {
 			accountRole.RoleName = aws.StringValue(role.RoleName)
 			accountRole.RoleARN = aws.StringValue(role.Arn)
-			policiesOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{
-				RoleName: role.RoleName,
-			})
+			policies, err := c.listPolicies(role)
 			if err != nil {
 				return nil, err
 			}
-			policies := []Policy{}
-			for _, policyName := range policiesOutput.PolicyNames {
-				policyOutput, err := c.iamClient.GetRolePolicy(&iam.GetRolePolicyInput{
-					PolicyName: policyName,
-					RoleName:   role.RoleName,
-				})
-				if err != nil {
-					return nil, err
-				}
-				policyDoc, err := getPolicyDocument(policyOutput.PolicyDocument)
-				if err != nil {
-					return nil, err
-				}
-				policy := Policy{
-					PolicyName:     aws.StringValue(policyOutput.PolicyName),
-					PolicyDocument: policyDoc,
-				}
-				policies = append(policies, policy)
-			}
 			accountRole.Policy = policies
+
 			accountRoles = append(accountRoles, accountRole)
 		}
 	}
@@ -745,7 +804,7 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 }
 
 //Check if it is one of the ROSA account roles
-func checkIfROSARole(roleName *string) bool {
+func checkIfAccountRole(roleName *string) bool {
 	for _, prefix := range AccountRoles {
 		if strings.Contains(aws.StringValue(roleName), prefix.Name) {
 			return true
