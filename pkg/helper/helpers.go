@@ -9,3 +9,13 @@ func Contains(s []string, str string) bool {
 
 	return false
 }
+
+func SliceToMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+
+	for _, v := range s {
+		m[v] = true
+	}
+
+	return m
+}

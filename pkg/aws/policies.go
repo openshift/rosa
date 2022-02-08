@@ -117,6 +117,7 @@ const (
 	WorkerAccountRole       = "instance_worker"
 	SupportAccountRole      = "support"
 	OCMRole                 = "OCM"
+	OCMUserRole             = "User"
 )
 
 var AccountRoles map[string]AccountRole = map[string]AccountRole{
@@ -126,7 +127,6 @@ var AccountRoles map[string]AccountRole = map[string]AccountRole{
 	SupportAccountRole:      {Name: "Support", Flag: "support-role-arn"},
 }
 
-var OCMUserRole = "User"
 var OCMUserRolePolicyFile = "ocm_user"
 var OCMRolePolicyFile = "ocm"
 var OCMAdminRolePolicyFile = "ocm_admin"
@@ -688,6 +688,47 @@ func roleHasTag(roleTags []*iam.Tag, tagKey string, tagValue string) bool {
 
 func isOCMRole(roleName *string) bool {
 	return strings.Contains(aws.StringValue(roleName), fmt.Sprintf("%s-Role", OCMRole))
+}
+
+// isUserRole checks the role tags in addition to the role name, because the word 'user' is common
+func (c *awsClient) isUserRole(roleName *string) (bool, error) {
+	if strings.Contains(aws.StringValue(roleName), OCMUserRole) {
+		roleTags, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			RoleName: roleName,
+		})
+		if err != nil {
+			return false, err
+		}
+
+		return roleHasTag(roleTags.Tags, tags.RoleType, OCMUserRole), nil
+	}
+
+	return false, nil
+}
+
+func (c *awsClient) ListUserRoles() ([]Role, error) {
+	var userRoles []Role
+	roles, err := c.ListRoles()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, role := range roles {
+		isUserRole, err := c.isUserRole(role.RoleName)
+		if err != nil {
+			return nil, err
+		}
+
+		if isUserRole {
+			var userRole Role
+			userRole.RoleName = aws.StringValue(role.RoleName)
+			userRole.RoleARN = aws.StringValue(role.Arn)
+
+			userRoles = append(userRoles, userRole)
+		}
+	}
+
+	return userRoles, nil
 }
 
 func (c *awsClient) ListOCMRoles() ([]Role, error) {
