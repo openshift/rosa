@@ -153,7 +153,8 @@ func handleErr(res *ocmerrors.Error, err error) error {
 			"Go to https://www.redhat.com/wapps/tnc/ackrequired?site=ocm&event=register\n" +
 			"Once you accept the terms, you will need to retry the action that was blocked."
 	}
-	return errors.Errorf("%s", msg)
+	errType := errors.ErrorType(res.Status())
+	return errType.Set(errors.Errorf("%s", msg))
 }
 
 func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
