@@ -288,6 +288,41 @@ func RandomLabel(size int) string {
 	return string(chars)
 }
 
+func (c *Client) UnlinkUserRoleFromAccount(accountID string, roleARN string) error {
+	linkedRoles, err := c.GetAccountLinkedUserRoles(accountID)
+	if err != nil {
+		return err
+	}
+
+	if helper.Contains(linkedRoles, roleARN) {
+		linkedRoles = helper.RemoveStrFromSlice(linkedRoles, roleARN)
+
+		if len(linkedRoles) > 0 {
+			newRoleARN := strings.Join(linkedRoles, ",")
+			label, err := amsv1.NewLabel().Key(USERRoleLabel).Value(newRoleARN).Build()
+			if err != nil {
+				return err
+			}
+
+			resp, err := c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).Labels().
+				Labels(USERRoleLabel).Update().Body(label).Send()
+			if err != nil {
+				return handleErr(resp.Error(), err)
+			}
+		} else {
+			resp, err := c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).Labels().
+				Labels(USERRoleLabel).Delete().Send()
+			if err != nil {
+				return handleErr(resp.Error(), err)
+			}
+		}
+
+		return nil
+	}
+
+	return errors.UserErrorf("Role ARN '%s' is not linked with the current account '%s'", roleARN, accountID)
+}
+
 func (c *Client) LinkAccountRole(accountID string, roleARN string) error {
 	resp, err := c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).
 		Labels().Labels("sts_user_role").Get().Send()

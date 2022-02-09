@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/unlink/ocmrole"
+	"github.com/openshift/rosa/cmd/unlink/userrole"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
@@ -24,13 +25,14 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "unlink",
 	Aliases: []string{"unlink"},
-	Short:   "Unlink a resource from stdin",
-	Long:    "Unlink a resource from stdin",
+	Short:   "Unlink a resource",
+	Long:    "Unlink a resource",
 	Hidden:  true,
 }
 
 func init() {
 	Cmd.AddCommand(ocmrole.Cmd)
+	Cmd.AddCommand(userrole.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
