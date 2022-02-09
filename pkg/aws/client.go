@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -43,6 +44,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/profile"
@@ -100,6 +102,7 @@ type Client interface {
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
+	ListUserRoles() ([]Role, error)
 	ListOCMRoles() ([]Role, error)
 	ListAccountRoles(version string) ([]Role, error)
 	GetRoleByARN(roleARN string) (*iam.Role, error)
@@ -142,6 +145,18 @@ type awsClient struct {
 	servicequotasClient servicequotasiface.ServiceQuotasAPI
 	awsSession          *session.Session
 	awsAccessKeys       *AccessKey
+}
+
+func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) Client {
+	awsClient, err := NewClient().
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create AWS client: %v", err)
+		os.Exit(1)
+	}
+
+	return awsClient
 }
 
 // NewClient creates a builder that can then be used to configure and build a new AWS client.

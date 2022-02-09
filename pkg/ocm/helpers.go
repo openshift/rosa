@@ -52,7 +52,8 @@ const (
 	Username  = "Username"
 	URL       = "URL"
 
-	OCMRoleLabel = "sts_ocm_role"
+	OCMRoleLabel  = "sts_ocm_role"
+	USERRoleLabel = "sts_user_role"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is
@@ -357,7 +358,17 @@ func (c *Client) LinkOrgToRole(orgID string, roleARN string) (bool, error) {
 	return true, nil
 }
 
-func (c *Client) GetLinkedRoles(orgID string) ([]string, error) {
+func (c *Client) GetAccountLinkedUserRoles(accountID string) ([]string, error) {
+	resp, err := c.ocm.AccountsMgmt().V1().Accounts().Account(accountID).
+		Labels().Labels(USERRoleLabel).Get().Send()
+	if err != nil && resp.Status() != http.StatusNotFound {
+		return nil, handleErr(resp.Error(), err)
+	}
+
+	return strings.Split(resp.Body().Value(), ","), nil
+}
+
+func (c *Client) GetOrganizationLinkedOCMRoles(orgID string) ([]string, error) {
 	resp, err := c.ocm.AccountsMgmt().V1().Organizations().Organization(orgID).
 		Labels().Labels(OCMRoleLabel).Get().Send()
 	if err != nil && resp.Status() != http.StatusNotFound {

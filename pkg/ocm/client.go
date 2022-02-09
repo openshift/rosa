@@ -18,6 +18,7 @@ package ocm
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
 type Client struct {
@@ -42,6 +44,18 @@ type ClientBuilder struct {
 // NewClient creates a builder that can then be used to configure and build an OCM connection.
 func NewClient() *ClientBuilder {
 	return &ClientBuilder{}
+}
+
+func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) *Client {
+	client, err := NewClient().
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create OCM connection: %v", err)
+		os.Exit(1)
+	}
+
+	return client
 }
 
 // Logger sets the logger that the connection will use to send messages to the log. This is
