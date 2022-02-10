@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021 Red Hat, Inc.
+Copyright (c) 2022 Red Hat, Inc.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -37,10 +37,10 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "ocm-role",
 	Aliases: []string{"ocmrole"},
-	Short:   "link ocm role to specific OCM organization account.",
-	Long:    "link ocm role to specific OCM organization account before you create your cluster.",
-	Example: ` # Link ocm role
-  rosa link ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
+	Short:   "unlink ocm role from a specific OCM organization account",
+	Long:    "unlink ocm role from a specific OCM organization account",
+	Example: ` #Unlink ocm role
+rosa unlink ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
 	RunE: run,
 }
 
@@ -51,13 +51,13 @@ func init() {
 		&args.roleArn,
 		"role-arn",
 		"",
-		"Role ARN to associate the OCM organization account to",
+		"Role ARN to identify the ocm-role to be unlinked from the OCM organization account",
 	)
 	flags.StringVar(
 		&args.organizationID,
 		"organization-id",
 		"",
-		"OCM organization id to associate the ocm role ARN",
+		"OCM organization id to unlink the ocm role ARN",
 	)
 
 	confirm.AddFlag(flags)
@@ -67,38 +67,31 @@ func init() {
 func run(cmd *cobra.Command, argv []string) (err error) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
-	if len(argv) > 0 {
-		args.roleArn = argv[0]
-	}
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		return err
-	}
+	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
 	defer func() {
 		err = ocmClient.Close()
 		if err != nil {
 			reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}()
-	orgAccount, _, err := ocmClient.GetCurrentOrganization()
+
+	if len(argv) > 0 {
+		args.roleArn = argv[0]
+	}
+
+	orgID, _, err := ocmClient.GetCurrentOrganization()
 	if err != nil {
 		reporter.Errorf("Error getting organization account: %v", err)
 		return err
 	}
-
-	if args.organizationID != "" && orgAccount != args.organizationID {
+	if args.organizationID != "" && orgID != args.organizationID {
 		reporter.Errorf("Invalid organization ID '%s'. "+
-			"It doesnt match with the user session '%s'.", args.organizationID, orgAccount)
+			"It doesnt match with the user session '%s'.", args.organizationID, orgID)
 		return err
 	}
 
 	if reporter.IsTerminal() {
-		reporter.Infof("Linking OCM role")
+		reporter.Infof("Unlinking OCM role")
 	}
 
 	roleArn := args.roleArn
@@ -119,37 +112,34 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid ocm role ARN to link to a current organization: %s", err)
+			reporter.Errorf("Expected a valid ocm role ARN to unlink from the current organization: %s", err)
 			os.Exit(1)
 		}
 	}
 	if roleArn != "" {
 		_, err := arn.Parse(roleArn)
 		if err != nil {
-			reporter.Errorf("Expected a valid ocm role ARN to link to a current organization: %s", err)
+			reporter.Errorf("Expected a valid ocm role ARN to unlink from the current organization: %s", err)
 			os.Exit(1)
 		}
 	}
-	if !confirm.Prompt(true, "Link the '%s' role with organization '%s'?", roleArn, orgAccount) {
+	if !confirm.Prompt(true, "Unlink the '%s' role from organization '%s'?", roleArn, orgID) {
 		os.Exit(0)
 	}
 
-	linked, err := ocmClient.LinkOrgToRole(orgAccount, roleArn)
+	err = ocmClient.UnlinkOCMRoleFromOrg(orgID, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
 			reporter.Errorf("Only organization admin can run this command. "+
 				"Please ask someone with the organization admin role to run the following command \n\n"+
-				"\t rosa link ocm-role --role-arn %s --organization-id %s", roleArn, orgAccount)
+				"\t rosa unlink ocm-role --role-arn %s --organization-id %s", roleArn, orgID)
 			return err
 		}
-		reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",
-			roleArn, orgAccount, err)
+		reporter.Errorf("Unable to unlink role arn '%s' from the organization id : '%s' : %v",
+			roleArn, orgID, err)
 		return err
 	}
-	if !linked {
-		reporter.Infof("Role-arn '%s' is already linked with the organization account '%s'", roleArn, orgAccount)
-		os.Exit(0)
-	}
-	reporter.Infof("Successfully linked role-arn '%s' with organization account '%s'", roleArn, orgAccount)
+	reporter.Infof("Successfully unlinked role-arn '%s' from organization account '%s'", roleArn, orgID)
+
 	return nil
 }
