@@ -950,7 +950,7 @@ func (c *awsClient) DeleteAccountRole(roleName string) error {
 	return c.DeleteRole(roleName, role)
 }
 
-func (c *awsClient) deleteAccountRolePolicies(role *string) error {
+func (c *awsClient) detachAttachedRolePolicies(role *string) error {
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
 		RoleName: role,
 	})
@@ -972,6 +972,11 @@ func (c *awsClient) deleteAccountRolePolicies(role *string) error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (c *awsClient) deleteInlineRolePolicies(role *string) error {
 	listRolePolicyOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{RoleName: role})
 	if err != nil {
 		return err
@@ -991,6 +996,20 @@ func (c *awsClient) deleteAccountRolePolicies(role *string) error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (c *awsClient) deleteAccountRolePolicies(role *string) error {
+	err := c.detachAttachedRolePolicies(role)
+	if err != nil {
+		return err
+	}
+	err = c.deleteInlineRolePolicies(role)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {

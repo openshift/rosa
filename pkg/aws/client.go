@@ -115,6 +115,7 @@ type Client interface {
 	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string) ([]Role, error)
 	DeleteAccountRole(roles string) error
 	DeleteOCMRole(roleARN string) error
+	DeleteUserRole(roleName string) error
 	GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error)
 	GetAttachedPolicy(role *string) ([]PolicyDetail, error)
 	HasPermissionsBoundary(roleName string) (bool, error)
