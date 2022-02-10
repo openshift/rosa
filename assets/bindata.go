@@ -941,7 +941,9 @@ var _templatesPoliciesSts_ocm_admin_permission_policyJson = []byte(`{
         "iam:ListPolicyTags",
         "iam:AttachRolePolicy",
         "iam:GetOpenIDConnectProvider",
-        "iam:CreateOpenIDConnectProvider"
+        "iam:CreateOpenIDConnectProvider",
+        "iam:TagOpenIDConnectProvider",
+        "iam:GetPolicy"
       ],
       "Resource": "*"
     }
