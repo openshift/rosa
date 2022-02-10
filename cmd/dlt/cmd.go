@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/idp"
 	"github.com/openshift/rosa/cmd/dlt/ingress"
 	"github.com/openshift/rosa/cmd/dlt/machinepool"
+	"github.com/openshift/rosa/cmd/dlt/ocmrole"
 	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
 	"github.com/openshift/rosa/cmd/dlt/operatorrole"
 	"github.com/openshift/rosa/cmd/dlt/upgrade"
@@ -49,6 +50,7 @@ func init() {
 	Cmd.AddCommand(oidcprovider.Cmd)
 	Cmd.AddCommand(operatorrole.Cmd)
 	Cmd.AddCommand(accountroles.Cmd)
+	Cmd.AddCommand(ocmrole.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

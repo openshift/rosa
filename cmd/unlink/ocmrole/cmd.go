@@ -101,7 +101,7 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		interactive.Enable()
 	}
 
-	if interactive.Enabled() {
+	if interactive.Enabled() && roleArn == "" {
 		roleArn, err = interactive.GetString(interactive.Input{
 			Question: "OCM Role ARN",
 			Help:     cmd.Flags().Lookup("role-arn").Usage,

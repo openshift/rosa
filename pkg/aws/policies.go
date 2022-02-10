@@ -993,7 +993,7 @@ func (c *awsClient) deleteAccountRolePolicies(role *string) error {
 	}
 	return nil
 }
-func (c *awsClient) getAttachedPolicy(role *string) ([]PolicyDetail, error) {
+func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	policies := []PolicyDetail{}
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{RoleName: role})
 	if err != nil {
@@ -1301,7 +1301,7 @@ func getAWSPrincipals(awsPrincipal interface{}) []string {
 func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error) {
 	roleMap := make(map[string][]PolicyDetail)
 	for _, role := range roles {
-		policies, err := c.getAttachedPolicy(aws.String(role))
+		policies, err := c.GetAttachedPolicy(aws.String(role))
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
@@ -1448,7 +1448,7 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix st
 
 func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
 	version string) (bool, error) {
-	attachedPolicies, err := c.getAttachedPolicy(aws.String(roleName))
+	attachedPolicies, err := c.GetAttachedPolicy(aws.String(roleName))
 	if err != nil {
 		return false, err
 	}
