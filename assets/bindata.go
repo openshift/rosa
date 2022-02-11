@@ -299,27 +299,30 @@ var _templatesPoliciesOpenshift_machine_api_aws_cloud_credentials_policyJson = [
     {
       "Effect": "Allow",
       "Action": [
-        "ec2:CreateTags",
         "ec2:DescribeAvailabilityZones",
         "ec2:DescribeDhcpOptions",
         "ec2:DescribeImages",
         "ec2:DescribeInstances",
-        "ec2:DescribeInternetGateways",
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeSubnets",
         "ec2:DescribeVpcs",
-        "ec2:RunInstances",
-        "ec2:TerminateInstances",
-        "elasticloadbalancing:DescribeLoadBalancers",
-        "elasticloadbalancing:DescribeTargetGroups",
-        "elasticloadbalancing:DescribeTargetHealth",
-        "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
-        "elasticloadbalancing:RegisterTargets",
-        "elasticloadbalancing:DeregisterTargets",
         "iam:PassRole",
         "iam:CreateServiceLinkedRole"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+        "elasticloadbalancing:RegisterTargets"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/red-hat-managed": "true"
+        }
+      }
     },
     {
       "Effect": "Allow",
@@ -343,6 +346,68 @@ var _templatesPoliciesOpenshift_machine_api_aws_cloud_credentials_policyJson = [
       "Condition": {
         "Bool": {
           "kms:GrantIsForAWSResource": true
+        }
+      }
+    },
+    {
+      "Sid": "AllowInstanceTermination",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances",
+        "ec2:DeleteTags"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/red-hat-managed": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowRunInstances",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": [
+        "arn:aws:ec2:*::image/*",
+        "arn:aws:ec2:*::snapshot/*",
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:*:network-interface/*",
+        "arn:aws:ec2:*:*:security-group/*",
+        "arn:aws:ec2:*:*:key-pair/*"
+      ]
+    },
+    {
+      "Sid": "OnlyRunInstancesForSpecificTag",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:CreateVolume"
+      ],
+      "Resource": [
+        "arn:aws:ec2:*:*:volume/*",
+        "arn:aws:ec2:*:*:instance/*",
+        "arn:aws:ec2:*:*:network-interface/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/red-hat-managed": "true"
+        }
+      }
+    },
+    {
+      "Sid": "OnlyAllowTaggingOnCreate",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": [
+        "arn:aws:ec2:*:*:instance/*",
+        "arn:aws:ec2:*:*:volume/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": [
+            "RunInstances",
+            "CreateVolume"
+          ]
         }
       }
     }
@@ -592,8 +657,6 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "ec2:CreateRouteTable",
                 "ec2:CreateSecurityGroup",
                 "ec2:CreateSubnet",
-                "ec2:CreateTags",
-                "ec2:CreateVolume",
                 "ec2:CreateVpc",
                 "ec2:CreateVpcEndpoint",
                 "ec2:DeleteDhcpOptions",
@@ -605,7 +668,6 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "ec2:DeleteSecurityGroup",
                 "ec2:DeleteSnapshot",
                 "ec2:DeleteSubnet",
-                "ec2:DeleteTags",
                 "ec2:DeleteVolume",
                 "ec2:DeleteVpc",
                 "ec2:DeleteVpcEndpoints",
@@ -650,10 +712,8 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "ec2:ReplaceRouteTableAssociation",
                 "ec2:RevokeSecurityGroupEgress",
                 "ec2:RevokeSecurityGroupIngress",
-                "ec2:RunInstances",
                 "ec2:StartInstances",
                 "ec2:StopInstances",
-                "ec2:TerminateInstances",
                 "elasticloadbalancing:AddTags",
                 "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
                 "elasticloadbalancing:AttachLoadBalancerToSubnets",
@@ -752,6 +812,55 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "ec2:ModifyVpcEndpointServicePermissions"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "TaggedInstancesOnly",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateVolume"
+            ],
+            "Resource": "*",
+            "Condition": {
+              "StringEquals": {
+                "aws:RequestTag/red-hat-managed": "true"
+             }
+        },
+        {
+            "Sid": "AllowInstanceTermination",
+            "Effect": "Allow",
+            "Action": [
+              "ec2:TerminateInstances",
+              "ec2:DeleteTags"
+            ],
+            "Resource": [
+              "arn:aws:ec2:*:*:instance/*",
+              "arn:aws:ec2:*:*:volume/*"
+            ],
+            "Condition": {
+              "StringEquals": {
+                "aws:ResourceTag/red-hat-managed": "true"
+              }
+            }
+        },
+        {
+            "Sid": "CreateTagsInstancesOnly",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateTags"
+            ],
+            "Resource": [
+              "arn:aws:ec2:*:*:instance/*",
+              "arn:aws:ec2:*:*:volume/*"
+            ],
+            "Condition": {
+             "StringEquals": {
+               "ec2:CreateAction": [
+                 "RunInstances",
+                 "CreateVolume"
+               ]
+             }
+            }
         }
     ]
 }
