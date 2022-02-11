@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -109,6 +111,16 @@ func (c *ClusterClient) AWSInfrastructureAccessRoleGrants() *AWSInfrastructureAc
 	return NewAWSInfrastructureAccessRoleGrantsClient(
 		c.transport,
 		path.Join(c.path, "aws_infrastructure_access_role_grants"),
+	)
+}
+
+// STSOperatorRoles returns the target 'operator_IAM_roles' resource.
+//
+//
+func (c *ClusterClient) STSOperatorRoles() *OperatorIAMRolesClient {
+	return NewOperatorIAMRolesClient(
+		c.transport,
+		path.Join(c.path, "sts_operator_roles"),
 	)
 }
 
@@ -478,8 +490,14 @@ func (r *ClusterDeleteRequest) SendContext(ctx context.Context) (result *Cluster
 	result = &ClusterDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -572,15 +590,21 @@ func (r *ClusterGetRequest) SendContext(ctx context.Context) (result *ClusterGet
 	result = &ClusterGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readClusterGetResponse(result, response.Body)
+	err = readClusterGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -693,8 +717,14 @@ func (r *ClusterHibernateRequest) SendContext(ctx context.Context) (result *Clus
 	result = &ClusterHibernateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -787,8 +817,14 @@ func (r *ClusterResumeRequest) SendContext(ctx context.Context) (result *Cluster
 	result = &ClusterResumeResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -896,15 +932,21 @@ func (r *ClusterUpdateRequest) SendContext(ctx context.Context) (result *Cluster
 	result = &ClusterUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readClusterUpdateResponse(result, response.Body)
+	err = readClusterUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
@@ -26,7 +26,23 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-func readSKUSListRequest(request *SKUSListServerRequest, r *http.Request) error {
+func readOperatorIAMRolesAddRequest(request *OperatorIAMRolesAddServerRequest, r *http.Request) error {
+	var err error
+	request.body, err = UnmarshalOperatorIAMRole(r.Body)
+	return err
+}
+func writeOperatorIAMRolesAddRequest(request *OperatorIAMRolesAddRequest, writer io.Writer) error {
+	return MarshalOperatorIAMRole(request.body, writer)
+}
+func readOperatorIAMRolesAddResponse(response *OperatorIAMRolesAddResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalOperatorIAMRole(reader)
+	return err
+}
+func writeOperatorIAMRolesAddResponse(response *OperatorIAMRolesAddServerResponse, w http.ResponseWriter) error {
+	return MarshalOperatorIAMRole(response.body, w)
+}
+func readOperatorIAMRolesListRequest(request *OperatorIAMRolesListServerRequest, r *http.Request) error {
 	var err error
 	query := r.URL.Query()
 	request.page, err = helpers.ParseInteger(query, "page")
@@ -35,10 +51,6 @@ func readSKUSListRequest(request *SKUSListServerRequest, r *http.Request) error 
 	}
 	if request.page == nil {
 		request.page = helpers.NewInteger(1)
-	}
-	request.search, err = helpers.ParseString(query, "search")
-	if err != nil {
-		return err
 	}
 	request.size, err = helpers.ParseInteger(query, "size")
 	if err != nil {
@@ -49,10 +61,10 @@ func readSKUSListRequest(request *SKUSListServerRequest, r *http.Request) error 
 	}
 	return nil
 }
-func writeSKUSListRequest(request *SKUSListRequest, writer io.Writer) error {
+func writeOperatorIAMRolesListRequest(request *OperatorIAMRolesListRequest, writer io.Writer) error {
 	return nil
 }
-func readSKUSListResponse(response *SKUSListResponse, reader io.Reader) error {
+func readOperatorIAMRolesListResponse(response *OperatorIAMRolesListResponse, reader io.Reader) error {
 	iterator, err := helpers.NewIterator(reader)
 	if err != nil {
 		return err
@@ -73,8 +85,8 @@ func readSKUSListResponse(response *SKUSListResponse, reader io.Reader) error {
 			value := iterator.ReadInt()
 			response.total = &value
 		case "items":
-			items := readSKUList(iterator)
-			response.items = &SKUList{
+			items := readOperatorIAMRoleList(iterator)
+			response.items = &OperatorIAMRoleList{
 				items: items,
 			}
 		default:
@@ -83,14 +95,14 @@ func readSKUSListResponse(response *SKUSListResponse, reader io.Reader) error {
 	}
 	return iterator.Error
 }
-func writeSKUSListResponse(response *SKUSListServerResponse, w http.ResponseWriter) error {
+func writeOperatorIAMRolesListResponse(response *OperatorIAMRolesListServerResponse, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.status)
 	stream := helpers.NewStream(w)
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	count := 1
-	stream.WriteString(SKUListKind)
+	stream.WriteString(OperatorIAMRoleListKind)
 	if response.items != nil && response.items.href != "" {
 		stream.WriteMore()
 		stream.WriteObjectField("href")
@@ -127,7 +139,7 @@ func writeSKUSListResponse(response *SKUSListServerResponse, w http.ResponseWrit
 				stream.WriteMore()
 			}
 			stream.WriteObjectField("items")
-			writeSKUList(response.items.items, stream)
+			writeOperatorIAMRoleList(response.items.items, stream)
 			count++
 		}
 	}

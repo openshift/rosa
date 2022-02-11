@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -126,9 +125,6 @@ func writePeerDependency(object *PeerDependency, stream *jsoniter.Stream) {
 // UnmarshalPeerDependency reads a value of the 'peer_dependency' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalPeerDependency(source interface{}) (object *PeerDependency, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

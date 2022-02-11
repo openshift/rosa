@@ -17,20 +17,20 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
 	"io"
-	"net/http"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSKU writes a value of the 'SKU' type to the given writer.
-func MarshalSKU(object *SKU, writer io.Writer) error {
+// MarshalStatusUpdate writes a value of the 'status_update' type to the given writer.
+func MarshalStatusUpdate(object *StatusUpdate, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSKU(object, stream)
+	writeStatusUpdate(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,15 +38,15 @@ func MarshalSKU(object *SKU, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSKU writes a value of the 'SKU' type to the given stream.
-func writeSKU(object *SKU, stream *jsoniter.Stream) {
+// writeStatusUpdate writes a value of the 'status_update' type to the given stream.
+func writeStatusUpdate(object *StatusUpdate, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	if object.bitmap_&1 != 0 {
-		stream.WriteString(SKULinkKind)
+		stream.WriteString(StatusUpdateLinkKind)
 	} else {
-		stream.WriteString(SKUKind)
+		stream.WriteString(StatusUpdateKind)
 	}
 	count++
 	if object.bitmap_&2 != 0 {
@@ -71,8 +71,8 @@ func writeSKU(object *SKU, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("byoc")
-		stream.WriteBool(object.byoc)
+		stream.WriteObjectField("created_at")
+		stream.WriteString((object.createdAt).Format(time.RFC3339))
 		count++
 	}
 	present_ = object.bitmap_&16 != 0
@@ -80,57 +80,63 @@ func writeSKU(object *SKU, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("availability_zone_type")
-		stream.WriteString(object.availabilityZoneType)
+		stream.WriteObjectField("metadata")
+		stream.WriteVal(object.metadata)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&32 != 0 && object.service != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("resource_name")
-		stream.WriteString(object.resourceName)
+		stream.WriteObjectField("service")
+		writeService(object.service, stream)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&64 != 0 && object.serviceInfo != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("resource_type")
-		stream.WriteString(object.resourceType)
+		stream.WriteObjectField("service_info")
+		writeServiceInfo(object.serviceInfo, stream)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.resources != nil
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("resources")
-		writeResourceList(object.resources, stream)
+		stream.WriteObjectField("status")
+		stream.WriteString(object.status)
+		count++
+	}
+	present_ = object.bitmap_&256 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("updated_at")
+		stream.WriteString((object.updatedAt).Format(time.RFC3339))
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalSKU reads a value of the 'SKU' type from the given
+// UnmarshalStatusUpdate reads a value of the 'status_update' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalSKU(source interface{}) (object *SKU, err error) {
-	if source == http.NoBody {
-		return
-	}
+func UnmarshalStatusUpdate(source interface{}) (object *StatusUpdate, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readSKU(iterator)
+	object = readStatusUpdate(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSKU reads a value of the 'SKU' type from the given iterator.
-func readSKU(iterator *jsoniter.Iterator) *SKU {
-	object := &SKU{}
+// readStatusUpdate reads a value of the 'status_update' type from the given iterator.
+func readStatusUpdate(iterator *jsoniter.Iterator) *StatusUpdate {
+	object := &StatusUpdate{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
@@ -139,7 +145,7 @@ func readSKU(iterator *jsoniter.Iterator) *SKU {
 		switch field {
 		case "kind":
 			value := iterator.ReadString()
-			if value == SKULinkKind {
+			if value == StatusUpdateLinkKind {
 				object.bitmap_ |= 1
 			}
 		case "id":
@@ -148,26 +154,39 @@ func readSKU(iterator *jsoniter.Iterator) *SKU {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
-		case "byoc":
-			value := iterator.ReadBool()
-			object.byoc = value
+		case "created_at":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.createdAt = value
 			object.bitmap_ |= 8
-		case "availability_zone_type":
-			value := iterator.ReadString()
-			object.availabilityZoneType = value
+		case "metadata":
+			var value interface{}
+			iterator.ReadVal(&value)
+			object.metadata = value
 			object.bitmap_ |= 16
-		case "resource_name":
-			value := iterator.ReadString()
-			object.resourceName = value
+		case "service":
+			value := readService(iterator)
+			object.service = value
 			object.bitmap_ |= 32
-		case "resource_type":
-			value := iterator.ReadString()
-			object.resourceType = value
+		case "service_info":
+			value := readServiceInfo(iterator)
+			object.serviceInfo = value
 			object.bitmap_ |= 64
-		case "resources":
-			value := readResourceList(iterator)
-			object.resources = value
+		case "status":
+			value := iterator.ReadString()
+			object.status = value
 			object.bitmap_ |= 128
+		case "updated_at":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.updatedAt = value
+			object.bitmap_ |= 256
 		default:
 			iterator.ReadAny()
 		}

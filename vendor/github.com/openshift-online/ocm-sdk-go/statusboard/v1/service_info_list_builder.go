@@ -17,55 +17,55 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-// SKUListBuilder contains the data and logic needed to build
-// 'SKU' objects.
-type SKUListBuilder struct {
-	items []*SKUBuilder
+// ServiceInfoListBuilder contains the data and logic needed to build
+// 'service_info' objects.
+type ServiceInfoListBuilder struct {
+	items []*ServiceInfoBuilder
 }
 
-// NewSKUList creates a new builder of 'SKU' objects.
-func NewSKUList() *SKUListBuilder {
-	return new(SKUListBuilder)
+// NewServiceInfoList creates a new builder of 'service_info' objects.
+func NewServiceInfoList() *ServiceInfoListBuilder {
+	return new(ServiceInfoListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *SKUListBuilder) Items(values ...*SKUBuilder) *SKUListBuilder {
-	b.items = make([]*SKUBuilder, len(values))
+func (b *ServiceInfoListBuilder) Items(values ...*ServiceInfoBuilder) *ServiceInfoListBuilder {
+	b.items = make([]*ServiceInfoBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Empty returns true if the list is empty.
-func (b *SKUListBuilder) Empty() bool {
+func (b *ServiceInfoListBuilder) Empty() bool {
 	return b == nil || len(b.items) == 0
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *SKUListBuilder) Copy(list *SKUList) *SKUListBuilder {
+func (b *ServiceInfoListBuilder) Copy(list *ServiceInfoList) *ServiceInfoListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*SKUBuilder, len(list.items))
+		b.items = make([]*ServiceInfoBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewSKU().Copy(v)
+			b.items[i] = NewServiceInfo().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'SKU' objects using the
+// Build creates a list of 'service_info' objects using the
 // configuration stored in the builder.
-func (b *SKUListBuilder) Build() (list *SKUList, err error) {
-	items := make([]*SKU, len(b.items))
+func (b *ServiceInfoListBuilder) Build() (list *ServiceInfoList, err error) {
+	items := make([]*ServiceInfo, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(SKUList)
+	list = new(ServiceInfoList)
 	list.items = items
 	return
 }

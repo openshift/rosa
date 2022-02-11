@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -87,17 +89,6 @@ func (c *OrganizationClient) QuotaCost() *QuotaCostClient {
 	return NewQuotaCostClient(
 		c.transport,
 		path.Join(c.path, "quota_cost"),
-	)
-}
-
-// QuotaSummary returns the target 'quota_summary' resource.
-//
-// Reference to the service that returns the summary of the resource quota for this
-// organization.
-func (c *OrganizationClient) QuotaSummary() *QuotaSummaryClient {
-	return NewQuotaSummaryClient(
-		c.transport,
-		path.Join(c.path, "quota_summary"),
 	)
 }
 
@@ -296,15 +287,21 @@ func (r *OrganizationGetRequest) SendContext(ctx context.Context) (result *Organ
 	result = &OrganizationGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readOrganizationGetResponse(result, response.Body)
+	err = readOrganizationGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -432,15 +429,21 @@ func (r *OrganizationUpdateRequest) SendContext(ctx context.Context) (result *Or
 	result = &OrganizationUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readOrganizationUpdateResponse(result, response.Body)
+	err = readOrganizationUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

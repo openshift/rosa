@@ -17,24 +17,22 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
 	"net/http"
 )
 
-func readSKUGetRequest(request *SKUGetServerRequest, r *http.Request) error {
+func readOperatorIAMRoleDeleteRequest(request *OperatorIAMRoleDeleteServerRequest, r *http.Request) error {
 	return nil
 }
-func writeSKUGetRequest(request *SKUGetRequest, writer io.Writer) error {
+func writeOperatorIAMRoleDeleteRequest(request *OperatorIAMRoleDeleteRequest, writer io.Writer) error {
 	return nil
 }
-func readSKUGetResponse(response *SKUGetResponse, reader io.Reader) error {
-	var err error
-	response.body, err = UnmarshalSKU(reader)
-	return err
+func readOperatorIAMRoleDeleteResponse(response *OperatorIAMRoleDeleteResponse, reader io.Reader) error {
+	return nil
 }
-func writeSKUGetResponse(response *SKUGetServerResponse, w http.ResponseWriter) error {
-	return MarshalSKU(response.body, w)
+func writeOperatorIAMRoleDeleteResponse(response *OperatorIAMRoleDeleteServerResponse, w http.ResponseWriter) error {
+	return nil
 }

@@ -50,12 +50,6 @@ type OrganizationServer interface {
 	// Reference to the service that returns a summary of quota cost for this organization
 	QuotaCost() QuotaCostServer
 
-	// QuotaSummary returns the target 'quota_summary' resource.
-	//
-	// Reference to the service that returns the summary of the resource quota for this
-	// organization.
-	QuotaSummary() QuotaSummaryServer
-
 	// ResourceQuota returns the target 'resource_quotas' resource.
 	//
 	// Reference to the service that manages the resource quotas for this
@@ -174,13 +168,6 @@ func dispatchOrganization(w http.ResponseWriter, r *http.Request, server Organiz
 			return
 		}
 		dispatchQuotaCost(w, r, target, segments[1:])
-	case "quota_summary":
-		target := server.QuotaSummary()
-		if target == nil {
-			errors.SendNotFound(w, r)
-			return
-		}
-		dispatchQuotaSummary(w, r, target, segments[1:])
 	case "resource_quota":
 		target := server.ResourceQuota()
 		if target == nil {

@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -66,9 +65,6 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 // UnmarshalSubnetwork reads a value of the 'subnetwork' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalSubnetwork(source interface{}) (object *Subnetwork, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

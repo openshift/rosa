@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
 	"io"
@@ -26,9 +26,33 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-func readQuotaSummaryListRequest(request *QuotaSummaryListServerRequest, r *http.Request) error {
+func readStatusUpdatesAddRequest(request *StatusUpdatesAddServerRequest, r *http.Request) error {
+	var err error
+	request.body, err = UnmarshalStatus(r.Body)
+	return err
+}
+func writeStatusUpdatesAddRequest(request *StatusUpdatesAddRequest, writer io.Writer) error {
+	return MarshalStatus(request.body, writer)
+}
+func readStatusUpdatesAddResponse(response *StatusUpdatesAddResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalStatus(reader)
+	return err
+}
+func writeStatusUpdatesAddResponse(response *StatusUpdatesAddServerResponse, w http.ResponseWriter) error {
+	return MarshalStatus(response.body, w)
+}
+func readStatusUpdatesListRequest(request *StatusUpdatesListServerRequest, r *http.Request) error {
 	var err error
 	query := r.URL.Query()
+	request.createdAfter, err = helpers.ParseDate(query, "created_after")
+	if err != nil {
+		return err
+	}
+	request.createdBefore, err = helpers.ParseDate(query, "created_before")
+	if err != nil {
+		return err
+	}
 	request.page, err = helpers.ParseInteger(query, "page")
 	if err != nil {
 		return err
@@ -36,7 +60,7 @@ func readQuotaSummaryListRequest(request *QuotaSummaryListServerRequest, r *http
 	if request.page == nil {
 		request.page = helpers.NewInteger(1)
 	}
-	request.search, err = helpers.ParseString(query, "search")
+	request.productIds, err = helpers.ParseString(query, "product_ids")
 	if err != nil {
 		return err
 	}
@@ -49,10 +73,10 @@ func readQuotaSummaryListRequest(request *QuotaSummaryListServerRequest, r *http
 	}
 	return nil
 }
-func writeQuotaSummaryListRequest(request *QuotaSummaryListRequest, writer io.Writer) error {
+func writeStatusUpdatesListRequest(request *StatusUpdatesListRequest, writer io.Writer) error {
 	return nil
 }
-func readQuotaSummaryListResponse(response *QuotaSummaryListResponse, reader io.Reader) error {
+func readStatusUpdatesListResponse(response *StatusUpdatesListResponse, reader io.Reader) error {
 	iterator, err := helpers.NewIterator(reader)
 	if err != nil {
 		return err
@@ -73,8 +97,8 @@ func readQuotaSummaryListResponse(response *QuotaSummaryListResponse, reader io.
 			value := iterator.ReadInt()
 			response.total = &value
 		case "items":
-			items := readQuotaSummaryList(iterator)
-			response.items = &QuotaSummaryList{
+			items := readStatusList(iterator)
+			response.items = &StatusList{
 				items: items,
 			}
 		default:
@@ -83,14 +107,14 @@ func readQuotaSummaryListResponse(response *QuotaSummaryListResponse, reader io.
 	}
 	return iterator.Error
 }
-func writeQuotaSummaryListResponse(response *QuotaSummaryListServerResponse, w http.ResponseWriter) error {
+func writeStatusUpdatesListResponse(response *StatusUpdatesListServerResponse, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.status)
 	stream := helpers.NewStream(w)
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	count := 1
-	stream.WriteString(QuotaSummaryListKind)
+	stream.WriteString(StatusListKind)
 	if response.items != nil && response.items.href != "" {
 		stream.WriteMore()
 		stream.WriteObjectField("href")
@@ -127,7 +151,7 @@ func writeQuotaSummaryListResponse(response *QuotaSummaryListServerResponse, w h
 				stream.WriteMore()
 			}
 			stream.WriteObjectField("items")
-			writeQuotaSummaryList(response.items.items, stream)
+			writeStatusList(response.items.items, stream)
 			count++
 		}
 	}

@@ -17,6 +17,7 @@ limitations under the License.
 package revoke
 
 import (
+	"github.com/openshift/rosa/cmd/revoke/roleBinding"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/revoke/user"
@@ -32,7 +33,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(user.Cmd)
-
+	Cmd.AddCommand(roleBinding.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)

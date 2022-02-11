@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -144,9 +143,6 @@ func writeVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 // UnmarshalVersionGate reads a value of the 'version_gate' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalVersionGate(source interface{}) (object *VersionGate, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

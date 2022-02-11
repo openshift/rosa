@@ -19,6 +19,7 @@ package grant
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/grant/roleBinding"
 	"github.com/openshift/rosa/cmd/grant/user"
 	"github.com/openshift/rosa/pkg/arguments"
 )
@@ -31,6 +32,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(user.Cmd)
+	Cmd.AddCommand(roleBinding.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

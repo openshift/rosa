@@ -17,55 +17,55 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-// QuotaSummaryListBuilder contains the data and logic needed to build
-// 'quota_summary' objects.
-type QuotaSummaryListBuilder struct {
-	items []*QuotaSummaryBuilder
+// StatusUpdateListBuilder contains the data and logic needed to build
+// 'status_update' objects.
+type StatusUpdateListBuilder struct {
+	items []*StatusUpdateBuilder
 }
 
-// NewQuotaSummaryList creates a new builder of 'quota_summary' objects.
-func NewQuotaSummaryList() *QuotaSummaryListBuilder {
-	return new(QuotaSummaryListBuilder)
+// NewStatusUpdateList creates a new builder of 'status_update' objects.
+func NewStatusUpdateList() *StatusUpdateListBuilder {
+	return new(StatusUpdateListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *QuotaSummaryListBuilder) Items(values ...*QuotaSummaryBuilder) *QuotaSummaryListBuilder {
-	b.items = make([]*QuotaSummaryBuilder, len(values))
+func (b *StatusUpdateListBuilder) Items(values ...*StatusUpdateBuilder) *StatusUpdateListBuilder {
+	b.items = make([]*StatusUpdateBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Empty returns true if the list is empty.
-func (b *QuotaSummaryListBuilder) Empty() bool {
+func (b *StatusUpdateListBuilder) Empty() bool {
 	return b == nil || len(b.items) == 0
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *QuotaSummaryListBuilder) Copy(list *QuotaSummaryList) *QuotaSummaryListBuilder {
+func (b *StatusUpdateListBuilder) Copy(list *StatusUpdateList) *StatusUpdateListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*QuotaSummaryBuilder, len(list.items))
+		b.items = make([]*StatusUpdateBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewQuotaSummary().Copy(v)
+			b.items[i] = NewStatusUpdate().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'quota_summary' objects using the
+// Build creates a list of 'status_update' objects using the
 // configuration stored in the builder.
-func (b *QuotaSummaryListBuilder) Build() (list *QuotaSummaryList, err error) {
-	items := make([]*QuotaSummary, len(b.items))
+func (b *StatusUpdateListBuilder) Build() (list *StatusUpdateList, err error) {
+	items := make([]*StatusUpdate, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(QuotaSummaryList)
+	list = new(StatusUpdateList)
 	list.items = items
 	return
 }

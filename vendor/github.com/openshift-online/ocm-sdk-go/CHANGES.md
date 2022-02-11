@@ -3,6 +3,37 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+
+## 0.1.241 Feb 11 2022
+
+- Update to model 0.1.173:  
+  - addons: Support attributes necessary for STS.
+  - Add ProductIds param to Status Resource.
+  - Add Role bindings to Subscription.
+
+## 0.1.240 Feb 4 2022
+
+- Update to model 0.1.172:
+  - Remove deprecated `SKUs` endpoint.
+  - Remove deprecated quota summary resource and type.
+  - Add QuotaVersion to ClusterAuth.
+  - Allow adding/removing operator roles.
+
+## 0.1.239 Feb 3 2022
+
+- Update to metamodel 0.0.51:
+  - Check for `io.EOF` before trying to parse response body.
+
+## 0.1.238 Jan 28 2022
+
+- Update to model 0.0.170:
+  - Add `ServiceInfo` type to status board service.
+
+## 0.1.237 Jan 25 2022
+
+- Update to metamodel 0.0.50:
+  - Fix format of date query parameters so that it is RFC3339.
+
 ## 0.1.236 Jan 25 2022
 - Update to model v0.0.169
   - Version gate type: Add warning message field

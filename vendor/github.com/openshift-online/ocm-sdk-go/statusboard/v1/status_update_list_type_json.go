@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
 	"io"
@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSKUList writes a list of values of the 'SKU' type to
+// MarshalStatusUpdateList writes a list of values of the 'status_update' type to
 // the given writer.
-func MarshalSKUList(list []*SKU, writer io.Writer) error {
+func MarshalStatusUpdateList(list []*StatusUpdate, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSKUList(list, stream)
+	writeStatusUpdateList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalSKUList(list []*SKU, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSKUList writes a list of value of the 'SKU' type to
+// writeStatusUpdateList writes a list of value of the 'status_update' type to
 // the given stream.
-func writeSKUList(list []*SKU, stream *jsoniter.Stream) {
+func writeStatusUpdateList(list []*StatusUpdate, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeSKU(value, stream)
+		writeStatusUpdate(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalSKUList reads a list of values of the 'SKU' type
+// UnmarshalStatusUpdateList reads a list of values of the 'status_update' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalSKUList(source interface{}) (items []*SKU, err error) {
+func UnmarshalStatusUpdateList(source interface{}) (items []*StatusUpdate, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readSKUList(iterator)
+	items = readStatusUpdateList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSKUList reads list of values of the ''SKU' type from
+// readStatusUpdateList reads list of values of the ''status_update' type from
 // the given iterator.
-func readSKUList(iterator *jsoniter.Iterator) []*SKU {
-	list := []*SKU{}
+func readStatusUpdateList(iterator *jsoniter.Iterator) []*StatusUpdate {
+	list := []*StatusUpdate{}
 	for iterator.ReadArray() {
-		item := readSKU(iterator)
+		item := readStatusUpdate(iterator)
 		list = append(list, item)
 	}
 	return list

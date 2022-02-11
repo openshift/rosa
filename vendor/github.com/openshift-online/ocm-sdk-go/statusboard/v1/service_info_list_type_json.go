@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
 	"io"
@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalQuotaSummaryList writes a list of values of the 'quota_summary' type to
+// MarshalServiceInfoList writes a list of values of the 'service_info' type to
 // the given writer.
-func MarshalQuotaSummaryList(list []*QuotaSummary, writer io.Writer) error {
+func MarshalServiceInfoList(list []*ServiceInfo, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeQuotaSummaryList(list, stream)
+	writeServiceInfoList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalQuotaSummaryList(list []*QuotaSummary, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeQuotaSummaryList writes a list of value of the 'quota_summary' type to
+// writeServiceInfoList writes a list of value of the 'service_info' type to
 // the given stream.
-func writeQuotaSummaryList(list []*QuotaSummary, stream *jsoniter.Stream) {
+func writeServiceInfoList(list []*ServiceInfo, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeQuotaSummary(value, stream)
+		writeServiceInfo(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalQuotaSummaryList reads a list of values of the 'quota_summary' type
+// UnmarshalServiceInfoList reads a list of values of the 'service_info' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalQuotaSummaryList(source interface{}) (items []*QuotaSummary, err error) {
+func UnmarshalServiceInfoList(source interface{}) (items []*ServiceInfo, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readQuotaSummaryList(iterator)
+	items = readServiceInfoList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readQuotaSummaryList reads list of values of the ''quota_summary' type from
+// readServiceInfoList reads list of values of the ''service_info' type from
 // the given iterator.
-func readQuotaSummaryList(iterator *jsoniter.Iterator) []*QuotaSummary {
-	list := []*QuotaSummary{}
+func readServiceInfoList(iterator *jsoniter.Iterator) []*ServiceInfo {
+	list := []*ServiceInfo{}
 	for iterator.ReadArray() {
-		item := readQuotaSummary(iterator)
+		item := readServiceInfo(iterator)
 		list = append(list, item)
 	}
 	return list

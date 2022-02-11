@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -75,9 +74,6 @@ func writeCloudVPC(object *CloudVPC, stream *jsoniter.Stream) {
 // UnmarshalCloudVPC reads a value of the 'cloud_VPC' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalCloudVPC(source interface{}) (object *CloudVPC, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

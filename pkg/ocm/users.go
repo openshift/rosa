@@ -17,8 +17,11 @@ limitations under the License.
 package ocm
 
 import (
+	"fmt"
+	errors "github.com/zgalor/weberr"
 	"net/http"
 
+	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -75,6 +78,42 @@ func (c *Client) DeleteUser(clusterID string, group string, username string) err
 		Send()
 	if err != nil {
 		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
+func (c *Client) CreateRoleBinding(subscriptionID string, userName string, roleID string) (*amv1.RoleBinding, error) {
+	roleBinding, err := amv1.NewRoleBinding().Account(amv1.NewAccount().Username(userName)).
+		Role(amv1.NewRole().ID(roleID)).Build()
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.ocm.AccountsMgmt().V1().Subscriptions().Subscription(subscriptionID).RoleBindings().
+		Add().Body(roleBinding).Send()
+
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
+func (c *Client) DeleteRoleBinding(subscriptionID string, userName string, roleID string) error {
+	query := fmt.Sprintf("account_username = '%s' and role.id = '%s'", userName, roleID)
+	response, err := c.ocm.AccountsMgmt().V1().Subscriptions().Subscription(subscriptionID).RoleBindings().
+		List().Search(query).Send()
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	if response.Size() == 0 {
+		return errors.NotFound.UserErrorf("Role binding '%s' for the user '%s' is not found", roleID, userName)
+	}
+	_, err = c.ocm.AccountsMgmt().V1().Subscriptions().Subscription(subscriptionID).RoleBindings().
+		RoleBinding(response.Items().Get(0).ID()).Delete().Send()
+	if err != nil {
+		return err
 	}
 	return nil
 }

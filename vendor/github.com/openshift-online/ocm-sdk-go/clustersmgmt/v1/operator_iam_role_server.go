@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"context"
@@ -27,48 +27,39 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/errors"
 )
 
-// SKUServer represents the interface the manages the 'SKU' resource.
-type SKUServer interface {
+// OperatorIAMRoleServer represents the interface the manages the 'operator_IAM_role' resource.
+type OperatorIAMRoleServer interface {
 
-	// Get handles a request for the 'get' method.
+	// Delete handles a request for the 'delete' method.
 	//
-	// Retrieves the details of the SKU.
-	Get(ctx context.Context, request *SKUGetServerRequest, response *SKUGetServerResponse) error
+	// Deletes the operator role.
+	Delete(ctx context.Context, request *OperatorIAMRoleDeleteServerRequest, response *OperatorIAMRoleDeleteServerResponse) error
 }
 
-// SKUGetServerRequest is the request for the 'get' method.
-type SKUGetServerRequest struct {
+// OperatorIAMRoleDeleteServerRequest is the request for the 'delete' method.
+type OperatorIAMRoleDeleteServerRequest struct {
 }
 
-// SKUGetServerResponse is the response for the 'get' method.
-type SKUGetServerResponse struct {
+// OperatorIAMRoleDeleteServerResponse is the response for the 'delete' method.
+type OperatorIAMRoleDeleteServerResponse struct {
 	status int
 	err    *errors.Error
-	body   *SKU
-}
-
-// Body sets the value of the 'body' parameter.
-//
-//
-func (r *SKUGetServerResponse) Body(value *SKU) *SKUGetServerResponse {
-	r.body = value
-	return r
 }
 
 // Status sets the status code.
-func (r *SKUGetServerResponse) Status(value int) *SKUGetServerResponse {
+func (r *OperatorIAMRoleDeleteServerResponse) Status(value int) *OperatorIAMRoleDeleteServerResponse {
 	r.status = value
 	return r
 }
 
-// dispatchSKU navigates the servers tree rooted at the given server
+// dispatchOperatorIAMRole navigates the servers tree rooted at the given server
 // till it finds one that matches the given set of path segments, and then invokes
 // the corresponding server.
-func dispatchSKU(w http.ResponseWriter, r *http.Request, server SKUServer, segments []string) {
+func dispatchOperatorIAMRole(w http.ResponseWriter, r *http.Request, server OperatorIAMRoleServer, segments []string) {
 	if len(segments) == 0 {
 		switch r.Method {
-		case "GET":
-			adaptSKUGetRequest(w, r, server)
+		case "DELETE":
+			adaptOperatorIAMRoleDeleteRequest(w, r, server)
 			return
 		default:
 			errors.SendMethodNotAllowed(w, r)
@@ -82,12 +73,12 @@ func dispatchSKU(w http.ResponseWriter, r *http.Request, server SKUServer, segme
 	}
 }
 
-// adaptSKUGetRequest translates the given HTTP request into a call to
+// adaptOperatorIAMRoleDeleteRequest translates the given HTTP request into a call to
 // the corresponding method of the given server. Then it translates the
 // results returned by that method into an HTTP response.
-func adaptSKUGetRequest(w http.ResponseWriter, r *http.Request, server SKUServer) {
-	request := &SKUGetServerRequest{}
-	err := readSKUGetRequest(request, r)
+func adaptOperatorIAMRoleDeleteRequest(w http.ResponseWriter, r *http.Request, server OperatorIAMRoleServer) {
+	request := &OperatorIAMRoleDeleteServerRequest{}
+	err := readOperatorIAMRoleDeleteRequest(request, r)
 	if err != nil {
 		glog.Errorf(
 			"Can't read request for method '%s' and path '%s': %v",
@@ -96,9 +87,9 @@ func adaptSKUGetRequest(w http.ResponseWriter, r *http.Request, server SKUServer
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	response := &SKUGetServerResponse{}
-	response.status = 200
-	err = server.Get(r.Context(), request, response)
+	response := &OperatorIAMRoleDeleteServerResponse{}
+	response.status = 204
+	err = server.Delete(r.Context(), request, response)
 	if err != nil {
 		glog.Errorf(
 			"Can't process request for method '%s' and path '%s': %v",
@@ -107,7 +98,7 @@ func adaptSKUGetRequest(w http.ResponseWriter, r *http.Request, server SKUServer
 		errors.SendInternalServerError(w, r)
 		return
 	}
-	err = writeSKUGetResponse(response, w)
+	err = writeOperatorIAMRoleDeleteResponse(response, w)
 	if err != nil {
 		glog.Errorf(
 			"Can't write response for method '%s' and path '%s': %v",

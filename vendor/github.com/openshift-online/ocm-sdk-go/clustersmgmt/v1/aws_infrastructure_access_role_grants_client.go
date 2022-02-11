@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -147,15 +149,21 @@ func (r *AWSInfrastructureAccessRoleGrantsAddRequest) SendContext(ctx context.Co
 	result = &AWSInfrastructureAccessRoleGrantsAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readAWSInfrastructureAccessRoleGrantsAddResponse(result, response.Body)
+	err = readAWSInfrastructureAccessRoleGrantsAddResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -340,15 +348,21 @@ func (r *AWSInfrastructureAccessRoleGrantsListRequest) SendContext(ctx context.C
 	result = &AWSInfrastructureAccessRoleGrantsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readAWSInfrastructureAccessRoleGrantsListResponse(result, response.Body)
+	err = readAWSInfrastructureAccessRoleGrantsListResponse(result, reader)
 	if err != nil {
 		return
 	}
