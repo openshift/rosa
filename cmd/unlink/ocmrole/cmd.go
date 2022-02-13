@@ -37,8 +37,8 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "ocm-role",
 	Aliases: []string{"ocmrole"},
-	Short:   "unlink ocm role from a specific OCM organization account",
-	Long:    "unlink ocm role from a specific OCM organization account",
+	Short:   "Unlink ocm role from a specific OCM organization",
+	Long:    "Unlink ocm role from a specific OCM organization",
 	Example: ` #Unlink ocm role
 rosa unlink ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
 	RunE: run,
@@ -51,7 +51,7 @@ func init() {
 		&args.roleArn,
 		"role-arn",
 		"",
-		"Role ARN to identify the ocm-role to be unlinked from the OCM organization account",
+		"Role ARN to identify the ocm-role to be unlinked from the OCM organization",
 	)
 	flags.StringVar(
 		&args.organizationID,
