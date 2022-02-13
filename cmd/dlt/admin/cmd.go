@@ -22,16 +22,12 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
-)
-
-const (
-	idpName  = "Cluster-Admin"
-	username = "cluster-admin"
 )
 
 var Cmd = &cobra.Command{
@@ -101,43 +97,33 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Try to find the htpasswd identity provider:
-	reporter.Debugf("Loading '%s' identity provider", idpName)
+	reporter.Debugf("Loading HTPasswd identity provider")
 	idps, err := ocmClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get '%s' identity provider for cluster '%s': %v", idpName, clusterKey, err)
+		reporter.Errorf("Failed to get HTPasswd identity provider for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	var idp *cmv1.IdentityProvider
+	var htpasswdIDP *cmv1.IdentityProvider
 	for _, item := range idps {
 		if ocm.IdentityProviderType(item) == "htpasswd" {
-			idp = item
+			htpasswdIDP = item
 		}
 	}
-	if idp == nil {
-		reporter.Errorf("Failed to get '%s' identity provider for cluster '%s'", idpName, clusterKey)
+	if htpasswdIDP == nil {
+		reporter.Errorf("Cluster '%s' does not have an admin user", clusterKey)
 		os.Exit(1)
 	}
 
-	if confirm.Confirm("delete %s user on cluster %s", username, clusterKey) {
-		// Delete htpasswd IdP:
-		reporter.Debugf("Deleting '%s' identity provider on cluster '%s'", idpName, clusterKey)
-		err = ocmClient.DeleteIdentityProvider(cluster.ID(), idp.ID())
+	if confirm.Confirm("delete %s user on cluster %s", idp.ClusterAdminUsername, clusterKey) {
+		// delete `cluster-admin` user from the HTPasswd IDP
+		reporter.Debugf("Deleting user '%s' identity provider on cluster '%s'", idp.ClusterAdminUsername, clusterKey)
+		err = ocmClient.DeleteHTPasswdUser(idp.ClusterAdminUsername, cluster.ID(), htpasswdIDP)
 		if err != nil {
-			reporter.Errorf("Failed to delete '%s' identity provider on cluster '%s': %s",
-				idpName, clusterKey, err)
+			reporter.Errorf("Failed to delete '%s' user from the HTPasswd IDP of cluster '%s': %s",
+				idp.ClusterAdminUsername, clusterKey, err)
 			os.Exit(1)
 		}
-
-		// Delete admin user from the cluster-admins group:
-		reporter.Debugf("Deleting '%s' user from cluster-admins group on cluster '%s'", username, clusterKey)
-		err = ocmClient.DeleteUser(cluster.ID(), "cluster-admins", username)
-		if err != nil {
-			reporter.Errorf("Failed to delete '%s' user from cluster '%s': %s",
-				username, clusterKey, err)
-			os.Exit(1)
-		}
-
-		reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", username, clusterKey)
+		reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 	}
 }
