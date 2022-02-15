@@ -114,7 +114,10 @@ type Client interface {
 	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
 	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string) ([]Role, error)
 	DeleteAccountRole(roles string) error
+	DeleteOCMRole(roleARN string) error
 	GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error)
+	GetAttachedPolicy(role *string) ([]PolicyDetail, error)
+	HasPermissionsBoundary(roleName string) (bool, error)
 	GetOpenIDConnectProvider(clusterID string) (string, error)
 	GetInstanceProfilesForRole(role string) ([]string, error)
 	IsUpgradedNeededForAccountRolePolicies(rolePrefix string, version string) (bool, error)
