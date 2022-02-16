@@ -669,14 +669,23 @@ func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
 	if req.HTTPResponse.StatusCode >= 500 {
 		return false
 	}
+	logger, err := logging.NewLogger().
+		Build()
+	if err != nil {
+		logger.Errorf("Unable to create AWS logger: %v", err)
+	}
+	if strings.Contains(req.Error.Error(), "Throttling") {
+		logger.Error("Throttling Rate exceeded. Retrying")
+	}
+
 	return r.DefaultRetryer.ShouldRetry(req)
 }
 
 func buildCustomRetryer() CustomRetryer {
 	return CustomRetryer{
 		DefaultRetryer: client.DefaultRetryer{
-			NumMaxRetries:    25,
-			MinThrottleDelay: 1 * time.Second,
+			NumMaxRetries:    6,
+			MinThrottleDelay: 10 * time.Second,
 		},
 	}
 }

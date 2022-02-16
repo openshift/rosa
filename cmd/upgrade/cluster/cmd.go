@@ -233,6 +233,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// if cluster is sts validate roles are compatible with upgrade version
 	if isSTS {
+
 		var spin *spinner.Spinner
 		if reporter.IsTerminal() {
 			spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -247,6 +248,7 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
 			os.Exit(1)
 		}
+
 		isAccountRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix, version)
 		if err != nil {
 			reporter.Errorf("Could not validate '%s' clusters account roles : %v", clusterKey, err)
@@ -279,10 +281,13 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			err := accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode})
 			if err != nil {
+				accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
+				operatorRoleStr := fmt.Sprintf("rosa upgrade operator-roles -c %s", clusterKey)
+
 				reporter.Infof("Account and/Or Operator Role policies are not valid with upgrade version %s. "+
 					"Run the following command(s) to upgrade the roles:\n\n"+
-					"\t%s\n",
-					version, fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix))
+					"\t%s\n"+
+					"\t%s\n", version, accountRoleStr, operatorRoleStr)
 				mode = aws.ModeManual
 			}
 			if mode == aws.ModeManual {
@@ -292,7 +297,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(0)
 			}
 		} else {
-			reporter.Infof("Account and operator roles are up-to-date")
+			reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
 		}
 	}
 
