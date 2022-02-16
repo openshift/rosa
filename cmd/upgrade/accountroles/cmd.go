@@ -245,7 +245,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 }
 
 func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, accountID string, prefix string) error {
-	if !confirm.Prompt(true, "Upgrade the operator role policies to version %s?", aws.DefaultPolicyVersion) {
+	if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", aws.DefaultPolicyVersion) {
 		if args.isInvokedFromClusterUpgrade {
 			return reporter.Errorf("Operator roles need to be upgraded to proceed" +
 				"")

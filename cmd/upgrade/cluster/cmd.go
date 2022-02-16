@@ -284,7 +284,7 @@ func run(cmd *cobra.Command, _ []string) {
 				accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
 				operatorRoleStr := fmt.Sprintf("rosa upgrade operator-roles -c %s", clusterKey)
 
-				reporter.Infof("Account and/Or Operator Role policies are not valid with upgrade version %s. "+
+				reporter.Infof("Account and/or Operator Role policies are not valid with upgrade version %s. "+
 					"Run the following command(s) to upgrade the roles:\n\n"+
 					"\t%s\n"+
 					"\t%s\n", version, accountRoleStr, operatorRoleStr)
