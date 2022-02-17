@@ -36,12 +36,13 @@ import (
 )
 
 var DefaultPrefix = "ManagedOpenShift"
-var DefaultPolicyVersion = "4.9"
+var DefaultPolicyVersion = "4.10"
 
 type Operator struct {
 	Name                string
 	Namespace           string
 	ServiceAccountNames []string
+	MinVersion          string
 }
 
 var CredentialRequests map[string]Operator = map[string]Operator{
@@ -81,6 +82,15 @@ var CredentialRequests map[string]Operator = map[string]Operator{
 			"aws-ebs-csi-driver-operator",
 			"aws-ebs-csi-driver-controller-sa",
 		},
+	},
+	"cluster_storage_operator_csi_cloud_credentials": {
+		Name:      "storage-ebs-cloud-credentials",
+		Namespace: "openshift-cluster-csi-drivers",
+		ServiceAccountNames: []string{
+			"aws-ebs-csi-driver-operator",
+			"aws-ebs-csi-driver-controller-sa",
+		},
+		MinVersion: "4.10",
 	},
 }
 

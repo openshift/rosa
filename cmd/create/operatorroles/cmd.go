@@ -272,6 +272,12 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	prefix string, permissionsBoundary string,
 	cluster *cmv1.Cluster, accountID string, accountRoleVersion string) error {
 	for credrequest, operator := range aws.CredentialRequests {
+		ver := cluster.Version()
+		if ver != nil {
+			if operator.MinVersion != "" && ocm.GetVersionMinor(ver.ID()) < operator.MinVersion {
+				continue
+			}
+		}
 		roleName := getRoleName(cluster, operator)
 		if roleName == "" {
 			return fmt.Errorf("Failed to find operator IAM role")
@@ -334,6 +340,12 @@ func buildCommands(reporter *rprtr.Object,
 	commands := []string{}
 
 	for credrequest, operator := range aws.CredentialRequests {
+		ver := cluster.Version()
+		if ver != nil {
+			if operator.MinVersion != "" && ocm.GetVersionMinor(ver.ID()) < operator.MinVersion {
+				continue
+			}
+		}
 		roleName := getRoleName(cluster, operator)
 		policyARN := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
 		name := aws.GetPolicyName(prefix, operator.Namespace, operator.Name)
