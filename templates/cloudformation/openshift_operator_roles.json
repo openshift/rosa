@@ -61,9 +61,9 @@
             "Properties": {
             	"RoleName": { "Ref": "CloudCredentialOperatorRoleName" },
                 "AssumeRolePolicyDocument": {
-					"Fn::Sub": "{ { \"Version\": \"2012-10-17\", \"Statement\": [ { \"Effect\": \"Allow\", \"Principal\": { \"Federated\": [ \"${OIDCProviderARN}\" ] }, \"Action\": [ \"sts:AssumeRoleWithWebIdentity\" ], \"Condition\": { \"StringEquals\": { \"${IssuerURL}:sub\":  \"${CloudCredentialOperatorSAName}\" } }  } ] }"
-                }, 
-				"Tags":
+					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${CloudCredentialOperatorSAName}\"} } } ] }"
+                },
+                "Tags":
 					[
 						{"Key": "red-hat-managed", "Value": "true"}
 					]
@@ -74,25 +74,9 @@
             "Properties": {
             	"RoleName": { "Ref": "MachineAPIOperatorRoleName" },
                 "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Federated": [
-                    				{ "Ref": "OIDCProviderARN" }
-                                ]
-                            },
-                            "Action": [
-                                "sts:AssumeRoleWithWebIdentity"
-                            ],
-                            "Condition": {
-                                    "StringEquals": { "Fn::Join" : [ "", [ { "Ref": "IssuerURL" }, ":sub: ", { "Ref": "MachineAPIOperatorSAName" } ]] }
-                            }
-                        }
-                    ]
+					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${MachineAPIOperatorSAName}\"} } } ] }"
                 },
-            	"Tags": [ 
+                "Tags": [
             	    {"Key": "red-hat-managed", "Value": "true"}
             	]
             }
@@ -102,25 +86,9 @@
             "Properties": {
             	"RoleName": { "Ref": "ImageRegistryOperatorRoleName" },
                 "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Federated": [
-                    				{ "Ref": "OIDCProviderARN" }
-                                ]
-                            },
-                            "Action": [
-                                "sts:AssumeRoleWithWebIdentity"
-                            ],
-                            "Condition": {
-                                    "StringEquals": { "Fn::Join" : [ "", [ { "Ref": "IssuerURL" }, ":sub: ", { "Ref": "ImageRegistryOperatorSAName" }]] }
-                            }
-                        }
-                    ]
+					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${ImageRegistryOperatorSAName}\"} } } ] }"
                 },
-            	"Tags": [ 
+                "Tags": [
             	    {"Key": "red-hat-managed", "Value": "true"}
             	]
             }
@@ -130,25 +98,9 @@
             "Properties": {
             	"RoleName": { "Ref": "IngressOperatorRoleName" },
                 "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Federated": [
-                    				{ "Ref": "OIDCProviderARN" }
-                                ]
-                            },
-                            "Action": [
-                                "sts:AssumeRoleWithWebIdentity"
-                            ],
-                            "Condition": {
-                                    "StringEquals": { "Fn::Join" : [ "", [ { "Ref": "IssuerURL" }, ":sub: ", { "Ref": "IngressOperatorSAName" } ]] }
-                            }
-                        }
-                    ]
+					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${IngressOperatorSAName}\"} } } ] }"
                 },
-            	"Tags": [ 
+                "Tags": [
                 	{"Key": "red-hat-managed", "Value": "true"}
             	]
             }
@@ -158,25 +110,9 @@
             "Properties": {
             	"RoleName": { "Ref": "ClusterCSIDriverEBSRoleName" },
                 "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Federated": [
-                    				{ "Ref": "OIDCProviderARN" }
-                                ]
-                            },
-                            "Action": [
-                                "sts:AssumeRoleWithWebIdentity"
-                            ],
-                            "Condition": {
-                                    "Fn::Sub": "${IssuerURL}:sub: ${ClusterCSIDriverEBSSAName}"
-                            }
-                        }
-                    ]
+					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${ClusterCSIDriverEBSSAName}\"} } } ] }"
                 },
-            	"Tags": [ 
+            	"Tags": [
             	    {"Key": "red-hat-managed", "Value": "true"}
             	]
             }
