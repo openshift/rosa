@@ -127,9 +127,6 @@ func run(_ *cobra.Command, _ []string) {
 	fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
 	for _, idp := range idps {
 		idpType := ocm.IdentityProviderType(idp)
-		if idpType == "htpasswd" {
-			continue
-		}
 		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), idpType, getAuthURL(cluster, idp.Name()))
 	}
 	writer.Flush()
