@@ -84,7 +84,7 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		currentAccount, err := ocmClient.GetCurrentAccount()
 		if err != nil {
 			reporter.Errorf("Error getting current account: %v", err)
-			return err
+			os.Exit(1)
 		}
 		accountID = currentAccount.ID()
 	}
@@ -100,7 +100,7 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		interactive.Enable()
 	}
 
-	if interactive.Enabled() {
+	if interactive.Enabled() && roleArn == "" {
 		roleArn, err = interactive.GetString(interactive.Input{
 			Question: "User Role ARN",
 			Help:     cmd.Flags().Lookup("role-arn").Usage,
@@ -132,11 +132,11 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			reporter.Errorf("Only organization admin can run this command. "+
 				"Please ask someone with the organization admin role to run the following command \n\n"+
 				"\t rosa unlink user-role --role-arn %s --account-id %s", roleArn, accountID)
-			return err
+			os.Exit(1)
 		}
 		reporter.Errorf("Unable to unlink role ARN '%s' from the account id : '%s' : %v",
 			args.roleArn, accountID, err)
-		return err
+		os.Exit(1)
 	}
 	reporter.Infof("Successfully unlinked role ARN '%s' from account '%s'", roleArn, accountID)
 	return nil

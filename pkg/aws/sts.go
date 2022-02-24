@@ -26,6 +26,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+func (c *awsClient) DeleteUserRole(roleName string) error {
+	err := c.detachAttachedRolePolicies(aws.String(roleName))
+	if err != nil {
+		return err
+	}
+
+	err = c.deletePermissionsBoundary(roleName)
+	if err != nil {
+		return err
+	}
+
+	return c.DeleteRole(roleName, aws.String(roleName))
+}
+
 func (c *awsClient) DeleteOCMRole(roleName string) error {
 	err := c.deleteOCMRolePolicies(roleName)
 	if err != nil {
