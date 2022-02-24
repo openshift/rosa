@@ -169,6 +169,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			if err != nil {
 				reporter.Errorf("Unable to unlink role ARN '%s' from organization : '%s' : %v",
 					roleARN, orgID, err)
+				os.Exit(1)
 			}
 		}
 		err := awsClient.DeleteOCMRole(roleName)

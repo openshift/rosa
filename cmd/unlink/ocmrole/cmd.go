@@ -82,12 +82,12 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	orgID, _, err := ocmClient.GetCurrentOrganization()
 	if err != nil {
 		reporter.Errorf("Error getting organization account: %v", err)
-		return err
+		os.Exit(1)
 	}
 	if args.organizationID != "" && orgID != args.organizationID {
 		reporter.Errorf("Invalid organization ID '%s'. "+
 			"It doesnt match with the user session '%s'.", args.organizationID, orgID)
-		return err
+		os.Exit(1)
 	}
 
 	if reporter.IsTerminal() {
@@ -133,11 +133,11 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			reporter.Errorf("Only organization admin can run this command. "+
 				"Please ask someone with the organization admin role to run the following command \n\n"+
 				"\t rosa unlink ocm-role --role-arn %s --organization-id %s", roleArn, orgID)
-			return err
+			os.Exit(1)
 		}
 		reporter.Errorf("Unable to unlink role arn '%s' from the organization id : '%s' : %v",
 			roleArn, orgID, err)
-		return err
+		os.Exit(1)
 	}
 	reporter.Infof("Successfully unlinked role-arn '%s' from organization account '%s'", roleArn, orgID)
 
