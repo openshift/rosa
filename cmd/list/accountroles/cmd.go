@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -96,7 +98,20 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	var spin *spinner.Spinner
+	if reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
+	if spin != nil {
+		reporter.Infof("Fetching account roles")
+		spin.Start()
+	}
+
 	accountRoles, err := awsClient.ListAccountRoles(args.version)
+
+	if spin != nil {
+		spin.Stop()
+	}
 
 	if err != nil {
 		reporter.Errorf("Failed to get account roles: %v", err)

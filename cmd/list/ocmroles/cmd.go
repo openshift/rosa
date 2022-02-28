@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"time"
+
+	"github.com/briandowns/spinner"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
@@ -73,7 +76,21 @@ func run(_ *cobra.Command, _ []string) {
 		}
 	}()
 
+	var spin *spinner.Spinner
+	if reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
+	if spin != nil {
+		reporter.Infof("Fetching ocm roles")
+		spin.Start()
+	}
+
 	ocmRoles, err := listOCMRoles(awsClient, ocmClient)
+
+	if spin != nil {
+		spin.Stop()
+	}
+
 	if err != nil {
 		reporter.Errorf("Failed to get ocm roles: %v", err)
 		os.Exit(1)
