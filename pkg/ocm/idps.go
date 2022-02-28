@@ -17,6 +17,8 @@ limitations under the License.
 package ocm
 
 import (
+	"fmt"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -43,6 +45,41 @@ func (c *Client) CreateIdentityProvider(clusterID string, idp *cmv1.IdentityProv
 		return nil, handleErr(response.Error(), err)
 	}
 	return response.Body(), nil
+}
+
+func (c *Client) AddHTPasswdUser(username, password, clusterID, idpID string) error {
+	htpasswdUser, _ := cmv1.NewHTPasswdUser().Username(username).Password(password).Build()
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		IdentityProviders().IdentityProvider(idpID).HtpasswdUsers().Add().Body(htpasswdUser).Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
+func (c *Client) DeleteHTPasswdUser(username, clusterID string, htpasswdIDP *cmv1.IdentityProvider) error {
+	var userID string
+	listResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		IdentityProviders().IdentityProvider(htpasswdIDP.ID()).HtpasswdUsers().List().Send()
+	if err != nil {
+		return handleErr(listResponse.Error(), err)
+	}
+	listResponse.Items().Each(func(user *cmv1.HTPasswdUser) bool {
+		if user.Username() == username {
+			userID = user.ID()
+		}
+		return true
+	})
+	if userID == "" {
+		return fmt.Errorf("HTPasswd user named '%s' on cluster '%s' does not exist", username, clusterID)
+	}
+	deleteResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		IdentityProviders().IdentityProvider(htpasswdIDP.ID()).HtpasswdUsers().
+		HtpasswdUser(userID).Delete().Send()
+	if err != nil {
+		return handleErr(deleteResponse.Error(), err)
+	}
+	return nil
 }
 
 func (c *Client) DeleteIdentityProvider(clusterID string, idpID string) error {
