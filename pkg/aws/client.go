@@ -79,6 +79,7 @@ type Client interface {
 	CheckAdminUserExists(userName string) (err error)
 	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, stackStatus *string, err error)
 	CheckRoleExists(roleName string) (bool, string, error)
+	ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string) error
 	GetIAMCredentials() (credentials.Value, error)
 	GetRegion() string
 	ValidateCredentials() (isValid bool, err error)

@@ -69,6 +69,24 @@ func RoleARNToRoleName(roleARN string) (string, error) {
 	return "", errors.Errorf("Couldn't extract the role name from role ARN")
 }
 
+func (c *awsClient) ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string) error {
+	creator, err := c.GetCreator()
+	if err != nil {
+		return errors.Errorf("Failed to get AWS creator: %v", err)
+	}
+
+	parsedARN, err := arn.Parse(roleARN)
+	if err != nil {
+		return errors.Errorf("%s", err)
+	}
+
+	if creator.AccountID != parsedARN.AccountID {
+		return errors.Errorf("Role ARN '%s' doesn't match the user's account ID '%s'", roleARN, creator.AccountID)
+	}
+
+	return nil
+}
+
 func (c *awsClient) HasPermissionsBoundary(roleName string) (bool, error) {
 	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(roleName),

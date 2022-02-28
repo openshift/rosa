@@ -130,6 +130,12 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	}
 
+	err = awsClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	if !confirm.Prompt(true, "Delete '%s' ocm role?", roleARN) {
 		os.Exit(0)
 	}
