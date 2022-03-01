@@ -129,13 +129,13 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	err = ocmClient.UnlinkUserRoleFromAccount(accountID, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			reporter.Errorf("Only organization admin can run this command. "+
-				"Please ask someone with the organization admin role to run the following command \n\n"+
+			reporter.Errorf("Only organization admin or the user that owns this account can run this command. "+
+				"Please ask someone with adequate permissions to run the following command \n\n"+
 				"\t rosa unlink user-role --role-arn %s --account-id %s", roleArn, accountID)
 			os.Exit(1)
 		}
 		reporter.Errorf("Unable to unlink role ARN '%s' from the account id : '%s' : %v",
-			args.roleArn, accountID, err)
+			roleArn, accountID, err)
 		os.Exit(1)
 	}
 	reporter.Infof("Successfully unlinked role ARN '%s' from account '%s'", roleArn, accountID)
