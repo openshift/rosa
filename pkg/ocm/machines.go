@@ -27,13 +27,13 @@ import (
 
 const AcceleratedComputing = "accelerated_computing"
 
-func (c *Client) GetMachineTypes() (machineTypes []*cmv1.MachineType, err error) {
+func (c *Client) GetMachineTypes() (machineTypes MachineTypeList, err error) {
 	collection := c.ocm.ClustersMgmt().V1().MachineTypes()
 	page := 1
 	size := 100
 	for {
 		var response *cmv1.MachineTypesListResponse
-		response, err = collection.List().
+		response, err := collection.List().
 			Search("cloud_provider.id = 'aws'").
 			Order("cpu asc").
 			Page(page).
@@ -46,64 +46,20 @@ func (c *Client) GetMachineTypes() (machineTypes []*cmv1.MachineType, err error)
 			}
 			return nil, errors.New(errMsg)
 		}
-		machineTypes = append(machineTypes, response.Items().Slice()...)
+
+		response.Items().Each(func(item *cmv1.MachineType) bool {
+			machineTypes = append(machineTypes, &MachineType{
+				MachineType: item,
+			})
+			return true
+		})
+
 		if response.Size() < size {
 			break
 		}
 		page++
 	}
-	return
-}
 
-// Validate AWS machine types
-func ValidateMachineType(machineType string, machineTypes []*MachineType, multiAZ bool) (string, error) {
-	if machineType != "" {
-		var machineTypeList []string
-		// Check and set the cluster machineType
-		hasMachineType := false
-		for _, v := range machineTypes {
-			machineTypeList = append(machineTypeList, v.MachineType.ID())
-			if v.MachineType.ID() == machineType {
-				if v.MachineType.Category() == AcceleratedComputing && v.AvailableQuota < getDefaultNodes(multiAZ) {
-					err := fmt.Errorf("Insufficient quota for instance type: %s", machineType)
-					return machineType, err
-				}
-				hasMachineType = true
-			}
-		}
-		if !hasMachineType {
-			allMachineTypes := strings.Join(machineTypeList, " ")
-			err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
-			return machineType, err
-		}
-	}
-
-	return machineType, nil
-}
-
-func (c *Client) GetMachineTypeList() (machineTypeList []string, err error) {
-	machineTypes, err := c.GetMachineTypes()
-	if err != nil {
-		err = fmt.Errorf("Failed to retrieve machine types: %s", err)
-		return
-	}
-
-	for _, v := range machineTypes {
-		machineTypeList = append(machineTypeList, v.ID())
-	}
-
-	return
-}
-
-func GetAvailableMachineTypeList(machineTypes []*MachineType, multiAZ bool) (machineTypeList []string) {
-	for _, v := range machineTypes {
-		if !v.Available {
-			continue
-		}
-		if v.MachineType.Category() != AcceleratedComputing || v.AvailableQuota > getDefaultNodes(multiAZ) {
-			machineTypeList = append(machineTypeList, v.MachineType.ID())
-		}
-	}
 	return
 }
 
@@ -118,14 +74,29 @@ func getDefaultNodes(multiAZ bool) int {
 type MachineType struct {
 	MachineType    *cmv1.MachineType
 	Available      bool
-	AvailableQuota int
+	availableQuota int
 }
 
-func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
+func (mt MachineType) HasQuota(multiAZ bool) bool {
+	return mt.MachineType.Category() != AcceleratedComputing || mt.availableQuota > getDefaultNodes(multiAZ)
+}
+
+func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
 	machineTypes, err := c.GetMachineTypes()
 	if err != nil {
 		return nil, err
 	}
+
+	quotaCosts, err := c.getQuotaCosts()
+	if err != nil {
+		return nil, err
+	}
+
+	machineTypes.UpdateAvailableQuota(quotaCosts)
+	return machineTypes, nil
+}
+
+func (c *Client) getQuotaCosts() (*amsv1.QuotaCostList, error) {
 	acctResponse, err := c.ocm.AccountsMgmt().V1().CurrentAccount().
 		Get().
 		Send()
@@ -145,29 +116,87 @@ func (c *Client) GetAvailableMachineTypes() ([]*MachineType, error) {
 	if err != nil {
 		return nil, handleErr(quotaCostResponse.Error(), err)
 	}
-	var availableMachineTypes []*MachineType
 	quotaCosts := quotaCostResponse.Items()
+	return quotaCosts, nil
+}
 
-	for _, machineType := range machineTypes {
-		availableMachineType := &MachineType{
-			MachineType: machineType,
-		}
-		if machineType.Category() == AcceleratedComputing {
-			quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
-				for _, relatedResource := range quotaCost.RelatedResources() {
-					if machineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
-						availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
-						availableMachineType.Available = availableQuota > 1
-						availableMachineType.AvailableQuota = availableQuota
-						return false
-					}
-				}
-				return true
-			})
-		} else {
-			availableMachineType.Available = true
-		}
-		availableMachineTypes = append(availableMachineTypes, availableMachineType)
+// A list of MachineTypes with additional information
+type MachineTypeList []*MachineType
+
+// IDs extracts list of IDs from a MachineTypeList
+func (mtl *MachineTypeList) IDs() []string {
+	res := make([]string, len(*mtl))
+	for i, v := range *mtl {
+		res[i] = v.MachineType.ID()
 	}
-	return availableMachineTypes, nil
+	return res
+}
+
+// Find returns the first MachineType matching the ID
+func (mtl *MachineTypeList) Find(id string) *MachineType {
+	for _, v := range *mtl {
+		if v.MachineType.ID() == id {
+			return v
+		}
+	}
+	return nil
+}
+
+// Filter returns a new MachineTypeList with only elements for which fn returned true
+func (mtl *MachineTypeList) Filter(fn func(*MachineType) bool) MachineTypeList {
+	var res MachineTypeList
+	for _, v := range *mtl {
+		if fn(v) {
+			res = append(res, v)
+		}
+	}
+	return res
+}
+
+func (mtl *MachineTypeList) UpdateAvailableQuota(quotaCosts *amsv1.QuotaCostList) {
+	for _, machineType := range *mtl {
+		if machineType.MachineType.Category() != AcceleratedComputing {
+			machineType.Available = true
+			continue
+		}
+		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
+			for _, relatedResource := range quotaCost.RelatedResources() {
+				if machineType.MachineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
+					availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
+					machineType.Available = availableQuota > 1
+					machineType.availableQuota = availableQuota
+					return false
+				}
+			}
+			return true
+		})
+	}
+}
+
+func (mtl *MachineTypeList) GetAvailableIDs(multiAZ bool) (machineTypeList []string) {
+	list := mtl.Filter(func(mt *MachineType) bool {
+		return mt.Available && mt.HasQuota(multiAZ)
+	})
+	return list.IDs()
+}
+
+// Validate AWS machine type is available with enough quota in the list
+func (mtl *MachineTypeList) ValidateMachineType(machineType string, multiAZ bool) error {
+	if machineType == "" {
+		return nil
+	}
+	v := mtl.Find(machineType)
+
+	if v == nil {
+		allMachineTypes := strings.Join(mtl.IDs(), " ")
+		err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
+		return err
+	}
+
+	if !v.HasQuota(multiAZ) {
+		err := fmt.Errorf("Insufficient quota for instance type: %s", machineType)
+		return err
+	}
+
+	return nil
 }
