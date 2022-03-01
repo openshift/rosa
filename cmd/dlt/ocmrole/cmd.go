@@ -46,7 +46,8 @@ var Cmd = &cobra.Command{
 	Long:    "Delete ocm role from the current AWS account",
 	Example: ` # Delete ocm role
 rosa delete ocm-role --role-arn arn:aws:iam::123456789012:role/xxx-OCM-Role-1223456778`,
-	RunE: run,
+	RunE:   run,
+	Hidden: true,
 }
 
 func init() {
