@@ -64,15 +64,6 @@ func init() {
 	)
 	Cmd.MarkFlagRequired("prefix")
 
-	flags.StringVarP(
-		&args.clusterID,
-		"clusterID",
-		"c",
-		"",
-		"",
-	)
-	flags.MarkHidden("clusterID")
-
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
@@ -83,12 +74,14 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	isInvokedFromClusterUpgrade := false
 	skipInteractive := false
-	if len(argv) == 2 && !cmd.Flag("prefix").Changed {
+	if len(argv) >= 2 && !cmd.Flag("prefix").Changed {
 		args.prefix = argv[0]
 		aws.SetModeKey(argv[1])
-
 		if argv[1] != "" {
 			skipInteractive = true
+		}
+		if len(argv) > 2 && argv[2] != "" {
+			args.clusterID = argv[2]
 		}
 		isInvokedFromClusterUpgrade = true
 	}
@@ -98,9 +91,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
 	prefix := args.prefix
-
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
 		Logger(logger).
@@ -246,7 +237,7 @@ func run(cmd *cobra.Command, argv []string) error {
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string) error {
 	for file, role := range aws.AccountRoles {
 		name := aws.GetRoleName(prefix, role.Name)
-		if !confirm.Prompt(true, "Upgrade the '%s' role polices to version %s?", name,
+		if !confirm.Prompt(true, "Upgrade the '%s' role policy to version %s?", name,
 			aws.DefaultPolicyVersion) {
 			if args.isInvokedFromClusterUpgrade {
 				return reporter.Errorf("Account roles need to be upgraded to proceed" +

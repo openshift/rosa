@@ -18,9 +18,6 @@ package cluster
 
 import (
 	"fmt"
-	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
-	"github.com/openshift/rosa/pkg/sts"
-
 	"os"
 	"strconv"
 	"strings"
@@ -242,7 +239,7 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
 			os.Exit(1)
 		}
-		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode})
+		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode, cluster.ID()})
 		if err != nil {
 			accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
 			operatorRoleStr := fmt.Sprintf("rosa upgrade operator-roles -c %s", clusterKey)
@@ -252,10 +249,6 @@ func run(cmd *cobra.Command, _ []string) {
 				"\t%s\n"+
 				"\t%s\n", version, accountRoleStr, operatorRoleStr)
 			os.Exit(0)
-		}
-		//Check if the new roles are needed and if so call the update operator role
-		if sts.IsNewOperatorAdded(version){
-			err = accountroles.Cmd.RunE(operatorroles.Cmd, []string{prefix, mode})
 		}
 		reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
 	}

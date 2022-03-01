@@ -42,7 +42,6 @@ type Operator struct {
 	Name                string
 	Namespace           string
 	ServiceAccountNames []string
-	Version string
 }
 
 var CredentialRequests map[string]Operator = map[string]Operator{
@@ -82,7 +81,6 @@ var CredentialRequests map[string]Operator = map[string]Operator{
 			"aws-ebs-csi-driver-operator",
 			"aws-ebs-csi-driver-controller-sa",
 		},
-		Version: "4.10",
 	},
 }
 
@@ -1455,9 +1453,6 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluste
 func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix string, accountID string,
 	version string) (bool, error) {
 	for _, operator := range CredentialRequests {
-		if operator.Version == version{
-			return true,nil
-		}
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
 		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(policyARN, version)
 		if err != nil {
@@ -1477,6 +1472,9 @@ func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
 		return false, err
 	}
 	for _, attachedPolicy := range attachedPolicies {
+		if attachedPolicy.PolicyArn == "" {
+			continue
+		}
 		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(attachedPolicy.PolicyArn, version)
 		if err != nil {
 			return false, errors.Errorf("Failed to validate role polices : %v", err)
@@ -1489,13 +1487,13 @@ func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
 }
 
 func (c *awsClient) isRolePoliciesCompatibleForUpgrade(policyARN string, version string) (bool, error) {
-	policyTagOutput, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{
+	policyTagOutput, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
 		PolicyArn: aws.String(policyARN),
 	})
 	if err != nil {
 		return false, err
 	}
-	return c.hasCompatibleMajorMinorVersionTags(policyTagOutput.Policy.Tags, version)
+	return c.hasCompatibleMajorMinorVersionTags(policyTagOutput.Tags, version)
 }
 
 func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
