@@ -18,12 +18,14 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
+	"github.com/openshift/rosa/pkg/sts"
+
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -233,72 +235,29 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// if cluster is sts validate roles are compatible with upgrade version
 	if isSTS {
-
-		var spin *spinner.Spinner
-		if reporter.IsTerminal() {
-			spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-		}
 		reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
 			" are compatible with upgrade.", cluster.ID())
-		if spin != nil {
-			spin.Start()
-		}
 		prefix, err := aws.GetPrefixFromAccountRole(cluster)
 		if err != nil {
 			reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
 			os.Exit(1)
 		}
-
-		isAccountRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix, version)
+		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode})
 		if err != nil {
-			reporter.Errorf("Could not validate '%s' clusters account roles : %v", clusterKey, err)
-			os.Exit(1)
-		}
+			accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
+			operatorRoleStr := fmt.Sprintf("rosa upgrade operator-roles -c %s", clusterKey)
 
-		isOperatorRoleUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRolePolicies(cluster,
-			awsCreator.AccountID, version)
-		if err != nil {
-			reporter.Errorf("Could not validate '%s' clusters operator roles : %v", clusterKey, err)
-			os.Exit(1)
+			reporter.Infof("Account and/or Operator Role policies are not valid with upgrade version %s. "+
+				"Run the following command(s) to upgrade the roles:\n\n"+
+				"\t%s\n"+
+				"\t%s\n", version, accountRoleStr, operatorRoleStr)
+			os.Exit(0)
 		}
-		if spin != nil {
-			spin.Stop()
+		//Check if the new roles are needed and if so call the update operator role
+		if sts.IsNewOperatorAdded(version){
+			err = accountroles.Cmd.RunE(operatorroles.Cmd, []string{prefix, mode})
 		}
-		if isAccountRoleUpgradeNeeded || isOperatorRoleUpgradeNeeded {
-			reporter.Infof("Account and/or operator roles needed upgrade")
-			if interactive.Enabled() || mode == "" {
-				mode, err = interactive.GetOption(interactive.Input{
-					Question: "Upgrade mode",
-					Help:     cmd.Flags().Lookup("mode").Usage,
-					Default:  aws.ModeAuto,
-					Options:  aws.Modes,
-					Required: true,
-				})
-				if err != nil {
-					reporter.Errorf("Expected a valid cluster upgrade mode: %s", err)
-					os.Exit(1)
-				}
-			}
-			err := accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode})
-			if err != nil {
-				accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
-				operatorRoleStr := fmt.Sprintf("rosa upgrade operator-roles -c %s", clusterKey)
-
-				reporter.Infof("Account and/or Operator Role policies are not valid with upgrade version %s. "+
-					"Run the following command(s) to upgrade the roles:\n\n"+
-					"\t%s\n"+
-					"\t%s\n", version, accountRoleStr, operatorRoleStr)
-				mode = aws.ModeManual
-			}
-			if mode == aws.ModeManual {
-				reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
-					" once account and operator roles have been upgraded : \n\n"+
-					"\trosa upgrade cluster --cluster %s\n", clusterKey)
-				os.Exit(0)
-			}
-		} else {
-			reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
-		}
+		reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
 	}
 
 	upgradePolicyBuilder := cmv1.NewUpgradePolicy().

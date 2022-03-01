@@ -18,10 +18,11 @@ package accountroles
 
 import (
 	"fmt"
-
 	"os"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -36,6 +37,7 @@ import (
 var args struct {
 	prefix                      string
 	isInvokedFromClusterUpgrade bool
+	clusterID                   string
 }
 
 var Cmd = &cobra.Command{
@@ -61,6 +63,16 @@ func init() {
 		"User-defined prefix for all generated AWS resources",
 	)
 	Cmd.MarkFlagRequired("prefix")
+
+	flags.StringVarP(
+		&args.clusterID,
+		"clusterID",
+		"c",
+		"",
+		"",
+	)
+	flags.MarkHidden("clusterID")
+
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
@@ -125,6 +137,17 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
+	var spin *spinner.Spinner
+	if reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
+	if spin != nil {
+		spin.Start()
+	}
+	if !args.isInvokedFromClusterUpgrade {
+		reporter.Infof("Ensuring account and operator role policies compatibility for upgrade")
+	}
+
 	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
 		aws.DefaultPolicyVersion)
 	if err != nil {
@@ -135,12 +158,18 @@ func run(cmd *cobra.Command, argv []string) error {
 	isUpgradeNeedForOperatorRolePolicies, err := awsClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
 		creator.AccountID,
 		aws.DefaultPolicyVersion)
+
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
+	if spin != nil {
+		spin.Stop()
+	}
 	if !isUpgradeNeedForAccountRolePolicies && !isUpgradeNeedForOperatorRolePolicies {
+		if args.isInvokedFromClusterUpgrade {
+			return nil
+		}
 		reporter.Infof("Account role with the prefix '%s' is already up-to-date.", prefix)
 		os.Exit(0)
 	}
@@ -200,6 +229,13 @@ func run(cmd *cobra.Command, argv []string) error {
 		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
 			isUpgradeNeedForOperatorRolePolicies)
 		fmt.Println(commands)
+		if args.isInvokedFromClusterUpgrade {
+			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
+				" once account and operator roles have been upgraded : \n\n"+
+				"\trosa upgrade cluster --cluster %s\n", args.clusterID)
+			os.Exit(0)
+		}
+
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)

@@ -179,6 +179,8 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Errorf("Error upgrading the role polices: %s", err)
 			os.Exit(1)
 		}
+		//create the new role and call the ocm to add it
+
 	case aws.ModeManual:
 		err = aws.GenerateOperatorPolicyFiles(reporter)
 		if err != nil {
