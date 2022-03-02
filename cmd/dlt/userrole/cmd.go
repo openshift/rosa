@@ -161,6 +161,17 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+
+	isUserRole, err := awsClient.IsUserRole(&roleName)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if !isUserRole {
+		reporter.Errorf("Role '%s' is not a user role", roleName)
+		os.Exit(1)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		ocmClient.LogEvent("ROSADeleteUserMRoleModeAuto", nil)

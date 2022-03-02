@@ -167,6 +167,12 @@ func run(cmd *cobra.Command, argv []string) error {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+
+	if !aws.IsOCMRole(&roleName) {
+		reporter.Errorf("Role '%s' is not an OCM role", roleName)
+		os.Exit(1)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		ocmClient.LogEvent("ROSADeleteOCMRoleModeAuto", nil)
