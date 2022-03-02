@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
+	semver "github.com/hashicorp/go-version"
 	errors "github.com/zgalor/weberr"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -500,4 +501,15 @@ func (c *Client) CheckRoleExists(orgID string, roleName string, awsAccountID str
 		return false, "", nil
 	}
 	return true, existingRole[1], nil
+}
+
+func GetVersionMinor(ver string) string {
+	rawID := strings.Replace(ver, "openshift-v", "", 1)
+	version, err := semver.NewVersion(rawID)
+	if err != nil {
+		segments := strings.Split(rawID, ".")
+		return fmt.Sprintf("%s.%s", segments[0], segments[1])
+	}
+	segments := version.Segments()
+	return fmt.Sprintf("%d.%d", segments[0], segments[1])
 }

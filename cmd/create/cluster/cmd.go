@@ -29,7 +29,6 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
-	semver "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -645,7 +644,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	hasRoles := false
 	if isSTS && roleARN == "" {
-		minor := getVersionMinor(version)
+		minor := ocm.GetVersionMinor(version)
 		role := aws.AccountRoles[aws.InstallerAccountRole]
 
 		// Find all installer roles in the current account using AWS resource tags
@@ -890,7 +889,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		validVersion, err := awsClient.HasCompatibleVersionTags(role.Tags, getVersionMinor(version))
+		validVersion, err := awsClient.HasCompatibleVersionTags(role.Tags, ocm.GetVersionMinor(version))
 		if err != nil {
 			reporter.Errorf("Could not validate Role '%s' : %v", ARN, err)
 			os.Exit(1)
@@ -942,11 +941,16 @@ func run(cmd *cobra.Command, _ []string) {
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
 		for _, operator := range aws.CredentialRequests {
+			//If the cluster version is less than the supported operator version
+			if operator.MinVersion != "" && ocm.GetVersionMinor(version) < operator.MinVersion {
+				continue
+			}
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name,
 				Namespace: operator.Namespace,
 				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator),
 			})
+
 		}
 		// If user insists on using the deprecated --operator-iam-roles
 		// override the values to support the legacy documentation
@@ -2095,15 +2099,4 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 
 func getRolePrefix(clusterName string) string {
 	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
-}
-
-func getVersionMinor(ver string) string {
-	rawID := strings.Replace(ver, "openshift-v", "", 1)
-	version, err := semver.NewVersion(rawID)
-	if err != nil {
-		segments := strings.Split(rawID, ".")
-		return fmt.Sprintf("%s.%s", segments[0], segments[1])
-	}
-	segments := version.Segments()
-	return fmt.Sprintf("%d.%d", segments[0], segments[1])
 }
