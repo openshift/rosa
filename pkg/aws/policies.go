@@ -1482,6 +1482,9 @@ func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
 		return false, err
 	}
 	for _, attachedPolicy := range attachedPolicies {
+		if attachedPolicy.PolicyArn == "" {
+			continue
+		}
 		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(attachedPolicy.PolicyArn, version)
 		if err != nil {
 			return false, errors.Errorf("Failed to validate role polices : %v", err)
