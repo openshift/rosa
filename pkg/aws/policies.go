@@ -686,12 +686,12 @@ func roleHasTag(roleTags []*iam.Tag, tagKey string, tagValue string) bool {
 	return false
 }
 
-func isOCMRole(roleName *string) bool {
+func IsOCMRole(roleName *string) bool {
 	return strings.Contains(aws.StringValue(roleName), fmt.Sprintf("%s-Role", OCMRole))
 }
 
-// isUserRole checks the role tags in addition to the role name, because the word 'user' is common
-func (c *awsClient) isUserRole(roleName *string) (bool, error) {
+// IsUserRole checks the role tags in addition to the role name, because the word 'user' is common
+func (c *awsClient) IsUserRole(roleName *string) (bool, error) {
 	if strings.Contains(aws.StringValue(roleName), OCMUserRole) {
 		roleTags, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
 			RoleName: roleName,
@@ -714,7 +714,7 @@ func (c *awsClient) ListUserRoles() ([]Role, error) {
 	}
 
 	for _, role := range roles {
-		isUserRole, err := c.isUserRole(role.RoleName)
+		isUserRole, err := c.IsUserRole(role.RoleName)
 		if err != nil {
 			return nil, err
 		}
@@ -739,7 +739,7 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 	}
 
 	for _, role := range roles {
-		if isOCMRole(role.RoleName) {
+		if IsOCMRole(role.RoleName) {
 			var ocmRole Role
 			ocmRole.RoleName = aws.StringValue(role.RoleName)
 			ocmRole.RoleARN = aws.StringValue(role.Arn)

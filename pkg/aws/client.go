@@ -131,6 +131,7 @@ type Client interface {
 	GetAccountRoleVersion(roleName string) (string, error)
 	IsPolicyExists(policyARN string) (*iam.GetPolicyOutput, error)
 	IsAdminRole(roleName string) (bool, error)
+	IsUserRole(roleName *string) (bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
