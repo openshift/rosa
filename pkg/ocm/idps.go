@@ -47,6 +47,15 @@ func (c *Client) CreateIdentityProvider(clusterID string, idp *cmv1.IdentityProv
 	return response.Body(), nil
 }
 
+func (c *Client) GetHTPasswdUserList(clusterID, htpasswdIDPId string) (*cmv1.HTPasswdUserList, error) {
+	listResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		IdentityProviders().IdentityProvider(htpasswdIDPId).HtpasswdUsers().List().Send()
+	if err != nil {
+		return nil, handleErr(listResponse.Error(), err)
+	}
+	return listResponse.Items(), nil
+}
+
 func (c *Client) AddHTPasswdUser(username, password, clusterID, idpID string) error {
 	htpasswdUser, _ := cmv1.NewHTPasswdUser().Username(username).Password(password).Build()
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).

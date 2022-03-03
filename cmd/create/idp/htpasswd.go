@@ -44,11 +44,16 @@ func createHTPasswdIDP(cmd *cobra.Command,
 	}
 
 	// Choose which way to create the IDP according to whether it already has an admin or not.
-	htpasswdIDP := FindExistingHTPasswdIDP(cluster, ocmClient)
+	htpasswdIDP, userList := FindExistingHTPasswdIDP(cluster, ocmClient)
 	if htpasswdIDP != nil {
-		containsAdminOnly := !HasClusterAdmin(htpasswdIDP) || htpasswdIDP.Htpasswd().Users().Len() == 0
+		// if existing idp has any users other than `cluster-admin`, then it was created as a proper idp
+		// and not as an admin container during `rosa create admin`. A cluster may only have one
+		// htpasswd idp so `create idp` should not continue.
+		containsAdminOnly := HasClusterAdmin(userList) && userList.Len() == 1
 		if !containsAdminOnly {
-			exitHTPasswdCreate("Cluster already has an HTPasswd IDP", nil)
+			reporter.Errorf(
+				"Cluster '%s' already has an HTPasswd IDP", clusterKey)
+			os.Exit(1)
 		}
 		// Existing IDP contains only admin. Add new user to it
 		reporter.Infof("Cluster already has an HTPasswd IDP, new user will be added to it")
@@ -97,7 +102,7 @@ func getUserDetails(cmd *cobra.Command) (string, string) {
 		},
 	})
 	if err != nil {
-		exitHTPasswdCreate("Expected a valid username: %s", err)
+		exitHTPasswdCreate("Expected a valid username: %s", clusterKey, err)
 	}
 	password, err := interactive.GetPassword(interactive.Input{
 		Question: "Password",
@@ -106,7 +111,7 @@ func getUserDetails(cmd *cobra.Command) (string, string) {
 		Required: true,
 	})
 	if err != nil {
-		exitHTPasswdCreate("Expected a valid password: %s", err)
+		exitHTPasswdCreate("Expected a valid password: %s", clusterKey, err)
 	}
 	return username, password
 }
@@ -118,7 +123,7 @@ func shouldAddAnotherUser() bool {
 		Default:  false,
 	})
 	if err != nil {
-		exitHTPasswdCreate("Expected a valid reply: %s", err)
+		exitHTPasswdCreate("Expected a valid reply: %s", clusterKey, err)
 	}
 	return addAnother
 }
@@ -134,7 +139,7 @@ func CreateHTPasswdUser(username, password string) *cmv1.HTPasswdUserBuilder {
 	return builder
 }
 
-func exitHTPasswdCreate(format string, err error) {
+func exitHTPasswdCreate(format, clusterKey string, err error) {
 	reporter.Errorf("Failed to create IDP for cluster '%s': %v",
 		clusterKey,
 		fmt.Errorf(format, err))
@@ -151,20 +156,19 @@ func usernameValidator(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
-func HasClusterAdmin(htpasswdIDP *cmv1.IdentityProvider) bool {
+func HasClusterAdmin(userList *cmv1.HTPasswdUserList) bool {
 	hasAdmin := false
-	if htpasswdIDP != nil {
-		htpasswdIDP.Htpasswd().Users().Each(func(user *cmv1.HTPasswdUser) bool {
-			if user.Username() == ClusterAdminUsername {
-				hasAdmin = true
-			}
-			return true
-		})
-	}
+	userList.Each(func(user *cmv1.HTPasswdUser) bool {
+		if user.Username() == ClusterAdminUsername {
+			hasAdmin = true
+		}
+		return true
+	})
 	return hasAdmin
 }
 
-func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, ocmClient *ocm.Client) (htpasswdIDP *cmv1.IdentityProvider) {
+func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, ocmClient *ocm.Client) (
+	htpasswdIDP *cmv1.IdentityProvider, userList *cmv1.HTPasswdUserList) {
 	reporter.Debugf("Loading cluster's identity providers")
 	idps, err := ocmClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
@@ -175,6 +179,13 @@ func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, ocmClient *ocm.Client) (htpa
 	for _, item := range idps {
 		if ocm.IdentityProviderType(item) == "htpasswd" {
 			htpasswdIDP = item
+		}
+	}
+	if htpasswdIDP != nil {
+		userList, err = ocmClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
+		if err != nil {
+			reporter.Errorf("Failed to get user list of the HTPasswd IDP of '%s': %v", clusterKey, err)
+			os.Exit(1)
 		}
 	}
 	return

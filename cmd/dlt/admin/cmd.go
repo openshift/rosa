@@ -124,16 +124,6 @@ func run(cmd *cobra.Command, _ []string) {
 				idp.ClusterAdminUsername, clusterKey, err)
 			os.Exit(1)
 		}
-
-		// Delete admin user from the cluster-admins group:
-		reporter.Debugf("Deleting '%s' user from cluster-admins group on cluster '%s'", idp.ClusterAdminUsername, clusterKey)
-		err = ocmClient.DeleteUser(cluster.ID(), "cluster-admins", idp.ClusterAdminUsername)
-		if err != nil {
-			reporter.Errorf("Failed to delete '%s' user from cluster '%s': %s",
-				idp.ClusterAdminUsername, clusterKey, err)
-			os.Exit(1)
-		}
-
 		reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 	}
 }
