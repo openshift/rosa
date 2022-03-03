@@ -130,7 +130,9 @@ type Client interface {
 	IsPolicyCompatible(policyArn string, version string) (bool, error)
 	GetAccountRoleVersion(roleName string) (string, error)
 	IsPolicyExists(policyARN string) (*iam.GetPolicyOutput, error)
+	IsRolePolicyExists(roleName string, policyName string) (*iam.GetRolePolicyOutput, error)
 	IsAdminRole(roleName string) (bool, error)
+	DeleteInlineRolePolicies(roleName string) error
 	IsUserRole(roleName *string) (bool, error)
 }
 

@@ -218,7 +218,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Infof("Run the following commands to upgrade the account role policies:\n")
 		}
 		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
-			isUpgradeNeedForOperatorRolePolicies)
+			isUpgradeNeedForOperatorRolePolicies, awsClient)
 		fmt.Println(commands)
 		if args.isInvokedFromClusterUpgrade {
 			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
@@ -236,8 +236,8 @@ func run(cmd *cobra.Command, argv []string) error {
 
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string) error {
 	for file, role := range aws.AccountRoles {
-		name := aws.GetRoleName(prefix, role.Name)
-		if !confirm.Prompt(true, "Upgrade the '%s' role policy to version %s?", name,
+		roleName := aws.GetRoleName(prefix, role.Name)
+		if !confirm.Prompt(true, "Upgrade the '%s' role policy to version %s?", roleName,
 			aws.DefaultPolicyVersion) {
 			if args.isInvokedFromClusterUpgrade {
 				return reporter.Errorf("Account roles need to be upgraded to proceed" +
@@ -247,7 +247,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy.json", file)
 		path := fmt.Sprintf("templates/policies/%s", filename)
-		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name))
+		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName))
 
 		policy, err := aws.ReadPolicyDocument(path)
 		if err != nil {
@@ -262,8 +262,18 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 		if err != nil {
 			return err
 		}
+
+		err = awsClient.AttachRolePolicy(roleName, policyARN)
+		if err != nil {
+			return err
+		}
+		//Delete if present else continue
+		err = awsClient.DeleteInlineRolePolicies(roleName)
+		if err != nil {
+			reporter.Debugf("Error deleting inline role policy %s : %s", policyARN, err)
+		}
 		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, aws.DefaultPolicyVersion)
-		err = awsClient.UpdateTag(name)
+		err = awsClient.UpdateTag(roleName)
 		if err != nil {
 			return err
 		}
@@ -304,7 +314,7 @@ func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, a
 }
 
 func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRolePolicies bool,
-	isUpgradeNeedForOperatorRolePolicies bool) string {
+	isUpgradeNeedForOperatorRolePolicies bool, awsClient aws.Client) string {
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
@@ -314,15 +324,6 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 				"Key=%s,Value=%s",
 				tags.OpenShiftVersion, aws.DefaultPolicyVersion,
 			)
-			createPolicyVersion := fmt.Sprintf("aws iam create-policy-version \\\n"+
-				"\t--policy-arn %s \\\n"+
-				"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
-				"\t--set-as-default",
-				policyARN, file)
-			tagPolicies := fmt.Sprintf("aws iam tag-policy \\\n"+
-				"\t--tags %s \\\n"+
-				"\t--policy-arn %s",
-				policyTags, policyARN)
 			iamRoleTags := fmt.Sprintf(
 				"Key=%s,Value=%s",
 				tags.OpenShiftVersion, aws.DefaultPolicyVersion)
@@ -330,7 +331,46 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 				"\t--tags %s \\\n"+
 				"\t--role-name %s",
 				iamRoleTags, name)
-			commands = append(commands, createPolicyVersion, tagPolicies, tagRole)
+			//check if the policy exists if not output create and attach
+			_, err := awsClient.IsPolicyExists(policyARN)
+			if err != nil {
+				policyName := fmt.Sprintf("%s-Policy", name)
+				iamTags := fmt.Sprintf(
+					"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+					tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+					tags.RolePrefix, prefix,
+					tags.RoleType, file,
+				)
+				createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
+					"\t--policy-name %s \\\n"+
+					"\t--policy-document file://sts_%s_permission_policy.json"+
+					"\t--tags %s",
+					policyName, file, iamTags)
+				attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
+					"\t--role-name %s \\\n"+
+					"\t--policy-arn %s",
+					name, aws.GetPolicyARN(accountID, policyName))
+
+				_, _ = awsClient.IsRolePolicyExists(name, policyName)
+				if err != nil {
+					commands = append(commands, createPolicy, attachRolePolicy, tagRole)
+				} else {
+					deletePolicy := fmt.Sprintf("\taws iam delete-role-policy --role-name  %s  --policy-name  %s",
+						name, policyName)
+					commands = append(commands, createPolicy, attachRolePolicy, tagRole, deletePolicy)
+				}
+			} else {
+				createPolicyVersion := fmt.Sprintf("aws iam create-policy-version \\\n"+
+					"\t--policy-arn %s \\\n"+
+					"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
+					"\t--set-as-default",
+					policyARN, file)
+				tagPolicies := fmt.Sprintf("aws iam tag-policy \\\n"+
+					"\t--tags %s \\\n"+
+					"\t--policy-arn %s",
+					policyTags, policyARN)
+				commands = append(commands, createPolicyVersion, tagPolicies, tagRole)
+			}
 		}
 	}
 	if isUpgradeNeedForOperatorRolePolicies {

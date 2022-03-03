@@ -433,6 +433,14 @@ func (c *awsClient) IsPolicyExists(policyArn string) (*iam.GetPolicyOutput, erro
 	return output, err
 }
 
+func (c *awsClient) IsRolePolicyExists(roleName string, policyName string) (*iam.GetRolePolicyOutput, error) {
+	output, err := c.iamClient.GetRolePolicy(&iam.GetRolePolicyInput{
+		PolicyName: aws.String(policyName),
+		RoleName:   aws.String(roleName),
+	})
+	return output, err
+}
+
 func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string) (string, error) {
 	parsedArn, err := arn.Parse(policyArn)
 	if err != nil {
@@ -986,15 +994,15 @@ func (c *awsClient) detachAttachedRolePolicies(role *string) error {
 	return nil
 }
 
-func (c *awsClient) deleteInlineRolePolicies(role *string) error {
-	listRolePolicyOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{RoleName: role})
+func (c *awsClient) DeleteInlineRolePolicies(role string) error {
+	listRolePolicyOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{RoleName: aws.String(role)})
 	if err != nil {
 		return err
 	}
 	for _, policyName := range listRolePolicyOutput.PolicyNames {
 		_, err = c.iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
 			PolicyName: policyName,
-			RoleName:   role,
+			RoleName:   aws.String(role),
 		})
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
@@ -1015,7 +1023,7 @@ func (c *awsClient) deleteAccountRolePolicies(role *string) error {
 	if err != nil {
 		return err
 	}
-	err = c.deleteInlineRolePolicies(role)
+	err = c.DeleteInlineRolePolicies(aws.StringValue(role))
 	if err != nil {
 		return err
 	}
@@ -1037,6 +1045,7 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 			return policies, err
 		}
 	}
+
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
 		policyDetail := PolicyDetail{
 			PolicyName: aws.StringValue(policy.PolicyName),
@@ -1481,10 +1490,12 @@ func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
 	if err != nil {
 		return false, err
 	}
+	isAttachedPolicyExists := false
 	for _, attachedPolicy := range attachedPolicies {
-		if attachedPolicy.PolicyArn == "" {
+		if attachedPolicy.PolicType == Inline {
 			continue
 		}
+		isAttachedPolicyExists = true
 		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(attachedPolicy.PolicyArn, version)
 		if err != nil {
 			return false, errors.Errorf("Failed to validate role polices : %v", err)
@@ -1492,6 +1503,9 @@ func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
 		if !isCompatible {
 			return false, nil
 		}
+	}
+	if !isAttachedPolicyExists {
+		return false, nil
 	}
 	return true, nil
 }
