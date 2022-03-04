@@ -83,12 +83,11 @@ var CredentialRequests map[string]Operator = map[string]Operator{
 			"aws-ebs-csi-driver-controller-sa",
 		},
 	},
-	"cluster_storage_operator_csi_cloud_credentials": {
-		Name:      "storage-ebs-cloud-credentials",
-		Namespace: "openshift-cluster-csi-drivers",
+	"cloud_network_config_controller_cloud_credentials": {
+		Name:      "cloud-credentials",
+		Namespace: "openshift-cloud-network-config-controller",
 		ServiceAccountNames: []string{
-			"aws-ebs-csi-driver-operator",
-			"aws-ebs-csi-driver-controller-sa",
+			"cloud-network-config-controller",
 		},
 		MinVersion: "4.10",
 	},
