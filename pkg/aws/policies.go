@@ -1473,6 +1473,17 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix st
 	version string) (bool, error) {
 	for _, operator := range CredentialRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		_, err := c.IsPolicyExists(policyARN)
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					return true, nil
+				default:
+					return false, err
+				}
+			}
+		}
 		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(policyARN, version)
 		if err != nil {
 			return false, err

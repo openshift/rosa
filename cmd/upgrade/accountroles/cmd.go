@@ -157,6 +157,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	if spin != nil {
 		spin.Stop()
 	}
+
 	if !isUpgradeNeedForAccountRolePolicies && !isUpgradeNeedForOperatorRolePolicies {
 		if args.isInvokedFromClusterUpgrade {
 			return nil
@@ -237,8 +238,7 @@ func run(cmd *cobra.Command, argv []string) error {
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string) error {
 	for file, role := range aws.AccountRoles {
 		roleName := aws.GetRoleName(prefix, role.Name)
-		if !confirm.Prompt(true, "Upgrade the '%s' role policy to version %s?", roleName,
-			aws.DefaultPolicyVersion) {
+		if !confirm.Prompt(true, "Upgrade the '%s' role policy latest version ?", roleName) {
 			if args.isInvokedFromClusterUpgrade {
 				return reporter.Errorf("Account roles need to be upgraded to proceed" +
 					"")
@@ -272,7 +272,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 		if err != nil {
 			reporter.Debugf("Error deleting inline role policy %s : %s", policyARN, err)
 		}
-		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, aws.DefaultPolicyVersion)
+		reporter.Infof("Upgraded policy with ARN '%s' to latest version", policyARN)
 		err = awsClient.UpdateTag(roleName)
 		if err != nil {
 			return err
@@ -376,20 +376,38 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 	if isUpgradeNeedForOperatorRolePolicies {
 		for credrequest, operator := range aws.CredentialRequests {
 			policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-			policTags := fmt.Sprintf(
-				"Key=%s,Value=%s",
-				tags.OpenShiftVersion, aws.DefaultPolicyVersion,
-			)
-			createPolicy := fmt.Sprintf("aws iam create-policy-version \\\n"+
-				"\t--policy-arn %s \\\n"+
-				"\t--policy-document file://openshift_%s_policy.json \\\n"+
-				"\t--set-as-default",
-				policyARN, credrequest)
-			tagPolicy := fmt.Sprintf("aws iam tag-policy \\\n"+
-				"\t--tags %s \\\n"+
-				"\t--policy-arn %s",
-				policTags, policyARN)
-			commands = append(commands, createPolicy, tagPolicy)
+			_, err := awsClient.IsPolicyExists(policyARN)
+			if err != nil {
+				name := aws.GetPolicyName(prefix, operator.Namespace, operator.Name)
+				iamTags := fmt.Sprintf(
+					"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+					tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+					tags.RolePrefix, prefix,
+					"operator_namespace", operator.Namespace,
+					"operator_name", operator.Name,
+				)
+				createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
+					"\t--policy-name %s \\\n"+
+					"\t--policy-document file://openshift_%s_policy.json \\\n"+
+					"\t--tags %s",
+					name, credrequest, iamTags)
+				commands = append(commands, createPolicy)
+			} else {
+				policTags := fmt.Sprintf(
+					"Key=%s,Value=%s",
+					tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+				)
+				createPolicy := fmt.Sprintf("aws iam create-policy-version \\\n"+
+					"\t--policy-arn %s \\\n"+
+					"\t--policy-document file://openshift_%s_policy.json \\\n"+
+					"\t--set-as-default",
+					policyARN, credrequest)
+				tagPolicy := fmt.Sprintf("aws iam tag-policy \\\n"+
+					"\t--tags %s \\\n"+
+					"\t--policy-arn %s",
+					policTags, policyARN)
+				commands = append(commands, createPolicy, tagPolicy)
+			}
 		}
 	}
 	return strings.Join(commands, "\n\n")
