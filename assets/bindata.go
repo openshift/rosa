@@ -4,8 +4,8 @@
 // sources:
 // templates/cloudformation/iam_user_osdCcsAdmin.json
 // templates/policies/openshift_cloud_credential_operator_cloud_credential_operator_iam_ro_creds_policy.json
+// templates/policies/openshift_cloud_network_config_controller_cloud_credentials_policy.json
 // templates/policies/openshift_cluster_csi_drivers_ebs_cloud_credentials_policy.json
-// templates/policies/openshift_cluster_storage_operator_csi_cloud_credentials_policy.json
 // templates/policies/openshift_image_registry_installer_cloud_credentials_policy.json
 // templates/policies/openshift_ingress_operator_cloud_credentials_policy.json
 // templates/policies/openshift_machine_api_aws_cloud_credentials_policy.json
@@ -136,6 +136,43 @@ func templatesPoliciesOpenshift_cloud_credential_operator_cloud_credential_opera
 	return a, nil
 }
 
+var _templatesPoliciesOpenshift_cloud_network_config_controller_cloud_credentials_policyJson = []byte(`{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+            "ec2:DescribeInstances",
+            "ec2:DescribeInstanceStatus",
+            "ec2:DescribeInstanceTypes",
+            "ec2:UnassignPrivateIpAddresses",
+            "ec2:AssignPrivateIpAddresses",
+            "ec2:UnassignIpv6Addresses",
+            "ec2:AssignIpv6Addresses",
+            "ec2:DescribeSubnets",
+            "ec2:DescribeNetworkInterfaces"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+`)
+
+func templatesPoliciesOpenshift_cloud_network_config_controller_cloud_credentials_policyJsonBytes() ([]byte, error) {
+	return _templatesPoliciesOpenshift_cloud_network_config_controller_cloud_credentials_policyJson, nil
+}
+
+func templatesPoliciesOpenshift_cloud_network_config_controller_cloud_credentials_policyJson() (*asset, error) {
+	bytes, err := templatesPoliciesOpenshift_cloud_network_config_controller_cloud_credentials_policyJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "templates/policies/openshift_cloud_network_config_controller_cloud_credentials_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _templatesPoliciesOpenshift_cluster_csi_drivers_ebs_cloud_credentials_policyJson = []byte(`{
   "Version": "2012-10-17",
   "Statement": [
@@ -174,48 +211,6 @@ func templatesPoliciesOpenshift_cluster_csi_drivers_ebs_cloud_credentials_policy
 	}
 
 	info := bindataFileInfo{name: "templates/policies/openshift_cluster_csi_drivers_ebs_cloud_credentials_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
-var _templatesPoliciesOpenshift_cluster_storage_operator_csi_cloud_credentials_policyJson = []byte(`{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:AttachVolume",
-        "ec2:CreateSnapshot",
-        "ec2:CreateTags",
-        "ec2:CreateVolume",
-        "ec2:DeleteSnapshot",
-        "ec2:DeleteTags",
-        "ec2:DeleteVolume",
-        "ec2:DescribeInstances",
-        "ec2:DescribeSnapshots",
-        "ec2:DescribeTags",
-        "ec2:DescribeVolumes",
-        "ec2:DescribeVolumesModifications",
-        "ec2:DetachVolume",
-        "ec2:ModifyVolume"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-`)
-
-func templatesPoliciesOpenshift_cluster_storage_operator_csi_cloud_credentials_policyJsonBytes() ([]byte, error) {
-	return _templatesPoliciesOpenshift_cluster_storage_operator_csi_cloud_credentials_policyJson, nil
-}
-
-func templatesPoliciesOpenshift_cluster_storage_operator_csi_cloud_credentials_policyJson() (*asset, error) {
-	bytes, err := templatesPoliciesOpenshift_cluster_storage_operator_csi_cloud_credentials_policyJsonBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "templates/policies/openshift_cluster_storage_operator_csi_cloud_credentials_policy.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -1387,8 +1382,8 @@ func AssetNames() []string {
 var _bindata = map[string]func() (*asset, error){
 	"templates/cloudformation/iam_user_osdCcsAdmin.json":                                                        templatesCloudformationIam_user_osdccsadminJson,
 	"templates/policies/openshift_cloud_credential_operator_cloud_credential_operator_iam_ro_creds_policy.json": templatesPoliciesOpenshift_cloud_credential_operator_cloud_credential_operator_iam_ro_creds_policyJson,
+	"templates/policies/openshift_cloud_network_config_controller_cloud_credentials_policy.json":                templatesPoliciesOpenshift_cloud_network_config_controller_cloud_credentials_policyJson,
 	"templates/policies/openshift_cluster_csi_drivers_ebs_cloud_credentials_policy.json":                        templatesPoliciesOpenshift_cluster_csi_drivers_ebs_cloud_credentials_policyJson,
-	"templates/policies/openshift_cluster_storage_operator_csi_cloud_credentials_policy.json":                   templatesPoliciesOpenshift_cluster_storage_operator_csi_cloud_credentials_policyJson,
 	"templates/policies/openshift_image_registry_installer_cloud_credentials_policy.json":                       templatesPoliciesOpenshift_image_registry_installer_cloud_credentials_policyJson,
 	"templates/policies/openshift_ingress_operator_cloud_credentials_policy.json":                               templatesPoliciesOpenshift_ingress_operator_cloud_credentials_policyJson,
 	"templates/policies/openshift_machine_api_aws_cloud_credentials_policy.json":                                templatesPoliciesOpenshift_machine_api_aws_cloud_credentials_policyJson,
@@ -1455,8 +1450,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		}},
 		"policies": &bintree{nil, map[string]*bintree{
 			"openshift_cloud_credential_operator_cloud_credential_operator_iam_ro_creds_policy.json": &bintree{templatesPoliciesOpenshift_cloud_credential_operator_cloud_credential_operator_iam_ro_creds_policyJson, map[string]*bintree{}},
+			"openshift_cloud_network_config_controller_cloud_credentials_policy.json":                &bintree{templatesPoliciesOpenshift_cloud_network_config_controller_cloud_credentials_policyJson, map[string]*bintree{}},
 			"openshift_cluster_csi_drivers_ebs_cloud_credentials_policy.json":                        &bintree{templatesPoliciesOpenshift_cluster_csi_drivers_ebs_cloud_credentials_policyJson, map[string]*bintree{}},
-			"openshift_cluster_storage_operator_csi_cloud_credentials_policy.json":                   &bintree{templatesPoliciesOpenshift_cluster_storage_operator_csi_cloud_credentials_policyJson, map[string]*bintree{}},
 			"openshift_image_registry_installer_cloud_credentials_policy.json":                       &bintree{templatesPoliciesOpenshift_image_registry_installer_cloud_credentials_policyJson, map[string]*bintree{}},
 			"openshift_ingress_operator_cloud_credentials_policy.json":                               &bintree{templatesPoliciesOpenshift_ingress_operator_cloud_credentials_policyJson, map[string]*bintree{}},
 			"openshift_machine_api_aws_cloud_credentials_policy.json":                                &bintree{templatesPoliciesOpenshift_machine_api_aws_cloud_credentials_policyJson, map[string]*bintree{}},
