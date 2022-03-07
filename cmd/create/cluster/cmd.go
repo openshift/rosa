@@ -942,8 +942,15 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS {
 		for _, operator := range aws.CredentialRequests {
 			//If the cluster version is less than the supported operator version
-			if operator.MinVersion != "" && ocm.GetVersionMinor(version) < operator.MinVersion {
-				continue
+			if operator.MinVersion != "" {
+				isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(version), operator.MinVersion)
+				if err != nil {
+					reporter.Errorf("Error validating operator role '%s' version %s", operator.Name, err)
+					os.Exit(1)
+				}
+				if !isSupported {
+					continue
+				}
 			}
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name,
