@@ -513,3 +513,16 @@ func GetVersionMinor(ver string) string {
 	segments := version.Segments()
 	return fmt.Sprintf("%d.%d", segments[0], segments[1])
 }
+
+func CheckSupportedVersion(clusterVersion string, operatorVersion string) (bool, error) {
+	v1, err := semver.NewVersion(clusterVersion)
+	if err != nil {
+		return false, err
+	}
+	v2, err := semver.NewVersion(operatorVersion)
+	if err != nil {
+		return false, err
+	}
+	//Cluster version is greater than or equal to operator version
+	return v1.GreaterThanOrEqual(v2), nil
+}

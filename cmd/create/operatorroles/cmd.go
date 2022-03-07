@@ -273,8 +273,13 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	cluster *cmv1.Cluster, accountID string, accountRoleVersion string) error {
 	for credrequest, operator := range aws.CredentialRequests {
 		ver := cluster.Version()
-		if ver != nil {
-			if operator.MinVersion != "" && ocm.GetVersionMinor(ver.ID()) < operator.MinVersion {
+		if ver != nil && operator.MinVersion != "" {
+			isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(ver.ID()), operator.MinVersion)
+			if err != nil {
+				reporter.Errorf("Error validating operator role '%s' version %s", operator.Name, err)
+				os.Exit(1)
+			}
+			if !isSupported {
 				continue
 			}
 		}
