@@ -2,6 +2,49 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.10 Mar 7 2022
+
+- Fix bug - add warning when creating ocm-role with duplicate name
+- Update linter configuration to newer version
+- Drop unused GetMachineTypeList method
+- Initial MachineTypeList implementation
+- Refactor GetMachineTypes to use MachineTypeList
+- Refactor GetAvailableMachineTypeList
+- Refactor ValidateMachineType to use MachineTypeList
+- Refactor setting available quota for MachineTypeList
+- Unify quota calculation logic for MachineType
+- Modify function `handleErr` to include the error type in the new error
+- Create command 'rosa list ocm-roles'
+- Create command 'rosa list user-roles'
+- Create command 'rosa unlink ocm-role'
+- added policies for ocm admin role
+- Fix bug - improve the help message of 'rosa unlink ocm-role'
+- Create command 'rosa unlink user-role'
+- Fix bug - capitalize `rosa unlink user-role message`
+- Add 'rosa delete ocm-role' command
+- fix cosmetic issues rosa upgrade
+- sda-5379-rosaupgradeenhancements
+- Display HTPasswd IDP when listing a cluster's IDPs
+- Add 'rosa delete user-role' command
+- Fix bug - forbid deletion of ocm-role in case user cannot unlink role
+- List roles - display a spinner while fetching the roles
+- Introducing HTPasswd IDP
+- Fix bug - deletion of a role with the wrong account ID in role ARN
+- Fix bug - change the interactive message of `rosa delete user-role`
+- Fix bug - `delete ocm-role` should be hidden in rosa cli
+- updated
+- Add policies for 4.10
+- fix upgrade issue
+- Fix bug - validate role type before deletion
+- Improve `rosa unlink user role` error message
+- HTPasswd bug fixes corresponding with some CS changes
+- Add support for seamless upgrade from any rosa version
+- sda-5576-Fix upgrades to 4.9 or less with 4.10 operator roles
+- add new support policy and policy for ovn networking
+- fix operator policies for 4.10
+- Revert "HTPasswd bug fixes corresponding with some CS changes"
+- Revert "Introducing HTPasswd IDP"
+
 == 1.1.9 Jan 31 2022
 
 - ROSA CLI Interactive install - make the choice default STS
