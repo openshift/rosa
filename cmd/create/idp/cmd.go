@@ -24,13 +24,13 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/reporter"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -74,13 +74,9 @@ var args struct {
 	openidName      string
 	openidUsername  string
 	openidScopes    string
-
-	// HTPasswd
-	htpasswdUsername string
-	htpasswdPassword string
 }
 
-var validIdps []string = []string{"github", "gitlab", "google", "htpasswd", "ldap", "openid"}
+var validIdps []string = []string{"github", "gitlab", "google", "ldap", "openid"}
 var validMappingMethods []string = []string{"add", "claim", "generate", "lookup"}
 
 var idRE = regexp.MustCompile(`(?i)^[0-9a-z]+([-_][0-9a-z]+)*$`)
@@ -96,10 +92,6 @@ var Cmd = &cobra.Command{
   rosa create idp --cluster=mycluster --interactive`,
 	Run: run,
 }
-
-var reporter *rprtr.Object
-var logger *logrus.Logger
-var clusterKey string
 
 func init() {
 	flags := Cmd.Flags()
@@ -266,26 +258,13 @@ func init() {
 		"OpenID: List of scopes to request, in addition to the 'openid' scope, during the authorization token request.\n",
 	)
 
-	// HTPasswd
-	flags.StringVar(
-		&args.htpasswdUsername,
-		"username",
-		"",
-		"HTPasswd: Username to log into the cluster's console with.\n",
-	)
-	flags.StringVar(
-		&args.htpasswdPassword,
-		"password",
-		"",
-		"HTPasswd: Password for provided username, to log into the cluster's console with.\n",
-	)
-
 	interactive.AddFlag(flags)
-	reporter = rprtr.CreateReporterOrExit()
-	logger = logging.CreateLoggerOrExit(reporter)
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	reporter := rprtr.CreateReporterOrExit()
+	logger := logging.CreateLoggerOrExit(reporter)
+
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
 		reporter.Errorf("%s", err)
@@ -383,7 +362,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Auto-generate a name if none provided
 	if !cmd.Flags().Changed("name") {
-		idps := getIdps(ocmClient, cluster)
+		idps := getIdps(reporter, ocmClient, cluster)
 		idpName = GenerateIdpName(idpType, idps)
 	} else {
 		isValidIdpName := idRE.MatchString(idpName)
@@ -414,9 +393,6 @@ func run(cmd *cobra.Command, _ []string) {
 		idpBuilder, err = buildGitlabIdp(cmd, cluster, idpName)
 	case "google":
 		idpBuilder, err = buildGoogleIdp(cmd, cluster, idpName)
-	case "htpasswd":
-		createHTPasswdIDP(cmd, cluster, clusterKey, idpName, ocmClient)
-		os.Exit(0)
 	case "ldap":
 		idpBuilder, err = buildLdapIdp(cmd, cluster, idpName)
 	case "openid":
@@ -427,14 +403,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	doCreateIDP(idpName, idpBuilder, cluster, clusterKey, ocmClient)
-}
-
-func doCreateIDP(
-	idpName string,
-	idpBuilder cmv1.IdentityProviderBuilder,
-	cluster *cmv1.Cluster, clusterKey string,
-	ocmClient *ocm.Client) *cmv1.IdentityProvider {
 	reporter.Infof("Configuring IDP for cluster '%s'", clusterKey)
 
 	idp, err := idpBuilder.Build()
@@ -443,7 +411,7 @@ func doCreateIDP(
 		os.Exit(1)
 	}
 
-	createdIdp, err := ocmClient.CreateIdentityProvider(cluster.ID(), idp)
+	_, err = ocmClient.CreateIdentityProvider(cluster.ID(), idp)
 	if err != nil {
 		reporter.Errorf("Failed to add IDP to cluster '%s': %s", clusterKey, err)
 		os.Exit(1)
@@ -456,7 +424,6 @@ func doCreateIDP(
 			"   To login into the console, open %s and click on %s.",
 		idpName, cluster.Console().URL(), idpName,
 	)
-	return createdIdp
 }
 
 func GenerateIdpName(idpType string, idps []IdentityProvider) string {
@@ -506,7 +473,7 @@ func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) 
 	return mappingMethod, err
 }
 
-func getIdps(ocmClient *ocm.Client, cluster *cmv1.Cluster) []IdentityProvider {
+func getIdps(reporter *reporter.Object, ocmClient *ocm.Client, cluster *cmv1.Cluster) []IdentityProvider {
 	// Load any existing IDPs for this cluster
 	reporter.Debugf("Loading identity providers for cluster '%s'", cluster.ID())
 
