@@ -24,7 +24,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -32,7 +31,8 @@ import (
 )
 
 const (
-	idpName = "htpasswd-1"
+	idpName  = "Cluster-Admin"
+	username = "cluster-admin"
 )
 
 var Cmd = &cobra.Command{
@@ -69,6 +69,9 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+
+	reporter.Warnf("It is recommended to add an identity provider to login to this cluster. " +
+		"See 'rosa create idp --help' for more information.")
 
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
@@ -113,15 +116,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Try to find an existing htpasswd identity provider and
-	// check if cluster-admin user already exists
-	existingHTPasswdIDP := idp.FindExistingHTPasswdIDP(cluster, ocmClient)
-	if idp.HasClusterAdmin(existingHTPasswdIDP) {
-		reporter.Errorf("Cluster '%s' already has an admin", clusterKey)
-		os.Exit(1)
-	}
+	// TODO: Verify that the htpasswd IdP does not already exist
 
-	// No cluster admin yet: proceed to create it.
+	// TODO: Verify that the user does not already exist
 	var password string
 	passwordArg := args.passwordArg
 	if len(passwordArg) == 0 {
@@ -137,59 +134,51 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Add admin user to the cluster-admins group:
-	reporter.Debugf("Adding '%s' user to cluster '%s'", idp.ClusterAdminUsername, clusterKey)
-	user, err := cmv1.NewUser().ID(idp.ClusterAdminUsername).Build()
+	reporter.Debugf("Adding '%s' user to cluster '%s'", username, clusterKey)
+	user, err := cmv1.NewUser().ID(username).Build()
 	if err != nil {
-		reporter.Errorf("Failed to create user '%s' for cluster '%s'", idp.ClusterAdminUsername, clusterKey)
+		reporter.Errorf("Failed to create user '%s' for cluster '%s'", username, clusterKey)
 		os.Exit(1)
 	}
 
 	_, err = ocmClient.CreateUser(cluster.ID(), "cluster-admins", user)
 	if err != nil {
 		reporter.Errorf("Failed to add user '%s' to cluster '%s': %s",
-			idp.ClusterAdminUsername, clusterKey, err)
+			username, clusterKey, err)
 		os.Exit(1)
 	}
 
-	// No HTPasswd IDP - create it with cluster-admin user.
-	if existingHTPasswdIDP == nil {
-		reporter.Debugf("Adding '%s' idp to cluster '%s'", idpName, clusterKey)
-		htpasswdIDP := cmv1.NewHTPasswdIdentityProvider().Users(cmv1.NewHTPasswdUserList().Items(
-			idp.CreateHTPasswdUser(idp.ClusterAdminUsername, password),
-		))
-		newIDP, err := cmv1.NewIdentityProvider().
-			Type("HTPasswdIdentityProvider").
-			Name(idpName).
-			Htpasswd(htpasswdIDP).
-			Build()
-		if err != nil {
-			reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idpName, clusterKey)
-			os.Exit(1)
-		}
+	// Create HTPasswd IDP configuration:
+	reporter.Debugf("Adding '%s' udp to cluster '%s'", idpName, clusterKey)
+	htpasswdIDP := cmv1.NewHTPasswdIdentityProvider().
+		Username(username).
+		Password(password)
 
-		// Add HTPasswd IDP to cluster:
-		_, err = ocmClient.CreateIdentityProvider(cluster.ID(), newIDP)
-		if err != nil {
-			reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s",
-				idpName, clusterKey, err)
-			os.Exit(1)
-		}
-	} else {
-		// HTPasswd IDP exists - add new cluster-admin user to it.
-		reporter.Debugf("Cluster has an HTPasswd IDP, will add cluster-admin to it")
-		err = ocmClient.AddHTPasswdUser(idp.ClusterAdminUsername, password, cluster.ID(), existingHTPasswdIDP.ID())
-		if err != nil {
-			reporter.Errorf("Failed to add user '%s' to the HTPasswd IDP of cluster '%s': %s",
-				idp.ClusterAdminUsername, clusterKey, err)
-			os.Exit(1)
-		}
+	// Create new IDP with HTPasswd provider:
+	idp, err := cmv1.NewIdentityProvider().
+		Type("HTPasswdIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
+		Name(idpName).
+		MappingMethod(cmv1.IdentityProviderMappingMethod("claim")).
+		Htpasswd(htpasswdIDP).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idpName, clusterKey)
+		os.Exit(1)
+	}
+
+	// Add HTPasswd IDP to cluster:
+	_, err = ocmClient.CreateIdentityProvider(cluster.ID(), idp)
+	if err != nil {
+		reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s",
+			idpName, clusterKey, err)
+		os.Exit(1)
 	}
 
 	reporter.Infof("Admin account has been added to cluster '%s'.", clusterKey)
 	reporter.Infof("Please securely store this generated password. " +
 		"If you lose this password you can delete and recreate the cluster admin user.")
 	reporter.Infof("To login, run the following command:\n\n"+
-		"   oc login %s --username %s --password %s\n", cluster.API().URL(), idp.ClusterAdminUsername, password)
+		"   oc login %s --username %s --password %s\n", cluster.API().URL(), username, password)
 	reporter.Infof("It may take up to a minute for the account to become active.")
 }
 
