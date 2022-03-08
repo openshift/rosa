@@ -117,5 +117,12 @@
             	]
             }
         }
-    }
+    },
+	"Outputs" : {
+        "CloudCredentialOperatorRoleArn": {
+			"Description" : "Cloud Credential Operator Role Arn",
+			"Value" :  { "Fn::GetAtt" : ["CloudCredentialOperatorRole", "Arn"] },
+			"Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-CloudCredentialOperatorRoleArn" }}
+	  }
+	}
 }
