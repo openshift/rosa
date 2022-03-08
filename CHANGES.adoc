@@ -2,6 +2,11 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.11 Mar 7 2022
+
+- fix operator roles issue for old rosa versions
+- fix operator role issue
+
 == 1.1.10 Mar 7 2022
 
 - Fix bug - add warning when creating ocm-role with duplicate name
