@@ -142,5 +142,7 @@ func listOCMRoles(awsClient aws.Client, ocmClient *ocm.Client) ([]aws.Role, erro
 		}
 	}
 
+	aws.SortRolesByLinkedRole(ocmRoles)
+
 	return ocmRoles, nil
 }

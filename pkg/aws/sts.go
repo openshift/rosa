@@ -17,6 +17,7 @@ limitations under the License.
 package aws
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -147,4 +148,10 @@ func (c *awsClient) deleteOCMRolePolicies(roleName string) error {
 	}
 
 	return nil
+}
+
+func SortRolesByLinkedRole(roles []Role) {
+	sort.SliceStable(roles, func(i, j int) bool {
+		return roles[i].Linked == "Yes" && roles[j].Linked == "No"
+	})
 }
