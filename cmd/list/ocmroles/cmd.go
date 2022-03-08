@@ -134,8 +134,10 @@ func listOCMRoles(awsClient aws.Client, ocmClient *ocm.Client) ([]aws.Role, erro
 		return nil, err
 	}
 
+	linkedRolesMap := helper.SliceToMap(linkedRoles)
 	for i := range ocmRoles {
-		if helper.Contains(linkedRoles, ocmRoles[i].RoleARN) {
+		_, exist := linkedRolesMap[ocmRoles[i].RoleARN]
+		if exist {
 			ocmRoles[i].Linked = "Yes"
 		} else {
 			ocmRoles[i].Linked = "No"
