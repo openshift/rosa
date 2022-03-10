@@ -739,6 +739,8 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "s3:PutObject",
                 "s3:PutObjectAcl",
                 "s3:PutObjectTagging",
+                "servicequotas:GetServiceQuota",
+                "servicequotas:ListAWSDefaultServiceQuotas",
                 "sts:AssumeRole",
                 "sts:AssumeRoleWithWebIdentity",
                 "sts:GetCallerIdentity",
