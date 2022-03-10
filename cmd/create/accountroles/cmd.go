@@ -364,15 +364,14 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		path = fmt.Sprintf("templates/policies/%s", filename)
 
 		// For the installer permission policy scope the iam:PassRole permission
-		// to the worker and controlplane ARNs roles only
+		// to the controlplane ARN role only.
+		// The cluster itslef will provision worker nodes see machine-api-operator
+		// permission.
 		if strings.ToLower(role.Name) == aws.InstallerAccountRole {
 			policy, err = aws.ReadPolicyDocument(path, map[string]string{
 				"aws_account_id":   accountID,
 				"controlplane_arn": aws.GetRoleName(prefix, aws.AccountRoles[aws.ControlPlaneAccountRole].Name),
-				"worker_arn":       aws.GetRoleName(prefix, aws.AccountRoles[aws.WorkerAccountRole].Name),
 			})
-		} else {
-			policy, err = aws.ReadPolicyDocument(path)
 		}
 		if err != nil {
 			return err
@@ -414,8 +413,6 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 					"aws_account_id": accountID,
 					"worker_arn":     aws.GetRoleName(prefix, aws.AccountRoles[aws.WorkerAccountRole].Name),
 				})
-			} else {
-				policy, err = aws.ReadPolicyDocument(path)
 			}
 
 			if err != nil {

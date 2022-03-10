@@ -583,8 +583,7 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "iam:PassRole"
             ],
             "Resource": [
-                "arn:aws:iam::%{aws_account_id}:role/%{controlplane_arn}",
-                "arn:aws:iam::%{aws_account_id}:role/%{worker_arn}"
+                "arn:aws:iam::%{aws_account_id}:role/%{controlplane_arn}"
             ]
         },
         {
