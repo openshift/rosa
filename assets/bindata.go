@@ -299,6 +299,13 @@ var _templatesPoliciesOpenshift_machine_api_aws_cloud_credentials_policyJson = [
     {
       "Effect": "Allow",
       "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::%{aws_account_id}:role/%{worker_arn}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
         "ec2:CreateTags",
         "ec2:DescribeAvailabilityZones",
         "ec2:DescribeDhcpOptions",
@@ -316,7 +323,6 @@ var _templatesPoliciesOpenshift_machine_api_aws_cloud_credentials_policyJson = [
         "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
         "elasticloadbalancing:RegisterTargets",
         "elasticloadbalancing:DeregisterTargets",
-        "iam:PassRole",
         "iam:CreateServiceLinkedRole"
       ],
       "Resource": "*"
@@ -574,6 +580,16 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
         {
             "Effect": "Allow",
             "Action": [
+                "iam:PassRole"
+            ],
+            "Resource": [
+                "arn:aws:iam::%{aws_account_id}:role/%{controlplane_arn}",
+                "arn:aws:iam::%{aws_account_id}:role/%{worker_arn}"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
                 "autoscaling:DescribeAutoScalingGroups",
                 "ec2:AllocateAddress",
                 "ec2:AssociateAddress",
@@ -680,9 +696,6 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
                 "elasticloadbalancing:RegisterTargets",
                 "elasticloadbalancing:SetLoadBalancerPoliciesOfListener",
-                "iam:AddRoleToInstanceProfile",
-                "iam:CreateInstanceProfile",
-                "iam:DeleteInstanceProfile",
                 "iam:GetInstanceProfile",
                 "iam:GetRole",
                 "iam:GetRolePolicy",
@@ -694,11 +707,13 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "iam:ListRoles",
                 "iam:ListUserPolicies",
                 "iam:ListUsers",
-                "iam:PassRole",
-                "iam:RemoveRoleFromInstanceProfile",
                 "iam:SimulatePrincipalPolicy",
                 "iam:TagRole",
                 "iam:UntagRole",
+                "iam:CreateInstanceProfile",
+                "iam:DeleteInstanceProfile",
+                "iam:AddRoleToInstanceProfile",
+                "iam:RemoveRoleFromInstanceProfile",
                 "route53:ChangeResourceRecordSets",
                 "route53:ChangeTagsForResource",
                 "route53:CreateHostedZone",

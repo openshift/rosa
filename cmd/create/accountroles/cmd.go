@@ -363,7 +363,17 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
 		path = fmt.Sprintf("templates/policies/%s", filename)
 
-		policy, err = aws.ReadPolicyDocument(path)
+		// For the installer permission policy scope the iam:PassRole permission
+		// to the worker and controlplane ARNs roles only
+		if strings.ToLower(role.Name) == aws.InstallerAccountRole {
+			policy, err = aws.ReadPolicyDocument(path, map[string]string{
+				"aws_account_id":   accountID,
+				"controlplane_arn": aws.GetRoleName(prefix, aws.AccountRoles[aws.ControlPlaneAccountRole].Name),
+				"worker_arn":       aws.GetRoleName(prefix, aws.AccountRoles[aws.WorkerAccountRole].Name),
+			})
+		} else {
+			policy, err = aws.ReadPolicyDocument(path)
+		}
 		if err != nil {
 			return err
 		}
@@ -393,7 +403,21 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
 			path := fmt.Sprintf("templates/policies/%s", filename)
 
-			policy, err := aws.ReadPolicyDocument(path)
+			var err error
+			var policy []byte
+
+			// The machine-api-operator will only ever provision worker nodes.
+			// Scope the IAM policies iam:PassRole permission to the worker
+			// IAM Role ARN
+			if "machine_api_aws_cloud_credentials" == credrequest {
+				policy, err = aws.ReadPolicyDocument(path, map[string]string{
+					"aws_account_id": accountID,
+					"worker_arn":     aws.GetRoleName(prefix, aws.AccountRoles[aws.WorkerAccountRole].Name),
+				})
+			} else {
+				policy, err = aws.ReadPolicyDocument(path)
+			}
+
 			if err != nil {
 				return err
 			}
