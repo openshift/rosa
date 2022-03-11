@@ -690,6 +690,7 @@ func buildCustomRetryer() CustomRetryer {
 	return CustomRetryer{
 		DefaultRetryer: client.DefaultRetryer{
 			NumMaxRetries:    6,
+			MinRetryDelay:    1 * time.Second,
 			MinThrottleDelay: 10 * time.Second,
 		},
 	}
