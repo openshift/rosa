@@ -896,7 +896,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if !validVersion {
 			reporter.Errorf("Account role '%s' is not compatible with version %s. "+
-				"Verify you are using the latest 'rosa' client and then run 'rosa create account-roles' to create compatible roles and try again.",
+				"Use latest 'rosa' client and run 'rosa create account-roles' to create compatible roles and try again.",
 				ARN, version)
 			os.Exit(1)
 		}
