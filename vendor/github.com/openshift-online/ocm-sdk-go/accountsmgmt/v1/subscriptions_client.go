@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -114,6 +116,13 @@ func (r *SubscriptionsListRequest) Parameter(name string, value interface{}) *Su
 // Header adds a request header.
 func (r *SubscriptionsListRequest) Header(name string, value interface{}) *SubscriptionsListRequest {
 	helpers.AddHeader(&r.header, name, value)
+	return r
+}
+
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *SubscriptionsListRequest) Impersonate(user string) *SubscriptionsListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
@@ -271,15 +280,21 @@ func (r *SubscriptionsListRequest) SendContext(ctx context.Context) (result *Sub
 	result = &SubscriptionsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readSubscriptionsListResponse(result, response.Body)
+	err = readSubscriptionsListResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -432,6 +447,13 @@ func (r *SubscriptionsPostRequest) Header(name string, value interface{}) *Subsc
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *SubscriptionsPostRequest) Impersonate(user string) *SubscriptionsPostRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Request sets the value of the 'request' parameter.
 //
 //
@@ -478,15 +500,21 @@ func (r *SubscriptionsPostRequest) SendContext(ctx context.Context) (result *Sub
 	result = &SubscriptionsPostResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readSubscriptionsPostResponse(result, response.Body)
+	err = readSubscriptionsPostResponse(result, reader)
 	if err != nil {
 		return
 	}

@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/jobqueue/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -231,6 +233,13 @@ func (r *QueueGetRequest) Header(name string, value interface{}) *QueueGetReques
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *QueueGetRequest) Impersonate(user string) *QueueGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -263,15 +272,21 @@ func (r *QueueGetRequest) SendContext(ctx context.Context) (result *QueueGetResp
 	result = &QueueGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readQueueGetResponse(result, response.Body)
+	err = readQueueGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -352,6 +367,13 @@ func (r *QueuePopRequest) Header(name string, value interface{}) *QueuePopReques
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *QueuePopRequest) Impersonate(user string) *QueuePopRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -384,15 +406,21 @@ func (r *QueuePopRequest) SendContext(ctx context.Context) (result *QueuePopResp
 	result = &QueuePopResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readQueuePopResponse(result, response.Body)
+	err = readQueuePopResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -661,6 +689,13 @@ func (r *QueuePushRequest) Header(name string, value interface{}) *QueuePushRequ
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *QueuePushRequest) Impersonate(user string) *QueuePushRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // AbandonedAt sets the value of the 'abandoned_at' parameter.
 //
 //
@@ -731,15 +766,21 @@ func (r *QueuePushRequest) SendContext(ctx context.Context) (result *QueuePushRe
 	result = &QueuePushResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readQueuePushResponse(result, response.Body)
+	err = readQueuePushResponse(result, reader)
 	if err != nil {
 		return
 	}

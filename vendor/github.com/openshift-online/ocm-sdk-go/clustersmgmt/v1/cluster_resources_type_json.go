@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"sort"
 	"time"
 
@@ -120,9 +119,6 @@ func writeClusterResources(object *ClusterResources, stream *jsoniter.Stream) {
 // UnmarshalClusterResources reads a value of the 'cluster_resources' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalClusterResources(source interface{}) (object *ClusterResources, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

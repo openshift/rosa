@@ -101,13 +101,8 @@ func (d *dumpRoundTripper) RoundTrip(request *http.Request) (response *http.Resp
 		if err != nil {
 			return
 		}
-		if len(body) == 0 {
-			d.dumpResponse(ctx, response, nil)
-			response.Body = http.NoBody // checked by Unmarshal* functions.
-		} else {
-			d.dumpResponse(ctx, response, body)
-			response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-		}
+		d.dumpResponse(ctx, response, body)
+		response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	} else {
 		d.dumpResponse(ctx, response, nil)
 	}

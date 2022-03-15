@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -210,6 +212,13 @@ func (r *UpgradePolicyStateGetRequest) Header(name string, value interface{}) *U
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *UpgradePolicyStateGetRequest) Impersonate(user string) *UpgradePolicyStateGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -242,15 +251,21 @@ func (r *UpgradePolicyStateGetRequest) SendContext(ctx context.Context) (result 
 	result = &UpgradePolicyStateGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readUpgradePolicyStateGetResponse(result, response.Body)
+	err = readUpgradePolicyStateGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -332,6 +347,13 @@ func (r *UpgradePolicyStateUpdateRequest) Header(name string, value interface{})
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *UpgradePolicyStateUpdateRequest) Impersonate(user string) *UpgradePolicyStateUpdateRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 //
@@ -378,15 +400,21 @@ func (r *UpgradePolicyStateUpdateRequest) SendContext(ctx context.Context) (resu
 	result = &UpgradePolicyStateUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readUpgradePolicyStateUpdateResponse(result, response.Body)
+	err = readUpgradePolicyStateUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

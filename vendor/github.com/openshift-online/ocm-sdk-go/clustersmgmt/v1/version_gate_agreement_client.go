@@ -20,7 +20,9 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -208,6 +210,13 @@ func (r *VersionGateAgreementDeleteRequest) Header(name string, value interface{
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *VersionGateAgreementDeleteRequest) Impersonate(user string) *VersionGateAgreementDeleteRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -240,8 +249,14 @@ func (r *VersionGateAgreementDeleteRequest) SendContext(ctx context.Context) (re
 	result = &VersionGateAgreementDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -302,6 +317,13 @@ func (r *VersionGateAgreementGetRequest) Header(name string, value interface{}) 
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *VersionGateAgreementGetRequest) Impersonate(user string) *VersionGateAgreementGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -334,15 +356,21 @@ func (r *VersionGateAgreementGetRequest) SendContext(ctx context.Context) (resul
 	result = &VersionGateAgreementGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readVersionGateAgreementGetResponse(result, response.Body)
+	err = readVersionGateAgreementGetResponse(result, reader)
 	if err != nil {
 		return
 	}

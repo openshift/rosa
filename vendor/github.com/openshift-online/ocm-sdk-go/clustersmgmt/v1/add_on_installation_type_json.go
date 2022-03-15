@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -129,11 +128,20 @@ func writeAddOnInstallation(object *AddOnInstallation, stream *jsoniter.Stream) 
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("role_arn")
+		stream.WriteString(object.roleARN)
+		count++
+	}
+	present_ = object.bitmap_&1024 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("state")
 		stream.WriteString(string(object.state))
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -142,7 +150,7 @@ func writeAddOnInstallation(object *AddOnInstallation, stream *jsoniter.Stream) 
 		stream.WriteString(object.stateDescription)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0
+	present_ = object.bitmap_&4096 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -156,9 +164,6 @@ func writeAddOnInstallation(object *AddOnInstallation, stream *jsoniter.Stream) 
 // UnmarshalAddOnInstallation reads a value of the 'add_on_installation' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalAddOnInstallation(source interface{}) (object *AddOnInstallation, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
@@ -233,15 +238,19 @@ func readAddOnInstallation(iterator *jsoniter.Iterator) *AddOnInstallation {
 			}
 			object.parameters = value
 			object.bitmap_ |= 256
+		case "role_arn":
+			value := iterator.ReadString()
+			object.roleARN = value
+			object.bitmap_ |= 512
 		case "state":
 			text := iterator.ReadString()
 			value := AddOnInstallationState(text)
 			object.state = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "state_description":
 			value := iterator.ReadString()
 			object.stateDescription = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		case "updated_timestamp":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -249,7 +258,7 @@ func readAddOnInstallation(iterator *jsoniter.Iterator) *AddOnInstallation {
 				iterator.ReportError("", err.Error())
 			}
 			object.updatedTimestamp = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 4096
 		default:
 			iterator.ReadAny()
 		}

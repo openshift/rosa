@@ -3,6 +3,97 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.251 Mar 15 2022
+
+- Update to model 0.1.182:
+  - Adding `service_mgmt` service.
+
+## 0.1.250 Mar 14 2022
+
+- Update to model 0.0.181:  
+    - Add aws sts policy 
+    - Add ReleaseImage to Version
+
+## 0.1.249 Mar 9 2022
+
+- Update to model 0.0.180:
+  - Add CloudProvider info to ProvisionShards.
+
+## 0.1.248 Mar 9 2022
+
+- Update to model 0.0.179:
+  - Fix cluster logs URL, should be `cluster_logs` instead of `cluster_logs_uuid`.
+
+## 0.1.247 Mar 8 2022
+
+- Update to metamodel 0.0.52:
+  - Add support for annotations.
+  - Add `@json` and `@http` annotations.
+  - Add `@go` annotation.
+  - Add original text to names.
+  - Add `Impersonate` method to support the `Impersonate-User` header.
+
+## 0.1.246 Mar 7 2022
+
+- Update to model 0.0.178:
+  - Add `managed_service` field to add-on type.
+  - Add `credentials_secret` field to add-on type.
+  - Add `region` field to provision shard.
+
+## 0.1.245 Mar 3 2022
+
+- Update to model 0.0.177:
+  - Fix update method of environment endpoint, should be `Update` instead of
+    `Patch`.
+  - Remove unimplemented `POST /api/service_logs/v1/cluster_logs/clusters/{uuid}/cluster_logs`
+    method.
+
+## 0.1.244 Mar 02 2022
+- Update to model 0.0.176
+  - adding new endpoint for 'environment'
+  
+## 0.1.243 Mar 02 2022
+- Update to model 0.0.175
+  - adding new apis for addon config attribute
+  - adding list of requirements to addon parameter options
+  - adding name fields to VPCs and Subnetworks
+  - rename addon env object
+
+## 0.1.242 Feb 16 2022
+
+- Update to model 0.0.174
+  - adding rhit_account_id to Account class
+
+## 0.1.241 Feb 11 2022
+
+- Update to model 0.0.173:  
+  - addons: Support attributes necessary for STS.
+  - Add ProductIds param to Status Resource.
+  - Add Role bindings to Subscription.
+
+## 0.1.240 Feb 4 2022
+
+- Update to model 0.0.172:
+  - Remove deprecated `SKUs` endpoint.
+  - Remove deprecated quota summary resource and type.
+  - Add QuotaVersion to ClusterAuth.
+  - Allow adding/removing operator roles.
+
+## 0.1.239 Feb 3 2022
+
+- Update to metamodel 0.0.51:
+  - Check for `io.EOF` before trying to parse response body.
+
+## 0.1.238 Jan 28 2022
+
+- Update to model 0.0.170:
+  - Add `ServiceInfo` type to status board service.
+
+## 0.1.237 Jan 25 2022
+
+- Update to metamodel 0.0.50:
+  - Fix format of date query parameters so that it is RFC3339.
+
 ## 0.1.236 Jan 25 2022
 - Update to model v0.0.169
   - Version gate type: Add warning message field

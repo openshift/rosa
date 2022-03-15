@@ -28,12 +28,6 @@ import (
 // Server represents the interface the manages the 'root' resource.
 type Server interface {
 
-	// SKUS returns the target 'SKUS' resource.
-	//
-	// Reference to the resource that manages the collection of
-	// SKUS
-	SKUS() SKUSServer
-
 	// AccessToken returns the target 'access_token' resource.
 	//
 	// Reference to the resource that manages generates access tokens.
@@ -160,13 +154,6 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 		}
 	}
 	switch segments[0] {
-	case "skus":
-		target := server.SKUS()
-		if target == nil {
-			errors.SendNotFound(w, r)
-			return
-		}
-		dispatchSKUS(w, r, target, segments[1:])
 	case "access_token":
 		target := server.AccessToken()
 		if target == nil {

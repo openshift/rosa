@@ -34,6 +34,7 @@ type VersionBuilder struct {
 	channelGroup       string
 	endOfLifeTimestamp time.Time
 	rawID              string
+	releaseImage       string
 	rosaEnabled        bool
 	default_           bool
 	enabled            bool
@@ -133,6 +134,15 @@ func (b *VersionBuilder) RawID(value string) *VersionBuilder {
 	return b
 }
 
+// ReleaseImage sets the value of the 'release_image' attribute to the given value.
+//
+//
+func (b *VersionBuilder) ReleaseImage(value string) *VersionBuilder {
+	b.releaseImage = value
+	b.bitmap_ |= 1024
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *VersionBuilder) Copy(object *Version) *VersionBuilder {
 	if object == nil {
@@ -153,6 +163,7 @@ func (b *VersionBuilder) Copy(object *Version) *VersionBuilder {
 	b.enabled = object.enabled
 	b.endOfLifeTimestamp = object.endOfLifeTimestamp
 	b.rawID = object.rawID
+	b.releaseImage = object.releaseImage
 	return b
 }
 
@@ -172,5 +183,6 @@ func (b *VersionBuilder) Build() (object *Version, err error) {
 	object.enabled = b.enabled
 	object.endOfLifeTimestamp = b.endOfLifeTimestamp
 	object.rawID = b.rawID
+	object.releaseImage = b.releaseImage
 	return
 }

@@ -30,7 +30,7 @@ type ClustersServer interface {
 
 	// Cluster returns the target 'cluster' server for the given identifier.
 	//
-	// Reference to the service that manages a specific Cluster.
+	// Reference to the service that manages a specific Cluster uuid.
 	Cluster(id string) ClusterServer
 }
 

@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -117,9 +116,6 @@ func writeLabel(object *Label, stream *jsoniter.Stream) {
 // UnmarshalLabel reads a value of the 'label' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalLabel(source interface{}) (object *Label, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

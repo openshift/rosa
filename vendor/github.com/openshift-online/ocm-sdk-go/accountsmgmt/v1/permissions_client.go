@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -100,6 +102,13 @@ func (r *PermissionsAddRequest) Header(name string, value interface{}) *Permissi
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *PermissionsAddRequest) Impersonate(user string) *PermissionsAddRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 // Permission data.
@@ -146,15 +155,21 @@ func (r *PermissionsAddRequest) SendContext(ctx context.Context) (result *Permis
 	result = &PermissionsAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readPermissionsAddResponse(result, response.Body)
+	err = readPermissionsAddResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -237,6 +252,13 @@ func (r *PermissionsListRequest) Header(name string, value interface{}) *Permiss
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *PermissionsListRequest) Impersonate(user string) *PermissionsListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Page sets the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
@@ -291,15 +313,21 @@ func (r *PermissionsListRequest) SendContext(ctx context.Context) (result *Permi
 	result = &PermissionsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readPermissionsListResponse(result, response.Body)
+	err = readPermissionsListResponse(result, reader)
 	if err != nil {
 		return
 	}

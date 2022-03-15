@@ -24,7 +24,7 @@ type IdentityProviderType string
 
 const (
 	//
-	IdentityProviderTypeLDAP IdentityProviderType = "LDAP"
+	IdentityProviderTypeLDAP IdentityProviderType = "ldap"
 	//
 	IdentityProviderTypeGithub IdentityProviderType = "github"
 	//
@@ -34,5 +34,5 @@ const (
 	//
 	IdentityProviderTypeHtpasswd IdentityProviderType = "htpasswd"
 	//
-	IdentityProviderTypeOpenID IdentityProviderType = "open_ID"
+	IdentityProviderTypeOpenID IdentityProviderType = "open_id"
 )

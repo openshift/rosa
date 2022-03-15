@@ -23,9 +23,10 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Representation of an add-on parameter option.
 type AddOnParameterOption struct {
-	bitmap_ uint32
-	name    string
-	value   string
+	bitmap_      uint32
+	name         string
+	requirements []*AddOnRequirement
+	value        string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -56,12 +57,35 @@ func (o *AddOnParameterOption) GetName() (value string, ok bool) {
 	return
 }
 
+// Requirements returns the value of the 'requirements' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// List of add-on requirements for this parameter option.
+func (o *AddOnParameterOption) Requirements() []*AddOnRequirement {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.requirements
+	}
+	return nil
+}
+
+// GetRequirements returns the value of the 'requirements' attribute and
+// a flag indicating if the attribute has a value.
+//
+// List of add-on requirements for this parameter option.
+func (o *AddOnParameterOption) GetRequirements() (value []*AddOnRequirement, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.requirements
+	}
+	return
+}
+
 // Value returns the value of the 'value' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Value of the add-on parameter option.
 func (o *AddOnParameterOption) Value() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.value
 	}
 	return ""
@@ -72,7 +96,7 @@ func (o *AddOnParameterOption) Value() string {
 //
 // Value of the add-on parameter option.
 func (o *AddOnParameterOption) GetValue() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.value
 	}
