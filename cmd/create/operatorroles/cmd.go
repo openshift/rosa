@@ -225,11 +225,16 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Error getting account role version %s", err)
 		os.Exit(1)
 	}
+	policies, err := ocmClient.GetPolicies("OperatorRole")
+	if err != nil {
+		reporter.Errorf("Expected a valid role creation mode: %s", err)
+		os.Exit(1)
+	}
 	switch mode {
 	case aws.ModeAuto:
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID,
-			accountRoleVersion)
+			accountRoleVersion, policies)
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
 			ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
@@ -244,7 +249,7 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 	case aws.ModeManual:
 		commands, err := buildCommands(reporter, prefix, permissionsBoundary, cluster, creator.AccountID, awsClient,
-			accountRoleVersion)
+			accountRoleVersion, policies)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -269,7 +274,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountID string, accountRoleVersion string) error {
+	cluster *cmv1.Cluster, accountID string, accountRoleVersion string, policies map[string]string) error {
 	for credrequest, operator := range aws.CredentialRequests {
 		ver := cluster.Version()
 		if ver != nil && operator.MinVersion != "" {
@@ -290,16 +295,9 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			continue
 		}
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-
-		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
-		path := fmt.Sprintf("templates/policies/%s", filename)
-
-		policyDoc, err := aws.ReadPolicyDocument(path)
-		if err != nil {
-			return err
-		}
-
-		policyARN, err = awsClient.EnsurePolicy(policyARN, string(policyDoc),
+		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
+		policyDetails := policies[filename]
+		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			aws.DefaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: accountRoleVersion,
 				tags.RolePrefix:       prefix,
@@ -309,8 +307,9 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		if err != nil {
 			return err
 		}
+		policyDetails = policies["operator_iam_role_policy"]
 
-		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator)
+		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}
@@ -340,7 +339,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 
 func buildCommands(reporter *rprtr.Object,
 	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountID string, awsClient aws.Client, accountRoleVersion string) (string, error) {
+	cluster *cmv1.Cluster, accountID string, awsClient aws.Client, accountRoleVersion string,
+	policies map[string]string) (string, error) {
 	commands := []string{}
 
 	for credrequest, operator := range aws.CredentialRequests {
@@ -374,11 +374,15 @@ func buildCommands(reporter *rprtr.Object,
 				name, credrequest, iamTags)
 			commands = append(commands, createPolicy)
 		}
-		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator)
+
+		policyDetail := policies["operator_iam_role_policy"]
+		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator, policyDetail)
 		if err != nil {
 			return "", err
 		}
-		filename := fmt.Sprintf("operator_%s_policy.json", credrequest)
+
+		filename := fmt.Sprintf("operator_%s_policy", credrequest)
+		filename = aws.GetFormattedFileName(filename)
 		reporter.Debugf("Saving '%s' to the current directory", filename)
 		err = ocm.SaveDocument(policy, filename)
 		if err != nil {

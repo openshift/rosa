@@ -186,11 +186,16 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 		aws.SetModeKey(mode)
 	}
+	policies, err := ocmClient.GetPolicies("")
+	if err != nil {
+		reporter.Errorf("Expected a valid role creation mode: %s", err)
+		os.Exit(1)
+	}
 	switch mode {
 	case aws.ModeAuto:
 		reporter.Infof("Starting to upgrade the policies")
 		if isUpgradeNeedForAccountRolePolicies {
-			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID)
+			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies)
 			if err != nil {
 				if args.isInvokedFromClusterUpgrade {
 					return err
@@ -200,7 +205,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			}
 		}
 		if isUpgradeNeedForOperatorRolePolicies {
-			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix)
+			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix, policies)
 			if err != nil {
 				if args.isInvokedFromClusterUpgrade {
 					return err
@@ -211,7 +216,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	case aws.ModeManual:
 		err = aws.GeneratePolicyFiles(reporter, env, isUpgradeNeedForAccountRolePolicies,
-			isUpgradeNeedForOperatorRolePolicies)
+			isUpgradeNeedForOperatorRolePolicies, policies)
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -237,7 +242,8 @@ func run(cmd *cobra.Command, argv []string) error {
 	return err
 }
 
-func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string) error {
+func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
+	policies map[string]string) error {
 	for file, role := range aws.AccountRoles {
 		roleName := aws.GetRoleName(prefix, role.Name)
 		if !confirm.Prompt(true, "Upgrade the '%s' role policy latest version ?", roleName) {
@@ -247,15 +253,11 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 			}
 			continue
 		}
-		filename := fmt.Sprintf("sts_%s_permission_policy.json", file)
-		path := fmt.Sprintf("templates/policies/%s", filename)
+		filename := fmt.Sprintf("sts_%s_permission_policy", file)
 		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName))
 
-		policy, err := aws.ReadPolicyDocument(path)
-		if err != nil {
-			return err
-		}
-		policyARN, err = awsClient.EnsurePolicy(policyARN, string(policy),
+		policyDetails := policies[filename]
+		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			aws.DefaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: aws.DefaultPolicyVersion,
 				tags.RolePrefix:       prefix,
@@ -283,7 +285,8 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 	return nil
 }
 
-func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, accountID string, prefix string) error {
+func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, accountID string, prefix string,
+	policies map[string]string) error {
 	if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", aws.DefaultPolicyVersion) {
 		if args.isInvokedFromClusterUpgrade {
 			return reporter.Errorf("Operator roles need to be upgraded to proceed" +
@@ -291,7 +294,7 @@ func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, a
 		}
 		return nil
 	}
-	err := aws.UpgradeOperatorPolicies(reporter, awsClient, accountID, prefix)
+	err := aws.UpggradeOperatorRolePolicies(reporter, awsClient, accountID, prefix, policies)
 	if err != nil {
 		return reporter.Errorf("Error upgrading the role polices: %s", err)
 	}
@@ -359,7 +362,7 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 		}
 	}
 	if isUpgradeNeedForOperatorRolePolicies {
-		commands = aws.BuildOperatorRoleCommands(prefix, accountID, awsClient)
+		commands = aws.BuildOperatorRolePolicies(prefix, accountID, awsClient, commands)
 	}
 	return strings.Join(commands, "\n\n")
 }

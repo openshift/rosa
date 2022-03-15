@@ -195,11 +195,17 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	policies, err := ocmClient.GetPolicies("")
+	if err != nil {
+		reporter.Errorf("Expected a valid role creation mode: %s", err)
+		os.Exit(1)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		reporter.Infof("Creating ocm user role using '%s'", creator.ARN)
 		roleARN, err := createRoles(reporter, awsClient, prefix, currentAccount.Username(), env,
-			currentAccount.ID(), permissionsBoundary)
+			currentAccount.ID(), permissionsBoundary, policies)
 		if err != nil {
 			reporter.Errorf("There was an error creating the ocm user role: %s", err)
 			ocmClient.LogEvent("ROSACreateUserRoleModeAuto", map[string]string{
@@ -218,7 +224,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	case aws.ModeManual:
 		ocmClient.LogEvent("ROSACreateUserRoleModeManual", map[string]string{})
-		err = generateUserRolePolicyFiles(reporter, env, currentAccount.ID())
+		err = generateUserRolePolicyFiles(reporter, env, currentAccount.ID(), policies)
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -263,15 +269,16 @@ func buildCommands(prefix string, userName string, accountID string, env string,
 }
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
-	prefix string, userName string, env string, accountID string, permissionsBoundary string) (string, error) {
+	prefix string, userName string, env string, accountID string, permissionsBoundary string,
+	policies map[string]string) (string, error) {
 	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
 	}
 
-	filename := fmt.Sprintf("sts_%s_trust_policy.json", aws.OCMUserRolePolicyFile)
-	path := fmt.Sprintf("templates/policies/%s", filename)
-	policy, err := aws.ReadPolicyDocument(path, map[string]string{
+	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
+	policyDetail := policies[filename]
+	policy, err := aws.GetRolePolicyDocument(policyDetail, map[string]string{
 		"aws_account_id": aws.JumpAccounts[env],
 		"ocm_account_id": accountID,
 	})
@@ -301,16 +308,18 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	return roleARN, nil
 }
 
-func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID string) error {
-	filename := fmt.Sprintf("sts_%s_trust_policy.json", aws.OCMUserRolePolicyFile)
-	path := fmt.Sprintf("templates/policies/%s", filename)
-	policy, err := aws.ReadPolicyDocument(path, map[string]string{
+func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID string,
+	policies map[string]string) error {
+	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
+	policyDetail := policies[filename]
+	policy, err := aws.GetRolePolicyDocument(policyDetail, map[string]string{
 		"aws_account_id": aws.JumpAccounts[env],
 		"ocm_account_id": accountID,
 	})
 	if err != nil {
 		return err
 	}
+
 	reporter.Debugf("Saving '%s' to the current directory", filename)
 	err = aws.SaveDocument(policy, filename)
 	if err != nil {

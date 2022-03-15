@@ -198,17 +198,12 @@ func isOperatorRoleAlreadyExist(cluster *cmv1.Cluster, operator Operator) bool {
 }
 
 func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID string,
-	prefix string) error {
+	prefix string, policies map[string]string) error {
 	for credrequest, operator := range CredentialRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
-		path := fmt.Sprintf("templates/policies/%s", filename)
-
-		policy, err := ReadPolicyDocument(path)
-		if err != nil {
-			return err
-		}
-		policyARN, err = awsClient.EnsurePolicy(policyARN, string(policy),
+		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
+		policy := policies[filename]
+		policyARN, err := awsClient.EnsurePolicy(policyARN, policy,
 			DefaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: DefaultPolicyVersion,
 				tags.RolePrefix:       prefix,

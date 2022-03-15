@@ -208,7 +208,13 @@ func run(cmd *cobra.Command, argv []string) {
 	if !args.disableSCPChecks {
 		reporter.Infof("Validating SCP policies for '%s'...", aws.AdminUserName)
 		target := aws.AdminUserName
-		isValid, err := client.ValidateSCP(&target)
+
+		policies, err := ocmClient.GetPolicies("OSDSCPPolicy")
+		if err != nil {
+			reporter.Errorf("Failed to get 'osdscppolicy' for '%s': %v", aws.AdminUserName, err)
+			os.Exit(1)
+		}
+		isValid, err := client.ValidateSCP(&target, policies)
 		if !isValid {
 			ocmClient.LogEvent("ROSAInitSCPPoliciesFailed", nil)
 			reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)

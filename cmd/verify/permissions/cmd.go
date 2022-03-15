@@ -87,7 +87,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	reporter.Infof("Verifying permissions for non-STS clusters")
 	reporter.Infof("Validating SCP policies...")
-	ok, err := client.ValidateSCP(nil)
+	policies, err := ocmClient.GetPolicies("OSDSCPPolicy")
+	if err != nil {
+		reporter.Errorf("Failed to get 'osdscppolicy' for '%s': %v", aws.AdminUserName, err)
+		os.Exit(1)
+	}
+	ok, err := client.ValidateSCP(nil, policies)
 	if err != nil {
 		ocmClient.LogEvent("ROSAVerifyPermissionsSCPFailed", nil)
 		reporter.Errorf("Unable to validate SCP policies. Make sure that an organizational " +

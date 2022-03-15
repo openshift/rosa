@@ -528,6 +528,27 @@ func CheckSupportedVersion(clusterVersion string, operatorVersion string) (bool,
 	return v1.GreaterThanOrEqual(v2), nil
 }
 
+func (c *Client) GetPolicies(policyType string) (map[string]string, error) {
+
+	query := fmt.Sprintf("policy_type = '%s'", policyType)
+
+	m := make(map[string]string)
+
+	stmt := c.ocm.ClustersMgmt().V1().AWSInquiries().STSPolicies().List()
+	if policyType != "" {
+		stmt = stmt.Search(query)
+	}
+	accountRolePoliciesResponse, err := stmt.Send()
+	if err != nil {
+		return m, handleErr(accountRolePoliciesResponse.Error(), err)
+	}
+	accountRolePoliciesResponse.Items().Each(func(awsPolicy *cmv1.AWSSTSPolicy) bool {
+		m[awsPolicy.ID()] = awsPolicy.Details()
+		return true
+	})
+	return m, nil
+}
+
 func SaveDocument(doc string, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {

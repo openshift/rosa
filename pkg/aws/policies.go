@@ -687,10 +687,19 @@ func ReadPolicyDocument(path string, args ...map[string]string) ([]byte, error) 
 	return []byte(file), nil
 }
 
+func GetRolePolicyDocument(file string, args ...map[string]string) ([]byte, error) {
+	if len(args) > 0 {
+		for key, val := range args[0] {
+			file = strings.Replace(file, fmt.Sprintf("%%{%s}", key), val, -1)
+		}
+	}
+	return []byte(file), nil
+}
+
 func parsePolicyDocument(path string) (PolicyDocument, error) {
 	doc := PolicyDocument{}
 
-	file, err := ReadPolicyDocument(path)
+	file, err := GetRolePolicyDocument(path)
 	if err != nil {
 		return doc, err
 	}

@@ -87,7 +87,7 @@ type Client interface {
 	DeleteOsdCcsAdminUser(stackName string) error
 	GetAWSAccessKeys() (*AccessKey, error)
 	GetCreator() (*Creator, error)
-	ValidateSCP(*string) (bool, error)
+	ValidateSCP(*string, map[string]string) (bool, error)
 	GetSubnetIDs() ([]*ec2.Subnet, error)
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
