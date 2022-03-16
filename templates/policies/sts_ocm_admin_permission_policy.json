@@ -6,6 +6,7 @@
       "Action": [
         "iam:GetRole",
         "iam:CreateRole",
+        "iam:DeleteRole",
         "iam:PutRolePermissionsBoundary",
         "iam:TagRole",
         "iam:ListPolicies",
@@ -14,7 +15,9 @@
         "iam:GetOpenIDConnectProvider",
         "iam:CreateOpenIDConnectProvider",
         "iam:TagOpenIDConnectProvider",
-        "iam:GetPolicy"
+        "iam:GetPolicy",
+        "iam:DetachRolePolicy",
+        "iam:DeleteOpenIDConnectProvider"
       ],
       "Resource": "*"
     }
