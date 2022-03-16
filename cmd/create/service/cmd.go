@@ -21,15 +21,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var args struct {
-	serviceName string
-	clusterName string
-}
+var args ocm.CreateManagedServiceArgs
 
 var Cmd = &cobra.Command{
 	Use:   "service",
@@ -47,14 +45,14 @@ func init() {
 
 	// Basic options
 	flags.StringVar(
-		&args.serviceName,
+		&args.ServiceName,
 		"service",
 		"",
 		"Name of the service.",
 	)
 
 	flags.StringVar(
-		&args.clusterName,
+		&args.ClusterName,
 		"clusterName",
 		"",
 		"Name of the cluster.",
@@ -80,7 +78,31 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}()
 
-	_, err = ocmClient.CreateService()
+	awsClient := aws.GetAWSClientForUserRegion(reporter, logger)
+
+	awsCreator, err := awsClient.GetCreator()
+	if err != nil {
+		reporter.Errorf("Unable to get IAM credentials: %v", err)
+		os.Exit(1)
+	}
+
+	accessKey, err := awsClient.GetAWSAccessKeys()
+	if err != nil {
+		reporter.Errorf("Unable to get access keys: %v", err)
+		os.Exit(1)
+	}
+	args.AwsAccountID = awsCreator.AccountID
+	args.AwsAccessKeyID = accessKey.AccessKeyID
+	args.AwsSecretAccessKey = accessKey.SecretAccessKey
+
+	// Get AWS region
+	args.AwsRegion, err = aws.GetRegion("")
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+
+	_, err = ocmClient.CreateManagedService(args)
 	if err != nil {
 		reporter.Errorf("Failed to create managed service: %s", err)
 		os.Exit(1)
