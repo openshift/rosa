@@ -45,6 +45,7 @@ type ManagedService struct {
 	addon        *StatefulObject
 	cluster      *Cluster
 	createdAt    time.Time
+	parameters   []*ServiceParameter
 	resources    []*StatefulObject
 	service      string
 	serviceState string
@@ -177,12 +178,35 @@ func (o *ManagedService) GetCreatedAt() (value time.Time, ok bool) {
 	return
 }
 
+// Parameters returns the value of the 'parameters' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *ManagedService) Parameters() []*ServiceParameter {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.parameters
+	}
+	return nil
+}
+
+// GetParameters returns the value of the 'parameters' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *ManagedService) GetParameters() (value []*ServiceParameter, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.parameters
+	}
+	return
+}
+
 // Resources returns the value of the 'resources' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *ManagedService) Resources() []*StatefulObject {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.resources
 	}
 	return nil
@@ -193,7 +217,7 @@ func (o *ManagedService) Resources() []*StatefulObject {
 //
 //
 func (o *ManagedService) GetResources() (value []*StatefulObject, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.resources
 	}
@@ -205,7 +229,7 @@ func (o *ManagedService) GetResources() (value []*StatefulObject, ok bool) {
 //
 //
 func (o *ManagedService) Service() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.service
 	}
 	return ""
@@ -216,7 +240,7 @@ func (o *ManagedService) Service() string {
 //
 //
 func (o *ManagedService) GetService() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.service
 	}
@@ -228,7 +252,7 @@ func (o *ManagedService) GetService() (value string, ok bool) {
 //
 //
 func (o *ManagedService) ServiceState() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.serviceState
 	}
 	return ""
@@ -239,7 +263,7 @@ func (o *ManagedService) ServiceState() string {
 //
 //
 func (o *ManagedService) GetServiceState() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.serviceState
 	}
@@ -251,7 +275,7 @@ func (o *ManagedService) GetServiceState() (value string, ok bool) {
 //
 //
 func (o *ManagedService) UpdatedAt() time.Time {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.updatedAt
 	}
 	return time.Time{}
@@ -262,7 +286,7 @@ func (o *ManagedService) UpdatedAt() time.Time {
 //
 //
 func (o *ManagedService) GetUpdatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.updatedAt
 	}

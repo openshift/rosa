@@ -3,6 +3,11 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.252 Mar 17 2022
+
+- Update to model 0.1.183:
+  - Added field for parameters to be specified for managed services.
+
 ## 0.1.251 Mar 15 2022
 
 - Update to model 0.1.182:
