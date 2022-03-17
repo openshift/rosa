@@ -52,7 +52,9 @@ import (
 var root = &cobra.Command{
 	Use:   "rosa",
 	Short: "Command line tool for ROSA.",
-	Long:  "Command line tool for Red Hat OpenShift Service on AWS.",
+	Long: "Command line tool for Red Hat OpenShift Service on AWS.\n" +
+		"For further documentation visit " +
+		"https://access.redhat.com/documentation/en-us/red_hat_openshift_service_on_aws\n",
 }
 
 func init() {
