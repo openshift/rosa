@@ -751,7 +751,8 @@ var _templatesPoliciesSts_installer_permission_policyJson = []byte(`{
                 "ec2:DescribeVpcEndpointServiceConfigurations",
                 "ec2:DescribeVpcEndpointServicePermissions",
                 "ec2:DescribeVpcEndpointServices",
-                "ec2:ModifyVpcEndpointServicePermissions"
+                "ec2:ModifyVpcEndpointServicePermissions",
+                "kms:DescribeKey"
             ],
             "Resource": "*"
         }
@@ -977,6 +978,7 @@ var _templatesPoliciesSts_ocm_admin_permission_policyJson = []byte(`{
       "Action": [
         "iam:GetRole",
         "iam:CreateRole",
+        "iam:DeleteRole",
         "iam:PutRolePermissionsBoundary",
         "iam:TagRole",
         "iam:ListPolicies",
@@ -985,7 +987,9 @@ var _templatesPoliciesSts_ocm_admin_permission_policyJson = []byte(`{
         "iam:GetOpenIDConnectProvider",
         "iam:CreateOpenIDConnectProvider",
         "iam:TagOpenIDConnectProvider",
-        "iam:GetPolicy"
+        "iam:GetPolicy",
+        "iam:DetachRolePolicy",
+        "iam:DeleteOpenIDConnectProvider"
       ],
       "Resource": "*"
     }
