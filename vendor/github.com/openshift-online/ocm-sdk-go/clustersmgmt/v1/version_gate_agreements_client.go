@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -100,6 +102,13 @@ func (r *VersionGateAgreementsAddRequest) Header(name string, value interface{})
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *VersionGateAgreementsAddRequest) Impersonate(user string) *VersionGateAgreementsAddRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 // Details of the version gate agreement.
@@ -146,15 +155,21 @@ func (r *VersionGateAgreementsAddRequest) SendContext(ctx context.Context) (resu
 	result = &VersionGateAgreementsAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readVersionGateAgreementsAddResponse(result, response.Body)
+	err = readVersionGateAgreementsAddResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -237,6 +252,13 @@ func (r *VersionGateAgreementsListRequest) Header(name string, value interface{}
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *VersionGateAgreementsListRequest) Impersonate(user string) *VersionGateAgreementsListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Page sets the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
@@ -291,15 +313,21 @@ func (r *VersionGateAgreementsListRequest) SendContext(ctx context.Context) (res
 	result = &VersionGateAgreementsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readVersionGateAgreementsListResponse(result, response.Body)
+	err = readVersionGateAgreementsListResponse(result, reader)
 	if err != nil {
 		return
 	}

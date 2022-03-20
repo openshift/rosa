@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -220,6 +222,13 @@ func (r *StatusDeleteRequest) Header(name string, value interface{}) *StatusDele
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *StatusDeleteRequest) Impersonate(user string) *StatusDeleteRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -252,8 +261,14 @@ func (r *StatusDeleteRequest) SendContext(ctx context.Context) (result *StatusDe
 	result = &StatusDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -314,6 +329,13 @@ func (r *StatusGetRequest) Header(name string, value interface{}) *StatusGetRequ
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *StatusGetRequest) Impersonate(user string) *StatusGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -346,15 +368,21 @@ func (r *StatusGetRequest) SendContext(ctx context.Context) (result *StatusGetRe
 	result = &StatusGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readStatusGetResponse(result, response.Body)
+	err = readStatusGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -436,6 +464,13 @@ func (r *StatusUpdateRequest) Header(name string, value interface{}) *StatusUpda
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *StatusUpdateRequest) Impersonate(user string) *StatusUpdateRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 //
@@ -482,15 +517,21 @@ func (r *StatusUpdateRequest) SendContext(ctx context.Context) (result *StatusUp
 	result = &StatusUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readStatusUpdateResponse(result, response.Body)
+	err = readStatusUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

@@ -111,6 +111,16 @@ func (c *Client) Clusters() *ClustersClient {
 	)
 }
 
+// Environment returns the target 'environment' resource.
+//
+// Reference to the resource that manages the environment.
+func (c *Client) Environment() *EnvironmentClient {
+	return NewEnvironmentClient(
+		c.transport,
+		path.Join(c.path, "environment"),
+	)
+}
+
 // Events returns the target 'events' resource.
 //
 // Reference to the resource that manages the collection of trackable events.

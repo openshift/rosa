@@ -42,6 +42,16 @@ func NewAWSInquiriesClient(transport http.RoundTripper, path string) *AWSInquiri
 	}
 }
 
+// STSPolicies returns the target 'AWSSTS_policies_inquiry' resource.
+//
+// Reference to the resource that manages aws sts policies.
+func (c *AWSInquiriesClient) STSPolicies() *AWSSTSPoliciesInquiryClient {
+	return NewAWSSTSPoliciesInquiryClient(
+		c.transport,
+		path.Join(c.path, "sts_policies"),
+	)
+}
+
 // Regions returns the target 'available_regions_inquiry' resource.
 //
 // Reference to the resource that manages a collection of regions.

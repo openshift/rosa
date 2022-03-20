@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"sort"
 
 	jsoniter "github.com/json-iterator/go"
@@ -114,9 +113,6 @@ func writeAddOnRequirement(object *AddOnRequirement, stream *jsoniter.Stream) {
 // UnmarshalAddOnRequirement reads a value of the 'add_on_requirement' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalAddOnRequirement(source interface{}) (object *AddOnRequirement, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

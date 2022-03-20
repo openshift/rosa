@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -100,6 +102,13 @@ func (r *VersionGatesAddRequest) Header(name string, value interface{}) *Version
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *VersionGatesAddRequest) Impersonate(user string) *VersionGatesAddRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 // Details of the version gate
@@ -146,15 +155,21 @@ func (r *VersionGatesAddRequest) SendContext(ctx context.Context) (result *Versi
 	result = &VersionGatesAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readVersionGatesAddResponse(result, response.Body)
+	err = readVersionGatesAddResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -236,6 +251,13 @@ func (r *VersionGatesListRequest) Parameter(name string, value interface{}) *Ver
 // Header adds a request header.
 func (r *VersionGatesListRequest) Header(name string, value interface{}) *VersionGatesListRequest {
 	helpers.AddHeader(&r.header, name, value)
+	return r
+}
+
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *VersionGatesListRequest) Impersonate(user string) *VersionGatesListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
@@ -336,15 +358,21 @@ func (r *VersionGatesListRequest) SendContext(ctx context.Context) (result *Vers
 	result = &VersionGatesListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readVersionGatesListResponse(result, response.Body)
+	err = readVersionGatesListResponse(result, reader)
 	if err != nil {
 		return
 	}

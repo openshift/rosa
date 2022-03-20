@@ -53,6 +53,11 @@ type Server interface {
 	//
 	Services() ServicesServer
 
+	// StatusUpdates returns the target 'statuses' resource.
+	//
+	//
+	StatusUpdates() StatusesServer
+
 	// Statuses returns the target 'statuses' resource.
 	//
 	//
@@ -106,6 +111,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchServices(w, r, target, segments[1:])
+	case "status_updates":
+		target := server.StatusUpdates()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchStatuses(w, r, target, segments[1:])
 	case "statuses":
 		target := server.Statuses()
 		if target == nil {

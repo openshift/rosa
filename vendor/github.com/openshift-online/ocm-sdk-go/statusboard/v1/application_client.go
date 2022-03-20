@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -231,6 +233,13 @@ func (r *ApplicationDeleteRequest) Header(name string, value interface{}) *Appli
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *ApplicationDeleteRequest) Impersonate(user string) *ApplicationDeleteRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -263,8 +272,14 @@ func (r *ApplicationDeleteRequest) SendContext(ctx context.Context) (result *App
 	result = &ApplicationDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -325,6 +340,13 @@ func (r *ApplicationGetRequest) Header(name string, value interface{}) *Applicat
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *ApplicationGetRequest) Impersonate(user string) *ApplicationGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -357,15 +379,21 @@ func (r *ApplicationGetRequest) SendContext(ctx context.Context) (result *Applic
 	result = &ApplicationGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readApplicationGetResponse(result, response.Body)
+	err = readApplicationGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -447,6 +475,13 @@ func (r *ApplicationUpdateRequest) Header(name string, value interface{}) *Appli
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *ApplicationUpdateRequest) Impersonate(user string) *ApplicationUpdateRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 //
@@ -493,15 +528,21 @@ func (r *ApplicationUpdateRequest) SendContext(ctx context.Context) (result *App
 	result = &ApplicationUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readApplicationUpdateResponse(result, response.Body)
+	err = readApplicationUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

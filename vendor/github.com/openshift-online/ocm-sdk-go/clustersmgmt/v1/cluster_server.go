@@ -62,6 +62,11 @@ type ClusterServer interface {
 	// access role grants on this cluster.
 	AWSInfrastructureAccessRoleGrants() AWSInfrastructureAccessRoleGrantsServer
 
+	// STSOperatorRoles returns the target 'operator_IAM_roles' resource.
+	//
+	//
+	STSOperatorRoles() OperatorIAMRolesServer
+
 	// AddonInquiries returns the target 'addon_inquiries' resource.
 	//
 	// Reference to the resource that manages the collection of the add-on inquiries on this cluster.
@@ -341,6 +346,13 @@ func dispatchCluster(w http.ResponseWriter, r *http.Request, server ClusterServe
 			return
 		}
 		dispatchAWSInfrastructureAccessRoleGrants(w, r, target, segments[1:])
+	case "sts_operator_roles":
+		target := server.STSOperatorRoles()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchOperatorIAMRoles(w, r, target, segments[1:])
 	case "addon_inquiries":
 		target := server.AddonInquiries()
 		if target == nil {

@@ -50,17 +50,6 @@ func (c *Client) Get() *MetadataRequest {
 	}
 }
 
-// SKUS returns the target 'SKUS' resource.
-//
-// Reference to the resource that manages the collection of
-// SKUS
-func (c *Client) SKUS() *SKUSClient {
-	return NewSKUSClient(
-		c.transport,
-		path.Join(c.path, "skus"),
-	)
-}
-
 // AccessToken returns the target 'access_token' resource.
 //
 // Reference to the resource that manages generates access tokens.

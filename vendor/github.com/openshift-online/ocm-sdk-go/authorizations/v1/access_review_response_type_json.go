@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/authorizations/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -120,9 +119,6 @@ func writeAccessReviewResponse(object *AccessReviewResponse, stream *jsoniter.St
 // UnmarshalAccessReviewResponse reads a value of the 'access_review_response' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalAccessReviewResponse(source interface{}) (object *AccessReviewResponse, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

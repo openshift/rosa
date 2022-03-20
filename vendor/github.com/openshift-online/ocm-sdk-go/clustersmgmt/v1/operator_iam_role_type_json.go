@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -48,11 +47,20 @@ func writeOperatorIAMRole(object *OperatorIAMRole, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("id")
+		stream.WriteString(object.id)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("name")
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -61,13 +69,22 @@ func writeOperatorIAMRole(object *OperatorIAMRole, stream *jsoniter.Stream) {
 		stream.WriteString(object.namespace)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("role_arn")
 		stream.WriteString(object.roleARN)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("service_account")
+		stream.WriteString(object.serviceAccount)
 	}
 	stream.WriteObjectEnd()
 }
@@ -75,9 +92,6 @@ func writeOperatorIAMRole(object *OperatorIAMRole, stream *jsoniter.Stream) {
 // UnmarshalOperatorIAMRole reads a value of the 'operator_IAM_role' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalOperatorIAMRole(source interface{}) (object *OperatorIAMRole, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
@@ -96,18 +110,26 @@ func readOperatorIAMRole(iterator *jsoniter.Iterator) *OperatorIAMRole {
 			break
 		}
 		switch field {
+		case "id":
+			value := iterator.ReadString()
+			object.id = value
+			object.bitmap_ |= 1
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		case "namespace":
 			value := iterator.ReadString()
 			object.namespace = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "role_arn":
 			value := iterator.ReadString()
 			object.roleARN = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
+		case "service_account":
+			value := iterator.ReadString()
+			object.serviceAccount = value
+			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()
 		}

@@ -46,6 +46,7 @@ type Version struct {
 	channelGroup       string
 	endOfLifeTimestamp time.Time
 	rawID              string
+	releaseImage       string
 	rosaEnabled        bool
 	default_           bool
 	enabled            bool
@@ -273,6 +274,29 @@ func (o *Version) GetRawID() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.rawID
+	}
+	return
+}
+
+// ReleaseImage returns the value of the 'release_image' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// ReleaseImage contains the URI of Openshift release image
+func (o *Version) ReleaseImage() string {
+	if o != nil && o.bitmap_&1024 != 0 {
+		return o.releaseImage
+	}
+	return ""
+}
+
+// GetReleaseImage returns the value of the 'release_image' attribute and
+// a flag indicating if the attribute has a value.
+//
+// ReleaseImage contains the URI of Openshift release image
+func (o *Version) GetReleaseImage() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&1024 != 0
+	if ok {
+		value = o.releaseImage
 	}
 	return
 }

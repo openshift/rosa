@@ -20,7 +20,9 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -208,6 +210,13 @@ func (r *UserDeleteRequest) Header(name string, value interface{}) *UserDeleteRe
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *UserDeleteRequest) Impersonate(user string) *UserDeleteRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -240,8 +249,14 @@ func (r *UserDeleteRequest) SendContext(ctx context.Context) (result *UserDelete
 	result = &UserDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -302,6 +317,13 @@ func (r *UserGetRequest) Header(name string, value interface{}) *UserGetRequest 
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *UserGetRequest) Impersonate(user string) *UserGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -334,15 +356,21 @@ func (r *UserGetRequest) SendContext(ctx context.Context) (result *UserGetRespon
 	result = &UserGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readUserGetResponse(result, response.Body)
+	err = readUserGetResponse(result, reader)
 	if err != nil {
 		return
 	}

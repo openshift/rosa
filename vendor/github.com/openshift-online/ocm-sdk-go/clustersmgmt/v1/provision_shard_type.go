@@ -42,7 +42,9 @@ type ProvisionShard struct {
 	awsBaseDomain            string
 	gcpBaseDomain            string
 	gcpProjectOperator       *ServerConfig
+	cloudProvider            *CloudProvider
 	hiveConfig               *ServerConfig
+	region                   *CloudRegion
 }
 
 // Kind returns the name of the type of the object.
@@ -194,12 +196,35 @@ func (o *ProvisionShard) GetGCPProjectOperator() (value *ServerConfig, ok bool) 
 	return
 }
 
+// CloudProvider returns the value of the 'cloud_provider' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Contains the cloud provider name
+func (o *ProvisionShard) CloudProvider() *CloudProvider {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.cloudProvider
+	}
+	return nil
+}
+
+// GetCloudProvider returns the value of the 'cloud_provider' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Contains the cloud provider name
+func (o *ProvisionShard) GetCloudProvider() (value *CloudProvider, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.cloudProvider
+	}
+	return
+}
+
 // HiveConfig returns the value of the 'hive_config' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Contains the configuration for Hive
 func (o *ProvisionShard) HiveConfig() *ServerConfig {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.hiveConfig
 	}
 	return nil
@@ -210,9 +235,32 @@ func (o *ProvisionShard) HiveConfig() *ServerConfig {
 //
 // Contains the configuration for Hive
 func (o *ProvisionShard) GetHiveConfig() (value *ServerConfig, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.hiveConfig
+	}
+	return
+}
+
+// Region returns the value of the 'region' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Contains the cloud-provider region in which the provisioner spins up the cluster
+func (o *ProvisionShard) Region() *CloudRegion {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.region
+	}
+	return nil
+}
+
+// GetRegion returns the value of the 'region' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Contains the cloud-provider region in which the provisioner spins up the cluster
+func (o *ProvisionShard) GetRegion() (value *CloudRegion, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.region
 	}
 	return
 }

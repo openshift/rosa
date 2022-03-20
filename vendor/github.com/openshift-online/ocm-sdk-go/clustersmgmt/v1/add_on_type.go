@@ -38,6 +38,8 @@ type AddOn struct {
 	bitmap_              uint32
 	id                   string
 	href                 string
+	config               *AddOnConfig
+	credentialsSecret    string
 	description          string
 	docsLink             string
 	icon                 string
@@ -46,15 +48,18 @@ type AddOn struct {
 	name                 string
 	operatorName         string
 	parameters           *AddOnParameterList
+	policyPermissions    []string
 	requirements         []*AddOnRequirement
 	resourceCost         float64
 	resourceName         string
+	serviceAccount       string
 	subOperators         []*AddOnSubOperator
 	targetNamespace      string
 	version              *AddOnVersion
 	enabled              bool
 	hasExternalResources bool
 	hidden               bool
+	managedService       bool
 }
 
 // Kind returns the name of the type of the object.
@@ -114,12 +119,58 @@ func (o *AddOn) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
+// Config returns the value of the 'config' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Additional configs to be used by the addon once its installed in the cluster.
+func (o *AddOn) Config() *AddOnConfig {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.config
+	}
+	return nil
+}
+
+// GetConfig returns the value of the 'config' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Additional configs to be used by the addon once its installed in the cluster.
+func (o *AddOn) GetConfig() (value *AddOnConfig, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.config
+	}
+	return
+}
+
+// CredentialsSecret returns the value of the 'credentials_secret' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Name of the secret that will hold the credentials required to access cloud resources.
+func (o *AddOn) CredentialsSecret() string {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.credentialsSecret
+	}
+	return ""
+}
+
+// GetCredentialsSecret returns the value of the 'credentials_secret' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Name of the secret that will hold the credentials required to access cloud resources.
+func (o *AddOn) GetCredentialsSecret() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.credentialsSecret
+	}
+	return
+}
+
 // Description returns the value of the 'description' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Description of the add-on.
 func (o *AddOn) Description() string {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.description
 	}
 	return ""
@@ -130,7 +181,7 @@ func (o *AddOn) Description() string {
 //
 // Description of the add-on.
 func (o *AddOn) GetDescription() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.description
 	}
@@ -142,7 +193,7 @@ func (o *AddOn) GetDescription() (value string, ok bool) {
 //
 // Link to documentation about the add-on.
 func (o *AddOn) DocsLink() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.docsLink
 	}
 	return ""
@@ -153,7 +204,7 @@ func (o *AddOn) DocsLink() string {
 //
 // Link to documentation about the add-on.
 func (o *AddOn) GetDocsLink() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.docsLink
 	}
@@ -165,7 +216,7 @@ func (o *AddOn) GetDocsLink() (value string, ok bool) {
 //
 // Indicates if this add-on can be added to clusters.
 func (o *AddOn) Enabled() bool {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.enabled
 	}
 	return false
@@ -176,7 +227,7 @@ func (o *AddOn) Enabled() bool {
 //
 // Indicates if this add-on can be added to clusters.
 func (o *AddOn) GetEnabled() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.enabled
 	}
@@ -188,7 +239,7 @@ func (o *AddOn) GetEnabled() (value bool, ok bool) {
 //
 // Indicates if this add-on has external resources associated with it
 func (o *AddOn) HasExternalResources() bool {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.hasExternalResources
 	}
 	return false
@@ -199,7 +250,7 @@ func (o *AddOn) HasExternalResources() bool {
 //
 // Indicates if this add-on has external resources associated with it
 func (o *AddOn) GetHasExternalResources() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.hasExternalResources
 	}
@@ -211,7 +262,7 @@ func (o *AddOn) GetHasExternalResources() (value bool, ok bool) {
 //
 // Indicates if this add-on is hidden.
 func (o *AddOn) Hidden() bool {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.hidden
 	}
 	return false
@@ -222,7 +273,7 @@ func (o *AddOn) Hidden() bool {
 //
 // Indicates if this add-on is hidden.
 func (o *AddOn) GetHidden() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.hidden
 	}
@@ -234,7 +285,7 @@ func (o *AddOn) GetHidden() (value bool, ok bool) {
 //
 // Base64-encoded icon representing an add-on. The icon should be in PNG format.
 func (o *AddOn) Icon() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.icon
 	}
 	return ""
@@ -245,7 +296,7 @@ func (o *AddOn) Icon() string {
 //
 // Base64-encoded icon representing an add-on. The icon should be in PNG format.
 func (o *AddOn) GetIcon() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.icon
 	}
@@ -257,7 +308,7 @@ func (o *AddOn) GetIcon() (value string, ok bool) {
 //
 // The mode in which the addon is deployed.
 func (o *AddOn) InstallMode() AddOnInstallMode {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.installMode
 	}
 	return AddOnInstallMode("")
@@ -268,7 +319,7 @@ func (o *AddOn) InstallMode() AddOnInstallMode {
 //
 // The mode in which the addon is deployed.
 func (o *AddOn) GetInstallMode() (value AddOnInstallMode, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.installMode
 	}
@@ -280,7 +331,7 @@ func (o *AddOn) GetInstallMode() (value AddOnInstallMode, ok bool) {
 //
 // Label used to attach to a cluster deployment when add-on is installed.
 func (o *AddOn) Label() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.label
 	}
 	return ""
@@ -291,9 +342,32 @@ func (o *AddOn) Label() string {
 //
 // Label used to attach to a cluster deployment when add-on is installed.
 func (o *AddOn) GetLabel() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.label
+	}
+	return
+}
+
+// ManagedService returns the value of the 'managed_service' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Indicates if add-on is part of a managed service
+func (o *AddOn) ManagedService() bool {
+	if o != nil && o.bitmap_&8192 != 0 {
+		return o.managedService
+	}
+	return false
+}
+
+// GetManagedService returns the value of the 'managed_service' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Indicates if add-on is part of a managed service
+func (o *AddOn) GetManagedService() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&8192 != 0
+	if ok {
+		value = o.managedService
 	}
 	return
 }
@@ -303,7 +377,7 @@ func (o *AddOn) GetLabel() (value string, ok bool) {
 //
 // Name of the add-on.
 func (o *AddOn) Name() string {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&16384 != 0 {
 		return o.name
 	}
 	return ""
@@ -314,7 +388,7 @@ func (o *AddOn) Name() string {
 //
 // Name of the add-on.
 func (o *AddOn) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {
 		value = o.name
 	}
@@ -326,7 +400,7 @@ func (o *AddOn) GetName() (value string, ok bool) {
 //
 // The name of the operator installed by this add-on.
 func (o *AddOn) OperatorName() string {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&32768 != 0 {
 		return o.operatorName
 	}
 	return ""
@@ -337,7 +411,7 @@ func (o *AddOn) OperatorName() string {
 //
 // The name of the operator installed by this add-on.
 func (o *AddOn) GetOperatorName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&32768 != 0
 	if ok {
 		value = o.operatorName
 	}
@@ -349,7 +423,7 @@ func (o *AddOn) GetOperatorName() (value string, ok bool) {
 //
 // List of parameters for this add-on.
 func (o *AddOn) Parameters() *AddOnParameterList {
-	if o != nil && o.bitmap_&8192 != 0 {
+	if o != nil && o.bitmap_&65536 != 0 {
 		return o.parameters
 	}
 	return nil
@@ -360,9 +434,32 @@ func (o *AddOn) Parameters() *AddOnParameterList {
 //
 // List of parameters for this add-on.
 func (o *AddOn) GetParameters() (value *AddOnParameterList, ok bool) {
-	ok = o != nil && o.bitmap_&8192 != 0
+	ok = o != nil && o.bitmap_&65536 != 0
 	if ok {
 		value = o.parameters
+	}
+	return
+}
+
+// PolicyPermissions returns the value of the 'policy_permissions' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// List of policy permissions needed to access cloud resources
+func (o *AddOn) PolicyPermissions() []string {
+	if o != nil && o.bitmap_&131072 != 0 {
+		return o.policyPermissions
+	}
+	return nil
+}
+
+// GetPolicyPermissions returns the value of the 'policy_permissions' attribute and
+// a flag indicating if the attribute has a value.
+//
+// List of policy permissions needed to access cloud resources
+func (o *AddOn) GetPolicyPermissions() (value []string, ok bool) {
+	ok = o != nil && o.bitmap_&131072 != 0
+	if ok {
+		value = o.policyPermissions
 	}
 	return
 }
@@ -372,7 +469,7 @@ func (o *AddOn) GetParameters() (value *AddOnParameterList, ok bool) {
 //
 // List of requirements for this add-on.
 func (o *AddOn) Requirements() []*AddOnRequirement {
-	if o != nil && o.bitmap_&16384 != 0 {
+	if o != nil && o.bitmap_&262144 != 0 {
 		return o.requirements
 	}
 	return nil
@@ -383,7 +480,7 @@ func (o *AddOn) Requirements() []*AddOnRequirement {
 //
 // List of requirements for this add-on.
 func (o *AddOn) GetRequirements() (value []*AddOnRequirement, ok bool) {
-	ok = o != nil && o.bitmap_&16384 != 0
+	ok = o != nil && o.bitmap_&262144 != 0
 	if ok {
 		value = o.requirements
 	}
@@ -395,7 +492,7 @@ func (o *AddOn) GetRequirements() (value []*AddOnRequirement, ok bool) {
 //
 // Used to determine how many units of quota an add-on consumes per resource name.
 func (o *AddOn) ResourceCost() float64 {
-	if o != nil && o.bitmap_&32768 != 0 {
+	if o != nil && o.bitmap_&524288 != 0 {
 		return o.resourceCost
 	}
 	return 0.0
@@ -406,7 +503,7 @@ func (o *AddOn) ResourceCost() float64 {
 //
 // Used to determine how many units of quota an add-on consumes per resource name.
 func (o *AddOn) GetResourceCost() (value float64, ok bool) {
-	ok = o != nil && o.bitmap_&32768 != 0
+	ok = o != nil && o.bitmap_&524288 != 0
 	if ok {
 		value = o.resourceCost
 	}
@@ -418,7 +515,7 @@ func (o *AddOn) GetResourceCost() (value float64, ok bool) {
 //
 // Used to determine from where to reserve quota for this add-on.
 func (o *AddOn) ResourceName() string {
-	if o != nil && o.bitmap_&65536 != 0 {
+	if o != nil && o.bitmap_&1048576 != 0 {
 		return o.resourceName
 	}
 	return ""
@@ -429,9 +526,32 @@ func (o *AddOn) ResourceName() string {
 //
 // Used to determine from where to reserve quota for this add-on.
 func (o *AddOn) GetResourceName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&65536 != 0
+	ok = o != nil && o.bitmap_&1048576 != 0
 	if ok {
 		value = o.resourceName
+	}
+	return
+}
+
+// ServiceAccount returns the value of the 'service_account' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The name of the service account used when authenticating
+func (o *AddOn) ServiceAccount() string {
+	if o != nil && o.bitmap_&2097152 != 0 {
+		return o.serviceAccount
+	}
+	return ""
+}
+
+// GetServiceAccount returns the value of the 'service_account' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The name of the service account used when authenticating
+func (o *AddOn) GetServiceAccount() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&2097152 != 0
+	if ok {
+		value = o.serviceAccount
 	}
 	return
 }
@@ -441,7 +561,7 @@ func (o *AddOn) GetResourceName() (value string, ok bool) {
 //
 // List of sub operators for this add-on.
 func (o *AddOn) SubOperators() []*AddOnSubOperator {
-	if o != nil && o.bitmap_&131072 != 0 {
+	if o != nil && o.bitmap_&4194304 != 0 {
 		return o.subOperators
 	}
 	return nil
@@ -452,7 +572,7 @@ func (o *AddOn) SubOperators() []*AddOnSubOperator {
 //
 // List of sub operators for this add-on.
 func (o *AddOn) GetSubOperators() (value []*AddOnSubOperator, ok bool) {
-	ok = o != nil && o.bitmap_&131072 != 0
+	ok = o != nil && o.bitmap_&4194304 != 0
 	if ok {
 		value = o.subOperators
 	}
@@ -464,7 +584,7 @@ func (o *AddOn) GetSubOperators() (value []*AddOnSubOperator, ok bool) {
 //
 // The namespace in which the addon CRD exists.
 func (o *AddOn) TargetNamespace() string {
-	if o != nil && o.bitmap_&262144 != 0 {
+	if o != nil && o.bitmap_&8388608 != 0 {
 		return o.targetNamespace
 	}
 	return ""
@@ -475,7 +595,7 @@ func (o *AddOn) TargetNamespace() string {
 //
 // The namespace in which the addon CRD exists.
 func (o *AddOn) GetTargetNamespace() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&262144 != 0
+	ok = o != nil && o.bitmap_&8388608 != 0
 	if ok {
 		value = o.targetNamespace
 	}
@@ -487,7 +607,7 @@ func (o *AddOn) GetTargetNamespace() (value string, ok bool) {
 //
 // Link to the current default version of this add-on.
 func (o *AddOn) Version() *AddOnVersion {
-	if o != nil && o.bitmap_&524288 != 0 {
+	if o != nil && o.bitmap_&16777216 != 0 {
 		return o.version
 	}
 	return nil
@@ -498,7 +618,7 @@ func (o *AddOn) Version() *AddOnVersion {
 //
 // Link to the current default version of this add-on.
 func (o *AddOn) GetVersion() (value *AddOnVersion, ok bool) {
-	ok = o != nil && o.bitmap_&524288 != 0
+	ok = o != nil && o.bitmap_&16777216 != 0
 	if ok {
 		value = o.version
 	}
