@@ -24,6 +24,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	semver "github.com/hashicorp/go-version"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/pkg/errors"
 )
 
@@ -154,4 +156,40 @@ func SortRolesByLinkedRole(roles []Role) {
 	sort.SliceStable(roles, func(i, j int) bool {
 		return roles[i].Linked == "Yes" && roles[j].Linked == "No"
 	})
+}
+
+func (c *awsClient) FindMissingOperatorRolesForUpgrade(cluster *cmv1.Cluster,
+	newMinorVersion string) (map[string]Operator, error) {
+	missingRoles := make(map[string]Operator)
+
+	for credRequest, operator := range CredentialRequests {
+		if operator.MinVersion != "" {
+			clusterUpgradeVersion, err := semver.NewVersion(newMinorVersion)
+			if err != nil {
+				return nil, err
+			}
+			operatorMinVersion, err := semver.NewVersion(operator.MinVersion)
+			if err != nil {
+				return nil, err
+			}
+
+			if clusterUpgradeVersion.GreaterThanOrEqual(operatorMinVersion) {
+				if !isOperatorRoleAlreadyExist(cluster, operator) {
+					missingRoles[credRequest] = operator
+				}
+			}
+		}
+	}
+
+	return missingRoles, nil
+}
+
+func isOperatorRoleAlreadyExist(cluster *cmv1.Cluster, operator Operator) bool {
+	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
+		if role.Namespace() == operator.Namespace && role.Name() == operator.Name {
+			return true
+		}
+	}
+
+	return false
 }

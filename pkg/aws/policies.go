@@ -89,7 +89,7 @@ var CredentialRequests map[string]Operator = map[string]Operator{
 		ServiceAccountNames: []string{
 			"cloud-network-config-controller",
 		},
-		MinVersion: "4.10",
+		MinVersion: "4.9",
 	},
 }
 

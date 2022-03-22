@@ -134,6 +134,7 @@ type Client interface {
 	IsAdminRole(roleName string) (bool, error)
 	DeleteInlineRolePolicies(roleName string) error
 	IsUserRole(roleName *string) (bool, error)
+	FindMissingOperatorRolesForUpgrade(cluster *cmv1.Cluster, newMinorVersion string) (map[string]Operator, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.

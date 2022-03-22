@@ -24,6 +24,7 @@ import (
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -252,6 +253,13 @@ func run(cmd *cobra.Command, _ []string) {
 				"\t%s\n", version, accountRoleStr, operatorRoleStr)
 			os.Exit(0)
 		}
+
+		err = operatorroles.Cmd.RunE(operatorroles.Cmd, []string{cluster.ID(), mode, version})
+		if err != nil {
+			// todo: ensure the user run the commands
+			os.Exit(0)
+		}
+
 		reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
 	}
 
