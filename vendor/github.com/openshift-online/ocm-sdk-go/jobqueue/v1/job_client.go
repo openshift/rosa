@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/jobqueue/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -91,6 +93,13 @@ func (r *JobFailureRequest) Header(name string, value interface{}) *JobFailureRe
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *JobFailureRequest) Impersonate(user string) *JobFailureRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // FailureReason sets the value of the 'failure_reason' parameter.
 //
 //
@@ -145,8 +154,14 @@ func (r *JobFailureRequest) SendContext(ctx context.Context) (result *JobFailure
 	result = &JobFailureResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -208,6 +223,13 @@ func (r *JobSuccessRequest) Header(name string, value interface{}) *JobSuccessRe
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *JobSuccessRequest) Impersonate(user string) *JobSuccessRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // ReceiptId sets the value of the 'receipt_id' parameter.
 //
 // A unique ID of a pop'ed job
@@ -254,8 +276,14 @@ func (r *JobSuccessRequest) SendContext(ctx context.Context) (result *JobSuccess
 	result = &JobSuccessResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}

@@ -59,6 +59,11 @@ type Server interface {
 	// Reference to the resource that manages the collection of clusters.
 	Clusters() ClustersServer
 
+	// Environment returns the target 'environment' resource.
+	//
+	// Reference to the resource that manages the environment.
+	Environment() EnvironmentServer
+
 	// Events returns the target 'events' resource.
 	//
 	// Reference to the resource that manages the collection of trackable events.
@@ -154,6 +159,13 @@ func Dispatch(w http.ResponseWriter, r *http.Request, server Server, segments []
 			return
 		}
 		dispatchClusters(w, r, target, segments[1:])
+	case "environment":
+		target := server.Environment()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchEnvironment(w, r, target, segments[1:])
 	case "events":
 		target := server.Events()
 		if target == nil {

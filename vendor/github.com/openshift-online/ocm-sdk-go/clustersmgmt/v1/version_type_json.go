@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -128,6 +127,15 @@ func writeVersion(object *Version, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("raw_id")
 		stream.WriteString(object.rawID)
+		count++
+	}
+	present_ = object.bitmap_&1024 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("release_image")
+		stream.WriteString(object.releaseImage)
 	}
 	stream.WriteObjectEnd()
 }
@@ -135,9 +143,6 @@ func writeVersion(object *Version, stream *jsoniter.Stream) {
 // UnmarshalVersion reads a value of the 'version' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalVersion(source interface{}) (object *Version, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
@@ -199,6 +204,10 @@ func readVersion(iterator *jsoniter.Iterator) *Version {
 			value := iterator.ReadString()
 			object.rawID = value
 			object.bitmap_ |= 512
+		case "release_image":
+			value := iterator.ReadString()
+			object.releaseImage = value
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}

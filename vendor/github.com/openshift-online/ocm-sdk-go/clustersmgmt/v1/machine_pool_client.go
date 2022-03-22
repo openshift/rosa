@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -220,6 +222,13 @@ func (r *MachinePoolDeleteRequest) Header(name string, value interface{}) *Machi
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *MachinePoolDeleteRequest) Impersonate(user string) *MachinePoolDeleteRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -252,8 +261,14 @@ func (r *MachinePoolDeleteRequest) SendContext(ctx context.Context) (result *Mac
 	result = &MachinePoolDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -314,6 +329,13 @@ func (r *MachinePoolGetRequest) Header(name string, value interface{}) *MachineP
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *MachinePoolGetRequest) Impersonate(user string) *MachinePoolGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -346,15 +368,21 @@ func (r *MachinePoolGetRequest) SendContext(ctx context.Context) (result *Machin
 	result = &MachinePoolGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readMachinePoolGetResponse(result, response.Body)
+	err = readMachinePoolGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -436,6 +464,13 @@ func (r *MachinePoolUpdateRequest) Header(name string, value interface{}) *Machi
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *MachinePoolUpdateRequest) Impersonate(user string) *MachinePoolUpdateRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 //
@@ -482,15 +517,21 @@ func (r *MachinePoolUpdateRequest) SendContext(ctx context.Context) (result *Mac
 	result = &MachinePoolUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readMachinePoolUpdateResponse(result, response.Body)
+	err = readMachinePoolUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

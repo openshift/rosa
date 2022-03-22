@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -84,7 +83,16 @@ func writeAddOnVersion(object *AddOnVersion, stream *jsoniter.Stream) {
 		stream.WriteString(object.channel)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&32 != 0 && object.config != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("config")
+		writeAddOnConfig(object.config, stream)
+		count++
+	}
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -93,7 +101,7 @@ func writeAddOnVersion(object *AddOnVersion, stream *jsoniter.Stream) {
 		stream.WriteBool(object.enabled)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.parameters != nil
+	present_ = object.bitmap_&128 != 0 && object.parameters != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -105,7 +113,7 @@ func writeAddOnVersion(object *AddOnVersion, stream *jsoniter.Stream) {
 		stream.WriteObjectEnd()
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.requirements != nil
+	present_ = object.bitmap_&256 != 0 && object.requirements != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -114,7 +122,7 @@ func writeAddOnVersion(object *AddOnVersion, stream *jsoniter.Stream) {
 		writeAddOnRequirementList(object.requirements, stream)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -123,7 +131,7 @@ func writeAddOnVersion(object *AddOnVersion, stream *jsoniter.Stream) {
 		stream.WriteString(object.sourceImage)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0 && object.subOperators != nil
+	present_ = object.bitmap_&1024 != 0 && object.subOperators != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -137,9 +145,6 @@ func writeAddOnVersion(object *AddOnVersion, stream *jsoniter.Stream) {
 // UnmarshalAddOnVersion reads a value of the 'add_on_version' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalAddOnVersion(source interface{}) (object *AddOnVersion, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
@@ -177,10 +182,14 @@ func readAddOnVersion(iterator *jsoniter.Iterator) *AddOnVersion {
 			value := iterator.ReadString()
 			object.channel = value
 			object.bitmap_ |= 16
+		case "config":
+			value := readAddOnConfig(iterator)
+			object.config = value
+			object.bitmap_ |= 32
 		case "enabled":
 			value := iterator.ReadBool()
 			object.enabled = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "parameters":
 			value := &AddOnParameterList{}
 			for {
@@ -201,19 +210,19 @@ func readAddOnVersion(iterator *jsoniter.Iterator) *AddOnVersion {
 				}
 			}
 			object.parameters = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "requirements":
 			value := readAddOnRequirementList(iterator)
 			object.requirements = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "source_image":
 			value := iterator.ReadString()
 			object.sourceImage = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "sub_operators":
 			value := readAddOnSubOperatorList(iterator)
 			object.subOperators = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}

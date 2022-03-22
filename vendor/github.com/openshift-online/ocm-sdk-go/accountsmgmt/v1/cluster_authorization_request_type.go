@@ -33,6 +33,7 @@ type ClusterAuthorizationRequest struct {
 	externalClusterID string
 	productID         string
 	productCategory   string
+	quotaVersion      string
 	resources         []*ReservedResource
 	byoc              bool
 	disconnected      bool
@@ -321,12 +322,35 @@ func (o *ClusterAuthorizationRequest) GetProductCategory() (value string, ok boo
 	return
 }
 
+// QuotaVersion returns the value of the 'quota_version' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *ClusterAuthorizationRequest) QuotaVersion() string {
+	if o != nil && o.bitmap_&4096 != 0 {
+		return o.quotaVersion
+	}
+	return ""
+}
+
+// GetQuotaVersion returns the value of the 'quota_version' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *ClusterAuthorizationRequest) GetQuotaVersion() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&4096 != 0
+	if ok {
+		value = o.quotaVersion
+	}
+	return
+}
+
 // Reserve returns the value of the 'reserve' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *ClusterAuthorizationRequest) Reserve() bool {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&8192 != 0 {
 		return o.reserve
 	}
 	return false
@@ -337,7 +361,7 @@ func (o *ClusterAuthorizationRequest) Reserve() bool {
 //
 //
 func (o *ClusterAuthorizationRequest) GetReserve() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&8192 != 0
 	if ok {
 		value = o.reserve
 	}
@@ -349,7 +373,7 @@ func (o *ClusterAuthorizationRequest) GetReserve() (value bool, ok bool) {
 //
 //
 func (o *ClusterAuthorizationRequest) Resources() []*ReservedResource {
-	if o != nil && o.bitmap_&8192 != 0 {
+	if o != nil && o.bitmap_&16384 != 0 {
 		return o.resources
 	}
 	return nil
@@ -360,7 +384,7 @@ func (o *ClusterAuthorizationRequest) Resources() []*ReservedResource {
 //
 //
 func (o *ClusterAuthorizationRequest) GetResources() (value []*ReservedResource, ok bool) {
-	ok = o != nil && o.bitmap_&8192 != 0
+	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {
 		value = o.resources
 	}

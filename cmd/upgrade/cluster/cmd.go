@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/upgrade/accountroles"
+	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -239,15 +240,32 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
 			os.Exit(1)
 		}
-		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode, cluster.ID()})
+		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode, cluster.ID(), version})
 		if err != nil {
 			accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
-			operatorRoleStr := fmt.Sprintf("rosa upgrade operator-roles -c %s", clusterKey)
+			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
 
 			reporter.Infof("Account and/or Operator Role policies are not valid with upgrade version %s. "+
-				"Run the following command(s) to upgrade the roles:\n\n"+
+				"Run the following command(s) to upgrade the roles and run the upgrade command again:\n\n"+
 				"\t%s\n"+
-				"\t%s\n", version, accountRoleStr, operatorRoleStr)
+				"\t%s\n", version, accountRoleStr, upgradeClusterStr)
+			os.Exit(0)
+		}
+
+		mode, err := aws.GetMode()
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		err = operatorroles.Cmd.RunE(operatorroles.Cmd, []string{cluster.ID(), mode, version})
+		if err != nil {
+			accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
+			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
+
+			reporter.Infof("Account and/or Operator Role policies are not valid with upgrade version %s. "+
+				"Run the following command(s) to upgrade the roles and run the upgrade command again:\n\n"+
+				"\t%s\n"+
+				"\t%s\n", version, accountRoleStr, upgradeClusterStr)
 			os.Exit(0)
 		}
 		reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)

@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -100,6 +102,13 @@ func (r *AddOnVersionsAddRequest) Header(name string, value interface{}) *AddOnV
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *AddOnVersionsAddRequest) Impersonate(user string) *AddOnVersionsAddRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 // Description of the add-on version.
@@ -146,15 +155,21 @@ func (r *AddOnVersionsAddRequest) SendContext(ctx context.Context) (result *AddO
 	result = &AddOnVersionsAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readAddOnVersionsAddResponse(result, response.Body)
+	err = readAddOnVersionsAddResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -236,6 +251,13 @@ func (r *AddOnVersionsListRequest) Parameter(name string, value interface{}) *Ad
 // Header adds a request header.
 func (r *AddOnVersionsListRequest) Header(name string, value interface{}) *AddOnVersionsListRequest {
 	helpers.AddHeader(&r.header, name, value)
+	return r
+}
+
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *AddOnVersionsListRequest) Impersonate(user string) *AddOnVersionsListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
@@ -339,15 +361,21 @@ func (r *AddOnVersionsListRequest) SendContext(ctx context.Context) (result *Add
 	result = &AddOnVersionsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readAddOnVersionsListResponse(result, response.Body)
+	err = readAddOnVersionsListResponse(result, reader)
 	if err != nil {
 		return
 	}

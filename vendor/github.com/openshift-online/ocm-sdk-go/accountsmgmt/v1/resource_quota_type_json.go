@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -126,9 +125,6 @@ func writeResourceQuota(object *ResourceQuota, stream *jsoniter.Stream) {
 // UnmarshalResourceQuota reads a value of the 'resource_quota' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalResourceQuota(source interface{}) (object *ResourceQuota, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

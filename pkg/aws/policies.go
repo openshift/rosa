@@ -41,6 +41,7 @@ var DefaultPolicyVersion = "4.10"
 type Operator struct {
 	Name                string
 	Namespace           string
+	RoleARN             string
 	ServiceAccountNames []string
 	MinVersion          string
 }
@@ -410,6 +411,15 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 			SetAsDefault:   aws.Bool(true),
 		})
 		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeLimitExceededException:
+					return "", fmt.Errorf("Managed policy limit exceeded. Please delete the old ones "+
+						"from your aws account for policy '%s' and try again. %v", policyArn, aerr.Message())
+				default:
+					return "", err
+				}
+			}
 			return policyArn, err
 		}
 
@@ -1451,8 +1461,8 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluste
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
 				case iam.ErrCodeNoSuchEntityException:
-					return false, errors.NotFound.Errorf("Operator Role does not exists for the "+
-						"cluster '%s'", cluster.ID())
+					return false, errors.NotFound.Errorf("Operator Role '%s' does not exists for the "+
+						"cluster '%s'", roleName, cluster.ID())
 				}
 			}
 			return false, err

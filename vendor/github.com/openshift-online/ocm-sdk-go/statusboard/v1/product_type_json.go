@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -126,9 +125,6 @@ func writeProduct(object *Product, stream *jsoniter.Stream) {
 // UnmarshalProduct reads a value of the 'product' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalProduct(source interface{}) (object *Product, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

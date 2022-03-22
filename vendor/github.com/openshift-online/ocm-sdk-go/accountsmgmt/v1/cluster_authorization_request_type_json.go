@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -156,11 +155,20 @@ func writeClusterAuthorizationRequest(object *ClusterAuthorizationRequest, strea
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("quota_version")
+		stream.WriteString(object.quotaVersion)
+		count++
+	}
+	present_ = object.bitmap_&8192 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("reserve")
 		stream.WriteBool(object.reserve)
 		count++
 	}
-	present_ = object.bitmap_&8192 != 0 && object.resources != nil
+	present_ = object.bitmap_&16384 != 0 && object.resources != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -174,9 +182,6 @@ func writeClusterAuthorizationRequest(object *ClusterAuthorizationRequest, strea
 // UnmarshalClusterAuthorizationRequest reads a value of the 'cluster_authorization_request' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalClusterAuthorizationRequest(source interface{}) (object *ClusterAuthorizationRequest, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
@@ -243,14 +248,18 @@ func readClusterAuthorizationRequest(iterator *jsoniter.Iterator) *ClusterAuthor
 			value := iterator.ReadString()
 			object.productCategory = value
 			object.bitmap_ |= 2048
+		case "quota_version":
+			value := iterator.ReadString()
+			object.quotaVersion = value
+			object.bitmap_ |= 4096
 		case "reserve":
 			value := iterator.ReadBool()
 			object.reserve = value
-			object.bitmap_ |= 4096
+			object.bitmap_ |= 8192
 		case "resources":
 			value := readReservedResourceList(iterator)
 			object.resources = value
-			object.bitmap_ |= 8192
+			object.bitmap_ |= 16384
 		default:
 			iterator.ReadAny()
 		}

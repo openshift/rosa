@@ -20,7 +20,9 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
+	"bufio"
 	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -87,6 +89,13 @@ func (r *SkuRulesListRequest) Parameter(name string, value interface{}) *SkuRule
 // Header adds a request header.
 func (r *SkuRulesListRequest) Header(name string, value interface{}) *SkuRulesListRequest {
 	helpers.AddHeader(&r.header, name, value)
+	return r
+}
+
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *SkuRulesListRequest) Impersonate(user string) *SkuRulesListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
@@ -167,15 +176,21 @@ func (r *SkuRulesListRequest) SendContext(ctx context.Context) (result *SkuRules
 	result = &SkuRulesListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readSkuRulesListResponse(result, response.Body)
+	err = readSkuRulesListResponse(result, reader)
 	if err != nil {
 		return
 	}

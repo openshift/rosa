@@ -28,6 +28,11 @@ import (
 // AWSInquiriesServer represents the interface the manages the 'AWS_inquiries' resource.
 type AWSInquiriesServer interface {
 
+	// STSPolicies returns the target 'AWSSTS_policies_inquiry' resource.
+	//
+	// Reference to the resource that manages aws sts policies.
+	STSPolicies() AWSSTSPoliciesInquiryServer
+
 	// Regions returns the target 'available_regions_inquiry' resource.
 	//
 	// Reference to the resource that manages a collection of regions.
@@ -51,6 +56,13 @@ func dispatchAWSInquiries(w http.ResponseWriter, r *http.Request, server AWSInqu
 		}
 	}
 	switch segments[0] {
+	case "sts_policies":
+		target := server.STSPolicies()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchAWSSTSPoliciesInquiry(w, r, target, segments[1:])
 	case "regions":
 		target := server.Regions()
 		if target == nil {

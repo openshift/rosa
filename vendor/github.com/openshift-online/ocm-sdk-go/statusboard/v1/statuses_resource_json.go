@@ -60,6 +60,10 @@ func readStatusesListRequest(request *StatusesListServerRequest, r *http.Request
 	if request.page == nil {
 		request.page = helpers.NewInteger(1)
 	}
+	request.productIds, err = helpers.ParseString(query, "product_ids")
+	if err != nil {
+		return err
+	}
 	request.size, err = helpers.ParseInteger(query, "size")
 	if err != nil {
 		return err

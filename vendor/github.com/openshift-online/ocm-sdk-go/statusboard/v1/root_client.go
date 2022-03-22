@@ -100,6 +100,16 @@ func (c *Client) Services() *ServicesClient {
 	)
 }
 
+// StatusUpdates returns the target 'statuses' resource.
+//
+//
+func (c *Client) StatusUpdates() *StatusesClient {
+	return NewStatusesClient(
+		c.transport,
+		path.Join(c.path, "status_updates"),
+	)
+}
+
 // Statuses returns the target 'statuses' resource.
 //
 //

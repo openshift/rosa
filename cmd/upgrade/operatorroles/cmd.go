@@ -18,7 +18,6 @@ package operatorroles
 
 import (
 	"fmt"
-
 	"os"
 	"strings"
 
@@ -34,6 +33,10 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
+var args struct {
+	upgradeVersion string
+}
+
 var Cmd = &cobra.Command{
 	Use:     "operator-roles",
 	Aliases: []string{"operator-role", "operatorroles"},
@@ -41,7 +44,7 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade cluster-specific operator IAM roles to latest version.",
 	Example: `  # Upgrade cluster-specific operator IAM roles
   rosa upgrade operators-roles`,
-	Run: run,
+	RunE: run,
 }
 
 func init() {
@@ -49,25 +52,34 @@ func init() {
 
 	aws.AddModeFlag(Cmd)
 	ocm.AddClusterFlag(Cmd)
+
+	flags.StringVar(
+		&args.upgradeVersion,
+		"version",
+		"",
+		"Version of OpenShift that the cluster will be upgraded to",
+	)
+
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, argv []string) error {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
 	// Allow the command to be called programmatically
 	skipInteractive := false
 	isProgrammaticallyCalled := false
-	if len(argv) == 2 && !cmd.Flag("cluster").Changed {
+	if len(argv) >= 2 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		aws.SetModeKey(argv[1])
-
 		if argv[1] != "" {
 			skipInteractive = true
 		}
-
+		if len(argv) > 2 && argv[2] != "" {
+			args.upgradeVersion = argv[2]
+		}
 		isProgrammaticallyCalled = true
 	}
 
@@ -110,12 +122,41 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Failed to get IAM credentials: %s", err)
 		os.Exit(1)
 	}
+
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
 	cluster, err := ocmClient.GetCluster(clusterKey, creator)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
+	}
+
+	/**
+	we dont want to give this option to the end-user. Adding this as a support for srep if needed.
+	*/
+	if args.upgradeVersion != "" && !isProgrammaticallyCalled {
+		version := args.upgradeVersion
+		availableUpgrades, err := ocmClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
+		if err != nil {
+			reporter.Errorf("Failed to find available upgrades: %v", err)
+			os.Exit(1)
+		}
+		if len(availableUpgrades) == 0 {
+			reporter.Warnf("There are no available upgrades")
+			os.Exit(0)
+		}
+		// Check that the version is valid
+		validVersion := false
+		for _, v := range availableUpgrades {
+			if v == version {
+				validVersion = true
+				break
+			}
+		}
+		if !validVersion {
+			reporter.Errorf("Expected a valid version to upgrade the cluster")
+			os.Exit(1)
+		}
 	}
 
 	operatorRoles, hasOperatorRoles := cluster.AWS().STS().GetOperatorIAMRoles()
@@ -128,40 +169,107 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Error getting account role prefix for the cluster '%s'",
 			clusterKey)
 	}
-	//Check if account roles are up-to-date
-	isAccountRoleUpgradeNeed, err := awsClient.IsUpgradedNeededForAccountRolePolicies(
-		prefix, aws.DefaultPolicyVersion)
-	if err != nil {
-		reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	if isAccountRoleUpgradeNeed && !isProgrammaticallyCalled {
-		reporter.Infof("Account roles with prefix '%s' need to be upgraded before operator roles. "+
-			"Roles can be upgraded with the following command :"+
-			"\n\n\trosa upgrade account-roles --prefix %s\n", prefix, prefix)
-		os.Exit(1)
+	isOperatorPolicyUpgradeNeeded := false
+
+	//If this is invoked from the upgrade cluster we already performed the policies upgrade as
+	//part of upgrade account roles that was called before this command. Refer to rosa upgrade cluster
+	if !isProgrammaticallyCalled {
+		//Check if account roles are up-to-date
+		isAccountRoleUpgradeNeed, err := awsClient.IsUpgradedNeededForAccountRolePolicies(
+			prefix, aws.DefaultPolicyVersion)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		if isAccountRoleUpgradeNeed && !isProgrammaticallyCalled {
+			reporter.Infof("Account roles with prefix '%s' need to be upgraded before operator roles. "+
+				"Roles can be upgraded with the following command :"+
+				"\n\n\trosa upgrade account-roles --prefix %s\n", prefix, prefix)
+			os.Exit(1)
+		}
+
+		isOperatorPolicyUpgradeNeeded, err = awsClient.IsUpgradedNeededForOperatorRolePolicies(cluster,
+			creator.AccountID, aws.DefaultPolicyVersion)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 	}
 
-	isUpgradeNeeded, err := awsClient.IsUpgradedNeededForOperatorRolePolicies(cluster,
-		creator.AccountID, aws.DefaultPolicyVersion)
+	version := args.upgradeVersion
+	if version == "" {
+		version = cluster.Version().RawID()
+	}
+	//Check if the upgrade is needed for the operators
+	missingRolesInCS, err := aws.FindMissingOperatorRolesForUpgrade(cluster, version)
 	if err != nil {
-		reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
-	if !isUpgradeNeeded {
-		reporter.Infof("Operator roles associated with the cluster '%s' is already up-to-date.", cluster.ID())
-		os.Exit(1)
-	}
-	reporter.Infof("Starting to upgrade the policies")
 
+	if len(missingRolesInCS) <= 0 && !isOperatorPolicyUpgradeNeeded {
+		if !isProgrammaticallyCalled {
+			reporter.Infof("Operator roles associated with the cluster '%s' is already up-to-date.", cluster.ID())
+		}
+		return nil
+	}
+
+	if len(missingRolesInCS) > 0 || isOperatorPolicyUpgradeNeeded {
+		reporter.Infof("Starting to upgrade the operator IAM role and policies")
+	}
 	// Determine if interactive mode is needed
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		interactive.Enable()
 	}
 
+	//This might not be true when invoked from upgrade cluster
+	if isOperatorPolicyUpgradeNeeded {
+		mode, err = handleModeFlag(cmd, skipInteractive, mode, err, reporter)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		err = upgradeOperatorPolicies(mode, reporter, awsClient, creator, prefix, isProgrammaticallyCalled)
+		if err != nil {
+			reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
+	//If missing roles length is greater than 0
+	//iterate the missing roles and find it is is present in the aws or not . If not then proceed with auto and manual.
+	//Else call ocm api
+	//If user runs manual mode exits and come back or if role is created in aws alone and there was an error when
+	//updating the ocm. this will handle it effectively.
+	if len(missingRolesInCS) > 0 {
+		for _, operator := range missingRolesInCS {
+			roleName := getRoleName(cluster, operator)
+			exists, _, err := awsClient.CheckRoleExists(roleName)
+			if err != nil {
+				return reporter.Errorf("Error when detecting checking missing operator IAM roles %s", err)
+			}
+			if !exists {
+				mode, err = handleModeFlag(cmd, skipInteractive, mode, err, reporter)
+				if err != nil {
+					reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
+				err = createOperatorRole(mode, reporter, awsClient, creator, cluster, prefix, missingRolesInCS,
+					isProgrammaticallyCalled, ocmClient)
+				if err != nil {
+					reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func handleModeFlag(cmd *cobra.Command, skipInteractive bool, mode string, err error,
+	reporter *rprtr.Object) (string, error) {
 	if interactive.Enabled() && !skipInteractive {
 		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Operator IAM role upgrade mode",
+			Question: "Operator IAM role/policy upgrade mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  aws.ModeAuto,
 			Options:  aws.Modes,
@@ -172,110 +280,166 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
+	aws.SetModeKey(mode)
+	return mode, err
+}
+
+func upgradeOperatorPolicies(mode string, reporter *rprtr.Object, awsClient aws.Client, creator *aws.Creator,
+	prefix string, isAccountRoleUpgradeNeed bool) error {
 	switch mode {
 	case aws.ModeAuto:
-		err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, cluster, prefix)
-		if err != nil {
-			reporter.Errorf("Error upgrading the role polices: %s", err)
-			os.Exit(1)
+		if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", aws.DefaultPolicyVersion) {
+			return nil
 		}
-	case aws.ModeManual:
-		err = aws.GenerateOperatorPolicyFiles(reporter)
+		err := aws.UpgradeOperatorPolicies(reporter, awsClient, creator.AccountID, prefix)
 		if err != nil {
-			reporter.Errorf("There was an error generating the policy files: %s", err)
-			os.Exit(1)
+			return reporter.Errorf("Error upgrading the role polices: %s", err)
+		}
+		return nil
+	case aws.ModeManual:
+		err := aws.GenerateOperatorPolicyFiles(reporter)
+		if err != nil {
+			return reporter.Errorf("There was an error generating the policy files: %s", err)
 		}
 		if reporter.IsTerminal() {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to upgrade the operator IAM policies:\n")
-			if isAccountRoleUpgradeNeed && isProgrammaticallyCalled {
-				reporter.Warnf("Operator roles MUST only be upgraded after Account Roles upgrade has completed.\n")
+			if isAccountRoleUpgradeNeed {
+				reporter.Warnf("Operator role policies MUST only be upgraded after " +
+					"Account Role policies upgrade has completed.\n")
 			}
 		}
-		commands, err := buildCommands(prefix, creator.AccountID, cluster, awsClient)
+		commands := aws.BuildOperatorRoleCommands(prefix, creator.AccountID, awsClient)
+		fmt.Println(strings.Join(commands, "\n\n"))
+	default:
+		return reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+	}
+	return nil
+}
+
+func createOperatorRole(mode string, reporter *rprtr.Object, awsClient aws.Client, creator *aws.Creator,
+	cluster *cmv1.Cluster, prefix string, missingRoles map[string]aws.Operator, isProgrammaticallyCalled bool,
+	ocmClient *ocm.Client) error {
+	accountID := creator.AccountID
+	switch mode {
+	case aws.ModeAuto:
+		err := upgradeMissingOperatorRole(missingRoles, cluster, accountID, prefix, reporter, awsClient, ocmClient,
+			isProgrammaticallyCalled)
 		if err != nil {
-			reporter.Errorf("There was an error building the commands %s", err)
-			os.Exit(1)
+			return err
+		}
+	case aws.ModeManual:
+		commands, err := buildMissingOperatorRoleCommand(missingRoles, cluster, accountID, prefix, reporter)
+		if err != nil {
+			return err
+		}
+		if reporter.IsTerminal() {
+			reporter.Infof("Run the following commands to create the operator roles:\n")
 		}
 		fmt.Println(commands)
+		if isProgrammaticallyCalled {
+			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
+				" once account and operator roles have been upgraded : \n\n"+
+				"\trosa upgrade cluster --cluster %s\n", cluster.ID())
+			os.Exit(0)
+		}
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
+	return nil
 }
 
-func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, accountID string,
-	cluster *cmv1.Cluster, prefix string) error {
-	for credrequest, operator := range aws.CredentialRequests {
-		roleName := aws.GetOperatorRoleName(cluster, operator)
-		if !confirm.Prompt(true, "Upgrade the '%s' operator role policy to version %s?", roleName,
-			aws.DefaultPolicyVersion) {
+func buildMissingOperatorRoleCommand(missingRoles map[string]aws.Operator, cluster *cmv1.Cluster, accountID string,
+	prefix string, reporter *rprtr.Object) (string, error) {
+	commands := []string{}
+	for missingRole, operator := range missingRoles {
+		roleName := getRoleName(cluster, operator)
+		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator)
+		if err != nil {
+			return "", err
+		}
+		filename := fmt.Sprintf("operator_%s_policy.json", missingRole)
+		reporter.Debugf("Saving '%s' to the current directory", filename)
+		err = ocm.SaveDocument(policy, filename)
+		if err != nil {
+			return "", err
+		}
+		iamTags := fmt.Sprintf(
+			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+			tags.ClusterID, cluster.ID(),
+			tags.RolePrefix, prefix,
+			"operator_namespace", operator.Namespace,
+			"operator_name", operator.Name,
+		)
+		permBoundaryFlag := ""
+
+		createRole := fmt.Sprintf("aws iam create-role \\\n"+
+			"\t--role-name %s \\\n"+
+			"\t--assume-role-policy-document file://%s \\\n"+
+			"%s"+
+			"\t--tags %s",
+			roleName, filename, permBoundaryFlag, iamTags)
+		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
+			"\t--role-name %s \\\n"+
+			"\t--policy-arn %s",
+			roleName, policyARN)
+		commands = append(commands, createRole, attachRolePolicy)
+
+	}
+	return strings.Join(commands, "\n\n"), nil
+}
+
+func upgradeMissingOperatorRole(missingRoles map[string]aws.Operator, cluster *cmv1.Cluster,
+	accountID string, prefix string,
+	reporter *rprtr.Object, awsClient aws.Client, ocmClient *ocm.Client, isProgrammaticallyCalled bool) error {
+	for _, operator := range missingRoles {
+		roleName := getRoleName(cluster, operator)
+		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
+			if isProgrammaticallyCalled {
+				return fmt.Errorf("Operator roles need to be upgraded to proceed with cluster upgrade")
+			}
 			continue
 		}
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
-		path := fmt.Sprintf("templates/policies/%s", filename)
-
-		policy, err := aws.ReadPolicyDocument(path)
+		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator)
 		if err != nil {
 			return err
 		}
-		policyARN, err = awsClient.EnsurePolicy(policyARN, string(policy),
-			aws.DefaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: aws.DefaultPolicyVersion,
-				tags.RolePrefix:       prefix,
-				"operator_namespace":  operator.Namespace,
-				"operator_name":       operator.Name,
+		reporter.Debugf("Creating role '%s'", roleName)
+		roleARN, err := awsClient.EnsureRole(roleName, policy, "", "",
+			map[string]string{
+				tags.ClusterID:       cluster.ID(),
+				"operator_namespace": operator.Namespace,
+				"operator_name":      operator.Name,
 			})
 		if err != nil {
 			return err
 		}
-		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, aws.DefaultPolicyVersion)
-		err = awsClient.UpdateTag(roleName)
+		reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
+		reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
+		err = awsClient.AttachRolePolicy(roleName, policyARN)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to attach role policy. Check your prefix or run "+
+				"'rosa create account-roles' to create the necessary policies: %s", err)
 		}
 	}
 	return nil
 }
 
-func buildCommands(prefix string, accountID string, cluster *cmv1.Cluster, awsClient aws.Client) (string, error) {
-	commands := []string{}
-	for credrequest, operator := range aws.CredentialRequests {
-		roleName := aws.GetOperatorRoleName(cluster, operator)
-		iamRoleTags := fmt.Sprintf(
-			"Key=%s,Value=%s",
-			tags.OpenShiftVersion, aws.DefaultPolicyVersion)
-		tagRole := fmt.Sprintf("aws iam tag-role \\\n"+
-			"\t--tags %s \\\n"+
-			"\t--role-name %s",
-			iamRoleTags, roleName)
-		commands = append(commands, tagRole)
-
-		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		policyTags := fmt.Sprintf(
-			"Key=%s,Value=%s",
-			tags.OpenShiftVersion, aws.DefaultPolicyVersion,
-		)
-		isCompatible, err := awsClient.IsPolicyCompatible(policyARN, aws.DefaultPolicyVersion)
-		if err != nil {
-			return "", err
-		}
-		//We need because users might run it mutiple times and we dont want to create unnecessary versions
-		if isCompatible {
-			continue
-		}
-		createPolicy := fmt.Sprintf("aws iam create-policy-version \\\n"+
-			"\t--policy-arn %s \\\n"+
-			"\t--policy-document file://openshift_%s_policy.json \\\n"+
-			"\t --set-as-default",
-			policyARN, credrequest)
-		tagPolicy := fmt.Sprintf("aws iam tag-policy \\\n"+
-			"\t--tags %s \\\n"+
-			"\t--policy-arn %s",
-			policyTags, policyARN)
-
-		commands = append(commands, createPolicy, tagPolicy, tagRole)
+func getRoleName(cluster *cmv1.Cluster, missingOperator aws.Operator) string {
+	operatorIAMRoles := cluster.AWS().STS().OperatorIAMRoles()
+	rolePrefix := ""
+	for _, operatorIAMRole := range operatorIAMRoles {
+		roleName := strings.SplitN(operatorIAMRole.RoleARN(), "/", 2)[1]
+		m := strings.LastIndex(roleName, "-openshift")
+		rolePrefix = roleName[0:m]
+		break
 	}
-	return strings.Join(commands, "\n\n"), nil
+	role := fmt.Sprintf("%s-%s-%s", rolePrefix, missingOperator.Namespace, missingOperator.Name)
+	if len(role) > 64 {
+		role = role[0:64]
+	}
+	return role
 }

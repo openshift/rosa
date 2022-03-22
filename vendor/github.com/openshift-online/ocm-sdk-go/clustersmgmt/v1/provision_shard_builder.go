@@ -30,7 +30,9 @@ type ProvisionShardBuilder struct {
 	awsBaseDomain            string
 	gcpBaseDomain            string
 	gcpProjectOperator       *ServerConfigBuilder
+	cloudProvider            *CloudProviderBuilder
 	hiveConfig               *ServerConfigBuilder
+	region                   *CloudRegionBuilder
 }
 
 // NewProvisionShard creates a new builder of 'provision_shard' objects.
@@ -107,15 +109,41 @@ func (b *ProvisionShardBuilder) GCPProjectOperator(value *ServerConfigBuilder) *
 	return b
 }
 
+// CloudProvider sets the value of the 'cloud_provider' attribute to the given value.
+//
+// Cloud provider.
+func (b *ProvisionShardBuilder) CloudProvider(value *CloudProviderBuilder) *ProvisionShardBuilder {
+	b.cloudProvider = value
+	if value != nil {
+		b.bitmap_ |= 128
+	} else {
+		b.bitmap_ &^= 128
+	}
+	return b
+}
+
 // HiveConfig sets the value of the 'hive_config' attribute to the given value.
 //
 // Representation of a server config
 func (b *ProvisionShardBuilder) HiveConfig(value *ServerConfigBuilder) *ProvisionShardBuilder {
 	b.hiveConfig = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 256
+	}
+	return b
+}
+
+// Region sets the value of the 'region' attribute to the given value.
+//
+// Description of a region of a cloud provider.
+func (b *ProvisionShardBuilder) Region(value *CloudRegionBuilder) *ProvisionShardBuilder {
+	b.region = value
+	if value != nil {
+		b.bitmap_ |= 512
+	} else {
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -140,10 +168,20 @@ func (b *ProvisionShardBuilder) Copy(object *ProvisionShard) *ProvisionShardBuil
 	} else {
 		b.gcpProjectOperator = nil
 	}
+	if object.cloudProvider != nil {
+		b.cloudProvider = NewCloudProvider().Copy(object.cloudProvider)
+	} else {
+		b.cloudProvider = nil
+	}
 	if object.hiveConfig != nil {
 		b.hiveConfig = NewServerConfig().Copy(object.hiveConfig)
 	} else {
 		b.hiveConfig = nil
+	}
+	if object.region != nil {
+		b.region = NewCloudRegion().Copy(object.region)
+	} else {
+		b.region = nil
 	}
 	return b
 }
@@ -168,8 +206,20 @@ func (b *ProvisionShardBuilder) Build() (object *ProvisionShard, err error) {
 			return
 		}
 	}
+	if b.cloudProvider != nil {
+		object.cloudProvider, err = b.cloudProvider.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.hiveConfig != nil {
 		object.hiveConfig, err = b.hiveConfig.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.region != nil {
+		object.region, err = b.region.Build()
 		if err != nil {
 			return
 		}

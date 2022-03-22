@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -126,9 +125,6 @@ func writeUpgradePolicy(object *UpgradePolicy, stream *jsoniter.Stream) {
 // UnmarshalUpgradePolicy reads a value of the 'upgrade_policy' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalUpgradePolicy(source interface{}) (object *UpgradePolicy, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

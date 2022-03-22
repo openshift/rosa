@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -110,6 +112,13 @@ func (r *IngressesAddRequest) Header(name string, value interface{}) *IngressesA
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *IngressesAddRequest) Impersonate(user string) *IngressesAddRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 // Description of the ingress
@@ -156,15 +165,21 @@ func (r *IngressesAddRequest) SendContext(ctx context.Context) (result *Ingresse
 	result = &IngressesAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readIngressesAddResponse(result, response.Body)
+	err = readIngressesAddResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -247,6 +262,13 @@ func (r *IngressesListRequest) Header(name string, value interface{}) *Ingresses
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *IngressesListRequest) Impersonate(user string) *IngressesListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Page sets the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
@@ -301,15 +323,21 @@ func (r *IngressesListRequest) SendContext(ctx context.Context) (result *Ingress
 	result = &IngressesListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readIngressesListResponse(result, response.Body)
+	err = readIngressesListResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -460,6 +488,13 @@ func (r *IngressesUpdateRequest) Header(name string, value interface{}) *Ingress
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *IngressesUpdateRequest) Impersonate(user string) *IngressesUpdateRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 //
@@ -506,15 +541,21 @@ func (r *IngressesUpdateRequest) SendContext(ctx context.Context) (result *Ingre
 	result = &IngressesUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readIngressesUpdateResponse(result, response.Body)
+	err = readIngressesUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

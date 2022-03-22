@@ -27,14 +27,15 @@ import (
 //
 // Definition of a Status Board status.
 type StatusBuilder struct {
-	bitmap_   uint32
-	id        string
-	href      string
-	createdAt time.Time
-	metadata  interface{}
-	service   *ServiceBuilder
-	status    string
-	updatedAt time.Time
+	bitmap_     uint32
+	id          string
+	href        string
+	createdAt   time.Time
+	metadata    interface{}
+	service     *ServiceBuilder
+	serviceInfo *ServiceInfoBuilder
+	status      string
+	updatedAt   time.Time
 }
 
 // NewStatus creates a new builder of 'status' objects.
@@ -98,12 +99,25 @@ func (b *StatusBuilder) Service(value *ServiceBuilder) *StatusBuilder {
 	return b
 }
 
+// ServiceInfo sets the value of the 'service_info' attribute to the given value.
+//
+// Definition of a Status Board service info.
+func (b *StatusBuilder) ServiceInfo(value *ServiceInfoBuilder) *StatusBuilder {
+	b.serviceInfo = value
+	if value != nil {
+		b.bitmap_ |= 64
+	} else {
+		b.bitmap_ &^= 64
+	}
+	return b
+}
+
 // Status sets the value of the 'status' attribute to the given value.
 //
 //
 func (b *StatusBuilder) Status(value string) *StatusBuilder {
 	b.status = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -112,7 +126,7 @@ func (b *StatusBuilder) Status(value string) *StatusBuilder {
 //
 func (b *StatusBuilder) UpdatedAt(value time.Time) *StatusBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -131,6 +145,11 @@ func (b *StatusBuilder) Copy(object *Status) *StatusBuilder {
 	} else {
 		b.service = nil
 	}
+	if object.serviceInfo != nil {
+		b.serviceInfo = NewServiceInfo().Copy(object.serviceInfo)
+	} else {
+		b.serviceInfo = nil
+	}
 	b.status = object.status
 	b.updatedAt = object.updatedAt
 	return b
@@ -146,6 +165,12 @@ func (b *StatusBuilder) Build() (object *Status, err error) {
 	object.metadata = b.metadata
 	if b.service != nil {
 		object.service, err = b.service.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.serviceInfo != nil {
+		object.serviceInfo, err = b.serviceInfo.Build()
 		if err != nil {
 			return
 		}
