@@ -80,6 +80,8 @@ func init() {
 		"",
 		"Name of the service instance.",
 	)
+
+	arguments.AddRegionFlag(flags)
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -106,6 +108,27 @@ func run(cmd *cobra.Command, argv []string) {
 	}()
 
 	awsClient := aws.GetAWSClientForUserRegion(reporter, logger)
+
+	// Get AWS region
+	args.AwsRegion, err = aws.GetRegion(arguments.GetRegion())
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+	reporter.Debugf("Using AWS region: %s", args.AwsRegion)
+
+	awsCreator, err := awsClient.GetCreator()
+	if err != nil {
+		reporter.Errorf("Unable to get IAM credentials: %v", err)
+		os.Exit(1)
+	}
+	reporter.Debugf("Using AWS creator: %s", awsCreator.ARN)
+
+	args.AwsAccountID = awsCreator.AccountID
+	args.Properties = map[string]string{
+		properties.CreatorARN: awsCreator.ARN,
+		properties.CLIVersion: info.Version,
+	}
 
 	// Openshift version to use.
 	versionList, err := getVersionList(ocmClient)
@@ -237,18 +260,6 @@ func run(cmd *cobra.Command, argv []string) {
 	args.AwsWorkerRoleARN = workerRoleARN
 
 	// operator role logic.
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Unable to get IAM credentials: %v", err)
-		os.Exit(1)
-	}
-
-	args.AwsAccountID = awsCreator.AccountID
-	args.Properties = map[string]string{
-		properties.CreatorARN: awsCreator.ARN,
-		properties.CLIVersion: info.Version,
-	}
-
 	operatorRolesPrefix := getRolePrefix(args.ClusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 
@@ -283,14 +294,6 @@ func run(cmd *cobra.Command, argv []string) {
 
 	args.AwsOperatorIamRoleList = operatorIAMRoleList
 	// end operator role logic.
-
-	// Get AWS region
-	args.AwsRegion, err = aws.GetRegion("")
-	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
-	}
-	reporter.Infof("Using AWS region: %s", args.AwsRegion)
 
 	// Creating the service
 	service, err := ocmClient.CreateManagedService(args)
