@@ -27,7 +27,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/info"
-	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -105,7 +104,6 @@ func run(cmd *cobra.Command, _ []string) {
 	var supportRoleARN string
 	var controlPlaneRoleARN string
 	var workerRoleARN string
-	var hasRoles bool
 
 	roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
 	if err != nil {
@@ -121,7 +119,7 @@ func run(cmd *cobra.Command, _ []string) {
 				defaultRoleARN = rARN
 			}
 		}
-		reporter.Warnf("More than one %s role found, going with %s", role.Name, defaultRoleARN)
+		reporter.Warnf("More than one %s role found, using %s", role.Name, defaultRoleARN)
 		roleARN = defaultRoleARN
 	} else if len(roleARNs) == 1 {
 		if !output.HasFlag() || reporter.IsTerminal() {
@@ -131,6 +129,7 @@ func run(cmd *cobra.Command, _ []string) {
 	} else {
 		reporter.Errorf("No account roles found. " +
 			"You will need to run 'rosa create account-roles' to create them first.")
+		os.Exit(1)
 	}
 
 	if roleARN != "" {
@@ -142,7 +141,6 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
 
-		hasRoles = true
 		for roleType, role := range aws.AccountRoles {
 			if roleType == aws.InstallerAccountRole {
 				// Already dealt with
@@ -163,8 +161,7 @@ func run(cmd *cobra.Command, _ []string) {
 				reporter.Errorf("No %s account roles found. "+
 					"You will need to run 'rosa create account-roles' to create them first.",
 					role.Name)
-				interactive.Enable()
-				hasRoles = false
+				os.Exit(1)
 			}
 			if !output.HasFlag() || reporter.IsTerminal() {
 				reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
@@ -180,10 +177,6 @@ func run(cmd *cobra.Command, _ []string) {
 				workerRoleARN = selectedARN
 			}
 		}
-	}
-	if hasRoles == false {
-		reporter.Errorf("Please create the above roles to continue")
-		os.Exit(1)
 	}
 
 	args.AwsRoleARN = roleARN
