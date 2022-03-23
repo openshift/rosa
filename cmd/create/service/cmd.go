@@ -19,12 +19,14 @@ package service
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
@@ -44,8 +46,20 @@ var Cmd = &cobra.Command{
   Use this command to create managed services.`,
 	Example: `  # Create a Managed Service of type service1.
   rosa create service --type=service1 --name=clusterName`,
-	Run:    run,
-	Hidden: true,
+	Run:                run,
+	Hidden:             true,
+	DisableFlagParsing: true,
+	Args: func(cmd *cobra.Command, argv []string) error {
+		err := arguments.ParseUnknownFlags(cmd, argv)
+		if err != nil {
+			return err
+		}
+
+		if len(cmd.Flags().Args()) > 0 {
+			return fmt.Errorf("Unrecognized command line parameter")
+		}
+		return nil
+	},
 }
 
 func init() {
@@ -68,9 +82,13 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	// Parse out CLI flags, then override positional arguments
+	// This allows for arbitrary flags used for addon parameters
+	_ = cmd.Flags().Parse(argv)
 
 	// Create the client for the OCM API:
 	ocmClient, err := ocm.NewClient().
@@ -98,13 +116,46 @@ func run(cmd *cobra.Command, _ []string) {
 	version := versionList[0]
 	minor := ocm.GetVersionMinor(version)
 
-	role := aws.AccountRoles[aws.InstallerAccountRole]
+	// Add-on parameter logic
+	addOn, err := ocmClient.GetAddOn(args.ServiceType)
+	if err != nil {
+		reporter.Errorf("Failed to get add-on '%s': %s", args.ServiceType, err)
+	}
+	parameters := addOn.Parameters()
+
+	if parameters.Len() > 0 {
+		args.Parameters = map[string]string{}
+		// Determine if all required parameters have already been set as flags.
+		if arguments.HasUnknownFlags() {
+			parameters.Each(func(param *cmv1.AddOnParameter) bool {
+				flag := cmd.Flags().Lookup(param.ID())
+				if param.Required() && (flag == nil || flag.Value.String() == "") {
+					reporter.Errorf("Required parameter --%s missing", param.ID())
+					os.Exit(1)
+				}
+				if flag != nil {
+					val := strings.Trim(flag.Value.String(), " ")
+					if val != "" && param.Validation() != "" {
+						isValid, err := regexp.MatchString(param.Validation(), val)
+						if err != nil || !isValid {
+							reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
+							os.Exit(1)
+						}
+					}
+					args.Parameters[param.ID()] = flag.Value.String()
+				}
+				return true
+			})
+		}
+	}
 
 	// Find all installer roles in the current account using AWS resource tags
 	var roleARN string
 	var supportRoleARN string
 	var controlPlaneRoleARN string
 	var workerRoleARN string
+
+	role := aws.AccountRoles[aws.InstallerAccountRole]
 
 	roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
 	if err != nil {
@@ -240,22 +291,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	reporter.Infof("Using AWS region: %s", args.AwsRegion)
-
-	// Parameter logic
-	addOn, err := ocmClient.GetAddOn(args.ServiceType)
-	if err != nil {
-		reporter.Errorf("Failed to process service parameters: %s", err)
-	}
-	addOnParameters := addOn.Parameters()
-	if addOnParameters != nil {
-		addOnParameters.Each(func(param *cmv1.AddOnParameter) bool {
-			flag := cmd.Flags().Lookup(param.ID())
-			if flag != nil {
-				args.Parameters[param.ID()] = flag.Value.String()
-			}
-			return true
-		})
-	}
 
 	// Creating the service
 	service, err := ocmClient.CreateManagedService(args)
