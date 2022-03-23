@@ -38,10 +38,10 @@ var args ocm.CreateManagedServiceArgs
 var Cmd = &cobra.Command{
 	Use:   "service",
 	Short: "Creates a managed service.",
-	Long: `  Managed Services are Openshift clusters that provide a specific function.
+	Long: `  Managed Services are OpenShift clusters that provide a specific function.
   Use this command to create managed services.`,
-	Example: `  # Create a Managed Service using service1.
-  rosa create service --service=service1 --clusterName=clusterName`,
+	Example: `  # Create a Managed Service of type service1.
+  rosa create service --type=service1 --name=clusterName`,
 	Run:    run,
 	Hidden: true,
 }
@@ -52,17 +52,17 @@ func init() {
 
 	// Basic options
 	flags.StringVar(
-		&args.ServiceName,
-		"service",
+		&args.ServiceType,
+		"type",
 		"",
-		"Name of the service.",
+		"Type of service.",
 	)
 
 	flags.StringVar(
 		&args.ClusterName,
-		"clusterName",
+		"name",
 		"",
-		"Name of the cluster.",
+		"Name of the service instance.",
 	)
 }
 
@@ -259,7 +259,7 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter.Infof("Using AWS region: %s", args.AwsRegion)
 
 	// Parameter logic
-	addOn, err := ocmClient.GetAddOn(args.ServiceName)
+	addOn, err := ocmClient.GetAddOn(args.ServiceType)
 	if err != nil {
 		reporter.Errorf("Failed to process service parameters: %s", err)
 	}

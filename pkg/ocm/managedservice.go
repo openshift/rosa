@@ -6,7 +6,7 @@ import (
 )
 
 type CreateManagedServiceArgs struct {
-	ServiceName string
+	ServiceType string
 	ClusterName string
 
 	Parameters map[string]string
@@ -41,7 +41,7 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 	}
 
 	service, err := msv1.NewManagedService().
-		Service(args.ServiceName).
+		Service(args.ServiceType).
 		Parameters(parameters...).
 		Cluster(
 			msv1.NewCluster().
