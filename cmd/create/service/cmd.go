@@ -26,10 +26,12 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -196,6 +198,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	args.AwsAccountID = awsCreator.AccountID
+	args.Properties = map[string]string{
+		properties.CreatorARN: awsCreator.ARN,
+		properties.CLIVersion: info.Version,
+	}
+
 	operatorRolesPrefix := getRolePrefix(args.ClusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 
@@ -230,25 +238,6 @@ func run(cmd *cobra.Command, _ []string) {
 
 	args.AwsOperatorIamRoleList = operatorIAMRoleList
 	// end operator role logic.
-
-	/*
-		awsCreator, err := awsClient.GetCreator()
-		if err != nil {
-			reporter.Errorf("Unable to get IAM credentials: %v", err)
-			os.Exit(1)
-		}
-
-		accessKey, err := awsClient.GetAWSAccessKeys()
-		if err != nil {
-			reporter.Errorf("Unable to get access keys: %v", err)
-			os.Exit(1)
-		}
-		args.AwsAccountID = awsCreator.AccountID
-		args.AwsAccessKeyID = accessKey.AccessKeyID
-		args.AwsSecretAccessKey = accessKey.SecretAccessKey
-	*/
-
-	args.AwsAccountID = awsCreator.AccountID
 
 	// Get AWS region
 	args.AwsRegion, err = aws.GetRegion("")

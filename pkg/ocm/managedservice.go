@@ -10,10 +10,9 @@ type CreateManagedServiceArgs struct {
 	ClusterName string
 
 	Parameters map[string]string
+	Properties map[string]string
 
 	AwsAccountID           string
-	AwsAccessKeyID         string
-	AwsSecretAccessKey     string
 	AwsRoleARN             string
 	AwsSupportRoleARN      string
 	AwsControlPlaneRoleARN string
@@ -46,6 +45,7 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 		Cluster(
 			msv1.NewCluster().
 				Name(args.ClusterName).
+				Properties(args.Properties).
 				Region(
 					msv1.NewCloudRegion().
 						ID(args.AwsRegion)).
@@ -58,9 +58,7 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 								MasterRoleARN(args.AwsControlPlaneRoleARN).
 								WorkerRoleARN(args.AwsWorkerRoleARN)).
 							OperatorIAMRoles(operatorIamRoles...)).
-						AccountID(args.AwsAccountID).
-						AccessKeyID(args.AwsAccessKeyID).
-						SecretAccessKey(args.AwsSecretAccessKey))).
+						AccountID(args.AwsAccountID))).
 		Build()
 
 	if err != nil {
