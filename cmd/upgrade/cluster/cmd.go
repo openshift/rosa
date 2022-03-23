@@ -102,6 +102,8 @@ func init() {
 			"Budgets that have not been successfully drained from a node will be forcibly evicted.\nValid "+
 			"options are ['%s']", strings.Join(nodeDrainOptions, "','")),
 	)
+
+	confirm.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {
