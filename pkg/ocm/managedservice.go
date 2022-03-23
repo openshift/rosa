@@ -9,6 +9,8 @@ type CreateManagedServiceArgs struct {
 	ServiceName string
 	ClusterName string
 
+	Parameters map[string]string
+
 	AwsAccountID           string
 	AwsAccessKeyID         string
 	AwsSecretAccessKey     string
@@ -32,16 +34,15 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 				RoleARN(operatorIAMRole.RoleARN))
 	}
 
+	parameters := []*msv1.ServiceParameterBuilder{}
+	for id, val := range args.Parameters {
+		parameters = append(parameters,
+			msv1.NewServiceParameter().ID(id).Value(val))
+	}
+
 	service, err := msv1.NewManagedService().
 		Service(args.ServiceName).
-		Parameters(
-			msv1.NewServiceParameter().
-				ID("has-external-resources").
-				Value("true"),
-			msv1.NewServiceParameter().
-				ID("parameter-with-requirements").
-				Value("1"),
-		).
+		Parameters(parameters...).
 		Cluster(
 			msv1.NewCluster().
 				Name(args.ClusterName).

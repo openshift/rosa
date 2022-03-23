@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
@@ -251,12 +252,30 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	reporter.Infof("Using AWS region: %s", args.AwsRegion)
 
+	// Parameter logic
+	addOn, err := ocmClient.GetAddOn(args.ServiceName)
+	if err != nil {
+		reporter.Errorf("Failed to process service parameters: %s", err)
+	}
+	addOnParameters := addOn.Parameters()
+	if addOnParameters != nil {
+		addOnParameters.Each(func(param *cmv1.AddOnParameter) bool {
+			flag := cmd.Flags().Lookup(param.ID())
+			if flag != nil {
+				args.Parameters[param.ID()] = flag.Value.String()
+			}
+			return true
+		})
+	}
+
 	// Creating the service
-	_, err = ocmClient.CreateManagedService(args)
+	service, err := ocmClient.CreateManagedService(args)
 	if err != nil {
 		reporter.Errorf("Failed to create managed service: %s", err)
 		os.Exit(1)
 	}
+
+	reporter.Infof("%v", service)
 
 	// The client must run these rosa commands after this for the cluster to properly install.
 	rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", args.ClusterName)
