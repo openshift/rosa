@@ -1,6 +1,8 @@
 package ocm
 
 import (
+	"fmt"
+
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 	"github.com/pkg/errors"
 )
@@ -74,4 +76,20 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 	}
 
 	return serviceCall.Body(), nil
+}
+
+func (c *Client) ListManagedServices(count int) (*msv1.ManagedServiceList, error) {
+	if count < 0 {
+		err := errors.Errorf("Invalid services count")
+		return nil, err
+	}
+
+	response, err := c.ocm.ServiceMgmt().V1().Services().List().Send()
+	if err != nil {
+		fmt.Printf("%s",err)
+		err := errors.Errorf("Cannot retrieve services list")
+		return nil, err
+	}
+	return response.Items(), nil
+
 }
