@@ -105,3 +105,19 @@ func (c *Client) GetManagedService(args DescribeManagedServiceArgs) (*msv1.Manag
 	}
 	return response.Body(), nil
 }
+
+type DeleteManagedServiceArgs struct {
+	ID string
+}
+
+func (c *Client) DeleteManagedService(args DeleteManagedServiceArgs) (*msv1.ManagedServiceDeleteResponse, error) {
+	deleteResponse, err := c.ocm.ServiceMgmt().V1().Services().
+		Service(args.ID).
+		Delete().
+		Send()
+	if err != nil {
+		return nil, handleErr(deleteResponse.Error(), err)
+	}
+
+	return deleteResponse, nil
+}
