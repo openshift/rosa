@@ -86,10 +86,22 @@ func (c *Client) ListManagedServices(count int) (*msv1.ManagedServiceList, error
 
 	response, err := c.ocm.ServiceMgmt().V1().Services().List().Send()
 	if err != nil {
-		fmt.Printf("%s",err)
+		fmt.Printf("%s", err)
 		err := errors.Errorf("Cannot retrieve services list")
 		return nil, err
 	}
 	return response.Items(), nil
 
+}
+
+type DescribeManagedServiceArgs struct {
+	ID string
+}
+
+func (c *Client) GetManagedService(args DescribeManagedServiceArgs) (*msv1.ManagedService, error) {
+	response, err := c.ocm.ServiceMgmt().V1().Services().Service(args.ID).Get().Send()
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to get managed service with id %s:", args.ID)
+	}
+	return response.Body(), nil
 }
