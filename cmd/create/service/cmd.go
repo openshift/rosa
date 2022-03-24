@@ -143,6 +143,7 @@ func run(cmd *cobra.Command, argv []string) {
 	addOn, err := ocmClient.GetAddOn(args.ServiceType)
 	if err != nil {
 		reporter.Errorf("Failed to get add-on '%s': %s", args.ServiceType, err)
+		os.Exit(1)
 	}
 	parameters := addOn.Parameters()
 
