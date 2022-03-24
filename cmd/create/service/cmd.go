@@ -303,7 +303,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	reporter.Infof("%v", service)
+	reporter.Infof("Service created!\n\n\tService ID: %s\n", service.ID())
 
 	// The client must run these rosa commands after this for the cluster to properly install.
 	rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", args.ClusterName)
