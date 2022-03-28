@@ -488,19 +488,19 @@ If the user request same ocm role we should let them proceed to ensure they can 
 if not exists or attach policies or link etc
 if the user request diff ocm role name we error out
 */
-func (c *Client) CheckRoleExists(orgID string, roleName string, awsAccountID string) (bool, string, error) {
+func (c *Client) CheckRoleExists(orgID string, roleName string, awsAccountID string) (bool, string, string, error) {
 	exists, _, selectedARN, err := c.CheckIfAWSAccountExists(orgID, awsAccountID)
 	if err != nil {
-		return false, "", err
+		return false, "", "", err
 	}
 	if !exists {
-		return false, "", nil
+		return false, "", "", nil
 	}
 	existingRole := strings.SplitN(selectedARN, "/", 2)
 	if len(existingRole) > 1 && existingRole[1] == roleName {
-		return false, "", nil
+		return false, "", "", nil
 	}
-	return true, existingRole[1], nil
+	return true, existingRole[1], selectedARN, nil
 }
 
 func GetVersionMinor(ver string) string {
