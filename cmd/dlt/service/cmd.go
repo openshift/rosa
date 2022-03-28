@@ -41,7 +41,8 @@ var Cmd = &cobra.Command{
 	Long:  "Deletes a service.",
 	Example: `  # Delete a service with ID "aabbcc"
   rosa delete service --id=aabbcc`,
-	Run: run,
+	Run:    run,
+	Hidden: true,
 }
 
 func init() {
@@ -56,6 +57,12 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
+
+	if args.ID == "" {
+		reporter.Errorf("id not specified.")
+		cmd.Help()
+		os.Exit(1)
+	}
 
 	if !confirm.Confirm("delete service with id '%s'", args.ID) {
 		os.Exit(0)
@@ -84,13 +91,13 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	reporter.Debugf("Deleting service with id '%s'", args.ID)
+	reporter.Debugf("Deleting service with id %q", args.ID)
 	_, err = ocmClient.DeleteManagedService(args)
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	reporter.Infof("Service '%s' will start uninstalling now", args.ID)
+	reporter.Infof("Service %q will start uninstalling now", args.ID)
 
 	if service.Cluster().AWS().STS().RoleARN() != "" {
 		reporter.Infof(
@@ -106,7 +113,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			reporter.Infof("%s", str)
 		}
-		reporter.Infof("OIDC Provider : %s\n", service.Cluster().AWS().STS().OIDCEndpointURL())
+		reporter.Infof("OIDC Provider : %q\n", service.Cluster().AWS().STS().OIDCEndpointURL())
 		reporter.Infof("Once the service is uninstalled use the following commands to remove the " +
 			"above aws resources.\n")
 		commands := buildCommands(service.Cluster())

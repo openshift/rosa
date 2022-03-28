@@ -36,8 +36,9 @@ var Cmd = &cobra.Command{
 	Long:    "List managed services.",
 	Example: `  # List all managed services
   rosa list services`,
-	Args: cobra.NoArgs,
-	Run:  run,
+	Args:   cobra.NoArgs,
+	Run:    run,
+	Hidden: true,
 }
 
 func init() {

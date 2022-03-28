@@ -55,6 +55,12 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
+	if args.ID == "" {
+		reporter.Errorf("id not specified.")
+		cmd.Help()
+		os.Exit(1)
+	}
+
 	// Create the client for the OCM API:
 	ocmClient, err := ocm.NewClient().
 		Logger(logger).
@@ -75,25 +81,24 @@ func run(cmd *cobra.Command, argv []string) {
 	reporter.Debugf("Loading service with id %q", args.ID)
 	service, err := ocmClient.GetManagedService(args)
 	if err != nil {
-		reporter.Errorf("Failed to get service with id '%s': %v", args.ID, err)
+		reporter.Errorf("Failed to get service with id %q: %v", args.ID, err)
 		os.Exit(1)
 	}
 
-	fmt.Printf(`
-  %20s: %s
-  %20s: %s
-  %20s: %s
-  %20s: %s
-  %20s: %s
-  %20s: %s
-  %20s: %s
+	fmt.Printf(`%-28s%s
+%-28s%s
+%-28s%s
+%-28s%s
+%-28s%s
+%-28s%s
+%-28s%s
 `,
-		"Id", service.ID(),
-		"Href", service.HREF(),
-		"Service type", service.Service(),
-		"Service State", service.ServiceState(),
-		"Cluster Name", service.Cluster().Name(),
-		"Created At", service.CreatedAt(),
-		"Updated At", service.UpdatedAt())
+		"Id:", service.ID(),
+		"Href:", service.HREF(),
+		"Service type:", service.Service(),
+		"Service State:", service.ServiceState(),
+		"Cluster Name:", service.Cluster().Name(),
+		"Created At:", service.CreatedAt(),
+		"Updated At:", service.UpdatedAt())
 
 }

@@ -92,6 +92,18 @@ func run(cmd *cobra.Command, argv []string) {
 	// This allows for arbitrary flags used for addon parameters
 	_ = cmd.Flags().Parse(argv)
 
+	if args.ServiceType == "" {
+		reporter.Errorf("Service type not specified.")
+		cmd.Help()
+		os.Exit(1)
+	}
+
+	if args.ClusterName == "" {
+		reporter.Errorf("Cluster name not specified.")
+		cmd.Help()
+		os.Exit(1)
+	}
+
 	// Create the client for the OCM API:
 	ocmClient, err := ocm.NewClient().
 		Logger(logger).
@@ -115,14 +127,14 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
-	reporter.Debugf("Using AWS region: %s", args.AwsRegion)
+	reporter.Debugf("Using AWS region: %q", args.AwsRegion)
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
 		reporter.Errorf("Unable to get IAM credentials: %v", err)
 		os.Exit(1)
 	}
-	reporter.Debugf("Using AWS creator: %s", awsCreator.ARN)
+	reporter.Debugf("Using AWS creator: %q", awsCreator.ARN)
 
 	args.AwsAccountID = awsCreator.AccountID
 	args.Properties = map[string]string{
@@ -142,7 +154,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Add-on parameter logic
 	addOn, err := ocmClient.GetAddOn(args.ServiceType)
 	if err != nil {
-		reporter.Errorf("Failed to get add-on '%s': %s", args.ServiceType, err)
+		reporter.Errorf("Failed to get add-on %q: %s", args.ServiceType, err)
 		os.Exit(1)
 	}
 	parameters := addOn.Parameters()
@@ -150,27 +162,25 @@ func run(cmd *cobra.Command, argv []string) {
 	if parameters.Len() > 0 {
 		args.Parameters = map[string]string{}
 		// Determine if all required parameters have already been set as flags.
-		if arguments.HasUnknownFlags() {
-			parameters.Each(func(param *cmv1.AddOnParameter) bool {
-				flag := cmd.Flags().Lookup(param.ID())
-				if param.Required() && (flag == nil || flag.Value.String() == "") {
-					reporter.Errorf("Required parameter --%s missing", param.ID())
-					os.Exit(1)
-				}
-				if flag != nil {
-					val := strings.Trim(flag.Value.String(), " ")
-					if val != "" && param.Validation() != "" {
-						isValid, err := regexp.MatchString(param.Validation(), val)
-						if err != nil || !isValid {
-							reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
-							os.Exit(1)
-						}
+		parameters.Each(func(param *cmv1.AddOnParameter) bool {
+			flag := cmd.Flags().Lookup(param.ID())
+			if param.Required() && (flag == nil || flag.Value.String() == "") {
+				reporter.Errorf("Required parameter --%s missing", param.ID())
+				os.Exit(1)
+			}
+			if flag != nil {
+				val := strings.Trim(flag.Value.String(), " ")
+				if val != "" && param.Validation() != "" {
+					isValid, err := regexp.MatchString(param.Validation(), val)
+					if err != nil || !isValid {
+						reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
+						os.Exit(1)
 					}
-					args.Parameters[param.ID()] = flag.Value.String()
 				}
-				return true
-			})
-		}
+				args.Parameters[param.ID()] = flag.Value.String()
+			}
+			return true
+		})
 	}
 
 	// Find all installer roles in the current account using AWS resource tags
@@ -195,11 +205,11 @@ func run(cmd *cobra.Command, argv []string) {
 				defaultRoleARN = rARN
 			}
 		}
-		reporter.Warnf("More than one %s role found, using %s", role.Name, defaultRoleARN)
+		reporter.Warnf("More than one %s role found, using %q", role.Name, defaultRoleARN)
 		roleARN = defaultRoleARN
 	} else if len(roleARNs) == 1 {
 		if !output.HasFlag() || reporter.IsTerminal() {
-			reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
+			reporter.Infof("Using %q for the %s role", roleARNs[0], role.Name)
 		}
 		roleARN = roleARNs[0]
 	} else {
@@ -212,10 +222,10 @@ func run(cmd *cobra.Command, argv []string) {
 		// Get role prefix
 		rolePrefix, err := getAccountRolePrefix(roleARN, role)
 		if err != nil {
-			reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+			reporter.Errorf("Failed to find prefix from %q account role", role.Name)
 			os.Exit(1)
 		}
-		reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
+		reporter.Debugf("Using %q as the role prefix", rolePrefix)
 
 		for roleType, role := range aws.AccountRoles {
 			if roleType == aws.InstallerAccountRole {
@@ -240,7 +250,7 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 			if !output.HasFlag() || reporter.IsTerminal() {
-				reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
+				reporter.Infof("Using %q for the %s role", selectedARN, role.Name)
 			}
 			switch roleType {
 			case aws.InstallerAccountRole:
@@ -269,7 +279,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if operator.MinVersion != "" {
 			isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(version), operator.MinVersion)
 			if err != nil {
-				reporter.Errorf("Error validating operator role '%s' version %s", operator.Name, err)
+				reporter.Errorf("Error validating operator role %q version %s", operator.Name, err)
 				os.Exit(1)
 			}
 			if !isSupported {
