@@ -980,6 +980,7 @@ var _templatesPoliciesSts_ocm_admin_permission_policyJson = []byte(`{
         "iam:CreateRole",
         "iam:DeleteRole",
         "iam:PutRolePermissionsBoundary",
+        "iam:ListAttachedRolePolicies",
         "iam:TagRole",
         "iam:ListPolicies",
         "iam:ListPolicyTags",
@@ -989,7 +990,9 @@ var _templatesPoliciesSts_ocm_admin_permission_policyJson = []byte(`{
         "iam:TagOpenIDConnectProvider",
         "iam:GetPolicy",
         "iam:DetachRolePolicy",
-        "iam:DeleteOpenIDConnectProvider"
+        "iam:DeleteOpenIDConnectProvider",
+        "iam:CreatePolicyVersion",
+        "iam:TagPolicy"
       ],
       "Resource": "*"
     }
