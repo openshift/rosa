@@ -8,6 +8,7 @@
         "iam:CreateRole",
         "iam:DeleteRole",
         "iam:PutRolePermissionsBoundary",
+        "iam:ListAttachedRolePolicies",
         "iam:TagRole",
         "iam:ListPolicies",
         "iam:ListPolicyTags",
@@ -17,7 +18,9 @@
         "iam:TagOpenIDConnectProvider",
         "iam:GetPolicy",
         "iam:DetachRolePolicy",
-        "iam:DeleteOpenIDConnectProvider"
+        "iam:DeleteOpenIDConnectProvider",
+        "iam:CreatePolicyVersion",
+        "iam:TagPolicy"
       ],
       "Resource": "*"
     }
