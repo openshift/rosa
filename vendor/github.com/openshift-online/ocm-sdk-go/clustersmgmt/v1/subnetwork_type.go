@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type Subnetwork struct {
 	bitmap_          uint32
 	availabilityZone string
+	name             string
 	subnetID         string
 }
 
@@ -56,12 +57,35 @@ func (o *Subnetwork) GetAvailabilityZone() (value string, ok bool) {
 	return
 }
 
+// Name returns the value of the 'name' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Name of the subnet according to its `Name` tag on AWS
+func (o *Subnetwork) Name() string {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.name
+	}
+	return ""
+}
+
+// GetName returns the value of the 'name' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Name of the subnet according to its `Name` tag on AWS
+func (o *Subnetwork) GetName() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.name
+	}
+	return
+}
+
 // SubnetID returns the value of the 'subnet_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The subnet id to be used while installing a cluster
 func (o *Subnetwork) SubnetID() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.subnetID
 	}
 	return ""
@@ -72,7 +96,7 @@ func (o *Subnetwork) SubnetID() string {
 //
 // The subnet id to be used while installing a cluster
 func (o *Subnetwork) GetSubnetID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.subnetID
 	}

@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -108,6 +110,16 @@ func (c *SubscriptionClient) ReservedResources() *SubscriptionReservedResourcesC
 	return NewSubscriptionReservedResourcesClient(
 		c.transport,
 		path.Join(c.path, "reserved_resources"),
+	)
+}
+
+// RoleBindings returns the target 'role_bindings' resource.
+//
+// Reference to the role bindings
+func (c *SubscriptionClient) RoleBindings() *RoleBindingsClient {
+	return NewRoleBindingsClient(
+		c.transport,
+		path.Join(c.path, "role_bindings"),
 	)
 }
 
@@ -252,6 +264,13 @@ func (r *SubscriptionDeleteRequest) Header(name string, value interface{}) *Subs
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *SubscriptionDeleteRequest) Impersonate(user string) *SubscriptionDeleteRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -284,8 +303,14 @@ func (r *SubscriptionDeleteRequest) SendContext(ctx context.Context) (result *Su
 	result = &SubscriptionDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -346,6 +371,13 @@ func (r *SubscriptionGetRequest) Header(name string, value interface{}) *Subscri
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *SubscriptionGetRequest) Impersonate(user string) *SubscriptionGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -378,15 +410,21 @@ func (r *SubscriptionGetRequest) SendContext(ctx context.Context) (result *Subsc
 	result = &SubscriptionGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readSubscriptionGetResponse(result, response.Body)
+	err = readSubscriptionGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -468,6 +506,13 @@ func (r *SubscriptionUpdateRequest) Header(name string, value interface{}) *Subs
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *SubscriptionUpdateRequest) Impersonate(user string) *SubscriptionUpdateRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 // Updated subscription data
@@ -514,15 +559,21 @@ func (r *SubscriptionUpdateRequest) SendContext(ctx context.Context) (result *Su
 	result = &SubscriptionUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readSubscriptionUpdateResponse(result, response.Body)
+	err = readSubscriptionUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

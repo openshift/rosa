@@ -44,7 +44,7 @@ func NewClustersClient(transport http.RoundTripper, path string) *ClustersClient
 
 // Cluster returns the target 'cluster' resource for the given identifier.
 //
-// Reference to the service that manages a specific Cluster.
+// Reference to the service that manages a specific Cluster uuid.
 func (c *ClustersClient) Cluster(id string) *ClusterClient {
 	return NewClusterClient(
 		c.transport,

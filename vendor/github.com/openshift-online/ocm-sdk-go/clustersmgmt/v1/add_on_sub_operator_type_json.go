@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -75,9 +74,6 @@ func writeAddOnSubOperator(object *AddOnSubOperator, stream *jsoniter.Stream) {
 // UnmarshalAddOnSubOperator reads a value of the 'add_on_sub_operator' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalAddOnSubOperator(source interface{}) (object *AddOnSubOperator, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

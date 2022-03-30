@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type SubnetworkBuilder struct {
 	bitmap_          uint32
 	availabilityZone string
+	name             string
 	subnetID         string
 }
 
@@ -47,12 +48,21 @@ func (b *SubnetworkBuilder) AvailabilityZone(value string) *SubnetworkBuilder {
 	return b
 }
 
+// Name sets the value of the 'name' attribute to the given value.
+//
+//
+func (b *SubnetworkBuilder) Name(value string) *SubnetworkBuilder {
+	b.name = value
+	b.bitmap_ |= 2
+	return b
+}
+
 // SubnetID sets the value of the 'subnet_ID' attribute to the given value.
 //
 //
 func (b *SubnetworkBuilder) SubnetID(value string) *SubnetworkBuilder {
 	b.subnetID = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
@@ -63,6 +73,7 @@ func (b *SubnetworkBuilder) Copy(object *Subnetwork) *SubnetworkBuilder {
 	}
 	b.bitmap_ = object.bitmap_
 	b.availabilityZone = object.availabilityZone
+	b.name = object.name
 	b.subnetID = object.subnetID
 	return b
 }
@@ -72,6 +83,7 @@ func (b *SubnetworkBuilder) Build() (object *Subnetwork, err error) {
 	object = new(Subnetwork)
 	object.bitmap_ = b.bitmap_
 	object.availabilityZone = b.availabilityZone
+	object.name = b.name
 	object.subnetID = b.subnetID
 	return
 }

@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -102,13 +101,31 @@ func writeProvisionShard(object *ProvisionShard, stream *jsoniter.Stream) {
 		writeServerConfig(object.gcpProjectOperator, stream)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.hiveConfig != nil
+	present_ = object.bitmap_&128 != 0 && object.cloudProvider != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("cloud_provider")
+		writeCloudProvider(object.cloudProvider, stream)
+		count++
+	}
+	present_ = object.bitmap_&256 != 0 && object.hiveConfig != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("hive_config")
 		writeServerConfig(object.hiveConfig, stream)
+		count++
+	}
+	present_ = object.bitmap_&512 != 0 && object.region != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("region")
+		writeCloudRegion(object.region, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -116,9 +133,6 @@ func writeProvisionShard(object *ProvisionShard, stream *jsoniter.Stream) {
 // UnmarshalProvisionShard reads a value of the 'provision_shard' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalProvisionShard(source interface{}) (object *ProvisionShard, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
@@ -164,10 +178,18 @@ func readProvisionShard(iterator *jsoniter.Iterator) *ProvisionShard {
 			value := readServerConfig(iterator)
 			object.gcpProjectOperator = value
 			object.bitmap_ |= 64
+		case "cloud_provider":
+			value := readCloudProvider(iterator)
+			object.cloudProvider = value
+			object.bitmap_ |= 128
 		case "hive_config":
 			value := readServerConfig(iterator)
 			object.hiveConfig = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
+		case "region":
+			value := readCloudRegion(iterator)
+			object.region = value
+			object.bitmap_ |= 512
 		default:
 			iterator.ReadAny()
 		}

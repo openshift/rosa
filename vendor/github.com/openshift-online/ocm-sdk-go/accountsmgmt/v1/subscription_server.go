@@ -60,6 +60,11 @@ type SubscriptionServer interface {
 	// Reference to the resource that manages the collection of resources reserved by the
 	// subscription.
 	ReservedResources() SubscriptionReservedResourcesServer
+
+	// RoleBindings returns the target 'role_bindings' resource.
+	//
+	// Reference to the role bindings
+	RoleBindings() RoleBindingsServer
 }
 
 // SubscriptionDeleteServerRequest is the request for the 'delete' method.
@@ -193,6 +198,13 @@ func dispatchSubscription(w http.ResponseWriter, r *http.Request, server Subscri
 			return
 		}
 		dispatchSubscriptionReservedResources(w, r, target, segments[1:])
+	case "role_bindings":
+		target := server.RoleBindings()
+		if target == nil {
+			errors.SendNotFound(w, r)
+			return
+		}
+		dispatchRoleBindings(w, r, target, segments[1:])
 	default:
 		errors.SendNotFound(w, r)
 		return

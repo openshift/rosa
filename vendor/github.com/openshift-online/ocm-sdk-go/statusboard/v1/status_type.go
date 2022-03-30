@@ -39,14 +39,15 @@ const StatusNilKind = "StatusNil"
 //
 // Definition of a Status Board status.
 type Status struct {
-	bitmap_   uint32
-	id        string
-	href      string
-	createdAt time.Time
-	metadata  interface{}
-	service   *Service
-	status    string
-	updatedAt time.Time
+	bitmap_     uint32
+	id          string
+	href        string
+	createdAt   time.Time
+	metadata    interface{}
+	service     *Service
+	serviceInfo *ServiceInfo
+	status      string
+	updatedAt   time.Time
 }
 
 // Kind returns the name of the type of the object.
@@ -175,12 +176,35 @@ func (o *Status) GetService() (value *Service, ok bool) {
 	return
 }
 
+// ServiceInfo returns the value of the 'service_info' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Additional Service related data.
+func (o *Status) ServiceInfo() *ServiceInfo {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.serviceInfo
+	}
+	return nil
+}
+
+// GetServiceInfo returns the value of the 'service_info' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Additional Service related data.
+func (o *Status) GetServiceInfo() (value *ServiceInfo, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.serviceInfo
+	}
+	return
+}
+
 // Status returns the value of the 'status' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // A status message for the given service.
 func (o *Status) Status() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.status
 	}
 	return ""
@@ -191,7 +215,7 @@ func (o *Status) Status() string {
 //
 // A status message for the given service.
 func (o *Status) GetStatus() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.status
 	}
@@ -203,7 +227,7 @@ func (o *Status) GetStatus() (value string, ok bool) {
 //
 // Object modification timestamp.
 func (o *Status) UpdatedAt() time.Time {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.updatedAt
 	}
 	return time.Time{}
@@ -214,7 +238,7 @@ func (o *Status) UpdatedAt() time.Time {
 //
 // Object modification timestamp.
 func (o *Status) GetUpdatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.updatedAt
 	}

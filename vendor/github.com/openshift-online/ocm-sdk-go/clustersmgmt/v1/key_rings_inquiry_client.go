@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -81,6 +83,13 @@ func (r *KeyRingsInquirySearchRequest) Parameter(name string, value interface{})
 // Header adds a request header.
 func (r *KeyRingsInquirySearchRequest) Header(name string, value interface{}) *KeyRingsInquirySearchRequest {
 	helpers.AddHeader(&r.header, name, value)
+	return r
+}
+
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *KeyRingsInquirySearchRequest) Impersonate(user string) *KeyRingsInquirySearchRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
@@ -155,15 +164,21 @@ func (r *KeyRingsInquirySearchRequest) SendContext(ctx context.Context) (result 
 	result = &KeyRingsInquirySearchResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readKeyRingsInquirySearchResponse(result, response.Body)
+	err = readKeyRingsInquirySearchResponse(result, reader)
 	if err != nil {
 		return
 	}

@@ -19,12 +19,13 @@ run:
   - accountsmgmt
   - authorizations
   - clustersmgmt
-  - servicelogs
-  - jobqueue
-  - statusboard
   - errors
   - helpers
+  - jobqueue
   - metamodel
+  - servicelogs
+  - servicemgmt
+  - statusboard
   skip-files:
   - server.go
   deadline: 15m

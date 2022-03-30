@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -415,4 +416,32 @@ func GenerateOperatorPolicyFiles(reporter *rprtr.Object) error {
 	}
 
 	return nil
+}
+
+func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator Operator) (string, error) {
+	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
+	if err != nil {
+		return "", err
+	}
+	issuerURL := fmt.Sprintf("%s%s", oidcEndpointURL.Host, oidcEndpointURL.Path)
+
+	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, issuerURL)
+
+	serviceAccounts := []string{}
+	for _, sa := range operator.ServiceAccountNames {
+		serviceAccounts = append(serviceAccounts,
+			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace, sa))
+	}
+
+	path := "templates/policies/operator_iam_role_policy.json"
+	policy, err := ReadPolicyDocument(path, map[string]string{
+		"oidc_provider_arn": oidcProviderARN,
+		"issuer_url":        issuerURL,
+		"service_accounts":  strings.Join(serviceAccounts, `" , "`),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return string(policy), nil
 }

@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -220,6 +222,13 @@ func (r *AddOnVersionDeleteRequest) Header(name string, value interface{}) *AddO
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *AddOnVersionDeleteRequest) Impersonate(user string) *AddOnVersionDeleteRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -252,8 +261,14 @@ func (r *AddOnVersionDeleteRequest) SendContext(ctx context.Context) (result *Ad
 	result = &AddOnVersionDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
@@ -314,6 +329,13 @@ func (r *AddOnVersionGetRequest) Header(name string, value interface{}) *AddOnVe
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *AddOnVersionGetRequest) Impersonate(user string) *AddOnVersionGetRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -346,15 +368,21 @@ func (r *AddOnVersionGetRequest) SendContext(ctx context.Context) (result *AddOn
 	result = &AddOnVersionGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readAddOnVersionGetResponse(result, response.Body)
+	err = readAddOnVersionGetResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -436,6 +464,13 @@ func (r *AddOnVersionUpdateRequest) Header(name string, value interface{}) *AddO
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *AddOnVersionUpdateRequest) Impersonate(user string) *AddOnVersionUpdateRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 //
@@ -482,15 +517,21 @@ func (r *AddOnVersionUpdateRequest) SendContext(ctx context.Context) (result *Ad
 	result = &AddOnVersionUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readAddOnVersionUpdateResponse(result, response.Body)
+	err = readAddOnVersionUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}

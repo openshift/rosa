@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -57,6 +56,15 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("name")
+		stream.WriteString(object.name)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("subnet_id")
 		stream.WriteString(object.subnetID)
 	}
@@ -66,9 +74,6 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 // UnmarshalSubnetwork reads a value of the 'subnetwork' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalSubnetwork(source interface{}) (object *Subnetwork, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
@@ -91,10 +96,14 @@ func readSubnetwork(iterator *jsoniter.Iterator) *Subnetwork {
 			value := iterator.ReadString()
 			object.availabilityZone = value
 			object.bitmap_ |= 1
+		case "name":
+			value := iterator.ReadString()
+			object.name = value
+			object.bitmap_ |= 2
 		case "subnet_id":
 			value := iterator.ReadString()
 			object.subnetID = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

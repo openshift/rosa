@@ -28,6 +28,7 @@ type AddOnVersionBuilder struct {
 	href              string
 	availableUpgrades []string
 	channel           string
+	config            *AddOnConfigBuilder
 	parameters        *AddOnParameterListBuilder
 	requirements      []*AddOnRequirementBuilder
 	sourceImage       string
@@ -84,12 +85,26 @@ func (b *AddOnVersionBuilder) Channel(value string) *AddOnVersionBuilder {
 	return b
 }
 
+// Config sets the value of the 'config' attribute to the given value.
+//
+// Representation of an add-on config.
+// The attributes under it are to be used by the addon once its installed in the cluster.
+func (b *AddOnVersionBuilder) Config(value *AddOnConfigBuilder) *AddOnVersionBuilder {
+	b.config = value
+	if value != nil {
+		b.bitmap_ |= 32
+	} else {
+		b.bitmap_ &^= 32
+	}
+	return b
+}
+
 // Enabled sets the value of the 'enabled' attribute to the given value.
 //
 //
 func (b *AddOnVersionBuilder) Enabled(value bool) *AddOnVersionBuilder {
 	b.enabled = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -98,7 +113,7 @@ func (b *AddOnVersionBuilder) Enabled(value bool) *AddOnVersionBuilder {
 //
 func (b *AddOnVersionBuilder) Parameters(value *AddOnParameterListBuilder) *AddOnVersionBuilder {
 	b.parameters = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -108,7 +123,7 @@ func (b *AddOnVersionBuilder) Parameters(value *AddOnParameterListBuilder) *AddO
 func (b *AddOnVersionBuilder) Requirements(values ...*AddOnRequirementBuilder) *AddOnVersionBuilder {
 	b.requirements = make([]*AddOnRequirementBuilder, len(values))
 	copy(b.requirements, values)
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -117,7 +132,7 @@ func (b *AddOnVersionBuilder) Requirements(values ...*AddOnRequirementBuilder) *
 //
 func (b *AddOnVersionBuilder) SourceImage(value string) *AddOnVersionBuilder {
 	b.sourceImage = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -127,7 +142,7 @@ func (b *AddOnVersionBuilder) SourceImage(value string) *AddOnVersionBuilder {
 func (b *AddOnVersionBuilder) SubOperators(values ...*AddOnSubOperatorBuilder) *AddOnVersionBuilder {
 	b.subOperators = make([]*AddOnSubOperatorBuilder, len(values))
 	copy(b.subOperators, values)
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -146,6 +161,11 @@ func (b *AddOnVersionBuilder) Copy(object *AddOnVersion) *AddOnVersionBuilder {
 		b.availableUpgrades = nil
 	}
 	b.channel = object.channel
+	if object.config != nil {
+		b.config = NewAddOnConfig().Copy(object.config)
+	} else {
+		b.config = nil
+	}
 	b.enabled = object.enabled
 	if object.parameters != nil {
 		b.parameters = NewAddOnParameterList().Copy(object.parameters)
@@ -183,6 +203,12 @@ func (b *AddOnVersionBuilder) Build() (object *AddOnVersion, err error) {
 		copy(object.availableUpgrades, b.availableUpgrades)
 	}
 	object.channel = b.channel
+	if b.config != nil {
+		object.config, err = b.config.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.enabled = b.enabled
 	if b.parameters != nil {
 		object.parameters, err = b.parameters.Build()

@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -102,6 +104,13 @@ func (r *ClustersAddRequest) Header(name string, value interface{}) *ClustersAdd
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *ClustersAddRequest) Impersonate(user string) *ClustersAddRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 // Description of the cluster.
@@ -148,15 +157,21 @@ func (r *ClustersAddRequest) SendContext(ctx context.Context) (result *ClustersA
 	result = &ClustersAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readClustersAddResponse(result, response.Body)
+	err = readClustersAddResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -238,6 +253,13 @@ func (r *ClustersListRequest) Parameter(name string, value interface{}) *Cluster
 // Header adds a request header.
 func (r *ClustersListRequest) Header(name string, value interface{}) *ClustersListRequest {
 	helpers.AddHeader(&r.header, name, value)
+	return r
+}
+
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *ClustersListRequest) Impersonate(user string) *ClustersListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
@@ -342,15 +364,21 @@ func (r *ClustersListRequest) SendContext(ctx context.Context) (result *Clusters
 	result = &ClustersListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readClustersListResponse(result, response.Body)
+	err = readClustersListResponse(result, reader)
 	if err != nil {
 		return
 	}

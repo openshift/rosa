@@ -41,6 +41,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/metrics"
 	"github.com/openshift-online/ocm-sdk-go/retry"
 	"github.com/openshift-online/ocm-sdk-go/servicelogs"
+	"github.com/openshift-online/ocm-sdk-go/servicemgmt"
 	"github.com/openshift-online/ocm-sdk-go/statusboard"
 )
 
@@ -989,6 +990,11 @@ func (c *Connection) JobQueue() *jobqueue.Client {
 // Status board returns the client for the status board service.
 func (c *Connection) StatusBoard() *statusboard.Client {
 	return statusboard.NewClient(c, "/api/status-board")
+}
+
+// ServiceMgmt returns the client for the service management service.
+func (c *Connection) ServiceMgmt() *servicemgmt.Client {
+	return servicemgmt.NewClient(c, "/api/service_mgmt")
 }
 
 // Close releases all the resources used by the connection. It is very important to always close it

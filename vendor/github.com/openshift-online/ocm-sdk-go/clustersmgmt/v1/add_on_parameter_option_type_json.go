@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -52,7 +51,16 @@ func writeAddOnParameterOption(object *AddOnParameterOption, stream *jsoniter.St
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&2 != 0 && object.requirements != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("requirements")
+		writeAddOnRequirementList(object.requirements, stream)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -66,9 +74,6 @@ func writeAddOnParameterOption(object *AddOnParameterOption, stream *jsoniter.St
 // UnmarshalAddOnParameterOption reads a value of the 'add_on_parameter_option' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalAddOnParameterOption(source interface{}) (object *AddOnParameterOption, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
@@ -91,10 +96,14 @@ func readAddOnParameterOption(iterator *jsoniter.Iterator) *AddOnParameterOption
 			value := iterator.ReadString()
 			object.name = value
 			object.bitmap_ |= 1
+		case "requirements":
+			value := readAddOnRequirementList(iterator)
+			object.requirements = value
+			object.bitmap_ |= 2
 		case "value":
 			value := iterator.ReadString()
 			object.value = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

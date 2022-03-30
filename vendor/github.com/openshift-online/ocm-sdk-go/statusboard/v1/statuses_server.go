@@ -100,6 +100,7 @@ type StatusesListServerRequest struct {
 	createdAfter  *time.Time
 	createdBefore *time.Time
 	page          *int
+	productIds    *string
 	size          *int
 }
 
@@ -165,6 +166,28 @@ func (r *StatusesListServerRequest) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
 		value = *r.page
+	}
+	return
+}
+
+// ProductIds returns the value of the 'product_ids' parameter.
+//
+//
+func (r *StatusesListServerRequest) ProductIds() string {
+	if r != nil && r.productIds != nil {
+		return *r.productIds
+	}
+	return ""
+}
+
+// GetProductIds returns the value of the 'product_ids' parameter and
+// a flag indicating if the parameter has a value.
+//
+//
+func (r *StatusesListServerRequest) GetProductIds() (value string, ok bool) {
+	ok = r != nil && r.productIds != nil
+	if ok {
+		value = *r.productIds
 	}
 	return
 }

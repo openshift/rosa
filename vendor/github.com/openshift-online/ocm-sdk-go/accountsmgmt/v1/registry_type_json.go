@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
-	"net/http"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -144,9 +143,6 @@ func writeRegistry(object *Registry, stream *jsoniter.Stream) {
 // UnmarshalRegistry reads a value of the 'registry' type from the given
 // source, which can be an slice of bytes, a string or a reader.
 func UnmarshalRegistry(source interface{}) (object *Registry, err error) {
-	if source == http.NoBody {
-		return
-	}
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return

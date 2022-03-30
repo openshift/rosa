@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -525,4 +526,18 @@ func CheckSupportedVersion(clusterVersion string, operatorVersion string) (bool,
 	}
 	//Cluster version is greater than or equal to operator version
 	return v1.GreaterThanOrEqual(v2), nil
+}
+
+func SaveDocument(doc string, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(doc)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -20,8 +20,10 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -100,6 +102,13 @@ func (r *RoleBindingsAddRequest) Header(name string, value interface{}) *RoleBin
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *RoleBindingsAddRequest) Impersonate(user string) *RoleBindingsAddRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Body sets the value of the 'body' parameter.
 //
 // Role binding data.
@@ -146,15 +155,21 @@ func (r *RoleBindingsAddRequest) SendContext(ctx context.Context) (result *RoleB
 	result = &RoleBindingsAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readRoleBindingsAddResponse(result, response.Body)
+	err = readRoleBindingsAddResponse(result, reader)
 	if err != nil {
 		return
 	}
@@ -238,6 +253,13 @@ func (r *RoleBindingsListRequest) Header(name string, value interface{}) *RoleBi
 	return r
 }
 
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *RoleBindingsListRequest) Impersonate(user string) *RoleBindingsListRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
 // Page sets the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
@@ -315,15 +337,21 @@ func (r *RoleBindingsListRequest) SendContext(ctx context.Context) (result *Role
 	result = &RoleBindingsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
 	if result.status >= 400 {
-		result.err, err = errors.UnmarshalErrorStatus(response.Body, result.status)
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
 		if err != nil {
 			return
 		}
 		err = result.err
 		return
 	}
-	err = readRoleBindingsListResponse(result, response.Body)
+	err = readRoleBindingsListResponse(result, reader)
 	if err != nil {
 		return
 	}
