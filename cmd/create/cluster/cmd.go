@@ -1783,19 +1783,6 @@ func run(cmd *cobra.Command, _ []string) {
 				"for more information.")
 	}
 
-	if args.watch {
-		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
-	} else if !output.HasFlag() || reporter.IsTerminal() {
-		reporter.Infof(
-			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
-			clusterName,
-		)
-		reporter.Infof(
-			"To watch your cluster installation logs, run 'rosa logs install -c %s --watch'.",
-			clusterName,
-		)
-	}
-
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{clusterName})
 
 	if isSTS {
@@ -1817,6 +1804,19 @@ func run(cmd *cobra.Command, _ []string) {
 				"\t%s\n",
 				rolesCMD, oidcCMD)
 		}
+	}
+
+	if args.watch {
+		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
+	} else if !output.HasFlag() || reporter.IsTerminal() {
+		reporter.Infof(
+			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
+			clusterName,
+		)
+		reporter.Infof(
+			"To watch your cluster installation logs, run 'rosa logs install -c %s --watch'.",
+			clusterName,
+		)
 	}
 }
 
