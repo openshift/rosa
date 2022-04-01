@@ -117,7 +117,7 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		os.Exit(0)
+		return
 	}
 
 	creatorARN, err := arn.Parse(cluster.Properties()[properties.CreatorARN])
