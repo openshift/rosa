@@ -1758,7 +1758,16 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 	}
 
-	_, err = ocmClient.CreateCluster(clusterConfig)
+	// Create the access key for the AWS user:
+	awsAccessKey, err := awsClient.GetAWSAccessKeys()
+	if err != nil {
+		reporter.Errorf("Failed to get access keys for user '%s': %v",
+			aws.AdminUserName, err)
+	}
+	reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
+	reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
+
+	_, err = ocmClient.CreateCluster(clusterConfig, awsCreator.AccountID, awsCreator.ARN, *awsAccessKey)
 	if err != nil {
 		if args.dryRun {
 			reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)

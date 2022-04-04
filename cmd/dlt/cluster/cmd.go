@@ -106,7 +106,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Debugf("Deleting cluster '%s'", clusterKey)
-	cluster, err := ocmClient.DeleteCluster(clusterKey, awsCreator)
+	cluster, err := ocmClient.DeleteCluster(clusterKey, awsCreator.AccountID)
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)

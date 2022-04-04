@@ -108,7 +108,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.AccountID)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -125,7 +125,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	addOnInstallation, err := ocmClient.GetAddOnInstallation(clusterKey, awsCreator, addOnID)
+	addOnInstallation, err := ocmClient.GetAddOnInstallation(clusterKey, awsCreator.AccountID, addOnID)
 	if err != nil {
 		reporter.Errorf("Failed to get add-on '%s' installation: %v", addOnID, err)
 		os.Exit(1)
@@ -255,7 +255,7 @@ func run(cmd *cobra.Command, argv []string) {
 	})
 
 	reporter.Debugf("Updating add-on parameters for '%s' on cluster '%s'", addOnID, clusterKey)
-	err = ocmClient.UpdateAddOnInstallation(clusterKey, awsCreator, addOnID, params)
+	err = ocmClient.UpdateAddOnInstallation(clusterKey, awsCreator.AccountID, addOnID, params)
 	if err != nil {
 		reporter.Errorf("Failed to update add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
 		os.Exit(1)

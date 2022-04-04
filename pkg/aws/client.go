@@ -19,6 +19,7 @@ package aws
 import (
 	"errors"
 	"fmt"
+	"github.com/openshift/rosa/pkg/helper"
 	"net/http"
 	"os"
 	"strings"
@@ -85,7 +86,7 @@ type Client interface {
 	ValidateCredentials() (isValid bool, err error)
 	EnsureOsdCcsAdminUser(stackName string, adminUserName string, awsRegion string) (bool, error)
 	DeleteOsdCcsAdminUser(stackName string) error
-	GetAWSAccessKeys() (*AccessKey, error)
+	GetAWSAccessKeys() (*helper.AccessKey, error)
 	GetCreator() (*Creator, error)
 	ValidateSCP(*string) (bool, error)
 	GetSubnetIDs() ([]*ec2.Subnet, error)
@@ -140,7 +141,7 @@ type Client interface {
 type ClientBuilder struct {
 	logger      *logrus.Logger
 	region      *string
-	credentials *AccessKey
+	credentials *helper.AccessKey
 }
 
 type awsClient struct {
@@ -152,7 +153,7 @@ type awsClient struct {
 	cfClient            cloudformationiface.CloudFormationAPI
 	servicequotasClient servicequotasiface.ServiceQuotasAPI
 	awsSession          *session.Session
-	awsAccessKeys       *AccessKey
+	awsAccessKeys       *helper.AccessKey
 }
 
 func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) Client {
@@ -181,7 +182,7 @@ func New(
 	cfClient cloudformationiface.CloudFormationAPI,
 	servicequotasClient servicequotasiface.ServiceQuotasAPI,
 	awsSession *session.Session,
-	awsAccessKeys *AccessKey,
+	awsAccessKeys *helper.AccessKey,
 
 ) Client {
 	return &awsClient{
@@ -208,14 +209,14 @@ func (b *ClientBuilder) Region(value string) *ClientBuilder {
 	return b
 }
 
-func (b *ClientBuilder) AccessKeys(value *AccessKey) *ClientBuilder {
+func (b *ClientBuilder) AccessKeys(value *helper.AccessKey) *ClientBuilder {
 	// fmt.Printf("Using new access key %s\n", value.AccessKeyID)
 	b.credentials = value
 	return b
 }
 
 // Create AWS session with a specific set of credentials
-func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey) (*session.Session, error) {
+func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *helper.AccessKey) (*session.Session, error) {
 	return session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
 			CredentialsChainVerboseErrors: aws.Bool(true),
@@ -463,17 +464,12 @@ func (c *awsClient) TagUserRegion(username string, region string) error {
 	return nil
 }
 
-type AccessKey struct {
-	AccessKeyID     string
-	SecretAccessKey string
-}
-
 // GetAWSAccessKeys uses UpsertAccessKey to delete and create new access keys
 // for `osdCcsAdmin` each time we use the client to create a cluster.
 // There is no need to permanently store these credentials since they are only used
 // on create, the cluster uses a completely different set of IAM credentials
 // provisioned by this user.
-func (c *awsClient) GetAWSAccessKeys() (*AccessKey, error) {
+func (c *awsClient) GetAWSAccessKeys() (*helper.AccessKey, error) {
 	if c.awsAccessKeys != nil {
 		return c.awsAccessKeys, nil
 	}
@@ -495,7 +491,7 @@ func (c *awsClient) GetAWSAccessKeys() (*AccessKey, error) {
 
 // ValidateAccessKeys deals with AWS' eventual consistency, its attempts to call
 // GetCallerIdentity and will try again if the error is access denied.
-func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
+func (c *awsClient) ValidateAccessKeys(AccessKey *helper.AccessKey) error {
 	logger, err := logging.NewLogger().
 		Build()
 	if err != nil {
@@ -551,7 +547,7 @@ func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
 // UpsertAccessKey first deletes all access keys attached to `username` and then creates a
 // new access key. DeleteAccessKey ensures we own the user before proceeding to delete
 // access keys
-func (c *awsClient) UpsertAccessKey(username string) (*AccessKey, error) {
+func (c *awsClient) UpsertAccessKey(username string) (*helper.AccessKey, error) {
 	err := c.DeleteAccessKeys(username)
 	if err != nil {
 		return nil, err
@@ -562,7 +558,7 @@ func (c *awsClient) UpsertAccessKey(username string) (*AccessKey, error) {
 		return nil, err
 	}
 
-	return &AccessKey{
+	return &helper.AccessKey{
 		AccessKeyID:     *createAccessKeyOutput.AccessKey.AccessKeyId,
 		SecretAccessKey: *createAccessKeyOutput.AccessKey.SecretAccessKey,
 	}, nil

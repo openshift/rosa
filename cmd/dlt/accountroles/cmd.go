@@ -111,7 +111,7 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Failed to get IAM credentials: %s", err)
 		os.Exit(1)
 	}
-	clusters, err := ocmClient.GetAllClusters(creator)
+	clusters, err := ocmClient.GetAllClusters(creator.AccountID)
 	if err != nil {
 		reporter.Errorf("Error getting clusters %s", err)
 		os.Exit(1)

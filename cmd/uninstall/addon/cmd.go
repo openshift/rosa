@@ -96,7 +96,7 @@ func run(_ *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator.AccountID)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -107,7 +107,7 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	addOn, err := ocmClient.GetAddOnInstallation(clusterKey, awsCreator, addOnID)
+	addOn, err := ocmClient.GetAddOnInstallation(clusterKey, awsCreator.AccountID, addOnID)
 	if addOn == nil {
 		reporter.Warnf("Addon '%s' is not installed on cluster '%s'", addOnID, clusterKey)
 		os.Exit(0)
@@ -118,7 +118,7 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Uninstalling add-on '%s' from cluster '%s'", addOnID, clusterKey)
-	err = ocmClient.UninstallAddOn(clusterKey, awsCreator, addOnID)
+	err = ocmClient.UninstallAddOn(clusterKey, awsCreator.AccountID, addOnID)
 	if err != nil {
 		reporter.Errorf("Failed to remove add-on installation '%s' from cluster '%s': %s", addOnID, clusterKey, err)
 		os.Exit(1)

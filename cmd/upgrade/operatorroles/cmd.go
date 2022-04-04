@@ -125,7 +125,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, creator)
+	cluster, err := ocmClient.GetCluster(clusterKey, creator.AccountID)
 	if err != nil {
 		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)

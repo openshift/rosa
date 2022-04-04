@@ -76,7 +76,7 @@ func clusterCompletion(cmd *cobra.Command, args []string, toComplete string) ([]
 		return []string{}, cobra.ShellCompDirectiveDefault
 	}
 
-	clusters, err := ocmClient.GetClusters(awsCreator, 10)
+	clusters, err := ocmClient.GetClusters(awsCreator.AccountID, 10)
 	if err != nil {
 		return []string{}, cobra.ShellCompDirectiveDefault
 	}

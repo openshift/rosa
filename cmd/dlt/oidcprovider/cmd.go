@@ -98,7 +98,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	sub, err := ocmClient.GetClusterUsingSubscription(clusterKey, creator)
+	sub, err := ocmClient.GetClusterUsingSubscription(clusterKey, creator.AccountID)
 	if err != nil {
 		if errors.GetType(err) == errors.Conflict {
 			reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
@@ -113,7 +113,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if sub != nil {
 		clusterID = sub.ClusterID()
 	}
-	c, err := ocmClient.GetClusterByID(clusterID, creator)
+	c, err := ocmClient.GetClusterByID(clusterID, creator.AccountID)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
 			reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)

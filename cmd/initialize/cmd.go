@@ -219,9 +219,15 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Infof("Skipping AWS SCP policies check for '%s'...", aws.AdminUserName)
 	}
 
+	// Get creator ARN to determine existing clusters:
+	awsCreator, err := cfClient.GetCreator()
+	if err != nil {
+		reporter.Infof("Failed to get AWS creator: %v", err)
+	}
+
 	// Check whether the user can create a basic cluster
 	reporter.Infof("Validating cluster creation...")
-	err = simulateCluster(ocmClient, region.Region())
+	err = simulateCluster(ocmClient, region.Region(), awsCreator, cfClient)
 	if err != nil {
 		ocmClient.LogEvent("ROSAInitDryRunFailed", nil)
 		reporter.Warnf("Cluster creation failed. "+
@@ -243,7 +249,7 @@ func deleteStack(awsClient aws.Client, ocmClient *ocm.Client) error {
 	}
 
 	// Check whether the account has clusters:
-	hasClusters, err := ocmClient.HasClusters(awsCreator)
+	hasClusters, err := ocmClient.HasClusters(awsCreator.AccountID)
 	if err != nil {
 		return fmt.Errorf("Failed to check for clusters: %v", err)
 	}
@@ -262,7 +268,7 @@ func deleteStack(awsClient aws.Client, ocmClient *ocm.Client) error {
 	return nil
 }
 
-func simulateCluster(ocmClient *ocm.Client, region string) error {
+func simulateCluster(ocmClient *ocm.Client, region string, creator *aws.Creator, awsClient aws.Client) error {
 	dryRun := true
 	if region == "" {
 		region = aws.DefaultRegion
@@ -273,7 +279,14 @@ func simulateCluster(ocmClient *ocm.Client, region string) error {
 		DryRun: &dryRun,
 	}
 
-	_, err := ocmClient.CreateCluster(spec)
+	// Create the access key for the AWS user:
+	awsAccessKey, err := awsClient.GetAWSAccessKeys()
+	if err != nil {
+		return fmt.Errorf("Failed to get access keys for user '%s': %v",
+			aws.AdminUserName, err)
+	}
+
+	_, err = ocmClient.CreateCluster(spec, creator.AccountID, creator.ARN, *awsAccessKey)
 	if err != nil {
 		return err
 	}

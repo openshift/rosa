@@ -19,8 +19,6 @@ package ocm
 import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-
-	"github.com/openshift/rosa/pkg/aws"
 )
 
 type AddOnParam struct {
@@ -40,9 +38,9 @@ type ClusterAddOn struct {
 	State string
 }
 
-func (c *Client) InstallAddOn(clusterKey string, creator *aws.Creator, addOnID string,
+func (c *Client) InstallAddOn(clusterKey string, accountID string, addOnID string,
 	params []AddOnParam) error {
-	cluster, err := c.GetCluster(clusterKey, creator)
+	cluster, err := c.GetCluster(clusterKey, accountID)
 	if err != nil {
 		return err
 	}
@@ -78,8 +76,8 @@ func (c *Client) InstallAddOn(clusterKey string, creator *aws.Creator, addOnID s
 	return nil
 }
 
-func (c *Client) UninstallAddOn(clusterKey string, creator *aws.Creator, addOnID string) error {
-	cluster, err := c.GetCluster(clusterKey, creator)
+func (c *Client) UninstallAddOn(clusterKey string, accountID string, addOnID string) error {
+	cluster, err := c.GetCluster(clusterKey, accountID)
 	if err != nil {
 		return err
 	}
@@ -98,9 +96,9 @@ func (c *Client) UninstallAddOn(clusterKey string, creator *aws.Creator, addOnID
 	return nil
 }
 
-func (c *Client) GetAddOnInstallation(clusterKey string, creator *aws.Creator,
+func (c *Client) GetAddOnInstallation(clusterKey string, accountID string,
 	addOnID string) (*cmv1.AddOnInstallation, error) {
-	cluster, err := c.GetCluster(clusterKey, creator)
+	cluster, err := c.GetCluster(clusterKey, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -119,9 +117,9 @@ func (c *Client) GetAddOnInstallation(clusterKey string, creator *aws.Creator,
 	return response.Body(), nil
 }
 
-func (c *Client) UpdateAddOnInstallation(clusterKey string, creator *aws.Creator, addOnID string,
+func (c *Client) UpdateAddOnInstallation(clusterKey string, accountID string, addOnID string,
 	params []AddOnParam) error {
-	cluster, err := c.GetCluster(clusterKey, creator)
+	cluster, err := c.GetCluster(clusterKey, accountID)
 	if err != nil {
 		return err
 	}

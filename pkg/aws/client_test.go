@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -37,7 +38,7 @@ var _ = Describe("Client", func() {
 			mockCfAPI,
 			mocks.NewMockServiceQuotasAPI(mockCtrl),
 			&session.Session{},
-			&aws.AccessKey{},
+			&helper.AccessKey{},
 		)
 	})
 
