@@ -36,6 +36,10 @@ func AddFlag(flags *pflag.FlagSet) {
 	)
 }
 
+func Yes() bool {
+	return yes
+}
+
 func Confirm(q string, v ...interface{}) bool {
 	msg := fmt.Sprintf("Are you sure you want to %s?", fmt.Sprintf(q, v...))
 	return Prompt(false, msg)

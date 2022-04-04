@@ -663,16 +663,21 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 			reporter.Warnf("More than one %s role found", role.Name)
-			roleARN, err = interactive.GetOption(interactive.Input{
-				Question: fmt.Sprintf("%s role ARN", role.Name),
-				Help:     cmd.Flags().Lookup(role.Flag).Usage,
-				Options:  roleARNs,
-				Default:  defaultRoleARN,
-				Required: true,
-			})
-			if err != nil {
-				reporter.Errorf("Expected a valid role ARN: %s", err)
-				os.Exit(1)
+			if !interactive.Enabled() && confirm.Yes() {
+				reporter.Infof("Using %s for the %s role", defaultRoleARN, role.Name)
+				roleARN = defaultRoleARN
+			} else {
+				roleARN, err = interactive.GetOption(interactive.Input{
+					Question: fmt.Sprintf("%s role ARN", role.Name),
+					Help:     cmd.Flags().Lookup(role.Flag).Usage,
+					Options:  roleARNs,
+					Default:  defaultRoleARN,
+					Required: true,
+				})
+				if err != nil {
+					reporter.Errorf("Expected a valid role ARN: %s", err)
+					os.Exit(1)
+				}
 			}
 		} else if len(roleARNs) == 1 {
 			if !output.HasFlag() || reporter.IsTerminal() {
