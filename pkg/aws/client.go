@@ -692,6 +692,7 @@ func buildCustomRetryer() CustomRetryer {
 			NumMaxRetries:    12,
 			MinRetryDelay:    1 * time.Second,
 			MinThrottleDelay: 5 * time.Second,
+			MaxThrottleDelay: 5 * time.Second,
 		},
 	}
 }
