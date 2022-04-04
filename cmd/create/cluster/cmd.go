@@ -1787,9 +1787,13 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if isSTS {
 		if mode != "" {
-			reporter.Infof("Preparing to create operator roles.")
+			if !output.HasFlag() || reporter.IsTerminal() {
+				reporter.Infof("Preparing to create operator roles.")
+			}
 			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
-			reporter.Infof("Preparing to create OIDC Provider.")
+			if !output.HasFlag() || reporter.IsTerminal() {
+				reporter.Infof("Preparing to create OIDC Provider.")
+			}
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode})
 		} else {
 			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
