@@ -35,6 +35,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -169,7 +170,9 @@ func run(cmd *cobra.Command, argv []string) {
 				"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
 			os.Exit(1)
 		}
-		reporter.Infof("Creating OIDC provider using '%s'", creator.ARN)
+		if !output.HasFlag() || reporter.IsTerminal() {
+			reporter.Infof("Creating OIDC provider using '%s'", creator.ARN)
+		}
 		if !confirm.Prompt(true, "Create the OIDC provider for cluster '%s'?", clusterKey) {
 			os.Exit(0)
 		}
@@ -223,7 +226,9 @@ func createProvider(reporter *rprtr.Object, awsClient aws.Client, cluster *cmv1.
 	if err != nil {
 		return err
 	}
-	reporter.Infof("Created OIDC provider with ARN '%s'", oidcProviderARN)
+	if !output.HasFlag() || reporter.IsTerminal() {
+		reporter.Infof("Created OIDC provider with ARN '%s'", oidcProviderARN)
+	}
 
 	return nil
 }

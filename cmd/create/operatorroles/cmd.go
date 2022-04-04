@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -227,7 +228,9 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	switch mode {
 	case aws.ModeAuto:
-		reporter.Infof("Creating roles using '%s'", creator.ARN)
+		if !output.HasFlag() || reporter.IsTerminal() {
+			reporter.Infof("Creating roles using '%s'", creator.ARN)
+		}
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID,
 			accountRoleVersion)
 		if err != nil {
@@ -325,7 +328,9 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		if err != nil {
 			return err
 		}
-		reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
+		if !output.HasFlag() || reporter.IsTerminal() {
+			reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
+		}
 
 		reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
 		err = awsClient.AttachRolePolicy(roleName, policyARN)
