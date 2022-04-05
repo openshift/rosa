@@ -2,6 +2,29 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.1.12 Apr 5 2022
+
+- Sort roles to display linked ones first
+- Refactor `list ocm-role` to use a map of linked role
+- Add quota service permissions to the `installer policy`
+- Set minimum retry delay for AWS API calls
+- Introducing HTPasswd IDP
+- Fix help for --compute-nodes
+- Add KMS permission to installer and more permissions for ocm role
+- added link to help menu
+- Permit overriding confirmation prompt for cluster upgrades
+- Fix bug - create ocm-role - prompt the role ARN
+- add more permissions to ocm admin role
+- Add support for 4.10 upgrade
+- fix throttle delay
+- fix cluster creation hanging with auto+watch flags
+- fix early exit in cluster creation(json+mode=auto)
+- sts: Automatically select default account roles
+- fix json output for cluster creation
+- Add max throttle delay to avoid exponential backoff
+- Get Cluster Name from Name Instead of DisplayName
+- update to ocm-sdk-go v0.1.258
+
 == 1.1.11 Mar 7 2022
 
 - fix operator roles issue for old rosa versions
