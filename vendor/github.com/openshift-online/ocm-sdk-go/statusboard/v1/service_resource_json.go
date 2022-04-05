@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readServiceDeleteRequest(request *ServiceDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeServiceDeleteRequest(request *ServiceDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readServiceDeleteResponse(response *ServiceDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeServiceDeleteResponse(response *ServiceDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readServiceGetRequest(request *ServiceGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeServiceGetRequest(request *ServiceGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readServiceGetResponse(response *ServiceGetResponse, reader io.Reader) erro
 	response.body, err = UnmarshalService(reader)
 	return err
 }
-func writeServiceGetResponse(response *ServiceGetServerResponse, w http.ResponseWriter) error {
-	return MarshalService(response.body, w)
-}
-func readServiceUpdateRequest(request *ServiceUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalService(r.Body)
-	return err
-}
 func writeServiceUpdateRequest(request *ServiceUpdateRequest, writer io.Writer) error {
 	return MarshalService(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readServiceUpdateResponse(response *ServiceUpdateResponse, reader io.Reader
 	var err error
 	response.body, err = UnmarshalService(reader)
 	return err
-}
-func writeServiceUpdateResponse(response *ServiceUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalService(response.body, w)
 }

@@ -18,11 +18,16 @@
 export CGO_ENABLED=0
 
 # Details of the model to use:
-model_version:=v0.0.183
+model_version:=v0.0.189
 model_url:=https://github.com/openshift-online/ocm-api-model.git
 
 # Details of the metamodel to use:
-metamodel_version:=v0.0.52
+metamodel_version:=v0.0.54
+
+# Additional flags to pass to the `ginkgo` command. This is used in the GitHub
+# actions environment to skip tests that are sensitive to the speed of the
+# machine: the leadership flag and retry tests.
+ginkgo_flags:=
 
 .PHONY: examples
 examples:
@@ -33,7 +38,7 @@ examples:
 
 .PHONY: test tests
 test tests:
-	ginkgo run -r
+	ginkgo run -r $(ginkgo_flags)
 
 .PHONY: fmt
 fmt:
@@ -55,6 +60,8 @@ generate: model metamodel
 		jobqueue \
 		servicelogs \
 		servicemgmt \
+		statusboard \
+		webrca \
 		openapi
 	metamodel generate go \
 		--model=model/model \

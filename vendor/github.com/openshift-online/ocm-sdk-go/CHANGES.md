@@ -3,6 +3,45 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.258 Apr 5 2022
+
+- Update to model 0.0.189:
+  - Added QuotaRules to ocm-sdk-go
+  - Added no_proxy field to the proxy project
+  - Added errors resource.
+  - Added errors support for status-board.
+
+## 0.1.257 Apr 1 2022
+
+- Add `web-rca` examples.
+- Update to metamodel 0.0.53:
+  - Don't consider `Status` and `Error` built-in request parameters.
+- Update to metamodel 0.0.54:
+  - Remove generation of experimental server code.
+- Update to model 0.0.188:
+  - Add Status query param for incidents resource.
+
+## 0.1.256 Mar 31 2022
+
+- Update to model 0.0.187:
+  - Add new `web-rca` service.
+
+## 0.1.255 Mar 30 2022
+
+- Update to model 0.0.186:
+  - Add ManagementCluster to ProvisionShard
+
+
+## 0.1.254 Mar 30 2022
+
+- Update to model 0.0.185:
+  - Fixes to Cloud Resources endpoints.
+
+## 0.1.253 Mar 29 2022
+
+- Update to model 0.1.184:
+  - Adding Cloud Resources endpoints.
+
 ## 0.1.252 Mar 17 2022
 
 - Update to model 0.1.183:

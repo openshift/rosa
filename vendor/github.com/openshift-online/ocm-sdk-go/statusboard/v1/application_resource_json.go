@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readApplicationDeleteRequest(request *ApplicationDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeApplicationDeleteRequest(request *ApplicationDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readApplicationDeleteResponse(response *ApplicationDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeApplicationDeleteResponse(response *ApplicationDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readApplicationGetRequest(request *ApplicationGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeApplicationGetRequest(request *ApplicationGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readApplicationGetResponse(response *ApplicationGetResponse, reader io.Read
 	response.body, err = UnmarshalApplication(reader)
 	return err
 }
-func writeApplicationGetResponse(response *ApplicationGetServerResponse, w http.ResponseWriter) error {
-	return MarshalApplication(response.body, w)
-}
-func readApplicationUpdateRequest(request *ApplicationUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalApplication(r.Body)
-	return err
-}
 func writeApplicationUpdateRequest(request *ApplicationUpdateRequest, writer io.Writer) error {
 	return MarshalApplication(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readApplicationUpdateResponse(response *ApplicationUpdateResponse, reader i
 	var err error
 	response.body, err = UnmarshalApplication(reader)
 	return err
-}
-func writeApplicationUpdateResponse(response *ApplicationUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalApplication(response.body, w)
 }

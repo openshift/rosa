@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readVersionGateDeleteRequest(request *VersionGateDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeVersionGateDeleteRequest(request *VersionGateDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readVersionGateDeleteResponse(response *VersionGateDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeVersionGateDeleteResponse(response *VersionGateDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readVersionGateGetRequest(request *VersionGateGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeVersionGateGetRequest(request *VersionGateGetRequest, writer io.Writer) error {
@@ -46,7 +34,4 @@ func readVersionGateGetResponse(response *VersionGateGetResponse, reader io.Read
 	var err error
 	response.body, err = UnmarshalVersionGate(reader)
 	return err
-}
-func writeVersionGateGetResponse(response *VersionGateGetServerResponse, w http.ResponseWriter) error {
-	return MarshalVersionGate(response.body, w)
 }

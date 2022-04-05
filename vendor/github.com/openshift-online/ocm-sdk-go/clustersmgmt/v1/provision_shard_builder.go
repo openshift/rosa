@@ -32,6 +32,7 @@ type ProvisionShardBuilder struct {
 	gcpProjectOperator       *ServerConfigBuilder
 	cloudProvider            *CloudProviderBuilder
 	hiveConfig               *ServerConfigBuilder
+	managementCluster        string
 	region                   *CloudRegionBuilder
 }
 
@@ -135,15 +136,24 @@ func (b *ProvisionShardBuilder) HiveConfig(value *ServerConfigBuilder) *Provisio
 	return b
 }
 
+// ManagementCluster sets the value of the 'management_cluster' attribute to the given value.
+//
+//
+func (b *ProvisionShardBuilder) ManagementCluster(value string) *ProvisionShardBuilder {
+	b.managementCluster = value
+	b.bitmap_ |= 512
+	return b
+}
+
 // Region sets the value of the 'region' attribute to the given value.
 //
 // Description of a region of a cloud provider.
 func (b *ProvisionShardBuilder) Region(value *CloudRegionBuilder) *ProvisionShardBuilder {
 	b.region = value
 	if value != nil {
-		b.bitmap_ |= 512
+		b.bitmap_ |= 1024
 	} else {
-		b.bitmap_ &^= 512
+		b.bitmap_ &^= 1024
 	}
 	return b
 }
@@ -178,6 +188,7 @@ func (b *ProvisionShardBuilder) Copy(object *ProvisionShard) *ProvisionShardBuil
 	} else {
 		b.hiveConfig = nil
 	}
+	b.managementCluster = object.managementCluster
 	if object.region != nil {
 		b.region = NewCloudRegion().Copy(object.region)
 	} else {
@@ -218,6 +229,7 @@ func (b *ProvisionShardBuilder) Build() (object *ProvisionShard, err error) {
 			return
 		}
 	}
+	object.managementCluster = b.managementCluster
 	if b.region != nil {
 		object.region, err = b.region.Build()
 		if err != nil {

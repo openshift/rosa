@@ -19,20 +19,11 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readOperatorIAMRoleDeleteRequest(request *OperatorIAMRoleDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeOperatorIAMRoleDeleteRequest(request *OperatorIAMRoleDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readOperatorIAMRoleDeleteResponse(response *OperatorIAMRoleDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeOperatorIAMRoleDeleteResponse(response *OperatorIAMRoleDeleteServerResponse, w http.ResponseWriter) error {
 	return nil
 }

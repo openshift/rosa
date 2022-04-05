@@ -21,16 +21,10 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"net/http"
 
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-func readVersionGateAgreementsAddRequest(request *VersionGateAgreementsAddServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalVersionGateAgreement(r.Body)
-	return err
-}
 func writeVersionGateAgreementsAddRequest(request *VersionGateAgreementsAddRequest, writer io.Writer) error {
 	return MarshalVersionGateAgreement(request.body, writer)
 }
@@ -38,28 +32,6 @@ func readVersionGateAgreementsAddResponse(response *VersionGateAgreementsAddResp
 	var err error
 	response.body, err = UnmarshalVersionGateAgreement(reader)
 	return err
-}
-func writeVersionGateAgreementsAddResponse(response *VersionGateAgreementsAddServerResponse, w http.ResponseWriter) error {
-	return MarshalVersionGateAgreement(response.body, w)
-}
-func readVersionGateAgreementsListRequest(request *VersionGateAgreementsListServerRequest, r *http.Request) error {
-	var err error
-	query := r.URL.Query()
-	request.page, err = helpers.ParseInteger(query, "page")
-	if err != nil {
-		return err
-	}
-	if request.page == nil {
-		request.page = helpers.NewInteger(1)
-	}
-	request.size, err = helpers.ParseInteger(query, "size")
-	if err != nil {
-		return err
-	}
-	if request.size == nil {
-		request.size = helpers.NewInteger(100)
-	}
-	return nil
 }
 func writeVersionGateAgreementsListRequest(request *VersionGateAgreementsListRequest, writer io.Writer) error {
 	return nil
@@ -94,59 +66,4 @@ func readVersionGateAgreementsListResponse(response *VersionGateAgreementsListRe
 		}
 	}
 	return iterator.Error
-}
-func writeVersionGateAgreementsListResponse(response *VersionGateAgreementsListServerResponse, w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(response.status)
-	stream := helpers.NewStream(w)
-	stream.WriteObjectStart()
-	stream.WriteObjectField("kind")
-	count := 1
-	stream.WriteString(VersionGateAgreementListKind)
-	if response.items != nil && response.items.href != "" {
-		stream.WriteMore()
-		stream.WriteObjectField("href")
-		stream.WriteString(response.items.href)
-		count++
-	}
-	if response.page != nil {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("page")
-		stream.WriteInt(*response.page)
-		count++
-	}
-	if response.size != nil {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("size")
-		stream.WriteInt(*response.size)
-		count++
-	}
-	if response.total != nil {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("total")
-		stream.WriteInt(*response.total)
-		count++
-	}
-	if response.items != nil {
-		if response.items.items != nil {
-			if count > 0 {
-				stream.WriteMore()
-			}
-			stream.WriteObjectField("items")
-			writeVersionGateAgreementList(response.items.items, stream)
-			count++
-		}
-	}
-	stream.WriteObjectEnd()
-	err := stream.Flush()
-	if err != nil {
-		return err
-	}
-	return stream.Error
 }

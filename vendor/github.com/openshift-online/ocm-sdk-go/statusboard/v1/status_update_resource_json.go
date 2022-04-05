@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readStatusUpdateDeleteRequest(request *StatusUpdateDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeStatusUpdateDeleteRequest(request *StatusUpdateDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readStatusUpdateDeleteResponse(response *StatusUpdateDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeStatusUpdateDeleteResponse(response *StatusUpdateDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readStatusUpdateGetRequest(request *StatusUpdateGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeStatusUpdateGetRequest(request *StatusUpdateGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readStatusUpdateGetResponse(response *StatusUpdateGetResponse, reader io.Re
 	response.body, err = UnmarshalStatus(reader)
 	return err
 }
-func writeStatusUpdateGetResponse(response *StatusUpdateGetServerResponse, w http.ResponseWriter) error {
-	return MarshalStatus(response.body, w)
-}
-func readStatusUpdateUpdateRequest(request *StatusUpdateUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalStatus(r.Body)
-	return err
-}
 func writeStatusUpdateUpdateRequest(request *StatusUpdateUpdateRequest, writer io.Writer) error {
 	return MarshalStatus(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readStatusUpdateUpdateResponse(response *StatusUpdateUpdateResponse, reader
 	var err error
 	response.body, err = UnmarshalStatus(reader)
 	return err
-}
-func writeStatusUpdateUpdateResponse(response *StatusUpdateUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalStatus(response.body, w)
 }

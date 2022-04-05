@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readProductDeleteRequest(request *ProductDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeProductDeleteRequest(request *ProductDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readProductDeleteResponse(response *ProductDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeProductDeleteResponse(response *ProductDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readProductGetRequest(request *ProductGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeProductGetRequest(request *ProductGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readProductGetResponse(response *ProductGetResponse, reader io.Reader) erro
 	response.body, err = UnmarshalProduct(reader)
 	return err
 }
-func writeProductGetResponse(response *ProductGetServerResponse, w http.ResponseWriter) error {
-	return MarshalProduct(response.body, w)
-}
-func readProductUpdateRequest(request *ProductUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalProduct(r.Body)
-	return err
-}
 func writeProductUpdateRequest(request *ProductUpdateRequest, writer io.Writer) error {
 	return MarshalProduct(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readProductUpdateResponse(response *ProductUpdateResponse, reader io.Reader
 	var err error
 	response.body, err = UnmarshalProduct(reader)
 	return err
-}
-func writeProductUpdateResponse(response *ProductUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalProduct(response.body, w)
 }

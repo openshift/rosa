@@ -26,6 +26,7 @@ type ProxyBuilder struct {
 	bitmap_    uint32
 	httpProxy  string
 	httpsProxy string
+	noProxy    string
 }
 
 // NewProxy creates a new builder of 'proxy' objects.
@@ -56,6 +57,15 @@ func (b *ProxyBuilder) HTTPSProxy(value string) *ProxyBuilder {
 	return b
 }
 
+// NoProxy sets the value of the 'no_proxy' attribute to the given value.
+//
+//
+func (b *ProxyBuilder) NoProxy(value string) *ProxyBuilder {
+	b.noProxy = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *ProxyBuilder) Copy(object *Proxy) *ProxyBuilder {
 	if object == nil {
@@ -64,6 +74,7 @@ func (b *ProxyBuilder) Copy(object *Proxy) *ProxyBuilder {
 	b.bitmap_ = object.bitmap_
 	b.httpProxy = object.httpProxy
 	b.httpsProxy = object.httpsProxy
+	b.noProxy = object.noProxy
 	return b
 }
 
@@ -73,5 +84,6 @@ func (b *ProxyBuilder) Build() (object *Proxy, err error) {
 	object.bitmap_ = b.bitmap_
 	object.httpProxy = b.httpProxy
 	object.httpsProxy = b.httpsProxy
+	object.noProxy = b.noProxy
 	return
 }
