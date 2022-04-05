@@ -70,6 +70,16 @@ func (c *Client) Accounts() *AccountsClient {
 	)
 }
 
+// CloudResources returns the target 'cloud_resources' resource.
+//
+// Reference to the resource that manages the collection of cloud resources.
+func (c *Client) CloudResources() *CloudResourcesClient {
+	return NewCloudResourcesClient(
+		c.transport,
+		path.Join(c.path, "cloud_resources"),
+	)
+}
+
 // ClusterAuthorizations returns the target 'cluster_authorizations' resource.
 //
 // Reference to the resource that manages cluster authorizations.

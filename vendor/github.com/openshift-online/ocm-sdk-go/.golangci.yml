@@ -26,6 +26,7 @@ run:
   - servicelogs
   - servicemgmt
   - statusboard
+  - webrca
   skip-files:
   - server.go
   deadline: 15m

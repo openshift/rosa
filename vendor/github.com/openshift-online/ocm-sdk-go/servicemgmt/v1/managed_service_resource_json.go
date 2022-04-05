@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/servicemgmt/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readManagedServiceDeleteRequest(request *ManagedServiceDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeManagedServiceDeleteRequest(request *ManagedServiceDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readManagedServiceDeleteResponse(response *ManagedServiceDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeManagedServiceDeleteResponse(response *ManagedServiceDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readManagedServiceGetRequest(request *ManagedServiceGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeManagedServiceGetRequest(request *ManagedServiceGetRequest, writer io.Writer) error {
@@ -46,7 +34,4 @@ func readManagedServiceGetResponse(response *ManagedServiceGetResponse, reader i
 	var err error
 	response.body, err = UnmarshalManagedService(reader)
 	return err
-}
-func writeManagedServiceGetResponse(response *ManagedServiceGetServerResponse, w http.ResponseWriter) error {
-	return MarshalManagedService(response.body, w)
 }

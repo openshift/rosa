@@ -19,16 +19,8 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readNotifyAddRequest(request *NotifyAddServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalSubscriptionNotify(r.Body)
-	return err
-}
 func writeNotifyAddRequest(request *NotifyAddRequest, writer io.Writer) error {
 	return MarshalSubscriptionNotify(request.body, writer)
 }
@@ -36,7 +28,4 @@ func readNotifyAddResponse(response *NotifyAddResponse, reader io.Reader) error 
 	var err error
 	response.body, err = UnmarshalSubscriptionNotify(reader)
 	return err
-}
-func writeNotifyAddResponse(response *NotifyAddServerResponse, w http.ResponseWriter) error {
-	return MarshalSubscriptionNotify(response.body, w)
 }

@@ -43,6 +43,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/servicelogs"
 	"github.com/openshift-online/ocm-sdk-go/servicemgmt"
 	"github.com/openshift-online/ocm-sdk-go/statusboard"
+	"github.com/openshift-online/ocm-sdk-go/webrca"
 )
 
 // Default values:
@@ -995,6 +996,11 @@ func (c *Connection) StatusBoard() *statusboard.Client {
 // ServiceMgmt returns the client for the service management service.
 func (c *Connection) ServiceMgmt() *servicemgmt.Client {
 	return servicemgmt.NewClient(c, "/api/service_mgmt")
+}
+
+// WebRCA returns the client for the web RCA service.
+func (c *Connection) WebRCA() *webrca.Client {
+	return webrca.NewClient(c, "/api/web-rca")
 }
 
 // Close releases all the resources used by the connection. It is very important to always close it

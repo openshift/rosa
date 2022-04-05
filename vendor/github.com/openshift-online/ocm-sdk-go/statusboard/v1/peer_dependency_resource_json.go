@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readPeerDependencyDeleteRequest(request *PeerDependencyDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writePeerDependencyDeleteRequest(request *PeerDependencyDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readPeerDependencyDeleteResponse(response *PeerDependencyDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writePeerDependencyDeleteResponse(response *PeerDependencyDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readPeerDependencyGetRequest(request *PeerDependencyGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writePeerDependencyGetRequest(request *PeerDependencyGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readPeerDependencyGetResponse(response *PeerDependencyGetResponse, reader i
 	response.body, err = UnmarshalService(reader)
 	return err
 }
-func writePeerDependencyGetResponse(response *PeerDependencyGetServerResponse, w http.ResponseWriter) error {
-	return MarshalService(response.body, w)
-}
-func readPeerDependencyUpdateRequest(request *PeerDependencyUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalPeerDependency(r.Body)
-	return err
-}
 func writePeerDependencyUpdateRequest(request *PeerDependencyUpdateRequest, writer io.Writer) error {
 	return MarshalPeerDependency(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readPeerDependencyUpdateResponse(response *PeerDependencyUpdateResponse, re
 	var err error
 	response.body, err = UnmarshalPeerDependency(reader)
 	return err
-}
-func writePeerDependencyUpdateResponse(response *PeerDependencyUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalPeerDependency(response.body, w)
 }

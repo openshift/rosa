@@ -19,28 +19,14 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readEnvironmentGetRequest(request *EnvironmentGetServerRequest, r *http.Request) error {
-	return nil
-}
 func writeEnvironmentGetRequest(request *EnvironmentGetRequest, writer io.Writer) error {
 	return nil
 }
 func readEnvironmentGetResponse(response *EnvironmentGetResponse, reader io.Reader) error {
 	var err error
 	response.body, err = UnmarshalEnvironment(reader)
-	return err
-}
-func writeEnvironmentGetResponse(response *EnvironmentGetServerResponse, w http.ResponseWriter) error {
-	return MarshalEnvironment(response.body, w)
-}
-func readEnvironmentUpdateRequest(request *EnvironmentUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalEnvironment(r.Body)
 	return err
 }
 func writeEnvironmentUpdateRequest(request *EnvironmentUpdateRequest, writer io.Writer) error {
@@ -50,7 +36,4 @@ func readEnvironmentUpdateResponse(response *EnvironmentUpdateResponse, reader i
 	var err error
 	response.body, err = UnmarshalEnvironment(reader)
 	return err
-}
-func writeEnvironmentUpdateResponse(response *EnvironmentUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalEnvironment(response.body, w)
 }

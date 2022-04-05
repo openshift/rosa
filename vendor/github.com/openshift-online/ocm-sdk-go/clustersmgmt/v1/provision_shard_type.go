@@ -44,6 +44,7 @@ type ProvisionShard struct {
 	gcpProjectOperator       *ServerConfig
 	cloudProvider            *CloudProvider
 	hiveConfig               *ServerConfig
+	managementCluster        string
 	region                   *CloudRegion
 }
 
@@ -242,12 +243,37 @@ func (o *ProvisionShard) GetHiveConfig() (value *ServerConfig, ok bool) {
 	return
 }
 
+// ManagementCluster returns the value of the 'management_cluster' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Contains the name of the managment cluster for Hypershift clusters that are assigned to this shard.
+// This field is populated by OCM, and must not be overwritten via API.
+func (o *ProvisionShard) ManagementCluster() string {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.managementCluster
+	}
+	return ""
+}
+
+// GetManagementCluster returns the value of the 'management_cluster' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Contains the name of the managment cluster for Hypershift clusters that are assigned to this shard.
+// This field is populated by OCM, and must not be overwritten via API.
+func (o *ProvisionShard) GetManagementCluster() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.managementCluster
+	}
+	return
+}
+
 // Region returns the value of the 'region' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Contains the cloud-provider region in which the provisioner spins up the cluster
 func (o *ProvisionShard) Region() *CloudRegion {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.region
 	}
 	return nil
@@ -258,7 +284,7 @@ func (o *ProvisionShard) Region() *CloudRegion {
 //
 // Contains the cloud-provider region in which the provisioner spins up the cluster
 func (o *ProvisionShard) GetRegion() (value *CloudRegion, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.region
 	}

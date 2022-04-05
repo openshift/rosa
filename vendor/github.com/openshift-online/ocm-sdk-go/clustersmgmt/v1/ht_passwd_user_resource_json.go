@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readHTPasswdUserDeleteRequest(request *HTPasswdUserDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeHTPasswdUserDeleteRequest(request *HTPasswdUserDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readHTPasswdUserDeleteResponse(response *HTPasswdUserDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeHTPasswdUserDeleteResponse(response *HTPasswdUserDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readHTPasswdUserGetRequest(request *HTPasswdUserGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeHTPasswdUserGetRequest(request *HTPasswdUserGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readHTPasswdUserGetResponse(response *HTPasswdUserGetResponse, reader io.Re
 	response.body, err = UnmarshalHTPasswdUser(reader)
 	return err
 }
-func writeHTPasswdUserGetResponse(response *HTPasswdUserGetServerResponse, w http.ResponseWriter) error {
-	return MarshalHTPasswdUser(response.body, w)
-}
-func readHTPasswdUserUpdateRequest(request *HTPasswdUserUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalHTPasswdUser(r.Body)
-	return err
-}
 func writeHTPasswdUserUpdateRequest(request *HTPasswdUserUpdateRequest, writer io.Writer) error {
 	return MarshalHTPasswdUser(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readHTPasswdUserUpdateResponse(response *HTPasswdUserUpdateResponse, reader
 	var err error
 	response.body, err = UnmarshalHTPasswdUser(reader)
 	return err
-}
-func writeHTPasswdUserUpdateResponse(response *HTPasswdUserUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalHTPasswdUser(response.body, w)
 }

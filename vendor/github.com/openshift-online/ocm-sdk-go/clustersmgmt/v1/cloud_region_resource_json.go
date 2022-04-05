@@ -19,14 +19,8 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readCloudRegionGetRequest(request *CloudRegionGetServerRequest, r *http.Request) error {
-	return nil
-}
 func writeCloudRegionGetRequest(request *CloudRegionGetRequest, writer io.Writer) error {
 	return nil
 }
@@ -34,7 +28,4 @@ func readCloudRegionGetResponse(response *CloudRegionGetResponse, reader io.Read
 	var err error
 	response.body, err = UnmarshalCloudRegion(reader)
 	return err
-}
-func writeCloudRegionGetResponse(response *CloudRegionGetServerResponse, w http.ResponseWriter) error {
-	return MarshalCloudRegion(response.body, w)
 }

@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readApplicationDependencyDeleteRequest(request *ApplicationDependencyDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeApplicationDependencyDeleteRequest(request *ApplicationDependencyDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readApplicationDependencyDeleteResponse(response *ApplicationDependencyDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeApplicationDependencyDeleteResponse(response *ApplicationDependencyDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readApplicationDependencyGetRequest(request *ApplicationDependencyGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeApplicationDependencyGetRequest(request *ApplicationDependencyGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readApplicationDependencyGetResponse(response *ApplicationDependencyGetResp
 	response.body, err = UnmarshalApplicationDependency(reader)
 	return err
 }
-func writeApplicationDependencyGetResponse(response *ApplicationDependencyGetServerResponse, w http.ResponseWriter) error {
-	return MarshalApplicationDependency(response.body, w)
-}
-func readApplicationDependencyUpdateRequest(request *ApplicationDependencyUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalApplicationDependency(r.Body)
-	return err
-}
 func writeApplicationDependencyUpdateRequest(request *ApplicationDependencyUpdateRequest, writer io.Writer) error {
 	return MarshalApplicationDependency(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readApplicationDependencyUpdateResponse(response *ApplicationDependencyUpda
 	var err error
 	response.body, err = UnmarshalApplicationDependency(reader)
 	return err
-}
-func writeApplicationDependencyUpdateResponse(response *ApplicationDependencyUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalApplicationDependency(response.body, w)
 }

@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readAddOnVersionDeleteRequest(request *AddOnVersionDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeAddOnVersionDeleteRequest(request *AddOnVersionDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readAddOnVersionDeleteResponse(response *AddOnVersionDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeAddOnVersionDeleteResponse(response *AddOnVersionDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readAddOnVersionGetRequest(request *AddOnVersionGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeAddOnVersionGetRequest(request *AddOnVersionGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readAddOnVersionGetResponse(response *AddOnVersionGetResponse, reader io.Re
 	response.body, err = UnmarshalAddOnVersion(reader)
 	return err
 }
-func writeAddOnVersionGetResponse(response *AddOnVersionGetServerResponse, w http.ResponseWriter) error {
-	return MarshalAddOnVersion(response.body, w)
-}
-func readAddOnVersionUpdateRequest(request *AddOnVersionUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalAddOnVersion(r.Body)
-	return err
-}
 func writeAddOnVersionUpdateRequest(request *AddOnVersionUpdateRequest, writer io.Writer) error {
 	return MarshalAddOnVersion(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readAddOnVersionUpdateResponse(response *AddOnVersionUpdateResponse, reader
 	var err error
 	response.body, err = UnmarshalAddOnVersion(reader)
 	return err
-}
-func writeAddOnVersionUpdateResponse(response *AddOnVersionUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalAddOnVersion(response.body, w)
 }

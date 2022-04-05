@@ -32,6 +32,9 @@ var pathTreeData = `{
             }
           }
         },
+        "cloud_resources": {
+          "-": null
+        },
         "cluster_authorizations": null,
         "cluster_registrations": null,
         "current_access": {
@@ -299,6 +302,9 @@ var pathTreeData = `{
             }
           }
         },
+        "errors": {
+          "-": null
+        },
         "peer_dependencies": {
           "-": null
         },
@@ -331,6 +337,33 @@ var pathTreeData = `{
           "-": null
         },
         "statuses": {
+          "-": null
+        }
+      }
+    },
+    "web_rca": {
+      "v1": {
+        "errors": {
+          "-": null
+        },
+        "incidents": {
+          "-": {
+            "events": {
+              "-": {
+                "attachments": {
+                  "-": null
+                }
+              }
+            },
+            "follow_ups": {
+              "-": null
+            },
+            "notifications": {
+              "-": null
+            }
+          }
+        },
+        "users": {
           "-": null
         }
       }

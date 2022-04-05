@@ -21,16 +21,10 @@ package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
 import (
 	"io"
-	"net/http"
 
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-func readApplicationDependenciesAddRequest(request *ApplicationDependenciesAddServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalApplicationDependency(r.Body)
-	return err
-}
 func writeApplicationDependenciesAddRequest(request *ApplicationDependenciesAddRequest, writer io.Writer) error {
 	return MarshalApplicationDependency(request.body, writer)
 }
@@ -38,32 +32,6 @@ func readApplicationDependenciesAddResponse(response *ApplicationDependenciesAdd
 	var err error
 	response.body, err = UnmarshalApplicationDependency(reader)
 	return err
-}
-func writeApplicationDependenciesAddResponse(response *ApplicationDependenciesAddServerResponse, w http.ResponseWriter) error {
-	return MarshalApplicationDependency(response.body, w)
-}
-func readApplicationDependenciesListRequest(request *ApplicationDependenciesListServerRequest, r *http.Request) error {
-	var err error
-	query := r.URL.Query()
-	request.orderBy, err = helpers.ParseString(query, "order_by")
-	if err != nil {
-		return err
-	}
-	request.page, err = helpers.ParseInteger(query, "page")
-	if err != nil {
-		return err
-	}
-	if request.page == nil {
-		request.page = helpers.NewInteger(1)
-	}
-	request.size, err = helpers.ParseInteger(query, "size")
-	if err != nil {
-		return err
-	}
-	if request.size == nil {
-		request.size = helpers.NewInteger(100)
-	}
-	return nil
 }
 func writeApplicationDependenciesListRequest(request *ApplicationDependenciesListRequest, writer io.Writer) error {
 	return nil
@@ -98,59 +66,4 @@ func readApplicationDependenciesListResponse(response *ApplicationDependenciesLi
 		}
 	}
 	return iterator.Error
-}
-func writeApplicationDependenciesListResponse(response *ApplicationDependenciesListServerResponse, w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(response.status)
-	stream := helpers.NewStream(w)
-	stream.WriteObjectStart()
-	stream.WriteObjectField("kind")
-	count := 1
-	stream.WriteString(ApplicationDependencyListKind)
-	if response.items != nil && response.items.href != "" {
-		stream.WriteMore()
-		stream.WriteObjectField("href")
-		stream.WriteString(response.items.href)
-		count++
-	}
-	if response.page != nil {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("page")
-		stream.WriteInt(*response.page)
-		count++
-	}
-	if response.size != nil {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("size")
-		stream.WriteInt(*response.size)
-		count++
-	}
-	if response.total != nil {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("total")
-		stream.WriteInt(*response.total)
-		count++
-	}
-	if response.items != nil {
-		if response.items.items != nil {
-			if count > 0 {
-				stream.WriteMore()
-			}
-			stream.WriteObjectField("items")
-			writeApplicationDependencyList(response.items.items, stream)
-			count++
-		}
-	}
-	stream.WriteObjectEnd()
-	err := stream.Flush()
-	if err != nil {
-		return err
-	}
-	return stream.Error
 }

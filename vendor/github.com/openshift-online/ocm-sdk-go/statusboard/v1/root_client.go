@@ -70,6 +70,16 @@ func (c *Client) Applications() *ApplicationsClient {
 	)
 }
 
+// Errors returns the target 'errors' resource.
+//
+//
+func (c *Client) Errors() *ErrorsClient {
+	return NewErrorsClient(
+		c.transport,
+		path.Join(c.path, "errors"),
+	)
+}
+
 // PeerDependencies returns the target 'peer_dependencies' resource.
 //
 //

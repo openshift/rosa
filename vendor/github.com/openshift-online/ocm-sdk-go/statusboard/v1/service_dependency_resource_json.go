@@ -19,24 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/statusboard/v1
 
-import (
-	"io"
-	"net/http"
-)
+import "io"
 
-func readServiceDependencyDeleteRequest(request *ServiceDependencyDeleteServerRequest, r *http.Request) error {
-	return nil
-}
 func writeServiceDependencyDeleteRequest(request *ServiceDependencyDeleteRequest, writer io.Writer) error {
 	return nil
 }
 func readServiceDependencyDeleteResponse(response *ServiceDependencyDeleteResponse, reader io.Reader) error {
-	return nil
-}
-func writeServiceDependencyDeleteResponse(response *ServiceDependencyDeleteServerResponse, w http.ResponseWriter) error {
-	return nil
-}
-func readServiceDependencyGetRequest(request *ServiceDependencyGetServerRequest, r *http.Request) error {
 	return nil
 }
 func writeServiceDependencyGetRequest(request *ServiceDependencyGetRequest, writer io.Writer) error {
@@ -47,14 +35,6 @@ func readServiceDependencyGetResponse(response *ServiceDependencyGetResponse, re
 	response.body, err = UnmarshalServiceDependency(reader)
 	return err
 }
-func writeServiceDependencyGetResponse(response *ServiceDependencyGetServerResponse, w http.ResponseWriter) error {
-	return MarshalServiceDependency(response.body, w)
-}
-func readServiceDependencyUpdateRequest(request *ServiceDependencyUpdateServerRequest, r *http.Request) error {
-	var err error
-	request.body, err = UnmarshalServiceDependency(r.Body)
-	return err
-}
 func writeServiceDependencyUpdateRequest(request *ServiceDependencyUpdateRequest, writer io.Writer) error {
 	return MarshalServiceDependency(request.body, writer)
 }
@@ -62,7 +42,4 @@ func readServiceDependencyUpdateResponse(response *ServiceDependencyUpdateRespon
 	var err error
 	response.body, err = UnmarshalServiceDependency(reader)
 	return err
-}
-func writeServiceDependencyUpdateResponse(response *ServiceDependencyUpdateServerResponse, w http.ResponseWriter) error {
-	return MarshalServiceDependency(response.body, w)
 }
