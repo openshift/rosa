@@ -153,9 +153,9 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	clusterName := cluster.DisplayName()
+	clusterName := cluster.Name()
 	if clusterName == "" {
-		clusterName = cluster.Name()
+		clusterName = cluster.DisplayName()
 	}
 
 	isPrivate := "No"
