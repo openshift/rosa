@@ -36,8 +36,8 @@ import (
 
 // URLAliases allows the value of the `--env` option to map to the various API URLs.
 var URLAliases = map[string]string{
-	"production":  "https://api.openshift.com",
-	"staging":     "https://api.stage.openshift.com",
+	"production": "https://api.openshift.com",
+	"staging":    "https://api.stage.openshift.com",
 	"integration": "https://api.integration.openshift.com",
 }
 
@@ -304,6 +304,7 @@ func (c *Config) Connection() (connection *sdk.Connection, err error) {
 	if c.URL != "" {
 		builder.URL(c.URL)
 	}
+	builder.AlternativeURL("/api/accounts_mgmt", "https://api.integration.openshift.com")
 	tokens := make([]string, 0, 2)
 	if c.AccessToken != "" {
 		tokens = append(tokens, c.AccessToken)

@@ -150,7 +150,8 @@ func run(cmd *cobra.Command, argv []string) {
 
 	switch mode {
 	case aws.ModeAuto:
-		if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
+		state := cluster.State()
+		if state != cmv1.ClusterStateWaiting && state != cmv1.ClusterStatePending && state != cmv1.ClusterStateValidating {
 			reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 				clusterKey, cluster.State())
 			os.Exit(0)

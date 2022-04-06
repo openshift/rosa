@@ -122,6 +122,9 @@ var args struct {
 	additionalTrustBundleFile string
 
 	tags []string
+
+	// HyperShift options:
+	hyperShiftEnabled bool
 }
 
 var Cmd = &cobra.Command{
@@ -466,6 +469,14 @@ func init() {
 		"",
 		"The ARN of the policy that is used to set the permissions boundary for the operator "+
 			"roles in STS clusters.",
+	)
+
+	// Options releated to HyperShift:
+	flags.BoolVar(
+		&args.hyperShiftEnabled,
+		"hypershift",
+		false,
+		"Enable or disable use of HyperShift.",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -1725,6 +1736,9 @@ func run(cmd *cobra.Command, _ []string) {
 		Tags:                      tagsList,
 		KMSKeyArn:                 kmsKeyARN,
 		DisableWorkloadMonitoring: &disableWorkloadMonitoring,
+		HyperShift: ocm.HyperShift{
+			Enabled: args.hyperShiftEnabled,
+		},
 	}
 
 	if httpProxy != "" {

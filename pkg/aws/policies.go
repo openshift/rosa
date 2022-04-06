@@ -91,6 +91,29 @@ var CredentialRequests map[string]Operator = map[string]Operator{
 		},
 		MinVersion: "4.10",
 	},
+
+	// TODO: These policies and service accounts are specific for HyperShift.
+	"kube_controller_manager_credentials": {
+		Name:      "kube-controller-manager",
+		Namespace: "kube-system",
+		ServiceAccountNames: []string{
+			"kube-controller-manager",
+		},
+	},
+	"capa_controller_manager_credentials": {
+		Name:      "capa-controller-manager",
+		Namespace: "kube-system",
+		ServiceAccountNames: []string{
+			"capa-controller-manager",
+		},
+	},
+	"control_plane_operator_credentials": {
+		Name:      "control-plane-operator",
+		Namespace: "kube-system",
+		ServiceAccountNames: []string{
+			"control-plane-operator",
+		},
+	},
 }
 
 type AccountRole struct {

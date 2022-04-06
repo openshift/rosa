@@ -102,12 +102,19 @@ type Spec struct {
 	HTTPSProxy                *string
 	AdditionalTrustBundleFile *string
 	AdditionalTrustBundle     *string
+
+	// HyperShift options:
+	HyperShift HyperShift
 }
 
 type OperatorIAMRole struct {
 	Name      string
 	Namespace string
 	RoleARN   string
+}
+
+type HyperShift struct {
+	Enabled bool
 }
 
 // Generate a query that filters clusters running on the current AWS session account
@@ -721,6 +728,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 
 	if config.AdditionalTrustBundle != nil {
 		clusterBuilder = clusterBuilder.AdditionalTrustBundle(*config.AdditionalTrustBundle)
+	}
+
+	if config.HyperShift.Enabled {
+		hyperShiftBuilder := cmv1.NewHyperShift().Enabled(true)
+		clusterBuilder.Hypershift(hyperShiftBuilder)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
