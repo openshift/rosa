@@ -182,7 +182,8 @@
                 "ec2:DescribeVpcEndpointServicePermissions",
                 "ec2:DescribeVpcEndpointServices",
                 "ec2:ModifyVpcEndpointServicePermissions",
-                "kms:DescribeKey"
+                "kms:DescribeKey",
+                "cloudwatch:GetMetricData"
             ],
             "Resource": "*"
         }
