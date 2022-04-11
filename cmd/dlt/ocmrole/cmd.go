@@ -137,6 +137,12 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
+	creator, err := awsClient.GetCreator()
+	if err != nil {
+		reporter.Errorf("Unable to get IAM credentials: %s", err)
+		os.Exit(1)
+	}
+
 	if !confirm.Prompt(true, "Delete '%s' ocm role?", roleARN) {
 		os.Exit(0)
 	}
@@ -173,6 +179,14 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
+	roleExistOnAWS, _, err := awsClient.CheckRoleExists(roleName)
+	if err != nil {
+		reporter.Errorf("%v", err)
+	}
+	if !roleExistOnAWS {
+		reporter.Warnf("ocm-role '%s' doesn't exist on the aws account %s", roleName, creator.AccountID)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		ocmClient.LogEvent("ROSADeleteOCMRoleModeAuto", nil)
@@ -185,21 +199,27 @@ func run(cmd *cobra.Command, argv []string) error {
 				os.Exit(1)
 			}
 		}
-		err := awsClient.DeleteOCMRole(roleName)
-		if err != nil {
-			reporter.Errorf("There was an error deleting the OCM role: %s", err)
-			os.Exit(1)
+		if roleExistOnAWS {
+			err := awsClient.DeleteOCMRole(roleName)
+			if err != nil {
+				reporter.Errorf("There was an error deleting the OCM role: %s", err)
+				os.Exit(1)
+			}
+			reporter.Infof("Successfully deleted the OCM role")
 		}
-		reporter.Infof("Successfully deleted the OCM role")
 	case aws.ModeManual:
 		ocmClient.LogEvent("ROSADeleteOCMRoleModeManual", nil)
-		commands, err := buildCommands(roleName, roleARN, isLinked, awsClient)
+		commands, err := buildCommands(roleName, roleARN, isLinked, awsClient, roleExistOnAWS)
 		if err != nil {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		if reporter.IsTerminal() {
-			reporter.Infof("Run the following commands to delete the OCM role:\n")
+			if roleExistOnAWS {
+				reporter.Infof("Run the following commands to delete the OCM role:\n")
+			} else if isLinked {
+				reporter.Infof("Run the following commands to unlink the OCM role:\n")
+			}
 		}
 		fmt.Println(commands)
 	default:
@@ -210,7 +230,8 @@ func run(cmd *cobra.Command, argv []string) error {
 	return nil
 }
 
-func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws.Client) (string, error) {
+func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws.Client,
+	roleExistOnAWS bool) (string, error) {
 	var commands []string
 
 	if isLinked {
@@ -219,36 +240,38 @@ func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws
 		commands = append(commands, unlinkRole)
 	}
 
-	policies, err := awsClient.GetAttachedPolicy(&roleName)
-	if err != nil {
-		return "", err
-	}
-	for _, policy := range policies {
-		detachPolicy := fmt.Sprintf("aws iam detach-role-policy \\\n"+
-			"\t--role-name %s \\\n"+
-			"\t--policy-arn %s",
-			roleName, policy.PolicyArn)
-		commands = append(commands, detachPolicy)
-		deletePolicy := fmt.Sprintf("aws iam delete-policy \\\n"+
-			"\t--policy-arn %s",
-			policy.PolicyArn)
-		commands = append(commands, deletePolicy)
-	}
+	if roleExistOnAWS {
+		policies, err := awsClient.GetAttachedPolicy(&roleName)
+		if err != nil {
+			return "", err
+		}
+		for _, policy := range policies {
+			detachPolicy := fmt.Sprintf("aws iam detach-role-policy \\\n"+
+				"\t--role-name %s \\\n"+
+				"\t--policy-arn %s",
+				roleName, policy.PolicyArn)
+			commands = append(commands, detachPolicy)
+			deletePolicy := fmt.Sprintf("aws iam delete-policy \\\n"+
+				"\t--policy-arn %s",
+				policy.PolicyArn)
+			commands = append(commands, deletePolicy)
+		}
 
-	hasPermissionBoundary, err := awsClient.HasPermissionsBoundary(roleName)
-	if err != nil {
-		return "", err
-	}
-	if hasPermissionBoundary {
-		deletePermissionBoundary := fmt.Sprintf("aws iam delete-role-permissions-boundary \\\n"+
-			"\t--role-name %s",
-			roleName)
-		commands = append(commands, deletePermissionBoundary)
-	}
+		hasPermissionBoundary, err := awsClient.HasPermissionsBoundary(roleName)
+		if err != nil {
+			return "", err
+		}
+		if hasPermissionBoundary {
+			deletePermissionBoundary := fmt.Sprintf("aws iam delete-role-permissions-boundary \\\n"+
+				"\t--role-name %s",
+				roleName)
+			commands = append(commands, deletePermissionBoundary)
+		}
 
-	deleteRole := fmt.Sprintf("aws iam delete-role \\\n"+
-		"\t--role-name %s", roleName)
-	commands = append(commands, deleteRole)
+		deleteRole := fmt.Sprintf("aws iam delete-role \\\n"+
+			"\t--role-name %s", roleName)
+		commands = append(commands, deleteRole)
+	}
 
 	return strings.Join(commands, "\n"), nil
 }
