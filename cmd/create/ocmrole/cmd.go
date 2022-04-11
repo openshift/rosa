@@ -225,26 +225,16 @@ func run(cmd *cobra.Command, argv []string) {
 
 	roleNameRequested := aws.GetOCMRoleName(prefix, aws.OCMRole, externalID)
 
-	existsOnOCM, existingRole, selectedARN, err := ocmClient.CheckRoleExists(orgID, roleNameRequested, creator.AccountID)
+	existsOnOCM, _, selectedARN, err := ocmClient.CheckRoleExists(orgID, roleNameRequested, creator.AccountID)
 
 	if err != nil {
 		reporter.Errorf("Error checking existing ocm-role: %v", err)
 		os.Exit(1)
 	}
 	if existsOnOCM {
-		reporter.Errorf("User organization '%s' has ocm-role '%s' for aws account %s. "+
-			"Only one role can be created per AWS account per organization.\n"+
-			"run the following command to unlink the role from the organization \n\n"+
-			"\t rosa unlink ocm-role --role-arn %s\n",
-			orgID, existingRole, creator.AccountID, selectedARN)
-
-		existOnAWS, _, err := awsClient.CheckRoleExists(existingRole)
-		if err != nil {
-			reporter.Errorf("%v", err)
-		}
-		if !existOnAWS {
-			reporter.Warnf("ocm-role '%s' doesn't exist on the aws account %s", existingRole, creator.AccountID)
-		}
+		reporter.Errorf("Only one ocm-role can be created per AWS account '%s' per organization '%s'.\n"+
+			"In order to create a new ocm-role, you have to unlink the ocm-role '%s'.\n",
+			creator.AccountID, orgID, selectedARN)
 		os.Exit(1)
 	}
 	switch mode {
