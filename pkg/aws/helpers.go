@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -336,30 +337,35 @@ func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 }
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
-	generateOperatorRolePolicies bool) error {
+	generateOperatorRolePolicies bool, policies map[string]string) error {
 	if generateAccountRolePolicies {
 		for file := range AccountRoles {
-			filename := fmt.Sprintf("sts_%s_trust_policy.json", file)
-			path := fmt.Sprintf("templates/policies/%s", filename)
-			policy, err := ReadPolicyDocument(path, map[string]string{
+			//Get trust policy
+			filename := fmt.Sprintf("sts_%s_trust_policy", file)
+			policyDetail := policies[filename]
+			policy, err := GetRolePolicyDocument(policyDetail, map[string]string{
 				"aws_account_id": JumpAccounts[env],
 			})
 			if err != nil {
 				return err
 			}
+			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
 			err = SaveDocument(policy, filename)
 			if err != nil {
 				return err
 			}
-			filename = fmt.Sprintf("sts_%s_permission_policy.json", file)
-			path = fmt.Sprintf("templates/policies/%s", filename)
-			policy, err = ReadPolicyDocument(path)
-			if err != nil {
-				return err
+			//Get the permission policy
+			filename = fmt.Sprintf("sts_%s_permission_policy", file)
+			policyDetail = policies[filename]
+			if policyDetail == "" {
+				continue
 			}
+			//Check and save it as json file
+			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			err = SaveDocument(policy, filename)
+			b := []byte(policyDetail)
+			err = SaveDocument(b, filename)
 			if err != nil {
 				return err
 			}
@@ -367,20 +373,31 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 	}
 	if generateOperatorRolePolicies {
 		for credrequest := range CredentialRequests {
-			filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
-			path := fmt.Sprintf("templates/policies/%s", filename)
-			policy, err := ReadPolicyDocument(path)
-			if err != nil {
-				return err
+			filename := fmt.Sprintf("openshift_%s_policy", credrequest)
+			policyDetail := policies[filename]
+			//In case any missing policy we dont want to block the user.This might not happen
+			if policyDetail == "" {
+				continue
 			}
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			err = SaveDocument(policy, filename)
+			b := []byte(policyDetail)
+			filename = GetFormattedFileName(filename)
+			err := SaveDocument(b, filename)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+func GetFormattedFileName(filename string) string {
+	//Check and save it as json file
+	ext := filepath.Ext(filename)
+	if ext != ".json" {
+		filename = fmt.Sprintf("%s.json", filename)
+	}
+	return filename
 }
 
 func SaveDocument(doc []byte, filename string) error {
@@ -398,27 +415,68 @@ func SaveDocument(doc []byte, filename string) error {
 	return nil
 }
 
-func GenerateOperatorPolicyFiles(reporter *rprtr.Object) error {
-	for credrequest := range CredentialRequests {
-		filename := fmt.Sprintf("openshift_%s_policy.json", credrequest)
-		path := fmt.Sprintf("templates/policies/%s", filename)
-
-		policy, err := ReadPolicyDocument(path)
+func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client, commands []string) []string {
+	for credrequest, operator := range CredentialRequests {
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
-			return err
-		}
-
-		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = SaveDocument(policy, filename)
-		if err != nil {
-			return err
+			name := GetPolicyName(prefix, operator.Namespace, operator.Name)
+			iamTags := fmt.Sprintf(
+				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+				tags.OpenShiftVersion, DefaultPolicyVersion,
+				tags.RolePrefix, prefix,
+				"operator_namespace", operator.Namespace,
+				"operator_name", operator.Name,
+			)
+			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
+				"\t--policy-name %s \\\n"+
+				"\t--policy-document file://openshift_%s_policy.json \\\n"+
+				"\t--tags %s",
+				name, credrequest, iamTags)
+			commands = append(commands, createPolicy)
+		} else {
+			policTags := fmt.Sprintf(
+				"Key=%s,Value=%s",
+				tags.OpenShiftVersion, DefaultPolicyVersion,
+			)
+			createPolicy := fmt.Sprintf("aws iam create-policy-version \\\n"+
+				"\t--policy-arn %s \\\n"+
+				"\t--policy-document file://openshift_%s_policy.json \\\n"+
+				"\t--set-as-default",
+				policyARN, credrequest)
+			tagPolicy := fmt.Sprintf("aws iam tag-policy \\\n"+
+				"\t--tags %s \\\n"+
+				"\t--policy-arn %s",
+				policTags, policyARN)
+			commands = append(commands, createPolicy, tagPolicy)
 		}
 	}
+	return commands
+}
 
+func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, accountID string,
+	prefix string, policies map[string]string) error {
+	for credrequest, operator := range CredentialRequests {
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
+		policyDetails := policies[filename]
+		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
+			DefaultPolicyVersion, map[string]string{
+				tags.OpenShiftVersion: DefaultPolicyVersion,
+				tags.RolePrefix:       prefix,
+				"operator_namespace":  operator.Namespace,
+				"operator_name":       operator.Name,
+			})
+		if err != nil {
+			return err
+		}
+		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, DefaultPolicyVersion)
+	}
 	return nil
 }
 
-func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator Operator) (string, error) {
+func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator Operator,
+	policyDetails string) (string, error) {
 	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
 	if err != nil {
 		return "", err
@@ -433,8 +491,7 @@ func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator Ope
 			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace, sa))
 	}
 
-	path := "templates/policies/operator_iam_role_policy.json"
-	policy, err := ReadPolicyDocument(path, map[string]string{
+	policy, err := GetRolePolicyDocument(policyDetails, map[string]string{
 		"oidc_provider_arn": oidcProviderARN,
 		"issuer_url":        issuerURL,
 		"service_accounts":  strings.Join(serviceAccounts, `" , "`),

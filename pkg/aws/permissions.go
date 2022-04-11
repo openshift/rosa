@@ -16,15 +16,14 @@ type SimulateParams struct {
 }
 
 // ValidateSCP attempts to validate SCP policies by ensuring we have the correct permissions
-func (c *awsClient) ValidateSCP(target *string) (bool, error) {
-	scpPolicyPath := "templates/policies/osd_scp_policy.json"
+func (c *awsClient) ValidateSCP(target *string, policies map[string]string) (bool, error) {
+	policyDetails := policies["osd_scp_policy"]
 
 	sParams := &SimulateParams{
 		Region: *c.awsSession.Config.Region,
 	}
-
 	// Read installer permissions and OSD SCP Policy permissions
-	osdPolicyDocument, err := parsePolicyDocument(scpPolicyPath)
+	osdPolicyDocument, err := parsePolicyDocument(policyDetails)
 	if err != nil {
 		return false, err
 	}

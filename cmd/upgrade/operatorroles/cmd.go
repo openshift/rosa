@@ -170,12 +170,12 @@ func run(cmd *cobra.Command, argv []string) error {
 			clusterKey)
 	}
 	isOperatorPolicyUpgradeNeeded := false
-
+	isAccountRoleUpgradeNeed := false
 	//If this is invoked from the upgrade cluster we already performed the policies upgrade as
 	//part of upgrade account roles that was called before this command. Refer to rosa upgrade cluster
 	if !isProgrammaticallyCalled {
 		//Check if account roles are up-to-date
-		isAccountRoleUpgradeNeed, err := awsClient.IsUpgradedNeededForAccountRolePolicies(
+		isAccountRoleUpgradeNeed, err = awsClient.IsUpgradedNeededForAccountRolePolicies(
 			prefix, aws.DefaultPolicyVersion)
 		if err != nil {
 			reporter.Errorf("%s", err)
@@ -220,6 +220,17 @@ func run(cmd *cobra.Command, argv []string) error {
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		interactive.Enable()
 	}
+	policies, err := ocmClient.GetPolicies("OperatorRole")
+	if err != nil {
+		reporter.Errorf("Expected a valid role creation mode: %s", err)
+		os.Exit(1)
+	}
+
+	env, err := ocm.GetEnv()
+	if err != nil {
+		reporter.Errorf("Failed to determine OCM environment: %v", err)
+		os.Exit(1)
+	}
 
 	//This might not be true when invoked from upgrade cluster
 	if isOperatorPolicyUpgradeNeeded {
@@ -228,7 +239,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		err = upgradeOperatorPolicies(mode, reporter, awsClient, creator, prefix, isProgrammaticallyCalled)
+		err = upgradeOperatorPolicies(mode, reporter, awsClient, creator, prefix, isAccountRoleUpgradeNeed, policies, env)
 		if err != nil {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -253,8 +264,14 @@ func run(cmd *cobra.Command, argv []string) error {
 					reporter.Errorf("%s", err)
 					os.Exit(1)
 				}
+
+				if err != nil {
+					reporter.Errorf("Expected a valid role creation mode: %s", err)
+					os.Exit(1)
+				}
+
 				err = createOperatorRole(mode, reporter, awsClient, creator, cluster, prefix, missingRolesInCS,
-					isProgrammaticallyCalled, ocmClient)
+					isProgrammaticallyCalled, policies)
 				if err != nil {
 					reporter.Errorf("%s", err)
 					os.Exit(1)
@@ -285,22 +302,24 @@ func handleModeFlag(cmd *cobra.Command, skipInteractive bool, mode string, err e
 }
 
 func upgradeOperatorPolicies(mode string, reporter *rprtr.Object, awsClient aws.Client, creator *aws.Creator,
-	prefix string, isAccountRoleUpgradeNeed bool) error {
+	prefix string, isAccountRoleUpgradeNeed bool, policies map[string]string, env string) error {
 	switch mode {
 	case aws.ModeAuto:
 		if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", aws.DefaultPolicyVersion) {
 			return nil
 		}
-		err := aws.UpgradeOperatorPolicies(reporter, awsClient, creator.AccountID, prefix)
+		err := aws.UpgradeOperatorPolicies(reporter, awsClient, creator.AccountID, prefix, policies)
 		if err != nil {
 			return reporter.Errorf("Error upgrading the role polices: %s", err)
 		}
 		return nil
 	case aws.ModeManual:
-		err := aws.GenerateOperatorPolicyFiles(reporter)
+		err := aws.GeneratePolicyFiles(reporter, env, false, true, policies)
 		if err != nil {
-			return reporter.Errorf("There was an error generating the policy files: %s", err)
+			reporter.Errorf("There was an error generating the policy files: %s", err)
+			os.Exit(1)
 		}
+
 		if reporter.IsTerminal() {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to upgrade the operator IAM policies:\n")
@@ -319,17 +338,17 @@ func upgradeOperatorPolicies(mode string, reporter *rprtr.Object, awsClient aws.
 
 func createOperatorRole(mode string, reporter *rprtr.Object, awsClient aws.Client, creator *aws.Creator,
 	cluster *cmv1.Cluster, prefix string, missingRoles map[string]aws.Operator, isProgrammaticallyCalled bool,
-	ocmClient *ocm.Client) error {
+	policies map[string]string) error {
 	accountID := creator.AccountID
 	switch mode {
 	case aws.ModeAuto:
-		err := upgradeMissingOperatorRole(missingRoles, cluster, accountID, prefix, reporter, awsClient, ocmClient,
-			isProgrammaticallyCalled)
+		err := upgradeMissingOperatorRole(missingRoles, cluster, accountID, prefix, reporter, awsClient,
+			isProgrammaticallyCalled, policies)
 		if err != nil {
 			return err
 		}
 	case aws.ModeManual:
-		commands, err := buildMissingOperatorRoleCommand(missingRoles, cluster, accountID, prefix, reporter)
+		commands, err := buildMissingOperatorRoleCommand(missingRoles, cluster, accountID, prefix, reporter, policies)
 		if err != nil {
 			return err
 		}
@@ -351,16 +370,18 @@ func createOperatorRole(mode string, reporter *rprtr.Object, awsClient aws.Clien
 }
 
 func buildMissingOperatorRoleCommand(missingRoles map[string]aws.Operator, cluster *cmv1.Cluster, accountID string,
-	prefix string, reporter *rprtr.Object) (string, error) {
+	prefix string, reporter *rprtr.Object, policies map[string]string) (string, error) {
 	commands := []string{}
 	for missingRole, operator := range missingRoles {
 		roleName := getRoleName(cluster, operator)
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator)
+		policyDetails := policies["operator_iam_role_policy"]
+		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return "", err
 		}
-		filename := fmt.Sprintf("operator_%s_policy.json", missingRole)
+		filename := fmt.Sprintf("operator_%s_policy", missingRole)
+		filename = aws.GetFormattedFileName(filename)
 		reporter.Debugf("Saving '%s' to the current directory", filename)
 		err = ocm.SaveDocument(policy, filename)
 		if err != nil {
@@ -393,7 +414,7 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]aws.Operator, clust
 
 func upgradeMissingOperatorRole(missingRoles map[string]aws.Operator, cluster *cmv1.Cluster,
 	accountID string, prefix string,
-	reporter *rprtr.Object, awsClient aws.Client, ocmClient *ocm.Client, isProgrammaticallyCalled bool) error {
+	reporter *rprtr.Object, awsClient aws.Client, isProgrammaticallyCalled bool, policies map[string]string) error {
 	for _, operator := range missingRoles {
 		roleName := getRoleName(cluster, operator)
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
@@ -402,8 +423,10 @@ func upgradeMissingOperatorRole(missingRoles map[string]aws.Operator, cluster *c
 			}
 			continue
 		}
+		policyDetails := policies["operator_iam_role_policy"]
+
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator)
+		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}

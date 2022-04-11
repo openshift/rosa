@@ -261,6 +261,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		err = operatorroles.Cmd.RunE(operatorroles.Cmd, []string{cluster.ID(), mode, version})
 		if err != nil {
+			reporter.Errorf("Error upgrading the policies for cluster '%s' : %v", clusterKey, err)
 			accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
 			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
 
