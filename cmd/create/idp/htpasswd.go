@@ -19,6 +19,8 @@ package idp
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -109,6 +111,9 @@ func getUserDetails(cmd *cobra.Command) (string, string) {
 		Help:     cmd.Flags().Lookup("password").Usage,
 		Default:  "",
 		Required: true,
+		Validators: []interactive.Validator{
+			passwordValidator,
+		},
 	})
 	if err != nil {
 		exitHTPasswdCreate("Expected a valid password: %s", clusterKey, err)
@@ -151,9 +156,35 @@ func usernameValidator(val interface{}) error {
 		if username == ClusterAdminUsername {
 			return fmt.Errorf("username '%s' is not allowed", username)
 		}
+		if strings.ContainsAny(username, "/:%") {
+			return fmt.Errorf("invalid username '%s': "+
+				"username must not contain /, :, or %%", username)
+		}
 		return nil
 	}
-	return fmt.Errorf("can only validate strings, got %v", val)
+	return fmt.Errorf("can only validate strings, got '%v'", val)
+}
+
+func passwordValidator(val interface{}) error {
+	if password, ok := val.(string); ok {
+		notAsciiOnly, _ := regexp.MatchString(`[^\x20-\x7E]`, password)
+		containsSpace := strings.Contains(password, " ")
+		tooShort := len(password) < 14
+		if notAsciiOnly || containsSpace || tooShort {
+			return fmt.Errorf(
+				"password must be at least 14 characters (ASCII-standard) without whitespaces")
+		}
+		hasUppercase, _ := regexp.MatchString(`[A-Z]`, password)
+		hasLowercase, _ := regexp.MatchString(`[a-z]`, password)
+		hasNumberOrSymbol, _ := regexp.MatchString(`[^a-zA-Z]`, password)
+		if !hasUppercase || !hasLowercase || !hasNumberOrSymbol {
+			return fmt.Errorf(
+				"password must include uppercase letters, lowercase letters, and numbers " +
+					"or symbols (ASCII-standard characters only)")
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got '%v'", val)
 }
 
 func HasClusterAdmin(userList *cmv1.HTPasswdUserList) bool {
