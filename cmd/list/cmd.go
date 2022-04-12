@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/machinepool"
 	"github.com/openshift/rosa/cmd/list/ocmroles"
 	"github.com/openshift/rosa/cmd/list/region"
+	"github.com/openshift/rosa/cmd/list/service"
 	"github.com/openshift/rosa/cmd/list/upgrade"
 	"github.com/openshift/rosa/cmd/list/user"
 	"github.com/openshift/rosa/cmd/list/userroles"
@@ -57,6 +58,7 @@ func init() {
 	Cmd.AddCommand(accountroles.Cmd)
 	Cmd.AddCommand(ocmroles.Cmd)
 	Cmd.AddCommand(userroles.Cmd)
+	Cmd.AddCommand(service.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)

@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/ocmrole"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
+	"github.com/openshift/rosa/cmd/create/service"
 	"github.com/openshift/rosa/cmd/create/userrole"
 
 	"github.com/openshift/rosa/pkg/arguments"
@@ -52,6 +53,7 @@ func init() {
 	Cmd.AddCommand(operatorroles.Cmd)
 	Cmd.AddCommand(userrole.Cmd)
 	Cmd.AddCommand(ocmrole.Cmd)
+	Cmd.AddCommand(service.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
