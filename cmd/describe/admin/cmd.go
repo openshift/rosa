@@ -22,15 +22,11 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
-)
-
-const (
-	idpName = "Cluster-Admin"
-	// username = "cluster-admin"
 )
 
 var Cmd = &cobra.Command{
@@ -99,26 +95,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Try to find the htpasswd identity provider:
-	reporter.Debugf("Loading '%s' identity provider", idpName)
-	idps, err := ocmClient.GetIdentityProviders(cluster.ID())
-	if err != nil {
-		reporter.Errorf("Failed to get '%s' identity provider for cluster '%s': %v", idpName, clusterKey, err)
-		os.Exit(1)
-	}
-
-	var idp *cmv1.IdentityProvider
-	for _, item := range idps {
-		if ocm.IdentityProviderType(item) == "htpasswd" {
-			idp = item
-		}
-	}
-	if idp == nil || idp.Htpasswd() == nil {
+	// Try to find an existing htpasswd identity provider and
+	// check if cluster-admin user already exists
+	_, existingUserList := idp.FindExistingHTPasswdIDP(cluster, ocmClient)
+	if idp.HasClusterAdmin(existingUserList) {
+		reporter.Infof("There is an admin on cluster '%s'. To login, run the following command:\n"+
+			"   oc login %s --username %s", clusterKey, cluster.API().URL(), idp.ClusterAdminUsername)
+	} else {
 		reporter.Warnf("There is no admin on cluster '%s'. To create it run the following command:\n"+
 			"   rosa create admin -c %s", clusterKey, clusterKey)
 		os.Exit(0)
 	}
-
-	reporter.Infof("There is an admin on cluster '%s'. To login, run the following command:\n"+
-		"   oc login %s --username %s", clusterKey, cluster.API().URL(), idp.Htpasswd().Username())
 }
