@@ -22,6 +22,15 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
+const (
+	HTPasswdIDPType = "HTPasswd"
+	GithubIDPType   = "GitHub"
+	GitlabIDPType   = "GitLab"
+	GoogleIDPType   = "Google"
+	LDAPIDPType     = "LDAP"
+	OpenIDIDPType   = "OpenID"
+)
+
 func (c *Client) GetIdentityProviders(clusterID string) ([]*cmv1.IdentityProvider, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).
@@ -106,17 +115,17 @@ func (c *Client) DeleteIdentityProvider(clusterID string, idpID string) error {
 func IdentityProviderType(idp *cmv1.IdentityProvider) string {
 	switch idp.Type() {
 	case "GithubIdentityProvider":
-		return "GitHub"
+		return GithubIDPType
 	case "GitlabIdentityProvider":
-		return "GitLab"
+		return GitlabIDPType
 	case "GoogleIdentityProvider":
-		return "Google"
+		return GoogleIDPType
 	case "HTPasswdIdentityProvider":
-		return "htpasswd"
+		return HTPasswdIDPType
 	case "LDAPIdentityProvider":
-		return "LDAP"
+		return LDAPIDPType
 	case "OpenIDIdentityProvider":
-		return "OpenID"
+		return OpenIDIDPType
 	}
 
 	return ""
