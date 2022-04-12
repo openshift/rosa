@@ -208,7 +208,7 @@ func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, ocmClient *ocm.Client) (
 	}
 
 	for _, item := range idps {
-		if ocm.IdentityProviderType(item) == "htpasswd" {
+		if ocm.IdentityProviderType(item) == ocm.HTPasswdIDPType {
 			htpasswdIDP = item
 		}
 	}

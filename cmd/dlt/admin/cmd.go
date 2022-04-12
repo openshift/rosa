@@ -106,7 +106,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	var htpasswdIDP *cmv1.IdentityProvider
 	for _, item := range idps {
-		if ocm.IdentityProviderType(item) == "htpasswd" {
+		if ocm.IdentityProviderType(item) == ocm.HTPasswdIDPType {
 			htpasswdIDP = item
 		}
 	}
