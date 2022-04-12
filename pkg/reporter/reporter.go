@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 
+	"github.com/openshift/rosa/pkg/color"
 	"github.com/openshift/rosa/pkg/debug"
 )
 
@@ -60,7 +60,7 @@ func (r *Object) Debugf(format string, args ...interface{}) {
 // Infof prints an informative message with the given format and arguments.
 func (r *Object) Infof(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
-	if r.useColors() {
+	if color.UseColor() {
 		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", infoPrefix, message)
 	} else {
 		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "INFO: ", message)
@@ -70,7 +70,7 @@ func (r *Object) Infof(format string, args ...interface{}) {
 // Warnf prints an warning message with the given format and arguments.
 func (r *Object) Warnf(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
-	if r.useColors() {
+	if color.UseColor() {
 		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", warnPrefix, message)
 	} else {
 		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", "WARN: ", message)
@@ -82,7 +82,7 @@ func (r *Object) Warnf(format string, args ...interface{}) {
 // report the error and also return it.
 func (r *Object) Errorf(format string, args ...interface{}) error {
 	message := fmt.Sprintf(format, args...)
-	if r.useColors() {
+	if color.UseColor() {
 		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", errorPrefix, message)
 	} else {
 		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", "ERR: ", message)
@@ -102,10 +102,6 @@ const (
 	warnPrefix  = "\033[0;33mW:\033[m "
 	errorPrefix = "\033[0;31mE:\033[m "
 )
-
-func (r *Object) useColors() bool {
-	return runtime.GOOS != "windows"
-}
 
 // Determine whether the reporter output is meant for the terminal
 // or whether it's piped or redirected to a file.

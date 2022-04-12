@@ -25,6 +25,8 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
+
+	"github.com/openshift/rosa/pkg/color"
 )
 
 type Input struct {
@@ -38,6 +40,7 @@ type Input struct {
 
 // Gets string input from the command line
 func GetString(input Input) (a string, err error) {
+	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(string)
 	if !ok {
 		dflt = ""
@@ -60,6 +63,7 @@ func GetString(input Input) (a string, err error) {
 
 // Gets int number input from the command line
 func GetInt(input Input) (a int, err error) {
+	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(int)
 	if !ok {
 		dflt = 0
@@ -97,6 +101,7 @@ func parseInt(str string) (num int, err error) {
 
 // Gets float number input from the command line
 func GetFloat(input Input) (a float64, err error) {
+	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(float64)
 	if !ok {
 		dflt = 0
@@ -136,6 +141,7 @@ func parseFloat(str string) (num float64, err error) {
 
 // Asks for multiple options selection
 func GetMultipleOptions(input Input) ([]string, error) {
+	core.DisableColor = !color.UseColor()
 	var err error
 	res := make([]string, 0)
 	dflt, ok := input.Default.([]string)
@@ -161,6 +167,7 @@ func GetMultipleOptions(input Input) ([]string, error) {
 
 // Asks for option selection in the command line
 func GetOption(input Input) (a string, err error) {
+	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(string)
 	if !ok {
 		dflt = ""
@@ -184,6 +191,7 @@ func GetOption(input Input) (a string, err error) {
 
 // Asks for true/false value in the command line
 func GetBool(input Input) (a bool, err error) {
+	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(bool)
 	if !ok {
 		dflt = false
@@ -206,6 +214,7 @@ func GetBool(input Input) (a bool, err error) {
 
 // Asks for CIDR value in the command line
 func GetIPNet(input Input) (a net.IPNet, err error) {
+	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(net.IPNet)
 	if !ok {
 		dflt = net.IPNet{}
@@ -246,6 +255,7 @@ func GetIPNet(input Input) (a net.IPNet, err error) {
 
 // Gets password input from the command line
 func GetPassword(input Input) (a string, err error) {
+	core.DisableColor = !color.UseColor()
 	question := input.Question
 	if !input.Required {
 		question = fmt.Sprintf("%s (optional)", question)
@@ -263,6 +273,7 @@ func GetPassword(input Input) (a string, err error) {
 
 // Gets path to certificate file from the command line
 func GetCert(input Input) (a string, err error) {
+	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(string)
 	if !ok {
 		dflt = ""
@@ -292,6 +303,7 @@ type Help struct {
 }
 
 func PrintHelp(help Help) error {
+	core.DisableColor = !color.UseColor()
 	out, _, err := core.RunTemplate(helpTemplate, help)
 	if err != nil {
 		return err

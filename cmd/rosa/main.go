@@ -47,6 +47,7 @@ import (
 	"github.com/openshift/rosa/cmd/version"
 	"github.com/openshift/rosa/cmd/whoami"
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/color"
 )
 
 var root = &cobra.Command{
@@ -60,6 +61,7 @@ var root = &cobra.Command{
 func init() {
 	// Add the command line flags:
 	fs := root.PersistentFlags()
+	color.AddFlag(root)
 	arguments.AddDebugFlag(fs)
 
 	// Register the subcommands:
