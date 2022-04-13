@@ -40,11 +40,6 @@ func createHTPasswdIDP(cmd *cobra.Command,
 	username := args.htpasswdUsername
 	password := args.htpasswdPassword
 
-	if username == "" || password == "" {
-		reporter.Infof("At least one user is required to create the IDP.")
-		username, password = getUserDetails(cmd)
-	}
-
 	// Choose which way to create the IDP according to whether it already has an admin or not.
 	htpasswdIDP, userList := FindExistingHTPasswdIDP(cluster, ocmClient)
 	if htpasswdIDP != nil {
@@ -54,11 +49,17 @@ func createHTPasswdIDP(cmd *cobra.Command,
 		containsAdminOnly := HasClusterAdmin(userList) && userList.Len() == 1
 		if !containsAdminOnly {
 			reporter.Errorf(
-				"Cluster '%s' already has an HTPasswd IDP", clusterKey)
+				"Cluster '%s' already has an HTPasswd IDP named '%s'. "+
+					"Clusters may only have 1 HTPasswd IDP.", clusterKey, htpasswdIDP.Name())
 			os.Exit(1)
 		}
 		// Existing IDP contains only admin. Add new user to it
-		reporter.Infof("Cluster already has an HTPasswd IDP, new user will be added to it")
+		reporter.Infof("Cluster already has an HTPasswd IDP named '%s', new users will be added to it.",
+			htpasswdIDP.Name())
+		if username == "" || password == "" {
+			reporter.Infof("At least one user is required to create the IDP.")
+			username, password = getUserDetails(cmd)
+		}
 		err = ocmClient.AddHTPasswdUser(username, password, cluster.ID(), htpasswdIDP.ID())
 		if err != nil {
 			reporter.Errorf(
@@ -68,6 +69,12 @@ func createHTPasswdIDP(cmd *cobra.Command,
 		reporter.Infof("User '%s' added", username)
 	} else {
 		// HTPasswd IDP does not exist - create it
+		idpName := getIDPName(cmd, idpName)
+		if username == "" || password == "" {
+			reporter.Infof("At least one user is required to create the IDP.")
+			username, password = getUserDetails(cmd)
+		}
+
 		idpBuilder := cmv1.NewIdentityProvider().
 			Type("HTPasswdIdentityProvider").
 			Name(idpName).

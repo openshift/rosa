@@ -392,17 +392,8 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	if interactive.Enabled() {
-		idpName, err = interactive.GetString(interactive.Input{
-			Question: "Identity provider name",
-			Help:     cmd.Flags().Lookup("name").Usage,
-			Default:  idpName,
-			Required: true,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid name for the identity provider: %s", err)
-			os.Exit(1)
-		}
+	if interactive.Enabled() && idpType != "htpasswd" {
+		idpName = getIDPName(cmd, idpName)
 	}
 	idpName = strings.Trim(idpName, " \t")
 
@@ -428,6 +419,20 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	doCreateIDP(idpName, idpBuilder, cluster, clusterKey, ocmClient)
+}
+
+func getIDPName(cmd *cobra.Command, idpName string) string {
+	idpName, err := interactive.GetString(interactive.Input{
+		Question: "Identity provider name",
+		Help:     cmd.Flags().Lookup("name").Usage,
+		Default:  idpName,
+		Required: true,
+	})
+	if err != nil {
+		reporter.Errorf("Expected a valid name for the identity provider: %s", err)
+		os.Exit(1)
+	}
+	return strings.Trim(idpName, " \t")
 }
 
 func doCreateIDP(
