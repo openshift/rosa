@@ -271,13 +271,17 @@ func init() {
 		&args.htpasswdUsername,
 		"username",
 		"",
-		"HTPasswd: Username to log into the cluster's console with.\n",
+		"HTPasswd: Username to log into the cluster's console with.\n"+
+			"Username must not contain /, :, or %%",
 	)
 	flags.StringVar(
 		&args.htpasswdPassword,
 		"password",
 		"",
-		"HTPasswd: Password for provided username, to log into the cluster's console with.\n",
+		"HTPasswd: Password for provided username, to log into the cluster's console with.\n"+
+			"The password must\n"+
+			"- Be at least 14 characters (ASCII-standard) without whitespaces\n"+
+			"- Include uppercase letters, lowercase letters, and numbers or symbols (ASCII-standard characters only)",
 	)
 
 	interactive.AddFlag(flags)
