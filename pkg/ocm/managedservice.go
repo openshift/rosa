@@ -22,6 +22,10 @@ type CreateManagedServiceArgs struct {
 	AwsRegion              string
 
 	AwsOperatorIamRoleList []OperatorIAMRole
+
+	MultiAZ           bool
+	AvailabilityZones []string
+	SubnetIDs         []string
 }
 
 func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.ManagedService, error) {
@@ -51,6 +55,7 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 				Region(
 					msv1.NewCloudRegion().
 						ID(args.AwsRegion)).
+				MultiAZ(args.MultiAZ).
 				AWS(
 					msv1.NewAWS().
 						STS(msv1.NewSTS().
@@ -60,7 +65,10 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 								MasterRoleARN(args.AwsControlPlaneRoleARN).
 								WorkerRoleARN(args.AwsWorkerRoleARN)).
 							OperatorIAMRoles(operatorIamRoles...)).
-						AccountID(args.AwsAccountID))).
+						AccountID(args.AwsAccountID).
+						SubnetIDs(args.SubnetIDs...)).
+				Nodes(msv1.NewClusterNodes().
+					AvailabilityZones(args.AvailabilityZones...))).
 		Build()
 
 	if err != nil {

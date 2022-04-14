@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
+	awssdk "github.com/aws/aws-sdk-go/aws"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
@@ -81,16 +82,21 @@ func init() {
 		"Name of the service instance.",
 	)
 
+	flags.StringSliceVar(
+		&args.SubnetIDs,
+		"subnet-ids",
+		nil,
+		"The Subnet IDs to use when installing the cluster. "+
+			"Format should be a comma-separated list. "+
+			"Leave empty for installer provisioned subnet IDs.",
+	)
+
 	arguments.AddRegionFlag(flags)
 }
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
-
-	// Parse out CLI flags, then override positional arguments
-	// This allows for arbitrary flags used for addon parameters
-	_ = cmd.Flags().Parse(argv)
 
 	if args.ServiceType == "" {
 		reporter.Errorf("Service type not specified.")
@@ -103,6 +109,15 @@ func run(cmd *cobra.Command, argv []string) {
 		cmd.Help()
 		os.Exit(1)
 	}
+
+	// Get AWS region
+	var err error
+	args.AwsRegion, err = aws.GetRegion(arguments.GetRegion())
+	if err != nil {
+		reporter.Errorf("Error getting region: %v", err)
+		os.Exit(1)
+	}
+	reporter.Debugf("Using AWS region: %q", args.AwsRegion)
 
 	// Create the client for the OCM API:
 	ocmClient, err := ocm.NewClient().
@@ -120,14 +135,6 @@ func run(cmd *cobra.Command, argv []string) {
 	}()
 
 	awsClient := aws.GetAWSClientForUserRegion(reporter, logger)
-
-	// Get AWS region
-	args.AwsRegion, err = aws.GetRegion(arguments.GetRegion())
-	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
-	}
-	reporter.Debugf("Using AWS region: %q", args.AwsRegion)
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
@@ -182,6 +189,61 @@ func run(cmd *cobra.Command, argv []string) {
 			return true
 		})
 	}
+
+	// BYO-VPC Logic
+	subnetIDs := args.SubnetIDs
+	subnetsProvided := len(subnetIDs) > 0
+	reporter.Debugf("Received the following subnetIDs: %v", args.SubnetIDs)
+
+	var availabilityZones []string
+	if subnetsProvided {
+		subnets, err := awsClient.GetSubnetIDs()
+		if err != nil {
+			reporter.Errorf("Failed to get the list of subnets: %s", err)
+			os.Exit(1)
+		}
+
+		mapSubnetToAZ := make(map[string]string)
+		mapAZCreated := make(map[string]bool)
+
+		// Verify subnets provided exist.
+		for _, subnetArg := range subnetIDs {
+			verifiedSubnet := false
+			for _, subnet := range subnets {
+				if awssdk.StringValue(subnet.SubnetId) == subnetArg {
+					verifiedSubnet = true
+				}
+			}
+			if !verifiedSubnet {
+				reporter.Errorf("Could not find the following subnet provided: %s", subnetArg)
+				os.Exit(1)
+			}
+		}
+
+		for _, subnet := range subnets {
+			subnetID := awssdk.StringValue(subnet.SubnetId)
+			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
+
+			mapSubnetToAZ[subnetID] = availabilityZone
+			mapAZCreated[availabilityZone] = false
+		}
+
+		for _, subnet := range subnetIDs {
+			az := mapSubnetToAZ[subnet]
+			if !mapAZCreated[az] {
+				availabilityZones = append(availabilityZones, az)
+				mapAZCreated[az] = true
+			}
+		}
+
+		if len(mapAZCreated) > 1 {
+			args.MultiAZ = true
+		}
+	}
+
+	args.AvailabilityZones = availabilityZones
+	reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
+	// End BYO-VPC Logic
 
 	// Find all installer roles in the current account using AWS resource tags
 	var roleARN string
