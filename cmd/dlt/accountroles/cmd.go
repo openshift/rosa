@@ -56,7 +56,6 @@ func init() {
 		"",
 		"Prefix of the account roles to be deleted.",
 	)
-	Cmd.MarkFlagRequired("prefix")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
@@ -66,8 +65,8 @@ func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+	// Determine if interactive mode is needed (if a prefix is not provided, fallback to interactive mode)
+	if !interactive.Enabled() && !cmd.Flags().Changed("mode") || args.prefix == "" {
 		interactive.Enable()
 	}
 
@@ -116,8 +115,35 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Error getting clusters %s", err)
 		os.Exit(1)
 	}
+
+	prefix := args.prefix
+	if interactive.Enabled() && prefix == "" {
+		prefix, err = interactive.GetString(interactive.Input{
+			Question: "Role prefix",
+			Help:     cmd.Flags().Lookup("prefix").Usage,
+			Default:  "ManagedOpenShift",
+			Required: true,
+			Validators: []interactive.Validator{
+				interactive.RegExp(`[\w+=,.@-]+`),
+				interactive.MaxLength(32),
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid role prefix: %s", err)
+			os.Exit(1)
+		}
+	}
+	if len(prefix) > 32 {
+		reporter.Errorf("Expected a prefix with no more than 32 characters")
+		os.Exit(1)
+	}
+	if !aws.RoleNameRE.MatchString(prefix) {
+		reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
+		os.Exit(1)
+	}
+
 	finalRoleList := []string{}
-	roles, err := awsClient.GetAccountRoleForCurrentEnvWithPrefix(env, args.prefix)
+	roles, err := awsClient.GetAccountRoleForCurrentEnvWithPrefix(env, prefix)
 	if err != nil {
 		reporter.Errorf("Error getting role: %s", err)
 		os.Exit(1)
