@@ -29,9 +29,11 @@ type Cluster struct {
 	href        string
 	id          string
 	name        string
+	nodes       *ClusterNodes
 	properties  map[string]string
 	region      *CloudRegion
 	state       string
+	multiAZ     bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -133,12 +135,39 @@ func (o *Cluster) GetId() (value string, ok bool) {
 	return
 }
 
+// MultiAZ returns the value of the 'multi_AZ' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Flag indicating if the cluster should be created with nodes in
+// different availability zones or all the nodes in a single one
+// randomly selected.
+func (o *Cluster) MultiAZ() bool {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.multiAZ
+	}
+	return false
+}
+
+// GetMultiAZ returns the value of the 'multi_AZ' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Flag indicating if the cluster should be created with nodes in
+// different availability zones or all the nodes in a single one
+// randomly selected.
+func (o *Cluster) GetMultiAZ() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.multiAZ
+	}
+	return
+}
+
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *Cluster) Name() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.name
 	}
 	return ""
@@ -149,9 +178,32 @@ func (o *Cluster) Name() string {
 //
 //
 func (o *Cluster) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.name
+	}
+	return
+}
+
+// Nodes returns the value of the 'nodes' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Cluster) Nodes() *ClusterNodes {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.nodes
+	}
+	return nil
+}
+
+// GetNodes returns the value of the 'nodes' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Cluster) GetNodes() (value *ClusterNodes, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.nodes
 	}
 	return
 }
@@ -161,7 +213,7 @@ func (o *Cluster) GetName() (value string, ok bool) {
 //
 //
 func (o *Cluster) Properties() map[string]string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.properties
 	}
 	return nil
@@ -172,7 +224,7 @@ func (o *Cluster) Properties() map[string]string {
 //
 //
 func (o *Cluster) GetProperties() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.properties
 	}
@@ -184,7 +236,7 @@ func (o *Cluster) GetProperties() (value map[string]string, ok bool) {
 //
 //
 func (o *Cluster) Region() *CloudRegion {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.region
 	}
 	return nil
@@ -195,7 +247,7 @@ func (o *Cluster) Region() *CloudRegion {
 //
 //
 func (o *Cluster) GetRegion() (value *CloudRegion, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.region
 	}
@@ -207,7 +259,7 @@ func (o *Cluster) GetRegion() (value *CloudRegion, ok bool) {
 //
 //
 func (o *Cluster) State() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.state
 	}
 	return ""
@@ -218,7 +270,7 @@ func (o *Cluster) State() string {
 //
 //
 func (o *Cluster) GetState() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.state
 	}

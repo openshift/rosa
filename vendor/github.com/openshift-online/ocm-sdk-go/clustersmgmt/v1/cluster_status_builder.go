@@ -23,16 +23,17 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Detailed status of a cluster.
 type ClusterStatusBuilder struct {
-	bitmap_               uint32
-	id                    string
-	href                  string
-	configurationMode     ClusterConfigurationMode
-	description           string
-	provisionErrorCode    string
-	provisionErrorMessage string
-	state                 ClusterState
-	dnsReady              bool
-	oidcReady             bool
+	bitmap_                   uint32
+	id                        string
+	href                      string
+	configurationMode         ClusterConfigurationMode
+	description               string
+	limitedSupportReasonCount int
+	provisionErrorCode        string
+	provisionErrorMessage     string
+	state                     ClusterState
+	dnsReady                  bool
+	oidcReady                 bool
 }
 
 // NewClusterStatus creates a new builder of 'cluster_status' objects.
@@ -101,12 +102,21 @@ func (b *ClusterStatusBuilder) Description(value string) *ClusterStatusBuilder {
 	return b
 }
 
+// LimitedSupportReasonCount sets the value of the 'limited_support_reason_count' attribute to the given value.
+//
+//
+func (b *ClusterStatusBuilder) LimitedSupportReasonCount(value int) *ClusterStatusBuilder {
+	b.limitedSupportReasonCount = value
+	b.bitmap_ |= 128
+	return b
+}
+
 // ProvisionErrorCode sets the value of the 'provision_error_code' attribute to the given value.
 //
 //
 func (b *ClusterStatusBuilder) ProvisionErrorCode(value string) *ClusterStatusBuilder {
 	b.provisionErrorCode = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -115,7 +125,7 @@ func (b *ClusterStatusBuilder) ProvisionErrorCode(value string) *ClusterStatusBu
 //
 func (b *ClusterStatusBuilder) ProvisionErrorMessage(value string) *ClusterStatusBuilder {
 	b.provisionErrorMessage = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -124,7 +134,7 @@ func (b *ClusterStatusBuilder) ProvisionErrorMessage(value string) *ClusterStatu
 // Overall state of a cluster.
 func (b *ClusterStatusBuilder) State(value ClusterState) *ClusterStatusBuilder {
 	b.state = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -140,6 +150,7 @@ func (b *ClusterStatusBuilder) Copy(object *ClusterStatus) *ClusterStatusBuilder
 	b.oidcReady = object.oidcReady
 	b.configurationMode = object.configurationMode
 	b.description = object.description
+	b.limitedSupportReasonCount = object.limitedSupportReasonCount
 	b.provisionErrorCode = object.provisionErrorCode
 	b.provisionErrorMessage = object.provisionErrorMessage
 	b.state = object.state
@@ -156,6 +167,7 @@ func (b *ClusterStatusBuilder) Build() (object *ClusterStatus, err error) {
 	object.oidcReady = b.oidcReady
 	object.configurationMode = b.configurationMode
 	object.description = b.description
+	object.limitedSupportReasonCount = b.limitedSupportReasonCount
 	object.provisionErrorCode = b.provisionErrorCode
 	object.provisionErrorMessage = b.provisionErrorMessage
 	object.state = b.state

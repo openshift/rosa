@@ -17,20 +17,18 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/servicelogs/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// Severity represents the values of the 'severity' enumerated type.
-type Severity string
+// InflightCheckState represents the values of the 'inflight_check_state' enumerated type.
+type InflightCheckState string
 
 const (
-	//
-	SeverityDebug Severity = "Debug"
-	//
-	SeverityError Severity = "Error"
-	//
-	SeverityFatal Severity = "Fatal"
-	//
-	SeverityInfo Severity = "Info"
-	//
-	SeverityWarning Severity = "Warning"
+	// The inflight check failed.
+	InflightCheckStateFailed InflightCheckState = "failed"
+	// The inflight check passed.
+	InflightCheckStatePassed InflightCheckState = "passed"
+	// The inflight check did not start running yet.
+	InflightCheckStatePending InflightCheckState = "pending"
+	// The inflight check is currently running.
+	InflightCheckStateRunning InflightCheckState = "running"
 )

@@ -17,20 +17,15 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/servicelogs/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// Severity represents the values of the 'severity' enumerated type.
-type Severity string
+import "io"
 
-const (
-	//
-	SeverityDebug Severity = "Debug"
-	//
-	SeverityError Severity = "Error"
-	//
-	SeverityFatal Severity = "Fatal"
-	//
-	SeverityInfo Severity = "Info"
-	//
-	SeverityWarning Severity = "Warning"
-)
+func writeInflightCheckGetRequest(request *InflightCheckGetRequest, writer io.Writer) error {
+	return nil
+}
+func readInflightCheckGetResponse(response *InflightCheckGetResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalInflightCheck(reader)
+	return err
+}

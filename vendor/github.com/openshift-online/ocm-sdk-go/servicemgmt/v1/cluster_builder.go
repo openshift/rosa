@@ -29,9 +29,11 @@ type ClusterBuilder struct {
 	href        string
 	id          string
 	name        string
+	nodes       *ClusterNodesBuilder
 	properties  map[string]string
 	region      *CloudRegionBuilder
 	state       string
+	multiAZ     bool
 }
 
 // NewCluster creates a new builder of 'cluster' objects.
@@ -84,12 +86,34 @@ func (b *ClusterBuilder) Id(value string) *ClusterBuilder {
 	return b
 }
 
+// MultiAZ sets the value of the 'multi_AZ' attribute to the given value.
+//
+//
+func (b *ClusterBuilder) MultiAZ(value bool) *ClusterBuilder {
+	b.multiAZ = value
+	b.bitmap_ |= 16
+	return b
+}
+
 // Name sets the value of the 'name' attribute to the given value.
 //
 //
 func (b *ClusterBuilder) Name(value string) *ClusterBuilder {
 	b.name = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
+	return b
+}
+
+// Nodes sets the value of the 'nodes' attribute to the given value.
+//
+//
+func (b *ClusterBuilder) Nodes(value *ClusterNodesBuilder) *ClusterBuilder {
+	b.nodes = value
+	if value != nil {
+		b.bitmap_ |= 64
+	} else {
+		b.bitmap_ &^= 64
+	}
 	return b
 }
 
@@ -99,9 +123,9 @@ func (b *ClusterBuilder) Name(value string) *ClusterBuilder {
 func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 	b.properties = value
 	if value != nil {
-		b.bitmap_ |= 32
+		b.bitmap_ |= 128
 	} else {
-		b.bitmap_ &^= 32
+		b.bitmap_ &^= 128
 	}
 	return b
 }
@@ -112,9 +136,9 @@ func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 	b.region = value
 	if value != nil {
-		b.bitmap_ |= 64
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 64
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -124,7 +148,7 @@ func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 //
 func (b *ClusterBuilder) State(value string) *ClusterBuilder {
 	b.state = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -142,7 +166,13 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	b.displayName = object.displayName
 	b.href = object.href
 	b.id = object.id
+	b.multiAZ = object.multiAZ
 	b.name = object.name
+	if object.nodes != nil {
+		b.nodes = NewClusterNodes().Copy(object.nodes)
+	} else {
+		b.nodes = nil
+	}
 	if len(object.properties) > 0 {
 		b.properties = map[string]string{}
 		for k, v := range object.properties {
@@ -173,7 +203,14 @@ func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 	object.displayName = b.displayName
 	object.href = b.href
 	object.id = b.id
+	object.multiAZ = b.multiAZ
 	object.name = b.name
+	if b.nodes != nil {
+		object.nodes, err = b.nodes.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.properties != nil {
 		object.properties = make(map[string]string)
 		for k, v := range b.properties {

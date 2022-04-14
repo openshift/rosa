@@ -35,3 +35,11 @@ func readManagedServiceGetResponse(response *ManagedServiceGetResponse, reader i
 	response.body, err = UnmarshalManagedService(reader)
 	return err
 }
+func writeManagedServiceUpdateRequest(request *ManagedServiceUpdateRequest, writer io.Writer) error {
+	return MarshalManagedService(request.body, writer)
+}
+func readManagedServiceUpdateResponse(response *ManagedServiceUpdateResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalManagedService(reader)
+	return err
+}
