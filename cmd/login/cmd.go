@@ -246,6 +246,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		if strings.Contains(err.Error(), "token needs to be updated") && !reAttempt {
 			reattemptLogin(cmd, argv)
+			return
 		} else {
 			reporter.Errorf("Failed to create OCM connection: %v", err)
 			os.Exit(1)
