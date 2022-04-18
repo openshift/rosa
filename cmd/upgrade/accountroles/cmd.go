@@ -197,6 +197,13 @@ func run(cmd *cobra.Command, argv []string) error {
 		if isUpgradeNeedForAccountRolePolicies {
 			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies)
 			if err != nil {
+				if strings.Contains(err.Error(), "Throttling") {
+					ocmClient.LogEvent("ROSAUpgradeAccountRolesModeAuto", map[string]string{
+						ocm.Response:   ocm.Failure,
+						ocm.Version:    aws.DefaultPolicyVersion,
+						ocm.IsThrottle: "true",
+					})
+				}
 				if args.isInvokedFromClusterUpgrade {
 					return err
 				}
@@ -205,7 +212,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			}
 		}
 		if isUpgradeNeedForOperatorRolePolicies {
-			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix, policies)
+			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix, policies, ocmClient)
 			if err != nil {
 				if args.isInvokedFromClusterUpgrade {
 					return err
@@ -286,7 +293,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 }
 
 func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, accountID string, prefix string,
-	policies map[string]string) error {
+	policies map[string]string, ocmClient *ocm.Client) error {
 	if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", aws.DefaultPolicyVersion) {
 		if args.isInvokedFromClusterUpgrade {
 			return reporter.Errorf("Operator roles need to be upgraded to proceed" +
@@ -296,6 +303,13 @@ func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, a
 	}
 	err := aws.UpggradeOperatorRolePolicies(reporter, awsClient, accountID, prefix, policies)
 	if err != nil {
+		if strings.Contains(err.Error(), "Throttling") {
+			ocmClient.LogEvent("ROSAUpgradeOperatorRolesModeAuto", map[string]string{
+				ocm.Response:   ocm.Failure,
+				ocm.Version:    aws.DefaultPolicyVersion,
+				ocm.IsThrottle: "true",
+			})
+		}
 		return reporter.Errorf("Error upgrading the role polices: %s", err)
 	}
 	return nil

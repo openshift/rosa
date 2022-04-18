@@ -241,8 +241,9 @@ func run(cmd *cobra.Command, argv []string) {
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
 			ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
-				ocm.ClusterID: clusterKey,
-				ocm.Response:  ocm.Failure,
+				ocm.ClusterID:  clusterKey,
+				ocm.Response:   ocm.Failure,
+				ocm.IsThrottle: "true",
 			})
 			os.Exit(1)
 		}

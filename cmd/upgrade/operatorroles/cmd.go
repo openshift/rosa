@@ -239,7 +239,8 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		err = upgradeOperatorPolicies(mode, reporter, awsClient, creator, prefix, isAccountRoleUpgradeNeed, policies, env)
+		err = upgradeOperatorPolicies(mode, reporter, awsClient, creator, prefix, isAccountRoleUpgradeNeed,
+			policies, env, ocmClient)
 		if err != nil {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -302,7 +303,7 @@ func handleModeFlag(cmd *cobra.Command, skipInteractive bool, mode string, err e
 }
 
 func upgradeOperatorPolicies(mode string, reporter *rprtr.Object, awsClient aws.Client, creator *aws.Creator,
-	prefix string, isAccountRoleUpgradeNeed bool, policies map[string]string, env string) error {
+	prefix string, isAccountRoleUpgradeNeed bool, policies map[string]string, env string, ocmClient *ocm.Client) error {
 	switch mode {
 	case aws.ModeAuto:
 		if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", aws.DefaultPolicyVersion) {
@@ -310,6 +311,13 @@ func upgradeOperatorPolicies(mode string, reporter *rprtr.Object, awsClient aws.
 		}
 		err := aws.UpgradeOperatorPolicies(reporter, awsClient, creator.AccountID, prefix, policies)
 		if err != nil {
+			if strings.Contains(err.Error(), "Throttling") {
+				ocmClient.LogEvent("ROSAUpgradeOperatorRolesModeAuto", map[string]string{
+					ocm.Response:   ocm.Failure,
+					ocm.Version:    aws.DefaultPolicyVersion,
+					ocm.IsThrottle: "true",
+				})
+			}
 			return reporter.Errorf("Error upgrading the role polices: %s", err)
 		}
 		return nil

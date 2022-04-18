@@ -244,6 +244,14 @@ func run(cmd *cobra.Command, argv []string) {
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, creator.AccountID, env, policies)
 		if err != nil {
 			reporter.Errorf("There was an error creating the account roles: %s", err)
+			if strings.Contains(err.Error(), "Throttling") {
+				ocmClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
+					ocm.Response:   ocm.Failure,
+					ocm.Version:    aws.DefaultPolicyVersion,
+					ocm.IsThrottle: "true",
+				})
+				os.Exit(1)
+			}
 			ocmClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 				ocm.Response: ocm.Failure,
 			})
