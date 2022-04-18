@@ -281,6 +281,11 @@ func run(cmd *cobra.Command, argv []string) {
 				" - HTTPSProxy:              %s\n", str,
 				cluster.Proxy().HTTPSProxy())
 		}
+		if cluster.Proxy().NoProxy() != "" {
+			str = fmt.Sprintf("%s"+
+				" - NoProxy:                 %s\n", str,
+				cluster.Proxy().NoProxy())
+		}
 	}
 
 	if cluster.AdditionalTrustBundle() != "" {

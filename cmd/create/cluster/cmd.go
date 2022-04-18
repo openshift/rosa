@@ -119,6 +119,7 @@ var args struct {
 	enableProxy               bool
 	httpProxy                 string
 	httpsProxy                string
+	noProxySlice              []string
 	additionalTrustBundleFile string
 
 	tags []string
@@ -285,6 +286,14 @@ func init() {
 		"https-proxy",
 		"",
 		"A proxy URL to use for creating HTTPS connections outside the cluster.",
+	)
+
+	flags.StringSliceVar(
+		&args.noProxySlice,
+		"no-proxy",
+		nil,
+		"A comma-separated list of destination domain names, domains, IP addresses or "+
+			"other network CIDRs to exclude proxying. Use \"*\" to bypass proxy for all destinations",
 	)
 
 	flags.StringVar(
@@ -1166,8 +1175,9 @@ func run(cmd *cobra.Command, _ []string) {
 	enableProxy := false
 	httpProxy := args.httpProxy
 	httpsProxy := args.httpsProxy
+	noProxySlice := args.noProxySlice
 	additionalTrustBundleFile := args.additionalTrustBundleFile
-	if httpProxy != "" || httpsProxy != "" || additionalTrustBundleFile != "" {
+	if httpProxy != "" || httpsProxy != "" || len(noProxySlice) > 0 || additionalTrustBundleFile != "" {
 		useExistingVPC = true
 		enableProxy = true
 	}
@@ -1596,7 +1606,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Cluster-wide proxy configuration
-	if useExistingVPC && !enableProxy && interactive.Enabled() {
+	if (subnetsProvided || (useExistingVPC && !enableProxy)) && interactive.Enabled() {
 		enableProxy, err = interactive.GetBool(interactive.Input{
 			Question: "Use cluster-wide proxy",
 			Help: "To install cluster-wide proxy, you need to set one of the following attributes: 'http-proxy', " +
@@ -1646,6 +1656,43 @@ func run(cmd *cobra.Command, _ []string) {
 	err = interactive.IsURL(httpsProxy)
 	if err != nil {
 		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if enableProxy && interactive.Enabled() {
+		noProxyInput, err := interactive.GetString(interactive.Input{
+			Question: "No proxy",
+			Help:     cmd.Flags().Lookup("no-proxy").Usage,
+			Default:  strings.Join(noProxySlice, ","),
+			Validators: []interactive.Validator{
+				aws.UserNoProxyValidator,
+				aws.UserNoProxyDuplicateValidator,
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
+			os.Exit(1)
+		}
+		noProxySlice = strings.Split(noProxyInput, ",")
+	}
+
+	if len(noProxySlice) > 0 {
+		duplicate, found := aws.HasDuplicates(noProxySlice)
+		if found {
+			reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
+			os.Exit(1)
+		}
+		for _, domain := range noProxySlice {
+			err := aws.UserNoProxyValidator(domain)
+			if err != nil {
+				reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	if httpProxy == "" && httpsProxy == "" && len(noProxySlice) > 0 {
+		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
 		os.Exit(1)
 	}
 
@@ -1732,6 +1779,10 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if httpsProxy != "" {
 		clusterConfig.HTTPSProxy = &httpsProxy
+	}
+	if len(noProxySlice) > 0 {
+		str := strings.Join(noProxySlice, ",")
+		clusterConfig.NoProxy = &str
 	}
 	if additionalTrustBundleFile != "" {
 		clusterConfig.AdditionalTrustBundleFile = &additionalTrustBundleFile
@@ -2099,6 +2150,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 		}
 		if spec.HTTPSProxy != nil && *spec.HTTPSProxy != "" {
 			command += fmt.Sprintf(" --https-proxy %s", *spec.HTTPSProxy)
+		}
+		if spec.NoProxy != nil && *spec.NoProxy != "" {
+			command += fmt.Sprintf(" --no-proxy \"%s\"", *spec.NoProxy)
 		}
 	}
 	if spec.AdditionalTrustBundleFile != nil && *spec.AdditionalTrustBundleFile != "" {

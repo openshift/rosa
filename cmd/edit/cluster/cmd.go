@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -45,6 +46,7 @@ var args struct {
 	disableWorkloadMonitoring bool
 	httpProxy                 string
 	httpsProxy                string
+	noProxySlice              []string
 	additionalTrustBundleFile string
 }
 
@@ -111,6 +113,14 @@ func init() {
 		"A proxy URL to use for creating HTTPS connections outside the cluster.",
 	)
 
+	flags.StringSliceVar(
+		&args.noProxySlice,
+		"no-proxy",
+		nil,
+		"A comma-separated list of destination domain names, domains, IP addresses or "+
+			"other network CIDRs to exclude proxying. Use \"*\" to bypass proxy for all destinations",
+	)
+
 	flags.StringVar(
 		&args.additionalTrustBundleFile,
 		"additional-trust-bundle-file",
@@ -132,7 +142,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if !interactive.Enabled() {
 		changedFlags := false
 		for _, flag := range []string{"expiration-time", "expiration", "private",
-			"disable-workload-monitoring", "http-proxy", "https-proxy", "additional-trust-bundle-file"} {
+			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy", "additional-trust-bundle-file"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
@@ -215,6 +225,10 @@ func run(cmd *cobra.Command, _ []string) {
 		httpsProxyValue = args.httpsProxy
 		httpsProxy = &httpsProxyValue
 	}
+	var noProxySlice []string
+	if cmd.Flags().Changed("no-proxy") {
+		noProxySlice = args.noProxySlice
+	}
 	var additionalTrustBundleFile *string
 	var additionalTrustBundleFileValue string
 	if cmd.Flags().Changed("additional-trust-bundle-file") {
@@ -222,13 +236,14 @@ func run(cmd *cobra.Command, _ []string) {
 		additionalTrustBundleFile = &additionalTrustBundleFileValue
 	}
 
-	if httpProxy != nil || httpsProxy != nil || additionalTrustBundleFile != nil {
+	if httpProxy != nil || httpsProxy != nil || len(noProxySlice) > 0 || additionalTrustBundleFile != nil {
 		enableProxy = true
 		useExistingVPC = true
 	}
 
 	if len(cluster.AWS().SubnetIDs()) == 0 &&
 		((httpProxy != nil && *httpProxy != "") || (httpsProxy != nil && *httpsProxy != "") ||
+			len(noProxySlice) > 0 ||
 			(additionalTrustBundleFile != nil && *additionalTrustBundleFile != "")) {
 		reporter.Errorf("Cluster-wide proxy is not supported on clusters using the default VPC")
 		os.Exit(1)
@@ -368,7 +383,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if httpsProxy != nil {
 			def = *httpsProxy
 			if def == "" {
-				// received double quotes from the iser. need to remove the existing value
+				// received double quotes from the user. need to remove the existing value
 				def = doubleQuotesToRemove
 			}
 		}
@@ -397,6 +412,43 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
+		}
+	}
+
+	///******* NoProxy *******/
+	if enableProxy && interactive.Enabled() {
+		noProxyInput, err := interactive.GetString(interactive.Input{
+			Question: "No proxy",
+			Help:     cmd.Flags().Lookup("no-proxy").Usage,
+			Default:  strings.Join(noProxySlice, ","),
+			Validators: []interactive.Validator{
+				aws.UserNoProxyValidator,
+				aws.UserNoProxyDuplicateValidator,
+			},
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
+			os.Exit(1)
+		}
+		noProxySlice = strings.Split(noProxyInput, ",")
+	}
+	if httpProxy == nil && httpsProxy == nil && len(noProxySlice) > 0 {
+		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
+		os.Exit(1)
+	}
+
+	if len(noProxySlice) > 0 {
+		duplicate, found := aws.HasDuplicates(noProxySlice)
+		if found {
+			reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
+			os.Exit(1)
+		}
+		for _, domain := range noProxySlice {
+			err := aws.UserNoProxyValidator(domain)
+			if err != nil {
+				reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -458,11 +510,6 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if enableProxy && httpProxy == nil && httpsProxy == nil && additionalTrustBundleFile == nil {
-		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy, additional-trust-bundle")
-		os.Exit(1)
-	}
-
 	clusterConfig := ocm.Spec{
 		Expiration:                expiration,
 		Private:                   private,
@@ -474,6 +521,10 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if httpsProxy != nil {
 		clusterConfig.HTTPSProxy = httpsProxy
+	}
+	if noProxySlice != nil {
+		str := strings.Join(noProxySlice, ",")
+		clusterConfig.NoProxy = &str
 	}
 	if additionalTrustBundleFile != nil {
 		clusterConfig.AdditionalTrustBundle = new(string)

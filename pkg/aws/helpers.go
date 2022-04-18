@@ -30,6 +30,15 @@ var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 var UserTagKeyRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
 var UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
 
+// the following regex defines five different patterns:
+// first pattern is to validate IPv4 address
+// second,is for IPv4 CIDR range validation
+// third pattern is to validate domains
+// the forth one is to bypass proxy for all destinations ('*')
+// and the fifth petterrn is to be able to remove the existing no-proxy value by typing empty string ("").
+// nolint
+var UserNoProxyRE = regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(3[0-2]|[1-2][0-9]|[0-9]))$|^.?(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9-]*[A-Za-z0-9])$|^\*$|^""$`)
+
 // JumpAccounts are the various of AWS accounts used for the installer jump role in the various OCM environments
 var JumpAccounts = map[string]string{
 	"production":  "710019948333",
@@ -234,6 +243,48 @@ func HasDuplicateTagKey(tags []string) (string, bool) {
 			return tag[0], true
 		}
 		visited[tag[0]] = true
+	}
+	return "", false
+}
+
+func UserNoProxyValidator(input interface{}) error {
+	if str, ok := input.(string); ok {
+		if str == "" {
+			return nil
+		}
+		noProxyValues := strings.Split(str, ",")
+		for _, v := range noProxyValues {
+			if !UserNoProxyRE.MatchString(v) {
+				return fmt.Errorf("expected a valid user no-proxy value: '%s' matching %s", v, UserNoProxyRE.String())
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", input)
+}
+
+func UserNoProxyDuplicateValidator(input interface{}) error {
+	if str, ok := input.(string); ok {
+		if str == "" {
+			return nil
+		}
+		values := strings.Split(str, ",")
+		duplicate, found := HasDuplicates(values)
+		if found {
+			return fmt.Errorf("no-proxy values must be unique, duplicate key '%s' found", duplicate)
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", input)
+}
+
+func HasDuplicates(valSlice []string) (string, bool) {
+	visited := make(map[string]bool)
+	for _, v := range valSlice {
+		if visited[v] {
+			return v, true
+		}
+		visited[v] = true
 	}
 	return "", false
 }

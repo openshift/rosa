@@ -100,6 +100,7 @@ type Spec struct {
 	EnableProxy               bool
 	HTTPProxy                 *string
 	HTTPSProxy                *string
+	NoProxy                   *string
 	AdditionalTrustBundleFile *string
 	AdditionalTrustBundle     *string
 }
@@ -418,13 +419,16 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
 	}
 
-	if config.HTTPProxy != nil || config.HTTPSProxy != nil {
+	if config.HTTPProxy != nil || config.HTTPSProxy != nil || config.NoProxy != nil {
 		clusterProxyBuilder := cmv1.NewProxy()
 		if config.HTTPProxy != nil {
 			clusterProxyBuilder = clusterProxyBuilder.HTTPProxy(*config.HTTPProxy)
 		}
 		if config.HTTPSProxy != nil {
 			clusterProxyBuilder = clusterProxyBuilder.HTTPSProxy(*config.HTTPSProxy)
+		}
+		if config.NoProxy != nil {
+			clusterProxyBuilder = clusterProxyBuilder.NoProxy(*config.NoProxy)
 		}
 		clusterBuilder = clusterBuilder.Proxy(clusterProxyBuilder)
 	}
@@ -715,6 +719,9 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		}
 		if config.HTTPSProxy != nil {
 			proxyBuilder.HTTPSProxy(*config.HTTPSProxy)
+		}
+		if config.NoProxy != nil {
+			proxyBuilder.NoProxy(*config.NoProxy)
 		}
 		clusterBuilder = clusterBuilder.Proxy(proxyBuilder)
 	}
