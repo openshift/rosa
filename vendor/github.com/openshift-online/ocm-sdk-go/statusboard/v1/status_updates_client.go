@@ -239,6 +239,8 @@ type StatusUpdatesListRequest struct {
 	header        http.Header
 	createdAfter  *time.Time
 	createdBefore *time.Time
+	fullNames     *string
+	limitScope    *time.Time
 	page          *int
 	productIds    *string
 	size          *int
@@ -276,6 +278,22 @@ func (r *StatusUpdatesListRequest) CreatedAfter(value time.Time) *StatusUpdatesL
 //
 func (r *StatusUpdatesListRequest) CreatedBefore(value time.Time) *StatusUpdatesListRequest {
 	r.createdBefore = &value
+	return r
+}
+
+// FullNames sets the value of the 'full_names' parameter.
+//
+//
+func (r *StatusUpdatesListRequest) FullNames(value string) *StatusUpdatesListRequest {
+	r.fullNames = &value
+	return r
+}
+
+// LimitScope sets the value of the 'limit_scope' parameter.
+//
+//
+func (r *StatusUpdatesListRequest) LimitScope(value time.Time) *StatusUpdatesListRequest {
+	r.limitScope = &value
 	return r
 }
 
@@ -319,6 +337,12 @@ func (r *StatusUpdatesListRequest) SendContext(ctx context.Context) (result *Sta
 	}
 	if r.createdBefore != nil {
 		helpers.AddValue(&query, "created_before", *r.createdBefore)
+	}
+	if r.fullNames != nil {
+		helpers.AddValue(&query, "full_names", *r.fullNames)
+	}
+	if r.limitScope != nil {
+		helpers.AddValue(&query, "limit_scope", *r.limitScope)
 	}
 	if r.page != nil {
 		helpers.AddValue(&query, "page", *r.page)

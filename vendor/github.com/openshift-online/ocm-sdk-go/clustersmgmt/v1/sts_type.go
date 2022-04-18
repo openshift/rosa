@@ -23,13 +23,16 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Contains the necessary attributes to support role-based authentication on AWS.
 type STS struct {
-	bitmap_          uint32
-	oidcEndpointURL  string
-	externalID       string
-	instanceIAMRoles *InstanceIAMRoles
-	operatorIAMRoles []*OperatorIAMRole
-	roleARN          string
-	supportRoleARN   string
+	bitmap_            uint32
+	oidcEndpointURL    string
+	externalID         string
+	instanceIAMRoles   *InstanceIAMRoles
+	operatorIAMRoles   []*OperatorIAMRole
+	operatorRolePrefix string
+	permissionBoundary string
+	roleARN            string
+	supportRoleARN     string
+	autoMode           bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -60,12 +63,35 @@ func (o *STS) GetOIDCEndpointURL() (value string, ok bool) {
 	return
 }
 
+// AutoMode returns the value of the 'auto_mode' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Auto creation mode for cluster - OCM will create the operator roles and OIDC provider. false by default.
+func (o *STS) AutoMode() bool {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.autoMode
+	}
+	return false
+}
+
+// GetAutoMode returns the value of the 'auto_mode' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Auto creation mode for cluster - OCM will create the operator roles and OIDC provider. false by default.
+func (o *STS) GetAutoMode() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.autoMode
+	}
+	return
+}
+
 // ExternalID returns the value of the 'external_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Optional unique identifier when assuming role in another account
 func (o *STS) ExternalID() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.externalID
 	}
 	return ""
@@ -76,7 +102,7 @@ func (o *STS) ExternalID() string {
 //
 // Optional unique identifier when assuming role in another account
 func (o *STS) GetExternalID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.externalID
 	}
@@ -88,7 +114,7 @@ func (o *STS) GetExternalID() (value string, ok bool) {
 //
 // Instance IAM roles to use for the instance profiles of the master and worker instances
 func (o *STS) InstanceIAMRoles() *InstanceIAMRoles {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.instanceIAMRoles
 	}
 	return nil
@@ -99,7 +125,7 @@ func (o *STS) InstanceIAMRoles() *InstanceIAMRoles {
 //
 // Instance IAM roles to use for the instance profiles of the master and worker instances
 func (o *STS) GetInstanceIAMRoles() (value *InstanceIAMRoles, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.instanceIAMRoles
 	}
@@ -111,7 +137,7 @@ func (o *STS) GetInstanceIAMRoles() (value *InstanceIAMRoles, ok bool) {
 //
 // List of roles necessary to access the AWS resources of the various operators used during installation
 func (o *STS) OperatorIAMRoles() []*OperatorIAMRole {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.operatorIAMRoles
 	}
 	return nil
@@ -122,9 +148,55 @@ func (o *STS) OperatorIAMRoles() []*OperatorIAMRole {
 //
 // List of roles necessary to access the AWS resources of the various operators used during installation
 func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.operatorIAMRoles
+	}
+	return
+}
+
+// OperatorRolePrefix returns the value of the 'operator_role_prefix' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Optional user provided prefix for operator roles.
+func (o *STS) OperatorRolePrefix() string {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.operatorRolePrefix
+	}
+	return ""
+}
+
+// GetOperatorRolePrefix returns the value of the 'operator_role_prefix' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Optional user provided prefix for operator roles.
+func (o *STS) GetOperatorRolePrefix() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.operatorRolePrefix
+	}
+	return
+}
+
+// PermissionBoundary returns the value of the 'permission_boundary' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Optional user provided permission boundary.
+func (o *STS) PermissionBoundary() string {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.permissionBoundary
+	}
+	return ""
+}
+
+// GetPermissionBoundary returns the value of the 'permission_boundary' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Optional user provided permission boundary.
+func (o *STS) GetPermissionBoundary() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.permissionBoundary
 	}
 	return
 }
@@ -134,7 +206,7 @@ func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
 //
 // ARN of the AWS role to assume when installing the cluster
 func (o *STS) RoleARN() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.roleARN
 	}
 	return ""
@@ -145,7 +217,7 @@ func (o *STS) RoleARN() string {
 //
 // ARN of the AWS role to assume when installing the cluster
 func (o *STS) GetRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.roleARN
 	}
@@ -157,7 +229,7 @@ func (o *STS) GetRoleARN() (value string, ok bool) {
 //
 // ARN of the AWS role used by SREs to access the cluster AWS account in order to provide support
 func (o *STS) SupportRoleARN() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.supportRoleARN
 	}
 	return ""
@@ -168,7 +240,7 @@ func (o *STS) SupportRoleARN() string {
 //
 // ARN of the AWS role used by SREs to access the cluster AWS account in order to provide support
 func (o *STS) GetSupportRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.supportRoleARN
 	}

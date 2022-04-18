@@ -3,6 +3,28 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.262 Apr 14 2022
+
+- Update to model 0.0.194:
+  - Added availability zone fields to managed service cluster struct.
+
+## 0.1.261 Apr 14 2022
+
+- Update to model 0.0.193:
+  - Add limitedSupportReasonCount to cluster status struct.
+  - Add inflight check API.
+
+## 0.1.260 Apr 11 2022
+
+- Update to model 0.0.191:
+  - Fix JSON representation of log severity.
+
+## 0.1.259 Apr 8 2022
+
+- Update to model 0.0.190:
+  - Fix JSON names of identity provider types.
+  - Add enable minor version upgrades flag to upgrade policy.
+
 ## 0.1.258 Apr 5 2022
 
 - Update to model 0.0.189:

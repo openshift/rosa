@@ -106,11 +106,20 @@ func writeClusterStatus(object *ClusterStatus, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("limited_support_reason_count")
+		stream.WriteInt(object.limitedSupportReasonCount)
+		count++
+	}
+	present_ = object.bitmap_&256 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("provision_error_code")
 		stream.WriteString(object.provisionErrorCode)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -119,7 +128,7 @@ func writeClusterStatus(object *ClusterStatus, stream *jsoniter.Stream) {
 		stream.WriteString(object.provisionErrorMessage)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -179,19 +188,23 @@ func readClusterStatus(iterator *jsoniter.Iterator) *ClusterStatus {
 			value := iterator.ReadString()
 			object.description = value
 			object.bitmap_ |= 64
+		case "limited_support_reason_count":
+			value := iterator.ReadInt()
+			object.limitedSupportReasonCount = value
+			object.bitmap_ |= 128
 		case "provision_error_code":
 			value := iterator.ReadString()
 			object.provisionErrorCode = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "provision_error_message":
 			value := iterator.ReadString()
 			object.provisionErrorMessage = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "state":
 			text := iterator.ReadString()
 			value := ClusterState(text)
 			object.state = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}
