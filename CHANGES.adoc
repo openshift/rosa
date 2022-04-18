@@ -2,6 +2,25 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.0 Apr 18 2022
+
+- Fetch sts policies from ocm
+- Add global color flag
+- added command to create managed services
+- added command to list managed services
+- added command to describe managed services
+- added command to delete managed services
+- updated
+- enhancing usability of managed service commands
+- HTPasswd: Add username & password validations in CLI
+- Fix `rosa describe admin` to look at HTPasswd IDP users to determine existence of admin
+- Fix error message - rosa delete ocm-role
+- Fix error message - rosa create ocm-role
+- Remove AUTH URL from HTPasswd entries of `rosa list idps`
+- Fix bug - delete account roles - make the `prefix` flag optional
+- Updated ocm sdk to v0.1.262
+- Adding support for byo-vpc in creating services
+
 == 1.1.12 Apr 5 2022
 
 - Sort roles to display linked ones first
