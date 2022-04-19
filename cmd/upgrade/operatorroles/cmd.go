@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -347,6 +349,7 @@ func createOperatorRole(mode string, reporter *rprtr.Object, awsClient aws.Clien
 		if err != nil {
 			return err
 		}
+		helper.DisplaySpinnerWithDelay(reporter, "Waiting for operator roles to reconcile", 5*time.Second)
 	case aws.ModeManual:
 		commands, err := buildMissingOperatorRoleCommand(missingRoles, cluster, accountID, prefix, reporter, policies)
 		if err != nil {

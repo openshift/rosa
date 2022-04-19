@@ -1,5 +1,12 @@
 package helper
 
+import (
+	"time"
+
+	"github.com/briandowns/spinner"
+	"github.com/openshift/rosa/pkg/reporter"
+)
+
 func Contains(s []string, str string) bool {
 	for _, v := range s {
 		if v == str {
@@ -29,4 +36,16 @@ func RemoveStrFromSlice(s []string, str string) []string {
 	}
 
 	return s
+}
+
+func DisplaySpinnerWithDelay(reporter *reporter.Object, infoMessage string, delay time.Duration) {
+	if reporter.IsTerminal() {
+		spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		reporter.Infof(infoMessage)
+		spin.Start()
+		time.Sleep(delay)
+		spin.Stop()
+	} else {
+		time.Sleep(delay)
+	}
 }
