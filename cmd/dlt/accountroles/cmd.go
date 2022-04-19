@@ -245,8 +245,10 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail) s
 		policyDetails := policyMap[roleName]
 		for _, policyDetail := range policyDetails {
 			if policyDetail.PolicType == aws.Attached && policyDetail.PolicyArn != "" {
-				deletePolicy := fmt.Sprintf("\taws iam detach-role-policy --role-name  %s  --policy-arn  %s",
+				detachPolicy := fmt.Sprintf("\taws iam detach-role-policy --role-name  %s  --policy-arn  %s",
 					roleName, policyDetail.PolicyArn)
+				commands = append(commands, detachPolicy)
+				deletePolicy := fmt.Sprintf("\taws iam delete-policy --policy-arn  %s", policyDetail.PolicyArn)
 				commands = append(commands, deletePolicy)
 			}
 			if policyDetail.PolicType == aws.Inline && policyDetail.PolicyName != "" {

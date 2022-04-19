@@ -917,7 +917,7 @@ func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
 
 func (c *awsClient) DeleteOperatorRole(roleName string) error {
 	role := aws.String(roleName)
-	err := c.detachOperatorRolePolicies(role)
+	err := c.detachAndDeleteAttachedRolePolicies(role)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -986,7 +986,7 @@ func (c *awsClient) DeleteAccountRole(roleName string) error {
 	return c.DeleteRole(roleName, role)
 }
 
-func (c *awsClient) detachAttachedRolePolicies(role *string) error {
+func (c *awsClient) detachAndDeleteAttachedRolePolicies(role *string) error {
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
 		RoleName: role,
 	})
@@ -1007,8 +1007,64 @@ func (c *awsClient) detachAttachedRolePolicies(role *string) error {
 			}
 			return err
 		}
+		response, err := c.iamClient.ListEntitiesForPolicy(&iam.ListEntitiesForPolicyInput{
+			PolicyArn: policy.PolicyArn,
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					continue
+				}
+			}
+			return err
+		}
+		if response.PolicyRoles != nil && len(response.PolicyRoles) > 0 {
+			return nil
+		}
+		listVersionsResponse, err := c.iamClient.ListPolicyVersions(&iam.ListPolicyVersionsInput{PolicyArn: policy.PolicyArn})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					continue
+				}
+			}
+			return err
+		}
+		for _, policyVersion := range listVersionsResponse.Versions {
+			if policyVersion != nil {
+				isDefault := *policyVersion.IsDefaultVersion
+				if policyVersion.IsDefaultVersion != nil && !isDefault {
+					_, err = c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
+						PolicyArn: policy.PolicyArn,
+						VersionId: policyVersion.VersionId,
+					})
+					if err != nil {
+						if aerr, ok := err.(awserr.Error); ok {
+							switch aerr.Code() {
+							case iam.ErrCodeNoSuchEntityException:
+								continue
+							}
+						}
+						return err
+					}
+				}
+			}
+		}
+		_, err = c.iamClient.DeletePolicy(&iam.DeletePolicyInput{
+			PolicyArn: policy.PolicyArn,
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					continue
+				}
+			}
+			return err
+		}
 	}
-
 	return nil
 }
 
@@ -1032,12 +1088,11 @@ func (c *awsClient) DeleteInlineRolePolicies(role string) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
 func (c *awsClient) deleteAccountRolePolicies(role *string) error {
-	err := c.detachAttachedRolePolicies(role)
+	err := c.detachAndDeleteAttachedRolePolicies(role)
 	if err != nil {
 		return err
 	}
@@ -1045,7 +1100,6 @@ func (c *awsClient) deleteAccountRolePolicies(role *string) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
@@ -1095,23 +1149,6 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	}
 
 	return policies, nil
-}
-
-func (c *awsClient) detachOperatorRolePolicies(role *string) error {
-	// get attached role policies as operator roles have managed policies
-	policiesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
-		RoleName: role,
-	})
-	if err != nil {
-		return err
-	}
-	for _, policy := range policiesOutput.AttachedPolicies {
-		_, err := c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{PolicyArn: policy.PolicyArn, RoleName: role})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (c *awsClient) GetOperatorRolesFromAccount(clusterID string) ([]string, error) {

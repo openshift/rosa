@@ -33,7 +33,7 @@ import (
 )
 
 func (c *awsClient) DeleteUserRole(roleName string) error {
-	err := c.detachAttachedRolePolicies(aws.String(roleName))
+	err := c.detachAndDeleteAttachedRolePolicies(aws.String(roleName))
 	if err != nil {
 		return err
 	}
