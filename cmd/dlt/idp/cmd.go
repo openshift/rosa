@@ -23,6 +23,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	idpPack "github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -120,7 +121,13 @@ func run(_ *cobra.Command, argv []string) {
 		reporter.Errorf("Failed to get identity provider '%s' for cluster '%s'", idpName, clusterKey)
 		os.Exit(1)
 	}
-
+	if ocm.IdentityProviderType(idp) == ocm.HTPasswdIDPType {
+		_, existingUserList := idpPack.FindExistingHTPasswdIDP(cluster, ocmClient)
+		if idpPack.HasClusterAdmin(existingUserList) {
+			reporter.Warnf("The cluster-admin user is contained in the HTPasswd IDP. Deleting the IDP will " +
+				"also delete the admin user.")
+		}
+	}
 	if confirm.Confirm("delete identity provider %s on cluster %s", idpName, clusterKey) {
 		reporter.Debugf("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
 		err = ocmClient.DeleteIdentityProvider(cluster.ID(), idp.ID())
