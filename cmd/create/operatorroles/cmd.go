@@ -240,10 +240,14 @@ func run(cmd *cobra.Command, argv []string) {
 			accountRoleVersion, policies)
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
+			isThrottle := "false"
+			if strings.Contains(err.Error(), "Throttling") {
+				isThrottle = "true"
+			}
 			ocmClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
 				ocm.ClusterID:  clusterKey,
 				ocm.Response:   ocm.Failure,
-				ocm.IsThrottle: "true",
+				ocm.IsThrottle: isThrottle,
 			})
 			os.Exit(1)
 		}
