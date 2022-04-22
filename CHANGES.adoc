@@ -2,6 +2,18 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.1 Apr 22 2022
+
+- support for cmk multi-region keys
+- Warn that deleting HTPasswd IDP with cluster-admin user will delete the admin
+- Add username & password requirements to the flags' help messages
+- fix login error
+- Upgrade cluster to 4.10.* - add delay after roles creation
+- Only prompt for HTPasswd IDP name when actually creating a new IDP
+- add metric for throttle
+- supporting different regions for create service command
+- Fix Throttle issue for Operator roles
+
 == 1.2.0 Apr 18 2022
 
 - Fetch sts policies from ocm
