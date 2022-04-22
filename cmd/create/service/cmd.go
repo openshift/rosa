@@ -134,7 +134,14 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}()
 
-	awsClient := aws.GetAWSClientForUserRegion(reporter, logger)
+	awsClient, err := aws.NewClient().
+		Region(args.AwsRegion).
+		Logger(logger).
+		Build()
+	if err != nil {
+		reporter.Errorf("Failed to create awsClient: %s", err)
+		os.Exit(1)
+	}
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
