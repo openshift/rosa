@@ -13,14 +13,15 @@
         "Description": "Role and Policy name prefix",
         "Type": "String",
         "AllowedPattern": "^[a-zA-Z0-9-_]*$",
-        "MaxLength": 32
+        "MaxLength": 32,
+        "Default": ""
       }
     },
     "Resources": {
         "RHManagedOpenShiftInstallerRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "RoleName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Installer-Role" ]] },
+                "RoleName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-Installer-Role" ]] },
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -47,7 +48,7 @@
         "RHManagedOpenShiftSupportRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "RoleName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Support-Role" ]] },
+                "RoleName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-Support-Role" ]] },
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -74,7 +75,7 @@
         "RHManagedOpenShiftControlPlaneRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "RoleName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-ControlPlane-Role" ]] },
+                "RoleName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-ControlPlane-Role" ]] },
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -103,7 +104,7 @@
         "RHManagedOpenShiftWorkerRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "RoleName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Worker-Role" ]] },
+                "RoleName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-Worker-Role" ]] },
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -132,7 +133,7 @@
         "RHManagedOpenShiftInstallerPolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Installer-Role-Policy" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-Installer-Role-Policy" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -153,7 +154,7 @@
         "RHManagedOpenShiftSupportPolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Support-Role-Policy" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-Support-Role-Policy" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -174,7 +175,7 @@
         "RHManagedOpenShiftControlPlanePolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-ControlPlane-Role-Policy" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-ControlPlane-Role-Policy" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -195,7 +196,7 @@
         "RHManagedOpenShiftWorkerPolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-Worker-Role-Policy" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-Worker-Role-Policy" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -216,7 +217,7 @@
         "RHManagedOpenShiftCloudCredentialOperatorPolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-cloud-credential-operator-cloud-crede" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-cloud-credential-operator-cloud-crede" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -232,7 +233,7 @@
         "RHManagedOpenShiftMachineAPIOperatorPolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-machine-api-aws-cloud-credentials" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-machine-api-aws-cloud-credentials" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -248,7 +249,7 @@
         "RHManagedOpenShiftImageRegistryOperatorPolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-image-registry-installer-cloud-creden" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-image-registry-installer-cloud-creden" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -264,7 +265,7 @@
         "RHManagedOpenShiftIngressOperatorPolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-ingress-operator-cloud-credentials" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-ingress-operator-cloud-credentials" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -280,7 +281,7 @@
         "RHManagedOpenShiftClusterCSIDriversEBSPolicy": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "ManagedPolicyName": { "Fn::Join" : ["-", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-cluster-csi-drivers-ebs-cloud-credent" ]] },
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-cluster-csi-drivers-ebs-cloud-credent" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
