@@ -26,7 +26,7 @@
       },
       "ImageRegistryOperatorSAName": {
         "Description": "Service Account Name",
-        "Type": "String",
+        "Type": "CommaDelimitedList",
         "Default": "system:serviceaccount:openshift-image-registry:cluster-image-registry-operator, system:serviceaccount:openshift-image-registry:registry"
       },
       "IngressOperatorSAName": {
@@ -36,7 +36,7 @@
       },
       "ClusterCSIDriverEBSSAName": {
         "Description": "Service Account Name",
-        "Type": "String",
+        "Type": "CommaDelimitedList",
         "Default": "system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-operator, system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa"
       },
       "CloudCredentialOperatorRoleName": {
@@ -61,8 +61,6 @@
       }
     },
     "Resources": {
-        "StorageSANames": { "Fn::Join" : [ ",", { "Ref": "ClusterCSIDriverEBSSAName" } ] },
-        "ImageRegistrySANames": { "Fn::Join" : [ ",", { "Ref": "ImageRegistryOperatorSAName" } ] },
         "CloudCredentialOperatorRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -95,7 +93,7 @@
             "Properties": {
             	"RoleName": { "Ref": "ImageRegistryOperatorRoleName" },
                 "AssumeRolePolicyDocument": {
-					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${ImageRegistryOperatorSAName}\"} } } ] }"
+                    "Fn::Sub": [ "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"Federated\": [\"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\": [\"${ImageRegistrySAName}\"] } } }] }", { "ImageRegistrySAName": { "Fn::Join": [ ",", {"Ref": "ImageRegistryOperatorSAName"} ] } } ]
                 },
                 "ManagedPolicyArns": [{ "Fn::ImportValue": {"Fn::Sub": "${AccountRolesStackName}-ImageRegistryOperatorPolicyArn"} }],
                 "Tags": [
@@ -121,7 +119,7 @@
             "Properties": {
             	"RoleName": { "Ref": "ClusterCSIDriverEBSRoleName" },
                 "AssumeRolePolicyDocument": {
-					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${ClusterCSIDriverEBSSAName}\"} } } ] }"
+                "Fn::Sub": [ "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"Federated\": [\"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\": [ \"${CSIDriverEBSSAName}\" ] } } }] }", { "CSIDriverEBSSAName": { "Fn::Join": [ ",", {"Ref": "ClusterCSIDriverEBSSAName"} ] } } ]
                 },
                 "ManagedPolicyArns": [{ "Fn::ImportValue": {"Fn::Sub": "${AccountRolesStackName}-ClusterCSIDriversEBSPolicyArn"} }],
             	"Tags": [
