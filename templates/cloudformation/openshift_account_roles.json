@@ -294,6 +294,22 @@
                     ]
                 }
             }
+        },
+         "RHManagedOpenShiftNetworkConfigControllerPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": { "Fn::Join" : ["", [ { "Ref": "Prefix" }, "ManagedOpenShift-openshift-network-config-controller-cloud-crede" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
         }
     },
 	"Outputs" : {
@@ -321,6 +337,11 @@
 			"Description" : "Cluster CSI Drivers EBS Policy Arn",
 			"Value" :  { "Ref" : "RHManagedOpenShiftClusterCSIDriversEBSPolicy" },
 			"Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-ClusterCSIDriversEBSPolicyArn" }}
+        },
+        "NetworkConfigControllerPolicyArn": {
+			"Description" : "Network Config Controller Policy Arn",
+			"Value" :  { "Ref" : "RHManagedOpenShiftNetworkConfigControllerPolicy" },
+			"Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-NetworkConfigControllerPolicyArn" }}
         }
     }
 }

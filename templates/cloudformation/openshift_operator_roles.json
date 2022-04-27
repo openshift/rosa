@@ -39,6 +39,11 @@
         "Type": "String",
         "Default": "\"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-operator\", \"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa\""
       },
+      "NetworkConfigControllerSAName": {
+        "Description": "Service Account Name",
+        "Type": "String",
+        "Default": "system:serviceaccount:openshift-cloud-network-config-controller:cloud-network-config-controller"
+      },
       "CloudCredentialOperatorRoleName": {
         "Description": "Cloud Credential Operator Role Name",
         "Type": "String"
@@ -77,6 +82,14 @@
       },
       "ClusterCSIDriverEBSPolicyARN": {
         "Description": "Cluster CSI Driver EBS Policy ARN",
+        "Type": "String"
+      },
+      "NetworkConfigControllerRoleName": {
+        "Description": "Network Config Controller Policy Name",
+        "Type": "String"
+      },
+      "NetworkConfigControllerPolicyARN": {
+        "Description": "Network Config Controller Policy ARN",
         "Type": "String"
       }
     },
@@ -140,6 +153,17 @@
             	"RoleName": { "Ref": "ClusterCSIDriverEBSRoleName" },
                 "AssumeRolePolicyDocument": {
                 "ManagedPolicyArns": [{ "Ref": "ClusterCSIDriverEBSPolicyARN" }],
+                "Tags": [
+                    {"Key": "red-hat-managed", "Value": "true"}
+                ]
+            }
+        },
+        "NetworkConfigControllerRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": { "Ref": "NetworkConfigControllerRoleName" },
+                "AssumeRolePolicyDocument": {
+                "Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"Federated\": [\"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\": \"${NetworkConfigControllerSAName}\" } } }] }"
                 },
                 "ManagedPolicyArns": [{ "Ref": "NetworkConfigControllerPolicyARN" }],
             	"Tags": [
