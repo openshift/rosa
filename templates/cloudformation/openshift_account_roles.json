@@ -3,7 +3,8 @@
     "Parameters" : {
       "RedHatAWSAccountID": {
         "Description": "AWS Account ID",
-        "Type": "Number"
+        "Type": "Number",
+        "Default": "710019948333"
       },
       "ROSAVersion": {
         "Description": "ROSA version",
