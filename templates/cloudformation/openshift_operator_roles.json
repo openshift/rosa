@@ -152,6 +152,8 @@
             "Properties": {
             	"RoleName": { "Ref": "ClusterCSIDriverEBSRoleName" },
                 "AssumeRolePolicyDocument": {
+                    "Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\": [ \"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-operator\", \"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa\" ]} } } ] }"
+                },
                 "ManagedPolicyArns": [{ "Ref": "ClusterCSIDriverEBSPolicyARN" }],
                 "Tags": [
                     {"Key": "red-hat-managed", "Value": "true"}
