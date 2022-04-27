@@ -1,10 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Parameters" : {
-      "AWSAccountID": {
-        "Description": "AWS Account ID",
-        "Type": "Number"
-      },
       "ClientIDOpenShift": {
         "Description": "OIDC Client ID OpenShift",
         "Type": "String",

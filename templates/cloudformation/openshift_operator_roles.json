@@ -40,23 +40,43 @@
         "Default": "\"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-operator\", \"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa\""
       },
       "CloudCredentialOperatorRoleName": {
-        "Description": "OIDC Provider ARN",
+        "Description": "Cloud Credential Operator Role Name",
+        "Type": "String"
+      },
+      "CloudCredentialOperatorPolicyARN": {
+        "Description": "Cloud Credential Operator IAM Policy ARN",
         "Type": "String"
       },
       "MachineAPIOperatorRoleName": {
-        "Description": "OIDC Provider ARN",
+        "Description": "Machine API Operator Role Name",
+        "Type": "String"
+      },
+      "MachineAPIOperatorPolicyARN": {
+        "Description": "Machine API Operator IAM Policy ARN",
         "Type": "String"
       },
       "ImageRegistryOperatorRoleName": {
-        "Description": "OIDC Provider ARN",
+        "Description": "Image Registry Operator Role Name",
+        "Type": "String"
+      },
+      "ImageRegistryOperatorPolicyARN": {
+        "Description": "Image Registry Operator IAM Policy ARN",
         "Type": "String"
       },
       "IngressOperatorRoleName": {
-        "Description": "OIDC Provider ARN",
+        "Description": "Ingress Operator Role Name",
+        "Type": "String"
+      },
+      "IngressOperatorPolicyARN": {
+        "Description": "Ingress Operator IAM Policy ARN",
         "Type": "String"
       },
       "ClusterCSIDriverEBSRoleName": {
-        "Description": "OIDC Provider ARN",
+        "Description": "Cluster CSI Driver EBS Role Name",
+        "Type": "String"
+      },
+      "ClusterCSIDriverEBSPolicyARN": {
+        "Description": "Cluster CSI Driver EBS Policy ARN",
         "Type": "String"
       }
     },
@@ -68,7 +88,7 @@
                 "AssumeRolePolicyDocument": {
 					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${CloudCredentialOperatorSAName}\"} } } ] }"
                 },
-                "ManagedPolicyArns": [{ "Fn::ImportValue": {"Fn::Sub": "${AccountRolesStackName}-CloudCredentialOperatorPolicyArn"} }],
+                "ManagedPolicyArns": [{ "Ref": "CloudCredentialOperatorPolicyARN" }],
                 "Tags":
 					[
 						{"Key": "red-hat-managed", "Value": "true"}
@@ -82,7 +102,7 @@
                 "AssumeRolePolicyDocument": {
 					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${MachineAPIOperatorSAName}\"} } } ] }"
                 },
-                "ManagedPolicyArns": [{ "Fn::ImportValue": {"Fn::Sub": "${AccountRolesStackName}-MachineAPIOperatorPolicyArn"} }],
+                "ManagedPolicyArns": [{"Ref": "MachineAPIOperatorPolicyARN"}],
                 "Tags": [
             	    {"Key": "red-hat-managed", "Value": "true"}
             	]
@@ -95,7 +115,7 @@
                 "AssumeRolePolicyDocument": {
                     "Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"Federated\": [\"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\": [ \"system:serviceaccount:openshift-image-registry:cluster-image-registry-operator\", \"system:serviceaccount:openshift-image-registry:registry\" ] } } }] }"
                 },
-                "ManagedPolicyArns": [{ "Fn::ImportValue": {"Fn::Sub": "${AccountRolesStackName}-ImageRegistryOperatorPolicyArn"} }],
+                "ManagedPolicyArns": [{ "Ref": "ImageRegistryOperatorPolicyARN" }],
                 "Tags": [
             	    {"Key": "red-hat-managed", "Value": "true"}
             	]
@@ -108,7 +128,7 @@
                 "AssumeRolePolicyDocument": {
 					"Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\":[{\"Effect\": \"Allow\",\"Principal\":{\"Federated\": [ \"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\":  \"${IngressOperatorSAName}\"} } } ] }"
                 },
-                "ManagedPolicyArns": [{ "Fn::ImportValue": {"Fn::Sub": "${AccountRolesStackName}-IngressOperatorPolicyArn"} }],
+                "ManagedPolicyArns": [{ "Ref": "IngressOperatorPolicyARN"}],
                 "Tags": [
                 	{"Key": "red-hat-managed", "Value": "true"}
             	]
@@ -119,16 +139,16 @@
             "Properties": {
             	"RoleName": { "Ref": "ClusterCSIDriverEBSRoleName" },
                 "AssumeRolePolicyDocument": {
-                "Fn::Sub": "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"Federated\": [\"${OIDCProviderARN}\" ]},\"Action\": [\"sts:AssumeRoleWithWebIdentity\"],\"Condition\": {\"StringEquals\": {\"${IssuerURL}:sub\": [ \"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-operator\", \"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa\" ] } } }] }"
+                "ManagedPolicyArns": [{ "Ref": "ClusterCSIDriverEBSPolicyARN" }],
                 },
-                "ManagedPolicyArns": [{ "Fn::ImportValue": {"Fn::Sub": "${AccountRolesStackName}-ClusterCSIDriversEBSPolicyArn"} }],
+                "ManagedPolicyArns": [{ "Ref": "NetworkConfigControllerPolicyARN" }],
             	"Tags": [
             	    {"Key": "red-hat-managed", "Value": "true"}
             	]
             }
         }
-    },
-	"Outputs" : {
+    },	
+    "Outputs" : {
         "CloudCredentialOperatorRoleArn": {
 			"Description" : "Cloud Credential Operator Role Arn",
 			"Value" :  { "Fn::GetAtt" : ["CloudCredentialOperatorRole", "Arn"] },
