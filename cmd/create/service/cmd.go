@@ -187,7 +187,13 @@ func run(cmd *cobra.Command, argv []string) {
 				if val != "" && param.Validation() != "" {
 					isValid, err := regexp.MatchString(param.Validation(), val)
 					if err != nil || !isValid {
-						reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
+						valErrMsg := param.ValidationErrMsg()
+						if valErrMsg != "" {
+							reporter.Errorf("Failed to process parameter --%s: %s", param.ID(), valErrMsg)
+						} else {
+							reporter.Errorf("Failed to process parameter --%s: Expected %v to match /%s/",
+								param.ID(), val, param.Validation())
+						}
 						os.Exit(1)
 					}
 				}
