@@ -40,13 +40,13 @@ import (
 var args ocm.CreateManagedServiceArgs
 
 var Cmd = &cobra.Command{
-	Use:     "service",
-	Aliases: []string{"appliance"},
+	Use:     "managed-service",
+	Aliases: []string{"appliance", "service"},
 	Short:   "Creates a managed service.",
 	Long: `  Managed Services are OpenShift clusters that provide a specific function.
   Use this command to create managed services.`,
 	Example: `  # Create a Managed Service of type service1.
-  rosa create service --type=service1 --name=clusterName`,
+  rosa create managed-service --type=service1 --name=clusterName`,
 	Run:                run,
 	Hidden:             true,
 	DisableFlagParsing: true,

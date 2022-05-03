@@ -30,12 +30,14 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:     "services",
-	Aliases: []string{"service", "appliance", "appliances"},
-	Short:   "List managed services",
-	Long:    "List managed services.",
-	Example: `  # List all managed services
-  rosa list services`,
+	Use: "managed-services",
+	Aliases: []string{"service", "services",
+		"appliance", "appliances",
+		"managed-service"},
+	Short: "List managed-services",
+	Long:  "List managed-services.",
+	Example: `  # List all managed-services
+  rosa list managed-services`,
 	Args:   cobra.NoArgs,
 	Run:    run,
 	Hidden: true,

@@ -30,12 +30,12 @@ import (
 var args ocm.DescribeManagedServiceArgs
 
 var Cmd = &cobra.Command{
-	Use:     "service",
-	Aliases: []string{"appliance"},
-	Short:   "Show details of a service",
-	Long:    "Show details of a service",
-	Example: `  # Describe a service with id aaabbbccc"
-  rosa describe service --id=aaabbbccc`,
+	Use:     "managed-service",
+	Aliases: []string{"appliance", "service"},
+	Short:   "Show details of a managed-service",
+	Long:    "Show details of a managed-service",
+	Example: `  # Describe a managed-service with id aaabbbccc"
+  rosa describe managed-service --id=aaabbbccc`,
 	Run:    run,
 	Hidden: true,
 }
