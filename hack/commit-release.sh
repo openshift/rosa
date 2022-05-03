@@ -24,7 +24,18 @@ echo "Current version is $current"
 
 base=$(echo $current | grep -o ".*\.")
 next_z=$(echo $current | sed -E "s/.*\.([0-9]*)/\1+1/" | bc)
+base_y=$(echo $current | grep -o "^[0-9]*\.[0-9]*")
+next_y=$(echo $base_y | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+
+# Update version
+read -r -p "Bump minor version for '$current' rosa cli? [y/N] " response
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
+then
+next=$next_y.0
+else
 next=$base$next_z
+fi
+
 echo "Next version will be $next"
 
 # Update version
@@ -70,3 +81,4 @@ then
 else
   echo -e "\tgit push --set-upstream origin $branch"
 fi
+
