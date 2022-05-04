@@ -320,6 +320,7 @@ func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID s
 		return err
 	}
 
+	filename = aws.GetFormattedFileName(filename)
 	reporter.Debugf("Saving '%s' to the current directory", filename)
 	err = aws.SaveDocument(policy, filename)
 	if err != nil {
