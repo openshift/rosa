@@ -68,7 +68,7 @@ func ParseUnknownFlags(cmd *cobra.Command, argv []string) error {
 			continue
 		// A long flag with an '=' separated value
 		case strings.HasPrefix(arg, "--") && strings.Contains(arg, "="):
-			val := strings.Split(arg[2:], "=")
+			val := strings.SplitN(arg[2:], "=", 2)
 			// Only consider unknown flags with values
 			if len(val) == 2 && flags.Lookup(val[0]) == nil {
 				var strVal string
