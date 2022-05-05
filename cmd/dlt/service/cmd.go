@@ -36,11 +36,12 @@ var args struct {
 }
 
 var Cmd = &cobra.Command{
-	Use:   "service",
-	Short: "Deletes a service",
-	Long:  "Deletes a service.",
-	Example: `  # Delete a service with ID "aabbcc"
-  rosa delete service --id=aabbcc`,
+	Use:     "managed-service",
+	Aliases: []string{"appliance", "service"},
+	Short:   "Deletes a managed-service",
+	Long:    "Deletes a managed-service.",
+	Example: `  # Delete a managed-service with ID "aabbcc"
+  rosa delete managed-service --id=aabbcc`,
 	Run:    run,
 	Hidden: true,
 }
