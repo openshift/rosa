@@ -242,12 +242,11 @@ func run(cmd *cobra.Command, argv []string) {
 				mapAZCreated[az] = true
 			}
 		}
-
-		if len(mapAZCreated) > 1 {
-			args.MultiAZ = true
-		}
 	}
 
+	if len(availabilityZones) > 1 {
+		args.MultiAZ = true
+	}
 	args.AvailabilityZones = availabilityZones
 	reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
 	// End BYO-VPC Logic
