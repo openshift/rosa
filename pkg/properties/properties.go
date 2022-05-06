@@ -29,3 +29,6 @@ const CreatorARN = prefix + "creator_arn"
 const CLIVersion = prefix + "cli_version"
 
 const FakeCluster = "fake_cluster"
+
+// nolint:gosec // Linter thinks there are hardcoded credentials here...
+const UseLocalCredentials = "use_local_credentials"
