@@ -223,15 +223,12 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		switch typ {
-		case "Bearer":
+		case "Bearer", "":
 			cfg.AccessToken = token
 			cfg.RefreshToken = ""
 		case "Refresh", "Offline":
 			cfg.AccessToken = ""
 			cfg.RefreshToken = token
-		case "":
-			reporter.Errorf("Don't know how to handle empty type in token '%s'", token)
-			os.Exit(1)
 		default:
 			reporter.Errorf("Don't know how to handle token type '%s' in token '%s'", typ, token)
 			os.Exit(1)
@@ -276,8 +273,12 @@ func run(cmd *cobra.Command, argv []string) {
 
 	username, err := cfg.GetData("username")
 	if err != nil {
-		reporter.Errorf("Failed to get username: %v", err)
-		os.Exit(1)
+		reporter.Debugf("Failed to get username: %v", err)
+		username, err = cfg.GetData("preferred_username")
+		if err != nil {
+			reporter.Errorf("Failed to get username: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
