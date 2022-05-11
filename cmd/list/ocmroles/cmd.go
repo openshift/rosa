@@ -40,8 +40,7 @@ var Cmd = &cobra.Command{
 	Long:    "List ocm roles for the current AWS account.",
 	Example: ` # List all ocm roles
 rosa list ocm-roles`,
-	Run:    run,
-	Hidden: true,
+	Run: run,
 }
 
 func init() {
