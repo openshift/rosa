@@ -101,4 +101,13 @@ func run(cmd *cobra.Command, argv []string) {
 		"Created At:", service.CreatedAt(),
 		"Updated At:", service.UpdatedAt())
 
+	parameters := service.Parameters()
+	if len(parameters) > 0 {
+		fmt.Printf("%-28s\n", "Parameters:")
+	}
+	for _, param := range parameters {
+		fmt.Printf("\t%-28q: %q\n",
+			param.ID(),
+			param.Value())
+	}
 }
