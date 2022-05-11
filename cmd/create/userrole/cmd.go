@@ -47,8 +47,7 @@ var Cmd = &cobra.Command{
 		"have access to the current AWS account.",
 	Example: ` # Create user roles 
   rosa create user-role --prefix `,
-	Run:    run,
-	Hidden: true,
+	Run: run,
 }
 
 func init() {
