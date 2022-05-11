@@ -198,14 +198,14 @@ func isOperatorRoleAlreadyExist(cluster *cmv1.Cluster, operator Operator) bool {
 }
 
 func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID string,
-	prefix string, policies map[string]string) error {
+	prefix string, policies map[string]string, defaultPolicyVersion string) error {
 	for credrequest, operator := range CredentialRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policy := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policy,
-			DefaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: DefaultPolicyVersion,
+			defaultPolicyVersion, map[string]string{
+				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				"operator_namespace":  operator.Namespace,
 				"operator_name":       operator.Name,
@@ -213,12 +213,13 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 		if err != nil {
 			return err
 		}
-		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, DefaultPolicyVersion)
+		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, defaultPolicyVersion)
 	}
 	return nil
 }
 
-func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client) []string {
+func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client,
+	defaultPolicyVersion string) []string {
 	commands := []string{}
 	for credrequest, operator := range CredentialRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
@@ -227,7 +228,7 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 			name := GetPolicyName(prefix, operator.Namespace, operator.Name)
 			iamTags := fmt.Sprintf(
 				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-				tags.OpenShiftVersion, DefaultPolicyVersion,
+				tags.OpenShiftVersion, defaultPolicyVersion,
 				tags.RolePrefix, prefix,
 				"operator_namespace", operator.Namespace,
 				"operator_name", operator.Name,
@@ -241,7 +242,7 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 		} else {
 			policTags := fmt.Sprintf(
 				"Key=%s,Value=%s",
-				tags.OpenShiftVersion, DefaultPolicyVersion,
+				tags.OpenShiftVersion, defaultPolicyVersion,
 			)
 			createPolicy := fmt.Sprintf("aws iam create-policy-version \\\n"+
 				"\t--policy-arn %s \\\n"+

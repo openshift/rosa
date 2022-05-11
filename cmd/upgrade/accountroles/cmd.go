@@ -116,6 +116,12 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	}()
 
+	defaultPolicyVersion, err := ocmClient.GetDefaultVersion()
+	if err != nil {
+		reporter.Errorf("Error getting latest default version: %s", err)
+		os.Exit(1)
+	}
+
 	env, err := ocm.GetEnv()
 	if err != nil {
 		reporter.Errorf("Failed to determine OCM environment: %v", err)
@@ -140,15 +146,14 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
-		aws.DefaultPolicyVersion)
+		defaultPolicyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	isUpgradeNeedForOperatorRolePolicies, err := awsClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
-		creator.AccountID,
-		aws.DefaultPolicyVersion)
+		creator.AccountID, defaultPolicyVersion)
 
 	if err != nil {
 		reporter.Errorf("%s", err)
@@ -195,12 +200,13 @@ func run(cmd *cobra.Command, argv []string) error {
 	case aws.ModeAuto:
 		reporter.Infof("Starting to upgrade the policies")
 		if isUpgradeNeedForAccountRolePolicies {
-			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies)
+			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
+				defaultPolicyVersion)
 			if err != nil {
 				if strings.Contains(err.Error(), "Throttling") {
 					ocmClient.LogEvent("ROSAUpgradeAccountRolesModeAuto", map[string]string{
 						ocm.Response:   ocm.Failure,
-						ocm.Version:    aws.DefaultPolicyVersion,
+						ocm.Version:    defaultPolicyVersion,
 						ocm.IsThrottle: "true",
 					})
 				}
@@ -212,7 +218,8 @@ func run(cmd *cobra.Command, argv []string) error {
 			}
 		}
 		if isUpgradeNeedForOperatorRolePolicies {
-			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix, policies, ocmClient)
+			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix, policies, ocmClient,
+				defaultPolicyVersion)
 			if err != nil {
 				if args.isInvokedFromClusterUpgrade {
 					return err
@@ -233,7 +240,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Infof("Run the following commands to upgrade the account role policies:\n")
 		}
 		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
-			isUpgradeNeedForOperatorRolePolicies, awsClient)
+			isUpgradeNeedForOperatorRolePolicies, awsClient, defaultPolicyVersion)
 		fmt.Println(commands)
 		if args.isInvokedFromClusterUpgrade {
 			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
@@ -250,7 +257,7 @@ func run(cmd *cobra.Command, argv []string) error {
 }
 
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
-	policies map[string]string) error {
+	policies map[string]string, defaultPolicyVersion string) error {
 	for file, role := range aws.AccountRoles {
 		roleName := aws.GetRoleName(prefix, role.Name)
 		if !confirm.Prompt(true, "Upgrade the '%s' role policy latest version ?", roleName) {
@@ -265,8 +272,8 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 
 		policyDetails := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
-			aws.DefaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: aws.DefaultPolicyVersion,
+			defaultPolicyVersion, map[string]string{
+				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
 			})
@@ -284,7 +291,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 			reporter.Debugf("Error deleting inline role policy %s : %s", policyARN, err)
 		}
 		reporter.Infof("Upgraded policy with ARN '%s' to latest version", policyARN)
-		err = awsClient.UpdateTag(roleName)
+		err = awsClient.UpdateTag(roleName, defaultPolicyVersion)
 		if err != nil {
 			return err
 		}
@@ -293,20 +300,20 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 }
 
 func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, accountID string, prefix string,
-	policies map[string]string, ocmClient *ocm.Client) error {
-	if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", aws.DefaultPolicyVersion) {
+	policies map[string]string, ocmClient *ocm.Client, defaultPolicyVersion string) error {
+	if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", defaultPolicyVersion) {
 		if args.isInvokedFromClusterUpgrade {
 			return reporter.Errorf("Operator roles need to be upgraded to proceed" +
 				"")
 		}
 		return nil
 	}
-	err := aws.UpggradeOperatorRolePolicies(reporter, awsClient, accountID, prefix, policies)
+	err := aws.UpggradeOperatorRolePolicies(reporter, awsClient, accountID, prefix, policies, defaultPolicyVersion)
 	if err != nil {
 		if strings.Contains(err.Error(), "Throttling") {
 			ocmClient.LogEvent("ROSAUpgradeOperatorRolesModeAuto", map[string]string{
 				ocm.Response:   ocm.Failure,
-				ocm.Version:    aws.DefaultPolicyVersion,
+				ocm.Version:    defaultPolicyVersion,
 				ocm.IsThrottle: "true",
 			})
 		}
@@ -316,7 +323,7 @@ func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, a
 }
 
 func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRolePolicies bool,
-	isUpgradeNeedForOperatorRolePolicies bool, awsClient aws.Client) string {
+	isUpgradeNeedForOperatorRolePolicies bool, awsClient aws.Client, defaultPolicyVersion string) string {
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
@@ -324,11 +331,11 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 			policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name))
 			policyTags := fmt.Sprintf(
 				"Key=%s,Value=%s",
-				tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+				tags.OpenShiftVersion, defaultPolicyVersion,
 			)
 			iamRoleTags := fmt.Sprintf(
 				"Key=%s,Value=%s",
-				tags.OpenShiftVersion, aws.DefaultPolicyVersion)
+				tags.OpenShiftVersion, defaultPolicyVersion)
 			tagRole := fmt.Sprintf("aws iam tag-role \\\n"+
 				"\t--tags %s \\\n"+
 				"\t--role-name %s",
@@ -339,7 +346,7 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 				policyName := fmt.Sprintf("%s-Policy", name)
 				iamTags := fmt.Sprintf(
 					"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-					tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+					tags.OpenShiftVersion, defaultPolicyVersion,
 					tags.RolePrefix, prefix,
 					tags.RoleType, file,
 				)
@@ -376,7 +383,7 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 		}
 	}
 	if isUpgradeNeedForOperatorRolePolicies {
-		commands = aws.BuildOperatorRolePolicies(prefix, accountID, awsClient, commands)
+		commands = aws.BuildOperatorRolePolicies(prefix, accountID, awsClient, commands, defaultPolicyVersion)
 	}
 	return strings.Join(commands, "\n\n")
 }
