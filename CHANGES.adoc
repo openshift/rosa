@@ -2,6 +2,17 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.2 May 11 2022
+
+- update dev script
+- adding single-az byo-vpc support for create service
+- output validation error message when creating service with invalid parameter
+- allow addons be edited, regardless of addon state
+- supporting flag values that contain equal signs
+- SDA-5889-Fix User Role Error
+- adding new alias for managed service commands
+- unhide ui roles
+
 == 1.2.1 Apr 22 2022
 
 - support for cmk multi-region keys
