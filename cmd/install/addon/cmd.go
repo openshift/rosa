@@ -26,6 +26,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
@@ -61,7 +62,6 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 	confirm.AddFlag(flags)
-
 	ocm.AddClusterFlag(Cmd)
 }
 
@@ -81,13 +81,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
+	awsClient := aws.CreateNewClientOrExit(logger, reporter)
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
@@ -96,13 +90,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
+	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
 	defer func() {
 		err = ocmClient.Close()
 		if err != nil {
@@ -124,6 +112,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	addOn, err := ocmClient.GetAddOnInstallation(clusterKey, awsCreator, addOnID)
+	if err != nil && errors.GetType(err) != errors.NotFound {
+		reporter.Errorf("An error occurred while trying to get addon installation : %v", err)
+		os.Exit(1)
+	}
 	if addOn != nil {
 		reporter.Warnf("Addon '%s' is already installed on cluster '%s'", addOnID, clusterKey)
 		os.Exit(0)
@@ -239,4 +231,18 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	reporter.Infof("Add-on '%s' is now installing. To check the status run 'rosa list addons -c %s'", addOnID, clusterKey)
+	if interactive.Enabled() {
+		reporter.Infof("To install this addOn again in the future, you can run:\n   %s",
+			buildCommand(cluster.Name(), addOnID, params))
+	}
+}
+
+func buildCommand(clusterName string, addonName string, params []ocm.AddOnParam) string {
+	command := fmt.Sprintf("rosa install addon --cluster %s %s -y", clusterName, addonName)
+
+	for _, param := range params {
+		command += fmt.Sprintf(" --%s %s", param.Key, param.Val)
+	}
+
+	return command
 }
