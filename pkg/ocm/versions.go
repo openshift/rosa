@@ -201,3 +201,22 @@ func ValidateVersion(version string, versionList []string) (string, error) {
 
 	return version, nil
 }
+
+func (c *Client) GetDefaultVersion() (version string, err error) {
+	response, err := c.GetVersions("")
+	if err != nil {
+		return "", err
+	}
+	if len(response) > 0 {
+		if response[0] != nil {
+			parsedVersion, err := ver.NewVersion(response[0].RawID())
+			if err != nil {
+				return "", err
+			}
+			versionSplit := parsedVersion.Segments64()
+			return fmt.Sprintf("%d.%d", versionSplit[0], versionSplit[1]), nil
+		}
+
+	}
+	return "", fmt.Errorf("There are no openShift versions available")
+}

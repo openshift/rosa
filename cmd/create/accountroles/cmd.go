@@ -168,7 +168,14 @@ func run(cmd *cobra.Command, argv []string) {
 	if reporter.IsTerminal() {
 		reporter.Infof("Creating account roles")
 	}
-	reporter.Debugf("Creating account roles compatible with OpenShift versions up to %s", aws.DefaultPolicyVersion)
+
+	defaultPolicyVersion, err := ocmClient.GetDefaultVersion()
+	if err != nil {
+		reporter.Errorf("Error getting latest default version: %s", err)
+		os.Exit(1)
+	}
+
+	reporter.Debugf("Creating account roles compatible with OpenShift versions up to %s", defaultPolicyVersion)
 
 	prefix := args.prefix
 	if interactive.Enabled() {
@@ -241,13 +248,14 @@ func run(cmd *cobra.Command, argv []string) {
 	case aws.ModeAuto:
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
 
-		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, creator.AccountID, env, policies)
+		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, creator.AccountID, env, policies,
+			defaultPolicyVersion)
 		if err != nil {
 			reporter.Errorf("There was an error creating the account roles: %s", err)
 			if strings.Contains(err.Error(), "Throttling") {
 				ocmClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 					ocm.Response:   ocm.Failure,
-					ocm.Version:    aws.DefaultPolicyVersion,
+					ocm.Version:    defaultPolicyVersion,
 					ocm.IsThrottle: "true",
 				})
 				os.Exit(1)
@@ -261,7 +269,7 @@ func run(cmd *cobra.Command, argv []string) {
 			"rosa create cluster --sts")
 		ocmClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
-			ocm.Version:  aws.DefaultPolicyVersion,
+			ocm.Version:  defaultPolicyVersion,
 		})
 	case aws.ModeManual:
 		err = aws.GeneratePolicyFiles(reporter, env, true, true, policies)
@@ -276,9 +284,9 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
-		commands := buildCommands(prefix, permissionsBoundary, creator.AccountID)
+		commands := buildCommands(prefix, permissionsBoundary, creator.AccountID, defaultPolicyVersion)
 		ocmClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
-			ocm.Version: aws.DefaultPolicyVersion,
+			ocm.Version: defaultPolicyVersion,
 		})
 		fmt.Println(commands)
 	default:
@@ -287,7 +295,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func buildCommands(prefix string, permissionsBoundary string, accountID string) string {
+func buildCommands(prefix string, permissionsBoundary string, accountID string, defaultPolicyVersion string) string {
 	commands := []string{}
 
 	for file, role := range aws.AccountRoles {
@@ -295,7 +303,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string) 
 		policyName := fmt.Sprintf("%s-Policy", name)
 		iamTags := fmt.Sprintf(
 			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-			tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+			tags.OpenShiftVersion, defaultPolicyVersion,
 			tags.RolePrefix, prefix,
 			tags.RoleType, file,
 		)
@@ -325,7 +333,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string) 
 		name := aws.GetPolicyName(prefix, operator.Namespace, operator.Name)
 		iamTags := fmt.Sprintf(
 			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-			tags.OpenShiftVersion, aws.DefaultPolicyVersion,
+			tags.OpenShiftVersion, defaultPolicyVersion,
 			tags.RolePrefix, prefix,
 			"operator_namespace", operator.Namespace,
 			"operator_name", operator.Name,
@@ -343,7 +351,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string) 
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	prefix string, permissionsBoundary string,
-	accountID string, env string, policies map[string]string) error {
+	accountID string, env string, policies map[string]string, defaultPolicyVersion string) error {
 
 	for file, role := range aws.AccountRoles {
 		name := aws.GetRoleName(prefix, role.Name)
@@ -363,8 +371,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		}
 		reporter.Debugf("Creating role '%s'", name)
 		roleARN, err := awsClient.EnsureRole(name, string(policy), permissionsBoundary,
-			aws.DefaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: aws.DefaultPolicyVersion,
+			defaultPolicyVersion, map[string]string{
+				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
 			})
@@ -378,8 +386,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 
 		reporter.Debugf("Creating permission policy '%s'", policyARN)
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetail,
-			aws.DefaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: aws.DefaultPolicyVersion,
+			defaultPolicyVersion, map[string]string{
+				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
 			})
@@ -400,8 +408,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			policyDetails := policies[filename]
 
 			policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
-				aws.DefaultPolicyVersion, map[string]string{
-					tags.OpenShiftVersion: aws.DefaultPolicyVersion,
+				defaultPolicyVersion, map[string]string{
+					tags.OpenShiftVersion: defaultPolicyVersion,
 					tags.RolePrefix:       prefix,
 					"operator_namespace":  operator.Namespace,
 					"operator_name":       operator.Name,

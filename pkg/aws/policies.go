@@ -36,7 +36,6 @@ import (
 )
 
 var DefaultPrefix = "ManagedOpenShift"
-var DefaultPolicyVersion = "4.10"
 
 type Operator struct {
 	Name                string
@@ -1433,8 +1432,8 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 	return false, nil
 }
 
-func (c *awsClient) UpdateTag(roleName string) error {
-	return c.AddRoleTag(roleName, tags.OpenShiftVersion, DefaultPolicyVersion)
+func (c *awsClient) UpdateTag(roleName string, defaultPolicyVersion string) error {
+	return c.AddRoleTag(roleName, tags.OpenShiftVersion, defaultPolicyVersion)
 }
 
 func (c *awsClient) AddRoleTag(roleName string, key string, value string) error {

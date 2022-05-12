@@ -231,13 +231,20 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Expected a valid role creation mode: %s", err)
 		os.Exit(1)
 	}
+
+	defaultPolicyVersion, err := ocmClient.GetDefaultVersion()
+	if err != nil {
+		reporter.Errorf("Error getting latest default version: %s", err)
+		os.Exit(1)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		if !output.HasFlag() || reporter.IsTerminal() {
 			reporter.Infof("Creating roles using '%s'", creator.ARN)
 		}
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID,
-			accountRoleVersion, policies)
+			accountRoleVersion, policies, defaultPolicyVersion)
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
 			isThrottle := "false"
@@ -282,7 +289,8 @@ func run(cmd *cobra.Command, argv []string) {
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountID string, accountRoleVersion string, policies map[string]string) error {
+	cluster *cmv1.Cluster, accountID string, accountRoleVersion string, policies map[string]string,
+	defaultVersion string) error {
 	for credrequest, operator := range aws.CredentialRequests {
 		ver := cluster.Version()
 		if ver != nil && operator.MinVersion != "" {
@@ -305,8 +313,9 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
+
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
-			aws.DefaultPolicyVersion, map[string]string{
+			defaultVersion, map[string]string{
 				tags.OpenShiftVersion: accountRoleVersion,
 				tags.RolePrefix:       prefix,
 				"operator_namespace":  operator.Namespace,
