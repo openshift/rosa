@@ -134,7 +134,9 @@ var pathTreeData = `{
           "-": null
         },
         "aws_inquiries": {
+          "machine_types": null,
           "regions": null,
+          "sts_credential_requests": null,
           "sts_policies": null,
           "vpcs": null
         },
@@ -181,7 +183,8 @@ var pathTreeData = `{
             "identity_providers": {
               "-": {
                 "htpasswd_users": {
-                  "-": null
+                  "-": null,
+                  "import": null
                 }
               }
             },

@@ -48,7 +48,6 @@ type AddOnInstallation struct {
 	creationTimestamp time.Time
 	operatorVersion   string
 	parameters        *AddOnInstallationParameterList
-	roleARN           string
 	state             AddOnInstallationState
 	stateDescription  string
 	updatedTimestamp  time.Time
@@ -249,35 +248,12 @@ func (o *AddOnInstallation) GetParameters() (value *AddOnInstallationParameterLi
 	return
 }
 
-// RoleARN returns the value of the 'role_ARN' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Role ARN used to authenticate the addon operator
-func (o *AddOnInstallation) RoleARN() string {
-	if o != nil && o.bitmap_&512 != 0 {
-		return o.roleARN
-	}
-	return ""
-}
-
-// GetRoleARN returns the value of the 'role_ARN' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Role ARN used to authenticate the addon operator
-func (o *AddOnInstallation) GetRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
-	if ok {
-		value = o.roleARN
-	}
-	return
-}
-
 // State returns the value of the 'state' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Overall state of the add-on installation.
 func (o *AddOnInstallation) State() AddOnInstallationState {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.state
 	}
 	return AddOnInstallationState("")
@@ -288,7 +264,7 @@ func (o *AddOnInstallation) State() AddOnInstallationState {
 //
 // Overall state of the add-on installation.
 func (o *AddOnInstallation) GetState() (value AddOnInstallationState, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.state
 	}
@@ -300,7 +276,7 @@ func (o *AddOnInstallation) GetState() (value AddOnInstallationState, ok bool) {
 //
 // Reason for the current State.
 func (o *AddOnInstallation) StateDescription() string {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.stateDescription
 	}
 	return ""
@@ -311,7 +287,7 @@ func (o *AddOnInstallation) StateDescription() string {
 //
 // Reason for the current State.
 func (o *AddOnInstallation) GetStateDescription() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.stateDescription
 	}
@@ -323,7 +299,7 @@ func (o *AddOnInstallation) GetStateDescription() (value string, ok bool) {
 //
 // Date and time when the add-on installation information was last updated.
 func (o *AddOnInstallation) UpdatedTimestamp() time.Time {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.updatedTimestamp
 	}
 	return time.Time{}
@@ -334,7 +310,7 @@ func (o *AddOnInstallation) UpdatedTimestamp() time.Time {
 //
 // Date and time when the add-on installation information was last updated.
 func (o *AddOnInstallation) GetUpdatedTimestamp() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.updatedTimestamp
 	}
