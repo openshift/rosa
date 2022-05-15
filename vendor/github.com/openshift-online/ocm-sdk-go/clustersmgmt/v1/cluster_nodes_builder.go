@@ -23,15 +23,16 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Counts of different classes of nodes inside a cluster.
 type ClusterNodesBuilder struct {
-	bitmap_            uint32
-	autoscaleCompute   *MachinePoolAutoscalingBuilder
-	availabilityZones  []string
-	compute            int
-	computeLabels      map[string]string
-	computeMachineType *MachineTypeBuilder
-	infra              int
-	master             int
-	total              int
+	bitmap_              uint32
+	autoscaleCompute     *MachinePoolAutoscalingBuilder
+	availabilityZones    []string
+	compute              int
+	computeLabels        map[string]string
+	computeMachineType   *MachineTypeBuilder
+	infra                int
+	master               int
+	securityGroupFilters []*MachinePoolSecurityGroupFilterBuilder
+	total                int
 }
 
 // NewClusterNodes creates a new builder of 'cluster_nodes' objects.
@@ -120,12 +121,22 @@ func (b *ClusterNodesBuilder) Master(value int) *ClusterNodesBuilder {
 	return b
 }
 
+// SecurityGroupFilters sets the value of the 'security_group_filters' attribute to the given values.
+//
+//
+func (b *ClusterNodesBuilder) SecurityGroupFilters(values ...*MachinePoolSecurityGroupFilterBuilder) *ClusterNodesBuilder {
+	b.securityGroupFilters = make([]*MachinePoolSecurityGroupFilterBuilder, len(values))
+	copy(b.securityGroupFilters, values)
+	b.bitmap_ |= 128
+	return b
+}
+
 // Total sets the value of the 'total' attribute to the given value.
 //
 //
 func (b *ClusterNodesBuilder) Total(value int) *ClusterNodesBuilder {
 	b.total = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -162,6 +173,14 @@ func (b *ClusterNodesBuilder) Copy(object *ClusterNodes) *ClusterNodesBuilder {
 	}
 	b.infra = object.infra
 	b.master = object.master
+	if object.securityGroupFilters != nil {
+		b.securityGroupFilters = make([]*MachinePoolSecurityGroupFilterBuilder, len(object.securityGroupFilters))
+		for i, v := range object.securityGroupFilters {
+			b.securityGroupFilters[i] = NewMachinePoolSecurityGroupFilter().Copy(v)
+		}
+	} else {
+		b.securityGroupFilters = nil
+	}
 	b.total = object.total
 	return b
 }
@@ -195,6 +214,15 @@ func (b *ClusterNodesBuilder) Build() (object *ClusterNodes, err error) {
 	}
 	object.infra = b.infra
 	object.master = b.master
+	if b.securityGroupFilters != nil {
+		object.securityGroupFilters = make([]*MachinePoolSecurityGroupFilter, len(b.securityGroupFilters))
+		for i, v := range b.securityGroupFilters {
+			object.securityGroupFilters[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	object.total = b.total
 	return
 }

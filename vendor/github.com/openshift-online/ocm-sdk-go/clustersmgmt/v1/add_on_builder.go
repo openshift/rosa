@@ -27,7 +27,7 @@ type AddOnBuilder struct {
 	id                   string
 	href                 string
 	config               *AddOnConfigBuilder
-	credentialsSecret    string
+	credentialsRequests  []*CredentialRequestBuilder
 	description          string
 	docsLink             string
 	icon                 string
@@ -36,11 +36,9 @@ type AddOnBuilder struct {
 	name                 string
 	operatorName         string
 	parameters           *AddOnParameterListBuilder
-	policyPermissions    []string
 	requirements         []*AddOnRequirementBuilder
 	resourceCost         float64
 	resourceName         string
-	serviceAccount       string
 	subOperators         []*AddOnSubOperatorBuilder
 	targetNamespace      string
 	version              *AddOnVersionBuilder
@@ -94,11 +92,12 @@ func (b *AddOnBuilder) Config(value *AddOnConfigBuilder) *AddOnBuilder {
 	return b
 }
 
-// CredentialsSecret sets the value of the 'credentials_secret' attribute to the given value.
+// CredentialsRequests sets the value of the 'credentials_requests' attribute to the given values.
 //
 //
-func (b *AddOnBuilder) CredentialsSecret(value string) *AddOnBuilder {
-	b.credentialsSecret = value
+func (b *AddOnBuilder) CredentialsRequests(values ...*CredentialRequestBuilder) *AddOnBuilder {
+	b.credentialsRequests = make([]*CredentialRequestBuilder, len(values))
+	copy(b.credentialsRequests, values)
 	b.bitmap_ |= 16
 	return b
 }
@@ -211,23 +210,13 @@ func (b *AddOnBuilder) Parameters(value *AddOnParameterListBuilder) *AddOnBuilde
 	return b
 }
 
-// PolicyPermissions sets the value of the 'policy_permissions' attribute to the given values.
-//
-//
-func (b *AddOnBuilder) PolicyPermissions(values ...string) *AddOnBuilder {
-	b.policyPermissions = make([]string, len(values))
-	copy(b.policyPermissions, values)
-	b.bitmap_ |= 131072
-	return b
-}
-
 // Requirements sets the value of the 'requirements' attribute to the given values.
 //
 //
 func (b *AddOnBuilder) Requirements(values ...*AddOnRequirementBuilder) *AddOnBuilder {
 	b.requirements = make([]*AddOnRequirementBuilder, len(values))
 	copy(b.requirements, values)
-	b.bitmap_ |= 262144
+	b.bitmap_ |= 131072
 	return b
 }
 
@@ -236,7 +225,7 @@ func (b *AddOnBuilder) Requirements(values ...*AddOnRequirementBuilder) *AddOnBu
 //
 func (b *AddOnBuilder) ResourceCost(value float64) *AddOnBuilder {
 	b.resourceCost = value
-	b.bitmap_ |= 524288
+	b.bitmap_ |= 262144
 	return b
 }
 
@@ -245,16 +234,7 @@ func (b *AddOnBuilder) ResourceCost(value float64) *AddOnBuilder {
 //
 func (b *AddOnBuilder) ResourceName(value string) *AddOnBuilder {
 	b.resourceName = value
-	b.bitmap_ |= 1048576
-	return b
-}
-
-// ServiceAccount sets the value of the 'service_account' attribute to the given value.
-//
-//
-func (b *AddOnBuilder) ServiceAccount(value string) *AddOnBuilder {
-	b.serviceAccount = value
-	b.bitmap_ |= 2097152
+	b.bitmap_ |= 524288
 	return b
 }
 
@@ -264,7 +244,7 @@ func (b *AddOnBuilder) ServiceAccount(value string) *AddOnBuilder {
 func (b *AddOnBuilder) SubOperators(values ...*AddOnSubOperatorBuilder) *AddOnBuilder {
 	b.subOperators = make([]*AddOnSubOperatorBuilder, len(values))
 	copy(b.subOperators, values)
-	b.bitmap_ |= 4194304
+	b.bitmap_ |= 1048576
 	return b
 }
 
@@ -273,7 +253,7 @@ func (b *AddOnBuilder) SubOperators(values ...*AddOnSubOperatorBuilder) *AddOnBu
 //
 func (b *AddOnBuilder) TargetNamespace(value string) *AddOnBuilder {
 	b.targetNamespace = value
-	b.bitmap_ |= 8388608
+	b.bitmap_ |= 2097152
 	return b
 }
 
@@ -283,9 +263,9 @@ func (b *AddOnBuilder) TargetNamespace(value string) *AddOnBuilder {
 func (b *AddOnBuilder) Version(value *AddOnVersionBuilder) *AddOnBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 16777216
+		b.bitmap_ |= 4194304
 	} else {
-		b.bitmap_ &^= 16777216
+		b.bitmap_ &^= 4194304
 	}
 	return b
 }
@@ -303,7 +283,14 @@ func (b *AddOnBuilder) Copy(object *AddOn) *AddOnBuilder {
 	} else {
 		b.config = nil
 	}
-	b.credentialsSecret = object.credentialsSecret
+	if object.credentialsRequests != nil {
+		b.credentialsRequests = make([]*CredentialRequestBuilder, len(object.credentialsRequests))
+		for i, v := range object.credentialsRequests {
+			b.credentialsRequests[i] = NewCredentialRequest().Copy(v)
+		}
+	} else {
+		b.credentialsRequests = nil
+	}
 	b.description = object.description
 	b.docsLink = object.docsLink
 	b.enabled = object.enabled
@@ -320,12 +307,6 @@ func (b *AddOnBuilder) Copy(object *AddOn) *AddOnBuilder {
 	} else {
 		b.parameters = nil
 	}
-	if object.policyPermissions != nil {
-		b.policyPermissions = make([]string, len(object.policyPermissions))
-		copy(b.policyPermissions, object.policyPermissions)
-	} else {
-		b.policyPermissions = nil
-	}
 	if object.requirements != nil {
 		b.requirements = make([]*AddOnRequirementBuilder, len(object.requirements))
 		for i, v := range object.requirements {
@@ -336,7 +317,6 @@ func (b *AddOnBuilder) Copy(object *AddOn) *AddOnBuilder {
 	}
 	b.resourceCost = object.resourceCost
 	b.resourceName = object.resourceName
-	b.serviceAccount = object.serviceAccount
 	if object.subOperators != nil {
 		b.subOperators = make([]*AddOnSubOperatorBuilder, len(object.subOperators))
 		for i, v := range object.subOperators {
@@ -366,7 +346,15 @@ func (b *AddOnBuilder) Build() (object *AddOn, err error) {
 			return
 		}
 	}
-	object.credentialsSecret = b.credentialsSecret
+	if b.credentialsRequests != nil {
+		object.credentialsRequests = make([]*CredentialRequest, len(b.credentialsRequests))
+		for i, v := range b.credentialsRequests {
+			object.credentialsRequests[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	object.description = b.description
 	object.docsLink = b.docsLink
 	object.enabled = b.enabled
@@ -384,10 +372,6 @@ func (b *AddOnBuilder) Build() (object *AddOn, err error) {
 			return
 		}
 	}
-	if b.policyPermissions != nil {
-		object.policyPermissions = make([]string, len(b.policyPermissions))
-		copy(object.policyPermissions, b.policyPermissions)
-	}
 	if b.requirements != nil {
 		object.requirements = make([]*AddOnRequirement, len(b.requirements))
 		for i, v := range b.requirements {
@@ -399,7 +383,6 @@ func (b *AddOnBuilder) Build() (object *AddOn, err error) {
 	}
 	object.resourceCost = b.resourceCost
 	object.resourceName = b.resourceName
-	object.serviceAccount = b.serviceAccount
 	if b.subOperators != nil {
 		object.subOperators = make([]*AddOnSubOperator, len(b.subOperators))
 		for i, v := range b.subOperators {

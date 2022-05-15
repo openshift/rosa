@@ -42,7 +42,7 @@ type InflightCheck struct {
 	bitmap_   uint32
 	id        string
 	href      string
-	details   map[string]string
+	details   interface{}
 	endedAt   time.Time
 	name      string
 	restarts  int
@@ -111,7 +111,7 @@ func (o *InflightCheck) Empty() bool {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Details regarding the state of the inflight check.
-func (o *InflightCheck) Details() map[string]string {
+func (o *InflightCheck) Details() interface{} {
 	if o != nil && o.bitmap_&8 != 0 {
 		return o.details
 	}
@@ -122,7 +122,7 @@ func (o *InflightCheck) Details() map[string]string {
 // a flag indicating if the attribute has a value.
 //
 // Details regarding the state of the inflight check.
-func (o *InflightCheck) GetDetails() (value map[string]string, ok bool) {
+func (o *InflightCheck) GetDetails() (value interface{}, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.details

@@ -126,7 +126,16 @@ func writeClusterNodes(object *ClusterNodes, stream *jsoniter.Stream) {
 		stream.WriteInt(object.master)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&128 != 0 && object.securityGroupFilters != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("security_group_filters")
+		writeMachinePoolSecurityGroupFilterList(object.securityGroupFilters, stream)
+		count++
+	}
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -194,10 +203,14 @@ func readClusterNodes(iterator *jsoniter.Iterator) *ClusterNodes {
 			value := iterator.ReadInt()
 			object.master = value
 			object.bitmap_ |= 64
+		case "security_group_filters":
+			value := readMachinePoolSecurityGroupFilterList(iterator)
+			object.securityGroupFilters = value
+			object.bitmap_ |= 128
 		case "total":
 			value := iterator.ReadInt()
 			object.total = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		default:
 			iterator.ReadAny()
 		}

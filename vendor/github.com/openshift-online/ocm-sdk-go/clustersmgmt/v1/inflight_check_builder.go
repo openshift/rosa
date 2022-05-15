@@ -30,7 +30,7 @@ type InflightCheckBuilder struct {
 	bitmap_   uint32
 	id        string
 	href      string
-	details   map[string]string
+	details   interface{}
 	endedAt   time.Time
 	name      string
 	restarts  int
@@ -71,13 +71,9 @@ func (b *InflightCheckBuilder) Empty() bool {
 // Details sets the value of the 'details' attribute to the given value.
 //
 //
-func (b *InflightCheckBuilder) Details(value map[string]string) *InflightCheckBuilder {
+func (b *InflightCheckBuilder) Details(value interface{}) *InflightCheckBuilder {
 	b.details = value
-	if value != nil {
-		b.bitmap_ |= 8
-	} else {
-		b.bitmap_ &^= 8
-	}
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -134,14 +130,7 @@ func (b *InflightCheckBuilder) Copy(object *InflightCheck) *InflightCheckBuilder
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
-	if len(object.details) > 0 {
-		b.details = map[string]string{}
-		for k, v := range object.details {
-			b.details[k] = v
-		}
-	} else {
-		b.details = nil
-	}
+	b.details = object.details
 	b.endedAt = object.endedAt
 	b.name = object.name
 	b.restarts = object.restarts
@@ -156,12 +145,7 @@ func (b *InflightCheckBuilder) Build() (object *InflightCheck, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
-	if b.details != nil {
-		object.details = make(map[string]string)
-		for k, v := range b.details {
-			object.details[k] = v
-		}
-	}
+	object.details = b.details
 	object.endedAt = b.endedAt
 	object.name = b.name
 	object.restarts = b.restarts

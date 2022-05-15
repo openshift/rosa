@@ -3,6 +3,29 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.266
+- Update to model 0.0.198:
+  - Add cred request to api model
+  - Add AWSRegionMachineTypes endpoint to api model
+- windows: Update certificates
+
+
+## 0.1.265
+- Update to model 0.0.197:
+  - Change inflight check type Details field to Interface
+
+
+## 0.1.264
+- Update to model 0.0.196:
+  - Added Machine Pool Security Group Filters for Machine Pools and Cluster Nodes
+  - Drop RoleARN from AddOnInstallation
+
+## 0.1.263 Apr 19 2022
+
+- Update to model 0.0.195:
+  - Added Import method to the HTPasswd IDP user collection.
+  - Added credential request type and updated the addon type to include it
+
 ## 0.1.262 Apr 14 2022
 
 - Update to model 0.0.194:

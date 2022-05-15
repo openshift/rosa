@@ -33,6 +33,70 @@ func readHTPasswdUsersAddResponse(response *HTPasswdUsersAddResponse, reader io.
 	response.body, err = UnmarshalHTPasswdUser(reader)
 	return err
 }
+func writeHTPasswdUsersImportRequest(request *HTPasswdUsersImportRequest, writer io.Writer) error {
+	count := 0
+	stream := helpers.NewStream(writer)
+	stream.WriteObjectStart()
+	if request.items != nil {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("items")
+		writeHTPasswdUserList(request.items, stream)
+		count++
+	}
+	if request.page != nil {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("page")
+		stream.WriteInt(*request.page)
+		count++
+	}
+	if request.size != nil {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("size")
+		stream.WriteInt(*request.size)
+		count++
+	}
+	stream.WriteObjectEnd()
+	err := stream.Flush()
+	if err != nil {
+		return err
+	}
+	return stream.Error
+}
+func readHTPasswdUsersImportResponse(response *HTPasswdUsersImportResponse, reader io.Reader) error {
+	iterator, err := helpers.NewIterator(reader)
+	if err != nil {
+		return err
+	}
+	for {
+		field := iterator.ReadObject()
+		if field == "" {
+			break
+		}
+		switch field {
+		case "items":
+			value := readHTPasswdUserList(iterator)
+			response.items = value
+		case "page":
+			value := iterator.ReadInt()
+			response.page = &value
+		case "size":
+			value := iterator.ReadInt()
+			response.size = &value
+		case "total":
+			value := iterator.ReadInt()
+			response.total = &value
+		default:
+			iterator.ReadAny()
+		}
+	}
+	return iterator.Error
+}
 func writeHTPasswdUsersListRequest(request *HTPasswdUsersListRequest, writer io.Writer) error {
 	return nil
 }
