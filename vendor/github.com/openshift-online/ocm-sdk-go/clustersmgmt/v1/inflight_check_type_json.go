@@ -21,7 +21,6 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"sort"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -67,33 +66,13 @@ func writeInflightCheck(object *InflightCheck, stream *jsoniter.Stream) {
 		count++
 	}
 	var present_ bool
-	present_ = object.bitmap_&8 != 0 && object.details != nil
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("details")
-		if object.details != nil {
-			stream.WriteObjectStart()
-			keys := make([]string, len(object.details))
-			i := 0
-			for key := range object.details {
-				keys[i] = key
-				i++
-			}
-			sort.Strings(keys)
-			for i, key := range keys {
-				if i > 0 {
-					stream.WriteMore()
-				}
-				item := object.details[key]
-				stream.WriteObjectField(key)
-				stream.WriteString(item)
-			}
-			stream.WriteObjectEnd()
-		} else {
-			stream.WriteNil()
-		}
+		stream.WriteVal(object.details)
 		count++
 	}
 	present_ = object.bitmap_&16 != 0
@@ -176,15 +155,8 @@ func readInflightCheck(iterator *jsoniter.Iterator) *InflightCheck {
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
 		case "details":
-			value := map[string]string{}
-			for {
-				key := iterator.ReadObject()
-				if key == "" {
-					break
-				}
-				item := iterator.ReadString()
-				value[key] = item
-			}
+			var value interface{}
+			iterator.ReadVal(&value)
 			object.details = value
 			object.bitmap_ |= 8
 		case "ended_at":

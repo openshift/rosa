@@ -39,6 +39,7 @@ type AccountBuilder struct {
 	lastName       string
 	organization   *OrganizationBuilder
 	rhitAccountID  string
+	rhitWebUserId  string
 	updatedAt      time.Time
 	username       string
 	banned         bool
@@ -170,12 +171,21 @@ func (b *AccountBuilder) RhitAccountID(value string) *AccountBuilder {
 	return b
 }
 
+// RhitWebUserId sets the value of the 'rhit_web_user_id' attribute to the given value.
+//
+//
+func (b *AccountBuilder) RhitWebUserId(value string) *AccountBuilder {
+	b.rhitWebUserId = value
+	b.bitmap_ |= 8192
+	return b
+}
+
 // ServiceAccount sets the value of the 'service_account' attribute to the given value.
 //
 //
 func (b *AccountBuilder) ServiceAccount(value bool) *AccountBuilder {
 	b.serviceAccount = value
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -184,7 +194,7 @@ func (b *AccountBuilder) ServiceAccount(value bool) *AccountBuilder {
 //
 func (b *AccountBuilder) UpdatedAt(value time.Time) *AccountBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 16384
+	b.bitmap_ |= 32768
 	return b
 }
 
@@ -193,7 +203,7 @@ func (b *AccountBuilder) UpdatedAt(value time.Time) *AccountBuilder {
 //
 func (b *AccountBuilder) Username(value string) *AccountBuilder {
 	b.username = value
-	b.bitmap_ |= 32768
+	b.bitmap_ |= 65536
 	return b
 }
 
@@ -226,6 +236,7 @@ func (b *AccountBuilder) Copy(object *Account) *AccountBuilder {
 		b.organization = nil
 	}
 	b.rhitAccountID = object.rhitAccountID
+	b.rhitWebUserId = object.rhitWebUserId
 	b.serviceAccount = object.serviceAccount
 	b.updatedAt = object.updatedAt
 	b.username = object.username
@@ -261,6 +272,7 @@ func (b *AccountBuilder) Build() (object *Account, err error) {
 		}
 	}
 	object.rhitAccountID = b.rhitAccountID
+	object.rhitWebUserId = b.rhitWebUserId
 	object.serviceAccount = b.serviceAccount
 	object.updatedAt = b.updatedAt
 	object.username = b.username

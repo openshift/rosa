@@ -42,6 +42,16 @@ func NewAWSInquiriesClient(transport http.RoundTripper, path string) *AWSInquiri
 	}
 }
 
+// STSCredentialRequests returns the target 'STS_credential_requests_inquiry' resource.
+//
+// Reference to the resource that manages sts cred request.
+func (c *AWSInquiriesClient) STSCredentialRequests() *STSCredentialRequestsInquiryClient {
+	return NewSTSCredentialRequestsInquiryClient(
+		c.transport,
+		path.Join(c.path, "sts_credential_requests"),
+	)
+}
+
 // STSPolicies returns the target 'AWSSTS_policies_inquiry' resource.
 //
 // Reference to the resource that manages aws sts policies.
@@ -49,6 +59,16 @@ func (c *AWSInquiriesClient) STSPolicies() *AWSSTSPoliciesInquiryClient {
 	return NewAWSSTSPoliciesInquiryClient(
 		c.transport,
 		path.Join(c.path, "sts_policies"),
+	)
+}
+
+// MachineTypes returns the target 'AWS_region_machine_types_inquiry' resource.
+//
+// Reference to the resource that manages aws machine types by regions.
+func (c *AWSInquiriesClient) MachineTypes() *AWSRegionMachineTypesInquiryClient {
+	return NewAWSRegionMachineTypesInquiryClient(
+		c.transport,
+		path.Join(c.path, "machine_types"),
 	)
 }
 

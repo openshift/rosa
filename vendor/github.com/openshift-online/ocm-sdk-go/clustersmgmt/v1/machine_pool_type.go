@@ -35,17 +35,18 @@ const MachinePoolNilKind = "MachinePoolNil"
 //
 // Representation of a machine pool in a cluster.
 type MachinePool struct {
-	bitmap_           uint32
-	id                string
-	href              string
-	aws               *AWSMachinePool
-	autoscaling       *MachinePoolAutoscaling
-	availabilityZones []string
-	cluster           *Cluster
-	instanceType      string
-	labels            map[string]string
-	replicas          int
-	taints            []*Taint
+	bitmap_              uint32
+	id                   string
+	href                 string
+	aws                  *AWSMachinePool
+	autoscaling          *MachinePoolAutoscaling
+	availabilityZones    []string
+	cluster              *Cluster
+	instanceType         string
+	labels               map[string]string
+	replicas             int
+	securityGroupFilters []*MachinePoolSecurityGroupFilter
+	taints               []*Taint
 }
 
 // Kind returns the name of the type of the object.
@@ -270,12 +271,35 @@ func (o *MachinePool) GetReplicas() (value int, ok bool) {
 	return
 }
 
+// SecurityGroupFilters returns the value of the 'security_group_filters' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// List of security groups to be applied to MachinePool (Optional)
+func (o *MachinePool) SecurityGroupFilters() []*MachinePoolSecurityGroupFilter {
+	if o != nil && o.bitmap_&1024 != 0 {
+		return o.securityGroupFilters
+	}
+	return nil
+}
+
+// GetSecurityGroupFilters returns the value of the 'security_group_filters' attribute and
+// a flag indicating if the attribute has a value.
+//
+// List of security groups to be applied to MachinePool (Optional)
+func (o *MachinePool) GetSecurityGroupFilters() (value []*MachinePoolSecurityGroupFilter, ok bool) {
+	ok = o != nil && o.bitmap_&1024 != 0
+	if ok {
+		value = o.securityGroupFilters
+	}
+	return
+}
+
 // Taints returns the value of the 'taints' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The taints set on the Nodes created.
 func (o *MachinePool) Taints() []*Taint {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.taints
 	}
 	return nil
@@ -286,7 +310,7 @@ func (o *MachinePool) Taints() []*Taint {
 //
 // The taints set on the Nodes created.
 func (o *MachinePool) GetTaints() (value []*Taint, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.taints
 	}
