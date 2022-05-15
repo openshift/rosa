@@ -45,8 +45,11 @@ var Cmd = &cobra.Command{
 	Short:   "Create user role to verify account association",
 	Long: "Create user role that allows OCM to verify that users creating a cluster " +
 		"have access to the current AWS account.",
-	Example: ` # Create user roles 
-  rosa create user-role --prefix `,
+	Example: `  # Create user roles
+  rosa create user-role
+
+  # Create user role with a specific permissions boundary
+  rosa create user-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
 	Run: run,
 }
 
@@ -63,7 +66,7 @@ func init() {
 		&args.permissionsBoundary,
 		"permissions-boundary",
 		"",
-		"The ARN of the policy that is used to set the permissions boundary for the account roles.",
+		"The ARN of the policy that is used to set the permissions boundary for the user role.",
 	)
 
 	aws.AddModeFlag(Cmd)
