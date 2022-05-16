@@ -241,7 +241,9 @@ func buildCommand(clusterName string, addonName string, params []ocm.AddOnParam)
 	command := fmt.Sprintf("rosa install addon --cluster %s %s -y", clusterName, addonName)
 
 	for _, param := range params {
-		command += fmt.Sprintf(" --%s %s", param.Key, param.Val)
+		if param.Val != "" {
+			command += fmt.Sprintf(" --%s %s", param.Key, param.Val)
+		}
 	}
 
 	return command
