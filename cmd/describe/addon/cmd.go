@@ -51,8 +51,6 @@ func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	logger := logging.CreateLoggerOrExit(reporter)
 
-	addOnID := argv[0]
-
 	// Create the client for the OCM API:
 	ocmClient, err := ocm.NewClient().
 		Logger(logger).
@@ -69,6 +67,7 @@ func run(_ *cobra.Command, argv []string) {
 	}()
 
 	// Try to find the add-on:
+	addOnID := argv[0]
 	reporter.Debugf("Loading add-on '%s'", addOnID)
 	addOn, err := ocmClient.GetAddOn(addOnID)
 	if err != nil {
@@ -78,7 +77,12 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Print add-on description:
+	printDescription(addOn)
+	printCredentialRequests(addOn.CredentialsRequests())
+	printParameters(addOn.Parameters())
+}
+
+func printDescription(addOn *cmv1.AddOn) {
 	fmt.Printf("ADD-ON\n"+
 		"ID:               %s\n"+
 		"Name:             %s\n"+
@@ -96,10 +100,35 @@ func run(_ *cobra.Command, argv []string) {
 		addOn.InstallMode(),
 	)
 	fmt.Println()
+}
 
-	if addOn.Parameters().Len() > 0 {
+func printCredentialRequests(requests []*cmv1.CredentialRequest) {
+	if len(requests) > 0 {
+		fmt.Printf("CREDENTIALS REQUESTS\n")
+		for _, cr := range requests {
+			fmt.Printf(""+
+				"- Service account:  %s\n"+
+				"  Secret name:      %s\n"+
+				"  Secret namespace: %s\n",
+				cr.ServiceAccount(),
+				cr.Name(),
+				cr.Namespace(),
+			)
+			if len(cr.PolicyPermissions()) > 0 {
+				fmt.Printf("  Policy permissions:\n")
+				for _, p := range cr.PolicyPermissions() {
+					fmt.Printf("  - %s\n", p)
+				}
+			}
+		}
+	}
+	fmt.Println()
+}
+
+func printParameters(params *cmv1.AddOnParameterList) {
+	if params.Len() > 0 {
 		fmt.Printf("ADD-ON PARAMETERS\n")
-		addOn.Parameters().Each(func(param *cmv1.AddOnParameter) bool {
+		params.Each(func(param *cmv1.AddOnParameter) bool {
 			if !param.Enabled() {
 				return true
 			}
