@@ -29,6 +29,7 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -954,12 +955,17 @@ func run(cmd *cobra.Command, _ []string) {
 	operatorIAMRoles := args.operatorIAMRoles
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
-		for _, operator := range aws.CredentialRequests {
+		credRequests, err := ocmClient.GetCredRequests()
+		if err != nil {
+			reporter.Errorf("Error getting operator credential request from OCM %s", err)
+			os.Exit(1)
+		}
+		for _, operator := range credRequests {
 			//If the cluster version is less than the supported operator version
-			if operator.MinVersion != "" {
-				isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(version), operator.MinVersion)
+			if operator.MinVersion() != "" {
+				isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(version), operator.MinVersion())
 				if err != nil {
-					reporter.Errorf("Error validating operator role '%s' version %s", operator.Name, err)
+					reporter.Errorf("Error validating operator role '%s' version %s", operator.Name(), err)
 					os.Exit(1)
 				}
 				if !isSupported {
@@ -967,8 +973,8 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
-				Name:      operator.Name,
-				Namespace: operator.Namespace,
+				Name:      operator.Name(),
+				Namespace: operator.Namespace(),
 				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator),
 			})
 
@@ -1937,8 +1943,8 @@ func hostPrefixValidator(val interface{}) error {
 	return nil
 }
 
-func getOperatorRoleArn(prefix string, operator aws.Operator, creator *aws.Creator) string {
-	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace, operator.Name)
+func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator) string {
+	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
 	if len(role) > 64 {
 		role = role[0:64]
 	}

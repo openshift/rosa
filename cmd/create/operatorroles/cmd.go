@@ -238,13 +238,19 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	credRequests, err := ocmClient.GetCredRequests()
+	if err != nil {
+		reporter.Errorf("Error getting operator credential request from OCM %s", err)
+		os.Exit(1)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		if !output.HasFlag() || reporter.IsTerminal() {
 			reporter.Infof("Creating roles using '%s'", creator.ARN)
 		}
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, cluster, creator.AccountID,
-			accountRoleVersion, policies, defaultPolicyVersion)
+			accountRoleVersion, policies, defaultPolicyVersion, credRequests)
 		if err != nil {
 			reporter.Errorf("There was an error creating the operator roles: %s", err)
 			isThrottle := "false"
@@ -264,7 +270,7 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 	case aws.ModeManual:
 		commands, err := buildCommands(reporter, prefix, permissionsBoundary, cluster, creator.AccountID, awsClient,
-			accountRoleVersion, policies)
+			accountRoleVersion, policies, credRequests)
 		if err != nil {
 			reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -290,13 +296,13 @@ func run(cmd *cobra.Command, argv []string) {
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	prefix string, permissionsBoundary string,
 	cluster *cmv1.Cluster, accountID string, accountRoleVersion string, policies map[string]string,
-	defaultVersion string) error {
-	for credrequest, operator := range aws.CredentialRequests {
+	defaultVersion string, credRequests map[string]*cmv1.STSOperator) error {
+	for credrequest, operator := range credRequests {
 		ver := cluster.Version()
-		if ver != nil && operator.MinVersion != "" {
-			isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(ver.ID()), operator.MinVersion)
+		if ver != nil && operator.MinVersion() != "" {
+			isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(ver.ID()), operator.MinVersion())
 			if err != nil {
-				reporter.Errorf("Error validating operator role '%s' version %s", operator.Name, err)
+				reporter.Errorf("Error validating operator role '%s' version %s", operator.Name(), err)
 				os.Exit(1)
 			}
 			if !isSupported {
@@ -310,7 +316,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 			continue
 		}
-		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
 
@@ -318,8 +324,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 			defaultVersion, map[string]string{
 				tags.OpenShiftVersion: accountRoleVersion,
 				tags.RolePrefix:       prefix,
-				"operator_namespace":  operator.Namespace,
-				"operator_name":       operator.Name,
+				"operator_namespace":  operator.Namespace(),
+				"operator_name":       operator.Name(),
 			})
 		if err != nil {
 			return err
@@ -335,8 +341,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		roleARN, err := awsClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
 			map[string]string{
 				tags.ClusterID:       cluster.ID(),
-				"operator_namespace": operator.Namespace,
-				"operator_name":      operator.Name,
+				"operator_namespace": operator.Namespace(),
+				"operator_name":      operator.Name(),
 			})
 		if err != nil {
 			return err
@@ -359,15 +365,15 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 func buildCommands(reporter *rprtr.Object,
 	prefix string, permissionsBoundary string,
 	cluster *cmv1.Cluster, accountID string, awsClient aws.Client, accountRoleVersion string,
-	policies map[string]string) (string, error) {
+	policies map[string]string, credRequests map[string]*cmv1.STSOperator) (string, error) {
 	commands := []string{}
 
-	for credrequest, operator := range aws.CredentialRequests {
+	for credrequest, operator := range credRequests {
 		ver := cluster.Version()
-		if ver != nil && operator.MinVersion != "" {
-			isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(ver.ID()), operator.MinVersion)
+		if ver != nil && operator.MinVersion() != "" {
+			isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(ver.ID()), operator.MinVersion())
 			if err != nil {
-				reporter.Errorf("Error validating operator role '%s' version %s", operator.Name, err)
+				reporter.Errorf("Error validating operator role '%s' version %s", operator.Name(), err)
 				os.Exit(1)
 			}
 			if !isSupported {
@@ -375,16 +381,16 @@ func buildCommands(reporter *rprtr.Object,
 			}
 		}
 		roleName := getRoleName(cluster, operator)
-		policyARN := getPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
-		name := aws.GetPolicyName(prefix, operator.Namespace, operator.Name)
+		policyARN := getPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		name := aws.GetPolicyName(prefix, operator.Namespace(), operator.Name())
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			iamTags := fmt.Sprintf(
 				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 				tags.OpenShiftVersion, accountRoleVersion,
 				tags.RolePrefix, prefix,
-				"operator_namespace", operator.Namespace,
-				"operator_name", operator.Name,
+				"operator_namespace", operator.Namespace(),
+				"operator_name", operator.Name(),
 			)
 			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 				"\t--policy-name %s \\\n"+
@@ -411,8 +417,8 @@ func buildCommands(reporter *rprtr.Object,
 			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.ClusterID, cluster.ID(),
 			tags.RolePrefix, prefix,
-			"operator_namespace", operator.Namespace,
-			"operator_name", operator.Name,
+			"operator_namespace", operator.Namespace(),
+			"operator_name", operator.Name(),
 		)
 		permBoundaryFlag := ""
 		if permissionsBoundary != "" {
@@ -433,9 +439,9 @@ func buildCommands(reporter *rprtr.Object,
 	return strings.Join(commands, "\n\n"), nil
 }
 
-func getRoleName(cluster *cmv1.Cluster, operator aws.Operator) string {
+func getRoleName(cluster *cmv1.Cluster, operator *cmv1.STSOperator) string {
 	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
-		if role.Namespace() == operator.Namespace && role.Name() == operator.Name {
+		if role.Namespace() == operator.Namespace() && role.Name() == operator.Name() {
 			return strings.SplitN(role.RoleARN(), "/", 2)[1]
 		}
 	}

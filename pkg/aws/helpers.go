@@ -388,7 +388,7 @@ func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 }
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
-	generateOperatorRolePolicies bool, policies map[string]string) error {
+	generateOperatorRolePolicies bool, policies map[string]string, credRequests map[string]*cmv1.STSOperator) error {
 	if generateAccountRolePolicies {
 		for file := range AccountRoles {
 			//Get trust policy
@@ -423,7 +423,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 		}
 	}
 	if generateOperatorRolePolicies {
-		for credrequest := range CredentialRequests {
+		for credrequest := range credRequests {
 			filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 			policyDetail := policies[filename]
 			//In case any missing policy we dont want to block the user.This might not happen
@@ -467,18 +467,18 @@ func SaveDocument(doc []byte, filename string) error {
 }
 
 func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client, commands []string,
-	defaultPolicyVersion string) []string {
-	for credrequest, operator := range CredentialRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator) []string {
+	for credrequest, operator := range credRequests {
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
-			name := GetPolicyName(prefix, operator.Namespace, operator.Name)
+			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := fmt.Sprintf(
 				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 				tags.OpenShiftVersion, defaultPolicyVersion,
 				tags.RolePrefix, prefix,
-				"operator_namespace", operator.Namespace,
-				"operator_name", operator.Name,
+				"operator_namespace", operator.Namespace(),
+				"operator_name", operator.Name(),
 			)
 			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 				"\t--policy-name %s \\\n"+
@@ -507,17 +507,18 @@ func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client
 }
 
 func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, accountID string,
-	prefix string, policies map[string]string, defaultPolicyVersion string) error {
-	for credrequest, operator := range CredentialRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+	prefix string, policies map[string]string, defaultPolicyVersion string,
+	credRequests map[string]*cmv1.STSOperator) error {
+	for credrequest, operator := range credRequests {
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
-				"operator_namespace":  operator.Namespace,
-				"operator_name":       operator.Name,
+				"operator_namespace":  operator.Namespace(),
+				"operator_name":       operator.Name(),
 			})
 		if err != nil {
 			return err
@@ -527,7 +528,7 @@ func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, acco
 	return nil
 }
 
-func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator Operator,
+func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
 	policyDetails string) (string, error) {
 	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
 	if err != nil {
@@ -538,9 +539,9 @@ func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator Ope
 	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, issuerURL)
 
 	serviceAccounts := []string{}
-	for _, sa := range operator.ServiceAccountNames {
+	for _, sa := range operator.ServiceAccounts() {
 		serviceAccounts = append(serviceAccounts,
-			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace, sa))
+			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace(), sa))
 	}
 
 	policy, err := GetRolePolicyDocument(policyDetails, map[string]string{

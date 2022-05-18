@@ -109,7 +109,7 @@ type Client interface {
 	GetRoleByARN(roleARN string) (*iam.Role, error)
 	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
 	DeleteOperatorRole(roles string) error
-	GetOperatorRolesFromAccount(clusterID string) ([]string, error)
+	GetOperatorRolesFromAccount(clusterID string, credRequests map[string]*cmv1.STSOperator) ([]string, error)
 	GetPolicies(roles []string) (map[string][]string, error)
 	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
 	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
@@ -124,7 +124,8 @@ type Client interface {
 	GetInstanceProfilesForRole(role string) ([]string, error)
 	IsUpgradedNeededForAccountRolePolicies(rolePrefix string, version string) (bool, error)
 	IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluster, accountID string, version string) (bool, error)
-	IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(rolePrefix string, accountID string, version string) (bool, error)
+	IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(rolePrefix string, accountID string,
+		version string, credRequests map[string]*cmv1.STSOperator) (bool, error)
 	UpdateTag(roleName string, defaultPolicyVersion string) error
 	AddRoleTag(roleName string, key string, value string) error
 	IsPolicyCompatible(policyArn string, version string) (bool, error)
