@@ -25,7 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type STSCredentialRequestBuilder struct {
 	bitmap_  uint32
 	name     string
-	operator []*STSOperatorBuilder
+	operator *STSOperatorBuilder
 }
 
 // NewSTSCredentialRequest creates a new builder of 'STS_credential_request' objects.
@@ -47,13 +47,16 @@ func (b *STSCredentialRequestBuilder) Name(value string) *STSCredentialRequestBu
 	return b
 }
 
-// Operator sets the value of the 'operator' attribute to the given values.
+// Operator sets the value of the 'operator' attribute to the given value.
 //
-//
-func (b *STSCredentialRequestBuilder) Operator(values ...*STSOperatorBuilder) *STSCredentialRequestBuilder {
-	b.operator = make([]*STSOperatorBuilder, len(values))
-	copy(b.operator, values)
-	b.bitmap_ |= 2
+// Representation of an sts operator
+func (b *STSCredentialRequestBuilder) Operator(value *STSOperatorBuilder) *STSCredentialRequestBuilder {
+	b.operator = value
+	if value != nil {
+		b.bitmap_ |= 2
+	} else {
+		b.bitmap_ &^= 2
+	}
 	return b
 }
 
@@ -65,10 +68,7 @@ func (b *STSCredentialRequestBuilder) Copy(object *STSCredentialRequest) *STSCre
 	b.bitmap_ = object.bitmap_
 	b.name = object.name
 	if object.operator != nil {
-		b.operator = make([]*STSOperatorBuilder, len(object.operator))
-		for i, v := range object.operator {
-			b.operator[i] = NewSTSOperator().Copy(v)
-		}
+		b.operator = NewSTSOperator().Copy(object.operator)
 	} else {
 		b.operator = nil
 	}
@@ -81,12 +81,9 @@ func (b *STSCredentialRequestBuilder) Build() (object *STSCredentialRequest, err
 	object.bitmap_ = b.bitmap_
 	object.name = b.name
 	if b.operator != nil {
-		object.operator = make([]*STSOperator, len(b.operator))
-		for i, v := range b.operator {
-			object.operator[i], err = v.Build()
-			if err != nil {
-				return
-			}
+		object.operator, err = b.operator.Build()
+		if err != nil {
+			return
 		}
 	}
 	return

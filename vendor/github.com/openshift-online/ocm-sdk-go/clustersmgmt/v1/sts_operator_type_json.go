@@ -78,13 +78,13 @@ func writeSTSOperator(object *STSOperator, stream *jsoniter.Stream) {
 		stream.WriteString(object.namespace)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0 && object.serviceAccountNames != nil
+	present_ = object.bitmap_&16 != 0 && object.serviceAccounts != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("service_account_names")
-		writeStringList(object.serviceAccountNames, stream)
+		stream.WriteObjectField("service_accounts")
+		writeStringList(object.serviceAccounts, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -126,9 +126,9 @@ func readSTSOperator(iterator *jsoniter.Iterator) *STSOperator {
 			value := iterator.ReadString()
 			object.namespace = value
 			object.bitmap_ |= 8
-		case "service_account_names":
+		case "service_accounts":
 			value := readStringList(iterator)
-			object.serviceAccountNames = value
+			object.serviceAccounts = value
 			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()

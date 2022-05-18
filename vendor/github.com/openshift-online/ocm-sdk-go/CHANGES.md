@@ -3,6 +3,15 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.268
+
+- Update to model 0.0.200:
+  - Add `hypershift.enabled` field to the cluster type.
+
+## 0.1.267
+- Update to model 0.0.199:
+  - Fix cred request api model parameters
+
 ## 0.1.266
 - Update to model 0.0.198:
   - Add cred request to api model

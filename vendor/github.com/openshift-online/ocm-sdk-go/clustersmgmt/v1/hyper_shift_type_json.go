@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSTSCredentialRequest writes a value of the 'STS_credential_request' type to the given writer.
-func MarshalSTSCredentialRequest(object *STSCredentialRequest, writer io.Writer) error {
+// MarshalHyperShift writes a value of the 'hyper_shift' type to the given writer.
+func MarshalHyperShift(object *HyperShift, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSTSCredentialRequest(object, stream)
+	writeHyperShift(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalSTSCredentialRequest(object *STSCredentialRequest, writer io.Writer)
 	return stream.Error
 }
 
-// writeSTSCredentialRequest writes a value of the 'STS_credential_request' type to the given stream.
-func writeSTSCredentialRequest(object *STSCredentialRequest, stream *jsoniter.Stream) {
+// writeHyperShift writes a value of the 'hyper_shift' type to the given stream.
+func writeHyperShift(object *HyperShift, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,50 +47,37 @@ func writeSTSCredentialRequest(object *STSCredentialRequest, stream *jsoniter.St
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("name")
-		stream.WriteString(object.name)
-		count++
-	}
-	present_ = object.bitmap_&2 != 0 && object.operator != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("operator")
-		writeSTSOperator(object.operator, stream)
+		stream.WriteObjectField("enabled")
+		stream.WriteBool(object.enabled)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalSTSCredentialRequest reads a value of the 'STS_credential_request' type from the given
+// UnmarshalHyperShift reads a value of the 'hyper_shift' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalSTSCredentialRequest(source interface{}) (object *STSCredentialRequest, err error) {
+func UnmarshalHyperShift(source interface{}) (object *HyperShift, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readSTSCredentialRequest(iterator)
+	object = readHyperShift(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSTSCredentialRequest reads a value of the 'STS_credential_request' type from the given iterator.
-func readSTSCredentialRequest(iterator *jsoniter.Iterator) *STSCredentialRequest {
-	object := &STSCredentialRequest{}
+// readHyperShift reads a value of the 'hyper_shift' type from the given iterator.
+func readHyperShift(iterator *jsoniter.Iterator) *HyperShift {
+	object := &HyperShift{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "name":
-			value := iterator.ReadString()
-			object.name = value
+		case "enabled":
+			value := iterator.ReadBool()
+			object.enabled = value
 			object.bitmap_ |= 1
-		case "operator":
-			value := readSTSOperator(iterator)
-			object.operator = value
-			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()
 		}

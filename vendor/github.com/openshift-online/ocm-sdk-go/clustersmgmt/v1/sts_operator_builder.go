@@ -23,12 +23,12 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Representation of an sts operator
 type STSOperatorBuilder struct {
-	bitmap_             uint32
-	maxVersion          string
-	minVersion          string
-	name                string
-	namespace           string
-	serviceAccountNames []string
+	bitmap_         uint32
+	maxVersion      string
+	minVersion      string
+	name            string
+	namespace       string
+	serviceAccounts []string
 }
 
 // NewSTSOperator creates a new builder of 'STS_operator' objects.
@@ -77,12 +77,12 @@ func (b *STSOperatorBuilder) Namespace(value string) *STSOperatorBuilder {
 	return b
 }
 
-// ServiceAccountNames sets the value of the 'service_account_names' attribute to the given values.
+// ServiceAccounts sets the value of the 'service_accounts' attribute to the given values.
 //
 //
-func (b *STSOperatorBuilder) ServiceAccountNames(values ...string) *STSOperatorBuilder {
-	b.serviceAccountNames = make([]string, len(values))
-	copy(b.serviceAccountNames, values)
+func (b *STSOperatorBuilder) ServiceAccounts(values ...string) *STSOperatorBuilder {
+	b.serviceAccounts = make([]string, len(values))
+	copy(b.serviceAccounts, values)
 	b.bitmap_ |= 16
 	return b
 }
@@ -97,11 +97,11 @@ func (b *STSOperatorBuilder) Copy(object *STSOperator) *STSOperatorBuilder {
 	b.minVersion = object.minVersion
 	b.name = object.name
 	b.namespace = object.namespace
-	if object.serviceAccountNames != nil {
-		b.serviceAccountNames = make([]string, len(object.serviceAccountNames))
-		copy(b.serviceAccountNames, object.serviceAccountNames)
+	if object.serviceAccounts != nil {
+		b.serviceAccounts = make([]string, len(object.serviceAccounts))
+		copy(b.serviceAccounts, object.serviceAccounts)
 	} else {
-		b.serviceAccountNames = nil
+		b.serviceAccounts = nil
 	}
 	return b
 }
@@ -114,9 +114,9 @@ func (b *STSOperatorBuilder) Build() (object *STSOperator, err error) {
 	object.minVersion = b.minVersion
 	object.name = b.name
 	object.namespace = b.namespace
-	if b.serviceAccountNames != nil {
-		object.serviceAccountNames = make([]string, len(b.serviceAccountNames))
-		copy(object.serviceAccountNames, b.serviceAccountNames)
+	if b.serviceAccounts != nil {
+		object.serviceAccounts = make([]string, len(b.serviceAccounts))
+		copy(object.serviceAccounts, b.serviceAccounts)
 	}
 	return
 }
