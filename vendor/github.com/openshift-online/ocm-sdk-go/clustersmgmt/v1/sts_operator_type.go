@@ -23,12 +23,12 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Representation of an sts operator
 type STSOperator struct {
-	bitmap_             uint32
-	maxVersion          string
-	minVersion          string
-	name                string
-	namespace           string
-	serviceAccountNames []string
+	bitmap_         uint32
+	maxVersion      string
+	minVersion      string
+	name            string
+	namespace       string
+	serviceAccounts []string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -128,25 +128,25 @@ func (o *STSOperator) GetNamespace() (value string, ok bool) {
 	return
 }
 
-// ServiceAccountNames returns the value of the 'service_account_names' attribute, or
+// ServiceAccounts returns the value of the 'service_accounts' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Service Accounts
-func (o *STSOperator) ServiceAccountNames() []string {
+func (o *STSOperator) ServiceAccounts() []string {
 	if o != nil && o.bitmap_&16 != 0 {
-		return o.serviceAccountNames
+		return o.serviceAccounts
 	}
 	return nil
 }
 
-// GetServiceAccountNames returns the value of the 'service_account_names' attribute and
+// GetServiceAccounts returns the value of the 'service_accounts' attribute and
 // a flag indicating if the attribute has a value.
 //
 // Service Accounts
-func (o *STSOperator) GetServiceAccountNames() (value []string, ok bool) {
+func (o *STSOperator) GetServiceAccounts() (value []string, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
-		value = o.serviceAccountNames
+		value = o.serviceAccounts
 	}
 	return
 }

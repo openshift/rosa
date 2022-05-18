@@ -19,87 +19,73 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// STSCredentialRequest represents the values of the 'STS_credential_request' type.
+// HyperShift represents the values of the 'hyper_shift' type.
 //
-// Representation of an credRequest
-type STSCredentialRequest struct {
-	bitmap_  uint32
-	name     string
-	operator *STSOperator
+// HyperShift configuration.
+type HyperShift struct {
+	bitmap_ uint32
+	enabled bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *STSCredentialRequest) Empty() bool {
+func (o *HyperShift) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// Name returns the value of the 'name' attribute, or
+// Enabled returns the value of the 'enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Name of CredRequest
-func (o *STSCredentialRequest) Name() string {
+// Boolean flag indicating if the cluster should be creating using _HyperShift_.
+//
+// By default this is `false`.
+//
+// To enable it the cluster needs to be ROSA cluster and the organization of the user needs
+// to have the `hypershift` capability enabled.
+func (o *HyperShift) Enabled() bool {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.name
+		return o.enabled
 	}
-	return ""
+	return false
 }
 
-// GetName returns the value of the 'name' attribute and
+// GetEnabled returns the value of the 'enabled' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Name of CredRequest
-func (o *STSCredentialRequest) GetName() (value string, ok bool) {
+// Boolean flag indicating if the cluster should be creating using _HyperShift_.
+//
+// By default this is `false`.
+//
+// To enable it the cluster needs to be ROSA cluster and the organization of the user needs
+// to have the `hypershift` capability enabled.
+func (o *HyperShift) GetEnabled() (value bool, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.name
+		value = o.enabled
 	}
 	return
 }
 
-// Operator returns the value of the 'operator' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Operator Details
-func (o *STSCredentialRequest) Operator() *STSOperator {
-	if o != nil && o.bitmap_&2 != 0 {
-		return o.operator
-	}
-	return nil
-}
+// HyperShiftListKind is the name of the type used to represent list of objects of
+// type 'hyper_shift'.
+const HyperShiftListKind = "HyperShiftList"
 
-// GetOperator returns the value of the 'operator' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Operator Details
-func (o *STSCredentialRequest) GetOperator() (value *STSOperator, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
-	if ok {
-		value = o.operator
-	}
-	return
-}
+// HyperShiftListLinkKind is the name of the type used to represent links to list
+// of objects of type 'hyper_shift'.
+const HyperShiftListLinkKind = "HyperShiftListLink"
 
-// STSCredentialRequestListKind is the name of the type used to represent list of objects of
-// type 'STS_credential_request'.
-const STSCredentialRequestListKind = "STSCredentialRequestList"
+// HyperShiftNilKind is the name of the type used to nil lists of objects of
+// type 'hyper_shift'.
+const HyperShiftListNilKind = "HyperShiftListNil"
 
-// STSCredentialRequestListLinkKind is the name of the type used to represent links to list
-// of objects of type 'STS_credential_request'.
-const STSCredentialRequestListLinkKind = "STSCredentialRequestListLink"
-
-// STSCredentialRequestNilKind is the name of the type used to nil lists of objects of
-// type 'STS_credential_request'.
-const STSCredentialRequestListNilKind = "STSCredentialRequestListNil"
-
-// STSCredentialRequestList is a list of values of the 'STS_credential_request' type.
-type STSCredentialRequestList struct {
+// HyperShiftList is a list of values of the 'hyper_shift' type.
+type HyperShiftList struct {
 	href  string
 	link  bool
-	items []*STSCredentialRequest
+	items []*HyperShift
 }
 
 // Len returns the length of the list.
-func (l *STSCredentialRequestList) Len() int {
+func (l *HyperShiftList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -107,13 +93,13 @@ func (l *STSCredentialRequestList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *STSCredentialRequestList) Empty() bool {
+func (l *HyperShiftList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *STSCredentialRequestList) Get(i int) *STSCredentialRequest {
+func (l *HyperShiftList) Get(i int) *HyperShift {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -126,12 +112,12 @@ func (l *STSCredentialRequestList) Get(i int) *STSCredentialRequest {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *STSCredentialRequestList) Slice() []*STSCredentialRequest {
-	var slice []*STSCredentialRequest
+func (l *HyperShiftList) Slice() []*HyperShift {
+	var slice []*HyperShift
 	if l == nil {
-		slice = make([]*STSCredentialRequest, 0)
+		slice = make([]*HyperShift, 0)
 	} else {
-		slice = make([]*STSCredentialRequest, len(l.items))
+		slice = make([]*HyperShift, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -140,7 +126,7 @@ func (l *STSCredentialRequestList) Slice() []*STSCredentialRequest {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *STSCredentialRequestList) Each(f func(item *STSCredentialRequest) bool) {
+func (l *HyperShiftList) Each(f func(item *HyperShift) bool) {
 	if l == nil {
 		return
 	}
@@ -154,7 +140,7 @@ func (l *STSCredentialRequestList) Each(f func(item *STSCredentialRequest) bool)
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *STSCredentialRequestList) Range(f func(index int, item *STSCredentialRequest) bool) {
+func (l *HyperShiftList) Range(f func(index int, item *HyperShift) bool) {
 	if l == nil {
 		return
 	}
