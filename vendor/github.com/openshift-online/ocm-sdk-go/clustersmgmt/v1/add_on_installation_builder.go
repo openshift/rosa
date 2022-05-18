@@ -36,7 +36,6 @@ type AddOnInstallationBuilder struct {
 	creationTimestamp time.Time
 	operatorVersion   string
 	parameters        *AddOnInstallationParameterListBuilder
-	roleARN           string
 	state             AddOnInstallationState
 	stateDescription  string
 	updatedTimestamp  time.Time
@@ -172,21 +171,12 @@ func (b *AddOnInstallationBuilder) Parameters(value *AddOnInstallationParameterL
 	return b
 }
 
-// RoleARN sets the value of the 'role_ARN' attribute to the given value.
-//
-//
-func (b *AddOnInstallationBuilder) RoleARN(value string) *AddOnInstallationBuilder {
-	b.roleARN = value
-	b.bitmap_ |= 512
-	return b
-}
-
 // State sets the value of the 'state' attribute to the given value.
 //
 // Representation of an add-on installation State field.
 func (b *AddOnInstallationBuilder) State(value AddOnInstallationState) *AddOnInstallationBuilder {
 	b.state = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -195,7 +185,7 @@ func (b *AddOnInstallationBuilder) State(value AddOnInstallationState) *AddOnIns
 //
 func (b *AddOnInstallationBuilder) StateDescription(value string) *AddOnInstallationBuilder {
 	b.stateDescription = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -204,7 +194,7 @@ func (b *AddOnInstallationBuilder) StateDescription(value string) *AddOnInstalla
 //
 func (b *AddOnInstallationBuilder) UpdatedTimestamp(value time.Time) *AddOnInstallationBuilder {
 	b.updatedTimestamp = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -238,7 +228,6 @@ func (b *AddOnInstallationBuilder) Copy(object *AddOnInstallation) *AddOnInstall
 	} else {
 		b.parameters = nil
 	}
-	b.roleARN = object.roleARN
 	b.state = object.state
 	b.stateDescription = object.stateDescription
 	b.updatedTimestamp = object.updatedTimestamp
@@ -277,7 +266,6 @@ func (b *AddOnInstallationBuilder) Build() (object *AddOnInstallation, err error
 			return
 		}
 	}
-	object.roleARN = b.roleARN
 	object.state = b.state
 	object.stateDescription = b.stateDescription
 	object.updatedTimestamp = b.updatedTimestamp

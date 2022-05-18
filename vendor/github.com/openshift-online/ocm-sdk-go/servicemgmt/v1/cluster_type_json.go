@@ -43,7 +43,16 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0 && object.aws != nil
+	present_ = object.bitmap_&1 != 0 && object.api != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("api")
+		writeClusterAPI(object.api, stream)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0 && object.aws != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -52,7 +61,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeAWS(object.aws, stream)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -61,7 +70,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.displayName)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -70,7 +79,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.href)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -79,7 +88,16 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.id)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&32 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("multi_az")
+		stream.WriteBool(object.multiAZ)
+		count++
+	}
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -88,7 +106,16 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0 && object.properties != nil
+	present_ = object.bitmap_&128 != 0 && object.nodes != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("nodes")
+		writeClusterNodes(object.nodes, stream)
+		count++
+	}
+	present_ = object.bitmap_&256 != 0 && object.properties != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -117,7 +144,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		}
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.region != nil
+	present_ = object.bitmap_&512 != 0 && object.region != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -126,7 +153,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeCloudRegion(object.region, stream)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -158,26 +185,38 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 			break
 		}
 		switch field {
+		case "api":
+			value := readClusterAPI(iterator)
+			object.api = value
+			object.bitmap_ |= 1
 		case "aws":
 			value := readAWS(iterator)
 			object.aws = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		case "display_name":
 			value := iterator.ReadString()
 			object.displayName = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "href":
 			value := iterator.ReadString()
 			object.href = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		case "id":
 			value := iterator.ReadString()
 			object.id = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
+		case "multi_az":
+			value := iterator.ReadBool()
+			object.multiAZ = value
+			object.bitmap_ |= 32
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 64
+		case "nodes":
+			value := readClusterNodes(iterator)
+			object.nodes = value
+			object.bitmap_ |= 128
 		case "properties":
 			value := map[string]string{}
 			for {
@@ -189,15 +228,15 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 				value[key] = item
 			}
 			object.properties = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 256
 		case "region":
 			value := readCloudRegion(iterator)
 			object.region = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 512
 		case "state":
 			value := iterator.ReadString()
 			object.state = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}

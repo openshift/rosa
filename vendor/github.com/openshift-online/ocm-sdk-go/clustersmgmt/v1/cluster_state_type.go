@@ -41,6 +41,8 @@ const (
 	ClusterStateUninstalling ClusterState = "uninstalling"
 	// The state of the cluster is unknown.
 	ClusterStateUnknown ClusterState = "unknown"
+	// The cluster is validating user input.
+	ClusterStateValidating ClusterState = "validating"
 	// The cluster is waiting for user action.
 	ClusterStateWaiting ClusterState = "waiting"
 )

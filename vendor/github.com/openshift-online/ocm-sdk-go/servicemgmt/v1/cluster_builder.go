@@ -24,14 +24,17 @@ package v1 // github.com/openshift-online/ocm-sdk-go/servicemgmt/v1
 // This represents the parameters needed by Managed Service to create a cluster.
 type ClusterBuilder struct {
 	bitmap_     uint32
+	api         *ClusterAPIBuilder
 	aws         *AWSBuilder
 	displayName string
 	href        string
 	id          string
 	name        string
+	nodes       *ClusterNodesBuilder
 	properties  map[string]string
 	region      *CloudRegionBuilder
 	state       string
+	multiAZ     bool
 }
 
 // NewCluster creates a new builder of 'cluster' objects.
@@ -44,15 +47,28 @@ func (b *ClusterBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
+// API sets the value of the 'API' attribute to the given value.
+//
+// Information about the API of a cluster.
+func (b *ClusterBuilder) API(value *ClusterAPIBuilder) *ClusterBuilder {
+	b.api = value
+	if value != nil {
+		b.bitmap_ |= 1
+	} else {
+		b.bitmap_ &^= 1
+	}
+	return b
+}
+
 // AWS sets the value of the 'AWS' attribute to the given value.
 //
 // _Amazon Web Services_ specific settings of a cluster.
 func (b *ClusterBuilder) AWS(value *AWSBuilder) *ClusterBuilder {
 	b.aws = value
 	if value != nil {
-		b.bitmap_ |= 1
+		b.bitmap_ |= 2
 	} else {
-		b.bitmap_ &^= 1
+		b.bitmap_ &^= 2
 	}
 	return b
 }
@@ -62,7 +78,7 @@ func (b *ClusterBuilder) AWS(value *AWSBuilder) *ClusterBuilder {
 //
 func (b *ClusterBuilder) DisplayName(value string) *ClusterBuilder {
 	b.displayName = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
@@ -71,7 +87,7 @@ func (b *ClusterBuilder) DisplayName(value string) *ClusterBuilder {
 //
 func (b *ClusterBuilder) Href(value string) *ClusterBuilder {
 	b.href = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -80,7 +96,16 @@ func (b *ClusterBuilder) Href(value string) *ClusterBuilder {
 //
 func (b *ClusterBuilder) Id(value string) *ClusterBuilder {
 	b.id = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
+	return b
+}
+
+// MultiAZ sets the value of the 'multi_AZ' attribute to the given value.
+//
+//
+func (b *ClusterBuilder) MultiAZ(value bool) *ClusterBuilder {
+	b.multiAZ = value
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -89,7 +114,20 @@ func (b *ClusterBuilder) Id(value string) *ClusterBuilder {
 //
 func (b *ClusterBuilder) Name(value string) *ClusterBuilder {
 	b.name = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 64
+	return b
+}
+
+// Nodes sets the value of the 'nodes' attribute to the given value.
+//
+//
+func (b *ClusterBuilder) Nodes(value *ClusterNodesBuilder) *ClusterBuilder {
+	b.nodes = value
+	if value != nil {
+		b.bitmap_ |= 128
+	} else {
+		b.bitmap_ &^= 128
+	}
 	return b
 }
 
@@ -99,9 +137,9 @@ func (b *ClusterBuilder) Name(value string) *ClusterBuilder {
 func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 	b.properties = value
 	if value != nil {
-		b.bitmap_ |= 32
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 32
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -112,9 +150,9 @@ func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 	b.region = value
 	if value != nil {
-		b.bitmap_ |= 64
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 64
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -124,7 +162,7 @@ func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 //
 func (b *ClusterBuilder) State(value string) *ClusterBuilder {
 	b.state = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -134,6 +172,11 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		return b
 	}
 	b.bitmap_ = object.bitmap_
+	if object.api != nil {
+		b.api = NewClusterAPI().Copy(object.api)
+	} else {
+		b.api = nil
+	}
 	if object.aws != nil {
 		b.aws = NewAWS().Copy(object.aws)
 	} else {
@@ -142,7 +185,13 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	b.displayName = object.displayName
 	b.href = object.href
 	b.id = object.id
+	b.multiAZ = object.multiAZ
 	b.name = object.name
+	if object.nodes != nil {
+		b.nodes = NewClusterNodes().Copy(object.nodes)
+	} else {
+		b.nodes = nil
+	}
 	if len(object.properties) > 0 {
 		b.properties = map[string]string{}
 		for k, v := range object.properties {
@@ -164,6 +213,12 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 	object = new(Cluster)
 	object.bitmap_ = b.bitmap_
+	if b.api != nil {
+		object.api, err = b.api.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.aws != nil {
 		object.aws, err = b.aws.Build()
 		if err != nil {
@@ -173,7 +228,14 @@ func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 	object.displayName = b.displayName
 	object.href = b.href
 	object.id = b.id
+	object.multiAZ = b.multiAZ
 	object.name = b.name
+	if b.nodes != nil {
+		object.nodes, err = b.nodes.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.properties != nil {
 		object.properties = make(map[string]string)
 		for k, v := range b.properties {

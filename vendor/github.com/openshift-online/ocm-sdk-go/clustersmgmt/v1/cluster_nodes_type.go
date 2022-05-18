@@ -23,15 +23,16 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Counts of different classes of nodes inside a cluster.
 type ClusterNodes struct {
-	bitmap_            uint32
-	autoscaleCompute   *MachinePoolAutoscaling
-	availabilityZones  []string
-	compute            int
-	computeLabels      map[string]string
-	computeMachineType *MachineType
-	infra              int
-	master             int
-	total              int
+	bitmap_              uint32
+	autoscaleCompute     *MachinePoolAutoscaling
+	availabilityZones    []string
+	compute              int
+	computeLabels        map[string]string
+	computeMachineType   *MachineType
+	infra                int
+	master               int
+	securityGroupFilters []*MachinePoolSecurityGroupFilter
+	total                int
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -204,12 +205,35 @@ func (o *ClusterNodes) GetMaster() (value int, ok bool) {
 	return
 }
 
+// SecurityGroupFilters returns the value of the 'security_group_filters' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// List of security groups to be applied to nodes (Optional)
+func (o *ClusterNodes) SecurityGroupFilters() []*MachinePoolSecurityGroupFilter {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.securityGroupFilters
+	}
+	return nil
+}
+
+// GetSecurityGroupFilters returns the value of the 'security_group_filters' attribute and
+// a flag indicating if the attribute has a value.
+//
+// List of security groups to be applied to nodes (Optional)
+func (o *ClusterNodes) GetSecurityGroupFilters() (value []*MachinePoolSecurityGroupFilter, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.securityGroupFilters
+	}
+	return
+}
+
 // Total returns the value of the 'total' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Total number of nodes of the cluster.
 func (o *ClusterNodes) Total() int {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.total
 	}
 	return 0
@@ -220,7 +244,7 @@ func (o *ClusterNodes) Total() int {
 //
 // Total number of nodes of the cluster.
 func (o *ClusterNodes) GetTotal() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.total
 	}
