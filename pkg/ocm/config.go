@@ -32,6 +32,7 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 
 	"github.com/openshift/rosa/pkg/debug"
+	"github.com/openshift/rosa/pkg/fedramp"
 )
 
 // URLAliases allows the value of the `--env` option to map to the various API URLs.
@@ -51,6 +52,7 @@ type Config struct {
 	Scopes       []string `json:"scopes,omitempty"`
 	TokenURL     string   `json:"token_url,omitempty"`
 	URL          string   `json:"url,omitempty"`
+	FedRAMP      bool     `json:"fedramp,omitempty"`
 }
 
 func GetEnv() (string, error) {
@@ -59,7 +61,12 @@ func GetEnv() (string, error) {
 		return "", err
 	}
 
-	for env, api := range URLAliases {
+	urlAliases := URLAliases
+	if cfg.FedRAMP {
+		urlAliases = fedramp.URLAliases
+	}
+
+	for env, api := range urlAliases {
 		if api == cfg.URL {
 			return env, nil
 		}
