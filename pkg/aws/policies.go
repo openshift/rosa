@@ -45,54 +45,6 @@ type Operator struct {
 	MinVersion          string
 }
 
-var CredentialRequests map[string]Operator = map[string]Operator{
-	"machine_api_aws_cloud_credentials": {
-		Name:      "aws-cloud-credentials",
-		Namespace: "openshift-machine-api",
-		ServiceAccountNames: []string{
-			"machine-api-controllers",
-		},
-	},
-	"cloud_credential_operator_cloud_credential_operator_iam_ro_creds": {
-		Name:      "cloud-credential-operator-iam-ro-creds",
-		Namespace: "openshift-cloud-credential-operator",
-		ServiceAccountNames: []string{
-			"cloud-credential-operator",
-		},
-	},
-	"image_registry_installer_cloud_credentials": {
-		Name:      "installer-cloud-credentials",
-		Namespace: "openshift-image-registry",
-		ServiceAccountNames: []string{
-			"cluster-image-registry-operator",
-			"registry",
-		},
-	},
-	"ingress_operator_cloud_credentials": {
-		Name:      "cloud-credentials",
-		Namespace: "openshift-ingress-operator",
-		ServiceAccountNames: []string{
-			"ingress-operator",
-		},
-	},
-	"cluster_csi_drivers_ebs_cloud_credentials": {
-		Name:      "ebs-cloud-credentials",
-		Namespace: "openshift-cluster-csi-drivers",
-		ServiceAccountNames: []string{
-			"aws-ebs-csi-driver-operator",
-			"aws-ebs-csi-driver-controller-sa",
-		},
-	},
-	"cloud_network_config_controller_cloud_credentials": {
-		Name:      "cloud-credentials",
-		Namespace: "openshift-cloud-network-config-controller",
-		ServiceAccountNames: []string{
-			"cloud-network-config-controller",
-		},
-		MinVersion: "4.10",
-	},
-}
-
 type AccountRole struct {
 	Name string
 	Flag string
@@ -890,9 +842,9 @@ func checkIfAccountRole(roleName *string) bool {
 }
 
 //Check if it is one of the ROSA account roles
-func checkIfROSAOperatorRole(roleName *string) bool {
-	for _, operatorRole := range CredentialRequests {
-		if strings.Contains(aws.StringValue(roleName), operatorRole.Namespace) {
+func checkIfROSAOperatorRole(roleName *string, credRequest map[string]*cmv1.STSOperator) bool {
+	for _, operatorRole := range credRequest {
+		if strings.Contains(aws.StringValue(roleName), operatorRole.Namespace()) {
 			return true
 		}
 	}
@@ -1113,14 +1065,15 @@ func (c *awsClient) detachOperatorRolePolicies(role *string) error {
 	return nil
 }
 
-func (c *awsClient) GetOperatorRolesFromAccount(clusterID string) ([]string, error) {
+func (c *awsClient) GetOperatorRolesFromAccount(clusterID string,
+	credRequest map[string]*cmv1.STSOperator) ([]string, error) {
 	roleList := []string{}
 	roles, err := c.ListRoles()
 	if err != nil {
 		return roleList, err
 	}
 	for _, role := range roles {
-		if !checkIfROSAOperatorRole(role.RoleName) {
+		if !checkIfROSAOperatorRole(role.RoleName, credRequest) {
 			continue
 		}
 		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
@@ -1487,9 +1440,9 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluste
 }
 
 func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix string, accountID string,
-	version string) (bool, error) {
-	for _, operator := range CredentialRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+	version string, credRequests map[string]*cmv1.STSOperator) (bool, error) {
+	for _, operator := range credRequests {
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
 		_, err := c.IsPolicyExists(policyARN)
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {

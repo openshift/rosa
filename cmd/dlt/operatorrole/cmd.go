@@ -185,7 +185,13 @@ func run(cmd *cobra.Command, argv []string) {
 		spin.Start()
 	}
 
-	roles, err := awsClient.GetOperatorRolesFromAccount(sub.ClusterID())
+	credRequests, err := ocmClient.GetCredRequests()
+	if err != nil {
+		reporter.Errorf("Error getting operator credential request from OCM %s", err)
+		os.Exit(1)
+	}
+
+	roles, err := awsClient.GetOperatorRolesFromAccount(sub.ClusterID(), credRequests)
 	if len(roles) == 0 {
 		if spin != nil {
 			spin.Stop()

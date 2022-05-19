@@ -25,8 +25,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
-	semver "github.com/hashicorp/go-version"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
 	"github.com/openshift/rosa/pkg/aws/tags"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/pkg/errors"
@@ -161,54 +161,19 @@ func SortRolesByLinkedRole(roles []Role) {
 	})
 }
 
-func FindMissingOperatorRolesForUpgrade(cluster *cmv1.Cluster,
-	newMinorVersion string) (map[string]Operator, error) {
-	missingRoles := make(map[string]Operator)
-
-	for credRequest, operator := range CredentialRequests {
-		if operator.MinVersion != "" {
-			clusterUpgradeVersion, err := semver.NewVersion(newMinorVersion)
-			if err != nil {
-				return nil, err
-			}
-			operatorMinVersion, err := semver.NewVersion(operator.MinVersion)
-			if err != nil {
-				return nil, err
-			}
-
-			if clusterUpgradeVersion.GreaterThanOrEqual(operatorMinVersion) {
-				if !isOperatorRoleAlreadyExist(cluster, operator) {
-					missingRoles[credRequest] = operator
-				}
-			}
-		}
-	}
-
-	return missingRoles, nil
-}
-
-func isOperatorRoleAlreadyExist(cluster *cmv1.Cluster, operator Operator) bool {
-	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
-		if role.Namespace() == operator.Namespace && role.Name() == operator.Name {
-			return true
-		}
-	}
-
-	return false
-}
-
 func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID string,
-	prefix string, policies map[string]string, defaultPolicyVersion string) error {
-	for credrequest, operator := range CredentialRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+	prefix string, policies map[string]string, defaultPolicyVersion string,
+	credRequests map[string]*cmv1.STSOperator) error {
+	for credrequest, operator := range credRequests {
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policy := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policy,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
-				"operator_namespace":  operator.Namespace,
-				"operator_name":       operator.Name,
+				"operator_namespace":  operator.Namespace(),
+				"operator_name":       operator.Name(),
 			})
 		if err != nil {
 			return err
@@ -219,19 +184,19 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 }
 
 func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client,
-	defaultPolicyVersion string) []string {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator) []string {
 	commands := []string{}
-	for credrequest, operator := range CredentialRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+	for credrequest, operator := range credRequests {
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
-			name := GetPolicyName(prefix, operator.Namespace, operator.Name)
+			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := fmt.Sprintf(
 				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 				tags.OpenShiftVersion, defaultPolicyVersion,
 				tags.RolePrefix, prefix,
-				"operator_namespace", operator.Namespace,
-				"operator_name", operator.Name,
+				"operator_namespace", operator.Namespace(),
+				"operator_name", operator.Name(),
 			)
 			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 				"\t--policy-name %s \\\n"+

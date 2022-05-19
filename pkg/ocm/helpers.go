@@ -563,3 +563,54 @@ func SaveDocument(doc string, filename string) error {
 	}
 	return nil
 }
+
+func (c *Client) GetCredRequests() (map[string]*cmv1.STSOperator, error) {
+	m := make(map[string]*cmv1.STSOperator)
+	stsCredentialResponse, err := c.ocm.ClustersMgmt().V1().AWSInquiries().STSCredentialRequests().List().Send()
+	if err != nil {
+		return m, handleErr(stsCredentialResponse.Error(), err)
+	}
+	stsCredentialResponse.Items().Each(func(stsCredentialRequest *cmv1.STSCredentialRequest) bool {
+		m[stsCredentialRequest.Name()] = stsCredentialRequest.Operator()
+		return true
+	})
+	return m, nil
+}
+
+func (c *Client) FindMissingOperatorRolesForUpgrade(cluster *cmv1.Cluster,
+	newMinorVersion string) (map[string]*cmv1.STSOperator, error) {
+	missingRoles := make(map[string]*cmv1.STSOperator)
+
+	credRequests, err := c.GetCredRequests()
+	if err != nil {
+		return nil, errors.Errorf("Error getting operator credential request from OCM %s", err)
+	}
+	for credRequest, operator := range credRequests {
+		if operator.MinVersion() != "" {
+			clusterUpgradeVersion, err := semver.NewVersion(newMinorVersion)
+			if err != nil {
+				return nil, err
+			}
+			operatorMinVersion, err := semver.NewVersion(operator.MinVersion())
+			if err != nil {
+				return nil, err
+			}
+
+			if clusterUpgradeVersion.GreaterThanOrEqual(operatorMinVersion) {
+				if !isOperatorRoleAlreadyExist(cluster, operator) {
+					missingRoles[credRequest] = operator
+				}
+			}
+		}
+	}
+	return missingRoles, nil
+}
+
+func isOperatorRoleAlreadyExist(cluster *cmv1.Cluster, operator *cmv1.STSOperator) bool {
+	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
+		if role.Namespace() == operator.Namespace() && role.Name() == operator.Name() {
+			return true
+		}
+	}
+	return false
+}

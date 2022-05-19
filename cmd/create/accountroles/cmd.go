@@ -18,11 +18,11 @@ package accountroles
 
 import (
 	"fmt"
-
 	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/login"
@@ -244,12 +244,18 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("Expected a valid role creation mode: %s", err)
 		os.Exit(1)
 	}
+	credRequests, err := ocmClient.GetCredRequests()
+	if err != nil {
+		reporter.Errorf("Error getting operator credential request from OCM %s", err)
+		os.Exit(1)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		reporter.Infof("Creating roles using '%s'", creator.ARN)
 
 		err = createRoles(reporter, awsClient, prefix, permissionsBoundary, creator.AccountID, env, policies,
-			defaultPolicyVersion)
+			defaultPolicyVersion, credRequests)
 		if err != nil {
 			reporter.Errorf("There was an error creating the account roles: %s", err)
 			if strings.Contains(err.Error(), "Throttling") {
@@ -272,7 +278,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Version:  defaultPolicyVersion,
 		})
 	case aws.ModeManual:
-		err = aws.GeneratePolicyFiles(reporter, env, true, true, policies)
+		err = aws.GeneratePolicyFiles(reporter, env, true, true, policies, credRequests)
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
 			ocmClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
@@ -284,7 +290,7 @@ func run(cmd *cobra.Command, argv []string) {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
-		commands := buildCommands(prefix, permissionsBoundary, creator.AccountID, defaultPolicyVersion)
+		commands := buildCommands(prefix, permissionsBoundary, creator.AccountID, defaultPolicyVersion, credRequests)
 		ocmClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
 			ocm.Version: defaultPolicyVersion,
 		})
@@ -295,7 +301,8 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func buildCommands(prefix string, permissionsBoundary string, accountID string, defaultPolicyVersion string) string {
+func buildCommands(prefix string, permissionsBoundary string, accountID string, defaultPolicyVersion string,
+	credRequests map[string]*cmv1.STSOperator) string {
 	commands := []string{}
 
 	for file, role := range aws.AccountRoles {
@@ -329,14 +336,14 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 		commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	}
 
-	for credrequest, operator := range aws.CredentialRequests {
-		name := aws.GetPolicyName(prefix, operator.Namespace, operator.Name)
+	for credrequest, operator := range credRequests {
+		name := aws.GetPolicyName(prefix, operator.Namespace(), operator.Name())
 		iamTags := fmt.Sprintf(
 			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.OpenShiftVersion, defaultPolicyVersion,
 			tags.RolePrefix, prefix,
-			"operator_namespace", operator.Namespace,
-			"operator_name", operator.Name,
+			"operator_namespace", operator.Namespace(),
+			"operator_name", operator.Name(),
 		)
 		createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 			"\t--policy-name %s \\\n"+
@@ -351,7 +358,8 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 
 func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	prefix string, permissionsBoundary string,
-	accountID string, env string, policies map[string]string, defaultPolicyVersion string) error {
+	accountID string, env string, policies map[string]string, defaultPolicyVersion string,
+	credRequests map[string]*cmv1.STSOperator) error {
 
 	for file, role := range aws.AccountRoles {
 		name := aws.GetRoleName(prefix, role.Name)
@@ -402,8 +410,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 	}
 
 	if confirm.Prompt(true, "Create the operator policies?") {
-		for credrequest, operator := range aws.CredentialRequests {
-			policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace, operator.Name)
+		for credrequest, operator := range credRequests {
+			policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
 			filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 			policyDetails := policies[filename]
 
@@ -411,8 +419,8 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 				defaultPolicyVersion, map[string]string{
 					tags.OpenShiftVersion: defaultPolicyVersion,
 					tags.RolePrefix:       prefix,
-					"operator_namespace":  operator.Namespace,
-					"operator_name":       operator.Name,
+					"operator_namespace":  operator.Namespace(),
+					"operator_name":       operator.Name(),
 				})
 			if err != nil {
 				return err
