@@ -91,6 +91,13 @@ func init() {
 			"Leave empty for installer provisioned subnet IDs.",
 	)
 
+	flags.BoolVar(
+		&args.Privatelink,
+		"private-link",
+		false,
+		"Managed service will use a cluster that won't expose traffic to the public internet.",
+	)
+
 	arguments.AddRegionFlag(flags)
 }
 

@@ -24,6 +24,7 @@ type CreateManagedServiceArgs struct {
 	AwsOperatorIamRoleList []OperatorIAMRole
 
 	MultiAZ           bool
+	Privatelink       bool
 	AvailabilityZones []string
 	SubnetIDs         []string
 }
@@ -45,6 +46,13 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 			msv1.NewServiceParameter().ID(id).Value(val))
 	}
 
+	var listeningMethod msv1.ListeningMethod
+	if args.Privatelink {
+		listeningMethod = msv1.ListeningMethodInternal
+	} else {
+		listeningMethod = msv1.ListeningMethodExternal
+	}
+
 	service, err := msv1.NewManagedService().
 		Service(args.ServiceType).
 		Parameters(parameters...).
@@ -56,6 +64,8 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 					msv1.NewCloudRegion().
 						ID(args.AwsRegion)).
 				MultiAZ(args.MultiAZ).
+				API(msv1.NewClusterAPI().
+					Listening(listeningMethod)).
 				AWS(
 					msv1.NewAWS().
 						STS(msv1.NewSTS().
@@ -66,7 +76,8 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 								WorkerRoleARN(args.AwsWorkerRoleARN)).
 							OperatorIAMRoles(operatorIamRoles...)).
 						AccountID(args.AwsAccountID).
-						SubnetIDs(args.SubnetIDs...)).
+						SubnetIDs(args.SubnetIDs...).
+						PrivateLink(args.Privatelink)).
 				Nodes(msv1.NewClusterNodes().
 					AvailabilityZones(args.AvailabilityZones...))).
 		Build()
