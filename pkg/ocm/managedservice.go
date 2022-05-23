@@ -129,3 +129,34 @@ func (c *Client) DeleteManagedService(args DeleteManagedServiceArgs) (*msv1.Mana
 
 	return deleteResponse, nil
 }
+
+type UpdateManagedServiceArgs struct {
+	ID         string
+	Parameters map[string]string
+}
+
+func (c *Client) UpdateManagedService(args UpdateManagedServiceArgs) error {
+	parameters := []*msv1.ServiceParameterBuilder{}
+	for id, val := range args.Parameters {
+		parameters = append(parameters,
+			msv1.NewServiceParameter().ID(id).Value(val))
+	}
+
+	serviceSpec, err := msv1.NewManagedService().
+		Parameters(parameters...).
+		Build()
+
+	if err != nil {
+		return errors.Wrap(err, "Failed to create Managed Service call")
+	}
+
+	serviceCall, err := c.ocm.ServiceMgmt().V1().Services().Service(args.ID).
+		Update().
+		Body(serviceSpec).
+		Send()
+	if err != nil {
+		return handleErr(serviceCall.Error(), err)
+	}
+
+	return nil
+}
