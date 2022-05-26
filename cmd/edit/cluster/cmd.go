@@ -432,7 +432,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		noProxySlice = strings.Split(noProxyInput, ",")
 	}
-	if httpProxy == nil && httpsProxy == nil && len(noProxySlice) > 0 {
+	if isExpectedHTTPProxyOrHTTPSProxy(httpProxy, httpsProxy, noProxySlice, cluster) {
 		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
 		os.Exit(1)
 	}
@@ -583,4 +583,8 @@ func parseRFC3339(s string) (time.Time, error) {
 		return t, nil
 	}
 	return time.Parse(time.RFC3339, s)
+}
+
+func isExpectedHTTPProxyOrHTTPSProxy(httpProxy, httpsProxy *string, noProxySlice []string, cluster *cmv1.Cluster) bool {
+	return httpProxy == nil && httpsProxy == nil && len(noProxySlice) > 0 && cluster.Proxy() == nil
 }
