@@ -38,8 +38,10 @@ func buildOpenidIdp(cmd *cobra.Command,
 	email := args.openidEmail
 	name := args.openidName
 	username := args.openidUsername
+	groups := args.openidGroups
 
-	if clientID == "" || clientSecret == "" || issuerURL == "" || (email == "" && name == "" && username == "") {
+	if clientID == "" || clientSecret == "" || issuerURL == "" || (email == "" && name == "" && username == "" &&
+		groups == "") {
 		interactive.Enable()
 	}
 
@@ -134,8 +136,9 @@ func buildOpenidIdp(cmd *cobra.Command,
 
 	if interactive.Enabled() {
 		err = interactive.PrintHelp(interactive.Help{
-			Message: `You can indicate which claims to use as the user’s preferred user name, display name, and email address.
-  At least one claim must be configured to use as the user’s identity. Enter multiple values separated by commas.`,
+			Message: `You can indicate which claims to use as the user’s preferred user name, display name, email 
+address and groups.  At least one claim must be configured to use as the user’s identity. Enter multiple values 
+separated by commas.`,
 		})
 		if err != nil {
 			return idpBuilder, err
@@ -165,9 +168,18 @@ func buildOpenidIdp(cmd *cobra.Command,
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 		}
+		groups, err = interactive.GetString(interactive.Input{
+			Question: "Groups",
+			Help:     cmd.Flags().Lookup("groups-claims").Usage,
+			Default:  groups,
+		})
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+		}
 	}
-	if email == "" && name == "" && username == "" {
-		return idpBuilder, errors.New("At least one claim is required: [email-claims name-claims username-claims]")
+	if email == "" && name == "" && username == "" && groups == "" {
+		return idpBuilder, errors.New("At least one claim is required: [email-claims name-claims username-claims " +
+			"groups-claims]")
 	}
 
 	// Build OpenID Claims
@@ -180,6 +192,9 @@ func buildOpenidIdp(cmd *cobra.Command,
 	}
 	if username != "" {
 		openIDClaims = openIDClaims.PreferredUsername(strings.Split(username, ",")...)
+	}
+	if groups != "" {
+		openIDClaims = openIDClaims.Groups(strings.Split(groups, ",")...)
 	}
 
 	// Build extra OpenID scopes

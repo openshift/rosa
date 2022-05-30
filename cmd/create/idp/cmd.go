@@ -73,6 +73,7 @@ var args struct {
 	openidEmail     string
 	openidName      string
 	openidUsername  string
+	openidGroups    string
 	openidScopes    string
 
 	// HTPasswd
@@ -258,6 +259,12 @@ func init() {
 		"username-claims",
 		"",
 		"OpenID: List of claims to use as the preferred username when provisioning a user.",
+	)
+	flags.StringVar(
+		&args.openidGroups,
+		"groups-claims",
+		"",
+		"OpenID: List of claims to use as the groups names.",
 	)
 	flags.StringVar(
 		&args.openidScopes,
