@@ -111,7 +111,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	addOn, err := ocmClient.GetAddOnInstallation(clusterKey, awsCreator, addOnID)
+	addOn, err := ocmClient.GetAddOnInstallation(cluster.ID(), addOnID)
 	if err != nil && errors.GetType(err) != errors.NotFound {
 		reporter.Errorf("An error occurred while trying to get addon installation : %v", err)
 		os.Exit(1)
@@ -225,7 +225,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	reporter.Debugf("Installing add-on '%s' on cluster '%s'", addOnID, clusterKey)
-	err = ocmClient.InstallAddOn(clusterKey, awsCreator, addOnID, params)
+	err = ocmClient.InstallAddOn(cluster.ID(), addOnID, params)
 	if err != nil {
 		reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
 		os.Exit(1)

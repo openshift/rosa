@@ -19,8 +19,6 @@ package ocm
 import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-
-	"github.com/openshift/rosa/pkg/aws"
 )
 
 type AddOnParam struct {
@@ -40,13 +38,7 @@ type ClusterAddOn struct {
 	State string
 }
 
-func (c *Client) InstallAddOn(clusterKey string, creator *aws.Creator, addOnID string,
-	params []AddOnParam) error {
-	cluster, err := c.GetCluster(clusterKey, creator)
-	if err != nil {
-		return err
-	}
-
+func (c *Client) InstallAddOn(clusterID, addOnID string, params []AddOnParam) error {
 	addOnInstallationBuilder := cmv1.NewAddOnInstallation().
 		Addon(cmv1.NewAddOn().ID(addOnID))
 
@@ -66,7 +58,7 @@ func (c *Client) InstallAddOn(clusterKey string, creator *aws.Creator, addOnID s
 
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().
-		Cluster(cluster.ID()).
+		Cluster(clusterID).
 		Addons().
 		Add().
 		Body(addOnInstallation).
@@ -78,15 +70,10 @@ func (c *Client) InstallAddOn(clusterKey string, creator *aws.Creator, addOnID s
 	return nil
 }
 
-func (c *Client) UninstallAddOn(clusterKey string, creator *aws.Creator, addOnID string) error {
-	cluster, err := c.GetCluster(clusterKey, creator)
-	if err != nil {
-		return err
-	}
-
+func (c *Client) UninstallAddOn(clusterID, addOnID string) error {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().
-		Cluster(cluster.ID()).
+		Cluster(clusterID).
 		Addons().
 		Addoninstallation(addOnID).
 		Delete().
@@ -98,16 +85,10 @@ func (c *Client) UninstallAddOn(clusterKey string, creator *aws.Creator, addOnID
 	return nil
 }
 
-func (c *Client) GetAddOnInstallation(clusterKey string, creator *aws.Creator,
-	addOnID string) (*cmv1.AddOnInstallation, error) {
-	cluster, err := c.GetCluster(clusterKey, creator)
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Client) GetAddOnInstallation(clusterID, addOnID string) (*cmv1.AddOnInstallation, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().
-		Cluster(cluster.ID()).
+		Cluster(clusterID).
 		Addons().
 		Addoninstallation(addOnID).
 		Get().
@@ -119,13 +100,7 @@ func (c *Client) GetAddOnInstallation(clusterKey string, creator *aws.Creator,
 	return response.Body(), nil
 }
 
-func (c *Client) UpdateAddOnInstallation(clusterKey string, creator *aws.Creator, addOnID string,
-	params []AddOnParam) error {
-	cluster, err := c.GetCluster(clusterKey, creator)
-	if err != nil {
-		return err
-	}
-
+func (c *Client) UpdateAddOnInstallation(clusterID, addOnID string, params []AddOnParam) error {
 	addOnInstallationBuilder := cmv1.NewAddOnInstallation().
 		Addon(cmv1.NewAddOn().ID(addOnID))
 
@@ -143,7 +118,7 @@ func (c *Client) UpdateAddOnInstallation(clusterKey string, creator *aws.Creator
 		return err
 	}
 
-	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(cluster.ID()).
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
 		Addons().Addoninstallation(addOnID).
 		Update().Body(addOnInstallation).Send()
 	if err != nil {
@@ -153,7 +128,7 @@ func (c *Client) UpdateAddOnInstallation(clusterKey string, creator *aws.Creator
 	return nil
 }
 
-func (c *Client) GetAddOnParameters(clusterID string, addOnID string) (*cmv1.AddOnParameterList, error) {
+func (c *Client) GetAddOnParameters(clusterID, addOnID string) (*cmv1.AddOnParameterList, error) {
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Cluster(clusterID).AddonInquiries().AddonInquiry(addOnID).Get().Send()
 	if err != nil {
