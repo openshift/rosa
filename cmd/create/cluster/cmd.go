@@ -294,7 +294,7 @@ func init() {
 		"no-proxy",
 		nil,
 		"A comma-separated list of destination domain names, domains, IP addresses or "+
-			"other network CIDRs to exclude proxying. Use \"*\" to bypass proxy for all destinations",
+			"other network CIDRs to exclude proxying.",
 	)
 
 	flags.StringVar(
