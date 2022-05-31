@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type OpenIDClaimsBuilder struct {
 	bitmap_           uint32
 	email             []string
+	groups            []string
 	name              []string
 	preferredUsername []string
 }
@@ -49,13 +50,23 @@ func (b *OpenIDClaimsBuilder) Email(values ...string) *OpenIDClaimsBuilder {
 	return b
 }
 
+// Groups sets the value of the 'groups' attribute to the given values.
+//
+//
+func (b *OpenIDClaimsBuilder) Groups(values ...string) *OpenIDClaimsBuilder {
+	b.groups = make([]string, len(values))
+	copy(b.groups, values)
+	b.bitmap_ |= 2
+	return b
+}
+
 // Name sets the value of the 'name' attribute to the given values.
 //
 //
 func (b *OpenIDClaimsBuilder) Name(values ...string) *OpenIDClaimsBuilder {
 	b.name = make([]string, len(values))
 	copy(b.name, values)
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
@@ -65,7 +76,7 @@ func (b *OpenIDClaimsBuilder) Name(values ...string) *OpenIDClaimsBuilder {
 func (b *OpenIDClaimsBuilder) PreferredUsername(values ...string) *OpenIDClaimsBuilder {
 	b.preferredUsername = make([]string, len(values))
 	copy(b.preferredUsername, values)
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -80,6 +91,12 @@ func (b *OpenIDClaimsBuilder) Copy(object *OpenIDClaims) *OpenIDClaimsBuilder {
 		copy(b.email, object.email)
 	} else {
 		b.email = nil
+	}
+	if object.groups != nil {
+		b.groups = make([]string, len(object.groups))
+		copy(b.groups, object.groups)
+	} else {
+		b.groups = nil
 	}
 	if object.name != nil {
 		b.name = make([]string, len(object.name))
@@ -103,6 +120,10 @@ func (b *OpenIDClaimsBuilder) Build() (object *OpenIDClaims, err error) {
 	if b.email != nil {
 		object.email = make([]string, len(b.email))
 		copy(object.email, b.email)
+	}
+	if b.groups != nil {
+		object.groups = make([]string, len(b.groups))
+		copy(object.groups, b.groups)
 	}
 	if b.name != nil {
 		object.name = make([]string, len(b.name))
