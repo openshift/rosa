@@ -2,6 +2,7 @@ package ocm
 
 import (
 	"fmt"
+	"net"
 
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 	"github.com/pkg/errors"
@@ -23,10 +24,14 @@ type CreateManagedServiceArgs struct {
 
 	AwsOperatorIamRoleList []OperatorIAMRole
 
+	// Custom network configuration
 	MultiAZ           bool
 	Privatelink       bool
 	AvailabilityZones []string
 	SubnetIDs         []string
+	MachineCIDR       net.IPNet
+	PodCIDR           net.IPNet
+	ServiceCIDR       net.IPNet
 }
 
 func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.ManagedService, error) {
@@ -64,6 +69,10 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 					msv1.NewCloudRegion().
 						ID(args.AwsRegion)).
 				MultiAZ(args.MultiAZ).
+				Network(msv1.NewNetwork().
+					MachineCIDR(args.MachineCIDR.String()).
+					PodCIDR(args.PodCIDR.String()).
+					ServiceCIDR(args.ServiceCIDR.String())).
 				API(msv1.NewClusterAPI().
 					Listening(listeningMethod)).
 				AWS(
