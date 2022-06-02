@@ -26,7 +26,6 @@ type AWSVolumeBuilder struct {
 	bitmap_ uint32
 	iops    int
 	size    int
-	type_   string
 }
 
 // NewAWSVolume creates a new builder of 'AWS_volume' objects.
@@ -57,15 +56,6 @@ func (b *AWSVolumeBuilder) Size(value int) *AWSVolumeBuilder {
 	return b
 }
 
-// Type sets the value of the 'type' attribute to the given value.
-//
-//
-func (b *AWSVolumeBuilder) Type(value string) *AWSVolumeBuilder {
-	b.type_ = value
-	b.bitmap_ |= 4
-	return b
-}
-
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *AWSVolumeBuilder) Copy(object *AWSVolume) *AWSVolumeBuilder {
 	if object == nil {
@@ -74,7 +64,6 @@ func (b *AWSVolumeBuilder) Copy(object *AWSVolume) *AWSVolumeBuilder {
 	b.bitmap_ = object.bitmap_
 	b.iops = object.iops
 	b.size = object.size
-	b.type_ = object.type_
 	return b
 }
 
@@ -84,6 +73,5 @@ func (b *AWSVolumeBuilder) Build() (object *AWSVolume, err error) {
 	object.bitmap_ = b.bitmap_
 	object.iops = b.iops
 	object.size = b.size
-	object.type_ = b.type_
 	return
 }

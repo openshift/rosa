@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/servicemgmt/v1
 
 import (
 	"io"
@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalQuotaCost writes a value of the 'quota_cost' type to the given writer.
-func MarshalQuotaCost(object *QuotaCost, writer io.Writer) error {
+// MarshalNetwork writes a value of the 'network' type to the given writer.
+func MarshalNetwork(object *Network, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeQuotaCost(object, stream)
+	writeNetwork(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalQuotaCost(object *QuotaCost, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeQuotaCost writes a value of the 'quota_cost' type to the given stream.
-func writeQuotaCost(object *QuotaCost, stream *jsoniter.Stream) {
+// writeNetwork writes a value of the 'network' type to the given stream.
+func writeNetwork(object *Network, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,17 +47,17 @@ func writeQuotaCost(object *QuotaCost, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("allowed")
-		stream.WriteInt(object.allowed)
+		stream.WriteObjectField("host_prefix")
+		stream.WriteInt(object.hostPrefix)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0 && object.cloudAccounts != nil
+	present_ = object.bitmap_&2 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cloud_accounts")
-		writeCloudAccountList(object.cloudAccounts, stream)
+		stream.WriteObjectField("machine_cidr")
+		stream.WriteString(object.machineCIDR)
 		count++
 	}
 	present_ = object.bitmap_&4 != 0
@@ -65,8 +65,8 @@ func writeQuotaCost(object *QuotaCost, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("consumed")
-		stream.WriteInt(object.consumed)
+		stream.WriteObjectField("pod_cidr")
+		stream.WriteString(object.podCIDR)
 		count++
 	}
 	present_ = object.bitmap_&8 != 0
@@ -74,8 +74,8 @@ func writeQuotaCost(object *QuotaCost, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("organization_id")
-		stream.WriteString(object.organizationID)
+		stream.WriteObjectField("service_cidr")
+		stream.WriteString(object.serviceCIDR)
 		count++
 	}
 	present_ = object.bitmap_&16 != 0
@@ -83,66 +83,53 @@ func writeQuotaCost(object *QuotaCost, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("quota_id")
-		stream.WriteString(object.quotaID)
-		count++
-	}
-	present_ = object.bitmap_&32 != 0 && object.relatedResources != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("related_resources")
-		writeRelatedResourceList(object.relatedResources, stream)
+		stream.WriteObjectField("type")
+		stream.WriteString(object.type_)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalQuotaCost reads a value of the 'quota_cost' type from the given
+// UnmarshalNetwork reads a value of the 'network' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalQuotaCost(source interface{}) (object *QuotaCost, err error) {
+func UnmarshalNetwork(source interface{}) (object *Network, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readQuotaCost(iterator)
+	object = readNetwork(iterator)
 	err = iterator.Error
 	return
 }
 
-// readQuotaCost reads a value of the 'quota_cost' type from the given iterator.
-func readQuotaCost(iterator *jsoniter.Iterator) *QuotaCost {
-	object := &QuotaCost{}
+// readNetwork reads a value of the 'network' type from the given iterator.
+func readNetwork(iterator *jsoniter.Iterator) *Network {
+	object := &Network{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "allowed":
+		case "host_prefix":
 			value := iterator.ReadInt()
-			object.allowed = value
+			object.hostPrefix = value
 			object.bitmap_ |= 1
-		case "cloud_accounts":
-			value := readCloudAccountList(iterator)
-			object.cloudAccounts = value
+		case "machine_cidr":
+			value := iterator.ReadString()
+			object.machineCIDR = value
 			object.bitmap_ |= 2
-		case "consumed":
-			value := iterator.ReadInt()
-			object.consumed = value
+		case "pod_cidr":
+			value := iterator.ReadString()
+			object.podCIDR = value
 			object.bitmap_ |= 4
-		case "organization_id":
+		case "service_cidr":
 			value := iterator.ReadString()
-			object.organizationID = value
+			object.serviceCIDR = value
 			object.bitmap_ |= 8
-		case "quota_id":
+		case "type":
 			value := iterator.ReadString()
-			object.quotaID = value
+			object.type_ = value
 			object.bitmap_ |= 16
-		case "related_resources":
-			value := readRelatedResourceList(iterator)
-			object.relatedResources = value
-			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()
 		}

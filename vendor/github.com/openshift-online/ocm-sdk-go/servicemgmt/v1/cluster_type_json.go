@@ -106,7 +106,16 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.nodes != nil
+	present_ = object.bitmap_&128 != 0 && object.network != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("network")
+		writeNetwork(object.network, stream)
+		count++
+	}
+	present_ = object.bitmap_&256 != 0 && object.nodes != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -115,7 +124,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeClusterNodes(object.nodes, stream)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0 && object.properties != nil
+	present_ = object.bitmap_&512 != 0 && object.properties != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -144,7 +153,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		}
 		count++
 	}
-	present_ = object.bitmap_&512 != 0 && object.region != nil
+	present_ = object.bitmap_&1024 != 0 && object.region != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -153,7 +162,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeCloudRegion(object.region, stream)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -213,10 +222,14 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 			value := iterator.ReadString()
 			object.name = value
 			object.bitmap_ |= 64
+		case "network":
+			value := readNetwork(iterator)
+			object.network = value
+			object.bitmap_ |= 128
 		case "nodes":
 			value := readClusterNodes(iterator)
 			object.nodes = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "properties":
 			value := map[string]string{}
 			for {
@@ -228,15 +241,15 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 				value[key] = item
 			}
 			object.properties = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "region":
 			value := readCloudRegion(iterator)
 			object.region = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "state":
 			value := iterator.ReadString()
 			object.state = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		default:
 			iterator.ReadAny()
 		}

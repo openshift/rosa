@@ -17,89 +17,89 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
-// AWSVolume represents the values of the 'AWS_volume' type.
+// CloudAccount represents the values of the 'cloud_account' type.
 //
-// Holds settings for an AWS storage volume.
-type AWSVolume struct {
-	bitmap_ uint32
-	iops    int
-	size    int
+//
+type CloudAccount struct {
+	bitmap_         uint32
+	cloudAccountID  string
+	cloudProviderID string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *AWSVolume) Empty() bool {
+func (o *CloudAccount) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// IOPS returns the value of the 'IOPS' attribute, or
+// CloudAccountID returns the value of the 'cloud_account_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Volume provisioned IOPS.
-func (o *AWSVolume) IOPS() int {
+//
+func (o *CloudAccount) CloudAccountID() string {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.iops
+		return o.cloudAccountID
 	}
-	return 0
+	return ""
 }
 
-// GetIOPS returns the value of the 'IOPS' attribute and
+// GetCloudAccountID returns the value of the 'cloud_account_ID' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Volume provisioned IOPS.
-func (o *AWSVolume) GetIOPS() (value int, ok bool) {
+//
+func (o *CloudAccount) GetCloudAccountID() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.iops
+		value = o.cloudAccountID
 	}
 	return
 }
 
-// Size returns the value of the 'size' attribute, or
+// CloudProviderID returns the value of the 'cloud_provider_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Volume size in Gib.
-func (o *AWSVolume) Size() int {
+//
+func (o *CloudAccount) CloudProviderID() string {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.size
+		return o.cloudProviderID
 	}
-	return 0
+	return ""
 }
 
-// GetSize returns the value of the 'size' attribute and
+// GetCloudProviderID returns the value of the 'cloud_provider_ID' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Volume size in Gib.
-func (o *AWSVolume) GetSize() (value int, ok bool) {
+//
+func (o *CloudAccount) GetCloudProviderID() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.size
+		value = o.cloudProviderID
 	}
 	return
 }
 
-// AWSVolumeListKind is the name of the type used to represent list of objects of
-// type 'AWS_volume'.
-const AWSVolumeListKind = "AWSVolumeList"
+// CloudAccountListKind is the name of the type used to represent list of objects of
+// type 'cloud_account'.
+const CloudAccountListKind = "CloudAccountList"
 
-// AWSVolumeListLinkKind is the name of the type used to represent links to list
-// of objects of type 'AWS_volume'.
-const AWSVolumeListLinkKind = "AWSVolumeListLink"
+// CloudAccountListLinkKind is the name of the type used to represent links to list
+// of objects of type 'cloud_account'.
+const CloudAccountListLinkKind = "CloudAccountListLink"
 
-// AWSVolumeNilKind is the name of the type used to nil lists of objects of
-// type 'AWS_volume'.
-const AWSVolumeListNilKind = "AWSVolumeListNil"
+// CloudAccountNilKind is the name of the type used to nil lists of objects of
+// type 'cloud_account'.
+const CloudAccountListNilKind = "CloudAccountListNil"
 
-// AWSVolumeList is a list of values of the 'AWS_volume' type.
-type AWSVolumeList struct {
+// CloudAccountList is a list of values of the 'cloud_account' type.
+type CloudAccountList struct {
 	href  string
 	link  bool
-	items []*AWSVolume
+	items []*CloudAccount
 }
 
 // Len returns the length of the list.
-func (l *AWSVolumeList) Len() int {
+func (l *CloudAccountList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -107,13 +107,13 @@ func (l *AWSVolumeList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *AWSVolumeList) Empty() bool {
+func (l *CloudAccountList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *AWSVolumeList) Get(i int) *AWSVolume {
+func (l *CloudAccountList) Get(i int) *CloudAccount {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -126,12 +126,12 @@ func (l *AWSVolumeList) Get(i int) *AWSVolume {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *AWSVolumeList) Slice() []*AWSVolume {
-	var slice []*AWSVolume
+func (l *CloudAccountList) Slice() []*CloudAccount {
+	var slice []*CloudAccount
 	if l == nil {
-		slice = make([]*AWSVolume, 0)
+		slice = make([]*CloudAccount, 0)
 	} else {
-		slice = make([]*AWSVolume, len(l.items))
+		slice = make([]*CloudAccount, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -140,7 +140,7 @@ func (l *AWSVolumeList) Slice() []*AWSVolume {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *AWSVolumeList) Each(f func(item *AWSVolume) bool) {
+func (l *CloudAccountList) Each(f func(item *CloudAccount) bool) {
 	if l == nil {
 		return
 	}
@@ -154,7 +154,7 @@ func (l *AWSVolumeList) Each(f func(item *AWSVolume) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *AWSVolumeList) Range(f func(index int, item *AWSVolume) bool) {
+func (l *CloudAccountList) Range(f func(index int, item *CloudAccount) bool) {
 	if l == nil {
 		return
 	}

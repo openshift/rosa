@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalAWSVolume writes a value of the 'AWS_volume' type to the given writer.
-func MarshalAWSVolume(object *AWSVolume, writer io.Writer) error {
+// MarshalCloudAccount writes a value of the 'cloud_account' type to the given writer.
+func MarshalCloudAccount(object *CloudAccount, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeAWSVolume(object, stream)
+	writeCloudAccount(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalAWSVolume(object *AWSVolume, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeAWSVolume writes a value of the 'AWS_volume' type to the given stream.
-func writeAWSVolume(object *AWSVolume, stream *jsoniter.Stream) {
+// writeCloudAccount writes a value of the 'cloud_account' type to the given stream.
+func writeCloudAccount(object *CloudAccount, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,8 +47,8 @@ func writeAWSVolume(object *AWSVolume, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("iops")
-		stream.WriteInt(object.iops)
+		stream.WriteObjectField("cloud_account_id")
+		stream.WriteString(object.cloudAccountID)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -56,40 +56,40 @@ func writeAWSVolume(object *AWSVolume, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("size")
-		stream.WriteInt(object.size)
+		stream.WriteObjectField("cloud_provider_id")
+		stream.WriteString(object.cloudProviderID)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalAWSVolume reads a value of the 'AWS_volume' type from the given
+// UnmarshalCloudAccount reads a value of the 'cloud_account' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalAWSVolume(source interface{}) (object *AWSVolume, err error) {
+func UnmarshalCloudAccount(source interface{}) (object *CloudAccount, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readAWSVolume(iterator)
+	object = readCloudAccount(iterator)
 	err = iterator.Error
 	return
 }
 
-// readAWSVolume reads a value of the 'AWS_volume' type from the given iterator.
-func readAWSVolume(iterator *jsoniter.Iterator) *AWSVolume {
-	object := &AWSVolume{}
+// readCloudAccount reads a value of the 'cloud_account' type from the given iterator.
+func readCloudAccount(iterator *jsoniter.Iterator) *CloudAccount {
+	object := &CloudAccount{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "iops":
-			value := iterator.ReadInt()
-			object.iops = value
+		case "cloud_account_id":
+			value := iterator.ReadString()
+			object.cloudAccountID = value
 			object.bitmap_ |= 1
-		case "size":
-			value := iterator.ReadInt()
-			object.size = value
+		case "cloud_provider_id":
+			value := iterator.ReadString()
+			object.cloudProviderID = value
 			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()
