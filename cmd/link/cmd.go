@@ -28,9 +28,9 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "link",
 	Aliases: []string{"associate"},
-	Short:   "Link a resource from stdin",
-	Long:    "Link a resource from stdin",
-	Hidden:  true,
+	Short:   "Link a ocm/user role from stdin",
+	Long:    "Link a ocm/user role from stdin",
+	Hidden:  false,
 }
 
 func init() {
