@@ -1320,13 +1320,21 @@ func run(cmd *cobra.Command, _ []string) {
 		reporter.Errorf("Expected a valid value for kms-key-arn matching %s", kmsArnRE)
 		os.Exit(1)
 	}
-
+	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := ocmClient.
+		GetDefaultClusterFlavors(args.flavour)
+	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
+		reporter.Errorf("Error retrieving default cluster flavors")
+		os.Exit(1)
+	}
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
 	computeMachineTypeList, err := ocmClient.GetAvailableMachineTypes()
 	if err != nil {
 		reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
+	}
+	if computeMachineType == "" {
+		computeMachineType = defaultComputeMachineType
 	}
 	if interactive.Enabled() {
 		computeMachineType, err = interactive.GetOption(interactive.Input{
@@ -1481,12 +1489,6 @@ func run(cmd *cobra.Command, _ []string) {
 			reporter.Errorf("Expected a valid network type: %s", err)
 			os.Exit(1)
 		}
-	}
-
-	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix := ocmClient.GetDefaultClusterFlavors(args.flavour)
-	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
-		reporter.Errorf("Error retrieving default cluster flavors")
-		os.Exit(1)
 	}
 
 	// Machine CIDR:

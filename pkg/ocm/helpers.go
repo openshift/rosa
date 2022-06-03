@@ -166,14 +166,19 @@ func handleErr(res *ocmerrors.Error, err error) error {
 }
 
 func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
-	dServicecidr *net.IPNet, dhostPrefix int) {
+	dServicecidr *net.IPNet, dhostPrefix int, computeInstanceType string) {
 	flavourGetResponse, err := c.ocm.ClustersMgmt().V1().Flavours().Flavour(flavour).Get().Send()
 	if err != nil {
 		flavourGetResponse, _ = c.ocm.ClustersMgmt().V1().Flavours().Flavour("osd-4").Get().Send()
 	}
+	aws, ok := flavourGetResponse.Body().GetAWS()
+	if !ok {
+		return nil, nil, nil, 0, ""
+	}
+	computeInstanceType = aws.ComputeInstanceType()
 	network, ok := flavourGetResponse.Body().GetNetwork()
 	if !ok {
-		return nil, nil, nil, 0
+		return nil, nil, nil, 0, computeInstanceType
 	}
 	_, dMachinecidr, err = net.ParseCIDR(network.MachineCIDR())
 	if err != nil {
@@ -188,7 +193,7 @@ func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPN
 		dServicecidr = nil
 	}
 	dhostPrefix, _ = network.GetHostPrefix()
-	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix
+	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, computeInstanceType
 }
 
 func (c *Client) LogEvent(key string, body map[string]string) {
