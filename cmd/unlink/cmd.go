@@ -25,9 +25,9 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "unlink",
 	Aliases: []string{"unlink"},
-	Short:   "Unlink a resource",
-	Long:    "Unlink a resource",
-	Hidden:  true,
+	Short:   "UnLink a ocm/user role from stdin",
+	Long:    "UnLink a ocm/user role from stdin",
+	Hidden:  false,
 }
 
 func init() {
