@@ -35,7 +35,7 @@ func (c *Client) GetMachineTypes() (machineTypes MachineTypeList, err error) {
 		var response *cmv1.MachineTypesListResponse
 		response, err := collection.List().
 			Search("cloud_provider.id = 'aws'").
-			Order("cpu asc").
+			Order("category asc").
 			Page(page).
 			Size(size).
 			Send()
