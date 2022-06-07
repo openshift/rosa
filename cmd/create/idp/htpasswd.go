@@ -69,7 +69,6 @@ func createHTPasswdIDP(cmd *cobra.Command,
 		reporter.Infof("User '%s' added", username)
 	} else {
 		// HTPasswd IDP does not exist - create it
-		idpName := getIDPName(cmd, idpName)
 		if username == "" || password == "" {
 			reporter.Infof("At least one user is required to create the IDP.")
 			username, password = getUserDetails(cmd)
