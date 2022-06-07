@@ -18,6 +18,7 @@ package service
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"regexp"
 	"strings"
@@ -96,6 +97,25 @@ func init() {
 		"private-link",
 		false,
 		"Managed service will use a cluster that won't expose traffic to the public internet.",
+	)
+
+	flags.IPNetVar(
+		&args.MachineCIDR,
+		"machine-cidr",
+		net.IPNet{},
+		"Block of IP addresses used by OpenShift while installing the cluster, for example \"10.0.0.0/16\".",
+	)
+	flags.IPNetVar(
+		&args.ServiceCIDR,
+		"service-cidr",
+		net.IPNet{},
+		"Block of IP addresses for services, for example \"172.30.0.0/16\".",
+	)
+	flags.IPNetVar(
+		&args.PodCIDR,
+		"pod-cidr",
+		net.IPNet{},
+		"Block of IP addresses from which Pod IP addresses are allocated, for example \"10.128.0.0/14\".",
 	)
 
 	arguments.AddRegionFlag(flags)

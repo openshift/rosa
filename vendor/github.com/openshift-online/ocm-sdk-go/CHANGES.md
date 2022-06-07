@@ -3,6 +3,21 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.272
+- Update to model 0.0.204:
+  - Remove volume type from flavour
+  - Add Network Configuration for Managed Services
+
+## 0.1.271
+- Update to model 0.0.203:
+  - Add `MarketplaceAWS`, `MarketplaceAzure`, `MarketplaceRHM` billing models.
+
+## 0.1.270
+- Update to model 0.0.202:
+  - Add `CloudAccount` type.
+  - Add `CloudAccounts` field to QuotaCost type.
+  - Add `BillingMarketplaceAccount` field to Subscription type.
+
 ## 0.1.269
 
 - authentication: Allow client credential grants with basic auth

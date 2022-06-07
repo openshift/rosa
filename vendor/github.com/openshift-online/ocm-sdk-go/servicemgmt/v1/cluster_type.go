@@ -30,6 +30,7 @@ type Cluster struct {
 	href        string
 	id          string
 	name        string
+	network     *Network
 	nodes       *ClusterNodes
 	properties  map[string]string
 	region      *CloudRegion
@@ -209,12 +210,35 @@ func (o *Cluster) GetName() (value string, ok bool) {
 	return
 }
 
+// Network returns the value of the 'network' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Cluster) Network() *Network {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.network
+	}
+	return nil
+}
+
+// GetNetwork returns the value of the 'network' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Cluster) GetNetwork() (value *Network, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.network
+	}
+	return
+}
+
 // Nodes returns the value of the 'nodes' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *Cluster) Nodes() *ClusterNodes {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.nodes
 	}
 	return nil
@@ -225,7 +249,7 @@ func (o *Cluster) Nodes() *ClusterNodes {
 //
 //
 func (o *Cluster) GetNodes() (value *ClusterNodes, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.nodes
 	}
@@ -237,7 +261,7 @@ func (o *Cluster) GetNodes() (value *ClusterNodes, ok bool) {
 //
 //
 func (o *Cluster) Properties() map[string]string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.properties
 	}
 	return nil
@@ -248,7 +272,7 @@ func (o *Cluster) Properties() map[string]string {
 //
 //
 func (o *Cluster) GetProperties() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.properties
 	}
@@ -260,7 +284,7 @@ func (o *Cluster) GetProperties() (value map[string]string, ok bool) {
 //
 //
 func (o *Cluster) Region() *CloudRegion {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.region
 	}
 	return nil
@@ -271,7 +295,7 @@ func (o *Cluster) Region() *CloudRegion {
 //
 //
 func (o *Cluster) GetRegion() (value *CloudRegion, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.region
 	}
@@ -283,7 +307,7 @@ func (o *Cluster) GetRegion() (value *CloudRegion, ok bool) {
 //
 //
 func (o *Cluster) State() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.state
 	}
 	return ""
@@ -294,7 +318,7 @@ func (o *Cluster) State() string {
 //
 //
 func (o *Cluster) GetState() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.state
 	}

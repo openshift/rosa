@@ -30,6 +30,7 @@ type ClusterBuilder struct {
 	href        string
 	id          string
 	name        string
+	network     *NetworkBuilder
 	nodes       *ClusterNodesBuilder
 	properties  map[string]string
 	region      *CloudRegionBuilder
@@ -118,15 +119,28 @@ func (b *ClusterBuilder) Name(value string) *ClusterBuilder {
 	return b
 }
 
+// Network sets the value of the 'network' attribute to the given value.
+//
+// Network configuration of a cluster.
+func (b *ClusterBuilder) Network(value *NetworkBuilder) *ClusterBuilder {
+	b.network = value
+	if value != nil {
+		b.bitmap_ |= 128
+	} else {
+		b.bitmap_ &^= 128
+	}
+	return b
+}
+
 // Nodes sets the value of the 'nodes' attribute to the given value.
 //
 //
 func (b *ClusterBuilder) Nodes(value *ClusterNodesBuilder) *ClusterBuilder {
 	b.nodes = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -137,9 +151,9 @@ func (b *ClusterBuilder) Nodes(value *ClusterNodesBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 	b.properties = value
 	if value != nil {
-		b.bitmap_ |= 256
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 256
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -150,9 +164,9 @@ func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 	b.region = value
 	if value != nil {
-		b.bitmap_ |= 512
+		b.bitmap_ |= 1024
 	} else {
-		b.bitmap_ &^= 512
+		b.bitmap_ &^= 1024
 	}
 	return b
 }
@@ -162,7 +176,7 @@ func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 //
 func (b *ClusterBuilder) State(value string) *ClusterBuilder {
 	b.state = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -187,6 +201,11 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	b.id = object.id
 	b.multiAZ = object.multiAZ
 	b.name = object.name
+	if object.network != nil {
+		b.network = NewNetwork().Copy(object.network)
+	} else {
+		b.network = nil
+	}
 	if object.nodes != nil {
 		b.nodes = NewClusterNodes().Copy(object.nodes)
 	} else {
@@ -230,6 +249,12 @@ func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 	object.id = b.id
 	object.multiAZ = b.multiAZ
 	object.name = b.name
+	if b.network != nil {
+		object.network, err = b.network.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.nodes != nil {
 		object.nodes, err = b.nodes.Build()
 		if err != nil {
