@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/rosa/cmd/describe/addon"
 	"github.com/openshift/rosa/cmd/describe/admin"
 	"github.com/openshift/rosa/cmd/describe/cluster"
+	"github.com/openshift/rosa/cmd/describe/installation"
 	"github.com/openshift/rosa/cmd/describe/service"
 	"github.com/openshift/rosa/pkg/arguments"
 )
@@ -37,6 +38,7 @@ func init() {
 	Cmd.AddCommand(admin.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(service.Cmd)
+	Cmd.AddCommand(installation.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
