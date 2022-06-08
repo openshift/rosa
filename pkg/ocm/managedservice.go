@@ -35,7 +35,6 @@ type CreateManagedServiceArgs struct {
 }
 
 func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.ManagedService, error) {
-
 	operatorIamRoles := []*msv1.OperatorIAMRoleBuilder{}
 	for _, operatorIAMRole := range args.AwsOperatorIamRoleList {
 		operatorIamRoles = append(operatorIamRoles,
@@ -58,6 +57,24 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 		listeningMethod = msv1.ListeningMethodExternal
 	}
 
+	var network *msv1.NetworkBuilder
+	if !IsEmptyCIDR(args.MachineCIDR) ||
+		!IsEmptyCIDR(args.PodCIDR) ||
+		!IsEmptyCIDR(args.ServiceCIDR) {
+
+		network = msv1.NewNetwork()
+
+		if !IsEmptyCIDR(args.MachineCIDR) {
+			network = network.MachineCIDR(args.MachineCIDR.String())
+		}
+		if !IsEmptyCIDR(args.ServiceCIDR) {
+			network = network.ServiceCIDR(args.ServiceCIDR.String())
+		}
+		if !IsEmptyCIDR(args.PodCIDR) {
+			network = network.PodCIDR(args.PodCIDR.String())
+		}
+	}
+
 	service, err := msv1.NewManagedService().
 		Service(args.ServiceType).
 		Parameters(parameters...).
@@ -69,10 +86,7 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 					msv1.NewCloudRegion().
 						ID(args.AwsRegion)).
 				MultiAZ(args.MultiAZ).
-				Network(msv1.NewNetwork().
-					MachineCIDR(args.MachineCIDR.String()).
-					PodCIDR(args.PodCIDR.String()).
-					ServiceCIDR(args.ServiceCIDR.String())).
+				Network(network).
 				API(msv1.NewClusterAPI().
 					Listening(listeningMethod)).
 				AWS(
