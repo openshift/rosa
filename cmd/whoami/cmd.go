@@ -134,8 +134,7 @@ func run(_ *cobra.Command, _ []string) {
 		"OCM Account Username:         %s\n"+
 		"OCM Account Email:            %s\n"+
 		"OCM Organization ID:          %s\n"+
-		"OCM Organization Name:        %s\n"+
-		"OCM Organization External ID: %s\n",
+		"OCM Organization Name:        %s\n",
 		awsCreator.AccountID,
 		awsRegion,
 		awsCreator.ARN,
@@ -146,8 +145,13 @@ func run(_ *cobra.Command, _ []string) {
 		account.Email(),
 		account.Organization().ID(),
 		account.Organization().Name(),
-		account.Organization().ExternalID(),
 	)
+	if account.Organization().ExternalID() != "" {
+		fmt.Printf(""+
+			"OCM Organization External ID: %s\n",
+			account.Organization().ExternalID(),
+		)
+	}
 	fmt.Println()
 }
 

@@ -140,7 +140,7 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 			return nil, fmt.Errorf("your authorization token needs to be updated. " +
 				"Please login again using rosa login")
 		}
-		return nil, fmt.Errorf("error creating connection. Not able to get authentication token")
+		return nil, fmt.Errorf("error creating connection. Not able to get authentication token: %s", err)
 	}
 	return &Client{
 		ocm: conn,
