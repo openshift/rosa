@@ -58,9 +58,8 @@ var Cmd = &cobra.Command{
 		"\t3. Environment variable (OCM_TOKEN)\n"+
 		"\t4. Configuration file\n"+
 		"\t5. Command-line prompt\n", uiTokenPage),
-	Example: "  # Login to the OpenShift API with an existing token generated from " +
-		`https://console.redhat.com/openshift/token/rosa
-  rosa login --token=$OFFLINE_ACCESS_TOKEN`,
+	Example: fmt.Sprintf(`  # Login to the OpenShift API with an existing token generated from %s
+  rosa login --token=$OFFLINE_ACCESS_TOKEN`, uiTokenPage),
 	Run: run,
 }
 
@@ -110,7 +109,7 @@ func init() {
 		"token",
 		"t",
 		"",
-		"Access or refresh token generated from https://console.redhat.com/openshift/token/rosa.",
+		fmt.Sprintf("Access or refresh token generated from %s.", uiTokenPage),
 	)
 	flags.BoolVar(
 		&args.insecure,
@@ -208,30 +207,34 @@ func run(cmd *cobra.Command, argv []string) {
 	cfg.Insecure = args.insecure
 
 	if token != "" {
-		// If a token has been provided parse it:
-		parser := new(jwt.Parser)
-		jwtToken, _, err := parser.ParseUnverified(token, jwt.MapClaims{})
-		if err != nil {
-			reporter.Errorf("Failed to parse token '%s': %v", token, err)
-			os.Exit(1)
-		}
-
-		// Put the token in the place of the configuration that corresponds to its type:
-		typ, err := tokenType(jwtToken)
-		if err != nil {
-			reporter.Errorf("Failed to extract type from 'typ' claim of token '%s': %v", token, err)
-			os.Exit(1)
-		}
-		switch typ {
-		case "Bearer", "":
-			cfg.AccessToken = token
-			cfg.RefreshToken = ""
-		case "Refresh", "Offline":
+		if ocm.IsEncryptedToken(token) {
 			cfg.AccessToken = ""
 			cfg.RefreshToken = token
-		default:
-			reporter.Errorf("Don't know how to handle token type '%s' in token '%s'", typ, token)
-			os.Exit(1)
+		} else {
+			// If a token has been provided parse it:
+			jwtToken, err := ocm.ParseToken(token)
+			if err != nil {
+				reporter.Errorf("Failed to parse token '%s': %v", token, err)
+				os.Exit(1)
+			}
+
+			// Put the token in the place of the configuration that corresponds to its type:
+			typ, err := tokenType(jwtToken)
+			if err != nil {
+				reporter.Errorf("Failed to extract type from 'typ' claim of token '%s': %v", token, err)
+				os.Exit(1)
+			}
+			switch typ {
+			case "Bearer", "":
+				cfg.AccessToken = token
+				cfg.RefreshToken = ""
+			case "Refresh", "Offline":
+				cfg.AccessToken = ""
+				cfg.RefreshToken = token
+			default:
+				reporter.Errorf("Don't know how to handle token type '%s' in token '%s'", typ, token)
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -273,12 +276,8 @@ func run(cmd *cobra.Command, argv []string) {
 
 	username, err := cfg.GetData("username")
 	if err != nil {
-		reporter.Debugf("Failed to get username: %v", err)
-		username, err = cfg.GetData("preferred_username")
-		if err != nil {
-			reporter.Errorf("Failed to get username: %v", err)
-			os.Exit(1)
-		}
+		reporter.Errorf("Failed to get username: %v", err)
+		os.Exit(1)
 	}
 
 	reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)

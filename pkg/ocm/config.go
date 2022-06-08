@@ -213,8 +213,9 @@ func (c *Config) Armed() (armed bool, err error) {
 		var expires bool
 		var left time.Duration
 		var accessToken *jwt.Token
-		accessToken, err = parseToken(c.AccessToken)
+		accessToken, err = ParseToken(c.AccessToken)
 		if err != nil {
+			err = fmt.Errorf("Failed to parse token: %v", err)
 			return
 		}
 		expires, left, err = getTokenExpiry(accessToken, now)
@@ -227,11 +228,18 @@ func (c *Config) Armed() (armed bool, err error) {
 		}
 	}
 	if c.RefreshToken != "" {
+		if IsEncryptedToken(c.RefreshToken) {
+			// We have no way of knowing an encrypted token expiration, so
+			// we assume it's valid and let the access token request fail.
+			armed = true
+			return
+		}
 		var expires bool
 		var left time.Duration
 		var refreshToken *jwt.Token
-		refreshToken, err = parseToken(c.RefreshToken)
+		refreshToken, err = ParseToken(c.RefreshToken)
 		if err != nil {
+			err = fmt.Errorf("Failed to parse token: %v", err)
 			return
 		}
 		expires, left, err = getTokenExpiry(refreshToken, now)
@@ -242,32 +250,6 @@ func (c *Config) Armed() (armed bool, err error) {
 			armed = true
 			return
 		}
-	}
-	return
-}
-
-// GetTokenExpiry determines if the given token expires, and the time that remains till it expires.
-func getTokenExpiry(token *jwt.Token, now time.Time) (expires bool, left time.Duration, err error) {
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		err = fmt.Errorf("expected map claims bug got %T", claims)
-		return
-	}
-	var exp float64
-	claim, ok := claims["exp"]
-	if ok {
-		exp, ok = claim.(float64)
-		if !ok {
-			err = fmt.Errorf("expected floating point 'exp' but got %T", claim)
-			return
-		}
-	}
-	if exp == 0 {
-		expires = false
-		left = 0
-	} else {
-		expires = true
-		left = time.Unix(int64(exp), 0).Sub(now)
 	}
 	return
 }
@@ -323,14 +305,4 @@ func (c *Config) Connection() (connection *sdk.Connection, err error) {
 	}
 
 	return
-}
-
-func parseToken(textToken string) (token *jwt.Token, err error) {
-	parser := new(jwt.Parser)
-	token, _, err = parser.ParseUnverified(textToken, jwt.MapClaims{})
-	if err != nil {
-		err = fmt.Errorf("Failed to parse token: %v", err)
-		return
-	}
-	return token, nil
 }
