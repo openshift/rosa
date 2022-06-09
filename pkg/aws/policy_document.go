@@ -139,13 +139,11 @@ func updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bo
 	return policy, true, nil
 }
 
-func GetRolePolicyDocument(file string, args ...map[string]string) ([]byte, error) {
-	if len(args) > 0 {
-		for key, val := range args[0] {
-			file = strings.Replace(file, fmt.Sprintf("%%{%s}", key), val, -1)
-		}
+func InterpolatePolicyDocument(doc string, replacements map[string]string) string {
+	for key, val := range replacements {
+		doc = strings.Replace(doc, fmt.Sprintf("%%{%s}", key), val, -1)
 	}
-	return []byte(file), nil
+	return doc
 }
 
 func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {

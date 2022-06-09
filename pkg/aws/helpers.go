@@ -394,15 +394,13 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			//Get trust policy
 			filename := fmt.Sprintf("sts_%s_trust_policy", file)
 			policyDetail := policies[filename]
-			policy, err := GetRolePolicyDocument(policyDetail, map[string]string{
+			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
 				"aws_account_id": JumpAccounts[env],
 			})
-			if err != nil {
-				return err
-			}
+
 			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			err = SaveDocument(policy, filename)
+			err := SaveDocument(policy, filename)
 			if err != nil {
 				return err
 			}
@@ -415,8 +413,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			//Check and save it as json file
 			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			b := []byte(policyDetail)
-			err = SaveDocument(b, filename)
+			err = SaveDocument(policyDetail, filename)
 			if err != nil {
 				return err
 			}
@@ -431,9 +428,8 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 				continue
 			}
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			b := []byte(policyDetail)
 			filename = GetFormattedFileName(filename)
-			err := SaveDocument(b, filename)
+			err := SaveDocument(policyDetail, filename)
 			if err != nil {
 				return err
 			}
@@ -451,14 +447,14 @@ func GetFormattedFileName(filename string) string {
 	return filename
 }
 
-func SaveDocument(doc []byte, filename string) error {
+func SaveDocument(doc, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	_, err = file.Write(doc)
+	_, err = file.Write([]byte(doc))
 	if err != nil {
 		return err
 	}
@@ -544,14 +540,11 @@ func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cm
 			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace(), sa))
 	}
 
-	policy, err := GetRolePolicyDocument(policyDetails, map[string]string{
+	policy := InterpolatePolicyDocument(policyDetails, map[string]string{
 		"oidc_provider_arn": oidcProviderARN,
 		"issuer_url":        issuerURL,
 		"service_accounts":  strings.Join(serviceAccounts, `" , "`),
 	})
-	if err != nil {
-		return "", err
-	}
 
-	return string(policy), nil
+	return policy, nil
 }
