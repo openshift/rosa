@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -508,29 +507,4 @@ func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, acco
 		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, defaultPolicyVersion)
 	}
 	return nil
-}
-
-func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
-	policyDetails string) (string, error) {
-	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
-	if err != nil {
-		return "", err
-	}
-	issuerURL := fmt.Sprintf("%s%s", oidcEndpointURL.Host, oidcEndpointURL.Path)
-
-	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, issuerURL)
-
-	serviceAccounts := []string{}
-	for _, sa := range operator.ServiceAccounts() {
-		serviceAccounts = append(serviceAccounts,
-			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace(), sa))
-	}
-
-	policy := InterpolatePolicyDocument(policyDetails, map[string]string{
-		"oidc_provider_arn": oidcProviderARN,
-		"issuer_url":        issuerURL,
-		"service_accounts":  strings.Join(serviceAccounts, `" , "`),
-	})
-
-	return policy, nil
 }
