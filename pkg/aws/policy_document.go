@@ -83,6 +83,31 @@ func (p *PolicyStatement) GetAWSPrincipals() []string {
 	return awsArr
 }
 
+func (p *PolicyDocument) AllowsAction(wanted string) bool {
+	statements := p.Statement
+	if len(statements) == 0 {
+		return false
+	}
+	for _, statement := range statements {
+		if statement.Effect != "Allow" {
+			continue
+		}
+		switch action := statement.Action.(type) {
+		case string:
+			if action == wanted {
+				return true
+			}
+		case []interface{}:
+			for _, el := range action {
+				if a, ok := el.(string); ok && a == wanted {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bool, error) {
 	oldPolicy, err := url.QueryUnescape(aws.StringValue(role.AssumeRolePolicyDocument))
 	if err != nil {
