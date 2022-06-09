@@ -32,6 +32,7 @@ type CreateManagedServiceArgs struct {
 	MachineCIDR       net.IPNet
 	PodCIDR           net.IPNet
 	ServiceCIDR       net.IPNet
+	HostPrefix        int
 }
 
 func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.ManagedService, error) {
@@ -60,7 +61,8 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 	var network *msv1.NetworkBuilder
 	if !IsEmptyCIDR(args.MachineCIDR) ||
 		!IsEmptyCIDR(args.PodCIDR) ||
-		!IsEmptyCIDR(args.ServiceCIDR) {
+		!IsEmptyCIDR(args.ServiceCIDR) ||
+		args.HostPrefix > 0 {
 
 		network = msv1.NewNetwork()
 
@@ -72,6 +74,9 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 		}
 		if !IsEmptyCIDR(args.PodCIDR) {
 			network = network.PodCIDR(args.PodCIDR.String())
+		}
+		if args.HostPrefix > 0 {
+			network = network.HostPrefix(args.HostPrefix)
 		}
 	}
 

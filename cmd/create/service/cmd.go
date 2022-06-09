@@ -117,6 +117,13 @@ func init() {
 		net.IPNet{},
 		"Block of IP addresses from which Pod IP addresses are allocated, for example \"10.128.0.0/14\".",
 	)
+	flags.IntVar(
+		&args.HostPrefix,
+		"host-prefix",
+		0,
+		"Subnet prefix length to assign to each individual node. For example, if host prefix is set "+
+			"to \"23\", then each node is assigned a /23 subnet out of the given CIDR.",
+	)
 
 	arguments.AddRegionFlag(flags)
 }
