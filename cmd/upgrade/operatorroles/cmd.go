@@ -410,7 +410,7 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, 
 		filename := fmt.Sprintf("operator_%s_policy", missingRole)
 		filename = aws.GetFormattedFileName(filename)
 		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = ocm.SaveDocument(policy, filename)
+		err = helper.SaveDocument(policy, filename)
 		if err != nil {
 			return "", err
 		}

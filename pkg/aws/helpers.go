@@ -21,6 +21,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -400,7 +401,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 
 			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			err := SaveDocument(policy, filename)
+			err := helper.SaveDocument(policy, filename)
 			if err != nil {
 				return err
 			}
@@ -413,7 +414,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			//Check and save it as json file
 			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			err = SaveDocument(policyDetail, filename)
+			err = helper.SaveDocument(policyDetail, filename)
 			if err != nil {
 				return err
 			}
@@ -429,7 +430,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			}
 			reporter.Debugf("Saving '%s' to the current directory", filename)
 			filename = GetFormattedFileName(filename)
-			err := SaveDocument(policyDetail, filename)
+			err := helper.SaveDocument(policyDetail, filename)
 			if err != nil {
 				return err
 			}
@@ -445,21 +446,6 @@ func GetFormattedFileName(filename string) string {
 		filename = fmt.Sprintf("%s.json", filename)
 	}
 	return filename
-}
-
-func SaveDocument(doc, filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.Write([]byte(doc))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client, commands []string,

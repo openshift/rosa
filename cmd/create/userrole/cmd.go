@@ -27,6 +27,7 @@ import (
 	linkuser "github.com/openshift/rosa/cmd/link/userrole"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -319,7 +320,7 @@ func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID s
 
 	filename = aws.GetFormattedFileName(filename)
 	reporter.Debugf("Saving '%s' to the current directory", filename)
-	err := aws.SaveDocument(policy, filename)
+	err := helper.SaveDocument(policy, filename)
 	if err != nil {
 		return err
 	}

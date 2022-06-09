@@ -27,6 +27,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -409,7 +410,7 @@ func buildCommands(reporter *rprtr.Object,
 		filename := fmt.Sprintf("operator_%s_policy", credrequest)
 		filename = aws.GetFormattedFileName(filename)
 		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = ocm.SaveDocument(policy, filename)
+		err = helper.SaveDocument(policy, filename)
 		if err != nil {
 			return "", err
 		}
