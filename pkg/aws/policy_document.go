@@ -9,7 +9,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/openshift/rosa/assets"
 )
 
 // PolicyDocument models an AWS IAM policy document
@@ -138,20 +137,6 @@ func updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bo
 	policy = strings.Replace(policy, oldPrincipals, strings.Join(principals, `","`), 1)
 
 	return policy, true, nil
-}
-
-func ReadPolicyDocument(path string, args ...map[string]string) ([]byte, error) {
-	bytes, err := assets.Asset(path)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to load file %s: %s", path, err)
-	}
-	file := string(bytes)
-	if len(args) > 0 {
-		for key, val := range args[0] {
-			file = strings.Replace(file, fmt.Sprintf("%%{%s}", key), val, -1)
-		}
-	}
-	return []byte(file), nil
 }
 
 func GetRolePolicyDocument(file string, args ...map[string]string) ([]byte, error) {
