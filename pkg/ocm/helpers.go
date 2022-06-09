@@ -24,7 +24,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -553,20 +552,6 @@ func (c *Client) GetPolicies(policyType string) (map[string]string, error) {
 		return true
 	})
 	return m, nil
-}
-
-func SaveDocument(doc string, filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(doc)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (c *Client) GetCredRequests() (map[string]*cmv1.STSOperator, error) {

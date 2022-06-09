@@ -27,6 +27,7 @@ import (
 	linkocmrole "github.com/openshift/rosa/cmd/link/ocmrole"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -359,13 +360,10 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ro
 	}
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 	policyDetail := policies[filename]
-	policy, err := aws.GetRolePolicyDocument(policyDetail, map[string]string{
+	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"aws_account_id":      aws.JumpAccounts[env],
 		"ocm_organization_id": orgID,
 	})
-	if err != nil {
-		return "", err
-	}
 
 	roleARN, exists, err := checkRoleExists(reporter, awsClient, roleName, isAdmin, aws.ModeAuto)
 	if err != nil {
@@ -384,7 +382,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ro
 	if !exists {
 		reporter.Debugf("Creating role '%s'", roleName)
 
-		roleARN, err = awsClient.EnsureRole(roleName, string(policy), permissionsBoundary,
+		roleARN, err = awsClient.EnsureRole(roleName, policy, permissionsBoundary,
 			"", iamTags)
 		if err != nil {
 			return "", err
@@ -426,29 +424,21 @@ func generateOcmRolePolicyFiles(reporter *rprtr.Object, env string, orgID string
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 
 	policyDetail := policies[filename]
-	policy, err := aws.GetRolePolicyDocument(policyDetail, map[string]string{
+	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"aws_account_id":      aws.JumpAccounts[env],
 		"ocm_organization_id": orgID,
 	})
-	if err != nil {
-		return err
-	}
 	reporter.Debugf("Saving '%s' to the current directory", filename)
 	filename = aws.GetFormattedFileName(filename)
-	err = aws.SaveDocument(policy, filename)
+	err := helper.SaveDocument(policy, filename)
 	if err != nil {
 		return err
 	}
 	filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
 	policyDetail = policies[filename]
-
-	policy, err = aws.GetRolePolicyDocument(policyDetail)
-	if err != nil {
-		return err
-	}
 	filename = aws.GetFormattedFileName(filename)
 	reporter.Debugf("Saving '%s' to the current directory", filename)
-	err = aws.SaveDocument(policy, filename)
+	err = helper.SaveDocument(policyDetail, filename)
 	if err != nil {
 		return err
 	}
@@ -456,13 +446,9 @@ func generateOcmRolePolicyFiles(reporter *rprtr.Object, env string, orgID string
 	if isAdmin {
 		filename = fmt.Sprintf("sts_%s_admin_permission_policy", aws.OCMRolePolicyFile)
 		policyDetail = policies[filename]
-		policy, err = aws.GetRolePolicyDocument(policyDetail)
-		if err != nil {
-			return err
-		}
 		filename = aws.GetFormattedFileName(filename)
 		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err = aws.SaveDocument(policy, filename)
+		err = helper.SaveDocument(policyDetail, filename)
 		if err != nil {
 			return err
 		}
@@ -473,14 +459,8 @@ func generateOcmRolePolicyFiles(reporter *rprtr.Object, env string, orgID string
 func createPermissionPolicy(reporter *rprtr.Object, awsClient aws.Client, policyARN string,
 	iamTags map[string]string, roleName string, policyDetail string) error {
 
-	policy, err := aws.GetRolePolicyDocument(policyDetail)
-	if err != nil {
-		return err
-	}
-
 	reporter.Debugf("Creating permission policy '%s'", policyARN)
-	policyARN, err = awsClient.EnsurePolicy(policyARN, string(policy),
-		"", iamTags)
+	policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetail, "", iamTags)
 	if err != nil {
 		return err
 	}

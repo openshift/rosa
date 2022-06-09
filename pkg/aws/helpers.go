@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -394,15 +394,13 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			//Get trust policy
 			filename := fmt.Sprintf("sts_%s_trust_policy", file)
 			policyDetail := policies[filename]
-			policy, err := GetRolePolicyDocument(policyDetail, map[string]string{
+			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
 				"aws_account_id": JumpAccounts[env],
 			})
-			if err != nil {
-				return err
-			}
+
 			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			err = SaveDocument(policy, filename)
+			err := helper.SaveDocument(policy, filename)
 			if err != nil {
 				return err
 			}
@@ -415,8 +413,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			//Check and save it as json file
 			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			b := []byte(policyDetail)
-			err = SaveDocument(b, filename)
+			err = helper.SaveDocument(policyDetail, filename)
 			if err != nil {
 				return err
 			}
@@ -431,9 +428,8 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 				continue
 			}
 			reporter.Debugf("Saving '%s' to the current directory", filename)
-			b := []byte(policyDetail)
 			filename = GetFormattedFileName(filename)
-			err := SaveDocument(b, filename)
+			err := helper.SaveDocument(policyDetail, filename)
 			if err != nil {
 				return err
 			}
@@ -449,21 +445,6 @@ func GetFormattedFileName(filename string) string {
 		filename = fmt.Sprintf("%s.json", filename)
 	}
 	return filename
-}
-
-func SaveDocument(doc []byte, filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.Write(doc)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client, commands []string,
@@ -526,32 +507,4 @@ func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, acco
 		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, defaultPolicyVersion)
 	}
 	return nil
-}
-
-func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
-	policyDetails string) (string, error) {
-	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
-	if err != nil {
-		return "", err
-	}
-	issuerURL := fmt.Sprintf("%s%s", oidcEndpointURL.Host, oidcEndpointURL.Path)
-
-	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, issuerURL)
-
-	serviceAccounts := []string{}
-	for _, sa := range operator.ServiceAccounts() {
-		serviceAccounts = append(serviceAccounts,
-			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace(), sa))
-	}
-
-	policy, err := GetRolePolicyDocument(policyDetails, map[string]string{
-		"oidc_provider_arn": oidcProviderARN,
-		"issuer_url":        issuerURL,
-		"service_accounts":  strings.Join(serviceAccounts, `" , "`),
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return string(policy), nil
 }

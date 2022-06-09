@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"os"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -48,4 +49,19 @@ func DisplaySpinnerWithDelay(reporter *reporter.Object, infoMessage string, dela
 	} else {
 		time.Sleep(delay)
 	}
+}
+
+func SaveDocument(doc, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(doc)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

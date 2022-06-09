@@ -371,14 +371,11 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		filename := fmt.Sprintf("sts_%s_trust_policy", file)
 		policyDetail := policies[filename]
 
-		policy, err := aws.GetRolePolicyDocument(policyDetail, map[string]string{
+		policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 			"aws_account_id": aws.JumpAccounts[env],
 		})
-		if err != nil {
-			return err
-		}
 		reporter.Debugf("Creating role '%s'", name)
-		roleARN, err := awsClient.EnsureRole(name, string(policy), permissionsBoundary,
+		roleARN, err := awsClient.EnsureRole(name, policy, permissionsBoundary,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,

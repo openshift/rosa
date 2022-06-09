@@ -17,10 +17,7 @@ limitations under the License.
 package aws
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/url"
-	"reflect"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -31,7 +28,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/assets"
 	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
@@ -99,51 +95,6 @@ var roleTypeMap = map[string]string{
 	"instance_worker":       "Worker",
 }
 
-// PolicyDocument models an AWS IAM policy document
-type PolicyDocument struct {
-	ID string `json:"Id,omitempty"`
-	// Specify the version of the policy language that you want to use.
-	// As a best practice, use the latest 2012-10-17 version.
-	Version string `json:"Version,omitempty"`
-	// Use this main policy element as a container for the following elements.
-	// You can include more than one statement in a policy.
-	Statement []PolicyStatement `json:"Statement"`
-}
-
-// PolicyStatement models an AWS policy statement entry.
-type PolicyStatement struct {
-	// Include an optional statement ID to differentiate between your statements.
-	Sid string `json:"Sid,omitempty"`
-	// Use `Allow` or `Deny` to indicate whether the policy allows or denies access.
-	Effect string `json:"Effect"`
-	// If you create a resource-based policy, you must indicate the account, user, role, or
-	// federated user to which you would like to allow or deny access. If you are creating an
-	// IAM permissions policy to attach to a user or role, you cannot include this element.
-	// The principal is implied as that user or role.
-	Principal PolicyStatementPrincipal `json:"Principal,omitempty"`
-	// Include a list of actions that the policy allows or denies.
-	// (i.e. ec2:StartInstances, iam:ChangePassword)
-	Action interface{} `json:"Action,omitempty"`
-	// If you create an IAM permissions policy, you must specify a list of resources to which
-	// the actions apply. If you create a resource-based policy, this element is optional. If
-	// you do not include this element, then the resource to which the action applies is the
-	// resource to which the policy is attached.
-	Resource interface{} `json:"Resource,omitempty"`
-}
-
-type PolicyStatementPrincipal struct {
-	// A service principal is an identifier that is used to grant permissions to a service.
-	// The identifier for a service principal includes the service name, and is usually in the
-	// following format: service-name.amazonaws.com
-	Service []string `json:"Service,omitempty"`
-	// You can specify an individual IAM role ARN (or array of role ARNs) as the principal.
-	// In IAM roles, the Principal element in the role's trust policy specifies who can assume the role.
-	// When you specify more than one principal in the element, you grant permissions to each principal.
-	AWS interface{} `json:"AWS,omitempty"`
-	// A federated principal uses a web identity token or SAML federation
-	Federated string `json:"Federated,omitempty"`
-}
-
 func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
 	version string, tagList map[string]string) (string, error) {
 	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
@@ -182,7 +133,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 		return roleArn, err
 	}
 
-	policy, needsUpdate, err := c.updateAssumeRolePolicyPrincipals(policy, role)
+	policy, needsUpdate, err := updateAssumeRolePolicyPrincipals(policy, role)
 	if err != nil {
 		return roleArn, err
 	}
@@ -226,63 +177,6 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 		}
 	}
 	return fmt.Errorf("Error validating role name '%s': %v", name, err)
-}
-func (c *awsClient) updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bool, error) {
-	oldPolicy, err := url.QueryUnescape(aws.StringValue(role.AssumeRolePolicyDocument))
-	if err != nil {
-		return policy, false, err
-	}
-
-	newPolicyDoc := PolicyDocument{}
-	err = json.Unmarshal([]byte(policy), &newPolicyDoc)
-	if err != nil {
-		return policy, false, err
-	}
-
-	// Determine if role already contains trusted principal
-	principals := []string{}
-	hasMultiplePrincipals := false
-	for _, statement := range newPolicyDoc.Statement {
-		awsPrincipals := getAWSPrincipals(statement.Principal.AWS)
-		// There is no AWS principal to add, nothing to do here
-		if len(awsPrincipals) == 0 {
-			return policy, false, nil
-		}
-		for _, trust := range awsPrincipals {
-			// Trusted principal already exists, nothing to do here
-			if strings.Contains(oldPolicy, trust) {
-				return policy, false, nil
-			}
-			if strings.Contains(oldPolicy, `"AWS":[`) {
-				hasMultiplePrincipals = true
-			}
-			principals = append(principals, trust)
-		}
-	}
-	oldPrincipals := strings.Join(principals, `","`)
-
-	// Extract existing trusted principals from existing role trust policy.
-	// The AWS API is ambiguous faced with 1 vs many entries, so we cannot
-	// unmarshal and have to resort to string matching...
-	startSearch := `"AWS":"`
-	endSearch := `"`
-	if hasMultiplePrincipals {
-		startSearch = `"AWS":["`
-		endSearch = `"]`
-	}
-	start := strings.Index(oldPolicy, startSearch)
-	if start >= 0 {
-		start += len(startSearch)
-		end := start + strings.Index(oldPolicy[start:], endSearch)
-		if end >= start {
-			principals = append(principals, strings.Split(oldPolicy[start:end], `","`)...)
-		}
-	}
-
-	// Update assume role policy document to contain all trusted principals
-	policy = strings.Replace(policy, oldPrincipals, strings.Join(principals, `","`), 1)
-
-	return policy, true, nil
 }
 
 func (c *awsClient) createRole(name string, policy string, permissionsBoundary string,
@@ -624,45 +518,6 @@ func getTags(tagList map[string]string) []*iam.Tag {
 	return iamTags
 }
 
-func ReadPolicyDocument(path string, args ...map[string]string) ([]byte, error) {
-	bytes, err := assets.Asset(path)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to load file %s: %s", path, err)
-	}
-	file := string(bytes)
-	if len(args) > 0 {
-		for key, val := range args[0] {
-			file = strings.Replace(file, fmt.Sprintf("%%{%s}", key), val, -1)
-		}
-	}
-	return []byte(file), nil
-}
-
-func GetRolePolicyDocument(file string, args ...map[string]string) ([]byte, error) {
-	if len(args) > 0 {
-		for key, val := range args[0] {
-			file = strings.Replace(file, fmt.Sprintf("%%{%s}", key), val, -1)
-		}
-	}
-	return []byte(file), nil
-}
-
-func parsePolicyDocument(path string) (PolicyDocument, error) {
-	doc := PolicyDocument{}
-
-	file, err := GetRolePolicyDocument(path)
-	if err != nil {
-		return doc, err
-	}
-
-	err = json.Unmarshal(file, &doc)
-	if err != nil {
-		return doc, fmt.Errorf("Error unmarshalling statement: %s", err)
-	}
-
-	return doc, nil
-}
-
 func roleHasTag(roleTags []*iam.Tag, tagKey string, tagValue string) bool {
 	for _, tag := range roleTags {
 		if aws.StringValue(tag.Key) == tagKey && aws.StringValue(tag.Value) == tagValue {
@@ -849,21 +704,6 @@ func checkIfROSAOperatorRole(roleName *string, credRequest map[string]*cmv1.STSO
 		}
 	}
 	return false
-}
-
-func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
-	data := PolicyDocument{}
-	if policyDocument != nil {
-		val, err := url.QueryUnescape(aws.StringValue(policyDocument))
-		if err != nil {
-			return data, err
-		}
-		err = json.Unmarshal([]byte(val), &data)
-		if err != nil {
-			return data, err
-		}
-	}
-	return data, nil
 }
 
 func (c *awsClient) DeleteOperatorRole(roleName string) error {
@@ -1142,7 +982,7 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 		}
 		statements := policyDoc.Statement
 		for _, statement := range statements {
-			awsPrincipal := getAWSPrincipals(statement.Principal.AWS)
+			awsPrincipal := statement.GetAWSPrincipals()
 			if len(awsPrincipal) > 1 {
 				break
 			}
@@ -1200,7 +1040,7 @@ func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Ro
 	}
 	statements := policyDoc.Statement
 	for _, statement := range statements {
-		awsPrincipal := getAWSPrincipals(statement.Principal.AWS)
+		awsPrincipal := statement.GetAWSPrincipals()
 		for _, a := range awsPrincipal {
 			str := strings.Split(a, ":")
 			if len(str) > 4 {
@@ -1285,25 +1125,6 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 		roles = append(roles, role)
 	}
 	return roles, nil
-}
-
-func getAWSPrincipals(awsPrincipal interface{}) []string {
-	var awsArr []string
-	if awsPrincipal == nil {
-		return awsArr
-	}
-	switch reflect.TypeOf(awsPrincipal).Kind() {
-	case reflect.Slice:
-		value := reflect.ValueOf(awsPrincipal)
-		awsArr = make([]string, value.Len())
-		for i := 0; i < value.Len(); i++ {
-			awsArr[i] = value.Index(i).Interface().(string)
-		}
-	case reflect.String:
-		awsArr = make([]string, 1)
-		awsArr[0] = awsPrincipal.(string)
-	}
-	return awsArr
 }
 
 func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error) {

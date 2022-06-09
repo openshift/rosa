@@ -27,6 +27,7 @@ import (
 	linkuser "github.com/openshift/rosa/cmd/link/userrole"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/logging"
@@ -280,13 +281,11 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := policies[filename]
-	policy, err := aws.GetRolePolicyDocument(policyDetail, map[string]string{
+	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"aws_account_id": aws.JumpAccounts[env],
 		"ocm_account_id": accountID,
 	})
-	if err != nil {
-		return "", err
-	}
+
 	exists, roleARN, err := awsClient.CheckRoleExists(roleName)
 	if err != nil {
 		return "", err
@@ -296,7 +295,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client,
 		return roleARN, nil
 	}
 	reporter.Debugf("Creating role '%s'", roleName)
-	roleARN, err = awsClient.EnsureRole(roleName, string(policy), permissionsBoundary,
+	roleARN, err = awsClient.EnsureRole(roleName, policy, permissionsBoundary,
 		"", map[string]string{
 			tags.RolePrefix:  prefix,
 			tags.RoleType:    aws.OCMUserRole,
@@ -314,17 +313,14 @@ func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID s
 	policies map[string]string) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := policies[filename]
-	policy, err := aws.GetRolePolicyDocument(policyDetail, map[string]string{
+	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"aws_account_id": aws.JumpAccounts[env],
 		"ocm_account_id": accountID,
 	})
-	if err != nil {
-		return err
-	}
 
 	filename = aws.GetFormattedFileName(filename)
 	reporter.Debugf("Saving '%s' to the current directory", filename)
-	err = aws.SaveDocument(policy, filename)
+	err := helper.SaveDocument(policy, filename)
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,7 @@ func (c *awsClient) ValidateSCP(target *string, policies map[string]string) (boo
 		Region: *c.awsSession.Config.Region,
 	}
 	// Read installer permissions and OSD SCP Policy permissions
-	osdPolicyDocument, err := parsePolicyDocument(policyDetails)
+	osdPolicyDocument, err := ParsePolicyDocument(policyDetails)
 	if err != nil {
 		return false, err
 	}
