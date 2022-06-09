@@ -47,9 +47,10 @@ var args struct {
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVar(
+	flags.StringVarP(
 		&args.clusterKey,
 		"cluster",
+		"c",
 		"",
 		"Name or ID of the cluster to list the add-ons of (required).",
 	)
