@@ -65,7 +65,7 @@ func init() {
 
 func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	if args.clusterKey == "" {
 		reporter.Errorf(

@@ -65,7 +65,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
 		args.clusterKey = argv[0]

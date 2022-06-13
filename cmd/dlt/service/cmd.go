@@ -57,7 +57,7 @@ func init() {
 
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	if args.ID == "" {
 		reporter.Errorf("id not specified.")

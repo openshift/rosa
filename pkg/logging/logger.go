@@ -19,27 +19,13 @@ limitations under the License.
 package logging
 
 import (
-	"os"
-
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/debug"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-// LoggerBuilder contains the information and logic needed to create the default loggers used by
-// the project. Don't create instances of this type directly; use the NewLogger function instead.
-type LoggerBuilder struct {
-}
-
-// NewLogger creates new builder that can then be used to configure and build an OCM logger that
-// uses the logging framework of the project.
-func NewLogger() *LoggerBuilder {
-	return &LoggerBuilder{}
-}
-
-// Build uses the information stored in the builder to create a new logger.
-func (b *LoggerBuilder) Build() (result *logrus.Logger, err error) {
+// NewLogger creates a new logger with the default config for the project
+func NewLogger() (result *logrus.Logger) {
 	// Create the logger:
 	result = logrus.New()
 	result.SetFormatter(&logrus.TextFormatter{
@@ -53,16 +39,4 @@ func (b *LoggerBuilder) Build() (result *logrus.Logger, err error) {
 	}
 
 	return
-}
-
-// CreateLoggerOrExit creates the logger instance or exits to the console
-// noting the error on failure.
-func CreateLoggerOrExit(reporter *rprtr.Object) *logrus.Logger {
-	// Create the logger:
-	logger, err := NewLogger().Build()
-	if err != nil {
-		reporter.Errorf("Failed to create logger: %v", err)
-		os.Exit(1)
-	}
-	return logger
 }

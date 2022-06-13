@@ -94,7 +94,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	// If necessary, call `login` as part of `init`. We do this before
 	// other validations to get the prompt out of the way before performing

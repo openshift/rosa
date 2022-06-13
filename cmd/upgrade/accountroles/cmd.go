@@ -71,7 +71,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) error {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	isInvokedFromClusterUpgrade := false
 	skipInteractive := false

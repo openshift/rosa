@@ -293,7 +293,7 @@ func init() {
 
 	interactive.AddFlag(flags)
 	reporter = rprtr.CreateReporterOrExit()
-	logger = logging.CreateLoggerOrExit(reporter)
+	logger = logging.NewLogger()
 }
 
 func run(cmd *cobra.Command, _ []string) {

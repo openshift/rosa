@@ -80,7 +80,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	mode, err := aws.GetMode()
 	if err != nil {

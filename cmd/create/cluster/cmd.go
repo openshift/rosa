@@ -489,7 +489,7 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 	var err error
 
 	// Create the client for the OCM API:

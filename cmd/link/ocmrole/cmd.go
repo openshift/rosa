@@ -66,7 +66,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) (err error) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	if len(argv) > 0 {
 		args.roleArn = argv[0]

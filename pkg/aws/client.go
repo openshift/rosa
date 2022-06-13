@@ -497,11 +497,7 @@ func (c *awsClient) GetAWSAccessKeys() (*AccessKey, error) {
 // ValidateAccessKeys deals with AWS' eventual consistency, its attempts to call
 // GetCallerIdentity and will try again if the error is access denied.
 func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
-	logger, err := logging.NewLogger().
-		Build()
-	if err != nil {
-		return fmt.Errorf("Unable to create AWS logger: %v", err)
-	}
+	logger := logging.NewLogger()
 
 	start := time.Now()
 	maxAttempts := 15
@@ -675,11 +671,7 @@ func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
 	if req.HTTPResponse.StatusCode >= 500 {
 		return false
 	}
-	logger, err := logging.NewLogger().
-		Build()
-	if err != nil {
-		logger.Errorf("Unable to create AWS logger: %v", err)
-	}
+	logger := logging.NewLogger()
 	if strings.Contains(req.Error.Error(), "Throttling") {
 		logger.Warn("Throttling Rate limit exceeded. Retrying the request again")
 	}

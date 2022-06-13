@@ -46,7 +46,7 @@ func init() {
 
 func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {

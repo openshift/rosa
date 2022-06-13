@@ -73,7 +73,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	// Determine whether the user wants to watch logs streaming.
 	// We check the flag value this way to allow other commands to watch logs

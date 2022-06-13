@@ -152,7 +152,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	// Create the client for the OCM API:
 	ocmClient, err := ocm.NewClient().

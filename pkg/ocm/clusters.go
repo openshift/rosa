@@ -137,12 +137,7 @@ func (c *Client) HasClusters(creator *aws.Creator) (bool, error) {
 }
 
 func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
-	logger, err := logging.NewLogger().
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to create AWS logger: %v", err)
-	}
-
+	logger := logging.NewLogger()
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
 		Logger(logger).

@@ -66,7 +66,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) (err error) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
 	defer func() {
 		err = ocmClient.Close()

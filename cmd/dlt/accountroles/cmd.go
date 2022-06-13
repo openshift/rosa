@@ -63,7 +63,7 @@ func init() {
 
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	// Determine if interactive mode is needed (if a prefix is not provided, fallback to interactive mode)
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") || args.prefix == "" {

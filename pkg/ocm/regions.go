@@ -24,7 +24,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.CloudRegion, err error) {
@@ -35,8 +34,7 @@ func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.
 	// Build AWS client and retrieve credentials
 	// This ensures we use the profile flag if passed to rosa
 	// Create the AWS client:
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	awsBuilder := cmv1.NewAWS()
 	if roleARN != "" {

@@ -46,7 +46,7 @@ func init() {
 
 func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 	awsClient := aws.CreateNewClientOrExit(logger, reporter)
 	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
 	defer func() {
