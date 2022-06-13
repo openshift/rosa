@@ -278,3 +278,28 @@ func (c *Client) GetClusterAddOns(cluster *cmv1.Cluster) ([]*ClusterAddOn, error
 
 	return clusterAddOns, nil
 }
+
+func (c *Client) AddClusterOperatorRole(cluster *cmv1.Cluster, role *cmv1.OperatorIAMRole) error {
+	// Make sure the role doesn't exist already, to avoid conflicts
+	operatorRoles := cluster.AWS().STS().OperatorIAMRoles()
+	for _, item := range operatorRoles {
+		if role.Name() == item.Name() &&
+			role.Namespace() == item.Namespace() &&
+			role.RoleARN() == item.RoleARN() {
+			return nil
+		}
+	}
+
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(cluster.ID()).
+		STSOperatorRoles().
+		Add().
+		Body(role).
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+
+	return nil
+}

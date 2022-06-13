@@ -374,8 +374,25 @@ func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := strings.TrimSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
+}
+
+func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
+	operator := cluster.AWS().STS().OperatorIAMRoles()[0]
+	roleName := strings.SplitN(operator.RoleARN(), "/", 2)[1]
+	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-%s", operator.Namespace(), operator.Name()))
+	return rolePrefix
+}
+
+// Role names can be truncated if they are over 64 chars, so we need to make sure we aren't missing a truncated suffix
+func TrimRoleSuffix(orig, sufix string) string {
+	for i := len(sufix); i >= 0; i-- {
+		if strings.HasSuffix(orig, sufix[:i]) {
+			return orig[:len(orig)-i]
+		}
+	}
+	return orig
 }
 
 func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
