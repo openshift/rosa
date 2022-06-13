@@ -33,7 +33,7 @@ type PolicyStatement struct {
 	// federated user to which you would like to allow or deny access. If you are creating an
 	// IAM permissions policy to attach to a user or role, you cannot include this element.
 	// The principal is implied as that user or role.
-	Principal PolicyStatementPrincipal `json:"Principal,omitempty"`
+	Principal *PolicyStatementPrincipal `json:"Principal,omitempty"`
 	// Include a list of actions that the policy allows or denies.
 	// (i.e. ec2:StartInstances, iam:ChangePassword)
 	Action interface{} `json:"Action,omitempty"`
@@ -55,6 +55,10 @@ type PolicyStatementPrincipal struct {
 	AWS interface{} `json:"AWS,omitempty"`
 	// A federated principal uses a web identity token or SAML federation
 	Federated string `json:"Federated,omitempty"`
+}
+
+func NewPolicyDocument() *PolicyDocument {
+	return &PolicyDocument{Version: "2012-10-17"}
 }
 
 func ParsePolicyDocument(doc string) (PolicyDocument, error) {
@@ -83,7 +87,16 @@ func (p *PolicyStatement) GetAWSPrincipals() []string {
 	return awsArr
 }
 
-func (p *PolicyDocument) AllowsAction(wanted string) bool {
+// AllowActions adds a statement to a policy allowing the provided actions for all Resources.
+// If you need a more compilex statement it is better to construct it manually.
+func (p *PolicyDocument) AllowActions(actions ...string) {
+	statement := PolicyStatement{Effect: "Allow", Action: actions, Resource: "*"}
+	p.Statement = append(p.Statement, statement)
+}
+
+// IsActionAllowed checks if any of the statements in the document allows the wanted action.
+// It does not take into account Resource or Principal constraints on the action.
+func (p *PolicyDocument) IsActionAllowed(wanted string) bool {
 	statements := p.Statement
 	if len(statements) == 0 {
 		return false
