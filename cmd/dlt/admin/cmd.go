@@ -115,7 +115,8 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if confirm.Confirm("delete %s user on cluster %s", idp.ClusterAdminUsername, clusterKey) {
+	if confirm.Confirm("delete %s user on cluster %s (Cluster-Admins HTpasswd identity provider will be deleted as "+
+		"well", idp.ClusterAdminUsername, clusterKey) {
 		// delete `cluster-admin` user from the HTPasswd IDP
 		reporter.Debugf("Deleting user '%s' identity provider on cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 		err = ocmClient.DeleteHTPasswdUser(idp.ClusterAdminUsername, cluster.ID(), htpasswdIDP)
@@ -124,6 +125,17 @@ func run(cmd *cobra.Command, _ []string) {
 				idp.ClusterAdminUsername, clusterKey, err)
 			os.Exit(1)
 		}
+		// delete Cluster-Admins identity provider if exists
+		existingHTPasswdIDP, _ := idp.FindExistingHTPasswdIDP(cluster, ocmClient)
+		if existingHTPasswdIDP != nil {
+			err = ocmClient.DeleteIdentityProvider(cluster.ID(), existingHTPasswdIDP.ID())
+			if err != nil {
+				reporter.Errorf("Failed to delete '%s' identity provider from cluster '%s': %s",
+					idp.ClusterAdminsIDPName, clusterKey, err)
+				os.Exit(1)
+			}
+		}
+
 		reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 	}
 }

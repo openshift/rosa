@@ -31,10 +31,6 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-const (
-	idpName = "htpasswd-1"
-)
-
 var Cmd = &cobra.Command{
 	Use:   "admin",
 	Short: "Creates an admin user to login to the cluster",
@@ -153,17 +149,17 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// No HTPasswd IDP - create it with cluster-admin user.
 	if existingHTPasswdIDP == nil {
-		reporter.Debugf("Adding '%s' idp to cluster '%s'", idpName, clusterKey)
+		reporter.Debugf("Adding '%s' idp to cluster '%s'", idp.ClusterAdminsIDPName, clusterKey)
 		htpasswdIDP := cmv1.NewHTPasswdIdentityProvider().Users(cmv1.NewHTPasswdUserList().Items(
 			idp.CreateHTPasswdUser(idp.ClusterAdminUsername, password),
 		))
 		newIDP, err := cmv1.NewIdentityProvider().
 			Type("HTPasswdIdentityProvider").
-			Name(idpName).
+			Name(idp.ClusterAdminsIDPName).
 			Htpasswd(htpasswdIDP).
 			Build()
 		if err != nil {
-			reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idpName, clusterKey)
+			reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idp.ClusterAdminsIDPName, clusterKey)
 			os.Exit(1)
 		}
 
@@ -171,7 +167,7 @@ func run(cmd *cobra.Command, _ []string) {
 		_, err = ocmClient.CreateIdentityProvider(cluster.ID(), newIDP)
 		if err != nil {
 			reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s",
-				idpName, clusterKey, err)
+				idp.ClusterAdminsIDPName, clusterKey, err)
 			os.Exit(1)
 		}
 	} else {
@@ -186,6 +182,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	reporter.Infof("Admin account has been added to cluster '%s'.", clusterKey)
+	reporter.Infof("An Identity Provider named 'Cluster-Admins' from type HTPasswdIdentityProvider, " +
+		"with user 'cluster-admin', was created.")
 	reporter.Infof("Please securely store this generated password. " +
 		"If you lose this password you can delete and recreate the cluster admin user.")
 	reporter.Infof("To login, run the following command:\n\n"+

@@ -40,7 +40,9 @@ func createHTPasswdIDP(cmd *cobra.Command,
 	username := args.htpasswdUsername
 	password := args.htpasswdPassword
 
-	// Choose which way to create the IDP according to whether it already has an admin or not.
+	// if name of the idp is Custer-Admins and idp does not exist, do not allow creation of idp. User will have
+	// to create cluster admin, in order to have cluster-admins idp.
+	// if cluster-admins idp exists (cluster admin was created), then only allow adding users to it
 	htpasswdIDP, userList := FindExistingHTPasswdIDP(cluster, ocmClient)
 	if htpasswdIDP != nil {
 		// if existing idp has any users other than `cluster-admin`, then it was created as a proper idp
@@ -69,6 +71,12 @@ func createHTPasswdIDP(cmd *cobra.Command,
 		reporter.Infof("User '%s' added", username)
 	} else {
 		// HTPasswd IDP does not exist - create it
+		if idpName == ClusterAdminsIDPName {
+			reporter.Errorf(
+				"Cannot create an Identity Provider with the name 'Cluster-Admins'. This can be done by creating a " +
+					"cluster admin by typing 'rosa create admin -c <cluster id>'.")
+			os.Exit(1)
+		}
 		idpName := getIDPName(cmd, idpName)
 		if username == "" || password == "" {
 			reporter.Infof("At least one user is required to create the IDP.")

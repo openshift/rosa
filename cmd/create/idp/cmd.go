@@ -34,6 +34,8 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
+const ClusterAdminsIDPName = "Cluster-Admins"
+
 type IdentityProvider interface {
 	Name() string
 }
