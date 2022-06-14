@@ -25,6 +25,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -39,6 +40,7 @@ import (
 )
 
 var args ocm.CreateManagedServiceArgs
+var knownFlags map[string]struct{}
 
 var Cmd = &cobra.Command{
 	Use:     "managed-service",
@@ -52,6 +54,12 @@ var Cmd = &cobra.Command{
 	Hidden:             true,
 	DisableFlagParsing: true,
 	Args: func(cmd *cobra.Command, argv []string) error {
+		flags := cmd.Flags()
+		knownFlags = make(map[string]struct{})
+		flags.VisitAll(func(flag *pflag.Flag) {
+			knownFlags[flag.Name] = struct{}{}
+		})
+
 		err := arguments.ParseUnknownFlags(cmd, argv)
 		if err != nil {
 			return err
@@ -213,6 +221,8 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	parameters := addOn.Parameters()
 
+	visitedFlags := map[string]struct{}{}
+
 	if parameters.Len() > 0 {
 		args.Parameters = map[string]string{}
 		// Determine if all required parameters have already been set as flags.
@@ -223,6 +233,9 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 			if flag != nil {
+
+				visitedFlags[flag.Name] = struct{}{}
+
 				val := strings.Trim(flag.Value.String(), " ")
 				if val != "" && param.Validation() != "" {
 					isValid, err := regexp.MatchString(param.Validation(), val)
@@ -241,6 +254,29 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 			return true
 		})
+	}
+
+	// Ensure all flags were used.
+	unusedFlags := []string{}
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		if _, found := knownFlags[flag.Name]; found {
+			return
+		}
+		if _, found := visitedFlags[flag.Name]; !found {
+			unusedFlags = append(unusedFlags, flag.Name)
+		}
+	})
+	if len(unusedFlags) > 0 {
+		var flagList string
+		for i, flag := range unusedFlags {
+			flagList += fmt.Sprintf("%q", flag)
+			if i < len(unusedFlags)-1 {
+				flagList += ", "
+			}
+		}
+		reporter.Errorf("Cannot create managed service with the following unknown flags: (%s)",
+			flagList)
+		os.Exit(1)
 	}
 
 	// BYO-VPC Logic
