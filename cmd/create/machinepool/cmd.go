@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -38,16 +39,18 @@ import (
 var machinePoolKeyRE = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])?$`)
 
 var args struct {
-	name               string
-	instanceType       string
-	replicas           int
-	autoscalingEnabled bool
-	minReplicas        int
-	maxReplicas        int
-	labels             string
-	taints             string
-	useSpotInstances   bool
-	spotMaxPrice       string
+	name                  string
+	instanceType          string
+	replicas              int
+	autoscalingEnabled    bool
+	minReplicas           int
+	maxReplicas           int
+	labels                string
+	taints                string
+	useSpotInstances      bool
+	spotMaxPrice          string
+	multiAvailabilityZone bool
+	availabilityZone      string
 }
 
 var Cmd = &cobra.Command{
@@ -151,6 +154,18 @@ func init() {
 		"Max price for spot instance. If empty use the on-demand price.",
 	)
 
+	flags.BoolVar(
+		&args.multiAvailabilityZone,
+		"multi-availability-zone",
+		true,
+		"Create a multi-AZ machine pool for a multi-AZ cluster")
+
+	flags.StringVar(
+		&args.availabilityZone,
+		"availability-zone",
+		"",
+		"Select availability zone to create a single AZ machine pool for a multi-AZ cluster")
+
 	interactive.AddFlag(flags)
 }
 
@@ -165,13 +180,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
+	awsClient := aws.CreateNewClientOrExit(logger, reporter)
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
@@ -180,13 +189,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
+	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
 	defer func() {
 		err = ocmClient.Close()
 		if err != nil {
@@ -204,6 +207,24 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if cluster.State() != cmv1.ClusterStateReady {
 		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		os.Exit(1)
+	}
+
+	// Validate flags that are only allowed for multi-AZ clusters
+	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
+	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
+		reporter.Errorf("Setting the `multi-availability-zone` flag is only allowed for multi-AZ clusters")
+		os.Exit(1)
+	}
+	isAvailabilityZoneSet := cmd.Flags().Changed("availability-zone")
+	if isAvailabilityZoneSet && !cluster.MultiAZ() {
+		reporter.Errorf("Setting the `availability-zone` flag is only allowed for multi-AZ clusters")
+		os.Exit(1)
+	}
+
+	if isAvailabilityZoneSet && isMultiAvailabilityZoneSet && args.multiAvailabilityZone {
+		reporter.Errorf("Setting the `availability-zone` flag is only supported for creating a single AZ " +
+			"machine pool in a multi-AZ cluster")
 		os.Exit(1)
 	}
 
@@ -231,6 +252,58 @@ func run(cmd *cobra.Command, _ []string) {
 	if !machinePoolKeyRE.MatchString(name) {
 		reporter.Errorf("Expected a valid name for the machine pool")
 		os.Exit(1)
+	}
+
+	// Single AZ machine pool for a multi-AZ cluster
+	var multiAZMachinePool bool
+	var availabilityZone string
+	if cluster.MultiAZ() {
+		// Choosing a single AZ machine pool implicitly
+		if isAvailabilityZoneSet {
+			isMultiAvailabilityZoneSet = true
+			args.multiAvailabilityZone = false
+		}
+
+		if !isMultiAvailabilityZoneSet {
+			multiAZMachinePool, err = interactive.GetBool(interactive.Input{
+				Question: "Create multi-AZ machine pool",
+				Help:     cmd.Flags().Lookup("multi-availability-zone").Usage,
+				Default:  true,
+				Required: false,
+			})
+			if err != nil {
+				reporter.Errorf("Expected a valid value for create multi-AZ machine pool")
+				os.Exit(1)
+			}
+		} else {
+			multiAZMachinePool = args.multiAvailabilityZone
+		}
+
+		if !multiAZMachinePool {
+			availabilityZone = cluster.Nodes().AvailabilityZones()[0]
+
+			if !isAvailabilityZoneSet {
+				availabilityZone, err = interactive.GetOption(interactive.Input{
+					Question: "AWS availability zone",
+					Help:     cmd.Flags().Lookup("availability-zone").Usage,
+					Options:  cluster.Nodes().AvailabilityZones(),
+					Default:  availabilityZone,
+					Required: true,
+				})
+				if err != nil {
+					reporter.Errorf("Expected a valid AWS availability zone: %s", err)
+					os.Exit(1)
+				}
+			} else {
+				availabilityZone = args.availabilityZone
+			}
+
+			if !helper.Contains(cluster.Nodes().AvailabilityZones(), availabilityZone) {
+				reporter.Errorf("Availability zone '%s' doesn't belong to the cluster's availability zones",
+					availabilityZone)
+				os.Exit(1)
+			}
+		}
 	}
 
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
@@ -270,7 +343,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  minReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					minReplicaValidator(cluster.MultiAZ()),
+					minReplicaValidator(multiAZMachinePool),
 				},
 			})
 			if err != nil {
@@ -278,7 +351,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = minReplicaValidator(cluster.MultiAZ())(minReplicas)
+		err = minReplicaValidator(multiAZMachinePool)(minReplicas)
 		if err != nil {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -291,7 +364,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  maxReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					maxReplicaValidator(cluster.MultiAZ(), minReplicas),
+					maxReplicaValidator(minReplicas, multiAZMachinePool),
 				},
 			})
 			if err != nil {
@@ -299,7 +372,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = maxReplicaValidator(cluster.MultiAZ(), minReplicas)(maxReplicas)
+		err = maxReplicaValidator(minReplicas, multiAZMachinePool)(maxReplicas)
 		if err != nil {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -317,7 +390,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  replicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					minReplicaValidator(cluster.MultiAZ()),
+					minReplicaValidator(multiAZMachinePool),
 				},
 			})
 			if err != nil {
@@ -325,7 +398,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = minReplicaValidator(cluster.MultiAZ())(replicas)
+		err = minReplicaValidator(multiAZMachinePool)(replicas)
 		if err != nil {
 			reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -482,6 +555,11 @@ func run(cmd *cobra.Command, _ []string) {
 			SpotMarketOptions(spotBuilder))
 	}
 
+	// Create a single AZ machine pool for a multi-AZ cluster
+	if cluster.MultiAZ() && !multiAZMachinePool {
+		mpBuilder.AvailabilityZones(availabilityZone)
+	}
+
 	machinePool, err := mpBuilder.Build()
 	if err != nil {
 		reporter.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
@@ -502,7 +580,7 @@ func Split(r rune) bool {
 	return r == '=' || r == ':'
 }
 
-func minReplicaValidator(multiAZ bool) interactive.Validator {
+func minReplicaValidator(multiAZMachinePool bool) interactive.Validator {
 	return func(val interface{}) error {
 		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
@@ -511,14 +589,14 @@ func minReplicaValidator(multiAZ bool) interactive.Validator {
 		if minReplicas < 0 {
 			return fmt.Errorf("min-replicas must be a non-negative integer")
 		}
-		if multiAZ && minReplicas%3 != 0 {
+		if multiAZMachinePool && minReplicas%3 != 0 {
 			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
 		}
 		return nil
 	}
 }
 
-func maxReplicaValidator(multiAZ bool, minReplicas int) interactive.Validator {
+func maxReplicaValidator(minReplicas int, multiAZMachinePool bool) interactive.Validator {
 	return func(val interface{}) error {
 		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
@@ -527,7 +605,7 @@ func maxReplicaValidator(multiAZ bool, minReplicas int) interactive.Validator {
 		if minReplicas > maxReplicas {
 			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
 		}
-		if multiAZ && maxReplicas%3 != 0 {
+		if multiAZMachinePool && maxReplicas%3 != 0 {
 			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
 		}
 		return nil
