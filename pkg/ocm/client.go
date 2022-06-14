@@ -31,7 +31,8 @@ import (
 )
 
 type Client struct {
-	ocm *sdk.Connection
+	ocm     *sdk.Connection
+	fedramp bool
 }
 
 // ClientBuilder contains the information and logic needed to build a connection to OCM. Don't
@@ -143,7 +144,8 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 		return nil, fmt.Errorf("error creating connection. Not able to get authentication token: %s", err)
 	}
 	return &Client{
-		ocm: conn,
+		ocm:     conn,
+		fedramp: b.cfg.FedRAMP,
 	}, nil
 }
 
@@ -157,4 +159,8 @@ func (c *Client) GetConnectionURL() string {
 
 func (c *Client) GetConnectionTokens() (string, string, error) {
 	return c.ocm.Tokens()
+}
+
+func (c *Client) IsFedRAMP() bool {
+	return c.fedramp
 }
