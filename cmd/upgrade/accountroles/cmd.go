@@ -156,6 +156,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		defaultPolicyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)
+		LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
 		os.Exit(1)
 	}
 
@@ -164,6 +165,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	if err != nil {
 		reporter.Errorf("%s", err)
+		LogError("ROSAUpgradeOperatorRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
 		os.Exit(1)
 	}
 	if spin != nil {
@@ -211,13 +213,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
 				defaultPolicyVersion)
 			if err != nil {
-				if strings.Contains(err.Error(), "Throttling") {
-					ocmClient.LogEvent("ROSAUpgradeAccountRolesModeAuto", map[string]string{
-						ocm.Response:   ocm.Failure,
-						ocm.Version:    defaultPolicyVersion,
-						ocm.IsThrottle: "true",
-					})
-				}
+				LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
 				if args.isInvokedFromClusterUpgrade {
 					return err
 				}
@@ -262,6 +258,17 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 	return err
+}
+
+func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter *rprtr.Object) {
+	reporter.Debugf("Logging throttle error")
+	if strings.Contains(err.Error(), "Throttling") {
+		ocmClient.LogEvent(key, map[string]string{
+			ocm.Response:   ocm.Failure,
+			ocm.Version:    defaultPolicyVersion,
+			ocm.IsThrottle: "true",
+		})
+	}
 }
 
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
@@ -320,13 +327,7 @@ func upgradeOperatorRolePolicies(reporter *rprtr.Object, awsClient aws.Client, a
 	err := aws.UpggradeOperatorRolePolicies(reporter, awsClient, accountID, prefix, policies, defaultPolicyVersion,
 		credRequests)
 	if err != nil {
-		if strings.Contains(err.Error(), "Throttling") {
-			ocmClient.LogEvent("ROSAUpgradeOperatorRolesModeAuto", map[string]string{
-				ocm.Response:   ocm.Failure,
-				ocm.Version:    defaultPolicyVersion,
-				ocm.IsThrottle: "true",
-			})
-		}
+		LogError("ROSAUpgradeOperatorRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
 		return reporter.Errorf("Error upgrading the role polices: %s", err)
 	}
 	return nil
