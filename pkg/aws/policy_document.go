@@ -255,6 +255,11 @@ func InterpolatePolicyDocument(doc string, replacements map[string]string) strin
 	for key, val := range replacements {
 		doc = strings.Replace(doc, fmt.Sprintf("%%{%s}", key), val, -1)
 	}
+
+	// TODO Remove once MCC policies are all updated
+	partition := GetPartition()
+	doc = strings.Replace(doc, "arn:aws:", fmt.Sprintf("arn:%s:", partition), -1)
+
 	return doc
 }
 
@@ -277,7 +282,7 @@ func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID, serviceAccounts, po
 	}
 	issuerURL := fmt.Sprintf("%s%s", oidcEndpointURL.Host, oidcEndpointURL.Path)
 
-	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, issuerURL)
+	oidcProviderARN := GetOIDCProviderARN(accountID, issuerURL)
 
 	policy := InterpolatePolicyDocument(policyDetails, map[string]string{
 		"oidc_provider_arn": oidcProviderARN,

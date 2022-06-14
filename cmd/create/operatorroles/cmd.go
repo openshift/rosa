@@ -415,7 +415,7 @@ func getPolicyARN(accountID string, prefix string, namespace string, name string
 	if len(policy) > 64 {
 		policy = policy[0:64]
 	}
-	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, policy)
+	return aws.GetPolicyARN(accountID, policy)
 }
 
 func validateOperatorRoles(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {

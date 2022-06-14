@@ -48,7 +48,7 @@ import (
 )
 
 //nolint
-var kmsArnRE = regexp.MustCompile(`^arn:aws:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+var kmsArnRE = regexp.MustCompile(`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
 var args struct {
 	// Watch logs during cluster installation
@@ -2022,7 +2022,7 @@ func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.
 	if len(role) > 64 {
 		role = role[0:64]
 	}
-	return fmt.Sprintf("arn:aws:iam::%s:role/%s", creator.AccountID, role)
+	return aws.GetRoleARN(creator.AccountID, role)
 }
 
 func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {

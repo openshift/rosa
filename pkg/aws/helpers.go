@@ -13,6 +13,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -352,11 +353,30 @@ func GetOperatorPolicyARN(accountID string, prefix string, namespace string, nam
 }
 
 func GetPolicyARN(accountID string, name string) string {
-	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, name)
+	partition := GetPartition()
+	return fmt.Sprintf("arn:%s:iam::%s:policy/%s", partition, accountID, name)
 }
 
 func GetRoleARN(accountID string, name string) string {
-	return fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, name)
+	partition := GetPartition()
+	return fmt.Sprintf("arn:%s:iam::%s:role/%s", partition, accountID, name)
+}
+
+func GetOIDCProviderARN(accountID string, providerURL string) string {
+	partition := GetPartition()
+	return fmt.Sprintf("arn:%s:iam::%s:oidc-provider/%s", partition, accountID, providerURL)
+}
+
+func GetPartition() string {
+	region, err := GetRegion(arguments.GetRegion())
+	if err != nil || region == "" {
+		return endpoints.AwsPartitionID
+	}
+	partition, ok := endpoints.PartitionForRegion(endpoints.DefaultPartitions(), region)
+	if !ok || partition.ID() == "" {
+		return endpoints.AwsPartitionID
+	}
+	return partition.ID()
 }
 
 func GetOperatorRoleName(cluster *cmv1.Cluster, operator Operator) string {
@@ -412,6 +432,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			filename := fmt.Sprintf("sts_%s_trust_policy", file)
 			policyDetail := policies[filename]
 			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
+				"partition":      GetPartition(),
 				"aws_account_id": JumpAccounts[env],
 			})
 

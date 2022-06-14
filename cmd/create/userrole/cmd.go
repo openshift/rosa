@@ -220,7 +220,7 @@ func buildCommands(prefix string, userName string, accountID string, env string,
 	commands := []string{}
 	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
 
-	roleARN := fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, roleName)
+	roleARN := aws.GetRoleARN(accountID, roleName)
 	iamTags := fmt.Sprintf(
 		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 		tags.RolePrefix, prefix,
@@ -253,6 +253,7 @@ func createRoles(r *rosa.Runtime,
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := policies[filename]
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
+		"partition":      aws.GetPartition(),
 		"aws_account_id": aws.JumpAccounts[env],
 		"ocm_account_id": accountID,
 	})
@@ -285,6 +286,7 @@ func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID s
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := policies[filename]
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
+		"partition":      aws.GetPartition(),
 		"aws_account_id": aws.JumpAccounts[env],
 		"ocm_account_id": accountID,
 	})

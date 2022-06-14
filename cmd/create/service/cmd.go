@@ -484,5 +484,5 @@ func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.
 	if len(role) > 64 {
 		role = role[0:64]
 	}
-	return fmt.Sprintf("arn:aws:iam::%s:role/%s", creator.AccountID, role)
+	return aws.GetRoleARN(creator.AccountID, role)
 }

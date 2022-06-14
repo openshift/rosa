@@ -61,7 +61,7 @@ func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string)
 	}
 	providerURL := fmt.Sprintf("%s%s", parsedIssuerURL.Host, parsedIssuerURL.Path)
 
-	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, providerURL)
+	oidcProviderARN := GetOIDCProviderARN(accountID, providerURL)
 	output, err := c.iamClient.GetOpenIDConnectProvider(&iam.GetOpenIDConnectProviderInput{
 		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
 	})
