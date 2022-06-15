@@ -344,7 +344,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 
 		policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 			"partition":      aws.GetPartition(),
-			"aws_account_id": aws.JumpAccounts[env],
+			"aws_account_id": aws.GetJumpAccount(env),
 		})
 		r.Reporter.Debugf("Creating role '%s'", name)
 		roleARN, err := r.AWSClient.EnsureRole(name, policy, permissionsBoundary,

@@ -21,6 +21,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -38,6 +39,14 @@ var UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
 // and the fifth petterrn is to be able to remove the existing no-proxy value by typing empty string ("").
 // nolint
 var UserNoProxyRE = regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(3[0-2]|[1-2][0-9]|[0-9]))$|^(.?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^""$`)
+
+func GetJumpAccount(env string) string {
+	jumpAccounts := JumpAccounts
+	if fedramp.Enabled() {
+		jumpAccounts = fedramp.JumpAccounts
+	}
+	return jumpAccounts[env]
+}
 
 // JumpAccounts are the various of AWS accounts used for the installer jump role in the various OCM environments
 var JumpAccounts = map[string]string{
@@ -433,7 +442,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			policyDetail := policies[filename]
 			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
 				"partition":      GetPartition(),
-				"aws_account_id": JumpAccounts[env],
+				"aws_account_id": GetJumpAccount(env),
 			})
 
 			filename = GetFormattedFileName(filename)

@@ -32,6 +32,13 @@ func IsGovRegion(region string) bool {
 	return false
 }
 
+// JumpAccounts are the various of AWS accounts used for the installer jump role in the various OCM environments
+var JumpAccounts = map[string]string{
+	"production":  "448648337690",
+	"staging":     "448870092490",
+	"integration": "449053620653",
+}
+
 // LoginURLs allows the value of the `--env` option to map to the various login URLs.
 var LoginURLs = map[string]string{
 	"production":  "https://api.openshiftusgov.com/auth",

@@ -254,7 +254,7 @@ func createRoles(r *rosa.Runtime,
 	policyDetail := policies[filename]
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":      aws.GetPartition(),
-		"aws_account_id": aws.JumpAccounts[env],
+		"aws_account_id": aws.GetJumpAccount(env),
 		"ocm_account_id": accountID,
 	})
 
@@ -287,7 +287,7 @@ func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID s
 	policyDetail := policies[filename]
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":      aws.GetPartition(),
-		"aws_account_id": aws.JumpAccounts[env],
+		"aws_account_id": aws.GetJumpAccount(env),
 		"ocm_account_id": accountID,
 	})
 

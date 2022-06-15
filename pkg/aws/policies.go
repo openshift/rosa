@@ -993,7 +993,7 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 			for _, a := range awsPrincipal {
 				str := strings.Split(a, ":")
 				if len(str) > 4 {
-					if str[4] == JumpAccounts[env] {
+					if str[4] == GetJumpAccount(env) {
 						roles, err := c.buildRoles(aws.StringValue(role.RoleName), accountID)
 						if err != nil {
 							return roleList, err
@@ -1048,7 +1048,7 @@ func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Ro
 		for _, a := range awsPrincipal {
 			str := strings.Split(a, ":")
 			if len(str) > 4 {
-				if str[4] == JumpAccounts[env] {
+				if str[4] == GetJumpAccount(env) {
 					r := Role{
 						RoleARN:  aws.StringValue(accountRoleResponse.Role.Arn),
 						RoleName: roleName,

@@ -331,7 +331,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string,
 	policyDetail := policies[filename]
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":           aws.GetPartition(),
-		"aws_account_id":      aws.JumpAccounts[env],
+		"aws_account_id":      aws.GetJumpAccount(env),
 		"ocm_organization_id": orgID,
 	})
 
@@ -396,7 +396,7 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 	policyDetail := policies[filename]
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":           aws.GetPartition(),
-		"aws_account_id":      aws.JumpAccounts[env],
+		"aws_account_id":      aws.GetJumpAccount(env),
 		"ocm_organization_id": orgID,
 	})
 	r.Reporter.Debugf("Saving '%s' to the current directory", filename)
