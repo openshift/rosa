@@ -248,7 +248,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if cluster.MultiAZ() &&
+	if cluster.MultiAZ() && isMultiAZMachinePool(machinePool) &&
 		(!autoscaling && replicas%3 != 0 ||
 			(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0))) {
 		reporter.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
@@ -461,4 +461,9 @@ func getReplicas(cmd *cobra.Command,
 
 func Split(r rune) bool {
 	return r == '=' || r == ':'
+}
+
+// Single-AZ: AvailabilityZones == []string{"us-east-1a"}
+func isMultiAZMachinePool(machinePool *cmv1.MachinePool) bool {
+	return len(machinePool.AvailabilityZones()) != 1
 }
