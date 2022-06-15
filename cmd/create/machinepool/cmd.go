@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -264,7 +265,7 @@ func run(cmd *cobra.Command, _ []string) {
 			args.multiAvailabilityZone = false
 		}
 
-		if !isMultiAvailabilityZoneSet {
+		if !isMultiAvailabilityZoneSet && interactive.Enabled() && !confirm.Yes() {
 			multiAZMachinePool, err = interactive.GetBool(interactive.Input{
 				Question: "Create multi-AZ machine pool",
 				Help:     cmd.Flags().Lookup("multi-availability-zone").Usage,
@@ -282,7 +283,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if !multiAZMachinePool {
 			availabilityZone = cluster.Nodes().AvailabilityZones()[0]
 
-			if !isAvailabilityZoneSet {
+			if !isAvailabilityZoneSet && interactive.Enabled() {
 				availabilityZone, err = interactive.GetOption(interactive.Input{
 					Question: "AWS availability zone",
 					Help:     cmd.Flags().Lookup("availability-zone").Usage,
