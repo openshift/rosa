@@ -220,3 +220,91 @@ func (c *Client) GetDefaultVersion() (version string, err error) {
 	}
 	return "", fmt.Errorf("There are no openShift versions available")
 }
+
+func IsValidVersion(userRequestedVersion string, supportedVersion string, clusterVersion string) (bool, error) {
+
+	a, err := ver.NewVersion(userRequestedVersion)
+	if err != nil {
+		return false, err
+	}
+
+	b, err := ver.NewVersion(supportedVersion)
+	if err != nil {
+		return false, err
+	}
+	versionSplit := a.Segments64()
+	//If user has specified patch we check directly and return the result
+	if len(versionSplit) > 2 && versionSplit[2] > 0 {
+		return a.Equal(b), err
+	}
+
+	//If the user has specified only major and minor we check
+	//if the major minor is greater than cluster major minor if so return true
+	//else return false.
+	userRequestedMajorMinorVersion := fmt.Sprintf("%d.%d",
+		versionSplit[0], versionSplit[1])
+
+	userRequestedParsedVersion, err := ver.NewVersion(userRequestedMajorMinorVersion)
+	if err != nil {
+		return false, err
+	}
+
+	isValid, err := checkClusterVersion(clusterVersion, userRequestedParsedVersion)
+	if err != nil {
+		return false, err
+	}
+	if !isValid {
+		return false, nil
+	}
+
+	v := b.Segments64()
+	supportedMajorMinorVersion := fmt.Sprintf("%d.%d",
+		v[0], v[1])
+
+	parsedSupportedVersion, err := ver.NewVersion(supportedMajorMinorVersion)
+	if err != nil {
+		return false, err
+	}
+
+	//If major minor specified is not equal to cluster version and is not
+	//in the supported version then return error
+	if userRequestedParsedVersion.Equal(parsedSupportedVersion) {
+		return true, nil
+	}
+	return false, nil
+}
+
+func checkClusterVersion(clusterVersion string, userRequestedParsedVersion *ver.Version) (bool, error) {
+	c, err := ver.NewVersion(clusterVersion)
+	if err != nil {
+		return false, err
+	}
+	cSplit := c.Segments64()
+
+	clusterMajorMinorVersion := fmt.Sprintf("%d.%d",
+		cSplit[0], cSplit[1])
+
+	clusterParsedVersion, err := ver.NewVersion(clusterMajorMinorVersion)
+	if err != nil {
+		return false, err
+	}
+
+	//If major minor is only specified and it is equal to cluster current version
+	//return error
+	if userRequestedParsedVersion.Equal(clusterParsedVersion) {
+		return false, nil
+	}
+	return true, nil
+}
+
+func CheckAndParseVersion(availableUpgrades []string, version string) (string, error) {
+	a, err := ver.NewVersion(version)
+	if err != nil {
+		return "", err
+	}
+	versionSplit := a.Segments64()
+	if versionSplit[2] > 0 {
+		return version, nil
+	}
+	return availableUpgrades[0], nil
+}

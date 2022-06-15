@@ -174,11 +174,20 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
+	clusterVersion := cluster.OpenshiftVersion()
+	if clusterVersion == "" {
+		clusterVersion = cluster.Version().RawID()
+	}
 	// Check that the version is valid
 	validVersion := false
 	for _, v := range availableUpgrades {
-		if v == version {
+
+		isValidVersion, err := ocm.IsValidVersion(version, v, clusterVersion)
+		if err != nil {
+			r.Reporter.Errorf("Error validating the version")
+			os.Exit(1)
+		}
+		if isValidVersion {
 			validVersion = true
 			break
 		}
@@ -187,6 +196,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Expected a valid version to upgrade to")
 		os.Exit(1)
 	}
+
 	if scheduleDate == "" || scheduleTime == "" {
 		interactive.Enable()
 	}
@@ -230,6 +240,15 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(0)
 		}
 		r.Reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
+	}
+
+	version, err = ocm.CheckAndParseVersion(availableUpgrades, version)
+	if err != nil {
+		r.Reporter.Errorf("Error parsing version to upgrade to")
+		os.Exit(1)
+	}
+	if !confirm.Confirm("upgrade cluster to version '%s'", version) {
+		os.Exit(0)
 	}
 
 	upgradePolicyBuilder := cmv1.NewUpgradePolicy().
