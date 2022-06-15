@@ -17,11 +17,12 @@ limitations under the License.
 package logout
 
 import (
-	rprtr "github.com/openshift/rosa/pkg/reporter"
-	"github.com/spf13/cobra"
 	"os"
 
-	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/config"
+	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var Cmd = &cobra.Command{
@@ -34,7 +35,7 @@ var Cmd = &cobra.Command{
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	// Remove the configuration file:
-	err := ocm.Remove()
+	err := config.Remove()
 	if err != nil {
 		reporter.Errorf("Failed to remove config file: %v", err)
 		os.Exit(1)

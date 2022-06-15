@@ -44,6 +44,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/sirupsen/logrus"
 
@@ -262,6 +263,12 @@ func (b *ClientBuilder) Build() (Client, error) {
 			return nil, err
 		}
 		b.region = aws.String(region)
+	}
+
+	if fedramp.IsGovRegion(*b.region) {
+		fedramp.Enable()
+	} else if fedramp.Enabled() {
+		return nil, fmt.Errorf("Failed to connect to AWS. Use a GovCloud region in your profile")
 	}
 
 	// Create the AWS session:

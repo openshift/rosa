@@ -25,21 +25,22 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/sirupsen/logrus"
 
+	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
 type Client struct {
-	ocm     *sdk.Connection
-	fedramp bool
+	ocm *sdk.Connection
 }
 
 // ClientBuilder contains the information and logic needed to build a connection to OCM. Don't
 // create instances of this type directly; use the NewClient function instead.
 type ClientBuilder struct {
 	logger *logrus.Logger
-	cfg    *Config
+	cfg    *config.Config
 }
 
 // NewClient creates a builder that can then be used to configure and build an OCM connection.
@@ -67,7 +68,7 @@ func (b *ClientBuilder) Logger(value *logrus.Logger) *ClientBuilder {
 }
 
 // Config sets the configuration that the connection will use to authenticate the user
-func (b *ClientBuilder) Config(value *Config) *ClientBuilder {
+func (b *ClientBuilder) Config(value *config.Config) *ClientBuilder {
 	b.cfg = value
 	return b
 }
@@ -76,7 +77,7 @@ func (b *ClientBuilder) Config(value *Config) *ClientBuilder {
 func (b *ClientBuilder) Build() (result *Client, err error) {
 	if b.cfg == nil {
 		// Load the configuration file:
-		b.cfg, err = Load()
+		b.cfg, err = config.Load()
 		if err != nil {
 			err = fmt.Errorf("Failed to load config file: %v", err)
 			return nil, err
@@ -85,6 +86,11 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 			err = fmt.Errorf("Not logged in, run the 'rosa login' command")
 			return nil, err
 		}
+	}
+
+	// Enable the FedRAMP flag globally
+	if b.cfg.FedRAMP {
+		fedramp.Enable()
 	}
 
 	// Check parameters:
@@ -144,8 +150,7 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 		return nil, fmt.Errorf("error creating connection. Not able to get authentication token: %s", err)
 	}
 	return &Client{
-		ocm:     conn,
-		fedramp: b.cfg.FedRAMP,
+		ocm: conn,
 	}, nil
 }
 
@@ -159,8 +164,4 @@ func (c *Client) GetConnectionURL() string {
 
 func (c *Client) GetConnectionTokens() (string, string, error) {
 	return c.ocm.Tokens()
-}
-
-func (c *Client) IsFedRAMP() bool {
-	return c.fedramp
 }

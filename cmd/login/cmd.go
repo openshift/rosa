@@ -27,6 +27,7 @@ import (
 
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -135,24 +136,30 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Load the configuration file:
-	cfg, err := ocm.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		r.Reporter.Errorf("Failed to load config file: %v", err)
 		os.Exit(1)
 	}
 	if cfg == nil {
-		cfg = new(ocm.Config)
+		cfg = new(config.Config)
 	}
 
 	token := args.token
 
 	// Determine if we should be using the FedRAMP environment:
-	if fedramp.Enabled() ||
+	if fedramp.HasFlag(cmd) ||
 		(cfg.FedRAMP && token == "") ||
 		fedramp.IsGovRegion(arguments.GetRegion()) ||
-		ocm.IsEncryptedToken(token) {
+		config.IsEncryptedToken(token) {
 		fedramp.Enable()
+		// Always default to prod
+		if env == sdk.DefaultURL {
+			env = "production"
+		}
 		uiTokenPage = fedramp.LoginURLs[env]
+	} else {
+		fedramp.Disable()
 	}
 
 	haveReqs := token != ""
@@ -197,7 +204,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Red Hat SSO does not issue encrypted refresh tokens, but AWS Cognito does. If the token
 	// is encrypted we can safely assume that the user is trying to use the FedRAMP environment.
-	if ocm.IsEncryptedToken(token) {
+	if config.IsEncryptedToken(token) {
 		fedramp.Enable()
 	}
 
@@ -216,9 +223,6 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	// Override configuration details for FedRAMP:
 	if fedramp.Enabled() {
-		if env == sdk.DefaultURL {
-			env = "production"
-		}
 		gatewayURL, ok = fedramp.URLAliases[env]
 		if !ok {
 			gatewayURL = env
@@ -243,12 +247,12 @@ func run(cmd *cobra.Command, argv []string) {
 	cfg.FedRAMP = fedramp.Enabled()
 
 	if token != "" {
-		if ocm.IsEncryptedToken(token) {
+		if config.IsEncryptedToken(token) {
 			cfg.AccessToken = ""
 			cfg.RefreshToken = token
 		} else {
 			// If a token has been provided parse it:
-			jwtToken, err := ocm.ParseToken(token)
+			jwtToken, err := config.ParseToken(token)
 			if err != nil {
 				r.Reporter.Errorf("Failed to parse token '%s': %v", token, err)
 				os.Exit(1)
@@ -300,7 +304,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Save the configuration:
 	cfg.AccessToken = accessToken
 	cfg.RefreshToken = refreshToken
-	err = ocm.Save(cfg)
+	err = config.Save(cfg)
 	if err != nil {
 		r.Reporter.Errorf("Failed to save config file: %v", err)
 		os.Exit(1)
@@ -365,7 +369,7 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 
 	// Verify if user is already logged in:
 	isLoggedIn := false
-	cfg, err := ocm.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("Failed to load config file: %v", err)
 	}

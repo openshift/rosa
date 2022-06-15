@@ -38,6 +38,7 @@ import (
 	installLogs "github.com/openshift/rosa/cmd/logs/install"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -562,7 +563,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	isSTS := args.sts || args.roleARN != "" || ocmClient.IsFedRAMP()
+	isSTS := args.sts || args.roleARN != "" || fedramp.Enabled()
 	isIAM := cmd.Flags().Changed("sts") && !isSTS
 
 	if interactive.Enabled() && (!isSTS && !isIAM) {
@@ -1123,7 +1124,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Cluster privacy:
 	useExistingVPC := false
-	privateLink := args.privateLink || ocmClient.IsFedRAMP()
+	privateLink := args.privateLink || fedramp.Enabled()
 	private := args.private
 
 	privateLinkWarning := "Once the cluster is created, this option cannot be changed."
@@ -1131,7 +1132,7 @@ func run(cmd *cobra.Command, _ []string) {
 		privateLinkWarning = fmt.Sprintf("STS clusters can only be private if AWS PrivateLink is used. %s ",
 			privateLinkWarning)
 	}
-	if interactive.Enabled() && !ocmClient.IsFedRAMP() {
+	if interactive.Enabled() && !fedramp.Enabled() {
 		privateLink, err = interactive.GetBool(interactive.Input{
 			Question: "PrivateLink cluster",
 			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
@@ -1141,7 +1142,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid private-link value: %s", err)
 			os.Exit(1)
 		}
-	} else if (privateLink || (isSTS && private)) && !ocmClient.IsFedRAMP() {
+	} else if (privateLink || (isSTS && private)) && !fedramp.Enabled() {
 		r.Reporter.Warnf("You are choosing to use AWS PrivateLink for your cluster. %s", privateLinkWarning)
 		if !confirm.Confirm("use AWS PrivateLink for cluster '%s'", clusterName) {
 			os.Exit(0)
@@ -1638,8 +1639,8 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	fips := args.fips || ocmClient.IsFedRAMP()
-	if interactive.Enabled() && fips && !ocmClient.IsFedRAMP() {
+	fips := args.fips || fedramp.Enabled()
+	if interactive.Enabled() && fips && !fedramp.Enabled() {
 		fips, err = interactive.GetBool(interactive.Input{
 			Question: "Enable FIPS support",
 			Help:     cmd.Flags().Lookup("fips").Usage,
