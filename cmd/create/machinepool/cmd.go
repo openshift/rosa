@@ -295,7 +295,7 @@ func run(cmd *cobra.Command, _ []string) {
 					reporter.Errorf("Expected a valid AWS availability zone: %s", err)
 					os.Exit(1)
 				}
-			} else {
+			} else if isAvailabilityZoneSet {
 				availabilityZone = args.availabilityZone
 			}
 
