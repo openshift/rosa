@@ -23,7 +23,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var clusterKey string
@@ -58,8 +57,7 @@ func GetClusterKey() (string, error) {
 }
 
 func clusterCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	ocmClient, err := NewClient().Logger(logger).Build()
 	if err != nil {

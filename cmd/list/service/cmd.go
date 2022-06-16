@@ -52,7 +52,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	// Parse out CLI flags, then override positional arguments
 	// This allows for arbitrary flags used for addon parameters

@@ -55,7 +55,7 @@ func init() {
 
 func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	idpName := argv[0]
 

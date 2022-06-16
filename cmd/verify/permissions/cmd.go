@@ -52,7 +52,7 @@ func init() {
 
 func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	// Get AWS region
 	region, err := aws.GetRegion(arguments.GetRegion())

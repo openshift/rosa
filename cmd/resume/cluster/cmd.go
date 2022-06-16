@@ -51,7 +51,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 	// Create the AWS client:
 	awsClient, err := aws.NewClient().
 		Logger(logger).

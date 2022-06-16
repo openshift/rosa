@@ -59,7 +59,7 @@ func init() {
 
 func run(_ *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 
 	machinePoolID := argv[0]
 	if machinePoolID != "Default" && !machinePoolKeyRE.MatchString(machinePoolID) {

@@ -19,6 +19,8 @@ package oidcprovider
 import (
 	"fmt"
 
+	"os"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -27,7 +29,6 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
-	"os"
 )
 
 var Cmd = &cobra.Command{
@@ -50,7 +51,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.CreateLoggerOrExit(reporter)
+	logger := logging.NewLogger()
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 	}
