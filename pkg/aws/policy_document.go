@@ -61,10 +61,10 @@ func NewPolicyDocument() *PolicyDocument {
 	return &PolicyDocument{Version: "2012-10-17"}
 }
 
-func ParsePolicyDocument(doc string) (PolicyDocument, error) {
+func ParsePolicyDocument(doc string) (*PolicyDocument, error) {
 	policy := PolicyDocument{}
 	err := json.Unmarshal([]byte(doc), &policy)
-	return policy, err
+	return &policy, err
 }
 
 func (p *PolicyStatement) GetAWSPrincipals() []string {
@@ -119,6 +119,79 @@ func (p *PolicyDocument) IsActionAllowed(wanted string) bool {
 		}
 	}
 	return false
+}
+
+func (p *PolicyDocument) GetAllowedActions() []string {
+	var actions []string
+	for _, statement := range p.Statement {
+		if statement.Effect != "Allow" {
+			continue
+		}
+		switch action := statement.Action.(type) {
+		case string:
+			actions = append(actions, action)
+		case []interface{}:
+			for _, el := range action {
+				actions = append(actions, el.(string))
+			}
+		}
+	}
+	return actions
+}
+
+// checkPermissionsUsingQueryClient will use queryClient to query whether the credentials in targetClient can perform
+// the actions listed in the statementEntries. queryClient will need
+// sts:GetCallerIdentity and iam:SimulatePrincipalPolicy
+func (p *PolicyDocument) checkPermissionsUsingQueryClient(queryClient *awsClient, targetUserARN string,
+	params *SimulateParams) (bool, error) {
+	// Ignoring isRoot here since we only warn the user that its not best practice to use it.
+	// TODO: Add a check for isRoot in the initialize
+	allowList := aws.StringSlice(p.GetAllowedActions())
+
+	input := &iam.SimulatePrincipalPolicyInput{
+		PolicySourceArn: aws.String(targetUserARN),
+		ActionNames:     allowList,
+		ContextEntries:  []*iam.ContextEntry{},
+	}
+
+	if params != nil && params.Region != "" {
+		input.ContextEntries = append(input.ContextEntries, &iam.ContextEntry{
+			ContextKeyName:   aws.String("aws:RequestedRegion"),
+			ContextKeyType:   aws.String("stringList"),
+			ContextKeyValues: []*string{aws.String(params.Region)},
+		})
+	}
+
+	// Collect all failed actions
+	var failedActions []string
+	err := queryClient.iamClient.SimulatePrincipalPolicyPages(input,
+		func(response *iam.SimulatePolicyResponse, lastPage bool) bool {
+			for _, result := range response.EvaluationResults {
+				if *result.EvalDecision != "allowed" {
+					// Don't bail out after the first failure, so we can log the full list
+					// of failed/denied actions
+					failedActions = append(failedActions, *result.EvalActionName)
+				}
+			}
+			return !lastPage
+		})
+	if err != nil {
+		return false, fmt.Errorf("Error simulating policy: %v", err)
+	}
+
+	if len(failedActions) > 0 {
+		return false, fmt.Errorf("Actions not allowed with tested credentials: %v", failedActions)
+	}
+
+	return true, nil
+}
+
+func (p PolicyDocument) String() string {
+	res, err := json.Marshal(p)
+	if err != nil {
+		return fmt.Sprintf("Error marshalling policy document: %v", err)
+	}
+	return string(res)
 }
 
 func updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bool, error) {
@@ -185,16 +258,16 @@ func InterpolatePolicyDocument(doc string, replacements map[string]string) strin
 	return doc
 }
 
-func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
+func getPolicyDocument(policyDocument *string) (*PolicyDocument, error) {
 	data := PolicyDocument{}
 	if policyDocument != nil {
 		val, err := url.QueryUnescape(aws.StringValue(policyDocument))
 		if err != nil {
-			return data, err
+			return &data, err
 		}
 		return ParsePolicyDocument(val)
 	}
-	return data, nil
+	return &data, nil
 }
 
 func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
