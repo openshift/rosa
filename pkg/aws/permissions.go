@@ -2,7 +2,6 @@ package aws
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -77,20 +76,4 @@ func (c *awsClient) ValidateSCP(target *string, policies map[string]string) (boo
 	}
 
 	return true, nil
-}
-
-func getActionAllowed(action interface{}) []string {
-	var actionArr []string
-	switch reflect.TypeOf(action).Kind() {
-	case reflect.Slice:
-		value := reflect.ValueOf(action)
-		actionArr = make([]string, value.Len())
-		for i := 0; i < value.Len(); i++ {
-			actionArr[i] = value.Index(i).Interface().(string)
-		}
-	case reflect.String:
-		actionArr = make([]string, 1)
-		actionArr[0] = action.(string)
-	}
-	return actionArr
 }

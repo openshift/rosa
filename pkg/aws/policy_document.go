@@ -121,6 +121,24 @@ func (p *PolicyDocument) IsActionAllowed(wanted string) bool {
 	return false
 }
 
+func (p *PolicyDocument) GetAllowedActions() []string {
+	var actions []string
+	for _, statement := range p.Statement {
+		if statement.Effect != "Allow" {
+			continue
+		}
+		switch action := statement.Action.(type) {
+		case string:
+			actions = append(actions, action)
+		case []interface{}:
+			for _, el := range action {
+				actions = append(actions, el.(string))
+			}
+		}
+	}
+	return actions
+}
+
 // checkPermissionsUsingQueryClient will use queryClient to query whether the credentials in targetClient can perform
 // the actions listed in the statementEntries. queryClient will need
 // sts:GetCallerIdentity and iam:SimulatePrincipalPolicy
@@ -128,13 +146,7 @@ func (p *PolicyDocument) checkPermissionsUsingQueryClient(queryClient *awsClient
 	params *SimulateParams) (bool, error) {
 	// Ignoring isRoot here since we only warn the user that its not best practice to use it.
 	// TODO: Add a check for isRoot in the initialize
-	allowList := []*string{}
-	for _, statement := range p.Statement {
-		actionArr := getActionAllowed(statement.Action)
-		for _, action := range actionArr {
-			allowList = append(allowList, aws.String(action))
-		}
-	}
+	allowList := aws.StringSlice(p.GetAllowedActions())
 
 	input := &iam.SimulatePrincipalPolicyInput{
 		PolicySourceArn: aws.String(targetUserARN),
@@ -150,11 +162,8 @@ func (p *PolicyDocument) checkPermissionsUsingQueryClient(queryClient *awsClient
 		})
 	}
 
-	// Either all actions are allowed and we'll return 'true', or it's a failure
-	allClear := true
 	// Collect all failed actions
 	var failedActions []string
-
 	err := queryClient.iamClient.SimulatePrincipalPolicyPages(input,
 		func(response *iam.SimulatePolicyResponse, lastPage bool) bool {
 			for _, result := range response.EvaluationResults {
@@ -162,7 +171,6 @@ func (p *PolicyDocument) checkPermissionsUsingQueryClient(queryClient *awsClient
 					// Don't bail out after the first failure, so we can log the full list
 					// of failed/denied actions
 					failedActions = append(failedActions, *result.EvalActionName)
-					allClear = false
 				}
 			}
 			return !lastPage
@@ -171,7 +179,7 @@ func (p *PolicyDocument) checkPermissionsUsingQueryClient(queryClient *awsClient
 		return false, fmt.Errorf("Error simulating policy: %v", err)
 	}
 
-	if !allClear {
+	if len(failedActions) > 0 {
 		return false, fmt.Errorf("Actions not allowed with tested credentials: %v", failedActions)
 	}
 
