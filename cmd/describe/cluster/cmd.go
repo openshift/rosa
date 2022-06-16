@@ -24,12 +24,10 @@ import (
 	"github.com/spf13/cobra"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 const (
@@ -54,8 +52,8 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithOCM().WithAWS()
+	defer r.Cleanup()
 
 	var clusterKey string
 	var err error
@@ -66,47 +64,16 @@ func run(cmd *cobra.Command, argv []string) {
 	} else {
 		clusterKey, err = ocm.GetClusterKey()
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
 
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -114,7 +81,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if output.HasFlag() {
 		err = output.Print(cluster)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		return
@@ -122,7 +89,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	creatorARN, err := arn.Parse(cluster.Properties()[properties.CreatorARN])
 	if err != nil {
-		reporter.Errorf("Failed to parse creator ARN for cluster '%s'", clusterKey)
+		r.Reporter.Errorf("Failed to parse creator ARN for cluster '%s'", clusterKey)
 		os.Exit(1)
 	}
 	phase := ""
@@ -130,13 +97,13 @@ func run(cmd *cobra.Command, argv []string) {
 	switch cluster.State() {
 	case cmv1.ClusterStateWaiting:
 		phase = "(Waiting for user action)"
-		status, _ := ocmClient.GetClusterStatus(cluster.ID())
+		status, _ := r.OCMClient.GetClusterStatus(cluster.ID())
 		if status.Description() != "" {
 			phase = fmt.Sprintf("(%s)", status.Description())
 		}
 	case cmv1.ClusterStatePending:
 		phase = "(Preparing account)"
-		status, _ := ocmClient.GetClusterStatus(cluster.ID())
+		status, _ := r.OCMClient.GetClusterStatus(cluster.ID())
 		if status.Description() != "" {
 			phase = fmt.Sprintf("(%s)", status.Description())
 		}
@@ -163,21 +130,21 @@ func run(cmd *cobra.Command, argv []string) {
 		isPrivate = "Yes"
 	}
 
-	scheduledUpgrade, upgradeState, err := ocmClient.GetScheduledUpgrade(cluster.ID())
+	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	detailsPage := getDetailsLink(ocmClient.GetConnectionURL())
+	detailsPage := getDetailsLink(r.OCMClient.GetConnectionURL())
 
 	// Display number of all worker nodes across the cluster
 	minNodes := 0
 	maxNodes := 0
 	var nodesStr string
-	machinePools, err := ocmClient.GetMachinePools(cluster.ID())
+	machinePools, err := r.OCMClient.GetMachinePools(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 	// Accumulate all replicas across machine pools

@@ -23,11 +23,8 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
-
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var Cmd = &cobra.Command{
@@ -48,30 +45,15 @@ var Cmd = &cobra.Command{
 }
 
 func run(_ *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	// Try to find the add-on:
 	addOnID := argv[0]
-	reporter.Debugf("Loading add-on '%s'", addOnID)
-	addOn, err := ocmClient.GetAddOn(addOnID)
+	r.Reporter.Debugf("Loading add-on '%s'", addOnID)
+	addOn, err := r.OCMClient.GetAddOn(addOnID)
 	if err != nil {
-		reporter.Errorf("Failed to get add-on '%s': %s\n"+
+		r.Reporter.Errorf("Failed to get add-on '%s': %s\n"+
 			"Try running 'rosa list addons' to see all available add-ons.",
 			addOnID, err)
 		os.Exit(1)
