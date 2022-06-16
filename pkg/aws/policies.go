@@ -628,7 +628,7 @@ func (c *awsClient) listPolicies(role *iam.Role) ([]Policy, error) {
 		}
 		policy := Policy{
 			PolicyName:     aws.StringValue(policyOutput.PolicyName),
-			PolicyDocument: policyDoc,
+			PolicyDocument: *policyDoc,
 		}
 		policies = append(policies, policy)
 	}

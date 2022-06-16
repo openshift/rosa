@@ -61,10 +61,10 @@ func NewPolicyDocument() *PolicyDocument {
 	return &PolicyDocument{Version: "2012-10-17"}
 }
 
-func ParsePolicyDocument(doc string) (PolicyDocument, error) {
+func ParsePolicyDocument(doc string) (*PolicyDocument, error) {
 	policy := PolicyDocument{}
 	err := json.Unmarshal([]byte(doc), &policy)
-	return policy, err
+	return &policy, err
 }
 
 func (p *PolicyStatement) GetAWSPrincipals() []string {
@@ -250,16 +250,16 @@ func InterpolatePolicyDocument(doc string, replacements map[string]string) strin
 	return doc
 }
 
-func getPolicyDocument(policyDocument *string) (PolicyDocument, error) {
+func getPolicyDocument(policyDocument *string) (*PolicyDocument, error) {
 	data := PolicyDocument{}
 	if policyDocument != nil {
 		val, err := url.QueryUnescape(aws.StringValue(policyDocument))
 		if err != nil {
-			return data, err
+			return &data, err
 		}
 		return ParsePolicyDocument(val)
 	}
-	return data, nil
+	return &data, nil
 }
 
 func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
