@@ -121,6 +121,14 @@ func (p *PolicyDocument) IsActionAllowed(wanted string) bool {
 	return false
 }
 
+func (p PolicyDocument) String() string {
+	res, err := json.Marshal(p)
+	if err != nil {
+		return fmt.Sprintf("Error marshalling policy document: %v", err)
+	}
+	return string(res)
+}
+
 func updateAssumeRolePolicyPrincipals(policy string, role *iam.Role) (string, bool, error) {
 	oldPolicy, err := url.QueryUnescape(aws.StringValue(role.AssumeRolePolicyDocument))
 	if err != nil {
