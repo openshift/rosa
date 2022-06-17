@@ -94,10 +94,11 @@ type Client interface {
 	TagUserRegion(username string, region string) error
 	GetClusterRegionTagForUser(username string) (string, error)
 	EnsureRole(name string, policy string, permissionsBoundary string,
-		version string, tagList map[string]string) (string, error)
+		version string, tagList map[string]string, path string) (string, error)
 	ValidateRoleNameAvailable(name string) (err error)
 	PutRolePolicy(roleName string, policyName string, policy string) error
-	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string) (string, error)
+	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string,
+		path string) (string, error)
 	AttachRolePolicy(roleName string, policyARN string) error
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string, clusterID string) (string, error)
 	DeleteOpenIDConnectProvider(providerURL string) error
@@ -124,9 +125,10 @@ type Client interface {
 	GetOpenIDConnectProvider(clusterID string) (string, error)
 	GetInstanceProfilesForRole(role string) ([]string, error)
 	IsUpgradedNeededForAccountRolePolicies(rolePrefix string, version string) (bool, error)
+	IsUpgradedNeededForAccountRolePoliciesForCluster(clusterID *cmv1.Cluster, version string) (bool, error)
 	IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluster, accountID string, version string) (bool, error)
 	IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(rolePrefix string, accountID string,
-		version string, credRequests map[string]*cmv1.STSOperator) (bool, error)
+		version string, credRequests map[string]*cmv1.STSOperator, path string) (bool, error)
 	UpdateTag(roleName string, defaultPolicyVersion string) error
 	AddRoleTag(roleName string, key string, value string) error
 	IsPolicyCompatible(policyArn string, version string) (bool, error)
@@ -136,6 +138,7 @@ type Client interface {
 	IsAdminRole(roleName string) (bool, error)
 	DeleteInlineRolePolicies(roleName string) error
 	IsUserRole(roleName *string) (bool, error)
+	GetRoleARNPath(prefix string) (string, error)
 	DescribeAvailabilityZones() ([]string, error)
 }
 
@@ -780,8 +783,9 @@ func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
 	}
 
 	// get resource name
-	resourceSplit := strings.Split(resource, "/")
-	roleName := resourceSplit[1]
+
+	m := strings.LastIndex(resource, "/")
+	roleName := resource[m+1:]
 
 	roleOutput, err := c.iamClient.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(roleName),

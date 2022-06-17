@@ -96,7 +96,7 @@ var roleTypeMap = map[string]string{
 }
 
 func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
-	version string, tagList map[string]string) (string, error) {
+	version string, tagList map[string]string, path string) (string, error) {
 	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(name),
 	})
@@ -104,7 +104,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				return c.createRole(name, policy, permissionsBoundary, tagList)
+				return c.createRole(name, policy, permissionsBoundary, tagList, path)
 			default:
 				return "", err
 			}
@@ -180,7 +180,7 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 }
 
 func (c *awsClient) createRole(name string, policy string, permissionsBoundary string,
-	tagList map[string]string) (string, error) {
+	tagList map[string]string, path string) (string, error) {
 	if !RoleNameRE.MatchString(name) {
 		return "", fmt.Errorf("Role name is invalid")
 	}
@@ -188,6 +188,9 @@ func (c *awsClient) createRole(name string, policy string, permissionsBoundary s
 		RoleName:                 aws.String(name),
 		AssumeRolePolicyDocument: aws.String(policy),
 		Tags:                     getTags(tagList),
+	}
+	if path != "" {
+		createRoleInput.Path = aws.String(path)
 	}
 	if permissionsBoundary != "" {
 		createRoleInput.PermissionsBoundary = aws.String(permissionsBoundary)
@@ -233,13 +236,13 @@ func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy str
 }
 
 func (c *awsClient) EnsurePolicy(policyArn string, document string,
-	version string, tagList map[string]string) (string, error) {
+	version string, tagList map[string]string, path string) (string, error) {
 	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				return c.createPolicy(policyArn, document, tagList)
+				return c.createPolicy(policyArn, document, tagList, path)
 			default:
 				return "", err
 			}
@@ -299,18 +302,26 @@ func (c *awsClient) IsRolePolicyExists(roleName string, policyName string) (*iam
 	return output, err
 }
 
-func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string) (string, error) {
+func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string,
+	path string) (string, error) {
 	parsedArn, err := arn.Parse(policyArn)
 	if err != nil {
 		return "", err
 	}
-	policyName := strings.Split(parsedArn.Resource, "/")[1]
+	resource := parsedArn.Resource
+	m := strings.LastIndex(resource, "/")
+	policyName := resource[m+1:]
 
-	output, err := c.iamClient.CreatePolicy(&iam.CreatePolicyInput{
+	createPolicyInput := &iam.CreatePolicyInput{
 		PolicyName:     aws.String(policyName),
 		PolicyDocument: aws.String(document),
 		Tags:           getTags(tagList),
-	})
+	}
+	if path != "" {
+		createPolicyInput.Path = aws.String(path)
+	}
+
+	output, err := c.iamClient.CreatePolicy(createPolicyInput)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -1182,6 +1193,23 @@ func (c *awsClient) GetOpenIDConnectProvider(clusterID string) (string, error) {
 	return "", nil
 }
 
+func (c *awsClient) GetRoleARNPath(prefix string) (string, error) {
+	for _, accountRole := range AccountRoles {
+		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
+		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+			RoleName: aws.String(roleName),
+		})
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return "", errors.NotFound.Errorf("Roles with the prefix'%s' not found", prefix)
+			}
+		}
+		return GetRolePath(aws.StringValue(role.Role.Arn))
+	}
+	return "", nil
+}
+
 func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, version string) (bool, error) {
 	for _, accountRole := range AccountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
@@ -1198,6 +1226,36 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 			return false, err
 		}
 		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(aws.StringValue(role.Role.RoleName),
+			version)
+
+		if err != nil {
+			return false, err
+		}
+		if !isCompatible {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesForCluster(cluster *cmv1.Cluster, version string) (bool, error) {
+
+	roles := []string{}
+	roles = append(roles, cluster.AWS().STS().RoleARN(), cluster.AWS().STS().SupportRoleARN(),
+		cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN(), cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN())
+
+	for _, accountRoleARN := range roles {
+		role, err := c.GetRoleByARN(accountRoleARN)
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case iam.ErrCodeNoSuchEntityException:
+					return false, errors.NotFound.Errorf("'%s' role not found", accountRoleARN)
+				}
+			}
+			return false, err
+		}
+		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(aws.StringValue(role.RoleName),
 			version)
 
 		if err != nil {
@@ -1265,9 +1323,9 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluste
 }
 
 func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix string, accountID string,
-	version string, credRequests map[string]*cmv1.STSOperator) (bool, error) {
+	version string, credRequests map[string]*cmv1.STSOperator, path string) (bool, error) {
 	for _, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		_, err := c.IsPolicyExists(policyARN)
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {

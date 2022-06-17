@@ -163,9 +163,9 @@ func SortRolesByLinkedRole(roles []Role) {
 
 func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID string,
 	prefix string, policies map[string]string, defaultPolicyVersion string,
-	credRequests map[string]*cmv1.STSOperator) error {
+	credRequests map[string]*cmv1.STSOperator, path string) error {
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policy := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policy,
@@ -174,7 +174,7 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 				tags.RolePrefix:       prefix,
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
-			})
+			}, "")
 		if err != nil {
 			return err
 		}
@@ -184,10 +184,10 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 }
 
 func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client,
-	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator) []string {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, path string) []string {
 	commands := []string{}
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())

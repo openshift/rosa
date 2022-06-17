@@ -43,7 +43,10 @@ var JumpAccounts = map[string]string{
 	"production":  "710019948333",
 	"staging":     "644306948063",
 	"integration": "896164604406",
+	"dev":         "765374464689",
 }
+
+var ARNPath = regexp.MustCompile(`^\/[a-zA-Z0-9\/]*\/$`)
 
 func ARNValidator(input interface{}) error {
 	if str, ok := input.(string); ok {
@@ -53,6 +56,20 @@ func ARNValidator(input interface{}) error {
 		_, err := arn.Parse(str)
 		if err != nil {
 			return fmt.Errorf("Invalid ARN: %s", err)
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", input)
+}
+
+func ARNPathValidator(input interface{}) error {
+	if str, ok := input.(string); ok {
+		if str == "" {
+			return nil
+		}
+		if !ARNPath.MatchString(str) {
+			return fmt.Errorf("invalid ARN Path. It must begin and end with / and " +
+				"contain only alphanumeric characters")
 		}
 		return nil
 	}
@@ -347,12 +364,32 @@ func GetPolicyName(prefix string, namespace string, name string) string {
 	return policy
 }
 
-func GetOperatorPolicyARN(accountID string, prefix string, namespace string, name string) string {
-	return GetPolicyARN(accountID, GetPolicyName(prefix, namespace, name))
+func GetOperatorPolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
+	return GetPolicyARN(accountID, GetPolicyName(prefix, namespace, name), path)
 }
 
-func GetPolicyARN(accountID string, name string) string {
-	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, name)
+func GetPolicyARN(accountID string, name string, path string) string {
+	str := fmt.Sprintf("arn:aws:iam::%s:policy", accountID)
+	if path != "" {
+		str = fmt.Sprintf("%s%s", str, path)
+		return fmt.Sprintf("%s%s", str, name)
+	}
+	return fmt.Sprintf("%s/%s", str, name)
+}
+
+func GetRolePath(roleARN string) (string, error) {
+	parse, err := arn.Parse(roleARN)
+	if err != nil {
+		return "", err
+	}
+	resource := parse.Resource
+	firstIndex := strings.Index(resource, "/")
+	lastIndex := strings.LastIndex(resource, "/")
+	if firstIndex == lastIndex {
+		return "", nil
+	}
+	path := resource[firstIndex : lastIndex+1]
+	return path, nil
 }
 
 func GetRoleARN(accountID string, name string) string {
@@ -400,7 +437,9 @@ func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
+	resource := parsedARN.Resource
+	m := strings.LastIndex(resource, "/")
+	roleName := resource[m+1:]
 	return roleName, nil
 }
 
@@ -465,9 +504,9 @@ func GetFormattedFileName(filename string) string {
 }
 
 func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client, commands []string,
-	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator) []string {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, path string) []string {
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())
@@ -506,9 +545,9 @@ func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client
 
 func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, accountID string,
 	prefix string, policies map[string]string, defaultPolicyVersion string,
-	credRequests map[string]*cmv1.STSOperator) error {
+	credRequests map[string]*cmv1.STSOperator, path string) error {
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
@@ -517,7 +556,7 @@ func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, acco
 				tags.RolePrefix:       prefix,
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
-			})
+			}, "")
 		if err != nil {
 			return err
 		}

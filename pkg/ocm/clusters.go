@@ -109,6 +109,7 @@ type OperatorIAMRole struct {
 	Name      string
 	Namespace string
 	RoleARN   string
+	Path      string
 }
 
 // Generate a query that filters clusters running on the current AWS session account

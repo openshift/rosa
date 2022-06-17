@@ -959,7 +959,11 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
+	rolePath, err := aws.GetRolePath(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Error getting role path %s", err)
+		os.Exit(1)
+	}
 	operatorIAMRoles := args.operatorIAMRoles
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
@@ -983,7 +987,7 @@ func run(cmd *cobra.Command, _ []string) {
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name(),
 				Namespace: operator.Namespace(),
-				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator),
+				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator, rolePath),
 			})
 
 		}
@@ -1012,8 +1016,16 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		// Validate the role names are available on AWS
 		for _, role := range operatorIAMRoleList {
-			name := strings.SplitN(role.RoleARN, "/", 2)[1]
-			err := awsClient.ValidateRoleNameAvailable(name)
+			str, err := arn.Parse(role.RoleARN)
+			if err != nil {
+				r.Reporter.Errorf("Error validating role arn: %v", err)
+				os.Exit(1)
+			}
+			resource := str.Resource
+			m := strings.LastIndex(resource, "/")
+			name := resource[m+1:]
+
+			err = awsClient.ValidateRoleNameAvailable(name)
 			if err != nil {
 				r.Reporter.Errorf("Error validating role: %v", err)
 				os.Exit(1)
@@ -2008,12 +2020,17 @@ func hostPrefixValidator(val interface{}) error {
 	return nil
 }
 
-func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator) string {
+func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {
 	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
 	if len(role) > 64 {
 		role = role[0:64]
 	}
-	return fmt.Sprintf("arn:aws:iam::%s:role/%s", creator.AccountID, role)
+	str := fmt.Sprintf("arn:aws:iam::%s:role", creator.AccountID)
+	if path != "" {
+		str = fmt.Sprintf("%s%s", str, path)
+		return fmt.Sprintf("%s%s", str, role)
+	}
+	return fmt.Sprintf("%s/%s", str, role)
 }
 
 func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {

@@ -271,7 +271,7 @@ func createRoles(r *rosa.Runtime,
 			tags.RolePrefix:  prefix,
 			tags.RoleType:    aws.OCMUserRole,
 			tags.Environment: env,
-		})
+		}, "")
 	if err != nil {
 		return "", err
 	}
