@@ -2,6 +2,60 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.3 Jun 18 2022
+
+- adding command to update managed service
+- list parameters when describing managed services
+- Addon install - add non-interactive commands
+- Remove version dependency from rosa
+- Create user-role - improve help message
+- Bump OCM-SDK to 0.1.266
+- Run go mod tidy
+- Update templates
+- Add credential requests to describe addon command
+- Addon install -	fix bug	- do not print not-set parameters
+- ROSA - Allow for additional, customer-provided "no_proxy" values for cluster-wide proxy
+- Update to OCM SDK 0.1.268
+- Make CredRequest API
+- adding private-link flag to managed service create
+- Add group support for OpenID IDP in ROSA CLI
+- Reduce extra call to OCM when manipulating addon installation
+- Fix a bug when editing no-proxy field
+- Reject '*' when validating no-proxy field
+- The wildcard domain is not allowed to set in no_proxy field
+- bumping ocm-sdk-go to v0.1.272
+- customizable network configuration in service creation
+- command to list parameters of add-on installation
+- Fix order of instance types
+- Unhide ocm/user link/unlink role
+- creating htpassword idp still prompts for username even if provided
+- login: Allow tokens without 'typ' claim
+- whoami: Remove external org ID if empty
+- token: Allow login with encrypted tokens
+- support creation of managed services with non-custom configurations
+- Extract policy document structs to separate file
+- Drop unused aws.ReadPolicyDocument method
+- Refactor GetRolePolicyDocument into InterpolatePolicyDocument
+- Unify multiple SaveDocument implementations
+- Move GenerateRolePolicyDoc method to policy_document
+- Add AllowsAction method to PolicyDocument
+- support host-prefix during managed service creation
+- support -c flag when using "rosa describe addon-installation"
+- Add Operator Role to cluster
+- Add GetPrefixFromOperatorRole and TrimRoleSuffix helpers
+- Add helpers for creating a policy document and allowing actions
+- Simplify logging package
+- Select a single AZ for a machine pool in a multi-AZ cluster
+- add more throttle metrics
+- Ensure all flags passed during managed service creation are used.
+- Prompt the user to select multi or single AZ only in an interactive mood
+- Fix bug - remove replicas constraint when editing single AZ machine pool
+- Create a single AZ machine pool - availability zone flag
+- Add String() to PolicyDocument
+- Make checkPermissionsUsingQueryClient a method of PolicyDocument
+- Make PolicyDocument creators return pointer
+- Add GetAllowedActions PolicyDocument method
+
 == 1.2.2 May 11 2022
 
 - update dev script
