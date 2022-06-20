@@ -135,6 +135,7 @@ type Client interface {
 	IsAdminRole(roleName string) (bool, error)
 	DeleteInlineRolePolicies(roleName string) error
 	IsUserRole(roleName *string) (bool, error)
+	DescribeAvailabilityZones() ([]string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -657,6 +658,28 @@ func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
 		return nil, err
 	}
 	return roleOutput.Role, nil
+}
+
+// DescribeAvailabilityZones fetches the region's availability zones with type `availability-zone`
+func (c *awsClient) DescribeAvailabilityZones() ([]string, error) {
+	describeAvailabilityZonesOutput, err := c.ec2Client.DescribeAvailabilityZones(&ec2.DescribeAvailabilityZonesInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("zone-type"),
+				Values: []*string{aws.String("availability-zone")},
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var availabilityZones []string
+	for _, az := range describeAvailabilityZonesOutput.AvailabilityZones {
+		availabilityZones = append(availabilityZones, *az.ZoneName)
+	}
+
+	return availabilityZones, nil
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
