@@ -457,7 +457,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if additionalTrustBundleFile != nil {
 		updateAdditionalTrustBundle = true
 	}
-	if useExistingVPC && enableProxy && !updateAdditionalTrustBundle && additionalTrustBundleFile == nil &&
+	if useExistingVPC && !updateAdditionalTrustBundle && additionalTrustBundleFile == nil &&
 		interactive.Enabled() {
 		updateAdditionalTrustBundleValue, err := interactive.GetBool(interactive.Input{
 			Question: "Update additional trust bundle",
@@ -469,7 +469,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		updateAdditionalTrustBundle = updateAdditionalTrustBundleValue
 	}
-	if enableProxy && updateAdditionalTrustBundle && interactive.Enabled() {
+	if updateAdditionalTrustBundle && interactive.Enabled() {
 		var def string
 		if cluster.AdditionalTrustBundle() == "REDACTED" {
 			def = "REDACTED"
