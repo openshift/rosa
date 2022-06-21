@@ -40,11 +40,10 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 //nolint
@@ -488,35 +487,19 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-	var err error
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
-	awsClient := aws.GetAWSClientForUserRegion(reporter, logger)
+	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger)
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
-		reporter.Errorf("Unable to get IAM credentials: %v", err)
+		r.Reporter.Errorf("Unable to get IAM credentials: %v", err)
 		os.Exit(1)
 	}
 
 	if interactive.Enabled() {
-		reporter.Infof("Interactive mode enabled.\n" +
+		r.Reporter.Infof("Interactive mode enabled.\n" +
 			"Any optional fields can be left empty and a default will be selected.")
 	}
 
@@ -525,7 +508,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if clusterName == "" && !interactive.Enabled() {
 		interactive.Enable()
-		reporter.Infof("Enabling interactive mode")
+		r.Reporter.Infof("Enabling interactive mode")
 	}
 
 	if interactive.Enabled() {
@@ -539,7 +522,7 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid cluster name: %s", err)
+			r.Reporter.Errorf("Expected a valid cluster name: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -548,7 +531,7 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterName = strings.Trim(clusterName, " \t")
 
 	if !ocm.IsValidClusterName(clusterName) {
-		reporter.Errorf("Cluster name must consist" +
+		r.Reporter.Errorf("Cluster name must consist" +
 			" of no more than 15 lowercase alphanumeric characters or '-', " +
 			"start with a letter, and end with an alphanumeric character.")
 		os.Exit(1)
@@ -565,7 +548,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid --sts value: %s", err)
+			r.Reporter.Errorf("Expected a valid --sts value: %s", err)
 			os.Exit(1)
 		}
 		isIAM = !isSTS
@@ -575,23 +558,23 @@ func run(cmd *cobra.Command, _ []string) {
 	if permissionsBoundary != "" {
 		_, err := arn.Parse(permissionsBoundary)
 		if err != nil {
-			reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
+			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	if isIAM {
 		if awsCreator.IsSTS {
-			reporter.Errorf("Since your AWS credentials are returning an STS ARN you can only " +
+			r.Reporter.Errorf("Since your AWS credentials are returning an STS ARN you can only " +
 				"create STS clusters. Otherwise, switch to IAM credentials.")
 			os.Exit(1)
 		}
 		err := awsClient.CheckAdminUserExists(aws.AdminUserName)
 		if err != nil {
-			reporter.Errorf("IAM user '%s' does not exist. Run `rosa init` first", aws.AdminUserName)
+			r.Reporter.Errorf("IAM user '%s' does not exist. Run `rosa init` first", aws.AdminUserName)
 			os.Exit(1)
 		}
-		reporter.Debugf("IAM user is valid!")
+		r.Reporter.Debugf("IAM user is valid!")
 	}
 
 	// AWS ARN Role
@@ -605,9 +588,9 @@ func run(cmd *cobra.Command, _ []string) {
 	// OpenShift version:
 	version := args.version
 	channelGroup := args.channelGroup
-	versionList, err := getVersionList(ocmClient, channelGroup, isSTS)
+	versionList, err := getVersionList(r, channelGroup, isSTS)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if version == "" {
@@ -621,25 +604,25 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  version,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid OpenShift version: %s", err)
+			r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 			os.Exit(1)
 		}
 	}
 	version, err = validateVersion(version, versionList, channelGroup, isSTS)
 	if err != nil {
-		reporter.Errorf("Expected a valid OpenShift version: %s", err)
+		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
 	}
 
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	// warn if mode is used for non sts cluster
 	if !isSTS && mode != "" {
-		reporter.Warnf("--mode is only valid for STS clusters")
+		r.Reporter.Warnf("--mode is only valid for STS clusters")
 	}
 
 	// validate mode passed is allowed value
@@ -647,7 +630,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS && mode != "" {
 		isValidMode := arguments.IsValidMode(aws.Modes, mode)
 		if !isValidMode {
-			reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, aws.Modes)
+			r.Reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, aws.Modes)
 			os.Exit(1)
 		}
 	}
@@ -660,7 +643,7 @@ func run(cmd *cobra.Command, _ []string) {
 		// Find all installer roles in the current account using AWS resource tags
 		roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
 		if err != nil {
-			reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+			r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 			os.Exit(1)
 		}
 
@@ -672,9 +655,9 @@ func run(cmd *cobra.Command, _ []string) {
 					defaultRoleARN = rARN
 				}
 			}
-			reporter.Warnf("More than one %s role found", role.Name)
+			r.Reporter.Warnf("More than one %s role found", role.Name)
 			if !interactive.Enabled() && confirm.Yes() {
-				reporter.Infof("Using %s for the %s role", defaultRoleARN, role.Name)
+				r.Reporter.Infof("Using %s for the %s role", defaultRoleARN, role.Name)
 				roleARN = defaultRoleARN
 			} else {
 				roleARN, err = interactive.GetOption(interactive.Input{
@@ -685,17 +668,17 @@ func run(cmd *cobra.Command, _ []string) {
 					Required: true,
 				})
 				if err != nil {
-					reporter.Errorf("Expected a valid role ARN: %s", err)
+					r.Reporter.Errorf("Expected a valid role ARN: %s", err)
 					os.Exit(1)
 				}
 			}
 		} else if len(roleARNs) == 1 {
-			if !output.HasFlag() || reporter.IsTerminal() {
-				reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
+			if !output.HasFlag() || r.Reporter.IsTerminal() {
+				r.Reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
 			}
 			roleARN = roleARNs[0]
 		} else {
-			reporter.Warnf("No account roles found. You will need to manually set them in the " +
+			r.Reporter.Warnf("No account roles found. You will need to manually set them in the " +
 				"next steps or run 'rosa create account-roles' to create them first.")
 			interactive.Enable()
 		}
@@ -704,10 +687,10 @@ func run(cmd *cobra.Command, _ []string) {
 			// Get role prefix
 			rolePrefix, err := getAccountRolePrefix(roleARN, role)
 			if err != nil {
-				reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+				r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
 				os.Exit(1)
 			}
-			reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
+			r.Reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
 
 			hasRoles = true
 			for roleType, role := range aws.AccountRoles {
@@ -717,7 +700,7 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 				roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
 				if err != nil {
-					reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+					r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 					os.Exit(1)
 				}
 				selectedARN := ""
@@ -727,15 +710,15 @@ func run(cmd *cobra.Command, _ []string) {
 					}
 				}
 				if selectedARN == "" {
-					reporter.Warnf("No %s account roles found. You will need to manually set "+
+					r.Reporter.Warnf("No %s account roles found. You will need to manually set "+
 						"them in the next steps or run 'rosa create account-roles' to create "+
 						"them first.", role.Name)
 					interactive.Enable()
 					hasRoles = false
 					break
 				}
-				if !output.HasFlag() || reporter.IsTerminal() {
-					reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
+				if !output.HasFlag() || r.Reporter.IsTerminal() {
+					r.Reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
 				}
 				switch roleType {
 				case aws.InstallerAccountRole:
@@ -762,21 +745,21 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid ARN: %s", err)
+			r.Reporter.Errorf("Expected a valid ARN: %s", err)
 			os.Exit(1)
 		}
 	}
 	if roleARN != "" {
 		_, err = arn.Parse(roleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid Role ARN: %s", err)
+			r.Reporter.Errorf("Expected a valid Role ARN: %s", err)
 			os.Exit(1)
 		}
 		isSTS = true
 	}
 
 	if !isSTS && mode != "" {
-		reporter.Warnf("--mode is only valid for STS clusters")
+		r.Reporter.Warnf("--mode is only valid for STS clusters")
 	}
 
 	externalID := args.externalID
@@ -790,7 +773,7 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid External ID: %s", err)
+			r.Reporter.Errorf("Expected a valid External ID: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -810,18 +793,18 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid ARN: %s", err)
+			r.Reporter.Errorf("Expected a valid ARN: %s", err)
 			os.Exit(1)
 		}
 	}
 	if supportRoleARN != "" {
 		_, err = arn.Parse(supportRoleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid Support Role ARN: %s", err)
+			r.Reporter.Errorf("Expected a valid Support Role ARN: %s", err)
 			os.Exit(1)
 		}
 	} else if roleARN != "" {
-		reporter.Errorf("Support Role ARN is required: %s", err)
+		r.Reporter.Errorf("Support Role ARN is required: %s", err)
 		os.Exit(1)
 	}
 
@@ -843,18 +826,18 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid control plane IAM role ARN: %s", err)
+			r.Reporter.Errorf("Expected a valid control plane IAM role ARN: %s", err)
 			os.Exit(1)
 		}
 	}
 	if controlPlaneRoleARN != "" {
 		_, err = arn.Parse(controlPlaneRoleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid control plane instance IAM role ARN: %s", err)
+			r.Reporter.Errorf("Expected a valid control plane instance IAM role ARN: %s", err)
 			os.Exit(1)
 		}
 	} else if roleARN != "" {
-		reporter.Errorf("Control plane instance IAM role ARN is required: %s", err)
+		r.Reporter.Errorf("Control plane instance IAM role ARN is required: %s", err)
 		os.Exit(1)
 	}
 
@@ -869,18 +852,18 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid worker IAM role ARN: %s", err)
+			r.Reporter.Errorf("Expected a valid worker IAM role ARN: %s", err)
 			os.Exit(1)
 		}
 	}
 	if workerRoleARN != "" {
 		_, err = arn.Parse(workerRoleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid worker instance IAM role ARN: %s", err)
+			r.Reporter.Errorf("Expected a valid worker instance IAM role ARN: %s", err)
 			os.Exit(1)
 		}
 	} else if roleARN != "" {
-		reporter.Errorf("Worker instance IAM role ARN is required: %s", err)
+		r.Reporter.Errorf("Worker instance IAM role ARN is required: %s", err)
 		os.Exit(1)
 	}
 
@@ -900,17 +883,17 @@ func run(cmd *cobra.Command, _ []string) {
 		// get role from arn
 		role, err := awsClient.GetRoleByARN(ARN)
 		if err != nil {
-			reporter.Errorf("Could not get Role '%s' : %v", ARN, err)
+			r.Reporter.Errorf("Could not get Role '%s' : %v", ARN, err)
 			os.Exit(1)
 		}
 
 		validVersion, err := awsClient.HasCompatibleVersionTags(role.Tags, ocm.GetVersionMinor(version))
 		if err != nil {
-			reporter.Errorf("Could not validate Role '%s' : %v", ARN, err)
+			r.Reporter.Errorf("Could not validate Role '%s' : %v", ARN, err)
 			os.Exit(1)
 		}
 		if !validVersion {
-			reporter.Errorf("Account role '%s' is not compatible with version %s. "+
+			r.Reporter.Errorf("Account role '%s' is not compatible with version %s. "+
 				"Run 'rosa create account-roles' to create compatible roles and try again.",
 				ARN, version)
 			os.Exit(1)
@@ -934,20 +917,20 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
+				r.Reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
 				os.Exit(1)
 			}
 		}
 		if len(operatorRolesPrefix) == 0 {
-			reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
+			r.Reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
 			os.Exit(1)
 		}
 		if len(operatorRolesPrefix) > 32 {
-			reporter.Errorf("Expected a prefix with no more than 32 characters")
+			r.Reporter.Errorf("Expected a prefix with no more than 32 characters")
 			os.Exit(1)
 		}
 		if !aws.RoleNameRE.MatchString(operatorRolesPrefix) {
-			reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
+			r.Reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
 			os.Exit(1)
 		}
 	}
@@ -955,9 +938,9 @@ func run(cmd *cobra.Command, _ []string) {
 	operatorIAMRoles := args.operatorIAMRoles
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
-		credRequests, err := ocmClient.GetCredRequests()
+		credRequests, err := r.OCMClient.GetCredRequests()
 		if err != nil {
-			reporter.Errorf("Error getting operator credential request from OCM %s", err)
+			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 			os.Exit(1)
 		}
 		for _, operator := range credRequests {
@@ -965,7 +948,7 @@ func run(cmd *cobra.Command, _ []string) {
 			if operator.MinVersion() != "" {
 				isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(version), operator.MinVersion())
 				if err != nil {
-					reporter.Errorf("Error validating operator role '%s' version %s", operator.Name(), err)
+					r.Reporter.Errorf("Error validating operator role '%s' version %s", operator.Name(), err)
 					os.Exit(1)
 				}
 				if !isSupported {
@@ -985,13 +968,13 @@ func run(cmd *cobra.Command, _ []string) {
 			operatorIAMRoleList = []ocm.OperatorIAMRole{}
 			for _, role := range operatorIAMRoles {
 				if !strings.Contains(role, ",") {
-					reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
+					r.Reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
 						"list of name,namespace,role_arn")
 					os.Exit(1)
 				}
 				roleData := strings.Split(role, ",")
 				if len(roleData) != 3 {
-					reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
+					r.Reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
 						"list of name,namespace,role_arn")
 					os.Exit(1)
 				}
@@ -1007,7 +990,7 @@ func run(cmd *cobra.Command, _ []string) {
 			name := strings.SplitN(role.RoleARN, "/", 2)[1]
 			err := awsClient.ValidateRoleNameAvailable(name)
 			if err != nil {
-				reporter.Errorf("Error validating role: %v", err)
+				r.Reporter.Errorf("Error validating role: %v", err)
 				os.Exit(1)
 			}
 		}
@@ -1027,7 +1010,7 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid set of tags: %s", err)
+			r.Reporter.Errorf("Expected a valid set of tags: %s", err)
 			os.Exit(1)
 		}
 		tags = strings.Split(tagsInput, ",")
@@ -1035,13 +1018,13 @@ func run(cmd *cobra.Command, _ []string) {
 	if len(tags) > 0 {
 		duplicate, found := aws.HasDuplicateTagKey(tags)
 		if found {
-			reporter.Errorf("Invalid tags, user tag keys must be unique, duplicate key '%s' found", duplicate)
+			r.Reporter.Errorf("Invalid tags, user tag keys must be unique, duplicate key '%s' found", duplicate)
 			os.Exit(1)
 		}
 		for _, tag := range tags {
 			err := aws.UserTagValidator(tag)
 			if err != nil {
-				reporter.Errorf("%s", err)
+				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
 			t := strings.Split(tag, ":")
@@ -1058,7 +1041,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  multiAZ,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid multi-AZ value: %s", err)
+			r.Reporter.Errorf("Expected a valid multi-AZ value: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1066,13 +1049,13 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get AWS region
 	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
+		r.Reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
 
-	regionList, regionAZ, err := ocmClient.GetRegionList(multiAZ, roleARN, externalID)
+	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID)
 	if err != nil {
-		reporter.Errorf(fmt.Sprintf("%s", err))
+		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
 	if interactive.Enabled() {
@@ -1084,32 +1067,32 @@ func run(cmd *cobra.Command, _ []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid AWS region: %s", err)
+			r.Reporter.Errorf("Expected a valid AWS region: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	if region == "" {
-		reporter.Errorf("Expected a valid AWS region")
+		r.Reporter.Errorf("Expected a valid AWS region")
 		os.Exit(1)
 	} else {
 		if supportsMultiAZ, found := regionAZ[region]; found {
 			if !supportsMultiAZ && multiAZ {
-				reporter.Errorf("Region '%s' does not support multiple availability zones", region)
+				r.Reporter.Errorf("Region '%s' does not support multiple availability zones", region)
 				os.Exit(1)
 			}
 		} else {
-			reporter.Errorf("Region '%s' is not supported for this AWS account", region)
+			r.Reporter.Errorf("Region '%s' is not supported for this AWS account", region)
 			os.Exit(1)
 		}
 	}
 
 	awsClient, err = aws.NewClient().
 		Region(region).
-		Logger(logger).
+		Logger(r.Logger).
 		Build()
 	if err != nil {
-		reporter.Errorf("Failed to create awsClient: %s", err)
+		r.Reporter.Errorf("Failed to create awsClient: %s", err)
 		os.Exit(1)
 	}
 
@@ -1130,11 +1113,11 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  privateLink || (isSTS && args.private),
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid private-link value: %s", err)
+			r.Reporter.Errorf("Expected a valid private-link value: %s", err)
 			os.Exit(1)
 		}
 	} else if privateLink || (isSTS && private) {
-		reporter.Warnf("You are choosing to use AWS PrivateLink for your cluster. %s", privateLinkWarning)
+		r.Reporter.Warnf("You are choosing to use AWS PrivateLink for your cluster. %s", privateLinkWarning)
 		if !confirm.Confirm("use AWS PrivateLink for cluster '%s'", clusterName) {
 			os.Exit(0)
 		}
@@ -1144,7 +1127,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if privateLink {
 		private = true
 	} else if isSTS && private {
-		reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
+		r.Reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
 		os.Exit(1)
 	} else if !isSTS {
 		privateWarning := "You will not be able to access your cluster until " +
@@ -1156,11 +1139,11 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  private,
 			})
 			if err != nil {
-				reporter.Errorf("Expected a valid private value: %s", err)
+				r.Reporter.Errorf("Expected a valid private value: %s", err)
 				os.Exit(1)
 			}
 		} else if private {
-			reporter.Warnf("You are choosing to make your cluster private. %s", privateWarning)
+			r.Reporter.Warnf("You are choosing to make your cluster private. %s", privateWarning)
 			if !confirm.Confirm("set cluster '%s' as private", clusterName) {
 				os.Exit(0)
 			}
@@ -1168,7 +1151,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if isSTS && private && !privateLink {
-		reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
+		r.Reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
 		os.Exit(1)
 	}
 
@@ -1191,7 +1174,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Subnet IDs
 	subnetIDs := args.subnetIDs
 	subnetsProvided := len(subnetIDs) > 0
-	reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
+	r.Reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
 	if !useExistingVPC && !subnetsProvided && interactive.Enabled() {
 		existingVPCHelp := "To install into an existing VPC you need to ensure that your VPC is configured " +
 			"with two subnets for each availability zone that you want the cluster installed into. "
@@ -1205,7 +1188,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  useExistingVPC,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid value: %s", err)
+			r.Reporter.Errorf("Expected a valid value: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1214,7 +1197,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if useExistingVPC || subnetsProvided {
 		subnets, err := awsClient.GetSubnetIDs()
 		if err != nil {
-			reporter.Errorf("Failed to get the list of subnets: %s", err)
+			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
 		}
 
@@ -1233,7 +1216,7 @@ func run(cmd *cobra.Command, _ []string) {
 					}
 				}
 				if !verifiedSubnet {
-					reporter.Errorf("Could not find the following subnet provided: %s", subnetArg)
+					r.Reporter.Errorf("Could not find the following subnet provided: %s", subnetArg)
 					os.Exit(1)
 				}
 			}
@@ -1263,7 +1246,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  defaultOptions,
 			})
 			if err != nil {
-				reporter.Errorf("Expected valid subnet IDs: %s", err)
+				r.Reporter.Errorf("Expected valid subnet IDs: %s", err)
 				os.Exit(1)
 			}
 			for i, subnet := range subnetIDs {
@@ -1279,7 +1262,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	}
-	reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
+	r.Reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
 
 	enableCustomerManagedKey := args.enableCustomerManagedKey
 	kmsKeyARN := args.kmsKeyARN
@@ -1295,7 +1278,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Required: false,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid value for enable-customer-managed-key: %s", err)
+			r.Reporter.Errorf("Expected a valid value for enable-customer-managed-key: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1311,26 +1294,26 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
+			r.Reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	if kmsKeyARN != "" && !kmsArnRE.MatchString(kmsKeyARN) {
-		reporter.Errorf("Expected a valid value for kms-key-arn matching %s", kmsArnRE)
+		r.Reporter.Errorf("Expected a valid value for kms-key-arn matching %s", kmsArnRE)
 		os.Exit(1)
 	}
-	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := ocmClient.
+	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
 		GetDefaultClusterFlavors(args.flavour)
 	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
-		reporter.Errorf("Error retrieving default cluster flavors")
+		r.Reporter.Errorf("Error retrieving default cluster flavors")
 		os.Exit(1)
 	}
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
-	computeMachineTypeList, err := ocmClient.GetAvailableMachineTypes()
+	computeMachineTypeList, err := r.OCMClient.GetAvailableMachineTypes()
 	if err != nil {
-		reporter.Errorf(fmt.Sprintf("%s", err))
+		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
 	if computeMachineType == "" {
@@ -1344,13 +1327,13 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  computeMachineType,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid machine type: %s", err)
+			r.Reporter.Errorf("Expected a valid machine type: %s", err)
 			os.Exit(1)
 		}
 	}
 	err = computeMachineTypeList.ValidateMachineType(computeMachineType, multiAZ)
 	if err != nil {
-		reporter.Errorf("Expected a valid machine type: %s", err)
+		r.Reporter.Errorf("Expected a valid machine type: %s", err)
 		os.Exit(1)
 	}
 
@@ -1367,7 +1350,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Required: false,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
+			r.Reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1380,7 +1363,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if autoscaling {
 		// if the user set compute-nodes and enabled autoscaling
 		if isReplicasSet {
-			reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
+			r.Reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
 			os.Exit(1)
 		}
 
@@ -1403,13 +1386,13 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				reporter.Errorf("Expected a valid number of min replicas: %s", err)
+				r.Reporter.Errorf("Expected a valid number of min replicas: %s", err)
 				os.Exit(1)
 			}
 		}
 		err = minReplicaValidator(multiAZ)(minReplicas)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
@@ -1424,13 +1407,13 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				reporter.Errorf("Expected a valid number of max replicas: %s", err)
+				r.Reporter.Errorf("Expected a valid number of max replicas: %s", err)
 				os.Exit(1)
 			}
 		}
 		err = maxReplicaValidator(multiAZ, minReplicas)(maxReplicas)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
@@ -1444,7 +1427,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if !autoscaling {
 		// if the user set min/max replicas and hasn't enabled autoscaling
 		if isMinReplicasSet || isMaxReplicasSet {
-			reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
+			r.Reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
 			os.Exit(1)
 		}
 
@@ -1458,13 +1441,13 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				reporter.Errorf("Expected a valid number of compute nodes: %s", err)
+				r.Reporter.Errorf("Expected a valid number of compute nodes: %s", err)
 				os.Exit(1)
 			}
 		}
 		err = minReplicaValidator(multiAZ)(computeNodes)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
@@ -1472,7 +1455,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Validate all remaining flags:
 	expiration, err := validateExpiration()
 	if err != nil {
-		reporter.Errorf(fmt.Sprintf("%s", err))
+		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
 
@@ -1486,7 +1469,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  networkType,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid network type: %s", err)
+			r.Reporter.Errorf("Expected a valid network type: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1503,7 +1486,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  machineCIDR,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid CIDR value: %s", err)
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1520,7 +1503,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  serviceCIDR,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid CIDR value: %s", err)
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1536,7 +1519,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  podCIDR,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid CIDR value: %s", err)
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1556,13 +1539,13 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid host prefix value: %s", err)
+			r.Reporter.Errorf("Expected a valid host prefix value: %s", err)
 			os.Exit(1)
 		}
 	}
 	err = hostPrefixValidator(hostPrefix)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -1574,7 +1557,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  fips,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid fips value: %v", err)
+			r.Reporter.Errorf("Expected a valid fips value: %v", err)
 			os.Exit(1)
 		}
 	}
@@ -1587,13 +1570,13 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  etcdEncryption,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid etcd-encryption value: %v", err)
+			r.Reporter.Errorf("Expected a valid etcd-encryption value: %v", err)
 			os.Exit(1)
 		}
 	}
 	if fips {
 		if cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
-			reporter.Errorf("etcd encryption cannot be disabled on clusters with FIPS mode")
+			r.Reporter.Errorf("etcd encryption cannot be disabled on clusters with FIPS mode")
 			os.Exit(1)
 		} else {
 			etcdEncryption = true
@@ -1608,7 +1591,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  disableWorkloadMonitoring,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
+			r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
 			os.Exit(1)
 		}
 	}
@@ -1622,7 +1605,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default: enableProxy,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
+			r.Reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1637,13 +1620,13 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid http proxy: %s", err)
+			r.Reporter.Errorf("Expected a valid http proxy: %s", err)
 			os.Exit(1)
 		}
 	}
 	err = ocm.ValidateHTTPProxy(httpProxy)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -1657,13 +1640,13 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid https proxy: %s", err)
+			r.Reporter.Errorf("Expected a valid https proxy: %s", err)
 			os.Exit(1)
 		}
 	}
 	err = interactive.IsURL(httpsProxy)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -1678,7 +1661,7 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
+			r.Reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
 			os.Exit(1)
 		}
 		noProxySlice = strings.Split(noProxyInput, ",")
@@ -1687,20 +1670,20 @@ func run(cmd *cobra.Command, _ []string) {
 	if len(noProxySlice) > 0 {
 		duplicate, found := aws.HasDuplicates(noProxySlice)
 		if found {
-			reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
+			r.Reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
 			os.Exit(1)
 		}
 		for _, domain := range noProxySlice {
 			err := aws.UserNoProxyValidator(domain)
 			if err != nil {
-				reporter.Errorf("%s", err)
+				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
 		}
 	}
 
 	if httpProxy == "" && httpsProxy == "" && len(noProxySlice) > 0 {
-		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
+		r.Reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
 		os.Exit(1)
 	}
 
@@ -1714,13 +1697,13 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
+			r.Reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
 			os.Exit(1)
 		}
 	}
 	err = ocm.ValidateAdditionalTrustBundle(additionalTrustBundleFile)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -1729,7 +1712,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if additionalTrustBundleFile != "" {
 		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
 		if err != nil {
-			reporter.Errorf("Failed to read additional trust bundle file: %s", err)
+			r.Reporter.Errorf("Failed to read additional trust bundle file: %s", err)
 			os.Exit(1)
 		}
 		additionalTrustBundle = new(string)
@@ -1737,7 +1720,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if enableProxy && httpProxy == "" && httpsProxy == "" && additionalTrustBundleFile == "" {
-		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy, additional-trust-bundle")
+		r.Reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy, additional-trust-bundle")
 		os.Exit(1)
 	}
 
@@ -1813,35 +1796,35 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if !output.HasFlag() || reporter.IsTerminal() {
-		reporter.Infof("Creating cluster '%s'", clusterName)
+	if !output.HasFlag() || r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
 			command := buildCommand(clusterConfig, operatorRolesPrefix)
-			reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
+			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
-		reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
+		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 	}
 
-	_, err = ocmClient.CreateCluster(clusterConfig)
+	_, err = r.OCMClient.CreateCluster(clusterConfig)
 	if err != nil {
 		if args.dryRun {
-			reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)
+			r.Reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)
 		} else {
-			reporter.Errorf("Failed to create cluster: %s", err)
+			r.Reporter.Errorf("Failed to create cluster: %s", err)
 		}
 		os.Exit(1)
 	}
 
 	if args.dryRun {
-		reporter.Infof(
+		r.Reporter.Infof(
 			"Creating cluster '%s' should succeed. Run without the '--dry-run' flag to create the cluster.",
 			clusterName)
 		os.Exit(0)
 	}
 
-	if !output.HasFlag() || reporter.IsTerminal() {
-		reporter.Infof("Cluster '%s' has been created.", clusterName)
-		reporter.Infof(
+	if !output.HasFlag() || r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Cluster '%s' has been created.", clusterName)
+		r.Reporter.Infof(
 			"Once the cluster is installed you will need to add an Identity Provider " +
 				"before you can login into the cluster. See 'rosa create idp --help' " +
 				"for more information.")
@@ -1851,12 +1834,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if isSTS {
 		if mode != "" {
-			if !output.HasFlag() || reporter.IsTerminal() {
-				reporter.Infof("Preparing to create operator roles.")
+			if !output.HasFlag() || r.Reporter.IsTerminal() {
+				r.Reporter.Infof("Preparing to create operator roles.")
 			}
 			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
-			if !output.HasFlag() || reporter.IsTerminal() {
-				reporter.Infof("Preparing to create OIDC Provider.")
+			if !output.HasFlag() || r.Reporter.IsTerminal() {
+				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode})
 		} else {
@@ -1867,7 +1850,7 @@ func run(cmd *cobra.Command, _ []string) {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
 			}
 
-			reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
+			r.Reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
 				"\t%s\n"+
 				"\t%s\n",
 				rolesCMD, oidcCMD)
@@ -1876,12 +1859,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if args.watch {
 		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
-	} else if !output.HasFlag() || reporter.IsTerminal() {
-		reporter.Infof(
+	} else if !output.HasFlag() || r.Reporter.IsTerminal() {
+		r.Reporter.Infof(
 			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
 			clusterName,
 		)
-		reporter.Infof(
+		r.Reporter.Infof(
 			"To watch your cluster installation logs, run 'rosa logs install -c %s --watch'.",
 			clusterName,
 		)
@@ -1990,8 +1973,8 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 	return version, nil
 }
 
-func getVersionList(ocmClient *ocm.Client, channelGroup string, isSTS bool) (versionList []string, err error) {
-	vs, err := ocmClient.GetVersions(channelGroup)
+func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool) (versionList []string, err error) {
+	vs, err := r.OCMClient.GetVersions(channelGroup)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return

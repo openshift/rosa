@@ -25,10 +25,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/idp"
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 const (
@@ -61,63 +59,33 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
 	// Try to find an existing htpasswd identity provider and
 	// check if cluster-admin user already exists
-	existingHTPasswdIDP, existingUserList := idp.FindExistingHTPasswdIDP(cluster, ocmClient)
+	existingHTPasswdIDP, existingUserList := idp.FindExistingHTPasswdIDP(cluster, r.OCMClient)
 	if idp.HasClusterAdmin(existingUserList) {
-		reporter.Errorf("Cluster '%s' already has an admin", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' already has an admin", clusterKey)
 		os.Exit(1)
 	}
 
@@ -125,35 +93,35 @@ func run(cmd *cobra.Command, _ []string) {
 	var password string
 	passwordArg := args.passwordArg
 	if len(passwordArg) == 0 {
-		reporter.Debugf("Generating random password")
+		r.Reporter.Debugf("Generating random password")
 		password, err = generateRandomPassword(23)
 		if err != nil {
-			reporter.Errorf("Failed to generate a random password")
+			r.Reporter.Errorf("Failed to generate a random password")
 			os.Exit(1)
 		}
 	} else {
 		password = passwordArg
-		reporter.Debugf("Using user provided password")
+		r.Reporter.Debugf("Using user provided password")
 	}
 
 	// Add admin user to the cluster-admins group:
-	reporter.Debugf("Adding '%s' user to cluster '%s'", idp.ClusterAdminUsername, clusterKey)
+	r.Reporter.Debugf("Adding '%s' user to cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 	user, err := cmv1.NewUser().ID(idp.ClusterAdminUsername).Build()
 	if err != nil {
-		reporter.Errorf("Failed to create user '%s' for cluster '%s'", idp.ClusterAdminUsername, clusterKey)
+		r.Reporter.Errorf("Failed to create user '%s' for cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 		os.Exit(1)
 	}
 
-	_, err = ocmClient.CreateUser(cluster.ID(), "cluster-admins", user)
+	_, err = r.OCMClient.CreateUser(cluster.ID(), "cluster-admins", user)
 	if err != nil {
-		reporter.Errorf("Failed to add user '%s' to cluster '%s': %s",
+		r.Reporter.Errorf("Failed to add user '%s' to cluster '%s': %s",
 			idp.ClusterAdminUsername, clusterKey, err)
 		os.Exit(1)
 	}
 
 	// No HTPasswd IDP - create it with cluster-admin user.
 	if existingHTPasswdIDP == nil {
-		reporter.Debugf("Adding '%s' idp to cluster '%s'", idpName, clusterKey)
+		r.Reporter.Debugf("Adding '%s' idp to cluster '%s'", idpName, clusterKey)
 		htpasswdIDP := cmv1.NewHTPasswdIdentityProvider().Users(cmv1.NewHTPasswdUserList().Items(
 			idp.CreateHTPasswdUser(idp.ClusterAdminUsername, password),
 		))
@@ -163,34 +131,34 @@ func run(cmd *cobra.Command, _ []string) {
 			Htpasswd(htpasswdIDP).
 			Build()
 		if err != nil {
-			reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idpName, clusterKey)
+			r.Reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idpName, clusterKey)
 			os.Exit(1)
 		}
 
 		// Add HTPasswd IDP to cluster:
-		_, err = ocmClient.CreateIdentityProvider(cluster.ID(), newIDP)
+		_, err = r.OCMClient.CreateIdentityProvider(cluster.ID(), newIDP)
 		if err != nil {
-			reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s",
+			r.Reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s",
 				idpName, clusterKey, err)
 			os.Exit(1)
 		}
 	} else {
 		// HTPasswd IDP exists - add new cluster-admin user to it.
-		reporter.Debugf("Cluster has an HTPasswd IDP, will add cluster-admin to it")
-		err = ocmClient.AddHTPasswdUser(idp.ClusterAdminUsername, password, cluster.ID(), existingHTPasswdIDP.ID())
+		r.Reporter.Debugf("Cluster has an HTPasswd IDP, will add cluster-admin to it")
+		err = r.OCMClient.AddHTPasswdUser(idp.ClusterAdminUsername, password, cluster.ID(), existingHTPasswdIDP.ID())
 		if err != nil {
-			reporter.Errorf("Failed to add user '%s' to the HTPasswd IDP of cluster '%s': %s",
+			r.Reporter.Errorf("Failed to add user '%s' to the HTPasswd IDP of cluster '%s': %s",
 				idp.ClusterAdminUsername, clusterKey, err)
 			os.Exit(1)
 		}
 	}
 
-	reporter.Infof("Admin account has been added to cluster '%s'.", clusterKey)
-	reporter.Infof("Please securely store this generated password. " +
+	r.Reporter.Infof("Admin account has been added to cluster '%s'.", clusterKey)
+	r.Reporter.Infof("Please securely store this generated password. " +
 		"If you lose this password you can delete and recreate the cluster admin user.")
-	reporter.Infof("To login, run the following command:\n\n"+
+	r.Reporter.Infof("To login, run the following command:\n\n"+
 		"   oc login %s --username %s --password %s\n", cluster.API().URL(), idp.ClusterAdminUsername, password)
-	reporter.Infof("It may take up to a minute for the account to become active.")
+	r.Reporter.Infof("It may take up to a minute for the account to become active.")
 }
 
 func generateRandomPassword(length int) (string, error) {
