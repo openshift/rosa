@@ -115,6 +115,8 @@ func init() {
 		"",
 		fmt.Sprintf("Type of identity provider. Options are %s.", validIdps),
 	)
+	Cmd.RegisterFlagCompletionFunc("type", typeCompletion)
+
 	flags.StringVar(
 		&args.idpName,
 		"name",
@@ -294,6 +296,10 @@ func init() {
 	interactive.AddFlag(flags)
 	reporter = rprtr.CreateReporterOrExit()
 	logger = logging.NewLogger()
+}
+
+func typeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return validIdps, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, _ []string) {
