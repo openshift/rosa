@@ -365,7 +365,7 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, 
 		roleName := getRoleName(cluster, operator)
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
 		policyDetails := policies["operator_iam_role_policy"]
-		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator, policyDetails)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return "", err
 		}
@@ -415,7 +415,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 		policyDetails := policies["operator_iam_role_policy"]
 
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
-		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator, policyDetails)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}

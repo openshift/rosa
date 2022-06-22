@@ -291,7 +291,7 @@ func createRoles(r *rosa.Runtime,
 		}
 		policyDetails = policies["operator_iam_role_policy"]
 
-		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator, policyDetails)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}
@@ -360,7 +360,7 @@ func buildCommands(r *rosa.Runtime,
 		}
 
 		policyDetail := policies["operator_iam_role_policy"]
-		policy, err := aws.GenerateRolePolicyDoc(cluster, accountID, operator, policyDetail)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetail)
 		if err != nil {
 			return "", err
 		}
