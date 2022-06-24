@@ -2034,11 +2034,10 @@ func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.
 }
 
 func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
-	parsedARN, err := arn.Parse(roleARN)
+	roleName, err := aws.GetRoleNameFromARN(roleARN)
 	if err != nil {
 		return "", err
 	}
-	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
 }

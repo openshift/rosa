@@ -1297,8 +1297,11 @@ func (c *awsClient) AddRoleTag(roleName string, key string, value string) error 
 func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluster, accountID string, version string) (
 	bool, error) {
 	for _, operator := range cluster.AWS().STS().OperatorIAMRoles() {
-		roleName := strings.SplitN(operator.RoleARN(), "/", 2)[1]
-		_, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		roleName, err := GetRoleNameFromARN(operator.RoleARN())
+		if err != nil {
+			return false, err
+		}
+		_, err = c.iamClient.GetRole(&iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
@@ -1320,6 +1323,17 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluste
 		}
 	}
 	return false, nil
+}
+
+func GetRoleNameFromARN(roleARN string) (string, error) {
+	arn, err := arn.Parse(roleARN)
+	if err != nil {
+		return "", err
+	}
+	resource := arn.Resource
+	m := strings.LastIndex(resource, "/")
+	roleName := resource[m+1:]
+	return roleName, nil
 }
 
 func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix string, accountID string,

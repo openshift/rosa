@@ -396,15 +396,6 @@ func GetRoleARN(accountID string, name string) string {
 	return fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, name)
 }
 
-func GetOperatorRoleName(cluster *cmv1.Cluster, operator Operator) string {
-	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
-		if role.Namespace() == operator.Namespace && role.Name() == operator.Name {
-			return strings.SplitN(role.RoleARN(), "/", 2)[1]
-		}
-	}
-	return ""
-}
-
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
 	role := AccountRoles[InstallerAccountRole]
 	roleName, err := GetAccountRoleName(cluster)
@@ -413,13 +404,6 @@ func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
 	}
 	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
-}
-
-func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
-	operator := cluster.AWS().STS().OperatorIAMRoles()[0]
-	roleName := strings.SplitN(operator.RoleARN(), "/", 2)[1]
-	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-%s", operator.Namespace(), operator.Name()))
-	return rolePrefix
 }
 
 // Role names can be truncated if they are over 64 chars, so we need to make sure we aren't missing a truncated suffix
