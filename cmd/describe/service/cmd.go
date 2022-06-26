@@ -22,9 +22,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args ocm.DescribeManagedServiceArgs
@@ -52,36 +51,20 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	if args.ID == "" {
-		reporter.Errorf("id not specified.")
+		r.Reporter.Errorf("id not specified.")
 		cmd.Help()
 		os.Exit(1)
 	}
 
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
 	// Try to find the cluster:
-	reporter.Debugf("Loading service with id %q", args.ID)
-	service, err := ocmClient.GetManagedService(args)
+	r.Reporter.Debugf("Loading service with id %q", args.ID)
+	service, err := r.OCMClient.GetManagedService(args)
 	if err != nil {
-		reporter.Errorf("Failed to get service with id %q: %v", args.ID, err)
+		r.Reporter.Errorf("Failed to get service with id %q: %v", args.ID, err)
 		os.Exit(1)
 	}
 

@@ -23,10 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -64,64 +61,33 @@ func init() {
 }
 
 func run(_ *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	if args.clusterKey == "" {
-		reporter.Errorf(
+		r.Reporter.Errorf(
 			"Expected the cluster to be specified with the --cluster flag")
 		os.Exit(1)
 	}
 	if args.installationKey == "" {
-		reporter.Errorf(
+		r.Reporter.Errorf(
 			"Expected the add-on installation to be specified with the --addon flag")
 		os.Exit(1)
 	}
 
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM client: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM client: %v", err)
-		}
-	}()
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	if err := describeAddonInstallation(ocmClient, awsCreator, args.clusterKey, args.installationKey); err != nil {
-		reporter.Errorf("Failed to describe add-on installation: %v", err)
+	if err := describeAddonInstallation(r, args.clusterKey, args.installationKey); err != nil {
+		r.Reporter.Errorf("Failed to describe add-on installation: %v", err)
 		os.Exit(1)
 	}
 }
 
-func describeAddonInstallation(ocmClient *ocm.Client, awsCreator *aws.Creator,
-	clusterKey string, installationKey string) error {
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+func describeAddonInstallation(r *rosa.Runtime, clusterKey string, installationKey string) error {
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
 		return err
 	}
 
-	installation, err := ocmClient.GetAddOnInstallation(cluster.ID(), installationKey)
+	installation, err := r.OCMClient.GetAddOnInstallation(cluster.ID(), installationKey)
 	if err != nil {
 		return err
 	}
