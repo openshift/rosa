@@ -25,12 +25,10 @@ import (
 	"github.com/spf13/cobra"
 
 	uninstallLogs "github.com/openshift/rosa/cmd/logs/uninstall"
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -62,60 +60,30 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	if !confirm.Confirm("delete cluster %s", clusterKey) {
 		os.Exit(0)
 	}
 
-	reporter.Debugf("Deleting cluster '%s'", clusterKey)
-	cluster, err := ocmClient.DeleteCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Deleting cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.DeleteCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	reporter.Infof("Cluster '%s' will start uninstalling now", clusterKey)
+	r.Reporter.Infof("Cluster '%s' will start uninstalling now", clusterKey)
 
 	if cluster.AWS().STS().RoleARN() != "" {
 		interactive.Enable()
-		reporter.Infof(
+		r.Reporter.Infof(
 			"Your cluster '%s' will be deleted but the following objects may remain",
 			clusterKey,
 		)
@@ -126,10 +94,10 @@ func run(cmd *cobra.Command, _ []string) {
 					" - %s\n", str,
 					operatorIAMRole.RoleARN())
 			}
-			reporter.Infof("%s", str)
+			r.Reporter.Infof("%s", str)
 		}
-		reporter.Infof("OIDC Provider : %s\n", cluster.AWS().STS().OIDCEndpointURL())
-		reporter.Infof("Once the cluster is uninstalled use the following commands to remove the " +
+		r.Reporter.Infof("OIDC Provider : %s\n", cluster.AWS().STS().OIDCEndpointURL())
+		r.Reporter.Infof("Once the cluster is uninstalled use the following commands to remove the " +
 			"above aws resources.\n")
 		commands := buildCommands(cluster)
 		fmt.Print(commands, "\n")
@@ -137,7 +105,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if args.watch {
 		uninstallLogs.Cmd.Run(uninstallLogs.Cmd, []string{clusterKey})
 	} else {
-		reporter.Infof("To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",
+		r.Reporter.Infof("To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",
 			clusterKey,
 		)
 	}
