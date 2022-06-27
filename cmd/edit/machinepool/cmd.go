@@ -25,11 +25,10 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 // Regular expression to used to make sure that the identifier given by the
@@ -116,88 +115,58 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	machinePoolID := argv[0]
 	if machinePoolID != "Default" && !machinePoolKeyRE.MatchString(machinePoolID) {
-		reporter.Errorf("Expected a valid identifier for the machine pool")
+		r.Reporter.Errorf("Expected a valid identifier for the machine pool")
 		os.Exit(1)
 	}
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	// Editing the default machine pool is a different process
 	if machinePoolID == "Default" {
 		if cmd.Flags().Changed("labels") {
-			reporter.Errorf("Labels cannot be updated on the Default machine pool")
+			r.Reporter.Errorf("Labels cannot be updated on the Default machine pool")
 			os.Exit(1)
 		}
 		if cmd.Flags().Changed("taints") {
-			reporter.Errorf("Taints are not supported on the Default machine pool")
+			r.Reporter.Errorf("Taints are not supported on the Default machine pool")
 			os.Exit(1)
 		}
 
-		autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
+		autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, r.Reporter, machinePoolID,
 			cluster.Nodes().Compute(), cluster.Nodes().AutoscaleCompute())
 
 		if cluster.MultiAZ() {
 			if !autoscaling && replicas < 3 ||
 				(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 3) {
-				reporter.Errorf("Default machine pool for AZ cluster requires at least 3 compute nodes")
+				r.Reporter.Errorf("Default machine pool for AZ cluster requires at least 3 compute nodes")
 				os.Exit(1)
 			}
 
 			if !autoscaling && replicas%3 != 0 ||
 				(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0)) {
-				reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+				r.Reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
 				os.Exit(1)
 			}
 		} else if !autoscaling && replicas < 2 ||
 			(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 2) {
-			reporter.Errorf("Default machine pool requires at least 2 compute nodes")
+			r.Reporter.Errorf("Default machine pool requires at least 2 compute nodes")
 			os.Exit(1)
 		}
 
@@ -208,23 +177,23 @@ func run(cmd *cobra.Command, argv []string) {
 			MaxReplicas:  maxReplicas,
 		}
 
-		reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
-		err = ocmClient.UpdateCluster(clusterKey, awsCreator, clusterConfig)
+		r.Reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
+		err = r.OCMClient.UpdateCluster(clusterKey, r.Creator, clusterConfig)
 		if err != nil {
-			reporter.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
+			r.Reporter.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
 				machinePoolID, clusterKey, err)
 			os.Exit(1)
 		}
-		reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
+		r.Reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
 
 		os.Exit(0)
 	}
 
 	// Try to find the machine pool:
-	reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
-	machinePools, err := ocmClient.GetMachinePools(cluster.ID())
+	r.Reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
+	machinePools, err := r.OCMClient.GetMachinePools(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -235,23 +204,23 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 	if machinePool == nil {
-		reporter.Errorf("Failed to get machine pool '%s' for cluster '%s'", machinePoolID, clusterKey)
+		r.Reporter.Errorf("Failed to get machine pool '%s' for cluster '%s'", machinePoolID, clusterKey)
 		os.Exit(1)
 	}
 
-	autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, reporter, machinePoolID,
+	autoscaling, replicas, minReplicas, maxReplicas := getReplicas(cmd, r.Reporter, machinePoolID,
 		machinePool.Replicas(), machinePool.Autoscaling())
 
 	if !autoscaling && replicas < 0 ||
 		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 0) {
-		reporter.Errorf("The number of machine pool replicas needs to be a non-negative integer")
+		r.Reporter.Errorf("The number of machine pool replicas needs to be a non-negative integer")
 		os.Exit(1)
 	}
 
 	if cluster.MultiAZ() && isMultiAZMachinePool(machinePool) &&
 		(!autoscaling && replicas%3 != 0 ||
 			(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0))) {
-		reporter.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
+		r.Reporter.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
 		os.Exit(1)
 	}
 
@@ -272,7 +241,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Default:  labels,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -280,7 +249,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if labels != "" {
 		for _, label := range strings.Split(labels, ",") {
 			if !strings.Contains(label, "=") {
-				reporter.Errorf("Expected key=value format for labels")
+				r.Reporter.Errorf("Expected key=value format for labels")
 				os.Exit(1)
 			}
 			tokens := strings.Split(label, "=")
@@ -305,7 +274,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Default:  taints,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -313,7 +282,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if taints != "" {
 		for _, taint := range strings.Split(taints, ",") {
 			if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
-				reporter.Errorf("Expected key=value:scheduleType format for taints")
+				r.Reporter.Errorf("Expected key=value:scheduleType format for taints")
 				os.Exit(1)
 			}
 			tokens := strings.FieldsFunc(taint, Split)
@@ -351,18 +320,18 @@ func run(cmd *cobra.Command, argv []string) {
 
 	machinePool, err = mpBuilder.Build()
 	if err != nil {
-		reporter.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
-	_, err = ocmClient.UpdateMachinePool(cluster.ID(), machinePool)
+	r.Reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
+	_, err = r.OCMClient.UpdateMachinePool(cluster.ID(), machinePool)
 	if err != nil {
-		reporter.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
+		r.Reporter.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
 			machinePool.ID(), clusterKey, err)
 		os.Exit(1)
 	}
-	reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
+	r.Reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
 }
 
 func getReplicas(cmd *cobra.Command,
