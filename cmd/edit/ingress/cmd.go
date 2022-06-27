@@ -25,11 +25,9 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 // Regular expression to used to make sure that the identifier given by the
@@ -87,12 +85,12 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	ingressID := argv[0]
 	if !ingressKeyRE.MatchString(ingressID) {
-		reporter.Errorf(
+		r.Reporter.Errorf(
 			"Ingress  identifier '%s' isn't valid: it must contain only letters or digits",
 			ingressID,
 		)
@@ -101,7 +99,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -114,14 +112,14 @@ func run(cmd *cobra.Command, argv []string) {
 			Default:  labelMatch,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
 	}
 	if labelMatch != "" {
 		routeSelectors, err = getRouteSelector(labelMatch)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
@@ -136,52 +134,22 @@ func run(cmd *cobra.Command, argv []string) {
 			Default:  args.private,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid private value: %s", err)
+			r.Reporter.Errorf("Expected a valid private value: %s", err)
 			os.Exit(1)
 		}
 		private = &privArg
 	}
 
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.AWS().PrivateLink() {
-		reporter.Errorf("Cluster '%s' is PrivateLink and does not support updating ingresses", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is PrivateLink and does not support updating ingresses", clusterKey)
 		os.Exit(1)
 	}
 
@@ -191,9 +159,9 @@ func run(cmd *cobra.Command, argv []string) {
 			Private: private,
 		}
 
-		err = ocmClient.UpdateCluster(clusterKey, awsCreator, clusterConfig)
+		err = r.OCMClient.UpdateCluster(clusterKey, r.Creator, clusterConfig)
 		if err != nil {
-			reporter.Errorf("Failed to update cluster API on cluster '%s': %v", clusterKey, err)
+			r.Reporter.Errorf("Failed to update cluster API on cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 
@@ -201,10 +169,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Try to find the ingress:
-	reporter.Debugf("Loading ingresses for cluster '%s'", clusterKey)
-	ingresses, err := ocmClient.GetIngresses(cluster.ID())
+	r.Reporter.Debugf("Loading ingresses for cluster '%s'", clusterKey)
+	ingresses, err := r.OCMClient.GetIngresses(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -221,7 +189,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 	if ingress == nil {
-		reporter.Errorf("Failed to get ingress '%s' for cluster '%s'", ingressID, clusterKey)
+		r.Reporter.Errorf("Failed to get ingress '%s' for cluster '%s'", ingressID, clusterKey)
 		os.Exit(1)
 	}
 
@@ -243,18 +211,18 @@ func run(cmd *cobra.Command, argv []string) {
 
 	ingress, err = ingressBuilder.Build()
 	if err != nil {
-		reporter.Errorf("Failed to create ingress for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to create ingress for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	reporter.Debugf("Updating ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-	_, err = ocmClient.UpdateIngress(cluster.ID(), ingress)
+	r.Reporter.Debugf("Updating ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+	_, err = r.OCMClient.UpdateIngress(cluster.ID(), ingress)
 	if err != nil {
-		reporter.Errorf("Failed to update ingress '%s' on cluster '%s': %s",
+		r.Reporter.Errorf("Failed to update ingress '%s' on cluster '%s': %s",
 			ingress.ID(), clusterKey, err)
 		os.Exit(1)
 	}
-	reporter.Infof("Updated ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+	r.Reporter.Infof("Updated ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
 }
 
 func getRouteSelector(labelMatches string) (map[string]string, error) {
