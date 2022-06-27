@@ -28,9 +28,8 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
 
@@ -130,11 +129,12 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -152,54 +152,22 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	logger := logging.NewLogger()
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
-	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	// Validate flags:
 	expiration, err := validateExpiration()
 	if err != nil {
-		reporter.Errorf(fmt.Sprintf("%s", err))
+		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
 
 	if interactive.Enabled() {
-		reporter.Infof("Interactive mode enabled.\n" +
+		r.Reporter.Infof("Interactive mode enabled.\n" +
 			"Any optional fields can be ignored and will not be updated.")
 	}
 
@@ -245,7 +213,7 @@ func run(cmd *cobra.Command, _ []string) {
 		((httpProxy != nil && *httpProxy != "") || (httpsProxy != nil && *httpsProxy != "") ||
 			len(noProxySlice) > 0 ||
 			(additionalTrustBundleFile != nil && *additionalTrustBundleFile != "")) {
-		reporter.Errorf("Cluster-wide proxy is not supported on clusters using the default VPC")
+		r.Reporter.Errorf("Cluster-wide proxy is not supported on clusters using the default VPC")
 		os.Exit(1)
 	}
 
@@ -268,12 +236,12 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  privateValue,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid private value: %s", err)
+			r.Reporter.Errorf("Expected a valid private value: %s", err)
 			os.Exit(1)
 		}
 		private = &privateValue
 	} else if privateValue {
-		reporter.Warnf("You are choosing to make your cluster API private. %s", privateWarning)
+		r.Reporter.Warnf("You are choosing to make your cluster API private. %s", privateWarning)
 		if !confirm.Confirm("set cluster '%s' as private", clusterKey) {
 			os.Exit(0)
 		}
@@ -296,7 +264,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  disableWorkloadMonitoringValue,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
+			r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
 			os.Exit(1)
 		}
 		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
@@ -317,7 +285,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default: enableProxy,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
+			r.Reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
 			os.Exit(1)
 		}
 		enableProxy = enableProxyValue
@@ -351,7 +319,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  def,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid http proxy: %s", err)
+			r.Reporter.Errorf("Expected a valid http proxy: %s", err)
 			os.Exit(1)
 		}
 
@@ -369,7 +337,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if httpProxy != nil && *httpProxy != doubleQuotesToRemove {
 		err = ocm.ValidateHTTPProxy(*httpProxy)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
@@ -393,7 +361,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  def,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid https proxy: %s", err)
+			r.Reporter.Errorf("Expected a valid https proxy: %s", err)
 			os.Exit(1)
 		}
 		if len(httpsProxyValue) == 0 {
@@ -410,7 +378,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if httpsProxy != nil && *httpsProxy != doubleQuotesToRemove {
 		err = interactive.IsURL(*httpsProxy)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
@@ -427,26 +395,26 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
+			r.Reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
 			os.Exit(1)
 		}
 		noProxySlice = strings.Split(noProxyInput, ",")
 	}
 	if isExpectedHTTPProxyOrHTTPSProxy(httpProxy, httpsProxy, noProxySlice, cluster) {
-		reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
+		r.Reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
 		os.Exit(1)
 	}
 
 	if len(noProxySlice) > 0 {
 		duplicate, found := aws.HasDuplicates(noProxySlice)
 		if found {
-			reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
+			r.Reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
 			os.Exit(1)
 		}
 		for _, domain := range noProxySlice {
 			err := aws.UserNoProxyValidator(domain)
 			if err != nil {
-				reporter.Errorf("%s", err)
+				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
 		}
@@ -464,7 +432,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  updateAdditionalTrustBundle,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid -update-additional-trust-bundle value: %s", err)
+			r.Reporter.Errorf("Expected a valid -update-additional-trust-bundle value: %s", err)
 			os.Exit(1)
 		}
 		updateAdditionalTrustBundle = updateAdditionalTrustBundleValue
@@ -487,7 +455,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  def,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
+			r.Reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
 			os.Exit(1)
 		}
 
@@ -505,7 +473,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if additionalTrustBundleFile != nil && *additionalTrustBundleFile != doubleQuotesToRemove {
 		err = ocm.ValidateAdditionalTrustBundle(*additionalTrustBundleFile)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
@@ -535,7 +503,7 @@ func run(cmd *cobra.Command, _ []string) {
 			if len(*additionalTrustBundleFile) > 0 {
 				cert, err := ioutil.ReadFile(*additionalTrustBundleFile)
 				if err != nil {
-					reporter.Errorf("Failed to read additional trust bundle file: %s", err)
+					r.Reporter.Errorf("Failed to read additional trust bundle file: %s", err)
 					os.Exit(1)
 				}
 				*clusterConfig.AdditionalTrustBundle = string(cert)
@@ -543,13 +511,13 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	reporter.Debugf("Updating cluster '%s'", clusterKey)
-	err = ocmClient.UpdateCluster(clusterKey, awsCreator, clusterConfig)
+	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)
+	err = r.OCMClient.UpdateCluster(clusterKey, r.Creator, clusterConfig)
 	if err != nil {
-		reporter.Errorf("Failed to update cluster: %v", err)
+		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
 	}
-	reporter.Infof("Updated cluster '%s'", clusterKey)
+	r.Reporter.Infof("Updated cluster '%s'", clusterKey)
 }
 
 func validateExpiration() (expiration time.Time, err error) {
