@@ -30,9 +30,8 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -64,8 +63,8 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
 		args.clusterKey = argv[0]
@@ -73,7 +72,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -81,7 +80,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// is reasonably safe so that there is no risk of SQL injection:
 	clusterKey := args.clusterKey
 	if !ocm.IsValidClusterKey(clusterKey) {
-		reporter.Errorf(
+		r.Reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
 			clusterKey,
@@ -94,66 +93,38 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-	creator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get IAM credentials: %s", err)
-		os.Exit(1)
-	}
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	sub, err := ocmClient.GetClusterUsingSubscription(clusterKey, creator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	sub, err := r.OCMClient.GetClusterUsingSubscription(clusterKey, r.Creator)
 	if err != nil {
 		if errors.GetType(err) == errors.Conflict {
-			reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
+			r.Reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
 				"use cluster ID instead", clusterKey)
 			os.Exit(1)
 		}
-		reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 	clusterID := clusterKey
 	if sub != nil {
 		clusterID = sub.ClusterID()
 	}
-	c, err := ocmClient.GetClusterByID(clusterID, creator)
+	c, err := r.OCMClient.GetClusterByID(clusterID, r.Creator)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
-			reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 	}
 
 	if c != nil && c.ID() != "" {
-		reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
+		r.Reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
 			"uninstalled clusters", c.ID(), c.State())
 		os.Exit(1)
 	}
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		reporter.Errorf("Error getting environment %s", err)
+		r.Reporter.Errorf("Error getting environment %s", err)
 		os.Exit(1)
 	}
 	if env != "production" {
@@ -172,31 +143,31 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid operator role deletion mode: %s", err)
+			r.Reporter.Errorf("Expected a valid operator role deletion mode: %s", err)
 			os.Exit(1)
 		}
 	}
 	var spin *spinner.Spinner
-	if reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		reporter.Infof("Fetching operator roles for the cluster: %s", clusterKey)
+		r.Reporter.Infof("Fetching operator roles for the cluster: %s", clusterKey)
 		spin.Start()
 	}
 
-	credRequests, err := ocmClient.GetCredRequests()
+	credRequests, err := r.OCMClient.GetCredRequests()
 	if err != nil {
-		reporter.Errorf("Error getting operator credential request from OCM %s", err)
+		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 		os.Exit(1)
 	}
 
-	roles, err := awsClient.GetOperatorRolesFromAccount(sub.ClusterID(), credRequests)
+	roles, _ := r.AWSClient.GetOperatorRolesFromAccount(sub.ClusterID(), credRequests)
 	if len(roles) == 0 {
 		if spin != nil {
 			spin.Stop()
 		}
-		reporter.Infof("There are no operator roles to delete for the cluster '%s'", clusterKey)
+		r.Reporter.Infof("There are no operator roles to delete for the cluster '%s'", clusterKey)
 		return
 	}
 	if spin != nil {
@@ -205,32 +176,32 @@ func run(cmd *cobra.Command, argv []string) {
 
 	switch mode {
 	case aws.ModeAuto:
-		ocmClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
+		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
 		for _, role := range roles {
 			if !confirm.Prompt(true, "Delete the operator roles  '%s'?", role) {
 				continue
 			}
-			err = awsClient.DeleteOperatorRole(role)
+			err = r.AWSClient.DeleteOperatorRole(role)
 			if err != nil {
-				reporter.Errorf("There was an error deleting the Operator Roles: %s", err)
+				r.Reporter.Errorf("There was an error deleting the Operator Roles: %s", err)
 				continue
 			}
 		}
-		reporter.Infof("Successfully deleted the operator roles")
+		r.Reporter.Infof("Successfully deleted the operator roles")
 	case aws.ModeManual:
-		ocmClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
-		policyMap, err := awsClient.GetPolicies(roles)
+		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
+		policyMap, err := r.AWSClient.GetPolicies(roles)
 		if err != nil {
-			reporter.Errorf("There was an error getting the policy: %v", err)
+			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
 		commands := buildCommand(roles, policyMap)
-		if reporter.IsTerminal() {
-			reporter.Infof("Run the following commands to delete the Operator roles:\n")
+		if r.Reporter.IsTerminal() {
+			r.Reporter.Infof("Run the following commands to delete the Operator roles:\n")
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }
