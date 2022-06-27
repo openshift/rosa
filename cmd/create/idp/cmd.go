@@ -24,14 +24,11 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 type IdentityProvider interface {
@@ -98,8 +95,6 @@ var Cmd = &cobra.Command{
 	Run: run,
 }
 
-var reporter *rprtr.Object
-var logger *logrus.Logger
 var clusterKey string
 
 func init() {
@@ -292,57 +287,28 @@ func init() {
 	)
 
 	interactive.AddFlag(flags)
-	reporter = rprtr.CreateReporterOrExit()
-	logger = logging.NewLogger()
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
+
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
@@ -353,7 +319,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if interactive.Enabled() {
-		reporter.Infof("Interactive mode enabled.\n" +
+		r.Reporter.Infof("Interactive mode enabled.\n" +
 			"Any optional fields can be left empty and a default will be selected.")
 	}
 
@@ -368,12 +334,12 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  idpType,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid IdP type: %s", err)
+			r.Reporter.Errorf("Expected a valid IdP type: %s", err)
 			os.Exit(1)
 		}
 	}
 	if idpType == "" {
-		reporter.Errorf("Expected a valid IDP type. Options are: %s", strings.Join(validIdps, ","))
+		r.Reporter.Errorf("Expected a valid IDP type. Options are: %s", strings.Join(validIdps, ","))
 		os.Exit(1)
 	}
 
@@ -385,7 +351,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 		if !isValidIdp {
-			reporter.Errorf("Expected a valid IDP type. Options are %s", validIdps)
+			r.Reporter.Errorf("Expected a valid IDP type. Options are %s", validIdps)
 			os.Exit(1)
 		}
 	}
@@ -394,17 +360,17 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Auto-generate a name if none provided
 	if !cmd.Flags().Changed("name") {
-		idps := getIdps(ocmClient, cluster)
+		idps := getIdps(r, cluster)
 		idpName = GenerateIdpName(idpType, idps)
 	} else {
 		isValidIdpName := idRE.MatchString(idpName)
 		if !isValidIdpName {
-			reporter.Errorf("Invalid identifier '%s' for 'name'", idpName)
+			r.Reporter.Errorf("Invalid identifier '%s' for 'name'", idpName)
 			os.Exit(1)
 		}
 	}
 	if interactive.Enabled() && idpType != "htpasswd" {
-		idpName = getIDPName(cmd, idpName)
+		idpName = getIDPName(cmd, idpName, r)
 	}
 	idpName = strings.Trim(idpName, " \t")
 
@@ -417,7 +383,7 @@ func run(cmd *cobra.Command, _ []string) {
 	case "google":
 		idpBuilder, err = buildGoogleIdp(cmd, cluster, idpName)
 	case "htpasswd":
-		createHTPasswdIDP(cmd, cluster, clusterKey, idpName, ocmClient)
+		createHTPasswdIDP(cmd, cluster, clusterKey, idpName, r)
 		os.Exit(0)
 	case "ldap":
 		idpBuilder, err = buildLdapIdp(cmd, cluster, idpName)
@@ -425,14 +391,14 @@ func run(cmd *cobra.Command, _ []string) {
 		idpBuilder, err = buildOpenidIdp(cmd, cluster, idpName)
 	}
 	if err != nil {
-		reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	doCreateIDP(idpName, idpBuilder, cluster, clusterKey, ocmClient)
+	doCreateIDP(idpName, idpBuilder, cluster, clusterKey, r)
 }
 
-func getIDPName(cmd *cobra.Command, idpName string) string {
+func getIDPName(cmd *cobra.Command, idpName string, r *rosa.Runtime) string {
 	idpName, err := interactive.GetString(interactive.Input{
 		Question: "Identity provider name",
 		Help:     cmd.Flags().Lookup("name").Usage,
@@ -440,7 +406,7 @@ func getIDPName(cmd *cobra.Command, idpName string) string {
 		Required: true,
 	})
 	if err != nil {
-		reporter.Errorf("Expected a valid name for the identity provider: %s", err)
+		r.Reporter.Errorf("Expected a valid name for the identity provider: %s", err)
 		os.Exit(1)
 	}
 	return strings.Trim(idpName, " \t")
@@ -450,22 +416,22 @@ func doCreateIDP(
 	idpName string,
 	idpBuilder cmv1.IdentityProviderBuilder,
 	cluster *cmv1.Cluster, clusterKey string,
-	ocmClient *ocm.Client) *cmv1.IdentityProvider {
-	reporter.Infof("Configuring IDP for cluster '%s'", clusterKey)
+	r *rosa.Runtime) *cmv1.IdentityProvider {
+	r.Reporter.Infof("Configuring IDP for cluster '%s'", clusterKey)
 
 	idp, err := idpBuilder.Build()
 	if err != nil {
-		reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to create IDP for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	createdIdp, err := ocmClient.CreateIdentityProvider(cluster.ID(), idp)
+	createdIdp, err := r.OCMClient.CreateIdentityProvider(cluster.ID(), idp)
 	if err != nil {
-		reporter.Errorf("Failed to add IDP to cluster '%s': %s", clusterKey, err)
+		r.Reporter.Errorf("Failed to add IDP to cluster '%s': %s", clusterKey, err)
 		os.Exit(1)
 	}
 
-	reporter.Infof(
+	r.Reporter.Infof(
 		"Identity Provider '%s' has been created.\n"+
 			"   It will take up to 1 minute for this configuration to be enabled.\n"+
 			"   To add cluster administrators, see 'rosa grant user --help'.\n"+
@@ -522,13 +488,13 @@ func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) 
 	return mappingMethod, err
 }
 
-func getIdps(ocmClient *ocm.Client, cluster *cmv1.Cluster) []IdentityProvider {
+func getIdps(r *rosa.Runtime, cluster *cmv1.Cluster) []IdentityProvider {
 	// Load any existing IDPs for this cluster
-	reporter.Debugf("Loading identity providers for cluster '%s'", cluster.ID())
+	r.Reporter.Debugf("Loading identity providers for cluster '%s'", cluster.ID())
 
-	ocmIdps, err := ocmClient.GetIdentityProviders(cluster.ID())
+	ocmIdps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", cluster.ID(), err)
+		r.Reporter.Errorf("Failed to get identity providers for cluster '%s': %v", cluster.ID(), err)
 		os.Exit(1)
 	}
 	idps := []IdentityProvider{}
