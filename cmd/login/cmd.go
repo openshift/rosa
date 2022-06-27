@@ -27,9 +27,9 @@ import (
 
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 // #nosec G101
@@ -121,19 +121,18 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime()
 
 	// Check mandatory options:
 	if args.env == "" {
-		reporter.Errorf("Option '--env' is mandatory")
+		r.Reporter.Errorf("Option '--env' is mandatory")
 		os.Exit(1)
 	}
 
 	// Load the configuration file:
 	cfg, err := ocm.Load()
 	if err != nil {
-		reporter.Errorf("Failed to load config file: %v", err)
+		r.Reporter.Errorf("Failed to load config file: %v", err)
 		os.Exit(1)
 	}
 	if cfg == nil {
@@ -156,7 +155,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if !haveReqs {
 		armed, err := cfg.Armed()
 		if err != nil {
-			reporter.Errorf("Failed to verify configuration: %v", err)
+			r.Reporter.Errorf("Failed to verify configuration: %v", err)
 			os.Exit(1)
 		}
 		haveReqs = armed
@@ -170,14 +169,14 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Failed to parse token: %v", err)
+			r.Reporter.Errorf("Failed to parse token: %v", err)
 			os.Exit(1)
 		}
 		haveReqs = token != ""
 	}
 
 	if !haveReqs {
-		reporter.Errorf("Failed to login to OCM. See 'rosa login --help' for information.")
+		r.Reporter.Errorf("Failed to login to OCM. See 'rosa login --help' for information.")
 		os.Exit(1)
 	}
 
@@ -214,14 +213,14 @@ func run(cmd *cobra.Command, argv []string) {
 			// If a token has been provided parse it:
 			jwtToken, err := ocm.ParseToken(token)
 			if err != nil {
-				reporter.Errorf("Failed to parse token '%s': %v", token, err)
+				r.Reporter.Errorf("Failed to parse token '%s': %v", token, err)
 				os.Exit(1)
 			}
 
 			// Put the token in the place of the configuration that corresponds to its type:
 			typ, err := tokenType(jwtToken)
 			if err != nil {
-				reporter.Errorf("Failed to extract type from 'typ' claim of token '%s': %v", token, err)
+				r.Reporter.Errorf("Failed to extract type from 'typ' claim of token '%s': %v", token, err)
 				os.Exit(1)
 			}
 			switch typ {
@@ -232,36 +231,32 @@ func run(cmd *cobra.Command, argv []string) {
 				cfg.AccessToken = ""
 				cfg.RefreshToken = token
 			default:
-				reporter.Errorf("Don't know how to handle token type '%s' in token '%s'", typ, token)
+				r.Reporter.Errorf("Don't know how to handle token type '%s' in token '%s'", typ, token)
 				os.Exit(1)
 			}
 		}
 	}
 
 	// Create a connection and get the token to verify that the crendentials are correct:
-	ocmClient, err := ocm.NewClient().
+	r.OCMClient, err = ocm.NewClient().
 		Config(cfg).
-		Logger(logger).
+		Logger(r.Logger).
 		Build()
 	if err != nil {
 		if strings.Contains(err.Error(), "token needs to be updated") && !reAttempt {
 			reattemptLogin(cmd, argv)
 			return
 		} else {
-			reporter.Errorf("Failed to create OCM connection: %v", err)
+			r.Reporter.Errorf("Failed to create OCM connection: %v", err)
 			os.Exit(1)
 		}
 	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-	accessToken, refreshToken, err := ocmClient.GetConnectionTokens()
+	defer r.Cleanup()
+
+	accessToken, refreshToken, err := r.OCMClient.GetConnectionTokens()
 	if err != nil {
-		reporter.Errorf("Failed to get token. Your session might be expired: %v", err)
-		reporter.Infof("Get a new offline access token at %s", uiTokenPage)
+		r.Reporter.Errorf("Failed to get token. Your session might be expired: %v", err)
+		r.Reporter.Infof("Get a new offline access token at %s", uiTokenPage)
 		os.Exit(1)
 	}
 	reAttempt = false
@@ -270,18 +265,18 @@ func run(cmd *cobra.Command, argv []string) {
 	cfg.RefreshToken = refreshToken
 	err = ocm.Save(cfg)
 	if err != nil {
-		reporter.Errorf("Failed to save config file: %v", err)
+		r.Reporter.Errorf("Failed to save config file: %v", err)
 		os.Exit(1)
 	}
 
 	username, err := cfg.GetData("username")
 	if err != nil {
-		reporter.Errorf("Failed to get username: %v", err)
+		r.Reporter.Errorf("Failed to get username: %v", err)
 		os.Exit(1)
 	}
 
-	reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
-	ocmClient.LogEvent("ROSALoginSuccess", map[string]string{
+	r.Reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
+	r.OCMClient.LogEvent("ROSALoginSuccess", map[string]string{
 		ocm.Response: ocm.Success,
 		ocm.Username: username,
 		ocm.URL:      cfg.URL,
