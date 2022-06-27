@@ -26,9 +26,8 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
 
@@ -62,8 +61,8 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	// Determine if interactive mode is needed (if a prefix is not provided, fallback to interactive mode)
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") || args.prefix == "" {
@@ -72,47 +71,19 @@ func run(cmd *cobra.Command, _ []string) {
 
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		reporter.Errorf("Error getting environment %s", err)
+		r.Reporter.Errorf("Error getting environment %s", err)
 		os.Exit(1)
 	}
-	creator, err := awsClient.GetCreator()
+
+	clusters, err := r.OCMClient.GetAllClusters(r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get IAM credentials: %s", err)
-		os.Exit(1)
-	}
-	clusters, err := ocmClient.GetAllClusters(creator)
-	if err != nil {
-		reporter.Errorf("Error getting clusters %s", err)
+		r.Reporter.Errorf("Error getting clusters %s", err)
 		os.Exit(1)
 	}
 
@@ -129,27 +100,27 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid role prefix: %s", err)
+			r.Reporter.Errorf("Expected a valid role prefix: %s", err)
 			os.Exit(1)
 		}
 	}
 	if len(prefix) > 32 {
-		reporter.Errorf("Expected a prefix with no more than 32 characters")
+		r.Reporter.Errorf("Expected a prefix with no more than 32 characters")
 		os.Exit(1)
 	}
 	if !aws.RoleNameRE.MatchString(prefix) {
-		reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
+		r.Reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
 
 	finalRoleList := []string{}
-	roles, err := awsClient.GetAccountRoleForCurrentEnvWithPrefix(env, prefix)
+	roles, err := r.AWSClient.GetAccountRoleForCurrentEnvWithPrefix(env, prefix)
 	if err != nil {
-		reporter.Errorf("Error getting role: %s", err)
+		r.Reporter.Errorf("Error getting role: %s", err)
 		os.Exit(1)
 	}
 	if len(roles) == 0 {
-		reporter.Errorf("There are no roles to be deleted")
+		r.Reporter.Errorf("There are no roles to be deleted")
 		os.Exit(1)
 	}
 	for _, role := range roles {
@@ -158,24 +129,24 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		clusterID := checkIfRoleAssociated(clusters, role)
 		if clusterID != "" {
-			reporter.Errorf("Role %s is associated with the cluster %s", role.RoleName, clusterID)
+			r.Reporter.Errorf("Role %s is associated with the cluster %s", role.RoleName, clusterID)
 			os.Exit(1)
 		}
 		finalRoleList = append(finalRoleList, role.RoleName)
 	}
 
 	if len(finalRoleList) == 0 {
-		reporter.Errorf("There are no roles to be deleted")
+		r.Reporter.Errorf("There are no roles to be deleted")
 		os.Exit(1)
 	}
 	for _, role := range finalRoleList {
-		instanceProfiles, err := awsClient.GetInstanceProfilesForRole(role)
+		instanceProfiles, err := r.AWSClient.GetInstanceProfilesForRole(role)
 		if err != nil {
-			reporter.Errorf("Error checking for instance roles: %s", err)
+			r.Reporter.Errorf("Error checking for instance roles: %s", err)
 			os.Exit(1)
 		}
 		if len(instanceProfiles) > 0 {
-			reporter.Errorf("Instance Profiles are attached to the role. Please make sure it is deleted: %s",
+			r.Reporter.Errorf("Instance Profiles are attached to the role. Please make sure it is deleted: %s",
 				strings.Join(instanceProfiles, ","))
 			os.Exit(1)
 		}
@@ -190,39 +161,39 @@ func run(cmd *cobra.Command, _ []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid Account role deletion mode: %s", err)
+			r.Reporter.Errorf("Expected a valid Account role deletion mode: %s", err)
 			os.Exit(1)
 		}
 	}
 	switch mode {
 	case aws.ModeAuto:
-		ocmClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
+		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
 		for _, role := range finalRoleList {
 			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
 				continue
 			}
-			err := awsClient.DeleteAccountRole(role)
+			err := r.AWSClient.DeleteAccountRole(role)
 			if err != nil {
-				reporter.Errorf("There was an error deleting the account roles: %s", err)
+				r.Reporter.Errorf("There was an error deleting the account roles: %s", err)
 				continue
 			}
 		}
-		reporter.Infof("Successfully deleted the account roles")
+		r.Reporter.Infof("Successfully deleted the account roles")
 	case aws.ModeManual:
-		ocmClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
-		policyMap, err := awsClient.GetAccountRolePolicies(finalRoleList)
+		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
+		policyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList)
 		if err != nil {
-			reporter.Errorf("There was an error getting the policy: %v", err)
+			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
 		commands := buildCommand(finalRoleList, policyMap)
 
-		if reporter.IsTerminal() {
-			reporter.Infof("Run the following commands to delete the account roles:\n")
+		if r.Reporter.IsTerminal() {
+			r.Reporter.Infof("Run the following commands to delete the account roles:\n")
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }

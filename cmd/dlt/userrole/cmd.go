@@ -29,9 +29,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -64,20 +62,12 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-	awsClient := aws.CreateNewClientOrExit(logger, reporter)
-	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
-	defer func() {
-		err := ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -90,8 +80,8 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	if reporter.IsTerminal() {
-		reporter.Infof("Deleting user role")
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Deleting user role")
 	}
 
 	roleARN := args.roleARN
@@ -106,21 +96,21 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
+			r.Reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
 			os.Exit(1)
 		}
 	}
 	if roleARN != "" {
 		_, err := arn.Parse(roleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
+			r.Reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
 			os.Exit(1)
 		}
 	}
 
-	err = awsClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
+	err = r.AWSClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -128,15 +118,15 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	currentAccount, err := ocmClient.GetCurrentAccount()
+	currentAccount, err := r.OCMClient.GetCurrentAccount()
 	if err != nil {
-		reporter.Errorf("Error getting current account: %v", err)
+		r.Reporter.Errorf("Error getting current account: %v", err)
 		os.Exit(1)
 	}
 
-	linkedRoles, err := ocmClient.GetAccountLinkedUserRoles(currentAccount.ID())
+	linkedRoles, err := r.OCMClient.GetAccountLinkedUserRoles(currentAccount.ID())
 	if err != nil {
-		reporter.Errorf("An error occurred while trying to get the account linked roles")
+		r.Reporter.Errorf("An error occurred while trying to get the account linked roles")
 		os.Exit(1)
 	}
 	isLinked := helper.Contains(linkedRoles, roleARN)
@@ -150,59 +140,59 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid role deletion mode: %s", err)
+			r.Reporter.Errorf("Expected a valid role deletion mode: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	roleName, err := aws.RoleARNToRoleName(roleARN)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
-	isUserRole, err := awsClient.IsUserRole(&roleName)
+	isUserRole, err := r.AWSClient.IsUserRole(&roleName)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if !isUserRole {
-		reporter.Errorf("Role '%s' is not a user role", roleName)
+		r.Reporter.Errorf("Role '%s' is not a user role", roleName)
 		os.Exit(1)
 	}
 
 	switch mode {
 	case aws.ModeAuto:
-		ocmClient.LogEvent("ROSADeleteUserMRoleModeAuto", nil)
+		r.OCMClient.LogEvent("ROSADeleteUserMRoleModeAuto", nil)
 		if isLinked {
-			reporter.Warnf("Role ARN '%s' is linked to account '%s'",
+			r.Reporter.Warnf("Role ARN '%s' is linked to account '%s'",
 				roleARN, currentAccount.ID())
 			err = unlinkuserrole.Cmd.RunE(unlinkuserrole.Cmd, []string{roleARN})
 			if err != nil {
-				reporter.Errorf("Unable to unlink role ARN '%s' from account : '%s' : '%v'",
+				r.Reporter.Errorf("Unable to unlink role ARN '%s' from account : '%s' : '%v'",
 					roleARN, currentAccount.ID(), err)
 				os.Exit(1)
 			}
 		}
-		err := awsClient.DeleteUserRole(roleName)
+		err := r.AWSClient.DeleteUserRole(roleName)
 		if err != nil {
-			reporter.Errorf("There was an error deleting the user role: %s", err)
+			r.Reporter.Errorf("There was an error deleting the user role: %s", err)
 			os.Exit(1)
 		}
-		reporter.Infof("Successfully deleted the user role")
+		r.Reporter.Infof("Successfully deleted the user role")
 	case aws.ModeManual:
-		ocmClient.LogEvent("ROSADeleteUserMRoleModeManual", nil)
-		commands, err := buildCommands(roleName, roleARN, isLinked, awsClient)
+		r.OCMClient.LogEvent("ROSADeleteUserMRoleModeManual", nil)
+		commands, err := buildCommands(roleName, roleARN, isLinked, r.AWSClient)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		if reporter.IsTerminal() {
-			reporter.Infof("Run the following commands to delete the user role:\n")
+		if r.Reporter.IsTerminal() {
+			r.Reporter.Infof("Run the following commands to delete the user role:\n")
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }

@@ -30,9 +30,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -65,26 +63,18 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) error {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-	awsClient := aws.CreateNewClientOrExit(logger, reporter)
-	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
-	defer func() {
-		err := ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
-	orgID, _, err := ocmClient.GetCurrentOrganization()
+	orgID, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
-		reporter.Errorf("Error getting organization account: %v", err)
+		r.Reporter.Errorf("Error getting organization account: %v", err)
 		return err
 	}
 
@@ -97,8 +87,8 @@ func run(cmd *cobra.Command, argv []string) error {
 		interactive.Enable()
 	}
 
-	if reporter.IsTerminal() {
-		reporter.Infof("Deleting OCM role")
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Deleting OCM role")
 	}
 
 	roleARN := args.roleARN
@@ -118,27 +108,21 @@ func run(cmd *cobra.Command, argv []string) error {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
+			r.Reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
 			os.Exit(1)
 		}
 	}
 	if roleARN != "" {
 		_, err := arn.Parse(roleARN)
 		if err != nil {
-			reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
+			r.Reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
 			os.Exit(1)
 		}
 	}
 
-	err = awsClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
+	err = r.AWSClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
 	if err != nil {
-		reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-
-	creator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Unable to get IAM credentials: %s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -146,9 +130,9 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(0)
 	}
 
-	linkedRoles, err := ocmClient.GetOrganizationLinkedOCMRoles(orgID)
+	linkedRoles, err := r.OCMClient.GetOrganizationLinkedOCMRoles(orgID)
 	if err != nil {
-		reporter.Errorf("An error occurred while trying to get the organization linked roles: %s", err)
+		r.Reporter.Errorf("An error occurred while trying to get the organization linked roles: %s", err)
 		os.Exit(1)
 	}
 	isLinked := helper.Contains(linkedRoles, roleARN)
@@ -162,67 +146,67 @@ func run(cmd *cobra.Command, argv []string) error {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid OCM role deletion mode: %s", err)
+			r.Reporter.Errorf("Expected a valid OCM role deletion mode: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	roleName, err := aws.RoleARNToRoleName(roleARN)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	if !aws.IsOCMRole(&roleName) {
-		reporter.Errorf("Role '%s' is not an OCM role", roleName)
+		r.Reporter.Errorf("Role '%s' is not an OCM role", roleName)
 		os.Exit(1)
 	}
 
-	roleExistOnAWS, _, err := awsClient.CheckRoleExists(roleName)
+	roleExistOnAWS, _, err := r.AWSClient.CheckRoleExists(roleName)
 	if err != nil {
-		reporter.Errorf("%v", err)
+		r.Reporter.Errorf("%v", err)
 	}
 	if !roleExistOnAWS {
-		reporter.Warnf("ocm-role '%s' doesn't exist on the aws account %s", roleName, creator.AccountID)
+		r.Reporter.Warnf("ocm-role '%s' doesn't exist on the aws account %s", roleName, r.Creator.AccountID)
 	}
 
 	switch mode {
 	case aws.ModeAuto:
-		ocmClient.LogEvent("ROSADeleteOCMRoleModeAuto", nil)
+		r.OCMClient.LogEvent("ROSADeleteOCMRoleModeAuto", nil)
 		if isLinked {
-			reporter.Warnf("Role ARN '%s' is linked to organization '%s'", roleARN, orgID)
+			r.Reporter.Warnf("Role ARN '%s' is linked to organization '%s'", roleARN, orgID)
 			err = unlinkocmrole.Cmd.RunE(unlinkocmrole.Cmd, []string{roleARN})
 			if err != nil {
-				reporter.Errorf("Unable to unlink role ARN '%s' from organization : '%s' : %v",
+				r.Reporter.Errorf("Unable to unlink role ARN '%s' from organization : '%s' : %v",
 					roleARN, orgID, err)
 				os.Exit(1)
 			}
 		}
 		if roleExistOnAWS {
-			err := awsClient.DeleteOCMRole(roleName)
+			err := r.AWSClient.DeleteOCMRole(roleName)
 			if err != nil {
-				reporter.Errorf("There was an error deleting the OCM role: %s", err)
+				r.Reporter.Errorf("There was an error deleting the OCM role: %s", err)
 				os.Exit(1)
 			}
-			reporter.Infof("Successfully deleted the OCM role")
+			r.Reporter.Infof("Successfully deleted the OCM role")
 		}
 	case aws.ModeManual:
-		ocmClient.LogEvent("ROSADeleteOCMRoleModeManual", nil)
-		commands, err := buildCommands(roleName, roleARN, isLinked, awsClient, roleExistOnAWS)
+		r.OCMClient.LogEvent("ROSADeleteOCMRoleModeManual", nil)
+		commands, err := buildCommands(roleName, roleARN, isLinked, r.AWSClient, roleExistOnAWS)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		if reporter.IsTerminal() {
+		if r.Reporter.IsTerminal() {
 			if roleExistOnAWS {
-				reporter.Infof("Run the following commands to delete the OCM role:\n")
+				r.Reporter.Infof("Run the following commands to delete the OCM role:\n")
 			} else if isLinked {
-				reporter.Infof("Run the following commands to unlink the OCM role:\n")
+				r.Reporter.Infof("Run the following commands to unlink the OCM role:\n")
 			}
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 
