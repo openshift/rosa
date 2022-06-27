@@ -22,11 +22,9 @@ import (
 	"github.com/spf13/cobra"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -43,54 +41,24 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Get the cluster to check the state
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Hibernating a cluster is only supported for 'Ready' clusters."+
+		r.Reporter.Errorf("Hibernating a cluster is only supported for 'Ready' clusters."+
 			" Cluster '%s' is in '%s' state",
 			clusterKey, cluster.State())
 		os.Exit(1)
@@ -100,10 +68,10 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	err = ocmClient.HibernateCluster(cluster.ID())
+	err = r.OCMClient.HibernateCluster(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to update cluster: %v", err)
+		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
 	}
-	reporter.Infof("Cluster '%s' is hibernating.", clusterKey)
+	r.Reporter.Infof("Cluster '%s' is hibernating.", clusterKey)
 }
