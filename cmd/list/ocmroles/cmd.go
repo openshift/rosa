@@ -26,10 +26,8 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
 
@@ -48,61 +46,37 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	var spin *spinner.Spinner
-	if reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		reporter.Infof("Fetching ocm roles")
+		r.Reporter.Infof("Fetching ocm roles")
 		spin.Start()
 	}
 
-	ocmRoles, err := listOCMRoles(awsClient, ocmClient)
+	ocmRoles, err := listOCMRoles(r)
 
 	if spin != nil {
 		spin.Stop()
 	}
 
 	if err != nil {
-		reporter.Errorf("Failed to get ocm roles: %v", err)
+		r.Reporter.Errorf("Failed to get ocm roles: %v", err)
 		os.Exit(1)
 	}
 
 	if len(ocmRoles) == 0 {
-		reporter.Infof("No ocm roles available")
+		r.Reporter.Infof("No ocm roles available")
 		os.Exit(0)
 	}
 	if output.HasFlag() {
 		err = output.Print(ocmRoles)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -117,18 +91,18 @@ func run(_ *cobra.Command, _ []string) {
 	writer.Flush()
 }
 
-func listOCMRoles(awsClient aws.Client, ocmClient *ocm.Client) ([]aws.Role, error) {
-	ocmRoles, err := awsClient.ListOCMRoles()
+func listOCMRoles(r *rosa.Runtime) ([]aws.Role, error) {
+	ocmRoles, err := r.AWSClient.ListOCMRoles()
 	if err != nil {
 		return nil, err
 	}
 
 	// Check if roles are linked to organization
-	orgID, _, err := ocmClient.GetCurrentOrganization()
+	orgID, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization account: %v", err)
 	}
-	linkedRoles, err := ocmClient.GetOrganizationLinkedOCMRoles(orgID)
+	linkedRoles, err := r.OCMClient.GetOrganizationLinkedOCMRoles(orgID)
 	if err != nil {
 		return nil, err
 	}

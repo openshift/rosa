@@ -23,11 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -49,57 +46,27 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	// Retrieve the list of clusters:
-	clusters, err := ocmClient.GetClusters(awsCreator, 1000)
+	clusters, err := r.OCMClient.GetClusters(r.Creator, 1000)
 	if err != nil {
-		reporter.Errorf("Failed to get clusters: %v", err)
+		r.Reporter.Errorf("Failed to get clusters: %v", err)
 		os.Exit(1)
 	}
 
 	if output.HasFlag() {
 		err = output.Print(clusters)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
 	}
 
 	if len(clusters) == 0 {
-		reporter.Infof("No clusters available")
+		r.Reporter.Infof("No clusters available")
 		os.Exit(0)
 	}
 

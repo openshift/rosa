@@ -22,10 +22,8 @@ import (
 	"text/tabwriter"
 
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
 
@@ -51,31 +49,16 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	// Parse out CLI flags, then override positional arguments
 	// This allows for arbitrary flags used for addon parameters
 	_ = cmd.Flags().Parse(argv)
 
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
+	servicesList, err := r.OCMClient.ListManagedServices(1000)
 	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
-	servicesList, err := ocmClient.ListManagedServices(1000)
-	if err != nil {
-		reporter.Errorf("Failed to retrieve list of managed services: %v", err)
+		r.Reporter.Errorf("Failed to retrieve list of managed services: %v", err)
 		os.Exit(1)
 	}
 

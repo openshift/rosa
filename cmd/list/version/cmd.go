@@ -25,10 +25,9 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -57,29 +56,14 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	// Try to find the cluster:
-	reporter.Debugf("Fetching versions")
-	versions, err := ocmClient.GetVersions(args.channelGroup)
+	r.Reporter.Debugf("Fetching versions")
+	versions, err := r.OCMClient.GetVersions(args.channelGroup)
 	if err != nil {
-		reporter.Errorf("Failed to fetch versions: %v", err)
+		r.Reporter.Errorf("Failed to fetch versions: %v", err)
 		os.Exit(1)
 	}
 
@@ -94,14 +78,14 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if len(availableVersions) == 0 {
-		reporter.Warnf("There are no OpenShift versions available")
+		r.Reporter.Warnf("There are no OpenShift versions available")
 		os.Exit(1)
 	}
 
 	if output.HasFlag() {
 		err = output.Print(availableVersions)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		os.Exit(0)

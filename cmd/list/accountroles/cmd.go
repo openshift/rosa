@@ -25,11 +25,9 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -59,73 +57,49 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
+	versionList, err := ocm.GetVersionMinorList(r.OCMClient)
 	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
-	versionList, err := ocm.GetVersionMinorList(ocmClient)
-	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	_, err = ocm.ValidateVersion(args.version, versionList)
 	if err != nil {
-		reporter.Errorf("Version '%s' is invalid", args.version)
+		r.Reporter.Errorf("Version '%s' is invalid", args.version)
 		os.Exit(1)
 	}
 
 	var spin *spinner.Spinner
-	if reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		reporter.Infof("Fetching account roles")
+		r.Reporter.Infof("Fetching account roles")
 		spin.Start()
 	}
 
-	accountRoles, err := awsClient.ListAccountRoles(args.version)
+	accountRoles, err := r.AWSClient.ListAccountRoles(args.version)
 
 	if spin != nil {
 		spin.Stop()
 	}
 
 	if err != nil {
-		reporter.Errorf("Failed to get account roles: %v", err)
+		r.Reporter.Errorf("Failed to get account roles: %v", err)
 		os.Exit(1)
 	}
 
 	if len(accountRoles) == 0 {
-		reporter.Infof("No account roles available")
+		r.Reporter.Infof("No account roles available")
 		os.Exit(0)
 	}
 	if output.HasFlag() {
 		err = output.Print(accountRoles)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		os.Exit(0)

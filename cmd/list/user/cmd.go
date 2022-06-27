@@ -25,10 +25,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -46,64 +44,34 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
 	var clusterAdmins []*cmv1.User
-	reporter.Debugf("Loading users for cluster '%s'", clusterKey)
+	r.Reporter.Debugf("Loading users for cluster '%s'", clusterKey)
 	// Load cluster-admins for this cluster
-	clusterAdmins, err = ocmClient.GetUsers(cluster.ID(), "cluster-admins")
+	clusterAdmins, err = r.OCMClient.GetUsers(cluster.ID(), "cluster-admins")
 	if err != nil {
-		reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 	// Remove cluster-admin user
@@ -114,14 +82,14 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Load dedicated-admins for this cluster
-	dedicatedAdmins, err := ocmClient.GetUsers(cluster.ID(), "dedicated-admins")
+	dedicatedAdmins, err := r.OCMClient.GetUsers(cluster.ID(), "dedicated-admins")
 	if err != nil {
-		reporter.Errorf("Failed to get dedicated-admins for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get dedicated-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if len(clusterAdmins) == 0 && len(dedicatedAdmins) == 0 {
-		reporter.Warnf("There are no users configured for cluster '%s'", clusterKey)
+		r.Reporter.Warnf("There are no users configured for cluster '%s'", clusterKey)
 		os.Exit(1)
 	}
 
