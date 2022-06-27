@@ -30,9 +30,8 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -84,48 +83,18 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		reporter.Errorf("Failed to determine OCM environment: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	creator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Unable to get IAM credentials: %s", err)
+		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
 		os.Exit(1)
 	}
 
@@ -134,8 +103,8 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	if reporter.IsTerminal() {
-		reporter.Infof("Creating ocm role")
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Creating ocm role")
 	}
 
 	prefix := args.prefix
@@ -151,16 +120,16 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid role prefix: %s", err)
+			r.Reporter.Errorf("Expected a valid role prefix: %s", err)
 			os.Exit(1)
 		}
 	}
 	if len(prefix) > 32 {
-		reporter.Errorf("Expected a prefix with no more than 32 characters")
+		r.Reporter.Errorf("Expected a prefix with no more than 32 characters")
 		os.Exit(1)
 	}
 	if !aws.RoleNameRE.MatchString(prefix) {
-		reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
+		r.Reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
 
@@ -174,7 +143,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: false,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid --admin value: %s", err)
+			r.Reporter.Errorf("Expected a valid --admin value: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -190,14 +159,14 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
+			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
 			os.Exit(1)
 		}
 	}
 	if permissionsBoundary != "" {
 		_, err := arn.Parse(permissionsBoundary)
 		if err != nil {
-			reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
+			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -211,81 +180,81 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid role creation mode: %s", err)
+			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	// Get current OCM org account:
-	orgID, externalID, err := ocmClient.GetCurrentOrganization()
+	orgID, externalID, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
-		reporter.Errorf("Failed to get organization account: %v", err)
+		r.Reporter.Errorf("Failed to get organization account: %v", err)
 		os.Exit(1)
 	}
 
 	roleNameRequested := aws.GetOCMRoleName(prefix, aws.OCMRole, externalID)
 
-	existsOnOCM, _, selectedARN, err := ocmClient.CheckRoleExists(orgID, roleNameRequested, creator.AccountID)
+	existsOnOCM, _, selectedARN, err := r.OCMClient.CheckRoleExists(orgID, roleNameRequested, r.Creator.AccountID)
 
 	if err != nil {
-		reporter.Errorf("Error checking existing ocm-role: %v", err)
+		r.Reporter.Errorf("Error checking existing ocm-role: %v", err)
 		os.Exit(1)
 	}
 	if existsOnOCM {
-		reporter.Errorf("Only one ocm-role can be created per AWS account '%s' per organization '%s'.\n"+
+		r.Reporter.Errorf("Only one ocm-role can be created per AWS account '%s' per organization '%s'.\n"+
 			"In order to create a new ocm-role, you have to unlink the ocm-role '%s'.\n",
-			creator.AccountID, orgID, selectedARN)
+			r.Creator.AccountID, orgID, selectedARN)
 		os.Exit(1)
 	}
 
-	policies, err := ocmClient.GetPolicies("OCMRole")
+	policies, err := r.OCMClient.GetPolicies("OCMRole")
 	if err != nil {
-		reporter.Errorf("Expected a valid role creation mode: %s", err)
+		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 		os.Exit(1)
 	}
 
 	switch mode {
 	case aws.ModeAuto:
-		reporter.Infof("Creating role using '%s'", creator.ARN)
-		roleARN, err := createRoles(reporter, awsClient, prefix, roleNameRequested, permissionsBoundary, creator.AccountID,
+		r.Reporter.Infof("Creating role using '%s'", r.Creator.ARN)
+		roleARN, err := createRoles(r, prefix, roleNameRequested, permissionsBoundary, r.Creator.AccountID,
 			orgID, env, isAdmin, policies)
 		if err != nil {
-			reporter.Errorf("There was an error creating the ocm role: %s", err)
-			ocmClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
+			r.Reporter.Errorf("There was an error creating the ocm role: %s", err)
+			r.OCMClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
 				ocm.Response: ocm.Failure,
 			})
 			os.Exit(1)
 		}
-		ocmClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
+		r.OCMClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 		})
 		err = linkocmrole.Cmd.RunE(linkocmrole.Cmd, []string{roleARN})
 		if err != nil {
-			reporter.Errorf("Unable to link role arn '%s' with the organization account id : '%s' : %v",
+			r.Reporter.Errorf("Unable to link role arn '%s' with the organization account id : '%s' : %v",
 				roleARN, orgID, err)
 		}
 	case aws.ModeManual:
-		ocmClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{})
-		_, _, err = checkRoleExists(reporter, awsClient, roleNameRequested, isAdmin, aws.ModeManual)
+		r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{})
+		_, _, err = checkRoleExists(r, roleNameRequested, isAdmin, aws.ModeManual)
 		if err != nil {
-			reporter.Warnf("Creating ocm role '%s' should fail: %s", roleNameRequested, err)
+			r.Reporter.Warnf("Creating ocm role '%s' should fail: %s", roleNameRequested, err)
 		}
-		err = generateOcmRolePolicyFiles(reporter, env, orgID, isAdmin, policies)
+		err = generateOcmRolePolicyFiles(r, env, orgID, isAdmin, policies)
 		if err != nil {
-			reporter.Errorf("There was an error generating the policy files: %s", err)
-			ocmClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{
+			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
+			r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{
 				ocm.Response: ocm.Failure,
 			})
 			os.Exit(1)
 		}
-		if reporter.IsTerminal() {
-			reporter.Infof("All policy files saved to the current directory")
-			reporter.Infof("Run the following commands to create the ocm role and policies:\n")
+		if r.Reporter.IsTerminal() {
+			r.Reporter.Infof("All policy files saved to the current directory")
+			r.Reporter.Infof("Run the following commands to create the ocm role and policies:\n")
 		}
-		commands := buildCommands(prefix, roleNameRequested, permissionsBoundary, creator.AccountID, env, isAdmin)
+		commands := buildCommands(prefix, roleNameRequested, permissionsBoundary, r.Creator.AccountID, env, isAdmin)
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }
@@ -351,7 +320,7 @@ func buildCommands(prefix string, roleName string, permissionsBoundary string,
 	return strings.Join(commands, "\n\n")
 }
 
-func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, roleName string,
+func createRoles(r *rosa.Runtime, prefix string, roleName string,
 	permissionsBoundary string, accountID string, orgID string, env string, isAdmin bool,
 	policies map[string]string) (string, error) {
 	policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName))
@@ -365,7 +334,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ro
 		"ocm_organization_id": orgID,
 	})
 
-	roleARN, exists, err := checkRoleExists(reporter, awsClient, roleName, isAdmin, aws.ModeAuto)
+	roleARN, exists, err := checkRoleExists(r, roleName, isAdmin, aws.ModeAuto)
 	if err != nil {
 		return "", err
 	}
@@ -380,19 +349,19 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ro
 	}
 
 	if !exists {
-		reporter.Debugf("Creating role '%s'", roleName)
+		r.Reporter.Debugf("Creating role '%s'", roleName)
 
-		roleARN, err = awsClient.EnsureRole(roleName, policy, permissionsBoundary,
+		roleARN, err = r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary,
 			"", iamTags)
 		if err != nil {
 			return "", err
 		}
-		reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
+		r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 
 		// create and attach the permission policy to the role
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
 		policyDetail = policies[filename]
-		err = createPermissionPolicy(reporter, awsClient, policyARN, iamTags, roleName, policyDetail)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, policyDetail)
 		if err != nil {
 			return "", err
 		}
@@ -400,7 +369,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ro
 
 	if isAdmin {
 		// tag role with admin tag
-		err = awsClient.AddRoleTag(roleName, tags.AdminRole, "true")
+		err = r.AWSClient.AddRoleTag(roleName, tags.AdminRole, "true")
 		if err != nil {
 			return "", err
 		}
@@ -410,7 +379,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ro
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMAdminRolePolicyFile)
 		iamTags[tags.AdminRole] = "true"
 		policyDetail = policies[filename]
-		err = createPermissionPolicy(reporter, awsClient, policyARN, iamTags, roleName, policyDetail)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, policyDetail)
 		if err != nil {
 			return "", err
 		}
@@ -419,7 +388,7 @@ func createRoles(reporter *rprtr.Object, awsClient aws.Client, prefix string, ro
 	return roleARN, nil
 }
 
-func generateOcmRolePolicyFiles(reporter *rprtr.Object, env string, orgID string, isAdmin bool,
+func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdmin bool,
 	policies map[string]string) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 
@@ -428,7 +397,7 @@ func generateOcmRolePolicyFiles(reporter *rprtr.Object, env string, orgID string
 		"aws_account_id":      aws.JumpAccounts[env],
 		"ocm_organization_id": orgID,
 	})
-	reporter.Debugf("Saving '%s' to the current directory", filename)
+	r.Reporter.Debugf("Saving '%s' to the current directory", filename)
 	filename = aws.GetFormattedFileName(filename)
 	err := helper.SaveDocument(policy, filename)
 	if err != nil {
@@ -437,7 +406,7 @@ func generateOcmRolePolicyFiles(reporter *rprtr.Object, env string, orgID string
 	filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
 	policyDetail = policies[filename]
 	filename = aws.GetFormattedFileName(filename)
-	reporter.Debugf("Saving '%s' to the current directory", filename)
+	r.Reporter.Debugf("Saving '%s' to the current directory", filename)
 	err = helper.SaveDocument(policyDetail, filename)
 	if err != nil {
 		return err
@@ -447,7 +416,7 @@ func generateOcmRolePolicyFiles(reporter *rprtr.Object, env string, orgID string
 		filename = fmt.Sprintf("sts_%s_admin_permission_policy", aws.OCMRolePolicyFile)
 		policyDetail = policies[filename]
 		filename = aws.GetFormattedFileName(filename)
-		reporter.Debugf("Saving '%s' to the current directory", filename)
+		r.Reporter.Debugf("Saving '%s' to the current directory", filename)
 		err = helper.SaveDocument(policyDetail, filename)
 		if err != nil {
 			return err
@@ -456,17 +425,17 @@ func generateOcmRolePolicyFiles(reporter *rprtr.Object, env string, orgID string
 	return nil
 }
 
-func createPermissionPolicy(reporter *rprtr.Object, awsClient aws.Client, policyARN string,
+func createPermissionPolicy(r *rosa.Runtime, policyARN string,
 	iamTags map[string]string, roleName string, policyDetail string) error {
 
-	reporter.Debugf("Creating permission policy '%s'", policyARN)
-	policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetail, "", iamTags)
+	r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
+	policyARN, err := r.AWSClient.EnsurePolicy(policyARN, policyDetail, "", iamTags)
 	if err != nil {
 		return err
 	}
 
-	reporter.Debugf("Attaching permission policy to role '%s'", roleName)
-	err = awsClient.AttachRolePolicy(roleName, policyARN)
+	r.Reporter.Debugf("Attaching permission policy to role '%s'", roleName)
+	err = r.AWSClient.AttachRolePolicy(roleName, policyARN)
 	if err != nil {
 		return err
 	}
@@ -474,18 +443,18 @@ func createPermissionPolicy(reporter *rprtr.Object, awsClient aws.Client, policy
 	return nil
 }
 
-func checkRoleExists(reporter *rprtr.Object, awsClient aws.Client, roleName string, isAdmin bool,
+func checkRoleExists(r *rosa.Runtime, roleName string, isAdmin bool,
 	mode string) (string, bool, error) {
-	exists, roleARN, err := awsClient.CheckRoleExists(roleName)
+	exists, roleARN, err := r.AWSClient.CheckRoleExists(roleName)
 	if err != nil {
 		return "", false, err
 	}
 	if exists {
-		isExistingRoleAdmin, err := awsClient.IsAdminRole(roleName)
+		isExistingRoleAdmin, err := r.AWSClient.IsAdminRole(roleName)
 		if err != nil {
 			return "", true, err
 		}
-		reporter.Warnf("Role '%s' already exists", roleName)
+		r.Reporter.Warnf("Role '%s' already exists", roleName)
 
 		if !isAdmin {
 			if isExistingRoleAdmin {
