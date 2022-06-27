@@ -33,10 +33,9 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -60,8 +59,8 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	// Allow the command to be called programmatically
 	skipInteractive := false
@@ -76,13 +75,13 @@ func run(cmd *cobra.Command, argv []string) {
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -91,46 +90,16 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	creator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get IAM credentials: %s", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, creator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.AWS().STS().RoleARN() == "" {
-		reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
 		os.Exit(1)
 	}
 
@@ -143,7 +112,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
+			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -151,89 +120,89 @@ func run(cmd *cobra.Command, argv []string) {
 	switch mode {
 	case aws.ModeAuto:
 		if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
-			reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
+			r.Reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 				clusterKey, cluster.State())
 			os.Exit(0)
 		}
 		oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
-		oidcProviderExists, err := awsClient.HasOpenIDConnectProvider(oidcEndpointURL, creator.AccountID)
+		oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
 		if err != nil {
 			if strings.Contains(err.Error(), "AccessDenied") {
-				reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
+				r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
 			} else {
-				reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
+				r.Reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
 				os.Exit(1)
 			}
 		}
 		if oidcProviderExists {
-			reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
+			r.Reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
 				"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
 			os.Exit(1)
 		}
-		if !output.HasFlag() || reporter.IsTerminal() {
-			reporter.Infof("Creating OIDC provider using '%s'", creator.ARN)
+		if !output.HasFlag() || r.Reporter.IsTerminal() {
+			r.Reporter.Infof("Creating OIDC provider using '%s'", r.Creator.ARN)
 		}
 		if !confirm.Prompt(true, "Create the OIDC provider for cluster '%s'?", clusterKey) {
 			os.Exit(0)
 		}
-		err = createProvider(reporter, awsClient, cluster)
+		err = createProvider(r, cluster)
 		if err != nil {
-			reporter.Errorf("There was an error creating the OIDC provider: %s", err)
-			ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
+			r.Reporter.Errorf("There was an error creating the OIDC provider: %s", err)
+			r.OCMClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
 				ocm.ClusterID: clusterKey,
 				ocm.Response:  ocm.Failure,
 			})
 			os.Exit(1)
 		}
-		ocmClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
+		r.OCMClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
 			ocm.ClusterID: clusterKey,
 			ocm.Response:  ocm.Success,
 		})
 	case aws.ModeManual:
 
-		commands, err := buildCommands(reporter, cluster)
+		commands, err := buildCommands(r, cluster)
 		if err != nil {
-			reporter.Errorf("There was an error building the list of resources: %s", err)
+			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
-			ocmClient.LogEvent("ROSACreateOIDCProviderModeManual", map[string]string{
+			r.OCMClient.LogEvent("ROSACreateOIDCProviderModeManual", map[string]string{
 				ocm.ClusterID: clusterKey,
 				ocm.Response:  ocm.Failure,
 			})
 		}
-		if reporter.IsTerminal() {
-			reporter.Infof("Run the following commands to create the OIDC provider:\n")
+		if r.Reporter.IsTerminal() {
+			r.Reporter.Infof("Run the following commands to create the OIDC provider:\n")
 		}
-		ocmClient.LogEvent("ROSACreateOIDCProviderModeManual", map[string]string{
+		r.OCMClient.LogEvent("ROSACreateOIDCProviderModeManual", map[string]string{
 			ocm.ClusterID: clusterKey,
 		})
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }
 
-func createProvider(reporter *rprtr.Object, awsClient aws.Client, cluster *cmv1.Cluster) error {
+func createProvider(r *rosa.Runtime, cluster *cmv1.Cluster) error {
 	oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
 
 	thumbprint, err := getThumbprint(oidcEndpointURL)
 	if err != nil {
 		return err
 	}
-	reporter.Debugf("Using thumbprint '%s'", thumbprint)
+	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint)
 
-	oidcProviderARN, err := awsClient.CreateOpenIDConnectProvider(oidcEndpointURL, thumbprint, cluster.ID())
+	oidcProviderARN, err := r.AWSClient.CreateOpenIDConnectProvider(oidcEndpointURL, thumbprint, cluster.ID())
 	if err != nil {
 		return err
 	}
-	if !output.HasFlag() || reporter.IsTerminal() {
-		reporter.Infof("Created OIDC provider with ARN '%s'", oidcProviderARN)
+	if !output.HasFlag() || r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Created OIDC provider with ARN '%s'", oidcProviderARN)
 	}
 
 	return nil
 }
 
-func buildCommands(reporter *rprtr.Object, cluster *cmv1.Cluster) (string, error) {
+func buildCommands(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) {
 	commands := []string{}
 
 	oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
@@ -242,7 +211,7 @@ func buildCommands(reporter *rprtr.Object, cluster *cmv1.Cluster) (string, error
 	if err != nil {
 		return "", err
 	}
-	reporter.Debugf("Using thumbprint '%s'", thumbprint)
+	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint)
 
 	tag := fmt.Sprintf(
 		"Key=%s,Value=%s",
