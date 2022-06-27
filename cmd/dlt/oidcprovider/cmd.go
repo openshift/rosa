@@ -24,9 +24,8 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 )
@@ -50,63 +49,35 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
+
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 	}
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	creator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get IAM credentials: %s", err)
-		os.Exit(1)
-	}
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	sub, err := ocmClient.GetClusterUsingSubscription(clusterKey, creator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	sub, err := r.OCMClient.GetClusterUsingSubscription(clusterKey, r.Creator)
 	if err != nil {
 		if errors.GetType(err) == errors.Conflict {
-			reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
+			r.Reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
 				"use cluster ID instead", clusterKey)
 			os.Exit(1)
 		}
-		reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -114,26 +85,26 @@ func run(cmd *cobra.Command, argv []string) {
 	if sub != nil {
 		clusterID = sub.ClusterID()
 	}
-	c, err := ocmClient.GetClusterByID(clusterID, creator)
+	c, err := r.OCMClient.GetClusterByID(clusterID, r.Creator)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
-			reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 	}
 	if c != nil && c.ID() != "" {
-		reporter.Errorf("Cluster '%s' is in '%s' state. OIDC provider can be deleted only for the "+
+		r.Reporter.Errorf("Cluster '%s' is in '%s' state. OIDC provider can be deleted only for the "+
 			"uninstalled clusters", c.ID(), c.State())
 		os.Exit(1)
 	}
 
-	providerARN, err := awsClient.GetOpenIDConnectProvider(sub.ClusterID())
+	providerARN, err := r.AWSClient.GetOpenIDConnectProvider(sub.ClusterID())
 	if err != nil {
-		reporter.Errorf("Failed to get the OIDC provider for cluster '%s'.", clusterKey)
+		r.Reporter.Errorf("Failed to get the OIDC provider for cluster '%s'.", clusterKey)
 		os.Exit(1)
 	}
 	if providerARN == "" {
-		reporter.Infof("Cluster '%s' doesn't have OIDC provider associated with it.", clusterKey)
+		r.Reporter.Infof("Cluster '%s' doesn't have OIDC provider associated with it.", clusterKey)
 		return
 	}
 
@@ -151,31 +122,31 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid OIDC provider deletion mode: %s", err)
+			r.Reporter.Errorf("Expected a valid OIDC provider deletion mode: %s", err)
 			os.Exit(1)
 		}
 	}
 	switch mode {
 	case aws.ModeAuto:
-		ocmClient.LogEvent("ROSADeleteOIDCProviderModeAuto", nil)
+		r.OCMClient.LogEvent("ROSADeleteOIDCProviderModeAuto", nil)
 		if !confirm.Prompt(true, "Delete the OIDC provider '%s'?", providerARN) {
 			os.Exit(1)
 		}
-		err := awsClient.DeleteOpenIDConnectProvider(providerARN)
+		err := r.AWSClient.DeleteOpenIDConnectProvider(providerARN)
 		if err != nil {
-			reporter.Errorf("There was an error deleting the OIDC provider: %s", err)
+			r.Reporter.Errorf("There was an error deleting the OIDC provider: %s", err)
 			os.Exit(1)
 		}
-		reporter.Infof("Successfully deleted the OIDC provider %s", providerARN)
+		r.Reporter.Infof("Successfully deleted the OIDC provider %s", providerARN)
 	case aws.ModeManual:
-		ocmClient.LogEvent("ROSADeleteOIDCProviderModeManual", nil)
+		r.OCMClient.LogEvent("ROSADeleteOIDCProviderModeManual", nil)
 		commands := buildCommand(providerARN)
-		if reporter.IsTerminal() {
-			reporter.Infof("Run the following commands to delete the OIDC provider:\n")
+		if r.Reporter.IsTerminal() {
+			r.Reporter.Infof("Run the following commands to delete the OIDC provider:\n")
 		}
 		fmt.Println(commands)
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 }
