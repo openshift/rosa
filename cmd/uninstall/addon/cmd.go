@@ -23,11 +23,9 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -53,63 +51,33 @@ func init() {
 }
 
 func run(_ *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	addOnID := argv[0]
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
-	addOn, err := ocmClient.GetAddOnInstallation(cluster.ID(), addOnID)
+	addOn, _ := r.OCMClient.GetAddOnInstallation(cluster.ID(), addOnID)
 	if addOn == nil {
-		reporter.Warnf("Addon '%s' is not installed on cluster '%s'", addOnID, clusterKey)
+		r.Reporter.Warnf("Addon '%s' is not installed on cluster '%s'", addOnID, clusterKey)
 		os.Exit(0)
 	}
 
@@ -117,12 +85,12 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	reporter.Debugf("Uninstalling add-on '%s' from cluster '%s'", addOnID, clusterKey)
-	err = ocmClient.UninstallAddOn(cluster.ID(), addOnID)
+	r.Reporter.Debugf("Uninstalling add-on '%s' from cluster '%s'", addOnID, clusterKey)
+	err = r.OCMClient.UninstallAddOn(cluster.ID(), addOnID)
 	if err != nil {
-		reporter.Errorf("Failed to remove add-on installation '%s' from cluster '%s': %s", addOnID, clusterKey, err)
+		r.Reporter.Errorf("Failed to remove add-on installation '%s' from cluster '%s': %s", addOnID, clusterKey, err)
 		os.Exit(1)
 	}
-	reporter.Infof("Add-on '%s' is now uninstalling. To check the status run 'rosa list addons -c %s'",
+	r.Reporter.Infof("Add-on '%s' is now uninstalling. To check the status run 'rosa list addons -c %s'",
 		addOnID, clusterKey)
 }
