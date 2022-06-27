@@ -24,11 +24,9 @@ import (
 	"github.com/spf13/cobra"
 
 	idpPack "github.com/openshift/rosa/cmd/create/idp"
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -54,60 +52,30 @@ func init() {
 }
 
 func run(_ *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	idpName := argv[0]
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	// Try to find the identity provider:
-	reporter.Debugf("Loading identity provider '%s'", idpName)
-	idps, err := ocmClient.GetIdentityProviders(cluster.ID())
+	r.Reporter.Debugf("Loading identity provider '%s'", idpName)
+	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -118,24 +86,24 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}
 	if idp == nil {
-		reporter.Errorf("Failed to get identity provider '%s' for cluster '%s'", idpName, clusterKey)
+		r.Reporter.Errorf("Failed to get identity provider '%s' for cluster '%s'", idpName, clusterKey)
 		os.Exit(1)
 	}
 	if ocm.IdentityProviderType(idp) == ocm.HTPasswdIDPType {
-		_, existingUserList := idpPack.FindExistingHTPasswdIDP(cluster, ocmClient)
+		_, existingUserList := idpPack.FindExistingHTPasswdIDP(cluster, r.OCMClient)
 		if idpPack.HasClusterAdmin(existingUserList) {
-			reporter.Warnf("The cluster-admin user is contained in the HTPasswd IDP. Deleting the IDP will " +
+			r.Reporter.Warnf("The cluster-admin user is contained in the HTPasswd IDP. Deleting the IDP will " +
 				"also delete the admin user.")
 		}
 	}
 	if confirm.Confirm("delete identity provider %s on cluster %s", idpName, clusterKey) {
-		reporter.Debugf("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
-		err = ocmClient.DeleteIdentityProvider(cluster.ID(), idp.ID())
+		r.Reporter.Debugf("Deleting identity provider '%s' on cluster '%s'", idpName, clusterKey)
+		err = r.OCMClient.DeleteIdentityProvider(cluster.ID(), idp.ID())
 		if err != nil {
-			reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s': %s",
+			r.Reporter.Errorf("Failed to delete identity provider '%s' on cluster '%s': %s",
 				idpName, clusterKey, err)
 			os.Exit(1)
 		}
-		reporter.Infof("Successfully deleted identity provider '%s' from cluster '%s'", idpName, clusterKey)
+		r.Reporter.Infof("Successfully deleted identity provider '%s' from cluster '%s'", idpName, clusterKey)
 	}
 }
