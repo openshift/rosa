@@ -27,7 +27,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -43,7 +42,7 @@ func createHTPasswdIDP(cmd *cobra.Command,
 	password := args.htpasswdPassword
 
 	// Choose which way to create the IDP according to whether it already has an admin or not.
-	htpasswdIDP, userList := FindExistingHTPasswdIDP(cluster, r.OCMClient, r.Reporter)
+	htpasswdIDP, userList := FindExistingHTPasswdIDP(cluster, r)
 	if htpasswdIDP != nil {
 		// if existing idp has any users other than `cluster-admin`, then it was created as a proper idp
 		// and not as an admin container during `rosa create admin`. A cluster may only have one
@@ -206,13 +205,12 @@ func HasClusterAdmin(userList *cmv1.HTPasswdUserList) bool {
 	return hasAdmin
 }
 
-// TODO: combine ocm client and reporter params once all packages have migrated to use runtime
-func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, ocmClient *ocm.Client, reporter *reporter.Object) (
+func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (
 	htpasswdIDP *cmv1.IdentityProvider, userList *cmv1.HTPasswdUserList) {
-	reporter.Debugf("Loading cluster's identity providers")
-	idps, err := ocmClient.GetIdentityProviders(cluster.ID())
+	r.Reporter.Debugf("Loading cluster's identity providers")
+	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -222,9 +220,9 @@ func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, ocmClient *ocm.Client, repor
 		}
 	}
 	if htpasswdIDP != nil {
-		userList, err = ocmClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
+		userList, err = r.OCMClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
 		if err != nil {
-			reporter.Errorf("Failed to get user list of the HTPasswd IDP of '%s': %v", clusterKey, err)
+			r.Reporter.Errorf("Failed to get user list of the HTPasswd IDP of '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 	}

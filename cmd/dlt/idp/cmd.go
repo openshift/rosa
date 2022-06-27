@@ -90,7 +90,7 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if ocm.IdentityProviderType(idp) == ocm.HTPasswdIDPType {
-		_, existingUserList := idpPack.FindExistingHTPasswdIDP(cluster, r.OCMClient, r.Reporter)
+		_, existingUserList := idpPack.FindExistingHTPasswdIDP(cluster, r)
 		if idpPack.HasClusterAdmin(existingUserList) {
 			r.Reporter.Warnf("The cluster-admin user is contained in the HTPasswd IDP. Deleting the IDP will " +
 				"also delete the admin user.")

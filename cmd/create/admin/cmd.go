@@ -83,7 +83,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find an existing htpasswd identity provider and
 	// check if cluster-admin user already exists
-	existingHTPasswdIDP, existingUserList := idp.FindExistingHTPasswdIDP(cluster, r.OCMClient, r.Reporter)
+	existingHTPasswdIDP, existingUserList := idp.FindExistingHTPasswdIDP(cluster, r)
 	if idp.HasClusterAdmin(existingUserList) {
 		r.Reporter.Errorf("Cluster '%s' already has an admin", clusterKey)
 		os.Exit(1)
