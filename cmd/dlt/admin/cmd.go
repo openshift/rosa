@@ -23,11 +23,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/idp"
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -44,63 +42,33 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
 	// Try to find the htpasswd identity provider:
-	reporter.Debugf("Loading HTPasswd identity provider")
-	idps, err := ocmClient.GetIdentityProviders(cluster.ID())
+	r.Reporter.Debugf("Loading HTPasswd identity provider")
+	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get HTPasswd identity provider for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get HTPasswd identity provider for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -111,19 +79,19 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if htpasswdIDP == nil {
-		reporter.Errorf("Cluster '%s' does not have an admin user", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' does not have an admin user", clusterKey)
 		os.Exit(1)
 	}
 
 	if confirm.Confirm("delete %s user on cluster %s", idp.ClusterAdminUsername, clusterKey) {
 		// delete `cluster-admin` user from the HTPasswd IDP
-		reporter.Debugf("Deleting user '%s' identity provider on cluster '%s'", idp.ClusterAdminUsername, clusterKey)
-		err = ocmClient.DeleteHTPasswdUser(idp.ClusterAdminUsername, cluster.ID(), htpasswdIDP)
+		r.Reporter.Debugf("Deleting user '%s' identity provider on cluster '%s'", idp.ClusterAdminUsername, clusterKey)
+		err = r.OCMClient.DeleteHTPasswdUser(idp.ClusterAdminUsername, cluster.ID(), htpasswdIDP)
 		if err != nil {
-			reporter.Errorf("Failed to delete '%s' user from the HTPasswd IDP of cluster '%s': %s",
+			r.Reporter.Errorf("Failed to delete '%s' user from the HTPasswd IDP of cluster '%s': %s",
 				idp.ClusterAdminUsername, clusterKey, err)
 			os.Exit(1)
 		}
-		reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, clusterKey)
+		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 	}
 }
