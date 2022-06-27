@@ -28,11 +28,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/arguments"
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -62,8 +60,8 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	// Parse out CLI flags, then override positional arguments
 	_ = cmd.Flags().Parse(argv)
@@ -72,67 +70,37 @@ func run(cmd *cobra.Command, argv []string) {
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
-	parameters, err := ocmClient.GetAddOnParameters(cluster.ID(), addOnID)
+	parameters, err := r.OCMClient.GetAddOnParameters(cluster.ID(), addOnID)
 	if err != nil {
-		reporter.Errorf("Failed to get add-on '%s' parameters: %v", addOnID, err)
+		r.Reporter.Errorf("Failed to get add-on '%s' parameters: %v", addOnID, err)
 		os.Exit(1)
 	}
 
-	addOnInstallation, err := ocmClient.GetAddOnInstallation(cluster.ID(), addOnID)
+	addOnInstallation, err := r.OCMClient.GetAddOnInstallation(cluster.ID(), addOnID)
 	if err != nil {
-		reporter.Errorf("Failed to get add-on '%s' installation: %v", addOnID, err)
+		r.Reporter.Errorf("Failed to get add-on '%s' installation: %v", addOnID, err)
 		os.Exit(1)
 	}
 
 	if parameters.Len() == 0 {
-		reporter.Errorf("Add-on '%s' has no parameters to edit", addOnID)
+		r.Reporter.Errorf("Add-on '%s' has no parameters to edit", addOnID)
 		os.Exit(1)
 	}
 
@@ -144,7 +112,7 @@ func run(cmd *cobra.Command, argv []string) {
 		parameters.Each(func(param *cmv1.AddOnParameter) bool {
 			flag := cmd.Flags().Lookup(param.ID())
 			if flag != nil && !param.Editable() {
-				reporter.Errorf("Parameter '%s' on addon '%s' cannot be modified", param.ID(), addOnID)
+				r.Reporter.Errorf("Parameter '%s' on addon '%s' cannot be modified", param.ID(), addOnID)
 				os.Exit(1)
 			}
 			return true
@@ -229,7 +197,7 @@ func run(cmd *cobra.Command, argv []string) {
 				val, err = interactive.GetString(input)
 			}
 			if err != nil {
-				reporter.Errorf("Expected a valid value for '%s': %v", param.ID(), err)
+				r.Reporter.Errorf("Expected a valid value for '%s': %v", param.ID(), err)
 				os.Exit(1)
 			}
 			hasVal = true
@@ -240,7 +208,7 @@ func run(cmd *cobra.Command, argv []string) {
 			if val != "" && param.Validation() != "" {
 				isValid, err := regexp.MatchString(param.Validation(), val)
 				if err != nil || !isValid {
-					reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
+					r.Reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
 					os.Exit(1)
 				}
 			}
@@ -250,11 +218,11 @@ func run(cmd *cobra.Command, argv []string) {
 		return true
 	})
 
-	reporter.Debugf("Updating add-on parameters for '%s' on cluster '%s'", addOnID, clusterKey)
-	err = ocmClient.UpdateAddOnInstallation(cluster.ID(), addOnID, params)
+	r.Reporter.Debugf("Updating add-on parameters for '%s' on cluster '%s'", addOnID, clusterKey)
+	err = r.OCMClient.UpdateAddOnInstallation(cluster.ID(), addOnID, params)
 	if err != nil {
-		reporter.Errorf("Failed to update add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
+		r.Reporter.Errorf("Failed to update add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
 		os.Exit(1)
 	}
-	reporter.Infof("Add-on '%s' is now updating. To check the status run 'rosa list addons -c %s'", addOnID, clusterKey)
+	r.Reporter.Infof("Add-on '%s' is now updating. To check the status run 'rosa list addons -c %s'", addOnID, clusterKey)
 }
