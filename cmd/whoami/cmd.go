@@ -25,9 +25,8 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -46,81 +45,59 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	// Get current AWS account information:
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
+	r := rosa.NewRuntime().WithAWS()
 
 	// Get default AWS region:
 	awsRegion, err := aws.GetRegion("")
 	if err != nil {
-		reporter.Errorf("Error getting AWS region: %v", err)
+		r.Reporter.Errorf("Error getting AWS region: %v", err)
 		os.Exit(1)
 	}
 
 	// Load the configuration file:
 	cfg, err := ocm.Load()
 	if err != nil {
-		reporter.Errorf("Failed to load config file: %v", err)
+		r.Reporter.Errorf("Failed to load config file: %v", err)
 		os.Exit(1)
 	}
 	if cfg == nil {
-		reporter.Errorf("User is not logged in to OCM")
+		r.Reporter.Errorf("User is not logged in to OCM")
 		os.Exit(0)
 	}
 
 	// Verify configuration file:
 	loggedIn, err := cfg.Armed()
 	if err != nil {
-		reporter.Errorf("Failed to verify configuration: %v", err)
+		r.Reporter.Errorf("Failed to verify configuration: %v", err)
 		os.Exit(1)
 	}
 	if !loggedIn {
-		reporter.Errorf("User is not logged in to OCM")
+		r.Reporter.Errorf("User is not logged in to OCM")
 		os.Exit(0)
 	}
 
 	// Create a connection to OCM:
-	ocmClient, err := ocm.NewClient().
+	r.OCMClient, err = ocm.NewClient().
 		Config(cfg).
-		Logger(logger).
+		Logger(r.Logger).
 		Build()
 	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
+		r.Reporter.Errorf("Failed to create OCM connection: %v", err)
 		os.Exit(1)
 	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	defer r.Cleanup()
 
 	// Get current OCM account:
-	account, err := ocmClient.GetCurrentAccount()
+	account, err := r.OCMClient.GetCurrentAccount()
 	if err != nil {
-		reporter.Errorf("Failed to get current account: %s", err)
+		r.Reporter.Errorf("Failed to get current account: %s", err)
 		os.Exit(1)
 	}
 
 	if account == nil {
 		account, err = getAccountDataFromToken(cfg)
 		if err != nil {
-			reporter.Errorf("Failed to get account data from token: %v", err)
+			r.Reporter.Errorf("Failed to get account data from token: %v", err)
 			os.Exit(1)
 		}
 	}
@@ -135,9 +112,9 @@ func run(_ *cobra.Command, _ []string) {
 		"OCM Account Email:            %s\n"+
 		"OCM Organization ID:          %s\n"+
 		"OCM Organization Name:        %s\n",
-		awsCreator.AccountID,
+		r.Creator.AccountID,
 		awsRegion,
-		awsCreator.ARN,
+		r.Creator.ARN,
 		cfg.URL,
 		account.ID(),
 		account.FirstName(), account.LastName(),
