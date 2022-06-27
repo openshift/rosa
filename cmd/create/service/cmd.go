@@ -32,11 +32,10 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/info"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args ocm.CreateManagedServiceArgs
@@ -137,17 +136,17 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	if args.ServiceType == "" {
-		reporter.Errorf("Service type not specified.")
+		r.Reporter.Errorf("Service type not specified.")
 		cmd.Help()
 		os.Exit(1)
 	}
 
 	if args.ClusterName == "" {
-		reporter.Errorf("Cluster name not specified.")
+		r.Reporter.Errorf("Cluster name not specified.")
 		cmd.Help()
 		os.Exit(1)
 	}
@@ -156,67 +155,36 @@ func run(cmd *cobra.Command, argv []string) {
 	var err error
 	args.AwsRegion, err = aws.GetRegion(arguments.GetRegion())
 	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
+		r.Reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
-	reporter.Debugf("Using AWS region: %q", args.AwsRegion)
+	r.Reporter.Debugf("Using AWS region: %q", args.AwsRegion)
 
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
+	credRequests, err := r.OCMClient.GetCredRequests()
 	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
-	awsClient, err := aws.NewClient().
-		Region(args.AwsRegion).
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create awsClient: %s", err)
+		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 		os.Exit(1)
 	}
 
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Unable to get IAM credentials: %v", err)
-		os.Exit(1)
-	}
-	reporter.Debugf("Using AWS creator: %q", awsCreator.ARN)
-
-	credRequests, err := ocmClient.GetCredRequests()
-	if err != nil {
-		reporter.Errorf("Error getting operator credential request from OCM %s", err)
-		os.Exit(1)
-	}
-
-	args.AwsAccountID = awsCreator.AccountID
+	args.AwsAccountID = r.Creator.AccountID
 	args.Properties = map[string]string{
-		properties.CreatorARN: awsCreator.ARN,
+		properties.CreatorARN: r.Creator.ARN,
 		properties.CLIVersion: info.Version,
 	}
 
 	// Openshift version to use.
-	versionList, err := getVersionList(ocmClient)
+	versionList, err := getVersionList(r.OCMClient)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	version := versionList[0]
 	minor := ocm.GetVersionMinor(version)
 
 	// Add-on parameter logic
-	addOn, err := ocmClient.GetAddOn(args.ServiceType)
+	addOn, err := r.OCMClient.GetAddOn(args.ServiceType)
 	if err != nil {
-		reporter.Errorf("Failed to get add-on %q: %s", args.ServiceType, err)
+		r.Reporter.Errorf("Failed to get add-on %q: %s", args.ServiceType, err)
 		os.Exit(1)
 	}
 	parameters := addOn.Parameters()
@@ -229,7 +197,7 @@ func run(cmd *cobra.Command, argv []string) {
 		parameters.Each(func(param *cmv1.AddOnParameter) bool {
 			flag := cmd.Flags().Lookup(param.ID())
 			if param.Required() && (flag == nil || flag.Value.String() == "") {
-				reporter.Errorf("Required parameter --%s missing", param.ID())
+				r.Reporter.Errorf("Required parameter --%s missing", param.ID())
 				os.Exit(1)
 			}
 			if flag != nil {
@@ -242,9 +210,9 @@ func run(cmd *cobra.Command, argv []string) {
 					if err != nil || !isValid {
 						valErrMsg := param.ValidationErrMsg()
 						if valErrMsg != "" {
-							reporter.Errorf("Failed to process parameter --%s: %s", param.ID(), valErrMsg)
+							r.Reporter.Errorf("Failed to process parameter --%s: %s", param.ID(), valErrMsg)
 						} else {
-							reporter.Errorf("Failed to process parameter --%s: Expected %v to match /%s/",
+							r.Reporter.Errorf("Failed to process parameter --%s: Expected %v to match /%s/",
 								param.ID(), val, param.Validation())
 						}
 						os.Exit(1)
@@ -274,7 +242,7 @@ func run(cmd *cobra.Command, argv []string) {
 				flagList += ", "
 			}
 		}
-		reporter.Errorf("Cannot create managed service with the following unknown flags: (%s)",
+		r.Reporter.Errorf("Cannot create managed service with the following unknown flags: (%s)",
 			flagList)
 		os.Exit(1)
 	}
@@ -282,13 +250,13 @@ func run(cmd *cobra.Command, argv []string) {
 	// BYO-VPC Logic
 	subnetIDs := args.SubnetIDs
 	subnetsProvided := len(subnetIDs) > 0
-	reporter.Debugf("Received the following subnetIDs: %v", args.SubnetIDs)
+	r.Reporter.Debugf("Received the following subnetIDs: %v", args.SubnetIDs)
 
 	var availabilityZones []string
 	if subnetsProvided {
-		subnets, err := awsClient.GetSubnetIDs()
+		subnets, err := r.AWSClient.GetSubnetIDs()
 		if err != nil {
-			reporter.Errorf("Failed to get the list of subnets: %s", err)
+			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
 		}
 
@@ -304,7 +272,7 @@ func run(cmd *cobra.Command, argv []string) {
 				}
 			}
 			if !verifiedSubnet {
-				reporter.Errorf("Could not find the following subnet provided: %s", subnetArg)
+				r.Reporter.Errorf("Could not find the following subnet provided: %s", subnetArg)
 				os.Exit(1)
 			}
 		}
@@ -330,7 +298,7 @@ func run(cmd *cobra.Command, argv []string) {
 		args.MultiAZ = true
 	}
 	args.AvailabilityZones = availabilityZones
-	reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
+	r.Reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
 	// End BYO-VPC Logic
 
 	// Find all installer roles in the current account using AWS resource tags
@@ -341,9 +309,9 @@ func run(cmd *cobra.Command, argv []string) {
 
 	role := aws.AccountRoles[aws.InstallerAccountRole]
 
-	roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+	roleARNs, err := r.AWSClient.FindRoleARNs(aws.InstallerAccountRole, minor)
 	if err != nil {
-		reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+		r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 		os.Exit(1)
 	}
 
@@ -355,15 +323,15 @@ func run(cmd *cobra.Command, argv []string) {
 				defaultRoleARN = rARN
 			}
 		}
-		reporter.Warnf("More than one %s role found, using %q", role.Name, defaultRoleARN)
+		r.Reporter.Warnf("More than one %s role found, using %q", role.Name, defaultRoleARN)
 		roleARN = defaultRoleARN
 	} else if len(roleARNs) == 1 {
-		if !output.HasFlag() || reporter.IsTerminal() {
-			reporter.Infof("Using %q for the %s role", roleARNs[0], role.Name)
+		if !output.HasFlag() || r.Reporter.IsTerminal() {
+			r.Reporter.Infof("Using %q for the %s role", roleARNs[0], role.Name)
 		}
 		roleARN = roleARNs[0]
 	} else {
-		reporter.Errorf("No account roles found. " +
+		r.Reporter.Errorf("No account roles found. " +
 			"You will need to run 'rosa create account-roles' to create them first.")
 		os.Exit(1)
 	}
@@ -372,19 +340,19 @@ func run(cmd *cobra.Command, argv []string) {
 		// Get role prefix
 		rolePrefix, err := getAccountRolePrefix(roleARN, role)
 		if err != nil {
-			reporter.Errorf("Failed to find prefix from %q account role", role.Name)
+			r.Reporter.Errorf("Failed to find prefix from %q account role", role.Name)
 			os.Exit(1)
 		}
-		reporter.Debugf("Using %q as the role prefix", rolePrefix)
+		r.Reporter.Debugf("Using %q as the role prefix", rolePrefix)
 
 		for roleType, role := range aws.AccountRoles {
 			if roleType == aws.InstallerAccountRole {
 				// Already dealt with
 				continue
 			}
-			roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
+			roleARNs, err := r.AWSClient.FindRoleARNs(roleType, minor)
 			if err != nil {
-				reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+				r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 				os.Exit(1)
 			}
 			selectedARN := ""
@@ -394,13 +362,13 @@ func run(cmd *cobra.Command, argv []string) {
 				}
 			}
 			if selectedARN == "" {
-				reporter.Errorf("No %s account roles found. "+
+				r.Reporter.Errorf("No %s account roles found. "+
 					"You will need to run 'rosa create account-roles' to create them first.",
 					role.Name)
 				os.Exit(1)
 			}
-			if !output.HasFlag() || reporter.IsTerminal() {
-				reporter.Infof("Using %q for the %s role", selectedARN, role.Name)
+			if !output.HasFlag() || r.Reporter.IsTerminal() {
+				r.Reporter.Infof("Using %q for the %s role", selectedARN, role.Name)
 			}
 			switch roleType {
 			case aws.InstallerAccountRole:
@@ -429,7 +397,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if operator.MinVersion() != "" {
 			isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(version), operator.MinVersion())
 			if err != nil {
-				reporter.Errorf("Error validating operator role %q version %s", operator.Name(), err)
+				r.Reporter.Errorf("Error validating operator role %q version %s", operator.Name(), err)
 				os.Exit(1)
 			}
 			if !isSupported {
@@ -439,16 +407,16 @@ func run(cmd *cobra.Command, argv []string) {
 		operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 			Name:      operator.Name(),
 			Namespace: operator.Namespace(),
-			RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator),
+			RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, r.Creator),
 		})
 	}
 
 	// Validate the role names are available on AWS
 	for _, role := range operatorIAMRoleList {
 		name := strings.SplitN(role.RoleARN, "/", 2)[1]
-		err := awsClient.ValidateRoleNameAvailable(name)
+		err := r.AWSClient.ValidateRoleNameAvailable(name)
 		if err != nil {
-			reporter.Errorf("Error validating role: %v", err)
+			r.Reporter.Errorf("Error validating role: %v", err)
 			os.Exit(1)
 		}
 	}
@@ -457,19 +425,19 @@ func run(cmd *cobra.Command, argv []string) {
 	// end operator role logic.
 
 	// Creating the service
-	service, err := ocmClient.CreateManagedService(args)
+	service, err := r.OCMClient.CreateManagedService(args)
 	if err != nil {
-		reporter.Errorf("Failed to create managed service: %s", err)
+		r.Reporter.Errorf("Failed to create managed service: %s", err)
 		os.Exit(1)
 	}
 
-	reporter.Infof("Service created!\n\n\tService ID: %s\n", service.ID())
+	r.Reporter.Infof("Service created!\n\n\tService ID: %s\n", service.ID())
 
 	// The client must run these rosa commands after this for the cluster to properly install.
 	rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", args.ClusterName)
 	oidcCMD := fmt.Sprintf("rosa create oidc-provider --cluster %s", args.ClusterName)
 
-	reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
+	r.Reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
 		"\t%s\n"+
 		"\t%s\n",
 		rolesCMD, oidcCMD)
