@@ -24,9 +24,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -65,40 +63,27 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) (err error) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	if len(argv) > 0 {
 		args.roleArn = argv[0]
 	}
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
+
+	orgAccount, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		return err
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-	orgAccount, _, err := ocmClient.GetCurrentOrganization()
-	if err != nil {
-		reporter.Errorf("Error getting organization account: %v", err)
+		r.Reporter.Errorf("Error getting organization account: %v", err)
 		return err
 	}
 
 	if args.organizationID != "" && orgAccount != args.organizationID {
-		reporter.Errorf("Invalid organization ID '%s'. "+
+		r.Reporter.Errorf("Invalid organization ID '%s'. "+
 			"It doesnt match with the user session '%s'.", args.organizationID, orgAccount)
 		return err
 	}
 
-	if reporter.IsTerminal() {
-		reporter.Infof("Linking OCM role")
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Linking OCM role")
 	}
 
 	roleArn := args.roleArn
@@ -119,14 +104,14 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid ocm role ARN to link to a current organization: %s", err)
+			r.Reporter.Errorf("Expected a valid ocm role ARN to link to a current organization: %s", err)
 			os.Exit(1)
 		}
 	}
 	if roleArn != "" {
 		_, err := arn.Parse(roleArn)
 		if err != nil {
-			reporter.Errorf("Expected a valid ocm role ARN to link to a current organization: %s", err)
+			r.Reporter.Errorf("Expected a valid ocm role ARN to link to a current organization: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -134,22 +119,22 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		os.Exit(0)
 	}
 
-	linked, err := ocmClient.LinkOrgToRole(orgAccount, roleArn)
+	linked, err := r.OCMClient.LinkOrgToRole(orgAccount, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			reporter.Errorf("Only organization admin can run this command. "+
+			r.Reporter.Errorf("Only organization admin can run this command. "+
 				"Please ask someone with the organization admin role to run the following command \n\n"+
 				"\t rosa link ocm-role --role-arn %s --organization-id %s", roleArn, orgAccount)
 			return err
 		}
-		reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",
+		r.Reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",
 			roleArn, orgAccount, err)
 		return err
 	}
 	if !linked {
-		reporter.Infof("Role-arn '%s' is already linked with the organization account '%s'", roleArn, orgAccount)
+		r.Reporter.Infof("Role-arn '%s' is already linked with the organization account '%s'", roleArn, orgAccount)
 		os.Exit(0)
 	}
-	reporter.Infof("Successfully linked role-arn '%s' with organization account '%s'", roleArn, orgAccount)
+	r.Reporter.Infof("Successfully linked role-arn '%s' with organization account '%s'", roleArn, orgAccount)
 	return nil
 }
