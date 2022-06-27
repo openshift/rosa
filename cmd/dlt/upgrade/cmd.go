@@ -22,11 +22,9 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -42,81 +40,51 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, _, err := ocmClient.GetScheduledUpgrade(cluster.ID())
+	scheduledUpgrade, _, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
-		reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 	if scheduledUpgrade == nil {
-		reporter.Warnf("There are no scheduled upgrades on cluster '%s'", clusterKey)
+		r.Reporter.Warnf("There are no scheduled upgrades on cluster '%s'", clusterKey)
 		os.Exit(0)
 	}
 
 	if confirm.Confirm("cancel scheduled upgrade on cluster %s", clusterKey) {
-		reporter.Debugf("Deleting scheduled upgrade for cluster '%s'", clusterKey)
-		canceled, err := ocmClient.CancelUpgrade(cluster.ID())
+		r.Reporter.Debugf("Deleting scheduled upgrade for cluster '%s'", clusterKey)
+		canceled, err := r.OCMClient.CancelUpgrade(cluster.ID())
 		if err != nil {
-			reporter.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
+			r.Reporter.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 
 		if !canceled {
-			reporter.Warnf("There were no scheduled upgrades on cluster '%s'", clusterKey)
+			r.Reporter.Warnf("There were no scheduled upgrades on cluster '%s'", clusterKey)
 			os.Exit(0)
 		}
 
-		reporter.Infof("Successfully canceled scheduled upgrade on cluster '%s'", clusterKey)
+		r.Reporter.Infof("Successfully canceled scheduled upgrade on cluster '%s'", clusterKey)
 	}
 }
