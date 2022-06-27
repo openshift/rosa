@@ -25,14 +25,12 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 // Regular expression to used to make sure that the identifier given by the
@@ -171,60 +169,42 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient := aws.CreateNewClientOrExit(logger, reporter)
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
-		reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
 
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
-		reporter.Errorf("Setting the `multi-availability-zone` flag is only allowed for multi-AZ clusters")
+		r.Reporter.Errorf("Setting the `multi-availability-zone` flag is only allowed for multi-AZ clusters")
 		os.Exit(1)
 	}
 	isAvailabilityZoneSet := cmd.Flags().Changed("availability-zone")
 	if isAvailabilityZoneSet && !cluster.MultiAZ() {
-		reporter.Errorf("Setting the `availability-zone` flag is only allowed for multi-AZ clusters")
+		r.Reporter.Errorf("Setting the `availability-zone` flag is only allowed for multi-AZ clusters")
 		os.Exit(1)
 	}
 
 	if isAvailabilityZoneSet && isMultiAvailabilityZoneSet && args.multiAvailabilityZone {
-		reporter.Errorf("Setting the `availability-zone` flag is only supported for creating a single AZ " +
+		r.Reporter.Errorf("Setting the `availability-zone` flag is only supported for creating a single AZ " +
 			"machine pool in a multi-AZ cluster")
 		os.Exit(1)
 	}
@@ -233,7 +213,7 @@ func run(cmd *cobra.Command, _ []string) {
 	name := strings.Trim(args.name, " \t")
 	if name == "" && !interactive.Enabled() {
 		interactive.Enable()
-		reporter.Infof("Enabling interactive mode")
+		r.Reporter.Infof("Enabling interactive mode")
 	}
 	if name == "" || interactive.Enabled() {
 		name, err = interactive.GetString(interactive.Input{
@@ -245,13 +225,13 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid name for the machine pool: %s", err)
+			r.Reporter.Errorf("Expected a valid name for the machine pool: %s", err)
 			os.Exit(1)
 		}
 	}
 	name = strings.Trim(name, " \t")
 	if !machinePoolKeyRE.MatchString(name) {
-		reporter.Errorf("Expected a valid name for the machine pool")
+		r.Reporter.Errorf("Expected a valid name for the machine pool")
 		os.Exit(1)
 	}
 
@@ -273,7 +253,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: false,
 			})
 			if err != nil {
-				reporter.Errorf("Expected a valid value for create multi-AZ machine pool")
+				r.Reporter.Errorf("Expected a valid value for create multi-AZ machine pool")
 				os.Exit(1)
 			}
 		} else {
@@ -292,7 +272,7 @@ func run(cmd *cobra.Command, _ []string) {
 					Required: true,
 				})
 				if err != nil {
-					reporter.Errorf("Expected a valid AWS availability zone: %s", err)
+					r.Reporter.Errorf("Expected a valid AWS availability zone: %s", err)
 					os.Exit(1)
 				}
 			} else if isAvailabilityZoneSet {
@@ -300,7 +280,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 
 			if !helper.Contains(cluster.Nodes().AvailabilityZones(), availabilityZone) {
-				reporter.Errorf("Availability zone '%s' doesn't belong to the cluster's availability zones",
+				r.Reporter.Errorf("Availability zone '%s' doesn't belong to the cluster's availability zones",
 					availabilityZone)
 				os.Exit(1)
 			}
@@ -326,7 +306,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Required: false,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
+			r.Reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -334,7 +314,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if autoscaling {
 		// if the user set replicas and enabled autoscaling
 		if isReplicasSet {
-			reporter.Errorf("Replicas can't be set when autoscaling is enabled")
+			r.Reporter.Errorf("Replicas can't be set when autoscaling is enabled")
 			os.Exit(1)
 		}
 		if interactive.Enabled() || !isMinReplicasSet {
@@ -348,13 +328,13 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				reporter.Errorf("Expected a valid number of min replicas: %s", err)
+				r.Reporter.Errorf("Expected a valid number of min replicas: %s", err)
 				os.Exit(1)
 			}
 		}
 		err = minReplicaValidator(multiAZMachinePool)(minReplicas)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
@@ -369,19 +349,19 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				reporter.Errorf("Expected a valid number of max replicas: %s", err)
+				r.Reporter.Errorf("Expected a valid number of max replicas: %s", err)
 				os.Exit(1)
 			}
 		}
 		err = maxReplicaValidator(minReplicas, multiAZMachinePool)(maxReplicas)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	} else {
 		// if the user set min/max replicas and hasn't enabled autoscaling
 		if isMinReplicasSet || isMaxReplicasSet {
-			reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
+			r.Reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
 			os.Exit(1)
 		}
 		if interactive.Enabled() || !isReplicasSet {
@@ -395,21 +375,21 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				reporter.Errorf("Expected a valid number of replicas: %s", err)
+				r.Reporter.Errorf("Expected a valid number of replicas: %s", err)
 				os.Exit(1)
 			}
 		}
 		err = minReplicaValidator(multiAZMachinePool)(replicas)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
 	// Machine pool instance type:
 	instanceType := args.instanceType
-	instanceTypeList, err := ocmClient.GetAvailableMachineTypes()
+	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypes()
 	if err != nil {
-		reporter.Errorf(fmt.Sprintf("%s", err))
+		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
 	if interactive.Enabled() {
@@ -424,17 +404,17 @@ func run(cmd *cobra.Command, _ []string) {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid machine type: %s", err)
+			r.Reporter.Errorf("Expected a valid machine type: %s", err)
 			os.Exit(1)
 		}
 	}
 	if instanceType == "" {
-		reporter.Errorf("Expected a valid machine type")
+		r.Reporter.Errorf("Expected a valid machine type")
 		os.Exit(1)
 	}
 	err = instanceTypeList.ValidateMachineType(instanceType, cluster.MultiAZ())
 	if err != nil {
-		reporter.Errorf("Expected a valid machine type: %s", err)
+		r.Reporter.Errorf("Expected a valid machine type: %s", err)
 		os.Exit(1)
 	}
 
@@ -449,13 +429,13 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
 	}
 	labelMap, err := parseLabels(labels)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -470,13 +450,13 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
 	}
 	taintBuilders, err := parseTaints(taints)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -487,7 +467,7 @@ func run(cmd *cobra.Command, _ []string) {
 	useSpotInstances := args.useSpotInstances
 	spotMaxPrice := args.spotMaxPrice
 	if isSpotMaxPriceSet && isSpotSet && !useSpotInstances {
-		reporter.Errorf("Can't set max price when not using spot instances")
+		r.Reporter.Errorf("Can't set max price when not using spot instances")
 		os.Exit(1)
 	}
 
@@ -499,7 +479,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Required: false,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid value for use spot instances: %s", err)
+			r.Reporter.Errorf("Expected a valid value for use spot instances: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -515,7 +495,7 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid value for spot max price: %s", err)
+			r.Reporter.Errorf("Expected a valid value for spot max price: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -524,7 +504,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	err = spotMaxPriceValidator(spotMaxPrice)
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if spotMaxPrice != "on-demand" {
@@ -563,18 +543,18 @@ func run(cmd *cobra.Command, _ []string) {
 
 	machinePool, err := mpBuilder.Build()
 	if err != nil {
-		reporter.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	_, err = ocmClient.CreateMachinePool(cluster.ID(), machinePool)
+	_, err = r.OCMClient.CreateMachinePool(cluster.ID(), machinePool)
 	if err != nil {
-		reporter.Errorf("Failed to add machine pool to cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to add machine pool to cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
-	reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
+	r.Reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
+	r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
 }
 
 func Split(r rune) bool {
