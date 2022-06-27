@@ -22,11 +22,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -74,25 +72,25 @@ func init() {
 }
 
 func run(_ *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
 	username := args.username
 	if !ocm.IsValidUsername(username) {
-		reporter.Errorf(
+		r.Reporter.Errorf(
 			"Username '%s' isn't valid: it must contain only letters, digits, dashes and underscores",
 			username,
 		)
 		os.Exit(1)
 	}
 	if username == "cluster-admin" {
-		reporter.Errorf("Username 'cluster-admin' is not allowed")
+		r.Reporter.Errorf("Username 'cluster-admin' is not allowed")
 		os.Exit(1)
 	}
 
@@ -111,58 +109,28 @@ func run(_ *cobra.Command, argv []string) {
 		}
 	}
 	if !isRoleValid {
-		reporter.Errorf("Expected at least one of %s", validRoles)
+		r.Reporter.Errorf("Expected at least one of %s", validRoles)
 		os.Exit(1)
 	}
-
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	// Try to find the user:
-	reporter.Debugf("Loading '%s' users for cluster '%s'", role, clusterKey)
-	user, err := ocmClient.GetUser(cluster.ID(), role, username)
+	r.Reporter.Debugf("Loading '%s' users for cluster '%s'", role, clusterKey)
+	user, err := r.OCMClient.GetUser(cluster.ID(), role, username)
 	if err != nil {
-		reporter.Errorf(err.Error())
+		r.Reporter.Errorf(err.Error())
 		os.Exit(1)
 	}
 
 	if user == nil {
-		reporter.Warnf("Cannot find user '%s' with role '%s' on cluster '%s'", username, role, clusterKey)
+		r.Reporter.Warnf("Cannot find user '%s' with role '%s' on cluster '%s'", username, role, clusterKey)
 		os.Exit(0)
 	}
 
@@ -170,12 +138,12 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	reporter.Debugf("Removing user '%s' from group '%s' in cluster '%s'", username, role, clusterKey)
-	err = ocmClient.DeleteUser(cluster.ID(), role, username)
+	r.Reporter.Debugf("Removing user '%s' from group '%s' in cluster '%s'", username, role, clusterKey)
+	err = r.OCMClient.DeleteUser(cluster.ID(), role, username)
 	if err != nil {
-		reporter.Errorf("Failed to revoke '%s' from user '%s' in cluster '%s': %s",
+		r.Reporter.Errorf("Failed to revoke '%s' from user '%s' in cluster '%s': %s",
 			role, username, clusterKey, err)
 		os.Exit(1)
 	}
-	reporter.Infof("Revoked role '%s' from user '%s' on cluster '%s'", role, username, clusterKey)
+	r.Reporter.Infof("Revoked role '%s' from user '%s' on cluster '%s'", role, username, clusterKey)
 }
