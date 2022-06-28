@@ -23,10 +23,8 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
 
@@ -45,45 +43,37 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-	awsClient := aws.CreateNewClientOrExit(logger, reporter)
-	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
-	defer func() {
-		err := ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	var spin *spinner.Spinner
-	if reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		reporter.Infof("Fetching user roles")
+		r.Reporter.Infof("Fetching user roles")
 		spin.Start()
 	}
 
-	userRoles, err := listUserRoles(awsClient, ocmClient)
+	userRoles, err := listUserRoles(r)
 
 	if spin != nil {
 		spin.Stop()
 	}
 
 	if err != nil {
-		reporter.Errorf("Failed to get user roles: %v", err)
+		r.Reporter.Errorf("Failed to get user roles: %v", err)
 		os.Exit(1)
 	}
 
 	if len(userRoles) == 0 {
-		reporter.Infof("No user roles available")
+		r.Reporter.Infof("No user roles available")
 		os.Exit(0)
 	}
 	if output.HasFlag() {
 		err = output.Print(userRoles)
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -98,18 +88,18 @@ func run(_ *cobra.Command, _ []string) {
 	writer.Flush()
 }
 
-func listUserRoles(awsClient aws.Client, ocmClient *ocm.Client) ([]aws.Role, error) {
-	userRoles, err := awsClient.ListUserRoles()
+func listUserRoles(r *rosa.Runtime) ([]aws.Role, error) {
+	userRoles, err := r.AWSClient.ListUserRoles()
 	if err != nil {
 		return nil, err
 	}
 
 	// Check if roles are linked to account
-	account, err := ocmClient.GetCurrentAccount()
+	account, err := r.OCMClient.GetCurrentAccount()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get Redhat User Account: %v", err)
 	}
-	linkedRoles, err := ocmClient.GetAccountLinkedUserRoles(account.ID())
+	linkedRoles, err := r.OCMClient.GetAccountLinkedUserRoles(account.ID())
 	if err != nil {
 		return nil, err
 	}
