@@ -38,6 +38,7 @@ import (
 	installLogs "github.com/openshift/rosa/cmd/logs/install"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -99,6 +100,9 @@ var args struct {
 	// SubnetIDs should come in pairs; two per availability zone, one private and one public,
 	// unless using PrivateLink, in which case it should only be one private per availability zone
 	subnetIDs []string
+
+	// Selecting availability zones for a non-BYOVPC cluster
+	availabilityZones []string
 
 	// Force STS mode for interactive and validation
 	sts bool
@@ -348,6 +352,14 @@ func init() {
 			"Leave empty for installer provisioned subnet IDs.",
 	)
 
+	flags.StringSliceVar(
+		&args.availabilityZones,
+		"availability-zones",
+		nil,
+		"The availability zones to use when installing a non-BYOVPC cluster. "+
+			"Format should be a comma-separated list. "+
+			"Leave empty for the installer to pick availability zones")
+
 	// Scaling options
 	flags.StringVar(
 		&args.computeMachineType,
@@ -496,6 +508,15 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		r.Reporter.Errorf("Unable to get IAM credentials: %v", err)
 		os.Exit(1)
+	}
+
+	isBYOVPC := cmd.Flags().Changed("subnet-ids")
+	isAvailabilityZonesSet := cmd.Flags().Changed("availability-zones")
+	// Setting subnet IDs is choosing BYOVPC implicitly,
+	// and selecting availability zones is only allowed for non-BYOVPC clusters
+	if isBYOVPC && isAvailabilityZonesSet {
+		r.Reporter.Errorf("Setting availability zones is not supported for BYO VPC. " +
+			"ROSA autodetects availability zones from subnet IDs provided")
 	}
 
 	if interactive.Enabled() {
@@ -1175,7 +1196,8 @@ func run(cmd *cobra.Command, _ []string) {
 	subnetIDs := args.subnetIDs
 	subnetsProvided := len(subnetIDs) > 0
 	r.Reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
-	if !useExistingVPC && !subnetsProvided && interactive.Enabled() {
+	// If the user has set the availability zones (allowed for non-BYOVPC clusters), don't prompt the BYOVPC message
+	if !useExistingVPC && !subnetsProvided && !isAvailabilityZonesSet && interactive.Enabled() {
 		existingVPCHelp := "To install into an existing VPC you need to ensure that your VPC is configured " +
 			"with two subnets for each availability zone that you want the cluster installed into. "
 		if privateLink {
@@ -1263,6 +1285,54 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	r.Reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
+
+	// Select availability zones for a non-BYOVPC cluster
+	var selectAvailabilityZones bool
+	if !useExistingVPC && !subnetsProvided {
+		if isAvailabilityZonesSet {
+			availabilityZones = args.availabilityZones
+		}
+
+		if !isAvailabilityZonesSet && interactive.Enabled() {
+			selectAvailabilityZones, err = interactive.GetBool(interactive.Input{
+				Question: "Select availability zones",
+				Help:     cmd.Flags().Lookup("availability-zones").Usage,
+				Default:  false,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for select-availability-zones: %s", err)
+				os.Exit(1)
+			}
+
+			if selectAvailabilityZones {
+				optionsAvailabilityZones, err := awsClient.DescribeAvailabilityZones()
+				if err != nil {
+					r.Reporter.Errorf("Failed to get the list of the availability zone: %s", err)
+					os.Exit(1)
+				}
+
+				availabilityZones, err = interactive.GetMultipleOptions(interactive.Input{
+					Question: "Availability zones",
+					Help:     cmd.Flags().Lookup("availability-zones").Usage,
+					Required: true,
+					Options:  optionsAvailabilityZones,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected valid availability zones: %s", err)
+					os.Exit(1)
+				}
+			}
+		}
+
+		if isAvailabilityZonesSet || selectAvailabilityZones {
+			err = validateAvailabilityZones(multiAZ, availabilityZones, awsClient)
+			if err != nil {
+				r.Reporter.Errorf(fmt.Sprintf("%s", err))
+				os.Exit(1)
+			}
+		}
+	}
 
 	enableCustomerManagedKey := args.enableCustomerManagedKey
 	kmsKeyARN := args.kmsKeyARN
@@ -1799,7 +1869,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
-			command := buildCommand(clusterConfig, operatorRolesPrefix)
+			command := buildCommand(clusterConfig, operatorRolesPrefix, isAvailabilityZonesSet || selectAvailabilityZones)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
@@ -2020,6 +2090,35 @@ func validateExpiration() (expiration time.Time, err error) {
 	return
 }
 
+const (
+	singleAZCount = 1
+	multiAZCount  = 3
+)
+
+func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClient aws.Client) error {
+	if multiAZ && len(availabilityZones) != multiAZCount {
+		return fmt.Errorf("The number of availability zones for a multi AZ cluster should be %d, "+
+			"instead received: %d", multiAZCount, len(availabilityZones))
+	}
+	if !multiAZ && len(availabilityZones) != singleAZCount {
+		return fmt.Errorf("The number of availability zones for a single AZ cluster should be %d, "+
+			"instead received: %d", singleAZCount, len(availabilityZones))
+	}
+
+	regionAvailabilityZones, err := awsClient.DescribeAvailabilityZones()
+	if err != nil {
+		return fmt.Errorf("Failed to get the list of the availability zone: %s", err)
+	}
+	for _, az := range availabilityZones {
+		if !helper.Contains(regionAvailabilityZones, az) {
+			return fmt.Errorf("Expected a valid availability zone, "+
+				"'%s' doesn't belong to the region's availability zones", az)
+		}
+	}
+
+	return nil
+}
+
 // parseRFC3339 parses an RFC3339 date in either RFC3339Nano or RFC3339 format.
 func parseRFC3339(s string) (time.Time, error) {
 	if t, timeErr := time.Parse(time.RFC3339Nano, s); timeErr == nil {
@@ -2040,7 +2139,7 @@ func parseSubnet(subnetOption string) string {
 	return strings.Split(subnetOption, " ")[0]
 }
 
-func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
+func buildCommand(spec ocm.Spec, operatorRolesPrefix string, userSelectedAvailabilityZones bool) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.IsSTS {
@@ -2154,6 +2253,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string) string {
 	}
 	if spec.DisableWorkloadMonitoring != nil && *spec.DisableWorkloadMonitoring {
 		command += " --disable-workload-monitoring"
+	}
+	if userSelectedAvailabilityZones {
+		command += fmt.Sprintf(" --availability-zones %s", strings.Join(spec.AvailabilityZones, ","))
 	}
 	return command
 }
