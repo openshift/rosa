@@ -301,14 +301,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	clusterKey := r.GetClusterKey()
 
-	// Try to find the cluster:
-	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
+	cluster := r.FetchCluster()
 	if cluster.State() != cmv1.ClusterStateReady {
 		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
@@ -325,6 +318,7 @@ func run(cmd *cobra.Command, _ []string) {
 			"Any optional fields can be left empty and a default will be selected.")
 	}
 
+	var err error
 	if interactive.Enabled() {
 		if idpType == "" {
 			idpType = validIdps[0]

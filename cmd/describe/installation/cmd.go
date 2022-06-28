@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -69,23 +70,22 @@ func run(_ *cobra.Command, argv []string) {
 			"Expected the cluster to be specified with the --cluster flag")
 		os.Exit(1)
 	}
+	ocm.SetClusterKey(args.clusterKey)
+
 	if args.installationKey == "" {
 		r.Reporter.Errorf(
 			"Expected the add-on installation to be specified with the --addon flag")
 		os.Exit(1)
 	}
 
-	if err := describeAddonInstallation(r, args.clusterKey, args.installationKey); err != nil {
+	if err := describeAddonInstallation(r, args.installationKey); err != nil {
 		r.Reporter.Errorf("Failed to describe add-on installation: %v", err)
 		os.Exit(1)
 	}
 }
 
-func describeAddonInstallation(r *rosa.Runtime, clusterKey string, installationKey string) error {
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		return err
-	}
+func describeAddonInstallation(r *rosa.Runtime, installationKey string) error {
+	cluster := r.FetchCluster()
 
 	installation, err := r.OCMClient.GetAddOnInstallation(cluster.ID(), installationKey)
 	if err != nil {

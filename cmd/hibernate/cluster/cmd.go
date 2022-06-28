@@ -46,12 +46,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	clusterKey := r.GetClusterKey()
 
-	// Get the cluster to check the state
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
+	cluster := r.FetchCluster()
 
 	if cluster.State() != cmv1.ClusterStateReady {
 		r.Reporter.Errorf("Hibernating a cluster is only supported for 'Ready' clusters."+
@@ -64,7 +59,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	err = r.OCMClient.HibernateCluster(cluster.ID())
+	err := r.OCMClient.HibernateCluster(cluster.ID())
 	if err != nil {
 		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
