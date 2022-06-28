@@ -18,17 +18,14 @@ package aws
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/assets"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 func readCloudFormationTemplate(path string) (string, error) {
@@ -38,18 +35,6 @@ func readCloudFormationTemplate(path string) (string, error) {
 	}
 
 	return string(cfTemplate), nil
-}
-
-// Validations will validate if CF stack/users exist
-func CheckStackReadyForCreateCluster(reporter *rprtr.Object, logger *logrus.Logger) {
-	client := GetAWSClientForUserRegion(reporter, logger)
-	reporter.Debugf("Validating cloudformation stack exists")
-	stackExist, _, err := client.CheckStackReadyOrNotExisting(OsdCcsAdminStackName)
-	if !stackExist || err != nil {
-		reporter.Errorf("Cloudformation stack does not exist. Run `rosa init` first")
-		os.Exit(1)
-	}
-	reporter.Debugf("cloudformation stack is valid!")
 }
 
 // Ensure osdCcsAdmin IAM user is created
