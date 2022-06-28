@@ -124,11 +124,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)

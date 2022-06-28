@@ -110,11 +110,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r = r.WithAWS()
 		ocm.SetClusterKey(args.clusterKey)
 
-		clusterKey, err := ocm.GetClusterKey()
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
+		clusterKey := r.GetClusterKey()
 
 		// Try to find the cluster:
 		r.Reporter.Debugf("Loading cluster '%s'", clusterKey)

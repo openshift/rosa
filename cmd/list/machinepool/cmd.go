@@ -49,11 +49,7 @@ func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)

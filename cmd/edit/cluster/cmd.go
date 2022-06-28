@@ -132,11 +132,7 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
 	// Enable interactive mode if no flags have been set
 	if !interactive.Enabled() {

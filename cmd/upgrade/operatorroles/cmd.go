@@ -91,11 +91,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
 	defaultPolicyVersion, err := r.OCMClient.GetDefaultVersion()
 	if err != nil {

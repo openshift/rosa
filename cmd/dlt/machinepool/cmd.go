@@ -65,11 +65,7 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
 	if machinePoolID == "Default" {
 		r.Reporter.Errorf("Machine pool '%s' cannot be deleted from cluster '%s'", machinePoolID, clusterKey)

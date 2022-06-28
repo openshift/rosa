@@ -56,11 +56,7 @@ func run(cmd *cobra.Command, argv []string) {
 		ocm.SetClusterKey(argv[0])
 	}
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
 	mode, err := aws.GetMode()
 	if err != nil {

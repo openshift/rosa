@@ -97,12 +97,8 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-
+	clusterKey := r.GetClusterKey()
+	var err error
 	labelMatch := args.labelMatch
 	routeSelectors := make(map[string]string)
 	if interactive.Enabled() {
