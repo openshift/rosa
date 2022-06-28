@@ -11,11 +11,12 @@ import (
 )
 
 type Runtime struct {
-	Reporter  *reporter.Object
-	Logger    *logrus.Logger
-	OCMClient *ocm.Client
-	AWSClient aws.Client
-	Creator   *aws.Creator
+	Reporter   *reporter.Object
+	Logger     *logrus.Logger
+	OCMClient  *ocm.Client
+	AWSClient  aws.Client
+	Creator    *aws.Creator
+	ClusterKey string
 }
 
 func NewRuntime() *Runtime {
@@ -54,4 +55,15 @@ func (r *Runtime) Cleanup() {
 			r.Reporter.Errorf("Failed to close OCM connection: %v", err)
 		}
 	}
+}
+
+// Load the cluster key provided by the user into the runtime and return it
+func (r *Runtime) GetClusterKey() string {
+	clusterKey, err := ocm.GetClusterKey()
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	r.ClusterKey = clusterKey
+	return clusterKey
 }
