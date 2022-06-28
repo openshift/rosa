@@ -25,9 +25,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -51,62 +49,52 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	// Get AWS region
 	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
+		r.Reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer ocmClient.Close()
 
 	// Create the AWS client:
-	client, err := aws.NewClient().
-		Logger(logger).
+	r.AWSClient, err = aws.NewClient().
+		Logger(r.Logger).
 		Region(region).
 		Build()
 	if err != nil {
 		// FIXME Hack to capture errors due to using STS accounts
 		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
-			ocmClient.LogEvent("ROSAInitCredentialsSTS", nil)
+			r.OCMClient.LogEvent("ROSAInitCredentialsSTS", nil)
 		}
-		reporter.Errorf("Error creating AWS client: %v", err)
+		r.Reporter.Errorf("Error creating AWS client: %v", err)
 		os.Exit(1)
 	}
 
-	reporter.Infof("Verifying permissions for non-STS clusters")
-	reporter.Infof("Validating SCP policies...")
-	policies, err := ocmClient.GetPolicies("OSDSCPPolicy")
+	r.Reporter.Infof("Verifying permissions for non-STS clusters")
+	r.Reporter.Infof("Validating SCP policies...")
+	policies, err := r.OCMClient.GetPolicies("OSDSCPPolicy")
 	if err != nil {
-		reporter.Errorf("Failed to get 'osdscppolicy' for '%s': %v", aws.AdminUserName, err)
+		r.Reporter.Errorf("Failed to get 'osdscppolicy' for '%s': %v", aws.AdminUserName, err)
 		os.Exit(1)
 	}
-	ok, err := client.ValidateSCP(nil, policies)
+	ok, err := r.AWSClient.ValidateSCP(nil, policies)
 	if err != nil {
-		ocmClient.LogEvent("ROSAVerifyPermissionsSCPFailed", nil)
-		reporter.Errorf("Unable to validate SCP policies. Make sure that an organizational " +
+		r.OCMClient.LogEvent("ROSAVerifyPermissionsSCPFailed", nil)
+		r.Reporter.Errorf("Unable to validate SCP policies. Make sure that an organizational " +
 			"SCP is not preventing this account from performing the required checks")
 		if strings.Contains(err.Error(), "Throttling: Rate exceeded") {
-			reporter.Errorf("Throttling: Rate exceeded. Please wait 3-5 minutes before retrying.")
+			r.Reporter.Errorf("Throttling: Rate exceeded. Please wait 3-5 minutes before retrying.")
 			os.Exit(1)
 		}
-		reporter.Errorf("%v", err)
+		r.Reporter.Errorf("%v", err)
 		os.Exit(1)
 	}
 	if !ok {
-		ocmClient.LogEvent("ROSAVerifyPermissionsSCPInvalid", nil)
-		reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
+		r.OCMClient.LogEvent("ROSAVerifyPermissionsSCPInvalid", nil)
+		r.Reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
 	}
-	reporter.Infof("AWS SCP policies ok")
+	r.Reporter.Infof("AWS SCP policies ok")
 }

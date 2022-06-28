@@ -24,9 +24,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -65,33 +63,26 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) (err error) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	if len(argv) > 0 {
 		args.roleArn = argv[0]
 	}
 
-	orgID, _, err := ocmClient.GetCurrentOrganization()
+	orgID, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
-		reporter.Errorf("Error getting organization account: %v", err)
+		r.Reporter.Errorf("Error getting organization account: %v", err)
 		os.Exit(1)
 	}
 	if args.organizationID != "" && orgID != args.organizationID {
-		reporter.Errorf("Invalid organization ID '%s'. "+
+		r.Reporter.Errorf("Invalid organization ID '%s'. "+
 			"It doesnt match with the user session '%s'.", args.organizationID, orgID)
 		os.Exit(1)
 	}
 
-	if reporter.IsTerminal() {
-		reporter.Infof("Unlinking OCM role")
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Unlinking OCM role")
 	}
 
 	roleArn := args.roleArn
@@ -112,14 +103,14 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid ocm role ARN to unlink from the current organization: %s", err)
+			r.Reporter.Errorf("Expected a valid ocm role ARN to unlink from the current organization: %s", err)
 			os.Exit(1)
 		}
 	}
 	if roleArn != "" {
 		_, err := arn.Parse(roleArn)
 		if err != nil {
-			reporter.Errorf("Expected a valid ocm role ARN to unlink from the current organization: %s", err)
+			r.Reporter.Errorf("Expected a valid ocm role ARN to unlink from the current organization: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -127,19 +118,19 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		os.Exit(0)
 	}
 
-	err = ocmClient.UnlinkOCMRoleFromOrg(orgID, roleArn)
+	err = r.OCMClient.UnlinkOCMRoleFromOrg(orgID, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			reporter.Errorf("Only organization admin can run this command. "+
+			r.Reporter.Errorf("Only organization admin can run this command. "+
 				"Please ask someone with the organization admin role to run the following command \n\n"+
 				"\t rosa unlink ocm-role --role-arn %s --organization-id %s", roleArn, orgID)
 			os.Exit(1)
 		}
-		reporter.Errorf("Unable to unlink role arn '%s' from the organization id : '%s' : %v",
+		r.Reporter.Errorf("Unable to unlink role arn '%s' from the organization id : '%s' : %v",
 			roleArn, orgID, err)
 		os.Exit(1)
 	}
-	reporter.Infof("Successfully unlinked role-arn '%s' from organization account '%s'", roleArn, orgID)
+	r.Reporter.Infof("Successfully unlinked role-arn '%s' from organization account '%s'", roleArn, orgID)
 
 	return nil
 }

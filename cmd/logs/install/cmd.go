@@ -27,10 +27,8 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -72,8 +70,8 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 
 	// Determine whether the user wants to watch logs streaming.
 	// We check the flag value this way to allow other commands to watch logs
@@ -89,51 +87,21 @@ func run(cmd *cobra.Command, argv []string) {
 	} else {
 		clusterKey, err = ocm.GetClusterKey()
 		if err != nil {
-			reporter.Errorf("%s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
 
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		reporter.Errorf("Failed to get AWS creator: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
 	// Try to find the cluster:
-	reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := ocmClient.GetCluster(clusterKey, awsCreator)
+	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
-		reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
 	if cluster.State() == cmv1.ClusterStateReady {
-		reporter.Infof("Cluster '%s' has been successfully installed", clusterKey)
+		r.Reporter.Infof("Cluster '%s' has been successfully installed", clusterKey)
 		os.Exit(0)
 	}
 
@@ -143,30 +111,30 @@ func run(cmd *cobra.Command, argv []string) {
 	)
 	if (cluster.State() == cmv1.ClusterStatePending || cluster.State() == cmv1.ClusterStateWaiting) && !watch {
 		if cluster.CreationTimestamp().Add(5 * time.Minute).Before(time.Now()) {
-			reporter.Errorf(
+			r.Reporter.Errorf(
 				"Cluster '%s' has been in %s state for too long. Please contact support",
 				clusterKey, cluster.State(),
 			)
 			os.Exit(1)
 		}
-		reporter.Warnf(pendingMessage)
+		r.Reporter.Warnf(pendingMessage)
 		os.Exit(0)
 	}
 
 	if cluster.State() == cmv1.ClusterStateUninstalling {
-		reporter.Errorf("Cluster '%s' is in '%s' state and no installation logs are available",
+		r.Reporter.Errorf("Cluster '%s' is in '%s' state and no installation logs are available",
 			clusterKey, cluster.State(),
 		)
 		os.Exit(1)
 	}
 
 	// Get logs from Hive
-	logs, err := ocmClient.GetInstallLogs(cluster.ID(), args.tail)
+	logs, err := r.OCMClient.GetInstallLogs(cluster.ID(), args.tail)
 	if err != nil {
 		if errors.GetType(err) == errors.NotFound {
-			reporter.Infof(pendingMessage)
+			r.Reporter.Infof(pendingMessage)
 		} else {
-			reporter.Errorf("Failed to get logs for cluster '%s': %v", clusterKey, err)
+			r.Reporter.Errorf("Failed to get logs for cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
 	}
@@ -174,12 +142,12 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if watch {
 		if cluster.State() == cmv1.ClusterStateReady {
-			reporter.Infof("Cluster '%s' is successfully installed", clusterKey)
+			r.Reporter.Infof("Cluster '%s' is successfully installed", clusterKey)
 			os.Exit(0)
 		}
 
 		var spin *spinner.Spinner
-		if reporter.IsTerminal() {
+		if r.Reporter.IsTerminal() {
 			spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 		}
 		if spin != nil {
@@ -187,14 +155,14 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		// Poll for changing logs:
-		response, err := ocmClient.PollInstallLogs(cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
-			state, _ := ocmClient.GetClusterState(cluster.ID())
+		response, err := r.OCMClient.PollInstallLogs(cluster.ID(), func(logResponse *cmv1.LogGetResponse) bool {
+			state, _ := r.OCMClient.GetClusterState(cluster.ID())
 			if state == cmv1.ClusterStateError {
-				reporter.Errorf("There was an error installing cluster '%s'", clusterKey)
+				r.Reporter.Errorf("There was an error installing cluster '%s'", clusterKey)
 				os.Exit(1)
 			}
 			if state == cmv1.ClusterStateReady {
-				reporter.Infof("Cluster '%s' is now ready", clusterKey)
+				r.Reporter.Infof("Cluster '%s' is now ready", clusterKey)
 				os.Exit(0)
 			}
 			printLog(logResponse.Body(), spin)
@@ -202,7 +170,7 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
-				reporter.Errorf(fmt.Sprintf("Failed to watch logs for cluster '%s': %v", clusterKey, err))
+				r.Reporter.Errorf(fmt.Sprintf("Failed to watch logs for cluster '%s': %v", clusterKey, err))
 				os.Exit(1)
 			}
 		}

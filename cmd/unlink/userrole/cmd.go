@@ -24,9 +24,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -65,15 +63,8 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) (err error) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
-	ocmClient := ocm.CreateNewClientOrExit(logger, reporter)
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	if len(argv) > 0 {
 		args.roleArn = argv[0]
@@ -81,16 +72,16 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 
 	accountID := args.accountID
 	if accountID == "" {
-		currentAccount, err := ocmClient.GetCurrentAccount()
+		currentAccount, err := r.OCMClient.GetCurrentAccount()
 		if err != nil {
-			reporter.Errorf("Error getting current account: %v", err)
+			r.Reporter.Errorf("Error getting current account: %v", err)
 			os.Exit(1)
 		}
 		accountID = currentAccount.ID()
 	}
 
-	if reporter.IsTerminal() {
-		reporter.Infof("Unlinking user role")
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Unlinking user role")
 	}
 
 	roleArn := args.roleArn
@@ -111,14 +102,14 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid user role ARN to unlink from the current account: %s", err)
+			r.Reporter.Errorf("Expected a valid user role ARN to unlink from the current account: %s", err)
 			os.Exit(1)
 		}
 	}
 	if roleArn != "" {
 		_, err := arn.Parse(roleArn)
 		if err != nil {
-			reporter.Errorf("Expected a valid user role ARN to unlink from the current account: %s", err)
+			r.Reporter.Errorf("Expected a valid user role ARN to unlink from the current account: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -126,18 +117,18 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		os.Exit(0)
 	}
 
-	err = ocmClient.UnlinkUserRoleFromAccount(accountID, roleArn)
+	err = r.OCMClient.UnlinkUserRoleFromAccount(accountID, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			reporter.Errorf("Only organization admin or the user that owns this account can run this command. "+
+			r.Reporter.Errorf("Only organization admin or the user that owns this account can run this command. "+
 				"Please ask someone with adequate permissions to run the following command \n\n"+
 				"\t rosa unlink user-role --role-arn %s --account-id %s", roleArn, accountID)
 			os.Exit(1)
 		}
-		reporter.Errorf("Unable to unlink role ARN '%s' from the account id : '%s' : %v",
+		r.Reporter.Errorf("Unable to unlink role ARN '%s' from the account id : '%s' : %v",
 			roleArn, accountID, err)
 		os.Exit(1)
 	}
-	reporter.Infof("Successfully unlinked role ARN '%s' from account '%s'", roleArn, accountID)
+	r.Reporter.Infof("Successfully unlinked role ARN '%s' from account '%s'", roleArn, accountID)
 	return nil
 }

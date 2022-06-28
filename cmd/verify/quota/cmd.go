@@ -24,9 +24,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -49,52 +47,42 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) (err error) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	// Get AWS region
 	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
-		reporter.Errorf("Error getting region: %v", err)
+		r.Reporter.Errorf("Error getting region: %v", err)
 		return err
 	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		return err
-	}
-	defer ocmClient.Close()
 
 	// Create the AWS client:
-	client, err := aws.NewClient().
-		Logger(logger).
+	r.AWSClient, err = aws.NewClient().
+		Logger(r.Logger).
 		Region(region).
 		Build()
 	if err != nil {
 		// FIXME Hack to capture errors due to using STS accounts
 		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
-			ocmClient.LogEvent("ROSAInitCredentialsSTS", nil)
+			r.OCMClient.LogEvent("ROSAInitCredentialsSTS", nil)
 		}
-		reporter.Errorf("Error creating AWS client: %v", err)
+		r.Reporter.Errorf("Error creating AWS client: %v", err)
 		return err
 	}
 
-	if reporter.IsTerminal() {
-		reporter.Infof("Validating AWS quota...")
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Validating AWS quota...")
 	}
-	_, err = client.ValidateQuota()
+	_, err = r.AWSClient.ValidateQuota()
 	if err != nil {
-		ocmClient.LogEvent("ROSAVerifyQuotaInsufficient", nil)
-		reporter.Errorf("Insufficient AWS quotas")
-		reporter.Errorf("%v", err)
+		r.OCMClient.LogEvent("ROSAVerifyQuotaInsufficient", nil)
+		r.Reporter.Errorf("Insufficient AWS quotas")
+		r.Reporter.Errorf("%v", err)
 		return err
 	}
-	if reporter.IsTerminal() {
-		reporter.Infof("AWS quota ok. " +
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("AWS quota ok. " +
 			"If cluster installation fails, validate actual AWS resource usage against " +
 			"https://docs.openshift.com/rosa/rosa_getting_started/rosa-required-aws-service-quotas.html")
 	}

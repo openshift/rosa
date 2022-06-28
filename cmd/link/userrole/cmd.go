@@ -27,10 +27,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
-
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -69,38 +66,24 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) (err error) {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
 
 	if len(argv) > 0 {
 		args.roleArn = argv[0]
 	}
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		return err
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	accountID := args.accountID
 	if accountID == "" {
-		currentAccount, err := ocmClient.GetCurrentAccount()
+		currentAccount, err := r.OCMClient.GetCurrentAccount()
 		if err != nil {
-			reporter.Errorf("Error getting current account: %v", err)
+			r.Reporter.Errorf("Error getting current account: %v", err)
 		}
 		accountID = currentAccount.ID()
 	}
 
-	if reporter.IsTerminal() {
-		reporter.Infof("Linking User role")
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Linking User role")
 	}
 
 	roleArn := args.roleArn
@@ -121,14 +104,14 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			},
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
+			r.Reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
 			os.Exit(1)
 		}
 	}
 	if roleArn != "" {
 		_, err := arn.Parse(roleArn)
 		if err != nil {
-			reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
+			r.Reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -137,18 +120,18 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		os.Exit(0)
 	}
 
-	err = ocmClient.LinkAccountRole(accountID, roleArn)
+	err = r.OCMClient.LinkAccountRole(accountID, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			reporter.Errorf("Only organization admin can run this command. "+
+			r.Reporter.Errorf("Only organization admin can run this command. "+
 				"Please ask someone with the organization admin role to run the following command \n\n"+
 				"\t rosa link user-role --role-arn %s --account-id %s", roleArn, accountID)
 			return err
 		}
-		reporter.Errorf("Unable to link role ARN '%s' with the account id : '%s' : %v",
+		r.Reporter.Errorf("Unable to link role ARN '%s' with the account id : '%s' : %v",
 			args.roleArn, accountID, err)
 		return err
 	}
-	reporter.Infof("Successfully linked role ARN '%s' with account '%s'", roleArn, accountID)
+	r.Reporter.Infof("Successfully linked role ARN '%s' with account '%s'", roleArn, accountID)
 	return nil
 }
