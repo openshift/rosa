@@ -17,11 +17,12 @@ limitations under the License.
 package service
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -39,17 +40,6 @@ var Cmd = &cobra.Command{
 	Run:                run,
 	Hidden:             true,
 	DisableFlagParsing: true,
-	Args: func(cmd *cobra.Command, argv []string) error {
-		err := arguments.ParseUnknownFlags(cmd, argv)
-		if err != nil {
-			return err
-		}
-
-		if len(cmd.Flags().Args()) > 0 {
-			return fmt.Errorf("Unrecognized command line parameter")
-		}
-		return nil
-	},
 }
 
 func init() {
@@ -64,8 +54,24 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	r := rosa.NewRuntime().WithOCM()
+	r := rosa.NewRuntime().WithOCM().WithFlagChecker()
 	defer r.Cleanup()
+
+	// Adding known flags to flag checker before parsing the unknown flags
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		r.FlagChecker.AddValidFlag(flag)
+	})
+
+	err := arguments.ParseUnknownFlags(cmd, argv)
+	if err != nil {
+		r.Reporter.Errorf("Failed to parse flags: %v", err)
+		os.Exit(1)
+	}
+
+	if len(cmd.Flags().Args()) > 0 {
+		r.Reporter.Errorf("Unrecognized command line parameter")
+		os.Exit(1)
+	}
 
 	if args.ID == "" {
 		r.Reporter.Errorf("Service id not specified.")
@@ -73,7 +79,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Try to find the cluster:
+	// Try to find the service:
 	r.Reporter.Debugf("Loading service %q", args.ID)
 	service, err := r.OCMClient.GetManagedService(ocm.DescribeManagedServiceArgs{ID: args.ID})
 	if err != nil {
@@ -81,20 +87,39 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	parameters := service.Parameters()
-
-	if len(parameters) == 0 {
-		r.Reporter.Errorf("Service %q has no parameters to edit", args.ID)
+	// Setting parameter flags as valid
+	addOn, err := r.OCMClient.GetAddOn(service.Service())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get add-on %q: %s", service.Service(), err)
 		os.Exit(1)
 	}
 
+	addonParameters := addOn.Parameters()
+	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+		r.FlagChecker.AddValidParameter(param.ID())
+		return true
+	})
+
+	// Now that rosa knows the expected fields to validate,
+	// Validate that all of the user-specified flags are valid.
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		if !r.FlagChecker.IsValidFlag(flag) {
+			r.Reporter.Errorf("%q is not a valid flag", flag.Name)
+			os.Exit(1)
+		}
+	})
+
 	args.Parameters = map[string]string{}
-	for _, param := range parameters {
+	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
 		flag := cmd.Flags().Lookup(param.ID())
 		if flag != nil {
+			if !param.Editable() {
+				r.Reporter.Errorf("Cannot edit the parameter %q", param.ID())
+			}
 			args.Parameters[param.ID()] = flag.Value.String()
 		}
-	}
+		return true
+	})
 
 	r.Reporter.Debugf("Updating parameters for service %q", args.ID)
 	err = r.OCMClient.UpdateManagedService(args)

@@ -3,6 +3,7 @@ package rosa
 import (
 	"os"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -11,11 +12,12 @@ import (
 )
 
 type Runtime struct {
-	Reporter  *reporter.Object
-	Logger    *logrus.Logger
-	OCMClient *ocm.Client
-	AWSClient aws.Client
-	Creator   *aws.Creator
+	Reporter    *reporter.Object
+	Logger      *logrus.Logger
+	OCMClient   *ocm.Client
+	AWSClient   aws.Client
+	Creator     *aws.Creator
+	FlagChecker *arguments.FlagCheck
 }
 
 func NewRuntime() *Runtime {
@@ -44,6 +46,13 @@ func (r *Runtime) WithAWS() *Runtime {
 			r.Reporter.Errorf("Failed to get AWS creator: %v", err)
 			os.Exit(1)
 		}
+	}
+	return r
+}
+
+func (r *Runtime) WithFlagChecker() *Runtime {
+	if r.FlagChecker == nil {
+		r.FlagChecker = arguments.NewFlagCheck()
 	}
 	return r
 }
