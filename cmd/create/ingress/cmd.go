@@ -77,12 +77,8 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-
+	clusterKey := r.GetClusterKey()
+	var err error
 	labelMatch := args.labelMatch
 	if interactive.Enabled() {
 		labelMatch, err = interactive.GetString(interactive.Input{
@@ -104,14 +100,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Try to find the cluster:
-	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
+	cluster := r.FetchCluster()
 	if cluster.AWS().PrivateLink() {
 		r.Reporter.Errorf("Cluster '%s' is PrivateLink and does not support creating new ingresses", clusterKey)
 		os.Exit(1)

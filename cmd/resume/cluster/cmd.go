@@ -44,17 +44,8 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	// Get the cluster to check the state
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
+	cluster := r.FetchCluster()
 
 	if cluster.State() != cmv1.ClusterStateHibernating {
 		r.Reporter.Errorf("Resuming a cluster from hibernation is only supported for clusters in "+
@@ -65,7 +56,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if !confirm.Confirm("resume cluster %s", clusterKey) {
 		os.Exit(1)
 	}
-	err = r.OCMClient.ResumeCluster(cluster.ID())
+	err := r.OCMClient.ResumeCluster(cluster.ID())
 	if err != nil {
 		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)

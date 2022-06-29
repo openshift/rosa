@@ -57,20 +57,9 @@ func run(_ *cobra.Command, argv []string) {
 
 	idpName := argv[0]
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
-	// Try to find the cluster:
-	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
+	cluster := r.FetchCluster()
 	// Try to find the identity provider:
 	r.Reporter.Debugf("Loading identity provider '%s'", idpName)
 	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())

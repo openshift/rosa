@@ -132,11 +132,7 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
 	// Enable interactive mode if no flags have been set
 	if !interactive.Enabled() {
@@ -152,12 +148,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
+	cluster := r.FetchCluster()
 
 	// Validate flags:
 	expiration, err := validateExpiration()

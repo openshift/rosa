@@ -56,20 +56,9 @@ func run(_ *cobra.Command, argv []string) {
 
 	addOnID := argv[0]
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
-	// Try to find the cluster:
-	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
+	cluster := r.FetchCluster()
 	if cluster.State() != cmv1.ClusterStateReady {
 		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
@@ -86,7 +75,7 @@ func run(_ *cobra.Command, argv []string) {
 	}
 
 	r.Reporter.Debugf("Uninstalling add-on '%s' from cluster '%s'", addOnID, clusterKey)
-	err = r.OCMClient.UninstallAddOn(cluster.ID(), addOnID)
+	err := r.OCMClient.UninstallAddOn(cluster.ID(), addOnID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to remove add-on installation '%s' from cluster '%s': %s", addOnID, clusterKey, err)
 		os.Exit(1)

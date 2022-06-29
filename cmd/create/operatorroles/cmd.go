@@ -95,11 +95,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	clusterKey := r.GetClusterKey()
 
 	mode, err := aws.GetMode()
 	if err != nil {
@@ -112,14 +108,7 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	// Try to find the cluster:
-	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
-	cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
+	cluster := r.FetchCluster()
 	if cluster.AWS().STS().RoleARN() == "" {
 		r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
 		os.Exit(1)

@@ -110,19 +110,8 @@ func run(cmd *cobra.Command, _ []string) {
 		r = r.WithAWS()
 		ocm.SetClusterKey(args.clusterKey)
 
-		clusterKey, err := ocm.GetClusterKey()
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
-
-		// Try to find the cluster:
-		r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
-		cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-		if err != nil {
-			r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		}
+		clusterKey := r.GetClusterKey()
+		cluster := r.FetchCluster()
 
 		if cluster.State() != v1.ClusterStateReady {
 			r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
