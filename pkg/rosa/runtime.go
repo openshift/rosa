@@ -50,13 +50,6 @@ func (r *Runtime) WithAWS() *Runtime {
 	return r
 }
 
-func (r *Runtime) WithFlagChecker() *Runtime {
-	if r.FlagChecker == nil {
-		r.FlagChecker = arguments.NewFlagCheck()
-	}
-	return r
-}
-
 func (r *Runtime) Cleanup() {
 	if r.OCMClient != nil {
 		if err := r.OCMClient.Close(); err != nil {

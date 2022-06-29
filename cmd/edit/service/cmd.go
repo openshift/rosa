@@ -20,7 +20,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
@@ -54,13 +53,11 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	r := rosa.NewRuntime().WithOCM().WithFlagChecker()
+	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
 	// Adding known flags to flag checker before parsing the unknown flags
-	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		r.FlagChecker.AddValidFlag(flag)
-	})
+	flagChecker := arguments.NewFlagCheck(cmd.Flags())
 
 	err := arguments.ParseUnknownFlags(cmd, argv)
 	if err != nil {
@@ -87,7 +84,6 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Setting parameter flags as valid
 	addOn, err := r.OCMClient.GetAddOn(service.Service())
 	if err != nil {
 		r.Reporter.Errorf("Failed to get add-on %q: %s", service.Service(), err)
@@ -96,18 +92,17 @@ func run(cmd *cobra.Command, argv []string) {
 
 	addonParameters := addOn.Parameters()
 	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
-		r.FlagChecker.AddValidParameter(param.ID())
+		flagChecker.AddValidFlag(param.ID())
 		return true
 	})
 
 	// Now that rosa knows the expected fields to validate,
 	// Validate that all of the user-specified flags are valid.
-	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		if !r.FlagChecker.IsValidFlag(flag) {
-			r.Reporter.Errorf("%q is not a valid flag", flag.Name)
-			os.Exit(1)
-		}
-	})
+	err = flagChecker.ValidateFlags(cmd.Flags())
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
 
 	args.Parameters = map[string]string{}
 	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
