@@ -24,11 +24,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/iam"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -80,18 +84,63 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	addOn, err := r.OCMClient.GetAddOnInstallation(cluster.ID(), addOnID)
-	if err != nil && errors.GetType(err) != errors.NotFound {
-		r.Reporter.Errorf("An error occurred while trying to get addon installation : %v", err)
+	ensureAddonNotInstalled(r, cluster.ID(), addOnID)
+
+	addOn, err := r.OCMClient.GetAddOn(addOnID)
+	if err != nil {
+		r.Reporter.Warnf("Failed to get add-on '%s'", addOnID)
 		os.Exit(1)
 	}
-	if addOn != nil {
-		r.Reporter.Warnf("Addon '%s' is already installed on cluster '%s'", addOnID, clusterKey)
-		os.Exit(0)
+
+	// Verify if addon requires STS authentication
+	isSTS := cluster.AWS().STS().RoleARN() != "" && len(addOn.CredentialsRequests()) > 0
+	if isSTS {
+		r.Reporter.Warnf("Addon '%s' needs access to resources in account '%s'", addOnID, r.Creator.AccountID)
 	}
 
 	if !confirm.Confirm("install add-on '%s' on cluster '%s'", addOnID, clusterKey) {
 		os.Exit(0)
+	}
+
+	if isSTS {
+		prefix := aws.GetPrefixFromOperatorRole(cluster)
+
+		for _, cr := range addOn.CredentialsRequests() {
+			roleName := generateRoleName(cr, prefix)
+			roleArn := aws.GetRoleARN(r.Creator.AccountID, roleName)
+			_, err = r.AWSClient.GetRoleByARN(roleArn)
+			if err != nil {
+				aerr, ok := err.(awserr.Error)
+				if ok && aerr.Code() == iam.ErrCodeNoSuchEntityException {
+					err = createAddonRole(r, roleName, cr, cmd, cluster)
+					if err != nil {
+						r.Reporter.Errorf("%s", err)
+						os.Exit(1)
+					}
+				} else {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
+			}
+			// TODO : verify the role has the right permissions
+
+			operatorRole, err := cmv1.NewOperatorIAMRole().
+				Name(cr.Name()).
+				Namespace(cr.Namespace()).
+				RoleARN(roleArn).
+				ServiceAccount(cr.ServiceAccount()).
+				Build()
+			if err != nil {
+				r.Reporter.Errorf("Failed to build operator role '%s': %s", roleName, err)
+				os.Exit(1)
+			}
+
+			err = r.OCMClient.AddClusterOperatorRole(cluster, operatorRole)
+			if err != nil {
+				r.Reporter.Errorf("Failed to add operator role to cluster '%s': %s", clusterKey, err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	parameters, err := r.OCMClient.GetAddOnParameters(cluster.ID(), addOnID)
@@ -207,6 +256,53 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
+func ensureAddonNotInstalled(r *rosa.Runtime, clusterID, addOnID string) {
+	installation, err := r.OCMClient.GetAddOnInstallation(clusterID, addOnID)
+	if err != nil && errors.GetType(err) != errors.NotFound {
+		r.Reporter.Errorf("An error occurred while trying to get addon installation : %v", err)
+		os.Exit(1)
+	}
+	if installation != nil {
+		r.Reporter.Warnf("Addon '%s' is already installed on cluster '%s'", addOnID, clusterID)
+		os.Exit(0)
+	}
+}
+
+func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialRequest, cmd *cobra.Command,
+	cluster *cmv1.Cluster) error {
+	policy := aws.NewPolicyDocument()
+	policy.AllowActions(cr.PolicyPermissions()...)
+
+	policies, err := r.OCMClient.GetPolicies("OperatorRole")
+	if err != nil {
+		return err
+	}
+	policyDetails := policies["operator_iam_role_policy"]
+	assumePolicy, err := aws.GenerateAddonPolicyDoc(cluster, r.Creator.AccountID, cr, policyDetails)
+	if err != nil {
+		return err
+	}
+
+	r.Reporter.Debugf("Creating role '%s'", roleName)
+
+	roleARN, err := r.AWSClient.EnsureRole(roleName, assumePolicy, "", "",
+		map[string]string{
+			tags.ClusterID:    cluster.ID(),
+			"addon_namespace": cr.Namespace(),
+			"addon_name":      cr.Name(),
+		})
+	if err != nil {
+		return err
+	}
+	r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
+
+	err = r.AWSClient.PutRolePolicy(roleName, roleName, policy.String())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func buildCommand(clusterName string, addonName string, params []ocm.AddOnParam) string {
 	command := fmt.Sprintf("rosa install addon --cluster %s %s -y", clusterName, addonName)
 
@@ -217,4 +313,12 @@ func buildCommand(clusterName string, addonName string, params []ocm.AddOnParam)
 	}
 
 	return command
+}
+
+func generateRoleName(cr *cmv1.CredentialRequest, prefix string) string {
+	roleName := fmt.Sprintf("%s-%s-%s", prefix, cr.Namespace(), cr.Name())
+	if len(roleName) > 64 {
+		roleName = roleName[0:64]
+	}
+	return roleName
 }

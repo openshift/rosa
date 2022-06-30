@@ -206,6 +206,10 @@ func (c *awsClient) createRole(name string, policy string, permissionsBoundary s
 }
 
 func (c *awsClient) isRoleCompatible(name string, version string) (bool, error) {
+	// Ignore if there is no version
+	if version == "" {
+		return true, nil
+	}
 	output, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
 		RoleName: aws.String(name),
 	})

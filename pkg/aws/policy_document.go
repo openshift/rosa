@@ -270,8 +270,7 @@ func getPolicyDocument(policyDocument *string) (*PolicyDocument, error) {
 	return &data, nil
 }
 
-func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
-	policyDetails string) (string, error) {
+func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID, serviceAccounts, policyDetails string) (string, error) {
 	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
 	if err != nil {
 		return "", err
@@ -280,17 +279,28 @@ func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cm
 
 	oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", accountID, issuerURL)
 
-	serviceAccounts := []string{}
-	for _, sa := range operator.ServiceAccounts() {
-		serviceAccounts = append(serviceAccounts,
-			fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace(), sa))
-	}
-
 	policy := InterpolatePolicyDocument(policyDetails, map[string]string{
 		"oidc_provider_arn": oidcProviderARN,
 		"issuer_url":        issuerURL,
-		"service_accounts":  strings.Join(serviceAccounts, `" , "`),
+		"service_accounts":  serviceAccounts,
 	})
 
 	return policy, nil
+}
+
+func GenerateOperatorRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
+	policyDetails string) (string, error) {
+	serviceAccounts := make([]string, len(operator.ServiceAccounts()))
+	for i, sa := range operator.ServiceAccounts() {
+		serviceAccounts[i] = fmt.Sprintf("system:serviceaccount:%s:%s", operator.Namespace(), sa)
+	}
+	service_accounts := strings.Join(serviceAccounts, `" , "`)
+
+	return GenerateRolePolicyDoc(cluster, accountID, service_accounts, policyDetails)
+}
+
+func GenerateAddonPolicyDoc(cluster *cmv1.Cluster, accountID string, cr *cmv1.CredentialRequest,
+	policyDetails string) (string, error) {
+	service_accounts := fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace(), cr.ServiceAccount())
+	return GenerateRolePolicyDoc(cluster, accountID, service_accounts, policyDetails)
 }
