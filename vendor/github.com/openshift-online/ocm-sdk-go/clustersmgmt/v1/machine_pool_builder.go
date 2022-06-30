@@ -34,6 +34,7 @@ type MachinePoolBuilder struct {
 	labels               map[string]string
 	replicas             int
 	securityGroupFilters []*MachinePoolSecurityGroupFilterBuilder
+	subnets              []string
 	taints               []*TaintBuilder
 }
 
@@ -191,13 +192,23 @@ func (b *MachinePoolBuilder) SecurityGroupFilters(values ...*MachinePoolSecurity
 	return b
 }
 
+// Subnets sets the value of the 'subnets' attribute to the given values.
+//
+//
+func (b *MachinePoolBuilder) Subnets(values ...string) *MachinePoolBuilder {
+	b.subnets = make([]string, len(values))
+	copy(b.subnets, values)
+	b.bitmap_ |= 2048
+	return b
+}
+
 // Taints sets the value of the 'taints' attribute to the given values.
 //
 //
 func (b *MachinePoolBuilder) Taints(values ...*TaintBuilder) *MachinePoolBuilder {
 	b.taints = make([]*TaintBuilder, len(values))
 	copy(b.taints, values)
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -247,6 +258,12 @@ func (b *MachinePoolBuilder) Copy(object *MachinePool) *MachinePoolBuilder {
 		}
 	} else {
 		b.securityGroupFilters = nil
+	}
+	if object.subnets != nil {
+		b.subnets = make([]string, len(object.subnets))
+		copy(b.subnets, object.subnets)
+	} else {
+		b.subnets = nil
 	}
 	if object.taints != nil {
 		b.taints = make([]*TaintBuilder, len(object.taints))
@@ -303,6 +320,10 @@ func (b *MachinePoolBuilder) Build() (object *MachinePool, err error) {
 				return
 			}
 		}
+	}
+	if b.subnets != nil {
+		object.subnets = make([]string, len(b.subnets))
+		copy(object.subnets, b.subnets)
 	}
 	if b.taints != nil {
 		object.taints = make([]*Taint, len(b.taints))

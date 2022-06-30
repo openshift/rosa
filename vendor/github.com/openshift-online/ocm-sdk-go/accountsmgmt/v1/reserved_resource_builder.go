@@ -27,15 +27,16 @@ import (
 //
 //
 type ReservedResourceBuilder struct {
-	bitmap_              uint32
-	availabilityZoneType string
-	billingModel         BillingModel
-	count                int
-	createdAt            time.Time
-	resourceName         string
-	resourceType         string
-	updatedAt            time.Time
-	byoc                 bool
+	bitmap_                   uint32
+	availabilityZoneType      string
+	billingMarketplaceAccount string
+	billingModel              BillingModel
+	count                     int
+	createdAt                 time.Time
+	resourceName              string
+	resourceType              string
+	updatedAt                 time.Time
+	byoc                      bool
 }
 
 // NewReservedResource creates a new builder of 'reserved_resource' objects.
@@ -66,12 +67,21 @@ func (b *ReservedResourceBuilder) AvailabilityZoneType(value string) *ReservedRe
 	return b
 }
 
+// BillingMarketplaceAccount sets the value of the 'billing_marketplace_account' attribute to the given value.
+//
+//
+func (b *ReservedResourceBuilder) BillingMarketplaceAccount(value string) *ReservedResourceBuilder {
+	b.billingMarketplaceAccount = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // BillingModel sets the value of the 'billing_model' attribute to the given value.
 //
 // Billing model for subscripiton and reserved_resource resources.
 func (b *ReservedResourceBuilder) BillingModel(value BillingModel) *ReservedResourceBuilder {
 	b.billingModel = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -80,7 +90,7 @@ func (b *ReservedResourceBuilder) BillingModel(value BillingModel) *ReservedReso
 //
 func (b *ReservedResourceBuilder) Count(value int) *ReservedResourceBuilder {
 	b.count = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -89,7 +99,7 @@ func (b *ReservedResourceBuilder) Count(value int) *ReservedResourceBuilder {
 //
 func (b *ReservedResourceBuilder) CreatedAt(value time.Time) *ReservedResourceBuilder {
 	b.createdAt = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -98,7 +108,7 @@ func (b *ReservedResourceBuilder) CreatedAt(value time.Time) *ReservedResourceBu
 //
 func (b *ReservedResourceBuilder) ResourceName(value string) *ReservedResourceBuilder {
 	b.resourceName = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -107,7 +117,7 @@ func (b *ReservedResourceBuilder) ResourceName(value string) *ReservedResourceBu
 //
 func (b *ReservedResourceBuilder) ResourceType(value string) *ReservedResourceBuilder {
 	b.resourceType = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -116,7 +126,7 @@ func (b *ReservedResourceBuilder) ResourceType(value string) *ReservedResourceBu
 //
 func (b *ReservedResourceBuilder) UpdatedAt(value time.Time) *ReservedResourceBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -128,6 +138,7 @@ func (b *ReservedResourceBuilder) Copy(object *ReservedResource) *ReservedResour
 	b.bitmap_ = object.bitmap_
 	b.byoc = object.byoc
 	b.availabilityZoneType = object.availabilityZoneType
+	b.billingMarketplaceAccount = object.billingMarketplaceAccount
 	b.billingModel = object.billingModel
 	b.count = object.count
 	b.createdAt = object.createdAt
@@ -143,6 +154,7 @@ func (b *ReservedResourceBuilder) Build() (object *ReservedResource, err error) 
 	object.bitmap_ = b.bitmap_
 	object.byoc = b.byoc
 	object.availabilityZoneType = b.availabilityZoneType
+	object.billingMarketplaceAccount = b.billingMarketplaceAccount
 	object.billingModel = b.billingModel
 	object.count = b.count
 	object.createdAt = b.createdAt

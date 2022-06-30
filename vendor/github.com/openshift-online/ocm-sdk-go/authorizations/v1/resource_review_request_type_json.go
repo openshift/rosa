@@ -60,7 +60,16 @@ func writeResourceReviewRequest(object *ResourceReviewRequest, stream *jsoniter.
 		stream.WriteString(object.action)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&4 != 0 && object.excludeSubscriptionStatuses != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("exclude_subscription_statuses")
+		writeSubscriptionStatusList(object.excludeSubscriptionStatuses, stream)
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -69,7 +78,7 @@ func writeResourceReviewRequest(object *ResourceReviewRequest, stream *jsoniter.
 		stream.WriteBool(object.reduceClusterList)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -109,14 +118,18 @@ func readResourceReviewRequest(iterator *jsoniter.Iterator) *ResourceReviewReque
 			value := iterator.ReadString()
 			object.action = value
 			object.bitmap_ |= 2
+		case "exclude_subscription_statuses":
+			value := readSubscriptionStatusList(iterator)
+			object.excludeSubscriptionStatuses = value
+			object.bitmap_ |= 4
 		case "reduce_cluster_list":
 			value := iterator.ReadBool()
 			object.reduceClusterList = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		case "resource_type":
 			value := iterator.ReadString()
 			object.resourceType = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()
 		}
