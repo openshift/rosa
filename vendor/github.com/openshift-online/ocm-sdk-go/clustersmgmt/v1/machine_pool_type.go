@@ -46,6 +46,7 @@ type MachinePool struct {
 	labels               map[string]string
 	replicas             int
 	securityGroupFilters []*MachinePoolSecurityGroupFilter
+	subnets              []string
 	taints               []*Taint
 }
 
@@ -294,12 +295,35 @@ func (o *MachinePool) GetSecurityGroupFilters() (value []*MachinePoolSecurityGro
 	return
 }
 
+// Subnets returns the value of the 'subnets' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The subnets upon which the nodes are created.
+func (o *MachinePool) Subnets() []string {
+	if o != nil && o.bitmap_&2048 != 0 {
+		return o.subnets
+	}
+	return nil
+}
+
+// GetSubnets returns the value of the 'subnets' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The subnets upon which the nodes are created.
+func (o *MachinePool) GetSubnets() (value []string, ok bool) {
+	ok = o != nil && o.bitmap_&2048 != 0
+	if ok {
+		value = o.subnets
+	}
+	return
+}
+
 // Taints returns the value of the 'taints' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The taints set on the Nodes created.
 func (o *MachinePool) Taints() []*Taint {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.taints
 	}
 	return nil
@@ -310,7 +334,7 @@ func (o *MachinePool) Taints() []*Taint {
 //
 // The taints set on the Nodes created.
 func (o *MachinePool) GetTaints() (value []*Taint, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.taints
 	}

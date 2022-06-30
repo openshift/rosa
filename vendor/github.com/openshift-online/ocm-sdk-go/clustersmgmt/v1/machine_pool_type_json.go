@@ -158,7 +158,16 @@ func writeMachinePool(object *MachinePool, stream *jsoniter.Stream) {
 		writeMachinePoolSecurityGroupFilterList(object.securityGroupFilters, stream)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0 && object.taints != nil
+	present_ = object.bitmap_&2048 != 0 && object.subnets != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("subnets")
+		writeStringList(object.subnets, stream)
+		count++
+	}
+	present_ = object.bitmap_&4096 != 0 && object.taints != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -241,10 +250,14 @@ func readMachinePool(iterator *jsoniter.Iterator) *MachinePool {
 			value := readMachinePoolSecurityGroupFilterList(iterator)
 			object.securityGroupFilters = value
 			object.bitmap_ |= 1024
+		case "subnets":
+			value := readStringList(iterator)
+			object.subnets = value
+			object.bitmap_ |= 2048
 		case "taints":
 			value := readTaintList(iterator)
 			object.taints = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 4096
 		default:
 			iterator.ReadAny()
 		}

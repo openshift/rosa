@@ -432,6 +432,7 @@ type ClusterDeleteRequest struct {
 	query       url.Values
 	header      http.Header
 	deprovision *bool
+	dryRun      *bool
 }
 
 // Parameter adds a query parameter.
@@ -462,6 +463,14 @@ func (r *ClusterDeleteRequest) Deprovision(value bool) *ClusterDeleteRequest {
 	return r
 }
 
+// DryRun sets the value of the 'dry_run' parameter.
+//
+// Dry run flag is used to check if the operation can be completed, but won't delete.
+func (r *ClusterDeleteRequest) DryRun(value bool) *ClusterDeleteRequest {
+	r.dryRun = &value
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -475,6 +484,9 @@ func (r *ClusterDeleteRequest) SendContext(ctx context.Context) (result *Cluster
 	query := helpers.CopyQuery(r.query)
 	if r.deprovision != nil {
 		helpers.AddValue(&query, "deprovision", *r.deprovision)
+	}
+	if r.dryRun != nil {
+		helpers.AddValue(&query, "dry_run", *r.dryRun)
 	}
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
