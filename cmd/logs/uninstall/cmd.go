@@ -77,16 +77,14 @@ func run(cmd *cobra.Command, argv []string) {
 	// We check the flag value this way to allow other commands to watch logs
 	watch := cmd.Flags().Lookup("watch").Value.String() == "true"
 
-	var clusterKey string
 	var err error
 
 	// Allow the command to be called programmatically
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
-		clusterKey = argv[0]
+		ocm.SetClusterKey(argv[0])
 		watch = true
-	} else {
-		clusterKey = r.GetClusterKey()
 	}
+	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
 	if cluster.State() != cmv1.ClusterStateUninstalling && !watch {

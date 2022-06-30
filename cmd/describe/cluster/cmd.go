@@ -55,15 +55,13 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithOCM().WithAWS()
 	defer r.Cleanup()
 
-	var clusterKey string
 	var err error
 
 	// Allow the command to be called programmatically
 	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
-		clusterKey = argv[0]
-	} else {
-		clusterKey = r.GetClusterKey()
+		ocm.SetClusterKey(argv[0])
 	}
+	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
 	var str string
