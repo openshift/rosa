@@ -89,6 +89,7 @@ type Client interface {
 	GetCreator() (*Creator, error)
 	ValidateSCP(*string, map[string]string) (bool, error)
 	GetSubnetIDs() ([]*ec2.Subnet, error)
+	GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error)
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
 	GetClusterRegionTagForUser(username string) (string, error)
@@ -351,6 +352,132 @@ func (c *awsClient) GetRegion() string {
 
 func (c *awsClient) GetSubnetIDs() ([]*ec2.Subnet, error) {
 	return c.getSubnetIDs(&ec2.DescribeSubnetsInput{})
+}
+
+func (c *awsClient) GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error) {
+	subnets, err := c.getVPCSubnets(subnetID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.filterVPCsPrivateSubnets(subnets)
+}
+
+// getVPCSubnets gets a subnet ID and fetches all the subnets that belong to the same VPC as the provided subnet.
+func (c *awsClient) getVPCSubnets(subnetID string) ([]*ec2.Subnet, error) {
+	// Fetch the subnet details
+	subnets, err := c.getSubnetIDs(&ec2.DescribeSubnetsInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("subnet-id"),
+				Values: []*string{aws.String(subnetID)},
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(subnets) < 1 {
+		return nil, fmt.Errorf("Failed to get subnet with ID '%s'", subnetID)
+	}
+
+	// Fetch VPC's subnets
+	vpcID := subnets[0].VpcId
+	subnets, err = c.getSubnetIDs(&ec2.DescribeSubnetsInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("vpc-id"),
+				Values: []*string{vpcID},
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(subnets) < 1 {
+		return nil, fmt.Errorf("Failed to get the subnets of VPC with ID '%s'", *vpcID)
+	}
+
+	return subnets, nil
+}
+
+// FilterPrivateSubnets gets a slice of subnets that belongs to the same VPC and filters the private subnets.
+// Assumption: subnets - non-empty slice.
+func (c *awsClient) filterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subnet, error) {
+	// Fetch VPC route tables
+	vpcID := subnets[0].VpcId
+	describeRouteTablesOutput, err := c.ec2Client.DescribeRouteTables(&ec2.DescribeRouteTablesInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("vpc-id"),
+				Values: []*string{vpcID},
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(describeRouteTablesOutput.RouteTables) < 1 {
+		return nil, fmt.Errorf("Failed to find VPC '%s' route table", *vpcID)
+	}
+
+	var privateSubnets []*ec2.Subnet
+	for _, subnet := range subnets {
+		isPublic, err := c.isPublicSubnet(subnet.SubnetId, describeRouteTablesOutput.RouteTables)
+		if err != nil {
+			return nil, err
+		}
+		if !isPublic {
+			privateSubnets = append(privateSubnets, subnet)
+		}
+	}
+
+	if len(privateSubnets) < 1 {
+		return nil, fmt.Errorf("Failed to find private subnets associated with VPC '%s'", *subnets[0].VpcId)
+	}
+
+	return privateSubnets, nil
+}
+
+// isPublicSubnet a public subnet is a subnet that's associated with a route table that has a route to an
+// internet gateway
+func (c *awsClient) isPublicSubnet(subnetID *string, routeTables []*ec2.RouteTable) (bool, error) {
+	subnetRouteTable, err := c.getSubnetRouteTable(subnetID, routeTables)
+	if err != nil {
+		return false, err
+	}
+
+	for _, route := range subnetRouteTable.Routes {
+		if strings.Contains(aws.StringValue(route.GatewayId), "igw") {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (c *awsClient) getSubnetRouteTable(subnetID *string, routeTables []*ec2.RouteTable) (*ec2.RouteTable, error) {
+	// Subnet route table — A route table that's associated with a subnet
+	for _, routeTable := range routeTables {
+		for _, association := range routeTable.Associations {
+			if aws.StringValue(association.SubnetId) == aws.StringValue(subnetID) {
+				return routeTable, nil
+			}
+		}
+	}
+
+	// A subnet can be explicitly associated with custom route table, or implicitly or explicitly associated with the
+	// main route table.
+	for _, routeTable := range routeTables {
+		for _, association := range routeTable.Associations {
+			if aws.BoolValue(association.Main) {
+				return routeTable, nil
+			}
+		}
+	}
+
+	// Each subnet in the VPC must be associated with a route table
+	return nil, fmt.Errorf("Failed to find subnet '%s' route table", *subnetID)
 }
 
 // getSubnetIDs will return the list of subnetsIDs supported for the region picked.

@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
@@ -50,6 +51,7 @@ var args struct {
 	spotMaxPrice          string
 	multiAvailabilityZone bool
 	availabilityZone      string
+	subnet                string
 }
 
 var Cmd = &cobra.Command{
@@ -165,6 +167,12 @@ func init() {
 		"",
 		"Select availability zone to create a single AZ machine pool for a multi-AZ cluster")
 
+	flags.StringVar(
+		&args.subnet,
+		"subnet",
+		"",
+		"Select subnet to create a single AZ machine pool for BYOVPC cluster")
+
 	interactive.AddFlag(flags)
 }
 
@@ -192,9 +200,27 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Validate flags that are only allowed for BYOVPC cluster
+	isSubnetSet := cmd.Flags().Changed("subnet")
+	if !isBYOVPC(cluster) && isSubnetSet {
+		r.Reporter.Errorf("Setting the `subnet` flag is only allowed for BYOVPC clusters")
+		os.Exit(1)
+	}
+
+	if isSubnetSet && isAvailabilityZoneSet {
+		r.Reporter.Errorf("Setting both `subnet` and `availability-zone` flag is not supported." +
+			" Please select `subnet` or `availability-zone` to create a single availability zone machine pool")
+		os.Exit(1)
+	}
+
+	// Validate `subnet` or `availability-zone` flags are set for a single AZ machine pool
 	if isAvailabilityZoneSet && isMultiAvailabilityZoneSet && args.multiAvailabilityZone {
 		r.Reporter.Errorf("Setting the `availability-zone` flag is only supported for creating a single AZ " +
 			"machine pool in a multi-AZ cluster")
+		os.Exit(1)
+	}
+	if isSubnetSet && isMultiAvailabilityZoneSet && args.multiAvailabilityZone {
+		r.Reporter.Errorf("Setting the `subnet` flag is only supported for creating a single AZ machine pool")
 		os.Exit(1)
 	}
 
@@ -225,6 +251,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Allow the user to select subnet for a single AZ BYOVPC cluster
+	var subnet string
+	if !cluster.MultiAZ() && isBYOVPC(cluster) {
+		subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster.AWS().SubnetIDs()[0])
+	}
+
 	// Single AZ machine pool for a multi-AZ cluster
 	var multiAZMachinePool bool
 	var availabilityZone string
@@ -251,28 +283,35 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if !multiAZMachinePool {
-			availabilityZone = cluster.Nodes().AvailabilityZones()[0]
-
-			if !isAvailabilityZoneSet && interactive.Enabled() {
-				availabilityZone, err = interactive.GetOption(interactive.Input{
-					Question: "AWS availability zone",
-					Help:     cmd.Flags().Lookup("availability-zone").Usage,
-					Options:  cluster.Nodes().AvailabilityZones(),
-					Default:  availabilityZone,
-					Required: true,
-				})
-				if err != nil {
-					r.Reporter.Errorf("Expected a valid AWS availability zone: %s", err)
-					os.Exit(1)
-				}
-			} else if isAvailabilityZoneSet {
-				availabilityZone = args.availabilityZone
+			// Allow to create a single AZ machine pool providing the subnet
+			if isBYOVPC(cluster) {
+				subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster.AWS().SubnetIDs()[0])
 			}
 
-			if !helper.Contains(cluster.Nodes().AvailabilityZones(), availabilityZone) {
-				r.Reporter.Errorf("Availability zone '%s' doesn't belong to the cluster's availability zones",
-					availabilityZone)
-				os.Exit(1)
+			// Select availability zone if the user didn't select subnet
+			if subnet == "" {
+				availabilityZone = cluster.Nodes().AvailabilityZones()[0]
+				if !isAvailabilityZoneSet && interactive.Enabled() {
+					availabilityZone, err = interactive.GetOption(interactive.Input{
+						Question: "AWS availability zone",
+						Help:     cmd.Flags().Lookup("availability-zone").Usage,
+						Options:  cluster.Nodes().AvailabilityZones(),
+						Default:  availabilityZone,
+						Required: true,
+					})
+					if err != nil {
+						r.Reporter.Errorf("Expected a valid AWS availability zone: %s", err)
+						os.Exit(1)
+					}
+				} else if isAvailabilityZoneSet {
+					availabilityZone = args.availabilityZone
+				}
+
+				if !helper.Contains(cluster.Nodes().AvailabilityZones(), availabilityZone) {
+					r.Reporter.Errorf("Availability zone '%s' doesn't belong to the cluster's availability zones",
+						availabilityZone)
+					os.Exit(1)
+				}
 			}
 		}
 	}
@@ -527,8 +566,13 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create a single AZ machine pool for a multi-AZ cluster
-	if cluster.MultiAZ() && !multiAZMachinePool {
+	if cluster.MultiAZ() && !multiAZMachinePool && availabilityZone != "" {
 		mpBuilder.AvailabilityZones(availabilityZone)
+	}
+
+	// Create a single AZ machine pool for a BYOVPC cluster
+	if subnet != "" {
+		mpBuilder.Subnets(subnet)
 	}
 
 	machinePool, err := mpBuilder.Build()
@@ -649,4 +693,70 @@ func parseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 		taintBuilders = append(taintBuilders, cmv1.NewTaint().Key(tokens[0]).Value(tokens[1]).Effect(tokens[2]))
 	}
 	return taintBuilders, nil
+}
+
+func isBYOVPC(cluster *cmv1.Cluster) bool {
+	return len(cluster.AWS().SubnetIDs()) > 0
+}
+
+func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
+	clusterSubnetID string) string {
+	var selectSubnet bool
+	var subnet string
+	var err error
+
+	if !isSubnetSet && interactive.Enabled() {
+		selectSubnet, err = interactive.GetBool(interactive.Input{
+			Question: "Select subnet for a single AZ machine pool",
+			Help:     cmd.Flags().Lookup("subnet").Usage,
+			Default:  false,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for select subnet for a single AZ machine pool")
+			os.Exit(1)
+		}
+	} else {
+		subnet = args.subnet
+	}
+
+	if selectSubnet {
+		subnetOptions, err := getSubnetOptions(r.AWSClient, clusterSubnetID)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		subnetOption, err := interactive.GetOption(interactive.Input{
+			Question: "Subnet ID",
+			Help:     cmd.Flags().Lookup("subnet").Usage,
+			Options:  subnetOptions,
+			Default:  subnetOptions[0],
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid AWS subnet: %s", err)
+			os.Exit(1)
+		}
+		subnet = aws.ParseSubnet(subnetOption)
+	}
+
+	return subnet
+}
+
+// getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
+func getSubnetOptions(awsClient aws.Client, clusterSubnetID string) ([]string, error) {
+	// Fetch VPC's subnets
+	privateSubnets, err := awsClient.GetVPCPrivateSubnets(clusterSubnetID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Format subnet options
+	var subnetOptions []string
+	for _, subnet := range privateSubnets {
+		subnetOptions = append(subnetOptions, aws.SetSubnetOption(*subnet.SubnetId, *subnet.AvailabilityZone))
+	}
+
+	return subnetOptions, nil
 }
