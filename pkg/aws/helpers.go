@@ -525,3 +525,15 @@ func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, acco
 	}
 	return nil
 }
+
+const subnetTemplate = "%s (%s)"
+
+// SetSubnetOption Creates a subnet options using a predefined template.
+func SetSubnetOption(subnet, zone string) string {
+	return fmt.Sprintf(subnetTemplate, subnet, zone)
+}
+
+// ParseSubnet Parses the subnet from the option chosen by the user.
+func ParseSubnet(subnetOption string) string {
+	return strings.Split(subnetOption, " ")[0]
+}

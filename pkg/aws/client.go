@@ -349,9 +349,14 @@ func (c *awsClient) GetRegion() string {
 	return aws.StringValue(c.awsSession.Config.Region)
 }
 
-// GetSubnetIDs will return the list of subnetsIDs supported for the region picked.
 func (c *awsClient) GetSubnetIDs() ([]*ec2.Subnet, error) {
-	res, err := c.ec2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{})
+	return c.getSubnetIDs(&ec2.DescribeSubnetsInput{})
+}
+
+// getSubnetIDs will return the list of subnetsIDs supported for the region picked.
+// It is possible to pass non-empty `describeSubnetsInput` to filter results.
+func (c *awsClient) getSubnetIDs(describeSubnetsInput *ec2.DescribeSubnetsInput) ([]*ec2.Subnet, error) {
+	res, err := c.ec2Client.DescribeSubnets(describeSubnetsInput)
 	if err != nil {
 		return nil, err
 	}

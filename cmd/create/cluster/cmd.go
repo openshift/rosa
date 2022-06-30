@@ -1249,10 +1249,10 @@ func run(cmd *cobra.Command, _ []string) {
 			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
 
 			// Create the options to prompt the user.
-			options[i] = setSubnetOption(subnetID, availabilityZone)
+			options[i] = aws.SetSubnetOption(subnetID, availabilityZone)
 			if subnetsProvided {
 				for _, subnetArg := range subnetIDs {
-					defaultOptions = append(defaultOptions, setSubnetOption(subnetArg, availabilityZone))
+					defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnetArg, availabilityZone))
 				}
 			}
 			mapSubnetToAZ[subnetID] = availabilityZone
@@ -1272,7 +1272,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 			for i, subnet := range subnetIDs {
-				subnetIDs[i] = parseSubnet(subnet)
+				subnetIDs[i] = aws.ParseSubnet(subnet)
 			}
 		}
 
@@ -2125,18 +2125,6 @@ func parseRFC3339(s string) (time.Time, error) {
 		return t, nil
 	}
 	return time.Parse(time.RFC3339, s)
-}
-
-const subnetTemplate = "%s (%s)"
-
-// Creates a subnet options using a predefined template.
-func setSubnetOption(subnet, zone string) string {
-	return fmt.Sprintf(subnetTemplate, subnet, zone)
-}
-
-// Parses the subnet from the option chosen by the user.
-func parseSubnet(subnetOption string) string {
-	return strings.Split(subnetOption, " ")[0]
 }
 
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string, userSelectedAvailabilityZones bool) string {
