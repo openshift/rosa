@@ -56,17 +56,9 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
-	// Adding known flags to flag checker before parsing the unknown flags
-	flagChecker := arguments.NewFlagCheck(cmd.Flags())
-
-	err := arguments.ParseUnknownFlags(cmd, argv)
+	err := arguments.ParseKnownFlags(cmd, argv, false)
 	if err != nil {
 		r.Reporter.Errorf("Failed to parse flags: %v", err)
-		os.Exit(1)
-	}
-
-	if len(cmd.Flags().Args()) > 0 {
-		r.Reporter.Errorf("Unrecognized command line parameter")
 		os.Exit(1)
 	}
 
@@ -91,26 +83,19 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	addonParameters := addOn.Parameters()
-	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
-		flagChecker.AddValidFlag(param.ID())
-		return true
-	})
+	arguments.AddParameterFlags(cmd, addonParameters)
 
-	// Now that rosa knows the expected fields to validate,
-	// Validate that all of the user-specified flags are valid.
-	err = flagChecker.ValidateFlags(cmd.Flags())
+	err = arguments.ParseKnownFlags(cmd, argv, true)
 	if err != nil {
-		r.Reporter.Errorf(err.Error())
+		r.Reporter.Errorf("Failed to parse flags: %v", err)
 		os.Exit(1)
 	}
 
 	args.Parameters = map[string]string{}
 	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
 		flag := cmd.Flags().Lookup(param.ID())
-		if flag != nil {
-			if !param.Editable() {
-				r.Reporter.Errorf("Cannot edit the parameter %q", param.ID())
-			}
+		// Checking if the flag changed to ensure that the user set the value.
+		if flag != nil && flag.Changed {
 			args.Parameters[param.ID()] = flag.Value.String()
 		}
 		return true

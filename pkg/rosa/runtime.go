@@ -3,7 +3,6 @@ package rosa
 import (
 	"os"
 
-	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -12,12 +11,11 @@ import (
 )
 
 type Runtime struct {
-	Reporter    *reporter.Object
-	Logger      *logrus.Logger
-	OCMClient   *ocm.Client
-	AWSClient   aws.Client
-	Creator     *aws.Creator
-	FlagChecker *arguments.FlagCheck
+	Reporter  *reporter.Object
+	Logger    *logrus.Logger
+	OCMClient *ocm.Client
+	AWSClient aws.Client
+	Creator   *aws.Creator
 }
 
 func NewRuntime() *Runtime {
