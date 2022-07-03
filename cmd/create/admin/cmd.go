@@ -29,10 +29,6 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-const (
-	idpName = "htpasswd-1"
-)
-
 var Cmd = &cobra.Command{
 	Use:   "admin",
 	Short: "Creates an admin user to login to the cluster",
@@ -111,25 +107,32 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// No HTPasswd IDP - create it with cluster-admin user.
 	if existingHTPasswdIDP == nil {
-		r.Reporter.Debugf("Adding '%s' idp to cluster '%s'", idpName, clusterKey)
+		r.Reporter.Debugf("Adding '%s' idp to cluster '%s'", idp.HTPasswdIDPName, clusterKey)
 		htpasswdIDP := cmv1.NewHTPasswdIdentityProvider().Users(cmv1.NewHTPasswdUserList().Items(
 			idp.CreateHTPasswdUser(idp.ClusterAdminUsername, password),
 		))
 		newIDP, err := cmv1.NewIdentityProvider().
 			Type("HTPasswdIdentityProvider").
-			Name(idpName).
+			Name(idp.HTPasswdIDPName).
 			Htpasswd(htpasswdIDP).
 			Build()
 		if err != nil {
-			r.Reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idpName, clusterKey)
+			r.Reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idp.HTPasswdIDPName, clusterKey)
 			os.Exit(1)
 		}
 
 		// Add HTPasswd IDP to cluster:
 		_, err = r.OCMClient.CreateIdentityProvider(cluster.ID(), newIDP)
 		if err != nil {
-			r.Reporter.Errorf("Failed to add '%s' identity provider to cluster '%s': %s",
-				idpName, clusterKey, err)
+			//since we could not add the HTPasswd IDP to the cluster, roll back and remove the cluster admin
+			r.Reporter.Errorf("Failed to add '%s' identity provider to cluster '%s' as part of admin flow. "+
+				"Please try again: %s", idp.HTPasswdIDPName, clusterKey, err)
+
+			err = r.OCMClient.DeleteUser(cluster.ID(), "cluster-admins", user.ID())
+			if err != nil {
+				r.Reporter.Errorf("Failed to revert the admin user for cluster '%s'. Please try again: %s",
+					clusterKey, err)
+			}
 			os.Exit(1)
 		}
 	} else {
@@ -139,6 +142,14 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			r.Reporter.Errorf("Failed to add user '%s' to the HTPasswd IDP of cluster '%s': %s",
 				idp.ClusterAdminUsername, clusterKey, err)
+
+			//since we could not add the cluster-admin user ot the HTPasswd IDP, roll back and remove the cluster admin
+			err = r.OCMClient.DeleteUser(cluster.ID(), "cluster-admins", user.ID())
+			if err != nil {
+				r.Reporter.Errorf("Failed to remove user '%s' to cluster '%s': %s",
+					idp.ClusterAdminUsername, clusterKey, err)
+			}
+
 			os.Exit(1)
 		}
 	}

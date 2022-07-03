@@ -31,6 +31,8 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const HTPasswdIDPName = "htpasswd"
+
 type IdentityProvider interface {
 	Name() string
 }
@@ -454,7 +456,11 @@ func GenerateIdpName(idpType string, idps []IdentityProvider) string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s-%d", idpType, nextSuffix+1)
+
+	if idpType != HTPasswdIDPName {
+		return fmt.Sprintf("%s-%d", idpType, nextSuffix+1)
+	}
+	return idpType
 }
 
 func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) {

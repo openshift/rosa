@@ -81,6 +81,23 @@ func run(cmd *cobra.Command, _ []string) {
 				idp.ClusterAdminUsername, clusterKey, err)
 			os.Exit(1)
 		}
+		//if no users remained in htpasswd idp, delete the idp
+		userList, err := r.OCMClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
+		if err != nil {
+			r.Reporter.Errorf("Failed to get htpasswd idp user list of cluster '%s': %s",
+				clusterKey, err)
+			os.Exit(1)
+		}
+
+		if userList.Len() == 0 {
+			//delete the htpasswd IDP
+			err = r.OCMClient.DeleteIdentityProvider(cluster.ID(), htpasswdIDP.ID())
+			if err != nil {
+				r.Reporter.Errorf("Failed to delete htpasswd IDP of cluster '%s': %s",
+					clusterKey, err)
+				os.Exit(1)
+			}
+		}
 		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 	}
 }
