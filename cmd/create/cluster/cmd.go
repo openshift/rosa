@@ -518,6 +518,10 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Setting availability zones is not supported for BYO VPC. " +
 			"ROSA autodetects availability zones from subnet IDs provided")
 	}
+	// Select a multi-AZ cluster implicitly by providing three availability zones
+	if len(args.availabilityZones) == multiAZCount {
+		args.multiAZ = true
+	}
 
 	if interactive.Enabled() {
 		r.Reporter.Infof("Interactive mode enabled.\n" +
