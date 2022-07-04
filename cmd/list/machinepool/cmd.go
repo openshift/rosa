@@ -96,16 +96,17 @@ func run(_ *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(writer,
-		"ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\t\tSPOT INSTANCES\n")
+		"ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\n")
 	for _, machinePool := range machinePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\n",
 			machinePool.ID(),
 			printAutoscaling(machinePool.Autoscaling()),
 			printReplicas(machinePool.Autoscaling(), machinePool.Replicas()),
 			machinePool.InstanceType(),
 			printLabels(machinePool.Labels()),
 			printTaints(machinePool.Taints()),
-			printAZ(machinePool.AvailabilityZones()),
+			printStringSlice(machinePool.AvailabilityZones()),
+			printStringSlice(machinePool.Subnets()),
 			printSpot(machinePool),
 		)
 	}
@@ -145,11 +146,11 @@ func printReplicas(autoscaling *cmv1.MachinePoolAutoscaling, replicas int) strin
 	return fmt.Sprintf("%d", replicas)
 }
 
-func printAZ(az []string) string {
-	if len(az) == 0 {
+func printStringSlice(in []string) string {
+	if len(in) == 0 {
 		return ""
 	}
-	return strings.Join(az, ", ")
+	return strings.Join(in, ", ")
 }
 
 func printLabels(labels map[string]string) string {
