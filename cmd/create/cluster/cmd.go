@@ -1280,6 +1280,12 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
+		err = validateSubnetsCount(multiAZ, subnetIDs)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
 		for _, subnet := range subnetIDs {
 			az := mapSubnetToAZ[subnet]
 			if !mapAZCreated[az] {
@@ -2092,6 +2098,26 @@ func validateExpiration() (expiration time.Time, err error) {
 	}
 
 	return
+}
+
+const (
+	singleAZSubnetsCount = 2
+	multiAZSubnetsCount  = 6
+)
+
+func validateSubnetsCount(multiAZ bool, subnets []string) error {
+	subnetsCount := len(subnets)
+
+	if multiAZ && subnetsCount != multiAZSubnetsCount {
+		return fmt.Errorf("The number of subnets for a multi-AZ cluster should be %d, "+
+			"instead received: %d", multiAZSubnetsCount, subnetsCount)
+	}
+	if !multiAZ && subnetsCount != singleAZSubnetsCount {
+		return fmt.Errorf("The number of subnets for a single AZ cluster should be %d, "+
+			"instead received: %d", singleAZSubnetsCount, subnetsCount)
+	}
+
+	return nil
 }
 
 const (
