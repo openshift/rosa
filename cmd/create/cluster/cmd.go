@@ -2116,7 +2116,7 @@ func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClie
 	for _, az := range availabilityZones {
 		if !helper.Contains(regionAvailabilityZones, az) {
 			return fmt.Errorf("Expected a valid availability zone, "+
-				"'%s' doesn't belong to the region's availability zones", az)
+				"'%s' doesn't belong to region '%s' availability zones", az, awsClient.GetRegion())
 		}
 	}
 
