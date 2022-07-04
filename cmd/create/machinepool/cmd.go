@@ -177,7 +177,7 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
+	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
 	clusterKey := r.GetClusterKey()
@@ -254,7 +254,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Allow the user to select subnet for a single AZ BYOVPC cluster
 	var subnet string
 	if !cluster.MultiAZ() && isBYOVPC(cluster) {
-		subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster.AWS().SubnetIDs()[0])
+		subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster)
 	}
 
 	// Single AZ machine pool for a multi-AZ cluster
@@ -285,7 +285,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if !multiAZMachinePool {
 			// Allow to create a single AZ machine pool providing the subnet
 			if isBYOVPC(cluster) {
-				subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster.AWS().SubnetIDs()[0])
+				subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster)
 			}
 
 			// Select availability zone if the user didn't select subnet
@@ -700,7 +700,7 @@ func isBYOVPC(cluster *cmv1.Cluster) bool {
 }
 
 func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
-	clusterSubnetID string) string {
+	cluster *cmv1.Cluster) string {
 	var selectSubnet bool
 	var subnet string
 	var err error
@@ -721,7 +721,7 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 	}
 
 	if selectSubnet {
-		subnetOptions, err := getSubnetOptions(r.AWSClient, clusterSubnetID)
+		subnetOptions, err := getSubnetOptions(r, cluster)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -745,9 +745,17 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 }
 
 // getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
-func getSubnetOptions(awsClient aws.Client, clusterSubnetID string) ([]string, error) {
+func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {
+	awsClient, err := aws.NewClient().
+		Region(cluster.Region().ID()).
+		Logger(r.Logger).
+		Build()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create awsClient: %s", err)
+	}
+
 	// Fetch VPC's subnets
-	privateSubnets, err := awsClient.GetVPCPrivateSubnets(clusterSubnetID)
+	privateSubnets, err := awsClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
 	if err != nil {
 		return nil, err
 	}
