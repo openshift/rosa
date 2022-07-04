@@ -261,8 +261,8 @@ func run(cmd *cobra.Command, _ []string) {
 	var multiAZMachinePool bool
 	var availabilityZone string
 	if cluster.MultiAZ() {
-		// Choosing a single AZ machine pool implicitly
-		if isAvailabilityZoneSet {
+		// Choosing a single AZ machine pool implicitly (providing availability zone or subnet)
+		if isAvailabilityZoneSet || isSubnetSet {
 			isMultiAvailabilityZoneSet = true
 			args.multiAvailabilityZone = false
 		}
