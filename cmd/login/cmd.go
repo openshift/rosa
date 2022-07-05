@@ -213,14 +213,14 @@ func run(cmd *cobra.Command, argv []string) {
 			// If a token has been provided parse it:
 			jwtToken, err := ocm.ParseToken(token)
 			if err != nil {
-				r.Reporter.Errorf("Failed to parse token '%s': %v", token, err)
+				r.Reporter.Errorf("Failed to parse token: %v", err)
 				os.Exit(1)
 			}
 
 			// Put the token in the place of the configuration that corresponds to its type:
 			typ, err := tokenType(jwtToken)
 			if err != nil {
-				r.Reporter.Errorf("Failed to extract type from 'typ' claim of token '%s': %v", token, err)
+				r.Reporter.Errorf("Failed to extract type from 'typ' claim of token: %v", err)
 				os.Exit(1)
 			}
 			switch typ {
@@ -231,7 +231,7 @@ func run(cmd *cobra.Command, argv []string) {
 				cfg.AccessToken = ""
 				cfg.RefreshToken = token
 			default:
-				r.Reporter.Errorf("Don't know how to handle token type '%s' in token '%s'", typ, token)
+				r.Reporter.Errorf("Don't know how to handle token type '%s' in token", typ)
 				os.Exit(1)
 			}
 		}
