@@ -123,10 +123,8 @@ type Client interface {
 	HasPermissionsBoundary(roleName string) (bool, error)
 	GetOpenIDConnectProvider(clusterID string) (string, error)
 	GetInstanceProfilesForRole(role string) ([]string, error)
-	IsUpgradedNeededForAccountRolePolicies(rolePrefix string, version string) (bool, error)
+	IsUpgradedNeededForClusterAccountRolePolicies(cluster *cmv1.Cluster, version string) (bool, error)
 	IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluster, accountID string, version string) (bool, error)
-	IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(rolePrefix string, accountID string,
-		version string, credRequests map[string]*cmv1.STSOperator) (bool, error)
 	UpdateTag(roleName string, defaultPolicyVersion string) error
 	AddRoleTag(roleName string, key string, value string) error
 	IsPolicyCompatible(policyArn string, version string) (bool, error)

@@ -144,8 +144,8 @@ func run(cmd *cobra.Command, argv []string) error {
 	//part of upgrade account roles that was called before this command. Refer to rosa upgrade cluster
 	if !isProgrammaticallyCalled {
 		//Check if account roles are up-to-date
-		isAccountRoleUpgradeNeed, err = r.AWSClient.IsUpgradedNeededForAccountRolePolicies(
-			prefix, defaultPolicyVersion)
+		isAccountRoleUpgradeNeed, err = r.AWSClient.IsUpgradedNeededForClusterAccountRolePolicies(
+			cluster, defaultPolicyVersion)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)

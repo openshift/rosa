@@ -18,6 +18,7 @@ package accountroles
 
 import (
 	"fmt"
+	"github.com/openshift/rosa/pkg/rosa"
 	"os"
 	"strings"
 	"time"
@@ -30,7 +31,6 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -64,14 +64,14 @@ func init() {
 		"User-defined prefix for all generated AWS resources",
 	)
 	Cmd.MarkFlagRequired("prefix")
+	flags.MarkDeprecated("prefix", "use -c instead")
 
+	ocm.AddClusterFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, argv []string) error {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
 
 	isInvokedFromClusterUpgrade := false
 	skipInteractive := false
@@ -87,85 +87,67 @@ func run(cmd *cobra.Command, argv []string) error {
 		isInvokedFromClusterUpgrade = true
 	}
 	args.isInvokedFromClusterUpgrade = isInvokedFromClusterUpgrade
+
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
+
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	prefix := args.prefix
 	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
 
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
+	defaultPolicyVersion, err := r.OCMClient.GetDefaultVersion()
 	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
-
-	defaultPolicyVersion, err := ocmClient.GetDefaultVersion()
-	if err != nil {
-		reporter.Errorf("Error getting latest default version: %s", err)
+		r.Reporter.Errorf("Error getting latest default version: %s", err)
 		os.Exit(1)
 	}
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		reporter.Errorf("Failed to determine OCM environment: %v", err)
+		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
 		os.Exit(1)
 	}
 
-	creator, err := awsClient.GetCreator()
+	creator, err := r.AWSClient.GetCreator()
 	if err != nil {
-		reporter.Errorf("Failed to get IAM credentials: %s", err)
+		r.Reporter.Errorf("Failed to get IAM credentials: %s", err)
 		os.Exit(1)
 	}
 
-	credRequests, err := ocmClient.GetCredRequests()
+	credRequests, err := r.OCMClient.GetCredRequests()
 	if err != nil {
-		reporter.Errorf("Error getting operator credential request from OCM %s", err)
+		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 		os.Exit(1)
 	}
 
 	var spin *spinner.Spinner
-	if reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
 		spin.Start()
 	}
 	if !args.isInvokedFromClusterUpgrade {
-		reporter.Infof("Ensuring account and operator role policies compatibility for upgrade")
+		r.Reporter.Infof("Ensuring account and operator role policies compatibility for upgrade")
 	}
-
-	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
+	cluster := r.FetchCluster()
+	isUpgradeNeedForAccountRolePolicies, err := r.AWSClient.IsUpgradedNeededForClusterAccountRolePolicies(cluster,
 		defaultPolicyVersion)
 	if err != nil {
-		reporter.Errorf("%s", err)
-		LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
+		r.Reporter.Errorf("%s", err)
+		LogError("ROSAUpgradeAccountRolesModeAuto", r.OCMClient, defaultPolicyVersion, err, r.Reporter)
 		os.Exit(1)
 	}
 
-	isUpgradeNeedForOperatorRolePolicies, err := awsClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
-		creator.AccountID, defaultPolicyVersion, credRequests)
+	isUpgradeNeedForOperatorRolePolicies, err := r.AWSClient.IsUpgradedNeededForOperatorRolePolicies(cluster,
+		creator.AccountID, defaultPolicyVersion)
 
 	if err != nil {
-		reporter.Errorf("%s", err)
-		LogError("ROSAUpgradeOperatorRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
+		r.Reporter.Errorf("%s", err)
+		LogError("ROSAUpgradeOperatorRolesModeAuto", r.OCMClient, defaultPolicyVersion, err, r.Reporter)
 		os.Exit(1)
 	}
 	if spin != nil {
@@ -177,7 +159,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		if args.isInvokedFromClusterUpgrade {
 			return nil
 		}
-		reporter.Infof("Account role with the prefix '%s' is already up-to-date.", prefix)
+		r.Reporter.Infof("Account role with the prefix '%s' is already up-to-date.", prefix)
 		os.Exit(0)
 	}
 
@@ -195,66 +177,66 @@ func run(cmd *cobra.Command, argv []string) error {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid Account role upgrade mode: %s", err)
+			r.Reporter.Errorf("Expected a valid Account role upgrade mode: %s", err)
 			os.Exit(1)
 		}
 		aws.SetModeKey(mode)
 	}
-	policies, err := ocmClient.GetPolicies("")
+	policies, err := r.OCMClient.GetPolicies("")
 	if err != nil {
-		reporter.Errorf("Expected a valid role creation mode: %s", err)
+		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 		os.Exit(1)
 	}
 
 	switch mode {
 	case aws.ModeAuto:
-		reporter.Infof("Starting to upgrade the policies")
+		r.Reporter.Infof("Starting to upgrade the policies")
 		if isUpgradeNeedForAccountRolePolicies {
-			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
+			err = upgradeAccountRolePolicies(r.Reporter, r.AWSClient, prefix, creator.AccountID, policies,
 				defaultPolicyVersion)
 			if err != nil {
-				LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
+				LogError("ROSAUpgradeAccountRolesModeAuto", r.OCMClient, defaultPolicyVersion, err, r.Reporter)
 				if args.isInvokedFromClusterUpgrade {
 					return err
 				}
-				reporter.Errorf("Error upgrading the role polices: %s", err)
+				r.Reporter.Errorf("Error upgrading the role polices: %s", err)
 				os.Exit(1)
 			}
 		}
 		if isUpgradeNeedForOperatorRolePolicies {
-			err = upgradeOperatorRolePolicies(reporter, awsClient, creator.AccountID, prefix, policies, ocmClient,
+			err = upgradeOperatorRolePolicies(r.Reporter, r.AWSClient, creator.AccountID, prefix, policies, r.OCMClient,
 				defaultPolicyVersion, credRequests)
 			if err != nil {
 				if args.isInvokedFromClusterUpgrade {
 					return err
 				}
-				reporter.Errorf("Error upgrading the operator role polices: %s", err)
+				r.Reporter.Errorf("Error upgrading the operator role polices: %s", err)
 				os.Exit(1)
 			}
 		}
 	case aws.ModeManual:
-		err = aws.GeneratePolicyFiles(reporter, env, isUpgradeNeedForAccountRolePolicies,
+		err = aws.GeneratePolicyFiles(r.Reporter, env, isUpgradeNeedForAccountRolePolicies,
 			isUpgradeNeedForOperatorRolePolicies, policies, credRequests)
 		if err != nil {
-			reporter.Errorf("There was an error generating the policy files: %s", err)
+			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
 		}
-		if reporter.IsTerminal() {
-			reporter.Infof("All policy files saved to the current directory")
-			reporter.Infof("Run the following commands to upgrade the account role policies:\n")
+		if r.Reporter.IsTerminal() {
+			r.Reporter.Infof("All policy files saved to the current directory")
+			r.Reporter.Infof("Run the following commands to upgrade the account role policies:\n")
 		}
 		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
-			isUpgradeNeedForOperatorRolePolicies, awsClient, defaultPolicyVersion, credRequests)
+			isUpgradeNeedForOperatorRolePolicies, r.AWSClient, defaultPolicyVersion, credRequests)
 		fmt.Println(commands)
 		if args.isInvokedFromClusterUpgrade {
-			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
+			r.Reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
 				" once account and operator roles have been upgraded : \n\n"+
 				"\trosa upgrade cluster --cluster %s\n", args.clusterID)
 			os.Exit(0)
 		}
 
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
 	return err

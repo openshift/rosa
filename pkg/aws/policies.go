@@ -1182,9 +1182,14 @@ func (c *awsClient) GetOpenIDConnectProvider(clusterID string) (string, error) {
 	return "", nil
 }
 
-func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, version string) (bool, error) {
-	for _, accountRole := range AccountRoles {
-		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
+func (c *awsClient) IsUpgradedNeededForClusterAccountRolePolicies(cluster *cmv1.Cluster, version string) (bool, error) {
+	accountRoles := []string{}
+	accountRoles = append(accountRoles, cluster.AWS().STS().RoleARN(), cluster.AWS().STS().SupportRoleARN(),
+		cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN(),
+		cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN())
+
+	for _, accountRole := range accountRoles {
+		roleName, _ := GetRoleNameFromARN(accountRole)
 		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
@@ -1192,7 +1197,7 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
 				case iam.ErrCodeNoSuchEntityException:
-					return false, errors.NotFound.Errorf("Roles with the prefix'%s' not found", prefix)
+					return false, errors.NotFound.Errorf("Roles with the name '%s' not found", roleName)
 				}
 			}
 			return false, err
@@ -1254,32 +1259,6 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluste
 			return false, err
 		}
 		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(roleName, version)
-		if err != nil {
-			return false, err
-		}
-		if !isCompatible {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix string, accountID string,
-	version string, credRequests map[string]*cmv1.STSOperator) (bool, error) {
-	for _, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
-		_, err := c.IsPolicyExists(policyARN)
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					return true, nil
-				default:
-					return false, err
-				}
-			}
-		}
-		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(policyARN, version)
 		if err != nil {
 			return false, err
 		}

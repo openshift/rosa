@@ -404,6 +404,15 @@ func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	return roleName, nil
 }
 
+func GetRoleNameFromARN(roleARN string) (string, error) {
+	parsedARN, err := arn.Parse(roleARN)
+	if err != nil {
+		return "", err
+	}
+	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
+	return roleName, nil
+}
+
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
 	generateOperatorRolePolicies bool, policies map[string]string, credRequests map[string]*cmv1.STSOperator) error {
 	if generateAccountRolePolicies {
