@@ -83,7 +83,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	addonParameters := addOn.Parameters()
-	arguments.AddParameterFlags(cmd, addonParameters)
+	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+		arguments.AddStringFlag(cmd, param.ID())
+		return true
+	})
 
 	err = arguments.ParseKnownFlags(cmd, argv, true)
 	if err != nil {

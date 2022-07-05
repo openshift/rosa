@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws/profile"
 	"github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/debug"
@@ -185,14 +184,10 @@ func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) erro
 	return nil
 }
 
-// Adds the flags that are addon parameters to the command flagset.
-func AddParameterFlags(cmd *cobra.Command, params *cmv1.AddOnParameterList) {
+func AddStringFlag(cmd *cobra.Command, flagName string) {
 	flags := cmd.Flags()
-	params.Each(func(param *cmv1.AddOnParameter) bool {
-		var pStrVal *string = new(string)
-		flags.StringVar(pStrVal, param.ID(), "", param.Description())
-		return true
-	})
+	var pStrVal *string = new(string)
+	flags.StringVar(pStrVal, flagName, "", "")
 }
 
 // HasUnknownFlags returns whether the flag parser detected any unknown flags
