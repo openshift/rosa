@@ -438,7 +438,10 @@ func getPolicyARN(accountID string, prefix string, namespace string, name string
 	if len(policy) > 64 {
 		policy = policy[0:64]
 	}
-	return fmt.Sprintf("arn:aws:iam::%s:policy/%s%s", accountID, path, policy)
+	if path != "" {
+		return fmt.Sprintf("arn:aws:iam::%s:policy%s%s", accountID, path, policy)
+	}
+	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, policy)
 }
 
 func validateOperatorRoles(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {

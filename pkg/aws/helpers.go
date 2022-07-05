@@ -540,7 +540,7 @@ func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, acco
 				tags.RolePrefix:       prefix,
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
-			}, "")
+			}, path)
 		if err != nil {
 			return err
 		}
