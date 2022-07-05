@@ -513,8 +513,6 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 			return nil, fmt.Errorf("Failed to get access keys for user '%s': %v",
 				aws.AdminUserName, err)
 		}
-		reporter.Debugf("Access key identifier is '%s'", awsAccessKey.AccessKeyID)
-		reporter.Debugf("Secret access key is '%s'", awsAccessKey.SecretAccessKey)
 	}
 
 	clusterProperties := map[string]string{}
