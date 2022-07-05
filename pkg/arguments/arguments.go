@@ -19,6 +19,7 @@ limitations under the License.
 package arguments
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -99,6 +100,94 @@ func ParseUnknownFlags(cmd *cobra.Command, argv []string) error {
 	}
 
 	return nil
+}
+
+// Parse known flags will take the command line arguments and map the ones that fit with known flags.
+func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) error {
+	flags := cmd.Flags()
+
+	var validArgs []string = []string{}
+	var upcomingValue bool
+	unknownFlags := ""
+
+	for _, arg := range argv {
+		switch {
+		// A long flag with a space separated value
+		case strings.HasPrefix(arg, "--") && !strings.Contains(arg, "="):
+			flagName := arg[2:]
+			// Skip EOF and known flags
+			if flag := flags.Lookup(flagName); flag != nil {
+				validArgs = append(validArgs, arg)
+				if flag.Value.Type() != "bool" {
+					upcomingValue = true
+				}
+			} else if failOnUnknown {
+				unknownFlags += fmt.Sprintf("%q, ", flagName)
+			}
+		// A long flag with a value after an equal sign
+		case strings.HasPrefix(arg, "--") && strings.Contains(arg, "="):
+			flagName := strings.SplitN(arg[2:], "=", 2)[0]
+			if flags.Lookup(flagName) != nil {
+				validArgs = append(validArgs, arg)
+			} else if failOnUnknown {
+				unknownFlags += fmt.Sprintf("%q, ", flagName)
+			}
+			upcomingValue = false
+		// A short flag with a space separated value
+		case strings.HasPrefix(arg, "-") && !strings.Contains(arg, "="):
+			flagName := arg[1:]
+			if flag := flags.Lookup(flagName); flag != nil {
+				validArgs = append(validArgs, arg)
+				if flag.Value.Type() != "bool" {
+					upcomingValue = true
+				}
+			} else if failOnUnknown {
+				unknownFlags += fmt.Sprintf("%q, ", flagName)
+			}
+		// A short flag with with a value after an equal sign
+		case strings.HasPrefix(arg, "-") && strings.Contains(arg, "="):
+			flagName := strings.SplitN(arg[1:], "=", 2)[0]
+			if flags.Lookup(flagName) != nil {
+				validArgs = append(validArgs, arg)
+			} else if failOnUnknown {
+				unknownFlags += fmt.Sprintf("%q, ", flagName)
+			}
+			upcomingValue = false
+		case upcomingValue:
+			validArgs = append(validArgs, arg)
+			upcomingValue = false
+		}
+	}
+
+	if failOnUnknown && unknownFlags != "" {
+		return fmt.Errorf("Unknown flags passed: %s", unknownFlags[:len(unknownFlags)-2])
+	}
+
+	err := flags.Parse(validArgs)
+	if err != nil {
+		return err
+	}
+
+	// If help is called, regardless of other flags, return we want help.
+	// Also say we need help if the command isn't runnable.
+	helpVal, err := cmd.Flags().GetBool("help")
+	if err != nil {
+		// should be impossible to get here as we always declare a help
+		// flag in InitDefaultHelpFlag()
+		cmd.Println("\"help\" flag declared as non-bool. Please correct your code")
+		return err
+	}
+	if helpVal {
+		return pflag.ErrHelp
+	}
+
+	return nil
+}
+
+func AddStringFlag(cmd *cobra.Command, flagName string) {
+	flags := cmd.Flags()
+	var pStrVal *string = new(string)
+	flags.StringVar(pStrVal, flagName, "", "")
 }
 
 // HasUnknownFlags returns whether the flag parser detected any unknown flags

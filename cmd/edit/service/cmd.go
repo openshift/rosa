@@ -17,11 +17,11 @@ limitations under the License.
 package service
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -39,17 +39,6 @@ var Cmd = &cobra.Command{
 	Run:                run,
 	Hidden:             true,
 	DisableFlagParsing: true,
-	Args: func(cmd *cobra.Command, argv []string) error {
-		err := arguments.ParseUnknownFlags(cmd, argv)
-		if err != nil {
-			return err
-		}
-
-		if len(cmd.Flags().Args()) > 0 {
-			return fmt.Errorf("Unrecognized command line parameter")
-		}
-		return nil
-	},
 }
 
 func init() {
@@ -67,13 +56,19 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
+	err := arguments.ParseKnownFlags(cmd, argv, false)
+	if err != nil {
+		r.Reporter.Errorf("Failed to parse flags: %v", err)
+		os.Exit(1)
+	}
+
 	if args.ID == "" {
 		r.Reporter.Errorf("Service id not specified.")
 		cmd.Help()
 		os.Exit(1)
 	}
 
-	// Try to find the cluster:
+	// Try to find the service:
 	r.Reporter.Debugf("Loading service %q", args.ID)
 	service, err := r.OCMClient.GetManagedService(ocm.DescribeManagedServiceArgs{ID: args.ID})
 	if err != nil {
@@ -81,20 +76,33 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	parameters := service.Parameters()
+	addOn, err := r.OCMClient.GetAddOn(service.Service())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get add-on %q: %s", service.Service(), err)
+		os.Exit(1)
+	}
 
-	if len(parameters) == 0 {
-		r.Reporter.Errorf("Service %q has no parameters to edit", args.ID)
+	addonParameters := addOn.Parameters()
+	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+		arguments.AddStringFlag(cmd, param.ID())
+		return true
+	})
+
+	err = arguments.ParseKnownFlags(cmd, argv, true)
+	if err != nil {
+		r.Reporter.Errorf("Failed to parse flags: %v", err)
 		os.Exit(1)
 	}
 
 	args.Parameters = map[string]string{}
-	for _, param := range parameters {
+	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
 		flag := cmd.Flags().Lookup(param.ID())
-		if flag != nil {
+		// Checking if the flag changed to ensure that the user set the value.
+		if flag != nil && flag.Changed {
 			args.Parameters[param.ID()] = flag.Value.String()
 		}
-	}
+		return true
+	})
 
 	r.Reporter.Debugf("Updating parameters for service %q", args.ID)
 	err = r.OCMClient.UpdateManagedService(args)
