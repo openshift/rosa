@@ -1767,7 +1767,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if enableProxy && interactive.Enabled() {
+	if useExistingVPC && interactive.Enabled() {
 		additionalTrustBundleFile, err = interactive.GetCert(interactive.Input{
 			Question: "Additional trust bundle file path",
 			Help:     cmd.Flags().Lookup("additional-trust-bundle-file").Usage,
