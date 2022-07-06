@@ -60,7 +60,8 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := args.clusterKey
+	ocm.SetClusterKey(args.clusterKey)
+	clusterKey := r.GetClusterKey()
 	if clusterKey != "" && !ocm.IsValidClusterKey(clusterKey) {
 		r.Reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
