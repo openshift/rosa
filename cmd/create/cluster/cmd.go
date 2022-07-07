@@ -1273,6 +1273,9 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: false,
 				Options:  options,
 				Default:  defaultOptions,
+				Validators: []interactive.Validator{
+					interactive.SubnetsCountValidator(multiAZ, privateLink),
+				},
 			})
 			if err != nil {
 				r.Reporter.Errorf("Expected valid subnet IDs: %s", err)
@@ -1283,10 +1286,13 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		err = validateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+		// Validate subnets in the case the user has provided them using the `args.subnets`
+		if subnetsProvided {
+			err = aws.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 		}
 
 		for _, subnet := range subnetIDs {
@@ -2101,37 +2107,6 @@ func validateExpiration() (expiration time.Time, err error) {
 	}
 
 	return
-}
-
-const (
-	BYOVPCSingleAZSubnetsCount      = 2
-	BYOVPCMultiAZSubnetsCount       = 6
-	privateLinkSingleAZSubnetsCount = 1
-	privateLinkMultiAZSubnetsCount  = 3
-)
-
-func validateSubnetsCount(multiAZ bool, privateLink bool, subnetsInputCount int) error {
-	if privateLink {
-		if multiAZ && subnetsInputCount != privateLinkMultiAZSubnetsCount {
-			return fmt.Errorf("The number of subnets for a multi-AZ private link cluster should be %d, "+
-				"instead received: %d", privateLinkMultiAZSubnetsCount, subnetsInputCount)
-		}
-		if !multiAZ && subnetsInputCount != privateLinkSingleAZSubnetsCount {
-			return fmt.Errorf("The number of subnets for a single AZ private link cluster should be %d, "+
-				"instead received: %d", privateLinkSingleAZSubnetsCount, subnetsInputCount)
-		}
-	} else {
-		if multiAZ && subnetsInputCount != BYOVPCMultiAZSubnetsCount {
-			return fmt.Errorf("The number of subnets for a multi-AZ cluster should be %d, "+
-				"instead received: %d", BYOVPCMultiAZSubnetsCount, subnetsInputCount)
-		}
-		if !multiAZ && subnetsInputCount != BYOVPCSingleAZSubnetsCount {
-			return fmt.Errorf("The number of subnets for a single AZ cluster should be %d, "+
-				"instead received: %d", BYOVPCSingleAZSubnetsCount, subnetsInputCount)
-		}
-	}
-
-	return nil
 }
 
 const (
