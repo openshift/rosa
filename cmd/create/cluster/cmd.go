@@ -1226,6 +1226,9 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
 		}
+		if subnetsProvided {
+			useExistingVPC = true
+		}
 
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
