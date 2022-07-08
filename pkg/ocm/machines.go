@@ -86,12 +86,14 @@ func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
 	if err != nil {
 		return nil, err
 	}
+	/*
+		quotaCosts, err := c.getQuotaCosts()
+		if err != nil {
+			return nil, err
+		}
+	*/
 
-	quotaCosts, err := c.getQuotaCosts()
-	if err != nil {
-		return nil, err
-	}
-
+	var quotaCosts *amsv1.QuotaCostList
 	machineTypes.UpdateAvailableQuota(quotaCosts)
 	return machineTypes, nil
 }

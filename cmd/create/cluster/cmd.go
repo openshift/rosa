@@ -117,6 +117,7 @@ var args struct {
 	// Operator IAM Roles
 	operatorIAMRoles                 []string
 	operatorRolesPrefix              string
+	operatorRolesPath                string
 	operatorRolesPermissionsBoundary string
 
 	// Proxy
@@ -224,6 +225,12 @@ func init() {
 		"",
 		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
 			"Leave empty to use an auto-generated one.",
+	)
+	flags.StringVar(
+		&args.operatorRolesPath,
+		"operator-roles-path",
+		"",
+		"Custom arn path for operator roles.",
 	)
 
 	flags.StringSliceVar(
@@ -959,11 +966,23 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	rolePath, err := aws.GetRolePath(roleARN)
-	if err != nil {
-		r.Reporter.Errorf("Error getting role path %s", err)
-		os.Exit(1)
+
+	operatorRolePath := args.operatorRolesPath
+	if interactive.Enabled() {
+		operatorRolePath, err = interactive.GetString(interactive.Input{
+			Question: "Operator Role Path",
+			Help:     cmd.Flags().Lookup("operator-roles-path").Usage,
+			Default:  operatorRolePath,
+			Validators: []interactive.Validator{
+				aws.ARNPathValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path: %s", err)
+			os.Exit(1)
+		}
 	}
+
 	operatorIAMRoles := args.operatorIAMRoles
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
@@ -987,7 +1006,7 @@ func run(cmd *cobra.Command, _ []string) {
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name(),
 				Namespace: operator.Namespace(),
-				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator, rolePath),
+				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator, operatorRolePath),
 			})
 
 		}

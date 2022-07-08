@@ -242,6 +242,7 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
+				fmt.Printf("%s", "i mhererrrrrrrrr")
 				return c.createPolicy(policyArn, document, tagList, path)
 			default:
 				return "", err
@@ -322,6 +323,9 @@ func (c *awsClient) createPolicy(policyArn string, document string, tagList map[
 	}
 
 	output, err := c.iamClient.CreatePolicy(createPolicyInput)
+
+	fmt.Printf("%s", output)
+	fmt.Printf("%s", err)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {

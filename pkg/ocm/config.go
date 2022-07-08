@@ -39,6 +39,7 @@ var URLAliases = map[string]string{
 	"production":  "https://api.openshift.com",
 	"staging":     "https://api.stage.openshift.com",
 	"integration": "https://api.integration.openshift.com",
+	"dev":         "http://localhost:8000/",
 }
 
 // Config is the type used to store the configuration of the client.

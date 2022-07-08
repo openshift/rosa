@@ -22,11 +22,9 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/login"
-	"github.com/openshift/rosa/cmd/verify/oc"
 	"github.com/openshift/rosa/cmd/verify/quota"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -39,7 +37,8 @@ import (
 var args struct {
 	prefix              string
 	permissionsBoundary string
-	path                string
+	rolePath            string
+	policyPath          string
 }
 
 var Cmd = &cobra.Command{
@@ -73,10 +72,17 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.path,
-		"path",
+		&args.rolePath,
+		"role-path",
 		"",
-		"The arn path for the account roles and policies",
+		"The arn path for the account roles",
+	)
+
+	flags.StringVar(
+		&args.policyPath,
+		"policy-path",
+		"",
+		"The arn path for the account policies",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -138,7 +144,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Warnf("Insufficient AWS quotas. Cluster installation might fail.")
 	}
 	// Verify version of `oc`
-	oc.Cmd.Run(cmd, argv)
+	//oc.Cmd.Run(cmd, argv)
 
 	// Determine if interactive mode is needed
 	if !interactive.Enabled() && (!cmd.Flags().Changed("mode")) {
@@ -206,12 +212,28 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	path := args.path
+	rolePath := args.rolePath
 	if interactive.Enabled() {
-		path, err = interactive.GetString(interactive.Input{
-			Question: "Path",
-			Help:     cmd.Flags().Lookup("path").Usage,
-			Default:  path,
+		rolePath, err = interactive.GetString(interactive.Input{
+			Question: "Role Path",
+			Help:     cmd.Flags().Lookup("role-path").Usage,
+			Default:  rolePath,
+			Validators: []interactive.Validator{
+				aws.ARNPathValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	policyPath := args.policyPath
+	if interactive.Enabled() {
+		policyPath, err = interactive.GetString(interactive.Input{
+			Question: "Policy Path",
+			Help:     cmd.Flags().Lookup("policy-path").Usage,
+			Default:  policyPath,
 			Validators: []interactive.Validator{
 				aws.ARNPathValidator,
 			},
@@ -240,18 +262,13 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 		os.Exit(1)
 	}
-	credRequests, err := r.OCMClient.GetCredRequests()
-	if err != nil {
-		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-		os.Exit(1)
-	}
 
 	switch mode {
 	case aws.ModeAuto:
 		r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 
-		err = createRoles(r, prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
-			defaultPolicyVersion, credRequests, path)
+		err = createRoles(r, prefix, permissionsBoundary, env, policies,
+			defaultPolicyVersion, rolePath, policyPath)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the account roles: %s", err)
 			if strings.Contains(err.Error(), "Throttling") {
@@ -274,7 +291,8 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Version:  defaultPolicyVersion,
 		})
 	case aws.ModeManual:
-		err = aws.GeneratePolicyFiles(r.Reporter, env, true, true, policies, credRequests)
+		err = aws.GeneratePolicyFiles(r.Reporter, env, true,
+			false, policies, nil)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
@@ -286,7 +304,8 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
-		commands := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID, defaultPolicyVersion, credRequests, path)
+		commands := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID,
+			defaultPolicyVersion, rolePath, policyPath)
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
 			ocm.Version: defaultPolicyVersion,
 		})
@@ -298,7 +317,7 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func buildCommands(prefix string, permissionsBoundary string, accountID string, defaultPolicyVersion string,
-	credRequests map[string]*cmv1.STSOperator, path string) string {
+	rolePath string, policyPath string) string {
 	commands := []string{}
 
 	for file, role := range aws.AccountRoles {
@@ -320,48 +339,30 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 			"%s"+
 			"\t--tags %s"+
 			"\t--path %s",
-			name, file, permBoundaryFlag, iamTags, path)
+			name, file, permBoundaryFlag, iamTags, rolePath)
 		createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 			"\t--policy-name %s \\\n"+
 			"\t--policy-document file://sts_%s_permission_policy.json"+
 			"\t--tags %s"+
 			"\t--path %s",
-			policyName, file, iamTags, path)
+			policyName, file, iamTags, policyPath)
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--policy-arn %s",
-			name, aws.GetPolicyARN(accountID, policyName, path))
+			name, aws.GetPolicyARN(accountID, policyName, policyPath))
 		commands = append(commands, createRole, createPolicy, attachRolePolicy)
-	}
-
-	for credrequest, operator := range credRequests {
-		name := aws.GetPolicyName(prefix, operator.Namespace(), operator.Name())
-		iamTags := fmt.Sprintf(
-			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-			tags.OpenShiftVersion, defaultPolicyVersion,
-			tags.RolePrefix, prefix,
-			"operator_namespace", operator.Namespace(),
-			"operator_name", operator.Name(),
-		)
-		createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
-			"\t--policy-name %s \\\n"+
-			"\t--policy-document file://openshift_%s_policy.json \\\n"+
-			"\t--tags %s"+
-			"\t--path %s",
-			name, credrequest, iamTags, path)
-		commands = append(commands, createPolicy)
 	}
 
 	return strings.Join(commands, "\n\n")
 }
 
-func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env string,
+func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, env string,
 	policies map[string]string, defaultPolicyVersion string,
-	credRequests map[string]*cmv1.STSOperator, path string) error {
+	rolePath string, policyPath string) error {
 
 	for file, role := range aws.AccountRoles {
 		name := aws.GetRoleName(prefix, role.Name)
-		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name), path)
+		policyARN := aws.GetPolicyARN(r.Creator.AccountID, fmt.Sprintf("%s-Policy", name), policyPath)
 		if !confirm.Prompt(true, "Create the '%s' role?", name) {
 			continue
 		}
@@ -378,7 +379,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
-			}, path)
+			}, rolePath)
 		if err != nil {
 			return err
 		}
@@ -393,7 +394,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
-			}, path)
+			}, policyPath)
 		if err != nil {
 			return err
 		}
@@ -403,26 +404,5 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 			return err
 		}
 	}
-
-	if confirm.Prompt(true, "Create the operator policies?") {
-		for credrequest, operator := range credRequests {
-			policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
-			filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-			policyDetails := policies[filename]
-
-			policyARN, err := r.AWSClient.EnsurePolicy(policyARN, policyDetails,
-				defaultPolicyVersion, map[string]string{
-					tags.OpenShiftVersion: defaultPolicyVersion,
-					tags.RolePrefix:       prefix,
-					"operator_namespace":  operator.Namespace(),
-					"operator_name":       operator.Name(),
-				}, path)
-			if err != nil {
-				return err
-			}
-			r.Reporter.Infof("Created policy with ARN '%s'", policyARN)
-		}
-	}
-
 	return nil
 }

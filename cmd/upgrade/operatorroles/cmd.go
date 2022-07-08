@@ -38,6 +38,7 @@ import (
 
 var args struct {
 	upgradeVersion string
+	path           string
 }
 
 var Cmd = &cobra.Command{
@@ -61,6 +62,13 @@ func init() {
 		"version",
 		"",
 		"Version of OpenShift that the cluster will be upgraded to",
+	)
+
+	flags.StringVar(
+		&args.path,
+		"path",
+		"",
+		"The arn path for the operator roles and policies",
 	)
 
 	confirm.AddFlag(flags)
@@ -90,6 +98,22 @@ func run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
+	}
+
+	path := args.path
+	if interactive.Enabled() {
+		path, err = interactive.GetString(interactive.Input{
+			Question: "Path",
+			Help:     cmd.Flags().Lookup("path").Usage,
+			Default:  path,
+			Validators: []interactive.Validator{
+				aws.ARNPathValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	clusterKey := r.GetClusterKey()

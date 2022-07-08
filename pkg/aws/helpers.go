@@ -416,6 +416,13 @@ func TrimRoleSuffix(orig, sufix string) string {
 	return orig
 }
 
+func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
+	operator := cluster.AWS().STS().OperatorIAMRoles()[0]
+	roleName := strings.SplitN(operator.RoleARN(), "/", 2)[1]
+	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-%s", operator.Namespace(), operator.Name()))
+	return rolePrefix
+}
+
 func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	parsedARN, err := arn.Parse(cluster.AWS().STS().RoleARN())
 	if err != nil {
