@@ -18,6 +18,7 @@ package ocm
 
 import (
 	"fmt"
+	"net/http"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
@@ -60,6 +61,9 @@ func (c *Client) GetHTPasswdUserList(clusterID, htpasswdIDPId string) (*cmv1.HTP
 	listResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
 		IdentityProviders().IdentityProvider(htpasswdIDPId).HtpasswdUsers().List().Send()
 	if err != nil {
+		if listResponse.Error().Status() == http.StatusNotFound {
+			return nil, nil
+		}
 		return nil, handleErr(listResponse.Error(), err)
 	}
 	return listResponse.Items(), nil
@@ -80,6 +84,9 @@ func (c *Client) DeleteHTPasswdUser(username, clusterID string, htpasswdIDP *cmv
 	listResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
 		IdentityProviders().IdentityProvider(htpasswdIDP.ID()).HtpasswdUsers().List().Send()
 	if err != nil {
+		if listResponse.Error().Status() == http.StatusNotFound {
+			return nil
+		}
 		return handleErr(listResponse.Error(), err)
 	}
 	listResponse.Items().Each(func(user *cmv1.HTPasswdUser) bool {
