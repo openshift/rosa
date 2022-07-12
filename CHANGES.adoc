@@ -2,6 +2,83 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.4 Jul 12 2022
+
+- Initial implementation of runtime
+- Migrate some commands to use runtime
+- The additional-trust-bundle-file can't be set via interactive mode if the cluster is not set proxy fields
+- Allow to select availability zones when creating a non-BYOVPC cluster
+- idp: Provide shell completion for IdP types
+- Migrate describe commands to use runtime
+- Migrate delete accountroles to use runtime
+- Migrate delete admin to use runtime
+- Migrate delete cluster to use runtime
+- Migrate delete idp to use runtime
+- Migrate delete ingress to use runtime
+- Migrate delete ocmrole to use runtime
+- Migrate delete oidcprovider to use runtime
+- Migrate delete operatorrole to use runtime
+- Migrate delete service to use runtime
+- Migrate delete upgrade to use runtime
+- Migrate delete userrole to use runtime
+- migrate create idp to use runtime
+- Migrate create ingress to use runtime
+- Migrate create machinepool to use runtime
+- Migrate create ocmrole to use runtime
+- Migrate create oidcprovider to use runtime
+- Migrate create operatorroles to use runtime
+- Migrate create service to use runtime
+- Migrate create userrole to use runtime
+- migrate FindExistingHTPasswdIDP method to use runtime
+- Migrate edit addon to use runtime
+- Migrate edit cluster to use runtime
+- Migrate edit ingress to use runtime
+- Migrate edit machinepool to use runtime
+- Migrate grant user to use runtime
+- Migrate hibernate cluster to use runtime
+- Migrate initialize to use runtime
+- Drop unused CheckStackReadyForCreateCluster method
+- Migrate link to use runtime
+- Migrate edit service to use runtime
+- Migrate login to use runtime
+- Migrate logs to use runtime
+- Migrate resume to use runtime
+- Migrate revoke to use runtime
+- Migrate uninstall addon to use runtime
+- Migrate unlink to use runtime
+- Migrate verify to use runtime
+- Migrate whoami to use runtime
+- Migrate list commands to use runtime
+- Migrate remaining commands to use runtime
+- Add GetClusterKey to runtime
+- Migrate commands to use runtime GetClusterKey
+- Add FetchCluster method to runtime
+- Migrate commands to fetch cluster using runtime
+- edit service can update parameters that weren't originally defined.
+- addressing pr comments
+- Update ocm-sdk-go to v.0.1.275
+- Refactor function for more general use
+- Select a single subnet for a single AZ machine pool - BYOVPC clusters
+- Set `clusterKey` properly when calling commands programmatically
+- Refactor Role PolicyDoc creation
+- Skip role version comparison for unversioned roles
+- Add basic STS addon installation flow
+- A different approach to parsing the flags.
+- Fix error message - create non-BYOVPC - select availability zone
+- Create cluster - detect multi-AZ cluster
+- Fix bug - create a cluster with an invalid number of subnets
+- Create a single AZ machine pool implicitly by providing a subnet
+- Fix bug - fetch the subnets from the cluster region
+- List machine pools - add a subnets column
+- Fix bug - create cluster - validate subnets number for private link
+- Create cluster - validate subnets count interactively
+- removed validator object
+- Set `clusterKey` properly to support `r.FetchCluster`
+- setting useVPCExist to true when subnet ids are provided
+- Not able to remove or add a new cluster-admin in rosa cli
+- accept major minor version for cluster upgrade
+- removing htpasswd idp even if there are no users in this idp
+
 == 1.2.3 Jun 18 2022
 
 - adding command to update managed service
