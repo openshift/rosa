@@ -6,6 +6,7 @@ reviewers:
 - tbrisker
 - vkareh
 - zgalor
+- oriAdler
 approvers:
 - ciaranRoche
 - igoihman
@@ -16,6 +17,7 @@ approvers:
 - tbrisker
 - vkareh
 - zgalor
+- oriAdler
 maintainers:
 - ciaranRoche
 - igoihman
@@ -24,3 +26,4 @@ maintainers:
 - tbrisker
 - vkareh
 - zgalor
+- oriAdler
