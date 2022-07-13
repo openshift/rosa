@@ -1192,7 +1192,7 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
 				case iam.ErrCodeNoSuchEntityException:
-					return false, errors.NotFound.Errorf("Roles with the prefix'%s' not found", prefix)
+					return false, errors.NotFound.Errorf("Roles with the prefix '%s' not found", prefix)
 				}
 			}
 			return false, err
