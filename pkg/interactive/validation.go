@@ -27,7 +27,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
-	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/ocm"
 )
 
 const doubleQuotesToRemove = "\"\""
@@ -142,7 +142,17 @@ func RegExpBoolean(restr string) Validator {
 func SubnetsCountValidator(multiAZ bool, privateLink bool) Validator {
 	return func(input interface{}) error {
 		if answers, ok := input.([]core.OptionAnswer); ok {
-			return aws.ValidateSubnetsCount(multiAZ, privateLink, len(answers))
+			return ocm.ValidateSubnetsCount(multiAZ, privateLink, len(answers))
+		}
+
+		return fmt.Errorf("can only validate a slice of string, got %v", input)
+	}
+}
+
+func AvailabilityZonesCountValidator(multiAZ bool) Validator {
+	return func(input interface{}) error {
+		if answers, ok := input.([]core.OptionAnswer); ok {
+			return ocm.ValidateAvailabilityZonesCount(multiAZ, len(answers))
 		}
 
 		return fmt.Errorf("can only validate a slice of string, got %v", input)

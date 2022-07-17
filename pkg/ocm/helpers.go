@@ -604,3 +604,52 @@ func isOperatorRoleAlreadyExist(cluster *cmv1.Cluster, operator *cmv1.STSOperato
 	}
 	return false
 }
+
+const (
+	BYOVPCSingleAZSubnetsCount      = 2
+	BYOVPCMultiAZSubnetsCount       = 6
+	privateLinkSingleAZSubnetsCount = 1
+	privateLinkMultiAZSubnetsCount  = 3
+)
+
+func ValidateSubnetsCount(multiAZ bool, privateLink bool, subnetsInputCount int) error {
+	if privateLink {
+		if multiAZ && subnetsInputCount != privateLinkMultiAZSubnetsCount {
+			return fmt.Errorf("The number of subnets for a multi-AZ private link cluster should be %d, "+
+				"instead received: %d", privateLinkMultiAZSubnetsCount, subnetsInputCount)
+		}
+		if !multiAZ && subnetsInputCount != privateLinkSingleAZSubnetsCount {
+			return fmt.Errorf("The number of subnets for a single AZ private link cluster should be %d, "+
+				"instead received: %d", privateLinkSingleAZSubnetsCount, subnetsInputCount)
+		}
+	} else {
+		if multiAZ && subnetsInputCount != BYOVPCMultiAZSubnetsCount {
+			return fmt.Errorf("The number of subnets for a multi-AZ cluster should be %d, "+
+				"instead received: %d", BYOVPCMultiAZSubnetsCount, subnetsInputCount)
+		}
+		if !multiAZ && subnetsInputCount != BYOVPCSingleAZSubnetsCount {
+			return fmt.Errorf("The number of subnets for a single AZ cluster should be %d, "+
+				"instead received: %d", BYOVPCSingleAZSubnetsCount, subnetsInputCount)
+		}
+	}
+
+	return nil
+}
+
+const (
+	singleAZCount = 1
+	MultiAZCount  = 3
+)
+
+func ValidateAvailabilityZonesCount(multiAZ bool, availabilityZonesCount int) error {
+	if multiAZ && availabilityZonesCount != MultiAZCount {
+		return fmt.Errorf("The number of availability zones for a multi AZ cluster should be %d, "+
+			"instead received: %d", MultiAZCount, availabilityZonesCount)
+	}
+	if !multiAZ && availabilityZonesCount != singleAZCount {
+		return fmt.Errorf("The number of availability zones for a single AZ cluster should be %d, "+
+			"instead received: %d", singleAZCount, availabilityZonesCount)
+	}
+
+	return nil
+}
