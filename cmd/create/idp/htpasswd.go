@@ -54,6 +54,19 @@ func createHTPasswdIDP(cmd *cobra.Command,
 					"Clusters may only have 1 HTPasswd IDP.", clusterKey, htpasswdIDP.Name())
 			os.Exit(1)
 		}
+
+		idp, ok := htpasswdIDP.GetHtpasswd()
+		if !ok {
+			r.Reporter.Errorf(
+				"Failed to get htpasswd idp of cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+		if idp.Username() != "" {
+			r.Reporter.Errorf("Users can't be added to a single user HTPasswd IDP. Delete the IDP and recreate " +
+				"it as a multi user HTPasswd IDP")
+			return
+		}
+
 		// Existing IDP contains only admin. Add new user to it
 		r.Reporter.Infof("Cluster already has an HTPasswd IDP named '%s', new users will be added to it.",
 			htpasswdIDP.Name())
