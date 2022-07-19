@@ -519,7 +519,7 @@ func run(cmd *cobra.Command, _ []string) {
 			"ROSA autodetects availability zones from subnet IDs provided")
 	}
 	// Select a multi-AZ cluster implicitly by providing three availability zones
-	if len(args.availabilityZones) == multiAZCount {
+	if len(args.availabilityZones) == ocm.MultiAZCount {
 		args.multiAZ = true
 	}
 
@@ -1288,7 +1288,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 		// Validate subnets in the case the user has provided them using the `args.subnets`
 		if subnetsProvided {
-			err = aws.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
+			err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -1336,6 +1336,9 @@ func run(cmd *cobra.Command, _ []string) {
 					Help:     cmd.Flags().Lookup("availability-zones").Usage,
 					Required: true,
 					Options:  optionsAvailabilityZones,
+					Validators: []interactive.Validator{
+						interactive.AvailabilityZonesCountValidator(multiAZ),
+					},
 				})
 				if err != nil {
 					r.Reporter.Errorf("Expected valid availability zones: %s", err)
@@ -2109,19 +2112,10 @@ func validateExpiration() (expiration time.Time, err error) {
 	return
 }
 
-const (
-	singleAZCount = 1
-	multiAZCount  = 3
-)
-
 func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClient aws.Client) error {
-	if multiAZ && len(availabilityZones) != multiAZCount {
-		return fmt.Errorf("The number of availability zones for a multi AZ cluster should be %d, "+
-			"instead received: %d", multiAZCount, len(availabilityZones))
-	}
-	if !multiAZ && len(availabilityZones) != singleAZCount {
-		return fmt.Errorf("The number of availability zones for a single AZ cluster should be %d, "+
-			"instead received: %d", singleAZCount, len(availabilityZones))
+	err := ocm.ValidateAvailabilityZonesCount(multiAZ, len(availabilityZones))
+	if err != nil {
+		return err
 	}
 
 	regionAvailabilityZones, err := awsClient.DescribeAvailabilityZones()
