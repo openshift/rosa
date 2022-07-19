@@ -25,6 +25,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -55,7 +56,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Load the configuration file:
-	cfg, err := ocm.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		r.Reporter.Errorf("Failed to load config file: %v", err)
 		os.Exit(1)
@@ -132,7 +133,7 @@ func run(_ *cobra.Command, _ []string) {
 	fmt.Println()
 }
 
-func getAccountDataFromToken(cfg *ocm.Config) (*amsv1.Account, error) {
+func getAccountDataFromToken(cfg *config.Config) (*amsv1.Account, error) {
 	firstName, err := cfg.GetData("first_name")
 	if err != nil {
 		return nil, err

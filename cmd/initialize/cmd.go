@@ -86,7 +86,6 @@ func init() {
 	flags.AddFlagSet(login.Cmd.Flags())
 
 	arguments.AddProfileFlag(flags)
-	arguments.AddRegionFlag(flags)
 
 	confirm.AddFlag(flags)
 }

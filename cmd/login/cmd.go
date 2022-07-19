@@ -26,6 +26,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/logout"
+	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -33,7 +36,7 @@ import (
 )
 
 // #nosec G101
-const uiTokenPage = "https://console.redhat.com/openshift/token/rosa"
+var uiTokenPage string = "https://console.redhat.com/openshift/token/rosa"
 
 var reAttempt bool
 
@@ -118,32 +121,51 @@ func init() {
 		"Enables insecure communication with the server. This disables verification of TLS "+
 			"certificates and host names.",
 	)
+	arguments.AddRegionFlag(flags)
+	fedramp.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime()
 
 	// Check mandatory options:
-	if args.env == "" {
+	env := args.env
+	if env == "" {
 		r.Reporter.Errorf("Option '--env' is mandatory")
 		os.Exit(1)
 	}
 
 	// Load the configuration file:
-	cfg, err := ocm.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		r.Reporter.Errorf("Failed to load config file: %v", err)
 		os.Exit(1)
 	}
 	if cfg == nil {
-		cfg = new(ocm.Config)
+		cfg = new(config.Config)
 	}
 
 	token := args.token
+
+	// Determine if we should be using the FedRAMP environment:
+	if fedramp.HasFlag(cmd) ||
+		(cfg.FedRAMP && token == "") ||
+		fedramp.IsGovRegion(arguments.GetRegion()) ||
+		config.IsEncryptedToken(token) {
+		fedramp.Enable()
+		// Always default to prod
+		if env == sdk.DefaultURL {
+			env = "production"
+		}
+		uiTokenPage = fedramp.LoginURLs[env]
+	} else {
+		fedramp.Disable()
+	}
+
 	haveReqs := token != ""
 
 	// Verify environment variables:
-	if !haveReqs && !reAttempt {
+	if !haveReqs && !reAttempt && !fedramp.Enabled() {
 		token = os.Getenv("ROSA_TOKEN")
 		if token == "" {
 			token = os.Getenv("OCM_TOKEN")
@@ -180,7 +202,17 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Apply the default OpenID details if not explicitly provided by the user:
+	// Red Hat SSO does not issue encrypted refresh tokens, but AWS Cognito does. If the token
+	// is encrypted we can safely assume that the user is trying to use the FedRAMP environment.
+	if config.IsEncryptedToken(token) {
+		fedramp.Enable()
+	}
+
+	// Apply the default configuration details if not explicitly provided by the user:
+	gatewayURL, ok := ocm.URLAliases[env]
+	if !ok {
+		gatewayURL = env
+	}
 	tokenURL := sdk.DefaultTokenURL
 	if args.tokenURL != "" {
 		tokenURL = args.tokenURL
@@ -189,12 +221,20 @@ func run(cmd *cobra.Command, argv []string) {
 	if args.clientID != "" {
 		clientID = args.clientID
 	}
-
-	// If the value of the `--env` is any of the aliases then replace it with the corresponding
-	// real URL:
-	gatewayURL, ok := ocm.URLAliases[args.env]
-	if !ok {
-		gatewayURL = args.env
+	// Override configuration details for FedRAMP:
+	if fedramp.Enabled() {
+		gatewayURL, ok = fedramp.URLAliases[env]
+		if !ok {
+			gatewayURL = env
+		}
+		tokenURL, ok = fedramp.TokenURLs[env]
+		if !ok {
+			tokenURL = args.tokenURL
+		}
+		clientID, ok = fedramp.ClientIDs[env]
+		if !ok {
+			clientID = args.clientID
+		}
 	}
 
 	// Update the configuration with the values given in the command line:
@@ -204,14 +244,15 @@ func run(cmd *cobra.Command, argv []string) {
 	cfg.Scopes = args.scopes
 	cfg.URL = gatewayURL
 	cfg.Insecure = args.insecure
+	cfg.FedRAMP = fedramp.Enabled()
 
 	if token != "" {
-		if ocm.IsEncryptedToken(token) {
+		if config.IsEncryptedToken(token) {
 			cfg.AccessToken = ""
 			cfg.RefreshToken = token
 		} else {
 			// If a token has been provided parse it:
-			jwtToken, err := ocm.ParseToken(token)
+			jwtToken, err := config.ParseToken(token)
 			if err != nil {
 				r.Reporter.Errorf("Failed to parse token '%s': %v", token, err)
 				os.Exit(1)
@@ -263,7 +304,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Save the configuration:
 	cfg.AccessToken = accessToken
 	cfg.RefreshToken = refreshToken
-	err = ocm.Save(cfg)
+	err = config.Save(cfg)
 	if err != nil {
 		r.Reporter.Errorf("Failed to save config file: %v", err)
 		os.Exit(1)
@@ -328,7 +369,7 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 
 	// Verify if user is already logged in:
 	isLoggedIn := false
-	cfg, err := ocm.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("Failed to load config file: %v", err)
 	}

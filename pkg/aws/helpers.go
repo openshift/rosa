@@ -13,6 +13,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -37,6 +39,14 @@ var UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
 // and the fifth petterrn is to be able to remove the existing no-proxy value by typing empty string ("").
 // nolint
 var UserNoProxyRE = regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(3[0-2]|[1-2][0-9]|[0-9]))$|^(.?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^""$`)
+
+func GetJumpAccount(env string) string {
+	jumpAccounts := JumpAccounts
+	if fedramp.Enabled() {
+		jumpAccounts = fedramp.JumpAccounts
+	}
+	return jumpAccounts[env]
+}
 
 // JumpAccounts are the various of AWS accounts used for the installer jump role in the various OCM environments
 var JumpAccounts = map[string]string{
@@ -352,11 +362,30 @@ func GetOperatorPolicyARN(accountID string, prefix string, namespace string, nam
 }
 
 func GetPolicyARN(accountID string, name string) string {
-	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, name)
+	partition := GetPartition()
+	return fmt.Sprintf("arn:%s:iam::%s:policy/%s", partition, accountID, name)
 }
 
 func GetRoleARN(accountID string, name string) string {
-	return fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, name)
+	partition := GetPartition()
+	return fmt.Sprintf("arn:%s:iam::%s:role/%s", partition, accountID, name)
+}
+
+func GetOIDCProviderARN(accountID string, providerURL string) string {
+	partition := GetPartition()
+	return fmt.Sprintf("arn:%s:iam::%s:oidc-provider/%s", partition, accountID, providerURL)
+}
+
+func GetPartition() string {
+	region, err := GetRegion(arguments.GetRegion())
+	if err != nil || region == "" {
+		return endpoints.AwsPartitionID
+	}
+	partition, ok := endpoints.PartitionForRegion(endpoints.DefaultPartitions(), region)
+	if !ok || partition.ID() == "" {
+		return endpoints.AwsPartitionID
+	}
+	return partition.ID()
 }
 
 func GetOperatorRoleName(cluster *cmv1.Cluster, operator Operator) string {
@@ -412,7 +441,8 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			filename := fmt.Sprintf("sts_%s_trust_policy", file)
 			policyDetail := policies[filename]
 			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
-				"aws_account_id": JumpAccounts[env],
+				"partition":      GetPartition(),
+				"aws_account_id": GetJumpAccount(env),
 			})
 
 			filename = GetFormattedFileName(filename)

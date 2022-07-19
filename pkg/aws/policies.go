@@ -993,7 +993,7 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 			for _, a := range awsPrincipal {
 				str := strings.Split(a, ":")
 				if len(str) > 4 {
-					if str[4] == JumpAccounts[env] {
+					if str[4] == GetJumpAccount(env) {
 						roles, err := c.buildRoles(aws.StringValue(role.RoleName), accountID)
 						if err != nil {
 							return roleList, err
@@ -1048,7 +1048,7 @@ func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Ro
 		for _, a := range awsPrincipal {
 			str := strings.Split(a, ":")
 			if len(str) > 4 {
-				if str[4] == JumpAccounts[env] {
+				if str[4] == GetJumpAccount(env) {
 					r := Role{
 						RoleARN:  aws.StringValue(accountRoleResponse.Role.Arn),
 						RoleName: roleName,
@@ -1106,8 +1106,8 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 	roles := []Role{}
 	rolePrefix := strings.Split(roleName, "-Installer-Role")[0]
 	for _, prefix := range AccountRoles {
-		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s-%s-Role", accountID, rolePrefix, prefix.Name)
 		roleName := fmt.Sprintf("%s-%s-Role", rolePrefix, prefix.Name)
+		roleARN := GetRoleARN(accountID, roleName)
 
 		if prefix.Name != "Installer" {
 			_, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
@@ -1122,7 +1122,7 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 			}
 		}
 		role := Role{
-			RoleARN:  roleArn,
+			RoleARN:  roleARN,
 			RoleName: roleName,
 			RoleType: prefix.Name,
 		}
