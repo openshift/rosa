@@ -97,16 +97,31 @@ func run(cmd *cobra.Command, _ []string) {
 						idp.ClusterAdminUsername, clusterKey, err)
 					os.Exit(1)
 				}
-				htpasswdIdentityProvider, ok := htpasswdIDP.GetHtpasswd()
-				if !ok {
-					r.Reporter.Errorf("Failed to get htpasswd idp of cluster '%s': %s",
-						clusterKey, err)
-					os.Exit(1)
-				}
-				if htpasswdIdentityProvider.Users().Len() == 0 {
-					//delete the idp as users list is empty
-					r.OCMClient.DeleteIdentityProvider(cluster.ID(), htpasswdIDP.ID())
-				}
+
+			}
+		}
+
+		users, err = r.OCMClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
+		if err != nil {
+			r.Reporter.Errorf("Failed to list htpasswd idp users of cluster '%s': %s",
+				clusterKey, err)
+			os.Exit(1)
+		}
+
+		htpasswdIdentityProvider, ok := htpasswdIDP.GetHtpasswd()
+		if !ok {
+			r.Reporter.Errorf("Failed to get htpasswd idp of cluster '%s': %s",
+				clusterKey, err)
+			os.Exit(1)
+		}
+
+		if users.Len() == 0 && htpasswdIdentityProvider.Username() == "" {
+			//delete the idp as users list is empty
+			err := r.OCMClient.DeleteIdentityProvider(cluster.ID(), htpasswdIDP.ID())
+			if err != nil {
+				r.Reporter.Errorf("Failed to delete htpasswd idp '%s' of cluster '%s': %s",
+					htpasswdIDP.ID(), clusterKey, err)
+				os.Exit(1)
 			}
 		}
 	}
