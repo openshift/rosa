@@ -75,29 +75,39 @@ func run(cmd *cobra.Command, _ []string) {
 	if confirm.Confirm("delete %s user on cluster %s", idp.ClusterAdminUsername, clusterKey) {
 		// delete `cluster-admin` user from the HTPasswd IDP
 		r.Reporter.Debugf("Deleting user '%s' identity provider on cluster '%s'", idp.ClusterAdminUsername, clusterKey)
-		err = r.OCMClient.DeleteHTPasswdUser(idp.ClusterAdminUsername, cluster.ID(), htpasswdIDP)
+		err = r.OCMClient.DeleteUser(cluster.ID(), "cluster-admins", idp.ClusterAdminUsername)
 		if err != nil {
-			r.Reporter.Errorf("Failed to delete '%s' user from the HTPasswd IDP of cluster '%s': %s",
+			r.Reporter.Errorf("Failed to delete '%s' user from cluster-admins groups of cluster '%s': %s",
 				idp.ClusterAdminUsername, clusterKey, err)
 			os.Exit(1)
 		}
-		//if no users remained in htpasswd idp, delete the idp
-		userList, err := r.OCMClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
+
+		//delete now the cluster-admin user from the htpasswd idp
+		users, err := r.OCMClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
 		if err != nil {
-			r.Reporter.Errorf("Failed to get htpasswd idp user list of cluster '%s': %s",
+			r.Reporter.Errorf("Failed to list htpasswd idp users of cluster '%s': %s",
 				clusterKey, err)
 			os.Exit(1)
 		}
-
-		if userList.Len() == 0 {
-			//delete the htpasswd IDP
-			err = r.OCMClient.DeleteIdentityProvider(cluster.ID(), htpasswdIDP.ID())
-			if err != nil {
-				r.Reporter.Errorf("Failed to delete htpasswd IDP of cluster '%s': %s",
-					clusterKey, err)
-				os.Exit(1)
+		for _, user := range users.Slice() {
+			if user.Username() == idp.ClusterAdminUsername {
+				err := r.OCMClient.DeleteHTPasswdUser(idp.ClusterAdminUsername, cluster.ID(), htpasswdIDP)
+				if err != nil {
+					r.Reporter.Errorf("Failed to delete '%s' user from htpasswd idp users list of cluster '%s': %s",
+						idp.ClusterAdminUsername, clusterKey, err)
+					os.Exit(1)
+				}
+				htpasswdIdentityProvider, ok := htpasswdIDP.GetHtpasswd()
+				if !ok {
+					r.Reporter.Errorf("Failed to get htpasswd idp of cluster '%s': %s",
+						clusterKey, err)
+					os.Exit(1)
+				}
+				if htpasswdIdentityProvider.Users().Len() == 0 {
+					//delete the idp as users list is empty
+					r.OCMClient.DeleteIdentityProvider(cluster.ID(), htpasswdIDP.ID())
+				}
 			}
 		}
-		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 	}
 }

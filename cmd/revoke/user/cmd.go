@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -85,8 +86,8 @@ func run(_ *cobra.Command, argv []string) {
 		)
 		os.Exit(1)
 	}
-	if username == "cluster-admin" {
-		r.Reporter.Errorf("Username 'cluster-admin' is not allowed")
+	if username == idp.ClusterAdminUsername {
+		r.Reporter.Errorf("Username '%s' is not allowed", idp.ClusterAdminUsername)
 		os.Exit(1)
 	}
 
