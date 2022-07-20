@@ -2,6 +2,14 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.5 Jul 20 2022
+
+- Fix typo in error message when looking up account role prefix
+- fix for - Not able to remove or add a new cluster-admin in rosa cli fix for - Can't create temporary admin user for ROSA cluster
+- Create cluster - validate availability zones count interactively
+- Delete admin should not deleted htpasswd idp as the htpasswd list is not empty
+- fedramp: Add environment-specific configuration (#702)
+
 == 1.2.4 Jul 12 2022
 
 - Initial implementation of runtime
