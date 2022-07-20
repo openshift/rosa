@@ -132,6 +132,14 @@ func init() {
 			"to \"23\", then each node is assigned a /23 subnet out of the given CIDR.",
 	)
 
+	flags.BoolVar(
+		&args.FakeCluster,
+		"fake-cluster",
+		false,
+		"Create a fake cluster that uses no AWS resources.",
+	)
+	flags.MarkHidden("fake-cluster")
+
 	arguments.AddRegionFlag(flags)
 }
 
@@ -170,6 +178,10 @@ func run(cmd *cobra.Command, argv []string) {
 	args.Properties = map[string]string{
 		properties.CreatorARN: r.Creator.ARN,
 		properties.CLIVersion: info.Version,
+	}
+
+	if args.FakeCluster {
+		args.Properties[properties.FakeCluster] = "true"
 	}
 
 	// Openshift version to use.
