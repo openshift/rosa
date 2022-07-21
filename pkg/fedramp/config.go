@@ -57,14 +57,14 @@ const cognitoURL = "auth-fips.us-gov-west-1.amazoncognito.com/oauth2/token"
 
 // TokenURLs allows the value of the `--env` option to map to the various AWS Cognito token URLs.
 var TokenURLs = map[string]string{
-	"production":  fmt.Sprintf("https://ocm-rosa-authenticator-production-domain.%s", cognitoURL),
-	"staging":     fmt.Sprintf("https://ocm-rosa-authenticator-stage-domain.%s", cognitoURL),
+	"production":  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
+	"staging":     fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
 	"integration": fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
 }
 
 // ClientIDs allows the value of the `--env` option to map to the various AWS Cognito user pool clients.
 var ClientIDs = map[string]string{
-	"production":  "bfam7bqn9rclnbs7sgd8q80u0",
-	"staging":     "5djo5gpbcocv6ni7hj60407h4r",
+	"production":  "72ekjh5laouap6qcfis521jlgi",
+	"staging":     "1lb687dlpsmsfuj53r3je06vpp",
 	"integration": "20fbrpgl28f8oehp6709mk3nnr",
 }
