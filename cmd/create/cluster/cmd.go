@@ -400,7 +400,7 @@ func init() {
 	flags.StringVar(
 		&args.networkType,
 		"network-type",
-		ocm.NetworkTypes[0],
+		"",
 		"The main controller responsible for rendering the core networking components.",
 	)
 	flags.MarkHidden("network-type")
@@ -2207,7 +2207,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string, userSelectedAvailab
 		command += fmt.Sprintf(" --compute-machine-type %s", spec.ComputeMachineType)
 	}
 
-	if spec.NetworkType != ocm.NetworkTypes[0] {
+	if spec.NetworkType != "" {
 		command += fmt.Sprintf(" --network-type %s", spec.NetworkType)
 	}
 	if !ocm.IsEmptyCIDR(spec.MachineCIDR) {
