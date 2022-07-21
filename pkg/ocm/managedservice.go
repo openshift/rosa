@@ -33,6 +33,9 @@ type CreateManagedServiceArgs struct {
 	PodCIDR           net.IPNet
 	ServiceCIDR       net.IPNet
 	HostPrefix        int
+
+	// create a fake cluster with no aws resources
+	FakeCluster bool
 }
 
 func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.ManagedService, error) {
