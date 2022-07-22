@@ -108,9 +108,6 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	clusterName := cluster.Name()
-	if clusterName == "" {
-		clusterName = cluster.DisplayName()
-	}
 
 	isPrivate := "No"
 	if cluster.API().Listening() == cmv1.ListeningMethodInternal {

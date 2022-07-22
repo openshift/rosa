@@ -538,7 +538,6 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	// Create the cluster:
 	clusterBuilder := cmv1.NewCluster().
 		Name(config.Name).
-		DisplayName(config.Name).
 		MultiAZ(config.MultiAZ).
 		Product(
 			cmv1.NewProduct().
