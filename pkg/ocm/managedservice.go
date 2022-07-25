@@ -5,7 +5,6 @@ import (
 	"net"
 
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
-	"github.com/pkg/errors"
 )
 
 type CreateManagedServiceArgs struct {
@@ -114,7 +113,7 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 		Build()
 
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create Managed Service call")
+		return nil, fmt.Errorf("failed to create Managed Service call: %w", err)
 	}
 
 	serviceCall, err := c.ocm.ServiceMgmt().V1().Services().
@@ -130,15 +129,12 @@ func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.Mana
 
 func (c *Client) ListManagedServices(count int) (*msv1.ManagedServiceList, error) {
 	if count < 0 {
-		err := errors.Errorf("Invalid services count")
-		return nil, err
+		return nil, fmt.Errorf("invalid services count")
 	}
 
 	response, err := c.ocm.ServiceMgmt().V1().Services().List().Send()
 	if err != nil {
-		fmt.Printf("%s", err)
-		err := errors.Errorf("Cannot retrieve services list")
-		return nil, err
+		return nil, fmt.Errorf("cannot retrieve services list: %w", err)
 	}
 	return response.Items(), nil
 
@@ -151,7 +147,7 @@ type DescribeManagedServiceArgs struct {
 func (c *Client) GetManagedService(args DescribeManagedServiceArgs) (*msv1.ManagedService, error) {
 	response, err := c.ocm.ServiceMgmt().V1().Services().Service(args.ID).Get().Send()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get managed service with id %s:", args.ID)
+		return nil, fmt.Errorf("failed to get managed service with id %s: %w", args.ID, err)
 	}
 	return response.Body(), nil
 }
@@ -189,7 +185,7 @@ func (c *Client) UpdateManagedService(args UpdateManagedServiceArgs) error {
 		Build()
 
 	if err != nil {
-		return errors.Wrap(err, "Failed to create Managed Service call")
+		return fmt.Errorf("failed to create Managed Service call: %w", err)
 	}
 
 	serviceCall, err := c.ocm.ServiceMgmt().V1().Services().Service(args.ID).

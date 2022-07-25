@@ -29,7 +29,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws/tags"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
-	"github.com/pkg/errors"
 )
 
 func (c *awsClient) DeleteUserRole(roleName string) error {
@@ -72,22 +71,22 @@ func RoleARNToRoleName(roleARN string) (string, error) {
 		return ARNResourceSubStr[1], nil
 	}
 
-	return "", errors.Errorf("Couldn't extract the role name from role ARN")
+	return "", fmt.Errorf("couldn't extract the role name from role ARN")
 }
 
 func (c *awsClient) ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string) error {
 	creator, err := c.GetCreator()
 	if err != nil {
-		return errors.Errorf("Failed to get AWS creator: %v", err)
+		return fmt.Errorf("failed to get AWS creator: %v", err)
 	}
 
 	parsedARN, err := arn.Parse(roleARN)
 	if err != nil {
-		return errors.Errorf("%s", err)
+		return err
 	}
 
 	if creator.AccountID != parsedARN.AccountID {
-		return errors.Errorf("Role ARN '%s' doesn't match the user's account ID '%s'", roleARN, creator.AccountID)
+		return fmt.Errorf("role ARN '%s' doesn't match the user's account ID '%s'", roleARN, creator.AccountID)
 	}
 
 	return nil
