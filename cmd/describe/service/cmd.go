@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -64,7 +65,7 @@ func run(cmd *cobra.Command, argv []string) {
 	r.Reporter.Debugf("Loading service with id %q", args.ID)
 	service, err := r.OCMClient.GetManagedService(args)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get service with id %q: %v", args.ID, err)
+		r.Reporter.Errorf("Failed to get service with id %q: %s", args.ID, output.ErrorToString(err))
 		os.Exit(1)
 	}
 

@@ -24,6 +24,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -72,7 +73,7 @@ func run(cmd *cobra.Command, argv []string) {
 	r.Reporter.Debugf("Loading service %q", args.ID)
 	service, err := r.OCMClient.GetManagedService(ocm.DescribeManagedServiceArgs{ID: args.ID})
 	if err != nil {
-		r.Reporter.Errorf("Failed to get service %q: %v", args.ID, err)
+		r.Reporter.Errorf("Failed to get service with id %q: %s", args.ID, output.ErrorToString(err))
 		os.Exit(1)
 	}
 

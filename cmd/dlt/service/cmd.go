@@ -26,6 +26,7 @@ import (
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -64,16 +65,17 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if !confirm.Confirm("delete service with id '%s'", args.ID) {
-		os.Exit(0)
-	}
-
 	// First get the service to report additional resources
 	// that must be manually deleted.
+	// We get the service before confirming deletion in case the service doesn't exist.
 	service, err := r.OCMClient.GetManagedService(ocm.DescribeManagedServiceArgs{ID: args.ID})
 	if err != nil {
-		r.Reporter.Errorf("Failed to get Managed Service: %s", err)
+		r.Reporter.Errorf("Failed to get service with id %q: %s", args.ID, output.ErrorToString(err))
 		os.Exit(1)
+	}
+
+	if !confirm.Confirm("delete service with id '%s'", args.ID) {
+		os.Exit(0)
 	}
 
 	r.Reporter.Debugf("Deleting service with id %q", args.ID)
