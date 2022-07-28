@@ -19,9 +19,9 @@ package idp
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 
+	"github.com/dchest/validator"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -102,7 +102,6 @@ func buildGoogleIdp(cmd *cobra.Command,
 			Default:  hostedDomain,
 			Required: mappingMethod != "lookup",
 			Validators: []interactive.Validator{
-				interactive.IsURL,
 				validateGoogleHostedDomain,
 			},
 		})
@@ -132,15 +131,9 @@ func buildGoogleIdp(cmd *cobra.Command,
 
 func validateGoogleHostedDomain(val interface{}) error {
 	hostedDomain := fmt.Sprintf("%v", val)
-	parsedHostedDomain, err := url.Parse(hostedDomain)
-	if err != nil {
-		return fmt.Errorf("Expected a valid Hosted Domain: %v", err)
-	}
-	if parsedHostedDomain.RawQuery != "" {
-		return errors.New("Hosted Domain URL must not have query parameters")
-	}
-	if parsedHostedDomain.Fragment != "" {
-		return errors.New("Hosted Domain URL must not have a fragment")
+	isValidHostedDomain := validator.IsValidDomain(hostedDomain)
+	if !isValidHostedDomain {
+		return errors.New("Hosted Domain is not valid")
 	}
 	return nil
 }
