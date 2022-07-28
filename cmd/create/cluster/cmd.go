@@ -1332,17 +1332,9 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 
-				availabilityZones, err = interactive.GetMultipleOptions(interactive.Input{
-					Question: "Availability zones",
-					Help:     cmd.Flags().Lookup("availability-zones").Usage,
-					Required: true,
-					Options:  optionsAvailabilityZones,
-					Validators: []interactive.Validator{
-						interactive.AvailabilityZonesCountValidator(multiAZ),
-					},
-				})
+				availabilityZones, err = selectAvailabilityZonesInteractively(cmd, optionsAvailabilityZones, multiAZ)
 				if err != nil {
-					r.Reporter.Errorf("Expected valid availability zones: %s", err)
+					r.Reporter.Errorf("%s", err)
 					os.Exit(1)
 				}
 			}
@@ -2111,6 +2103,41 @@ func validateExpiration() (expiration time.Time, err error) {
 	}
 
 	return
+}
+
+func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilityZones []string,
+	multiAZ bool) ([]string, error) {
+	var availabilityZones []string
+	var err error
+
+	if multiAZ {
+		availabilityZones, err = interactive.GetMultipleOptions(interactive.Input{
+			Question: "Availability zones",
+			Help:     cmd.Flags().Lookup("availability-zones").Usage,
+			Required: true,
+			Options:  optionsAvailabilityZones,
+			Validators: []interactive.Validator{
+				interactive.AvailabilityZonesCountValidator(multiAZ),
+			},
+		})
+		if err != nil {
+			return availabilityZones, fmt.Errorf("Expected valid availability zones: %s", err)
+		}
+	} else {
+		var availabilityZone string
+		availabilityZone, err = interactive.GetOption(interactive.Input{
+			Question: "Availability zone",
+			Help:     cmd.Flags().Lookup("availability-zones").Usage,
+			Required: true,
+			Options:  optionsAvailabilityZones,
+		})
+		if err != nil {
+			return availabilityZones, fmt.Errorf("Expected valid availability zone: %s", err)
+		}
+		availabilityZones = append(availabilityZones, availabilityZone)
+	}
+
+	return availabilityZones, nil
 }
 
 func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClient aws.Client) error {
