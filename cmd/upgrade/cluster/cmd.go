@@ -24,7 +24,6 @@ import (
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/upgrade/accountroles"
@@ -417,7 +416,7 @@ func checkAndAckMissingAgreements(r *rosa.Runtime, cluster *cmv1.Cluster, upgrad
 	// check if the cluster upgrade requires gate agreements
 	gates, err := r.OCMClient.GetMissingGateAgreements(cluster.ID(), upgradePolicy)
 	if err != nil {
-		return errors.Errorf("Failed to check for missing gate agreements upgrade for "+
+		return fmt.Errorf("failed to check for missing gate agreements upgrade for "+
 			"cluster '%s': %v", clusterKey, err)
 	}
 	isWarningDisplayed := false
@@ -441,7 +440,7 @@ func checkAndAckMissingAgreements(r *rosa.Runtime, cluster *cmv1.Cluster, upgrad
 				Steps:   []string{str},
 			})
 			if err != nil {
-				return errors.Errorf("Failed to get version gate '%s' for cluster '%s': %v",
+				return fmt.Errorf("failed to get version gate '%s' for cluster '%s': %v",
 					gate.ID(), clusterKey, err)
 			}
 			// for non sts gates we require user agreement
@@ -451,7 +450,7 @@ func checkAndAckMissingAgreements(r *rosa.Runtime, cluster *cmv1.Cluster, upgrad
 		}
 		err = r.OCMClient.AckVersionGate(cluster.ID(), gate.ID())
 		if err != nil {
-			return errors.Errorf("Failed to acknowledge version gate '%s' for cluster '%s': %v",
+			return fmt.Errorf("failed to acknowledge version gate '%s' for cluster '%s': %v",
 				gate.ID(), clusterKey, err)
 		}
 	}
