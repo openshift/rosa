@@ -21,6 +21,12 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import "io"
 
+func writeProvisionShardDeleteRequest(request *ProvisionShardDeleteRequest, writer io.Writer) error {
+	return nil
+}
+func readProvisionShardDeleteResponse(response *ProvisionShardDeleteResponse, reader io.Reader) error {
+	return nil
+}
 func writeProvisionShardGetRequest(request *ProvisionShardGetRequest, writer io.Writer) error {
 	return nil
 }

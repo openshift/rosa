@@ -21,6 +21,12 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import "io"
 
+func writeRegistryCredentialDeleteRequest(request *RegistryCredentialDeleteRequest, writer io.Writer) error {
+	return nil
+}
+func readRegistryCredentialDeleteResponse(response *RegistryCredentialDeleteResponse, reader io.Reader) error {
+	return nil
+}
 func writeRegistryCredentialGetRequest(request *RegistryCredentialGetRequest, writer io.Writer) error {
 	return nil
 }

@@ -246,7 +246,7 @@ func (o *ProvisionShard) GetHiveConfig() (value *ServerConfig, ok bool) {
 // ManagementCluster returns the value of the 'management_cluster' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Contains the name of the managment cluster for Hypershift clusters that are assigned to this shard.
+// Contains the name of the management cluster for Hypershift clusters that are assigned to this shard.
 // This field is populated by OCM, and must not be overwritten via API.
 func (o *ProvisionShard) ManagementCluster() string {
 	if o != nil && o.bitmap_&512 != 0 {
@@ -258,7 +258,7 @@ func (o *ProvisionShard) ManagementCluster() string {
 // GetManagementCluster returns the value of the 'management_cluster' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Contains the name of the managment cluster for Hypershift clusters that are assigned to this shard.
+// Contains the name of the management cluster for Hypershift clusters that are assigned to this shard.
 // This field is populated by OCM, and must not be overwritten via API.
 func (o *ProvisionShard) GetManagementCluster() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0

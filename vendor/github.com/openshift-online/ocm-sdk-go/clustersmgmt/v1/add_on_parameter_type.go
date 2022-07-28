@@ -35,20 +35,21 @@ const AddOnParameterNilKind = "AddOnParameterNil"
 //
 // Representation of an add-on parameter.
 type AddOnParameter struct {
-	bitmap_          uint32
-	id               string
-	href             string
-	addon            *AddOn
-	defaultValue     string
-	description      string
-	name             string
-	options          []*AddOnParameterOption
-	validation       string
-	validationErrMsg string
-	valueType        string
-	editable         bool
-	enabled          bool
-	required         bool
+	bitmap_           uint32
+	id                string
+	href              string
+	addon             *AddOn
+	defaultValue      string
+	description       string
+	editableDirection string
+	name              string
+	options           []*AddOnParameterOption
+	validation        string
+	validationErrMsg  string
+	valueType         string
+	editable          bool
+	enabled           bool
+	required          bool
 }
 
 // Kind returns the name of the type of the object.
@@ -200,12 +201,37 @@ func (o *AddOnParameter) GetEditable() (value bool, ok bool) {
 	return
 }
 
+// EditableDirection returns the value of the 'editable_direction' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Restricts if the parameter can be upscaled/downscaled
+// Expected values are "up", "down", or "" (no restriction).
+func (o *AddOnParameter) EditableDirection() string {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.editableDirection
+	}
+	return ""
+}
+
+// GetEditableDirection returns the value of the 'editable_direction' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Restricts if the parameter can be upscaled/downscaled
+// Expected values are "up", "down", or "" (no restriction).
+func (o *AddOnParameter) GetEditableDirection() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.editableDirection
+	}
+	return
+}
+
 // Enabled returns the value of the 'enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Indicates if this parameter is enabled for the add-on.
 func (o *AddOnParameter) Enabled() bool {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.enabled
 	}
 	return false
@@ -216,7 +242,7 @@ func (o *AddOnParameter) Enabled() bool {
 //
 // Indicates if this parameter is enabled for the add-on.
 func (o *AddOnParameter) GetEnabled() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.enabled
 	}
@@ -228,7 +254,7 @@ func (o *AddOnParameter) GetEnabled() (value bool, ok bool) {
 //
 // Name of the add-on parameter.
 func (o *AddOnParameter) Name() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.name
 	}
 	return ""
@@ -239,7 +265,7 @@ func (o *AddOnParameter) Name() string {
 //
 // Name of the add-on parameter.
 func (o *AddOnParameter) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.name
 	}
@@ -251,7 +277,7 @@ func (o *AddOnParameter) GetName() (value string, ok bool) {
 //
 // List of options for the add-on parameter value.
 func (o *AddOnParameter) Options() []*AddOnParameterOption {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.options
 	}
 	return nil
@@ -262,7 +288,7 @@ func (o *AddOnParameter) Options() []*AddOnParameterOption {
 //
 // List of options for the add-on parameter value.
 func (o *AddOnParameter) GetOptions() (value []*AddOnParameterOption, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.options
 	}
@@ -274,7 +300,7 @@ func (o *AddOnParameter) GetOptions() (value []*AddOnParameterOption, ok bool) {
 //
 // Indicates if this parameter is required by the add-on.
 func (o *AddOnParameter) Required() bool {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.required
 	}
 	return false
@@ -285,7 +311,7 @@ func (o *AddOnParameter) Required() bool {
 //
 // Indicates if this parameter is required by the add-on.
 func (o *AddOnParameter) GetRequired() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.required
 	}
@@ -297,7 +323,7 @@ func (o *AddOnParameter) GetRequired() (value bool, ok bool) {
 //
 // Validation rule for the add-on parameter.
 func (o *AddOnParameter) Validation() string {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.validation
 	}
 	return ""
@@ -308,7 +334,7 @@ func (o *AddOnParameter) Validation() string {
 //
 // Validation rule for the add-on parameter.
 func (o *AddOnParameter) GetValidation() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.validation
 	}
@@ -320,7 +346,7 @@ func (o *AddOnParameter) GetValidation() (value string, ok bool) {
 //
 // Error message to return should the parameter be invalid.
 func (o *AddOnParameter) ValidationErrMsg() string {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&8192 != 0 {
 		return o.validationErrMsg
 	}
 	return ""
@@ -331,7 +357,7 @@ func (o *AddOnParameter) ValidationErrMsg() string {
 //
 // Error message to return should the parameter be invalid.
 func (o *AddOnParameter) GetValidationErrMsg() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&8192 != 0
 	if ok {
 		value = o.validationErrMsg
 	}
@@ -343,7 +369,7 @@ func (o *AddOnParameter) GetValidationErrMsg() (value string, ok bool) {
 //
 // Type of value of the add-on parameter.
 func (o *AddOnParameter) ValueType() string {
-	if o != nil && o.bitmap_&8192 != 0 {
+	if o != nil && o.bitmap_&16384 != 0 {
 		return o.valueType
 	}
 	return ""
@@ -354,7 +380,7 @@ func (o *AddOnParameter) ValueType() string {
 //
 // Type of value of the add-on parameter.
 func (o *AddOnParameter) GetValueType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8192 != 0
+	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {
 		value = o.valueType
 	}

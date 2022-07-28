@@ -102,7 +102,7 @@ func (o *LimitedSupportReasonTemplate) Empty() bool {
 // Details returns the value of the 'details' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// URL with a link to a detailed description of the reason.
+// A detailed description of the reason.
 func (o *LimitedSupportReasonTemplate) Details() string {
 	if o != nil && o.bitmap_&8 != 0 {
 		return o.details
@@ -113,7 +113,7 @@ func (o *LimitedSupportReasonTemplate) Details() string {
 // GetDetails returns the value of the 'details' attribute and
 // a flag indicating if the attribute has a value.
 //
-// URL with a link to a detailed description of the reason.
+// A detailed description of the reason.
 func (o *LimitedSupportReasonTemplate) GetDetails() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {

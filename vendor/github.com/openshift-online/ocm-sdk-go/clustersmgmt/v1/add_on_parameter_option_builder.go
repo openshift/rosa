@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type AddOnParameterOptionBuilder struct {
 	bitmap_      uint32
 	name         string
+	rank         int
 	requirements []*AddOnRequirementBuilder
 	value        string
 }
@@ -48,13 +49,22 @@ func (b *AddOnParameterOptionBuilder) Name(value string) *AddOnParameterOptionBu
 	return b
 }
 
+// Rank sets the value of the 'rank' attribute to the given value.
+//
+//
+func (b *AddOnParameterOptionBuilder) Rank(value int) *AddOnParameterOptionBuilder {
+	b.rank = value
+	b.bitmap_ |= 2
+	return b
+}
+
 // Requirements sets the value of the 'requirements' attribute to the given values.
 //
 //
 func (b *AddOnParameterOptionBuilder) Requirements(values ...*AddOnRequirementBuilder) *AddOnParameterOptionBuilder {
 	b.requirements = make([]*AddOnRequirementBuilder, len(values))
 	copy(b.requirements, values)
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
@@ -63,7 +73,7 @@ func (b *AddOnParameterOptionBuilder) Requirements(values ...*AddOnRequirementBu
 //
 func (b *AddOnParameterOptionBuilder) Value(value string) *AddOnParameterOptionBuilder {
 	b.value = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -74,6 +84,7 @@ func (b *AddOnParameterOptionBuilder) Copy(object *AddOnParameterOption) *AddOnP
 	}
 	b.bitmap_ = object.bitmap_
 	b.name = object.name
+	b.rank = object.rank
 	if object.requirements != nil {
 		b.requirements = make([]*AddOnRequirementBuilder, len(object.requirements))
 		for i, v := range object.requirements {
@@ -91,6 +102,7 @@ func (b *AddOnParameterOptionBuilder) Build() (object *AddOnParameterOption, err
 	object = new(AddOnParameterOption)
 	object.bitmap_ = b.bitmap_
 	object.name = b.name
+	object.rank = b.rank
 	if b.requirements != nil {
 		object.requirements = make([]*AddOnRequirement, len(b.requirements))
 		for i, v := range b.requirements {
