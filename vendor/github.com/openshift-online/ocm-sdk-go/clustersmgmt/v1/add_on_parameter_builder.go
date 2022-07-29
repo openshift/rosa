@@ -23,20 +23,21 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Representation of an add-on parameter.
 type AddOnParameterBuilder struct {
-	bitmap_          uint32
-	id               string
-	href             string
-	addon            *AddOnBuilder
-	defaultValue     string
-	description      string
-	name             string
-	options          []*AddOnParameterOptionBuilder
-	validation       string
-	validationErrMsg string
-	valueType        string
-	editable         bool
-	enabled          bool
-	required         bool
+	bitmap_           uint32
+	id                string
+	href              string
+	addon             *AddOnBuilder
+	defaultValue      string
+	description       string
+	editableDirection string
+	name              string
+	options           []*AddOnParameterOptionBuilder
+	validation        string
+	validationErrMsg  string
+	valueType         string
+	editable          bool
+	enabled           bool
+	required          bool
 }
 
 // NewAddOnParameter creates a new builder of 'add_on_parameter' objects.
@@ -109,12 +110,21 @@ func (b *AddOnParameterBuilder) Editable(value bool) *AddOnParameterBuilder {
 	return b
 }
 
+// EditableDirection sets the value of the 'editable_direction' attribute to the given value.
+//
+//
+func (b *AddOnParameterBuilder) EditableDirection(value string) *AddOnParameterBuilder {
+	b.editableDirection = value
+	b.bitmap_ |= 128
+	return b
+}
+
 // Enabled sets the value of the 'enabled' attribute to the given value.
 //
 //
 func (b *AddOnParameterBuilder) Enabled(value bool) *AddOnParameterBuilder {
 	b.enabled = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -123,7 +133,7 @@ func (b *AddOnParameterBuilder) Enabled(value bool) *AddOnParameterBuilder {
 //
 func (b *AddOnParameterBuilder) Name(value string) *AddOnParameterBuilder {
 	b.name = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -133,7 +143,7 @@ func (b *AddOnParameterBuilder) Name(value string) *AddOnParameterBuilder {
 func (b *AddOnParameterBuilder) Options(values ...*AddOnParameterOptionBuilder) *AddOnParameterBuilder {
 	b.options = make([]*AddOnParameterOptionBuilder, len(values))
 	copy(b.options, values)
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -142,7 +152,7 @@ func (b *AddOnParameterBuilder) Options(values ...*AddOnParameterOptionBuilder) 
 //
 func (b *AddOnParameterBuilder) Required(value bool) *AddOnParameterBuilder {
 	b.required = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -151,7 +161,7 @@ func (b *AddOnParameterBuilder) Required(value bool) *AddOnParameterBuilder {
 //
 func (b *AddOnParameterBuilder) Validation(value string) *AddOnParameterBuilder {
 	b.validation = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -160,7 +170,7 @@ func (b *AddOnParameterBuilder) Validation(value string) *AddOnParameterBuilder 
 //
 func (b *AddOnParameterBuilder) ValidationErrMsg(value string) *AddOnParameterBuilder {
 	b.validationErrMsg = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -169,7 +179,7 @@ func (b *AddOnParameterBuilder) ValidationErrMsg(value string) *AddOnParameterBu
 //
 func (b *AddOnParameterBuilder) ValueType(value string) *AddOnParameterBuilder {
 	b.valueType = value
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -189,6 +199,7 @@ func (b *AddOnParameterBuilder) Copy(object *AddOnParameter) *AddOnParameterBuil
 	b.defaultValue = object.defaultValue
 	b.description = object.description
 	b.editable = object.editable
+	b.editableDirection = object.editableDirection
 	b.enabled = object.enabled
 	b.name = object.name
 	if object.options != nil {
@@ -221,6 +232,7 @@ func (b *AddOnParameterBuilder) Build() (object *AddOnParameter, err error) {
 	object.defaultValue = b.defaultValue
 	object.description = b.description
 	object.editable = b.editable
+	object.editableDirection = b.editableDirection
 	object.enabled = b.enabled
 	object.name = b.name
 	if b.options != nil {

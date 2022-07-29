@@ -51,7 +51,16 @@ func writeAddOnParameterOption(object *AddOnParameterOption, stream *jsoniter.St
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0 && object.requirements != nil
+	present_ = object.bitmap_&2 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("rank")
+		stream.WriteInt(object.rank)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0 && object.requirements != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -60,7 +69,7 @@ func writeAddOnParameterOption(object *AddOnParameterOption, stream *jsoniter.St
 		writeAddOnRequirementList(object.requirements, stream)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -96,14 +105,18 @@ func readAddOnParameterOption(iterator *jsoniter.Iterator) *AddOnParameterOption
 			value := iterator.ReadString()
 			object.name = value
 			object.bitmap_ |= 1
+		case "rank":
+			value := iterator.ReadInt()
+			object.rank = value
+			object.bitmap_ |= 2
 		case "requirements":
 			value := readAddOnRequirementList(iterator)
 			object.requirements = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "value":
 			value := iterator.ReadString()
 			object.value = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

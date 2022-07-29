@@ -32,6 +32,7 @@ type AccountBuilder struct {
 	href           string
 	banCode        string
 	banDescription string
+	capabilities   []*CapabilityBuilder
 	createdAt      time.Time
 	email          string
 	firstName      string
@@ -103,12 +104,22 @@ func (b *AccountBuilder) Banned(value bool) *AccountBuilder {
 	return b
 }
 
+// Capabilities sets the value of the 'capabilities' attribute to the given values.
+//
+//
+func (b *AccountBuilder) Capabilities(values ...*CapabilityBuilder) *AccountBuilder {
+	b.capabilities = make([]*CapabilityBuilder, len(values))
+	copy(b.capabilities, values)
+	b.bitmap_ |= 64
+	return b
+}
+
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
 //
 //
 func (b *AccountBuilder) CreatedAt(value time.Time) *AccountBuilder {
 	b.createdAt = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -117,7 +128,7 @@ func (b *AccountBuilder) CreatedAt(value time.Time) *AccountBuilder {
 //
 func (b *AccountBuilder) Email(value string) *AccountBuilder {
 	b.email = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -126,7 +137,7 @@ func (b *AccountBuilder) Email(value string) *AccountBuilder {
 //
 func (b *AccountBuilder) FirstName(value string) *AccountBuilder {
 	b.firstName = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -136,7 +147,7 @@ func (b *AccountBuilder) FirstName(value string) *AccountBuilder {
 func (b *AccountBuilder) Labels(values ...*LabelBuilder) *AccountBuilder {
 	b.labels = make([]*LabelBuilder, len(values))
 	copy(b.labels, values)
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -145,7 +156,7 @@ func (b *AccountBuilder) Labels(values ...*LabelBuilder) *AccountBuilder {
 //
 func (b *AccountBuilder) LastName(value string) *AccountBuilder {
 	b.lastName = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -155,9 +166,9 @@ func (b *AccountBuilder) LastName(value string) *AccountBuilder {
 func (b *AccountBuilder) Organization(value *OrganizationBuilder) *AccountBuilder {
 	b.organization = value
 	if value != nil {
-		b.bitmap_ |= 2048
+		b.bitmap_ |= 4096
 	} else {
-		b.bitmap_ &^= 2048
+		b.bitmap_ &^= 4096
 	}
 	return b
 }
@@ -167,7 +178,7 @@ func (b *AccountBuilder) Organization(value *OrganizationBuilder) *AccountBuilde
 //
 func (b *AccountBuilder) RhitAccountID(value string) *AccountBuilder {
 	b.rhitAccountID = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -176,7 +187,7 @@ func (b *AccountBuilder) RhitAccountID(value string) *AccountBuilder {
 //
 func (b *AccountBuilder) RhitWebUserId(value string) *AccountBuilder {
 	b.rhitWebUserId = value
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -185,7 +196,7 @@ func (b *AccountBuilder) RhitWebUserId(value string) *AccountBuilder {
 //
 func (b *AccountBuilder) ServiceAccount(value bool) *AccountBuilder {
 	b.serviceAccount = value
-	b.bitmap_ |= 16384
+	b.bitmap_ |= 32768
 	return b
 }
 
@@ -194,7 +205,7 @@ func (b *AccountBuilder) ServiceAccount(value bool) *AccountBuilder {
 //
 func (b *AccountBuilder) UpdatedAt(value time.Time) *AccountBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 32768
+	b.bitmap_ |= 65536
 	return b
 }
 
@@ -203,7 +214,7 @@ func (b *AccountBuilder) UpdatedAt(value time.Time) *AccountBuilder {
 //
 func (b *AccountBuilder) Username(value string) *AccountBuilder {
 	b.username = value
-	b.bitmap_ |= 65536
+	b.bitmap_ |= 131072
 	return b
 }
 
@@ -218,6 +229,14 @@ func (b *AccountBuilder) Copy(object *Account) *AccountBuilder {
 	b.banCode = object.banCode
 	b.banDescription = object.banDescription
 	b.banned = object.banned
+	if object.capabilities != nil {
+		b.capabilities = make([]*CapabilityBuilder, len(object.capabilities))
+		for i, v := range object.capabilities {
+			b.capabilities[i] = NewCapability().Copy(v)
+		}
+	} else {
+		b.capabilities = nil
+	}
 	b.createdAt = object.createdAt
 	b.email = object.email
 	b.firstName = object.firstName
@@ -252,6 +271,15 @@ func (b *AccountBuilder) Build() (object *Account, err error) {
 	object.banCode = b.banCode
 	object.banDescription = b.banDescription
 	object.banned = b.banned
+	if b.capabilities != nil {
+		object.capabilities = make([]*Capability, len(b.capabilities))
+		for i, v := range b.capabilities {
+			object.capabilities[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	object.createdAt = b.createdAt
 	object.email = b.email
 	object.firstName = b.firstName

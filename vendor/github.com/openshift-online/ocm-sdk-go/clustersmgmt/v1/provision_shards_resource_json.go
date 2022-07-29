@@ -25,6 +25,14 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
+func writeProvisionShardsAddRequest(request *ProvisionShardsAddRequest, writer io.Writer) error {
+	return MarshalProvisionShard(request.body, writer)
+}
+func readProvisionShardsAddResponse(response *ProvisionShardsAddResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalProvisionShard(reader)
+	return err
+}
 func writeProvisionShardsListRequest(request *ProvisionShardsListRequest, writer io.Writer) error {
 	return nil
 }
