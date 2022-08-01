@@ -18,7 +18,8 @@ package oidcprovider
 
 import (
 	// nolint:gosec
-	"crypto/sha1"
+	"bytes"
+	"crypto/sha1" //#nosec GSC-G505 -- Import blacklist: crypto/sha1
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -232,7 +233,9 @@ func getThumbprint(oidcEndpointURL string) (string, error) {
 	// Grab the CA in the chain
 	for _, cert := range certChain {
 		if cert.IsCA {
-			return sha1Hash(cert.Raw), nil
+			if bytes.Equal(cert.RawIssuer, cert.RawSubject) {
+				return sha1Hash(cert.Raw), nil
+			}
 		}
 	}
 
