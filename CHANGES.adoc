@@ -2,6 +2,21 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.6 Aug 5 2022
+
+- login: Remove token from error output
+- debug: Remove AWS info from debug output
+- add fake cluster parameter to create services
+- fedramp: Update rosa-authenticator configuration
+- network: Ensure there is no default network type
+- Removed DisplayName from cluster
+- Replaced display_name with name in query
+- Removed change to query
+- Create cluster - for single AZ, only allow to select one AZ
+- Switch from github.com/pkg/errors to stdlib
+- Updated SDK version and ran go mod vendor
+- Ran go mod vendor after rebasing
+
 == 1.2.5 Jul 20 2022
 
 - Fix typo in error message when looking up account role prefix
