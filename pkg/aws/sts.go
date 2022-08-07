@@ -19,7 +19,6 @@ package aws
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -57,21 +56,6 @@ func (c *awsClient) DeleteOCMRole(roleName string) error {
 	}
 
 	return c.DeleteRole(roleName, aws.String(roleName))
-}
-
-func RoleARNToRoleName(roleARN string) (string, error) {
-	parsedARN, err := arn.Parse(roleARN)
-	if err != nil {
-		return "", err
-	}
-
-	// ARN = arn:aws:iam::123456789123:role/prefix-OCM-Role-12345678 --> ARN.Resource = role/prefix-OCM-Role-12541229
-	ARNResourceSubStr := strings.SplitN(parsedARN.Resource, "/", 2)
-	if len(ARNResourceSubStr) > 1 {
-		return ARNResourceSubStr[1], nil
-	}
-
-	return "", fmt.Errorf("couldn't extract the role name from role ARN")
 }
 
 func (c *awsClient) ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string) error {
@@ -162,9 +146,9 @@ func SortRolesByLinkedRole(roles []Role) {
 
 func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID string,
 	prefix string, policies map[string]string, defaultPolicyVersion string,
-	credRequests map[string]*cmv1.STSOperator) error {
+	credRequests map[string]*cmv1.STSOperator, path string) error {
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policy := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policy,
@@ -173,7 +157,7 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 				tags.RolePrefix:       prefix,
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
-			})
+			}, "")
 		if err != nil {
 			return err
 		}
@@ -183,10 +167,10 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 }
 
 func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client,
-	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator) []string {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, path string) []string {
 	commands := []string{}
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())

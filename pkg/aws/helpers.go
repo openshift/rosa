@@ -53,7 +53,10 @@ var JumpAccounts = map[string]string{
 	"production":  "710019948333",
 	"staging":     "644306948063",
 	"integration": "896164604406",
+	"dev":         "765374464689",
 }
+
+var ARNPath = regexp.MustCompile(`^\/[a-zA-Z0-9\/]*\/$`)
 
 func ARNValidator(input interface{}) error {
 	if str, ok := input.(string); ok {
@@ -63,6 +66,20 @@ func ARNValidator(input interface{}) error {
 		_, err := arn.Parse(str)
 		if err != nil {
 			return fmt.Errorf("Invalid ARN: %s", err)
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got %v", input)
+}
+
+func ARNPathValidator(input interface{}) error {
+	if str, ok := input.(string); ok {
+		if str == "" {
+			return nil
+		}
+		if !ARNPath.MatchString(str) {
+			return fmt.Errorf("invalid ARN Path. It must begin and end with / and " +
+				"contain only alphanumeric characters")
 		}
 		return nil
 	}
@@ -357,13 +374,32 @@ func GetPolicyName(prefix string, namespace string, name string) string {
 	return policy
 }
 
-func GetOperatorPolicyARN(accountID string, prefix string, namespace string, name string) string {
-	return GetPolicyARN(accountID, GetPolicyName(prefix, namespace, name))
+func GetOperatorPolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
+	return GetPolicyARN(accountID, GetPolicyName(prefix, namespace, name), path)
 }
 
-func GetPolicyARN(accountID string, name string) string {
-	partition := GetPartition()
-	return fmt.Sprintf("arn:%s:iam::%s:policy/%s", partition, accountID, name)
+func GetPolicyARN(accountID string, name string, path string) string {
+	str := fmt.Sprintf("arn:aws:iam::%s:policy", accountID)
+	if path != "" {
+		str = fmt.Sprintf("%s%s", str, path)
+		return fmt.Sprintf("%s%s", str, name)
+	}
+	return fmt.Sprintf("%s/%s", str, name)
+}
+
+func GetRolePath(roleARN string) (string, error) {
+	parse, err := arn.Parse(roleARN)
+	if err != nil {
+		return "", err
+	}
+	resource := parse.Resource
+	firstIndex := strings.Index(resource, "/")
+	lastIndex := strings.LastIndex(resource, "/")
+	if firstIndex == lastIndex {
+		return "", nil
+	}
+	path := resource[firstIndex : lastIndex+1]
+	return path, nil
 }
 
 func GetRoleARN(accountID string, name string) string {
@@ -388,15 +424,6 @@ func GetPartition() string {
 	return partition.ID()
 }
 
-func GetOperatorRoleName(cluster *cmv1.Cluster, operator Operator) string {
-	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
-		if role.Namespace() == operator.Namespace && role.Name() == operator.Name {
-			return strings.SplitN(role.RoleARN(), "/", 2)[1]
-		}
-	}
-	return ""
-}
-
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
 	role := AccountRoles[InstallerAccountRole]
 	roleName, err := GetAccountRoleName(cluster)
@@ -405,13 +432,6 @@ func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
 	}
 	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
-}
-
-func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
-	operator := cluster.AWS().STS().OperatorIAMRoles()[0]
-	roleName := strings.SplitN(operator.RoleARN(), "/", 2)[1]
-	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-%s", operator.Namespace(), operator.Name()))
-	return rolePrefix
 }
 
 // Role names can be truncated if they are over 64 chars, so we need to make sure we aren't missing a truncated suffix
@@ -424,13 +444,15 @@ func TrimRoleSuffix(orig, sufix string) string {
 	return orig
 }
 
+func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
+	operator := cluster.AWS().STS().OperatorIAMRoles()[0]
+	roleName, _ := GetResourceIdFromARN(operator.RoleARN())
+	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-%s", operator.Namespace(), operator.Name()))
+	return rolePrefix
+}
+
 func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
-	parsedARN, err := arn.Parse(cluster.AWS().STS().RoleARN())
-	if err != nil {
-		return "", err
-	}
-	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
-	return roleName, nil
+	return GetResourceIdFromARN(cluster.AWS().STS().RoleARN())
 }
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
@@ -495,9 +517,9 @@ func GetFormattedFileName(filename string) string {
 }
 
 func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client, commands []string,
-	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator) []string {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, path string) []string {
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())
@@ -536,9 +558,9 @@ func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client
 
 func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, accountID string,
 	prefix string, policies map[string]string, defaultPolicyVersion string,
-	credRequests map[string]*cmv1.STSOperator) error {
+	credRequests map[string]*cmv1.STSOperator, path string) error {
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
@@ -547,7 +569,7 @@ func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, acco
 				tags.RolePrefix:       prefix,
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
-			})
+			}, path)
 		if err != nil {
 			return err
 		}
@@ -566,4 +588,24 @@ func SetSubnetOption(subnet, zone string) string {
 // ParseSubnet Parses the subnet from the option chosen by the user.
 func ParseSubnet(subnetOption string) string {
 	return strings.Split(subnetOption, " ")[0]
+}
+
+// GetResourceIdFromARN
+// function takes a full AWS ARN, parses it and extracts the last part of the resource field
+// e.g. arn:partition:service:region:account-id:resource-type/<some-path>/resource-id
+// an assumption is made that there is always a resource-type
+// if resource-id is empty then error is returned
+func GetResourceIdFromARN(stringARN string) (string, error) {
+	parsedARN, err := arn.Parse(stringARN)
+
+	if err != nil {
+		return "", err
+	}
+
+	index := strings.LastIndex(parsedARN.Resource, "/")
+	if index == -1 || index == len(parsedARN.Resource)-1 {
+		return "", fmt.Errorf("can't find resource-id in ARN '%s'", stringARN)
+	}
+
+	return parsedARN.Resource[index+1:], nil
 }

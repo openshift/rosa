@@ -290,7 +290,7 @@ func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialReques
 			tags.ClusterID:    cluster.ID(),
 			"addon_namespace": cr.Namespace(),
 			"addon_name":      cr.Name(),
-		})
+		}, "")
 	if err != nil {
 		return err
 	}

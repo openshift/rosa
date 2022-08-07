@@ -118,6 +118,7 @@ var args struct {
 	// Operator IAM Roles
 	operatorIAMRoles                 []string
 	operatorRolesPrefix              string
+	operatorRolesPath                string
 	operatorRolesPermissionsBoundary string
 
 	// Proxy
@@ -225,6 +226,12 @@ func init() {
 		"",
 		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
 			"Leave empty to use an auto-generated one.",
+	)
+	flags.StringVar(
+		&args.operatorRolesPath,
+		"operator-roles-path",
+		"",
+		"Custom arn path for operator roles.",
 	)
 
 	flags.StringSliceVar(
@@ -961,6 +968,22 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	operatorRolePath := args.operatorRolesPath
+	if interactive.Enabled() {
+		operatorRolePath, err = interactive.GetString(interactive.Input{
+			Question: "Operator Role Path",
+			Help:     cmd.Flags().Lookup("operator-roles-path").Usage,
+			Default:  operatorRolePath,
+			Validators: []interactive.Validator{
+				aws.ARNPathValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	operatorIAMRoles := args.operatorIAMRoles
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
@@ -984,7 +1007,7 @@ func run(cmd *cobra.Command, _ []string) {
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name(),
 				Namespace: operator.Namespace(),
-				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator),
+				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator, operatorRolePath),
 			})
 
 		}
@@ -1013,8 +1036,13 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		// Validate the role names are available on AWS
 		for _, role := range operatorIAMRoleList {
-			name := strings.SplitN(role.RoleARN, "/", 2)[1]
-			err := awsClient.ValidateRoleNameAvailable(name)
+			name, err := aws.GetResourceIdFromARN(role.RoleARN)
+			if err != nil {
+				r.Reporter.Errorf("Error validating role arn. Arn: %v. Error: %v", role.RoleARN, err)
+				os.Exit(1)
+			}
+
+			err = awsClient.ValidateRoleNameAvailable(name)
 			if err != nil {
 				r.Reporter.Errorf("Error validating role: %v", err)
 				os.Exit(1)
@@ -2013,20 +2041,24 @@ func hostPrefixValidator(val interface{}) error {
 	return nil
 }
 
-func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator) string {
+func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {
 	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
 	if len(role) > 64 {
 		role = role[0:64]
 	}
-	return aws.GetRoleARN(creator.AccountID, role)
+	str := fmt.Sprintf("arn:aws:iam::%s:role", creator.AccountID)
+	if path != "" {
+		str = fmt.Sprintf("%s%s", str, path)
+		return fmt.Sprintf("%s%s", str, role)
+	}
+	return fmt.Sprintf("%s/%s", str, role)
 }
 
 func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
-	parsedARN, err := arn.Parse(roleARN)
+	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
 		return "", err
 	}
-	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
 }
