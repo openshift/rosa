@@ -1918,7 +1918,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 	}
 
-	_, err = r.OCMClient.CreateCluster(clusterConfig)
+	cluster, err := r.OCMClient.CreateCluster(clusterConfig)
 	if err != nil {
 		if args.dryRun {
 			r.Reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)
@@ -1943,7 +1943,7 @@ func run(cmd *cobra.Command, _ []string) {
 				"for more information.")
 	}
 
-	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{clusterName})
+	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{cluster.ID()})
 
 	if isSTS {
 		if mode != "" {

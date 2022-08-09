@@ -19,7 +19,9 @@ package ocm
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -216,7 +218,22 @@ func (c *Client) GetAllClusters(creator *aws.Creator) (clusters []*cmv1.Cluster,
 	return response.Items().Slice(), nil
 }
 
-func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
+func (c *Client) getClusterByID(clusterID string) (*cmv1.Cluster, bool, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterID).
+		Get().
+		Send()
+	if err != nil {
+		if response.Status() == http.StatusNotFound {
+			return &cmv1.Cluster{}, false, nil
+		}
+		return &cmv1.Cluster{}, false, err
+	}
+
+	return response.Body(), true, nil
+}
+
+func (c *Client) getCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
 	query := fmt.Sprintf("%s AND (id = '%s' OR name = '%s' OR external_id = '%s')",
 		getClusterFilter(creator),
 		clusterKey, clusterKey, clusterKey,
@@ -238,6 +255,57 @@ func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Clus
 	default:
 		return nil, fmt.Errorf("There are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
 	}
+}
+
+func (c *Client) getSubscriptionByExternalID(externalID string) (*amv1.Subscription, bool, error) {
+	query := fmt.Sprintf("external_cluster_id = '%s'", externalID)
+	response, err := c.ocm.AccountsMgmt().V1().Subscriptions().List().
+		Search(query).
+		Page(1).
+		Size(1).
+		Send()
+	if err != nil {
+		return nil, false, err
+	}
+	if response.Total() < 1 {
+		return &amv1.Subscription{}, false, nil
+	}
+
+	return response.Items().Slice()[0], true, nil
+}
+
+// GetCluster gets a cluster key that can be either 'id', 'name' or 'external_id'
+func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
+	if len(clusterKey) > maxClusterNameLength {
+		// Try to fetch cluster with ID
+		if !strings.Contains(clusterKey, "-") {
+			cluster, exists, err := c.getClusterByID(clusterKey)
+			if err != nil {
+				return nil, err
+			}
+			if exists {
+				return cluster, nil
+			}
+		} else {
+			// Try to fetch subscription to fetch subscription with UUID
+			subscription, subscriptionExists, err := c.getSubscriptionByExternalID(clusterKey)
+			if err != nil {
+				return nil, err
+			}
+			if subscriptionExists {
+				cluster, exists, err := c.getClusterByID(subscription.ClusterID())
+				if err != nil {
+					return nil, err
+				}
+				if exists {
+					return cluster, nil
+				}
+			}
+		}
+	}
+
+	// Fallback to listing clusters with parameters
+	return c.getCluster(clusterKey, creator)
 }
 
 func (c *Client) GetClusterByID(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
