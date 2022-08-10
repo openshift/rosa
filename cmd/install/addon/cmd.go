@@ -107,7 +107,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 		for _, cr := range addOn.CredentialsRequests() {
 			roleName := generateRoleName(cr, prefix)
-			roleArn := aws.GetRoleARN(r.Creator.AccountID, roleName)
+			roleArn := aws.GetRoleARN(r.Creator.AccountID, roleName, "")
 			_, err = r.AWSClient.GetRoleByARN(roleArn)
 			if err != nil {
 				aerr, ok := err.(awserr.Error)

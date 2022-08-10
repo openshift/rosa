@@ -38,6 +38,7 @@ import (
 var args struct {
 	prefix              string
 	permissionsBoundary string
+	path                string
 }
 
 var Cmd = &cobra.Command{
@@ -68,6 +69,12 @@ func init() {
 		"permissions-boundary",
 		"",
 		"The ARN of the policy that is used to set the permissions boundary for the user role.",
+	)
+	flags.StringVar(
+		&args.path,
+		"path",
+		"",
+		"The arn path for the user role and policies.",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -148,6 +155,22 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	path := args.path
+	if interactive.Enabled() {
+		path, err = interactive.GetString(interactive.Input{
+			Question: "Role Path",
+			Help:     cmd.Flags().Lookup("path").Usage,
+			Default:  path,
+			Validators: []interactive.Validator{
+				aws.ARNPathValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
@@ -178,7 +201,7 @@ func run(cmd *cobra.Command, argv []string) {
 	switch mode {
 	case aws.ModeAuto:
 		r.Reporter.Infof("Creating ocm user role using '%s'", r.Creator.ARN)
-		roleARN, err := createRoles(r, prefix, currentAccount.Username(), env,
+		roleARN, err := createRoles(r, prefix, path, currentAccount.Username(), env,
 			currentAccount.ID(), permissionsBoundary, policies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the ocm user role: %s", err)
@@ -207,7 +230,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
-		commands := buildCommands(prefix, currentAccount.Username(), r.Creator.AccountID, env, permissionsBoundary)
+		commands := buildCommands(prefix, path, currentAccount.Username(), r.Creator.AccountID, env, permissionsBoundary)
 		fmt.Println(commands)
 
 	default:
@@ -216,11 +239,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func buildCommands(prefix string, userName string, accountID string, env string, permissionsBoundary string) string {
+func buildCommands(prefix string, path string, userName string,
+	accountID string, env string, permissionsBoundary string) string {
 	commands := []string{}
 	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
 
-	roleARN := aws.GetRoleARN(accountID, roleName)
+	roleARN := aws.GetRoleARN(accountID, roleName, path)
 	iamTags := fmt.Sprintf(
 		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 		tags.RolePrefix, prefix,
@@ -237,13 +261,16 @@ func buildCommands(prefix string, userName string, accountID string, env string,
 		"%s"+
 		"\t--tags %s",
 		roleName, aws.OCMUserRolePolicyFile, permBoundaryFlag, iamTags)
+	if path != "" {
+		createRole = fmt.Sprintf(createRole+"\t--path %s", path)
+	}
 	linkRole := fmt.Sprintf("rosa link user-role --role-arn %s", roleARN)
 	commands = append(commands, createRole, linkRole)
 	return strings.Join(commands, "\n\n")
 }
 
 func createRoles(r *rosa.Runtime,
-	prefix string, userName string, env string, accountID string, permissionsBoundary string,
+	prefix string, path string, userName string, env string, accountID string, permissionsBoundary string,
 	policies map[string]string) (string, error) {
 	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
@@ -272,7 +299,7 @@ func createRoles(r *rosa.Runtime,
 			tags.RolePrefix:  prefix,
 			tags.RoleType:    aws.OCMUserRole,
 			tags.Environment: env,
-		}, "")
+		}, path)
 	if err != nil {
 		return "", err
 	}

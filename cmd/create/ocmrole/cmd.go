@@ -38,6 +38,7 @@ var args struct {
 	prefix              string
 	permissionsBoundary string
 	admin               bool
+	path                string
 }
 
 var Cmd = &cobra.Command{
@@ -49,7 +50,7 @@ var Cmd = &cobra.Command{
   rosa create ocm-role
 
   # Create ocm role with a specific permissions boundary
-  rosa create ocm-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
+  rosa create ocm-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary --path /roles/`,
 	Run: run,
 }
 
@@ -74,6 +75,13 @@ func init() {
 		"admin",
 		false,
 		"Enable admin capabilities for the role",
+	)
+
+	flags.StringVar(
+		&args.path,
+		"path",
+		"",
+		"The arn path for the ocm role and policies",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -171,6 +179,22 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	path := args.path
+	if interactive.Enabled() {
+		path, err = interactive.GetString(interactive.Input{
+			Question: "Role Path",
+			Help:     cmd.Flags().Lookup("path").Usage,
+			Default:  path,
+			Validators: []interactive.Validator{
+				aws.ARNPathValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
@@ -216,7 +240,7 @@ func run(cmd *cobra.Command, argv []string) {
 	switch mode {
 	case aws.ModeAuto:
 		r.Reporter.Infof("Creating role using '%s'", r.Creator.ARN)
-		roleARN, err := createRoles(r, prefix, roleNameRequested, permissionsBoundary, r.Creator.AccountID,
+		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary, r.Creator.AccountID,
 			orgID, env, isAdmin, policies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the ocm role: %s", err)
@@ -251,7 +275,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the ocm role and policies:\n")
 		}
-		commands := buildCommands(prefix, roleNameRequested, permissionsBoundary, r.Creator.AccountID, env, isAdmin)
+		commands := buildCommands(prefix, roleNameRequested, path, permissionsBoundary, r.Creator.AccountID, env, isAdmin)
 		fmt.Println(commands)
 	default:
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
@@ -259,7 +283,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func buildCommands(prefix string, roleName string, permissionsBoundary string,
+func buildCommands(prefix string, roleName string, rolePath string, permissionsBoundary string,
 	accountID string, env string, isAdmin bool) string {
 	commands := []string{}
 	policyName := fmt.Sprintf("%s-Policy", roleName)
@@ -290,10 +314,14 @@ func buildCommands(prefix string, roleName string, permissionsBoundary string,
 		"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
 		"\t--tags %s",
 		policyName, aws.OCMRolePolicyFile, iamTags)
+	if rolePath != "" {
+		createRole = fmt.Sprintf(createRole+"\t--path %s", rolePath)
+		createPolicy = fmt.Sprintf(createPolicy+"\t--path %s", rolePath)
+	}
 	attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 		"\t--role-name %s \\\n"+
 		"\t--policy-arn %s",
-		roleName, aws.GetPolicyARN(accountID, policyName, ""))
+		roleName, aws.GetPolicyARN(accountID, policyName, rolePath))
 
 	commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	if isAdmin {
@@ -305,25 +333,28 @@ func buildCommands(prefix string, roleName string, permissionsBoundary string,
 			"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
 			"\t--tags %s",
 			policyName, aws.OCMAdminRolePolicyFile, adminTags)
+		if rolePath != "" {
+			createAdminPolicy = fmt.Sprintf(createAdminPolicy+"\t--path %s", rolePath)
+		}
 		attachRoleAdminPolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--policy-arn %s",
-			roleName, aws.GetPolicyARN(accountID, policyName, ""))
+			roleName, aws.GetPolicyARN(accountID, policyName, rolePath))
 
 		commands = append(commands, createAdminPolicy, attachRoleAdminPolicy)
 	}
 
 	linkRole := fmt.Sprintf("rosa link ocm-role --role-arn %s",
-		aws.GetRoleARN(accountID, roleName))
+		aws.GetRoleARN(accountID, roleName, rolePath))
 	commands = append(commands, linkRole)
 
 	return strings.Join(commands, "\n\n")
 }
 
-func createRoles(r *rosa.Runtime, prefix string, roleName string,
+func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath string,
 	permissionsBoundary string, accountID string, orgID string, env string, isAdmin bool,
 	policies map[string]string) (string, error) {
-	policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName), "")
+	policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName), rolePath)
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
 	}
@@ -353,7 +384,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string,
 		r.Reporter.Debugf("Creating role '%s'", roleName)
 
 		roleARN, err = r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary,
-			"", iamTags, "")
+			"", iamTags, rolePath)
 		if err != nil {
 			return "", err
 		}
@@ -362,7 +393,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string,
 		// create and attach the permission policy to the role
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
 		policyDetail = policies[filename]
-		err = createPermissionPolicy(r, policyARN, iamTags, roleName, policyDetail)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail)
 		if err != nil {
 			return "", err
 		}
@@ -380,7 +411,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string,
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMAdminRolePolicyFile)
 		iamTags[tags.AdminRole] = "true"
 		policyDetail = policies[filename]
-		err = createPermissionPolicy(r, policyARN, iamTags, roleName, policyDetail)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail)
 		if err != nil {
 			return "", err
 		}
@@ -428,10 +459,10 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 }
 
 func createPermissionPolicy(r *rosa.Runtime, policyARN string,
-	iamTags map[string]string, roleName string, policyDetail string) error {
+	iamTags map[string]string, roleName string, rolePath string, policyDetail string) error {
 
 	r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
-	policyARN, err := r.AWSClient.EnsurePolicy(policyARN, policyDetail, "", iamTags, "")
+	policyARN, err := r.AWSClient.EnsurePolicy(policyARN, policyDetail, "", iamTags, rolePath)
 	if err != nil {
 		return err
 	}

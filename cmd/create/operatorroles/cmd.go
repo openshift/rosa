@@ -404,9 +404,11 @@ func buildCommands(r *rosa.Runtime,
 			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 				"\t--policy-name %s \\\n"+
 				"\t--policy-document file://openshift_%s_policy.json \\\n"+
-				"\t--tags %s"+
-				"\t--path %s",
-				name, credrequest, iamTags, policyPath)
+				"\t--tags %s",
+				name, credrequest, iamTags)
+			if policyPath != "" {
+				createPolicy = fmt.Sprintf(createPolicy+"\t--path %s", policyPath)
+			}
 			commands = append(commands, createPolicy)
 		}
 
@@ -433,14 +435,17 @@ func buildCommands(r *rosa.Runtime,
 		permBoundaryFlag := ""
 		if permissionsBoundary != "" {
 			permBoundaryFlag = fmt.Sprintf("\t--permissions-boundary %s \\\n", permissionsBoundary)
+
 		}
 		createRole := fmt.Sprintf("aws iam create-role \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--assume-role-policy-document file://%s \\\n"+
 			"%s"+
-			"\t--tags %s"+
-			"\t--path %s",
-			roleName, filename, permBoundaryFlag, iamTags, rolePath)
+			"\t--tags %s",
+			roleName, filename, permBoundaryFlag, iamTags)
+		if rolePath != "" {
+			createRole = fmt.Sprintf(createRole+"\t--path %s", rolePath)
+		}
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--policy-arn %s",
