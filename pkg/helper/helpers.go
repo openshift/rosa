@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/google/uuid"
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -64,4 +65,9 @@ func SaveDocument(doc, filename string) error {
 	}
 
 	return nil
+}
+
+func IsValidUUID(u string) bool {
+	_, err := uuid.Parse(u)
+	return err == nil
 }
