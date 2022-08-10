@@ -23,7 +23,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -425,8 +424,12 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate the role names are available on AWS
 	for _, role := range operatorIAMRoleList {
-		name := strings.SplitN(role.RoleARN, "/", 2)[1]
-		err := r.AWSClient.ValidateRoleNameAvailable(name)
+		name, err := aws.GetResourceIdFromARN(role.RoleARN)
+		if err != nil {
+			r.Reporter.Errorf("Error validating role: %v", err)
+			os.Exit(1)
+		}
+		err = r.AWSClient.ValidateRoleNameAvailable(name)
 		if err != nil {
 			r.Reporter.Errorf("Error validating role: %v", err)
 			os.Exit(1)
@@ -478,11 +481,10 @@ func getVersionList(ocmClient *ocm.Client) (versionList []string, err error) {
 }
 
 func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
-	parsedARN, err := arn.Parse(roleARN)
+	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
 		return "", err
 	}
-	roleName := strings.SplitN(parsedARN.Resource, "/", 2)[1]
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
 }

@@ -38,6 +38,7 @@ import (
 var args struct {
 	prefix              string
 	permissionsBoundary string
+	policyPath          string
 }
 
 var Cmd = &cobra.Command{
@@ -71,6 +72,13 @@ func init() {
 		"permissions-boundary",
 		"",
 		"The ARN of the policy that is used to set the permissions boundary for the operator roles.",
+	)
+
+	flags.StringVar(
+		&args.policyPath,
+		"policy-path",
+		"",
+		"The arn path for the account roles and policies",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -144,6 +152,22 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	policyPath := args.policyPath
+	if interactive.Enabled() {
+		policyPath, err = interactive.GetString(interactive.Input{
+			Question: "Policy Path",
+			Help:     cmd.Flags().Lookup("policy-path").Usage,
+			Default:  policyPath,
+			Validators: []interactive.Validator{
+				aws.ARNPathValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	permissionsBoundary := args.permissionsBoundary
 	if interactive.Enabled() {
 		permissionsBoundary, err = interactive.GetString(interactive.Input{
@@ -214,8 +238,8 @@ func run(cmd *cobra.Command, argv []string) {
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 		}
-		err = createRoles(r, prefix, permissionsBoundary, cluster, r.Creator.AccountID,
-			accountRoleVersion, policies, defaultPolicyVersion, credRequests)
+		err = createRoles(r, prefix, permissionsBoundary, cluster,
+			accountRoleVersion, policies, defaultPolicyVersion, credRequests, policyPath)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the operator roles: %s", err)
 			isThrottle := "false"
@@ -242,8 +266,8 @@ func run(cmd *cobra.Command, argv []string) {
 			})
 			os.Exit(1)
 		}
-		commands, err := buildCommands(r, prefix, permissionsBoundary, cluster, r.Creator.AccountID,
-			accountRoleVersion, policies, credRequests)
+		commands, err := buildCommands(r, prefix, permissionsBoundary, accountRoleVersion, policyPath,
+			cluster, policies, credRequests)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -269,8 +293,8 @@ func run(cmd *cobra.Command, argv []string) {
 
 func createRoles(r *rosa.Runtime,
 	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountID string, accountRoleVersion string, policies map[string]string,
-	defaultVersion string, credRequests map[string]*cmv1.STSOperator) error {
+	cluster *cmv1.Cluster, accountRoleVersion string, policies map[string]string,
+	defaultVersion string, credRequests map[string]*cmv1.STSOperator, policyPath string) error {
 	for credrequest, operator := range credRequests {
 		ver := cluster.Version()
 		if ver != nil && operator.MinVersion() != "" {
@@ -283,41 +307,47 @@ func createRoles(r *rosa.Runtime,
 				continue
 			}
 		}
-		roleName := getRoleName(cluster, operator)
+		roleName, roleARN := getRoleNameAndARN(cluster, operator)
 		if roleName == "" {
 			return fmt.Errorf("Failed to find operator IAM role")
 		}
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 			continue
 		}
-		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+
+		rolePath, err := aws.GetRolePath(roleARN)
+		if err != nil {
+			return err
+		}
+		policyARN := aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
+			operator.Name(), policyPath)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
 
-		policyARN, err := r.AWSClient.EnsurePolicy(policyARN, policyDetails,
+		policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
 			defaultVersion, map[string]string{
 				tags.OpenShiftVersion: accountRoleVersion,
 				tags.RolePrefix:       prefix,
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
-			})
+			}, policyPath)
 		if err != nil {
 			return err
 		}
 		policyDetails = policies["operator_iam_role_policy"]
 
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}
 		r.Reporter.Debugf("Creating role '%s'", roleName)
 
-		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
+		roleARN, err = r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
 			map[string]string{
 				tags.ClusterID:       cluster.ID(),
 				"operator_namespace": operator.Namespace(),
 				"operator_name":      operator.Name(),
-			})
+			}, rolePath)
 		if err != nil {
 			return err
 		}
@@ -337,8 +367,8 @@ func createRoles(r *rosa.Runtime,
 }
 
 func buildCommands(r *rosa.Runtime,
-	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountID string, accountRoleVersion string,
+	prefix, permissionsBoundary, accountRoleVersion, policyPath string,
+	cluster *cmv1.Cluster,
 	policies map[string]string, credRequests map[string]*cmv1.STSOperator) (string, error) {
 	commands := []string{}
 
@@ -354,10 +384,15 @@ func buildCommands(r *rosa.Runtime,
 				continue
 			}
 		}
-		roleName := getRoleName(cluster, operator)
-		policyARN := getPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		roleName, roleARN := getRoleNameAndARN(cluster, operator)
+		rolePath, err := aws.GetRolePath(roleARN)
+		if err != nil {
+			return "", err
+		}
+		policyARN := getPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), policyPath)
+
 		name := aws.GetPolicyName(prefix, operator.Namespace(), operator.Name())
-		_, err := r.AWSClient.IsPolicyExists(policyARN)
+		_, err = r.AWSClient.IsPolicyExists(policyARN)
 		if err != nil {
 			iamTags := fmt.Sprintf(
 				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
@@ -369,13 +404,14 @@ func buildCommands(r *rosa.Runtime,
 			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 				"\t--policy-name %s \\\n"+
 				"\t--policy-document file://openshift_%s_policy.json \\\n"+
-				"\t--tags %s",
-				name, credrequest, iamTags)
+				"\t--tags %s"+
+				"\t--path %s",
+				name, credrequest, iamTags, policyPath)
 			commands = append(commands, createPolicy)
 		}
 
 		policyDetail := policies["operator_iam_role_policy"]
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetail)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetail)
 		if err != nil {
 			return "", err
 		}
@@ -402,8 +438,9 @@ func buildCommands(r *rosa.Runtime,
 			"\t--role-name %s \\\n"+
 			"\t--assume-role-policy-document file://%s \\\n"+
 			"%s"+
-			"\t--tags %s",
-			roleName, filename, permBoundaryFlag, iamTags)
+			"\t--tags %s"+
+			"\t--path %s",
+			roleName, filename, permBoundaryFlag, iamTags, rolePath)
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--policy-arn %s",
@@ -413,16 +450,17 @@ func buildCommands(r *rosa.Runtime,
 	return strings.Join(commands, "\n\n"), nil
 }
 
-func getRoleName(cluster *cmv1.Cluster, operator *cmv1.STSOperator) string {
+func getRoleNameAndARN(cluster *cmv1.Cluster, operator *cmv1.STSOperator) (string, string) {
 	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
 		if role.Namespace() == operator.Namespace() && role.Name() == operator.Name() {
-			return strings.SplitN(role.RoleARN(), "/", 2)[1]
+			name, _ := aws.GetResourceIdFromARN(role.RoleARN())
+			return name, role.RoleARN()
 		}
 	}
-	return ""
+	return "", ""
 }
 
-func getPolicyARN(accountID string, prefix string, namespace string, name string) string {
+func getPolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
 	if prefix == "" {
 		prefix = aws.DefaultPrefix
 	}
@@ -430,7 +468,10 @@ func getPolicyARN(accountID string, prefix string, namespace string, name string
 	if len(policy) > 64 {
 		policy = policy[0:64]
 	}
-	return aws.GetPolicyARN(accountID, policy)
+	if path != "" {
+		return fmt.Sprintf("arn:aws:iam::%s:policy%s%s", accountID, path, policy)
+	}
+	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, policy)
 }
 
 func validateOperatorRoles(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {
@@ -441,7 +482,10 @@ func validateOperatorRoles(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, er
 	}
 	for _, operatorIAMRole := range operatorIAMRoles {
 		roleARN := operatorIAMRole.RoleARN()
-		roleName := strings.Split(roleARN, "/")[1]
+		roleName, err := aws.GetResourceIdFromARN(roleARN)
+		if err != nil {
+			return missingRoles, err
+		}
 		exists, _, err := r.AWSClient.CheckRoleExists(roleName)
 		if err != nil {
 			return missingRoles, err

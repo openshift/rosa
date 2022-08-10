@@ -145,7 +145,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	roleName, err := aws.RoleARNToRoleName(roleARN)
+	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)

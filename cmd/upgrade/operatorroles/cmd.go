@@ -216,7 +216,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			os.Exit(1)
 		}
 		err = upgradeOperatorPolicies(mode, r, prefix, isAccountRoleUpgradeNeed,
-			policies, env, defaultPolicyVersion, credRequests)
+			policies, env, defaultPolicyVersion, credRequests, cluster)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -280,14 +280,18 @@ func handleModeFlag(cmd *cobra.Command, skipInteractive bool, mode string, err e
 
 func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 	prefix string, isAccountRoleUpgradeNeed bool, policies map[string]string, env string,
-	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator) error {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, cluster *cmv1.Cluster) error {
+	path, err := aws.GetRolePath(cluster.AWS().STS().RoleARN())
+	if err != nil {
+		return err
+	}
 	switch mode {
 	case aws.ModeAuto:
 		if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", defaultPolicyVersion) {
 			return nil
 		}
 		err := aws.UpgradeOperatorPolicies(r.Reporter, r.AWSClient, r.Creator.AccountID, prefix, policies,
-			defaultPolicyVersion, credRequests)
+			defaultPolicyVersion, credRequests, path)
 		if err != nil {
 			if strings.Contains(err.Error(), "Throttling") {
 				r.OCMClient.LogEvent("ROSAUpgradeOperatorRolesModeAuto", map[string]string{
@@ -316,7 +320,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 			}
 		}
 		commands := aws.BuildOperatorRoleCommands(prefix, r.Creator.AccountID, r.AWSClient,
-			defaultPolicyVersion, credRequests)
+			defaultPolicyVersion, credRequests, path)
 		fmt.Println(strings.Join(commands, "\n\n"))
 	default:
 		return r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
@@ -361,9 +365,13 @@ func createOperatorRole(mode string, r *rosa.Runtime,
 func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, cluster *cmv1.Cluster, accountID string,
 	prefix string, r *rosa.Runtime, policies map[string]string) (string, error) {
 	commands := []string{}
+	path, err := aws.GetRolePath(cluster.AWS().STS().RoleARN())
+	if err != nil {
+		return "", err
+	}
 	for missingRole, operator := range missingRoles {
 		roleName := getRoleName(cluster, operator)
-		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		policyDetails := policies["operator_iam_role_policy"]
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
@@ -389,8 +397,9 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, 
 			"\t--role-name %s \\\n"+
 			"\t--assume-role-policy-document file://%s \\\n"+
 			"%s"+
-			"\t--tags %s",
-			roleName, filename, permBoundaryFlag, iamTags)
+			"\t--tags %s \\\n"+
+			"\t--path '%s'",
+			roleName, filename, permBoundaryFlag, iamTags, path)
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--policy-arn %s",
@@ -404,6 +413,10 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, 
 func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
 	accountID string, prefix string,
 	r *rosa.Runtime, isProgrammaticallyCalled bool, policies map[string]string) error {
+	path, err := aws.GetRolePath(cluster.AWS().STS().RoleARN())
+	if err != nil {
+		return err
+	}
 	for _, operator := range missingRoles {
 		roleName := getRoleName(cluster, operator)
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
@@ -414,7 +427,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 		}
 		policyDetails := policies["operator_iam_role_policy"]
 
-		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name())
+		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return err
@@ -425,7 +438,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 				tags.ClusterID:       cluster.ID(),
 				"operator_namespace": operator.Namespace(),
 				"operator_name":      operator.Name(),
-			})
+			}, path)
 		if err != nil {
 			return err
 		}
@@ -443,11 +456,15 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 func getRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperator) string {
 	operatorIAMRoles := cluster.AWS().STS().OperatorIAMRoles()
 	rolePrefix := ""
-	for _, operatorIAMRole := range operatorIAMRoles {
-		roleName := strings.SplitN(operatorIAMRole.RoleARN(), "/", 2)[1]
+	if len(operatorIAMRoles) > 0 {
+		roleARN := operatorIAMRoles[0].RoleARN()
+		roleName, err := aws.GetResourceIdFromARN(roleARN)
+		if err != nil {
+			return ""
+		}
+
 		m := strings.LastIndex(roleName, "-openshift")
 		rolePrefix = roleName[0:m]
-		break
 	}
 	role := fmt.Sprintf("%s-%s-%s", rolePrefix, missingOperator.Namespace(), missingOperator.Name())
 	if len(role) > 64 {
