@@ -21,11 +21,11 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/helper"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/info"
@@ -277,17 +277,8 @@ func (c *Client) getSubscriptionByExternalID(externalID string) (*amv1.Subscript
 // GetCluster gets a cluster key that can be either 'id', 'name' or 'external_id'
 func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
 	if len(clusterKey) > maxClusterNameLength {
-		// Try to fetch cluster with ID
-		if !strings.Contains(clusterKey, "-") {
-			cluster, exists, err := c.getClusterByID(clusterKey)
-			if err != nil {
-				return nil, err
-			}
-			if exists {
-				return cluster, nil
-			}
-		} else {
-			// Try to fetch subscription to fetch subscription with UUID
+		// Try to fetch subscription with UUID
+		if helper.IsValidUUID(clusterKey) {
 			subscription, subscriptionExists, err := c.getSubscriptionByExternalID(clusterKey)
 			if err != nil {
 				return nil, err
@@ -300,6 +291,15 @@ func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Clus
 				if exists {
 					return cluster, nil
 				}
+			}
+		} else {
+			// Try to fetch cluster with ID
+			cluster, exists, err := c.getClusterByID(clusterKey)
+			if err != nil {
+				return nil, err
+			}
+			if exists {
+				return cluster, nil
 			}
 		}
 	}
