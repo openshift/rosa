@@ -318,8 +318,6 @@ func (c *awsClient) createPolicy(policyArn string, document string, tagList map[
 
 	output, err := c.iamClient.CreatePolicy(createPolicyInput)
 
-	fmt.Printf("%s", output)
-	fmt.Printf("%s", err)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -1116,7 +1114,7 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 	rolePrefix := strings.Split(roleName, "-Installer-Role")[0]
 	for _, prefix := range AccountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", rolePrefix, prefix.Name)
-		roleARN := GetRoleARN(accountID, roleName)
+		roleARN := GetRoleARN(accountID, roleName, "")
 
 		if prefix.Name != "Installer" {
 			_, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})

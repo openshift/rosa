@@ -402,9 +402,12 @@ func GetRolePath(roleARN string) (string, error) {
 	return path, nil
 }
 
-func GetRoleARN(accountID string, name string) string {
+func GetRoleARN(accountID string, name string, path string) string {
+	if path == "" {
+		path = "/"
+	}
 	partition := GetPartition()
-	return fmt.Sprintf("arn:%s:iam::%s:role/%s", partition, accountID, name)
+	return fmt.Sprintf("arn:%s:iam::%s:role%s%s", partition, accountID, path, name)
 }
 
 func GetOIDCProviderARN(accountID string, providerURL string) string {
