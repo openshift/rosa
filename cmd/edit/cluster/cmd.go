@@ -379,7 +379,7 @@ func run(cmd *cobra.Command, _ []string) {
 		noProxyInput, err := interactive.GetString(interactive.Input{
 			Question: "No proxy",
 			Help:     cmd.Flags().Lookup("no-proxy").Usage,
-			Default:  strings.Join(noProxySlice, ","),
+			Default:  cluster.Proxy().NoProxy(),
 			Validators: []interactive.Validator{
 				aws.UserNoProxyValidator,
 				aws.UserNoProxyDuplicateValidator,
@@ -397,6 +397,10 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if len(noProxySlice) > 0 {
+		if len(noProxySlice) == 1 && noProxySlice[0] == doubleQuotesToRemove {
+			noProxySlice[0] = ""
+		}
+
 		duplicate, found := aws.HasDuplicates(noProxySlice)
 		if found {
 			r.Reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
