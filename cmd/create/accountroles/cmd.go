@@ -384,6 +384,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
+				tags.RedHatManaged:    "true",
 			}, rolePath)
 		if err != nil {
 			return err
@@ -399,6 +400,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
+				tags.RedHatManaged:    "true",
 			}, policyPath)
 		if err != nil {
 			return err

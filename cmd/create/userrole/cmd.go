@@ -296,10 +296,11 @@ func createRoles(r *rosa.Runtime,
 	r.Reporter.Debugf("Creating role '%s'", roleName)
 	roleARN, err = r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary,
 		"", map[string]string{
-			tags.RolePrefix:  prefix,
-			tags.RoleType:    aws.OCMUserRole,
-			tags.Environment: env,
-		}, path)
+			tags.RolePrefix:    prefix,
+			tags.RoleType:      aws.OCMUserRole,
+			tags.Environment:   env,
+			tags.RedHatManaged: "true",
+		}, "")
 	if err != nil {
 		return "", err
 	}

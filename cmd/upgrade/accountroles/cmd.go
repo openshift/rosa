@@ -297,6 +297,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
+				tags.RedHatManaged:    "true",
 			}, rolePath)
 		if err != nil {
 			return err

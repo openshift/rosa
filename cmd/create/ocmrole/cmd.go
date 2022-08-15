@@ -288,10 +288,11 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 	commands := []string{}
 	policyName := fmt.Sprintf("%s-Policy", roleName)
 	iamTags := fmt.Sprintf(
-		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 		tags.RolePrefix, prefix,
 		tags.RoleType, aws.OCMRole,
 		tags.Environment, env,
+		tags.RedHatManaged, "true",
 	)
 
 	adminTags := ""
@@ -375,9 +376,10 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 	}
 
 	iamTags := map[string]string{
-		tags.RolePrefix:  prefix,
-		tags.RoleType:    aws.OCMRole,
-		tags.Environment: env,
+		tags.RolePrefix:    prefix,
+		tags.RoleType:      aws.OCMRole,
+		tags.Environment:   env,
+		tags.RedHatManaged: "true",
 	}
 
 	if !exists {
