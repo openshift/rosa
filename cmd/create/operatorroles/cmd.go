@@ -328,6 +328,7 @@ func createRoles(r *rosa.Runtime,
 			defaultVersion, map[string]string{
 				tags.OpenShiftVersion: accountRoleVersion,
 				tags.RolePrefix:       prefix,
+				tags.RedHatManaged:    "true",
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
 			}, policyPath)

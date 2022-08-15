@@ -155,6 +155,7 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
+				tags.RedHatManaged:    "true",
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
 			}, "")
