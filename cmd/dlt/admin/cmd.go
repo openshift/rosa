@@ -124,5 +124,6 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
+		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, clusterKey)
 	}
 }
