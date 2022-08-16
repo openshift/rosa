@@ -536,6 +536,11 @@ func run(cmd *cobra.Command, _ []string) {
 			"Any optional fields can be left empty and a default will be selected.")
 	}
 
+	if len(cmd.Flags().Args()) > 0 {
+		r.Reporter.Errorf("Unknown flags: %v", cmd.Flags().Args())
+		os.Exit(1)
+	}
+
 	// Get cluster name
 	clusterName := strings.Trim(args.clusterName, " \t")
 
