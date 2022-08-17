@@ -90,12 +90,6 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	env, err := ocm.GetEnv()
-	if err != nil {
-		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
-		os.Exit(1)
-	}
-
 	// Allow the command to be called programmatically
 	skipInteractive := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
@@ -258,14 +252,6 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Response:  ocm.Success,
 		})
 	case aws.ModeManual:
-		err = aws.GeneratePolicyFiles(r.Reporter, env, false, true, policies, credRequests)
-		if err != nil {
-			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
-			r.OCMClient.LogEvent("ROSACreateOperatorRolesModeManual", map[string]string{
-				ocm.Response: ocm.Failure,
-			})
-			os.Exit(1)
-		}
 		commands, err := buildCommands(r, prefix, permissionsBoundary, accountRoleVersion, policyPath,
 			cluster, policies, credRequests)
 		if err != nil {
