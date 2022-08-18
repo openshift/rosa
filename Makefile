@@ -42,7 +42,12 @@ fmt:
 
 .PHONY: lint
 lint:
-	golangci-lint run --timeout 5m0s
+	# Mirror of docker.io/golangci/golangci-lint, Docker Hub is blocked in ci-int.
+	podman run --rm --security-opt label=disable --volume="$(PWD):/app" --workdir=/app \
+	  -v "$(shell go env GOCACHE):/cache/go" -e "GOCACHE=/cache/go" -e "GOLANGCI_LINT_CACHE=/cache/go" \
+		-e "GIT_SSL_NO_VERIFY=1" -e "GOINSECURE=gitlab.cee.redhat.com"\
+		"quay.io/app-sre/golangci-lint:v$(shell cat .golangciversion)" \
+		golangci-lint run -v
 
 .PHONY: clean
 clean:
