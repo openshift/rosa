@@ -35,10 +35,11 @@ const ServerConfigNilKind = "ServerConfigNil"
 //
 // Representation of a server config
 type ServerConfig struct {
-	bitmap_ uint32
-	id      string
-	href    string
-	server  string
+	bitmap_    uint32
+	id         string
+	href       string
+	kubeconfig string
+	server     string
 }
 
 // Kind returns the name of the type of the object.
@@ -98,12 +99,35 @@ func (o *ServerConfig) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
+// Kubeconfig returns the value of the 'kubeconfig' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The kubeconfig of the server
+func (o *ServerConfig) Kubeconfig() string {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.kubeconfig
+	}
+	return ""
+}
+
+// GetKubeconfig returns the value of the 'kubeconfig' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The kubeconfig of the server
+func (o *ServerConfig) GetKubeconfig() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.kubeconfig
+	}
+	return
+}
+
 // Server returns the value of the 'server' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The URL of the server
 func (o *ServerConfig) Server() string {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.server
 	}
 	return ""
@@ -114,7 +138,7 @@ func (o *ServerConfig) Server() string {
 //
 // The URL of the server
 func (o *ServerConfig) GetServer() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.server
 	}

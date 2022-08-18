@@ -75,6 +75,16 @@ func (c *GenericLabelsClient) List() *GenericLabelsListRequest {
 	}
 }
 
+// Label returns the target 'generic_label' resource for the given identifier.
+//
+// Reference to the label of a specific account/organization/subscription for the given key.
+func (c *GenericLabelsClient) Label(id string) *GenericLabelClient {
+	return NewGenericLabelClient(
+		c.transport,
+		path.Join(c.path, id),
+	)
+}
+
 // Labels returns the target 'generic_label' resource for the given identifier.
 //
 // Reference to the labels of a specific account/organization/subscription.

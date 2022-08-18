@@ -3,6 +3,36 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.285
+- Update to model 0.0.219:
+  - Add billing model to addon installations
+
+## 0.1.284
+- Update to model 0.0.218:
+  - Change provision shard to include kube client configurations and server URL.
+
+## 0.1.283
+- Update to model 0.0.217:
+  - Change provision shard to include kube client configurations.
+  - Add GCP volume size to flavour API.
+  - Add fleet manager related structures and API.
+
+## 0.1.282
+- Update to model 0.0.215:
+  - Add hypershift config to provision shard API.
+
+## 0.1.281
+- Update to model 0.0.214:
+  - Add locator `label` to Generic Labels resource. 
+
+## 0.1.280
+- Update to model 0.0.213:
+  - Add update function to provision shard API. 
+
+## 0.1.279
+- Update to model 0.0.212:
+  - Add status to provision shard API. 
+
 ## 0.1.278
 - Update to model 0.0.211:
   - Remove `DisplayName` field from Cluster model.

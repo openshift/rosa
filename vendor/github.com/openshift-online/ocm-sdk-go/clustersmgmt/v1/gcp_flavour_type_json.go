@@ -60,13 +60,40 @@ func writeGCPFlavour(object *GCPFlavour, stream *jsoniter.Stream) {
 		stream.WriteString(object.infraInstanceType)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&4 != 0 && object.infraVolume != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("infra_volume")
+		writeGCPVolume(object.infraVolume, stream)
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("master_instance_type")
 		stream.WriteString(object.masterInstanceType)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0 && object.masterVolume != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("master_volume")
+		writeGCPVolume(object.masterVolume, stream)
+		count++
+	}
+	present_ = object.bitmap_&32 != 0 && object.workerVolume != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("worker_volume")
+		writeGCPVolume(object.workerVolume, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -100,10 +127,22 @@ func readGCPFlavour(iterator *jsoniter.Iterator) *GCPFlavour {
 			value := iterator.ReadString()
 			object.infraInstanceType = value
 			object.bitmap_ |= 2
+		case "infra_volume":
+			value := readGCPVolume(iterator)
+			object.infraVolume = value
+			object.bitmap_ |= 4
 		case "master_instance_type":
 			value := iterator.ReadString()
 			object.masterInstanceType = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
+		case "master_volume":
+			value := readGCPVolume(iterator)
+			object.masterVolume = value
+			object.bitmap_ |= 16
+		case "worker_volume":
+			value := readGCPVolume(iterator)
+			object.workerVolume = value
+			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()
 		}
