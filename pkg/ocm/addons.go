@@ -28,6 +28,11 @@ type AddOnBilling struct {
 	BillingAccountID string
 }
 
+var BillingOptions = []string{
+	string(amsv1.BillingModelMarketplace),
+	string(amsv1.BillingModelStandard),
+}
+
 var BillingModels = map[string]cmv1.BillingModel{
 	string(amsv1.BillingModelMarketplace): cmv1.BillingModelMarketplace,
 	string(amsv1.BillingModelStandard):    cmv1.BillingModelStandard,

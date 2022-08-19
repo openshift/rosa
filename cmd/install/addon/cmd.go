@@ -26,7 +26,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
-	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
+	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
@@ -78,7 +78,7 @@ func init() {
 	flags.StringVar(
 		&args.billingModel,
 		billingModelFlag,
-		"standard",
+		string(amv1.BillingModelStandard),
 		"Set the billing model to be used for the addon installation resource",
 	)
 
@@ -271,16 +271,17 @@ func run(cmd *cobra.Command, argv []string) {
 	billingModel := args.billingModel
 	billingModelAccountID := args.billingModelAccountID
 
-	if !cmd.Flags().Changed(billingModelFlag) && !interactive.Enabled() {
-		interactive.Enabled()
-		r.Reporter.Infof("Enabling interactive mode")
-	}
-
-	if interactive.Enabled() && !cmd.Flags().Changed("billing-model") {
-		billingModel, err = interactive.GetString(interactive.Input{
+	if !cmd.Flags().Changed(billingModelFlag) {
+		if !interactive.Enabled() {
+			interactive.Enable()
+			r.Reporter.Infof("Enabling interactive mode")
+		}
+		billingModel, err = interactive.GetOption(interactive.Input{
 			Question: "Billing Model",
 			Help:     cmd.Flags().Lookup(billingModelFlag).Usage,
-			Default:  "standard",
+			Default:  string(amv1.BillingModelStandard),
+			Options:  ocm.BillingOptions,
+			Required: true,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid billing model: %s", err)
@@ -288,13 +289,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if !cmd.Flags().Changed(billingModelAccountIDFlag) && !interactive.Enabled() {
-		interactive.Enabled()
-		r.Reporter.Infof("Enabling interactive mode")
-	}
-
-	if interactive.Enabled() && billingModel != string(v1.BillingModelStandard) &&
-		!cmd.Flags().Changed(billingModelAccountIDFlag) {
+	if billingModel != string(amv1.BillingModelStandard) && !cmd.Flags().Changed(billingModelAccountIDFlag) {
 		billingModelAccountID, err = interactive.GetString(interactive.Input{
 			Question: "Billing Account ID",
 			Help:     cmd.Flags().Lookup(billingModelAccountIDFlag).Usage,
