@@ -1912,7 +1912,8 @@ func run(cmd *cobra.Command, _ []string) {
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
-			command := buildCommand(clusterConfig, operatorRolesPrefix, isAvailabilityZonesSet || selectAvailabilityZones)
+			command := buildCommand(clusterConfig, operatorRolesPrefix, operatorRolePath,
+				isAvailabilityZonesSet || selectAvailabilityZones)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
@@ -2200,7 +2201,8 @@ func parseRFC3339(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339, s)
 }
 
-func buildCommand(spec ocm.Spec, operatorRolesPrefix string, userSelectedAvailabilityZones bool) string {
+func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
+	operatorRolePath string, userSelectedAvailabilityZones bool) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.IsSTS {
@@ -2220,6 +2222,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string, userSelectedAvailab
 	}
 	if operatorRolesPrefix != "" {
 		command += fmt.Sprintf(" --operator-roles-prefix %s", operatorRolesPrefix)
+	}
+	if operatorRolePath != "" {
+		command += fmt.Sprintf(" --operator-roles-path %s", operatorRolePath)
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
