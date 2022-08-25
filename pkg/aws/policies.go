@@ -110,6 +110,12 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 		}
 	}
 
+	// verify that the paths are the same
+	if aws.StringValue(output.Role.Path) != path {
+		return "", fmt.Errorf("Role with same name but different path exists. Existing role ARN: %s",
+			*output.Role.Arn)
+	}
+
 	if permissionsBoundary != "" {
 		_, err = c.iamClient.PutRolePermissionsBoundary(&iam.PutRolePermissionsBoundaryInput{
 			RoleName:            aws.String(name),
@@ -241,7 +247,17 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				return c.createPolicy(policyArn, document, tagList, path)
+				policyArn, err = c.createPolicy(policyArn, document, tagList, path)
+				if err != nil {
+					if aerr, ok := err.(awserr.Error); ok {
+						if aerr.Code() == iam.ErrCodeEntityAlreadyExistsException {
+							return "", fmt.Errorf(
+								"Policy with same name but different ARN exists. Probably wrong path")
+						}
+					}
+					return "", err
+				}
+				return policyArn, nil
 			default:
 				return "", err
 			}
@@ -319,12 +335,6 @@ func (c *awsClient) createPolicy(policyArn string, document string, tagList map[
 	output, err := c.iamClient.CreatePolicy(createPolicyInput)
 
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeEntityAlreadyExistsException:
-				return policyArn, nil
-			}
-		}
 		return "", err
 	}
 	return aws.StringValue(output.Policy.Arn), nil
