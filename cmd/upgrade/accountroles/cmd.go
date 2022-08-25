@@ -145,12 +145,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		reporter.Infof("Ensuring account role policies compatibility for upgrade")
 	}
 
-	rolePath, err := awsClient.GetRoleARNPath(prefix)
-	if err != nil {
-		reporter.Infof("Error trying to determine the path for the role with the prefix '%s'", prefix)
-		os.Exit(0)
-	}
-
 	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
 		defaultPolicyVersion)
 	if err != nil {
@@ -169,6 +163,12 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 		reporter.Infof("Account role with the prefix '%s' is already up-to-date.", prefix)
 		os.Exit(0)
+	}
+
+	policyPath, err := getAccountPolicyPath(awsClient, prefix)
+	if err != nil {
+		reporter.Errorf("Error trying to determine the path for the account policies. Error: %v", err)
+		os.Exit(1)
 	}
 
 	// Determine if interactive mode is needed
@@ -201,7 +201,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		reporter.Infof("Starting to upgrade the policies")
 		if isUpgradeNeedForAccountRolePolicies {
 			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
-				defaultPolicyVersion, rolePath)
+				defaultPolicyVersion, policyPath)
 			if err != nil {
 				LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
 				if args.isInvokedFromClusterUpgrade {
@@ -223,7 +223,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Infof("Run the following commands to upgrade the account role policies:\n")
 		}
 		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
-			awsClient, defaultPolicyVersion, rolePath)
+			awsClient, defaultPolicyVersion, policyPath)
 		fmt.Println(commands)
 		if args.isInvokedFromClusterUpgrade {
 			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
@@ -251,7 +251,7 @@ func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, er
 }
 
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
-	policies map[string]string, defaultPolicyVersion string, rolePath string) error {
+	policies map[string]string, defaultPolicyVersion string, policyPath string) error {
 	for file, role := range aws.AccountRoles {
 		roleName := aws.GetRoleName(prefix, role.Name)
 		if !confirm.Prompt(true, "Upgrade the '%s' role policy latest version ?", roleName) {
@@ -262,7 +262,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 			continue
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
-		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName), rolePath)
+		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName), policyPath)
 
 		policyDetails := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
@@ -271,7 +271,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
 				tags.RedHatManaged:    "true",
-			}, rolePath)
+			}, policyPath)
 		if err != nil {
 			return err
 		}
@@ -295,12 +295,12 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 }
 
 func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRolePolicies bool,
-	awsClient aws.Client, defaultPolicyVersion string, rolePath string) string {
+	awsClient aws.Client, defaultPolicyVersion string, policyPath string) string {
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
 			name := aws.GetRoleName(prefix, role.Name)
-			policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name), rolePath)
+			policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name), policyPath)
 			policyTags := fmt.Sprintf(
 				"Key=%s,Value=%s",
 				tags.OpenShiftVersion, defaultPolicyVersion,
@@ -327,11 +327,11 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 					"\t--policy-document file://sts_%s_permission_policy.json"+
 					"\t--tags %s"+
 					"\t--path %s",
-					policyName, file, iamTags, rolePath)
+					policyName, file, iamTags, policyPath)
 				attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 					"\t--role-name %s \\\n"+
 					"\t--policy-arn %s",
-					name, aws.GetPolicyARN(accountID, policyName, rolePath))
+					name, aws.GetPolicyARN(accountID, policyName, policyPath))
 
 				_, _ = awsClient.IsRolePolicyExists(name, policyName)
 				if err != nil {
@@ -355,6 +355,28 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 			}
 		}
 	}
-
 	return strings.Join(commands, "\n\n")
+}
+
+func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
+	for _, accountRole := range aws.AccountRoles {
+		roleName := aws.GetRoleName(prefix, accountRole.Name)
+		rolePolicies, err := awsClient.GetAttachedPolicy(&roleName)
+		if err != nil {
+			return "", err
+		}
+		policyName := fmt.Sprintf("%s-Policy", roleName)
+		policyARN := ""
+		for _, rolePolicy := range rolePolicies {
+			if rolePolicy.PolicyName == policyName {
+				policyARN = rolePolicy.PolicyArn
+				break
+			}
+		}
+		if policyARN != "" {
+			return aws.GetPathFromARN(policyARN)
+		}
+	}
+	return "", fmt.Errorf("Could not find account policies that are attached to account roles." +
+		"We need at least one in order to detect account policies path")
 }

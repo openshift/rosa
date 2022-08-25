@@ -134,17 +134,15 @@ func run(cmd *cobra.Command, argv []string) error {
 			clusterKey)
 	}
 
-	rolePath, err := aws.GetRolePath(operatorRoles[0].RoleARN())
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	policyPath := rolePath // temporary until we push the arn path changes
-
 	prefix, err := aws.GetPrefixFromAccountRole(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Error getting account role prefix for the cluster '%s'",
 			clusterKey)
+	}
+	rolePath, policyPath, err := getOperatorPaths(r.AWSClient, prefix, operatorRoles)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 
 	isAccountRoleUpgradeNeed := false
@@ -173,7 +171,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	isOperatorPolicyUpgradeNeeded := false
 	isOperatorPolicyUpgradeNeeded, err = r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
-		r.Creator.AccountID, defaultPolicyVersion, credRequests, rolePath)
+		r.Creator.AccountID, defaultPolicyVersion, credRequests, policyPath)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -473,4 +471,34 @@ func getRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperator) strin
 		role = role[0:64]
 	}
 	return role
+}
+
+func getOperatorPaths(awsClient aws.Client, prefix string, operatorRoles []*cmv1.OperatorIAMRole) (
+	string, string, error) {
+	for _, operatorRole := range operatorRoles {
+		roleName, err := aws.GetResourceIdFromARN(operatorRole.RoleARN())
+		if err != nil {
+			return "", "", err
+		}
+		rolePolicies, err := awsClient.GetAttachedPolicy(&roleName)
+		if err != nil {
+			return "", "", err
+		}
+		policyName := aws.GetPolicyName(prefix, operatorRole.Namespace(), operatorRole.Name())
+		for _, rolePolicy := range rolePolicies {
+			if rolePolicy.PolicyName == policyName {
+				rolePath, err := aws.GetPathFromARN(operatorRole.RoleARN())
+				if err != nil {
+					return "", "", err
+				}
+				policyPath, err := aws.GetPathFromARN(rolePolicy.PolicyArn)
+				if err != nil {
+					return "", "", err
+				}
+				return rolePath, policyPath, nil
+			}
+		}
+	}
+	return "", "", fmt.Errorf("Can not detect operator policy path. " +
+		"Existing operator roles do not have operator policies attached to them")
 }

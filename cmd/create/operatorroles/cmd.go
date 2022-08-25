@@ -302,7 +302,7 @@ func createRoles(r *rosa.Runtime,
 			continue
 		}
 
-		rolePath, err := aws.GetRolePath(roleARN)
+		rolePath, err := aws.GetPathFromARN(roleARN)
 		if err != nil {
 			return err
 		}
@@ -373,7 +373,7 @@ func buildCommands(r *rosa.Runtime,
 			}
 		}
 		roleName, roleARN := getRoleNameAndARN(cluster, operator)
-		rolePath, err := aws.GetRolePath(roleARN)
+		rolePath, err := aws.GetPathFromARN(roleARN)
 		if err != nil {
 			return "", err
 		}

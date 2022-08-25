@@ -112,12 +112,11 @@ func run(cmd *cobra.Command, argv []string) error {
 			os.Exit(1)
 		}
 	}
-	if roleARN != "" {
-		_, err := arn.Parse(roleARN)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
-			os.Exit(1)
-		}
+
+	_, err = arn.Parse(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
+		os.Exit(1)
 	}
 
 	err = r.AWSClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
@@ -162,12 +161,15 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	roleExistOnAWS, _, err := r.AWSClient.CheckRoleExists(roleName)
+	roleExistOnAWS, existingRoleARN, err := r.AWSClient.CheckRoleExists(roleName)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 	}
 	if !roleExistOnAWS {
-		r.Reporter.Warnf("ocm-role '%s' doesn't exist on the aws account %s", roleName, r.Creator.AccountID)
+		r.Reporter.Warnf("the ARN %s does not exist. Nothing to delete", roleARN)
+	} else if existingRoleARN != roleARN {
+		r.Reporter.Warnf("role with same name but different ARN exists. Existing role ARN: %s", existingRoleARN)
+		os.Exit(1)
 	}
 
 	switch mode {

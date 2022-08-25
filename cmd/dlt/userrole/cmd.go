@@ -100,12 +100,11 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
-	if roleARN != "" {
-		_, err := arn.Parse(roleARN)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
-			os.Exit(1)
-		}
+
+	_, err = arn.Parse(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
+		os.Exit(1)
 	}
 
 	err = r.AWSClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
@@ -148,6 +147,17 @@ func run(cmd *cobra.Command, argv []string) {
 	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	roleExistOnAWS, existingRoleARN, err := r.AWSClient.CheckRoleExists(roleName)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+	}
+	if !roleExistOnAWS {
+		r.Reporter.Warnf("the ARN %s does not exist. Nothing to delete", roleARN)
+	} else if existingRoleARN != roleARN {
+		r.Reporter.Warnf("role with same name but different ARN exists. Existing role ARN: %s", existingRoleARN)
 		os.Exit(1)
 	}
 

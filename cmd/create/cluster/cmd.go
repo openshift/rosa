@@ -120,7 +120,7 @@ var args struct {
 	// Operator IAM Roles
 	operatorIAMRoles                 []string
 	operatorRolesPrefix              string
-	operatorRolesPath                string
+	operatorRolePath                 string
 	operatorRolesPermissionsBoundary string
 
 	// Proxy
@@ -230,12 +230,12 @@ func init() {
 			"Leave empty to use an auto-generated one.",
 	)
 	flags.StringVar(
-		&args.operatorRolesPath,
-		"operator-roles-path",
+		&args.operatorRolePath,
+		"operator-role-path",
 		"",
 		"Custom arn path for operator roles.",
 	)
-	flags.MarkHidden("operator-roles-path")
+	flags.MarkHidden("operator-role-path")
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -945,6 +945,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorRolesPrefix := args.operatorRolesPrefix
+	operatorRolePath := args.operatorRolePath
+	operatorIAMRoles := args.operatorIAMRoles
+	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
 		if operatorRolesPrefix == "" {
 			operatorRolesPrefix = getRolePrefix(clusterName)
@@ -977,27 +980,21 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
 			os.Exit(1)
 		}
-	}
-
-	operatorRolePath := args.operatorRolesPath
-	if cmd.Flags().Changed("operator-roles-path") && interactive.Enabled() {
-		operatorRolePath, err = interactive.GetString(interactive.Input{
-			Question: "Operator Role Path",
-			Help:     cmd.Flags().Lookup("operator-roles-path").Usage,
-			Default:  operatorRolePath,
-			Validators: []interactive.Validator{
-				aws.ARNPathValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid path: %s", err)
-			os.Exit(1)
+		if cmd.Flags().Changed("operator-role-path") && interactive.Enabled() {
+			operatorRolePath, err = interactive.GetString(interactive.Input{
+				Question: "Operator Role Path",
+				Help:     cmd.Flags().Lookup("operator-role-path").Usage,
+				Default:  operatorRolePath,
+				Validators: []interactive.Validator{
+					aws.ARNPathValidator,
+				},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid path: %s", err)
+				os.Exit(1)
+			}
 		}
-	}
 
-	operatorIAMRoles := args.operatorIAMRoles
-	operatorIAMRoleList := []ocm.OperatorIAMRole{}
-	if isSTS {
 		credRequests, err := r.OCMClient.GetCredRequests()
 		if err != nil {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
@@ -2242,7 +2239,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --operator-roles-prefix %s", operatorRolesPrefix)
 	}
 	if operatorRolePath != "" {
-		command += fmt.Sprintf(" --operator-roles-path %s", operatorRolePath)
+		command += fmt.Sprintf(" --operator-role-path %s", operatorRolePath)
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
