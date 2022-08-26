@@ -272,21 +272,29 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	}
 
 	if !isCompatible {
+		// Since there is a limit to how many versions a policy can have, we delete all non-default
+		// policy versions from the list, thus making space for the new one.
+		policyVersionsOutput, err := c.iamClient.ListPolicyVersions(&iam.ListPolicyVersionsInput{
+			PolicyArn: aws.String(policyArn),
+		})
+		if err != nil {
+			return policyArn, err
+		}
+		for _, version := range policyVersionsOutput.Versions {
+			if aws.BoolValue(version.IsDefaultVersion) {
+				continue
+			}
+			c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
+				PolicyArn: aws.String(policyArn),
+				VersionId: version.VersionId,
+			})
+		}
 		_, err = c.iamClient.CreatePolicyVersion(&iam.CreatePolicyVersionInput{
 			PolicyArn:      aws.String(policyArn),
 			PolicyDocument: aws.String(document),
 			SetAsDefault:   aws.Bool(true),
 		})
 		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeLimitExceededException:
-					return "", fmt.Errorf("Managed policy limit exceeded. Please delete the old ones "+
-						"from your aws account for policy '%s' and try again. %v", policyArn, aerr.Message())
-				default:
-					return "", err
-				}
-			}
 			return policyArn, err
 		}
 
