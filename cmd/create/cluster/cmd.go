@@ -61,6 +61,8 @@ var args struct {
 	fakeCluster bool
 	// Set custom properties in cluster spec
 	properties []string
+	// Use local AWS credentials instead of the 'osdCcsAdmin' user
+	useLocalCredentials bool
 
 	// Disable SCP checks in the installer
 	disableSCPChecks bool
@@ -488,6 +490,14 @@ func init() {
 		"User defined properties for tagging and querying.",
 	)
 	flags.MarkHidden("properties")
+
+	flags.BoolVar(
+		&args.useLocalCredentials,
+		"use-local-credentials",
+		false,
+		"Use local AWS credentials instead of the 'osdCcsAdmin' user. This is not supported.",
+	)
+	flags.MarkHidden("use-local-credentials")
 
 	flags.StringVar(
 		&args.operatorRolesPermissionsBoundary,
@@ -1896,6 +1906,13 @@ func run(cmd *cobra.Command, _ []string) {
 	props := args.properties
 	if args.fakeCluster {
 		props = append(props, properties.FakeCluster)
+	}
+	if args.useLocalCredentials {
+		if isSTS {
+			r.Reporter.Errorf("Local credentials are not supported for STS clusters")
+			os.Exit(1)
+		}
+		props = append(props, properties.UseLocalCredentials)
 	}
 	if len(props) > 0 {
 		clusterConfig.CustomProperties = map[string]string{}

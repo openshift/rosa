@@ -87,6 +87,7 @@ type Client interface {
 	EnsureOsdCcsAdminUser(stackName string, adminUserName string, awsRegion string) (bool, error)
 	DeleteOsdCcsAdminUser(stackName string) error
 	GetAWSAccessKeys() (*AccessKey, error)
+	GetLocalAWSAccessKeys() (*AccessKey, error)
 	GetCreator() (*Creator, error)
 	ValidateSCP(*string, map[string]string) (bool, error)
 	GetSubnetIDs() ([]*ec2.Subnet, error)
@@ -634,6 +635,18 @@ func (c *awsClient) GetAWSAccessKeys() (*AccessKey, error) {
 
 	c.awsAccessKeys = accessKey
 
+	return c.awsAccessKeys, nil
+}
+
+func (c *awsClient) GetLocalAWSAccessKeys() (*AccessKey, error) {
+	creds, err := c.awsSession.Config.Credentials.Get()
+	if err != nil {
+		return nil, err
+	}
+	c.awsAccessKeys = &AccessKey{
+		AccessKeyID:     creds.AccessKeyID,
+		SecretAccessKey: creds.SecretAccessKey,
+	}
 	return c.awsAccessKeys, nil
 }
 

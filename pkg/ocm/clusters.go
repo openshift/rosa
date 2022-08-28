@@ -549,7 +549,13 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 
 	var awsAccessKey *aws.AccessKey
-	if config.RoleARN == "" {
+	if config.CustomProperties != nil && config.CustomProperties[properties.UseLocalCredentials] == "true" {
+		reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
+		awsAccessKey, err = awsClient.GetLocalAWSAccessKeys()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get local AWS credentials: %v", err)
+		}
+	} else if config.RoleARN == "" {
 		/**
 		1) Poll the cluster with same arn from ocm
 		2) Check the status and if pending enter to a loop until it becomes installing
@@ -575,7 +581,6 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 				time.Sleep(30 * time.Second)
 			}
 		}
-
 		// Create the access key for the AWS user:
 		awsAccessKey, err = awsClient.GetAWSAccessKeys()
 		if err != nil {
