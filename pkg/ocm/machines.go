@@ -23,9 +23,43 @@ import (
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/aws"
 )
 
 const AcceleratedComputing = "accelerated_computing"
+
+func (c *Client) GetMachineTypesInRegion(cloudProviderData *cmv1.CloudProviderData) (MachineTypeList, error) {
+	collection := c.ocm.ClustersMgmt().V1().AWSInquiries().MachineTypes()
+	page := 1
+	size := 100
+
+	var machineTypes MachineTypeList
+	for {
+		response, err := collection.Search().
+			Parameter("order", "category asc").
+			Body(cloudProviderData).
+			Page(page).
+			Size(size).
+			Send()
+		if err != nil {
+			return MachineTypeList{}, err
+		}
+
+		response.Items().Each(func(item *cmv1.MachineType) bool {
+			machineTypes = append(machineTypes, &MachineType{
+				MachineType: item,
+			})
+			return true
+		})
+
+		if response.Size() < size {
+			break
+		}
+		page++
+	}
+
+	return machineTypes, nil
+}
 
 func (c *Client) GetMachineTypes() (machineTypes MachineTypeList, err error) {
 	collection := c.ocm.ClustersMgmt().V1().MachineTypes()
@@ -79,6 +113,46 @@ type MachineType struct {
 
 func (mt MachineType) HasQuota(multiAZ bool) bool {
 	return mt.MachineType.Category() != AcceleratedComputing || mt.availableQuota > getDefaultNodes(multiAZ)
+}
+
+func (c *Client) createCloudProviderData(region string, roleARN string,
+	awsClient aws.Client) (*cmv1.CloudProviderData, error) {
+	var awsBuilder *cmv1.AWSBuilder
+	if roleARN != "" {
+		awsBuilder = cmv1.NewAWS().STS(cmv1.NewSTS().RoleARN(roleARN))
+	} else {
+		accessKeys, err := awsClient.GetAWSAccessKeys()
+		if err != nil {
+			return &cmv1.CloudProviderData{}, err
+		}
+		awsBuilder = cmv1.NewAWS().AccessKeyID(accessKeys.AccessKeyID).SecretAccessKey(accessKeys.SecretAccessKey)
+	}
+
+	return cmv1.NewCloudProviderData().AWS(awsBuilder).Region(cmv1.NewCloudRegion().ID(region)).Build()
+}
+
+// GetAvailableMachineTypesInRegion get the supported machine type in the region.
+// The function triggers the 'api/clusters_mgmt/v1/aws_inquiries/machine_types'
+// and passes a role ARN for STS clusters or access keys for non-STS clusters.
+func (c *Client) GetAvailableMachineTypesInRegion(region string, roleARN string,
+	awsClient aws.Client) (MachineTypeList, error) {
+	cloudProviderData, err := c.createCloudProviderData(region, roleARN, awsClient)
+	if err != nil {
+		return MachineTypeList{}, err
+	}
+
+	machineTypes, err := c.GetMachineTypesInRegion(cloudProviderData)
+	if err != nil {
+		return MachineTypeList{}, err
+	}
+
+	quotaCosts, err := c.getQuotaCosts()
+	if err != nil {
+		return MachineTypeList{}, err
+	}
+
+	machineTypes.UpdateAvailableQuota(quotaCosts)
+	return machineTypes, nil
 }
 
 func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {

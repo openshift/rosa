@@ -416,7 +416,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	// Machine pool instance type:
 	instanceType := args.instanceType
-	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypes()
+	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
+		cluster.AWS().STS().RoleARN(), r.AWSClient)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
