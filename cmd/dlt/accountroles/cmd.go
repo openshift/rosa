@@ -174,7 +174,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			err := r.AWSClient.DeleteAccountRole(role)
 			if err != nil {
-				r.Reporter.Errorf("There was an error deleting the account roles: %s", err)
+				r.Reporter.Warnf("There was an error deleting the account roles or policies: %s", err)
 				continue
 			}
 		}
@@ -189,7 +189,7 @@ func run(cmd *cobra.Command, _ []string) {
 		commands := buildCommand(finalRoleList, policyMap)
 
 		if r.Reporter.IsTerminal() {
-			r.Reporter.Infof("Run the following commands to delete the account roles:\n")
+			r.Reporter.Infof("Run the following commands to delete the account roles and policies:\n")
 		}
 		fmt.Println(commands)
 	default:
@@ -216,8 +216,10 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail) s
 		policyDetails := policyMap[roleName]
 		for _, policyDetail := range policyDetails {
 			if policyDetail.PolicType == aws.Attached && policyDetail.PolicyArn != "" {
-				deletePolicy := fmt.Sprintf("\taws iam detach-role-policy --role-name  %s  --policy-arn  %s",
+				detachPolicy := fmt.Sprintf("\taws iam detach-role-policy --role-name  %s  --policy-arn  %s",
 					roleName, policyDetail.PolicyArn)
+				commands = append(commands, detachPolicy)
+				deletePolicy := fmt.Sprintf("\taws iam delete-policy --policy-arn  %s", policyDetail.PolicyArn)
 				commands = append(commands, deletePolicy)
 			}
 			if policyDetail.PolicType == aws.Inline && policyDetail.PolicyName != "" {

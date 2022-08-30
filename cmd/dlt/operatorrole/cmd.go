@@ -181,9 +181,10 @@ func run(cmd *cobra.Command, argv []string) {
 			if !confirm.Prompt(true, "Delete the operator roles  '%s'?", role) {
 				continue
 			}
-			err = r.AWSClient.DeleteOperatorRole(role)
+			err := r.AWSClient.DeleteOperatorRole(role)
+
 			if err != nil {
-				r.Reporter.Errorf("There was an error deleting the Operator Roles: %s", err)
+				r.Reporter.Warnf("There was an error deleting the Operator Roles or Policies: %s", err)
 				continue
 			}
 		}
@@ -197,7 +198,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		commands := buildCommand(roles, policyMap)
 		if r.Reporter.IsTerminal() {
-			r.Reporter.Infof("Run the following commands to delete the Operator roles:\n")
+			r.Reporter.Infof("Run the following commands to delete the Operator roles and policies:\n")
 		}
 		fmt.Println(commands)
 	default:
@@ -211,12 +212,14 @@ func buildCommand(roleNames []string, policyMap map[string][]string) string {
 	for _, roleName := range roleNames {
 		policyARN := policyMap[roleName]
 		detachPolicy := ""
+		deletePolicy := ""
 		if len(policyARN) > 0 {
 			detachPolicy = fmt.Sprintf("\taws iam detach-role-policy --role-name  %s --policy-arn  %s",
 				roleName, policyARN[0])
+			deletePolicy = fmt.Sprintf("\taws iam delete-policy --policy-arn  %s", policyARN[0])
 		}
 		deleteRole := fmt.Sprintf("\taws iam delete-role --role-name  %s", roleName)
-		commands = append(commands, detachPolicy, deleteRole)
+		commands = append(commands, detachPolicy, deleteRole, deletePolicy)
 	}
 	return strings.Join(commands, "\n")
 }
