@@ -729,18 +729,32 @@ func checkIfROSAOperatorRole(roleName *string, credRequest map[string]*cmv1.STSO
 
 func (c *awsClient) DeleteOperatorRole(roleName string) error {
 	role := aws.String(roleName)
-	err := c.detachOperatorRolePolicies(role)
+	policies, err := c.GetPolicies([]string{*role})
+	if err != nil {
+		return err
+	}
+	err = c.detachOperatorRolePolicies(role)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				fmt.Printf("Policies does not exists for role '%s'",
-					roleName)
+				fmt.Printf("Entity does not exist: %s", aerr)
+				err = nil
+			case iam.ErrCodeDeleteConflictException:
+				fmt.Printf("Unable to detach operator role policy: %s", aerr)
+				err = nil
 			}
 		}
+		if err != nil {
+			return err
+		}
+	}
+	err = c.DeleteRole(roleName, role)
+	if err != nil {
 		return err
 	}
-	return c.DeleteRole(roleName, role)
+	_, err = c.deletePolicies(policies[*role])
+	return err
 }
 
 func (c *awsClient) DeleteRole(role string, r *string) error {
@@ -782,20 +796,39 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 
 func (c *awsClient) DeleteAccountRole(roleName string) error {
 	role := aws.String(roleName)
-	err := c.deleteAccountRolePolicies(role)
+	err := c.DeleteInlineRolePolicies(aws.StringValue(role))
+	if err != nil {
+		return err
+	}
+	policyMap, err := c.GetPolicies([]string{*role})
+	if err != nil {
+		return err
+	}
+	err = c.detachAttachedRolePolicies(role)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				//do nothing
-			default:
-				return err
+				fmt.Printf("Entity does not exist: %s", aerr)
+				err = nil
+			case iam.ErrCodeDeleteConflictException:
+				fmt.Printf("Unable to detach account role policy: %s", aerr)
+				err = nil
 			}
-		} else {
+		}
+		if err != nil {
 			return err
 		}
 	}
-	return c.DeleteRole(roleName, role)
+	err = c.DeleteRole(roleName, role)
+	if err != nil {
+		return err
+	}
+	_, err = c.deletePolicies(policyMap[*role])
+	return err
 }
 
 func (c *awsClient) detachAttachedRolePolicies(role *string) error {
@@ -848,18 +881,18 @@ func (c *awsClient) DeleteInlineRolePolicies(role string) error {
 	return nil
 }
 
-func (c *awsClient) deleteAccountRolePolicies(role *string) error {
-	err := c.detachAttachedRolePolicies(role)
-	if err != nil {
-		return err
+func (c *awsClient) deletePolicies(policies []string) (*iam.DeletePolicyOutput, error) {
+	var output *iam.DeletePolicyOutput
+	var err error
+	for i := range policies {
+		output, err = c.iamClient.DeletePolicy(&iam.DeletePolicyInput{PolicyArn: &policies[i]})
+		if err != nil {
+			return output, err
+		}
 	}
-	err = c.DeleteInlineRolePolicies(aws.StringValue(role))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return output, nil
 }
+
 func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	policies := []PolicyDetail{}
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{RoleName: role})
