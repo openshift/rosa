@@ -53,7 +53,8 @@ var JumpAccounts = map[string]string{
 	"production":  "710019948333",
 	"staging":     "644306948063",
 	"integration": "896164604406",
-	"dev":         "765374464689",
+	"local":       "765374464689",
+	"crc":         "765374464689",
 }
 
 var ARNPath = regexp.MustCompile(`^\/[a-zA-Z0-9\/]*\/$`)

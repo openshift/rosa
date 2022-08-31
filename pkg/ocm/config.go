@@ -31,6 +31,8 @@ var URLAliases = map[string]string{
 	"production":  "https://api.openshift.com",
 	"staging":     "https://api.stage.openshift.com",
 	"integration": "https://api.integration.openshift.com",
+	"local":       "http://localhost:8000",
+	"crc":         "https://clusters-service.apps-crc.testing",
 }
 
 func GetEnv() (string, error) {
