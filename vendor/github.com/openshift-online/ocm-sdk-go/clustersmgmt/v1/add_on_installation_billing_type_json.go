@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalServerConfig writes a value of the 'server_config' type to the given writer.
-func MarshalServerConfig(object *ServerConfig, writer io.Writer) error {
+// MarshalAddOnInstallationBilling writes a value of the 'add_on_installation_billing' type to the given writer.
+func MarshalAddOnInstallationBilling(object *AddOnInstallationBilling, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeServerConfig(object, stream)
+	writeAddOnInstallationBilling(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,15 +37,15 @@ func MarshalServerConfig(object *ServerConfig, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeServerConfig writes a value of the 'server_config' type to the given stream.
-func writeServerConfig(object *ServerConfig, stream *jsoniter.Stream) {
+// writeAddOnInstallationBilling writes a value of the 'add_on_installation_billing' type to the given stream.
+func writeAddOnInstallationBilling(object *AddOnInstallationBilling, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	if object.bitmap_&1 != 0 {
-		stream.WriteString(ServerConfigLinkKind)
+		stream.WriteString(AddOnInstallationBillingLinkKind)
 	} else {
-		stream.WriteString(ServerConfigKind)
+		stream.WriteString(AddOnInstallationBillingKind)
 	}
 	count++
 	if object.bitmap_&2 != 0 {
@@ -70,8 +70,8 @@ func writeServerConfig(object *ServerConfig, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("kubeconfig")
-		stream.WriteString(object.kubeconfig)
+		stream.WriteObjectField("billing_marketplace_account")
+		stream.WriteString(object.billingMarketplaceAccount)
 		count++
 	}
 	present_ = object.bitmap_&16 != 0
@@ -79,27 +79,27 @@ func writeServerConfig(object *ServerConfig, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("server")
-		stream.WriteString(object.server)
+		stream.WriteObjectField("billing_model")
+		stream.WriteString(string(object.billingModel))
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalServerConfig reads a value of the 'server_config' type from the given
+// UnmarshalAddOnInstallationBilling reads a value of the 'add_on_installation_billing' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalServerConfig(source interface{}) (object *ServerConfig, err error) {
+func UnmarshalAddOnInstallationBilling(source interface{}) (object *AddOnInstallationBilling, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readServerConfig(iterator)
+	object = readAddOnInstallationBilling(iterator)
 	err = iterator.Error
 	return
 }
 
-// readServerConfig reads a value of the 'server_config' type from the given iterator.
-func readServerConfig(iterator *jsoniter.Iterator) *ServerConfig {
-	object := &ServerConfig{}
+// readAddOnInstallationBilling reads a value of the 'add_on_installation_billing' type from the given iterator.
+func readAddOnInstallationBilling(iterator *jsoniter.Iterator) *AddOnInstallationBilling {
+	object := &AddOnInstallationBilling{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
@@ -108,7 +108,7 @@ func readServerConfig(iterator *jsoniter.Iterator) *ServerConfig {
 		switch field {
 		case "kind":
 			value := iterator.ReadString()
-			if value == ServerConfigLinkKind {
+			if value == AddOnInstallationBillingLinkKind {
 				object.bitmap_ |= 1
 			}
 		case "id":
@@ -117,13 +117,14 @@ func readServerConfig(iterator *jsoniter.Iterator) *ServerConfig {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
-		case "kubeconfig":
+		case "billing_marketplace_account":
 			value := iterator.ReadString()
-			object.kubeconfig = value
+			object.billingMarketplaceAccount = value
 			object.bitmap_ |= 8
-		case "server":
-			value := iterator.ReadString()
-			object.server = value
+		case "billing_model":
+			text := iterator.ReadString()
+			value := BillingModel(text)
+			object.billingModel = value
 			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()

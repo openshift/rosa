@@ -35,3 +35,11 @@ func readProvisionShardGetResponse(response *ProvisionShardGetResponse, reader i
 	response.body, err = UnmarshalProvisionShard(reader)
 	return err
 }
+func writeProvisionShardUpdateRequest(request *ProvisionShardUpdateRequest, writer io.Writer) error {
+	return MarshalProvisionShard(request.body, writer)
+}
+func readProvisionShardUpdateResponse(response *ProvisionShardUpdateResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalProvisionShard(reader)
+	return err
+}

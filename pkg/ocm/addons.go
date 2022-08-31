@@ -17,9 +17,26 @@ limitations under the License.
 package ocm
 
 import (
+	"fmt"
+
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
+
+type AddOnBilling struct {
+	BillingModel     string
+	BillingAccountID string
+}
+
+var BillingOptions = []string{
+	string(amsv1.BillingModelMarketplace),
+	string(amsv1.BillingModelStandard),
+}
+
+var BillingModels = map[string]cmv1.BillingModel{
+	string(amsv1.BillingModelMarketplace): cmv1.BillingModelMarketplace,
+	string(amsv1.BillingModelStandard):    cmv1.BillingModelStandard,
+}
 
 type AddOnParam struct {
 	Key string
@@ -38,7 +55,7 @@ type ClusterAddOn struct {
 	State string
 }
 
-func (c *Client) InstallAddOn(clusterID, addOnID string, params []AddOnParam) error {
+func (c *Client) InstallAddOn(clusterID, addOnID string, params []AddOnParam, billing AddOnBilling) error {
 	addOnInstallationBuilder := cmv1.NewAddOnInstallation().
 		Addon(cmv1.NewAddOn().ID(addOnID))
 
@@ -50,6 +67,15 @@ func (c *Client) InstallAddOn(clusterID, addOnID string, params []AddOnParam) er
 		addOnInstallationBuilder = addOnInstallationBuilder.
 			Parameters(cmv1.NewAddOnInstallationParameterList().Items(addOnParamList...))
 	}
+
+	billingModel, exists := BillingModels[billing.BillingModel]
+	if !exists {
+		return fmt.Errorf("'%s' is not an valid billing model", billing.BillingModel)
+	}
+	billingBuilder := cmv1.NewAddOnInstallationBilling().
+		BillingModel(billingModel).
+		BillingMarketplaceAccount(billing.BillingAccountID)
+	addOnInstallationBuilder.Billing(billingBuilder)
 
 	addOnInstallation, err := addOnInstallationBuilder.Build()
 	if err != nil {

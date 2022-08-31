@@ -26,7 +26,10 @@ type GCPFlavourBuilder struct {
 	bitmap_             uint32
 	computeInstanceType string
 	infraInstanceType   string
+	infraVolume         *GCPVolumeBuilder
 	masterInstanceType  string
+	masterVolume        *GCPVolumeBuilder
+	workerVolume        *GCPVolumeBuilder
 }
 
 // NewGCPFlavour creates a new builder of 'GCP_flavour' objects.
@@ -57,12 +60,51 @@ func (b *GCPFlavourBuilder) InfraInstanceType(value string) *GCPFlavourBuilder {
 	return b
 }
 
+// InfraVolume sets the value of the 'infra_volume' attribute to the given value.
+//
+// Holds settings for an GCP storage volume.
+func (b *GCPFlavourBuilder) InfraVolume(value *GCPVolumeBuilder) *GCPFlavourBuilder {
+	b.infraVolume = value
+	if value != nil {
+		b.bitmap_ |= 4
+	} else {
+		b.bitmap_ &^= 4
+	}
+	return b
+}
+
 // MasterInstanceType sets the value of the 'master_instance_type' attribute to the given value.
 //
 //
 func (b *GCPFlavourBuilder) MasterInstanceType(value string) *GCPFlavourBuilder {
 	b.masterInstanceType = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
+	return b
+}
+
+// MasterVolume sets the value of the 'master_volume' attribute to the given value.
+//
+// Holds settings for an GCP storage volume.
+func (b *GCPFlavourBuilder) MasterVolume(value *GCPVolumeBuilder) *GCPFlavourBuilder {
+	b.masterVolume = value
+	if value != nil {
+		b.bitmap_ |= 16
+	} else {
+		b.bitmap_ &^= 16
+	}
+	return b
+}
+
+// WorkerVolume sets the value of the 'worker_volume' attribute to the given value.
+//
+// Holds settings for an GCP storage volume.
+func (b *GCPFlavourBuilder) WorkerVolume(value *GCPVolumeBuilder) *GCPFlavourBuilder {
+	b.workerVolume = value
+	if value != nil {
+		b.bitmap_ |= 32
+	} else {
+		b.bitmap_ &^= 32
+	}
 	return b
 }
 
@@ -74,7 +116,22 @@ func (b *GCPFlavourBuilder) Copy(object *GCPFlavour) *GCPFlavourBuilder {
 	b.bitmap_ = object.bitmap_
 	b.computeInstanceType = object.computeInstanceType
 	b.infraInstanceType = object.infraInstanceType
+	if object.infraVolume != nil {
+		b.infraVolume = NewGCPVolume().Copy(object.infraVolume)
+	} else {
+		b.infraVolume = nil
+	}
 	b.masterInstanceType = object.masterInstanceType
+	if object.masterVolume != nil {
+		b.masterVolume = NewGCPVolume().Copy(object.masterVolume)
+	} else {
+		b.masterVolume = nil
+	}
+	if object.workerVolume != nil {
+		b.workerVolume = NewGCPVolume().Copy(object.workerVolume)
+	} else {
+		b.workerVolume = nil
+	}
 	return b
 }
 
@@ -84,6 +141,24 @@ func (b *GCPFlavourBuilder) Build() (object *GCPFlavour, err error) {
 	object.bitmap_ = b.bitmap_
 	object.computeInstanceType = b.computeInstanceType
 	object.infraInstanceType = b.infraInstanceType
+	if b.infraVolume != nil {
+		object.infraVolume, err = b.infraVolume.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.masterInstanceType = b.masterInstanceType
+	if b.masterVolume != nil {
+		object.masterVolume, err = b.masterVolume.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.workerVolume != nil {
+		object.workerVolume, err = b.workerVolume.Build()
+		if err != nil {
+			return
+		}
+	}
 	return
 }

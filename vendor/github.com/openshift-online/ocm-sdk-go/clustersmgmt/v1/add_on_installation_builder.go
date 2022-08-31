@@ -32,6 +32,7 @@ type AddOnInstallationBuilder struct {
 	href              string
 	addon             *AddOnBuilder
 	addonVersion      *AddOnVersionBuilder
+	billing           *AddOnInstallationBillingBuilder
 	cluster           *ClusterBuilder
 	creationTimestamp time.Time
 	operatorVersion   string
@@ -97,6 +98,19 @@ func (b *AddOnInstallationBuilder) AddonVersion(value *AddOnVersionBuilder) *Add
 	return b
 }
 
+// Billing sets the value of the 'billing' attribute to the given value.
+//
+// Representation of an add-on installation billing.
+func (b *AddOnInstallationBuilder) Billing(value *AddOnInstallationBillingBuilder) *AddOnInstallationBuilder {
+	b.billing = value
+	if value != nil {
+		b.bitmap_ |= 32
+	} else {
+		b.bitmap_ &^= 32
+	}
+	return b
+}
+
 // Cluster sets the value of the 'cluster' attribute to the given value.
 //
 // Definition of an _OpenShift_ cluster.
@@ -137,9 +151,9 @@ func (b *AddOnInstallationBuilder) AddonVersion(value *AddOnVersionBuilder) *Add
 func (b *AddOnInstallationBuilder) Cluster(value *ClusterBuilder) *AddOnInstallationBuilder {
 	b.cluster = value
 	if value != nil {
-		b.bitmap_ |= 32
+		b.bitmap_ |= 64
 	} else {
-		b.bitmap_ &^= 32
+		b.bitmap_ &^= 64
 	}
 	return b
 }
@@ -149,7 +163,7 @@ func (b *AddOnInstallationBuilder) Cluster(value *ClusterBuilder) *AddOnInstalla
 //
 func (b *AddOnInstallationBuilder) CreationTimestamp(value time.Time) *AddOnInstallationBuilder {
 	b.creationTimestamp = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -158,7 +172,7 @@ func (b *AddOnInstallationBuilder) CreationTimestamp(value time.Time) *AddOnInst
 //
 func (b *AddOnInstallationBuilder) OperatorVersion(value string) *AddOnInstallationBuilder {
 	b.operatorVersion = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -167,7 +181,7 @@ func (b *AddOnInstallationBuilder) OperatorVersion(value string) *AddOnInstallat
 //
 func (b *AddOnInstallationBuilder) Parameters(value *AddOnInstallationParameterListBuilder) *AddOnInstallationBuilder {
 	b.parameters = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -176,7 +190,7 @@ func (b *AddOnInstallationBuilder) Parameters(value *AddOnInstallationParameterL
 // Representation of an add-on installation State field.
 func (b *AddOnInstallationBuilder) State(value AddOnInstallationState) *AddOnInstallationBuilder {
 	b.state = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -185,7 +199,7 @@ func (b *AddOnInstallationBuilder) State(value AddOnInstallationState) *AddOnIns
 //
 func (b *AddOnInstallationBuilder) StateDescription(value string) *AddOnInstallationBuilder {
 	b.stateDescription = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -194,7 +208,7 @@ func (b *AddOnInstallationBuilder) StateDescription(value string) *AddOnInstalla
 //
 func (b *AddOnInstallationBuilder) UpdatedTimestamp(value time.Time) *AddOnInstallationBuilder {
 	b.updatedTimestamp = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -215,6 +229,11 @@ func (b *AddOnInstallationBuilder) Copy(object *AddOnInstallation) *AddOnInstall
 		b.addonVersion = NewAddOnVersion().Copy(object.addonVersion)
 	} else {
 		b.addonVersion = nil
+	}
+	if object.billing != nil {
+		b.billing = NewAddOnInstallationBilling().Copy(object.billing)
+	} else {
+		b.billing = nil
 	}
 	if object.cluster != nil {
 		b.cluster = NewCluster().Copy(object.cluster)
@@ -248,6 +267,12 @@ func (b *AddOnInstallationBuilder) Build() (object *AddOnInstallation, err error
 	}
 	if b.addonVersion != nil {
 		object.addonVersion, err = b.addonVersion.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.billing != nil {
+		object.billing, err = b.billing.Build()
 		if err != nil {
 			return
 		}

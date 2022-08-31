@@ -26,6 +26,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
@@ -38,6 +39,16 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
+
+const (
+	billingModelFlag          = "billing-model"
+	billingModelAccountIDFlag = "billing-model-account-id"
+)
+
+var args struct {
+	billingModel          string
+	billingModelAccountID string
+}
 
 var Cmd = &cobra.Command{
 	Use:     "addon ID",
@@ -63,6 +74,21 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+
+	flags.StringVar(
+		&args.billingModel,
+		billingModelFlag,
+		string(amv1.BillingModelStandard),
+		"Set the billing model to be used for the addon installation resource",
+	)
+
+	flags.StringVar(
+		&args.billingModelAccountID,
+		billingModelAccountIDFlag,
+		"",
+		"Account ID of associated billing model for the addon installation resource",
+	)
+
 	confirm.AddFlag(flags)
 	ocm.AddClusterFlag(Cmd)
 }
@@ -242,8 +268,46 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 	}
 
+	billingModel := args.billingModel
+	billingModelAccountID := args.billingModelAccountID
+
+	if !cmd.Flags().Changed(billingModelFlag) {
+		if !interactive.Enabled() {
+			interactive.Enable()
+			r.Reporter.Infof("Enabling interactive mode")
+		}
+		billingModel, err = interactive.GetOption(interactive.Input{
+			Question: "Billing Model",
+			Help:     cmd.Flags().Lookup(billingModelFlag).Usage,
+			Default:  string(amv1.BillingModelStandard),
+			Options:  ocm.BillingOptions,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid billing model: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if billingModel != string(amv1.BillingModelStandard) && !cmd.Flags().Changed(billingModelAccountIDFlag) {
+		billingModelAccountID, err = interactive.GetString(interactive.Input{
+			Question: "Billing Account ID",
+			Help:     cmd.Flags().Lookup(billingModelAccountIDFlag).Usage,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid account id: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	billing := ocm.AddOnBilling{
+		BillingModel:     billingModel,
+		BillingAccountID: billingModelAccountID,
+	}
+
 	r.Reporter.Debugf("Installing add-on '%s' on cluster '%s'", addOnID, clusterKey)
-	err = r.OCMClient.InstallAddOn(cluster.ID(), addOnID, params)
+	err = r.OCMClient.InstallAddOn(cluster.ID(), addOnID, params, billing)
 	if err != nil {
 		r.Reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
 		os.Exit(1)
@@ -252,7 +316,7 @@ func run(cmd *cobra.Command, argv []string) {
 		addOnID, clusterKey)
 	if interactive.Enabled() {
 		r.Reporter.Infof("To install this addOn again in the future, you can run:\n   %s",
-			buildCommand(cluster.Name(), addOnID, params))
+			buildCommand(cluster.Name(), addOnID, params, billing))
 	}
 }
 
@@ -303,13 +367,18 @@ func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialReques
 	return nil
 }
 
-func buildCommand(clusterName string, addonName string, params []ocm.AddOnParam) string {
+func buildCommand(clusterName string, addonName string, params []ocm.AddOnParam, billing ocm.AddOnBilling) string {
 	command := fmt.Sprintf("rosa install addon --cluster %s %s -y", clusterName, addonName)
 
 	for _, param := range params {
 		if param.Val != "" {
 			command += fmt.Sprintf(" --%s %s", param.Key, param.Val)
 		}
+	}
+
+	command += fmt.Sprintf(" --%s %s", billingModelFlag, billing.BillingModel)
+	if billing.BillingAccountID != "" {
+		command += fmt.Sprintf(" --%s %s", billingModelAccountIDFlag, billing.BillingAccountID)
 	}
 
 	return command

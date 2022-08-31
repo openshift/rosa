@@ -270,6 +270,16 @@ var pathTreeData = `{
         }
       }
     },
+    "osd_fleet_mgmt": {
+      "v1": {
+        "management_clusters": {
+          "-": null
+        },
+        "service_clusters": {
+          "-": null
+        }
+      }
+    },
     "service_logs": {
       "v1": {
         "cluster_logs": {
