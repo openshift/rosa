@@ -334,6 +334,7 @@ func createRoles(r *rosa.Runtime,
 				tags.ClusterID:       cluster.ID(),
 				"operator_namespace": operator.Namespace(),
 				"operator_name":      operator.Name(),
+				tags.RedHatManaged:   "true",
 			}, rolePath)
 		if err != nil {
 			return err
@@ -382,11 +383,12 @@ func buildCommands(r *rosa.Runtime,
 		_, err = r.AWSClient.IsPolicyExists(policyARN)
 		if err != nil {
 			iamTags := fmt.Sprintf(
-				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 				tags.OpenShiftVersion, accountRoleVersion,
 				tags.RolePrefix, prefix,
 				"operator_namespace", operator.Namespace(),
 				"operator_name", operator.Name(),
+				tags.RedHatManaged, "true",
 			)
 			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 				"\t--policy-name %s \\\n"+
