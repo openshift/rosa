@@ -80,6 +80,7 @@ func init() {
 		"",
 		"The arn path for the operator policies",
 	)
+	flags.MarkHidden("policy-path")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
@@ -147,7 +148,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	policyPath := args.policyPath
-	if interactive.Enabled() {
+	if cmd.Flags().Changed("policy-path") && interactive.Enabled() {
 		policyPath, err = interactive.GetString(interactive.Input{
 			Question: "Policy Path",
 			Help:     cmd.Flags().Lookup("policy-path").Usage,

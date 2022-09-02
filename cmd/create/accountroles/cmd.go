@@ -78,6 +78,7 @@ func init() {
 		"",
 		"The arn path for the account roles",
 	)
+	flags.MarkHidden("role-path")
 
 	flags.StringVar(
 		&args.policyPath,
@@ -85,6 +86,7 @@ func init() {
 		"",
 		"The arn path for the account policies",
 	)
+	flags.MarkHidden("policy-path")
 
 	aws.AddModeFlag(Cmd)
 
@@ -214,7 +216,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	rolePath := args.rolePath
-	if interactive.Enabled() {
+	if cmd.Flags().Changed("role-path") && interactive.Enabled() {
 		rolePath, err = interactive.GetString(interactive.Input{
 			Question: "Role Path",
 			Help:     cmd.Flags().Lookup("role-path").Usage,
@@ -230,7 +232,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	policyPath := args.policyPath
-	if interactive.Enabled() {
+	if cmd.Flags().Changed("policy-path") && interactive.Enabled() {
 		policyPath, err = interactive.GetString(interactive.Input{
 			Question: "Policy Path",
 			Help:     cmd.Flags().Lookup("policy-path").Usage,

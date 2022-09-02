@@ -235,6 +235,7 @@ func init() {
 		"",
 		"Custom arn path for operator roles.",
 	)
+	flags.MarkHidden("operator-roles-path")
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -979,7 +980,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorRolePath := args.operatorRolesPath
-	if interactive.Enabled() {
+	if cmd.Flags().Changed("operator-roles-path") && interactive.Enabled() {
 		operatorRolePath, err = interactive.GetString(interactive.Input{
 			Question: "Operator Role Path",
 			Help:     cmd.Flags().Lookup("operator-roles-path").Usage,
