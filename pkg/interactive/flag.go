@@ -33,12 +33,12 @@ func AddFlag(flags *pflag.FlagSet) {
 	)
 }
 
-// Enabled retursn a boolean flag that indicates if the interactive mode is enabled.
+// Enabled returns a boolean flag that indicates if the interactive mode is enabled.
 func Enabled() bool {
 	return enabled
 }
 
-//Enables the interactive mode
+// Enable enables the interactive mode
 func Enable() {
 	enabled = true
 }
