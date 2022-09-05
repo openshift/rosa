@@ -78,8 +78,9 @@ func init() {
 		&args.policyPath,
 		"policy-path",
 		"",
-		"The arn path for the account roles and policies",
+		"The arn path for the operator policies",
 	)
+	flags.MarkHidden("policy-path")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
@@ -147,7 +148,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	policyPath := args.policyPath
-	if interactive.Enabled() {
+	if cmd.Flags().Changed("policy-path") && interactive.Enabled() {
 		policyPath, err = interactive.GetString(interactive.Input{
 			Question: "Policy Path",
 			Help:     cmd.Flags().Lookup("policy-path").Usage,
@@ -346,8 +347,7 @@ func createRoles(r *rosa.Runtime,
 		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
 		err = r.AWSClient.AttachRolePolicy(roleName, policyARN)
 		if err != nil {
-			return fmt.Errorf("Failed to attach role policy. Check your prefix or run "+
-				"'rosa create account-roles' to create the necessary policies: %s", err)
+			return err
 		}
 	}
 

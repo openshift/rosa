@@ -214,7 +214,7 @@ func run(cmd *cobra.Command, _ []string) {
 			accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
 			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
 
-			r.Reporter.Infof("Account and/or Operator Role policies are not valid with upgrade version %s. "+
+			r.Reporter.Infof("Account Role policies are not valid with upgrade version %s. "+
 				"Run the following command(s) to upgrade the roles and run the upgrade command again:\n\n"+
 				"\t%s\n"+
 				"\t%s\n", version, accountRoleStr, upgradeClusterStr)
@@ -228,14 +228,14 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		err = operatorroles.Cmd.RunE(operatorroles.Cmd, []string{cluster.ID(), mode, version})
 		if err != nil {
-			r.Reporter.Errorf("Error upgrading the policies for cluster '%s' : %v", clusterKey, err)
-			accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
+			r.Reporter.Errorf("Error upgrading the operator policies for cluster '%s' : %v", clusterKey, err)
+			operatorRoleStr := fmt.Sprintf("rosa upgrade operator-roles -c %s", clusterKey)
 			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
 
-			r.Reporter.Infof("Account and/or Operator Role policies are not valid with upgrade version %s. "+
+			r.Reporter.Infof("Operator Role policies are not valid with upgrade version %s. "+
 				"Run the following command(s) to upgrade the roles and run the upgrade command again:\n\n"+
 				"\t%s\n"+
-				"\t%s\n", version, accountRoleStr, upgradeClusterStr)
+				"\t%s\n", version, operatorRoleStr, upgradeClusterStr)
 			os.Exit(0)
 		}
 		r.Reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
