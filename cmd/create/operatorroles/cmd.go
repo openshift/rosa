@@ -228,7 +228,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	credRequests, err := r.OCMClient.GetCredRequests()
+	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
 	if err != nil {
 		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 		os.Exit(1)

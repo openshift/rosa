@@ -167,12 +167,6 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	r.Reporter.Debugf("Using AWS region: %q", args.AwsRegion)
 
-	credRequests, err := r.OCMClient.GetCredRequests()
-	if err != nil {
-		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-		os.Exit(1)
-	}
-
 	args.AwsAccountID = r.Creator.AccountID
 	args.Properties = map[string]string{
 		properties.CreatorARN: r.Creator.ARN,
@@ -402,6 +396,14 @@ func run(cmd *cobra.Command, argv []string) {
 	// operator role logic.
 	operatorRolesPrefix := getRolePrefix(args.ClusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
+
+	cluster := r.FetchCluster()
+
+	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
+	if err != nil {
+		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
+		os.Exit(1)
+	}
 
 	for _, operator := range credRequests {
 		//If the cluster version is less than the supported operator version
