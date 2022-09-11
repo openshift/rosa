@@ -216,6 +216,12 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	env, err := ocm.GetEnv()
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
+		os.Exit(1)
+	}
+
 	defaultPolicyVersion, err := r.OCMClient.GetDefaultVersion()
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest default version: %s", err)
@@ -253,7 +259,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Response:  ocm.Success,
 		})
 	case aws.ModeManual:
-		commands, err := buildCommands(r, prefix, permissionsBoundary, accountRoleVersion, policyPath,
+		commands, err := buildCommands(r, env, prefix, permissionsBoundary, defaultPolicyVersion, policyPath,
 			cluster, policies, credRequests)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
@@ -354,10 +360,18 @@ func createRoles(r *rosa.Runtime,
 	return nil
 }
 
-func buildCommands(r *rosa.Runtime,
-	prefix, permissionsBoundary, accountRoleVersion, policyPath string,
+func buildCommands(r *rosa.Runtime, env string,
+	prefix, permissionsBoundary, defaultPolicyVersion, policyPath string,
 	cluster *cmv1.Cluster,
 	policies map[string]string, credRequests map[string]*cmv1.STSOperator) (string, error) {
+
+	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
+		true, policies, credRequests)
+	if err != nil {
+		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
+		os.Exit(1)
+	}
+
 	commands := []string{}
 
 	for credrequest, operator := range credRequests {
@@ -383,12 +397,11 @@ func buildCommands(r *rosa.Runtime,
 		_, err = r.AWSClient.IsPolicyExists(policyARN)
 		if err != nil {
 			iamTags := fmt.Sprintf(
-				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-				tags.OpenShiftVersion, accountRoleVersion,
+				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+				tags.OpenShiftVersion, defaultPolicyVersion,
 				tags.RolePrefix, prefix,
 				"operator_namespace", operator.Namespace(),
 				"operator_name", operator.Name(),
-				tags.RedHatManaged, "true",
 			)
 			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 				"\t--policy-name %s \\\n"+
