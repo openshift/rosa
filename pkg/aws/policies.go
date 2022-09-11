@@ -274,21 +274,11 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	if !isCompatible {
 		// Since there is a limit to how many versions a policy can have, we delete all non-default
 		// policy versions from the list, thus making space for the new one.
-		policyVersionsOutput, err := c.iamClient.ListPolicyVersions(&iam.ListPolicyVersionsInput{
-			PolicyArn: aws.String(policyArn),
-		})
+		err = c.deletePolicyVersions(policyArn)
 		if err != nil {
 			return policyArn, err
 		}
-		for _, version := range policyVersionsOutput.Versions {
-			if aws.BoolValue(version.IsDefaultVersion) {
-				continue
-			}
-			c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
-				PolicyArn: aws.String(policyArn),
-				VersionId: version.VersionId,
-			})
-		}
+
 		_, err = c.iamClient.CreatePolicyVersion(&iam.CreatePolicyVersionInput{
 			PolicyArn:      aws.String(policyArn),
 			PolicyDocument: aws.String(document),
@@ -889,16 +879,63 @@ func (c *awsClient) DeleteInlineRolePolicies(role string) error {
 	return nil
 }
 
+func (c *awsClient) isPolicyAttachedToEntity(policyArn string) (bool, error) {
+	policyOutput, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{PolicyArn: aws.String(policyArn)})
+	if err != nil {
+		return false, err
+	}
+
+	if *policyOutput.Policy.AttachmentCount > 0 {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func (c *awsClient) deletePolicies(policies []string) (*iam.DeletePolicyOutput, error) {
 	var output *iam.DeletePolicyOutput
-	var err error
+
 	for i := range policies {
+		isAttached, err := c.isPolicyAttachedToEntity(policies[i])
+		if err != nil {
+			return output, err
+		}
+		if isAttached {
+			continue
+		}
+
+		err = c.deletePolicyVersions(policies[i])
+		if err != nil {
+			return output, err
+		}
+
 		output, err = c.iamClient.DeletePolicy(&iam.DeletePolicyInput{PolicyArn: &policies[i]})
 		if err != nil {
 			return output, err
 		}
 	}
 	return output, nil
+}
+
+func (c *awsClient) deletePolicyVersions(policyArn string) error {
+	policyVersionsOutput, err := c.iamClient.ListPolicyVersions(&iam.ListPolicyVersionsInput{
+		PolicyArn: aws.String(policyArn),
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, version := range policyVersionsOutput.Versions {
+		if aws.BoolValue(version.IsDefaultVersion) {
+			continue
+		}
+		c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
+			PolicyArn: aws.String(policyArn),
+			VersionId: version.VersionId,
+		})
+	}
+
+	return nil
 }
 
 func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
