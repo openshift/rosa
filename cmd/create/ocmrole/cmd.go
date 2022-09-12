@@ -83,6 +83,7 @@ func init() {
 		"",
 		"The arn path for the ocm role and policies",
 	)
+	flags.MarkHidden("path")
 
 	aws.AddModeFlag(Cmd)
 
@@ -180,7 +181,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	path := args.path
-	if interactive.Enabled() {
+	if cmd.Flags().Changed("path") && interactive.Enabled() {
 		path, err = interactive.GetString(interactive.Input{
 			Question: "Role Path",
 			Help:     cmd.Flags().Lookup("path").Usage,

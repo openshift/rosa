@@ -388,8 +388,8 @@ func GetPolicyARN(accountID string, name string, path string) string {
 	return fmt.Sprintf("%s/%s", str, name)
 }
 
-func GetRolePath(roleARN string) (string, error) {
-	parse, err := arn.Parse(roleARN)
+func GetPathFromARN(arnStr string) (string, error) {
+	parse, err := arn.Parse(arnStr)
 	if err != nil {
 		return "", err
 	}

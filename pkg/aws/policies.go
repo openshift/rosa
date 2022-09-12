@@ -1289,7 +1289,7 @@ func (c *awsClient) GetRoleARNPath(prefix string) (string, error) {
 				return "", errors.NotFound.Errorf("Roles with the prefix'%s' not found", prefix)
 			}
 		}
-		return GetRolePath(aws.StringValue(role.Role.Arn))
+		return GetPathFromARN(aws.StringValue(role.Role.Arn))
 	}
 	return "", nil
 }

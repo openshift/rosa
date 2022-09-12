@@ -168,10 +168,10 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 }
 
 func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client,
-	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, path string) []string {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, policyPath string) []string {
 	commands := []string{}
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
+		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), policyPath)
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())
@@ -187,6 +187,9 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 				"\t--policy-document file://openshift_%s_policy.json \\\n"+
 				"\t--tags %s",
 				name, credrequest, iamTags)
+			if policyPath != "" {
+				createPolicy = fmt.Sprintf(createPolicy+"\t--path %s", policyPath)
+			}
 			commands = append(commands, createPolicy)
 		} else {
 			policTags := fmt.Sprintf(

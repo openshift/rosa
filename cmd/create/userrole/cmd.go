@@ -76,6 +76,7 @@ func init() {
 		"",
 		"The arn path for the user role and policies.",
 	)
+	flags.MarkHidden("path")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
@@ -156,7 +157,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	path := args.path
-	if interactive.Enabled() {
+	if cmd.Flags().Changed("path") && interactive.Enabled() {
 		path, err = interactive.GetString(interactive.Input{
 			Question: "Role Path",
 			Help:     cmd.Flags().Lookup("path").Usage,
@@ -300,7 +301,7 @@ func createRoles(r *rosa.Runtime,
 			tags.RoleType:      aws.OCMUserRole,
 			tags.Environment:   env,
 			tags.RedHatManaged: "true",
-		}, "")
+		}, path)
 	if err != nil {
 		return "", err
 	}
