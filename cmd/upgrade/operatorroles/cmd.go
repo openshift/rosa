@@ -387,11 +387,12 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, 
 			return "", err
 		}
 		iamTags := fmt.Sprintf(
-			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.ClusterID, cluster.ID(),
 			tags.RolePrefix, prefix,
 			"operator_namespace", operator.Namespace(),
 			"operator_name", operator.Name(),
+			tags.RedHatManaged, "true",
 		)
 		permBoundaryFlag := ""
 
@@ -438,6 +439,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 				tags.ClusterID:       cluster.ID(),
 				"operator_namespace": operator.Namespace(),
 				"operator_name":      operator.Name(),
+				tags.RedHatManaged:   "true",
 			}, rolePath)
 		if err != nil {
 			return err
