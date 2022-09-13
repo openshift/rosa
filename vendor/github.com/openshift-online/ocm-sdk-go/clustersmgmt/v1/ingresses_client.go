@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -152,7 +151,7 @@ func (r *IngressesAddRequest) SendContext(ctx context.Context) (result *Ingresse
 		Method: "POST",
 		URL:    uri,
 		Header: header,
-		Body:   ioutil.NopCloser(buffer),
+		Body:   io.NopCloser(buffer),
 	}
 	if ctx != nil {
 		request = request.WithContext(ctx)
@@ -528,7 +527,7 @@ func (r *IngressesUpdateRequest) SendContext(ctx context.Context) (result *Ingre
 		Method: "PATCH",
 		URL:    uri,
 		Header: header,
-		Body:   ioutil.NopCloser(buffer),
+		Body:   io.NopCloser(buffer),
 	}
 	if ctx != nil {
 		request = request.WithContext(ctx)

@@ -45,6 +45,7 @@ type RoleBinding struct {
 	account        *Account
 	accountID      string
 	createdAt      time.Time
+	managedBy      string
 	organization   *Organization
 	organizationID string
 	role           *Role
@@ -205,12 +206,35 @@ func (o *RoleBinding) GetCreatedAt() (value time.Time, ok bool) {
 	return
 }
 
+// ManagedBy returns the value of the 'managed_by' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *RoleBinding) ManagedBy() string {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.managedBy
+	}
+	return ""
+}
+
+// GetManagedBy returns the value of the 'managed_by' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *RoleBinding) GetManagedBy() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.managedBy
+	}
+	return
+}
+
 // Organization returns the value of the 'organization' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *RoleBinding) Organization() *Organization {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.organization
 	}
 	return nil
@@ -221,7 +245,7 @@ func (o *RoleBinding) Organization() *Organization {
 //
 //
 func (o *RoleBinding) GetOrganization() (value *Organization, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.organization
 	}
@@ -233,7 +257,7 @@ func (o *RoleBinding) GetOrganization() (value *Organization, ok bool) {
 //
 //
 func (o *RoleBinding) OrganizationID() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.organizationID
 	}
 	return ""
@@ -244,7 +268,7 @@ func (o *RoleBinding) OrganizationID() string {
 //
 //
 func (o *RoleBinding) GetOrganizationID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.organizationID
 	}
@@ -256,7 +280,7 @@ func (o *RoleBinding) GetOrganizationID() (value string, ok bool) {
 //
 //
 func (o *RoleBinding) Role() *Role {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.role
 	}
 	return nil
@@ -267,7 +291,7 @@ func (o *RoleBinding) Role() *Role {
 //
 //
 func (o *RoleBinding) GetRole() (value *Role, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.role
 	}
@@ -279,7 +303,7 @@ func (o *RoleBinding) GetRole() (value *Role, ok bool) {
 //
 //
 func (o *RoleBinding) RoleID() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.roleID
 	}
 	return ""
@@ -290,7 +314,7 @@ func (o *RoleBinding) RoleID() string {
 //
 //
 func (o *RoleBinding) GetRoleID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.roleID
 	}
@@ -302,7 +326,7 @@ func (o *RoleBinding) GetRoleID() (value string, ok bool) {
 //
 //
 func (o *RoleBinding) Subscription() *Subscription {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.subscription
 	}
 	return nil
@@ -313,7 +337,7 @@ func (o *RoleBinding) Subscription() *Subscription {
 //
 //
 func (o *RoleBinding) GetSubscription() (value *Subscription, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.subscription
 	}
@@ -325,7 +349,7 @@ func (o *RoleBinding) GetSubscription() (value *Subscription, ok bool) {
 //
 //
 func (o *RoleBinding) SubscriptionID() string {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&8192 != 0 {
 		return o.subscriptionID
 	}
 	return ""
@@ -336,7 +360,7 @@ func (o *RoleBinding) SubscriptionID() string {
 //
 //
 func (o *RoleBinding) GetSubscriptionID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&8192 != 0
 	if ok {
 		value = o.subscriptionID
 	}
@@ -348,7 +372,7 @@ func (o *RoleBinding) GetSubscriptionID() (value string, ok bool) {
 //
 //
 func (o *RoleBinding) Type() string {
-	if o != nil && o.bitmap_&8192 != 0 {
+	if o != nil && o.bitmap_&16384 != 0 {
 		return o.type_
 	}
 	return ""
@@ -359,7 +383,7 @@ func (o *RoleBinding) Type() string {
 //
 //
 func (o *RoleBinding) GetType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8192 != 0
+	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {
 		value = o.type_
 	}
@@ -371,7 +395,7 @@ func (o *RoleBinding) GetType() (value string, ok bool) {
 //
 //
 func (o *RoleBinding) UpdatedAt() time.Time {
-	if o != nil && o.bitmap_&16384 != 0 {
+	if o != nil && o.bitmap_&32768 != 0 {
 		return o.updatedAt
 	}
 	return time.Time{}
@@ -382,7 +406,7 @@ func (o *RoleBinding) UpdatedAt() time.Time {
 //
 //
 func (o *RoleBinding) GetUpdatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&16384 != 0
+	ok = o != nil && o.bitmap_&32768 != 0
 	if ok {
 		value = o.updatedAt
 	}

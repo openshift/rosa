@@ -22,7 +22,7 @@ package sdk
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"mime"
 	"net/http"
 	"net/url"
@@ -69,7 +69,7 @@ func (d *dumpRoundTripper) RoundTrip(request *http.Request) (response *http.Resp
 	// reader that reads it from memory:
 	if request.Body != nil {
 		var body []byte
-		body, err = ioutil.ReadAll(request.Body)
+		body, err = io.ReadAll(request.Body)
 		if err != nil {
 			return
 		}
@@ -78,7 +78,7 @@ func (d *dumpRoundTripper) RoundTrip(request *http.Request) (response *http.Resp
 			return
 		}
 		d.dumpRequest(ctx, request, body)
-		request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		request.Body = io.NopCloser(bytes.NewBuffer(body))
 	} else {
 		d.dumpRequest(ctx, request, nil)
 	}
@@ -93,7 +93,7 @@ func (d *dumpRoundTripper) RoundTrip(request *http.Request) (response *http.Resp
 	// with a reader that reads it from memory:
 	if response.Body != nil {
 		var body []byte
-		body, err = ioutil.ReadAll(response.Body)
+		body, err = io.ReadAll(response.Body)
 		if err != nil {
 			return
 		}
@@ -102,7 +102,7 @@ func (d *dumpRoundTripper) RoundTrip(request *http.Request) (response *http.Resp
 			return
 		}
 		d.dumpResponse(ctx, response, body)
-		response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		response.Body = io.NopCloser(bytes.NewBuffer(body))
 	} else {
 		d.dumpResponse(ctx, response, nil)
 	}

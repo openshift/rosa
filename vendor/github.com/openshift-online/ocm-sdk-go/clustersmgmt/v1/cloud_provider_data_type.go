@@ -29,6 +29,7 @@ type CloudProviderData struct {
 	keyLocation string
 	keyRingName string
 	region      *CloudRegion
+	version     *Version
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -147,6 +148,29 @@ func (o *CloudProviderData) GetRegion() (value *CloudRegion, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.region
+	}
+	return
+}
+
+// Version returns the value of the 'version' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Openshift version
+func (o *CloudProviderData) Version() *Version {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.version
+	}
+	return nil
+}
+
+// GetVersion returns the value of the 'version' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Openshift version
+func (o *CloudProviderData) GetVersion() (value *Version, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.version
 	}
 	return
 }

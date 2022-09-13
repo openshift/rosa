@@ -102,7 +102,16 @@ func writeRoleBinding(object *RoleBinding, stream *jsoniter.Stream) {
 		stream.WriteString((object.createdAt).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.organization != nil
+	present_ = object.bitmap_&128 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("managed_by")
+		stream.WriteString(object.managedBy)
+		count++
+	}
+	present_ = object.bitmap_&256 != 0 && object.organization != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -111,7 +120,7 @@ func writeRoleBinding(object *RoleBinding, stream *jsoniter.Stream) {
 		writeOrganization(object.organization, stream)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -120,7 +129,7 @@ func writeRoleBinding(object *RoleBinding, stream *jsoniter.Stream) {
 		stream.WriteString(object.organizationID)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0 && object.role != nil
+	present_ = object.bitmap_&1024 != 0 && object.role != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -129,7 +138,7 @@ func writeRoleBinding(object *RoleBinding, stream *jsoniter.Stream) {
 		writeRole(object.role, stream)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -138,7 +147,7 @@ func writeRoleBinding(object *RoleBinding, stream *jsoniter.Stream) {
 		stream.WriteString(object.roleID)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0 && object.subscription != nil
+	present_ = object.bitmap_&4096 != 0 && object.subscription != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -147,7 +156,7 @@ func writeRoleBinding(object *RoleBinding, stream *jsoniter.Stream) {
 		writeSubscription(object.subscription, stream)
 		count++
 	}
-	present_ = object.bitmap_&4096 != 0
+	present_ = object.bitmap_&8192 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -156,7 +165,7 @@ func writeRoleBinding(object *RoleBinding, stream *jsoniter.Stream) {
 		stream.WriteString(object.subscriptionID)
 		count++
 	}
-	present_ = object.bitmap_&8192 != 0
+	present_ = object.bitmap_&16384 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -165,7 +174,7 @@ func writeRoleBinding(object *RoleBinding, stream *jsoniter.Stream) {
 		stream.WriteString(object.type_)
 		count++
 	}
-	present_ = object.bitmap_&16384 != 0
+	present_ = object.bitmap_&32768 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -228,34 +237,38 @@ func readRoleBinding(iterator *jsoniter.Iterator) *RoleBinding {
 			}
 			object.createdAt = value
 			object.bitmap_ |= 64
+		case "managed_by":
+			value := iterator.ReadString()
+			object.managedBy = value
+			object.bitmap_ |= 128
 		case "organization":
 			value := readOrganization(iterator)
 			object.organization = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "organization_id":
 			value := iterator.ReadString()
 			object.organizationID = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "role":
 			value := readRole(iterator)
 			object.role = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "role_id":
 			value := iterator.ReadString()
 			object.roleID = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		case "subscription":
 			value := readSubscription(iterator)
 			object.subscription = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 4096
 		case "subscription_id":
 			value := iterator.ReadString()
 			object.subscriptionID = value
-			object.bitmap_ |= 4096
+			object.bitmap_ |= 8192
 		case "type":
 			value := iterator.ReadString()
 			object.type_ = value
-			object.bitmap_ |= 8192
+			object.bitmap_ |= 16384
 		case "updated_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -263,7 +276,7 @@ func readRoleBinding(iterator *jsoniter.Iterator) *RoleBinding {
 				iterator.ReportError("", err.Error())
 			}
 			object.updatedAt = value
-			object.bitmap_ |= 16384
+			object.bitmap_ |= 32768
 		default:
 			iterator.ReadAny()
 		}
