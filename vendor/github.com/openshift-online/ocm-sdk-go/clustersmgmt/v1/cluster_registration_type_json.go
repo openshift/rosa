@@ -47,11 +47,20 @@ func writeClusterRegistration(object *ClusterRegistration, stream *jsoniter.Stre
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("console_url")
+		stream.WriteString(object.consoleUrl)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("external_id")
 		stream.WriteString(object.externalID)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -60,7 +69,7 @@ func writeClusterRegistration(object *ClusterRegistration, stream *jsoniter.Stre
 		stream.WriteString(object.organizationID)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -92,18 +101,22 @@ func readClusterRegistration(iterator *jsoniter.Iterator) *ClusterRegistration {
 			break
 		}
 		switch field {
+		case "console_url":
+			value := iterator.ReadString()
+			object.consoleUrl = value
+			object.bitmap_ |= 1
 		case "external_id":
 			value := iterator.ReadString()
 			object.externalID = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		case "organization_id":
 			value := iterator.ReadString()
 			object.organizationID = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "subscription_id":
 			value := iterator.ReadString()
 			object.subscriptionID = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

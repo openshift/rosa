@@ -3,6 +3,17 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.287
+- Update to model 0.0.223:
+  - Add Version property to CloudProviderData model.
+  - Add InfraID property to Cluster model.
+  - Drop deprecated DisplayName property from ClusterRegistration model.
+  - Add ConsoleUrl and DisplayName properties to ClusterRegistration model and correct documentation.
+
+## 0.1.286
+- Update to model 0.0.220:
+  - Add `ManagedBy` property in RoleBinding type 
+
 ## 0.1.285
 - Update to model 0.0.219:
   - Add billing model to addon installations

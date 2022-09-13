@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -504,7 +503,7 @@ func (r *CloudResourceUpdateRequest) SendContext(ctx context.Context) (result *C
 		Method: "PATCH",
 		URL:    uri,
 		Header: header,
-		Body:   ioutil.NopCloser(buffer),
+		Body:   io.NopCloser(buffer),
 	}
 	if ctx != nil {
 		request = request.WithContext(ctx)

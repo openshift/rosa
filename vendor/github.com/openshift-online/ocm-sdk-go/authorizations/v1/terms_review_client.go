@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -122,7 +121,7 @@ func (r *TermsReviewPostRequest) SendContext(ctx context.Context) (result *Terms
 		Method: "POST",
 		URL:    uri,
 		Header: header,
-		Body:   ioutil.NopCloser(buffer),
+		Body:   io.NopCloser(buffer),
 	}
 	if ctx != nil {
 		request = request.WithContext(ctx)

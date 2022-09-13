@@ -29,6 +29,7 @@ type CloudProviderDataBuilder struct {
 	keyLocation string
 	keyRingName string
 	region      *CloudRegionBuilder
+	version     *VersionBuilder
 }
 
 // NewCloudProviderData creates a new builder of 'cloud_provider_data' objects.
@@ -98,6 +99,19 @@ func (b *CloudProviderDataBuilder) Region(value *CloudRegionBuilder) *CloudProvi
 	return b
 }
 
+// Version sets the value of the 'version' attribute to the given value.
+//
+// Representation of an _OpenShift_ version.
+func (b *CloudProviderDataBuilder) Version(value *VersionBuilder) *CloudProviderDataBuilder {
+	b.version = value
+	if value != nil {
+		b.bitmap_ |= 32
+	} else {
+		b.bitmap_ &^= 32
+	}
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *CloudProviderDataBuilder) Copy(object *CloudProviderData) *CloudProviderDataBuilder {
 	if object == nil {
@@ -120,6 +134,11 @@ func (b *CloudProviderDataBuilder) Copy(object *CloudProviderData) *CloudProvide
 		b.region = NewCloudRegion().Copy(object.region)
 	} else {
 		b.region = nil
+	}
+	if object.version != nil {
+		b.version = NewVersion().Copy(object.version)
+	} else {
+		b.version = nil
 	}
 	return b
 }
@@ -144,6 +163,12 @@ func (b *CloudProviderDataBuilder) Build() (object *CloudProviderData, err error
 	object.keyRingName = b.keyRingName
 	if b.region != nil {
 		object.region, err = b.region.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.version != nil {
+		object.version, err = b.version.Build()
 		if err != nil {
 			return
 		}

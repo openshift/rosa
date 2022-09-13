@@ -25,7 +25,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -485,9 +485,7 @@ func (b *TransportWrapperBuilder) Build(ctx context.Context) (result *TransportW
 		scopes = DefaultScopes
 	} else {
 		scopes = make([]string, len(b.scopes))
-		for i := range b.scopes {
-			scopes[i] = b.scopes[i]
-		}
+		copy(scopes, b.scopes)
 	}
 
 	// Create the client selector:
@@ -970,7 +968,7 @@ func (w *TransportWrapper) sendFormTimed(ctx context.Context, form url.Values, h
 	}
 
 	// Read the response body:
-	body, err = ioutil.ReadAll(response.Body)
+	body, err = io.ReadAll(response.Body)
 	if err != nil {
 		err = fmt.Errorf("can't read response: %w", err)
 		return

@@ -23,6 +23,7 @@ run:
   - helpers
   - jobqueue
   - metamodel
+  - osdfleetmgmt
   - servicelogs
   - servicemgmt
   - statusboard

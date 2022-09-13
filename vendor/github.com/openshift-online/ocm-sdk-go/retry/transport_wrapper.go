@@ -22,7 +22,7 @@ package retry
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"strings"
 
@@ -197,7 +197,7 @@ func (t *roundTripper) RoundTrip(request *http.Request) (response *http.Response
 	}()
 	var bodyCopy []byte
 	if originalBody != nil {
-		bodyCopy, err = ioutil.ReadAll(originalBody)
+		bodyCopy, err = io.ReadAll(originalBody)
 		if err != nil {
 			return
 		}
@@ -213,7 +213,7 @@ func (t *roundTripper) RoundTrip(request *http.Request) (response *http.Response
 
 		// Each time that we retry the request we need to rewind the request body:
 		if bodyCopy != nil {
-			request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyCopy))
+			request.Body = io.NopCloser(bytes.NewBuffer(bodyCopy))
 		}
 
 		// Do an attempt, and return inmediately if this is the last one:
