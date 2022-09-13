@@ -131,6 +131,9 @@ var args struct {
 	additionalTrustBundleFile string
 
 	tags []string
+
+	// Hypershift options:
+	hostedClusterEnabled bool
 }
 
 var Cmd = &cobra.Command{
@@ -508,6 +511,15 @@ func init() {
 			"roles in STS clusters.",
 	)
 
+	// Options releated to HyperShift:
+	flags.BoolVar(
+		&args.hostedClusterEnabled,
+		"hosted-cp",
+		false,
+		"Enable the use of hosted control planes (HyperShift)",
+	)
+
+	flags.MarkHidden("hosted-cp")
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
@@ -537,6 +549,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Setting availability zones is not supported for BYO VPC. " +
 			"ROSA autodetects availability zones from subnet IDs provided")
 	}
+
 	// Select a multi-AZ cluster implicitly by providing three availability zones
 	if len(args.availabilityZones) == ocm.MultiAZCount {
 		args.multiAZ = true
@@ -596,6 +609,20 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		isIAM = !isSTS
+	}
+
+	isHostedCP := args.hostedClusterEnabled
+	if interactive.Enabled() && cmd.Flags().Changed("hosted-cp") {
+		isHostedCP, err = interactive.GetBool(interactive.Input{
+			Question: "Deploy cluster with hosted control plane",
+			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+			Default:  isHostedCP,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	permissionsBoundary := args.operatorRolesPermissionsBoundary
@@ -994,8 +1021,10 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
+	}
 
-		credRequests, err := r.OCMClient.GetCredRequests()
+	credRequests, err := r.OCMClient.GetCredRequests(isHostedCP)
+	if isSTS {
 		if err != nil {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 			os.Exit(1)
@@ -1256,6 +1285,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	if isHostedCP && !subnetsProvided && !useExistingVPC {
+		r.Reporter.Errorf("All hosted clusters need a pre-configured VPC. Make sure to specify the subnet ids")
+		os.Exit(1)
+	}
+
 	var availabilityZones []string
 	if useExistingVPC || subnetsProvided {
 		subnets, err := awsClient.GetSubnetIDs()
@@ -1322,9 +1356,8 @@ func run(cmd *cobra.Command, _ []string) {
 				subnetIDs[i] = aws.ParseSubnet(subnet)
 			}
 		}
-
 		// Validate subnets in the case the user has provided them using the `args.subnets`
-		if subnetsProvided {
+		if subnetsProvided && !isHostedCP {
 			err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
@@ -1884,6 +1917,9 @@ func run(cmd *cobra.Command, _ []string) {
 		Tags:                      tagsList,
 		KMSKeyArn:                 kmsKeyARN,
 		DisableWorkloadMonitoring: &disableWorkloadMonitoring,
+		Hypershift: ocm.Hypershift{
+			Enabled: isHostedCP,
+		},
 	}
 
 	if httpProxy != "" {

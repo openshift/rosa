@@ -556,12 +556,19 @@ func (c *Client) GetPolicies(policyType string) (map[string]string, error) {
 	return m, nil
 }
 
-func (c *Client) GetCredRequests() (map[string]*cmv1.STSOperator, error) {
+func (c *Client) GetCredRequests(isHypershift bool) (map[string]*cmv1.STSOperator, error) {
 	m := make(map[string]*cmv1.STSOperator)
-	stsCredentialResponse, err := c.ocm.ClustersMgmt().V1().AWSInquiries().STSCredentialRequests().List().Send()
+	stsCredentialResponse, err := c.ocm.ClustersMgmt().
+		V1().
+		AWSInquiries().
+		STSCredentialRequests().
+		List().
+		Parameter("is_hypershift", isHypershift).
+		Send()
 	if err != nil {
 		return m, handleErr(stsCredentialResponse.Error(), err)
 	}
+
 	stsCredentialResponse.Items().Each(func(stsCredentialRequest *cmv1.STSCredentialRequest) bool {
 		m[stsCredentialRequest.Name()] = stsCredentialRequest.Operator()
 		return true
@@ -573,7 +580,7 @@ func (c *Client) FindMissingOperatorRolesForUpgrade(cluster *cmv1.Cluster,
 	newMinorVersion string) (map[string]*cmv1.STSOperator, error) {
 	missingRoles := make(map[string]*cmv1.STSOperator)
 
-	credRequests, err := c.GetCredRequests()
+	credRequests, err := c.GetCredRequests(cluster.Hypershift().Enabled())
 	if err != nil {
 		return nil, errors.Errorf("Error getting operator credential request from OCM %s", err)
 	}
