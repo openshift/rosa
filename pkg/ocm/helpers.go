@@ -30,6 +30,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	semver "github.com/hashicorp/go-version"
+	"github.com/openshift/rosa/pkg/aws"
 	errors "github.com/zgalor/weberr"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -603,6 +604,26 @@ func (c *Client) FindMissingOperatorRolesForUpgrade(cluster *cmv1.Cluster,
 		}
 	}
 	return missingRoles, nil
+}
+
+func (c *Client) createCloudProviderDataBuilder(roleARN string, awsClient aws.Client,
+	externalID string) (*cmv1.CloudProviderDataBuilder, error) {
+	var awsBuilder *cmv1.AWSBuilder
+	if roleARN != "" {
+		stsBuilder := cmv1.NewSTS().RoleARN(roleARN)
+		if externalID != "" {
+			stsBuilder = stsBuilder.ExternalID(externalID)
+		}
+		awsBuilder = cmv1.NewAWS().STS(stsBuilder)
+	} else {
+		accessKeys, err := awsClient.GetAWSAccessKeys()
+		if err != nil {
+			return &cmv1.CloudProviderDataBuilder{}, err
+		}
+		awsBuilder = cmv1.NewAWS().AccessKeyID(accessKeys.AccessKeyID).SecretAccessKey(accessKeys.SecretAccessKey)
+	}
+
+	return cmv1.NewCloudProviderData().AWS(awsBuilder), nil
 }
 
 func isOperatorRoleAlreadyExist(cluster *cmv1.Cluster, operator *cmv1.STSOperator) bool {
