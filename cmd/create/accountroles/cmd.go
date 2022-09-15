@@ -102,7 +102,7 @@ func init() {
 		&args.channelGroup,
 		"channel-group",
 		ocm.DefaultChannelGroup,
-		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
+		"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"fast\".",
 	)
 	flags.MarkHidden("channel-group")
 
