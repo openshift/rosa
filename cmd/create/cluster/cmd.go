@@ -594,7 +594,22 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	isSTS := args.sts || args.roleARN != "" || fedramp.Enabled()
+	isHostedCP := args.hostedClusterEnabled
+	if interactive.Enabled() && cmd.Flags().Changed("hosted-cp") {
+		isHostedCP, err = interactive.GetBool(interactive.Input{
+			Question: "Deploy cluster with hosted control plane",
+			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+			Default:  isHostedCP,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// all hosted clusters are sts
+	isSTS := args.sts || args.roleARN != "" || fedramp.Enabled() || isHostedCP
 	isIAM := cmd.Flags().Changed("sts") && !isSTS
 
 	if interactive.Enabled() && (!isSTS && !isIAM) {
@@ -609,20 +624,6 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		isIAM = !isSTS
-	}
-
-	isHostedCP := args.hostedClusterEnabled
-	if interactive.Enabled() && cmd.Flags().Changed("hosted-cp") {
-		isHostedCP, err = interactive.GetBool(interactive.Input{
-			Question: "Deploy cluster with hosted control plane",
-			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-			Default:  isHostedCP,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
-			os.Exit(1)
-		}
 	}
 
 	permissionsBoundary := args.operatorRolesPermissionsBoundary
@@ -1197,15 +1198,16 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Cluster privacy:
 	useExistingVPC := false
-	privateLink := args.privateLink || fedramp.Enabled()
 	private := args.private
+	isPrivateHostedCP := isHostedCP && private // all private hosted clusters are private-link
+	privateLink := args.privateLink || fedramp.Enabled() || isPrivateHostedCP
 
 	privateLinkWarning := "Once the cluster is created, this option cannot be changed."
 	if isSTS {
 		privateLinkWarning = fmt.Sprintf("STS clusters can only be private if AWS PrivateLink is used. %s ",
 			privateLinkWarning)
 	}
-	if interactive.Enabled() && !fedramp.Enabled() {
+	if interactive.Enabled() && !fedramp.Enabled() && !isPrivateHostedCP {
 		privateLink, err = interactive.GetBool(interactive.Input{
 			Question: "PrivateLink cluster",
 			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
@@ -1215,7 +1217,8 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid private-link value: %s", err)
 			os.Exit(1)
 		}
-	} else if (privateLink || (isSTS && private)) && !fedramp.Enabled() {
+	} else if (privateLink || (isSTS && private)) && !fedramp.Enabled() && !isPrivateHostedCP {
+		// do not prompt users for privatelink if it is private hosted cluster
 		r.Reporter.Warnf("You are choosing to use AWS PrivateLink for your cluster. %s", privateLinkWarning)
 		if !confirm.Confirm("use AWS PrivateLink for cluster '%s'", clusterName) {
 			os.Exit(0)

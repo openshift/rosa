@@ -124,10 +124,6 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 	if b.cfg.URL != "" {
 		builder.URL(b.cfg.URL)
 	}
-	// when running ROSA against local CS, redirect AMS API calls to integration
-	if strings.Contains(b.cfg.URL, "localhost") {
-		builder.AlternativeURL("/api/accounts_mgmt", URLAliases["integration"])
-	}
 	tokens := make([]string, 0, 2)
 	if b.cfg.AccessToken != "" {
 		tokens = append(tokens, b.cfg.AccessToken)
