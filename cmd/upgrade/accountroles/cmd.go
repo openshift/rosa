@@ -135,6 +135,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}()
 
 	version := args.version
+	isVersionChosen := version != ""
 	channelGroup := args.channelGroup
 	policyVersion, err := ocmClient.GetVersion(version, channelGroup)
 	if err != nil {
@@ -221,7 +222,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		reporter.Infof("Starting to upgrade the policies")
 		if isUpgradeNeedForAccountRolePolicies {
 			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
-				policyVersion, policyPath)
+				policyVersion, policyPath, isVersionChosen)
 			if err != nil {
 				LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, policyVersion, err, reporter)
 				if args.isInvokedFromClusterUpgrade {
@@ -271,10 +272,14 @@ func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, er
 }
 
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
-	policies map[string]string, defaultPolicyVersion string, policyPath string) error {
+	policies map[string]string, policyVersion string, policyPath string, isVersionChosen bool) error {
 	for file, role := range aws.AccountRoles {
 		roleName := aws.GetRoleName(prefix, role.Name)
-		if !confirm.Prompt(true, "Upgrade the '%s' role policy latest version ?", roleName) {
+		promptString := fmt.Sprintf("Upgrade the '%s' role policy latest version ?", roleName)
+		if isVersionChosen {
+			promptString = fmt.Sprintf("Upgrade the '%s' role policy to version '%s' ?", roleName, policyVersion)
+		}
+		if !confirm.Prompt(true, promptString) {
 			if args.isInvokedFromClusterUpgrade {
 				return reporter.Errorf("Account roles need to be upgraded to proceed" +
 					"")
@@ -286,8 +291,8 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 
 		policyDetails := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
-			defaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: defaultPolicyVersion,
+			policyVersion, map[string]string{
+				tags.OpenShiftVersion: policyVersion,
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
 				tags.RedHatManaged:    "true",
@@ -305,8 +310,12 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 		if err != nil {
 			reporter.Debugf("Error deleting inline role policy %s : %s", policyARN, err)
 		}
-		reporter.Infof("Upgraded policy with ARN '%s' to latest version", policyARN)
-		err = awsClient.UpdateTag(roleName, defaultPolicyVersion)
+		reporterString := fmt.Sprintf("Upgraded policy with ARN '%s' to latest version", policyARN)
+		if isVersionChosen {
+			reporterString = fmt.Sprintf("Upgraded policy with ARN '%s' to version '%s'", policyARN, policyVersion)
+		}
+		reporter.Infof(reporterString)
+		err = awsClient.UpdateTag(roleName, policyVersion)
 		if err != nil {
 			return err
 		}
