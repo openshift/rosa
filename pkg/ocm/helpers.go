@@ -683,3 +683,77 @@ func ValidateAvailabilityZonesCount(multiAZ bool, availabilityZonesCount int) er
 
 	return nil
 }
+
+func (c *Client) GetVersion(userRequestedVersion string, channelGroup string) (string, error) {
+	versionList, err := c.GetVersionsList(channelGroup)
+	if err != nil {
+		err := fmt.Errorf("%v", err)
+		return userRequestedVersion, err
+	}
+
+	if userRequestedVersion == "" {
+		return versionList[0], nil
+	}
+
+	hasVersion := false
+	for _, vs := range versionList {
+		if vs == userRequestedVersion {
+			hasVersion = true
+			break
+		}
+	}
+
+	if !hasVersion {
+		versionSet := make(map[string]bool)
+		for _, vs := range versionList {
+			versionSet[vs] = true
+		}
+		err := fmt.Errorf("a valid version number must be specified\nValid versions: %v", KeysString(versionSet))
+		return userRequestedVersion, err
+	}
+
+	return userRequestedVersion, nil
+}
+
+func KeysString(m map[string]bool) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return "[" + strings.Join(keys, ", ") + "]"
+}
+
+func ParseVersion(version string) (string, error) {
+	parsedVersion, err := semver.NewVersion(version)
+	if err != nil {
+		return "", err
+	}
+	versionSplit := parsedVersion.Segments64()
+	return fmt.Sprintf("%d.%d", versionSplit[0], versionSplit[1]), nil
+}
+
+func (c *Client) GetVersionsList(channelGroup string) ([]string, error) {
+	response, err := c.GetVersions(channelGroup)
+	if err != nil {
+		err := fmt.Errorf("error getting versions: %s", err)
+		return make([]string, 0), err
+	}
+	versionList := make([]string, 0)
+	for _, v := range response {
+		if !HasSTSSupport(v.RawID(), v.ChannelGroup()) {
+			continue
+		}
+		parsedVersion, err := ParseVersion(v.RawID())
+		if err != nil {
+			err = fmt.Errorf("error parsing version")
+			return versionList, err
+		}
+		versionList = append(versionList, parsedVersion)
+	}
+
+	if len(versionList) == 0 {
+		err = fmt.Errorf("could not find versions for the provided channel-group: '%s'", channelGroup)
+		return versionList, err
+	}
+	return versionList, nil
+}

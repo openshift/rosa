@@ -38,6 +38,8 @@ var args struct {
 	prefix                      string
 	isInvokedFromClusterUpgrade bool
 	clusterID                   string
+	version                     string
+	channelGroup                string
 }
 
 var Cmd = &cobra.Command{
@@ -63,6 +65,22 @@ func init() {
 		"User-defined prefix for all generated AWS resources",
 	)
 	Cmd.MarkFlagRequired("prefix")
+
+	flags.StringVar(
+		&args.version,
+		"version",
+		"",
+		"Version of OpenShift that will be used to install the cluster, for example \"4.3.10\"",
+	)
+	flags.MarkHidden("version")
+
+	flags.StringVar(
+		&args.channelGroup,
+		"channel-group",
+		ocm.DefaultChannelGroup,
+		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
+	)
+	flags.MarkHidden("channel-group")
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -116,9 +134,11 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	}()
 
-	defaultPolicyVersion, err := ocmClient.GetDefaultVersion()
+	version := args.version
+	channelGroup := args.channelGroup
+	policyVersion, err := ocmClient.GetVersion(version, channelGroup)
 	if err != nil {
-		reporter.Errorf("Error getting latest default version: %s", err)
+		reporter.Errorf("Error getting version: %s", err)
 		os.Exit(1)
 	}
 
@@ -146,10 +166,10 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
-		defaultPolicyVersion)
+		policyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)
-		LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
+		LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, policyVersion, err, reporter)
 		os.Exit(1)
 	}
 
@@ -201,9 +221,9 @@ func run(cmd *cobra.Command, argv []string) error {
 		reporter.Infof("Starting to upgrade the policies")
 		if isUpgradeNeedForAccountRolePolicies {
 			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
-				defaultPolicyVersion, policyPath)
+				policyVersion, policyPath)
 			if err != nil {
-				LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, defaultPolicyVersion, err, reporter)
+				LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, policyVersion, err, reporter)
 				if args.isInvokedFromClusterUpgrade {
 					return err
 				}
@@ -223,7 +243,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Infof("Run the following commands to upgrade the account role policies:\n")
 		}
 		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
-			awsClient, defaultPolicyVersion, policyPath)
+			awsClient, policyVersion, policyPath)
 		fmt.Println(commands)
 		if args.isInvokedFromClusterUpgrade {
 			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+

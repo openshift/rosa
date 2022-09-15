@@ -40,6 +40,8 @@ var args struct {
 	permissionsBoundary string
 	rolePath            string
 	policyPath          string
+	version             string
+	channelGroup        string
 }
 
 var Cmd = &cobra.Command{
@@ -87,6 +89,22 @@ func init() {
 		"The arn path for the account policies",
 	)
 	flags.MarkHidden("policy-path")
+
+	flags.StringVar(
+		&args.version,
+		"version",
+		"",
+		"Version of OpenShift that will be used to install the cluster, for example \"4.3.10\"",
+	)
+	flags.MarkHidden("version")
+
+	flags.StringVar(
+		&args.channelGroup,
+		"channel-group",
+		ocm.DefaultChannelGroup,
+		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
+	)
+	flags.MarkHidden("channel-group")
 
 	aws.AddModeFlag(Cmd)
 
@@ -158,13 +176,15 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Infof("Creating account roles")
 	}
 
-	defaultPolicyVersion, err := r.OCMClient.GetDefaultVersion()
+	version := args.version
+	channelGroup := args.channelGroup
+	policyVersion, err := r.OCMClient.GetVersion(version, channelGroup)
 	if err != nil {
-		r.Reporter.Errorf("Error getting latest default version: %s", err)
+		r.Reporter.Errorf("Error getting version: %s", err)
 		os.Exit(1)
 	}
 
-	r.Reporter.Debugf("Creating account roles compatible with OpenShift versions up to %s", defaultPolicyVersion)
+	r.Reporter.Debugf("Creating account roles compatible with OpenShift versions up to %s", policyVersion)
 
 	prefix := args.prefix
 	if interactive.Enabled() {
@@ -271,13 +291,13 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 
 		err = createRoles(r, prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
-			defaultPolicyVersion, rolePath, policyPath)
+			policyVersion, rolePath, policyPath)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the account roles: %s", err)
 			if strings.Contains(err.Error(), "Throttling") {
 				r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 					ocm.Response:   ocm.Failure,
-					ocm.Version:    defaultPolicyVersion,
+					ocm.Version:    policyVersion,
 					ocm.IsThrottle: "true",
 				})
 				os.Exit(1)
@@ -291,7 +311,7 @@ func run(cmd *cobra.Command, argv []string) {
 			"rosa create cluster --sts")
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
-			ocm.Version:  defaultPolicyVersion,
+			ocm.Version:  policyVersion,
 		})
 	case aws.ModeManual:
 		err = aws.GeneratePolicyFiles(r.Reporter, env, true, false, policies, nil)
@@ -302,14 +322,14 @@ func run(cmd *cobra.Command, argv []string) {
 			})
 			os.Exit(1)
 		}
-		commands := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID, defaultPolicyVersion,
+		commands := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID, policyVersion,
 			rolePath, policyPath)
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
-			ocm.Version: defaultPolicyVersion,
+			ocm.Version: policyVersion,
 		})
 		fmt.Println(commands)
 	default:
