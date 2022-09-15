@@ -94,7 +94,7 @@ func init() {
 		&args.version,
 		"version",
 		"",
-		"Version of OpenShift that will be used to install the cluster, for example \"4.3.10\"",
+		"Version of OpenShift that will be used to setup policy tag, for example \"4.11\"",
 	)
 	flags.MarkHidden("version")
 
