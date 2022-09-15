@@ -122,56 +122,6 @@ func run(cmd *cobra.Command, argv []string) {
 
 	detailsPage := getDetailsLink(r.OCMClient.GetConnectionURL())
 
-	// Display number of all worker nodes across the cluster
-	minNodes := 0
-	maxNodes := 0
-	var nodesStr string
-	machinePools, err := r.OCMClient.GetMachinePools(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-	// Accumulate all replicas across machine pools
-	for _, machinePool := range machinePools {
-		if machinePool.Autoscaling() != nil {
-			minNodes += machinePool.Autoscaling().MinReplicas()
-			maxNodes += machinePool.Autoscaling().MaxReplicas()
-		} else {
-			minNodes += machinePool.Replicas()
-			maxNodes += machinePool.Replicas()
-		}
-	}
-	// Add compute nodes as well
-	if cluster.Nodes().AutoscaleCompute() != nil {
-		minNodes += cluster.Nodes().AutoscaleCompute().MinReplicas()
-		maxNodes += cluster.Nodes().AutoscaleCompute().MaxReplicas()
-	} else {
-		minNodes += cluster.Nodes().Compute()
-		maxNodes += cluster.Nodes().Compute()
-	}
-	// Determine whether there is any auto-scaling in the cluster
-	if minNodes == maxNodes {
-		nodesStr = fmt.Sprintf(""+
-			"Nodes:\n"+
-			" - Control plane:           %d\n"+
-			" - Infra:                   %d\n"+
-			" - Compute:                 %d\n",
-			cluster.Nodes().Master(),
-			cluster.Nodes().Infra(),
-			minNodes,
-		)
-	} else {
-		nodesStr = fmt.Sprintf(""+
-			"Nodes:\n"+
-			" - Control plane:           %d\n"+
-			" - Infra:                   %d\n"+
-			" - Compute (Autoscaled):    %d-%d\n",
-			cluster.Nodes().Master(),
-			cluster.Nodes().Infra(),
-			minNodes, maxNodes,
-		)
-	}
-
 	networkType := ""
 	if cluster.Network().Type() != ocm.NetworkTypes[0] {
 		networkType = fmt.Sprintf(
@@ -185,6 +135,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"Name:                       %s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
+		"Control Plane:              %s\n"+
 		"OpenShift Version:          %s\n"+
 		"Channel Group:              %s\n"+
 		"DNS:                        %s.%s\n"+
@@ -203,6 +154,7 @@ func run(cmd *cobra.Command, argv []string) {
 		clusterName,
 		cluster.ID(),
 		cluster.ExternalID(),
+		controlPlaneConfig(cluster),
 		cluster.OpenshiftVersion(),
 		cluster.Version().ChannelGroup(),
 		cluster.Name(), cluster.DNS().BaseDomain(),
@@ -211,8 +163,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Console().URL(),
 		cluster.Region().ID(),
 		cluster.MultiAZ(),
-
-		nodesStr,
+		clusterInfraConfig(cluster, clusterKey, r),
 		networkType,
 		cluster.Network().ServiceCIDR(),
 		cluster.Network().MachineCIDR(),
@@ -333,6 +284,74 @@ func run(cmd *cobra.Command, argv []string) {
 	// Print short cluster description:
 	fmt.Print(str)
 	fmt.Println()
+}
+
+func controlPlaneConfig(cluster *cmv1.Cluster) string {
+	if cluster.Hypershift().Enabled() {
+		return "Red Hat hosted"
+	}
+	return "Customer hosted"
+}
+
+func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtime) string {
+	var infraConfig string
+	if cluster.Hypershift().Enabled() {
+		infraConfig = fmt.Sprintf(""+
+			"Node Pools:\n"+
+			" - Compute:                 %d\n",
+			cluster.Nodes().Compute(),
+		)
+	} else {
+		// Display number of all worker nodes across the cluster
+		minNodes := 0
+		maxNodes := 0
+		machinePools, err := r.OCMClient.GetMachinePools(cluster.ID())
+		if err != nil {
+			r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+		// Accumulate all replicas across machine pools
+		for _, machinePool := range machinePools {
+			if machinePool.Autoscaling() != nil {
+				minNodes += machinePool.Autoscaling().MinReplicas()
+				maxNodes += machinePool.Autoscaling().MaxReplicas()
+			} else {
+				minNodes += machinePool.Replicas()
+				maxNodes += machinePool.Replicas()
+			}
+		}
+		// Add compute nodes as well
+		if cluster.Nodes().AutoscaleCompute() != nil {
+			minNodes += cluster.Nodes().AutoscaleCompute().MinReplicas()
+			maxNodes += cluster.Nodes().AutoscaleCompute().MaxReplicas()
+		} else {
+			minNodes += cluster.Nodes().Compute()
+			maxNodes += cluster.Nodes().Compute()
+		}
+		// Determine whether there is any auto-scaling in the cluster
+		if minNodes == maxNodes {
+			infraConfig = fmt.Sprintf(""+
+				"Nodes:\n"+
+				" - Control plane:           %d\n"+
+				" - Infra:                   %d\n"+
+				" - Compute:                 %d\n",
+				cluster.Nodes().Master(),
+				cluster.Nodes().Infra(),
+				minNodes,
+			)
+		} else {
+			infraConfig = fmt.Sprintf(""+
+				"Nodes:\n"+
+				" - Control plane:           %d\n"+
+				" - Infra:                   %d\n"+
+				" - Compute (Autoscaled):    %d-%d\n",
+				cluster.Nodes().Master(),
+				cluster.Nodes().Infra(),
+				minNodes, maxNodes,
+			)
+		}
+	}
+	return infraConfig
 }
 
 func getDetailsLink(environment string) string {
