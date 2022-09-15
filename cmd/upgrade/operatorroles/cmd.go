@@ -214,12 +214,13 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
+	mode, err = handleModeFlag(cmd, skipInteractive, mode, err, r.Reporter)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	if isOperatorPolicyUpgradeNeeded {
-		mode, err = handleModeFlag(cmd, skipInteractive, mode, err, r.Reporter)
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
 		err = upgradeOperatorPolicies(isProgrammaticallyCalled, mode, r, prefix, isAccountRoleUpgradeNeed,
 			policies, env, defaultPolicyVersion, credRequests, cluster, policyPath)
 		if err != nil {
@@ -228,11 +229,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	}
 
-	//If missing roles length is greater than 0
-	//iterate the missing roles and find it is is present in the aws or not . If not then proceed with auto and manual.
-	//Else call ocm api
-	//If user runs manual mode exits and come back or if role is created in aws alone and there was an error when
-	//updating the ocm. this will handle it effectively.
 	if len(missingRolesInCS) > 0 {
 		for _, operator := range missingRolesInCS {
 			roleName := getRoleName(cluster, operator)
@@ -241,17 +237,6 @@ func run(cmd *cobra.Command, argv []string) error {
 				return r.Reporter.Errorf("Error when detecting checking missing operator IAM roles %s", err)
 			}
 			if !exists {
-				mode, err = handleModeFlag(cmd, skipInteractive, mode, err, r.Reporter)
-				if err != nil {
-					r.Reporter.Errorf("%s", err)
-					os.Exit(1)
-				}
-
-				if err != nil {
-					r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-					os.Exit(1)
-				}
-
 				err = createOperatorRole(mode, r, cluster, prefix, missingRolesInCS,
 					isProgrammaticallyCalled, policies, rolePath, policyPath)
 				if err != nil {
