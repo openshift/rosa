@@ -1144,7 +1144,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID)
+	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID, version, awsClient)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)

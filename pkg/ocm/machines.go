@@ -115,28 +115,16 @@ func (mt MachineType) HasQuota(multiAZ bool) bool {
 	return mt.MachineType.Category() != AcceleratedComputing || mt.availableQuota > getDefaultNodes(multiAZ)
 }
 
-func (c *Client) createCloudProviderData(region string, roleARN string,
-	awsClient aws.Client) (*cmv1.CloudProviderData, error) {
-	var awsBuilder *cmv1.AWSBuilder
-	if roleARN != "" {
-		awsBuilder = cmv1.NewAWS().STS(cmv1.NewSTS().RoleARN(roleARN))
-	} else {
-		accessKeys, err := awsClient.GetAWSAccessKeys()
-		if err != nil {
-			return &cmv1.CloudProviderData{}, err
-		}
-		awsBuilder = cmv1.NewAWS().AccessKeyID(accessKeys.AccessKeyID).SecretAccessKey(accessKeys.SecretAccessKey)
-	}
-
-	return cmv1.NewCloudProviderData().AWS(awsBuilder).Region(cmv1.NewCloudRegion().ID(region)).Build()
-}
-
 // GetAvailableMachineTypesInRegion get the supported machine type in the region.
 // The function triggers the 'api/clusters_mgmt/v1/aws_inquiries/machine_types'
 // and passes a role ARN for STS clusters or access keys for non-STS clusters.
 func (c *Client) GetAvailableMachineTypesInRegion(region string, roleARN string,
 	awsClient aws.Client) (MachineTypeList, error) {
-	cloudProviderData, err := c.createCloudProviderData(region, roleARN, awsClient)
+	cloudProviderDataBuilder, err := c.createCloudProviderDataBuilder(roleARN, awsClient, "")
+	if err != nil {
+		return MachineTypeList{}, err
+	}
+	cloudProviderData, err := cloudProviderDataBuilder.Region(cmv1.NewCloudRegion().ID(region)).Build()
 	if err != nil {
 		return MachineTypeList{}, err
 	}

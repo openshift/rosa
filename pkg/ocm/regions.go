@@ -26,6 +26,50 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 )
 
+func (c *Client) GetFilteredRegionsByVersion(roleARN string, version string,
+	awsClient aws.Client, externalID string) (regions []*cmv1.CloudRegion, err error) {
+	cloudProviderDataBuilder, err := c.createCloudProviderDataBuilder(roleARN, awsClient, externalID)
+	if err != nil {
+		return []*cmv1.CloudRegion{}, err
+	}
+	if version != "" {
+		cloudProviderDataBuilder = cloudProviderDataBuilder.Version(cmv1.NewVersion().ID(version))
+	}
+
+	cloudProviderData, err := cloudProviderDataBuilder.Build()
+	if err != nil {
+		return []*cmv1.CloudRegion{}, err
+	}
+
+	return c.getFilteredRegions(cloudProviderData)
+}
+
+func (c *Client) getFilteredRegions(cloudProviderData *cmv1.CloudProviderData) ([]*cmv1.CloudRegion, error) {
+	collection := c.ocm.ClustersMgmt().V1().AWSInquiries().Regions()
+	page := 1
+	size := 100
+
+	var cloudRegions []*cmv1.CloudRegion
+	for {
+		response, err := collection.Search().
+			Body(cloudProviderData).
+			Page(page).
+			Size(size).
+			Send()
+		if err != nil {
+			return []*cmv1.CloudRegion{}, err
+		}
+
+		cloudRegions = append(cloudRegions, response.Items().Slice()...)
+		if response.Size() < size {
+			break
+		}
+		page++
+	}
+
+	return cloudRegions, nil
+}
+
 func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.CloudRegion, err error) {
 	// Retrieve AWS credentials from the local AWS user
 	// pass these to OCM to validate what regions are available
@@ -98,8 +142,8 @@ func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.
 }
 
 func (c *Client) GetRegionList(multiAZ bool, roleARN string,
-	externalID string) (regionList []string, regionAZ map[string]bool, err error) {
-	regions, err := c.GetRegions(roleARN, externalID)
+	externalID string, version string, awsClient aws.Client) (regionList []string, regionAZ map[string]bool, err error) {
+	regions, err := c.GetFilteredRegionsByVersion(roleARN, version, awsClient, externalID)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
 		return
