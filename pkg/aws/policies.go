@@ -244,20 +244,21 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	version string, tagList map[string]string, path string) (string, error) {
 	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
+		var policyArnLocal string
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				policyArn, err = c.createPolicy(policyArn, document, tagList, path)
+				policyArnLocal, err = c.createPolicy(policyArn, document, tagList, path)
 				if err != nil {
 					if aerr, ok := err.(awserr.Error); ok {
 						if aerr.Code() == iam.ErrCodeEntityAlreadyExistsException {
-							return "", fmt.Errorf(
-								"Policy with same name but different ARN exists. Probably wrong path")
+							return "", errors.Wrapf(err,
+								fmt.Sprintf("Failed to create a policy with ARN '%s'", policyArn))
 						}
 					}
 					return "", err
 				}
-				return policyArn, nil
+				return policyArnLocal, nil
 			default:
 				return "", err
 			}
