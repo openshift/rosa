@@ -385,7 +385,7 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, 
 			"\t--role-name %s \\\n"+
 			"\t--assume-role-policy-document file://%s \\\n"+
 			"%s"+
-			"\t--tags %s \\\n",
+			"\t--tags %s",
 			roleName, filename, permBoundaryFlag, iamTags)
 		if rolePath != "" {
 			createRole = fmt.Sprintf(createRole+"\t--path %s", rolePath)

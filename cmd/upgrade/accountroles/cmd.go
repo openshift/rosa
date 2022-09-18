@@ -250,7 +250,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
 				" once account and operator roles have been upgraded : \n\n"+
 				"\trosa upgrade cluster --cluster %s\n", args.clusterID)
-			os.Exit(0)
+			return nil
 		}
 
 	default:
