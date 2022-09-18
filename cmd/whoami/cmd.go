@@ -19,6 +19,7 @@ package whoami
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	"github.com/spf13/cobra"
@@ -26,7 +27,9 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/object"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -43,6 +46,7 @@ func init() {
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
+	output.AddFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -102,33 +106,37 @@ func run(_ *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	fmt.Printf(""+
-		"AWS Account ID:               %s\n"+
-		"AWS Default Region:           %s\n"+
-		"AWS ARN:                      %s\n"+
-		"OCM API:                      %s\n"+
-		"OCM Account ID:               %s\n"+
-		"OCM Account Name:             %s %s\n"+
-		"OCM Account Username:         %s\n"+
-		"OCM Account Email:            %s\n"+
-		"OCM Organization ID:          %s\n"+
-		"OCM Organization Name:        %s\n",
-		r.Creator.AccountID,
-		awsRegion,
-		r.Creator.ARN,
-		cfg.URL,
-		account.ID(),
-		account.FirstName(), account.LastName(),
-		account.Username(),
-		account.Email(),
-		account.Organization().ID(),
-		account.Organization().Name(),
-	)
+	outputObject := object.Object{
+		"AWS Account ID":        account.ID(),
+		"AWS Default Region":    awsRegion,
+		"AWS ARN":               r.Creator.ARN,
+		"OCM API":               cfg.URL,
+		"OCM Account ID":        account.ID(),
+		"OCM Account Name":      fmt.Sprintf("%s %s", account.FirstName(), account.LastName()),
+		"OCM Account Username":  account.Username(),
+		"OCM Account Email":     account.Email(),
+		"OCM Organization ID":   account.Organization().ID(),
+		"OCM Organization Name": account.Organization().Name(),
+	}
 	if account.Organization().ExternalID() != "" {
-		fmt.Printf(""+
-			"OCM Organization External ID: %s\n",
-			account.Organization().ExternalID(),
-		)
+		outputObject["OCM Organization External ID"] = account.Organization().ExternalID()
+	}
+
+	if output.HasFlag() {
+		err = output.Print(outputObject)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		return
+	}
+	keys := make([]string, 0, len(outputObject))
+	for key := range outputObject {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		fmt.Printf("%-30s:%v\n", key, outputObject[key])
 	}
 	fmt.Println()
 }

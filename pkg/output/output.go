@@ -41,7 +41,6 @@ func Print(resource interface{}) error {
 	var b bytes.Buffer
 	switch reflect.TypeOf(resource).String() {
 	case "[]*v1.CloudRegion":
-
 		if cloudRegions, ok := resource.([]*cmv1.CloudRegion); ok {
 			cmv1.MarshalCloudRegionList(cloudRegions, &b)
 		}
@@ -84,6 +83,15 @@ func Print(resource interface{}) error {
 				if err != nil {
 					return err
 				}
+			}
+		}
+	case "object.Object":
+		{
+			reqBodyBytes := new(bytes.Buffer)
+			json.NewEncoder(reqBodyBytes).Encode(resource)
+			err := json.Indent(&b, reqBodyBytes.Bytes(), "", "  ")
+			if err != nil {
+				return err
 			}
 		}
 	}
