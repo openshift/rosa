@@ -32,6 +32,7 @@ var URLAliases = map[string]string{
 	"staging":     "https://api.stage.openshift.com",
 	"integration": "https://api.integration.openshift.com",
 	"local":       "http://localhost:8000",
+	"local-proxy": "http://localhost:9000",
 	"crc":         "https://clusters-service.apps-crc.testing",
 }
 

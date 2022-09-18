@@ -54,6 +54,7 @@ var JumpAccounts = map[string]string{
 	"staging":     "644306948063",
 	"integration": "896164604406",
 	"local":       "765374464689",
+	"local-proxy": "765374464689",
 	"crc":         "765374464689",
 }
 
@@ -133,10 +134,8 @@ func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool,
 	return user, rootUser, nil
 }
 
-/**
-Currently user can rosa init using the region from their config or using --region
-When checking for cloud formation we need to check in the region used by the user
-*/
+// Currently user can rosa init using the region from their config or using --region
+// When checking for cloud formation we need to check in the region used by the user
 func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger) Client {
 	// Get AWS region from env
 	awsRegionInUserConfig, err := GetRegion(arguments.GetRegion())
