@@ -19,6 +19,7 @@ package ocm
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -106,13 +107,13 @@ func getDefaultNodes(multiAZ bool) int {
 }
 
 type MachineType struct {
-	MachineType    *cmv1.MachineType
-	Available      bool
-	availableQuota int
+	MachineType *cmv1.MachineType
+	Available   bool
+	nodeQuota   float64 // may be +Inf when Cost == 0.
 }
 
 func (mt MachineType) HasQuota(multiAZ bool) bool {
-	return mt.MachineType.Category() != AcceleratedComputing || mt.availableQuota > getDefaultNodes(multiAZ)
+	return mt.MachineType.Category() != AcceleratedComputing || mt.nodeQuota > float64(getDefaultNodes(multiAZ))
 }
 
 // GetAvailableMachineTypesInRegion get the supported machine type in the region.
@@ -227,14 +228,17 @@ func (mtl *MachineTypeList) UpdateAvailableQuota(quotaCosts *amsv1.QuotaCostList
 		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
 			for _, relatedResource := range quotaCost.RelatedResources() {
 				if machineType.MachineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
-					availableQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
-					machineType.Available = availableQuota > 1
-					machineType.availableQuota = availableQuota
+					if relatedResource.Cost() == 0 {
+						machineType.nodeQuota = math.Inf(+1)
+					} else {
+						machineType.nodeQuota += float64((quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost())
+					}
 					return false
 				}
 			}
 			return true
 		})
+		machineType.Available = machineType.nodeQuota > 1 // TODO refine
 	}
 }
 
