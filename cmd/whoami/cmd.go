@@ -136,7 +136,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fmt.Printf("%-30s:%v\n", key, outputObject[key])
+		fmt.Printf("%-30s%v\n", key+":", outputObject[key])
 	}
 	fmt.Println()
 }
