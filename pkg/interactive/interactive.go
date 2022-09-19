@@ -176,6 +176,9 @@ func GetOption(input Input) (a string, err error) {
 	if !input.Required && dflt == "" {
 		question = fmt.Sprintf("%s (optional)", question)
 	}
+	if dflt == "" && len(input.Options) > 0 {
+		dflt = input.Options[0]
+	}
 	prompt := &survey.Select{
 		Message: fmt.Sprintf("%s:", question),
 		Help:    input.Help,

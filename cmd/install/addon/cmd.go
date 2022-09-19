@@ -18,10 +18,8 @@ package addon
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -34,6 +32,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -196,73 +195,48 @@ func run(cmd *cobra.Command, argv []string) {
 
 		parameters.Each(func(param *cmv1.AddOnParameter) bool {
 			var val string
-			var hasVal bool
+			var options []string
+			var values []string
+
+			parameterOptions, _ := param.GetOptions()
+			for _, opt := range parameterOptions {
+				options = append(options, opt.Name())
+				values = append(values, opt.Value())
+			}
+
 			// If value is already set in the CLI, ignore interactive prompt
 			flag := cmd.Flags().Lookup(param.ID())
 			if flag != nil {
 				val = flag.Value.String()
-				hasVal = true
-			} else if interactive.Enabled() {
-				input := interactive.Input{
-					Question: param.Name(),
-					Help:     fmt.Sprintf("%s: %s", param.ID(), param.Description()),
-					Required: param.Required(),
-				}
-				// add a prompt to question name to indicate if the boolean param is required and check validation
-				if param.ValueType() == "boolean" && param.Validation() == "^true$" && param.Required() {
-					input.Question = fmt.Sprintf("%s (required)", param.Name())
-					input.Validators = []interactive.Validator{
-						interactive.RegExpBoolean(param.Validation()),
-					}
-				}
-				switch param.ValueType() {
-				case "boolean":
-					var boolVal bool
-					input.Default, _ = strconv.ParseBool(param.DefaultValue())
-					boolVal, err = interactive.GetBool(input)
-					if boolVal {
-						val = "true"
-					} else {
-						val = "false"
-					}
-				case "cidr":
-					var cidrVal net.IPNet
-					if param.DefaultValue() != "" {
-						_, defaultIDR, _ := net.ParseCIDR(param.DefaultValue())
-						input.Default = *defaultIDR
-					}
-					cidrVal, err = interactive.GetIPNet(input)
-					val = cidrVal.String()
-					if val == "<nil>" {
-						val = ""
-					}
-				case "number", "resource":
-					var numVal int
-					input.Default, _ = strconv.Atoi(param.DefaultValue())
-					numVal, err = interactive.GetInt(input)
-					val = fmt.Sprintf("%d", numVal)
-				case "string":
-					input.Default = param.DefaultValue()
-					val, err = interactive.GetString(input)
-				}
+			}
+			if interactive.Enabled() {
+				input := interactive.Input{}
+				input.Question = param.Name()
+				input.Help = fmt.Sprintf("%s: %s", param.ID(), param.Description())
+				input.Required = param.Required()
+				input.Options = options
+
+				val, err = interactive.GetAddonParameter(param, input, param.DefaultValue())
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid value for '%s': %v", param.Name(), err)
+					r.Reporter.Errorf("%s", err)
 					os.Exit(1)
 				}
-				hasVal = true
+
 			}
 
-			if hasVal {
-				val = strings.Trim(val, " ")
-				if val != "" && param.Validation() != "" {
-					isValid, err := regexp.MatchString(param.Validation(), val)
-					if err != nil || !isValid {
-						r.Reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
-						os.Exit(1)
-					}
+			val = strings.Trim(val, " ")
+			if val != "" && param.Validation() != "" {
+				isValid, err := regexp.MatchString(param.Validation(), val)
+				if err != nil || !isValid {
+					r.Reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
+					os.Exit(1)
 				}
-				params = append(params, ocm.AddOnParam{Key: param.ID(), Val: val})
 			}
+			if len(options) > 0 && !helper.Contains(values, val) {
+				r.Reporter.Errorf("Expected %v to match one of the options /%v/", val, options)
+				os.Exit(1)
+			}
+			params = append(params, ocm.AddOnParam{Key: param.ID(), Val: val})
 
 			return true
 		})
