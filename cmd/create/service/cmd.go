@@ -397,9 +397,8 @@ func run(cmd *cobra.Command, argv []string) {
 	operatorRolesPrefix := getRolePrefix(args.ClusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 
-	cluster := r.FetchCluster()
-
-	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
+	// Managed Services does not support Hypershift at this time.
+	credRequests, err := r.OCMClient.GetCredRequests(false)
 	if err != nil {
 		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 		os.Exit(1)
