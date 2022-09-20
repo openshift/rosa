@@ -317,8 +317,8 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 		"\t--tags %s",
 		policyName, aws.OCMRolePolicyFile, iamTags)
 	if rolePath != "" {
-		createRole = fmt.Sprintf(createRole+"\t--path %s", rolePath)
-		createPolicy = fmt.Sprintf(createPolicy+"\t--path %s", rolePath)
+		createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", rolePath)
+		createPolicy = fmt.Sprintf(createPolicy+" \\\n\t--path %s", rolePath)
 	}
 	attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 		"\t--role-name %s \\\n"+
@@ -336,7 +336,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 			"\t--tags %s",
 			policyName, aws.OCMAdminRolePolicyFile, adminTags)
 		if rolePath != "" {
-			createAdminPolicy = fmt.Sprintf(createAdminPolicy+"\t--path %s", rolePath)
+			createAdminPolicy = fmt.Sprintf(createAdminPolicy+" \\\n\t--path %s", rolePath)
 		}
 		attachRoleAdminPolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
