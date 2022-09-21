@@ -73,7 +73,8 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if confirm.Confirm("delete %s user on cluster %s", idp.ClusterAdminUsername, r.ClusterKey) {
 		// delete `cluster-admin` user from the HTPasswd IDP
-		r.Reporter.Debugf("Deleting user '%s' from cluster-admins group on cluster '%s'", idp.ClusterAdminUsername, r.ClusterKey)
+		r.Reporter.Debugf("Deleting user '%s' from cluster-admins group on cluster '%s'",
+			idp.ClusterAdminUsername, r.ClusterKey)
 		err = r.OCMClient.DeleteUser(clusterID, "cluster-admins", idp.ClusterAdminUsername)
 		if err != nil {
 			r.Reporter.Errorf("Failed to delete '%s' user from cluster-admins groups of cluster '%s': %s",
@@ -97,7 +98,8 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		} else {
 			//delete now the cluster-admin user from the htpasswd idp
-			r.Reporter.Debugf("Deleting user '%s' from identity provider user list on cluster '%s'", idp.ClusterAdminUsername, r.ClusterKey)
+			r.Reporter.Debugf("Deleting user '%s' from identity provider user list on cluster '%s'",
+				idp.ClusterAdminUsername, r.ClusterKey)
 			err := r.OCMClient.DeleteHTPasswdUser(idp.ClusterAdminUsername, clusterID, identityProvider)
 			if err != nil {
 				r.Reporter.Errorf("Failed to delete '%s' user from htpasswd idp users list of cluster '%s': %s",
