@@ -987,7 +987,7 @@ func run(cmd *cobra.Command, _ []string) {
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
 		if operatorRolesPrefix == "" {
-			operatorRolesPrefix = getRolePrefix(clusterName)
+			operatorRolesPrefix = ocm.ComputeDefaultOperatorRolesPrefix(clusterName)
 		}
 		if interactive.Enabled() {
 			operatorRolesPrefix, err = interactive.GetString(interactive.Input{
@@ -2418,8 +2418,4 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	return command
-}
-
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
 }

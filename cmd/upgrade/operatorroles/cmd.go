@@ -442,16 +442,17 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 
 func getRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperator) string {
 	operatorIAMRoles := cluster.AWS().STS().OperatorIAMRoles()
-	rolePrefix := ""
-	if len(operatorIAMRoles) > 0 {
-		roleARN := operatorIAMRoles[0].RoleARN()
+	rolePrefix := ocm.ComputeDefaultOperatorRolesPrefix(cluster.Name())
+	for _, operatorIAMRole := range operatorIAMRoles {
+		roleARN := operatorIAMRole.RoleARN()
 		roleName, err := aws.GetResourceIdFromARN(roleARN)
-		if err != nil {
-			return ""
+		if err == nil {
+			m := strings.LastIndex(roleName, "-openshift")
+			if m != -1 {
+				rolePrefix = roleName[0:m]
+				break
+			}
 		}
-
-		m := strings.LastIndex(roleName, "-openshift")
-		rolePrefix = roleName[0:m]
 	}
 	role := fmt.Sprintf("%s-%s-%s", rolePrefix, missingOperator.Namespace(), missingOperator.Name())
 	if len(role) > 64 {

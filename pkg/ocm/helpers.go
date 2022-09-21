@@ -579,6 +579,10 @@ func (c *Client) GetCredRequests(isHypershift bool) (map[string]*cmv1.STSOperato
 	return m, nil
 }
 
+func ComputeDefaultOperatorRolesPrefix(clusterName string) string {
+	return fmt.Sprintf("%s-%s", clusterName, RandomLabel(4))
+}
+
 func (c *Client) FindMissingOperatorRolesForUpgrade(cluster *cmv1.Cluster,
 	newMinorVersion string) (map[string]*cmv1.STSOperator, error) {
 	missingRoles := make(map[string]*cmv1.STSOperator)

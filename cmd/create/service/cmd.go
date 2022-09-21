@@ -400,7 +400,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// operator role logic.
-	operatorRolesPrefix := getRolePrefix(args.ClusterName)
+	operatorRolesPrefix := ocm.ComputeDefaultOperatorRolesPrefix(args.ClusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 
 	// Managed Services does not support Hypershift at this time.
@@ -494,10 +494,6 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 	}
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
-}
-
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
 }
 
 func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {
