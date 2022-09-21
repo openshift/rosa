@@ -1144,7 +1144,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID, version, awsClient)
+	// Filter regions by OCP version for displaying in interactive mode
+	var versionFilter string
+	if interactive.Enabled() {
+		versionFilter = version
+	} else {
+		versionFilter = ""
+	}
+
+	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID, versionFilter, awsClient)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)

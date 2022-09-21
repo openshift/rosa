@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 )
 
+// GetFilteredRegionsByVersion fetches a list of regions. The 'version' argument is optional for filtering.
 func (c *Client) GetFilteredRegionsByVersion(roleARN string, version string,
 	awsClient aws.Client, externalID string) (regions []*cmv1.CloudRegion, err error) {
 	cloudProviderDataBuilder, err := c.createCloudProviderDataBuilder(roleARN, awsClient, externalID)
