@@ -275,7 +275,7 @@ func createRoles(r *rosa.Runtime,
 				continue
 			}
 		}
-		roleName, roleARN := getRoleNameAndARN(cluster, operator)
+		roleName, _ := getRoleNameAndARN(cluster, operator)
 		if roleName == "" {
 			return fmt.Errorf("Failed to find operator IAM role")
 		}
@@ -283,12 +283,12 @@ func createRoles(r *rosa.Runtime,
 			continue
 		}
 
-		rolePath, err := aws.GetPathFromARN(roleARN)
+		path, err := getPathFromInstanceRole(cluster)
 		if err != nil {
 			return err
 		}
 		policyARN := aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
-			operator.Name(), rolePath)
+			operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
 
@@ -299,7 +299,7 @@ func createRoles(r *rosa.Runtime,
 				tags.RedHatManaged:    "true",
 				"operator_namespace":  operator.Namespace(),
 				"operator_name":       operator.Name(),
-			}, rolePath)
+			}, path)
 		if err != nil {
 			return err
 		}
@@ -311,13 +311,13 @@ func createRoles(r *rosa.Runtime,
 		}
 		r.Reporter.Debugf("Creating role '%s'", roleName)
 
-		roleARN, err = r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
+		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
 			map[string]string{
 				tags.ClusterID:       cluster.ID(),
 				"operator_namespace": operator.Namespace(),
 				"operator_name":      operator.Name(),
 				tags.RedHatManaged:   "true",
-			}, rolePath)
+			}, path)
 		if err != nil {
 			return err
 		}
@@ -360,8 +360,8 @@ func buildCommands(r *rosa.Runtime, env string,
 				continue
 			}
 		}
-		roleName, roleARN := getRoleNameAndARN(cluster, operator)
-		path, err := aws.GetPathFromARN(roleARN)
+		roleName, _ := getRoleNameAndARN(cluster, operator)
+		path, err := getPathFromInstanceRole(cluster)
 		if err != nil {
 			return "", err
 		}
@@ -439,6 +439,11 @@ func getRoleNameAndARN(cluster *cmv1.Cluster, operator *cmv1.STSOperator) (strin
 		}
 	}
 	return "", ""
+}
+
+func getPathFromInstanceRole(cluster *cmv1.Cluster) (string, error) {
+	roles, _ := cluster.AWS().STS().GetInstanceIAMRoles()
+	return aws.GetPathFromARN(roles.MasterRoleARN())
 }
 
 func getPolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
