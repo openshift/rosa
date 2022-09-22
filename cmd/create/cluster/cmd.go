@@ -120,7 +120,6 @@ var args struct {
 	// Operator IAM Roles
 	operatorIAMRoles                 []string
 	operatorRolesPrefix              string
-	operatorRolePath                 string
 	operatorRolesPermissionsBoundary string
 
 	// Proxy
@@ -232,13 +231,6 @@ func init() {
 		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
 			"Leave empty to use an auto-generated one.",
 	)
-	flags.StringVar(
-		&args.operatorRolePath,
-		"operator-role-path",
-		"",
-		"Custom arn path for operator roles.",
-	)
-	flags.MarkHidden("operator-role-path")
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -972,7 +964,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorRolesPrefix := args.operatorRolesPrefix
-	operatorRolePath := args.operatorRolePath
+	operatorRolePath, _ := aws.GetPathFromARN(roleARN)
 	operatorIAMRoles := args.operatorIAMRoles
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
@@ -1006,20 +998,6 @@ func run(cmd *cobra.Command, _ []string) {
 		if !aws.RoleNameRE.MatchString(operatorRolesPrefix) {
 			r.Reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
 			os.Exit(1)
-		}
-		if cmd.Flags().Changed("operator-role-path") && interactive.Enabled() {
-			operatorRolePath, err = interactive.GetString(interactive.Input{
-				Question: "Operator Role Path",
-				Help:     cmd.Flags().Lookup("operator-role-path").Usage,
-				Default:  operatorRolePath,
-				Validators: []interactive.Validator{
-					aws.ARNPathValidator,
-				},
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid path: %s", err)
-				os.Exit(1)
-			}
 		}
 	}
 
