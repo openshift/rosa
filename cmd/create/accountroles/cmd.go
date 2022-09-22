@@ -227,10 +227,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	path := args.path
-	if cmd.Flags().Changed("role-path") && interactive.Enabled() {
+	if cmd.Flags().Changed("path") && interactive.Enabled() {
 		path, err = interactive.GetString(interactive.Input{
-			Question: "Role Path",
-			Help:     cmd.Flags().Lookup("role-path").Usage,
+			Question: "Path",
+			Help:     cmd.Flags().Lookup("path").Usage,
 			Default:  path,
 			Validators: []interactive.Validator{
 				aws.ARNPathValidator,
