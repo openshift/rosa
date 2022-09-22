@@ -38,7 +38,6 @@ var args struct {
 	prefix              string
 	permissionsBoundary string
 	admin               bool
-	path                string
 }
 
 var Cmd = &cobra.Command{
@@ -76,14 +75,6 @@ func init() {
 		false,
 		"Enable admin capabilities for the role",
 	)
-
-	flags.StringVar(
-		&args.path,
-		"path",
-		"",
-		"The arn path for the ocm role and policies",
-	)
-	flags.MarkHidden("path")
 
 	aws.AddModeFlag(Cmd)
 
@@ -180,22 +171,6 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	path := args.path
-	if cmd.Flags().Changed("path") && interactive.Enabled() {
-		path, err = interactive.GetString(interactive.Input{
-			Question: "Role Path",
-			Help:     cmd.Flags().Lookup("path").Usage,
-			Default:  path,
-			Validators: []interactive.Validator{
-				aws.ARNPathValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid path: %s", err)
-			os.Exit(1)
-		}
-	}
-
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
@@ -241,7 +216,7 @@ func run(cmd *cobra.Command, argv []string) {
 	switch mode {
 	case aws.ModeAuto:
 		r.Reporter.Infof("Creating role using '%s'", r.Creator.ARN)
-		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary, r.Creator.AccountID,
+		roleARN, err := createRoles(r, prefix, roleNameRequested, permissionsBoundary, r.Creator.AccountID,
 			orgID, env, isAdmin, policies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the ocm role: %s", err)
@@ -276,7 +251,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the ocm role and policies:\n")
 		}
-		commands := buildCommands(prefix, roleNameRequested, path, permissionsBoundary, r.Creator.AccountID, env, isAdmin)
+		commands := buildCommands(prefix, roleNameRequested, permissionsBoundary, r.Creator.AccountID, env, isAdmin)
 		fmt.Println(commands)
 	default:
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
@@ -284,8 +259,11 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func buildCommands(prefix string, roleName string, rolePath string, permissionsBoundary string,
+func buildCommands(prefix string, roleName string, permissionsBoundary string,
 	accountID string, env string, isAdmin bool) string {
+	//Creating a rolePath string for compatibility, this is always empty as it is currently not supported
+	var rolePath string
+
 	commands := []string{}
 	policyName := fmt.Sprintf("%s-Policy", roleName)
 	iamTags := fmt.Sprintf(
@@ -353,9 +331,12 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 	return strings.Join(commands, "\n\n")
 }
 
-func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath string,
+func createRoles(r *rosa.Runtime, prefix string, roleName string,
 	permissionsBoundary string, accountID string, orgID string, env string, isAdmin bool,
 	policies map[string]string) (string, error) {
+	//Creating a rolePath string for compatibility, this is always empty as it is currently not supported
+	var rolePath string
+
 	policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName), rolePath)
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
