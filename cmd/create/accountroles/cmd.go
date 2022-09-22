@@ -38,8 +38,7 @@ import (
 var args struct {
 	prefix              string
 	permissionsBoundary string
-	rolePath            string
-	policyPath          string
+	path                string
 	version             string
 	channelGroup        string
 }
@@ -75,20 +74,12 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.rolePath,
-		"role-path",
+		&args.path,
+		"path",
 		"",
-		"The arn path for the account roles",
+		"The arn path for the account/operator roles as well as their policies",
 	)
-	flags.MarkHidden("role-path")
-
-	flags.StringVar(
-		&args.policyPath,
-		"policy-path",
-		"",
-		"The arn path for the account policies",
-	)
-	flags.MarkHidden("policy-path")
+	flags.MarkHidden("path")
 
 	flags.StringVar(
 		&args.version,
@@ -235,28 +226,12 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	rolePath := args.rolePath
+	path := args.path
 	if cmd.Flags().Changed("role-path") && interactive.Enabled() {
-		rolePath, err = interactive.GetString(interactive.Input{
+		path, err = interactive.GetString(interactive.Input{
 			Question: "Role Path",
 			Help:     cmd.Flags().Lookup("role-path").Usage,
-			Default:  rolePath,
-			Validators: []interactive.Validator{
-				aws.ARNPathValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid path: %s", err)
-			os.Exit(1)
-		}
-	}
-
-	policyPath := args.policyPath
-	if cmd.Flags().Changed("policy-path") && interactive.Enabled() {
-		policyPath, err = interactive.GetString(interactive.Input{
-			Question: "Policy Path",
-			Help:     cmd.Flags().Lookup("policy-path").Usage,
-			Default:  policyPath,
+			Default:  path,
 			Validators: []interactive.Validator{
 				aws.ARNPathValidator,
 			},
@@ -291,7 +266,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 
 		err = createRoles(r, prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
-			policyVersion, rolePath, policyPath)
+			policyVersion, path)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the account roles: %s", err)
 			if strings.Contains(err.Error(), "Throttling") {
@@ -323,7 +298,7 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		commands := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID, policyVersion,
-			rolePath, policyPath)
+			path)
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
@@ -339,7 +314,7 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func buildCommands(prefix string, permissionsBoundary string, accountID string, defaultPolicyVersion string,
-	rolePath string, policyPath string) string {
+	path string) string {
 	commands := []string{}
 
 	for file, role := range aws.AccountRoles {
@@ -362,21 +337,21 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 			"\t--tags %s",
 			name, file, permBoundaryFlag, iamTags)
 
-		if rolePath != "" {
-			createRole = fmt.Sprintf(createRole+"\t--path %s", rolePath)
+		if path != "" {
+			createRole = fmt.Sprintf(createRole+"\t--path %s", path)
 		}
 		createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 			"\t--policy-name %s \\\n"+
 			"\t--policy-document file://sts_%s_permission_policy.json"+
 			"\t--tags %s",
 			policyName, file, iamTags)
-		if policyPath != "" {
-			createPolicy = fmt.Sprintf(createPolicy+"\t--path %s", policyPath)
+		if path != "" {
+			createPolicy = fmt.Sprintf(createPolicy+"\t--path %s", path)
 		}
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
 			"\t--policy-arn %s",
-			name, aws.GetPolicyARN(accountID, policyName, policyPath))
+			name, aws.GetPolicyARN(accountID, policyName, path))
 		commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	}
 
@@ -385,11 +360,11 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 
 func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env string,
 	policies map[string]string, defaultPolicyVersion string,
-	rolePath string, policyPath string) error {
+	path string) error {
 
 	for file, role := range aws.AccountRoles {
 		name := aws.GetRoleName(prefix, role.Name)
-		policyARN := aws.GetPolicyARN(r.Creator.AccountID, fmt.Sprintf("%s-Policy", name), policyPath)
+		policyARN := aws.GetPolicyARN(r.Creator.AccountID, fmt.Sprintf("%s-Policy", name), path)
 		if !confirm.Prompt(true, "Create the '%s' role?", name) {
 			continue
 		}
@@ -408,7 +383,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
 				tags.RedHatManaged:    "true",
-			}, rolePath)
+			}, path)
 		if err != nil {
 			return err
 		}
@@ -424,7 +399,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
 				tags.RedHatManaged:    "true",
-			}, policyPath)
+			}, path)
 		if err != nil {
 			return err
 		}
