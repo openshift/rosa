@@ -2260,9 +2260,6 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if operatorRolesPrefix != "" {
 		command += fmt.Sprintf(" --operator-roles-prefix %s", operatorRolesPrefix)
 	}
-	if operatorRolePath != "" {
-		command += fmt.Sprintf(" --operator-role-path %s", operatorRolePath)
-	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
 		for k, v := range spec.Tags {
