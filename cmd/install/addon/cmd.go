@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -117,6 +118,17 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	quotaCost, err := r.OCMClient.GetAddonParameterQuotaCost(addOnID)
+	if err != nil {
+		r.Reporter.Warnf("%s", err)
+		os.Exit(0)
+	}
+	availableQuota := quotaCost.Allowed() - quotaCost.Consumed()
+	if availableQuota < 1 {
+		r.Reporter.Warnf("Your organisation account does not have any quota to install the add on %s", addOnID)
+		os.Exit(0)
+	}
+
 	// Verify if addon requires STS authentication
 	isSTS := cluster.AWS().STS().RoleARN() != "" && len(addOn.CredentialsRequests()) > 0
 	if isSTS {
@@ -200,8 +212,21 @@ func run(cmd *cobra.Command, argv []string) {
 
 			parameterOptions, _ := param.GetOptions()
 			for _, opt := range parameterOptions {
-				options = append(options, opt.Name())
-				values = append(values, opt.Value())
+				if param.ValueType() != "resource" {
+					options = append(options, opt.Name())
+					values = append(values, opt.Value())
+					continue
+				}
+
+				valueInt, err := strconv.Atoi(opt.Value())
+				if err != nil {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
+				if valueInt <= availableQuota {
+					options = append(options, opt.Name())
+					values = append(values, opt.Value())
+				}
 			}
 
 			// If value is already set in the CLI, ignore interactive prompt

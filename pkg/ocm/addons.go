@@ -17,6 +17,7 @@ limitations under the License.
 package ocm
 
 import (
+	"errors"
 	"fmt"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -161,6 +162,32 @@ func (c *Client) GetAddOnParameters(clusterID, addOnID string) (*cmv1.AddOnParam
 		return nil, handleErr(response.Error(), err)
 	}
 	return response.Body().Parameters(), nil
+}
+
+func (c *Client) GetAddonParameterQuotaCost(addOnName string) (*amsv1.QuotaCost, error) {
+	// Get organization ID (used to get add-on quotas)
+	acctResponse, err := c.ocm.AccountsMgmt().V1().CurrentAccount().
+		Get().
+		Send()
+	if err != nil {
+		return nil, handleErr(acctResponse.Error(), err)
+	}
+	organization := acctResponse.Body().Organization().ID()
+
+	quotaCostResponse, err := c.ocm.AccountsMgmt().V1().Organizations().
+		Organization(organization).
+		QuotaCost().
+		List().
+		Search(fmt.Sprintf("quota_id LIKE 'add-on|addon-%s'", addOnName)).
+		Send()
+	if err != nil {
+		return nil, handleErr(quotaCostResponse.Error(), err)
+	}
+	if quotaCostResponse.Items().Len() != 1 {
+		return nil, handleErr(nil, errors.New(fmt.Sprintf("expected to find 1 quota_cost related to the addon but found %d", quotaCostResponse.Items().Len())))
+	}
+	return quotaCostResponse.Items().Get(0), nil
+
 }
 
 // Get complete list of available add-ons for the current organization

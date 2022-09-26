@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -75,6 +76,12 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	quotaCost, err := r.OCMClient.GetAddonParameterQuotaCost(addOnID)
+	if err != nil {
+		r.Reporter.Warnf("%s", err)
+		os.Exit(0)
+	}
+
 	parameters, err := r.OCMClient.GetAddOnParameters(cluster.ID(), addOnID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get add-on '%s' parameters: %v", addOnID, err)
@@ -86,7 +93,6 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Failed to get add-on '%s' installation: %v", addOnID, err)
 		os.Exit(1)
 	}
-
 	if parameters.Len() == 0 {
 		r.Reporter.Errorf("Add-on '%s' has no parameters to edit", addOnID)
 		os.Exit(1)
@@ -125,7 +131,6 @@ func run(cmd *cobra.Command, argv []string) {
 		if addOnInstallationParam != nil && !param.Editable() {
 			return true
 		}
-
 		var val string
 		var options []string
 		var values []string
@@ -133,8 +138,28 @@ func run(cmd *cobra.Command, argv []string) {
 		parameterOptions, _ := param.GetOptions()
 
 		for _, opt := range parameterOptions {
-			options = append(options, opt.Name())
-			values = append(values, opt.Value())
+			if param.ValueType() != "resource" {
+				options = append(options, opt.Name())
+				values = append(values, opt.Value())
+				continue
+			}
+
+			paramValueInt, err := strconv.Atoi(addOnInstallationParam.Value())
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			// available quota == what's allowed minus what's consumed plus the value of the installation being edited
+			availableQuota := quotaCost.Allowed() - quotaCost.Consumed() + paramValueInt
+			valueInt, err := strconv.Atoi(opt.Value())
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			if valueInt <= availableQuota {
+				options = append(options, opt.Name())
+				values = append(values, opt.Value())
+			}
 		}
 
 		// If value is already set in the CLI, ignore interactive prompt
