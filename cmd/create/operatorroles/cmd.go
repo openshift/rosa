@@ -283,7 +283,7 @@ func createRoles(r *rosa.Runtime,
 			continue
 		}
 
-		path, err := getPathFromInstanceRole(cluster)
+		path, err := getPathFromInstallerRole(cluster)
 		if err != nil {
 			return err
 		}
@@ -361,7 +361,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			}
 		}
 		roleName, _ := getRoleNameAndARN(cluster, operator)
-		path, err := getPathFromInstanceRole(cluster)
+		path, err := getPathFromInstallerRole(cluster)
 		if err != nil {
 			return "", err
 		}
@@ -441,9 +441,8 @@ func getRoleNameAndARN(cluster *cmv1.Cluster, operator *cmv1.STSOperator) (strin
 	return "", ""
 }
 
-func getPathFromInstanceRole(cluster *cmv1.Cluster) (string, error) {
-	roles, _ := cluster.AWS().STS().GetInstanceIAMRoles()
-	return aws.GetPathFromARN(roles.MasterRoleARN())
+func getPathFromInstallerRole(cluster *cmv1.Cluster) (string, error) {
+	return aws.GetPathFromARN(cluster.AWS().STS().RoleARN())
 }
 
 func getPolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
