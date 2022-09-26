@@ -1365,7 +1365,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 		// Validate subnets in the case the user has provided them using the `args.subnets`
-		if subnetsProvided && !isHostedCP {
+		if subnetsProvided {
 			err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
