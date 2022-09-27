@@ -1,4 +1,4 @@
-/*
+/**
 Copyright (c) 2020 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -491,7 +491,7 @@ func (c *Client) CheckIfAWSAccountExists(orgID string, awsAccountID string) (boo
 	return exists, existingARN, selectedARN, nil
 }
 
-/**
+/*
 We should allow only one role per aws account per organization
 If the user request same ocm role we should let them proceed to ensure they can add admin role
 if not exists or attach policies or link etc
