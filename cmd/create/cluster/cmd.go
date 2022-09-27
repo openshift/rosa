@@ -373,9 +373,18 @@ func init() {
 		"",
 		"Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.",
 	)
+
 	flags.IntVar(
 		&args.computeNodes,
 		"compute-nodes",
+		2,
+		"Number of worker nodes to provision. Single zone clusters need at least 2 nodes, "+
+			"multizone clusters need at least 3 nodes.",
+	)
+	flags.MarkDeprecated("compute-nodes", "use --replicas instead")
+	flags.IntVar(
+		&args.computeNodes,
+		"replicas",
 		2,
 		"Number of worker nodes to provision. Single zone clusters need at least 2 nodes, "+
 			"multizone clusters need at least 3 nodes.",
