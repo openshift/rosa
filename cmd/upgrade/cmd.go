@@ -43,4 +43,9 @@ func init() {
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
 	interactive.AddFlag(flags)
+
+	accountroles.Cmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
+		arguments.MarkGlobalFlagsHidden(Cmd, "region")
+		command.Parent().HelpFunc()(command, strings)
+	})
 }

@@ -226,3 +226,22 @@ func IsValidMode(modes []string, mode string) bool {
 	}
 	return false
 }
+
+func MarkGlobalFlagsHidden(command *cobra.Command, hidden ...string) {
+	command.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+		name := flag.Name
+		if contains(hidden, name) {
+			flag.Hidden = true
+		}
+	})
+}
+
+// contains returns true if the string is in the slice
+func contains(b []string, i string) bool {
+	for _, s := range b {
+		if s == i {
+			return true
+		}
+	}
+	return false
+}
