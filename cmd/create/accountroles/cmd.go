@@ -346,10 +346,11 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 		name := aws.GetRoleName(prefix, role.Name)
 		policyName := fmt.Sprintf("%s-Policy", name)
 		iamTags := fmt.Sprintf(
-			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.OpenShiftVersion, defaultPolicyVersion,
 			tags.RolePrefix, prefix,
 			tags.RoleType, file,
+			tags.RedHatManaged, "true",
 		)
 		permBoundaryFlag := ""
 		if permissionsBoundary != "" {
