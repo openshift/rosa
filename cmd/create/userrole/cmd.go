@@ -247,10 +247,11 @@ func buildCommands(prefix string, path string, userName string,
 
 	roleARN := aws.GetRoleARN(accountID, roleName, path)
 	iamTags := fmt.Sprintf(
-		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 		tags.RolePrefix, prefix,
 		tags.RoleType, aws.OCMUserRole,
 		tags.Environment, env,
+		tags.RedHatManaged, "true",
 	)
 	permBoundaryFlag := ""
 	if permissionsBoundary != "" {
