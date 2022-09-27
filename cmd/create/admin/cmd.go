@@ -179,7 +179,8 @@ func run(cmd *cobra.Command, _ []string) {
 	r.Reporter.Infof("Please securely store this generated password. " +
 		"If you lose this password you can delete and recreate the cluster admin user.")
 	r.Reporter.Infof("To login, run the following command:\n\n"+
-		"   oc login %s --username %s --password %s\n", outputObject["api_url"], outputObject["username"], outputObject["password"])
+		"   oc login %s --username %s --password %s\n",
+		outputObject["api_url"], outputObject["username"], outputObject["password"])
 	r.Reporter.Infof("It may take up to a minute for the account to become active.")
 }
 
