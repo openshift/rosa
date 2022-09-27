@@ -82,42 +82,28 @@ func (c *Client) AddHTPasswdUser(username, password, clusterID, idpID string) er
 func (c *Client) DeleteHTPasswdUser(username, clusterID string, htpasswdIDP *cmv1.IdentityProvider) error {
 	var userID string
 
-	idp, ok := htpasswdIDP.GetHtpasswd()
-	if !ok {
-		return fmt.Errorf("Failed to get htpasswd idp for cluster '%s'", clusterID)
+	listResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		IdentityProviders().IdentityProvider(htpasswdIDP.ID()).HtpasswdUsers().List().Send()
+	if err != nil {
+		if listResponse.Error().Status() == http.StatusNotFound {
+			return nil
+		}
+		return handleErr(listResponse.Error(), err)
 	}
-	if idp.Username() != "" {
-		//the admin was created with ROSA release less than 4.10
-		//remove the entire idp
-		response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
-			IdentityProviders().IdentityProvider(htpasswdIDP.ID()).Delete().Send()
-		if err != nil {
-			return handleErr(response.Error(), err)
+	listResponse.Items().Each(func(user *cmv1.HTPasswdUser) bool {
+		if user.Username() == username {
+			userID = user.ID()
 		}
-	} else {
-		listResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
-			IdentityProviders().IdentityProvider(htpasswdIDP.ID()).HtpasswdUsers().List().Send()
-		if err != nil {
-			if listResponse.Error().Status() == http.StatusNotFound {
-				return nil
-			}
-			return handleErr(listResponse.Error(), err)
-		}
-		listResponse.Items().Each(func(user *cmv1.HTPasswdUser) bool {
-			if user.Username() == username {
-				userID = user.ID()
-			}
-			return true
-		})
-		if userID == "" && listResponse.Items().Len() != 0 {
-			return fmt.Errorf("HTPasswd user named '%s' on cluster '%s' does not exist", username, clusterID)
-		}
-		deleteResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
-			IdentityProviders().IdentityProvider(htpasswdIDP.ID()).HtpasswdUsers().
-			HtpasswdUser(userID).Delete().Send()
-		if err != nil {
-			return handleErr(deleteResponse.Error(), err)
-		}
+		return true
+	})
+	if userID == "" {
+		return fmt.Errorf("HTPasswd user named '%s' on cluster '%s' does not exist", username, clusterID)
+	}
+	deleteResponse, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		IdentityProviders().IdentityProvider(htpasswdIDP.ID()).HtpasswdUsers().
+		HtpasswdUser(userID).Delete().Send()
+	if err != nil {
+		return handleErr(deleteResponse.Error(), err)
 	}
 	return nil
 }
