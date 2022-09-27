@@ -1,6 +1,7 @@
 package aws_test
 
 import (
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -70,6 +71,10 @@ var _ = Describe("Client", func() {
 			Context("When stack is in CREATE_COMPLETE state", func() {
 				BeforeEach(func() {
 					stackStatus = cloudformation.StackStatusCreateComplete
+					mockIamAPI.EXPECT().GetUser(gomock.Any()).Return(
+						&iam.GetUserOutput{User: &iam.User{UserName: &adminUserName}},
+						awserr.New(iam.ErrCodeNoSuchEntityException, "", nil),
+					)
 					mockCfAPI.EXPECT().UpdateStack(gomock.Any()).Return(nil, nil)
 					mockCfAPI.EXPECT().WaitUntilStackUpdateComplete(gomock.Any()).Return(nil)
 				})
@@ -86,6 +91,10 @@ var _ = Describe("Client", func() {
 					stackStatus = cloudformation.StackStatusDeleteComplete
 					mockIamAPI.EXPECT().ListUsers(gomock.Any()).Return(&iam.ListUsersOutput{Users: []*iam.User{}}, nil)
 					mockIamAPI.EXPECT().TagUser(gomock.Any()).Return(&iam.TagUserOutput{}, nil)
+					mockIamAPI.EXPECT().GetUser(gomock.Any()).Return(
+						&iam.GetUserOutput{User: &iam.User{UserName: &adminUserName}},
+						awserr.New(iam.ErrCodeNoSuchEntityException, "", nil),
+					)
 					mockCfAPI.EXPECT().CreateStack(gomock.Any()).Return(nil, nil)
 					mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
 				})
@@ -100,6 +109,10 @@ var _ = Describe("Client", func() {
 			Context("When stack is in ROLLBACK_COMPLETE state", func() {
 				BeforeEach(func() {
 					stackStatus = cloudformation.StackStatusRollbackComplete
+					mockIamAPI.EXPECT().GetUser(gomock.Any()).Return(
+						&iam.GetUserOutput{User: &iam.User{UserName: &adminUserName}},
+						awserr.New(iam.ErrCodeNoSuchEntityException, "", nil),
+					)
 				})
 
 				It("Returns error telling the stack is in an invalid state", func() {
@@ -120,6 +133,10 @@ var _ = Describe("Client", func() {
 				}, nil)
 				mockIamAPI.EXPECT().ListUsers(gomock.Any()).Return(&iam.ListUsersOutput{Users: []*iam.User{}}, nil)
 				mockIamAPI.EXPECT().TagUser(gomock.Any()).Return(&iam.TagUserOutput{}, nil)
+				mockIamAPI.EXPECT().GetUser(gomock.Any()).Return(
+					&iam.GetUserOutput{User: &iam.User{UserName: &adminUserName}},
+					awserr.New(iam.ErrCodeNoSuchEntityException, "", nil),
+				)
 				mockCfAPI.EXPECT().CreateStack(gomock.Any()).Return(nil, nil)
 				mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
 			})
