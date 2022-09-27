@@ -136,14 +136,18 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		var deletionStrategy DeleteAdminUserStrategy = &DeleteUserAdminFromIDP{}
-		if wasAdminCreatedUsingOldROSA(r, identityProvider) {
-			deletionStrategy = &DeleteAdminIDP{}
-		}
+		deletionStrategy := getAdminUserDeletionStrategy(r, identityProvider)
 		deletionStrategy.deleteAdmin(r, identityProvider)
 
 		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, r.ClusterKey)
 	}
+}
+
+func getAdminUserDeletionStrategy(r *rosa.Runtime, identityProvider *cmv1.IdentityProvider) DeleteAdminUserStrategy {
+	if wasAdminCreatedUsingOldROSA(r, identityProvider) {
+		return &DeleteAdminIDP{}
+	}
+	return &DeleteUserAdminFromIDP{}
 }
 
 func wasAdminCreatedUsingOldROSA(r *rosa.Runtime, identityProvider *cmv1.IdentityProvider) bool {
@@ -152,5 +156,5 @@ func wasAdminCreatedUsingOldROSA(r *rosa.Runtime, identityProvider *cmv1.Identit
 		r.Reporter.Errorf("Failed to get htpasswd idp for cluster '%s'", r.Cluster.ID())
 		os.Exit(1)
 	}
-	return htpasswdIdp.Username() == "cluster-admin"
+	return htpasswdIdp.Username() == idp.ClusterAdminUsername
 }
