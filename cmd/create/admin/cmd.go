@@ -25,7 +25,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/idp"
+	"github.com/openshift/rosa/pkg/object"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -52,6 +54,7 @@ func init() {
 		"",
 		"Choice of password for admin user.",
 	)
+	output.AddFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -154,11 +157,29 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	outputObject := object.Object{
+		"api_url":  cluster.API().URL(),
+		"username": idp.ClusterAdminUsername,
+		"password": password,
+	}
+
+	if output.HasFlag() {
+		if len(passwordArg) != 0 {
+			delete(outputObject, "password")
+		}
+		err = output.Print(outputObject)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	r.Reporter.Infof("Admin account has been added to cluster '%s'.", clusterKey)
 	r.Reporter.Infof("Please securely store this generated password. " +
 		"If you lose this password you can delete and recreate the cluster admin user.")
 	r.Reporter.Infof("To login, run the following command:\n\n"+
-		"   oc login %s --username %s --password %s\n", cluster.API().URL(), idp.ClusterAdminUsername, password)
+		"   oc login %s --username %s --password %s\n", outputObject["api_url"], outputObject["username"], outputObject["password"])
 	r.Reporter.Infof("It may take up to a minute for the account to become active.")
 }
 
