@@ -1,4 +1,4 @@
-/*
+/**
 Copyright (c) 2020 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -181,9 +181,7 @@ func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 	return clusterObject, nil
 }
 
-/**
-pass 0 to get all clusters
-*/
+// Pass 0 to get all clusters
 func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.Cluster, err error) {
 	if count < 0 {
 		err = errors.Errorf("Invalid Cluster count")

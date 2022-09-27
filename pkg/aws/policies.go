@@ -1,4 +1,4 @@
-/*
+/**
 Copyright (c) 2021 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -706,7 +706,7 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 	return accountRoles, nil
 }
 
-//Check if it is one of the ROSA account roles
+// Check if it is one of the ROSA account roles
 func checkIfAccountRole(roleName *string) bool {
 	for _, prefix := range AccountRoles {
 		if strings.Contains(aws.StringValue(roleName), prefix.Name) {
@@ -716,7 +716,7 @@ func checkIfAccountRole(roleName *string) bool {
 	return false
 }
 
-//Check if it is one of the ROSA account roles
+// Check if it is one of the ROSA account roles
 func checkIfROSAOperatorRole(roleName *string, credRequest map[string]*cmv1.STSOperator) bool {
 	for _, operatorRole := range credRequest {
 		if strings.Contains(aws.StringValue(roleName), operatorRole.Namespace()) {
