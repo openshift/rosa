@@ -24,7 +24,9 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -61,6 +63,20 @@ var Cmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func areLocalFlagsUnchanged(cmd *cobra.Command) bool {
+	parentFlagSet := cmd.Parent().Flags()
+	localFlagsExcluded := []string{"cluster"}
+	flagSet := cmd.Flags()
+	areFlagsUnchanged := true
+	flagSet.VisitAll(func(flag *pflag.Flag) {
+		if parentFlagSet.Lookup(flag.Name) == nil &&
+			!helper.Contains(localFlagsExcluded, flag.Name) && flagSet.Changed(flag.Name) {
+			areFlagsUnchanged = false
+		}
+	})
+	return areFlagsUnchanged
 }
 
 func init() {
@@ -101,6 +117,11 @@ func run(cmd *cobra.Command, argv []string) {
 	var err error
 	labelMatch := args.labelMatch
 	routeSelectors := make(map[string]string)
+
+	if !interactive.Enabled() && areLocalFlagsUnchanged(cmd) {
+		interactive.Enable()
+	}
+
 	if interactive.Enabled() {
 		labelMatch, err = interactive.GetString(interactive.Input{
 			Question: "Label match for ingress",
