@@ -18,6 +18,7 @@ package admin
 
 import (
 	"os"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -131,6 +132,10 @@ func run(cmd *cobra.Command, _ []string) {
 			idp.ClusterAdminUsername, r.ClusterKey)
 		err = r.OCMClient.DeleteUser(clusterID, "cluster-admins", idp.ClusterAdminUsername)
 		if err != nil {
+			if strings.Contains(err.Error(), "does not exist on group") {
+				r.Reporter.Errorf("Cluster '%s' does not have an admin user", r.ClusterKey)
+				os.Exit(1)
+			}
 			r.Reporter.Errorf("Failed to delete '%s' user from cluster-admins groups of cluster '%s': %s",
 				idp.ClusterAdminUsername, r.ClusterKey, err)
 			os.Exit(1)
