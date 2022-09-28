@@ -403,11 +403,12 @@ func buildCommands(r *rosa.Runtime, env string,
 			return "", err
 		}
 		iamTags := fmt.Sprintf(
-			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
+			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 			tags.ClusterID, cluster.ID(),
 			tags.RolePrefix, prefix,
 			"operator_namespace", operator.Namespace(),
 			"operator_name", operator.Name(),
+			tags.RedHatManaged, "true",
 		)
 		permBoundaryFlag := ""
 		if permissionsBoundary != "" {
