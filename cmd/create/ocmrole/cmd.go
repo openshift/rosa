@@ -49,7 +49,7 @@ var Cmd = &cobra.Command{
   rosa create ocm-role
 
   # Create ocm role with a specific permissions boundary
-  rosa create ocm-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary --path /roles/`,
+  rosa create ocm-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
 	Run: run,
 }
 
