@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -65,18 +64,12 @@ var Cmd = &cobra.Command{
 	},
 }
 
-func areLocalFlagsUnchanged(cmd *cobra.Command) bool {
-	parentFlagSet := cmd.Parent().Flags()
-	localFlagsExcluded := []string{"cluster"}
-	flagSet := cmd.Flags()
-	areFlagsUnchanged := true
-	flagSet.VisitAll(func(flag *pflag.Flag) {
-		if parentFlagSet.Lookup(flag.Name) == nil &&
-			!helper.Contains(localFlagsExcluded, flag.Name) && flagSet.Changed(flag.Name) {
-			areFlagsUnchanged = false
-		}
-	})
-	return areFlagsUnchanged
+func shouldEnableInteractive(flagSet *pflag.FlagSet, params []string) bool {
+	unchanged := true
+	for _, s := range params {
+		unchanged = unchanged && !flagSet.Changed(s)
+	}
+	return unchanged
 }
 
 func init() {
@@ -118,7 +111,7 @@ func run(cmd *cobra.Command, argv []string) {
 	labelMatch := args.labelMatch
 	routeSelectors := make(map[string]string)
 
-	if !interactive.Enabled() && areLocalFlagsUnchanged(cmd) {
+	if !interactive.Enabled() && shouldEnableInteractive(cmd.Flags(), []string{"label-match", "private"}) {
 		interactive.Enable()
 	}
 
@@ -225,11 +218,12 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	r.Reporter.Debugf("Updating ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
 	if private == nil || len(routeSelectors) == 0 {
 		r.Reporter.Warnf("No need to update ingress as there are no changes")
 		os.Exit(0)
 	}
+
+	r.Reporter.Debugf("Updating ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
 	_, err = r.OCMClient.UpdateIngress(cluster.ID(), ingress)
 	if err != nil {
 		r.Reporter.Errorf("Failed to update ingress '%s' on cluster '%s': %s",
