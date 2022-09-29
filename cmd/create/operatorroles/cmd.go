@@ -186,7 +186,8 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if path != "" {
-		r.Reporter.Infof("Path '%s' detected, this path will be used for subsequent created operator roles and policies.", path)
+		r.Reporter.Infof("Path '%s' detected, this path will be used for subsequent"+
+			" created operator roles and policies.", path)
 	}
 	accountRoleVersion, err := r.AWSClient.GetAccountRoleVersion(roleName)
 	if err != nil {
