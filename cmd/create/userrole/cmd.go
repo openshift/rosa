@@ -76,7 +76,6 @@ func init() {
 		"",
 		"The arn path for the user role and policies.",
 	)
-	flags.MarkHidden("path")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)

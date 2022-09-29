@@ -79,7 +79,6 @@ func init() {
 		"",
 		"The arn path for the account/operator roles as well as their policies",
 	)
-	flags.MarkHidden("path")
 
 	flags.StringVar(
 		&args.version,

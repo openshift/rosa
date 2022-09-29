@@ -83,7 +83,6 @@ func init() {
 		"",
 		"The arn path for the ocm role and policies",
 	)
-	flags.MarkHidden("path")
 
 	aws.AddModeFlag(Cmd)
 
