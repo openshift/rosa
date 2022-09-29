@@ -1013,6 +1013,9 @@ func run(cmd *cobra.Command, _ []string) {
 
 	credRequests, err := r.OCMClient.GetCredRequests(isHostedCP)
 	if isSTS {
+		if operatorRolePath != "" && (!output.HasFlag() || r.Reporter.IsTerminal()) {
+			r.Reporter.Infof("Path '%s' detected, this path will be used for subsequent created operator roles and policies.", operatorRolePath)
+		}
 		if err != nil {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 			os.Exit(1)

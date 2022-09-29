@@ -180,6 +180,14 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
+	path, err := getPathFromInstallerRole(cluster)
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid path for  '%s': %v", cluster.AWS().STS().RoleARN(), err)
+		os.Exit(1)
+	}
+	if path != "" {
+		r.Reporter.Infof("Path '%s' detected, this path will be used for subsequent created operator roles and policies.", path)
+	}
 	accountRoleVersion, err := r.AWSClient.GetAccountRoleVersion(roleName)
 	if err != nil {
 		r.Reporter.Errorf("Error getting account role version %s", err)
