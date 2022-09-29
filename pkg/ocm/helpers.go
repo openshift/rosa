@@ -83,6 +83,7 @@ func IsValidClusterName(clusterName string) bool {
 
 func ClusterNameValidator(name interface{}) error {
 	if str, ok := name.(string); ok {
+		str := strings.Trim(str, " \t")
 		if !IsValidClusterName(str) {
 			return fmt.Errorf("Cluster name must consist of no more than 15 lowercase " +
 				"alphanumeric characters or '-', start with a letter, and end with an " +
