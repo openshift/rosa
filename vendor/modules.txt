@@ -157,6 +157,9 @@ github.com/nathan-fiscaletti/consolesize-go
 ## explicit; go 1.18
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
+github.com/onsi/ginkgo/v2/dsl/core
+github.com/onsi/ginkgo/v2/dsl/decorators
+github.com/onsi/ginkgo/v2/dsl/table
 github.com/onsi/ginkgo/v2/formatter
 github.com/onsi/ginkgo/v2/internal
 github.com/onsi/ginkgo/v2/internal/global
@@ -178,7 +181,7 @@ github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
 # github.com/openshift-online/ocm-sdk-go v0.1.287
-## explicit
+## explicit; go 1.16
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accountsmgmt
 github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1

@@ -17,6 +17,8 @@ limitations under the License.
 package cluster
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -64,9 +66,20 @@ func run(cmd *cobra.Command, argv []string) {
 	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
-	var str string
+
+	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
 	if output.HasFlag() {
-		err = output.Print(cluster)
+		f, err := formatCluster(cluster, scheduledUpgrade, upgradeState)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		err = output.Print(f)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -74,6 +87,7 @@ func run(cmd *cobra.Command, argv []string) {
 		return
 	}
 
+	var str string
 	creatorARN, err := arn.Parse(cluster.Properties()[properties.CreatorARN])
 	if err != nil {
 		r.Reporter.Errorf("Failed to parse creator ARN for cluster '%s'", clusterKey)
@@ -112,12 +126,6 @@ func run(cmd *cobra.Command, argv []string) {
 	isPrivate := "No"
 	if cluster.API().Listening() == cmv1.ListeningMethodInternal {
 		isPrivate = "Yes"
-	}
-
-	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
 	}
 
 	detailsPage := getDetailsLink(r.OCMClient.GetConnectionURL())
@@ -370,4 +378,31 @@ func getUseworkloadMonitoring(disabled bool) string {
 		return "disabled"
 	}
 	return "enabled"
+}
+
+func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
+	upgradeState *cmv1.UpgradePolicyState) (map[string]interface{}, error) {
+
+	var b bytes.Buffer
+	err := cmv1.MarshalCluster(cluster, &b)
+	if err != nil {
+		return nil, err
+	}
+	ret := make(map[string]interface{})
+	err = json.Unmarshal(b.Bytes(), &ret)
+	if err != nil {
+		return nil, err
+	}
+	if scheduledUpgrade != nil &&
+		upgradeState != nil &&
+		len(scheduledUpgrade.Version()) > 0 &&
+		len(upgradeState.Value()) > 0 {
+		upgrade := make(map[string]interface{})
+		upgrade["version"] = scheduledUpgrade.Version()
+		upgrade["state"] = upgradeState.Value()
+		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
+		ret["scheduledUpgrade"] = upgrade
+	}
+
+	return ret, nil
 }
