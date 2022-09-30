@@ -88,6 +88,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) error {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
 	reporter := r.Reporter
 	awsClient := r.AWSClient
 	ocmClient := r.OCMClient
