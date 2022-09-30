@@ -109,7 +109,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	args.isInvokedFromClusterUpgrade = isInvokedFromClusterUpgrade
 	mode, err := aws.GetMode()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	prefix := args.prefix
