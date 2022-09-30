@@ -708,6 +708,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	if args.watch && isSTS && mode == aws.ModeAuto && !confirm.Yes() {
+		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'auto'." +
+			"To watch your cluster installation logs, run 'rosa logs install' instead after the cluster has began creating.")
+		os.Exit(1)
+	}
+
 	hasRoles := false
 	if isSTS && roleARN == "" {
 		minor := ocm.GetVersionMinor(version)
