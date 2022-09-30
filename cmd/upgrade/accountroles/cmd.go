@@ -29,9 +29,9 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -87,8 +87,10 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) error {
-	reporter := rprtr.CreateReporterOrExit()
-	logger := logging.NewLogger()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	reporter := r.Reporter
+	awsClient := r.AWSClient
+	ocmClient := r.OCMClient
 
 	isInvokedFromClusterUpgrade := false
 	skipInteractive := false
@@ -106,33 +108,10 @@ func run(cmd *cobra.Command, argv []string) error {
 	args.isInvokedFromClusterUpgrade = isInvokedFromClusterUpgrade
 	mode, err := aws.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	prefix := args.prefix
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
-	}
-
-	// Create the client for the OCM API:
-	ocmClient, err := ocm.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
-	}
-	defer func() {
-		err = ocmClient.Close()
-		if err != nil {
-			reporter.Errorf("Failed to close OCM connection: %v", err)
-		}
-	}()
 
 	version := args.version
 	isVersionChosen := version != ""
@@ -396,14 +375,20 @@ func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
 		}
 		policyName := fmt.Sprintf("%s-Policy", roleName)
 		policyARN := ""
+		policyType := ""
 		for _, rolePolicy := range rolePolicies {
 			if rolePolicy.PolicyName == policyName {
 				policyARN = rolePolicy.PolicyArn
+				policyType = rolePolicy.PolicType
 				break
 			}
 		}
 		if policyARN != "" {
 			return aws.GetPathFromARN(policyARN)
+		}
+		// Compatibility with old ROSA CLI
+		if policyType == aws.Inline {
+			return awsClient.GetRoleARNPath(prefix)
 		}
 	}
 	return "", fmt.Errorf("Could not find account policies that are attached to account roles." +
