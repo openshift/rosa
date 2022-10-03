@@ -1013,6 +1013,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 	credRequests, err := r.OCMClient.GetCredRequests(isHostedCP)
 	if isSTS {
+		if err != nil {
+			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
+			os.Exit(1)
+		}
 		installerRole := aws.AccountRoles[aws.InstallerAccountRole]
 		accRolesPrefix, err := getAccountRolePrefix(roleARN, installerRole)
 		if err != nil {
@@ -1022,10 +1026,6 @@ func run(cmd *cobra.Command, _ []string) {
 		if operatorRolePath != "" && (!output.HasFlag() || r.Reporter.IsTerminal()) {
 			r.Reporter.Infof("ARN path '%s' detected. This  ARN path will be used for subsequent"+
 				" created operator roles and policies, for the account roles with prefix '%s'", operatorRolePath, accRolesPrefix)
-		}
-		if err != nil {
-			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-			os.Exit(1)
 		}
 		for _, operator := range credRequests {
 			//If the cluster version is less than the supported operator version
