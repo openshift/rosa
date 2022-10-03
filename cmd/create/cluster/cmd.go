@@ -1013,9 +1013,15 @@ func run(cmd *cobra.Command, _ []string) {
 
 	credRequests, err := r.OCMClient.GetCredRequests(isHostedCP)
 	if isSTS {
+		installerRole := aws.AccountRoles[aws.InstallerAccountRole]
+		accRolesPrefix, err := getAccountRolePrefix(roleARN, installerRole)
+		if err != nil {
+			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
+			os.Exit(1)
+		}
 		if operatorRolePath != "" && (!output.HasFlag() || r.Reporter.IsTerminal()) {
-			r.Reporter.Infof("Path '%s' detected, this path will be used for subsequent"+
-				" created operator roles and policies.", operatorRolePath)
+			r.Reporter.Infof("ARN path '%s' detected. This  ARN path will be used for subsequent"+
+				" created operator roles and policies, for the account roles with prefix '%s'", operatorRolePath, accRolesPrefix)
 		}
 		if err != nil {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
