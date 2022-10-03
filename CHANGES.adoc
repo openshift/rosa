@@ -2,6 +2,93 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.7 Oct 3 2022
+
+- add samira to maintainers
+- updated
+- fix - Google IDP doesn't work when created with ROSA CLI
+- Refactored ROSA to create operator policies when running `rosa create cluster`
+- SDA_4308: use root CA to generate OIDC thubmnail
+- support for path in iam roles and policies
+- Create cluster - use a GET request to describe cluster details
+- Refactor `GetCluster` function
+- add arn path to ocm and user role
+- fix- It failed to set empty value with "" for no_proxy filed via interactive mode
+- Add red-hat-managed tag to roles and policies
+- Adding an info message after `rosa delete admin`
+- Revert PR#787
+- compare arn path for existing policy/role
+- missing '--operator-roles-path' in 'To create this cluster again...'
+- bump ocm sdk to 0.1.285
+- allow setting billing model for addong installations
+- fix setting interactive mode enable for addon installation billing mode
+- policies: Ensure policy version succeeds
+- cluster: Allow using local AWS credentials
+- Only display supported machine types by region
+- Deleted account and operator policies
+- ocm: Add aliases for local development
+- red-hat-managed=true tag now added to operatorroles
+- move operator policies from account to operator commands
+- hide arn path flags
+- Ensure prerequisites for deleting operator and account role policies
+- path for account and operator roles and policies
+- fix manual create operator policy sda-6740
+- Upgrade OCM-SDK-GO version to 0.1.287
+- Add support for Hypershift cluster creation
+- Added redhatmanaged=true tag to roles when `rosa upgrade operator-roles` is ran
+- Create cluster - list region filtered by OCP version
+- Improve `EnsurePolicy` error message
+- Add also local-proxy env config
+- set mode only once in operator roles upgrade
+- chore: rebase
+- fix: changing description for channel group
+- fix: description of version arg
+- fix: reporting correct message back if specific version was chosen
+- [Hypershift] Modify `describe cluster` to differentiate between classic vs Hosted-cp
+- feat: adding -o yaml/json option to cmd whoami
+- Upgrade	cluster	manual mode - prompt the aws operator role upgrade commands
+- checking addon params
+- fix: ':' character was at the wrong place
+- Removing unnecessary hypershift check for managed services.
+- adding escaped carrier to start of --path argument in ocm-role
+- Fetch all regions for non-interactive mode
+- fix: adjusting order of calls to make sure deletion calls aren't being duplicate, this caused a 500 error on login after deleting and recreating admin from a newer rosa cli
+- fix: lint
+- refactor: adding strategy and function to check if created on old ROSA
+- [Hypershift] Enable subnet validation for Hosted clusters
+- feat: unify acc roles its policies paths
+- fix: missing changes for --role-path
+- feat: unify operator role and policy with path from account roles
+- feat: removing path from ocm-role as it is not supported. oidcProvider already didn't had a path arg
+- fix: getting path from master instance role
+- feat: remove operator role path in create cluster in favor of master role path
+- fix: remove operator-role-path from generated create cluster command as it was deprecated
+- [Hypershift] Modify `describe cluster` to differentiate between classic vs Hosted-cp
+- [Hypershift] Arg validation for Hypershift clusters
+- fix: using installer instead of control plane role for path
+- Update stage console URL
+- fix: review changes
+- go: Bump version to 1.18
+- test: Add expected callbacks
+- Added RedHatManaged=True to manual operator/account/user roles creation
+- lint: Remove deprecated linter
+- fix: adding back ocm-roles path option and keeping it hidden
+- feat: deprecate 'compute-nodes' args in favor of 'replicas' in create cluster cmd
+- fix: adding trim spaces and tabs when validating cluster name
+- fix: remove path arg from -h ocm-roles description
+- Added redhatmanaged=true tag to operator roles in manual mode
+- fix: enable path arg visibility
+- chore: add gdbranco github user to owners file
+- feat: adding message about operator roles and policies path
+- fix: lint
+- [SDA-5966]: Rosa STS mode auto conflicts with the watch option
+- fix: path compatibility issue with inline policies from acc roles
+- fix: defer cleanup
+- fix: unwanted change
+- [SDA-6075] Add upgrade policy to rosa struct information when displayed with the rosa describe cluster with -o json or -o yaml
+- fix: message
+- fix: lint
+
 == 1.2.6 Aug 5 2022
 
 - login: Remove token from error output
