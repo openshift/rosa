@@ -226,7 +226,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	path := args.path
-	if cmd.Flags().Changed("path") && interactive.Enabled() {
+	if interactive.Enabled() {
 		path, err = interactive.GetString(interactive.Input{
 			Question: "Path",
 			Help:     cmd.Flags().Lookup("path").Usage,
