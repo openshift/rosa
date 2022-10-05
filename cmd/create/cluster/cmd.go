@@ -1030,7 +1030,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		if operatorRolePath != "" && (!output.HasFlag() || r.Reporter.IsTerminal()) {
-			r.Reporter.Infof("ARN path '%s' detected. This  ARN path will be used for subsequent"+
+			r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
 				" created operator roles and policies, for the account roles with prefix '%s'", operatorRolePath, accRolesPrefix)
 		}
 		for _, operator := range credRequests {
