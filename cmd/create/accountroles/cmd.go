@@ -241,6 +241,11 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	if !aws.ARNPath.MatchString(path) {
+		r.Reporter.Errorf("It must begin and end with / and contain only alphanumeric characters and/or / characters.")
+		os.Exit(1)
+	}
+
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
