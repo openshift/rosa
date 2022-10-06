@@ -182,11 +182,11 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	path, err := getPathFromInstallerRole(cluster)
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid path for  '%s': %v", cluster.AWS().STS().RoleARN(), err)
+		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
-	if path != "" {
-		r.Reporter.Infof("ARN path '%s' detected. This  ARN path will be used for subsequent"+
+	if path != "" && (!output.HasFlag() || r.Reporter.IsTerminal()) {
+		r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
 			" created operator roles and policies, for the account roles with prefix '%s'", path, prefix)
 	}
 	accountRoleVersion, err := r.AWSClient.GetAccountRoleVersion(roleName)
@@ -422,7 +422,6 @@ func buildCommands(r *rosa.Runtime, env string,
 		permBoundaryFlag := ""
 		if permissionsBoundary != "" {
 			permBoundaryFlag = fmt.Sprintf("\t--permissions-boundary %s \\\n", permissionsBoundary)
-
 		}
 		createRole := fmt.Sprintf("aws iam create-role \\\n"+
 			"\t--role-name %s \\\n"+
