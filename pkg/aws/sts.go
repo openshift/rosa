@@ -188,7 +188,7 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 				"\t--tags %s",
 				name, credrequest, iamTags)
 			if policyPath != "" {
-				createPolicy = fmt.Sprintf(createPolicy+"\t--path %s", policyPath)
+				createPolicy = fmt.Sprintf(createPolicy+"\\\n\t--path %s", policyPath)
 			}
 			commands = append(commands, createPolicy)
 		} else {

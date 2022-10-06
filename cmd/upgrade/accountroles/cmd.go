@@ -333,8 +333,8 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 				)
 				createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 					"\t--policy-name %s \\\n"+
-					"\t--policy-document file://sts_%s_permission_policy.json"+
-					"\t--tags %s"+
+					"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
+					"\t--tags %s \\\n"+
 					"\t--path %s",
 					policyName, file, iamTags, policyPath)
 				attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
