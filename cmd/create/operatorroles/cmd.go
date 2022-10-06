@@ -393,7 +393,7 @@ func buildCommands(r *rosa.Runtime, env string,
 				"\t--tags %s",
 				name, credrequest, iamTags)
 			if path != "" {
-				createPolicy = fmt.Sprintf(createPolicy+"\t--path %s", path)
+				createPolicy = fmt.Sprintf(createPolicy+"\\\n\t--path %s", path)
 			}
 			commands = append(commands, createPolicy)
 		}
@@ -431,7 +431,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			"\t--tags %s",
 			roleName, filename, permBoundaryFlag, iamTags)
 		if path != "" {
-			createRole = fmt.Sprintf(createRole+"\t--path %s", path)
+			createRole = fmt.Sprintf(createRole+"\\\n\t--path %s", path)
 		}
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
