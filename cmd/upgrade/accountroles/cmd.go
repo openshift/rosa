@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -95,16 +96,10 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	isInvokedFromClusterUpgrade := false
 	skipInteractive := false
+	var cluster *v1.Cluster
 	if len(argv) >= 2 && !cmd.Flag("prefix").Changed {
 		ocm.SetClusterKey(argv[1])
-		clusterKey := r.GetClusterKey()
-		cluster := r.FetchCluster()
-		prefix, err := aws.GetPrefixFromAccountRole(cluster)
-		if err != nil {
-			r.Reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
-			os.Exit(1)
-		}
-		args.prefix = prefix
+		cluster = r.FetchCluster()
 		aws.SetModeKey(argv[0])
 		if argv[1] != "" {
 			skipInteractive = true
@@ -151,8 +146,13 @@ func run(cmd *cobra.Command, argv []string) error {
 		reporter.Infof("Ensuring account role policies compatibility for upgrade")
 	}
 
-	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
-		policyVersion)
+	isUpgradeNeedForAccountRolePolicies := false
+	if isInvokedFromClusterUpgrade {
+		isUpgradeNeedForAccountRolePolicies, err = awsClient.IsUpgradedNeededForAccountRolePoliciesForCluster(cluster, policyVersion)
+	} else {
+		isUpgradeNeedForAccountRolePolicies, err = awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
+			policyVersion)
+	}
 	if err != nil {
 		reporter.Errorf("%s", err)
 		LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, policyVersion, err, reporter)
