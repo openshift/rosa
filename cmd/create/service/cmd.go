@@ -398,10 +398,6 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected a valid path for  '%s': %v", roleARN, err)
 		os.Exit(1)
 	}
-	if path != "" {
-		r.Reporter.Errorf("Managed Services currently does not support path in ARN")
-		os.Exit(1)
-	}
 
 	// operator role logic.
 	operatorRolesPrefix := getRolePrefix(args.ClusterName)
