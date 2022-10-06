@@ -96,13 +96,18 @@ func run(cmd *cobra.Command, argv []string) error {
 	isInvokedFromClusterUpgrade := false
 	skipInteractive := false
 	if len(argv) >= 2 && !cmd.Flag("prefix").Changed {
-		args.prefix = argv[0]
-		aws.SetModeKey(argv[1])
+		ocm.SetClusterKey(argv[1])
+		clusterKey := r.GetClusterKey()
+		cluster := r.FetchCluster()
+		prefix, err := aws.GetPrefixFromAccountRole(cluster)
+		if err != nil {
+			r.Reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
+			os.Exit(1)
+		}
+		args.prefix = prefix
+		aws.SetModeKey(argv[0])
 		if argv[1] != "" {
 			skipInteractive = true
-		}
-		if len(argv) > 2 && argv[2] != "" {
-			args.clusterID = argv[2]
 		}
 		isInvokedFromClusterUpgrade = true
 	}
@@ -229,7 +234,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		if args.isInvokedFromClusterUpgrade {
 			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
 				" once account and operator roles have been upgraded : \n\n"+
-				"\trosa upgrade cluster --cluster %s\n", args.clusterID)
+				"\trosa upgrade cluster --cluster %s\n", r.ClusterKey)
 			return nil
 		}
 

@@ -204,13 +204,13 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS {
 		r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
 			" are compatible with upgrade.", cluster.ID())
-		prefix, err := aws.GetPrefixFromAccountRole(cluster)
+		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{mode, cluster.ID(), version})
 		if err != nil {
-			r.Reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
-			os.Exit(1)
-		}
-		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{prefix, mode, cluster.ID(), version})
-		if err != nil {
+			prefix, err := aws.GetPrefixFromAccountRole(cluster)
+			if err != nil {
+				r.Reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
+				os.Exit(1)
+			}
 			accountRoleStr := fmt.Sprintf("rosa upgrade account-roles --prefix %s", prefix)
 			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
 
