@@ -681,7 +681,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	version, err = validateVersion(version, versionList, channelGroup, isSTS)
+	version, err = validateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
@@ -2130,7 +2130,8 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 }
 
 // Validate OpenShift versions
-func validateVersion(version string, versionList []string, channelGroup string, isSTS bool) (string, error) {
+func validateVersion(version string, versionList []string, channelGroup string, isSTS,
+	isHostedCP bool) (string, error) {
 	if version != "" {
 		// Check and set the cluster version
 		hasVersion := false
@@ -2148,6 +2149,19 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 		if isSTS && !ocm.HasSTSSupport(version, channelGroup) {
 			err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
 			return version, err
+		}
+		if isHostedCP {
+			valid, err := ocm.HasHostedCPSupport(version)
+			if err != nil {
+				return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
+			}
+			if !valid {
+				v := version
+				if len(channelGroup) > 0 {
+					v = fmt.Sprintf("%s-%s", version, channelGroup)
+				}
+				return "", fmt.Errorf("version '%s' is not suported for HyperShift clusters", v)
+			}
 		}
 
 		version = "openshift-v" + version

@@ -25,10 +25,12 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-const DefaultChannelGroup = "stable"
-
-const LowestSTSSupport = "4.7.11"
-const LowestSTSMinor = "4.7"
+const (
+	DefaultChannelGroup   = "stable"
+	LowestSTSSupport      = "4.7.11"
+	LowestSTSMinor        = "4.7"
+	LowestHostedCPSupport = "4.11.6-candidate"
+)
 
 func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err error) {
 	collection := c.ocm.ClustersMgmt().V1().Versions()
@@ -97,6 +99,20 @@ func HasSTSSupportMinor(minor string) bool {
 	}
 
 	return a.GreaterThanOrEqual(b)
+}
+
+func HasHostedCPSupport(rawID string) (bool, error) {
+	a, err := ver.NewVersion(rawID)
+	if err != nil {
+		return false, err
+	}
+	b, err := ver.NewVersion(LowestHostedCPSupport)
+	if err != nil {
+		return false, err
+	}
+	//TODO: Currently, the minimum OCP supported version for development is 4.11.6-candidate.
+	//This comparison needs to be updated to 4.12 when it is released.
+	return a.GreaterThanOrEqual(b), nil
 }
 
 func GetVersionID(cluster *cmv1.Cluster) string {
