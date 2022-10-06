@@ -393,6 +393,12 @@ func run(cmd *cobra.Command, argv []string) {
 	args.AwsControlPlaneRoleARN = controlPlaneRoleARN
 	args.AwsWorkerRoleARN = workerRoleARN
 
+	path, err := aws.GetPathFromARN(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid path for  '%s': %v", roleARN, err)
+		os.Exit(1)
+	}
+
 	// operator role logic.
 	operatorRolesPrefix := getRolePrefix(args.ClusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
@@ -419,7 +425,7 @@ func run(cmd *cobra.Command, argv []string) {
 		operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 			Name:      operator.Name(),
 			Namespace: operator.Namespace(),
-			RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, r.Creator),
+			RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, r.Creator, path),
 		})
 	}
 
@@ -494,10 +500,10 @@ func getRolePrefix(clusterName string) string {
 	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
 }
 
-func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator) string {
+func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {
 	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
 	if len(role) > 64 {
 		role = role[0:64]
 	}
-	return aws.GetRoleARN(creator.AccountID, role, "")
+	return aws.GetRoleARN(creator.AccountID, role, path)
 }
