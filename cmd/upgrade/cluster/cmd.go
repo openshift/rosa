@@ -206,7 +206,7 @@ func run(cmd *cobra.Command, _ []string) {
 			" are compatible with upgrade.", cluster.ID())
 		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{mode, cluster.ID(), version})
 		if err != nil {
-			prefix, err := aws.GetPrefixFromAccountRole(cluster)
+			prefix, err := aws.GetPrefixFromInstallerAccRole(cluster)
 			if err != nil {
 				r.Reporter.Errorf("Could not get role prefix for cluster '%s' : %v", clusterKey, err)
 				os.Exit(1)

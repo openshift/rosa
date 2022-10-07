@@ -132,7 +132,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	prefix, err := aws.GetPrefixFromAccountRole(cluster)
+	prefix, err := aws.GetPrefixFromInstallerAccRole(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Failed to find prefix from %s account role", aws.InstallerAccountRole)
 		os.Exit(1)
@@ -175,7 +175,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	roleName, err := aws.GetAccountRoleName(cluster)
+	roleName, err := aws.GetInstallerAccountRoleName(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)

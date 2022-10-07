@@ -134,7 +134,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			clusterKey)
 	}
 
-	prefix, err := aws.GetPrefixFromAccountRole(cluster)
+	prefix, err := aws.GetPrefixFromInstallerAccRole(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Error getting account role prefix for the cluster '%s'",
 			clusterKey)

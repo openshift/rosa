@@ -301,14 +301,12 @@ func upgradeAccountRolePoliciesFromCluster(
 	policyPath string,
 	isVersionChosen bool,
 ) error {
-	accRoles := map[string]string{
-		aws.AccountRoles[aws.InstallerAccountRole].Name:    cluster.AWS().STS().RoleARN(),
-		aws.AccountRoles[aws.SupportAccountRole].Name:      cluster.AWS().STS().SupportRoleARN(),
-		aws.AccountRoles[aws.ControlPlaneAccountRole].Name: cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN(),
-		aws.AccountRoles[aws.WorkerAccountRole].Name:       cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN(),
-	}
 	for file, role := range aws.AccountRoles {
-		roleName, err := aws.GetResourceIdFromARN(accRoles[role.Name])
+		roleName, err := aws.GetAccountRoleName(cluster, role.Name)
+		if err != nil {
+			return err
+		}
+		prefix, err := aws.GetPrefixFromAccountRole(cluster, role.Name)
 		if err != nil {
 			return err
 		}
@@ -330,7 +328,7 @@ func upgradeAccountRolePoliciesFromCluster(
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetails,
 			policyVersion, map[string]string{
 				tags.OpenShiftVersion: policyVersion,
-				tags.RolePrefix:       "undefined",
+				tags.RolePrefix:       prefix,
 				tags.RoleType:         file,
 				tags.RedHatManaged:    "true",
 			}, policyPath)
@@ -362,16 +360,14 @@ func upgradeAccountRolePoliciesFromCluster(
 
 func buildCommandsFromCluster(cluster *v1.Cluster, accountID string, isUpgradeNeedForAccountRolePolicies bool,
 	awsClient aws.Client, defaultPolicyVersion string, policyPath string) (string, error) {
-	accRoles := map[string]string{
-		aws.AccountRoles[aws.InstallerAccountRole].Name:    cluster.AWS().STS().RoleARN(),
-		aws.AccountRoles[aws.SupportAccountRole].Name:      cluster.AWS().STS().SupportRoleARN(),
-		aws.AccountRoles[aws.ControlPlaneAccountRole].Name: cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN(),
-		aws.AccountRoles[aws.WorkerAccountRole].Name:       cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN(),
-	}
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
-			name, err := aws.GetResourceIdFromARN(accRoles[role.Name])
+			name, err := aws.GetAccountRoleName(cluster, role.Name)
+			if err != nil {
+				return "", err
+			}
+			prefix, err := aws.GetPrefixFromAccountRole(cluster, role.Name)
 			if err != nil {
 				return "", err
 			}
@@ -394,7 +390,7 @@ func buildCommandsFromCluster(cluster *v1.Cluster, accountID string, isUpgradeNe
 				iamTags := fmt.Sprintf(
 					"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
 					tags.OpenShiftVersion, defaultPolicyVersion,
-					tags.RolePrefix, "undefined",
+					tags.RolePrefix, prefix,
 					tags.RoleType, file,
 				)
 				createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+

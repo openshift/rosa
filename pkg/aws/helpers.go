@@ -38,7 +38,9 @@ var UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
 // third pattern is to validate domains
 // and the fifth petterrn is to be able to remove the existing no-proxy value by typing empty string ("").
 // nolint
-var UserNoProxyRE = regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(3[0-2]|[1-2][0-9]|[0-9]))$|^(.?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^""$`)
+var UserNoProxyRE = regexp.MustCompile(
+	`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(3[0-2]|[1-2][0-9]|[0-9]))$|^(.?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^""$`,
+)
 
 func GetJumpAccount(env string) string {
 	jumpAccounts := JumpAccounts
@@ -427,14 +429,17 @@ func GetPartition() string {
 	return partition.ID()
 }
 
-func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
-	role := AccountRoles[InstallerAccountRole]
-	roleName, err := GetAccountRoleName(cluster)
+func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
+	roleName, err := GetAccountRoleName(cluster, roleNameSuffix)
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", roleNameSuffix))
 	return rolePrefix, nil
+}
+
+func GetPrefixFromInstallerAccRole(cluster *cmv1.Cluster) (string, error) {
+	return GetPrefixFromAccountRole(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
 // Role names can be truncated if they are over 64 chars, so we need to make sure we aren't missing a truncated suffix
@@ -454,8 +459,18 @@ func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
 	return rolePrefix
 }
 
-func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
-	return GetResourceIdFromARN(cluster.AWS().STS().RoleARN())
+func GetAccountRoleName(cluster *cmv1.Cluster, accountRole string) (string, error) {
+	accRoles := map[string]string{
+		AccountRoles[InstallerAccountRole].Name:    cluster.AWS().STS().RoleARN(),
+		AccountRoles[SupportAccountRole].Name:      cluster.AWS().STS().SupportRoleARN(),
+		AccountRoles[ControlPlaneAccountRole].Name: cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN(),
+		AccountRoles[WorkerAccountRole].Name:       cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN(),
+	}
+	return GetResourceIdFromARN(accRoles[accountRole])
+}
+
+func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
+	return GetAccountRoleName(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
