@@ -8,6 +8,7 @@ reviewers:
 - zgalor
 - oriAdler
 - gdbranco
+- renan-campos
 approvers:
 - ciaranRoche
 - igoihman
@@ -21,6 +22,7 @@ approvers:
 - oriAdler
 - samira-barouti
 - gdbranco
+- renan-campos
 maintainers:
 - ciaranRoche
 - igoihman
@@ -32,3 +34,4 @@ maintainers:
 - oriAdler
 - samira-barouti
 - gdbranco
+- renan-campos
