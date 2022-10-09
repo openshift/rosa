@@ -926,7 +926,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// combine role arns to list
-	selectableRoleARNs = []string{
+	selectedRoleARNs := []string{
 		roleARN,
 		supportRoleARN,
 		controlPlaneRoleARN,
@@ -934,7 +934,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// iterate and validate role arns against openshift version
-	for _, ARN := range selectableRoleARNs {
+	for _, ARN := range selectedRoleARNs {
 		if ARN == "" {
 			continue
 		}
