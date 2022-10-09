@@ -171,7 +171,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if !aws.ARNPath.MatchString(path) {
+	if path != "" && !aws.ARNPath.MatchString(path) {
 		r.Reporter.Errorf("The specified value for path is invalid. " +
 			"It must begin and end with '/' and contain only alphanumeric characters and/or '/' characters.")
 		os.Exit(1)
@@ -236,7 +236,14 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
-		commands := buildCommands(prefix, path, currentAccount.Username(), r.Creator.AccountID, env, permissionsBoundary)
+		commands := buildCommands(
+			prefix,
+			path,
+			currentAccount.Username(),
+			r.Creator.AccountID,
+			env,
+			permissionsBoundary,
+		)
 		fmt.Println(commands)
 
 	default:
