@@ -49,7 +49,9 @@ import (
 )
 
 //nolint
-var kmsArnRE = regexp.MustCompile(`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+var kmsArnRE = regexp.MustCompile(
+	`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
+)
 
 var args struct {
 	// Watch logs during cluster installation
@@ -715,126 +717,103 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	hasRoles := false
-	if isSTS && roleARN == "" {
-		minor := ocm.GetVersionMinor(version)
-		role := aws.AccountRoles[aws.InstallerAccountRole]
-
-		// Find all installer roles in the current account using AWS resource tags
-		roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
-		if err != nil {
-			r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
-			os.Exit(1)
-		}
-
-		if len(roleARNs) > 1 {
-			defaultRoleARN := roleARNs[0]
-			// Prioritize roles with the default prefix
-			for _, rARN := range roleARNs {
-				if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)) {
-					defaultRoleARN = rARN
-				}
-			}
-			r.Reporter.Warnf("More than one %s role found", role.Name)
-			if !interactive.Enabled() && confirm.Yes() {
-				r.Reporter.Infof("Using %s for the %s role", defaultRoleARN, role.Name)
-				roleARN = defaultRoleARN
-			} else {
-				roleARN, err = interactive.GetOption(interactive.Input{
-					Question: fmt.Sprintf("%s role ARN", role.Name),
-					Help:     cmd.Flags().Lookup(role.Flag).Usage,
-					Options:  roleARNs,
-					Default:  defaultRoleARN,
-					Required: true,
-				})
-				if err != nil {
-					r.Reporter.Errorf("Expected a valid role ARN: %s", err)
-					os.Exit(1)
-				}
-			}
-		} else if len(roleARNs) == 1 {
-			if !output.HasFlag() || r.Reporter.IsTerminal() {
-				r.Reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
-			}
-			roleARN = roleARNs[0]
-		} else {
-			r.Reporter.Warnf("No account roles found. You will need to manually set them in the " +
-				"next steps or run 'rosa create account-roles' to create them first.")
-			interactive.Enable()
-		}
-
-		if roleARN != "" {
-			// Get role prefix
-			rolePrefix, err := getAccountRolePrefix(roleARN, role)
+	minor := ocm.GetVersionMinor(version)
+	// Find all installer roles in the current account using AWS resource tags
+	selectableRoleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+	for !hasRoles {
+		if isSTS && roleARN == "" {
+			role := aws.AccountRoles[aws.InstallerAccountRole]
 			if err != nil {
-				r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+				r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 				os.Exit(1)
 			}
-			r.Reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
 
-			hasRoles = true
-			for roleType, role := range aws.AccountRoles {
-				if roleType == aws.InstallerAccountRole {
-					// Already dealt with
-					continue
-				}
-				roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
-				if err != nil {
-					r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
-					os.Exit(1)
-				}
-				selectedARN := ""
-				for _, rARN := range roleARNs {
-					if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name)) {
-						selectedARN = rARN
+			if len(selectableRoleARNs) > 1 {
+				defaultRoleARN := selectableRoleARNs[0]
+				// Prioritize roles with the default prefix
+				for _, rARN := range selectableRoleARNs {
+					if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)) {
+						defaultRoleARN = rARN
 					}
 				}
-				if selectedARN == "" {
-					r.Reporter.Warnf("No %s account roles found. You will need to manually set "+
-						"them in the next steps or run 'rosa create account-roles' to create "+
-						"them first.", role.Name)
-					interactive.Enable()
-					hasRoles = false
-					break
+				r.Reporter.Warnf("More than one %s role found", role.Name)
+				if !interactive.Enabled() && confirm.Yes() {
+					r.Reporter.Infof("Using %s for the %s role", defaultRoleARN, role.Name)
+					roleARN = defaultRoleARN
+				} else {
+					roleARN, err = interactive.GetOption(interactive.Input{
+						Question: fmt.Sprintf("%s role ARN", role.Name),
+						Help:     cmd.Flags().Lookup(role.Flag).Usage,
+						Options:  selectableRoleARNs,
+						Default:  defaultRoleARN,
+						Required: true,
+					})
+					if err != nil {
+						r.Reporter.Errorf("Expected a valid role ARN: %s", err)
+						os.Exit(1)
+					}
 				}
+			} else if len(selectableRoleARNs) == 1 {
 				if !output.HasFlag() || r.Reporter.IsTerminal() {
-					r.Reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
+					r.Reporter.Infof("Using %s for the %s role", selectableRoleARNs[0], role.Name)
 				}
-				switch roleType {
-				case aws.InstallerAccountRole:
-					roleARN = selectedARN
-				case aws.SupportAccountRole:
-					supportRoleARN = selectedARN
-				case aws.ControlPlaneAccountRole:
-					controlPlaneRoleARN = selectedARN
-				case aws.WorkerAccountRole:
-					workerRoleARN = selectedARN
+				roleARN = selectableRoleARNs[0]
+			} else {
+				r.Reporter.Warnf("No account roles found. You will need to manually set them in the " +
+					"next steps or run 'rosa create account-roles' to create them first.")
+				interactive.Enable()
+			}
+
+			if roleARN != "" {
+				// Get role prefix
+				rolePrefix, err := getAccountRolePrefix(roleARN, role)
+				if err != nil {
+					r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+					os.Exit(1)
+				}
+				r.Reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
+
+				hasRoles = true
+				for roleType, role := range aws.AccountRoles {
+					if roleType == aws.InstallerAccountRole {
+						// Already dealt with
+						continue
+					}
+					roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
+					if err != nil {
+						r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+						os.Exit(1)
+					}
+					selectedARN := ""
+					for _, rARN := range roleARNs {
+						if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name)) {
+							selectedARN = rARN
+						}
+					}
+					if selectedARN == "" {
+						r.Reporter.Warnf("No %s account roles found. Run 'rosa create account-roles' to create "+
+							"them first or choose a different set of account roles to be used.", role.Name)
+						interactive.Enable()
+						hasRoles = false
+						roleARN = ""
+						break
+					}
+					if !output.HasFlag() || r.Reporter.IsTerminal() {
+						r.Reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
+					}
+					switch roleType {
+					case aws.InstallerAccountRole:
+						roleARN = selectedARN
+					case aws.SupportAccountRole:
+						supportRoleARN = selectedARN
+					case aws.ControlPlaneAccountRole:
+						controlPlaneRoleARN = selectedARN
+					case aws.WorkerAccountRole:
+						workerRoleARN = selectedARN
+					}
 				}
 			}
 		}
-	}
-
-	if isSTS && !hasRoles && interactive.Enabled() {
-		roleARN, err = interactive.GetString(interactive.Input{
-			Question: "Role ARN",
-			Help:     cmd.Flags().Lookup("role-arn").Usage,
-			Default:  roleARN,
-			Required: isSTS,
-			Validators: []interactive.Validator{
-				aws.ARNValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid ARN: %s", err)
-			os.Exit(1)
-		}
-	}
-	if roleARN != "" {
-		_, err = arn.Parse(roleARN)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid Role ARN: %s", err)
-			os.Exit(1)
-		}
-		isSTS = true
 	}
 
 	if !isSTS && mode != "" {
@@ -947,7 +926,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// combine role arns to list
-	roleARNs := []string{
+	selectableRoleARNs = []string{
 		roleARN,
 		supportRoleARN,
 		controlPlaneRoleARN,
@@ -955,7 +934,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// iterate and validate role arns against openshift version
-	for _, ARN := range roleARNs {
+	for _, ARN := range selectableRoleARNs {
 		if ARN == "" {
 			continue
 		}
