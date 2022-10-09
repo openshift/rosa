@@ -275,7 +275,15 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the ocm role and policies:\n")
 		}
-		commands := buildCommands(prefix, roleNameRequested, path, permissionsBoundary, r.Creator.AccountID, env, isAdmin)
+		commands := buildCommands(
+			prefix,
+			roleNameRequested,
+			path,
+			permissionsBoundary,
+			r.Creator.AccountID,
+			env,
+			isAdmin,
+		)
 		fmt.Println(commands)
 	default:
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)

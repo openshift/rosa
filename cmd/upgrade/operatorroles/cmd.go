@@ -388,7 +388,7 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, 
 			"\t--tags %s",
 			roleName, filename, permBoundaryFlag, iamTags)
 		if rolePath != "" {
-			createRole = fmt.Sprintf(createRole+"\\\n\t--path %s", rolePath)
+			createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", rolePath)
 		}
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+

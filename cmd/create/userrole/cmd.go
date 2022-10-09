@@ -230,7 +230,14 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
-		commands := buildCommands(prefix, path, currentAccount.Username(), r.Creator.AccountID, env, permissionsBoundary)
+		commands := buildCommands(
+			prefix,
+			path,
+			currentAccount.Username(),
+			r.Creator.AccountID,
+			env,
+			permissionsBoundary,
+		)
 		fmt.Println(commands)
 
 	default:
@@ -263,7 +270,7 @@ func buildCommands(prefix string, path string, userName string,
 		"\t--tags %s",
 		roleName, aws.OCMUserRolePolicyFile, permBoundaryFlag, iamTags)
 	if path != "" {
-		createRole = fmt.Sprintf(createRole+"\\\n\t--path %s", path)
+		createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", path)
 	}
 	linkRole := fmt.Sprintf("rosa link user-role --role-arn %s", roleARN)
 	commands = append(commands, createRole, linkRole)
