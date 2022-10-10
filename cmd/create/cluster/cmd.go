@@ -797,7 +797,7 @@ func run(cmd *cobra.Command, _ []string) {
 							"them first or choose a different set of account roles to be used.", role.Name)
 						interactive.Enable()
 						hasRoles = false
-						if confirm.Confirm("Select another set of account roles") {
+						if confirm.Confirm("select another set of account roles") {
 							roleARN = ""
 							finishedSelectingAccRolesSet = false
 						}
@@ -841,6 +841,30 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	if isSTS && !hasRoles && interactive.Enabled() {
+		roleARN, err = interactive.GetString(interactive.Input{
+			Question: "Role ARN",
+			Help:     cmd.Flags().Lookup("role-arn").Usage,
+			Default:  roleARN,
+			Required: isSTS,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid ARN: %s", err)
+			os.Exit(1)
+		}
+	}
+	if roleARN != "" {
+		_, err = arn.Parse(roleARN)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid Role ARN: %s", err)
+			os.Exit(1)
+		}
+		isSTS = true
+	}
+
 	// Ensure interactive mode if missing required role ARNs on STS clusters
 	if isSTS && !hasRoles && !interactive.Enabled() && supportRoleARN == "" {
 		interactive.Enable()
@@ -869,30 +893,6 @@ func run(cmd *cobra.Command, _ []string) {
 	} else if roleARN != "" {
 		r.Reporter.Errorf("Support Role ARN is required: %s", err)
 		os.Exit(1)
-	}
-
-	if isSTS && !hasRoles && interactive.Enabled() {
-		roleARN, err = interactive.GetString(interactive.Input{
-			Question: "Role ARN",
-			Help:     cmd.Flags().Lookup("role-arn").Usage,
-			Default:  roleARN,
-			Required: isSTS,
-			Validators: []interactive.Validator{
-				aws.ARNValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid ARN: %s", err)
-			os.Exit(1)
-		}
-	}
-	if roleARN != "" {
-		_, err = arn.Parse(roleARN)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid Role ARN: %s", err)
-			os.Exit(1)
-		}
-		isSTS = true
 	}
 
 	// Instance IAM Roles
