@@ -110,14 +110,11 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 		}
 	}
 
-	// verify that the paths are the same
-	localPath := "/"
-	if path != "" {
-		//FIXME (gbranco): this needs to be refactored
-		//AWS empty path corresponds to '/', hacking this instead of refactoring our path to work with "/" everyhwere else due to deadline
-		localPath = path
+	outputPath, err := GetPathFromARN(aws.StringValue(output.Role.Arn))
+	if err != nil {
+		return "", err
 	}
-	if aws.StringValue(output.Role.Path) != localPath {
+	if outputPath != path {
 		return "", fmt.Errorf("Role with same name but different path exists. Existing role ARN: %s",
 			*output.Role.Arn)
 	}
