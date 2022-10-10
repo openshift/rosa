@@ -98,10 +98,10 @@ func run(cmd *cobra.Command, argv []string) error {
 	isInvokedFromClusterUpgrade := false
 	skipInteractive := false
 	var cluster *v1.Cluster
-	if len(argv) >= 2 && !cmd.Flag("prefix").Changed {
+	if len(argv) == 2 && !cmd.Flag("prefix").Changed {
+		aws.SetModeKey(argv[0])
 		ocm.SetClusterKey(argv[1])
 		cluster = r.FetchCluster()
-		aws.SetModeKey(argv[0])
 		if argv[1] != "" {
 			skipInteractive = true
 		}

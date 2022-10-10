@@ -204,7 +204,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS {
 		r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
 			" are compatible with upgrade.", cluster.ID())
-		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{mode, cluster.ID(), version})
+		err = accountroles.Cmd.RunE(accountroles.Cmd, []string{mode, cluster.ID()})
 		if err != nil {
 			prefix, err := aws.GetPrefixFromInstallerAccRole(cluster)
 			if err != nil {
