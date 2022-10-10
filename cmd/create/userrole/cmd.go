@@ -276,7 +276,7 @@ func buildCommands(prefix string, path string, userName string,
 		"\t--tags %s",
 		roleName, aws.OCMUserRolePolicyFile, permBoundaryFlag, iamTags)
 	if path != "" {
-		createRole = fmt.Sprintf(createRole+"\\\n\t--path %s", path)
+		createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", path)
 	}
 	linkRole := fmt.Sprintf("rosa link user-role --role-arn %s", roleARN)
 	commands = append(commands, createRole, linkRole)

@@ -344,7 +344,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 			name, file, permBoundaryFlag, iamTags)
 
 		if path != "" {
-			createRole = fmt.Sprintf(createRole+"\\\n\t--path %s", path)
+			createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", path)
 		}
 		createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
 			"\t--policy-name %s \\\n"+
@@ -352,7 +352,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 			"\t--tags %s",
 			policyName, file, iamTags)
 		if path != "" {
-			createPolicy = fmt.Sprintf(createPolicy+"\\\n\t--path %s", path)
+			createPolicy = fmt.Sprintf(createPolicy+" \\\n\t--path %s", path)
 		}
 		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
 			"\t--role-name %s \\\n"+
