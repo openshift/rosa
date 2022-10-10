@@ -241,7 +241,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if !aws.ARNPath.MatchString(path) {
+	if path != "" && !aws.ARNPath.MatchString(path) {
 		r.Reporter.Errorf("The specified value for path is invalid. " +
 			"It must begin and end with '/' and contain only alphanumeric characters and/or '/' characters.")
 		os.Exit(1)
