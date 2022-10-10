@@ -185,7 +185,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
-	if path != "" && (!output.HasFlag() || r.Reporter.IsTerminal()) {
+	if path != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
 		r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
 			" created operator roles and policies, for the account roles with prefix '%s'", path, prefix)
 	}

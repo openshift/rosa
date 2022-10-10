@@ -49,7 +49,9 @@ import (
 )
 
 //nolint
-var kmsArnRE = regexp.MustCompile(`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+var kmsArnRE = regexp.MustCompile(
+	`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
+)
 
 var args struct {
 	// Watch logs during cluster installation
@@ -1029,7 +1031,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
 			os.Exit(1)
 		}
-		if operatorRolePath != "" && (!output.HasFlag() || r.Reporter.IsTerminal()) {
+		if operatorRolePath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
 			r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
 				" created operator roles and policies, for the account roles with prefix '%s'", operatorRolePath, accRolesPrefix)
 		}
