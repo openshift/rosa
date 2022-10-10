@@ -721,7 +721,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Find all installer roles in the current account using AWS resource tags
 	selectableRoleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
 	finishedSelectingAccRolesSet := false
-	for finishedSelectingAccRolesSet {
+	for !finishedSelectingAccRolesSet {
 		if isSTS && roleARN == "" {
 			role := aws.AccountRoles[aws.InstallerAccountRole]
 			if err != nil {
