@@ -195,6 +195,12 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	if path != "" && !aws.ARNPath.MatchString(path) {
+		r.Reporter.Errorf("The specified value for path is invalid. " +
+			"It must begin and end with '/' and contain only alphanumeric characters and/or '/' characters.")
+		os.Exit(1)
+	}
+
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
@@ -275,7 +281,15 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the ocm role and policies:\n")
 		}
-		commands := buildCommands(prefix, roleNameRequested, path, permissionsBoundary, r.Creator.AccountID, env, isAdmin)
+		commands := buildCommands(
+			prefix,
+			roleNameRequested,
+			path,
+			permissionsBoundary,
+			r.Creator.AccountID,
+			env,
+			isAdmin,
+		)
 		fmt.Println(commands)
 	default:
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
