@@ -821,26 +821,6 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if !isSTS && mode != "" {
-		r.Reporter.Warnf("--mode is only valid for STS clusters")
-	}
-
-	externalID := args.externalID
-	if isSTS && interactive.Enabled() {
-		externalID, err = interactive.GetString(interactive.Input{
-			Question: "External ID",
-			Help:     cmd.Flags().Lookup("external-id").Usage,
-			Validators: []interactive.Validator{
-				interactive.RegExp(`^[\w+=,.@:\/-]*$`),
-				interactive.MaxLength(1224),
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid External ID: %s", err)
-			os.Exit(1)
-		}
-	}
-
 	if isSTS && !hasRoles && interactive.Enabled() {
 		roleARN, err = interactive.GetString(interactive.Input{
 			Question: "Role ARN",
@@ -863,6 +843,26 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		isSTS = true
+	}
+
+	if !isSTS && mode != "" {
+		r.Reporter.Warnf("--mode is only valid for STS clusters")
+	}
+
+	externalID := args.externalID
+	if isSTS && interactive.Enabled() {
+		externalID, err = interactive.GetString(interactive.Input{
+			Question: "External ID",
+			Help:     cmd.Flags().Lookup("external-id").Usage,
+			Validators: []interactive.Validator{
+				interactive.RegExp(`^[\w+=,.@:\/-]*$`),
+				interactive.MaxLength(1224),
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid External ID: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	// Ensure interactive mode if missing required role ARNs on STS clusters
