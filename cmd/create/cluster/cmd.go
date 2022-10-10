@@ -720,7 +720,8 @@ func run(cmd *cobra.Command, _ []string) {
 	minor := ocm.GetVersionMinor(version)
 	// Find all installer roles in the current account using AWS resource tags
 	selectableRoleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
-	for !hasRoles {
+	finishedSelectingAccRolesSet := false
+	for finishedSelectingAccRolesSet {
 		if isSTS && roleARN == "" {
 			role := aws.AccountRoles[aws.InstallerAccountRole]
 			if err != nil {
@@ -774,6 +775,7 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
 
 				hasRoles = true
+				finishedSelectingAccRolesSet = true
 				for roleType, role := range aws.AccountRoles {
 					if roleType == aws.InstallerAccountRole {
 						// Already dealt with
@@ -795,7 +797,10 @@ func run(cmd *cobra.Command, _ []string) {
 							"them first or choose a different set of account roles to be used.", role.Name)
 						interactive.Enable()
 						hasRoles = false
-						roleARN = ""
+						if confirm.Confirm("Select another set of account roles") {
+							roleARN = ""
+							finishedSelectingAccRolesSet = false
+						}
 						break
 					}
 					if !output.HasFlag() || r.Reporter.IsTerminal() {
@@ -864,6 +869,30 @@ func run(cmd *cobra.Command, _ []string) {
 	} else if roleARN != "" {
 		r.Reporter.Errorf("Support Role ARN is required: %s", err)
 		os.Exit(1)
+	}
+
+	if isSTS && !hasRoles && interactive.Enabled() {
+		roleARN, err = interactive.GetString(interactive.Input{
+			Question: "Role ARN",
+			Help:     cmd.Flags().Lookup("role-arn").Usage,
+			Default:  roleARN,
+			Required: isSTS,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid ARN: %s", err)
+			os.Exit(1)
+		}
+	}
+	if roleARN != "" {
+		_, err = arn.Parse(roleARN)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid Role ARN: %s", err)
+			os.Exit(1)
+		}
+		isSTS = true
 	}
 
 	// Instance IAM Roles
