@@ -111,7 +111,13 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 	}
 
 	// verify that the paths are the same
-	if aws.StringValue(output.Role.Path) != path {
+	localPath := "/"
+	if path != "" {
+		//FIXME (gbranco): this needs to be refactored
+		//AWS empty path corresponds to '/', hacking this instead of refactoring our path to work with "/" everyhwere else due to deadline
+		localPath = path
+	}
+	if aws.StringValue(output.Role.Path) != localPath {
 		return "", fmt.Errorf("Role with same name but different path exists. Existing role ARN: %s",
 			*output.Role.Arn)
 	}
@@ -941,7 +947,9 @@ func (c *awsClient) deletePolicyVersions(policyArn string) error {
 
 func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	policies := []PolicyDetail{}
-	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{RoleName: role})
+	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(
+		&iam.ListAttachedRolePoliciesInput{RoleName: role},
+	)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
