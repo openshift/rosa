@@ -174,7 +174,11 @@ func run(cmd *cobra.Command, argv []string) error {
 		if args.isInvokedFromClusterUpgrade {
 			return nil
 		}
-		reporter.Infof("Account role with the prefix '%s' is already up-to-date.", prefix)
+		if useClusterOption {
+			reporter.Infof("Account roles for cluster '%s' are already up-to-date.", r.ClusterKey)
+		} else {
+			reporter.Infof("Account roles with the prefix '%s' are already up-to-date.", prefix)
+		}
 		os.Exit(0)
 	}
 
@@ -216,8 +220,8 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	switch mode {
 	case aws.ModeAuto:
-		reporter.Infof("Starting to upgrade the policies")
 		if isUpgradeNeedForAccountRolePolicies {
+			reporter.Infof("Starting to upgrade the policies")
 			if useClusterOption {
 				err = upgradeAccountRolePoliciesFromCluster(
 					reporter,
