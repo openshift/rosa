@@ -107,7 +107,7 @@ func run(_ *cobra.Command, _ []string) {
 		}
 	}
 	outputObject := object.Object{
-		"AWS Account ID":        account.ID(),
+		"AWS Account ID":        r.Creator.AccountID,
 		"AWS Default Region":    awsRegion,
 		"AWS ARN":               r.Creator.ARN,
 		"OCM API":               cfg.URL,
