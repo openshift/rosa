@@ -2158,11 +2158,7 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 				return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
 			}
 			if !valid {
-				v := version
-				if len(channelGroup) > 0 {
-					v = fmt.Sprintf("%s-%s", version, channelGroup)
-				}
-				return "", fmt.Errorf("version '%s' is not suported for HyperShift clusters", v)
+				return "", fmt.Errorf("version '%s' is not supported for hosted clusters", version)
 			}
 		}
 
