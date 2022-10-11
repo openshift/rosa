@@ -120,7 +120,11 @@ func run(cmd *cobra.Command, _ []string) {
 			Htpasswd(htpasswdIDP).
 			Build()
 		if err != nil {
-			r.Reporter.Errorf("Failed to create '%s' identity provider for cluster '%s'", idp.HTPasswdIDPName, clusterKey)
+			r.Reporter.Errorf(
+				"Failed to create '%s' identity provider for cluster '%s'",
+				idp.HTPasswdIDPName,
+				clusterKey,
+			)
 			os.Exit(1)
 		}
 
@@ -181,7 +185,7 @@ func run(cmd *cobra.Command, _ []string) {
 	r.Reporter.Infof("To login, run the following command:\n\n"+
 		"   oc login %s --username %s --password %s\n",
 		outputObject["api_url"], outputObject["username"], outputObject["password"])
-	r.Reporter.Infof("It may take up to a minute for the account to become active.")
+	r.Reporter.Infof("It may take several minutes for this access to become active.")
 }
 
 func generateRandomPassword(length int) (string, error) {

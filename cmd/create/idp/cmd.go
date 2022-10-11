@@ -125,7 +125,10 @@ func init() {
 		&args.mappingMethod,
 		"mapping-method",
 		"claim",
-		fmt.Sprintf("Specifies how new identities are mapped to users when they log in. Options are %s", validMappingMethods),
+		fmt.Sprintf(
+			"Specifies how new identities are mapped to users when they log in. Options are %s",
+			validMappingMethods,
+		),
 	)
 	flags.StringVar(
 		&args.clientID,
@@ -431,7 +434,7 @@ func doCreateIDP(
 
 	r.Reporter.Infof(
 		"Identity Provider '%s' has been created.\n"+
-			"   It will take up to 1 minute for this configuration to be enabled.\n"+
+			"   It may take several minutes for this access to become active.\n"+
 			"   To add cluster administrators, see 'rosa grant user --help'.\n"+
 			"   To login into the console, open %s and click on %s.",
 		idpName, cluster.Console().URL(), idpName,
