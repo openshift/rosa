@@ -2,6 +2,32 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.8 Oct 13 2022
+
+- fix: path args need not to be explicitly set for interactive mode to ask about it
+- chore: add gdbranco to reviewers and approvers
+- [SDA-6760] Add validation for minimum supported OCP version in HyperShift
+- fix: adding arn path validator to create account roles --path arg
+- fix: clearer message
+- fix: adding conditions for piping the output
+- fix: setting path arg in a new line for all commands
+- fix: differentiate between '/' and /
+- fix: block managed services path option
+- fix: remove error to add support for path in ARN
+- feat: add validation to path ocm/user roles
+- add renan-campos to reviewers, approvers, and maintainers
+- fix: consider empty path valid creating acc roles
+- fix: accepts empty path
+- fix: adding leading space before all path args when building commands
+- fix: invert path detected message condition
+- [SDA-6984] Remove channel group in error message when unsupported OCP version is provided for hosted cluster
+- fix: aws empty path is different than ours
+- refactor: less hacky
+- fix: aws acc id on whoami
+- fix: change message from one minute wait for several minutes
+- [SDA-6984] Added unit tests
+- chore: bump go ocm sdk v0.1.288
+
 == 1.2.7 Oct 3 2022
 
 - add samira to maintainers
