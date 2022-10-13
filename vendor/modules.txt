@@ -122,8 +122,6 @@ github.com/json-iterator/go
 # github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 ## explicit
 github.com/kballard/go-shellquote
-# github.com/konsorten/go-windows-terminal-sequences v1.0.3
-## explicit
 # github.com/mattn/go-colorable v0.1.7
 ## explicit; go 1.13
 github.com/mattn/go-colorable
