@@ -1262,7 +1262,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if privateLink {
+	if privateLink || isHostedCP {
 		useExistingVPC = true
 	}
 
