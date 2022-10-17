@@ -280,7 +280,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("hypershift")
-		writeHyperShift(object.hypershift, stream)
+		writeHypershift(object.hypershift, stream)
 		count++
 	}
 	present_ = object.bitmap_&67108864 != 0 && object.identityProviders != nil
@@ -715,7 +715,7 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.healthState = value
 			object.bitmap_ |= 16777216
 		case "hypershift":
-			value := readHyperShift(iterator)
+			value := readHypershift(iterator)
 			object.hypershift = value
 			object.bitmap_ |= 33554432
 		case "identity_providers":

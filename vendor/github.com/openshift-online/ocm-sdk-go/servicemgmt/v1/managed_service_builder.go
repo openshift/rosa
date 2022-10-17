@@ -33,6 +33,7 @@ type ManagedServiceBuilder struct {
 	addon        *StatefulObjectBuilder
 	cluster      *ClusterBuilder
 	createdAt    time.Time
+	expiredAt    time.Time
 	parameters   []*ServiceParameterBuilder
 	resources    []*StatefulObjectBuilder
 	service      string
@@ -105,13 +106,22 @@ func (b *ManagedServiceBuilder) CreatedAt(value time.Time) *ManagedServiceBuilde
 	return b
 }
 
+// ExpiredAt sets the value of the 'expired_at' attribute to the given value.
+//
+//
+func (b *ManagedServiceBuilder) ExpiredAt(value time.Time) *ManagedServiceBuilder {
+	b.expiredAt = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // Parameters sets the value of the 'parameters' attribute to the given values.
 //
 //
 func (b *ManagedServiceBuilder) Parameters(values ...*ServiceParameterBuilder) *ManagedServiceBuilder {
 	b.parameters = make([]*ServiceParameterBuilder, len(values))
 	copy(b.parameters, values)
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -121,7 +131,7 @@ func (b *ManagedServiceBuilder) Parameters(values ...*ServiceParameterBuilder) *
 func (b *ManagedServiceBuilder) Resources(values ...*StatefulObjectBuilder) *ManagedServiceBuilder {
 	b.resources = make([]*StatefulObjectBuilder, len(values))
 	copy(b.resources, values)
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -130,7 +140,7 @@ func (b *ManagedServiceBuilder) Resources(values ...*StatefulObjectBuilder) *Man
 //
 func (b *ManagedServiceBuilder) Service(value string) *ManagedServiceBuilder {
 	b.service = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -139,7 +149,7 @@ func (b *ManagedServiceBuilder) Service(value string) *ManagedServiceBuilder {
 //
 func (b *ManagedServiceBuilder) ServiceState(value string) *ManagedServiceBuilder {
 	b.serviceState = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -148,7 +158,7 @@ func (b *ManagedServiceBuilder) ServiceState(value string) *ManagedServiceBuilde
 //
 func (b *ManagedServiceBuilder) UpdatedAt(value time.Time) *ManagedServiceBuilder {
 	b.updatedAt = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -171,6 +181,7 @@ func (b *ManagedServiceBuilder) Copy(object *ManagedService) *ManagedServiceBuil
 		b.cluster = nil
 	}
 	b.createdAt = object.createdAt
+	b.expiredAt = object.expiredAt
 	if object.parameters != nil {
 		b.parameters = make([]*ServiceParameterBuilder, len(object.parameters))
 		for i, v := range object.parameters {
@@ -212,6 +223,7 @@ func (b *ManagedServiceBuilder) Build() (object *ManagedService, err error) {
 		}
 	}
 	object.createdAt = b.createdAt
+	object.expiredAt = b.expiredAt
 	if b.parameters != nil {
 		object.parameters = make([]*ServiceParameter, len(b.parameters))
 		for i, v := range b.parameters {

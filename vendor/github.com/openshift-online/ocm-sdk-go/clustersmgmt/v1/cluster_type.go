@@ -95,7 +95,7 @@ type Cluster struct {
 	flavour                           *Flavour
 	groups                            *GroupList
 	healthState                       ClusterHealthState
-	hypershift                        *HyperShift
+	hypershift                        *Hypershift
 	identityProviders                 *IdentityProviderList
 	inflightChecks                    *InflightCheckList
 	infraID                           string
@@ -705,8 +705,8 @@ func (o *Cluster) GetHealthState() (value ClusterHealthState, ok bool) {
 // Hypershift returns the value of the 'hypershift' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// HyperShift configuration.
-func (o *Cluster) Hypershift() *HyperShift {
+// Hypershift configuration.
+func (o *Cluster) Hypershift() *Hypershift {
 	if o != nil && o.bitmap_&33554432 != 0 {
 		return o.hypershift
 	}
@@ -716,8 +716,8 @@ func (o *Cluster) Hypershift() *HyperShift {
 // GetHypershift returns the value of the 'hypershift' attribute and
 // a flag indicating if the attribute has a value.
 //
-// HyperShift configuration.
-func (o *Cluster) GetHypershift() (value *HyperShift, ok bool) {
+// Hypershift configuration.
+func (o *Cluster) GetHypershift() (value *Hypershift, ok bool) {
 	ok = o != nil && o.bitmap_&33554432 != 0
 	if ok {
 		value = o.hypershift

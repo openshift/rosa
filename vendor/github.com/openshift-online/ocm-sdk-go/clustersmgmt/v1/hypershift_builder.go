@@ -19,35 +19,35 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// HyperShiftBuilder contains the data and logic needed to build 'hyper_shift' objects.
+// HypershiftBuilder contains the data and logic needed to build 'hypershift' objects.
 //
-// HyperShift configuration.
-type HyperShiftBuilder struct {
+// Hypershift configuration.
+type HypershiftBuilder struct {
 	bitmap_ uint32
 	enabled bool
 }
 
-// NewHyperShift creates a new builder of 'hyper_shift' objects.
-func NewHyperShift() *HyperShiftBuilder {
-	return &HyperShiftBuilder{}
+// NewHypershift creates a new builder of 'hypershift' objects.
+func NewHypershift() *HypershiftBuilder {
+	return &HypershiftBuilder{}
 }
 
 // Empty returns true if the builder is empty, i.e. no attribute has a value.
-func (b *HyperShiftBuilder) Empty() bool {
+func (b *HypershiftBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
 //
 //
-func (b *HyperShiftBuilder) Enabled(value bool) *HyperShiftBuilder {
+func (b *HypershiftBuilder) Enabled(value bool) *HypershiftBuilder {
 	b.enabled = value
 	b.bitmap_ |= 1
 	return b
 }
 
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
-func (b *HyperShiftBuilder) Copy(object *HyperShift) *HyperShiftBuilder {
+func (b *HypershiftBuilder) Copy(object *Hypershift) *HypershiftBuilder {
 	if object == nil {
 		return b
 	}
@@ -56,9 +56,9 @@ func (b *HyperShiftBuilder) Copy(object *HyperShift) *HyperShiftBuilder {
 	return b
 }
 
-// Build creates a 'hyper_shift' object using the configuration stored in the builder.
-func (b *HyperShiftBuilder) Build() (object *HyperShift, err error) {
-	object = new(HyperShift)
+// Build creates a 'hypershift' object using the configuration stored in the builder.
+func (b *HypershiftBuilder) Build() (object *Hypershift, err error) {
+	object = new(Hypershift)
 	object.bitmap_ = b.bitmap_
 	object.enabled = b.enabled
 	return

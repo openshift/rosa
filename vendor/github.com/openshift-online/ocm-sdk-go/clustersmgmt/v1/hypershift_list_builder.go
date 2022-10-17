@@ -19,53 +19,53 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// HyperShiftListBuilder contains the data and logic needed to build
-// 'hyper_shift' objects.
-type HyperShiftListBuilder struct {
-	items []*HyperShiftBuilder
+// HypershiftListBuilder contains the data and logic needed to build
+// 'hypershift' objects.
+type HypershiftListBuilder struct {
+	items []*HypershiftBuilder
 }
 
-// NewHyperShiftList creates a new builder of 'hyper_shift' objects.
-func NewHyperShiftList() *HyperShiftListBuilder {
-	return new(HyperShiftListBuilder)
+// NewHypershiftList creates a new builder of 'hypershift' objects.
+func NewHypershiftList() *HypershiftListBuilder {
+	return new(HypershiftListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *HyperShiftListBuilder) Items(values ...*HyperShiftBuilder) *HyperShiftListBuilder {
-	b.items = make([]*HyperShiftBuilder, len(values))
+func (b *HypershiftListBuilder) Items(values ...*HypershiftBuilder) *HypershiftListBuilder {
+	b.items = make([]*HypershiftBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Empty returns true if the list is empty.
-func (b *HyperShiftListBuilder) Empty() bool {
+func (b *HypershiftListBuilder) Empty() bool {
 	return b == nil || len(b.items) == 0
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *HyperShiftListBuilder) Copy(list *HyperShiftList) *HyperShiftListBuilder {
+func (b *HypershiftListBuilder) Copy(list *HypershiftList) *HypershiftListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*HyperShiftBuilder, len(list.items))
+		b.items = make([]*HypershiftBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewHyperShift().Copy(v)
+			b.items[i] = NewHypershift().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'hyper_shift' objects using the
+// Build creates a list of 'hypershift' objects using the
 // configuration stored in the builder.
-func (b *HyperShiftListBuilder) Build() (list *HyperShiftList, err error) {
-	items := make([]*HyperShift, len(b.items))
+func (b *HypershiftListBuilder) Build() (list *HypershiftList, err error) {
+	items := make([]*Hypershift, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(HyperShiftList)
+	list = new(HypershiftList)
 	list.items = items
 	return
 }

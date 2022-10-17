@@ -19,29 +19,29 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// HyperShift represents the values of the 'hyper_shift' type.
+// Hypershift represents the values of the 'hypershift' type.
 //
-// HyperShift configuration.
-type HyperShift struct {
+// Hypershift configuration.
+type Hypershift struct {
 	bitmap_ uint32
 	enabled bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *HyperShift) Empty() bool {
+func (o *Hypershift) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
 // Enabled returns the value of the 'enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Boolean flag indicating if the cluster should be creating using _HyperShift_.
+// Boolean flag indicating if the cluster should be creating using _Hypershift_.
 //
 // By default this is `false`.
 //
 // To enable it the cluster needs to be ROSA cluster and the organization of the user needs
 // to have the `hypershift` capability enabled.
-func (o *HyperShift) Enabled() bool {
+func (o *Hypershift) Enabled() bool {
 	if o != nil && o.bitmap_&1 != 0 {
 		return o.enabled
 	}
@@ -51,13 +51,13 @@ func (o *HyperShift) Enabled() bool {
 // GetEnabled returns the value of the 'enabled' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Boolean flag indicating if the cluster should be creating using _HyperShift_.
+// Boolean flag indicating if the cluster should be creating using _Hypershift_.
 //
 // By default this is `false`.
 //
 // To enable it the cluster needs to be ROSA cluster and the organization of the user needs
 // to have the `hypershift` capability enabled.
-func (o *HyperShift) GetEnabled() (value bool, ok bool) {
+func (o *Hypershift) GetEnabled() (value bool, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
 		value = o.enabled
@@ -65,27 +65,27 @@ func (o *HyperShift) GetEnabled() (value bool, ok bool) {
 	return
 }
 
-// HyperShiftListKind is the name of the type used to represent list of objects of
-// type 'hyper_shift'.
-const HyperShiftListKind = "HyperShiftList"
+// HypershiftListKind is the name of the type used to represent list of objects of
+// type 'hypershift'.
+const HypershiftListKind = "HypershiftList"
 
-// HyperShiftListLinkKind is the name of the type used to represent links to list
-// of objects of type 'hyper_shift'.
-const HyperShiftListLinkKind = "HyperShiftListLink"
+// HypershiftListLinkKind is the name of the type used to represent links to list
+// of objects of type 'hypershift'.
+const HypershiftListLinkKind = "HypershiftListLink"
 
-// HyperShiftNilKind is the name of the type used to nil lists of objects of
-// type 'hyper_shift'.
-const HyperShiftListNilKind = "HyperShiftListNil"
+// HypershiftNilKind is the name of the type used to nil lists of objects of
+// type 'hypershift'.
+const HypershiftListNilKind = "HypershiftListNil"
 
-// HyperShiftList is a list of values of the 'hyper_shift' type.
-type HyperShiftList struct {
+// HypershiftList is a list of values of the 'hypershift' type.
+type HypershiftList struct {
 	href  string
 	link  bool
-	items []*HyperShift
+	items []*Hypershift
 }
 
 // Len returns the length of the list.
-func (l *HyperShiftList) Len() int {
+func (l *HypershiftList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -93,13 +93,13 @@ func (l *HyperShiftList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *HyperShiftList) Empty() bool {
+func (l *HypershiftList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *HyperShiftList) Get(i int) *HyperShift {
+func (l *HypershiftList) Get(i int) *Hypershift {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -112,12 +112,12 @@ func (l *HyperShiftList) Get(i int) *HyperShift {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *HyperShiftList) Slice() []*HyperShift {
-	var slice []*HyperShift
+func (l *HypershiftList) Slice() []*Hypershift {
+	var slice []*Hypershift
 	if l == nil {
-		slice = make([]*HyperShift, 0)
+		slice = make([]*Hypershift, 0)
 	} else {
-		slice = make([]*HyperShift, len(l.items))
+		slice = make([]*Hypershift, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -126,7 +126,7 @@ func (l *HyperShiftList) Slice() []*HyperShift {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *HyperShiftList) Each(f func(item *HyperShift) bool) {
+func (l *HypershiftList) Each(f func(item *Hypershift) bool) {
 	if l == nil {
 		return
 	}
@@ -140,7 +140,7 @@ func (l *HyperShiftList) Each(f func(item *HyperShift) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *HyperShiftList) Range(f func(index int, item *HyperShift) bool) {
+func (l *HypershiftList) Range(f func(index int, item *Hypershift) bool) {
 	if l == nil {
 		return
 	}

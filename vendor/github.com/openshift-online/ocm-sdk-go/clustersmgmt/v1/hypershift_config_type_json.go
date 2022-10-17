@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHyperShift writes a value of the 'hyper_shift' type to the given writer.
-func MarshalHyperShift(object *HyperShift, writer io.Writer) error {
+// MarshalHypershiftConfig writes a value of the 'hypershift_config' type to the given writer.
+func MarshalHypershiftConfig(object *HypershiftConfig, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHyperShift(object, stream)
+	writeHypershiftConfig(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalHyperShift(object *HyperShift, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeHyperShift writes a value of the 'hyper_shift' type to the given stream.
-func writeHyperShift(object *HyperShift, stream *jsoniter.Stream) {
+// writeHypershiftConfig writes a value of the 'hypershift_config' type to the given stream.
+func writeHypershiftConfig(object *HypershiftConfig, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -49,25 +49,34 @@ func writeHyperShift(object *HyperShift, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("enabled")
 		stream.WriteBool(object.enabled)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("management_cluster")
+		stream.WriteString(object.managementCluster)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalHyperShift reads a value of the 'hyper_shift' type from the given
+// UnmarshalHypershiftConfig reads a value of the 'hypershift_config' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalHyperShift(source interface{}) (object *HyperShift, err error) {
+func UnmarshalHypershiftConfig(source interface{}) (object *HypershiftConfig, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readHyperShift(iterator)
+	object = readHypershiftConfig(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHyperShift reads a value of the 'hyper_shift' type from the given iterator.
-func readHyperShift(iterator *jsoniter.Iterator) *HyperShift {
-	object := &HyperShift{}
+// readHypershiftConfig reads a value of the 'hypershift_config' type from the given iterator.
+func readHypershiftConfig(iterator *jsoniter.Iterator) *HypershiftConfig {
+	object := &HypershiftConfig{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
@@ -78,6 +87,10 @@ func readHyperShift(iterator *jsoniter.Iterator) *HyperShift {
 			value := iterator.ReadBool()
 			object.enabled = value
 			object.bitmap_ |= 1
+		case "management_cluster":
+			value := iterator.ReadString()
+			object.managementCluster = value
+			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()
 		}

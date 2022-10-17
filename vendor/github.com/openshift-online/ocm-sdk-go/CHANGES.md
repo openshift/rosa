@@ -3,6 +3,16 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.289
+- Update to model 0.0.228
+  - Add hypershift endpoint with its ManagementCluster.
+  - Align hypershift case usage.  
+  - [Hypershift] Expose /manifests
+  - Added expiry setting to managed service clusters.
+  -  Added Manifests to external_configuration.
+  - Add marketplace specific enum for clusters mgmt
+  - Add Search method to ProvisionShards
+
 ## 0.1.288
 - Windows: Update CA
 

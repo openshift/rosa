@@ -54,7 +54,19 @@ func writeExternalConfiguration(object *ExternalConfiguration, stream *jsoniter.
 		stream.WriteObjectEnd()
 		count++
 	}
-	present_ = object.bitmap_&2 != 0 && object.syncsets != nil
+	present_ = object.bitmap_&2 != 0 && object.manifests != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("manifests")
+		stream.WriteObjectStart()
+		stream.WriteObjectField("items")
+		writeManifestList(object.manifests.items, stream)
+		stream.WriteObjectEnd()
+		count++
+	}
+	present_ = object.bitmap_&4 != 0 && object.syncsets != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -110,6 +122,27 @@ func readExternalConfiguration(iterator *jsoniter.Iterator) *ExternalConfigurati
 			}
 			object.labels = value
 			object.bitmap_ |= 1
+		case "manifests":
+			value := &ManifestList{}
+			for {
+				field := iterator.ReadObject()
+				if field == "" {
+					break
+				}
+				switch field {
+				case "kind":
+					text := iterator.ReadString()
+					value.link = text == ManifestListLinkKind
+				case "href":
+					value.href = iterator.ReadString()
+				case "items":
+					value.items = readManifestList(iterator)
+				default:
+					iterator.ReadAny()
+				}
+			}
+			object.manifests = value
+			object.bitmap_ |= 2
 		case "syncsets":
 			value := &SyncsetList{}
 			for {
@@ -130,7 +163,7 @@ func readExternalConfiguration(iterator *jsoniter.Iterator) *ExternalConfigurati
 				}
 			}
 			object.syncsets = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}
