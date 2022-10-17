@@ -31,11 +31,17 @@ type AddOnBilling struct {
 var BillingOptions = []string{
 	string(amsv1.BillingModelMarketplace),
 	string(amsv1.BillingModelStandard),
+	string(amsv1.BillingModelMarketplaceAWS),
+	string(amsv1.BillingModelMarketplaceAzure),
+	string(amsv1.BillingModelMarketplaceRHM),
 }
 
 var BillingModels = map[string]cmv1.BillingModel{
-	string(amsv1.BillingModelMarketplace): cmv1.BillingModelMarketplace,
-	string(amsv1.BillingModelStandard):    cmv1.BillingModelStandard,
+	string(amsv1.BillingModelMarketplace):      cmv1.BillingModelMarketplace,
+	string(amsv1.BillingModelStandard):         cmv1.BillingModelStandard,
+	string(amsv1.BillingModelMarketplaceAWS):   cmv1.BillingModelMarketplaceAWS,
+	string(amsv1.BillingModelMarketplaceAzure): cmv1.BillingModelMarketplaceAzure,
+	string(amsv1.BillingModelMarketplaceRHM):   cmv1.BillingModelMarketplaceRHM,
 }
 
 type AddOnParam struct {
