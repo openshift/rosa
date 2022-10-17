@@ -22,16 +22,17 @@ import (
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/spf13/cobra"
-
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/spf13/cobra"
 )
 
 var args struct {
-	multiAZ    bool
-	roleARN    string
-	externalID string
+	multiAZ       bool
+	roleARN       string
+	externalID    string
+	hostedCluster bool
 }
 
 var Cmd = &cobra.Command{
@@ -64,11 +65,19 @@ func init() {
 		"",
 		"A unique identifier that might be required when you assume a role in another account",
 	)
+	flags.BoolVar(
+		&args.hostedCluster,
+		"hosted-cp",
+		false,
+		"List only regions with support for hosted control planes (HyperShift)",
+	)
+	flags.MarkHidden("hosted-cp")
 
 	output.AddFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	var regionsWithHostedCPSupport map[string]bool
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
@@ -80,6 +89,20 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	hypershiftEnabled, err := r.OCMClient.IsCapabilityEnabled(ocm.HypershiftCapability)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if hypershiftEnabled {
+		regionsWithHostedCPSupport, err = r.OCMClient.ListHostedCPSupportedRegion()
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
 	// Filter out unwanted regions
 	var availableRegions []*cmv1.CloudRegion
 	for _, region := range regions {
@@ -88,6 +111,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if cmd.Flags().Changed("multi-az") {
 			if args.multiAZ != region.SupportsMultiAZ() {
+				continue
+			}
+		}
+		if hypershiftEnabled && cmd.Flags().Changed("hosted-cp") {
+			if args.hostedCluster != regionsWithHostedCPSupport[region.ID()] {
 				continue
 			}
 		}
@@ -110,15 +138,29 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tNAME\t\tMULTI-AZ SUPPORT\n")
+	headerFormat := "ID\t\tNAME\t\tMULTI-AZ SUPPORT\n"
+	if hypershiftEnabled {
+		headerFormat = "ID\t\tNAME\t\tMULTI-AZ SUPPORT\t\tHOSTED-CP SUPPORT\n"
+	}
+	fmt.Fprint(writer, headerFormat)
 
 	for _, region := range availableRegions {
-		fmt.Fprintf(writer,
-			"%s\t\t%s\t\t%t\n",
-			region.ID(),
-			region.DisplayName(),
-			region.SupportsMultiAZ(),
-		)
+		if hypershiftEnabled {
+			fmt.Fprintf(writer,
+				"%s\t\t%s\t\t%t\t\t%t\n",
+				region.ID(),
+				region.DisplayName(),
+				region.SupportsMultiAZ(),
+				regionsWithHostedCPSupport[region.ID()],
+			)
+		} else {
+			fmt.Fprintf(writer,
+				"%s\t\t%s\t\t%t\n",
+				region.ID(),
+				region.DisplayName(),
+				region.SupportsMultiAZ(),
+			)
+		}
 	}
 	writer.Flush()
 }
