@@ -19,18 +19,13 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// BillingModel represents the values of the 'billing_model' enumerated type.
-type BillingModel string
+import "io"
 
-const (
-	// BillingModel Marketplace Legacy Marketplace billing model. Currently only used for tests. Use cloud-provider specific billing models instead.
-	BillingModelMarketplace BillingModel = "marketplace"
-	// AWS Marketplace billing model.
-	BillingModelMarketplaceAWS BillingModel = "marketplace-aws"
-	// RH Marketplace billing model.
-	BillingModelMarketplaceRHM BillingModel = "marketplace-rhm"
-	// Azure Marketplace billing model.
-	BillingModelMarketplaceAzure BillingModel = "marketplace-azure"
-	// Standard. This is the default billing model
-	BillingModelStandard BillingModel = "standard"
-)
+func writeHypershiftGetRequest(request *HypershiftGetRequest, writer io.Writer) error {
+	return nil
+}
+func readHypershiftGetResponse(response *HypershiftGetResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalHypershiftConfig(reader)
+	return err
+}

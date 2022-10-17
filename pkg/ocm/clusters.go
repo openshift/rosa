@@ -507,7 +507,7 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 	}
 
 	if config.Hypershift.Enabled {
-		hyperShiftBuilder := cmv1.NewHyperShift().Enabled(true)
+		hyperShiftBuilder := cmv1.NewHypershift().Enabled(true)
 		clusterBuilder.Hypershift(hyperShiftBuilder)
 	}
 
@@ -664,7 +664,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 
 	if config.Hypershift.Enabled {
-		hyperShiftBuilder := cmv1.NewHyperShift().Enabled(true)
+		hyperShiftBuilder := cmv1.NewHypershift().Enabled(true)
 		clusterBuilder.Hypershift(hyperShiftBuilder)
 	}
 

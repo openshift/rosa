@@ -83,7 +83,7 @@ type ClusterBuilder struct {
 	flavour                           *FlavourBuilder
 	groups                            *GroupListBuilder
 	healthState                       ClusterHealthState
-	hypershift                        *HyperShiftBuilder
+	hypershift                        *HypershiftBuilder
 	identityProviders                 *IdentityProviderListBuilder
 	inflightChecks                    *InflightCheckListBuilder
 	infraID                           string
@@ -384,8 +384,8 @@ func (b *ClusterBuilder) HealthState(value ClusterHealthState) *ClusterBuilder {
 
 // Hypershift sets the value of the 'hypershift' attribute to the given value.
 //
-// HyperShift configuration.
-func (b *ClusterBuilder) Hypershift(value *HyperShiftBuilder) *ClusterBuilder {
+// Hypershift configuration.
+func (b *ClusterBuilder) Hypershift(value *HypershiftBuilder) *ClusterBuilder {
 	b.hypershift = value
 	if value != nil {
 		b.bitmap_ |= 33554432
@@ -780,7 +780,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	}
 	b.healthState = object.healthState
 	if object.hypershift != nil {
-		b.hypershift = NewHyperShift().Copy(object.hypershift)
+		b.hypershift = NewHypershift().Copy(object.hypershift)
 	} else {
 		b.hypershift = nil
 	}

@@ -193,6 +193,16 @@ func (c *ClusterClient) Groups() *GroupsClient {
 	)
 }
 
+// Hypershift returns the target 'hypershift' resource.
+//
+//
+func (c *ClusterClient) Hypershift() *HypershiftClient {
+	return NewHypershiftClient(
+		c.transport,
+		path.Join(c.path, "hypershift"),
+	)
+}
+
 // IdentityProviders returns the target 'identity_providers' resource.
 //
 // Reference to the resource that manages the collection of identity providers.

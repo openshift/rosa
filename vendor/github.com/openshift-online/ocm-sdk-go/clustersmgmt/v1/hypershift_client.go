@@ -25,26 +25,25 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"time"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// ExternalConfigurationClient is the client of the 'external_configuration' resource.
+// HypershiftClient is the client of the 'hypershift' resource.
 //
-// Manages a specific external configuration.
-type ExternalConfigurationClient struct {
+// Manages a specific Hypershift cluster.
+type HypershiftClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewExternalConfigurationClient creates a new client for the 'external_configuration'
+// NewHypershiftClient creates a new client for the 'hypershift'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewExternalConfigurationClient(transport http.RoundTripper, path string) *ExternalConfigurationClient {
-	return &ExternalConfigurationClient{
+func NewHypershiftClient(transport http.RoundTripper, path string) *HypershiftClient {
+	return &HypershiftClient{
 		transport: transport,
 		path:      path,
 	}
@@ -52,73 +51,43 @@ func NewExternalConfigurationClient(transport http.RoundTripper, path string) *E
 
 // Get creates a request for the 'get' method.
 //
-// Retrieves the details of the external configuration.
-func (c *ExternalConfigurationClient) Get() *ExternalConfigurationGetRequest {
-	return &ExternalConfigurationGetRequest{
+// Retrieves the Hypershift details for a single cluster.
+func (c *HypershiftClient) Get() *HypershiftGetRequest {
+	return &HypershiftGetRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// Labels returns the target 'labels' resource.
-//
-// Reference to the resource that manages the collection of labels.
-func (c *ExternalConfigurationClient) Labels() *LabelsClient {
-	return NewLabelsClient(
-		c.transport,
-		path.Join(c.path, "labels"),
-	)
-}
-
-// Manifests returns the target 'manifests' resource.
-//
-// Reference to the resource that manages the collection of manifests.
-func (c *ExternalConfigurationClient) Manifests() *ManifestsClient {
-	return NewManifestsClient(
-		c.transport,
-		path.Join(c.path, "manifests"),
-	)
-}
-
-// Syncsets returns the target 'syncsets' resource.
-//
-// Reference to the resource that manages the collection of syncsets.
-func (c *ExternalConfigurationClient) Syncsets() *SyncsetsClient {
-	return NewSyncsetsClient(
-		c.transport,
-		path.Join(c.path, "syncsets"),
-	)
-}
-
-// ExternalConfigurationPollRequest is the request for the Poll method.
-type ExternalConfigurationPollRequest struct {
-	request    *ExternalConfigurationGetRequest
+// HypershiftPollRequest is the request for the Poll method.
+type HypershiftPollRequest struct {
+	request    *HypershiftGetRequest
 	interval   time.Duration
 	statuses   []int
 	predicates []func(interface{}) bool
 }
 
 // Parameter adds a query parameter to all the requests that will be used to retrieve the object.
-func (r *ExternalConfigurationPollRequest) Parameter(name string, value interface{}) *ExternalConfigurationPollRequest {
+func (r *HypershiftPollRequest) Parameter(name string, value interface{}) *HypershiftPollRequest {
 	r.request.Parameter(name, value)
 	return r
 }
 
 // Header adds a request header to all the requests that will be used to retrieve the object.
-func (r *ExternalConfigurationPollRequest) Header(name string, value interface{}) *ExternalConfigurationPollRequest {
+func (r *HypershiftPollRequest) Header(name string, value interface{}) *HypershiftPollRequest {
 	r.request.Header(name, value)
 	return r
 }
 
 // Interval sets the polling interval. This parameter is mandatory and must be greater than zero.
-func (r *ExternalConfigurationPollRequest) Interval(value time.Duration) *ExternalConfigurationPollRequest {
+func (r *HypershiftPollRequest) Interval(value time.Duration) *HypershiftPollRequest {
 	r.interval = value
 	return r
 }
 
 // Status set the expected status of the response. Multiple values can be set calling this method
 // multiple times. The response will be considered successful if the status is any of those values.
-func (r *ExternalConfigurationPollRequest) Status(value int) *ExternalConfigurationPollRequest {
+func (r *HypershiftPollRequest) Status(value int) *HypershiftPollRequest {
 	r.statuses = append(r.statuses, value)
 	return r
 }
@@ -126,9 +95,9 @@ func (r *ExternalConfigurationPollRequest) Status(value int) *ExternalConfigurat
 // Predicate adds a predicate that the response should satisfy be considered successful. Multiple
 // predicates can be set calling this method multiple times. The response will be considered successful
 // if all the predicates are satisfied.
-func (r *ExternalConfigurationPollRequest) Predicate(value func(*ExternalConfigurationGetResponse) bool) *ExternalConfigurationPollRequest {
+func (r *HypershiftPollRequest) Predicate(value func(*HypershiftGetResponse) bool) *HypershiftPollRequest {
 	r.predicates = append(r.predicates, func(response interface{}) bool {
-		return value(response.(*ExternalConfigurationGetResponse))
+		return value(response.(*HypershiftGetResponse))
 	})
 	return r
 }
@@ -138,11 +107,11 @@ func (r *ExternalConfigurationPollRequest) Predicate(value func(*ExternalConfigu
 // method return nil.
 //
 // The context must have a timeout or deadline, otherwise this method will immediately return an error.
-func (r *ExternalConfigurationPollRequest) StartContext(ctx context.Context) (response *ExternalConfigurationPollResponse, err error) {
+func (r *HypershiftPollRequest) StartContext(ctx context.Context) (response *HypershiftPollResponse, err error) {
 	result, err := helpers.PollContext(ctx, r.interval, r.statuses, r.predicates, r.task)
 	if result != nil {
-		response = &ExternalConfigurationPollResponse{
-			response: result.(*ExternalConfigurationGetResponse),
+		response = &HypershiftPollResponse{
+			response: result.(*HypershiftGetResponse),
 		}
 	}
 	return
@@ -150,7 +119,7 @@ func (r *ExternalConfigurationPollRequest) StartContext(ctx context.Context) (re
 
 // task adapts the types of the request/response types so that they can be used with the generic
 // polling function from the helpers package.
-func (r *ExternalConfigurationPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
+func (r *HypershiftPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
 	response, err := r.request.SendContext(ctx)
 	if response != nil {
 		status = response.Status()
@@ -159,13 +128,13 @@ func (r *ExternalConfigurationPollRequest) task(ctx context.Context) (status int
 	return
 }
 
-// ExternalConfigurationPollResponse is the response for the Poll method.
-type ExternalConfigurationPollResponse struct {
-	response *ExternalConfigurationGetResponse
+// HypershiftPollResponse is the response for the Poll method.
+type HypershiftPollResponse struct {
+	response *HypershiftGetResponse
 }
 
 // Status returns the response status code.
-func (r *ExternalConfigurationPollResponse) Status() int {
+func (r *HypershiftPollResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -173,7 +142,7 @@ func (r *ExternalConfigurationPollResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ExternalConfigurationPollResponse) Header() http.Header {
+func (r *HypershiftPollResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -181,7 +150,7 @@ func (r *ExternalConfigurationPollResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ExternalConfigurationPollResponse) Error() *errors.Error {
+func (r *HypershiftPollResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -190,29 +159,29 @@ func (r *ExternalConfigurationPollResponse) Error() *errors.Error {
 
 // Body returns the value of the 'body' parameter.
 //
-// Retreived log.
-func (r *ExternalConfigurationPollResponse) Body() *ExternalConfiguration {
+//
+func (r *HypershiftPollResponse) Body() *HypershiftConfig {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Retreived log.
-func (r *ExternalConfigurationPollResponse) GetBody() (value *ExternalConfiguration, ok bool) {
+//
+func (r *HypershiftPollResponse) GetBody() (value *HypershiftConfig, ok bool) {
 	return r.response.GetBody()
 }
 
 // Poll creates a request to repeatedly retrieve the object till the response has one of a given set
 // of states and satisfies a set of predicates.
-func (c *ExternalConfigurationClient) Poll() *ExternalConfigurationPollRequest {
-	return &ExternalConfigurationPollRequest{
+func (c *HypershiftClient) Poll() *HypershiftPollRequest {
+	return &HypershiftPollRequest{
 		request: c.Get(),
 	}
 }
 
-// ExternalConfigurationGetRequest is the request for the 'get' method.
-type ExternalConfigurationGetRequest struct {
+// HypershiftGetRequest is the request for the 'get' method.
+type HypershiftGetRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -220,20 +189,20 @@ type ExternalConfigurationGetRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *ExternalConfigurationGetRequest) Parameter(name string, value interface{}) *ExternalConfigurationGetRequest {
+func (r *HypershiftGetRequest) Parameter(name string, value interface{}) *HypershiftGetRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *ExternalConfigurationGetRequest) Header(name string, value interface{}) *ExternalConfigurationGetRequest {
+func (r *HypershiftGetRequest) Header(name string, value interface{}) *HypershiftGetRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *ExternalConfigurationGetRequest) Impersonate(user string) *ExternalConfigurationGetRequest {
+func (r *HypershiftGetRequest) Impersonate(user string) *HypershiftGetRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -242,12 +211,12 @@ func (r *ExternalConfigurationGetRequest) Impersonate(user string) *ExternalConf
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *ExternalConfigurationGetRequest) Send() (result *ExternalConfigurationGetResponse, err error) {
+func (r *HypershiftGetRequest) Send() (result *HypershiftGetResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *ExternalConfigurationGetRequest) SendContext(ctx context.Context) (result *ExternalConfigurationGetResponse, err error) {
+func (r *HypershiftGetRequest) SendContext(ctx context.Context) (result *HypershiftGetResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -267,7 +236,7 @@ func (r *ExternalConfigurationGetRequest) SendContext(ctx context.Context) (resu
 		return
 	}
 	defer response.Body.Close()
-	result = &ExternalConfigurationGetResponse{}
+	result = &HypershiftGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -284,23 +253,23 @@ func (r *ExternalConfigurationGetRequest) SendContext(ctx context.Context) (resu
 		err = result.err
 		return
 	}
-	err = readExternalConfigurationGetResponse(result, reader)
+	err = readHypershiftGetResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// ExternalConfigurationGetResponse is the response for the 'get' method.
-type ExternalConfigurationGetResponse struct {
+// HypershiftGetResponse is the response for the 'get' method.
+type HypershiftGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *ExternalConfiguration
+	body   *HypershiftConfig
 }
 
 // Status returns the response status code.
-func (r *ExternalConfigurationGetResponse) Status() int {
+func (r *HypershiftGetResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -308,7 +277,7 @@ func (r *ExternalConfigurationGetResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ExternalConfigurationGetResponse) Header() http.Header {
+func (r *HypershiftGetResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -316,7 +285,7 @@ func (r *ExternalConfigurationGetResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ExternalConfigurationGetResponse) Error() *errors.Error {
+func (r *HypershiftGetResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -325,8 +294,8 @@ func (r *ExternalConfigurationGetResponse) Error() *errors.Error {
 
 // Body returns the value of the 'body' parameter.
 //
-// Retreived log.
-func (r *ExternalConfigurationGetResponse) Body() *ExternalConfiguration {
+//
+func (r *HypershiftGetResponse) Body() *HypershiftConfig {
 	if r == nil {
 		return nil
 	}
@@ -336,8 +305,8 @@ func (r *ExternalConfigurationGetResponse) Body() *ExternalConfiguration {
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Retreived log.
-func (r *ExternalConfigurationGetResponse) GetBody() (value *ExternalConfiguration, ok bool) {
+//
+func (r *HypershiftGetResponse) GetBody() (value *HypershiftConfig, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body

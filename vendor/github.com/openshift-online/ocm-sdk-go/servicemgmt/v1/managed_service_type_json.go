@@ -93,7 +93,16 @@ func writeManagedService(object *ManagedService, stream *jsoniter.Stream) {
 		stream.WriteString((object.createdAt).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.parameters != nil
+	present_ = object.bitmap_&64 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("expired_at")
+		stream.WriteString((object.expiredAt).Format(time.RFC3339))
+		count++
+	}
+	present_ = object.bitmap_&128 != 0 && object.parameters != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -102,7 +111,7 @@ func writeManagedService(object *ManagedService, stream *jsoniter.Stream) {
 		writeServiceParameterList(object.parameters, stream)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.resources != nil
+	present_ = object.bitmap_&256 != 0 && object.resources != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -111,7 +120,7 @@ func writeManagedService(object *ManagedService, stream *jsoniter.Stream) {
 		writeStatefulObjectList(object.resources, stream)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -120,7 +129,7 @@ func writeManagedService(object *ManagedService, stream *jsoniter.Stream) {
 		stream.WriteString(object.service)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -129,7 +138,7 @@ func writeManagedService(object *ManagedService, stream *jsoniter.Stream) {
 		stream.WriteString(object.serviceState)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -188,22 +197,30 @@ func readManagedService(iterator *jsoniter.Iterator) *ManagedService {
 			}
 			object.createdAt = value
 			object.bitmap_ |= 32
+		case "expired_at":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.expiredAt = value
+			object.bitmap_ |= 64
 		case "parameters":
 			value := readServiceParameterList(iterator)
 			object.parameters = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "resources":
 			value := readStatefulObjectList(iterator)
 			object.resources = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "service":
 			value := iterator.ReadString()
 			object.service = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "service_state":
 			value := iterator.ReadString()
 			object.serviceState = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "updated_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -211,7 +228,7 @@ func readManagedService(iterator *jsoniter.Iterator) *ManagedService {
 				iterator.ReportError("", err.Error())
 			}
 			object.updatedAt = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		default:
 			iterator.ReadAny()
 		}

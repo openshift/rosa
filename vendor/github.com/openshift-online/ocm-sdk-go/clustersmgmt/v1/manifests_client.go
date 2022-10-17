@@ -32,19 +32,19 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// ProvisionShardsClient is the client of the 'provision_shards' resource.
+// ManifestsClient is the client of the 'manifests' resource.
 //
-// Manages the collection of provision shards.
-type ProvisionShardsClient struct {
+// Manages the collection of Manifests of a cluster.
+type ManifestsClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewProvisionShardsClient creates a new client for the 'provision_shards'
+// NewManifestsClient creates a new client for the 'manifests'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewProvisionShardsClient(transport http.RoundTripper, path string) *ProvisionShardsClient {
-	return &ProvisionShardsClient{
+func NewManifestsClient(transport http.RoundTripper, path string) *ManifestsClient {
+	return &ManifestsClient{
 		transport: transport,
 		path:      path,
 	}
@@ -52,9 +52,9 @@ func NewProvisionShardsClient(transport http.RoundTripper, path string) *Provisi
 
 // Add creates a request for the 'add' method.
 //
-// Adds a provision shard.
-func (c *ProvisionShardsClient) Add() *ProvisionShardsAddRequest {
-	return &ProvisionShardsAddRequest{
+// Adds a new manifest to a cluster.
+func (c *ManifestsClient) Add() *ManifestsAddRequest {
+	return &ManifestsAddRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -62,56 +62,56 @@ func (c *ProvisionShardsClient) Add() *ProvisionShardsAddRequest {
 
 // List creates a request for the 'list' method.
 //
-//
-func (c *ProvisionShardsClient) List() *ProvisionShardsListRequest {
-	return &ProvisionShardsListRequest{
+// Retrieves the list of manifests.
+func (c *ManifestsClient) List() *ManifestsListRequest {
+	return &ManifestsListRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// ProvisionShard returns the target 'provision_shard' resource for the given identifier.
+// Manifest returns the target 'manifest' resource for the given identifier.
 //
-// Reference to the resource that manages a specific provision shard.
-func (c *ProvisionShardsClient) ProvisionShard(id string) *ProvisionShardClient {
-	return NewProvisionShardClient(
+// Reference to the service that manages a specific manifest.
+func (c *ManifestsClient) Manifest(id string) *ManifestClient {
+	return NewManifestClient(
 		c.transport,
 		path.Join(c.path, id),
 	)
 }
 
-// ProvisionShardsAddRequest is the request for the 'add' method.
-type ProvisionShardsAddRequest struct {
+// ManifestsAddRequest is the request for the 'add' method.
+type ManifestsAddRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
-	body      *ProvisionShard
+	body      *Manifest
 }
 
 // Parameter adds a query parameter.
-func (r *ProvisionShardsAddRequest) Parameter(name string, value interface{}) *ProvisionShardsAddRequest {
+func (r *ManifestsAddRequest) Parameter(name string, value interface{}) *ManifestsAddRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *ProvisionShardsAddRequest) Header(name string, value interface{}) *ProvisionShardsAddRequest {
+func (r *ManifestsAddRequest) Header(name string, value interface{}) *ManifestsAddRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *ProvisionShardsAddRequest) Impersonate(user string) *ProvisionShardsAddRequest {
+func (r *ManifestsAddRequest) Impersonate(user string) *ManifestsAddRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
 // Body sets the value of the 'body' parameter.
 //
-// Description of the provision shard.
-func (r *ProvisionShardsAddRequest) Body(value *ProvisionShard) *ProvisionShardsAddRequest {
+// Description of the manifest.
+func (r *ManifestsAddRequest) Body(value *Manifest) *ManifestsAddRequest {
 	r.body = value
 	return r
 }
@@ -120,16 +120,16 @@ func (r *ProvisionShardsAddRequest) Body(value *ProvisionShard) *ProvisionShards
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *ProvisionShardsAddRequest) Send() (result *ProvisionShardsAddResponse, err error) {
+func (r *ManifestsAddRequest) Send() (result *ManifestsAddResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *ProvisionShardsAddRequest) SendContext(ctx context.Context) (result *ProvisionShardsAddResponse, err error) {
+func (r *ManifestsAddRequest) SendContext(ctx context.Context) (result *ManifestsAddResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	buffer := &bytes.Buffer{}
-	err = writeProvisionShardsAddRequest(r, buffer)
+	err = writeManifestsAddRequest(r, buffer)
 	if err != nil {
 		return
 	}
@@ -151,7 +151,7 @@ func (r *ProvisionShardsAddRequest) SendContext(ctx context.Context) (result *Pr
 		return
 	}
 	defer response.Body.Close()
-	result = &ProvisionShardsAddResponse{}
+	result = &ManifestsAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -168,23 +168,23 @@ func (r *ProvisionShardsAddRequest) SendContext(ctx context.Context) (result *Pr
 		err = result.err
 		return
 	}
-	err = readProvisionShardsAddResponse(result, reader)
+	err = readManifestsAddResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// ProvisionShardsAddResponse is the response for the 'add' method.
-type ProvisionShardsAddResponse struct {
+// ManifestsAddResponse is the response for the 'add' method.
+type ManifestsAddResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *ProvisionShard
+	body   *Manifest
 }
 
 // Status returns the response status code.
-func (r *ProvisionShardsAddResponse) Status() int {
+func (r *ManifestsAddResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -192,7 +192,7 @@ func (r *ProvisionShardsAddResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ProvisionShardsAddResponse) Header() http.Header {
+func (r *ManifestsAddResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -200,7 +200,7 @@ func (r *ProvisionShardsAddResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ProvisionShardsAddResponse) Error() *errors.Error {
+func (r *ManifestsAddResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -209,8 +209,8 @@ func (r *ProvisionShardsAddResponse) Error() *errors.Error {
 
 // Body returns the value of the 'body' parameter.
 //
-// Description of the provision shard.
-func (r *ProvisionShardsAddResponse) Body() *ProvisionShard {
+// Description of the manifest.
+func (r *ManifestsAddResponse) Body() *Manifest {
 	if r == nil {
 		return nil
 	}
@@ -220,8 +220,8 @@ func (r *ProvisionShardsAddResponse) Body() *ProvisionShard {
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Description of the provision shard.
-func (r *ProvisionShardsAddResponse) GetBody() (value *ProvisionShard, ok bool) {
+// Description of the manifest.
+func (r *ManifestsAddResponse) GetBody() (value *Manifest, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -229,32 +229,31 @@ func (r *ProvisionShardsAddResponse) GetBody() (value *ProvisionShard, ok bool) 
 	return
 }
 
-// ProvisionShardsListRequest is the request for the 'list' method.
-type ProvisionShardsListRequest struct {
+// ManifestsListRequest is the request for the 'list' method.
+type ManifestsListRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
 	page      *int
-	search    *string
 	size      *int
 }
 
 // Parameter adds a query parameter.
-func (r *ProvisionShardsListRequest) Parameter(name string, value interface{}) *ProvisionShardsListRequest {
+func (r *ManifestsListRequest) Parameter(name string, value interface{}) *ManifestsListRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *ProvisionShardsListRequest) Header(name string, value interface{}) *ProvisionShardsListRequest {
+func (r *ManifestsListRequest) Header(name string, value interface{}) *ManifestsListRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *ProvisionShardsListRequest) Impersonate(user string) *ProvisionShardsListRequest {
+func (r *ManifestsListRequest) Impersonate(user string) *ManifestsListRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -262,36 +261,15 @@ func (r *ProvisionShardsListRequest) Impersonate(user string) *ProvisionShardsLi
 // Page sets the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *ProvisionShardsListRequest) Page(value int) *ProvisionShardsListRequest {
+func (r *ManifestsListRequest) Page(value int) *ManifestsListRequest {
 	r.page = &value
-	return r
-}
-
-// Search sets the value of the 'search' parameter.
-//
-// Search criteria.
-//
-// The syntax of this parameter is similar to the syntax of the _where_ clause of a
-// SQL statement, but using the names of the attributes of the cluster instead of
-// the names of the columns of a table. For example, in order to retrieve all the
-// clusters with a name starting with `my` in the `us-east-1` region the value
-// should be:
-//
-// ```sql
-// name like 'my%' and region.id = 'us-east-1'
-// ```
-//
-// If the parameter isn't provided, or if the value is empty, then all the
-// provision shards that the user has permission to see will be returned.
-func (r *ProvisionShardsListRequest) Search(value string) *ProvisionShardsListRequest {
-	r.search = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
 //
-// Maximum number of items that will be contained in the returned page.
-func (r *ProvisionShardsListRequest) Size(value int) *ProvisionShardsListRequest {
+// Number of items contained in the returned page.
+func (r *ManifestsListRequest) Size(value int) *ManifestsListRequest {
 	r.size = &value
 	return r
 }
@@ -300,18 +278,15 @@ func (r *ProvisionShardsListRequest) Size(value int) *ProvisionShardsListRequest
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *ProvisionShardsListRequest) Send() (result *ProvisionShardsListResponse, err error) {
+func (r *ManifestsListRequest) Send() (result *ManifestsListResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *ProvisionShardsListRequest) SendContext(ctx context.Context) (result *ProvisionShardsListResponse, err error) {
+func (r *ManifestsListRequest) SendContext(ctx context.Context) (result *ManifestsListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	if r.page != nil {
 		helpers.AddValue(&query, "page", *r.page)
-	}
-	if r.search != nil {
-		helpers.AddValue(&query, "search", *r.search)
 	}
 	if r.size != nil {
 		helpers.AddValue(&query, "size", *r.size)
@@ -334,7 +309,7 @@ func (r *ProvisionShardsListRequest) SendContext(ctx context.Context) (result *P
 		return
 	}
 	defer response.Body.Close()
-	result = &ProvisionShardsListResponse{}
+	result = &ManifestsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -351,26 +326,26 @@ func (r *ProvisionShardsListRequest) SendContext(ctx context.Context) (result *P
 		err = result.err
 		return
 	}
-	err = readProvisionShardsListResponse(result, reader)
+	err = readManifestsListResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// ProvisionShardsListResponse is the response for the 'list' method.
-type ProvisionShardsListResponse struct {
+// ManifestsListResponse is the response for the 'list' method.
+type ManifestsListResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	items  *ProvisionShardList
+	items  *ManifestList
 	page   *int
 	size   *int
 	total  *int
 }
 
 // Status returns the response status code.
-func (r *ProvisionShardsListResponse) Status() int {
+func (r *ManifestsListResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -378,7 +353,7 @@ func (r *ProvisionShardsListResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ProvisionShardsListResponse) Header() http.Header {
+func (r *ManifestsListResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -386,7 +361,7 @@ func (r *ProvisionShardsListResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ProvisionShardsListResponse) Error() *errors.Error {
+func (r *ManifestsListResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -395,8 +370,8 @@ func (r *ProvisionShardsListResponse) Error() *errors.Error {
 
 // Items returns the value of the 'items' parameter.
 //
-// Retrieved a list of provision shards.
-func (r *ProvisionShardsListResponse) Items() *ProvisionShardList {
+// Retrieved list of Manifests.
+func (r *ManifestsListResponse) Items() *ManifestList {
 	if r == nil {
 		return nil
 	}
@@ -406,8 +381,8 @@ func (r *ProvisionShardsListResponse) Items() *ProvisionShardList {
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Retrieved a list of provision shards.
-func (r *ProvisionShardsListResponse) GetItems() (value *ProvisionShardList, ok bool) {
+// Retrieved list of Manifests.
+func (r *ManifestsListResponse) GetItems() (value *ManifestList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
 		value = r.items
@@ -418,7 +393,7 @@ func (r *ProvisionShardsListResponse) GetItems() (value *ProvisionShardList, ok 
 // Page returns the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *ProvisionShardsListResponse) Page() int {
+func (r *ManifestsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
 	}
@@ -429,7 +404,7 @@ func (r *ProvisionShardsListResponse) Page() int {
 // a flag indicating if the parameter has a value.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *ProvisionShardsListResponse) GetPage() (value int, ok bool) {
+func (r *ManifestsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
 		value = *r.page
@@ -439,8 +414,8 @@ func (r *ProvisionShardsListResponse) GetPage() (value int, ok bool) {
 
 // Size returns the value of the 'size' parameter.
 //
-// Maximum number of items that will be contained in the returned page.
-func (r *ProvisionShardsListResponse) Size() int {
+// Number of items contained in the returned page.
+func (r *ManifestsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
 	}
@@ -450,8 +425,8 @@ func (r *ProvisionShardsListResponse) Size() int {
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Maximum number of items that will be contained in the returned page.
-func (r *ProvisionShardsListResponse) GetSize() (value int, ok bool) {
+// Number of items contained in the returned page.
+func (r *ManifestsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
 		value = *r.size
@@ -462,7 +437,7 @@ func (r *ProvisionShardsListResponse) GetSize() (value int, ok bool) {
 // Total returns the value of the 'total' parameter.
 //
 // Total number of items of the collection.
-func (r *ProvisionShardsListResponse) Total() int {
+func (r *ManifestsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
 	}
@@ -473,7 +448,7 @@ func (r *ProvisionShardsListResponse) Total() int {
 // a flag indicating if the parameter has a value.
 //
 // Total number of items of the collection.
-func (r *ProvisionShardsListResponse) GetTotal() (value int, ok bool) {
+func (r *ManifestsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {
 		value = *r.total

@@ -19,18 +19,27 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// BillingModel represents the values of the 'billing_model' enumerated type.
-type BillingModel string
+import "io"
 
-const (
-	// BillingModel Marketplace Legacy Marketplace billing model. Currently only used for tests. Use cloud-provider specific billing models instead.
-	BillingModelMarketplace BillingModel = "marketplace"
-	// AWS Marketplace billing model.
-	BillingModelMarketplaceAWS BillingModel = "marketplace-aws"
-	// RH Marketplace billing model.
-	BillingModelMarketplaceRHM BillingModel = "marketplace-rhm"
-	// Azure Marketplace billing model.
-	BillingModelMarketplaceAzure BillingModel = "marketplace-azure"
-	// Standard. This is the default billing model
-	BillingModelStandard BillingModel = "standard"
-)
+func writeManifestDeleteRequest(request *ManifestDeleteRequest, writer io.Writer) error {
+	return nil
+}
+func readManifestDeleteResponse(response *ManifestDeleteResponse, reader io.Reader) error {
+	return nil
+}
+func writeManifestGetRequest(request *ManifestGetRequest, writer io.Writer) error {
+	return nil
+}
+func readManifestGetResponse(response *ManifestGetResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalManifest(reader)
+	return err
+}
+func writeManifestUpdateRequest(request *ManifestUpdateRequest, writer io.Writer) error {
+	return MarshalManifest(request.body, writer)
+}
+func readManifestUpdateResponse(response *ManifestUpdateResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalManifest(reader)
+	return err
+}

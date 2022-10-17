@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHyperShiftList writes a list of values of the 'hyper_shift' type to
+// MarshalManifestList writes a list of values of the 'manifest' type to
 // the given writer.
-func MarshalHyperShiftList(list []*HyperShift, writer io.Writer) error {
+func MarshalManifestList(list []*Manifest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHyperShiftList(list, stream)
+	writeManifestList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalHyperShiftList(list []*HyperShift, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeHyperShiftList writes a list of value of the 'hyper_shift' type to
+// writeManifestList writes a list of value of the 'manifest' type to
 // the given stream.
-func writeHyperShiftList(list []*HyperShift, stream *jsoniter.Stream) {
+func writeManifestList(list []*Manifest, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeHyperShift(value, stream)
+		writeManifest(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalHyperShiftList reads a list of values of the 'hyper_shift' type
+// UnmarshalManifestList reads a list of values of the 'manifest' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalHyperShiftList(source interface{}) (items []*HyperShift, err error) {
+func UnmarshalManifestList(source interface{}) (items []*Manifest, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readHyperShiftList(iterator)
+	items = readManifestList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHyperShiftList reads list of values of the ''hyper_shift' type from
+// readManifestList reads list of values of the ''manifest' type from
 // the given iterator.
-func readHyperShiftList(iterator *jsoniter.Iterator) []*HyperShift {
-	list := []*HyperShift{}
+func readManifestList(iterator *jsoniter.Iterator) []*Manifest {
+	list := []*Manifest{}
 	for iterator.ReadArray() {
-		item := readHyperShift(iterator)
+		item := readManifest(iterator)
 		list = append(list, item)
 	}
 	return list

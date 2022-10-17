@@ -165,6 +165,9 @@ var pathTreeData = `{
               "labels": {
                 "-": null
               },
+              "manifests": {
+                "-": null
+              },
               "syncsets": {
                 "-": null
               }
@@ -180,6 +183,7 @@ var pathTreeData = `{
               }
             },
             "hibernate": null,
+            "hypershift": null,
             "identity_providers": {
               "-": {
                 "htpasswd_users": {
