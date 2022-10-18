@@ -2153,7 +2153,7 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 			return version, err
 		}
 		if isHostedCP {
-			valid, err := ocm.HasHostedCPSupport(version)
+			valid, err := ocm.HasHostedCPSupport(version, channelGroup)
 			if err != nil {
 				return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
 			}

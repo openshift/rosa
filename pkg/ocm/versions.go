@@ -27,9 +27,10 @@ import (
 
 const (
 	DefaultChannelGroup   = "stable"
+	NightlyChannelGroup   = "nightly"
 	LowestSTSSupport      = "4.7.11"
 	LowestSTSMinor        = "4.7"
-	LowestHostedCPSupport = "4.11.6-candidate"
+	LowestHostedCPSupport = "4.11.6"
 )
 
 func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err error) {
@@ -78,7 +79,7 @@ func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err
 }
 
 func HasSTSSupport(rawID string, channelGroup string) bool {
-	if channelGroup == "nightly" {
+	if channelGroup == NightlyChannelGroup {
 		return true
 	}
 
@@ -101,8 +102,8 @@ func HasSTSSupportMinor(minor string) bool {
 	return a.GreaterThanOrEqual(b)
 }
 
-func HasHostedCPSupport(rawID string) (bool, error) {
-	a, err := ver.NewVersion(rawID)
+func HasHostedCPSupport(rawVersion, channelGroup string) (bool, error) {
+	v, err := ver.NewVersion(rawVersion)
 	if err != nil {
 		return false, err
 	}
@@ -110,9 +111,9 @@ func HasHostedCPSupport(rawID string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	//TODO: Currently, the minimum OCP supported version for development is 4.11.6-candidate.
+	//TODO: Currently, the minimum OCP supported version for development is 4.11.6 and nightly releases
 	//This comparison needs to be updated to 4.12 when it is released.
-	return a.GreaterThanOrEqual(b), nil
+	return v.GreaterThanOrEqual(b) || channelGroup == NightlyChannelGroup, nil
 }
 
 func GetVersionID(cluster *cmv1.Cluster) string {
@@ -156,7 +157,7 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 
 func createVersionID(version string, channelGroup string) string {
 	versionID := fmt.Sprintf("openshift-v%s", version)
-	if channelGroup != "stable" {
+	if channelGroup != DefaultChannelGroup {
 		versionID = fmt.Sprintf("%s-%s", versionID, channelGroup)
 	}
 	return versionID
