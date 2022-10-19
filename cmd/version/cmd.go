@@ -67,10 +67,12 @@ func run(cmd *cobra.Command, argv []string) {
 	result := make(map[string]interface{})
 	json.Unmarshal(respBody, &result)
 
-	if strings.Contains(result[TAG_NAME].(string), info.Version) {
-		fmt.Fprintf(os.Stdout, "Your ROSA CLI is up to date.\n")
-	} else {
-		fmt.Fprintf(os.Stdout, "There is a newer release version, please consider updating: %s\n",
-			result[HTML_URL].(string))
+	message := "Your ROSA CLI is up to date.\n"
+	if !strings.Contains(result[TAG_NAME].(string), info.Version) {
+		message = fmt.Sprintf(
+			"There is a newer release version, please consider updating: %s\n",
+			result[HTML_URL].(string),
+		)
 	}
+	fmt.Fprint(os.Stdout, message)
 }
