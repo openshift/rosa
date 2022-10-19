@@ -39,6 +39,8 @@ var Cmd = &cobra.Command{
 
 const (
 	releaseURL = "https://api.github.com/repos/openshift/rosa/releases/latest"
+	HTML_URL   = "html_url"
+	TAG_NAME   = "tag_name"
 )
 
 func run(cmd *cobra.Command, argv []string) {
@@ -65,9 +67,10 @@ func run(cmd *cobra.Command, argv []string) {
 	result := make(map[string]interface{})
 	json.Unmarshal(respBody, &result)
 
-	if strings.Contains(result["tag_name"].(string), info.Version) {
+	if strings.Contains(result[TAG_NAME].(string), info.Version) {
 		fmt.Fprintf(os.Stdout, "Your ROSA CLI is up to date.\n")
 	} else {
-		fmt.Fprintf(os.Stdout, "There is a newer release version, please consider updating: %s\n", result["html_url"].(string))
+		fmt.Fprintf(os.Stdout, "There is a newer release version, please consider updating: %s\n",
+			result[HTML_URL].(string))
 	}
 }
