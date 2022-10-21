@@ -45,9 +45,8 @@ func init() {
 }
 
 const (
-	ANY                  = "any"
-	HibernateCapability  = "capability.organization.hibernate_cluster"
-	HypershiftCapability = "capability.organization.hypershift"
+	ANY                 = "any"
+	HibernateCapability = "capability.organization.hibernate_cluster"
 	//Pendo Events
 	Success    = "Success"
 	Failure    = "Failure"
@@ -237,23 +236,23 @@ func (c *Client) GetCurrentOrganization() (id string, externalID string, err err
 	return
 }
 
-func (c *Client) IsCapabilityEnabled(capability string) (enabled bool, err error) {
+func (c *Client) IsHibernateCapabilityEnabled() error {
 	organizationID, _, err := c.GetCurrentOrganization()
 	if err != nil {
-		return
+		return err
 	}
-	isCapabilityEnable, err := c.isCapabilityEnabled(capability, organizationID)
+	isCapabilityEnable, err := c.IsCapabilityEnabled(HibernateCapability, organizationID)
 
 	if err != nil {
-		return
+		return err
 	}
 	if !isCapabilityEnable {
-		return false, nil
+		return fmt.Errorf("The '%s' capability is not set for org '%s'", HibernateCapability, organizationID)
 	}
-	return true, nil
+	return nil
 }
 
-func (c *Client) isCapabilityEnabled(capabilityName string, orgID string) (bool, error) {
+func (c *Client) IsCapabilityEnabled(capabilityName string, orgID string) (bool, error) {
 	capabilityResponse, err := c.ocm.AccountsMgmt().V1().Organizations().
 		Organization(orgID).Get().Parameter("fetchCapabilities", true).Send()
 
