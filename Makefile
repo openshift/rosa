@@ -32,6 +32,10 @@ rosa:
 test:
 	go test ./...
 
+.PHONY: coverage
+coverage:
+	go test -coverprofile=cover.out  ./...
+
 .PHONY: install
 install:
 	go install ./cmd/rosa

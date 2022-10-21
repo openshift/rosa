@@ -820,9 +820,12 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 }
 
 func (c *Client) HibernateCluster(clusterID string) error {
-	err := c.IsHibernateCapabilityEnabled()
+	enabled, err := c.IsCapabilityEnabled(HibernateCapability)
 	if err != nil {
 		return err
+	}
+	if !enabled {
+		return fmt.Errorf("The '%s' capability is not set for current org", HibernateCapability)
 	}
 	_, err = c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).Hibernate().Send()
 	if err != nil {
@@ -833,9 +836,12 @@ func (c *Client) HibernateCluster(clusterID string) error {
 }
 
 func (c *Client) ResumeCluster(clusterID string) error {
-	err := c.IsHibernateCapabilityEnabled()
+	enabled, err := c.IsCapabilityEnabled(HibernateCapability)
 	if err != nil {
 		return err
+	}
+	if !enabled {
+		return fmt.Errorf("The '%s' capability is not set for current org", HibernateCapability)
 	}
 	_, err = c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).Resume().Send()
 	if err != nil {
