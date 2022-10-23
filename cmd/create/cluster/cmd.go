@@ -2338,7 +2338,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		}
 	} else {
 		if spec.ComputeNodes != 0 {
-			command += fmt.Sprintf(" --compute-nodes %d", spec.ComputeNodes)
+			command += fmt.Sprintf(" --replicas %d", spec.ComputeNodes)
 		}
 	}
 	if spec.ComputeMachineType != "" {
