@@ -176,7 +176,8 @@ func GetOption(input Input) (a string, err error) {
 	if !input.Required && dflt == "" {
 		question = fmt.Sprintf("%s (optional)", question)
 	}
-	if dflt == "" && len(input.Options) > 0 {
+	// if default is empty or not in the options, default to the first available option
+	if (dflt == "" || !containsString(input.Options, dflt)) && len(input.Options) > 0 {
 		dflt = input.Options[0]
 	}
 	prompt := &survey.Select{
@@ -190,6 +191,16 @@ func GetOption(input Input) (a string, err error) {
 	}
 	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)))
 	return
+}
+
+// containsString checks is a string is present inside a slice
+func containsString(s []string, input string) bool {
+	for _, a := range s {
+		if a == input {
+			return true
+		}
+	}
+	return false
 }
 
 // Asks for true/false value in the command line

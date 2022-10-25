@@ -1192,7 +1192,8 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 			if !found {
-				r.Reporter.Errorf("Region '%s' is not supported for Hosted Cluster", region)
+				r.Reporter.Errorf("Region '%s' not currently available for Hosted Cluster. "+
+					"Use --region to specify another region, and rosa list regions to see what's available.", region)
 				os.Exit(1)
 			}
 		}

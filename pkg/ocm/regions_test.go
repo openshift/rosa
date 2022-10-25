@@ -194,7 +194,7 @@ var _ = Describe("Regions", Ordered, func() {
 			Expect(err).To(BeNil())
 			exists, err := ocmClient.isHostedCPSupportedRegion(region)
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("failed to get Provison Shards: expected response " +
+			Expect(err.Error()).To(Equal("failed to get Provision Shards: expected response " +
 				"content type 'application/json' but received '' and content ''"))
 			Expect(exists).To(BeFalse())
 		})
@@ -349,7 +349,7 @@ var _ = Describe("Regions", Ordered, func() {
 			// No handler registered, we get a 500, check we handle it
 			regions, err := ocmClient.ListHostedCPSupportedRegion()
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("failed to get Provison Shards: expected response " +
+			Expect(err.Error()).To(Equal("failed to get Provision Shards: expected response " +
 				"content type 'application/json' but received '' and content ''"))
 			Expect(regions).To(BeEmpty())
 		})
