@@ -1159,7 +1159,8 @@ func run(cmd *cobra.Command, _ []string) {
 		versionFilter = ""
 	}
 
-	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID, versionFilter, awsClient)
+	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID, versionFilter,
+		awsClient, isHostedCP)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -1182,6 +1183,21 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Expected a valid AWS region")
 		os.Exit(1)
 	} else {
+		if isHostedCP && !interactive.Enabled() {
+			found := false
+			for i := range regionList {
+				if regionList[i] == region {
+					found = true
+					break
+				}
+			}
+			if !found {
+				r.Reporter.Errorf("Region '%s' not currently available for Hosted Cluster. "+
+					"Use --region to specify another region, and rosa list regions to see what's available.", region)
+				os.Exit(1)
+			}
+		}
+
 		if supportsMultiAZ, found := regionAZ[region]; found {
 			if !supportsMultiAZ && multiAZ {
 				r.Reporter.Errorf("Region '%s' does not support multiple availability zones", region)
