@@ -24,6 +24,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -61,6 +62,14 @@ var Cmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func shouldEnableInteractive(flagSet *pflag.FlagSet, params []string) bool {
+	unchanged := true
+	for _, s := range params {
+		unchanged = unchanged && !flagSet.Changed(s)
+	}
+	return unchanged
 }
 
 func init() {
@@ -101,6 +110,11 @@ func run(cmd *cobra.Command, argv []string) {
 	var err error
 	labelMatch := args.labelMatch
 	routeSelectors := make(map[string]string)
+
+	if !interactive.Enabled() && shouldEnableInteractive(cmd.Flags(), []string{"label-match", "private"}) {
+		interactive.Enable()
+	}
+
 	if interactive.Enabled() {
 		labelMatch, err = interactive.GetString(interactive.Input{
 			Question: "Label match for ingress",
@@ -202,6 +216,11 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		r.Reporter.Errorf("Failed to create ingress for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
+	}
+
+	if private == nil || len(routeSelectors) == 0 {
+		r.Reporter.Warnf("No need to update ingress as there are no changes")
+		os.Exit(0)
 	}
 
 	r.Reporter.Debugf("Updating ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
