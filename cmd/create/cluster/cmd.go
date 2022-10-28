@@ -112,6 +112,9 @@ var args struct {
 	// Force STS mode for interactive and validation
 	sts bool
 
+	// Force IAM mode (mint mode) for interactive
+	nonSts bool
+
 	// Account IAM Roles
 	roleARN             string
 	externalID          string
@@ -174,7 +177,21 @@ func init() {
 		&args.sts,
 		"sts",
 		false,
-		"Use AWS Security Token Service (STS) instead of IAM credentials to deploy your cluster.",
+		"Use AWS Security Token Service (STS) instead of IAM credentials to deploy your cluster. "+
+			"This flag is no longer needed as STS is the default mode for cluster creation.",
+	)
+	flags.MarkDeprecated("sts", "STS is now the default mode of cluster creation.")
+	flags.BoolVar(
+		&args.nonSts,
+		"non-sts",
+		false,
+		"Use legacy way of creating clusters (IAM mode).",
+	)
+	flags.BoolVar(
+		&args.nonSts,
+		"mint-mode",
+		false,
+		"Use legacy way of creating clusters (IAM mode). This is an alias for --non-sts.",
 	)
 	flags.StringVar(
 		&args.roleARN,
@@ -564,6 +581,11 @@ func run(cmd *cobra.Command, _ []string) {
 			"Any optional fields can be left empty and a default will be selected.")
 	}
 
+	// warn if sts flag is used
+	if cmd.Flags().Changed("sts") {
+		r.Reporter.Warnf("Cluster creation is with STS by default and the --sts flag is no longer necessary.")
+	}
+
 	// Get cluster name
 	clusterName := strings.Trim(args.clusterName, " \t")
 
@@ -612,11 +634,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// all hosted clusters are sts
-	isSTS := args.sts || args.roleARN != "" || fedramp.Enabled() || isHostedCP
-	isIAM := cmd.Flags().Changed("sts") && !isSTS
+	// by default rosa is now using STS
+	isIAM := args.nonSts
+	isSTS := !isIAM
 
-	if interactive.Enabled() && (!isSTS && !isIAM) {
+	if interactive.Enabled() && (!isSTS && isIAM) {
 		isSTS, err = interactive.GetBool(interactive.Input{
 			Question: "Deploy cluster using AWS STS",
 			Help:     cmd.Flags().Lookup("sts").Usage,
