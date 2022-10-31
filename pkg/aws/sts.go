@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 
 	"github.com/openshift/rosa/pkg/aws/tags"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -175,36 +176,38 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())
-			iamTags := fmt.Sprintf(
-				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-				tags.OpenShiftVersion, defaultPolicyVersion,
-				tags.RolePrefix, prefix,
-				"operator_namespace", operator.Namespace(),
-				"operator_name", operator.Name(),
-			)
-			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
-				"\t--policy-name %s \\\n"+
-				"\t--policy-document file://openshift_%s_policy.json \\\n"+
-				"\t--tags %s",
-				name, credrequest, iamTags)
-			if policyPath != "" {
-				createPolicy = fmt.Sprintf(createPolicy+" \\\n\t--path %s", policyPath)
+			iamTags := map[string]string{
+				tags.OpenShiftVersion:  defaultPolicyVersion,
+				tags.RolePrefix:        prefix,
+				tags.OperatorNamespace: operator.Namespace(),
+				tags.OperatorName:      operator.Name(),
+				tags.RedHatManaged:     "true",
 			}
+			createPolicy := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.CreatePolicy).
+				AddParam(awscb.PolicyName, name).
+				AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", credrequest)).
+				AddTags(iamTags).
+				AddParam(awscb.Path, policyPath).
+				Build()
 			commands = append(commands, createPolicy)
 		} else {
-			policTags := fmt.Sprintf(
-				"Key=%s,Value=%s",
-				tags.OpenShiftVersion, defaultPolicyVersion,
-			)
-			createPolicy := fmt.Sprintf("aws iam create-policy-version \\\n"+
-				"\t--policy-arn %s \\\n"+
-				"\t--policy-document file://openshift_%s_policy.json \\\n"+
-				"\t--set-as-default",
-				policyARN, credrequest)
-			tagPolicy := fmt.Sprintf("aws iam tag-policy \\\n"+
-				"\t--tags %s \\\n"+
-				"\t--policy-arn %s",
-				policTags, policyARN)
+			policyTags := map[string]string{
+				tags.OpenShiftVersion: defaultPolicyVersion,
+			}
+
+			createPolicy := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.CreatePolicyVersion).
+				AddParam(awscb.PolicyArn, policyARN).
+				AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", credrequest)).
+				AddParamNoValue(awscb.SetAsDefault).
+				Build()
+
+			tagPolicy := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.TagPolicy).
+				AddTags(policyTags).
+				AddParam(awscb.PolicyArn, policyARN).
+				Build()
 			commands = append(commands, createPolicy, tagPolicy)
 		}
 	}

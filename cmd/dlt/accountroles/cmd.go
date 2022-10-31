@@ -24,6 +24,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -216,20 +217,33 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail) s
 		policyDetails := policyMap[roleName]
 		for _, policyDetail := range policyDetails {
 			if policyDetail.PolicType == aws.Attached && policyDetail.PolicyArn != "" {
-				detachPolicy := fmt.Sprintf("\taws iam detach-role-policy --role-name  %s  --policy-arn  %s",
-					roleName, policyDetail.PolicyArn)
+				detachPolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DetachRolePolicy).
+					AddParam(awscb.RoleName, roleName).
+					AddParam(awscb.PolicyArn, policyDetail.PolicyArn).
+					Build()
 				commands = append(commands, detachPolicy)
-				deletePolicy := fmt.Sprintf("\taws iam delete-policy --policy-arn  %s", policyDetail.PolicyArn)
+
+				deletePolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DeletePolicy).
+					AddParam(awscb.PolicyArn, policyDetail.PolicyArn).
+					Build()
 				commands = append(commands, deletePolicy)
 			}
 			if policyDetail.PolicType == aws.Inline && policyDetail.PolicyName != "" {
-				deletePolicy := fmt.Sprintf("\taws iam delete-role-policy --role-name  %s  --policy-name  %s",
-					roleName, policyDetail.PolicyName)
+				deletePolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DeleteRolePolicy).
+					AddParam(awscb.RoleName, roleName).
+					AddParam(awscb.PolicyName, policyDetail.PolicyName).
+					Build()
 				commands = append(commands, deletePolicy)
 			}
 		}
-		deleteRole := fmt.Sprintf("\taws iam delete-role --role-name  %s", roleName)
+		deleteRole := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.DeleteRole).
+			AddParam(awscb.RoleName, roleName).
+			Build()
 		commands = append(commands, deleteRole)
 	}
-	return strings.Join(commands, "\n")
+	return awscb.JoinCommands(commands)
 }

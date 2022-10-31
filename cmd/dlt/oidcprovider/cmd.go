@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -148,7 +149,8 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func buildCommand(providerARN string) string {
-	return fmt.Sprintf("aws iam delete-open-id-connect-provider \\\n"+
-		"\t--open-id-connect-provider-arn %s \n\n",
-		providerARN)
+	return awscb.NewIAMCommandBuilder().
+		SetCommand(awscb.DeleteOpenIdConnectProvider).
+		AddParam(awscb.OpenIdConnectProviderArn, providerARN).
+		Build()
 }

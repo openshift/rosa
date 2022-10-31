@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/cmd/verify/oc"
 	"github.com/openshift/rosa/cmd/verify/quota"
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -324,44 +325,41 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 
 	for file, role := range aws.AccountRoles {
 		name := aws.GetRoleName(prefix, role.Name)
-		policyName := fmt.Sprintf("%s-Policy", name)
-		iamTags := fmt.Sprintf(
-			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-			tags.OpenShiftVersion, defaultPolicyVersion,
-			tags.RolePrefix, prefix,
-			tags.RoleType, file,
-			tags.RedHatManaged, "true",
-		)
-		permBoundaryFlag := ""
-		if permissionsBoundary != "" {
-			permBoundaryFlag = fmt.Sprintf("\t--permissions-boundary %s \\\n", permissionsBoundary)
+		iamTags := map[string]string{
+			tags.OpenShiftVersion: defaultPolicyVersion,
+			tags.RolePrefix:       prefix,
+			tags.RoleType:         file,
+			tags.RedHatManaged:    "true",
 		}
-		createRole := fmt.Sprintf("aws iam create-role \\\n"+
-			"\t--role-name %s \\\n"+
-			"\t--assume-role-policy-document file://sts_%s_trust_policy.json \\\n"+
-			"%s"+
-			"\t--tags %s",
-			name, file, permBoundaryFlag, iamTags)
 
-		if path != "" {
-			createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", path)
-		}
-		createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
-			"\t--policy-name %s \\\n"+
-			"\t--policy-document file://sts_%s_permission_policy.json"+
-			"\t--tags %s",
-			policyName, file, iamTags)
-		if path != "" {
-			createPolicy = fmt.Sprintf(createPolicy+" \\\n\t--path %s", path)
-		}
-		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
-			"\t--role-name %s \\\n"+
-			"\t--policy-arn %s",
-			name, aws.GetPolicyARN(accountID, policyName, path))
+		createRole := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.CreateRole).
+			AddParam(awscb.RoleName, name).
+			AddParam(awscb.AssumeRolePolicyDocument, fmt.Sprintf("file://sts_%s_trust_policy.json", file)).
+			AddParam(awscb.PermissionsBoundary, permissionsBoundary).
+			AddTags(iamTags).
+			AddParam(awscb.Path, path).
+			Build()
+
+		policyName := fmt.Sprintf("%s-Policy", name)
+		createPolicy := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.CreatePolicy).
+			AddParam(awscb.PolicyName, policyName).
+			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", file)).
+			AddTags(iamTags).
+			AddParam(awscb.Path, path).
+			Build()
+
+		attachRolePolicy := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.AttachRolePolicy).
+			AddParam(awscb.RoleName, name).
+			AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, policyName, path)).
+			Build()
+
 		commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	}
 
-	return strings.Join(commands, "\n\n")
+	return awscb.JoinCommands(commands)
 }
 
 func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env string,

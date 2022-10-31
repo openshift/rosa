@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -310,7 +311,7 @@ func upgradeOperatorPolicies(isProgrammaticallyCalled bool, mode string, r *rosa
 		}
 		commands := aws.BuildOperatorRoleCommands(prefix, r.Creator.AccountID, r.AWSClient,
 			defaultPolicyVersion, credRequests, policyPath)
-		fmt.Println(strings.Join(commands, "\n\n"))
+		fmt.Println(awscb.JoinCommands(commands))
 	default:
 		return r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 	}
@@ -371,33 +372,32 @@ func buildMissingOperatorRoleCommand(missingRoles map[string]*cmv1.STSOperator, 
 		if err != nil {
 			return "", err
 		}
-		iamTags := fmt.Sprintf(
-			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-			tags.ClusterID, cluster.ID(),
-			tags.RolePrefix, prefix,
-			"operator_namespace", operator.Namespace(),
-			"operator_name", operator.Name(),
-			tags.RedHatManaged, "true",
-		)
-		permBoundaryFlag := ""
-
-		createRole := fmt.Sprintf("aws iam create-role \\\n"+
-			"\t--role-name %s \\\n"+
-			"\t--assume-role-policy-document file://%s \\\n"+
-			"%s"+
-			"\t--tags %s",
-			roleName, filename, permBoundaryFlag, iamTags)
-		if rolePath != "" {
-			createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", rolePath)
+		iamTags := map[string]string{
+			tags.ClusterID:         cluster.ID(),
+			tags.RolePrefix:        prefix,
+			tags.OperatorNamespace: operator.Namespace(),
+			tags.OperatorName:      operator.Name(),
+			tags.RedHatManaged:     "true",
 		}
-		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
-			"\t--role-name %s \\\n"+
-			"\t--policy-arn %s",
-			roleName, policyARN)
+		permBoundaryFlag := ""
+		createRole := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.CreateRole).
+			AddParam(awscb.RoleName, roleName).
+			AddParam(awscb.AssumeRolePolicyDocument, fmt.Sprintf("file://%s", filename)).
+			AddParam(awscb.PermissionsBoundary, permBoundaryFlag).
+			AddTags(iamTags).
+			AddParam(awscb.Path, rolePath).
+			Build()
+
+		attachRolePolicy := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.AttachRolePolicy).
+			AddParam(awscb.RoleName, roleName).
+			AddParam(awscb.PolicyArn, policyARN).
+			Build()
 		commands = append(commands, createRole, attachRolePolicy)
 
 	}
-	return strings.Join(commands, "\n\n"), nil
+	return awscb.JoinCommands(commands), nil
 }
 
 func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,

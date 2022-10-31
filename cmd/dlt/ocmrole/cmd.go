@@ -20,13 +20,13 @@ package ocmrole
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
 	unlinkocmrole "github.com/openshift/rosa/cmd/unlink/ocmrole"
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -231,14 +231,17 @@ func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws
 			return "", err
 		}
 		for _, policy := range policies {
-			detachPolicy := fmt.Sprintf("aws iam detach-role-policy \\\n"+
-				"\t--role-name %s \\\n"+
-				"\t--policy-arn %s",
-				roleName, policy.PolicyArn)
+			detachPolicy := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.DetachRolePolicy).
+				AddParam(awscb.RoleName, roleName).
+				AddParam(awscb.PolicyArn, policy.PolicyArn).
+				Build()
 			commands = append(commands, detachPolicy)
-			deletePolicy := fmt.Sprintf("aws iam delete-policy \\\n"+
-				"\t--policy-arn %s",
-				policy.PolicyArn)
+
+			deletePolicy := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.DeletePolicy).
+				AddParam(awscb.PolicyArn, policy.PolicyArn).
+				Build()
 			commands = append(commands, deletePolicy)
 		}
 
@@ -247,16 +250,19 @@ func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws
 			return "", err
 		}
 		if hasPermissionBoundary {
-			deletePermissionBoundary := fmt.Sprintf("aws iam delete-role-permissions-boundary \\\n"+
-				"\t--role-name %s",
-				roleName)
+			deletePermissionBoundary := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.DeleteRolePermissionsBoundary).
+				AddParam(awscb.RoleName, roleName).
+				Build()
 			commands = append(commands, deletePermissionBoundary)
 		}
 
-		deleteRole := fmt.Sprintf("aws iam delete-role \\\n"+
-			"\t--role-name %s", roleName)
+		deleteRole := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.DeleteRole).
+			AddParam(awscb.RoleName, roleName).
+			Build()
 		commands = append(commands, deleteRole)
 	}
 
-	return strings.Join(commands, "\n"), nil
+	return awscb.JoinCommands(commands), nil
 }

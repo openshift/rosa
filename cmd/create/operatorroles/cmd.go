@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -379,22 +380,20 @@ func buildCommands(r *rosa.Runtime, env string,
 		name := aws.GetPolicyName(prefix, operator.Namespace(), operator.Name())
 		_, err = r.AWSClient.IsPolicyExists(policyARN)
 		if err != nil {
-			iamTags := fmt.Sprintf(
-				"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-				tags.OpenShiftVersion, defaultPolicyVersion,
-				tags.RolePrefix, prefix,
-				"operator_namespace", operator.Namespace(),
-				"operator_name", operator.Name(),
-				tags.RedHatManaged, "true",
-			)
-			createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
-				"\t--policy-name %s \\\n"+
-				"\t--policy-document file://openshift_%s_policy.json \\\n"+
-				"\t--tags %s",
-				name, credrequest, iamTags)
-			if path != "" {
-				createPolicy = fmt.Sprintf(createPolicy+" \\\n\t--path %s", path)
+			iamTags := map[string]string{
+				tags.OpenShiftVersion:  defaultPolicyVersion,
+				tags.RolePrefix:        prefix,
+				tags.OperatorNamespace: operator.Namespace(),
+				tags.OperatorName:      operator.Name(),
+				tags.RedHatManaged:     "true",
 			}
+			createPolicy := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.CreatePolicy).
+				AddParam(awscb.PolicyName, name).
+				AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", credrequest)).
+				AddTags(iamTags).
+				AddParam(awscb.Path, path).
+				Build()
 			commands = append(commands, createPolicy)
 		}
 
@@ -411,34 +410,30 @@ func buildCommands(r *rosa.Runtime, env string,
 		if err != nil {
 			return "", err
 		}
-		iamTags := fmt.Sprintf(
-			"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-			tags.ClusterID, cluster.ID(),
-			tags.RolePrefix, prefix,
-			"operator_namespace", operator.Namespace(),
-			"operator_name", operator.Name(),
-			tags.RedHatManaged, "true",
-		)
-		permBoundaryFlag := ""
-		if permissionsBoundary != "" {
-			permBoundaryFlag = fmt.Sprintf("\t--permissions-boundary %s \\\n", permissionsBoundary)
+		iamTags := map[string]string{
+			tags.ClusterID:         cluster.ID(),
+			tags.RolePrefix:        prefix,
+			tags.OperatorNamespace: operator.Namespace(),
+			tags.OperatorName:      operator.Name(),
+			tags.RedHatManaged:     "true",
 		}
-		createRole := fmt.Sprintf("aws iam create-role \\\n"+
-			"\t--role-name %s \\\n"+
-			"\t--assume-role-policy-document file://%s \\\n"+
-			"%s"+
-			"\t--tags %s",
-			roleName, filename, permBoundaryFlag, iamTags)
-		if path != "" {
-			createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", path)
-		}
-		attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
-			"\t--role-name %s \\\n"+
-			"\t--policy-arn %s",
-			roleName, policyARN)
+		createRole := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.CreateRole).
+			AddParam(awscb.RoleName, roleName).
+			AddParam(awscb.AssumeRolePolicyDocument, fmt.Sprintf("file://%s", filename)).
+			AddParam(awscb.PermissionsBoundary, permissionsBoundary).
+			AddTags(iamTags).
+			AddParam(awscb.Path, path).
+			Build()
+
+		attachRolePolicy := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.AttachRolePolicy).
+			AddParam(awscb.RoleName, roleName).
+			AddParam(awscb.PolicyArn, policyARN).
+			Build()
 		commands = append(commands, createRole, attachRolePolicy)
 	}
-	return strings.Join(commands, "\n\n"), nil
+	return awscb.JoinCommands(commands), nil
 }
 
 func getRoleNameAndARN(cluster *cmv1.Cluster, operator *cmv1.STSOperator) (string, string) {

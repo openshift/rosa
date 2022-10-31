@@ -19,13 +19,13 @@ package ocmrole
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
 	linkocmrole "github.com/openshift/rosa/cmd/link/ocmrole"
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -301,60 +301,60 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 	accountID string, env string, isAdmin bool) string {
 	commands := []string{}
 	policyName := fmt.Sprintf("%s-Policy", roleName)
-	iamTags := fmt.Sprintf(
-		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-		tags.RolePrefix, prefix,
-		tags.RoleType, aws.OCMRole,
-		tags.Environment, env,
-		tags.RedHatManaged, "true",
-	)
+	iamTags := map[string]string{
+		tags.RolePrefix:    prefix,
+		tags.RoleType:      aws.OCMRole,
+		tags.Environment:   env,
+		tags.RedHatManaged: "true",
+	}
 
-	adminTags := ""
+	adminTags := map[string]string{
+		tags.AdminRole: "true",
+	}
+
+	builder := awscb.NewIAMCommandBuilder().
+		SetCommand(awscb.CreateRole).
+		AddParam(awscb.RoleName, roleName).
+		AddParam(awscb.AssumeRolePolicyDocument, fmt.Sprintf("file://sts_%s_trust_policy.json", aws.OCMRolePolicyFile)).
+		AddParam(awscb.PermissionsBoundary, permissionsBoundary).
+		AddTags(iamTags).
+		AddParam(awscb.Path, rolePath)
 	if isAdmin {
-		adminTags += fmt.Sprintf(" Key=%s,Value=true", tags.AdminRole)
+		builder.AddTags(adminTags)
 	}
+	createRole := builder.Build()
 
-	permBoundaryFlag := ""
-	if permissionsBoundary != "" {
-		permBoundaryFlag = fmt.Sprintf("\t--permissions-boundary %s \\\n", permissionsBoundary)
-	}
-	createRole := fmt.Sprintf("aws iam create-role \\\n"+
-		"\t--role-name %s \\\n"+
-		"\t--assume-role-policy-document file://sts_%s_trust_policy.json \\\n"+
-		"%s"+
-		"\t--tags %s%s",
-		roleName, aws.OCMRolePolicyFile, permBoundaryFlag, iamTags, adminTags)
-	createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
-		"\t--policy-name %s \\\n"+
-		"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
-		"\t--tags %s",
-		policyName, aws.OCMRolePolicyFile, iamTags)
-	if rolePath != "" {
-		createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", rolePath)
-		createPolicy = fmt.Sprintf(createPolicy+" \\\n\t--path %s", rolePath)
-	}
-	attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
-		"\t--role-name %s \\\n"+
-		"\t--policy-arn %s",
-		roleName, aws.GetPolicyARN(accountID, policyName, rolePath))
+	createPolicy := awscb.NewIAMCommandBuilder().
+		SetCommand(awscb.CreatePolicy).
+		AddParam(awscb.PolicyName, policyName).
+		AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", aws.OCMRolePolicyFile)).
+		AddTags(iamTags).
+		AddParam(awscb.Path, rolePath).
+		Build()
+
+	attachRolePolicy := awscb.NewIAMCommandBuilder().
+		SetCommand(awscb.AttachRolePolicy).
+		AddParam(awscb.RoleName, roleName).
+		AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, policyName, rolePath)).
+		Build()
 
 	commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	if isAdmin {
-		adminTags := fmt.Sprintf("Key=%s,Value=%v", tags.AdminRole, true)
 		policyName := fmt.Sprintf("%s-Admin-Policy", roleName)
 
-		createAdminPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
-			"\t--policy-name %s \\\n"+
-			"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
-			"\t--tags %s",
-			policyName, aws.OCMAdminRolePolicyFile, adminTags)
-		if rolePath != "" {
-			createAdminPolicy = fmt.Sprintf(createAdminPolicy+" \\\n\t--path %s", rolePath)
-		}
-		attachRoleAdminPolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
-			"\t--role-name %s \\\n"+
-			"\t--policy-arn %s",
-			roleName, aws.GetPolicyARN(accountID, policyName, rolePath))
+		createAdminPolicy := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.CreatePolicy).
+			AddParam(awscb.PolicyName, policyName).
+			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", aws.OCMAdminRolePolicyFile)).
+			AddTags(adminTags).
+			AddParam(awscb.Path, rolePath).
+			Build()
+
+		attachRoleAdminPolicy := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.AttachRolePolicy).
+			AddParam(awscb.RoleName, roleName).
+			AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, policyName, rolePath)).
+			Build()
 
 		commands = append(commands, createAdminPolicy, attachRoleAdminPolicy)
 	}
@@ -363,7 +363,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 		aws.GetRoleARN(accountID, roleName, rolePath))
 	commands = append(commands, linkRole)
 
-	return strings.Join(commands, "\n\n")
+	return awscb.JoinCommands(commands)
 }
 
 func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath string,

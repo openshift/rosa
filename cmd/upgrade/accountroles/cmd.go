@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -310,61 +311,69 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 		for file, role := range aws.AccountRoles {
 			name := aws.GetRoleName(prefix, role.Name)
 			policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name), policyPath)
-			policyTags := fmt.Sprintf(
-				"Key=%s,Value=%s",
-				tags.OpenShiftVersion, defaultPolicyVersion,
-			)
-			iamRoleTags := fmt.Sprintf(
-				"Key=%s,Value=%s",
-				tags.OpenShiftVersion, defaultPolicyVersion)
-			tagRole := fmt.Sprintf("aws iam tag-role \\\n"+
-				"\t--tags %s \\\n"+
-				"\t--role-name %s",
-				iamRoleTags, name)
+			iamRoleTags := map[string]string{
+				tags.OpenShiftVersion: defaultPolicyVersion,
+			}
+
+			tagRole := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.TagRole).
+				AddTags(iamRoleTags).
+				AddParam(awscb.RoleName, name).
+				Build()
 			//check if the policy exists if not output create and attach
 			_, err := awsClient.IsPolicyExists(policyARN)
 			if err != nil {
 				policyName := fmt.Sprintf("%s-Policy", name)
-				iamTags := fmt.Sprintf(
-					"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-					tags.OpenShiftVersion, defaultPolicyVersion,
-					tags.RolePrefix, prefix,
-					tags.RoleType, file,
-				)
-				createPolicy := fmt.Sprintf("aws iam create-policy \\\n"+
-					"\t--policy-name %s \\\n"+
-					"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
-					"\t--tags %s \\\n"+
-					"\t--path %s",
-					policyName, file, iamTags, policyPath)
-				attachRolePolicy := fmt.Sprintf("aws iam attach-role-policy \\\n"+
-					"\t--role-name %s \\\n"+
-					"\t--policy-arn %s",
-					name, aws.GetPolicyARN(accountID, policyName, policyPath))
+				iamTags := map[string]string{
+					tags.OpenShiftVersion: defaultPolicyVersion,
+					tags.RolePrefix:       prefix,
+					tags.RoleType:         file,
+					tags.RedHatManaged:    "true",
+				}
+
+				createPolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.CreatePolicy).
+					AddParam(awscb.PolicyName, policyName).
+					AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", file)).
+					AddTags(iamTags).
+					AddParam(awscb.Path, policyPath).
+					Build()
+
+				attachRolePolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.AttachRolePolicy).
+					AddParam(awscb.RoleName, name).
+					AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, policyName, policyPath)).
+					Build()
 
 				_, _ = awsClient.IsRolePolicyExists(name, policyName)
 				if err != nil {
 					commands = append(commands, createPolicy, attachRolePolicy, tagRole)
 				} else {
-					deletePolicy := fmt.Sprintf("\taws iam delete-role-policy --role-name  %s  --policy-name  %s",
-						name, policyName)
+					deletePolicy := awscb.NewIAMCommandBuilder().
+						SetCommand(awscb.DeleteRolePolicy).
+						AddParam(awscb.RoleName, name).
+						AddParam(awscb.PolicyName, policyName).
+						Build()
 					commands = append(commands, createPolicy, attachRolePolicy, tagRole, deletePolicy)
 				}
 			} else {
-				createPolicyVersion := fmt.Sprintf("aws iam create-policy-version \\\n"+
-					"\t--policy-arn %s \\\n"+
-					"\t--policy-document file://sts_%s_permission_policy.json \\\n"+
-					"\t--set-as-default",
-					policyARN, file)
-				tagPolicies := fmt.Sprintf("aws iam tag-policy \\\n"+
-					"\t--tags %s \\\n"+
-					"\t--policy-arn %s",
-					policyTags, policyARN)
+				createPolicyVersion := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.CreatePolicyVersion).
+					AddParam(awscb.PolicyArn, policyARN).
+					AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", file)).
+					AddParamNoValue(awscb.SetAsDefault).
+					Build()
+
+				tagPolicies := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.TagPolicy).
+					AddTags(iamRoleTags).
+					AddParam(awscb.PolicyArn, policyARN).
+					Build()
 				commands = append(commands, createPolicyVersion, tagPolicies, tagRole)
 			}
 		}
 	}
-	return strings.Join(commands, "\n\n")
+	return awscb.JoinCommands(commands)
 }
 
 func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
