@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -203,18 +204,22 @@ func buildCommands(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) {
 	}
 	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint)
 
-	tag := fmt.Sprintf(
-		"Key=%s,Value=%s",
-		tags.ClusterID, cluster.ID())
-	createOpenIDConnectProvider := fmt.Sprintf("aws iam create-open-id-connect-provider \\\n"+
-		"\t--url %s \\\n"+
-		"\t--client-id-list %s %s \\\n"+
-		"\t--thumbprint-list %s \\\n"+
-		"\t --tag %s",
-		oidcEndpointURL, aws.OIDCClientIDOpenShift, aws.OIDCClientIDSTSAWS, thumbprint, tag)
+	tag := map[string]string{
+		tags.ClusterID: cluster.ID(),
+	}
+
+	clientIdList := strings.Join([]string{aws.OIDCClientIDOpenShift, aws.OIDCClientIDSTSAWS}, " ")
+
+	createOpenIDConnectProvider := awscb.NewIAMCommandBuilder().
+		SetCommand(awscb.CreateOpenIdConnectProvider).
+		AddParam(awscb.Url, oidcEndpointURL).
+		AddParam(awscb.ClientIdList, clientIdList).
+		AddParam(awscb.ThumbprintList, thumbprint).
+		AddTags(tag).
+		Build()
 	commands = append(commands, createOpenIDConnectProvider)
 
-	return strings.Join(commands, "\n\n"), nil
+	return awscb.JoinCommands(commands), nil
 }
 
 func getThumbprint(oidcEndpointURL string) (string, error) {

@@ -19,13 +19,13 @@ package userrole
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
 	linkuser "github.com/openshift/rosa/cmd/link/userrole"
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -258,29 +258,24 @@ func buildCommands(prefix string, path string, userName string,
 	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
 
 	roleARN := aws.GetRoleARN(accountID, roleName, path)
-	iamTags := fmt.Sprintf(
-		"Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s Key=%s,Value=%s",
-		tags.RolePrefix, prefix,
-		tags.RoleType, aws.OCMUserRole,
-		tags.Environment, env,
-		tags.RedHatManaged, "true",
-	)
-	permBoundaryFlag := ""
-	if permissionsBoundary != "" {
-		permBoundaryFlag = fmt.Sprintf("\t--permissions-boundary %s \\\n", permissionsBoundary)
+	iamTags := map[string]string{
+		tags.RolePrefix:    prefix,
+		tags.RoleType:      aws.OCMUserRole,
+		tags.Environment:   env,
+		tags.RedHatManaged: "true",
 	}
-	createRole := fmt.Sprintf("aws iam create-role \\\n"+
-		"\t--role-name %s \\\n"+
-		"\t--assume-role-policy-document file://sts_%s_trust_policy.json \\\n"+
-		"%s"+
-		"\t--tags %s",
-		roleName, aws.OCMUserRolePolicyFile, permBoundaryFlag, iamTags)
-	if path != "" {
-		createRole = fmt.Sprintf(createRole+" \\\n\t--path %s", path)
-	}
+	createRole := awscb.NewIAMCommandBuilder().
+		SetCommand(awscb.CreateRole).
+		AddParam(awscb.RoleName, roleName).
+		AddParam(awscb.AssumeRolePolicyDocument,
+			fmt.Sprintf("file://sts_%s_trust_policy.json", aws.OCMUserRolePolicyFile)).
+		AddParam(awscb.PermissionsBoundary, permissionsBoundary).
+		AddTags(iamTags).
+		AddParam(awscb.Path, path).
+		Build()
 	linkRole := fmt.Sprintf("rosa link user-role --role-arn %s", roleARN)
 	commands = append(commands, createRole, linkRole)
-	return strings.Join(commands, "\n\n")
+	return awscb.JoinCommands(commands)
 }
 
 func createRoles(r *rosa.Runtime,

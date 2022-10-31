@@ -28,6 +28,7 @@ import (
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -214,11 +215,20 @@ func buildCommand(roleNames []string, policyMap map[string][]string) string {
 		detachPolicy := ""
 		deletePolicy := ""
 		if len(policyARN) > 0 {
-			detachPolicy = fmt.Sprintf("\taws iam detach-role-policy --role-name  %s --policy-arn  %s",
-				roleName, policyARN[0])
-			deletePolicy = fmt.Sprintf("\taws iam delete-policy --policy-arn  %s", policyARN[0])
+			detachPolicy = awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.DetachRolePolicy).
+				AddParam(awscb.RoleName, roleName).
+				AddParam(awscb.PolicyArn, policyARN[0]).Build()
+
+			deletePolicy = awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.DeletePolicy).
+				AddParam(awscb.PolicyArn, policyARN[0]).
+				Build()
 		}
-		deleteRole := fmt.Sprintf("\taws iam delete-role --role-name  %s", roleName)
+		deleteRole := awscb.NewIAMCommandBuilder().
+			SetCommand(awscb.DeleteRole).
+			AddParam(awscb.RoleName, roleName).
+			Build()
 		commands = append(commands, detachPolicy, deleteRole, deletePolicy)
 	}
 	return strings.Join(commands, "\n")
