@@ -2436,6 +2436,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if userSelectedAvailabilityZones {
 		command += fmt.Sprintf(" --availability-zones %s", strings.Join(spec.AvailabilityZones, ","))
 	}
+	if spec.Hypershift.Enabled {
+		command += " --hosted-cp"
+	}
+
 	return command
 }
 
