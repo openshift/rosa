@@ -544,6 +544,7 @@ func init() {
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
+	confirm.AddFlag(flags)
 }
 
 func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
