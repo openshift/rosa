@@ -84,7 +84,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !skipInteractive {
 		interactive.Enable()
 	}
 
