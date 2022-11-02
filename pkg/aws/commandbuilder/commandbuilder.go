@@ -75,6 +75,9 @@ func (b *CommandBuilder) AddParam(awsParam Param, value string) *CommandBuilder 
 }
 
 func (b *CommandBuilder) AddTags(value map[string]string) *CommandBuilder {
+	if b.tags == nil {
+		b.tags = make(map[string]string, len(value))
+	}
 	for k, v := range value {
 		b.tags[k] = v
 	}
