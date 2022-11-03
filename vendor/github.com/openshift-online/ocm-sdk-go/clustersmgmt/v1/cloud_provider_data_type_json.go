@@ -65,11 +65,20 @@ func writeCloudProviderData(object *CloudProviderData, stream *jsoniter.Stream) 
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("availability_zone")
+		stream.WriteString(object.availabilityZone)
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("key_location")
 		stream.WriteString(object.keyLocation)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -78,7 +87,7 @@ func writeCloudProviderData(object *CloudProviderData, stream *jsoniter.Stream) 
 		stream.WriteString(object.keyRingName)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0 && object.region != nil
+	present_ = object.bitmap_&32 != 0 && object.region != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -87,7 +96,7 @@ func writeCloudProviderData(object *CloudProviderData, stream *jsoniter.Stream) 
 		writeCloudRegion(object.region, stream)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0 && object.version != nil
+	present_ = object.bitmap_&64 != 0 && object.version != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -127,22 +136,26 @@ func readCloudProviderData(iterator *jsoniter.Iterator) *CloudProviderData {
 			value := readGCP(iterator)
 			object.gcp = value
 			object.bitmap_ |= 2
+		case "availability_zone":
+			value := iterator.ReadString()
+			object.availabilityZone = value
+			object.bitmap_ |= 4
 		case "key_location":
 			value := iterator.ReadString()
 			object.keyLocation = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		case "key_ring_name":
 			value := iterator.ReadString()
 			object.keyRingName = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		case "region":
 			value := readCloudRegion(iterator)
 			object.region = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "version":
 			value := readVersion(iterator)
 			object.version = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

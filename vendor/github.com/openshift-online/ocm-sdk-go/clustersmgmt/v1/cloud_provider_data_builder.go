@@ -23,13 +23,14 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Description of a cloud provider data used for cloud provider inquiries.
 type CloudProviderDataBuilder struct {
-	bitmap_     uint32
-	aws         *AWSBuilder
-	gcp         *GCPBuilder
-	keyLocation string
-	keyRingName string
-	region      *CloudRegionBuilder
-	version     *VersionBuilder
+	bitmap_          uint32
+	aws              *AWSBuilder
+	gcp              *GCPBuilder
+	availabilityZone string
+	keyLocation      string
+	keyRingName      string
+	region           *CloudRegionBuilder
+	version          *VersionBuilder
 }
 
 // NewCloudProviderData creates a new builder of 'cloud_provider_data' objects.
@@ -68,12 +69,21 @@ func (b *CloudProviderDataBuilder) GCP(value *GCPBuilder) *CloudProviderDataBuil
 	return b
 }
 
+// AvailabilityZone sets the value of the 'availability_zone' attribute to the given value.
+//
+//
+func (b *CloudProviderDataBuilder) AvailabilityZone(value string) *CloudProviderDataBuilder {
+	b.availabilityZone = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // KeyLocation sets the value of the 'key_location' attribute to the given value.
 //
 //
 func (b *CloudProviderDataBuilder) KeyLocation(value string) *CloudProviderDataBuilder {
 	b.keyLocation = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -82,7 +92,7 @@ func (b *CloudProviderDataBuilder) KeyLocation(value string) *CloudProviderDataB
 //
 func (b *CloudProviderDataBuilder) KeyRingName(value string) *CloudProviderDataBuilder {
 	b.keyRingName = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -92,9 +102,9 @@ func (b *CloudProviderDataBuilder) KeyRingName(value string) *CloudProviderDataB
 func (b *CloudProviderDataBuilder) Region(value *CloudRegionBuilder) *CloudProviderDataBuilder {
 	b.region = value
 	if value != nil {
-		b.bitmap_ |= 16
+		b.bitmap_ |= 32
 	} else {
-		b.bitmap_ &^= 16
+		b.bitmap_ &^= 32
 	}
 	return b
 }
@@ -105,9 +115,9 @@ func (b *CloudProviderDataBuilder) Region(value *CloudRegionBuilder) *CloudProvi
 func (b *CloudProviderDataBuilder) Version(value *VersionBuilder) *CloudProviderDataBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 32
+		b.bitmap_ |= 64
 	} else {
-		b.bitmap_ &^= 32
+		b.bitmap_ &^= 64
 	}
 	return b
 }
@@ -128,6 +138,7 @@ func (b *CloudProviderDataBuilder) Copy(object *CloudProviderData) *CloudProvide
 	} else {
 		b.gcp = nil
 	}
+	b.availabilityZone = object.availabilityZone
 	b.keyLocation = object.keyLocation
 	b.keyRingName = object.keyRingName
 	if object.region != nil {
@@ -159,6 +170,7 @@ func (b *CloudProviderDataBuilder) Build() (object *CloudProviderData, err error
 			return
 		}
 	}
+	object.availabilityZone = b.availabilityZone
 	object.keyLocation = b.keyLocation
 	object.keyRingName = b.keyRingName
 	if b.region != nil {

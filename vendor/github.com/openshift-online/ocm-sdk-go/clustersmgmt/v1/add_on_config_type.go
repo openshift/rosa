@@ -40,6 +40,7 @@ type AddOnConfig struct {
 	id                        string
 	href                      string
 	addOnEnvironmentVariables []*AddOnEnvironmentVariable
+	secretPropagations        []*AddOnSecretPropagation
 }
 
 // Kind returns the name of the type of the object.
@@ -118,6 +119,29 @@ func (o *AddOnConfig) GetAddOnEnvironmentVariables() (value []*AddOnEnvironmentV
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.addOnEnvironmentVariables
+	}
+	return
+}
+
+// SecretPropagations returns the value of the 'secret_propagations' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// List of secret propagations for the addon
+func (o *AddOnConfig) SecretPropagations() []*AddOnSecretPropagation {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.secretPropagations
+	}
+	return nil
+}
+
+// GetSecretPropagations returns the value of the 'secret_propagations' attribute and
+// a flag indicating if the attribute has a value.
+//
+// List of secret propagations for the addon
+func (o *AddOnConfig) GetSecretPropagations() (value []*AddOnSecretPropagation, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.secretPropagations
 	}
 	return
 }

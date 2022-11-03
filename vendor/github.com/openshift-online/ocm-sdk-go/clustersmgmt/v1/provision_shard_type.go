@@ -19,6 +19,10 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
+import (
+	time "time"
+)
+
 // ProvisionShardKind is the name of the type used to represent objects
 // of type 'provision_shard'.
 const ProvisionShardKind = "ProvisionShard"
@@ -43,8 +47,10 @@ type ProvisionShard struct {
 	gcpBaseDomain            string
 	gcpProjectOperator       *ServerConfig
 	cloudProvider            *CloudProvider
+	creationTimestamp        time.Time
 	hiveConfig               *ServerConfig
 	hypershiftConfig         *ServerConfig
+	lastUpdateTimestamp      time.Time
 	managementCluster        string
 	region                   *CloudRegion
 	status                   string
@@ -222,12 +228,37 @@ func (o *ProvisionShard) GetCloudProvider() (value *CloudProvider, ok bool) {
 	return
 }
 
+// CreationTimestamp returns the value of the 'creation_timestamp' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Date and time when the provision shard was initially created, using the
+// format defined in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt).
+func (o *ProvisionShard) CreationTimestamp() time.Time {
+	if o != nil && o.bitmap_&256 != 0 {
+		return o.creationTimestamp
+	}
+	return time.Time{}
+}
+
+// GetCreationTimestamp returns the value of the 'creation_timestamp' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Date and time when the provision shard was initially created, using the
+// format defined in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt).
+func (o *ProvisionShard) GetCreationTimestamp() (value time.Time, ok bool) {
+	ok = o != nil && o.bitmap_&256 != 0
+	if ok {
+		value = o.creationTimestamp
+	}
+	return
+}
+
 // HiveConfig returns the value of the 'hive_config' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Contains the configuration for Hive.
 func (o *ProvisionShard) HiveConfig() *ServerConfig {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.hiveConfig
 	}
 	return nil
@@ -238,7 +269,7 @@ func (o *ProvisionShard) HiveConfig() *ServerConfig {
 //
 // Contains the configuration for Hive.
 func (o *ProvisionShard) GetHiveConfig() (value *ServerConfig, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.hiveConfig
 	}
@@ -250,7 +281,7 @@ func (o *ProvisionShard) GetHiveConfig() (value *ServerConfig, ok bool) {
 //
 // Contains the configuration for Hypershift.
 func (o *ProvisionShard) HypershiftConfig() *ServerConfig {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.hypershiftConfig
 	}
 	return nil
@@ -261,9 +292,34 @@ func (o *ProvisionShard) HypershiftConfig() *ServerConfig {
 //
 // Contains the configuration for Hypershift.
 func (o *ProvisionShard) GetHypershiftConfig() (value *ServerConfig, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.hypershiftConfig
+	}
+	return
+}
+
+// LastUpdateTimestamp returns the value of the 'last_update_timestamp' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Date and time when the provision shard was last updated, using the
+// format defined in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt).
+func (o *ProvisionShard) LastUpdateTimestamp() time.Time {
+	if o != nil && o.bitmap_&2048 != 0 {
+		return o.lastUpdateTimestamp
+	}
+	return time.Time{}
+}
+
+// GetLastUpdateTimestamp returns the value of the 'last_update_timestamp' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Date and time when the provision shard was last updated, using the
+// format defined in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt).
+func (o *ProvisionShard) GetLastUpdateTimestamp() (value time.Time, ok bool) {
+	ok = o != nil && o.bitmap_&2048 != 0
+	if ok {
+		value = o.lastUpdateTimestamp
 	}
 	return
 }
@@ -274,7 +330,7 @@ func (o *ProvisionShard) GetHypershiftConfig() (value *ServerConfig, ok bool) {
 // Contains the name of the management cluster for Hypershift clusters that are assigned to this shard.
 // This field is populated by OCM, and must not be overwritten via API.
 func (o *ProvisionShard) ManagementCluster() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.managementCluster
 	}
 	return ""
@@ -286,7 +342,7 @@ func (o *ProvisionShard) ManagementCluster() string {
 // Contains the name of the management cluster for Hypershift clusters that are assigned to this shard.
 // This field is populated by OCM, and must not be overwritten via API.
 func (o *ProvisionShard) GetManagementCluster() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.managementCluster
 	}
@@ -298,7 +354,7 @@ func (o *ProvisionShard) GetManagementCluster() (value string, ok bool) {
 //
 // Contains the cloud-provider region in which the provisioner spins up the cluster.
 func (o *ProvisionShard) Region() *CloudRegion {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&8192 != 0 {
 		return o.region
 	}
 	return nil
@@ -309,7 +365,7 @@ func (o *ProvisionShard) Region() *CloudRegion {
 //
 // Contains the cloud-provider region in which the provisioner spins up the cluster.
 func (o *ProvisionShard) GetRegion() (value *CloudRegion, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&8192 != 0
 	if ok {
 		value = o.region
 	}
@@ -321,7 +377,7 @@ func (o *ProvisionShard) GetRegion() (value *CloudRegion, ok bool) {
 //
 // Status of the provision shard. Possible values: active/maintenance/offline.
 func (o *ProvisionShard) Status() string {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&16384 != 0 {
 		return o.status
 	}
 	return ""
@@ -332,7 +388,7 @@ func (o *ProvisionShard) Status() string {
 //
 // Status of the provision shard. Possible values: active/maintenance/offline.
 func (o *ProvisionShard) GetStatus() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {
 		value = o.status
 	}

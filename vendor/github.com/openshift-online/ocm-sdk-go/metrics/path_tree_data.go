@@ -107,6 +107,17 @@ var pathTreeData = `{
         "token_authorization": null
       }
     },
+    "addons_mgmt": {
+      "v1": {
+        "addons": {
+          "-": {
+            "versions": {
+              "-": null
+            }
+          }
+        }
+      }
+    },
     "authorizations": {
       "v1": {
         "access_review": null,

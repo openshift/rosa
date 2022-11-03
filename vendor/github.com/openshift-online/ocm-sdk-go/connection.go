@@ -31,6 +31,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/openshift-online/ocm-sdk-go/accountsmgmt"
+	"github.com/openshift-online/ocm-sdk-go/addonsmgmt"
 	"github.com/openshift-online/ocm-sdk-go/authentication"
 	"github.com/openshift-online/ocm-sdk-go/authorizations"
 	"github.com/openshift-online/ocm-sdk-go/clustersmgmt"
@@ -39,6 +40,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/jobqueue"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift-online/ocm-sdk-go/metrics"
+	"github.com/openshift-online/ocm-sdk-go/osdfleetmgmt"
 	"github.com/openshift-online/ocm-sdk-go/retry"
 	"github.com/openshift-online/ocm-sdk-go/servicelogs"
 	"github.com/openshift-online/ocm-sdk-go/servicemgmt"
@@ -968,9 +970,20 @@ func (c *Connection) AccountsMgmt() *accountsmgmt.Client {
 	return accountsmgmt.NewClient(c, "/api/accounts_mgmt")
 }
 
+// AccountsMgmt returns the client for the accounts management service.
+func (c *Connection) AddonsMgmt() *addonsmgmt.Client {
+	return addonsmgmt.NewClient(c, "/api/addons_mgmt")
+}
+
 // ClustersMgmt returns the client for the clusters management service.
 func (c *Connection) ClustersMgmt() *clustersmgmt.Client {
 	return clustersmgmt.NewClient(c, "/api/clusters_mgmt")
+}
+
+// OSDFleetMgmt returns the client for the OSD management service.
+func (c *Connection) OSDFleetMgmt() *osdfleetmgmt.Client {
+
+	return osdfleetmgmt.NewClient(c, "/api/osd_fleet_mgmt")
 }
 
 // Authorizations returns the client for the authorizations service.

@@ -35,17 +35,19 @@ const AddOnVersionNilKind = "AddOnVersionNil"
 //
 // Representation of an add-on version.
 type AddOnVersion struct {
-	bitmap_           uint32
-	id                string
-	href              string
-	availableUpgrades []string
-	channel           string
-	config            *AddOnConfig
-	parameters        *AddOnParameterList
-	requirements      []*AddOnRequirement
-	sourceImage       string
-	subOperators      []*AddOnSubOperator
-	enabled           bool
+	bitmap_                  uint32
+	id                       string
+	href                     string
+	additionalCatalogSources []*AdditionalCatalogSource
+	availableUpgrades        []string
+	channel                  string
+	config                   *AddOnConfig
+	parameters               *AddOnParameterList
+	pullSecretName           string
+	requirements             []*AddOnRequirement
+	sourceImage              string
+	subOperators             []*AddOnSubOperator
+	enabled                  bool
 }
 
 // Kind returns the name of the type of the object.
@@ -105,12 +107,35 @@ func (o *AddOnVersion) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
+// AdditionalCatalogSources returns the value of the 'additional_catalog_sources' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Additional catalog sources associated with this addon version
+func (o *AddOnVersion) AdditionalCatalogSources() []*AdditionalCatalogSource {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.additionalCatalogSources
+	}
+	return nil
+}
+
+// GetAdditionalCatalogSources returns the value of the 'additional_catalog_sources' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Additional catalog sources associated with this addon version
+func (o *AddOnVersion) GetAdditionalCatalogSources() (value []*AdditionalCatalogSource, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.additionalCatalogSources
+	}
+	return
+}
+
 // AvailableUpgrades returns the value of the 'available_upgrades' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // AvailableUpgrades is the list of versions this version can be upgraded to.
 func (o *AddOnVersion) AvailableUpgrades() []string {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.availableUpgrades
 	}
 	return nil
@@ -121,7 +146,7 @@ func (o *AddOnVersion) AvailableUpgrades() []string {
 //
 // AvailableUpgrades is the list of versions this version can be upgraded to.
 func (o *AddOnVersion) GetAvailableUpgrades() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.availableUpgrades
 	}
@@ -133,7 +158,7 @@ func (o *AddOnVersion) GetAvailableUpgrades() (value []string, ok bool) {
 //
 // The specific addon catalog source channel of packages
 func (o *AddOnVersion) Channel() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.channel
 	}
 	return ""
@@ -144,7 +169,7 @@ func (o *AddOnVersion) Channel() string {
 //
 // The specific addon catalog source channel of packages
 func (o *AddOnVersion) GetChannel() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.channel
 	}
@@ -156,7 +181,7 @@ func (o *AddOnVersion) GetChannel() (value string, ok bool) {
 //
 // Additional configs to be used by the addon once its installed in the cluster.
 func (o *AddOnVersion) Config() *AddOnConfig {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.config
 	}
 	return nil
@@ -167,7 +192,7 @@ func (o *AddOnVersion) Config() *AddOnConfig {
 //
 // Additional configs to be used by the addon once its installed in the cluster.
 func (o *AddOnVersion) GetConfig() (value *AddOnConfig, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.config
 	}
@@ -179,7 +204,7 @@ func (o *AddOnVersion) GetConfig() (value *AddOnConfig, ok bool) {
 //
 // Indicates if this add-on version can be added to clusters.
 func (o *AddOnVersion) Enabled() bool {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.enabled
 	}
 	return false
@@ -190,7 +215,7 @@ func (o *AddOnVersion) Enabled() bool {
 //
 // Indicates if this add-on version can be added to clusters.
 func (o *AddOnVersion) GetEnabled() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.enabled
 	}
@@ -202,7 +227,7 @@ func (o *AddOnVersion) GetEnabled() (value bool, ok bool) {
 //
 // List of parameters for this add-on version.
 func (o *AddOnVersion) Parameters() *AddOnParameterList {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.parameters
 	}
 	return nil
@@ -213,9 +238,32 @@ func (o *AddOnVersion) Parameters() *AddOnParameterList {
 //
 // List of parameters for this add-on version.
 func (o *AddOnVersion) GetParameters() (value *AddOnParameterList, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.parameters
+	}
+	return
+}
+
+// PullSecretName returns the value of the 'pull_secret_name' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The pull secret name used for this addon version.
+func (o *AddOnVersion) PullSecretName() string {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.pullSecretName
+	}
+	return ""
+}
+
+// GetPullSecretName returns the value of the 'pull_secret_name' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The pull secret name used for this addon version.
+func (o *AddOnVersion) GetPullSecretName() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.pullSecretName
 	}
 	return
 }
@@ -225,7 +273,7 @@ func (o *AddOnVersion) GetParameters() (value *AddOnParameterList, ok bool) {
 //
 // List of requirements for this add-on version.
 func (o *AddOnVersion) Requirements() []*AddOnRequirement {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.requirements
 	}
 	return nil
@@ -236,7 +284,7 @@ func (o *AddOnVersion) Requirements() []*AddOnRequirement {
 //
 // List of requirements for this add-on version.
 func (o *AddOnVersion) GetRequirements() (value []*AddOnRequirement, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.requirements
 	}
@@ -248,7 +296,7 @@ func (o *AddOnVersion) GetRequirements() (value []*AddOnRequirement, ok bool) {
 //
 // The catalog source image for this add-on version.
 func (o *AddOnVersion) SourceImage() string {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.sourceImage
 	}
 	return ""
@@ -259,7 +307,7 @@ func (o *AddOnVersion) SourceImage() string {
 //
 // The catalog source image for this add-on version.
 func (o *AddOnVersion) GetSourceImage() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.sourceImage
 	}
@@ -271,7 +319,7 @@ func (o *AddOnVersion) GetSourceImage() (value string, ok bool) {
 //
 // List of sub operators for this add-on version.
 func (o *AddOnVersion) SubOperators() []*AddOnSubOperator {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.subOperators
 	}
 	return nil
@@ -282,7 +330,7 @@ func (o *AddOnVersion) SubOperators() []*AddOnSubOperator {
 //
 // List of sub operators for this add-on version.
 func (o *AddOnVersion) GetSubOperators() (value []*AddOnSubOperator, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.subOperators
 	}
