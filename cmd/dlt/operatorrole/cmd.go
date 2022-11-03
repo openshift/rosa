@@ -18,7 +18,6 @@ package operatorrole
 
 import (
 	"fmt"
-
 	"os"
 	"strings"
 	"time"
@@ -129,8 +128,9 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if env != "production" {
-		if !confirm.Prompt(true, "You are running delete operation from staging. Please ensure "+
-			"there are no clusters using these operator roles in the production. Are you sure you want to proceed?") {
+		if !confirm.Prompt(true, "You are running delete operation from '%s' environment. Please ensure "+
+			"there are no clusters using these operator roles in the production. "+
+			"Are you sure you want to proceed?", env) {
 			os.Exit(1)
 		}
 	}
