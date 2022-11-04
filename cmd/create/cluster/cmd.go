@@ -301,7 +301,6 @@ func init() {
 		false,
 		"Create cluster that uses FIPS Validated / Modules in Process cryptographic libraries.",
 	)
-	flags.MarkHidden("fips")
 
 	flags.StringVar(
 		&args.httpProxy,
@@ -1759,14 +1758,14 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	fips := args.fips || fedramp.Enabled()
-	if interactive.Enabled() && fips && !fedramp.Enabled() {
+	if interactive.Enabled() && !fedramp.Enabled() {
 		fips, err = interactive.GetBool(interactive.Input{
 			Question: "Enable FIPS support",
 			Help:     cmd.Flags().Lookup("fips").Usage,
 			Default:  fips,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid fips value: %v", err)
+			r.Reporter.Errorf("Expected a valid FIPS value: %v", err)
 			os.Exit(1)
 		}
 	}
