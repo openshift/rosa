@@ -675,13 +675,15 @@ func run(cmd *cobra.Command, _ []string) {
 
 	isSTS = isSTS || awsCreator.IsSTS
 
-	r.Reporter.Warnf("In a future release STS will be the default mode.")
-	if (isSTS || cmd.Flags().Changed("sts")) && r.Reporter.IsTerminal() {
-		r.Reporter.Warnf("--sts flag won't be necessary.")
-	}
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Warnf("In a future release STS will be the default mode.")
+		if isSTS || cmd.Flags().Changed("sts") {
+			r.Reporter.Warnf("--sts flag won't be necessary.")
+		}
 
-	if !isSTS && r.Reporter.IsTerminal() && (cmd.Flags().Changed("non-sts") || cmd.Flags().Changed("mint-mode") || !cmd.Flags().Changed("sts")) {
-		r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary in a future release if you do not wish to use STS.")
+		if !isSTS && (cmd.Flags().Changed("non-sts") || cmd.Flags().Changed("mint-mode") || !cmd.Flags().Changed("sts")) {
+			r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary in a future release if you do not wish to use STS.")
+		}
 	}
 
 	// OpenShift version:
