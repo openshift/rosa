@@ -425,7 +425,18 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 	if err != nil {
 		return roleARNs, err
 	}
+	prefixesMap := make(map[string]int)
 	for _, role := range roles {
+		matches := PrefixAccRoleRE.FindStringSubmatch(*role.RoleName)
+		index := PrefixAccRoleRE.SubexpIndex("Prefix")
+		if len(matches) == 0 {
+			continue
+		}
+		foundPrefix := matches[index]
+		if _, ok := prefixesMap[foundPrefix]; !ok {
+			prefixesMap[foundPrefix] = 0
+		}
+		prefixesMap[foundPrefix]++
 		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
 			continue
 		}
@@ -465,7 +476,12 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 			}
 		}
 		if isTagged && !skip {
-			roleARNs = append(roleARNs, aws.StringValue(role.Arn))
+			prefixesMap[foundPrefix]++
+		}
+	}
+	for key, value := range prefixesMap {
+		if value == len(AccountRoles)+1 {
+			roleARNs = append(roleARNs, fmt.Sprintf("%s-Installer-Role", key))
 		}
 	}
 	return roleARNs, nil
