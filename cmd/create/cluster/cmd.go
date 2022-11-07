@@ -112,6 +112,9 @@ var args struct {
 	// Force STS mode for interactive and validation
 	sts bool
 
+	// Force IAM mode (mint mode) for interactive
+	nonSts bool
+
 	// Account IAM Roles
 	roleARN             string
 	externalID          string
@@ -175,6 +178,18 @@ func init() {
 		"sts",
 		false,
 		"Use AWS Security Token Service (STS) instead of IAM credentials to deploy your cluster.",
+	)
+	flags.BoolVar(
+		&args.nonSts,
+		"non-sts",
+		false,
+		"Use legacy method of creating clusters (IAM mode).",
+	)
+	flags.BoolVar(
+		&args.nonSts,
+		"mint-mode",
+		false,
+		"Use legacy method of creating clusters (IAM mode). This is an alias for --non-sts.",
 	)
 	flags.StringVar(
 		&args.roleARN,
@@ -659,6 +674,15 @@ func run(cmd *cobra.Command, _ []string) {
 	workerRoleARN := args.workerRoleARN
 
 	isSTS = isSTS || awsCreator.IsSTS
+
+	r.Reporter.Warnf("In a future release STS will be the default mode.")
+	if cmd.Flags().Changed("sts") && r.Reporter.IsTerminal() {
+		r.Reporter.Warnf("This flag won't be necessary.")
+	}
+
+	if r.Reporter.IsTerminal() && (cmd.Flags().Changed("non-sts") || cmd.Flags().Changed("mint-mode")) {
+		r.Reporter.Warnf("This flag will be necessary in a future release if you do not wish to use STS.")
+	}
 
 	// OpenShift version:
 	version := args.version
