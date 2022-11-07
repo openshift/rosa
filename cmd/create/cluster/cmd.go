@@ -677,11 +677,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 	r.Reporter.Warnf("In a future release STS will be the default mode.")
 	if cmd.Flags().Changed("sts") && r.Reporter.IsTerminal() {
-		r.Reporter.Warnf("This flag won't be necessary.")
+		r.Reporter.Warnf("--sts flag won't be necessary.")
 	}
 
 	if r.Reporter.IsTerminal() && (cmd.Flags().Changed("non-sts") || cmd.Flags().Changed("mint-mode")) {
-		r.Reporter.Warnf("This flag will be necessary in a future release if you do not wish to use STS.")
+		r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary in a future release if you do not wish to use STS.")
 	}
 
 	// OpenShift version:
