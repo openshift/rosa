@@ -680,7 +680,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Warnf("--sts flag won't be necessary.")
 	}
 
-	if r.Reporter.IsTerminal() && (cmd.Flags().Changed("non-sts") || cmd.Flags().Changed("mint-mode")) {
+	if r.Reporter.IsTerminal() && (cmd.Flags().Changed("non-sts") || cmd.Flags().Changed("mint-mode") || !cmd.Flags().Changed("sts")) {
 		r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary in a future release if you do not wish to use STS.")
 	}
 
