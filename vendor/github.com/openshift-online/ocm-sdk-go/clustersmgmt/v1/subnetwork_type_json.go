@@ -65,6 +65,15 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("public")
+		stream.WriteBool(object.public)
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("subnet_id")
 		stream.WriteString(object.subnetID)
 	}
@@ -100,10 +109,14 @@ func readSubnetwork(iterator *jsoniter.Iterator) *Subnetwork {
 			value := iterator.ReadString()
 			object.name = value
 			object.bitmap_ |= 2
+		case "public":
+			value := iterator.ReadBool()
+			object.public = value
+			object.bitmap_ |= 4
 		case "subnet_id":
 			value := iterator.ReadString()
 			object.subnetID = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

@@ -27,6 +27,7 @@ type SubnetworkBuilder struct {
 	availabilityZone string
 	name             string
 	subnetID         string
+	public           bool
 }
 
 // NewSubnetwork creates a new builder of 'subnetwork' objects.
@@ -57,12 +58,21 @@ func (b *SubnetworkBuilder) Name(value string) *SubnetworkBuilder {
 	return b
 }
 
+// Public sets the value of the 'public' attribute to the given value.
+//
+//
+func (b *SubnetworkBuilder) Public(value bool) *SubnetworkBuilder {
+	b.public = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // SubnetID sets the value of the 'subnet_ID' attribute to the given value.
 //
 //
 func (b *SubnetworkBuilder) SubnetID(value string) *SubnetworkBuilder {
 	b.subnetID = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -74,6 +84,7 @@ func (b *SubnetworkBuilder) Copy(object *Subnetwork) *SubnetworkBuilder {
 	b.bitmap_ = object.bitmap_
 	b.availabilityZone = object.availabilityZone
 	b.name = object.name
+	b.public = object.public
 	b.subnetID = object.subnetID
 	return b
 }
@@ -84,6 +95,7 @@ func (b *SubnetworkBuilder) Build() (object *Subnetwork, err error) {
 	object.bitmap_ = b.bitmap_
 	object.availabilityZone = b.availabilityZone
 	object.name = b.name
+	object.public = b.public
 	object.subnetID = b.subnetID
 	return
 }

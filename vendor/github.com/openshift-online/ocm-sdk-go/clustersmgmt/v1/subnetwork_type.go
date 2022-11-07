@@ -27,6 +27,7 @@ type Subnetwork struct {
 	availabilityZone string
 	name             string
 	subnetID         string
+	public           bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -80,12 +81,35 @@ func (o *Subnetwork) GetName() (value string, ok bool) {
 	return
 }
 
+// Public returns the value of the 'public' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Whether it is a public subnet
+func (o *Subnetwork) Public() bool {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.public
+	}
+	return false
+}
+
+// GetPublic returns the value of the 'public' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Whether it is a public subnet
+func (o *Subnetwork) GetPublic() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.public
+	}
+	return
+}
+
 // SubnetID returns the value of the 'subnet_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The subnet id to be used while installing a cluster
 func (o *Subnetwork) SubnetID() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.subnetID
 	}
 	return ""
@@ -96,7 +120,7 @@ func (o *Subnetwork) SubnetID() string {
 //
 // The subnet id to be used while installing a cluster
 func (o *Subnetwork) GetSubnetID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.subnetID
 	}

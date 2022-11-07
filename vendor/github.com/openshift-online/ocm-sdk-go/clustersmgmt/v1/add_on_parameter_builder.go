@@ -27,6 +27,7 @@ type AddOnParameterBuilder struct {
 	id                string
 	href              string
 	addon             *AddOnBuilder
+	conditions        []*AddOnRequirementBuilder
 	defaultValue      string
 	description       string
 	editableDirection string
@@ -83,12 +84,22 @@ func (b *AddOnParameterBuilder) Addon(value *AddOnBuilder) *AddOnParameterBuilde
 	return b
 }
 
+// Conditions sets the value of the 'conditions' attribute to the given values.
+//
+//
+func (b *AddOnParameterBuilder) Conditions(values ...*AddOnRequirementBuilder) *AddOnParameterBuilder {
+	b.conditions = make([]*AddOnRequirementBuilder, len(values))
+	copy(b.conditions, values)
+	b.bitmap_ |= 16
+	return b
+}
+
 // DefaultValue sets the value of the 'default_value' attribute to the given value.
 //
 //
 func (b *AddOnParameterBuilder) DefaultValue(value string) *AddOnParameterBuilder {
 	b.defaultValue = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -97,7 +108,7 @@ func (b *AddOnParameterBuilder) DefaultValue(value string) *AddOnParameterBuilde
 //
 func (b *AddOnParameterBuilder) Description(value string) *AddOnParameterBuilder {
 	b.description = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -106,7 +117,7 @@ func (b *AddOnParameterBuilder) Description(value string) *AddOnParameterBuilder
 //
 func (b *AddOnParameterBuilder) Editable(value bool) *AddOnParameterBuilder {
 	b.editable = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -115,7 +126,7 @@ func (b *AddOnParameterBuilder) Editable(value bool) *AddOnParameterBuilder {
 //
 func (b *AddOnParameterBuilder) EditableDirection(value string) *AddOnParameterBuilder {
 	b.editableDirection = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -124,7 +135,7 @@ func (b *AddOnParameterBuilder) EditableDirection(value string) *AddOnParameterB
 //
 func (b *AddOnParameterBuilder) Enabled(value bool) *AddOnParameterBuilder {
 	b.enabled = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -133,7 +144,7 @@ func (b *AddOnParameterBuilder) Enabled(value bool) *AddOnParameterBuilder {
 //
 func (b *AddOnParameterBuilder) Name(value string) *AddOnParameterBuilder {
 	b.name = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -143,7 +154,7 @@ func (b *AddOnParameterBuilder) Name(value string) *AddOnParameterBuilder {
 func (b *AddOnParameterBuilder) Options(values ...*AddOnParameterOptionBuilder) *AddOnParameterBuilder {
 	b.options = make([]*AddOnParameterOptionBuilder, len(values))
 	copy(b.options, values)
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -152,7 +163,7 @@ func (b *AddOnParameterBuilder) Options(values ...*AddOnParameterOptionBuilder) 
 //
 func (b *AddOnParameterBuilder) Required(value bool) *AddOnParameterBuilder {
 	b.required = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -161,7 +172,7 @@ func (b *AddOnParameterBuilder) Required(value bool) *AddOnParameterBuilder {
 //
 func (b *AddOnParameterBuilder) Validation(value string) *AddOnParameterBuilder {
 	b.validation = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -170,7 +181,7 @@ func (b *AddOnParameterBuilder) Validation(value string) *AddOnParameterBuilder 
 //
 func (b *AddOnParameterBuilder) ValidationErrMsg(value string) *AddOnParameterBuilder {
 	b.validationErrMsg = value
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -179,7 +190,7 @@ func (b *AddOnParameterBuilder) ValidationErrMsg(value string) *AddOnParameterBu
 //
 func (b *AddOnParameterBuilder) ValueType(value string) *AddOnParameterBuilder {
 	b.valueType = value
-	b.bitmap_ |= 16384
+	b.bitmap_ |= 32768
 	return b
 }
 
@@ -195,6 +206,14 @@ func (b *AddOnParameterBuilder) Copy(object *AddOnParameter) *AddOnParameterBuil
 		b.addon = NewAddOn().Copy(object.addon)
 	} else {
 		b.addon = nil
+	}
+	if object.conditions != nil {
+		b.conditions = make([]*AddOnRequirementBuilder, len(object.conditions))
+		for i, v := range object.conditions {
+			b.conditions[i] = NewAddOnRequirement().Copy(v)
+		}
+	} else {
+		b.conditions = nil
 	}
 	b.defaultValue = object.defaultValue
 	b.description = object.description
@@ -227,6 +246,15 @@ func (b *AddOnParameterBuilder) Build() (object *AddOnParameter, err error) {
 		object.addon, err = b.addon.Build()
 		if err != nil {
 			return
+		}
+	}
+	if b.conditions != nil {
+		object.conditions = make([]*AddOnRequirement, len(b.conditions))
+		for i, v := range b.conditions {
+			object.conditions[i], err = v.Build()
+			if err != nil {
+				return
+			}
 		}
 	}
 	object.defaultValue = b.defaultValue

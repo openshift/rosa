@@ -23,13 +23,14 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Description of a cloud provider data used for cloud provider inquiries.
 type CloudProviderData struct {
-	bitmap_     uint32
-	aws         *AWS
-	gcp         *GCP
-	keyLocation string
-	keyRingName string
-	region      *CloudRegion
-	version     *Version
+	bitmap_          uint32
+	aws              *AWS
+	gcp              *GCP
+	availabilityZone string
+	keyLocation      string
+	keyRingName      string
+	region           *CloudRegion
+	version          *Version
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -83,12 +84,35 @@ func (o *CloudProviderData) GetGCP() (value *GCP, ok bool) {
 	return
 }
 
+// AvailabilityZone returns the value of the 'availability_zone' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Availability zone
+func (o *CloudProviderData) AvailabilityZone() string {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.availabilityZone
+	}
+	return ""
+}
+
+// GetAvailabilityZone returns the value of the 'availability_zone' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Availability zone
+func (o *CloudProviderData) GetAvailabilityZone() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.availabilityZone
+	}
+	return
+}
+
 // KeyLocation returns the value of the 'key_location' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Key location
 func (o *CloudProviderData) KeyLocation() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.keyLocation
 	}
 	return ""
@@ -99,7 +123,7 @@ func (o *CloudProviderData) KeyLocation() string {
 //
 // Key location
 func (o *CloudProviderData) GetKeyLocation() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.keyLocation
 	}
@@ -111,7 +135,7 @@ func (o *CloudProviderData) GetKeyLocation() (value string, ok bool) {
 //
 // Key ring name
 func (o *CloudProviderData) KeyRingName() string {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.keyRingName
 	}
 	return ""
@@ -122,7 +146,7 @@ func (o *CloudProviderData) KeyRingName() string {
 //
 // Key ring name
 func (o *CloudProviderData) GetKeyRingName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.keyRingName
 	}
@@ -134,7 +158,7 @@ func (o *CloudProviderData) GetKeyRingName() (value string, ok bool) {
 //
 // Region
 func (o *CloudProviderData) Region() *CloudRegion {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.region
 	}
 	return nil
@@ -145,7 +169,7 @@ func (o *CloudProviderData) Region() *CloudRegion {
 //
 // Region
 func (o *CloudProviderData) GetRegion() (value *CloudRegion, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.region
 	}
@@ -157,7 +181,7 @@ func (o *CloudProviderData) GetRegion() (value *CloudRegion, ok bool) {
 //
 // Openshift version
 func (o *CloudProviderData) Version() *Version {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.version
 	}
 	return nil
@@ -168,7 +192,7 @@ func (o *CloudProviderData) Version() *Version {
 //
 // Openshift version
 func (o *CloudProviderData) GetVersion() (value *Version, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.version
 	}

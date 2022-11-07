@@ -21,6 +21,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -110,7 +111,16 @@ func writeProvisionShard(object *ProvisionShard, stream *jsoniter.Stream) {
 		writeCloudProvider(object.cloudProvider, stream)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0 && object.hiveConfig != nil
+	present_ = object.bitmap_&256 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("creation_timestamp")
+		stream.WriteString((object.creationTimestamp).Format(time.RFC3339))
+		count++
+	}
+	present_ = object.bitmap_&512 != 0 && object.hiveConfig != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -119,7 +129,7 @@ func writeProvisionShard(object *ProvisionShard, stream *jsoniter.Stream) {
 		writeServerConfig(object.hiveConfig, stream)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0 && object.hypershiftConfig != nil
+	present_ = object.bitmap_&1024 != 0 && object.hypershiftConfig != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -128,7 +138,16 @@ func writeProvisionShard(object *ProvisionShard, stream *jsoniter.Stream) {
 		writeServerConfig(object.hypershiftConfig, stream)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("last_update_timestamp")
+		stream.WriteString((object.lastUpdateTimestamp).Format(time.RFC3339))
+		count++
+	}
+	present_ = object.bitmap_&4096 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -137,7 +156,7 @@ func writeProvisionShard(object *ProvisionShard, stream *jsoniter.Stream) {
 		stream.WriteString(object.managementCluster)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0 && object.region != nil
+	present_ = object.bitmap_&8192 != 0 && object.region != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -146,7 +165,7 @@ func writeProvisionShard(object *ProvisionShard, stream *jsoniter.Stream) {
 		writeCloudRegion(object.region, stream)
 		count++
 	}
-	present_ = object.bitmap_&4096 != 0
+	present_ = object.bitmap_&16384 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -209,26 +228,42 @@ func readProvisionShard(iterator *jsoniter.Iterator) *ProvisionShard {
 			value := readCloudProvider(iterator)
 			object.cloudProvider = value
 			object.bitmap_ |= 128
+		case "creation_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.creationTimestamp = value
+			object.bitmap_ |= 256
 		case "hive_config":
 			value := readServerConfig(iterator)
 			object.hiveConfig = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "hypershift_config":
 			value := readServerConfig(iterator)
 			object.hypershiftConfig = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
+		case "last_update_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.lastUpdateTimestamp = value
+			object.bitmap_ |= 2048
 		case "management_cluster":
 			value := iterator.ReadString()
 			object.managementCluster = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 4096
 		case "region":
 			value := readCloudRegion(iterator)
 			object.region = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 8192
 		case "status":
 			value := iterator.ReadString()
 			object.status = value
-			object.bitmap_ |= 4096
+			object.bitmap_ |= 16384
 		default:
 			iterator.ReadAny()
 		}

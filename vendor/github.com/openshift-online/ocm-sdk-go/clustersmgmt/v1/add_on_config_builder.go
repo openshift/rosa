@@ -28,6 +28,7 @@ type AddOnConfigBuilder struct {
 	id                        string
 	href                      string
 	addOnEnvironmentVariables []*AddOnEnvironmentVariableBuilder
+	secretPropagations        []*AddOnSecretPropagationBuilder
 }
 
 // NewAddOnConfig creates a new builder of 'add_on_config' objects.
@@ -70,6 +71,16 @@ func (b *AddOnConfigBuilder) AddOnEnvironmentVariables(values ...*AddOnEnvironme
 	return b
 }
 
+// SecretPropagations sets the value of the 'secret_propagations' attribute to the given values.
+//
+//
+func (b *AddOnConfigBuilder) SecretPropagations(values ...*AddOnSecretPropagationBuilder) *AddOnConfigBuilder {
+	b.secretPropagations = make([]*AddOnSecretPropagationBuilder, len(values))
+	copy(b.secretPropagations, values)
+	b.bitmap_ |= 16
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *AddOnConfigBuilder) Copy(object *AddOnConfig) *AddOnConfigBuilder {
 	if object == nil {
@@ -86,6 +97,14 @@ func (b *AddOnConfigBuilder) Copy(object *AddOnConfig) *AddOnConfigBuilder {
 	} else {
 		b.addOnEnvironmentVariables = nil
 	}
+	if object.secretPropagations != nil {
+		b.secretPropagations = make([]*AddOnSecretPropagationBuilder, len(object.secretPropagations))
+		for i, v := range object.secretPropagations {
+			b.secretPropagations[i] = NewAddOnSecretPropagation().Copy(v)
+		}
+	} else {
+		b.secretPropagations = nil
+	}
 	return b
 }
 
@@ -99,6 +118,15 @@ func (b *AddOnConfigBuilder) Build() (object *AddOnConfig, err error) {
 		object.addOnEnvironmentVariables = make([]*AddOnEnvironmentVariable, len(b.addOnEnvironmentVariables))
 		for i, v := range b.addOnEnvironmentVariables {
 			object.addOnEnvironmentVariables[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
+	if b.secretPropagations != nil {
+		object.secretPropagations = make([]*AddOnSecretPropagation, len(b.secretPropagations))
+		for i, v := range b.secretPropagations {
+			object.secretPropagations[i], err = v.Build()
 			if err != nil {
 				return
 			}

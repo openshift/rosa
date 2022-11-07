@@ -19,6 +19,10 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
+import (
+	time "time"
+)
+
 // ProvisionShardBuilder contains the data and logic needed to build 'provision_shard' objects.
 //
 // Contains the properties of the provision shard, including AWS and GCP related configurations
@@ -31,8 +35,10 @@ type ProvisionShardBuilder struct {
 	gcpBaseDomain            string
 	gcpProjectOperator       *ServerConfigBuilder
 	cloudProvider            *CloudProviderBuilder
+	creationTimestamp        time.Time
 	hiveConfig               *ServerConfigBuilder
 	hypershiftConfig         *ServerConfigBuilder
+	lastUpdateTimestamp      time.Time
 	managementCluster        string
 	region                   *CloudRegionBuilder
 	status                   string
@@ -125,15 +131,24 @@ func (b *ProvisionShardBuilder) CloudProvider(value *CloudProviderBuilder) *Prov
 	return b
 }
 
+// CreationTimestamp sets the value of the 'creation_timestamp' attribute to the given value.
+//
+//
+func (b *ProvisionShardBuilder) CreationTimestamp(value time.Time) *ProvisionShardBuilder {
+	b.creationTimestamp = value
+	b.bitmap_ |= 256
+	return b
+}
+
 // HiveConfig sets the value of the 'hive_config' attribute to the given value.
 //
 // Representation of a server config
 func (b *ProvisionShardBuilder) HiveConfig(value *ServerConfigBuilder) *ProvisionShardBuilder {
 	b.hiveConfig = value
 	if value != nil {
-		b.bitmap_ |= 256
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 256
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -144,10 +159,19 @@ func (b *ProvisionShardBuilder) HiveConfig(value *ServerConfigBuilder) *Provisio
 func (b *ProvisionShardBuilder) HypershiftConfig(value *ServerConfigBuilder) *ProvisionShardBuilder {
 	b.hypershiftConfig = value
 	if value != nil {
-		b.bitmap_ |= 512
+		b.bitmap_ |= 1024
 	} else {
-		b.bitmap_ &^= 512
+		b.bitmap_ &^= 1024
 	}
+	return b
+}
+
+// LastUpdateTimestamp sets the value of the 'last_update_timestamp' attribute to the given value.
+//
+//
+func (b *ProvisionShardBuilder) LastUpdateTimestamp(value time.Time) *ProvisionShardBuilder {
+	b.lastUpdateTimestamp = value
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -156,7 +180,7 @@ func (b *ProvisionShardBuilder) HypershiftConfig(value *ServerConfigBuilder) *Pr
 //
 func (b *ProvisionShardBuilder) ManagementCluster(value string) *ProvisionShardBuilder {
 	b.managementCluster = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -166,9 +190,9 @@ func (b *ProvisionShardBuilder) ManagementCluster(value string) *ProvisionShardB
 func (b *ProvisionShardBuilder) Region(value *CloudRegionBuilder) *ProvisionShardBuilder {
 	b.region = value
 	if value != nil {
-		b.bitmap_ |= 2048
+		b.bitmap_ |= 8192
 	} else {
-		b.bitmap_ &^= 2048
+		b.bitmap_ &^= 8192
 	}
 	return b
 }
@@ -178,7 +202,7 @@ func (b *ProvisionShardBuilder) Region(value *CloudRegionBuilder) *ProvisionShar
 //
 func (b *ProvisionShardBuilder) Status(value string) *ProvisionShardBuilder {
 	b.status = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -207,6 +231,7 @@ func (b *ProvisionShardBuilder) Copy(object *ProvisionShard) *ProvisionShardBuil
 	} else {
 		b.cloudProvider = nil
 	}
+	b.creationTimestamp = object.creationTimestamp
 	if object.hiveConfig != nil {
 		b.hiveConfig = NewServerConfig().Copy(object.hiveConfig)
 	} else {
@@ -217,6 +242,7 @@ func (b *ProvisionShardBuilder) Copy(object *ProvisionShard) *ProvisionShardBuil
 	} else {
 		b.hypershiftConfig = nil
 	}
+	b.lastUpdateTimestamp = object.lastUpdateTimestamp
 	b.managementCluster = object.managementCluster
 	if object.region != nil {
 		b.region = NewCloudRegion().Copy(object.region)
@@ -253,6 +279,7 @@ func (b *ProvisionShardBuilder) Build() (object *ProvisionShard, err error) {
 			return
 		}
 	}
+	object.creationTimestamp = b.creationTimestamp
 	if b.hiveConfig != nil {
 		object.hiveConfig, err = b.hiveConfig.Build()
 		if err != nil {
@@ -265,6 +292,7 @@ func (b *ProvisionShardBuilder) Build() (object *ProvisionShard, err error) {
 			return
 		}
 	}
+	object.lastUpdateTimestamp = b.lastUpdateTimestamp
 	object.managementCluster = b.managementCluster
 	if b.region != nil {
 		object.region, err = b.region.Build()

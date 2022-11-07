@@ -3,10 +3,30 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.292
+- Update to model 0.0.231
+  - Add `AvailabilityZone` property to CloudProviderData model.
+  - Add `Public` property to Subnetwork model.
+
+## 0.1.291
+- Update to model 0.0.230
+  - Add creation timestamp and modification timestamp to provision shard
+  - Add pull secret for addon version
+  - Add addon secret props for addon version config
+  - Add additional catalog sources for addon version
+  - Add addon parameter condition
+
+## 0.1.290
+- Update to model 0.0.229
+  - Add Addon Management models
+  - Add GCP Encryption Keys to cluster model
+- Add client for Fleet Management service
+- Add client for Addons Management service
+
 ## 0.1.289
 - Update to model 0.0.228
   - Add hypershift endpoint with its ManagementCluster.
-  - Align hypershift case usage.  
+  - Align hypershift case usage.
   - [Hypershift] Expose /manifests
   - Added expiry setting to managed service clusters.
   -  Added Manifests to external_configuration.
@@ -25,7 +45,7 @@ SDK.
 
 ## 0.1.286
 - Update to model 0.0.220:
-  - Add `ManagedBy` property in RoleBinding type 
+  - Add `ManagedBy` property in RoleBinding type
 
 ## 0.1.285
 - Update to model 0.0.219:
@@ -47,15 +67,15 @@ SDK.
 
 ## 0.1.281
 - Update to model 0.0.214:
-  - Add locator `label` to Generic Labels resource. 
+  - Add locator `label` to Generic Labels resource.
 
 ## 0.1.280
 - Update to model 0.0.213:
-  - Add update function to provision shard API. 
+  - Add update function to provision shard API.
 
 ## 0.1.279
 - Update to model 0.0.212:
-  - Add status to provision shard API. 
+  - Add status to provision shard API.
 
 ## 0.1.278
 - Update to model 0.0.211:
@@ -209,8 +229,8 @@ SDK.
 
 ## 0.1.250 Mar 14 2022
 
-- Update to model 0.0.181:  
-    - Add aws sts policy 
+- Update to model 0.0.181:
+    - Add aws sts policy
     - Add ReleaseImage to Version
 
 ## 0.1.249 Mar 9 2022
@@ -250,7 +270,7 @@ SDK.
 ## 0.1.244 Mar 02 2022
 - Update to model 0.0.176
   - adding new endpoint for 'environment'
-  
+
 ## 0.1.243 Mar 02 2022
 - Update to model 0.0.175
   - adding new apis for addon config attribute
@@ -265,7 +285,7 @@ SDK.
 
 ## 0.1.241 Feb 11 2022
 
-- Update to model 0.0.173:  
+- Update to model 0.0.173:
   - addons: Support attributes necessary for STS.
   - Add ProductIds param to Status Resource.
   - Add Role bindings to Subscription.
@@ -378,7 +398,7 @@ SDK.
 
 ## 0.1.225 Dec 19 2021
 
--  MatchJQ should require at least one result 
+-  MatchJQ should require at least one result
 - Update to model 0.0.158:
   - Adding subnetworks to vpc inquiry
   - Add statuses path to service model, add some comments.
@@ -440,7 +460,7 @@ development and build workflows:
 - Update to model 0.0.152
   - Update type `resource` to `clusterResources`
   - Revert "Add Name field to LDAP identity provider"
-  - Remove addon install mode `singleNamespace` 
+  - Remove addon install mode `singleNamespace`
   - Add addon install mode `ownNamespace`
   - Add channel to addon version class
 

@@ -72,6 +72,15 @@ func writeAddOnConfig(object *AddOnConfig, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("add_on_environment_variables")
 		writeAddOnEnvironmentVariableList(object.addOnEnvironmentVariables, stream)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0 && object.secretPropagations != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("secret_propagations")
+		writeAddOnSecretPropagationList(object.secretPropagations, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -112,6 +121,10 @@ func readAddOnConfig(iterator *jsoniter.Iterator) *AddOnConfig {
 			value := readAddOnEnvironmentVariableList(iterator)
 			object.addOnEnvironmentVariables = value
 			object.bitmap_ |= 8
+		case "secret_propagations":
+			value := readAddOnSecretPropagationList(iterator)
+			object.secretPropagations = value
+			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()
 		}

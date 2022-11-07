@@ -17,6 +17,7 @@
 run:
   skip-dirs:
   - accountsmgmt
+  - addonsmgmt
   - authorizations
   - clustersmgmt
   - errors
