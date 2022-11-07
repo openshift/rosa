@@ -451,7 +451,9 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 			prefixesMap[foundPrefix] = 0
 		}
 		prefixesMap[foundPrefix]++
-		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
+		index = PrefixAccRoleRE.SubexpIndex("Type")
+		foundType := matches[index]
+		if foundType == "" || foundType != AccountRoles[roleType].Name {
 			continue
 		}
 		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
