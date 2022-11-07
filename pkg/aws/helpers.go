@@ -27,7 +27,24 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
-var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
+const RoleNameREString = `^[\w+=,.@-]+$`
+
+var RoleNameRE = regexp.MustCompile(RoleNameREString)
+
+func getREOfAllAccRolesSuffixes() string {
+	suffixes := make([]string, 4)
+	for _, role := range AccountRoles {
+		suffixes = append(suffixes, role.Name)
+	}
+	return strings.Join(suffixes, "|")
+}
+
+var PrefixAccRoleRE = regexp.MustCompile(
+	fmt.Sprintf(
+		`(?P<Prefix>%s)-(?P<Type>%s)(-Role$)`,
+		RoleNameREString[1:len(RoleNameREString)-1],
+		getREOfAllAccRolesSuffixes(),
+	))
 
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
 var UserTagKeyRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
