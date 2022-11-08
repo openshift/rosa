@@ -23,14 +23,14 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Description of a cloud provider data used for cloud provider inquiries.
 type CloudProviderData struct {
-	bitmap_          uint32
-	aws              *AWS
-	gcp              *GCP
-	availabilityZone string
-	keyLocation      string
-	keyRingName      string
-	region           *CloudRegion
-	version          *Version
+	bitmap_           uint32
+	aws               *AWS
+	gcp               *GCP
+	availabilityZones []string
+	keyLocation       string
+	keyRingName       string
+	region            *CloudRegion
+	version           *Version
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -84,25 +84,25 @@ func (o *CloudProviderData) GetGCP() (value *GCP, ok bool) {
 	return
 }
 
-// AvailabilityZone returns the value of the 'availability_zone' attribute, or
+// AvailabilityZones returns the value of the 'availability_zones' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Availability zone
-func (o *CloudProviderData) AvailabilityZone() string {
+func (o *CloudProviderData) AvailabilityZones() []string {
 	if o != nil && o.bitmap_&4 != 0 {
-		return o.availabilityZone
+		return o.availabilityZones
 	}
-	return ""
+	return nil
 }
 
-// GetAvailabilityZone returns the value of the 'availability_zone' attribute and
+// GetAvailabilityZones returns the value of the 'availability_zones' attribute and
 // a flag indicating if the attribute has a value.
 //
 // Availability zone
-func (o *CloudProviderData) GetAvailabilityZone() (value string, ok bool) {
+func (o *CloudProviderData) GetAvailabilityZones() (value []string, ok bool) {
 	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
-		value = o.availabilityZone
+		value = o.availabilityZones
 	}
 	return
 }

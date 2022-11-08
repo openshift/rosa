@@ -60,13 +60,13 @@ func writeCloudProviderData(object *CloudProviderData, stream *jsoniter.Stream) 
 		writeGCP(object.gcp, stream)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&4 != 0 && object.availabilityZones != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("availability_zone")
-		stream.WriteString(object.availabilityZone)
+		stream.WriteObjectField("availability_zones")
+		writeStringList(object.availabilityZones, stream)
 		count++
 	}
 	present_ = object.bitmap_&8 != 0
@@ -136,9 +136,9 @@ func readCloudProviderData(iterator *jsoniter.Iterator) *CloudProviderData {
 			value := readGCP(iterator)
 			object.gcp = value
 			object.bitmap_ |= 2
-		case "availability_zone":
-			value := iterator.ReadString()
-			object.availabilityZone = value
+		case "availability_zones":
+			value := readStringList(iterator)
+			object.availabilityZones = value
 			object.bitmap_ |= 4
 		case "key_location":
 			value := iterator.ReadString()
