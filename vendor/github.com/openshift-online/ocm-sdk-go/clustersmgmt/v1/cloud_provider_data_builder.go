@@ -23,14 +23,14 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Description of a cloud provider data used for cloud provider inquiries.
 type CloudProviderDataBuilder struct {
-	bitmap_          uint32
-	aws              *AWSBuilder
-	gcp              *GCPBuilder
-	availabilityZone string
-	keyLocation      string
-	keyRingName      string
-	region           *CloudRegionBuilder
-	version          *VersionBuilder
+	bitmap_           uint32
+	aws               *AWSBuilder
+	gcp               *GCPBuilder
+	availabilityZones []string
+	keyLocation       string
+	keyRingName       string
+	region            *CloudRegionBuilder
+	version           *VersionBuilder
 }
 
 // NewCloudProviderData creates a new builder of 'cloud_provider_data' objects.
@@ -69,11 +69,12 @@ func (b *CloudProviderDataBuilder) GCP(value *GCPBuilder) *CloudProviderDataBuil
 	return b
 }
 
-// AvailabilityZone sets the value of the 'availability_zone' attribute to the given value.
+// AvailabilityZones sets the value of the 'availability_zones' attribute to the given values.
 //
 //
-func (b *CloudProviderDataBuilder) AvailabilityZone(value string) *CloudProviderDataBuilder {
-	b.availabilityZone = value
+func (b *CloudProviderDataBuilder) AvailabilityZones(values ...string) *CloudProviderDataBuilder {
+	b.availabilityZones = make([]string, len(values))
+	copy(b.availabilityZones, values)
 	b.bitmap_ |= 4
 	return b
 }
@@ -138,7 +139,12 @@ func (b *CloudProviderDataBuilder) Copy(object *CloudProviderData) *CloudProvide
 	} else {
 		b.gcp = nil
 	}
-	b.availabilityZone = object.availabilityZone
+	if object.availabilityZones != nil {
+		b.availabilityZones = make([]string, len(object.availabilityZones))
+		copy(b.availabilityZones, object.availabilityZones)
+	} else {
+		b.availabilityZones = nil
+	}
 	b.keyLocation = object.keyLocation
 	b.keyRingName = object.keyRingName
 	if object.region != nil {
@@ -170,7 +176,10 @@ func (b *CloudProviderDataBuilder) Build() (object *CloudProviderData, err error
 			return
 		}
 	}
-	object.availabilityZone = b.availabilityZone
+	if b.availabilityZones != nil {
+		object.availabilityZones = make([]string, len(b.availabilityZones))
+		copy(object.availabilityZones, b.availabilityZones)
+	}
 	object.keyLocation = b.keyLocation
 	object.keyRingName = b.keyRingName
 	if b.region != nil {
