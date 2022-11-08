@@ -449,15 +449,6 @@ func getVersionList(ocmClient *ocm.Client) (versionList []string, err error) {
 	return
 }
 
-func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
-	roleName, err := aws.GetResourceIdFromARN(roleARN)
-	if err != nil {
-		return "", err
-	}
-	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
-	return rolePrefix, nil
-}
-
 func getRolePrefix(clusterName string) string {
 	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
 }
