@@ -433,13 +433,14 @@ func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
 	return nil
 }
 
-func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, error) {
-	roleARNs := []string{}
+func (c *awsClient) FindAccRoleArnBundles(version string) (map[string]map[string]string, error) {
+	roleARNs := make(map[string]map[string]string)
 	roles, err := c.ListRoles()
 	if err != nil {
 		return roleARNs, err
 	}
-	prefixesMap := make(map[string]int)
+	prefixesCountMap := make(map[string]int)
+	prefixesARNMap := make(map[string]map[string]string)
 	for _, role := range roles {
 		matches := PrefixAccRoleRE.FindStringSubmatch(*role.RoleName)
 		index := PrefixAccRoleRE.SubexpIndex("Prefix")
@@ -447,15 +448,13 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 			continue
 		}
 		foundPrefix := matches[index]
-		if _, ok := prefixesMap[foundPrefix]; !ok {
-			prefixesMap[foundPrefix] = 0
+		if _, ok := prefixesCountMap[foundPrefix]; !ok {
+			prefixesCountMap[foundPrefix] = 0
+			prefixesARNMap[foundPrefix] = make(map[string]string)
 		}
-		prefixesMap[foundPrefix]++
+		prefixesCountMap[foundPrefix]++
 		index = PrefixAccRoleRE.SubexpIndex("Type")
 		foundType := matches[index]
-		if foundType == "" || foundType != AccountRoles[roleType].Name {
-			continue
-		}
 		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
 			RoleName: role.RoleName,
 		})
@@ -469,10 +468,6 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 			switch aws.StringValue(tag.Key) {
 			case tags.RoleType:
 				isTagged = true
-				if tagValue != roleType {
-					skip = true
-					break
-				}
 			case tags.OpenShiftVersion:
 				isTagged = true
 				clusterVersion, err := semver.NewVersion(version)
@@ -492,12 +487,13 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 			}
 		}
 		if isTagged && !skip {
-			prefixesMap[foundPrefix]++
+			prefixesCountMap[foundPrefix]++
+			prefixesARNMap[foundPrefix][foundType] = *role.Arn
 		}
 	}
-	for key, value := range prefixesMap {
-		if value == len(AccountRoles)+1 {
-			roleARNs = append(roleARNs, fmt.Sprintf("%s-Installer-Role", key))
+	for key, value := range prefixesCountMap {
+		if value == len(AccountRoles)*2 {
+			roleARNs[key] = prefixesARNMap[key]
 		}
 	}
 	return roleARNs, nil

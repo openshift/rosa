@@ -21,6 +21,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -315,78 +316,38 @@ func run(cmd *cobra.Command, argv []string) {
 
 	role := aws.AccountRoles[aws.InstallerAccountRole]
 
-	roleARNs, err := r.AWSClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+	// Find all installer roles in the current account using AWS resource tags
+	currentArnBundles, err := r.AWSClient.FindAccRoleArnBundles(minor)
 	if err != nil {
 		r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 		os.Exit(1)
 	}
 
-	if len(roleARNs) > 1 {
-		defaultRoleARN := roleARNs[0]
-		// Prioritize roles with the default prefix
-		for _, rARN := range roleARNs {
-			if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)) {
-				defaultRoleARN = rARN
-			}
-		}
-		r.Reporter.Warnf("More than one %s role found, using %q", role.Name, defaultRoleARN)
-		roleARN = defaultRoleARN
-	} else if len(roleARNs) == 1 {
-		if !output.HasFlag() || r.Reporter.IsTerminal() {
-			r.Reporter.Infof("Using %q for the %s role", roleARNs[0], role.Name)
-		}
-		roleARN = roleARNs[0]
-	} else {
-		r.Reporter.Errorf("No account roles found. " +
+	if len(currentArnBundles) == 0 {
+		r.Reporter.Warnf("No account roles found. " +
 			"You will need to run 'rosa create account-roles' to create them first.")
 		os.Exit(1)
-	}
-
-	if roleARN != "" {
-		// Get role prefix
-		rolePrefix, err := getAccountRolePrefix(roleARN, role)
-		if err != nil {
-			r.Reporter.Errorf("Failed to find prefix from %q account role", role.Name)
-			os.Exit(1)
+	} else {
+		possibleBundles := make([]string, 0, 1)
+		for key := range currentArnBundles {
+			possibleBundles = append(possibleBundles, key)
 		}
-		r.Reporter.Debugf("Using %q as the role prefix", rolePrefix)
-
-		for roleType, role := range aws.AccountRoles {
-			if roleType == aws.InstallerAccountRole {
-				// Already dealt with
-				continue
-			}
-			roleARNs, err := r.AWSClient.FindRoleARNs(roleType, minor)
-			if err != nil {
-				r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
-				os.Exit(1)
-			}
-			selectedARN := ""
-			for _, rARN := range roleARNs {
-				if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name)) {
-					selectedARN = rARN
-				}
-			}
-			if selectedARN == "" {
-				r.Reporter.Errorf("No %s account roles found. "+
-					"You will need to run 'rosa create account-roles' to create them first.",
-					role.Name)
-				os.Exit(1)
-			}
+		sort.Strings(possibleBundles)
+		chosenBundle := possibleBundles[0]
+		if len(currentArnBundles) == 1 {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
-				r.Reporter.Infof("Using %q for the %s role", selectedARN, role.Name)
+				r.Reporter.Infof("Using roles prefixed with '%s'", chosenBundle)
 			}
-			switch roleType {
-			case aws.InstallerAccountRole:
-				roleARN = selectedARN
-			case aws.SupportAccountRole:
-				supportRoleARN = selectedARN
-			case aws.ControlPlaneAccountRole:
-				controlPlaneRoleARN = selectedARN
-			case aws.WorkerAccountRole:
-				workerRoleARN = selectedARN
+		} else {
+			// Prioritize roles with the default prefix
+			if _, ok := currentArnBundles[aws.DefaultPrefix]; ok {
+				chosenBundle = aws.DefaultPrefix
 			}
 		}
+		roleARN = currentArnBundles[chosenBundle][aws.AccountRoles[aws.InstallerAccountRole].Name]
+		supportRoleARN = currentArnBundles[chosenBundle][aws.AccountRoles[aws.SupportAccountRole].Name]
+		controlPlaneRoleARN = currentArnBundles[chosenBundle][aws.AccountRoles[aws.ControlPlaneAccountRole].Name]
+		workerRoleARN = currentArnBundles[chosenBundle][aws.AccountRoles[aws.WorkerAccountRole].Name]
 	}
 
 	args.AwsRoleARN = roleARN
