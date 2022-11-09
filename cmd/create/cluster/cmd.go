@@ -30,6 +30,7 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/spf13/cobra"
@@ -766,11 +767,24 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS && roleARN == "" {
 		minor := ocm.GetVersionMinor(version)
 
+		var spin *spinner.Spinner
+		if r.Reporter.IsTerminal() {
+			spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		}
+		if spin != nil {
+			if !output.HasFlag() && r.Reporter.IsTerminal() {
+				r.Reporter.Infof("Fetching acc roles for the aws account: %s", awsCreator.AccountID)
+			}
+			spin.Start()
+		}
 		// Find all installer roles in the current account using AWS resource tags
 		currentArnBundles, err := awsClient.FindAccRoleArnBundles(minor)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find account role bundles: %s", err)
 			os.Exit(1)
+		}
+		if spin != nil {
+			spin.Stop()
 		}
 
 		if len(currentArnBundles) == 0 {
