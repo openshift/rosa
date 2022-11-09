@@ -780,8 +780,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			possibleBundles := make([]string, 0, 1)
 			for key := range currentArnBundles {
-				possibleBundles = append(possibleBundles,
-					fmt.Sprintf("%s|%s", key, currentArnBundles[key][aws.AccountRoles[aws.InstallerAccountRole].Name]))
+				possibleBundles = append(possibleBundles, key)
 			}
 			sort.Strings(possibleBundles)
 			chosenBundle := possibleBundles[0]
@@ -799,7 +798,7 @@ func run(cmd *cobra.Command, _ []string) {
 					r.Reporter.Infof("Using roles prefixed with '%s'", chosenBundle)
 				} else {
 					chosenBundle, err = interactive.GetOption(interactive.Input{
-						Question: "Account role bundle",
+						Question: "Account role bundle prefix",
 						Options:  possibleBundles,
 						Default:  chosenBundle,
 						Required: true,
@@ -808,7 +807,6 @@ func run(cmd *cobra.Command, _ []string) {
 						r.Reporter.Errorf("Expected a valid bundle of ARNs: %s", err)
 						os.Exit(1)
 					}
-					chosenBundle = strings.Split(chosenBundle, "|")[0]
 				}
 			}
 			roleARN = currentArnBundles[chosenBundle][aws.AccountRoles[aws.InstallerAccountRole].Name]
@@ -816,6 +814,11 @@ func run(cmd *cobra.Command, _ []string) {
 			controlPlaneRoleARN = currentArnBundles[chosenBundle][aws.AccountRoles[aws.ControlPlaneAccountRole].Name]
 			workerRoleARN = currentArnBundles[chosenBundle][aws.AccountRoles[aws.WorkerAccountRole].Name]
 			hasRoles = true
+			if !output.HasFlag() && r.Reporter.IsTerminal() {
+				for _, role := range aws.AccountRoles {
+					r.Reporter.Infof("Using '%s' role as %s role", currentArnBundles[chosenBundle][role.Name], role.Name)
+				}
+			}
 		}
 	}
 
