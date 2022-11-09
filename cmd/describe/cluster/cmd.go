@@ -139,7 +139,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Print short cluster description:
-	str = fmt.Sprintf(""+
+	str = fmt.Sprintf("```\n"+
 		"Name:                       %s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
@@ -289,9 +289,25 @@ func run(cmd *cobra.Command, argv []string) {
 			cluster.Status().ProvisionErrorMessage(),
 		)
 	}
+
+	limitedSupportReasons, err := r.OCMClient.GetLimitedSupportReasons(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get limited support reasons for cluster '%s': %v", cluster.ID(), err)
+		os.Exit(1)
+	}
+	if len(limitedSupportReasons) > 0 {
+		str = fmt.Sprintf("%s"+"Limited Support:\n", str)
+	}
+	for _, reason := range limitedSupportReasons {
+		str = fmt.Sprintf("%s"+
+			" - Summary:                 %s\n"+
+			" - Details:                 %s\n",
+			str, reason.Summary(), reason.Details())
+	}
+	str = fmt.Sprintf("%s"+"```\n", str)
+
 	// Print short cluster description:
 	fmt.Print(str)
-	fmt.Println()
 }
 
 func controlPlaneConfig(cluster *cmv1.Cluster) string {
