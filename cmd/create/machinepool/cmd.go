@@ -414,9 +414,18 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+
+	// Determine machine pool availability zones to filter supported machine types
+	availabilityZonesFilter, err := getMachinePoolAvailabilityZones(r, cluster, multiAZMachinePool, availabilityZone,
+		subnet)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	// Machine pool instance type:
 	instanceType := args.instanceType
-	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
+	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(), availabilityZonesFilter,
 		cluster.AWS().STS().RoleARN(), r.AWSClient)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
@@ -594,6 +603,28 @@ func run(cmd *cobra.Command, _ []string) {
 
 func Split(r rune) bool {
 	return r == '=' || r == ':'
+}
+
+// getMachinePoolAvailabilityZones derives the availability zone from the user input or the cluster spec
+func getMachinePoolAvailabilityZones(r *rosa.Runtime, cluster *cmv1.Cluster, multiAZMachinePool bool,
+	availabilityZoneUserInput string, subnetUserInput string) ([]string, error) {
+	// Single AZ machine pool for a multi-AZ cluster
+	if cluster.MultiAZ() && !multiAZMachinePool && availabilityZoneUserInput != "" {
+		return []string{availabilityZoneUserInput}, nil
+	}
+
+	// Single AZ machine pool for a BYOVPC cluster
+	if subnetUserInput != "" {
+		availabilityZone, err := r.AWSClient.GetSubnetAvailabilityZone(subnetUserInput)
+		if err != nil {
+			return []string{}, err
+		}
+
+		return []string{availabilityZone}, nil
+	}
+
+	// Default option of cluster's nodes availability zones
+	return cluster.Nodes().AvailabilityZones(), nil
 }
 
 func minReplicaValidator(multiAZMachinePool bool) interactive.Validator {
