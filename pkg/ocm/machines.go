@@ -118,11 +118,14 @@ func (mt MachineType) HasQuota(multiAZ bool) bool {
 // GetAvailableMachineTypesInRegion get the supported machine type in the region.
 // The function triggers the 'api/clusters_mgmt/v1/aws_inquiries/machine_types'
 // and passes a role ARN for STS clusters or access keys for non-STS clusters.
-func (c *Client) GetAvailableMachineTypesInRegion(region string, roleARN string,
+func (c *Client) GetAvailableMachineTypesInRegion(region string, availabilityZones []string, roleARN string,
 	awsClient aws.Client) (MachineTypeList, error) {
 	cloudProviderDataBuilder, err := c.createCloudProviderDataBuilder(roleARN, awsClient, "")
 	if err != nil {
 		return MachineTypeList{}, err
+	}
+	if len(availabilityZones) > 0 {
+		cloudProviderDataBuilder = cloudProviderDataBuilder.AvailabilityZones(availabilityZones...)
 	}
 	cloudProviderData, err := cloudProviderDataBuilder.Region(cmv1.NewCloudRegion().ID(region)).Build()
 	if err != nil {

@@ -91,6 +91,7 @@ type Client interface {
 	GetCreator() (*Creator, error)
 	ValidateSCP(*string, map[string]string) (bool, error)
 	GetSubnetIDs() ([]*ec2.Subnet, error)
+	GetSubnetAvailabilityZone(subnetID string) (string, error)
 	GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error)
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
@@ -363,6 +364,18 @@ func (c *awsClient) GetRegion() string {
 
 func (c *awsClient) GetSubnetIDs() ([]*ec2.Subnet, error) {
 	return c.getSubnetIDs(&ec2.DescribeSubnetsInput{})
+}
+
+func (c *awsClient) GetSubnetAvailabilityZone(subnetID string) (string, error) {
+	res, err := c.ec2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{SubnetIds: []*string{aws.String(subnetID)}})
+	if err != nil {
+		return "", err
+	}
+	if len(res.Subnets) < 1 {
+		return "", fmt.Errorf("Failed to get subnet with ID '%s'", subnetID)
+	}
+
+	return *res.Subnets[0].AvailabilityZone, nil
 }
 
 func (c *awsClient) GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error) {

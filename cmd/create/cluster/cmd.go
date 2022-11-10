@@ -1523,7 +1523,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
-	computeMachineTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(region, roleARN, awsClient)
+	computeMachineTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(region, availabilityZones, roleARN,
+		awsClient)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
