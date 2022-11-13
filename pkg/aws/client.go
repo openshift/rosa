@@ -143,6 +143,7 @@ type Client interface {
 	IsUserRole(roleName *string) (bool, error)
 	GetRoleARNPath(prefix string) (string, error)
 	DescribeAvailabilityZones() ([]string, error)
+	IsLocalAvailabilityZone(availabilityZoneName string) (bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -849,6 +850,19 @@ func (c *awsClient) DescribeAvailabilityZones() ([]string, error) {
 	}
 
 	return availabilityZones, nil
+}
+
+func (c *awsClient) IsLocalAvailabilityZone(availabilityZoneName string) (bool, error) {
+	availabilityZones, err := c.ec2Client.DescribeAvailabilityZones(
+		&ec2.DescribeAvailabilityZonesInput{ZoneNames: []*string{aws.String(availabilityZoneName)}})
+	if err != nil {
+		return false, err
+	}
+	if len(availabilityZones.AvailabilityZones) < 1 {
+		return false, fmt.Errorf("Failed to find availability zone '%s'", availabilityZoneName)
+	}
+
+	return aws.StringValue(availabilityZones.AvailabilityZones[0].ZoneType) == "local-zone", nil
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
