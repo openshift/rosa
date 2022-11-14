@@ -510,7 +510,21 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if !isSpotSet && !isSpotMaxPriceSet && interactive.Enabled() {
+	// Validate spot instance are supported
+	var isLocalZone bool
+	if subnet != "" {
+		isLocalZone, err = r.AWSClient.IsLocalAvailabilityZone(availabilityZonesFilter[0])
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+	if isLocalZone && useSpotInstances {
+		r.Reporter.Errorf("Spot instances are not supported for local zones")
+		os.Exit(1)
+	}
+
+	if !isSpotSet && !isSpotMaxPriceSet && !isLocalZone && interactive.Enabled() {
 		useSpotInstances, err = interactive.GetBool(interactive.Input{
 			Question: "Use spot instances",
 			Help:     cmd.Flags().Lookup("use-spot-instances").Usage,
