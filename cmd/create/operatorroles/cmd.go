@@ -133,7 +133,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	prefix, err := aws.GetPrefixFromAccountRole(cluster)
+	prefix, err := aws.GetPrefixFromInstallerAccountRole(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Failed to find prefix from %s account role", aws.InstallerAccountRole)
 		os.Exit(1)
@@ -176,7 +176,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	roleName, err := aws.GetAccountRoleName(cluster)
+	roleName, err := aws.GetInstallerAccountRoleName(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
@@ -219,12 +219,17 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	operatorRolePolicyPrefix, err := aws.GetOperatorRolePolicyPrefixFromCluster(cluster, r.AWSClient)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 		}
-		err = createRoles(r, prefix, permissionsBoundary, cluster,
+		err = createRoles(r, operatorRolePolicyPrefix, permissionsBoundary, cluster,
 			accountRoleVersion, policies, defaultPolicyVersion, credRequests)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the operator roles: %s", err)
@@ -244,7 +249,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Response:  ocm.Success,
 		})
 	case aws.ModeManual:
-		commands, err := buildCommands(r, env, prefix, permissionsBoundary, defaultPolicyVersion,
+		commands, err := buildCommands(r, env, operatorRolePolicyPrefix, permissionsBoundary, defaultPolicyVersion,
 			cluster, policies, credRequests)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
@@ -304,11 +309,11 @@ func createRoles(r *rosa.Runtime,
 
 		policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
 			defaultVersion, map[string]string{
-				tags.OpenShiftVersion: accountRoleVersion,
-				tags.RolePrefix:       prefix,
-				tags.RedHatManaged:    "true",
-				"operator_namespace":  operator.Namespace(),
-				"operator_name":       operator.Name(),
+				tags.OpenShiftVersion:  accountRoleVersion,
+				tags.RolePrefix:        prefix,
+				tags.RedHatManaged:     "true",
+				tags.OperatorNamespace: operator.Namespace(),
+				tags.OperatorName:      operator.Name(),
 			}, path)
 		if err != nil {
 			return err
@@ -323,10 +328,10 @@ func createRoles(r *rosa.Runtime,
 
 		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
 			map[string]string{
-				tags.ClusterID:       cluster.ID(),
-				"operator_namespace": operator.Namespace(),
-				"operator_name":      operator.Name(),
-				tags.RedHatManaged:   "true",
+				tags.ClusterID:         cluster.ID(),
+				tags.OperatorNamespace: operator.Namespace(),
+				tags.OperatorName:      operator.Name(),
+				tags.RedHatManaged:     "true",
 			}, path)
 		if err != nil {
 			return err
@@ -377,7 +382,7 @@ func buildCommands(r *rosa.Runtime, env string,
 		}
 		policyARN := getPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
 
-		name := aws.GetPolicyName(prefix, operator.Namespace(), operator.Name())
+		name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 		_, err = r.AWSClient.IsPolicyExists(policyARN)
 		if err != nil {
 			iamTags := map[string]string{

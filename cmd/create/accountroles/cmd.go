@@ -324,7 +324,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 	commands := []string{}
 
 	for file, role := range aws.AccountRoles {
-		name := aws.GetRoleName(prefix, role.Name)
+		accRoleName := aws.GetRoleName(prefix, role.Name)
 		iamTags := map[string]string{
 			tags.OpenShiftVersion: defaultPolicyVersion,
 			tags.RolePrefix:       prefix,
@@ -334,14 +334,14 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 
 		createRole := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreateRole).
-			AddParam(awscb.RoleName, name).
+			AddParam(awscb.RoleName, accRoleName).
 			AddParam(awscb.AssumeRolePolicyDocument, fmt.Sprintf("file://sts_%s_trust_policy.json", file)).
 			AddParam(awscb.PermissionsBoundary, permissionsBoundary).
 			AddTags(iamTags).
 			AddParam(awscb.Path, path).
 			Build()
 
-		policyName := fmt.Sprintf("%s-Policy", name)
+		policyName := aws.GetPolicyName(accRoleName)
 		createPolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreatePolicy).
 			AddParam(awscb.PolicyName, policyName).
@@ -352,8 +352,8 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 
 		attachRolePolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.AttachRolePolicy).
-			AddParam(awscb.RoleName, name).
-			AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, policyName, path)).
+			AddParam(awscb.RoleName, accRoleName).
+			AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, accRoleName, path)).
 			Build()
 
 		commands = append(commands, createRole, createPolicy, attachRolePolicy)
@@ -367,9 +367,9 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 	path string) error {
 
 	for file, role := range aws.AccountRoles {
-		name := aws.GetRoleName(prefix, role.Name)
-		policyARN := aws.GetPolicyARN(r.Creator.AccountID, fmt.Sprintf("%s-Policy", name), path)
-		if !confirm.Prompt(true, "Create the '%s' role?", name) {
+		accRoleName := aws.GetRoleName(prefix, role.Name)
+		policyARN := aws.GetPolicyARN(r.Creator.AccountID, accRoleName, path)
+		if !confirm.Prompt(true, "Create the '%s' role?", accRoleName) {
 			continue
 		}
 
@@ -380,8 +380,8 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 			"partition":      aws.GetPartition(),
 			"aws_account_id": aws.GetJumpAccount(env),
 		})
-		r.Reporter.Debugf("Creating role '%s'", name)
-		roleARN, err := r.AWSClient.EnsureRole(name, policy, permissionsBoundary,
+		r.Reporter.Debugf("Creating role '%s'", accRoleName)
+		roleARN, err := r.AWSClient.EnsureRole(accRoleName, policy, permissionsBoundary,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion: defaultPolicyVersion,
 				tags.RolePrefix:       prefix,
@@ -391,7 +391,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 		if err != nil {
 			return err
 		}
-		r.Reporter.Infof("Created role '%s' with ARN '%s'", name, roleARN)
+		r.Reporter.Infof("Created role '%s' with ARN '%s'", accRoleName, roleARN)
 
 		filename = fmt.Sprintf("sts_%s_permission_policy", file)
 		policyDetail = policies[filename]
@@ -408,7 +408,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 			return err
 		}
 		r.Reporter.Debugf("Attaching permission policy to role '%s'", filename)
-		err = r.AWSClient.AttachRolePolicy(name, policyARN)
+		err = r.AWSClient.AttachRolePolicy(accRoleName, policyARN)
 		if err != nil {
 			return err
 		}

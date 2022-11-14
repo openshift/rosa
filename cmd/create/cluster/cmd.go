@@ -2448,5 +2448,5 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 }
 
 func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
+	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
 }

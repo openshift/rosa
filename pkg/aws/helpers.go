@@ -369,7 +369,7 @@ func GetUserRoleName(prefix string, role string, userName string) string {
 	return name
 }
 
-func GetPolicyName(prefix string, namespace string, name string) string {
+func GetOperatorPolicyName(prefix string, namespace string, name string) string {
 	policy := fmt.Sprintf("%s-%s-%s", prefix, namespace, name)
 	if len(policy) > 64 {
 		policy = policy[0:64]
@@ -377,17 +377,41 @@ func GetPolicyName(prefix string, namespace string, name string) string {
 	return policy
 }
 
+func GetAdminPolicyName(name string) string {
+	return fmt.Sprintf("%s-Admin-Policy", name)
+}
+
+func GetPolicyName(name string) string {
+	return fmt.Sprintf("%s-Policy", name)
+}
+
 func GetOperatorPolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
-	return GetPolicyARN(accountID, GetPolicyName(prefix, namespace, name), path)
+	return getPolicyARN(accountID, GetOperatorPolicyName(prefix, namespace, name), path)
+}
+
+func GetAdminPolicyARN(accountID string, name string, path string) string {
+	return getPolicyARN(accountID, GetAdminPolicyName(name), path)
 }
 
 func GetPolicyARN(accountID string, name string, path string) string {
+	return getPolicyARN(accountID, GetPolicyName(name), path)
+}
+
+func getPolicyARN(accountID string, name string, path string) string {
 	str := fmt.Sprintf("arn:aws:iam::%s:policy", accountID)
 	if path != "" {
 		str = fmt.Sprintf("%s%s", str, path)
 		return fmt.Sprintf("%s%s", str, name)
 	}
 	return fmt.Sprintf("%s/%s", str, name)
+}
+
+func GetPathFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
+	accRoles := GetAccountRolesArnsMap(cluster)
+	if accRoles[roleNameSuffix] == "" {
+		return "", nil
+	}
+	return GetPathFromARN(accRoles[roleNameSuffix])
 }
 
 func GetPathFromARN(arnStr string) (string, error) {
@@ -430,14 +454,17 @@ func GetPartition() string {
 	return partition.ID()
 }
 
-func GetPrefixFromAccountRole(cluster *cmv1.Cluster) (string, error) {
-	role := AccountRoles[InstallerAccountRole]
-	roleName, err := GetAccountRoleName(cluster)
+func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
+	roleName, err := GetAccountRoleName(cluster, roleNameSuffix)
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", roleNameSuffix))
 	return rolePrefix, nil
+}
+
+func GetPrefixFromInstallerAccountRole(cluster *cmv1.Cluster) (string, error) {
+	return GetPrefixFromAccountRole(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
 // Role names can be truncated if they are over 64 chars, so we need to make sure we aren't missing a truncated suffix
@@ -457,8 +484,80 @@ func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
 	return rolePrefix
 }
 
-func GetAccountRoleName(cluster *cmv1.Cluster) (string, error) {
-	return GetResourceIdFromARN(cluster.AWS().STS().RoleARN())
+func GetOperatorRolePolicyPrefixFromCluster(cluster *cmv1.Cluster, awsClient Client) (string, error) {
+	installerRolePrefix, err := GetPrefixFromInstallerAccountRole(cluster)
+	if err != nil {
+		return "", err
+	}
+	// Check if installer role prefix follows standard
+	installerRoleName, err := GetResourceIdFromARN(cluster.AWS().STS().RoleARN())
+	if err != nil {
+		return "", err
+	}
+	hasStandardAccRole := installerRolePrefix != installerRoleName
+	if hasStandardAccRole {
+		return installerRolePrefix, nil
+	}
+
+	// If is non standard try to find most common operator policy prefix from current attached policies
+	operatorRoles := cluster.AWS().STS().OperatorIAMRoles()
+	policyPrefixCountMap := make(map[string]int)
+	for _, operatorRole := range operatorRoles {
+		roleName, _ := GetResourceIdFromARN(operatorRole.RoleARN())
+		policiesDetails, err := awsClient.GetAttachedPolicy(&roleName)
+		if err != nil {
+			return "", err
+		}
+		attachedPoliciesDetail := FindAllAttachedPolicyDetails(policiesDetails)
+		for _, attachedPolicyDetail := range attachedPoliciesDetail {
+			index := strings.LastIndex(attachedPolicyDetail.PolicyName, "-openshift")
+			if index != -1 {
+				policyPrefix := attachedPolicyDetail.PolicyName[0:index]
+				if _, ok := policyPrefixCountMap[policyPrefix]; !ok {
+					policyPrefixCountMap[policyPrefix] = 0
+				}
+				policyPrefixCountMap[policyPrefix]++
+			}
+		}
+	}
+	rankedPolicyPrefix := helper.RankMapStringInt(policyPrefixCountMap)
+	if len(rankedPolicyPrefix) != 0 {
+		return rankedPolicyPrefix[0], nil
+	}
+
+	// If no commonly used prefix is found use operator role prefix
+	operatorRoleName, err := GetResourceIdFromARN(operatorRoles[0].RoleARN())
+	if err != nil {
+		return "", err
+	}
+	index := strings.LastIndex(operatorRoleName, "-openshift")
+	if index != -1 {
+		return operatorRoleName[0:index], nil
+	}
+
+	// If nothing works setup a new prefix from name and random label so as to not interrupt user flow
+	return fmt.Sprintf("%s-%s", cluster.Name(), helper.RandomLabel(4)), nil
+}
+
+func GetAccountRolesArnsMap(cluster *cmv1.Cluster) map[string]string {
+	return map[string]string{
+		AccountRoles[InstallerAccountRole].Name:    cluster.AWS().STS().RoleARN(),
+		AccountRoles[SupportAccountRole].Name:      cluster.AWS().STS().SupportRoleARN(),
+		AccountRoles[ControlPlaneAccountRole].Name: cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN(),
+		AccountRoles[WorkerAccountRole].Name:       cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN(),
+	}
+}
+
+func GetAccountRoleName(cluster *cmv1.Cluster, accountRole string) (string, error) {
+	accRoles := GetAccountRolesArnsMap(cluster)
+	if accRoles[accountRole] == "" {
+		return "", nil
+	}
+	return GetResourceIdFromARN(accRoles[accountRole])
+}
+
+func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
+	return GetAccountRoleName(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
@@ -528,7 +627,7 @@ func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
-			name := GetPolicyName(prefix, operator.Namespace(), operator.Name())
+			name := GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := map[string]string{
 				tags.OpenShiftVersion:  defaultPolicyVersion,
 				tags.RolePrefix:        prefix,
@@ -566,19 +665,59 @@ func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client
 	return commands
 }
 
-func UpggradeOperatorRolePolicies(reporter *rprtr.Object, awsClient Client, accountID string,
-	prefix string, policies map[string]string, defaultPolicyVersion string,
-	credRequests map[string]*cmv1.STSOperator, path string) error {
+func HasMoreThanOneAttachedPolicy(policiesDetails []PolicyDetail) bool {
+	return countAttachedPoliciesInDetails(policiesDetails) > 1
+}
+
+func countAttachedPoliciesInDetails(policiesDetails []PolicyDetail) int {
+	totalAttachedPolicies := 0
+	for _, policy := range policiesDetails {
+		if policy.PolicType == Attached {
+			totalAttachedPolicies++
+		}
+	}
+	return totalAttachedPolicies
+}
+
+func FindAllAttachedPolicyDetails(policiesDetails []PolicyDetail) []PolicyDetail {
+	attachedPolicies := make([]PolicyDetail, 0)
+	for _, policy := range policiesDetails {
+		if policy.PolicType == Attached {
+			attachedPolicies = append(attachedPolicies, policy)
+		}
+	}
+	return attachedPolicies
+}
+
+func FindFirstAttachedPolicy(policiesDetails []PolicyDetail) PolicyDetail {
+	for _, policy := range policiesDetails {
+		if policy.PolicType == Attached {
+			return policy
+		}
+	}
+	return PolicyDetail{}
+}
+
+func UpgradeOperatorRolePolicies(
+	reporter *rprtr.Object,
+	awsClient Client,
+	accountID string,
+	prefix string,
+	policies map[string]string,
+	defaultPolicyVersion string,
+	credRequests map[string]*cmv1.STSOperator,
+	path string,
+) error {
 	for credrequest, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: defaultPolicyVersion,
-				tags.RolePrefix:       prefix,
-				"operator_namespace":  operator.Namespace(),
-				"operator_name":       operator.Name(),
+				tags.OpenShiftVersion:  defaultPolicyVersion,
+				tags.RolePrefix:        prefix,
+				tags.OperatorNamespace: operator.Namespace(),
+				tags.OperatorName:      operator.Name(),
 			}, path)
 		if err != nil {
 			return err
@@ -618,4 +757,13 @@ func GetResourceIdFromARN(stringARN string) (string, error) {
 	}
 
 	return parsedARN.Resource[index+1:], nil
+}
+
+func FindOperatorRoleBySTSOperator(operatorRoles []*cmv1.OperatorIAMRole, operator *cmv1.STSOperator) string {
+	for _, operatorRole := range operatorRoles {
+		if operatorRole.Name() == operator.Name() && operatorRole.Namespace() == operator.Namespace() {
+			return operatorRole.RoleARN()
+		}
+	}
+	return ""
 }

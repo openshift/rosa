@@ -27,6 +27,17 @@ import (
 
 var clusterKey string
 
+func AddOptionalClusterFlag(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(
+		&clusterKey,
+		"cluster",
+		"c",
+		"",
+		"Name or ID of the cluster.",
+	)
+	cmd.RegisterFlagCompletionFunc("cluster", clusterCompletion)
+}
+
 func AddClusterFlag(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(
 		&clusterKey,
