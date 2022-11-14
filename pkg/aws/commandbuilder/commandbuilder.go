@@ -90,16 +90,29 @@ func (b *CommandBuilder) AddParamNoValue(awsParam Param) *CommandBuilder {
 }
 
 func (b *CommandBuilder) Build() string {
+	serviceString := ""
+	if b.service != "" {
+		serviceString = string(b.service)
+	}
+
+	commandString := ""
+	if b.command != "" {
+		commandString = fmt.Sprintf(" %s%s", b.command, ParamNewLineSeparator)
+	}
+
+	paramsString := ""
 	if len(b.tags) != 0 {
 		b.AddParam(Tags, createTags(b.tags))
 	}
-	sort.Strings(b.params)
+	if len(b.params) != 0 {
+		sort.Strings(b.params)
+		paramsString = strings.Join(b.params, ParamNewLineSeparator)
+	}
 	return fmt.Sprintf(
-		"aws %s %s%s%s",
-		b.service,
-		b.command,
-		ParamNewLineSeparator,
-		strings.Join(b.params, ParamNewLineSeparator),
+		"aws %s%s%s",
+		serviceString,
+		commandString,
+		paramsString,
 	)
 }
 
