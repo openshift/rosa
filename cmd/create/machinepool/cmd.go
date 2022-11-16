@@ -188,6 +188,17 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Initiate the AWS client with the cluster's region
+	var err error
+	r.AWSClient, err = aws.NewClient().
+		Region(cluster.Region().ID()).
+		Logger(r.Logger).
+		Build()
+	if err != nil {
+		r.Reporter.Errorf("Failed to create awsClient: %s", err)
+		os.Exit(1)
+	}
+
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
@@ -224,7 +235,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	var err error
 	// Machine pool name:
 	name := strings.Trim(args.name, " \t")
 	if name == "" && !interactive.Enabled() {
@@ -792,16 +802,8 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 
 // getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
 func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {
-	awsClient, err := aws.NewClient().
-		Region(cluster.Region().ID()).
-		Logger(r.Logger).
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create awsClient: %s", err)
-	}
-
 	// Fetch VPC's subnets
-	privateSubnets, err := awsClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
+	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
 	if err != nil {
 		return nil, err
 	}
