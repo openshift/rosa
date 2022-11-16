@@ -503,13 +503,13 @@ func (c *awsClient) FindPolicyARN(operator Operator, version string) (string, er
 		for _, tag := range listPolicyTagsOutput.Tags {
 			tagValue := aws.StringValue(tag.Value)
 			switch aws.StringValue(tag.Key) {
-			case "operator_namespace":
+			case tags.OperatorNamespace:
 				isTagged = true
 				if tagValue != operator.Namespace {
 					skip = true
 					break
 				}
-			case "operator_name":
+			case tags.OperatorName:
 				isTagged = true
 				if tagValue != operator.Name {
 					skip = true
@@ -1315,7 +1315,7 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 			}
 			return false, err
 		}
-		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(aws.StringValue(role.Role.RoleName),
+		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.StringValue(role.Role.RoleName),
 			version)
 
 		if err != nil {
@@ -1346,7 +1346,7 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesForCluster(cluster *cm
 			}
 			return false, err
 		}
-		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(aws.StringValue(role.RoleName),
+		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.StringValue(role.RoleName),
 			version)
 
 		if err != nil {
@@ -1385,12 +1385,35 @@ func (c *awsClient) AddRoleTag(roleName string, key string, value string) error 
 	return nil
 }
 
-func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluster, accountID string, version string) (
-	bool, error) {
-	for _, operator := range cluster.AWS().STS().OperatorIAMRoles() {
-		roleName, err := GetResourceIdFromARN(operator.RoleARN())
+func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
+	cluster *cmv1.Cluster,
+	accountID string,
+	version string,
+	credRequests map[string]*cmv1.STSOperator,
+	operatorRolePolicyPrefix string,
+) (bool, error) {
+	operatorRoles := cluster.AWS().STS().OperatorIAMRoles()
+	generalPath, err := GetPathFromARN(operatorRoles[0].RoleARN())
+	if err != nil {
+		return true, err
+	}
+	for _, operator := range credRequests {
+		operatorRoleARN := FindOperatorRoleBySTSOperator(operatorRoles, operator)
+		if operatorRoleARN == "" {
+			policyARN := GetOperatorPolicyARN(
+				accountID,
+				operatorRolePolicyPrefix,
+				operator.Namespace(),
+				operator.Name(),
+				generalPath,
+			)
+			policyExistsAndUpToDate, err := c.checkPolicyExistsAndUpToDate(policyARN, version)
+			return !policyExistsAndUpToDate, err
+		}
+
+		roleName, err := GetResourceIdFromARN(operatorRoleARN)
 		if err != nil {
-			return false, err
+			return true, err
 		}
 		_, err = c.iamClient.GetRole(&iam.GetRoleInput{
 			RoleName: aws.String(roleName),
@@ -1403,15 +1426,30 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluste
 						"cluster '%s'", roleName, cluster.ID())
 				}
 			}
-			return false, err
+			return true, err
 		}
-		isCompatible, err := c.validateRoleUpgradeVersionCompatibility(roleName, version)
+		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(roleName, version)
 		if err != nil {
-			return false, err
+			return true, err
 		}
 		if !isCompatible {
 			return true, nil
 		}
+	}
+	return false, nil
+}
+
+func (c *awsClient) validateRolePolicyUpgradeVersionCompatibility(roleName string,
+	version string) (bool, error) {
+	attachedPolicies, err := c.GetAttachedPolicy(aws.String(roleName))
+	if err != nil {
+		return false, err
+	}
+	for _, attachedPolicy := range attachedPolicies {
+		if attachedPolicy.PolicType == Inline {
+			continue
+		}
+		return c.isRolePolicyUpToDate(attachedPolicy.PolicyArn, version)
 	}
 	return false, nil
 }
@@ -1420,49 +1458,34 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix st
 	version string, credRequests map[string]*cmv1.STSOperator, path string) (bool, error) {
 	for _, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
-		_, err := c.IsPolicyExists(policyARN)
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					return true, nil
-				default:
-					return false, err
-				}
-			}
-		}
-		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(policyARN, version)
-		if err != nil {
-			return false, err
-		}
-		if !isCompatible {
-			return true, nil
-		}
+		existsAndUpToDate, err := c.checkPolicyExistsAndUpToDate(policyARN, version)
+		return !existsAndUpToDate, err
 	}
 	return false, nil
 }
 
-func (c *awsClient) validateRoleUpgradeVersionCompatibility(roleName string,
-	version string) (bool, error) {
-	attachedPolicies, err := c.GetAttachedPolicy(aws.String(roleName))
+func (c *awsClient) checkPolicyExistsAndUpToDate(policyARN string, policyVersion string) (bool, error) {
+	_, err := c.IsPolicyExists(policyARN)
 	if err != nil {
-		return false, err
-	}
-	isAttachedPolicyExists := false
-	for _, attachedPolicy := range attachedPolicies {
-		if attachedPolicy.PolicType == Inline {
-			continue
-		}
-		isAttachedPolicyExists = true
-		isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(attachedPolicy.PolicyArn, version)
-		if err != nil {
-			return false, errors.Errorf("Failed to validate role polices : %v", err)
-		}
-		if !isCompatible {
-			return false, nil
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				return false, nil
+			default:
+				return false, err
+			}
 		}
 	}
-	if !isAttachedPolicyExists {
+	isRoleUpToDate, err := c.isRolePolicyUpToDate(policyARN, policyVersion)
+	return isRoleUpToDate, err
+}
+
+func (c *awsClient) isRolePolicyUpToDate(policyARN string, policyVersion string) (bool, error) {
+	isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(policyARN, policyVersion)
+	if err != nil {
+		return false, errors.Errorf("Failed to validate role polices : %v", err)
+	}
+	if !isCompatible {
 		return false, nil
 	}
 	return true, nil

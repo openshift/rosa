@@ -300,7 +300,7 @@ func run(cmd *cobra.Command, argv []string) {
 func buildCommands(prefix string, roleName string, rolePath string, permissionsBoundary string,
 	accountID string, env string, isAdmin bool) string {
 	commands := []string{}
-	policyName := fmt.Sprintf("%s-Policy", roleName)
+	policyName := aws.GetPolicyName(roleName)
 	iamTags := map[string]string{
 		tags.RolePrefix:    prefix,
 		tags.RoleType:      aws.OCMRole,
@@ -335,12 +335,12 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 	attachRolePolicy := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.AttachRolePolicy).
 		AddParam(awscb.RoleName, roleName).
-		AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, policyName, rolePath)).
+		AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, roleName, rolePath)).
 		Build()
 
 	commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	if isAdmin {
-		policyName := fmt.Sprintf("%s-Admin-Policy", roleName)
+		policyName := aws.GetAdminPolicyName(roleName)
 
 		createAdminPolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreatePolicy).
@@ -353,7 +353,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 		attachRoleAdminPolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.AttachRolePolicy).
 			AddParam(awscb.RoleName, roleName).
-			AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, policyName, rolePath)).
+			AddParam(awscb.PolicyArn, aws.GetAdminPolicyARN(accountID, roleName, rolePath)).
 			Build()
 
 		commands = append(commands, createAdminPolicy, attachRoleAdminPolicy)
@@ -369,7 +369,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath string,
 	permissionsBoundary string, accountID string, orgID string, env string, isAdmin bool,
 	policies map[string]string) (string, error) {
-	policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName), rolePath)
+	policyARN := aws.GetPolicyARN(accountID, roleName, rolePath)
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
 	}
@@ -423,7 +423,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		}
 
 		// create and attach the admin policy to the role
-		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Admin-Policy", roleName), "")
+		policyARN := aws.GetAdminPolicyARN(accountID, roleName, "")
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMAdminRolePolicyFile)
 		iamTags[tags.AdminRole] = "true"
 		policyDetail = policies[filename]

@@ -20,13 +20,11 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	semver "github.com/hashicorp/go-version"
@@ -39,10 +37,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/helper"
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 const (
 	ANY                  = "any"
@@ -268,36 +262,6 @@ func (c *Client) isCapabilityEnabled(capabilityName string, orgID string) (bool,
 		}
 	}
 	return false, nil
-}
-
-// ASCII codes of important characters:
-const (
-	aCode    = 97
-	zCode    = 122
-	zeroCode = 48
-	nineCode = 57
-)
-
-// Number of letters and digits:
-const (
-	letterCount = zCode - aCode + 1
-	digitCount  = nineCode - zeroCode + 1
-)
-
-func RandomLabel(size int) string {
-	value := rand.Int() // #nosec G404
-	chars := make([]byte, size)
-	for size > 0 {
-		size--
-		if size%2 == 0 {
-			chars[size] = byte(aCode + value%letterCount)
-			value = value / letterCount
-		} else {
-			chars[size] = byte(zeroCode + value%digitCount)
-			value = value / digitCount
-		}
-	}
-	return string(chars)
 }
 
 func (c *Client) UnlinkUserRoleFromAccount(accountID string, roleARN string) error {
@@ -630,6 +594,8 @@ func (c *Client) createCloudProviderDataBuilder(roleARN string, awsClient aws.Cl
 
 func isOperatorRoleAlreadyExist(cluster *cmv1.Cluster, operator *cmv1.STSOperator) bool {
 	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
+		//FIXME: Check it does not exist on AWS itself too
+		// the iam roles will only return up to the version of the cluster
 		if role.Namespace() == operator.Namespace() && role.Name() == operator.Name() {
 			return true
 		}

@@ -30,6 +30,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -497,7 +498,7 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 }
 
 func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, ocm.RandomLabel(4))
+	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
 }
 
 func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {

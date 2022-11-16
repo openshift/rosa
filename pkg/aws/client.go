@@ -129,9 +129,20 @@ type Client interface {
 	GetInstanceProfilesForRole(role string) ([]string, error)
 	IsUpgradedNeededForAccountRolePolicies(rolePrefix string, version string) (bool, error)
 	IsUpgradedNeededForAccountRolePoliciesForCluster(clusterID *cmv1.Cluster, version string) (bool, error)
-	IsUpgradedNeededForOperatorRolePolicies(cluster *cmv1.Cluster, accountID string, version string) (bool, error)
-	IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(rolePrefix string, accountID string,
-		version string, credRequests map[string]*cmv1.STSOperator, path string) (bool, error)
+	IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
+		cluster *cmv1.Cluster,
+		accountID string,
+		version string,
+		credRequests map[string]*cmv1.STSOperator,
+		operatorRolePolicyPrefix string,
+	) (bool, error)
+	IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(
+		rolePrefix string,
+		accountID string,
+		version string,
+		credRequests map[string]*cmv1.STSOperator,
+		path string,
+	) (bool, error)
 	UpdateTag(roleName string, defaultPolicyVersion string) error
 	AddRoleTag(roleName string, key string, value string) error
 	IsPolicyCompatible(policyArn string, version string) (bool, error)
@@ -144,6 +155,7 @@ type Client interface {
 	GetRoleARNPath(prefix string) (string, error)
 	DescribeAvailabilityZones() ([]string, error)
 	IsLocalAvailabilityZone(availabilityZoneName string) (bool, error)
+	DetachRolePolicies(roleName string) error
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -230,7 +242,11 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey) (*s
 		Config: aws.Config{
 			CredentialsChainVerboseErrors: aws.Bool(true),
 			Region:                        b.region,
-			Credentials:                   credentials.NewStaticCredentials(value.AccessKeyID, value.SecretAccessKey, ""),
+			Credentials: credentials.NewStaticCredentials(
+				value.AccessKeyID,
+				value.SecretAccessKey,
+				"",
+			),
 		},
 	})
 }
@@ -863,6 +879,41 @@ func (c *awsClient) IsLocalAvailabilityZone(availabilityZoneName string) (bool, 
 	}
 
 	return aws.StringValue(availabilityZones.AvailabilityZones[0].ZoneType) == "local-zone", nil
+}
+
+func (c *awsClient) DetachRolePolicies(roleName string) error {
+	attachedPolicies := make([]*iam.AttachedPolicy, 0)
+	isTruncated := true
+	var marker *string
+	for isTruncated {
+		resp, err := c.iamClient.ListAttachedRolePolicies(
+			&iam.ListAttachedRolePoliciesInput{
+				Marker:   marker,
+				RoleName: &roleName,
+			},
+		)
+		if err != nil {
+			return err
+		}
+		isTruncated = *resp.IsTruncated
+		marker = resp.Marker
+		attachedPolicies = append(attachedPolicies, resp.AttachedPolicies...)
+	}
+	for _, attachedPolicy := range attachedPolicies {
+		err := c.detachRolePolicy(*attachedPolicy.PolicyArn, roleName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *awsClient) detachRolePolicy(policyArn string, roleName string) error {
+	_, err := c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{PolicyArn: &policyArn, RoleName: &roleName})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for

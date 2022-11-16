@@ -27,7 +27,9 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
+	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -36,16 +38,14 @@ import (
 )
 
 var args struct {
-	prefix                      string
-	isInvokedFromClusterUpgrade bool
-	clusterID                   string
-	version                     string
-	channelGroup                string
+	prefix       string
+	version      string
+	channelGroup string
 }
 
 var Cmd = &cobra.Command{
 	Use:     "account-roles",
-	Aliases: []string{"accountroles", "roles", "policies"},
+	Aliases: []string{"account-role", "accountroles", "policies"},
 	Short:   "Upgrade account-wide IAM roles to the latest version.",
 	Long:    "Upgrade account-wide IAM roles to the latest version before upgrading your cluster.",
 	Example: `  # Upgrade account roles for ROSA STS clusters
@@ -94,20 +94,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	awsClient := r.AWSClient
 	ocmClient := r.OCMClient
 
-	isInvokedFromClusterUpgrade := false
 	skipInteractive := false
-	if len(argv) >= 2 && !cmd.Flag("prefix").Changed {
-		args.prefix = argv[0]
-		aws.SetModeKey(argv[1])
-		if argv[1] != "" {
-			skipInteractive = true
-		}
-		if len(argv) > 2 && argv[2] != "" {
-			args.clusterID = argv[2]
-		}
-		isInvokedFromClusterUpgrade = true
-	}
-	args.isInvokedFromClusterUpgrade = isInvokedFromClusterUpgrade
 	mode, err := aws.GetMode()
 	if err != nil {
 		reporter.Errorf("%s", err)
@@ -143,15 +130,12 @@ func run(cmd *cobra.Command, argv []string) error {
 	if spin != nil {
 		spin.Start()
 	}
-	if !args.isInvokedFromClusterUpgrade {
-		reporter.Infof("Ensuring account role policies compatibility for upgrade")
-	}
+	reporter.Infof("Ensuring account role policies compatibility for upgrade")
 
-	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix,
-		policyVersion)
+	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix, policyVersion)
 	if err != nil {
 		reporter.Errorf("%s", err)
-		LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, policyVersion, err, reporter)
+		LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
 		os.Exit(1)
 	}
 
@@ -160,10 +144,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if !isUpgradeNeedForAccountRolePolicies {
-		if args.isInvokedFromClusterUpgrade {
-			return nil
-		}
-		reporter.Infof("Account role with the prefix '%s' is already up-to-date.", prefix)
+		reporter.Infof("Account roles with the prefix '%s' are already up-to-date.", prefix)
 		os.Exit(0)
 	}
 
@@ -200,15 +181,12 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	switch mode {
 	case aws.ModeAuto:
-		reporter.Infof("Starting to upgrade the policies")
 		if isUpgradeNeedForAccountRolePolicies {
+			reporter.Infof("Starting to upgrade the policies")
 			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
 				policyVersion, policyPath, isVersionChosen)
 			if err != nil {
-				LogError("ROSAUpgradeAccountRolesModeAuto", ocmClient, policyVersion, err, reporter)
-				if args.isInvokedFromClusterUpgrade {
-					return err
-				}
+				LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
 				reporter.Errorf("Error upgrading the role polices: %s", err)
 				os.Exit(1)
 			}
@@ -224,15 +202,10 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Infof("All policy files saved to the current directory")
 			reporter.Infof("Run the following commands to upgrade the account role policies:\n")
 		}
+
 		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
 			awsClient, policyVersion, policyPath)
 		fmt.Println(commands)
-		if args.isInvokedFromClusterUpgrade {
-			reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
-				" once account and operator roles have been upgraded : \n\n"+
-				"\trosa upgrade cluster --cluster %s\n", args.clusterID)
-			return nil
-		}
 
 	default:
 		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
@@ -261,14 +234,10 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 			promptString = fmt.Sprintf("Upgrade the '%s' role policy to version '%s' ?", roleName, policyVersion)
 		}
 		if !confirm.Prompt(true, promptString) {
-			if args.isInvokedFromClusterUpgrade {
-				return reporter.Errorf("Account roles need to be upgraded to proceed" +
-					"")
-			}
 			continue
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
-		policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", roleName), policyPath)
+		policyARN := aws.GetPolicyARN(accountID, roleName, policyPath)
 
 		policyDetails := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
@@ -309,68 +278,27 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
-			name := aws.GetRoleName(prefix, role.Name)
-			policyARN := aws.GetPolicyARN(accountID, fmt.Sprintf("%s-Policy", name), policyPath)
-			iamRoleTags := map[string]string{
-				tags.OpenShiftVersion: defaultPolicyVersion,
-			}
-
-			tagRole := awscb.NewIAMCommandBuilder().
-				SetCommand(awscb.TagRole).
-				AddTags(iamRoleTags).
-				AddParam(awscb.RoleName, name).
-				Build()
-			//check if the policy exists if not output create and attach
+			accRoleName := aws.GetRoleName(prefix, role.Name)
+			policyARN := aws.GetPolicyARN(accountID, accRoleName, policyPath)
 			_, err := awsClient.IsPolicyExists(policyARN)
-			if err != nil {
-				policyName := fmt.Sprintf("%s-Policy", name)
-				iamTags := map[string]string{
-					tags.OpenShiftVersion: defaultPolicyVersion,
-					tags.RolePrefix:       prefix,
-					tags.RoleType:         file,
-					tags.RedHatManaged:    "true",
-				}
-
-				createPolicy := awscb.NewIAMCommandBuilder().
-					SetCommand(awscb.CreatePolicy).
-					AddParam(awscb.PolicyName, policyName).
-					AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", file)).
-					AddTags(iamTags).
-					AddParam(awscb.Path, policyPath).
-					Build()
-
-				attachRolePolicy := awscb.NewIAMCommandBuilder().
-					SetCommand(awscb.AttachRolePolicy).
-					AddParam(awscb.RoleName, name).
-					AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, policyName, policyPath)).
-					Build()
-
-				_, _ = awsClient.IsRolePolicyExists(name, policyName)
-				if err != nil {
-					commands = append(commands, createPolicy, attachRolePolicy, tagRole)
-				} else {
-					deletePolicy := awscb.NewIAMCommandBuilder().
-						SetCommand(awscb.DeleteRolePolicy).
-						AddParam(awscb.RoleName, name).
-						AddParam(awscb.PolicyName, policyName).
-						Build()
-					commands = append(commands, createPolicy, attachRolePolicy, tagRole, deletePolicy)
-				}
-			} else {
-				createPolicyVersion := awscb.NewIAMCommandBuilder().
-					SetCommand(awscb.CreatePolicyVersion).
-					AddParam(awscb.PolicyArn, policyARN).
-					AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", file)).
-					AddParamNoValue(awscb.SetAsDefault).
-					Build()
-
-				tagPolicies := awscb.NewIAMCommandBuilder().
-					SetCommand(awscb.TagPolicy).
-					AddTags(iamRoleTags).
-					AddParam(awscb.PolicyArn, policyARN).
-					Build()
-				commands = append(commands, createPolicyVersion, tagPolicies, tagRole)
-			}
+			hasPolicy := err == nil
+			policyName := aws.GetPolicyName(accRoleName)
+			_, err = awsClient.IsRolePolicyExists(accRoleName, policyName)
+			hasInlinePolicy := err == nil
+			upgradeAccountPolicyCommands := awscbRoles.ManualCommandsForUpgradeAccountRolePolicy(
+				awscbRoles.ManualCommandsForUpgradeAccountRolePolicyInput{
+					DefaultPolicyVersion: defaultPolicyVersion,
+					RoleName:             accRoleName,
+					HasPolicy:            hasPolicy,
+					Prefix:               prefix,
+					File:                 file,
+					PolicyName:           policyName,
+					AccountPolicyPath:    policyPath,
+					PolicyARN:            policyARN,
+					HasInlinePolicy:      hasInlinePolicy,
+				},
+			)
+			commands = append(commands, upgradeAccountPolicyCommands...)
 		}
 	}
 	return awscb.JoinCommands(commands)
@@ -378,12 +306,12 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 
 func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
 	for _, accountRole := range aws.AccountRoles {
-		roleName := aws.GetRoleName(prefix, accountRole.Name)
-		rolePolicies, err := awsClient.GetAttachedPolicy(&roleName)
+		accRoleName := aws.GetRoleName(prefix, accountRole.Name)
+		rolePolicies, err := awsClient.GetAttachedPolicy(&accRoleName)
 		if err != nil {
 			return "", err
 		}
-		policyName := fmt.Sprintf("%s-Policy", roleName)
+		policyName := aws.GetPolicyName(accRoleName)
 		policyARN := ""
 		policyType := ""
 		for _, rolePolicy := range rolePolicies {

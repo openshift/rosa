@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/rosa/cmd/upgrade/accountroles"
 	"github.com/openshift/rosa/cmd/upgrade/cluster"
 	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
+	"github.com/openshift/rosa/cmd/upgrade/roles"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
 )
@@ -36,6 +37,7 @@ func init() {
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(accountroles.Cmd)
 	Cmd.AddCommand(operatorroles.Cmd)
+	Cmd.AddCommand(roles.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
