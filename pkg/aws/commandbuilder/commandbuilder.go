@@ -129,7 +129,13 @@ func createTags(m map[string]string) string {
 	for k, v := range m {
 		keys = append(keys, fmt.Sprintf("Key=%s,Value=%s", k, v))
 	}
-	sort.Strings(keys)
+	sort.Slice(keys, func(i, j int) bool {
+		l1, l2 := len(keys[i]), len(keys[j])
+		if l1 != l2 {
+			return l1 < l2
+		}
+		return keys[i] < keys[j]
+	})
 	return strings.Join(keys, " ")
 }
 

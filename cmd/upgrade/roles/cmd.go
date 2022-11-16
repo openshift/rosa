@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	semver "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
 
@@ -43,7 +44,9 @@ import (
 var args struct {
 	isInvokedFromClusterUpgrade bool
 	clusterID                   string
-	upgradeVersion              string
+	clusterUpgradeVersion       string
+	policyUpgradeversion        string
+	channelGroup                string
 }
 
 var Cmd = &cobra.Command{
@@ -64,13 +67,29 @@ func init() {
 	aws.AddModeFlag(Cmd)
 
 	flags.StringVar(
-		&args.upgradeVersion,
-		"version",
+		&args.clusterUpgradeVersion,
+		"cluster-version",
 		"",
 		"Version of OpenShift that the cluster will be upgraded to",
 	)
 
-	Cmd.MarkFlagRequired("version")
+	Cmd.MarkFlagRequired("cluster-version")
+
+	flags.StringVar(
+		&args.policyUpgradeversion,
+		"policy-version",
+		"",
+		"Version of OpenShift that will be used to setup policy tag, for example \"4.11\"",
+	)
+	flags.MarkHidden("version")
+
+	flags.StringVar(
+		&args.channelGroup,
+		"channel-group",
+		ocm.DefaultChannelGroup,
+		"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"fast\".",
+	)
+	flags.MarkHidden("channel-group")
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -91,7 +110,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		ocm.SetClusterKey(argv[1])
 		skipInteractive = true
 		if len(argv) > 2 && argv[2] != "" {
-			args.upgradeVersion = argv[2]
+			args.clusterUpgradeVersion = argv[2]
 		}
 		isInvokedFromClusterUpgrade = true
 	}
@@ -106,9 +125,35 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	policyVersion, err := ocmClient.GetDefaultVersion()
+	policyVersion := args.policyUpgradeversion
+	isPolicyVersionChosen := policyVersion != ""
+	channelGroup := args.channelGroup
+	policyVersion, err = ocmClient.GetPolicyVersion(policyVersion, channelGroup)
 	if err != nil {
 		reporter.Errorf("Error getting version: %s", err)
+		os.Exit(1)
+	}
+
+	clusterUpgradeVersion := args.clusterUpgradeVersion
+
+	availableUpgrades, err := r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
+	if err != nil {
+		r.Reporter.Errorf("Failed to find available upgrades: %v", err)
+		os.Exit(1)
+	}
+	if len(availableUpgrades) == 0 {
+		r.Reporter.Warnf("There are no available upgrades")
+		os.Exit(0)
+	}
+	err = ocmClient.CheckUpgradeClusterVersion(availableUpgrades, clusterUpgradeVersion, cluster)
+	if err != nil {
+		reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
+
+	err = checkPolicyAndClusterVersionCompatibility(policyVersion, clusterUpgradeVersion)
+	if err != nil {
+		reporter.Errorf("%v", err)
 		os.Exit(1)
 	}
 
@@ -193,6 +238,7 @@ func run(cmd *cobra.Command, argv []string) error {
 					creator.AccountID,
 					accountRolePolicies,
 					policyVersion,
+					isPolicyVersionChosen,
 				)
 				if err != nil {
 					LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
@@ -287,9 +333,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	version := args.upgradeVersion
-
-	missingRolesInCS, err := ocmClient.FindMissingOperatorRolesForUpgrade(cluster, version)
+	missingRolesInCS, err := ocmClient.FindMissingOperatorRolesForUpgrade(cluster, clusterUpgradeVersion)
 	if err != nil {
 		return err
 	}
@@ -454,6 +498,7 @@ func upgradeAccountRolePoliciesFromCluster(
 	accountID string,
 	policies map[string]string,
 	policyVersion string,
+	isVersionChosen bool,
 ) error {
 	for file, role := range aws.AccountRoles {
 		roleName, err := aws.GetAccountRoleName(cluster, role.Name)
@@ -473,6 +518,9 @@ func upgradeAccountRolePoliciesFromCluster(
 			return err
 		}
 		promptString := fmt.Sprintf("Upgrade the '%s' role policy latest version (%s) ?", roleName, policyVersion)
+		if isVersionChosen {
+			promptString = fmt.Sprintf("Upgrade the '%s' role policy to version '%s' ?", roleName, policyVersion)
+		}
 		if !confirm.Prompt(true, promptString) {
 			if args.isInvokedFromClusterUpgrade {
 				return reporter.Errorf("Account roles need to be upgraded to proceed")
@@ -1008,6 +1056,29 @@ func upgradeMissingOperatorRole(
 			return weberr.Errorf("Failed to attach role policy. Check your prefix or run "+
 				"'rosa create operator-roles' to create the necessary policies: %s", err)
 		}
+	}
+	return nil
+}
+
+func checkPolicyAndClusterVersionCompatibility(policyVersion, clusterVersion string) (err error) {
+	parsedPolicyVersion, err := ocm.ParseVersion(policyVersion)
+	if err != nil {
+		return
+	}
+	parsedClusterVersion, err := ocm.ParseVersion(clusterVersion)
+	if err != nil {
+		return
+	}
+
+	semPolicyVersion, _ := semver.NewVersion(parsedPolicyVersion)
+	semClusterVersion, _ := semver.NewVersion(parsedClusterVersion)
+
+	if semPolicyVersion.LessThan(semClusterVersion) {
+		return weberr.Errorf(
+			"Desired major.minor policy version (%s) should be greater or equal to desired cluster version major.minor (%s)",
+			policyVersion,
+			clusterVersion,
+		)
 	}
 	return nil
 }

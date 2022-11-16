@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -82,6 +83,32 @@ func SliceToMap(s []string) map[string]bool {
 	}
 
 	return m
+}
+
+func SliceToString(s []string) string {
+	sort.Slice(s, func(i, j int) bool {
+		l1, l2 := len(s[i]), len(s[j])
+		if l1 != l2 {
+			return l1 < l2
+		}
+		return s[i] < s[j]
+	})
+	return "[" + strings.Join(s, ", ") + "]"
+}
+
+func MapKeysToString(m map[string]bool) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		l1, l2 := len(keys[i]), len(keys[j])
+		if l1 != l2 {
+			return l1 < l2
+		}
+		return keys[i] < keys[j]
+	})
+	return "[" + strings.Join(keys, ", ") + "]"
 }
 
 // RemoveStrFromSlice removes one occurrence of 'str' from the 's' slice if exists.

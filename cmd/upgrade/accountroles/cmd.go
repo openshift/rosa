@@ -105,7 +105,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	version := args.version
 	isVersionChosen := version != ""
 	channelGroup := args.channelGroup
-	policyVersion, err := ocmClient.GetVersion(version, channelGroup)
+	policyVersion, err := ocmClient.GetPolicyVersion(version, channelGroup)
 	if err != nil {
 		reporter.Errorf("Error getting version: %s", err)
 		os.Exit(1)
