@@ -22,7 +22,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -425,6 +427,15 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	var spin *spinner.Spinner
+	if r.Reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
+	if spin != nil {
+		r.Reporter.Infof("Fetching instance types")
+		spin.Start()
+	}
+
 	// Determine machine pool availability zones to filter supported machine types
 	availabilityZonesFilter, err := getMachinePoolAvailabilityZones(r, cluster, multiAZMachinePool, availabilityZone,
 		subnet)
@@ -441,6 +452,11 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
+
+	if spin != nil {
+		spin.Stop()
+	}
+
 	if interactive.Enabled() {
 		if instanceType == "" {
 			instanceType = instanceTypeList[0].MachineType.ID()
