@@ -155,7 +155,6 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Warnf("There are no available upgrades")
 		os.Exit(0)
 	}
-
 	if version == "" || interactive.Enabled() {
 		if version == "" {
 			version = availableUpgrades[0]
@@ -172,26 +171,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	clusterVersion := cluster.OpenshiftVersion()
-	if clusterVersion == "" {
-		clusterVersion = cluster.Version().RawID()
-	}
-	// Check that the version is valid
-	validVersion := false
-	for _, v := range availableUpgrades {
 
-		isValidVersion, err := ocm.IsValidVersion(version, v, clusterVersion)
-		if err != nil {
-			r.Reporter.Errorf("Error validating the version")
-			os.Exit(1)
-		}
-		if isValidVersion {
-			validVersion = true
-			break
-		}
-	}
-	if !validVersion {
-		r.Reporter.Errorf("Expected a valid version to upgrade to")
+	err = r.OCMClient.CheckUpgradeClusterVersion(availableUpgrades, version, cluster)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
 		os.Exit(1)
 	}
 

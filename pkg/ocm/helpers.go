@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	semver "github.com/hashicorp/go-version"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/zgalor/weberr"
 	errors "github.com/zgalor/weberr"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -652,7 +653,36 @@ func ValidateAvailabilityZonesCount(multiAZ bool, availabilityZonesCount int) er
 	return nil
 }
 
-func (c *Client) GetVersion(userRequestedVersion string, channelGroup string) (string, error) {
+func (c *Client) CheckUpgradeClusterVersion(
+	availableUpgrades []string,
+	clusterUpgradeVersion string,
+	cluster *cmv1.Cluster,
+) (err error) {
+	clusterVersion := cluster.OpenshiftVersion()
+	if clusterVersion == "" {
+		clusterVersion = cluster.Version().RawID()
+	}
+	validVersion := false
+	for _, v := range availableUpgrades {
+		isValidVersion, err := IsValidVersion(clusterUpgradeVersion, v, clusterVersion)
+		if err != nil {
+			return err
+		}
+		if isValidVersion {
+			validVersion = true
+			break
+		}
+	}
+	if !validVersion {
+		return weberr.Errorf(
+			"Expected a valid version to upgrade cluster to.\nValid versions: %s",
+			helper.SliceToString(availableUpgrades),
+		)
+	}
+	return nil
+}
+
+func (c *Client) GetPolicyVersion(userRequestedVersion string, channelGroup string) (string, error) {
 	versionList, err := c.GetVersionsList(channelGroup)
 	if err != nil {
 		err := fmt.Errorf("%v", err)
@@ -672,23 +702,15 @@ func (c *Client) GetVersion(userRequestedVersion string, channelGroup string) (s
 	}
 
 	if !hasVersion {
-		versionSet := make(map[string]bool)
-		for _, vs := range versionList {
-			versionSet[vs] = true
-		}
-		err := fmt.Errorf("a valid version number must be specified\nValid versions: %v", KeysString(versionSet))
+		versionSet := helper.SliceToMap(versionList)
+		err := weberr.Errorf(
+			"A valid policy version number must be specified\nValid versions: %v",
+			helper.MapKeysToString(versionSet),
+		)
 		return userRequestedVersion, err
 	}
 
 	return userRequestedVersion, nil
-}
-
-func KeysString(m map[string]bool) string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return "[" + strings.Join(keys, ", ") + "]"
 }
 
 func ParseVersion(version string) (string, error) {
