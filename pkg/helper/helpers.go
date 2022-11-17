@@ -62,6 +62,13 @@ func RankMapStringInt(values map[string]int) []string {
 	for i, kv := range ss {
 		ranked[i] = kv.Key
 	}
+	sort.Slice(ranked, func(i, j int) bool {
+		l1, l2 := len(ranked[i]), len(ranked[j])
+		if l1 != l2 {
+			return l1 > l2
+		}
+		return ranked[i] > ranked[j]
+	})
 	return ranked
 }
 
