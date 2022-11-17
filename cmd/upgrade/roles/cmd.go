@@ -288,7 +288,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	//OPERATOR ROLES
-	if !isInvokedFromClusterUpgrade {
+	if !args.isInvokedFromClusterUpgrade {
 		reporter.Infof("Ensuring operator role policies compatibility for upgrade")
 	}
 
@@ -338,18 +338,19 @@ func run(cmd *cobra.Command, argv []string) error {
 		return err
 	}
 
-	if len(missingRolesInCS) <= 0 && !isOperatorPolicyUpgradeNeeded {
-		if !args.isInvokedFromClusterUpgrade {
-			r.Reporter.Infof(
-				"Operator roles/policies associated with the cluster '%s' are already up-to-date.",
-				cluster.ID(),
-			)
-		}
-		os.Exit(0)
-	}
-
 	if spin != nil {
 		spin.Stop()
+	}
+
+	if len(missingRolesInCS) <= 0 && !isOperatorPolicyUpgradeNeeded {
+		r.Reporter.Infof(
+			"Operator roles/policies associated with the cluster '%s' are already up-to-date.",
+			cluster.ID(),
+		)
+		if !isInvokedFromClusterUpgrade {
+			os.Exit(0)
+		}
+		return nil
 	}
 
 	operatorRolePolicies, err := ocmClient.GetPolicies("OperatorRole")
@@ -410,7 +411,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			)
 		}
 	}
-	return err
+	return nil
 }
 
 func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter *rprtr.Object) {
