@@ -288,8 +288,8 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	//OPERATOR ROLES
-	if !isInvokedFromClusterUpgrade {
-		reporter.Infof("Ensuring operator role policies compatibility for upgrade")
+	if !args.isInvokedFromClusterUpgrade {
+		reporter.Infof("Ensuring operator role/policies compatibility for upgrade")
 	}
 
 	if spin != nil {
@@ -338,18 +338,19 @@ func run(cmd *cobra.Command, argv []string) error {
 		return err
 	}
 
-	if len(missingRolesInCS) <= 0 && !isOperatorPolicyUpgradeNeeded {
-		if !args.isInvokedFromClusterUpgrade {
-			r.Reporter.Infof(
-				"Operator roles/policies associated with the cluster '%s' are already up-to-date.",
-				cluster.ID(),
-			)
-		}
-		os.Exit(0)
-	}
-
 	if spin != nil {
 		spin.Stop()
+	}
+
+	if len(missingRolesInCS) <= 0 && !isOperatorPolicyUpgradeNeeded {
+		r.Reporter.Infof(
+			"Operator roles/policies associated with the cluster '%s' are already up-to-date.",
+			cluster.ID(),
+		)
+		if args.isInvokedFromClusterUpgrade {
+			return nil
+		}
+		os.Exit(0)
 	}
 
 	operatorRolePolicies, err := ocmClient.GetPolicies("OperatorRole")
@@ -360,7 +361,6 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	if isOperatorPolicyUpgradeNeeded {
 		err = upgradeOperatorPolicies(
-			args.isInvokedFromClusterUpgrade,
 			mode,
 			r,
 			isUpgradeNeedForAccountRolePolicies,
@@ -391,7 +391,6 @@ func run(cmd *cobra.Command, argv []string) error {
 					r,
 					cluster,
 					missingRolesInCS,
-					args.isInvokedFromClusterUpgrade,
 					operatorRolePolicies,
 					operatorRolePath,
 					operatorPolicyPath,
@@ -410,7 +409,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			)
 		}
 	}
-	return err
+	return nil
 }
 
 func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter *rprtr.Object) {
@@ -650,7 +649,6 @@ func checkHasDetachPolicyCommandsForExpectedPolicy(detachedPoliciesCommands []st
 }
 
 func upgradeOperatorPolicies(
-	isProgrammaticallyCalled bool,
 	mode string,
 	r *rosa.Runtime,
 	isAccountRoleUpgradeNeed bool,
@@ -664,7 +662,7 @@ func upgradeOperatorPolicies(
 	switch mode {
 	case aws.ModeAuto:
 		if !confirm.Prompt(true, "Upgrade each operator role policy to latest version (%s)?", defaultPolicyVersion) {
-			if isProgrammaticallyCalled {
+			if args.isInvokedFromClusterUpgrade {
 				return r.Reporter.Errorf("Operator roles need to be upgraded to proceed")
 			}
 			return nil
@@ -951,7 +949,6 @@ func createOperatorRole(
 	r *rosa.Runtime,
 	cluster *v1.Cluster,
 	missingRoles map[string]*v1.STSOperator,
-	isProgrammaticallyCalled bool,
 	policies map[string]string,
 	rolePath string,
 	policyPath string,
@@ -965,7 +962,6 @@ func createOperatorRole(
 			cluster,
 			accountID,
 			r,
-			isProgrammaticallyCalled,
 			policies,
 			rolePath,
 			policyPath,
@@ -993,7 +989,7 @@ func createOperatorRole(
 			r.Reporter.Infof("Run the following commands to create the operator roles:\n")
 		}
 		fmt.Println(commands)
-		if isProgrammaticallyCalled {
+		if args.isInvokedFromClusterUpgrade {
 			r.Reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
 				" once account and operator roles have been upgraded : \n\n"+
 				"\trosa upgrade cluster --cluster %s\n", cluster.ID())
@@ -1011,7 +1007,6 @@ func upgradeMissingOperatorRole(
 	cluster *v1.Cluster,
 	accountID string,
 	r *rosa.Runtime,
-	isProgrammaticallyCalled bool,
 	policies map[string]string,
 	rolePath string,
 	policyPath string,
@@ -1020,7 +1015,7 @@ func upgradeMissingOperatorRole(
 	for _, operator := range missingRoles {
 		roleName := roles.GetOperatorRoleName(cluster, operator)
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
-			if isProgrammaticallyCalled {
+			if args.isInvokedFromClusterUpgrade {
 				return weberr.Errorf("Operator roles need to be upgraded to proceed with cluster upgrade")
 			}
 			continue
