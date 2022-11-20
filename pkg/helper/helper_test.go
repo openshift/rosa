@@ -37,11 +37,37 @@ var _ = Describe("Helper", func() {
 			It("Order descending when input is a populated map", func() {
 				populatedMap := make(map[string]int)
 				for i := 0; i < 50; i++ {
-					populatedMap[fmt.Sprint(i)] = i
+					populatedMap[fmt.Sprintf("operator%d", i)] = i
 				}
 				rankedMap := RankMapStringInt(populatedMap)
-				Expect("49").To(Equal(rankedMap[0]))
+				Expect("operator49").To(Equal(rankedMap[0]))
 			})
+
+			It(
+				"Order descending when input is a populated map with two prefixes of same rank, expects longest prefix first",
+				func() {
+					populatedMap := make(map[string]int)
+					for i := 0; i < 50; i++ {
+						populatedMap[fmt.Sprintf("operator%d", i)] = i
+					}
+					populatedMap["operator491"] = 49
+					rankedMap := RankMapStringInt(populatedMap)
+					Expect("operator491").To(Equal(rankedMap[0]))
+				},
+			)
+
+			It(
+				"Order descending when input is a populated map with two prefixes of same rank, expects highest ranked prefix first",
+				func() {
+					populatedMap := make(map[string]int)
+					for i := 0; i < 50; i++ {
+						populatedMap[fmt.Sprintf("operator%d", i)] = i
+					}
+					populatedMap["operator50"] = 49
+					rankedMap := RankMapStringInt(populatedMap)
+					Expect("operator50").To(Equal(rankedMap[0]))
+				},
+			)
 		})
 
 		var _ = Context("Validates Contains", func() {
