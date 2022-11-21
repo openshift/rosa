@@ -218,7 +218,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if private == nil || len(routeSelectors) == 0 {
+	if private == nil && len(routeSelectors) == 0 {
 		r.Reporter.Warnf("No need to update ingress as there are no changes")
 		os.Exit(0)
 	}
