@@ -176,7 +176,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	if interactive.Enabled() && !skipInteractive {
 		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Account role upgrade mode",
+			Question: "Roles upgrade mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  aws.ModeAuto,
 			Options:  aws.Modes,

@@ -182,6 +182,21 @@ func run(cmd *cobra.Command, _ []string) {
 		interactive.Enable()
 	}
 
+	if isSTS && mode == "" {
+		mode, err = interactive.GetOption(interactive.Input{
+			Question: "IAM Roles/Policies upgrade mode",
+			Help:     cmd.Flags().Lookup("mode").Usage,
+			Default:  aws.ModeAuto,
+			Options:  aws.Modes,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid role upgrade mode: %s", err)
+			os.Exit(1)
+		}
+		aws.SetModeKey(mode)
+	}
+
 	// if cluster is sts validate roles are compatible with upgrade version
 	if isSTS {
 		r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
