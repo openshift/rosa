@@ -23,6 +23,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
+	"github.com/zgalor/weberr"
 )
 
 // GetFilteredRegionsByVersion fetches a list of regions. The 'version' argument is optional for filtering.
@@ -228,4 +229,17 @@ func (c *Client) ListHostedCPSupportedRegion() (regions map[string]bool, err err
 		return true
 	})
 	return regions, nil
+}
+
+func (c *Client) GetDatabaseRegionList() ([]string, error) {
+	response, err := c.ocm.ClustersMgmt().V1().CloudProviders().CloudProvider("aws").Regions().List().Send()
+	if err != nil {
+		return []string{}, weberr.Errorf("Failed to get regions listing: %v", err)
+	}
+	supportedRegions := []string{}
+	response.Items().Range(func(index int, item *cmv1.CloudRegion) bool {
+		supportedRegions = append(supportedRegions, item.ID())
+		return true
+	})
+	return supportedRegions, nil
 }

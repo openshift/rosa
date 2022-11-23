@@ -551,7 +551,11 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
-	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger)
+	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
+	if err != nil {
+		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
+	}
+	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions)
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
@@ -1209,13 +1213,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	} else {
 		if isHostedCP && !interactive.Enabled() {
-			found := false
-			for i := range regionList {
-				if regionList[i] == region {
-					found = true
-					break
-				}
-			}
+			found := helper.Contains(regionList, region)
 			if !found {
 				r.Reporter.Errorf("Region '%s' not currently available for Hosted Cluster. "+
 					"Use --region to specify another region, and rosa list regions to see what's available.", region)

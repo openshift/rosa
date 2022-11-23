@@ -162,3 +162,10 @@ func IsValidUUID(u string) bool {
 	_, err := uuid.Parse(u)
 	return err == nil
 }
+
+func HandleEscapedEmptyString(input string) string {
+	if input == "\"\"" {
+		input = ""
+	}
+	return input
+}

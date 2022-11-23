@@ -27,6 +27,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 
 	"github.com/openshift/rosa/pkg/color"
+	"github.com/openshift/rosa/pkg/helper"
 )
 
 type Input struct {
@@ -40,7 +41,7 @@ type Input struct {
 
 // Gets string input from the command line
 func GetString(input Input) (a string, err error) {
-	transformer := survey.TransformString(toEmptyString)
+	transformer := survey.TransformString(helper.HandleEscapedEmptyString)
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(string)
 	if !ok {
@@ -308,13 +309,6 @@ func GetCert(input Input) (a string, err error) {
 	}
 	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)), survey.WithValidator(IsCert))
 	return
-}
-
-func toEmptyString(input string) string {
-	if input == "\"\"" {
-		input = ""
-	}
-	return input
 }
 
 var helpTemplate = `{{color "cyan"}}? {{.Message}}

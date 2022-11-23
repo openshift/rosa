@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/region"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -109,6 +110,15 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
+	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
+	if err != nil {
+		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
+	}
+	if !helper.Contains(supportedRegions, awsRegion) {
+		r.Reporter.Errorf("Unsupported region '%s', available regions: %s",
+			awsRegion, helper.SliceToString(supportedRegions))
+		os.Exit(1)
+	}
 	// Create the AWS client:
 	client, err := aws.NewClient().
 		Logger(r.Logger).
@@ -139,7 +149,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	r.Reporter.Infof("AWS credentials are valid!")
 
-	cfClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger)
+	cfClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions)
 
 	// Delete CloudFormation stack and exit
 	if args.dlt {
