@@ -628,7 +628,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// all hosted clusters are sts
 	isSTS := args.sts || args.roleARN != "" || fedramp.Enabled() || isHostedCP
-	isIAM := cmd.Flags().Changed("sts") && !isSTS
+	isIAM := (cmd.Flags().Changed("sts") && !isSTS) || args.nonSts
+
+	if isSTS && isIAM {
+		r.Reporter.Errorf("Can't use both STS and mint mode at the same time.")
+		os.Exit(1)
+	}
 
 	if interactive.Enabled() && (!isSTS && !isIAM) {
 		isSTS, err = interactive.GetBool(interactive.Input{
@@ -642,6 +647,14 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		isIAM = !isSTS
+	}
+
+	isSTS = isSTS || awsCreator.IsSTS
+
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Warnf("In a future release STS will be the default mode.")
+		r.Reporter.Warnf("--sts flag won't be necessary if you wish to use STS.")
+		r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary if you do not wish to use STS.")
 	}
 
 	permissionsBoundary := args.operatorRolesPermissionsBoundary
@@ -672,19 +685,6 @@ func run(cmd *cobra.Command, _ []string) {
 	supportRoleARN := args.supportRoleARN
 	controlPlaneRoleARN := args.controlPlaneRoleARN
 	workerRoleARN := args.workerRoleARN
-
-	isSTS = isSTS || awsCreator.IsSTS
-
-	if r.Reporter.IsTerminal() {
-		r.Reporter.Warnf("In a future release STS will be the default mode.")
-		if isSTS || cmd.Flags().Changed("sts") {
-			r.Reporter.Warnf("--sts flag won't be necessary.")
-		}
-
-		if !isSTS && (cmd.Flags().Changed("non-sts") || cmd.Flags().Changed("mint-mode") || !cmd.Flags().Changed("sts")) {
-			r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary in a future release if you do not wish to use STS.")
-		}
-	}
 
 	// OpenShift version:
 	version := args.version
