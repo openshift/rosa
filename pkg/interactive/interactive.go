@@ -41,6 +41,7 @@ type Input struct {
 // Gets string input from the command line
 func GetString(input Input) (a string, err error) {
 	transformer := survey.TransformString(toEmptyString)
+	a = transformer(a).(string)
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(string)
 	if !ok {
@@ -59,7 +60,6 @@ func GetString(input Input) (a string, err error) {
 		input.Validators = append([]Validator{required}, input.Validators...)
 	}
 	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)))
-	a = transformer(a).(string)
 	return
 }
 
