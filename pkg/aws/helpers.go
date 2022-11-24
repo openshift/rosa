@@ -139,7 +139,7 @@ func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool,
 
 // Currently user can rosa init using the region from their config or using --region
 // When checking for cloud formation we need to check in the region used by the user
-func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger) Client {
+func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger, supportedRegions []string) Client {
 	// Get AWS region from env
 	awsRegionInUserConfig, err := GetRegion(arguments.GetRegion())
 	if err != nil {
@@ -148,6 +148,11 @@ func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger) Cl
 	}
 	if awsRegionInUserConfig == "" {
 		reporter.Errorf("AWS Region not set")
+		os.Exit(1)
+	}
+	if !helper.Contains(supportedRegions, awsRegionInUserConfig) {
+		reporter.Errorf("Unsupported region '%s', available regions: %s",
+			awsRegionInUserConfig, helper.SliceToString(supportedRegions))
 		os.Exit(1)
 	}
 
@@ -166,6 +171,11 @@ func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger) Cl
 	}
 
 	if regionUsedForInit != awsRegionInUserConfig {
+		if !helper.Contains(supportedRegions, regionUsedForInit) {
+			reporter.Errorf("Unsupported region '%s', available regions: %s",
+				regionUsedForInit, helper.SliceToString(supportedRegions))
+			os.Exit(1)
+		}
 		// Create the AWS client with the region used in the init
 		//So we can check for the stack in that region
 		awsClient, err := NewClient().

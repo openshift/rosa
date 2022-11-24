@@ -21,6 +21,7 @@ package region
 import (
 	"os"
 
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/spf13/pflag"
 )
 
@@ -36,11 +37,11 @@ func AddFlag(flags *pflag.FlagSet) {
 
 // Region returns a string with the name of the AWS region being used.
 func Region() string {
-	if region != "" {
+	if helper.HandleEscapedEmptyString(region) != "" {
 		return region
 	}
 	awsRegion := os.Getenv("AWS_REGION")
-	if awsRegion != "" {
+	if helper.HandleEscapedEmptyString(awsRegion) != "" {
 		return awsRegion
 	}
 	return ""
