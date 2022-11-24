@@ -23,15 +23,16 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Description of a region of a cloud provider.
 type CloudRegionBuilder struct {
-	bitmap_         uint32
-	id              string
-	href            string
-	cloudProvider   *CloudProviderBuilder
-	displayName     string
-	name            string
-	ccsOnly         bool
-	enabled         bool
-	supportsMultiAZ bool
+	bitmap_            uint32
+	id                 string
+	href               string
+	cloudProvider      *CloudProviderBuilder
+	displayName        string
+	name               string
+	ccsOnly            bool
+	enabled            bool
+	supportsHypershift bool
+	supportsMultiAZ    bool
 }
 
 // NewCloudRegion creates a new builder of 'cloud_region' objects.
@@ -113,12 +114,21 @@ func (b *CloudRegionBuilder) Name(value string) *CloudRegionBuilder {
 	return b
 }
 
+// SupportsHypershift sets the value of the 'supports_hypershift' attribute to the given value.
+//
+//
+func (b *CloudRegionBuilder) SupportsHypershift(value bool) *CloudRegionBuilder {
+	b.supportsHypershift = value
+	b.bitmap_ |= 256
+	return b
+}
+
 // SupportsMultiAZ sets the value of the 'supports_multi_AZ' attribute to the given value.
 //
 //
 func (b *CloudRegionBuilder) SupportsMultiAZ(value bool) *CloudRegionBuilder {
 	b.supportsMultiAZ = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -139,6 +149,7 @@ func (b *CloudRegionBuilder) Copy(object *CloudRegion) *CloudRegionBuilder {
 	b.displayName = object.displayName
 	b.enabled = object.enabled
 	b.name = object.name
+	b.supportsHypershift = object.supportsHypershift
 	b.supportsMultiAZ = object.supportsMultiAZ
 	return b
 }
@@ -159,6 +170,7 @@ func (b *CloudRegionBuilder) Build() (object *CloudRegion, err error) {
 	object.displayName = b.displayName
 	object.enabled = b.enabled
 	object.name = b.name
+	object.supportsHypershift = b.supportsHypershift
 	object.supportsMultiAZ = b.supportsMultiAZ
 	return
 }

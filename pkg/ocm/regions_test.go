@@ -55,123 +55,106 @@ var _ = Describe("Regions", Ordered, func() {
 		Expect(ocmClient.Close()).To(Succeed())
 	})
 
-	When("isHostedCPSupportedRegion", func() {
-		It("2 active service cluster in region", func() {
+	When("getFilteredRegions", func() {
+		It("Gets some regions", func() {
 			apiServer.AppendHandlers(
 				RespondWithJSON(
 					http.StatusOK,
 					`{
-					  "kind": "ProvisionShardList",
+					  "kind": "CloudRegionList",
 					  "page": 1,
-					  "size": 2,
-					  "total": 2,
+					  "size": 4,
+					  "total": 4,
 					  "items": [
 						{
-						  "kind": "ProvisionShard",
-						  "id": "123",
-						  "href": "/api/clusters_mgmt/v1/provision_shards/123",
-						  "hypershift_config": {
-							"server": "https://api.123.org:6443",
-							"kubeconfig": "**********"
-						  },
-						  "aws_base_domain": "123.org",
-						  "status": "active",
-						  "region": {
-							"kind": "CloudRegion",
-							"id": "us-west-2",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-2"
-						  },
+						  "kind": "CloudRegion",
+						  "id": "us-east-1",
+						  "href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-1",
+						  "display_name": "US East, N. Virginia",
 						  "cloud_provider": {
-							"kind": "CloudProvider",
+							"kind": "CloudProviderLink",
 							"id": "aws",
 							"href": "/api/clusters_mgmt/v1/cloud_providers/aws"
 						  },
-						  "management_cluster": "mc1"
+						  "enabled": true,
+						  "supports_multi_az": true,
+						  "kms_location_name": "",
+						  "kms_location_id": "",
+						  "ccs_only": false,
+						  "govcloud": false,
+						  "supports_hypershift": false
 						},
 						{
-						  "kind": "ProvisionShard",
-						  "id": "456",
-						  "href": "/api/clusters_mgmt/v1/provision_shards/456",
-						  "hypershift_config": {
-							"server": "https://api2.123.org:6443",
-							"kubeconfig": "**********"
-						  },
-						  "aws_base_domain": "123.org",
-						  "status": "active",
-						  "region": {
-							"kind": "CloudRegion",
-							"id": "us-west-2",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-2"
-						  },
+						  "kind": "CloudRegion",
+						  "id": "us-east-2",
+						  "href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-2",
+						  "display_name": "US East, Ohio",
 						  "cloud_provider": {
-							"kind": "CloudProvider",
+							"kind": "CloudProviderLink",
 							"id": "aws",
 							"href": "/api/clusters_mgmt/v1/cloud_providers/aws"
 						  },
-						  "management_cluster": "mc4"
-						}
-					  ]
-					}`,
-				),
-			)
-			region, err := cmv1.NewCloudRegion().
-				ID("us-west-2").Build()
-			Expect(err).To(BeNil())
-			exists, err := ocmClient.isHostedCPSupportedRegion(region)
-			Expect(err).To(BeNil())
-			// Region has available Service Clusters
-			Expect(exists).To(BeTrue())
-		})
-		It("1 active service cluster in region", func() {
-			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-					  "kind": "ProvisionShardList",
-					  "page": 1,
-					  "size": 1,
-					  "total": 1,
-					  "items": [
+						  "enabled": true,
+						  "supports_multi_az": true,
+						  "kms_location_name": "",
+						  "kms_location_id": "",
+						  "ccs_only": false,
+						  "govcloud": false,
+						  "supports_hypershift": false
+						},
 						{
-						  "kind": "ProvisionShard",
-						  "id": "123",
-						  "href": "/api/clusters_mgmt/v1/provision_shards/123",
-						  "hypershift_config": {
-							"server": "https://api.123.org:6443",
-							"kubeconfig": "**********"
-						  },
-						  "aws_base_domain": "123.org",
-						  "status": "active",
-						  "region": {
-							"kind": "CloudRegion",
-							"id": "us-west-2",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-2"
-						  },
+						  "kind": "CloudRegion",
+						  "id": "us-west-1",
+						  "href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-1",
+						  "display_name": "US West, N. California",
 						  "cloud_provider": {
-							"kind": "CloudProvider",
+							"kind": "CloudProviderLink",
 							"id": "aws",
 							"href": "/api/clusters_mgmt/v1/cloud_providers/aws"
 						  },
-						  "management_cluster": "hs-mc-ccb16elad"
-						}
-					  ]
-					}`,
+						  "enabled": true,
+						  "supports_multi_az": false,
+						  "kms_location_name": "",
+						  "kms_location_id": "",
+						  "ccs_only": false,
+						  "govcloud": false,
+						  "supports_hypershift": false
+						},
+						{
+						  "kind": "CloudRegion",
+						  "id": "us-west-2",
+						  "href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-2",
+						  "display_name": "US West, Oregon",
+						  "cloud_provider": {
+								"kind": "CloudProviderLink",
+								"id": "aws",
+								"href": "/api/clusters_mgmt/v1/cloud_providers/aws"
+							  },
+							  "enabled": true,
+							  "supports_multi_az": true,
+							  "kms_location_name": "",
+							  "kms_location_id": "",
+							  "ccs_only": false,
+							  "govcloud": false,
+							  "supports_hypershift": true
+							}
+						  ]
+						}`,
 				),
 			)
-			region, err := cmv1.NewCloudRegion().
-				ID("us-west-2").Build()
+			cloudProviderData, err := cmv1.NewCloudProviderData().Build()
+			Expect(err).ToNot(HaveOccurred())
+			regions, err := ocmClient.getFilteredRegions(cloudProviderData)
 			Expect(err).To(BeNil())
-			exists, err := ocmClient.isHostedCPSupportedRegion(region)
-			Expect(err).To(BeNil())
-			// Region has available Service Clusters
-			Expect(exists).To(BeTrue())
+			Expect(regions).Should(HaveLen(4))
+			Expect(regions[0].SupportsHypershift()).To(BeFalse())
 		})
-		It("0 active service clusters in region", func() {
+		It("Gets no region", func() {
 			apiServer.AppendHandlers(
 				RespondWithJSON(
 					http.StatusOK,
 					`{
-					  "kind": "ProvisionShardList",
+					  "kind": "CloudRegionList",
 					  "page": 1,
 					  "size": 0,
 					  "total": 0,
@@ -179,179 +162,22 @@ var _ = Describe("Regions", Ordered, func() {
 					}`,
 				),
 			)
-			region, err := cmv1.NewCloudRegion().
-				ID("us-west-2").Build()
+			cloudProviderData, err := cmv1.NewCloudProviderData().Build()
+			Expect(err).ToNot(HaveOccurred())
+			regions, err := ocmClient.getFilteredRegions(cloudProviderData)
 			Expect(err).To(BeNil())
-			exists, err := ocmClient.isHostedCPSupportedRegion(region)
-			Expect(err).To(BeNil())
-			// Region has no available Service Clusters
-			Expect(exists).To(BeFalse())
+			// Region has available Service Clusters
+			Expect(regions).Should(HaveLen(0))
 		})
 		It("CS replies in error", func() {
 			// No handler registered, we get a 500, check we handle it
-			region, err := cmv1.NewCloudRegion().
-				ID("us-west-2").Build()
-			Expect(err).To(BeNil())
-			exists, err := ocmClient.isHostedCPSupportedRegion(region)
+			cloudProviderData, err := cmv1.NewCloudProviderData().Build()
+			Expect(err).ToNot(HaveOccurred())
+			regions, err := ocmClient.getFilteredRegions(cloudProviderData)
+			Expect(regions).Should(HaveLen(0))
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("failed to get Provision Shards: expected response " +
+			Expect(err.Error()).To(Equal("expected response " +
 				"content type 'application/json' but received '' and content ''"))
-			Expect(exists).To(BeFalse())
-		})
-	})
-	When("ListHostedCPSupportedRegion", func() {
-		It("2 active service cluster in 1 region", func() {
-			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-					  "kind": "ProvisionShardList",
-					  "page": 1,
-					  "size": 2,
-					  "total": 2,
-					  "items": [
-						{
-						  "kind": "ProvisionShard",
-						  "id": "123",
-						  "href": "/api/clusters_mgmt/v1/provision_shards/123",
-						  "hypershift_config": {
-							"server": "https://api.123.org:6443",
-							"kubeconfig": "**********"
-						  },
-						  "aws_base_domain": "123.org",
-						  "status": "active",
-						  "region": {
-							"kind": "CloudRegion",
-							"id": "us-west-2",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-2"
-						  },
-						  "cloud_provider": {
-							"kind": "CloudProvider",
-							"id": "aws",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws"
-						  },
-						  "management_cluster": "mc1"
-						},
-						{
-						  "kind": "ProvisionShard",
-						  "id": "456",
-						  "href": "/api/clusters_mgmt/v1/provision_shards/456",
-						  "hypershift_config": {
-							"server": "https://api2.123.org:6443",
-							"kubeconfig": "**********"
-						  },
-						  "aws_base_domain": "123.org",
-						  "status": "active",
-						  "region": {
-							"kind": "CloudRegion",
-							"id": "us-west-2",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-2"
-						  },
-						  "cloud_provider": {
-							"kind": "CloudProvider",
-							"id": "aws",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws"
-						  },
-						  "management_cluster": "mc4"
-						}
-					  ]
-					}`,
-				),
-			)
-			regions, err := ocmClient.ListHostedCPSupportedRegion()
-			Expect(err).To(BeNil())
-			Expect(regions).Should(HaveLen(1))
-			Expect(regions).Should(HaveKey("us-west-2"))
-		})
-		It("2 active service cluster in 2 regions", func() {
-			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-					  "kind": "ProvisionShardList",
-					  "page": 1,
-					  "size": 2,
-					  "total": 2,
-					  "items": [
-						{
-						  "kind": "ProvisionShard",
-						  "id": "123",
-						  "href": "/api/clusters_mgmt/v1/provision_shards/123",
-						  "hypershift_config": {
-							"server": "https://api.123.org:6443",
-							"kubeconfig": "**********"
-						  },
-						  "aws_base_domain": "123.org",
-						  "status": "active",
-						  "region": {
-							"kind": "CloudRegion",
-							"id": "us-west-2",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-2"
-						  },
-						  "cloud_provider": {
-							"kind": "CloudProvider",
-							"id": "aws",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws"
-						  },
-						  "management_cluster": "mc1"
-						},
-						{
-						  "kind": "ProvisionShard",
-						  "id": "456",
-						  "href": "/api/clusters_mgmt/v1/provision_shards/456",
-						  "hypershift_config": {
-							"server": "https://api2.123.org:6443",
-							"kubeconfig": "**********"
-						  },
-						  "aws_base_domain": "123.org",
-						  "status": "active",
-						  "region": {
-							"kind": "CloudRegion",
-							"id": "us-west-1",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-1"
-						  },
-						  "cloud_provider": {
-							"kind": "CloudProvider",
-							"id": "aws",
-							"href": "/api/clusters_mgmt/v1/cloud_providers/aws"
-						  },
-						  "management_cluster": "mc4"
-						}
-					  ]
-					}`,
-				),
-			)
-			regions, err := ocmClient.ListHostedCPSupportedRegion()
-			Expect(err).To(BeNil())
-			Expect(regions).Should(HaveLen(2))
-			Expect(regions).Should(HaveKey("us-west-2"))
-			Expect(regions).Should(HaveKey("us-west-1"))
-		})
-		It("0 active service clusters", func() {
-			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-					  "kind": "ProvisionShardList",
-					  "page": 1,
-					  "size": 0,
-					  "total": 0,
-					  "items": []
-					}`,
-				),
-			)
-			regions, err := ocmClient.ListHostedCPSupportedRegion()
-			Expect(err).To(BeNil())
-			// Region has no available Service Clusters
-			Expect(regions).To(BeEmpty())
-		})
-		It("CS replies in error", func() {
-			// No handler registered, we get a 500, check we handle it
-			regions, err := ocmClient.ListHostedCPSupportedRegion()
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("failed to get Provision Shards: expected response " +
-				"content type 'application/json' but received '' and content ''"))
-			Expect(regions).To(BeEmpty())
 		})
 	})
 })

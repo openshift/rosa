@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.294
+- Update to model 0.0.233
+  - Add SupportsHypershift property to CloudRegion model.
+
 ## 0.1.293
 - Update to model 0.0.232
   - Modify `availabilityZone` property in CloudProviderData model from `string` to `[]string`.

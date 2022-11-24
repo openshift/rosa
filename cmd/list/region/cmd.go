@@ -77,7 +77,6 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	var regionsWithHostedCPSupport map[string]bool
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
@@ -95,14 +94,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if hypershiftEnabled {
-		regionsWithHostedCPSupport, err = r.OCMClient.ListHostedCPSupportedRegion()
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
-	}
-
 	// Filter out unwanted regions
 	var availableRegions []*cmv1.CloudRegion
 	for _, region := range regions {
@@ -115,7 +106,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 		if hypershiftEnabled && cmd.Flags().Changed("hosted-cp") {
-			if args.hostedCluster != regionsWithHostedCPSupport[region.ID()] {
+			if args.hostedCluster != region.SupportsHypershift() {
 				continue
 			}
 		}
@@ -151,7 +142,7 @@ func run(cmd *cobra.Command, _ []string) {
 				region.ID(),
 				region.DisplayName(),
 				region.SupportsMultiAZ(),
-				regionsWithHostedCPSupport[region.ID()],
+				region.SupportsHypershift(),
 			)
 		} else {
 			fmt.Fprintf(writer,
