@@ -1875,7 +1875,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
 			os.Exit(1)
 		}
-		noProxySlice = strings.Split(noProxyInput, ",")
+		noProxySlice = helper.HandleEmptyStringOnSlice(strings.Split(noProxyInput, ","))
 	}
 
 	if len(noProxySlice) > 0 {

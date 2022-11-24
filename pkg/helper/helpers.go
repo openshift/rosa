@@ -169,3 +169,13 @@ func HandleEscapedEmptyString(input string) string {
 	}
 	return input
 }
+
+func HandleEmptyStringOnSlice(slice []string) []string {
+	r := []string{}
+	for _, s := range slice {
+		if s != "" {
+			r = append(r, s)
+		}
+	}
+	return r
+}

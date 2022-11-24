@@ -26,6 +26,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -389,7 +390,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
 			os.Exit(1)
 		}
-		noProxySlice = strings.Split(noProxyInput, ",")
+		noProxySlice = helper.HandleEmptyStringOnSlice(strings.Split(noProxyInput, ","))
 	}
 	if isExpectedHTTPProxyOrHTTPSProxy(httpProxy, httpsProxy, noProxySlice, cluster) {
 		r.Reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
