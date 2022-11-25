@@ -1549,7 +1549,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
-	isReplicasSet := cmd.Flags().Changed("compute-nodes")
+	isReplicasSet := cmd.Flags().Changed("compute-nodes") || cmd.Flags().Changed("replicas")
 
 	// Autoscaling
 	autoscaling := args.autoscalingEnabled
