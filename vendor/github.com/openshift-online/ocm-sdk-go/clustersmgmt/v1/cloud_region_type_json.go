@@ -115,6 +115,15 @@ func writeCloudRegion(object *CloudRegion, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("supports_hypershift")
+		stream.WriteBool(object.supportsHypershift)
+		count++
+	}
+	present_ = object.bitmap_&512 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("supports_multi_az")
 		stream.WriteBool(object.supportsMultiAZ)
 	}
@@ -173,10 +182,14 @@ func readCloudRegion(iterator *jsoniter.Iterator) *CloudRegion {
 			value := iterator.ReadString()
 			object.name = value
 			object.bitmap_ |= 128
+		case "supports_hypershift":
+			value := iterator.ReadBool()
+			object.supportsHypershift = value
+			object.bitmap_ |= 256
 		case "supports_multi_az":
 			value := iterator.ReadBool()
 			object.supportsMultiAZ = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		default:
 			iterator.ReadAny()
 		}

@@ -35,15 +35,16 @@ const CloudRegionNilKind = "CloudRegionNil"
 //
 // Description of a region of a cloud provider.
 type CloudRegion struct {
-	bitmap_         uint32
-	id              string
-	href            string
-	cloudProvider   *CloudProvider
-	displayName     string
-	name            string
-	ccsOnly         bool
-	enabled         bool
-	supportsMultiAZ bool
+	bitmap_            uint32
+	id                 string
+	href               string
+	cloudProvider      *CloudProvider
+	displayName        string
+	name               string
+	ccsOnly            bool
+	enabled            bool
+	supportsHypershift bool
+	supportsMultiAZ    bool
 }
 
 // Kind returns the name of the type of the object.
@@ -224,12 +225,35 @@ func (o *CloudRegion) GetName() (value string, ok bool) {
 	return
 }
 
+// SupportsHypershift returns the value of the 'supports_hypershift' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// 'true' if the region is supported for Hypershift deployments, 'false' otherwise.
+func (o *CloudRegion) SupportsHypershift() bool {
+	if o != nil && o.bitmap_&256 != 0 {
+		return o.supportsHypershift
+	}
+	return false
+}
+
+// GetSupportsHypershift returns the value of the 'supports_hypershift' attribute and
+// a flag indicating if the attribute has a value.
+//
+// 'true' if the region is supported for Hypershift deployments, 'false' otherwise.
+func (o *CloudRegion) GetSupportsHypershift() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&256 != 0
+	if ok {
+		value = o.supportsHypershift
+	}
+	return
+}
+
 // SupportsMultiAZ returns the value of the 'supports_multi_AZ' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Whether the region supports multiple availability zones.
 func (o *CloudRegion) SupportsMultiAZ() bool {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.supportsMultiAZ
 	}
 	return false
@@ -240,7 +264,7 @@ func (o *CloudRegion) SupportsMultiAZ() bool {
 //
 // Whether the region supports multiple availability zones.
 func (o *CloudRegion) GetSupportsMultiAZ() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.supportsMultiAZ
 	}

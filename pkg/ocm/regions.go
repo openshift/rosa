@@ -158,16 +158,8 @@ func (c *Client) GetRegionList(multiAZ bool, roleARN string,
 			continue
 		}
 
-		var scExists bool
-		if isHostedCP {
-			scExists, err = c.isHostedCPSupportedRegion(v)
-			if err != nil {
-				return
-			}
-			if !scExists {
-				// No active service clusters available in this region, skip it
-				continue
-			}
+		if isHostedCP && !v.SupportsHypershift() {
+			continue
 		}
 
 		if !multiAZ || v.SupportsMultiAZ() {
@@ -177,58 +169,6 @@ func (c *Client) GetRegionList(multiAZ bool, roleARN string,
 	}
 
 	return
-}
-
-// isHostedCPSupportedRegion checks that the region has support for Hosted CP
-// currently this is done by checking for the existence of at least one Service Cluster
-func (c *Client) isHostedCPSupportedRegion(region *cmv1.CloudRegion) (exists bool, err error) {
-	// Every Hypershift cluster has the management_cluster field set automatically
-	// if it is not set, it is not usable anyway for provisioning purposes
-	query := fmt.Sprintf("region.id = '%s' AND management_cluster != '' AND "+
-		"status = 'active'", region.ID())
-	response, err := c.ocm.ClustersMgmt().V1().ProvisionShards().List().
-		Search(query).
-		Page(1).
-		Size(1).
-		Send()
-	if err != nil {
-		return false, fmt.Errorf("failed to get Provision Shards: %w", err)
-	}
-
-	if response.Total() == 0 {
-		return false, nil
-	}
-	return true, nil
-}
-
-// ListHostedCPSupportedRegion returns all the regions that has support for Hosted CP
-// currently this is done by checking for the existence of at least one Service Cluster
-func (c *Client) ListHostedCPSupportedRegion() (regions map[string]bool, err error) {
-	regions = make(map[string]bool)
-	// Every Hypershift cluster has the management_cluster field set automatically
-	// if it is not set, it is not usable anyway for provisioning purposes
-	query := fmt.Sprintf(" management_cluster != '' AND " +
-		"status = 'active'")
-	response, err := c.ocm.ClustersMgmt().V1().ProvisionShards().List().
-		Search(query).
-		Page(1).
-		Size(-1).
-		Send()
-	if err != nil {
-		return regions, fmt.Errorf("failed to get Provision Shards: %w", err)
-	}
-
-	if response.Total() == 0 {
-		return
-	}
-
-	// Build a set of regions from the list of shards
-	response.Items().Range(func(index int, item *cmv1.ProvisionShard) bool {
-		region, _ := item.GetRegion()
-		regions[region.ID()] = true
-		return true
-	})
-	return regions, nil
 }
 
 func (c *Client) GetDatabaseRegionList() ([]string, error) {
