@@ -139,7 +139,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Print short cluster description:
-	str = fmt.Sprintf("```\n"+
+	str = fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
@@ -304,7 +304,7 @@ func run(cmd *cobra.Command, argv []string) {
 			" - Details:                 %s\n",
 			str, reason.Summary(), reason.Details())
 	}
-	str = fmt.Sprintf("%s"+"```\n", str)
+	str = fmt.Sprintf("%s\n", str)
 
 	// Print short cluster description:
 	fmt.Print(str)
