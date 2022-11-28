@@ -2,6 +2,64 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.9 Nov 28 2022
+
+- feat: set interactive enabled if local flags are unchanged, except for cluster flag
+- feat: don't send update request if there are no changes
+- refactor: setting up a function to look into given params expected to be unchanged
+- Hosted-cp flag now forces byo vpc prompt
+- bump ocm sdk to 0.1.289
+- update hypershift naming convention for latest SDK
+- add market specific billing options for addon installations
+- [SDA-6984] Add support for nightly builds for HyperShift
+- [Hypershift] Filter regions where HostedCP is avalaible
+- feat: check if rosa cli is up to date
+- fix: lint
+- refactor: clean up
+- fix: favor replicas instead of deprecated compute-nodes param
+- Revert "[Hypershift] Filter regions where HostedCP is avalaible"
+- removed --channel-group  from --help options.
+- [Hypershift] Filter regions where HostedCP is avalaible
+- [Hypershift] Filter regions where HostedCP is avalaible
+- update owners file
+- STS is now default mode for cluster creation, added flags for non-sts
+- Transformer added to change escaped empty strings to real empty strings
+- refactor: manual aws command builder
+- add `--yes` to create cluster cmd
+- fix hosted cluster parameter in create cluster
+- unhide tags during cluster create
+- Create/oidcprovider bug sets interactive.Enable
+- fix: add tags check when b.tags nil
+- Output current environment when it is not production
+- Bump OCM SDK GO version to v0.1.292
+- FIPS: Unhide flag
+- Revert "[SDA-6643] STS is now default mode for cluster creation, added flags for mint mode/non-sts mode"
+- feat: add warn messages about sts/non sts modes
+- fix: specify which flag in message
+- fix: message when non sts
+- fix: message non sts
+- fix: don't show if redirecting to file
+- Bump OCM SDK GO version to v0.1.293
+- show Limited Support status when calling `rosa describe cluster`
+- Create machinepool - filter supported instances by availability zones
+- feat: add aws command builder unit tests
+- Create a machine pool - prevent choosing a spot instance for a local AZ
+- feat: new upgrade roles command and some refactors
+- Fix bug - create a machine pool with a different region configured in the AWS CLI
+- Create machine pool - display spinner when fetching instance types
+- feat: add channel group and option to choose version for policy tags in upgrade roles cmd
+- fix: sort prefixes to ensure consistancy when they are the same rank
+- fix: order of messages
+- fix: remove not needed vars in favor of using the args
+- fix: prompt mode for upgrade cluster when sts and mode is empty
+- fix: invert condition for no reason to update
+- fix: always show warning, don't go into interactive if mint mode or non sts flags are enabled
+- feat: checking undefined aws region
+- fix: handle empty strings before validation
+- Move HostedCP region supports check to the backend side
+- Adding check for Changes in replicas flag too
+- Remove redundant quotation
+
 == 1.2.8 Oct 13 2022
 
 - fix: path args need not to be explicitly set for interactive mode to ask about it
