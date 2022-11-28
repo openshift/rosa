@@ -693,7 +693,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// OpenShift version:
 	version := args.version
 	channelGroup := args.channelGroup
-	versionList, err := getVersionList(r, channelGroup, isSTS)
+	versionList, err := getVersionList(r, channelGroup, isSTS, isHostedCP)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -2194,7 +2194,7 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 			return version, err
 		}
 		if isHostedCP {
-			valid, err := ocm.HasHostedCPSupport(version, channelGroup)
+			valid, err := ocm.HasHostedCPSupport(version)
 			if err != nil {
 				return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
 			}
@@ -2209,7 +2209,8 @@ func validateVersion(version string, versionList []string, channelGroup string, 
 	return version, nil
 }
 
-func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool) (versionList []string, err error) {
+func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool) (versionList []string,
+	err error) {
 	vs, err := r.OCMClient.GetVersions(channelGroup)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
@@ -2219,6 +2220,15 @@ func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool) (versionLi
 	for _, v := range vs {
 		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
 			continue
+		}
+		if isHostedCP {
+			valid, err := ocm.HasHostedCPSupport(v.RawID())
+			if err != nil {
+				return versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
+			}
+			if !valid {
+				continue
+			}
 		}
 		versionList = append(versionList, strings.Replace(v.ID(), "openshift-v", "", 1))
 	}
