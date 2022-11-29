@@ -30,7 +30,7 @@ const (
 	NightlyChannelGroup   = "nightly"
 	LowestSTSSupport      = "4.7.11"
 	LowestSTSMinor        = "4.7"
-	LowestHostedCPSupport = "4.11.6"
+	LowestHostedCPSupport = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
 )
 
 func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err error) {
@@ -102,7 +102,7 @@ func HasSTSSupportMinor(minor string) bool {
 	return a.GreaterThanOrEqual(b)
 }
 
-func HasHostedCPSupport(rawVersion, channelGroup string) (bool, error) {
+func HasHostedCPSupport(rawVersion string) (bool, error) {
 	v, err := ver.NewVersion(rawVersion)
 	if err != nil {
 		return false, err
@@ -111,9 +111,8 @@ func HasHostedCPSupport(rawVersion, channelGroup string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	//TODO: Currently, the minimum OCP supported version for development is 4.11.6 and nightly releases
-	//This comparison needs to be updated to 4.12 when it is released.
-	return v.GreaterThanOrEqual(b) || channelGroup == NightlyChannelGroup, nil
+	// Check minimum OCP supported version
+	return v.GreaterThanOrEqual(b), nil
 }
 
 func GetVersionID(cluster *cmv1.Cluster) string {
