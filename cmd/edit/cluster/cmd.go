@@ -402,9 +402,9 @@ func run(cmd *cobra.Command, _ []string) {
 			noProxySlice[0] = ""
 		}
 
-		duplicate, found := aws.HasDuplicates(noProxySlice)
-		if found {
-			r.Reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
+		err := aws.UserNoProxyDuplicateValidator(noProxySlice)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		for _, domain := range noProxySlice {

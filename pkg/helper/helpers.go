@@ -108,14 +108,7 @@ func MapKeysToString(m map[string]bool) string {
 	for k := range m {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		l1, l2 := len(keys[i]), len(keys[j])
-		if l1 != l2 {
-			return l1 < l2
-		}
-		return keys[i] < keys[j]
-	})
-	return "[" + strings.Join(keys, ", ") + "]"
+	return SliceToString(keys)
 }
 
 // RemoveStrFromSlice removes one occurrence of 'str' from the 's' slice if exists.
@@ -176,4 +169,13 @@ func HandleEmptyStringOnSlice(slice []string) []string {
 		}
 	}
 	return r
+}
+
+func TrimUpToSuffix(orig, sufix string) string {
+	for i := len(sufix); i >= 0; i-- {
+		if strings.HasSuffix(orig, sufix[:i]) {
+			return orig[:len(orig)-i]
+		}
+	}
+	return orig
 }

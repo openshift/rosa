@@ -1143,9 +1143,9 @@ func run(cmd *cobra.Command, _ []string) {
 		tags = strings.Split(tagsInput, ",")
 	}
 	if len(tags) > 0 {
-		duplicate, found := aws.HasDuplicateTagKey(tags)
-		if found {
-			r.Reporter.Errorf("Invalid tags, user tag keys must be unique, duplicate key '%s' found", duplicate)
+		err := aws.UserTagDuplicateValidator(tags)
+		if err != nil {
+			r.Reporter.Errorf("%v", err)
 			os.Exit(1)
 		}
 		for _, tag := range tags {
@@ -1879,9 +1879,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if len(noProxySlice) > 0 {
-		duplicate, found := aws.HasDuplicates(noProxySlice)
-		if found {
-			r.Reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
+		err := aws.UserNoProxyDuplicateValidator(noProxySlice)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		for _, domain := range noProxySlice {
@@ -2168,7 +2168,7 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	rolePrefix := helper.TrimUpToSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
 }
 

@@ -255,7 +255,7 @@ func run(cmd *cobra.Command, argv []string) {
 func buildCommands(prefix string, path string, userName string,
 	accountID string, env string, permissionsBoundary string) string {
 	commands := []string{}
-	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
+	roleName := aws.GetUserRoleName(prefix, userName)
 
 	roleARN := aws.GetRoleARN(accountID, roleName, path)
 	iamTags := map[string]string{
@@ -281,7 +281,7 @@ func buildCommands(prefix string, path string, userName string,
 func createRoles(r *rosa.Runtime,
 	prefix string, path string, userName string, env string, accountID string, permissionsBoundary string,
 	policies map[string]string) (string, error) {
-	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
+	roleName := aws.GetUserRoleName(prefix, userName)
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
 	}

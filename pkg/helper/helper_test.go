@@ -120,5 +120,13 @@ var _ = Describe("Helper", func() {
 			})
 		})
 
+		var _ = Describe("Validates TrimUpToSuffix", func() {
+
+			It("Retrieves path arn without path", func() {
+				prefix := TrimUpToSuffix("testprefix-openshift", "-openshift")
+				Expect("testprefix").To(Equal(prefix))
+			})
+		})
+
 	})
 })

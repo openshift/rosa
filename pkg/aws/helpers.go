@@ -239,6 +239,7 @@ func UserTagValidator(input interface{}) error {
 			return nil
 		}
 		tags := strings.Split(str, ",")
+		tags = helper.HandleEmptyStringOnSlice(tags)
 		for _, t := range tags {
 			if !strings.Contains(t, ":") {
 				return fmt.Errorf("invalid tag format, Tags are comma separated, for example: --tags=foo:bar,bar:baz")
@@ -265,7 +266,7 @@ func UserTagDuplicateValidator(input interface{}) error {
 			return nil
 		}
 		tags := strings.Split(str, ",")
-		duplicate, found := HasDuplicateTagKey(tags)
+		duplicate, found := hasDuplicateTagKey(tags)
 		if found {
 			return fmt.Errorf("user tag keys must be unique, duplicate key '%s' found", duplicate)
 		}
@@ -274,7 +275,7 @@ func UserTagDuplicateValidator(input interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", input)
 }
 
-func HasDuplicateTagKey(tags []string) (string, bool) {
+func hasDuplicateTagKey(tags []string) (string, bool) {
 	visited := make(map[string]bool)
 	for _, t := range tags {
 		tag := strings.Split(t, ":")
@@ -309,7 +310,7 @@ func UserNoProxyDuplicateValidator(input interface{}) error {
 			return nil
 		}
 		values := strings.Split(str, ",")
-		duplicate, found := HasDuplicates(values)
+		duplicate, found := hasDuplicates(values)
 		if found {
 			return fmt.Errorf("no-proxy values must be unique, duplicate key '%s' found", duplicate)
 		}
@@ -318,7 +319,7 @@ func UserNoProxyDuplicateValidator(input interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", input)
 }
 
-func HasDuplicates(valSlice []string) (string, bool) {
+func hasDuplicates(valSlice []string) (string, bool) {
 	visited := make(map[string]bool)
 	for _, v := range valSlice {
 		if visited[v] {
@@ -363,16 +364,16 @@ func GetRoleName(prefix string, role string) string {
 	return name
 }
 
-func GetOCMRoleName(prefix string, role string, postfix string) string {
-	name := fmt.Sprintf("%s-%s-Role-%s", prefix, role, postfix)
+func GetOCMRoleName(prefix string, postfix string) string {
+	name := fmt.Sprintf("%s-%s-Role-%s", prefix, OCMRole, postfix)
 	if len(name) > 64 {
 		name = name[0:64]
 	}
 	return name
 }
 
-func GetUserRoleName(prefix string, role string, userName string) string {
-	name := fmt.Sprintf("%s-%s-%s-Role", prefix, role, userName)
+func GetUserRoleName(prefix string, userName string) string {
+	name := fmt.Sprintf("%s-%s-%s-Role", prefix, OCMUserRole, userName)
 	if len(name) > 64 {
 		name = name[0:64]
 	}
@@ -469,7 +470,7 @@ func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (str
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", roleNameSuffix))
+	rolePrefix := helper.TrimUpToSuffix(roleName, fmt.Sprintf("-%s-Role", roleNameSuffix))
 	return rolePrefix, nil
 }
 
@@ -477,20 +478,13 @@ func GetPrefixFromInstallerAccountRole(cluster *cmv1.Cluster) (string, error) {
 	return GetPrefixFromAccountRole(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
-// Role names can be truncated if they are over 64 chars, so we need to make sure we aren't missing a truncated suffix
-func TrimRoleSuffix(orig, sufix string) string {
-	for i := len(sufix); i >= 0; i-- {
-		if strings.HasSuffix(orig, sufix[:i]) {
-			return orig[:len(orig)-i]
-		}
-	}
-	return orig
-}
-
 func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
+	if len(cluster.AWS().STS().OperatorIAMRoles()) == 0 {
+		return ""
+	}
 	operator := cluster.AWS().STS().OperatorIAMRoles()[0]
 	roleName, _ := GetResourceIdFromARN(operator.RoleARN())
-	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-%s", operator.Namespace(), operator.Name()))
+	rolePrefix := helper.TrimUpToSuffix(roleName, fmt.Sprintf("-%s-%s", operator.Namespace(), operator.Name()))
 	return rolePrefix
 }
 

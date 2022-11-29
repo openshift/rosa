@@ -222,7 +222,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	roleNameRequested := aws.GetOCMRoleName(prefix, aws.OCMRole, externalID)
+	roleNameRequested := aws.GetOCMRoleName(prefix, externalID)
 
 	existsOnOCM, _, selectedARN, err := r.OCMClient.CheckRoleExists(orgID, roleNameRequested, r.Creator.AccountID)
 

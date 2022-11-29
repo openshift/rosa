@@ -493,7 +493,7 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	rolePrefix := helper.TrimUpToSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
 }
 
