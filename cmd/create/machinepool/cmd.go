@@ -736,9 +736,15 @@ func parseLabels(labels string) (map[string]string, error) {
 			return nil, fmt.Errorf("Expected key=value format for labels")
 		}
 		tokens := strings.Split(label, "=")
-		labelMap[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+		labelMap[stripUnwanted(tokens[0])] = stripUnwanted(tokens[1])
 	}
 	return labelMap, nil
+}
+
+func stripUnwanted(value string) string {
+	strippedValue := strings.TrimSpace(value)
+	strippedValue = strings.Trim(strippedValue, "\"")
+	return strippedValue
 }
 
 func taintValidator(val interface{}) error {
