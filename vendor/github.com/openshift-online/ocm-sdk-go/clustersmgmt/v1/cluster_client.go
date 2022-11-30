@@ -263,6 +263,16 @@ func (c *ClusterClient) MetricQueries() *MetricQueriesClient {
 	)
 }
 
+// NodePools returns the target 'node_pools' resource.
+//
+// Reference to the resource that manages the collection of node pool resources.
+func (c *ClusterClient) NodePools() *NodePoolsClient {
+	return NewNodePoolsClient(
+		c.transport,
+		path.Join(c.path, "node_pools"),
+	)
+}
+
 // Product returns the target 'product' resource.
 //
 // Reference to the resource that manages the product type of the cluster

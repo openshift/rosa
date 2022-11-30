@@ -39,14 +39,19 @@ const LabelNilKind = "LabelNil"
 //
 //
 type Label struct {
-	bitmap_   uint32
-	id        string
-	href      string
-	createdAt time.Time
-	key       string
-	updatedAt time.Time
-	value     string
-	internal  bool
+	bitmap_        uint32
+	id             string
+	href           string
+	accountID      string
+	createdAt      time.Time
+	key            string
+	managedBy      string
+	organizationID string
+	subscriptionID string
+	type_          string
+	updatedAt      time.Time
+	value          string
+	internal       bool
 }
 
 // Kind returns the name of the type of the object.
@@ -106,12 +111,35 @@ func (o *Label) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
+// AccountID returns the value of the 'account_ID' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Label) AccountID() string {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.accountID
+	}
+	return ""
+}
+
+// GetAccountID returns the value of the 'account_ID' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Label) GetAccountID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.accountID
+	}
+	return
+}
+
 // CreatedAt returns the value of the 'created_at' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 //
 func (o *Label) CreatedAt() time.Time {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.createdAt
 	}
 	return time.Time{}
@@ -122,7 +150,7 @@ func (o *Label) CreatedAt() time.Time {
 //
 //
 func (o *Label) GetCreatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.createdAt
 	}
@@ -134,7 +162,7 @@ func (o *Label) GetCreatedAt() (value time.Time, ok bool) {
 //
 //
 func (o *Label) Internal() bool {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.internal
 	}
 	return false
@@ -145,7 +173,7 @@ func (o *Label) Internal() bool {
 //
 //
 func (o *Label) GetInternal() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.internal
 	}
@@ -157,7 +185,7 @@ func (o *Label) GetInternal() (value bool, ok bool) {
 //
 //
 func (o *Label) Key() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.key
 	}
 	return ""
@@ -168,9 +196,101 @@ func (o *Label) Key() string {
 //
 //
 func (o *Label) GetKey() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.key
+	}
+	return
+}
+
+// ManagedBy returns the value of the 'managed_by' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Label) ManagedBy() string {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.managedBy
+	}
+	return ""
+}
+
+// GetManagedBy returns the value of the 'managed_by' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Label) GetManagedBy() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.managedBy
+	}
+	return
+}
+
+// OrganizationID returns the value of the 'organization_ID' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Label) OrganizationID() string {
+	if o != nil && o.bitmap_&256 != 0 {
+		return o.organizationID
+	}
+	return ""
+}
+
+// GetOrganizationID returns the value of the 'organization_ID' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Label) GetOrganizationID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&256 != 0
+	if ok {
+		value = o.organizationID
+	}
+	return
+}
+
+// SubscriptionID returns the value of the 'subscription_ID' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Label) SubscriptionID() string {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.subscriptionID
+	}
+	return ""
+}
+
+// GetSubscriptionID returns the value of the 'subscription_ID' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Label) GetSubscriptionID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.subscriptionID
+	}
+	return
+}
+
+// Type returns the value of the 'type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+//
+func (o *Label) Type() string {
+	if o != nil && o.bitmap_&1024 != 0 {
+		return o.type_
+	}
+	return ""
+}
+
+// GetType returns the value of the 'type' attribute and
+// a flag indicating if the attribute has a value.
+//
+//
+func (o *Label) GetType() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&1024 != 0
+	if ok {
+		value = o.type_
 	}
 	return
 }
@@ -180,7 +300,7 @@ func (o *Label) GetKey() (value string, ok bool) {
 //
 //
 func (o *Label) UpdatedAt() time.Time {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.updatedAt
 	}
 	return time.Time{}
@@ -191,7 +311,7 @@ func (o *Label) UpdatedAt() time.Time {
 //
 //
 func (o *Label) GetUpdatedAt() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.updatedAt
 	}
@@ -203,7 +323,7 @@ func (o *Label) GetUpdatedAt() (value time.Time, ok bool) {
 //
 //
 func (o *Label) Value() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.value
 	}
 	return ""
@@ -214,7 +334,7 @@ func (o *Label) Value() string {
 //
 //
 func (o *Label) GetValue() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.value
 	}

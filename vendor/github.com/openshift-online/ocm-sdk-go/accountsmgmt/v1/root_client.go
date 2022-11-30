@@ -70,6 +70,16 @@ func (c *Client) Accounts() *AccountsClient {
 	)
 }
 
+// Capabilities returns the target 'capabilities' resource.
+//
+// Reference to the resource that manages the collection of capabilities.
+func (c *Client) Capabilities() *CapabilitiesClient {
+	return NewCapabilitiesClient(
+		c.transport,
+		path.Join(c.path, "capabilities"),
+	)
+}
+
 // CloudResources returns the target 'cloud_resources' resource.
 //
 // Reference to the resource that manages the collection of cloud resources.
