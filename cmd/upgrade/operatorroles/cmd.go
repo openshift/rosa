@@ -155,8 +155,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	isOperatorPolicyUpgradeNeeded := false
-	isOperatorPolicyUpgradeNeeded, err = r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
+	isOperatorPolicyUpgradeNeeded, err := r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
 		r.Creator.AccountID, defaultPolicyVersion, credRequests, policyPath)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)

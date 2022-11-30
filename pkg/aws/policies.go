@@ -1459,7 +1459,12 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix st
 	for _, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		existsAndUpToDate, err := c.checkPolicyExistsAndUpToDate(policyARN, version)
-		return !existsAndUpToDate, err
+		if err != nil {
+			return false, err
+		}
+		if !existsAndUpToDate {
+			return true, nil
+		}
 	}
 	return false, nil
 }
