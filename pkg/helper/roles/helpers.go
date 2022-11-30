@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	semver "github.com/hashicorp/go-version"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
@@ -82,4 +83,64 @@ func BuildMissingOperatorRoleCommand(
 
 	}
 	return awscb.JoinCommands(commands), nil
+}
+
+func EnsureOperatorRolesHaveAttachedPolicies(
+	cluster *cmv1.Cluster,
+	credRequests map[string]*cmv1.STSOperator,
+	newMinorVersion string,
+	AWSClient aws.Client,
+	accountID string,
+	operatorRolePolicyPrefix string,
+	operatorPolicyPath string,
+) error {
+	for _, operator := range credRequests {
+		opMinVersion := newMinorVersion
+		if operator.MinVersion() != "" {
+			opMinVersion = operator.MinVersion()
+		}
+		clusterUpgradeVersion, err := semver.NewVersion(newMinorVersion)
+		if err != nil {
+			return err
+		}
+		operatorMinVersion, err := semver.NewVersion(opMinVersion)
+		if err != nil {
+			return err
+		}
+
+		shouldCheckRole := clusterUpgradeVersion.GreaterThanOrEqual(operatorMinVersion)
+
+		if !shouldCheckRole {
+			continue
+		}
+
+		operatorRoleARN := aws.FindOperatorRoleBySTSOperator(cluster.AWS().STS().OperatorIAMRoles(), operator)
+		operatorRoleName := ""
+		if operatorRoleARN == "" {
+			operatorRoleName = GetOperatorRoleName(cluster, operator)
+		} else {
+			operatorRoleName, err = aws.GetResourceIdFromARN(operatorRoleARN)
+			if err != nil {
+				return err
+			}
+		}
+		policiesDetails, err := AWSClient.GetAttachedPolicy(&operatorRoleName)
+		if err != nil {
+			return err
+		}
+		attachedPoliciesDetails := aws.FindAllAttachedPolicyDetails(policiesDetails)
+		if len(attachedPoliciesDetails) == 0 {
+			operatorPolicyARN := aws.GetOperatorPolicyARN(
+				accountID,
+				operatorRolePolicyPrefix,
+				operator.Namespace(),
+				operator.Name(),
+				operatorPolicyPath)
+			err = AWSClient.AttachRolePolicy(operatorRoleName, operatorPolicyARN)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

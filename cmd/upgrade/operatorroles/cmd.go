@@ -235,6 +235,23 @@ func run(cmd *cobra.Command, argv []string) error {
 			)
 		}
 	}
+
+	r.Reporter.Infof("Ensuring operator roles have their attached policies")
+	err = roles.EnsureOperatorRolesHaveAttachedPolicies(
+		cluster,
+		credRequests,
+		version,
+		r.AWSClient,
+		r.Creator.AccountID,
+		prefix,
+		policyPath)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	r.Reporter.Infof(
+		"All needed operator roles have their policies attached. Please proceed with cluster upgrade process.",
+	)
 	return nil
 }
 

@@ -403,10 +403,38 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 		if createdMissingRoles == 0 {
 			r.Reporter.Infof(
-				"Missing roles/policies have already been created. Please continue with cluster upgrade process.",
+				"Missing roles/policies have already been created.",
 			)
 		}
 	}
+
+	if !args.isInvokedFromClusterUpgrade {
+		reporter.Infof("Ensuring operator roles have their attached policies")
+	}
+	if spin != nil {
+		spin.Start()
+	}
+
+	err = roles.EnsureOperatorRolesHaveAttachedPolicies(
+		cluster,
+		credRequests,
+		clusterUpgradeVersion,
+		r.AWSClient,
+		r.Creator.AccountID,
+		operatorRolePolicyPrefix,
+		operatorPolicyPath)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if spin != nil {
+		spin.Stop()
+	}
+
+	r.Reporter.Infof(
+		"All needed operator roles have their policies attached. Please continue with cluster upgrade process.",
+	)
 	return nil
 }
 
@@ -433,13 +461,21 @@ func handleAccountRolePolicyARN(
 	if err != nil {
 		return "", commands, err
 	}
+	attachedPoliciesDetail := aws.FindAllAttachedPolicyDetails(policiesDetails)
+	generatedPolicyARN := aws.GetPolicyARN(
+		accountID,
+		roleName,
+		rolePath,
+	)
+	if len(attachedPoliciesDetail) == 0 {
+		return generatedPolicyARN, commands, nil
+	}
 
-	hasMoreThanOneAttachedPolicy := aws.HasMoreThanOneAttachedPolicy(policiesDetails)
+	hasMoreThanOneAttachedPolicy := aws.HasMoreThanOneAttachedPolicy(attachedPoliciesDetail)
 	if hasMoreThanOneAttachedPolicy {
 		promptString := fmt.Sprintf("More than one policy attached to account role '%s'.\n"+
 			"\tWould you like to dettach current policies and setup a new one ?", roleName)
 		if !confirm.Prompt(true, promptString) {
-			attachedPoliciesDetail := aws.FindAllAttachedPolicyDetails(policiesDetails)
 			attachedPoliciesArns := make([]string, len(attachedPoliciesDetail))
 			for _, attachedPolicyDetail := range attachedPoliciesDetail {
 				attachedPoliciesArns = append(attachedPoliciesArns, attachedPolicyDetail.PolicyArn)
@@ -463,7 +499,7 @@ func handleAccountRolePolicyARN(
 				return "", commands, err
 			}
 		case aws.ModeManual:
-			for _, policyDetail := range policiesDetails {
+			for _, policyDetail := range attachedPoliciesDetail {
 				detachManagedPoliciesCommand := awscbRoles.ManualCommandsForDetachRolePolicy(
 					awscbRoles.ManualCommandsForDetachRolePolicyInput{
 						RoleName:  roleName,
@@ -475,12 +511,6 @@ func handleAccountRolePolicyARN(
 		default:
 			return "", commands, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		}
-
-		generatedPolicyARN := aws.GetPolicyARN(
-			accountID,
-			roleName,
-			rolePath,
-		)
 		return generatedPolicyARN, commands, nil
 	}
 	policyDetail := policiesDetails[0]
@@ -888,13 +918,23 @@ func handleOperatorRolePolicyARN(
 	if err != nil {
 		return "", commands, err
 	}
+	attachedPoliciesDetails := aws.FindAllAttachedPolicyDetails(policiesDetails)
+	generatedPolicyARN := aws.GetOperatorPolicyARN(
+		accountID,
+		operatorRolePolicyPrefix,
+		operator.Namespace(),
+		operator.Name(),
+		operatorPolicyPath,
+	)
+	if len(attachedPoliciesDetails) == 0 {
+		return generatedPolicyARN, commands, nil
+	}
 
-	hasMoreThanOneAttachedPolicy := aws.HasMoreThanOneAttachedPolicy(policiesDetails)
+	hasMoreThanOneAttachedPolicy := aws.HasMoreThanOneAttachedPolicy(attachedPoliciesDetails)
 	if hasMoreThanOneAttachedPolicy {
 		promptString := fmt.Sprintf("More than one policy attached to operator role '%s'.\n"+
 			"\tWould you like to dettach current policies and setup a new one ?", operatorRoleName)
 		if !confirm.Prompt(true, promptString) {
-			attachedPoliciesDetails := aws.FindAllAttachedPolicyDetails(policiesDetails)
 			attachedPoliciesArns := make([]string, len(attachedPoliciesDetails))
 			for _, attachedPolicyDetail := range attachedPoliciesDetails {
 				attachedPoliciesArns = append(attachedPoliciesArns, attachedPolicyDetail.PolicyArn)
@@ -917,7 +957,7 @@ func handleOperatorRolePolicyARN(
 				return "", commands, err
 			}
 		case aws.ModeManual:
-			for _, policyDetail := range policiesDetails {
+			for _, policyDetail := range attachedPoliciesDetails {
 				detachManagedPoliciesCommand := awscbRoles.ManualCommandsForDetachRolePolicy(
 					awscbRoles.ManualCommandsForDetachRolePolicyInput{
 						RoleName:  operatorRoleName,
@@ -929,13 +969,6 @@ func handleOperatorRolePolicyARN(
 		default:
 			return "", commands, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		}
-		generatedPolicyARN := aws.GetOperatorPolicyARN(
-			accountID,
-			operatorRolePolicyPrefix,
-			operator.Namespace(),
-			operator.Name(),
-			operatorPolicyPath,
-		)
 		return generatedPolicyARN, commands, nil
 	}
 	policyDetail := policiesDetails[0]
