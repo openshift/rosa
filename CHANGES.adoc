@@ -2,6 +2,11 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.10 Dec 1 2022
+
+- Check HostedCP version support also in interactive mode + align versions
+- fix: going through all policies to check upgrade
+
 == 1.2.9 Nov 28 2022
 
 - feat: set interactive enabled if local flags are unchanged, except for cluster flag
