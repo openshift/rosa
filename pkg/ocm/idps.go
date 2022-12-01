@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/helper"
 )
 
 const (
@@ -137,4 +138,12 @@ func IdentityProviderType(idp *cmv1.IdentityProvider) string {
 	}
 
 	return ""
+}
+
+func HasAuthURLSupport(idp *cmv1.IdentityProvider) bool {
+	return !helper.Contains(getIDPListWithoutAuthURLSupport(), IdentityProviderType(idp))
+}
+
+func getIDPListWithoutAuthURLSupport() []string {
+	return []string{HTPasswdIDPType, LDAPIDPType}
 }
