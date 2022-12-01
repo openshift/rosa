@@ -96,7 +96,7 @@ func init() {
 		&args.scopes,
 		"scope",
 		sdk.DefaultScopes,
-		"OpenID scope. If this option is used it will replace completely the default "+
+		"OpenID scope. If this option is used it will completely replace the default "+
 			"scopes. Can be repeated multiple times to specify multiple scopes.",
 	)
 	flags.StringVar(
