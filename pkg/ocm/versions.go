@@ -117,7 +117,7 @@ func HasHostedCPSupport(rawVersion string) (bool, error) {
 
 func GetVersionID(cluster *cmv1.Cluster) string {
 	if cluster.OpenshiftVersion() != "" {
-		return createVersionID(cluster.OpenshiftVersion(), cluster.Version().ChannelGroup())
+		return CreateVersionID(cluster.OpenshiftVersion(), cluster.Version().ChannelGroup())
 	}
 	return cluster.Version().ID()
 }
@@ -136,7 +136,7 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 	availableUpgrades := []string{}
 
 	for _, v := range version.AvailableUpgrades() {
-		id := createVersionID(v, version.ChannelGroup())
+		id := CreateVersionID(v, version.ChannelGroup())
 		resp, err := c.ocm.ClustersMgmt().V1().
 			Versions().
 			Version(id).
@@ -154,7 +154,7 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 	return availableUpgrades, nil
 }
 
-func createVersionID(version string, channelGroup string) string {
+func CreateVersionID(version string, channelGroup string) string {
 	versionID := fmt.Sprintf("openshift-v%s", version)
 	if channelGroup != DefaultChannelGroup {
 		versionID = fmt.Sprintf("%s-%s", versionID, channelGroup)
@@ -248,9 +248,13 @@ func IsValidVersion(userRequestedVersion string, supportedVersion string, cluste
 	if err != nil {
 		return false, err
 	}
+
+	isPreRelease := a.Prerelease() != "" && b.Prerelease() != ""
+
 	versionSplit := a.Segments64()
-	//If user has specified patch we check directly and return the result
-	if len(versionSplit) > 2 && versionSplit[2] > 0 {
+	// If user has specified patch or not specified patch but is a preRelease
+	// Check directly
+	if len(versionSplit) > 2 && versionSplit[2] > 0 || (versionSplit[2] == 0 && isPreRelease) {
 		return a.Equal(b), err
 	}
 

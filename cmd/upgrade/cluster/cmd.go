@@ -201,7 +201,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS {
 		r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
 			" are compatible with upgrade.", cluster.ID())
-		err = roles.Cmd.RunE(roles.Cmd, []string{mode, cluster.ID(), version})
+		err = roles.Cmd.RunE(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup()})
 		if err != nil {
 			rolesStr := fmt.Sprintf("rosa upgrade roles -c %s --version=%s --mode=%s", clusterKey, version, mode)
 			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)

@@ -109,9 +109,8 @@ func run(cmd *cobra.Command, argv []string) error {
 		aws.SetModeKey(argv[0])
 		ocm.SetClusterKey(argv[1])
 		skipInteractive = true
-		if len(argv) > 2 && argv[2] != "" {
-			args.clusterUpgradeVersion = argv[2]
-		}
+		args.clusterUpgradeVersion = argv[2]
+		args.channelGroup = argv[3]
 		isInvokedFromClusterUpgrade = true
 	}
 	args.isInvokedFromClusterUpgrade = isInvokedFromClusterUpgrade
