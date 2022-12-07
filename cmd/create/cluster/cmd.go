@@ -29,7 +29,6 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -749,12 +748,12 @@ func run(cmd *cobra.Command, _ []string) {
 	hasRoles := false
 	if isSTS && roleARN == "" {
 		minor := ocm.GetVersionMinor(version)
-		role := aws.AccountRoles[aws.InstallerAccountRole]
+		installerRole := aws.AccountRoles[aws.InstallerAccountRole]
 
 		// Find all installer roles in the current account using AWS resource tags
 		roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
 		if err != nil {
-			r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
+			r.Reporter.Errorf("Failed to find %s role: %s", installerRole.Name, err)
 			os.Exit(1)
 		}
 
@@ -762,18 +761,18 @@ func run(cmd *cobra.Command, _ []string) {
 			defaultRoleARN := roleARNs[0]
 			// Prioritize roles with the default prefix
 			for _, rARN := range roleARNs {
-				if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)) {
+				if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, installerRole.Name)) {
 					defaultRoleARN = rARN
 				}
 			}
-			r.Reporter.Warnf("More than one %s role found", role.Name)
+			r.Reporter.Warnf("More than one %s role found", installerRole.Name)
 			if !interactive.Enabled() && confirm.Yes() {
-				r.Reporter.Infof("Using %s for the %s role", defaultRoleARN, role.Name)
+				r.Reporter.Infof("Using %s for the %s role", defaultRoleARN, installerRole.Name)
 				roleARN = defaultRoleARN
 			} else {
 				roleARN, err = interactive.GetOption(interactive.Input{
-					Question: fmt.Sprintf("%s role ARN", role.Name),
-					Help:     cmd.Flags().Lookup(role.Flag).Usage,
+					Question: fmt.Sprintf("%s role ARN", installerRole.Name),
+					Help:     cmd.Flags().Lookup(installerRole.Flag).Usage,
 					Options:  roleARNs,
 					Default:  defaultRoleARN,
 					Required: true,
@@ -785,7 +784,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		} else if len(roleARNs) == 1 {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
-				r.Reporter.Infof("Using %s for the %s role", roleARNs[0], role.Name)
+				r.Reporter.Infof("Using %s for the %s role", roleARNs[0], installerRole.Name)
 			}
 			roleARN = roleARNs[0]
 		} else {
@@ -796,9 +795,9 @@ func run(cmd *cobra.Command, _ []string) {
 
 		if roleARN != "" {
 			// Get role prefix
-			rolePrefix, err := getAccountRolePrefix(roleARN, role)
+			rolePrefix, err := aws.GetInstallerAccountRolePrefixFromRoleARN(roleARN)
 			if err != nil {
-				r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+				r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
 				os.Exit(1)
 			}
 			r.Reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
@@ -1017,7 +1016,7 @@ func run(cmd *cobra.Command, _ []string) {
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
 		if operatorRolesPrefix == "" {
-			operatorRolesPrefix = getRolePrefix(clusterName)
+			operatorRolesPrefix = aws.GenerateOperatorRolePrefix(clusterName)
 		}
 		if interactive.Enabled() {
 			operatorRolesPrefix, err = interactive.GetString(interactive.Input{
@@ -1056,7 +1055,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		installerRole := aws.AccountRoles[aws.InstallerAccountRole]
-		accRolesPrefix, err := getAccountRolePrefix(roleARN, installerRole)
+		accRolesPrefix, err := aws.GetInstallerAccountRolePrefixFromRoleARN(roleARN)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
 			os.Exit(1)
@@ -1080,9 +1079,8 @@ func run(cmd *cobra.Command, _ []string) {
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name(),
 				Namespace: operator.Namespace(),
-				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator, operatorRolePath),
+				RoleARN:   aws.GenerateOperatorRoleArn(operatorRolesPrefix, operator, awsCreator, operatorRolePath),
 			})
-
 		}
 		// If user insists on using the deprecated --operator-iam-roles
 		// override the values to support the legacy documentation
@@ -2150,28 +2148,6 @@ func hostPrefixValidator(val interface{}) error {
 	return nil
 }
 
-func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {
-	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
-	if len(role) > 64 {
-		role = role[0:64]
-	}
-	str := fmt.Sprintf("arn:aws:iam::%s:role", creator.AccountID)
-	if path != "" {
-		str = fmt.Sprintf("%s%s", str, path)
-		return fmt.Sprintf("%s%s", str, role)
-	}
-	return fmt.Sprintf("%s/%s", str, role)
-}
-
-func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
-	roleName, err := aws.GetResourceIdFromARN(roleARN)
-	if err != nil {
-		return "", err
-	}
-	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
-	return rolePrefix, nil
-}
-
 // Validate OpenShift versions
 func validateVersion(version string, versionList []string, channelGroup string, isSTS,
 	isHostedCP bool) (string, error) {
@@ -2452,8 +2428,4 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	return command
-}
-
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
 }

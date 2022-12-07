@@ -1398,7 +1398,7 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 		return true, err
 	}
 	for _, operator := range credRequests {
-		operatorRoleARN := FindOperatorRoleBySTSOperator(operatorRoles, operator)
+		operatorRoleARN := FindOperatorRoleARNBySTSOperator(operatorRoles, operator)
 		if operatorRoleARN == "" {
 			policyARN := GetOperatorPolicyARN(
 				accountID,

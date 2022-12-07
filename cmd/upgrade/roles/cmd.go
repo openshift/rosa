@@ -302,7 +302,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
+	unifiedPath, err := aws.GetInstallerRolePathFromCluster(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
@@ -498,7 +498,7 @@ func upgradeAccountRolePoliciesFromCluster(
 	isVersionChosen bool,
 ) error {
 	for file, role := range aws.AccountRoles {
-		roleName, err := aws.GetAccountRoleName(cluster, role.Name)
+		roleName, err := aws.GetAccountRoleNameFromCluster(cluster, role)
 		if err != nil {
 			return err
 		}
@@ -506,11 +506,11 @@ func upgradeAccountRolePoliciesFromCluster(
 			reporter.Debugf("Cluster '%s' does not include expected role '%s'", cluster.ID(), role.Name)
 			continue
 		}
-		prefix, err := aws.GetPrefixFromAccountRole(cluster, role.Name)
+		prefix, err := aws.GetAccountRolePrefixFromCluster(cluster, role)
 		if err != nil {
 			return err
 		}
-		rolePath, err := aws.GetPathFromAccountRole(cluster, role.Name)
+		rolePath, err := aws.GetAccountRolePathFromCluster(cluster, role.Name)
 		if err != nil {
 			return err
 		}
@@ -578,15 +578,15 @@ func buildAccountRoleCommandsFromCluster(
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
-			accRoleName, err := aws.GetAccountRoleName(cluster, role.Name)
+			accRoleName, err := aws.GetAccountRoleNameFromCluster(cluster, role)
 			if err != nil {
 				return "", err
 			}
-			prefix, err := aws.GetPrefixFromAccountRole(cluster, role.Name)
+			prefix, err := aws.GetAccountRolePrefixFromCluster(cluster, role)
 			if err != nil {
 				return "", err
 			}
-			rolePath, err := aws.GetPathFromAccountRole(cluster, role.Name)
+			rolePath, err := aws.GetAccountRolePathFromCluster(cluster, role.Name)
 			if err != nil {
 				return "", err
 			}
@@ -741,7 +741,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 	for credrequest, operator := range credRequests {
 		policyARN := ""
 		operatorPolicyPath := generalPath
-		operatorRoleARN := aws.FindOperatorRoleBySTSOperator(operatorRoles, operator)
+		operatorRoleARN := aws.FindOperatorRoleARNBySTSOperator(operatorRoles, operator)
 		if operatorRoleARN == "" {
 			policyARN = aws.GetOperatorPolicyARN(
 				accountID,
@@ -808,7 +808,7 @@ func buildOperatorRoleCommandsFromCluster(
 		policyARN := ""
 		operatorPolicyPath := generalPath
 		hasDetachPolicyCommandsForExpectedPolicy := false
-		operatorRoleARN := aws.FindOperatorRoleBySTSOperator(operatorRoles, operator)
+		operatorRoleARN := aws.FindOperatorRoleARNBySTSOperator(operatorRoles, operator)
 		operatorRoleName := ""
 		if operatorRoleARN == "" {
 			policyARN = aws.GetOperatorPolicyARN(

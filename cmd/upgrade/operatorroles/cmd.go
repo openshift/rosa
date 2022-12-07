@@ -121,12 +121,12 @@ func run(cmd *cobra.Command, argv []string) error {
 			clusterKey)
 	}
 
-	prefix, err := aws.GetPrefixFromInstallerAccountRole(cluster)
+	prefix, err := aws.GetInstallerAccountRolePrefixFromCluster(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Error getting account role prefix for the cluster '%s'",
 			clusterKey)
 	}
-	unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
+	unifiedPath, err := aws.GetInstallerRolePathFromCluster(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)

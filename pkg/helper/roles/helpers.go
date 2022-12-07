@@ -27,7 +27,12 @@ func GetOperatorRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperato
 		}
 
 		m := strings.LastIndex(roleName, "-openshift")
-		rolePrefix = roleName[0:m]
+		if m != -1 {
+			rolePrefix = roleName[0:m]
+		}
+	}
+	if rolePrefix == "" {
+
 	}
 	role := fmt.Sprintf("%s-%s-%s", rolePrefix, missingOperator.Namespace(), missingOperator.Name())
 	if len(role) > 64 {

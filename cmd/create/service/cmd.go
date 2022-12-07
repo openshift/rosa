@@ -30,7 +30,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -344,7 +343,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if roleARN != "" {
 		// Get role prefix
-		rolePrefix, err := getAccountRolePrefix(roleARN, role)
+		rolePrefix, err := aws.GetAccountRolePrefixFromRoleARN(roleARN, role)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find prefix from %q account role", role.Name)
 			os.Exit(1)
@@ -401,7 +400,8 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// operator role logic.
-	operatorRolesPrefix := getRolePrefix(args.ClusterName)
+	clusterName := strings.Trim(args.ClusterName, " \t")
+	operatorRolesPrefix := aws.GenerateOperatorRolePrefix(clusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 
 	// Managed Services does not support Hypershift at this time.
@@ -426,7 +426,7 @@ func run(cmd *cobra.Command, argv []string) {
 		operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 			Name:      operator.Name(),
 			Namespace: operator.Namespace(),
-			RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, r.Creator, path),
+			RoleARN:   aws.GenerateOperatorRoleArn(operatorRolesPrefix, operator, r.Creator, path),
 		})
 	}
 
@@ -486,25 +486,4 @@ func getVersionList(ocmClient *ocm.Client) (versionList []string, err error) {
 	}
 
 	return
-}
-
-func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
-	roleName, err := aws.GetResourceIdFromARN(roleARN)
-	if err != nil {
-		return "", err
-	}
-	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
-	return rolePrefix, nil
-}
-
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
-}
-
-func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {
-	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
-	if len(role) > 64 {
-		role = role[0:64]
-	}
-	return aws.GetRoleARN(creator.AccountID, role, path)
 }

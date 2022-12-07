@@ -133,7 +133,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	prefix, err := aws.GetPrefixFromInstallerAccountRole(cluster)
+	prefix, err := aws.GetInstallerAccountRolePrefixFromCluster(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Failed to find prefix from %s account role", aws.InstallerAccountRole)
 		os.Exit(1)
@@ -176,12 +176,12 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	roleName, err := aws.GetInstallerAccountRoleName(cluster)
+	roleName, err := aws.GetInstallerAccountRoleNameFromCluster(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
-	unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
+	unifiedPath, err := aws.GetInstallerRolePathFromCluster(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
@@ -290,7 +290,7 @@ func createRoles(r *rosa.Runtime,
 				continue
 			}
 		}
-		operatorRoleARN := aws.FindOperatorRoleBySTSOperator(cluster.AWS().STS().OperatorIAMRoles(), operator)
+		operatorRoleARN := aws.FindOperatorRoleARNBySTSOperator(cluster.AWS().STS().OperatorIAMRoles(), operator)
 		roleName, err := aws.GetResourceIdFromARN(operatorRoleARN)
 		if err != nil {
 			return err
@@ -299,7 +299,7 @@ func createRoles(r *rosa.Runtime,
 			continue
 		}
 
-		unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
+		unifiedPath, err := aws.GetInstallerRolePathFromCluster(cluster)
 		if err != nil {
 			return err
 		}
@@ -376,12 +376,12 @@ func buildCommands(r *rosa.Runtime, env string,
 				continue
 			}
 		}
-		roleARN := aws.FindOperatorRoleBySTSOperator(cluster.AWS().STS().OperatorIAMRoles(), operator)
+		roleARN := aws.FindOperatorRoleARNBySTSOperator(cluster.AWS().STS().OperatorIAMRoles(), operator)
 		roleName, err := aws.GetResourceIdFromARN(roleARN)
 		if err != nil {
 			return "", err
 		}
-		unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
+		unifiedPath, err := aws.GetInstallerRolePathFromCluster(cluster)
 		if err != nil {
 			return "", err
 		}

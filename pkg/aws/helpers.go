@@ -419,7 +419,7 @@ func getPolicyARN(accountID string, name string, path string) string {
 	return fmt.Sprintf("%s/%s", str, name)
 }
 
-func GetPathFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
+func GetAccountRolePathFromCluster(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
 	accRoles := GetAccountRolesArnsMap(cluster)
 	if accRoles[roleNameSuffix] == "" {
 		return "", nil
@@ -427,8 +427,8 @@ func GetPathFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (strin
 	return GetPathFromARN(accRoles[roleNameSuffix])
 }
 
-func GetPathFromInstallerRole(cluster *cmv1.Cluster) (string, error) {
-	return GetPathFromAccountRole(cluster, AccountRoles[InstallerAccountRole].Name)
+func GetInstallerRolePathFromCluster(cluster *cmv1.Cluster) (string, error) {
+	return GetAccountRolePathFromCluster(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
 func GetPathFromARN(arnStr string) (string, error) {
@@ -471,17 +471,35 @@ func GetPartition() string {
 	return partition.ID()
 }
 
-func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
-	roleName, err := GetAccountRoleName(cluster, roleNameSuffix)
+func GetAccountRolePrefixFromCluster(cluster *cmv1.Cluster, role AccountRole) (string, error) {
+	roleName, err := GetAccountRoleNameFromCluster(cluster, role)
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", roleNameSuffix))
+	rolePrefix := TrimAccountRoleSuffix(roleName, role)
 	return rolePrefix, nil
 }
 
-func GetPrefixFromInstallerAccountRole(cluster *cmv1.Cluster) (string, error) {
-	return GetPrefixFromAccountRole(cluster, AccountRoles[InstallerAccountRole].Name)
+func GetInstallerAccountRolePrefixFromCluster(cluster *cmv1.Cluster) (string, error) {
+	return GetAccountRolePrefixFromCluster(cluster, AccountRoles[InstallerAccountRole])
+}
+
+func GetAccountRolePrefixFromRoleARN(roleARN string, role AccountRole) (string, error) {
+	roleName, err := GetResourceIdFromARN(roleARN)
+	if err != nil {
+		return "", err
+	}
+	rolePrefix := TrimAccountRoleSuffix(roleName, role)
+	return rolePrefix, nil
+}
+
+func GetInstallerAccountRolePrefixFromRoleARN(roleARN string) (string, error) {
+	return GetAccountRolePrefixFromRoleARN(roleARN, AccountRoles[InstallerAccountRole])
+}
+
+func TrimAccountRoleSuffix(roleName string, role AccountRole) string {
+	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	return rolePrefix
 }
 
 // Role names can be truncated if they are over 64 chars, so we need to make sure we aren't missing a truncated suffix
@@ -502,7 +520,7 @@ func GetPrefixFromOperatorRole(cluster *cmv1.Cluster) string {
 }
 
 func GetOperatorRolePolicyPrefixFromCluster(cluster *cmv1.Cluster, awsClient Client) (string, error) {
-	installerRolePrefix, err := GetPrefixFromInstallerAccountRole(cluster)
+	installerRolePrefix, err := GetInstallerAccountRolePrefixFromCluster(cluster)
 	if err != nil {
 		return "", err
 	}
@@ -565,16 +583,16 @@ func GetAccountRolesArnsMap(cluster *cmv1.Cluster) map[string]string {
 	}
 }
 
-func GetAccountRoleName(cluster *cmv1.Cluster, accountRole string) (string, error) {
+func GetAccountRoleNameFromCluster(cluster *cmv1.Cluster, role AccountRole) (string, error) {
 	accRoles := GetAccountRolesArnsMap(cluster)
-	if accRoles[accountRole] == "" {
+	if accRoles[role.Name] == "" {
 		return "", nil
 	}
-	return GetResourceIdFromARN(accRoles[accountRole])
+	return GetResourceIdFromARN(accRoles[role.Name])
 }
 
-func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
-	return GetAccountRoleName(cluster, AccountRoles[InstallerAccountRole].Name)
+func GetInstallerAccountRoleNameFromCluster(cluster *cmv1.Cluster) (string, error) {
+	return GetAccountRoleNameFromCluster(cluster, AccountRoles[InstallerAccountRole])
 }
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
@@ -776,11 +794,28 @@ func GetResourceIdFromARN(stringARN string) (string, error) {
 	return parsedARN.Resource[index+1:], nil
 }
 
-func FindOperatorRoleBySTSOperator(operatorRoles []*cmv1.OperatorIAMRole, operator *cmv1.STSOperator) string {
+func FindOperatorRoleARNBySTSOperator(operatorRoles []*cmv1.OperatorIAMRole, operator *cmv1.STSOperator) string {
 	for _, operatorRole := range operatorRoles {
 		if operatorRole.Name() == operator.Name() && operatorRole.Namespace() == operator.Namespace() {
 			return operatorRole.RoleARN()
 		}
 	}
 	return ""
+}
+
+func GenerateOperatorRolePrefix(clusterName string) string {
+	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
+}
+
+func GenerateOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *Creator, path string) string {
+	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
+	if len(role) > 64 {
+		role = role[0:64]
+	}
+	str := fmt.Sprintf("arn:aws:iam::%s:role", creator.AccountID)
+	if path != "" {
+		str = fmt.Sprintf("%s%s", str, path)
+		return fmt.Sprintf("%s%s", str, role)
+	}
+	return fmt.Sprintf("%s/%s", str, role)
 }
