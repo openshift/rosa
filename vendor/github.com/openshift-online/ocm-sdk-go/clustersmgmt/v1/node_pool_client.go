@@ -32,19 +32,19 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MachinePoolClient is the client of the 'machine_pool' resource.
+// NodePoolClient is the client of the 'node_pool' resource.
 //
-// Manages a specific machine pool.
-type MachinePoolClient struct {
+// Manages a specific nodepool.
+type NodePoolClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewMachinePoolClient creates a new client for the 'machine_pool'
+// NewNodePoolClient creates a new client for the 'node_pool'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewMachinePoolClient(transport http.RoundTripper, path string) *MachinePoolClient {
-	return &MachinePoolClient{
+func NewNodePoolClient(transport http.RoundTripper, path string) *NodePoolClient {
+	return &NodePoolClient{
 		transport: transport,
 		path:      path,
 	}
@@ -52,9 +52,9 @@ func NewMachinePoolClient(transport http.RoundTripper, path string) *MachinePool
 
 // Delete creates a request for the 'delete' method.
 //
-// Deletes the machine pool.
-func (c *MachinePoolClient) Delete() *MachinePoolDeleteRequest {
-	return &MachinePoolDeleteRequest{
+// Deletes the node pool.
+func (c *NodePoolClient) Delete() *NodePoolDeleteRequest {
+	return &NodePoolDeleteRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -62,9 +62,9 @@ func (c *MachinePoolClient) Delete() *MachinePoolDeleteRequest {
 
 // Get creates a request for the 'get' method.
 //
-// Retrieves the details of the machine pool.
-func (c *MachinePoolClient) Get() *MachinePoolGetRequest {
-	return &MachinePoolGetRequest{
+// Retrieves the details of the node pool.
+func (c *NodePoolClient) Get() *NodePoolGetRequest {
+	return &NodePoolGetRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -72,43 +72,43 @@ func (c *MachinePoolClient) Get() *MachinePoolGetRequest {
 
 // Update creates a request for the 'update' method.
 //
-// Updates the machine pool.
-func (c *MachinePoolClient) Update() *MachinePoolUpdateRequest {
-	return &MachinePoolUpdateRequest{
+// Updates the node pool.
+func (c *NodePoolClient) Update() *NodePoolUpdateRequest {
+	return &NodePoolUpdateRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// MachinePoolPollRequest is the request for the Poll method.
-type MachinePoolPollRequest struct {
-	request    *MachinePoolGetRequest
+// NodePoolPollRequest is the request for the Poll method.
+type NodePoolPollRequest struct {
+	request    *NodePoolGetRequest
 	interval   time.Duration
 	statuses   []int
 	predicates []func(interface{}) bool
 }
 
 // Parameter adds a query parameter to all the requests that will be used to retrieve the object.
-func (r *MachinePoolPollRequest) Parameter(name string, value interface{}) *MachinePoolPollRequest {
+func (r *NodePoolPollRequest) Parameter(name string, value interface{}) *NodePoolPollRequest {
 	r.request.Parameter(name, value)
 	return r
 }
 
 // Header adds a request header to all the requests that will be used to retrieve the object.
-func (r *MachinePoolPollRequest) Header(name string, value interface{}) *MachinePoolPollRequest {
+func (r *NodePoolPollRequest) Header(name string, value interface{}) *NodePoolPollRequest {
 	r.request.Header(name, value)
 	return r
 }
 
 // Interval sets the polling interval. This parameter is mandatory and must be greater than zero.
-func (r *MachinePoolPollRequest) Interval(value time.Duration) *MachinePoolPollRequest {
+func (r *NodePoolPollRequest) Interval(value time.Duration) *NodePoolPollRequest {
 	r.interval = value
 	return r
 }
 
 // Status set the expected status of the response. Multiple values can be set calling this method
 // multiple times. The response will be considered successful if the status is any of those values.
-func (r *MachinePoolPollRequest) Status(value int) *MachinePoolPollRequest {
+func (r *NodePoolPollRequest) Status(value int) *NodePoolPollRequest {
 	r.statuses = append(r.statuses, value)
 	return r
 }
@@ -116,9 +116,9 @@ func (r *MachinePoolPollRequest) Status(value int) *MachinePoolPollRequest {
 // Predicate adds a predicate that the response should satisfy be considered successful. Multiple
 // predicates can be set calling this method multiple times. The response will be considered successful
 // if all the predicates are satisfied.
-func (r *MachinePoolPollRequest) Predicate(value func(*MachinePoolGetResponse) bool) *MachinePoolPollRequest {
+func (r *NodePoolPollRequest) Predicate(value func(*NodePoolGetResponse) bool) *NodePoolPollRequest {
 	r.predicates = append(r.predicates, func(response interface{}) bool {
-		return value(response.(*MachinePoolGetResponse))
+		return value(response.(*NodePoolGetResponse))
 	})
 	return r
 }
@@ -128,11 +128,11 @@ func (r *MachinePoolPollRequest) Predicate(value func(*MachinePoolGetResponse) b
 // method return nil.
 //
 // The context must have a timeout or deadline, otherwise this method will immediately return an error.
-func (r *MachinePoolPollRequest) StartContext(ctx context.Context) (response *MachinePoolPollResponse, err error) {
+func (r *NodePoolPollRequest) StartContext(ctx context.Context) (response *NodePoolPollResponse, err error) {
 	result, err := helpers.PollContext(ctx, r.interval, r.statuses, r.predicates, r.task)
 	if result != nil {
-		response = &MachinePoolPollResponse{
-			response: result.(*MachinePoolGetResponse),
+		response = &NodePoolPollResponse{
+			response: result.(*NodePoolGetResponse),
 		}
 	}
 	return
@@ -140,7 +140,7 @@ func (r *MachinePoolPollRequest) StartContext(ctx context.Context) (response *Ma
 
 // task adapts the types of the request/response types so that they can be used with the generic
 // polling function from the helpers package.
-func (r *MachinePoolPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
+func (r *NodePoolPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
 	response, err := r.request.SendContext(ctx)
 	if response != nil {
 		status = response.Status()
@@ -149,13 +149,13 @@ func (r *MachinePoolPollRequest) task(ctx context.Context) (status int, result i
 	return
 }
 
-// MachinePoolPollResponse is the response for the Poll method.
-type MachinePoolPollResponse struct {
-	response *MachinePoolGetResponse
+// NodePoolPollResponse is the response for the Poll method.
+type NodePoolPollResponse struct {
+	response *NodePoolGetResponse
 }
 
 // Status returns the response status code.
-func (r *MachinePoolPollResponse) Status() int {
+func (r *NodePoolPollResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -163,7 +163,7 @@ func (r *MachinePoolPollResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *MachinePoolPollResponse) Header() http.Header {
+func (r *NodePoolPollResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -171,7 +171,7 @@ func (r *MachinePoolPollResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *MachinePoolPollResponse) Error() *errors.Error {
+func (r *NodePoolPollResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -181,7 +181,7 @@ func (r *MachinePoolPollResponse) Error() *errors.Error {
 // Body returns the value of the 'body' parameter.
 //
 //
-func (r *MachinePoolPollResponse) Body() *MachinePool {
+func (r *NodePoolPollResponse) Body() *NodePool {
 	return r.response.Body()
 }
 
@@ -189,20 +189,20 @@ func (r *MachinePoolPollResponse) Body() *MachinePool {
 // a flag indicating if the parameter has a value.
 //
 //
-func (r *MachinePoolPollResponse) GetBody() (value *MachinePool, ok bool) {
+func (r *NodePoolPollResponse) GetBody() (value *NodePool, ok bool) {
 	return r.response.GetBody()
 }
 
 // Poll creates a request to repeatedly retrieve the object till the response has one of a given set
 // of states and satisfies a set of predicates.
-func (c *MachinePoolClient) Poll() *MachinePoolPollRequest {
-	return &MachinePoolPollRequest{
+func (c *NodePoolClient) Poll() *NodePoolPollRequest {
+	return &NodePoolPollRequest{
 		request: c.Get(),
 	}
 }
 
-// MachinePoolDeleteRequest is the request for the 'delete' method.
-type MachinePoolDeleteRequest struct {
+// NodePoolDeleteRequest is the request for the 'delete' method.
+type NodePoolDeleteRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -210,20 +210,20 @@ type MachinePoolDeleteRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *MachinePoolDeleteRequest) Parameter(name string, value interface{}) *MachinePoolDeleteRequest {
+func (r *NodePoolDeleteRequest) Parameter(name string, value interface{}) *NodePoolDeleteRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *MachinePoolDeleteRequest) Header(name string, value interface{}) *MachinePoolDeleteRequest {
+func (r *NodePoolDeleteRequest) Header(name string, value interface{}) *NodePoolDeleteRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *MachinePoolDeleteRequest) Impersonate(user string) *MachinePoolDeleteRequest {
+func (r *NodePoolDeleteRequest) Impersonate(user string) *NodePoolDeleteRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -232,12 +232,12 @@ func (r *MachinePoolDeleteRequest) Impersonate(user string) *MachinePoolDeleteRe
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *MachinePoolDeleteRequest) Send() (result *MachinePoolDeleteResponse, err error) {
+func (r *NodePoolDeleteRequest) Send() (result *NodePoolDeleteResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *MachinePoolDeleteRequest) SendContext(ctx context.Context) (result *MachinePoolDeleteResponse, err error) {
+func (r *NodePoolDeleteRequest) SendContext(ctx context.Context) (result *NodePoolDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -257,7 +257,7 @@ func (r *MachinePoolDeleteRequest) SendContext(ctx context.Context) (result *Mac
 		return
 	}
 	defer response.Body.Close()
-	result = &MachinePoolDeleteResponse{}
+	result = &NodePoolDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -277,15 +277,15 @@ func (r *MachinePoolDeleteRequest) SendContext(ctx context.Context) (result *Mac
 	return
 }
 
-// MachinePoolDeleteResponse is the response for the 'delete' method.
-type MachinePoolDeleteResponse struct {
+// NodePoolDeleteResponse is the response for the 'delete' method.
+type NodePoolDeleteResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
 }
 
 // Status returns the response status code.
-func (r *MachinePoolDeleteResponse) Status() int {
+func (r *NodePoolDeleteResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -293,7 +293,7 @@ func (r *MachinePoolDeleteResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *MachinePoolDeleteResponse) Header() http.Header {
+func (r *NodePoolDeleteResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -301,15 +301,15 @@ func (r *MachinePoolDeleteResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *MachinePoolDeleteResponse) Error() *errors.Error {
+func (r *NodePoolDeleteResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
 	return r.err
 }
 
-// MachinePoolGetRequest is the request for the 'get' method.
-type MachinePoolGetRequest struct {
+// NodePoolGetRequest is the request for the 'get' method.
+type NodePoolGetRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -317,20 +317,20 @@ type MachinePoolGetRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *MachinePoolGetRequest) Parameter(name string, value interface{}) *MachinePoolGetRequest {
+func (r *NodePoolGetRequest) Parameter(name string, value interface{}) *NodePoolGetRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *MachinePoolGetRequest) Header(name string, value interface{}) *MachinePoolGetRequest {
+func (r *NodePoolGetRequest) Header(name string, value interface{}) *NodePoolGetRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *MachinePoolGetRequest) Impersonate(user string) *MachinePoolGetRequest {
+func (r *NodePoolGetRequest) Impersonate(user string) *NodePoolGetRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -339,12 +339,12 @@ func (r *MachinePoolGetRequest) Impersonate(user string) *MachinePoolGetRequest 
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *MachinePoolGetRequest) Send() (result *MachinePoolGetResponse, err error) {
+func (r *NodePoolGetRequest) Send() (result *NodePoolGetResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *MachinePoolGetRequest) SendContext(ctx context.Context) (result *MachinePoolGetResponse, err error) {
+func (r *NodePoolGetRequest) SendContext(ctx context.Context) (result *NodePoolGetResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -364,7 +364,7 @@ func (r *MachinePoolGetRequest) SendContext(ctx context.Context) (result *Machin
 		return
 	}
 	defer response.Body.Close()
-	result = &MachinePoolGetResponse{}
+	result = &NodePoolGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -381,23 +381,23 @@ func (r *MachinePoolGetRequest) SendContext(ctx context.Context) (result *Machin
 		err = result.err
 		return
 	}
-	err = readMachinePoolGetResponse(result, reader)
+	err = readNodePoolGetResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// MachinePoolGetResponse is the response for the 'get' method.
-type MachinePoolGetResponse struct {
+// NodePoolGetResponse is the response for the 'get' method.
+type NodePoolGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *MachinePool
+	body   *NodePool
 }
 
 // Status returns the response status code.
-func (r *MachinePoolGetResponse) Status() int {
+func (r *NodePoolGetResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -405,7 +405,7 @@ func (r *MachinePoolGetResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *MachinePoolGetResponse) Header() http.Header {
+func (r *NodePoolGetResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -413,7 +413,7 @@ func (r *MachinePoolGetResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *MachinePoolGetResponse) Error() *errors.Error {
+func (r *NodePoolGetResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -423,7 +423,7 @@ func (r *MachinePoolGetResponse) Error() *errors.Error {
 // Body returns the value of the 'body' parameter.
 //
 //
-func (r *MachinePoolGetResponse) Body() *MachinePool {
+func (r *NodePoolGetResponse) Body() *NodePool {
 	if r == nil {
 		return nil
 	}
@@ -434,7 +434,7 @@ func (r *MachinePoolGetResponse) Body() *MachinePool {
 // a flag indicating if the parameter has a value.
 //
 //
-func (r *MachinePoolGetResponse) GetBody() (value *MachinePool, ok bool) {
+func (r *NodePoolGetResponse) GetBody() (value *NodePool, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -442,30 +442,30 @@ func (r *MachinePoolGetResponse) GetBody() (value *MachinePool, ok bool) {
 	return
 }
 
-// MachinePoolUpdateRequest is the request for the 'update' method.
-type MachinePoolUpdateRequest struct {
+// NodePoolUpdateRequest is the request for the 'update' method.
+type NodePoolUpdateRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
-	body      *MachinePool
+	body      *NodePool
 }
 
 // Parameter adds a query parameter.
-func (r *MachinePoolUpdateRequest) Parameter(name string, value interface{}) *MachinePoolUpdateRequest {
+func (r *NodePoolUpdateRequest) Parameter(name string, value interface{}) *NodePoolUpdateRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *MachinePoolUpdateRequest) Header(name string, value interface{}) *MachinePoolUpdateRequest {
+func (r *NodePoolUpdateRequest) Header(name string, value interface{}) *NodePoolUpdateRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *MachinePoolUpdateRequest) Impersonate(user string) *MachinePoolUpdateRequest {
+func (r *NodePoolUpdateRequest) Impersonate(user string) *NodePoolUpdateRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -473,7 +473,7 @@ func (r *MachinePoolUpdateRequest) Impersonate(user string) *MachinePoolUpdateRe
 // Body sets the value of the 'body' parameter.
 //
 //
-func (r *MachinePoolUpdateRequest) Body(value *MachinePool) *MachinePoolUpdateRequest {
+func (r *NodePoolUpdateRequest) Body(value *NodePool) *NodePoolUpdateRequest {
 	r.body = value
 	return r
 }
@@ -482,16 +482,16 @@ func (r *MachinePoolUpdateRequest) Body(value *MachinePool) *MachinePoolUpdateRe
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *MachinePoolUpdateRequest) Send() (result *MachinePoolUpdateResponse, err error) {
+func (r *NodePoolUpdateRequest) Send() (result *NodePoolUpdateResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *MachinePoolUpdateRequest) SendContext(ctx context.Context) (result *MachinePoolUpdateResponse, err error) {
+func (r *NodePoolUpdateRequest) SendContext(ctx context.Context) (result *NodePoolUpdateResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	buffer := &bytes.Buffer{}
-	err = writeMachinePoolUpdateRequest(r, buffer)
+	err = writeNodePoolUpdateRequest(r, buffer)
 	if err != nil {
 		return
 	}
@@ -513,7 +513,7 @@ func (r *MachinePoolUpdateRequest) SendContext(ctx context.Context) (result *Mac
 		return
 	}
 	defer response.Body.Close()
-	result = &MachinePoolUpdateResponse{}
+	result = &NodePoolUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -530,23 +530,23 @@ func (r *MachinePoolUpdateRequest) SendContext(ctx context.Context) (result *Mac
 		err = result.err
 		return
 	}
-	err = readMachinePoolUpdateResponse(result, reader)
+	err = readNodePoolUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// MachinePoolUpdateResponse is the response for the 'update' method.
-type MachinePoolUpdateResponse struct {
+// NodePoolUpdateResponse is the response for the 'update' method.
+type NodePoolUpdateResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *MachinePool
+	body   *NodePool
 }
 
 // Status returns the response status code.
-func (r *MachinePoolUpdateResponse) Status() int {
+func (r *NodePoolUpdateResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -554,7 +554,7 @@ func (r *MachinePoolUpdateResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *MachinePoolUpdateResponse) Header() http.Header {
+func (r *NodePoolUpdateResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -562,7 +562,7 @@ func (r *MachinePoolUpdateResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *MachinePoolUpdateResponse) Error() *errors.Error {
+func (r *NodePoolUpdateResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -572,7 +572,7 @@ func (r *MachinePoolUpdateResponse) Error() *errors.Error {
 // Body returns the value of the 'body' parameter.
 //
 //
-func (r *MachinePoolUpdateResponse) Body() *MachinePool {
+func (r *NodePoolUpdateResponse) Body() *NodePool {
 	if r == nil {
 		return nil
 	}
@@ -583,7 +583,7 @@ func (r *MachinePoolUpdateResponse) Body() *MachinePool {
 // a flag indicating if the parameter has a value.
 //
 //
-func (r *MachinePoolUpdateResponse) GetBody() (value *MachinePool, ok bool) {
+func (r *NodePoolUpdateResponse) GetBody() (value *NodePool, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body

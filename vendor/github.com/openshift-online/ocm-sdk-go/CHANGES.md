@@ -3,6 +3,32 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.299 
+- Update to model 0.0.239
+  - Fixes for `NodePoolAutoScaling` and `AWSNodePool`.
+
+## 0.1.298
+- Update to model 0.0.238
+  - `NodePool` fixes. 
+
+## 0.1.297
+- Update to model 0.0.237
+  - Add `NodePool` resource types.
+  - Add `NodePools` locator to `Cluster` type.
+
+## 0.1.296
+- Update to model 0.0.236
+  - Add extra fields to label model:
+    - Type
+    - ManagedBy
+    - AccountID
+    - SubscriptionID
+    - OrganizationID
+
+## 0.1.295
+- Update to model 0.0.235
+  - Add `capabilities` resource model.
+
 ## 0.1.294
 - Update to model 0.0.233
   - Add SupportsHypershift property to CloudRegion model.
