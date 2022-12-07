@@ -181,14 +181,14 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
-	path, err := getPathFromInstallerRole(cluster)
+	unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
-	if path != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
+	if unifiedPath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
 		r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
-			" created operator roles and policies, for the account roles with prefix '%s'", path, prefix)
+			" created operator roles and policies, for the account roles with prefix '%s'", unifiedPath, prefix)
 	}
 	accountRoleVersion, err := r.AWSClient.GetAccountRoleVersion(roleName)
 	if err != nil {
@@ -290,20 +290,21 @@ func createRoles(r *rosa.Runtime,
 				continue
 			}
 		}
-		roleName, _ := getRoleNameAndARN(cluster, operator)
-		if roleName == "" {
-			return fmt.Errorf("Failed to find operator IAM role")
+		operatorRoleARN := aws.FindOperatorRoleBySTSOperator(cluster.AWS().STS().OperatorIAMRoles(), operator)
+		roleName, err := aws.GetResourceIdFromARN(operatorRoleARN)
+		if err != nil {
+			return err
 		}
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 			continue
 		}
 
-		path, err := getPathFromInstallerRole(cluster)
+		unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
 		if err != nil {
 			return err
 		}
 		policyARN := aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
-			operator.Name(), path)
+			operator.Name(), unifiedPath)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policyDetails := policies[filename]
 
@@ -314,7 +315,7 @@ func createRoles(r *rosa.Runtime,
 				tags.RedHatManaged:     "true",
 				tags.OperatorNamespace: operator.Namespace(),
 				tags.OperatorName:      operator.Name(),
-			}, path)
+			}, unifiedPath)
 		if err != nil {
 			return err
 		}
@@ -332,7 +333,7 @@ func createRoles(r *rosa.Runtime,
 				tags.OperatorNamespace: operator.Namespace(),
 				tags.OperatorName:      operator.Name(),
 				tags.RedHatManaged:     "true",
-			}, path)
+			}, unifiedPath)
 		if err != nil {
 			return err
 		}
@@ -375,12 +376,16 @@ func buildCommands(r *rosa.Runtime, env string,
 				continue
 			}
 		}
-		roleName, _ := getRoleNameAndARN(cluster, operator)
-		path, err := getPathFromInstallerRole(cluster)
+		roleARN := aws.FindOperatorRoleBySTSOperator(cluster.AWS().STS().OperatorIAMRoles(), operator)
+		roleName, err := aws.GetResourceIdFromARN(roleARN)
 		if err != nil {
 			return "", err
 		}
-		policyARN := getPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
+		unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
+		if err != nil {
+			return "", err
+		}
+		policyARN := aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), unifiedPath)
 
 		name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 		_, err = r.AWSClient.IsPolicyExists(policyARN)
@@ -397,7 +402,7 @@ func buildCommands(r *rosa.Runtime, env string,
 				AddParam(awscb.PolicyName, name).
 				AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", credrequest)).
 				AddTags(iamTags).
-				AddParam(awscb.Path, path).
+				AddParam(awscb.Path, unifiedPath).
 				Build()
 			commands = append(commands, createPolicy)
 		}
@@ -428,7 +433,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			AddParam(awscb.AssumeRolePolicyDocument, fmt.Sprintf("file://%s", filename)).
 			AddParam(awscb.PermissionsBoundary, permissionsBoundary).
 			AddTags(iamTags).
-			AddParam(awscb.Path, path).
+			AddParam(awscb.Path, unifiedPath).
 			Build()
 
 		attachRolePolicy := awscb.NewIAMCommandBuilder().
@@ -439,34 +444,6 @@ func buildCommands(r *rosa.Runtime, env string,
 		commands = append(commands, createRole, attachRolePolicy)
 	}
 	return awscb.JoinCommands(commands), nil
-}
-
-func getRoleNameAndARN(cluster *cmv1.Cluster, operator *cmv1.STSOperator) (string, string) {
-	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
-		if role.Namespace() == operator.Namespace() && role.Name() == operator.Name() {
-			name, _ := aws.GetResourceIdFromARN(role.RoleARN())
-			return name, role.RoleARN()
-		}
-	}
-	return "", ""
-}
-
-func getPathFromInstallerRole(cluster *cmv1.Cluster) (string, error) {
-	return aws.GetPathFromARN(cluster.AWS().STS().RoleARN())
-}
-
-func getPolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
-	if prefix == "" {
-		prefix = aws.DefaultPrefix
-	}
-	policy := fmt.Sprintf("%s-%s-%s", prefix, namespace, name)
-	if len(policy) > 64 {
-		policy = policy[0:64]
-	}
-	if path != "" {
-		return fmt.Sprintf("arn:aws:iam::%s:policy%s%s", accountID, path, policy)
-	}
-	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, policy)
 }
 
 func validateOperatorRoles(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {

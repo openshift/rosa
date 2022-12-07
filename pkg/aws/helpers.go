@@ -380,6 +380,9 @@ func GetUserRoleName(prefix string, role string, userName string) string {
 }
 
 func GetOperatorPolicyName(prefix string, namespace string, name string) string {
+	if prefix == "" {
+		prefix = DefaultPrefix
+	}
 	policy := fmt.Sprintf("%s-%s-%s", prefix, namespace, name)
 	if len(policy) > 64 {
 		policy = policy[0:64]
@@ -422,6 +425,10 @@ func GetPathFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (strin
 		return "", nil
 	}
 	return GetPathFromARN(accRoles[roleNameSuffix])
+}
+
+func GetPathFromInstallerRole(cluster *cmv1.Cluster) (string, error) {
+	return GetPathFromAccountRole(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
 func GetPathFromARN(arnStr string) (string, error) {

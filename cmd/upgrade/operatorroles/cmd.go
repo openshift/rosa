@@ -126,7 +126,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		r.Reporter.Errorf("Error getting account role prefix for the cluster '%s'",
 			clusterKey)
 	}
-	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
+	unifiedPath, err := aws.GetPathFromInstallerRole(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
@@ -303,9 +303,9 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 	return nil
 }
 
-func createOperatorRole(
-	mode string, r *rosa.Runtime, cluster *cmv1.Cluster, prefix string,
-	missingRoles map[string]*cmv1.STSOperator, policies map[string]string, unifiedPath string) error {
+func createOperatorRole(mode string, r *rosa.Runtime, cluster *cmv1.Cluster, prefix string,
+	missingRoles map[string]*cmv1.STSOperator, policies map[string]string,
+	unifiedPath string) error {
 	accountID := r.Creator.AccountID
 	switch mode {
 	case aws.ModeAuto:
