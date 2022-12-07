@@ -213,6 +213,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if len(missingRolesInCS) > 0 {
+		createdMissingRoles := 0
 		for _, operator := range missingRolesInCS {
 			roleName := roles.GetOperatorRoleName(cluster, operator)
 			exists, _, err := r.AWSClient.CheckRoleExists(roleName)
@@ -225,7 +226,13 @@ func run(cmd *cobra.Command, argv []string) error {
 					r.Reporter.Errorf("%s", err)
 					os.Exit(1)
 				}
+				createdMissingRoles++
 			}
+		}
+		if createdMissingRoles == 0 {
+			r.Reporter.Infof(
+				"Missing roles/policies have already been created. Please continue with cluster upgrade process.",
+			)
 		}
 	}
 	return nil
