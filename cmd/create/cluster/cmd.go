@@ -2175,38 +2175,37 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 // Validate OpenShift versions
 func validateVersion(version string, versionList []string, channelGroup string, isSTS,
 	isHostedCP bool) (string, error) {
-	if version != "" {
-		// Check and set the cluster version
-		hasVersion := false
-		for _, v := range versionList {
-			if v == version {
-				hasVersion = true
-			}
+	if version == "" {
+		return version, nil
+	}
+	// Check and set the cluster version
+	hasVersion := false
+	for _, v := range versionList {
+		if v == version {
+			hasVersion = true
 		}
-		if !hasVersion {
-			allVersions := strings.Join(versionList, " ")
-			err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
-			return version, err
-		}
-
-		if isSTS && !ocm.HasSTSSupport(version, channelGroup) {
-			err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
-			return version, err
-		}
-		if isHostedCP {
-			valid, err := ocm.HasHostedCPSupport(version)
-			if err != nil {
-				return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
-			}
-			if !valid {
-				return "", fmt.Errorf("version '%s' is not supported for hosted clusters", version)
-			}
-		}
-
-		version = "openshift-v" + version
+	}
+	if !hasVersion {
+		allVersions := strings.Join(versionList, " ")
+		err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
+		return version, err
 	}
 
-	return version, nil
+	if isSTS && !ocm.HasSTSSupport(version, channelGroup) {
+		err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
+		return version, err
+	}
+	if isHostedCP {
+		valid, err := ocm.HasHostedCPSupport(version)
+		if err != nil {
+			return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
+		}
+		if !valid {
+			return "", fmt.Errorf("version '%s' is not supported for hosted clusters", version)
+		}
+	}
+
+	return ocm.CreateVersionID(version, channelGroup), nil
 }
 
 func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool) (versionList []string,
@@ -2230,7 +2229,7 @@ func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 				continue
 			}
 		}
-		versionList = append(versionList, strings.Replace(v.ID(), "openshift-v", "", 1))
+		versionList = append(versionList, v.RawID())
 	}
 
 	if len(versionList) == 0 {
