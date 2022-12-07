@@ -93,6 +93,10 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+	if !hypershiftEnabled && cmd.Flags().Changed("hosted-cp") {
+		r.Reporter.Errorf("'%s' not set for current organization", ocm.HypershiftCapability)
+		os.Exit(1)
+	}
 
 	// Filter out unwanted regions
 	var availableRegions []*cmv1.CloudRegion
