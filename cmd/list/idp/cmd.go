@@ -81,22 +81,21 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	if len(idps) == 1 && ocm.IdentityProviderType(idps[0]) == ocm.HTPasswdIDPType {
+	if len(idps) == 1 && !ocm.HasAuthURLSupport(idps[0]) {
 		fmt.Fprintf(writer, "NAME\t\tTYPE\n")
 	} else {
 		fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
 	}
 	for _, idp := range idps {
-		idpType := ocm.IdentityProviderType(idp)
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), idpType, getAuthURL(cluster, idp.Name(), idpType))
+		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), ocm.IdentityProviderType(idp), getAuthURL(cluster, idp))
 	}
 	writer.Flush()
 }
 
-func getAuthURL(cluster *cmv1.Cluster, idpName, idpType string) string {
-	if idpType == ocm.HTPasswdIDPType {
+func getAuthURL(cluster *cmv1.Cluster, idp *cmv1.IdentityProvider) string {
+	if !ocm.HasAuthURLSupport(idp) {
 		return ""
 	}
 	oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
-	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idpName)
+	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idp.Name())
 }
