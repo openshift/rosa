@@ -45,7 +45,8 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade cluster-specific operator IAM roles to latest version.",
 	Example: `  # Upgrade cluster-specific operator IAM roles
   rosa upgrade operators-roles`,
-	RunE: run,
+	RunE:       run,
+	Deprecated: "please use 'upgrade roles' instead.",
 }
 
 func init() {
