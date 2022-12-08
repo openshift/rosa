@@ -20,17 +20,14 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/helper/roles"
+	missingOperatorRolesHelper "github.com/openshift/rosa/pkg/helper/missingoperatorroles"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
-	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -121,7 +118,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			clusterKey)
 	}
 
-	prefix, err := aws.GetInstallerAccountRolePrefixFromCluster(cluster)
+	installerRolePrefix, err := aws.GetInstallerAccountRolePrefixFromCluster(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Error getting account role prefix for the cluster '%s'",
 			clusterKey)
@@ -137,7 +134,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	//Check if account roles are up-to-date
 	isAccountRoleUpgradeNeed, err = r.AWSClient.IsUpgradedNeededForAccountRolePolicies(
-		prefix, defaultPolicyVersion)
+		installerRolePrefix, defaultPolicyVersion)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -145,7 +142,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	if isAccountRoleUpgradeNeed {
 		r.Reporter.Infof("Account roles with prefix '%s' need to be upgraded before operator roles. "+
 			"Roles can be upgraded with the following command :"+
-			"\n\n\trosa upgrade account-roles --prefix %s\n", prefix, prefix)
+			"\n\n\trosa upgrade account-roles --prefix %s\n", installerRolePrefix, installerRolePrefix)
 		os.Exit(1)
 	}
 
@@ -155,8 +152,12 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	isOperatorPolicyUpgradeNeeded, err := r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
-		r.Creator.AccountID, defaultPolicyVersion, credRequests, unifiedPath)
+	operatorRolePolicyPrefix, err := aws.GetOperatorRolePolicyPrefixFromCluster(cluster, r.AWSClient)
+	if err != nil {
+		return err
+	}
+	isOperatorPolicyUpgradeNeeded, err := r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(
+		operatorRolePolicyPrefix, r.Creator.AccountID, defaultPolicyVersion, credRequests, unifiedPath)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -185,7 +186,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		interactive.Enable()
 	}
-	policies, err := r.OCMClient.GetPolicies("OperatorRole")
+	operatorRolePolicies, err := r.OCMClient.GetPolicies("OperatorRole")
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 		os.Exit(1)
@@ -204,37 +205,38 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if isOperatorPolicyUpgradeNeeded {
-		err = upgradeOperatorPolicies(mode, r, prefix, isAccountRoleUpgradeNeed,
-			policies, env, defaultPolicyVersion, credRequests, cluster, unifiedPath)
+		err = upgradeOperatorPolicies(
+			mode,
+			r,
+			operatorRolePolicyPrefix,
+			isAccountRoleUpgradeNeed,
+			operatorRolePolicies,
+			env,
+			defaultPolicyVersion,
+			credRequests,
+			cluster,
+			unifiedPath)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
 
-	if len(missingRolesInCS) > 0 {
-		createdMissingRoles := 0
-		for _, operator := range missingRolesInCS {
-			roleName := roles.GetOperatorRoleName(cluster, operator)
-			exists, _, err := r.AWSClient.CheckRoleExists(roleName)
-			if err != nil {
-				return r.Reporter.Errorf("Error when detecting checking missing operator IAM roles %s", err)
-			}
-			if !exists {
-				err = createOperatorRole(mode, r, cluster, prefix, missingRolesInCS, policies, unifiedPath)
-				if err != nil {
-					r.Reporter.Errorf("%s", err)
-					os.Exit(1)
-				}
-				createdMissingRoles++
-			}
-		}
-		if createdMissingRoles == 0 {
-			r.Reporter.Infof(
-				"Missing roles/policies have already been created. Please continue with cluster upgrade process.",
-			)
-		}
+	err = missingOperatorRolesHelper.HandleMissingOperatorRoles(
+		mode,
+		r,
+		cluster,
+		missingRolesInCS,
+		operatorRolePolicies,
+		unifiedPath,
+		operatorRolePolicyPrefix,
+		false,
+	)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
+
 	return nil
 }
 
@@ -299,72 +301,6 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 		fmt.Println(awscb.JoinCommands(commands))
 	default:
 		return r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
-	}
-	return nil
-}
-
-func createOperatorRole(mode string, r *rosa.Runtime, cluster *cmv1.Cluster, prefix string,
-	missingRoles map[string]*cmv1.STSOperator, policies map[string]string,
-	unifiedPath string) error {
-	accountID := r.Creator.AccountID
-	switch mode {
-	case aws.ModeAuto:
-		err := upgradeMissingOperatorRole(missingRoles, cluster, accountID, prefix, r,
-			policies, unifiedPath)
-		if err != nil {
-			return err
-		}
-		helper.DisplaySpinnerWithDelay(r.Reporter, "Waiting for operator roles to reconcile", 5*time.Second)
-	case aws.ModeManual:
-		commands, err := roles.BuildMissingOperatorRoleCommand(
-			missingRoles, cluster, accountID, r, policies, unifiedPath, prefix)
-		if err != nil {
-			return err
-		}
-		if r.Reporter.IsTerminal() {
-			r.Reporter.Infof("Run the following commands to create the operator roles:\n")
-		}
-		fmt.Println(commands)
-	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
-		os.Exit(1)
-	}
-	return nil
-}
-
-func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
-	accountID string, prefix string, r *rosa.Runtime, policies map[string]string,
-	unifiedPath string) error {
-	for _, operator := range missingRoles {
-		roleName := roles.GetOperatorRoleName(cluster, operator)
-		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
-			continue
-		}
-		policyDetails := policies["operator_iam_role_policy"]
-
-		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), unifiedPath)
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
-		if err != nil {
-			return err
-		}
-		r.Reporter.Debugf("Creating role '%s'", roleName)
-		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, "", "",
-			map[string]string{
-				tags.ClusterID:         cluster.ID(),
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
-				tags.RedHatManaged:     "true",
-			}, unifiedPath)
-		if err != nil {
-			return err
-		}
-		r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
-		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
-		err = r.AWSClient.AttachRolePolicy(roleName, policyARN)
-		if err != nil {
-			return fmt.Errorf("Failed to attach role policy. Check your prefix or run "+
-				"'rosa create account-roles' to create the necessary policies: %s", err)
-		}
 	}
 	return nil
 }
