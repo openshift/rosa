@@ -207,16 +207,8 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	if isOperatorPolicyUpgradeNeeded {
 		err = upgradeOperatorPolicies(
-			mode,
-			r,
-			operatorRolePolicyPrefix,
-			isAccountRoleUpgradeNeed,
-			operatorRolePolicies,
-			env,
-			defaultPolicyVersion,
-			credRequests,
-			cluster,
-			unifiedPath)
+			mode, r, operatorRolePolicyPrefix, isAccountRoleUpgradeNeed, operatorRolePolicies, env,
+			defaultPolicyVersion, credRequests, cluster, unifiedPath)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -224,14 +216,8 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	err = missingOperatorRolesHelper.HandleMissingOperatorRoles(
-		mode,
-		r,
-		cluster,
-		missingRolesInCS,
-		operatorRolePolicies,
-		unifiedPath,
-		operatorRolePolicyPrefix,
-		false,
+		mode, r, cluster, missingRolesInCS, operatorRolePolicies,
+		unifiedPath, operatorRolePolicyPrefix, false,
 	)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)

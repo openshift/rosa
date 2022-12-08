@@ -18,15 +18,10 @@ import (
 )
 
 func HandleMissingOperatorRoles(
-	mode string,
-	r *rosa.Runtime,
-	cluster *v1.Cluster,
-	missingRolesInCS map[string]*v1.STSOperator,
-	policies map[string]string,
-	unifiedPath string,
-	operatorRolePolicyPrefix string,
-	isInvokedFromClusterUpgrade bool,
-) error {
+	mode string, r *rosa.Runtime,
+	cluster *v1.Cluster, missingRolesInCS map[string]*v1.STSOperator,
+	policies map[string]string, unifiedPath string,
+	operatorRolePolicyPrefix string, isInvokedFromClusterUpgrade bool) error {
 	if len(missingRolesInCS) > 0 {
 		createdMissingRoles := 0
 		for _, operator := range missingRolesInCS {
@@ -63,42 +58,29 @@ func getMissingOperatorRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STS
 }
 
 func createMissingOperatorRoles(
-	mode string,
-	r *rosa.Runtime,
-	cluster *v1.Cluster,
-	missingRoles map[string]*v1.STSOperator,
-	policies map[string]string,
-	unifiedPath string,
-	operatorRolePolicyPrefix string,
-	isInvokedFromClusterUpgrade bool,
-) error {
+	mode string, r *rosa.Runtime,
+	cluster *v1.Cluster, missingRoles map[string]*v1.STSOperator,
+	policies map[string]string, unifiedPath string,
+	operatorRolePolicyPrefix string, isInvokedFromClusterUpgrade bool) error {
 	accountID := r.Creator.AccountID
 	switch mode {
 	case aws.ModeAuto:
 		err := upgradeMissingOperatorRole(
-			missingRoles,
-			cluster,
-			accountID,
-			r,
-			policies,
-			unifiedPath,
+			missingRoles, cluster,
+			accountID, r,
+			policies, unifiedPath,
 			operatorRolePolicyPrefix,
-			isInvokedFromClusterUpgrade,
-		)
+			isInvokedFromClusterUpgrade)
 		if err != nil {
 			return err
 		}
 		helper.DisplaySpinnerWithDelay(r.Reporter, "Waiting for operator roles to reconcile", 5*time.Second)
 	case aws.ModeManual:
 		commands, err := buildMissingOperatorRoleCommand(
-			missingRoles,
-			cluster,
-			accountID,
-			r,
-			policies,
-			unifiedPath,
-			operatorRolePolicyPrefix,
-		)
+			missingRoles, cluster,
+			accountID, r,
+			policies, unifiedPath,
+			operatorRolePolicyPrefix)
 		if err != nil {
 			return err
 		}
@@ -120,14 +102,10 @@ func createMissingOperatorRoles(
 }
 
 func buildMissingOperatorRoleCommand(
-	missingRoles map[string]*cmv1.STSOperator,
-	cluster *cmv1.Cluster,
-	accountID string,
-	r *rosa.Runtime,
-	policies map[string]string,
-	unifiedPath string,
-	operatorRolePolicyPrefix string,
-) (string, error) {
+	missingRoles map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
+	accountID string, r *rosa.Runtime,
+	policies map[string]string, unifiedPath string,
+	operatorRolePolicyPrefix string) (string, error) {
 	commands := []string{}
 	for missingRole, operator := range missingRoles {
 		roleName := getMissingOperatorRoleName(cluster, operator)
@@ -168,15 +146,10 @@ func buildMissingOperatorRoleCommand(
 }
 
 func upgradeMissingOperatorRole(
-	missingRoles map[string]*v1.STSOperator,
-	cluster *v1.Cluster,
-	accountID string,
-	r *rosa.Runtime,
-	policies map[string]string,
-	unifiedPath string,
-	operatorRolePolicyPrefix string,
-	isInvokedFromClusterUpgrade bool,
-) error {
+	missingRoles map[string]*v1.STSOperator, cluster *v1.Cluster,
+	accountID string, r *rosa.Runtime,
+	policies map[string]string, unifiedPath string,
+	operatorRolePolicyPrefix string, isInvokedFromClusterUpgrade bool) error {
 	for _, operator := range missingRoles {
 		roleName := getMissingOperatorRoleName(cluster, operator)
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {

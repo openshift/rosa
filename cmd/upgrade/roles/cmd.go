@@ -321,12 +321,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	isOperatorPolicyUpgradeNeeded := false
 	isOperatorPolicyUpgradeNeeded, err = r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
-		cluster,
-		r.Creator.AccountID,
-		policyVersion,
-		credRequests,
-		operatorRolePolicyPrefix,
-	)
+		cluster, r.Creator.AccountID, policyVersion, credRequests, operatorRolePolicyPrefix)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -360,16 +355,8 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	if isOperatorPolicyUpgradeNeeded {
 		err = upgradeOperatorPolicies(
-			mode,
-			r,
-			isUpgradeNeedForAccountRolePolicies,
-			operatorRolePolicies,
-			env,
-			policyVersion,
-			credRequests,
-			cluster,
-			operatorRolePolicyPrefix,
-		)
+			mode, r, isUpgradeNeedForAccountRolePolicies, operatorRolePolicies, env,
+			policyVersion, credRequests, cluster, operatorRolePolicyPrefix)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -377,15 +364,8 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	err = missingOperatorRolesHelper.HandleMissingOperatorRoles(
-		mode,
-		r,
-		cluster,
-		missingRolesInCS,
-		operatorRolePolicies,
-		unifiedPath,
-		operatorRolePolicyPrefix,
-		args.isInvokedFromClusterUpgrade,
-	)
+		mode, r, cluster, missingRolesInCS, operatorRolePolicies,
+		unifiedPath, operatorRolePolicyPrefix, args.isInvokedFromClusterUpgrade)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -460,11 +440,7 @@ func handleAccountRolePolicyARN(
 			return "", commands, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		}
 
-		generatedPolicyARN := aws.GetPolicyARN(
-			accountID,
-			roleName,
-			rolePath,
-		)
+		generatedPolicyARN := aws.GetPolicyARN(accountID, roleName, rolePath)
 		return generatedPolicyARN, commands, nil
 	}
 	policyDetail := policiesDetails[0]
@@ -472,15 +448,9 @@ func handleAccountRolePolicyARN(
 }
 
 func upgradeAccountRolePoliciesFromCluster(
-	mode string,
-	reporter *rprtr.Object,
-	awsClient aws.Client,
-	cluster *v1.Cluster,
-	accountID string,
-	policies map[string]string,
-	policyVersion string,
-	isVersionChosen bool,
-) error {
+	mode string, reporter *rprtr.Object, awsClient aws.Client,
+	cluster *v1.Cluster, accountID string, policies map[string]string,
+	policyVersion string, isVersionChosen bool) error {
 	for file, role := range aws.AccountRoles {
 		roleName, err := aws.GetAccountRoleNameFromCluster(cluster, role)
 		if err != nil {
@@ -552,13 +522,8 @@ func upgradeAccountRolePoliciesFromCluster(
 }
 
 func buildAccountRoleCommandsFromCluster(
-	mode string,
-	cluster *v1.Cluster,
-	accountID string,
-	isUpgradeNeedForAccountRolePolicies bool,
-	awsClient aws.Client,
-	defaultPolicyVersion string,
-) (string, error) {
+	mode string, cluster *v1.Cluster, accountID string,
+	isUpgradeNeedForAccountRolePolicies bool, awsClient aws.Client, defaultPolicyVersion string) (string, error) {
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
@@ -576,12 +541,7 @@ func buildAccountRoleCommandsFromCluster(
 			}
 
 			policyARN, detachPoliciesCommands, err := handleAccountRolePolicyARN(
-				mode,
-				awsClient,
-				accRoleName,
-				rolePath,
-				accountID,
-			)
+				mode, awsClient, accRoleName, rolePath, accountID)
 			if err != nil {
 				return "", err
 			}
@@ -631,16 +591,9 @@ func checkHasDetachPolicyCommandsForExpectedPolicy(detachedPoliciesCommands []st
 }
 
 func upgradeOperatorPolicies(
-	mode string,
-	r *rosa.Runtime,
-	isAccountRoleUpgradeNeed bool,
-	policies map[string]string,
-	env string,
-	defaultPolicyVersion string,
-	credRequests map[string]*v1.STSOperator,
-	cluster *v1.Cluster,
-	operatorRolePolicyPrefix string,
-) error {
+	mode string, r *rosa.Runtime, isAccountRoleUpgradeNeed bool,
+	policies map[string]string, env string, defaultPolicyVersion string,
+	credRequests map[string]*v1.STSOperator, cluster *v1.Cluster, operatorRolePolicyPrefix string) error {
 	switch mode {
 	case aws.ModeAuto:
 		if !confirm.Prompt(true, "Upgrade each operator role policy to latest version (%s)?", defaultPolicyVersion) {
@@ -650,12 +603,9 @@ func upgradeOperatorPolicies(
 			return nil
 		}
 		err := upgradeOperatorRolePoliciesFromCluster(
-			mode,
-			r.Reporter,
-			r.AWSClient,
-			r.Creator.AccountID,
-			policies,
-			defaultPolicyVersion,
+			mode, r.Reporter,
+			r.AWSClient, r.Creator.AccountID,
+			policies, defaultPolicyVersion,
 			credRequests,
 			cluster.AWS().STS().OperatorIAMRoles(),
 			operatorRolePolicyPrefix,
@@ -688,14 +638,10 @@ func upgradeOperatorPolicies(
 			}
 		}
 		commands, err := buildOperatorRoleCommandsFromCluster(
-			mode,
-			operatorRolePolicyPrefix,
-			r.Creator.AccountID,
-			r.AWSClient,
-			defaultPolicyVersion,
-			credRequests,
-			cluster.AWS().STS().OperatorIAMRoles(),
-		)
+			mode, operatorRolePolicyPrefix,
+			r.Creator.AccountID, r.AWSClient,
+			defaultPolicyVersion, credRequests,
+			cluster.AWS().STS().OperatorIAMRoles())
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the commands: %s", err)
 			os.Exit(1)
@@ -708,16 +654,10 @@ func upgradeOperatorPolicies(
 }
 
 func upgradeOperatorRolePoliciesFromCluster(
-	mode string,
-	reporter *rprtr.Object,
-	awsClient aws.Client,
-	accountID string,
-	policies map[string]string,
-	defaultPolicyVersion string,
-	credRequests map[string]*v1.STSOperator,
-	operatorRoles []*v1.OperatorIAMRole,
-	operatorRolePolicyPrefix string,
-) error {
+	mode string, reporter *rprtr.Object, awsClient aws.Client,
+	accountID string, policies map[string]string,
+	defaultPolicyVersion string, credRequests map[string]*v1.STSOperator,
+	operatorRoles []*v1.OperatorIAMRole, operatorRolePolicyPrefix string) error {
 	generalPath, err := aws.GetPathFromARN(operatorRoles[0].RoleARN())
 	if err != nil {
 		return err
@@ -728,12 +668,8 @@ func upgradeOperatorRolePoliciesFromCluster(
 		operatorRoleARN := aws.FindOperatorRoleARNBySTSOperator(operatorRoles, operator)
 		if operatorRoleARN == "" {
 			policyARN = aws.GetOperatorPolicyARN(
-				accountID,
-				operatorRolePolicyPrefix,
-				operator.Namespace(),
-				operator.Name(),
-				operatorPolicyPath,
-			)
+				accountID, operatorRolePolicyPrefix,
+				operator.Namespace(), operator.Name(), operatorPolicyPath)
 		} else {
 			operatorRoleName, err := aws.GetResourceIdFromARN(operatorRoleARN)
 			if err != nil {
@@ -741,14 +677,9 @@ func upgradeOperatorRolePoliciesFromCluster(
 			}
 
 			policyARN, _, err = handleOperatorRolePolicyARN(
-				mode,
-				awsClient,
-				operatorRoleName,
-				operatorRolePolicyPrefix,
-				operatorPolicyPath,
-				operator,
-				accountID,
-			)
+				mode, awsClient, operatorRoleName,
+				operatorRolePolicyPrefix, operatorPolicyPath,
+				operator, accountID)
 			if err != nil {
 				return err
 			}
@@ -775,14 +706,9 @@ func upgradeOperatorRolePoliciesFromCluster(
 }
 
 func buildOperatorRoleCommandsFromCluster(
-	mode string,
-	operatorRolePolicyPrefix string,
-	accountID string,
-	awsClient aws.Client,
-	defaultPolicyVersion string,
-	credRequests map[string]*v1.STSOperator,
-	operatorRoles []*v1.OperatorIAMRole,
-) (string, error) {
+	mode string, operatorRolePolicyPrefix string,
+	accountID string, awsClient aws.Client, defaultPolicyVersion string,
+	credRequests map[string]*v1.STSOperator, operatorRoles []*v1.OperatorIAMRole) (string, error) {
 	commands := []string{}
 	generalPath, err := aws.GetPathFromARN(operatorRoles[0].RoleARN())
 	if err != nil {
@@ -796,26 +722,18 @@ func buildOperatorRoleCommandsFromCluster(
 		operatorRoleName := ""
 		if operatorRoleARN == "" {
 			policyARN = aws.GetOperatorPolicyARN(
-				accountID,
-				operatorRolePolicyPrefix,
-				operator.Namespace(),
-				operator.Name(),
-				operatorPolicyPath,
-			)
+				accountID, operatorRolePolicyPrefix,
+				operator.Namespace(), operator.Name(),
+				operatorPolicyPath)
 		} else {
 			operatorRoleName, err = aws.GetResourceIdFromARN(operatorRoleARN)
 			if err != nil {
 				return "", err
 			}
 			foundPolicyARN, detachPoliciesCommands, err := handleOperatorRolePolicyARN(
-				mode,
-				awsClient,
-				operatorRoleName,
-				operatorRolePolicyPrefix,
-				operatorPolicyPath,
-				operator,
-				accountID,
-			)
+				mode, awsClient,
+				operatorRoleName, operatorRolePolicyPrefix,
+				operatorPolicyPath, operator, accountID)
 			if err != nil {
 				return "", err
 			}
@@ -859,14 +777,9 @@ func buildOperatorRoleCommandsFromCluster(
 }
 
 func handleOperatorRolePolicyARN(
-	mode string,
-	awsClient aws.Client,
-	operatorRoleName string,
-	operatorRolePolicyPrefix string,
-	operatorPolicyPath string,
-	operator *v1.STSOperator,
-	accountID string,
-) (string, []string, error) {
+	mode string, awsClient aws.Client, operatorRoleName string,
+	operatorRolePolicyPrefix string, operatorPolicyPath string,
+	operator *v1.STSOperator, accountID string) (string, []string, error) {
 	commands := make([]string, 0)
 	policiesDetails, err := awsClient.GetAttachedPolicy(&operatorRoleName)
 	if err != nil {
