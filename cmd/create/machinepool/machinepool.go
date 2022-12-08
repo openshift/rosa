@@ -3,6 +3,7 @@ package machinepool
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,8 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
+
+var labelRE = regexp.MustCompile(`^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`)
 
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
@@ -555,6 +558,12 @@ func parseLabels(labels string) (map[string]string, error) {
 			return nil, fmt.Errorf("Expected key=value format for labels")
 		}
 		tokens := strings.Split(label, "=")
+		keyToken := labelRE.MatchString(tokens[0])
+		valueToken := labelRE.MatchString(tokens[1])
+		if !keyToken || !valueToken {
+			return nil, fmt.Errorf("name part must consist of alphanumeric characters, " +
+				"'-', '_' or '.', and must start and end with an alphanumeric character")
+		}
 		labelMap[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
 	}
 	return labelMap, nil
