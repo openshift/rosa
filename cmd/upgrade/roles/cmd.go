@@ -302,9 +302,9 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	operatorRolePath, operatorPolicyPath, err := roles.GetOperatorPaths(r.AWSClient, operatorRoles)
+	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
 
@@ -391,8 +391,7 @@ func run(cmd *cobra.Command, argv []string) error {
 					cluster,
 					missingRolesInCS,
 					operatorRolePolicies,
-					operatorRolePath,
-					operatorPolicyPath,
+					unifiedPath,
 					operatorRolePolicyPrefix,
 				)
 				if err != nil {
@@ -949,8 +948,7 @@ func createOperatorRole(
 	cluster *v1.Cluster,
 	missingRoles map[string]*v1.STSOperator,
 	policies map[string]string,
-	rolePath string,
-	policyPath string,
+	unifiedPath string,
 	operatorRolePolicyPrefix string,
 ) error {
 	accountID := r.Creator.AccountID
@@ -962,8 +960,7 @@ func createOperatorRole(
 			accountID,
 			r,
 			policies,
-			rolePath,
-			policyPath,
+			unifiedPath,
 			operatorRolePolicyPrefix,
 		)
 		if err != nil {
@@ -977,8 +974,7 @@ func createOperatorRole(
 			accountID,
 			r,
 			policies,
-			rolePath,
-			policyPath,
+			unifiedPath,
 			operatorRolePolicyPrefix,
 		)
 		if err != nil {
@@ -1007,8 +1003,7 @@ func upgradeMissingOperatorRole(
 	accountID string,
 	r *rosa.Runtime,
 	policies map[string]string,
-	rolePath string,
-	policyPath string,
+	unifiedPath string,
 	operatorRolePolicyPrefix string,
 ) error {
 	for _, operator := range missingRoles {
@@ -1026,7 +1021,7 @@ func upgradeMissingOperatorRole(
 			operatorRolePolicyPrefix,
 			operator.Namespace(),
 			operator.Name(),
-			policyPath,
+			unifiedPath,
 		)
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
@@ -1039,7 +1034,7 @@ func upgradeMissingOperatorRole(
 				tags.OperatorNamespace: operator.Namespace(),
 				tags.OperatorName:      operator.Name(),
 				tags.RedHatManaged:     "true",
-			}, rolePath)
+			}, unifiedPath)
 		if err != nil {
 			return err
 		}
