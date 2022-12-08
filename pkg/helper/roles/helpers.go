@@ -10,7 +10,6 @@ import (
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/zgalor/weberr"
 )
 
 const (
@@ -37,46 +36,13 @@ func GetOperatorRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperato
 	return role
 }
 
-func GetOperatorPaths(awsClient aws.Client, operatorRoles []*cmv1.OperatorIAMRole) (
-	string, string, error) {
-	for _, operatorRole := range operatorRoles {
-		roleName, err := aws.GetResourceIdFromARN(operatorRole.RoleARN())
-		if err != nil {
-			return "", "", err
-		}
-		rolePolicies, err := awsClient.GetAttachedPolicy(&roleName)
-		if err != nil {
-			return "", "", err
-		}
-		policySuffix := aws.GetOperatorPolicyName("", operatorRole.Namespace(), operatorRole.Name())
-		for _, rolePolicy := range rolePolicies {
-			index := strings.LastIndex(rolePolicy.PolicyName, "-openshift")
-			policyNameSuffixOnly := rolePolicy.PolicyName[index:]
-			if strings.Contains(policySuffix, policyNameSuffixOnly) {
-				rolePath, err := aws.GetPathFromARN(operatorRole.RoleARN())
-				if err != nil {
-					return "", "", err
-				}
-				policyPath, err := aws.GetPathFromARN(rolePolicy.PolicyArn)
-				if err != nil {
-					return "", "", err
-				}
-				return rolePath, policyPath, nil
-			}
-		}
-	}
-	return "", "", weberr.Errorf("Can not detect operator policy path. " +
-		"Existing operator roles do not have operator policies attached to them")
-}
-
 func BuildMissingOperatorRoleCommand(
 	missingRoles map[string]*cmv1.STSOperator,
 	cluster *cmv1.Cluster,
 	accountID string,
 	r *rosa.Runtime,
 	policies map[string]string,
-	rolePath string,
-	policyPath string,
+	unifiedPath string,
 	operatorRolePolicyPrefix string,
 ) (string, error) {
 	commands := []string{}
@@ -87,7 +53,7 @@ func BuildMissingOperatorRoleCommand(
 			operatorRolePolicyPrefix,
 			operator.Namespace(),
 			operator.Name(),
-			policyPath,
+			unifiedPath,
 		)
 		policyDetails := policies["operator_iam_role_policy"]
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
@@ -108,7 +74,7 @@ func BuildMissingOperatorRoleCommand(
 				Operator:                 operator,
 				RoleName:                 roleName,
 				Filename:                 filename,
-				RolePath:                 rolePath,
+				RolePath:                 unifiedPath,
 				PolicyARN:                policyARN,
 			},
 		)

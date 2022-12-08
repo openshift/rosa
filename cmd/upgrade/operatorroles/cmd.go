@@ -126,9 +126,9 @@ func run(cmd *cobra.Command, argv []string) error {
 		r.Reporter.Errorf("Error getting account role prefix for the cluster '%s'",
 			clusterKey)
 	}
-	rolePath, policyPath, err := roles.GetOperatorPaths(r.AWSClient, operatorRoles)
+	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
 
@@ -156,7 +156,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	isOperatorPolicyUpgradeNeeded, err := r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
-		r.Creator.AccountID, defaultPolicyVersion, credRequests, policyPath)
+		r.Creator.AccountID, defaultPolicyVersion, credRequests, unifiedPath)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -205,7 +205,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	if isOperatorPolicyUpgradeNeeded {
 		err = upgradeOperatorPolicies(mode, r, prefix, isAccountRoleUpgradeNeed,
-			policies, env, defaultPolicyVersion, credRequests, cluster, policyPath)
+			policies, env, defaultPolicyVersion, credRequests, cluster, unifiedPath)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -221,7 +221,7 @@ func run(cmd *cobra.Command, argv []string) error {
 				return r.Reporter.Errorf("Error when detecting checking missing operator IAM roles %s", err)
 			}
 			if !exists {
-				err = createOperatorRole(mode, r, cluster, prefix, missingRolesInCS, policies, rolePath, policyPath)
+				err = createOperatorRole(mode, r, cluster, prefix, missingRolesInCS, policies, unifiedPath)
 				if err != nil {
 					r.Reporter.Errorf("%s", err)
 					os.Exit(1)
@@ -303,21 +303,21 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 	return nil
 }
 
-func createOperatorRole(mode string, r *rosa.Runtime, cluster *cmv1.Cluster, prefix string,
-	missingRoles map[string]*cmv1.STSOperator, policies map[string]string,
-	rolePath string, policyPath string) error {
+func createOperatorRole(
+	mode string, r *rosa.Runtime, cluster *cmv1.Cluster, prefix string,
+	missingRoles map[string]*cmv1.STSOperator, policies map[string]string, unifiedPath string) error {
 	accountID := r.Creator.AccountID
 	switch mode {
 	case aws.ModeAuto:
 		err := upgradeMissingOperatorRole(missingRoles, cluster, accountID, prefix, r,
-			policies, rolePath, policyPath)
+			policies, unifiedPath)
 		if err != nil {
 			return err
 		}
 		helper.DisplaySpinnerWithDelay(r.Reporter, "Waiting for operator roles to reconcile", 5*time.Second)
 	case aws.ModeManual:
-		commands, err := roles.BuildMissingOperatorRoleCommand(missingRoles, cluster, accountID, r, policies,
-			rolePath, policyPath, prefix)
+		commands, err := roles.BuildMissingOperatorRoleCommand(
+			missingRoles, cluster, accountID, r, policies, unifiedPath, prefix)
 		if err != nil {
 			return err
 		}
@@ -334,7 +334,7 @@ func createOperatorRole(mode string, r *rosa.Runtime, cluster *cmv1.Cluster, pre
 
 func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
 	accountID string, prefix string, r *rosa.Runtime, policies map[string]string,
-	rolePath string, policyPath string) error {
+	unifiedPath string) error {
 	for _, operator := range missingRoles {
 		roleName := roles.GetOperatorRoleName(cluster, operator)
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
@@ -342,7 +342,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 		}
 		policyDetails := policies["operator_iam_role_policy"]
 
-		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), policyPath)
+		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), unifiedPath)
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return err
@@ -354,7 +354,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 				tags.OperatorNamespace: operator.Namespace(),
 				tags.OperatorName:      operator.Name(),
 				tags.RedHatManaged:     "true",
-			}, rolePath)
+			}, unifiedPath)
 		if err != nil {
 			return err
 		}
