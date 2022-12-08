@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	semver "github.com/hashicorp/go-version"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
@@ -201,4 +202,74 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 		commands = append(commands, upgradePoliciesCommands...)
 	}
 	return commands
+}
+
+func (c *awsClient) FindAccRoleArnBundles(version string) (map[string]map[string]string, error) {
+	roleARNs := make(map[string]map[string]string)
+	roles, err := c.ListRoles()
+	if err != nil {
+		return roleARNs, err
+	}
+	prefixesCountMap := make(map[string]int)
+	prefixesARNMap := make(map[string]map[string]string)
+	for _, role := range roles {
+		matches := PrefixAccRoleRE.FindStringSubmatch(*role.RoleName)
+		index := PrefixAccRoleRE.SubexpIndex("Prefix")
+		if len(matches) == 0 {
+			continue
+		}
+		foundPrefix := matches[index]
+		if _, ok := prefixesCountMap[foundPrefix]; !ok {
+			prefixesCountMap[foundPrefix] = 0
+			prefixesARNMap[foundPrefix] = make(map[string]string)
+		}
+		prefixesCountMap[foundPrefix]++
+		index = PrefixAccRoleRE.SubexpIndex("Type")
+		foundType := matches[index]
+		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return roleARNs, err
+		}
+		skip := false
+		isTagged := false
+		for _, tag := range listRoleTagsOutput.Tags {
+			tagValue := aws.StringValue(tag.Value)
+			switch aws.StringValue(tag.Key) {
+			case tags.RoleType:
+				isTagged = true
+			case tags.OpenShiftVersion:
+				isTagged = true
+				clusterVersion, err := semver.NewVersion(version)
+				if err != nil {
+					skip = true
+					break
+				}
+				policyVersion, err := semver.NewVersion(tagValue)
+				if err != nil {
+					skip = true
+					break
+				}
+				if policyVersion.LessThan(clusterVersion) {
+					skip = true
+					break
+				}
+			}
+		}
+		if isTagged && !skip {
+			prefixesCountMap[foundPrefix]++
+			prefixesARNMap[foundPrefix][foundType] = *role.Arn
+		}
+	}
+	for key, value := range prefixesCountMap {
+		if value == len(AccountRoles)*2 {
+			path, err := GetPathFromARN(prefixesARNMap[key][AccountRoles[InstallerAccountRole].Name])
+			if err != nil {
+				continue
+			}
+			roleARNs[path+key] = prefixesARNMap[key]
+		}
+	}
+	return roleARNs, nil
 }
