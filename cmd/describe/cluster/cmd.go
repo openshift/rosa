@@ -179,6 +179,10 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Network().HostPrefix(),
 	)
 
+	if cluster.InfraID() != "" {
+		str = fmt.Sprintf("%s"+"Infra ID:                   %s\n", str, cluster.InfraID())
+	}
+
 	if cluster.Proxy() != nil && (cluster.Proxy().HTTPProxy() != "" || cluster.Proxy().HTTPSProxy() != "") {
 		str = fmt.Sprintf("%s"+"Proxy:\n", str)
 		if cluster.Proxy().HTTPProxy() != "" {
