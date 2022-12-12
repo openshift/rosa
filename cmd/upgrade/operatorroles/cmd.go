@@ -244,7 +244,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		r.AWSClient,
 		r.Creator.AccountID,
 		prefix,
-		policyPath)
+		unifiedPath)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
