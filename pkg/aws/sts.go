@@ -19,6 +19,7 @@ package aws
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -214,18 +215,18 @@ func (c *awsClient) FindAccRoleArnBundles(version string) (map[string]map[string
 	prefixesARNMap := make(map[string]map[string]string)
 	for _, role := range roles {
 		matches := PrefixAccRoleRE.FindStringSubmatch(*role.RoleName)
-		index := PrefixAccRoleRE.SubexpIndex("Prefix")
+		prefixIndex := PrefixAccRoleRE.SubexpIndex("Prefix")
 		if len(matches) == 0 {
 			continue
 		}
-		foundPrefix := matches[index]
+		foundPrefix := strings.ToLower(matches[prefixIndex])
 		if _, ok := prefixesCountMap[foundPrefix]; !ok {
 			prefixesCountMap[foundPrefix] = 0
 			prefixesARNMap[foundPrefix] = make(map[string]string)
 		}
 		prefixesCountMap[foundPrefix]++
-		index = PrefixAccRoleRE.SubexpIndex("Type")
-		foundType := matches[index]
+		typeIndex := PrefixAccRoleRE.SubexpIndex("Type")
+		foundType := matches[typeIndex]
 		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
 			RoleName: role.RoleName,
 		})

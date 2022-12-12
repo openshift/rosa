@@ -39,7 +39,7 @@ func getREOfAllAccRolesSuffixes() string {
 	return strings.Join(suffixes, "|")
 }
 
-var PrefixAccRoleRE = regexp.MustCompile(
+var PrefixAccRoleRE = regexp.MustCompile("(?i)" +
 	fmt.Sprintf(
 		`(?P<Prefix>%s)-(?P<Type>%s)(-Role$)`,
 		RoleNameREString,

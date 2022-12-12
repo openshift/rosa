@@ -804,8 +804,8 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			} else {
 				// Prioritize roles with the default prefix
-				if _, ok := currentArnBundles[aws.DefaultPrefix]; ok {
-					chosenBundle = aws.DefaultPrefix
+				if _, ok := currentArnBundles[strings.ToLower(aws.DefaultPrefix)]; ok {
+					chosenBundle = strings.ToLower(aws.DefaultPrefix)
 				}
 				r.Reporter.Warnf("More than one account role bundle found")
 				if !interactive.Enabled() && confirm.Yes() {
