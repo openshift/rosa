@@ -815,9 +815,17 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 				selectedARN := ""
+				expectedResourceIDForAccRole := strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name))
 				for _, rARN := range roleARNs {
-					if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name)) {
+					resourceId, err := aws.GetResourceIdFromARN(rARN)
+					if err != nil {
+						r.Reporter.Errorf("Failed to get resource ID from arn. %s", err)
+						os.Exit(1)
+					}
+					lowerCaseResourceIdToCheck := strings.ToLower(resourceId)
+					if lowerCaseResourceIdToCheck == expectedResourceIDForAccRole {
 						selectedARN = rARN
+						break
 					}
 				}
 				if selectedARN == "" {
