@@ -512,6 +512,7 @@ func GetOperatorRolePolicyPrefixFromCluster(cluster *cmv1.Cluster, awsClient Cli
 	// If is non standard try to find most common operator policy prefix from current attached policies
 	operatorRoles := cluster.AWS().STS().OperatorIAMRoles()
 	policyPrefixCountMap := make(map[string]int)
+	policyNames := []string{}
 	for _, operatorRole := range operatorRoles {
 		roleName, _ := GetResourceIdFromARN(operatorRole.RoleARN())
 		policiesDetails, err := awsClient.GetAttachedPolicy(&roleName)
@@ -520,6 +521,7 @@ func GetOperatorRolePolicyPrefixFromCluster(cluster *cmv1.Cluster, awsClient Cli
 		}
 		attachedPoliciesDetail := FindAllAttachedPolicyDetails(policiesDetails)
 		for _, attachedPolicyDetail := range attachedPoliciesDetail {
+			policyNames = append(policyNames, attachedPolicyDetail.PolicyName)
 			index := strings.LastIndex(attachedPolicyDetail.PolicyName, "-openshift")
 			if index != -1 {
 				policyPrefix := attachedPolicyDetail.PolicyName[0:index]
@@ -535,18 +537,15 @@ func GetOperatorRolePolicyPrefixFromCluster(cluster *cmv1.Cluster, awsClient Cli
 		return rankedPolicyPrefix[0], nil
 	}
 
-	// If no commonly used prefix is found use operator role prefix
-	operatorRoleName, err := GetResourceIdFromARN(operatorRoles[0].RoleARN())
-	if err != nil {
-		return "", err
-	}
-	index := strings.LastIndex(operatorRoleName, "-openshift")
-	if index != -1 {
-		return operatorRoleName[0:index], nil
+	//If no standard prefix is found, tries to look for the longest common prefix
+	// TODO: check if it makes sense to only use this and remove "-openshift" later
+	policyPrefix := helper.LongestCommonPrefixBySorting(policyNames)
+	if policyPrefix != "" {
+		return strings.TrimRight(policyPrefix, "-"), nil
 	}
 
-	// If nothing works setup a new prefix from name and random label so as to not interrupt user flow
-	return fmt.Sprintf("%s-%s", cluster.Name(), helper.RandomLabel(4)), nil
+	// If nothing works uses operator role prefix as to not interrupt flow
+	return cluster.AWS().STS().OperatorRolePrefix(), nil
 }
 
 func GetAccountRolesArnsMap(cluster *cmv1.Cluster) map[string]string {

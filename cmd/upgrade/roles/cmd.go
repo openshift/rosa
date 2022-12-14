@@ -516,7 +516,7 @@ func upgradeAccountRolePoliciesFromCluster(
 		if err != nil {
 			return err
 		}
-		promptString := fmt.Sprintf("Upgrade the '%s' role policy latest version (%s) ?", roleName, policyVersion)
+		promptString := fmt.Sprintf("Upgrade the '%s' role policy to latest version (%s) ?", roleName, policyVersion)
 		if isVersionChosen {
 			promptString = fmt.Sprintf("Upgrade the '%s' role policy to version '%s' ?", roleName, policyVersion)
 		}
