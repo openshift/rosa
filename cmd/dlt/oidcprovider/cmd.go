@@ -78,16 +78,19 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	clusterID := clusterKey
 	if sub != nil {
-		clusterID = sub.ClusterID()
+		clusterKey = sub.ClusterID()
 	}
-	c, err := r.OCMClient.GetClusterByID(clusterID, r.Creator)
+	c, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
 			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
+		} else if sub == nil {
+			r.Reporter.Errorf("Failed to get cluster '%s': %v", r.ClusterKey, err)
+			os.Exit(1)
 		}
+
 	}
 	if c != nil && c.ID() != "" {
 		r.Reporter.Errorf("Cluster '%s' is in '%s' state. OIDC provider can be deleted only for the "+
