@@ -82,7 +82,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if sub != nil {
 		clusterID = sub.ClusterID()
 	}
-	c, err := r.OCMClient.GetClusterByID(clusterID, r.Creator)
+	c, err := r.OCMClient.GetCluster(clusterID, r.Creator)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
 			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
