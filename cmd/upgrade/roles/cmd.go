@@ -244,7 +244,7 @@ func run(cmd *cobra.Command, argv []string) error {
 					if args.isInvokedFromClusterUpgrade {
 						return err
 					}
-					reporter.Errorf("Error upgrading the role polices: %s", err)
+					reporter.Errorf("Error upgrading the account role polices: %s", err)
 					os.Exit(1)
 				}
 			}
@@ -428,63 +428,65 @@ func handleAccountRolePolicyARN(
 	rolePath string,
 	accountID string,
 ) (string, []string, error) {
-	commands := make([]string, 0)
 	policiesDetails, err := awsClient.GetAttachedPolicy(&roleName)
 	if err != nil {
-		return "", commands, err
+		return "", nil, err
 	}
 
-	hasMoreThanOneAttachedPolicy := aws.HasMoreThanOneAttachedPolicy(policiesDetails)
-	if hasMoreThanOneAttachedPolicy {
-		promptString := fmt.Sprintf("More than one policy attached to account role '%s'.\n"+
-			"\tWould you like to dettach current policies and setup a new one ?", roleName)
-		if !confirm.Prompt(true, promptString) {
-			attachedPoliciesDetail := aws.FindAllAttachedPolicyDetails(policiesDetails)
-			attachedPoliciesArns := make([]string, len(attachedPoliciesDetail))
-			for _, attachedPolicyDetail := range attachedPoliciesDetail {
-				attachedPoliciesArns = append(attachedPoliciesArns, attachedPolicyDetail.PolicyArn)
-			}
-			chosenPolicyARN, err := interactive.GetOption(interactive.Input{
-				Question: "Choose Policy ARN to upgrade",
-				Options:  attachedPoliciesArns,
-				Default:  attachedPoliciesArns[0],
-				Required: true,
-			})
-			if err != nil {
-				return "", commands, err
-			}
-			return chosenPolicyARN, commands, nil
-		}
+	attachedPoliciesDetail := aws.FindAllAttachedPolicyDetails(policiesDetails)
 
-		switch mode {
-		case aws.ModeAuto:
-			err := awsClient.DetachRolePolicies(roleName)
-			if err != nil {
-				return "", commands, err
-			}
-		case aws.ModeManual:
-			for _, policyDetail := range policiesDetails {
-				detachManagedPoliciesCommand := awscbRoles.ManualCommandsForDetachRolePolicy(
-					awscbRoles.ManualCommandsForDetachRolePolicyInput{
-						RoleName:  roleName,
-						PolicyARN: policyDetail.PolicyArn,
-					},
-				)
-				commands = append(commands, detachManagedPoliciesCommand)
-			}
-		default:
-			return "", commands, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
-		}
+	generatedPolicyARN := aws.GetPolicyARN(accountID, roleName, rolePath)
+	if len(attachedPoliciesDetail) == 0 {
+		return generatedPolicyARN, nil, nil
+	}
 
-		generatedPolicyARN := aws.GetPolicyARN(
-			accountID,
-			roleName,
-			rolePath,
-		)
+	if len(attachedPoliciesDetail) == 1 {
+		policyDetail := attachedPoliciesDetail[0]
+		return policyDetail.PolicyArn, nil, nil
+	}
+
+	promptString := fmt.Sprintf("More than one policy attached to account role '%s'.\n"+
+		"\tWould you like to dettach current policies and setup a new one ?", roleName)
+	if !confirm.Prompt(true, promptString) {
+
+		attachedPoliciesArns := make([]string, len(attachedPoliciesDetail))
+		for _, attachedPolicyDetail := range attachedPoliciesDetail {
+			attachedPoliciesArns = append(attachedPoliciesArns, attachedPolicyDetail.PolicyArn)
+		}
+		chosenPolicyARN, err := interactive.GetOption(interactive.Input{
+			Question: "Choose Policy ARN to upgrade",
+			Options:  attachedPoliciesArns,
+			Default:  attachedPoliciesArns[0],
+			Required: true,
+		})
+		if err != nil {
+			return "", nil, err
+		}
+		return chosenPolicyARN, nil, nil
+	}
+
+	switch mode {
+	case aws.ModeAuto:
+		err := awsClient.DetachRolePolicies(roleName)
+		if err != nil {
+			return "", nil, err
+		}
+		return generatedPolicyARN, nil, nil
+	case aws.ModeManual:
+		commands := make([]string, 0)
+		for _, policyDetail := range attachedPoliciesDetail {
+			detachManagedPoliciesCommand := awscbRoles.ManualCommandsForDetachRolePolicy(
+				awscbRoles.ManualCommandsForDetachRolePolicyInput{
+					RoleName:  roleName,
+					PolicyARN: policyDetail.PolicyArn,
+				},
+			)
+			commands = append(commands, detachManagedPoliciesCommand)
+		}
 		return generatedPolicyARN, commands, nil
+	default:
+		return "", nil, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 	}
-	policyDetail := policiesDetails[0]
-	return policyDetail.PolicyArn, commands, nil
 }
 
 func upgradeAccountRolePoliciesFromCluster(
@@ -883,63 +885,69 @@ func handleOperatorRolePolicyARN(
 	operator *v1.STSOperator,
 	accountID string,
 ) (string, []string, error) {
-	commands := make([]string, 0)
 	policiesDetails, err := awsClient.GetAttachedPolicy(&operatorRoleName)
 	if err != nil {
-		return "", commands, err
+		return "", nil, err
 	}
 
-	hasMoreThanOneAttachedPolicy := aws.HasMoreThanOneAttachedPolicy(policiesDetails)
-	if hasMoreThanOneAttachedPolicy {
-		promptString := fmt.Sprintf("More than one policy attached to operator role '%s'.\n"+
-			"\tWould you like to dettach current policies and setup a new one ?", operatorRoleName)
-		if !confirm.Prompt(true, promptString) {
-			attachedPoliciesDetails := aws.FindAllAttachedPolicyDetails(policiesDetails)
-			attachedPoliciesArns := make([]string, len(attachedPoliciesDetails))
-			for _, attachedPolicyDetail := range attachedPoliciesDetails {
-				attachedPoliciesArns = append(attachedPoliciesArns, attachedPolicyDetail.PolicyArn)
-			}
-			chosenPolicyARN, err := interactive.GetOption(interactive.Input{
-				Question: "Choose Policy ARN to upgrade",
-				Options:  attachedPoliciesArns,
-				Default:  attachedPoliciesArns[0],
-				Required: true,
-			})
-			if err != nil {
-				return "", commands, err
-			}
-			return chosenPolicyARN, commands, nil
-		}
-		switch mode {
-		case aws.ModeAuto:
-			err := awsClient.DetachRolePolicies(operatorRoleName)
-			if err != nil {
-				return "", commands, err
-			}
-		case aws.ModeManual:
-			for _, policyDetail := range policiesDetails {
-				detachManagedPoliciesCommand := awscbRoles.ManualCommandsForDetachRolePolicy(
-					awscbRoles.ManualCommandsForDetachRolePolicyInput{
-						RoleName:  operatorRoleName,
-						PolicyARN: policyDetail.PolicyArn,
-					},
-				)
-				commands = append(commands, detachManagedPoliciesCommand)
-			}
-		default:
-			return "", commands, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
-		}
-		generatedPolicyARN := aws.GetOperatorPolicyARN(
-			accountID,
-			operatorRolePolicyPrefix,
-			operator.Namespace(),
-			operator.Name(),
-			operatorPolicyPath,
-		)
-		return generatedPolicyARN, commands, nil
+	generatedPolicyARN := aws.GetOperatorPolicyARN(
+		accountID,
+		operatorRolePolicyPrefix,
+		operator.Namespace(),
+		operator.Name(),
+		operatorPolicyPath,
+	)
+	attachedPoliciesDetails := aws.FindAllAttachedPolicyDetails(policiesDetails)
+
+	if len(attachedPoliciesDetails) == 0 {
+		return generatedPolicyARN, nil, nil
 	}
-	policyDetail := policiesDetails[0]
-	return policyDetail.PolicyArn, commands, nil
+
+	if len(attachedPoliciesDetails) == 1 {
+		policyDetail := attachedPoliciesDetails[0]
+		return policyDetail.PolicyArn, nil, nil
+	}
+
+	promptString := fmt.Sprintf("More than one policy attached to operator role '%s'.\n"+
+		"\tWould you like to dettach current policies and setup a new one ?", operatorRoleName)
+	if !confirm.Prompt(true, promptString) {
+		attachedPoliciesArns := make([]string, len(attachedPoliciesDetails))
+		for _, attachedPolicyDetail := range attachedPoliciesDetails {
+			attachedPoliciesArns = append(attachedPoliciesArns, attachedPolicyDetail.PolicyArn)
+		}
+		chosenPolicyARN, err := interactive.GetOption(interactive.Input{
+			Question: "Choose Policy ARN to upgrade",
+			Options:  attachedPoliciesArns,
+			Default:  attachedPoliciesArns[0],
+			Required: true,
+		})
+		if err != nil {
+			return "", nil, err
+		}
+		return chosenPolicyARN, nil, nil
+	}
+	switch mode {
+	case aws.ModeAuto:
+		err := awsClient.DetachRolePolicies(operatorRoleName)
+		if err != nil {
+			return "", nil, err
+		}
+		return generatedPolicyARN, nil, nil
+	case aws.ModeManual:
+		commands := make([]string, 0)
+		for _, policyDetail := range policiesDetails {
+			detachManagedPoliciesCommand := awscbRoles.ManualCommandsForDetachRolePolicy(
+				awscbRoles.ManualCommandsForDetachRolePolicyInput{
+					RoleName:  operatorRoleName,
+					PolicyARN: policyDetail.PolicyArn,
+				},
+			)
+			commands = append(commands, detachManagedPoliciesCommand)
+		}
+		return generatedPolicyARN, commands, nil
+	default:
+		return "", nil, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+	}
 }
 
 func createOperatorRole(

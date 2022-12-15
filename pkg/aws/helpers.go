@@ -675,20 +675,6 @@ func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client
 	return commands
 }
 
-func HasMoreThanOneAttachedPolicy(policiesDetails []PolicyDetail) bool {
-	return countAttachedPoliciesInDetails(policiesDetails) > 1
-}
-
-func countAttachedPoliciesInDetails(policiesDetails []PolicyDetail) int {
-	totalAttachedPolicies := 0
-	for _, policy := range policiesDetails {
-		if policy.PolicType == Attached {
-			totalAttachedPolicies++
-		}
-	}
-	return totalAttachedPolicies
-}
-
 func FindAllAttachedPolicyDetails(policiesDetails []PolicyDetail) []PolicyDetail {
 	attachedPolicies := make([]PolicyDetail, 0)
 	for _, policy := range policiesDetails {
