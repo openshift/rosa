@@ -2,7 +2,6 @@ package roles
 
 import (
 	"fmt"
-	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
@@ -17,18 +16,7 @@ const (
 )
 
 func GetOperatorRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperator) string {
-	operatorIAMRoles := cluster.AWS().STS().OperatorIAMRoles()
-	rolePrefix := ""
-	if len(operatorIAMRoles) > 0 {
-		roleARN := operatorIAMRoles[0].RoleARN()
-		roleName, err := aws.GetResourceIdFromARN(roleARN)
-		if err != nil {
-			return ""
-		}
-
-		m := strings.LastIndex(roleName, "-openshift")
-		rolePrefix = roleName[0:m]
-	}
+	rolePrefix := cluster.AWS().STS().OperatorRolePrefix()
 	role := fmt.Sprintf("%s-%s-%s", rolePrefix, missingOperator.Namespace(), missingOperator.Name())
 	if len(role) > 64 {
 		role = role[0:64]
