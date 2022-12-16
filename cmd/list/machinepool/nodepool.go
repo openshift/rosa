@@ -21,7 +21,7 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tAVAILABILITY ZONE\tSUBNET\tNODEPOOL\t\n")
+	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tAVAILABILITY ZONE\tSUBNET\tINSTANCE PREFIX\t\n")
 	for _, nodePool := range nodePools {
 		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
