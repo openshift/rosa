@@ -325,8 +325,8 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 	var infraConfig string
 	if cluster.Hypershift().Enabled() {
 		infraConfig = fmt.Sprintf(""+
-			"Node Pools:\n"+
-			" - Compute:                 %d\n",
+			"Nodes:\n"+
+			" - Compute (workers):           %d\n",
 			cluster.Nodes().Compute(),
 		)
 	} else {
