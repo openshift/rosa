@@ -59,6 +59,7 @@ type Spec struct {
 	Autoscaling        bool
 	MinReplicas        int
 	MaxReplicas        int
+	ComputeLabels      map[string]string
 
 	// SubnetIDs
 	SubnetIds []string
@@ -431,6 +432,33 @@ func (c *Client) GetClusterState(clusterID string) (cmv1.ClusterState, error) {
 	return response.Body().State(), nil
 }
 
+func (c *Client) getClusterNodesBuilder(config Spec) (clusterNodesBuilder *cmv1.ClusterNodesBuilder, updateNodes bool) {
+
+	clusterNodesBuilder = cmv1.NewClusterNodes()
+	if config.Autoscaling {
+		updateNodes = true
+		autoscalingBuilder := cmv1.NewMachinePoolAutoscaling()
+		if config.MinReplicas != 0 {
+			autoscalingBuilder = autoscalingBuilder.MinReplicas(config.MinReplicas)
+		}
+		if config.MaxReplicas != 0 {
+			autoscalingBuilder = autoscalingBuilder.MaxReplicas(config.MaxReplicas)
+		}
+		clusterNodesBuilder = clusterNodesBuilder.AutoscaleCompute(autoscalingBuilder)
+	} else if config.ComputeNodes != 0 {
+		updateNodes = true
+		clusterNodesBuilder = clusterNodesBuilder.Compute(config.ComputeNodes)
+	}
+
+	if config.ComputeLabels != nil {
+		updateNodes = true
+		clusterNodesBuilder = clusterNodesBuilder.ComputeLabels(config.ComputeLabels)
+	}
+
+	return
+
+}
+
 func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config Spec) error {
 	cluster, err := c.GetCluster(clusterKey, creator)
 	if err != nil {
@@ -445,19 +473,8 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 	}
 
 	// Scale cluster
-	clusterNodesBuilder := cmv1.NewClusterNodes()
-	if config.Autoscaling {
-		autoscalingBuilder := cmv1.NewMachinePoolAutoscaling()
-		if config.MinReplicas != 0 {
-			autoscalingBuilder = autoscalingBuilder.MinReplicas(config.MinReplicas)
-		}
-		if config.MaxReplicas != 0 {
-			autoscalingBuilder = autoscalingBuilder.MaxReplicas(config.MaxReplicas)
-		}
-		clusterNodesBuilder = clusterNodesBuilder.AutoscaleCompute(autoscalingBuilder)
-		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
-	} else if config.ComputeNodes != 0 {
-		clusterNodesBuilder = clusterNodesBuilder.Compute(config.ComputeNodes)
+	clusterNodesBuilder, updateNodes := c.getClusterNodesBuilder(config)
+	if updateNodes {
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}
 

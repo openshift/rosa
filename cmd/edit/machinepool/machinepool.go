@@ -26,43 +26,62 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 		os.Exit(1)
 	}
 
+	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
+	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
+	isReplicasSet := cmd.Flags().Changed("replicas")
+	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
+	isLabelsSet := cmd.Flags().Changed("labels")
+	isTaintsSet := cmd.Flags().Changed("taints")
+
+	// if no value set enter interactive mode
+	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet) {
+		interactive.Enable()
+	}
+
 	// Editing the default machine pool is a different process
 	if machinePoolID == "Default" {
-		if cmd.Flags().Changed("labels") {
-			r.Reporter.Errorf("Labels cannot be updated on the Default machine pool")
-			os.Exit(1)
-		}
-		if cmd.Flags().Changed("taints") {
+		if isTaintsSet {
 			r.Reporter.Errorf("Taints are not supported on the Default machine pool")
 			os.Exit(1)
 		}
 
-		autoscaling, replicas, minReplicas, maxReplicas := getMachinePoolReplicas(cmd, r.Reporter, machinePoolID,
-			cluster.Nodes().Compute(), cluster.Nodes().AutoscaleCompute())
+		clusterConfig := ocm.Spec{}
 
-		if cluster.MultiAZ() {
-			if !autoscaling && replicas < 3 ||
-				(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 3) {
-				r.Reporter.Errorf("Default machine pool for AZ cluster requires at least 3 compute nodes")
+		autoscaling, replicas, minReplicas, maxReplicas, scalingUpdated :=
+			getMachinePoolReplicas(cmd, r.Reporter, machinePoolID, cluster.Nodes().Compute(),
+				cluster.Nodes().AutoscaleCompute(), !isLabelsSet)
+
+		if scalingUpdated {
+			if cluster.MultiAZ() {
+				if !autoscaling && replicas < 3 ||
+					(autoscaling && isMinReplicasSet && minReplicas < 3) {
+					r.Reporter.Errorf("Default machine pool for AZ cluster requires at least 3 compute nodes")
+					os.Exit(1)
+				}
+
+				if !autoscaling && replicas%3 != 0 ||
+					(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0)) {
+					r.Reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+					os.Exit(1)
+				}
+			} else if !autoscaling && replicas < 2 ||
+				(autoscaling && isMinReplicasSet && minReplicas < 2) {
+				r.Reporter.Errorf("Default machine pool requires at least 2 compute nodes")
 				os.Exit(1)
 			}
 
-			if !autoscaling && replicas%3 != 0 ||
-				(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0)) {
-				r.Reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-				os.Exit(1)
+			clusterConfig = ocm.Spec{
+				Autoscaling:  autoscaling,
+				ComputeNodes: replicas,
+				MinReplicas:  minReplicas,
+				MaxReplicas:  maxReplicas,
 			}
-		} else if !autoscaling && replicas < 2 ||
-			(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 2) {
-			r.Reporter.Errorf("Default machine pool requires at least 2 compute nodes")
-			os.Exit(1)
 		}
 
-		clusterConfig := ocm.Spec{
-			Autoscaling:  autoscaling,
-			ComputeNodes: replicas,
-			MinReplicas:  minReplicas,
-			MaxReplicas:  maxReplicas,
+		labelMap := getLabels(cmd, r.Reporter, cluster.Nodes().ComputeLabels())
+
+		if isLabelsSet || interactive.Enabled() {
+			clusterConfig.ComputeLabels = labelMap
 		}
 
 		r.Reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
@@ -96,55 +115,26 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 		os.Exit(1)
 	}
 
-	autoscaling, replicas, minReplicas, maxReplicas := getMachinePoolReplicas(cmd, r.Reporter, machinePoolID,
-		machinePool.Replicas(), machinePool.Autoscaling())
+	autoscaling, replicas, minReplicas, maxReplicas, scalingUpdated :=
+		getMachinePoolReplicas(cmd, r.Reporter, machinePoolID, machinePool.Replicas(), machinePool.Autoscaling(),
+			!isLabelsSet && !isTaintsSet)
 
-	if !autoscaling && replicas < 0 ||
-		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 0) {
-		r.Reporter.Errorf("The number of machine pool replicas needs to be a non-negative integer")
-		os.Exit(1)
-	}
-
-	if cluster.MultiAZ() && isMultiAZMachinePool(machinePool) &&
-		(!autoscaling && replicas%3 != 0 ||
-			(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0))) {
-		r.Reporter.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
-		os.Exit(1)
-	}
-
-	labels := args.labels
-	labelMap := make(map[string]string)
-	if interactive.Enabled() {
-		if labels == "" {
-			for lk, lv := range machinePool.Labels() {
-				if labels != "" {
-					labels += ","
-				}
-				labels += fmt.Sprintf("%s=%s", lk, lv)
-			}
+	if scalingUpdated {
+		if !autoscaling && replicas < 0 ||
+			(autoscaling && isMinReplicasSet && minReplicas < 0) {
+			r.Reporter.Errorf("The number of machine pool replicas needs to be a non-negative integer")
+			os.Exit(1)
 		}
-		labels, err = interactive.GetString(interactive.Input{
-			Question: "Labels",
-			Help:     cmd.Flags().Lookup("labels").Usage,
-			Default:  labels,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+
+		if cluster.MultiAZ() && isMultiAZMachinePool(machinePool) &&
+			(!autoscaling && replicas%3 != 0 ||
+				(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0))) {
+			r.Reporter.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
 			os.Exit(1)
 		}
 	}
 
-	labels = strings.Trim(labels, " ")
-	if labels != "" {
-		for _, label := range strings.Split(labels, ",") {
-			if !strings.Contains(label, "=") {
-				r.Reporter.Errorf("Expected key=value format for labels")
-				os.Exit(1)
-			}
-			tokens := strings.Split(label, "=")
-			labelMap[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
-		}
-	}
+	labelMap := getLabels(cmd, r.Reporter, machinePool.Labels())
 
 	taints := args.taints
 	taintBuilders := []*cmv1.TaintBuilder{}
@@ -185,26 +175,28 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 	// Check either for an explicit flag or interactive mode. Since
 	// interactive will always show both labels and taints we can safely
 	// assume that the value entered is the same as the value desired.
-	if cmd.Flags().Changed("labels") || interactive.Enabled() {
+	if isLabelsSet || interactive.Enabled() {
 		mpBuilder = mpBuilder.Labels(labelMap)
 	}
-	if cmd.Flags().Changed("taints") || interactive.Enabled() {
+	if isTaintsSet || interactive.Enabled() {
 		mpBuilder = mpBuilder.Taints(taintBuilders...)
 	}
 
-	if autoscaling {
-		asBuilder := cmv1.NewMachinePoolAutoscaling()
+	if scalingUpdated {
+		if autoscaling {
+			asBuilder := cmv1.NewMachinePoolAutoscaling()
 
-		if minReplicas > 0 {
-			asBuilder = asBuilder.MinReplicas(minReplicas)
-		}
-		if maxReplicas > 0 {
-			asBuilder = asBuilder.MaxReplicas(maxReplicas)
-		}
+			if minReplicas > 0 {
+				asBuilder = asBuilder.MinReplicas(minReplicas)
+			}
+			if maxReplicas > 0 {
+				asBuilder = asBuilder.MaxReplicas(maxReplicas)
+			}
 
-		mpBuilder = mpBuilder.Autoscaling(asBuilder)
-	} else {
-		mpBuilder = mpBuilder.Replicas(replicas)
+			mpBuilder = mpBuilder.Autoscaling(asBuilder)
+		} else {
+			mpBuilder = mpBuilder.Replicas(replicas)
+		}
 	}
 
 	machinePool, err = mpBuilder.Build()
@@ -227,8 +219,9 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 	reporter *rprtr.Object,
 	machinePoolID string,
 	existingReplicas int,
-	existingAutoscaling *cmv1.MachinePoolAutoscaling) (autoscaling bool,
-	replicas, minReplicas, maxReplicas int) {
+	existingAutoscaling *cmv1.MachinePoolAutoscaling,
+	askForScalingParams bool) (autoscaling bool,
+	replicas, minReplicas, maxReplicas int, scalingUpdated bool) {
 	var err error
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
@@ -272,6 +265,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 	}
 
 	if autoscaling {
+		scalingUpdated = true
 		// Prompt for min replicas if neither min or max is set or interactive mode
 		if !isMinReplicasSet && (interactive.Enabled() || !isMaxReplicasSet) {
 			minReplicas, err = interactive.GetInt(interactive.Input{
@@ -299,7 +293,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 				os.Exit(1)
 			}
 		}
-	} else if interactive.Enabled() || !isReplicasSet {
+		scalingUpdated = true
 		if !isReplicasSet {
 			replicas = existingReplicas
 		}
@@ -324,4 +318,44 @@ func Split(r rune) bool {
 // Single-AZ: AvailabilityZones == []string{"us-east-1a"}
 func isMultiAZMachinePool(machinePool *cmv1.MachinePool) bool {
 	return len(machinePool.AvailabilityZones()) != 1
+}
+
+func getLabels(cmd *cobra.Command,
+	reporter *rprtr.Object,
+	existingLabels map[string]string) map[string]string {
+	var err error
+	labels := args.labels
+	labelMap := make(map[string]string)
+	if interactive.Enabled() {
+		if labels == "" {
+			for lk, lv := range existingLabels {
+				if labels != "" {
+					labels += ","
+				}
+				labels += fmt.Sprintf("%s=%s", lk, lv)
+			}
+		}
+		labels, err = interactive.GetString(interactive.Input{
+			Question: "Labels",
+			Help:     cmd.Flags().Lookup("labels").Usage,
+			Default:  labels,
+		})
+		if err != nil {
+			reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	labels = strings.Trim(labels, " ")
+	if labels != "" {
+		for _, label := range strings.Split(labels, ",") {
+			if !strings.Contains(label, "=") {
+				reporter.Errorf("Expected key=value format for labels")
+				os.Exit(1)
+			}
+			tokens := strings.Split(label, "=")
+			labelMap[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+		}
+	}
+	return labelMap
 }
