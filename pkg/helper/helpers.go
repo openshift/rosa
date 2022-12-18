@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"math"
 	"math/rand"
 	"os"
 	"sort"
@@ -178,4 +179,26 @@ func HandleEmptyStringOnSlice(slice []string) []string {
 		}
 	}
 	return r
+}
+
+func LongestCommonPrefixBySorting(stringSlice []string) string {
+	ssLength := len(stringSlice)
+	if ssLength == 0 {
+		return ""
+	}
+
+	if ssLength == 1 {
+		return stringSlice[0]
+	}
+
+	sort.Strings(stringSlice)
+	minLengthBetweenFirstAndLast := math.Min(float64(len(stringSlice[0])), float64(len(stringSlice[ssLength-1])))
+	first := stringSlice[0]
+	last := stringSlice[ssLength-1]
+	i := 0
+	for i < int(minLengthBetweenFirstAndLast) && first[i] == last[i] {
+		i++
+	}
+
+	return first[:i]
 }
