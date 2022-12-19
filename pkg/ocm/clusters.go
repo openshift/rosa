@@ -686,7 +686,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 
 	if config.ComputeMachineType != "" || config.ComputeNodes != 0 || len(config.AvailabilityZones) > 0 ||
-		config.Autoscaling {
+		config.Autoscaling || len(config.ComputeLabels) > 0 {
 		clusterNodesBuilder := cmv1.NewClusterNodes()
 		if config.ComputeMachineType != "" {
 			clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
@@ -705,6 +705,9 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		}
 		if len(config.AvailabilityZones) > 0 {
 			clusterNodesBuilder = clusterNodesBuilder.AvailabilityZones(config.AvailabilityZones...)
+		}
+		if len(config.ComputeLabels) > 0 {
+			clusterNodesBuilder = clusterNodesBuilder.ComputeLabels(config.ComputeLabels)
 		}
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}

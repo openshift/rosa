@@ -30,6 +30,7 @@ import (
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -88,11 +89,12 @@ var args struct {
 	enableCustomerManagedKey bool
 	kmsKeyARN                string
 	// Scaling options
-	computeMachineType string
-	computeNodes       int
-	autoscalingEnabled bool
-	minReplicas        int
-	maxReplicas        int
+	computeMachineType       string
+	computeNodes             int
+	autoscalingEnabled       bool
+	minReplicas              int
+	maxReplicas              int
+	defaultMachinePoolLabels string
 
 	// Networking options
 	networkType string
@@ -425,6 +427,14 @@ func init() {
 		"max-replicas",
 		2,
 		"Maximum number of compute nodes.",
+	)
+
+	flags.StringVar(
+		&args.defaultMachinePoolLabels,
+		"default-mp-labels",
+		"",
+		"Labels for the default machine pool. Format should be a comma-separated list of 'key=value'. "+
+			"This list will overwrite any modifications made to Node labels on an ongoing basis.",
 	)
 
 	flags.StringVar(
@@ -1671,6 +1681,28 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	// Default machine pool labels
+	labels := args.defaultMachinePoolLabels
+	if interactive.Enabled() {
+		labels, err = interactive.GetString(interactive.Input{
+			Question: "Default machine pool labels",
+			Help:     cmd.Flags().Lookup("default-mp-labels").Usage,
+			Default:  labels,
+			Validators: []interactive.Validator{
+				machinepool.LabelValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+	}
+	labelMap, err := machinepool.ParseLabels(labels)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	// Validate all remaining flags:
 	expiration, err := validateExpiration()
 	if err != nil {
@@ -1960,6 +1992,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Autoscaling:               autoscaling,
 		MinReplicas:               minReplicas,
 		MaxReplicas:               maxReplicas,
+		ComputeLabels:             labelMap,
 		NetworkType:               networkType,
 		MachineCIDR:               machineCIDR,
 		ServiceCIDR:               serviceCIDR,

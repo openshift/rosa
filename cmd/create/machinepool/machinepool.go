@@ -312,7 +312,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			Help:     cmd.Flags().Lookup("labels").Usage,
 			Default:  labels,
 			Validators: []interactive.Validator{
-				labelValidator,
+				LabelValidator,
 			},
 		})
 		if err != nil {
@@ -320,7 +320,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			os.Exit(1)
 		}
 	}
-	labelMap, err := parseLabels(labels)
+	labelMap, err := ParseLabels(labels)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -537,9 +537,9 @@ func spotMaxPriceValidator(val interface{}) error {
 	return nil
 }
 
-func labelValidator(val interface{}) error {
+func LabelValidator(val interface{}) error {
 	if labels, ok := val.(string); ok {
-		_, err := parseLabels(labels)
+		_, err := ParseLabels(labels)
 		if err != nil {
 			return err
 		}
@@ -548,7 +548,7 @@ func labelValidator(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
-func parseLabels(labels string) (map[string]string, error) {
+func ParseLabels(labels string) (map[string]string, error) {
 	labelMap := make(map[string]string)
 	if labels == "" {
 		return labelMap, nil
