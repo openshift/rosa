@@ -294,6 +294,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 			}
 		}
 		scalingUpdated = true
+	} else {
 		if !isReplicasSet {
 			replicas = existingReplicas
 		}
