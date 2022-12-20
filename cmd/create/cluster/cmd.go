@@ -640,6 +640,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	if isHostedCP && cmd.Flags().Changed("default-mp-labels") {
+		r.Reporter.Errorf("Setting the default machine pool labels is not supported for hosted clusters")
+		os.Exit(1)
+	}
+
 	// all hosted clusters are sts
 	isSTS := args.sts || args.roleARN != "" || fedramp.Enabled() || isHostedCP
 	isIAM := (cmd.Flags().Changed("sts") && !isSTS) || args.nonSts
@@ -1683,7 +1688,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Default machine pool labels
 	labels := args.defaultMachinePoolLabels
-	if interactive.Enabled() {
+	if interactive.Enabled() && !isHostedCP {
 		labels, err = interactive.GetString(interactive.Input{
 			Question: "Default machine pool labels",
 			Help:     cmd.Flags().Lookup("default-mp-labels").Usage,

@@ -564,7 +564,12 @@ func ParseLabels(labels string) (map[string]string, error) {
 			return nil, fmt.Errorf("name part must consist of alphanumeric characters, " +
 				"'-', '_' or '.', and must start and end with an alphanumeric character")
 		}
-		labelMap[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
+		key := strings.TrimSpace(tokens[0])
+		value := strings.TrimSpace(tokens[1])
+		if _, exists := labelMap[key]; exists {
+			return nil, fmt.Errorf("Duplicated label key '%s' used", key)
+		}
+		labelMap[key] = value
 	}
 	return labelMap, nil
 }
