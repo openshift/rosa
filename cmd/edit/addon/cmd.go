@@ -137,6 +137,13 @@ func run(cmd *cobra.Command, argv []string) {
 			values = append(values, opt.Value())
 		}
 
+		//Retrieve default value and set it first
+		dflt := param.DefaultValue()
+		if addOnInstallationParam != nil {
+			dflt = addOnInstallationParam.Value()
+		}
+		val = dflt
+
 		// If value is already set in the CLI, ignore interactive prompt
 		flag := cmd.Flags().Lookup(param.ID())
 		if flag != nil {
@@ -148,11 +155,6 @@ func run(cmd *cobra.Command, argv []string) {
 			input.Help = fmt.Sprintf("%s: %s", param.ID(), param.Description())
 			input.Required = param.Required()
 			input.Options = options
-
-			dflt := param.DefaultValue()
-			if addOnInstallationParam != nil {
-				dflt = addOnInstallationParam.Value()
-			}
 
 			val, err = interactive.GetAddonParameter(param, input, dflt)
 			if err != nil {
