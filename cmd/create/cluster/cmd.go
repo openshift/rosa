@@ -2413,10 +2413,12 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += " --disable-scp-checks"
 	}
 	if spec.Version != "" {
+		commandVersion := strings.TrimPrefix(spec.Version, "openshift-v")
 		if spec.ChannelGroup != ocm.DefaultChannelGroup {
 			command += fmt.Sprintf(" --channel-group %s", spec.ChannelGroup)
+			commandVersion = strings.TrimSuffix(commandVersion, fmt.Sprintf("-%s", spec.ChannelGroup))
 		}
-		command += fmt.Sprintf(" --version %s", strings.TrimPrefix(spec.Version, "openshift-v"))
+		command += fmt.Sprintf(" --version %s", commandVersion)
 	}
 
 	// Only account for expiration duration, as a fixed date may be obsolete if command is re-run later
