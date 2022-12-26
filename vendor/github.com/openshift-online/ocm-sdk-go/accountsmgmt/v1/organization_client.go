@@ -212,16 +212,12 @@ func (r *OrganizationPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *OrganizationPollResponse) Body() *Organization {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *OrganizationPollResponse) GetBody() (value *Organization, ok bool) {
 	return r.response.GetBody()
 }
@@ -347,8 +343,6 @@ func (r *OrganizationGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *OrganizationGetResponse) Body() *Organization {
 	if r == nil {
 		return nil
@@ -358,8 +352,6 @@ func (r *OrganizationGetResponse) Body() *Organization {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *OrganizationGetResponse) GetBody() (value *Organization, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -397,8 +389,6 @@ func (r *OrganizationUpdateRequest) Impersonate(user string) *OrganizationUpdate
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *OrganizationUpdateRequest) Body(value *Organization) *OrganizationUpdateRequest {
 	r.body = value
 	return r
@@ -496,8 +486,6 @@ func (r *OrganizationUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *OrganizationUpdateResponse) Body() *Organization {
 	if r == nil {
 		return nil
@@ -507,8 +495,6 @@ func (r *OrganizationUpdateResponse) Body() *Organization {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *OrganizationUpdateResponse) GetBody() (value *Organization, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

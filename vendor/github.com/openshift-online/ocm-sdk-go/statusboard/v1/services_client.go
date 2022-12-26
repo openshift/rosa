@@ -51,8 +51,6 @@ func NewServicesClient(transport http.RoundTripper, path string) *ServicesClient
 }
 
 // Add creates a request for the 'add' method.
-//
-//
 func (c *ServicesClient) Add() *ServicesAddRequest {
 	return &ServicesAddRequest{
 		transport: c.transport,
@@ -71,8 +69,6 @@ func (c *ServicesClient) List() *ServicesListRequest {
 }
 
 // Service returns the target 'service' resource for the given identifier.
-//
-//
 func (c *ServicesClient) Service(id string) *ServiceClient {
 	return NewServiceClient(
 		c.transport,
@@ -109,8 +105,6 @@ func (r *ServicesAddRequest) Impersonate(user string) *ServicesAddRequest {
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *ServicesAddRequest) Body(value *Service) *ServicesAddRequest {
 	r.body = value
 	return r
@@ -208,8 +202,6 @@ func (r *ServicesAddResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ServicesAddResponse) Body() *Service {
 	if r == nil {
 		return nil
@@ -219,8 +211,6 @@ func (r *ServicesAddResponse) Body() *Service {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServicesAddResponse) GetBody() (value *Service, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -262,40 +252,30 @@ func (r *ServicesListRequest) Impersonate(user string) *ServicesListRequest {
 }
 
 // Fullname sets the value of the 'fullname' parameter.
-//
-//
 func (r *ServicesListRequest) Fullname(value string) *ServicesListRequest {
 	r.fullname = &value
 	return r
 }
 
 // Mine sets the value of the 'mine' parameter.
-//
-//
 func (r *ServicesListRequest) Mine(value bool) *ServicesListRequest {
 	r.mine = &value
 	return r
 }
 
 // OrderBy sets the value of the 'order_by' parameter.
-//
-//
 func (r *ServicesListRequest) OrderBy(value string) *ServicesListRequest {
 	r.orderBy = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *ServicesListRequest) Page(value int) *ServicesListRequest {
 	r.page = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *ServicesListRequest) Size(value int) *ServicesListRequest {
 	r.size = &value
 	return r
@@ -405,8 +385,6 @@ func (r *ServicesListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *ServicesListResponse) Items() *ServiceList {
 	if r == nil {
 		return nil
@@ -416,8 +394,6 @@ func (r *ServicesListResponse) Items() *ServiceList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServicesListResponse) GetItems() (value *ServiceList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -427,8 +403,6 @@ func (r *ServicesListResponse) GetItems() (value *ServiceList, ok bool) {
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *ServicesListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -438,8 +412,6 @@ func (r *ServicesListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServicesListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -449,8 +421,6 @@ func (r *ServicesListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *ServicesListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -460,8 +430,6 @@ func (r *ServicesListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServicesListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -471,8 +439,6 @@ func (r *ServicesListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *ServicesListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -482,8 +448,6 @@ func (r *ServicesListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServicesListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

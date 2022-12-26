@@ -50,8 +50,6 @@ func NewNodesMetricQueryClient(transport http.RoundTripper, path string) *NodesM
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *NodesMetricQueryClient) Get() *NodesMetricQueryGetRequest {
 	return &NodesMetricQueryGetRequest{
 		transport: c.transport,
@@ -158,16 +156,12 @@ func (r *NodesMetricQueryPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *NodesMetricQueryPollResponse) Body() *NodesInfo {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NodesMetricQueryPollResponse) GetBody() (value *NodesInfo, ok bool) {
 	return r.response.GetBody()
 }
@@ -293,8 +287,6 @@ func (r *NodesMetricQueryGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *NodesMetricQueryGetResponse) Body() *NodesInfo {
 	if r == nil {
 		return nil
@@ -304,8 +296,6 @@ func (r *NodesMetricQueryGetResponse) Body() *NodesInfo {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NodesMetricQueryGetResponse) GetBody() (value *NodesInfo, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

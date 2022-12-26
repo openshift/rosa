@@ -51,8 +51,6 @@ func (c *Client) Get() *MetadataRequest {
 }
 
 // Errors returns the target 'errors' resource.
-//
-//
 func (c *Client) Errors() *ErrorsClient {
 	return NewErrorsClient(
 		c.transport,
@@ -61,8 +59,6 @@ func (c *Client) Errors() *ErrorsClient {
 }
 
 // Incidents returns the target 'incidents' resource.
-//
-//
 func (c *Client) Incidents() *IncidentsClient {
 	return NewIncidentsClient(
 		c.transport,
@@ -71,8 +67,6 @@ func (c *Client) Incidents() *IncidentsClient {
 }
 
 // Users returns the target 'users' resource.
-//
-//
 func (c *Client) Users() *UsersClient {
 	return NewUsersClient(
 		c.transport,

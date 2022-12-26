@@ -45,8 +45,6 @@ func (b *AccessReviewResponseBuilder) Empty() bool {
 }
 
 // AccountUsername sets the value of the 'account_username' attribute to the given value.
-//
-//
 func (b *AccessReviewResponseBuilder) AccountUsername(value string) *AccessReviewResponseBuilder {
 	b.accountUsername = value
 	b.bitmap_ |= 1
@@ -54,8 +52,6 @@ func (b *AccessReviewResponseBuilder) AccountUsername(value string) *AccessRevie
 }
 
 // Action sets the value of the 'action' attribute to the given value.
-//
-//
 func (b *AccessReviewResponseBuilder) Action(value string) *AccessReviewResponseBuilder {
 	b.action = value
 	b.bitmap_ |= 2
@@ -63,8 +59,6 @@ func (b *AccessReviewResponseBuilder) Action(value string) *AccessReviewResponse
 }
 
 // Allowed sets the value of the 'allowed' attribute to the given value.
-//
-//
 func (b *AccessReviewResponseBuilder) Allowed(value bool) *AccessReviewResponseBuilder {
 	b.allowed = value
 	b.bitmap_ |= 4
@@ -72,8 +66,6 @@ func (b *AccessReviewResponseBuilder) Allowed(value bool) *AccessReviewResponseB
 }
 
 // ClusterID sets the value of the 'cluster_ID' attribute to the given value.
-//
-//
 func (b *AccessReviewResponseBuilder) ClusterID(value string) *AccessReviewResponseBuilder {
 	b.clusterID = value
 	b.bitmap_ |= 8
@@ -81,8 +73,6 @@ func (b *AccessReviewResponseBuilder) ClusterID(value string) *AccessReviewRespo
 }
 
 // ClusterUUID sets the value of the 'cluster_UUID' attribute to the given value.
-//
-//
 func (b *AccessReviewResponseBuilder) ClusterUUID(value string) *AccessReviewResponseBuilder {
 	b.clusterUUID = value
 	b.bitmap_ |= 16
@@ -90,8 +80,6 @@ func (b *AccessReviewResponseBuilder) ClusterUUID(value string) *AccessReviewRes
 }
 
 // OrganizationID sets the value of the 'organization_ID' attribute to the given value.
-//
-//
 func (b *AccessReviewResponseBuilder) OrganizationID(value string) *AccessReviewResponseBuilder {
 	b.organizationID = value
 	b.bitmap_ |= 32
@@ -99,8 +87,6 @@ func (b *AccessReviewResponseBuilder) OrganizationID(value string) *AccessReview
 }
 
 // ResourceType sets the value of the 'resource_type' attribute to the given value.
-//
-//
 func (b *AccessReviewResponseBuilder) ResourceType(value string) *AccessReviewResponseBuilder {
 	b.resourceType = value
 	b.bitmap_ |= 64
@@ -108,8 +94,6 @@ func (b *AccessReviewResponseBuilder) ResourceType(value string) *AccessReviewRe
 }
 
 // SubscriptionID sets the value of the 'subscription_ID' attribute to the given value.
-//
-//
 func (b *AccessReviewResponseBuilder) SubscriptionID(value string) *AccessReviewResponseBuilder {
 	b.subscriptionID = value
 	b.bitmap_ |= 128

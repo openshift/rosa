@@ -63,7 +63,7 @@ func UnmarshalSTSCredentialRequestList(source interface{}) (items []*STSCredenti
 	return
 }
 
-// readSTSCredentialRequestList reads list of values of the ''STS_credential_request' type from
+// readSTSCredentialRequestList reads list of values of the ”STS_credential_request' type from
 // the given iterator.
 func readSTSCredentialRequestList(iterator *jsoniter.Iterator) []*STSCredentialRequest {
 	list := []*STSCredentialRequest{}

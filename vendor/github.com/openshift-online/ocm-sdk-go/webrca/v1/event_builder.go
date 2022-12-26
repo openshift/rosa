@@ -76,8 +76,6 @@ func (b *EventBuilder) Empty() bool {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *EventBuilder) CreatedAt(value time.Time) *EventBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 8
@@ -98,8 +96,6 @@ func (b *EventBuilder) Creator(value *UserBuilder) *EventBuilder {
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *EventBuilder) DeletedAt(value time.Time) *EventBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 32
@@ -120,8 +116,6 @@ func (b *EventBuilder) Escalation(value *EscalationBuilder) *EventBuilder {
 }
 
 // EventType sets the value of the 'event_type' attribute to the given value.
-//
-//
 func (b *EventBuilder) EventType(value string) *EventBuilder {
 	b.eventType = value
 	b.bitmap_ |= 128
@@ -129,8 +123,6 @@ func (b *EventBuilder) EventType(value string) *EventBuilder {
 }
 
 // ExternalReferenceUrl sets the value of the 'external_reference_url' attribute to the given value.
-//
-//
 func (b *EventBuilder) ExternalReferenceUrl(value string) *EventBuilder {
 	b.externalReferenceUrl = value
 	b.bitmap_ |= 256
@@ -190,8 +182,6 @@ func (b *EventBuilder) Incident(value *IncidentBuilder) *EventBuilder {
 }
 
 // Note sets the value of the 'note' attribute to the given value.
-//
-//
 func (b *EventBuilder) Note(value string) *EventBuilder {
 	b.note = value
 	b.bitmap_ |= 8192
@@ -212,8 +202,6 @@ func (b *EventBuilder) StatusChange(value *StatusChangeBuilder) *EventBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *EventBuilder) UpdatedAt(value time.Time) *EventBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 32768

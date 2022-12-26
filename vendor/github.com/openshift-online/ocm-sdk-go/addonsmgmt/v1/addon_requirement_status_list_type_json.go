@@ -63,7 +63,7 @@ func UnmarshalAddonRequirementStatusList(source interface{}) (items []*AddonRequ
 	return
 }
 
-// readAddonRequirementStatusList reads list of values of the ''addon_requirement_status' type from
+// readAddonRequirementStatusList reads list of values of the ”addon_requirement_status' type from
 // the given iterator.
 func readAddonRequirementStatusList(iterator *jsoniter.Iterator) []*AddonRequirementStatus {
 	list := []*AddonRequirementStatus{}

@@ -76,8 +76,6 @@ func (b *FollowUpBuilder) Empty() bool {
 }
 
 // Archived sets the value of the 'archived' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) Archived(value bool) *FollowUpBuilder {
 	b.archived = value
 	b.bitmap_ |= 8
@@ -85,8 +83,6 @@ func (b *FollowUpBuilder) Archived(value bool) *FollowUpBuilder {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) CreatedAt(value time.Time) *FollowUpBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 16
@@ -94,8 +90,6 @@ func (b *FollowUpBuilder) CreatedAt(value time.Time) *FollowUpBuilder {
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) DeletedAt(value time.Time) *FollowUpBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 32
@@ -103,8 +97,6 @@ func (b *FollowUpBuilder) DeletedAt(value time.Time) *FollowUpBuilder {
 }
 
 // Done sets the value of the 'done' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) Done(value bool) *FollowUpBuilder {
 	b.done = value
 	b.bitmap_ |= 64
@@ -112,8 +104,6 @@ func (b *FollowUpBuilder) Done(value bool) *FollowUpBuilder {
 }
 
 // FollowUpType sets the value of the 'follow_up_type' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) FollowUpType(value string) *FollowUpBuilder {
 	b.followUpType = value
 	b.bitmap_ |= 128
@@ -134,8 +124,6 @@ func (b *FollowUpBuilder) Incident(value *IncidentBuilder) *FollowUpBuilder {
 }
 
 // Owner sets the value of the 'owner' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) Owner(value string) *FollowUpBuilder {
 	b.owner = value
 	b.bitmap_ |= 512
@@ -143,8 +131,6 @@ func (b *FollowUpBuilder) Owner(value string) *FollowUpBuilder {
 }
 
 // Priority sets the value of the 'priority' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) Priority(value string) *FollowUpBuilder {
 	b.priority = value
 	b.bitmap_ |= 1024
@@ -152,8 +138,6 @@ func (b *FollowUpBuilder) Priority(value string) *FollowUpBuilder {
 }
 
 // Status sets the value of the 'status' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) Status(value string) *FollowUpBuilder {
 	b.status = value
 	b.bitmap_ |= 2048
@@ -161,8 +145,6 @@ func (b *FollowUpBuilder) Status(value string) *FollowUpBuilder {
 }
 
 // Title sets the value of the 'title' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) Title(value string) *FollowUpBuilder {
 	b.title = value
 	b.bitmap_ |= 4096
@@ -170,8 +152,6 @@ func (b *FollowUpBuilder) Title(value string) *FollowUpBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) UpdatedAt(value time.Time) *FollowUpBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 8192
@@ -179,8 +159,6 @@ func (b *FollowUpBuilder) UpdatedAt(value time.Time) *FollowUpBuilder {
 }
 
 // Url sets the value of the 'url' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) Url(value string) *FollowUpBuilder {
 	b.url = value
 	b.bitmap_ |= 16384
@@ -188,8 +166,6 @@ func (b *FollowUpBuilder) Url(value string) *FollowUpBuilder {
 }
 
 // WorkedAt sets the value of the 'worked_at' attribute to the given value.
-//
-//
 func (b *FollowUpBuilder) WorkedAt(value time.Time) *FollowUpBuilder {
 	b.workedAt = value
 	b.bitmap_ |= 32768

@@ -40,8 +40,6 @@ func (b *AdminCredentialsBuilder) Empty() bool {
 }
 
 // Password sets the value of the 'password' attribute to the given value.
-//
-//
 func (b *AdminCredentialsBuilder) Password(value string) *AdminCredentialsBuilder {
 	b.password = value
 	b.bitmap_ |= 1
@@ -49,8 +47,6 @@ func (b *AdminCredentialsBuilder) Password(value string) *AdminCredentialsBuilde
 }
 
 // User sets the value of the 'user' attribute to the given value.
-//
-//
 func (b *AdminCredentialsBuilder) User(value string) *AdminCredentialsBuilder {
 	b.user = value
 	b.bitmap_ |= 2

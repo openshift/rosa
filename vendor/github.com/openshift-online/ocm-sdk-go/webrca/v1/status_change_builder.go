@@ -68,8 +68,6 @@ func (b *StatusChangeBuilder) Empty() bool {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *StatusChangeBuilder) CreatedAt(value time.Time) *StatusChangeBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 8
@@ -77,8 +75,6 @@ func (b *StatusChangeBuilder) CreatedAt(value time.Time) *StatusChangeBuilder {
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *StatusChangeBuilder) DeletedAt(value time.Time) *StatusChangeBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 16
@@ -86,8 +82,6 @@ func (b *StatusChangeBuilder) DeletedAt(value time.Time) *StatusChangeBuilder {
 }
 
 // Status sets the value of the 'status' attribute to the given value.
-//
-//
 func (b *StatusChangeBuilder) Status(value interface{}) *StatusChangeBuilder {
 	b.status = value
 	b.bitmap_ |= 32
@@ -95,8 +89,6 @@ func (b *StatusChangeBuilder) Status(value interface{}) *StatusChangeBuilder {
 }
 
 // StatusId sets the value of the 'status_id' attribute to the given value.
-//
-//
 func (b *StatusChangeBuilder) StatusId(value string) *StatusChangeBuilder {
 	b.statusId = value
 	b.bitmap_ |= 64
@@ -104,8 +96,6 @@ func (b *StatusChangeBuilder) StatusId(value string) *StatusChangeBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *StatusChangeBuilder) UpdatedAt(value time.Time) *StatusChangeBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 128

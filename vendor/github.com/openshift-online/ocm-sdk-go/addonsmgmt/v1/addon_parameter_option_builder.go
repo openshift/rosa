@@ -41,8 +41,6 @@ func (b *AddonParameterOptionBuilder) Empty() bool {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *AddonParameterOptionBuilder) Name(value string) *AddonParameterOptionBuilder {
 	b.name = value
 	b.bitmap_ |= 1
@@ -50,8 +48,6 @@ func (b *AddonParameterOptionBuilder) Name(value string) *AddonParameterOptionBu
 }
 
 // Rank sets the value of the 'rank' attribute to the given value.
-//
-//
 func (b *AddonParameterOptionBuilder) Rank(value int) *AddonParameterOptionBuilder {
 	b.rank = value
 	b.bitmap_ |= 2
@@ -59,8 +55,6 @@ func (b *AddonParameterOptionBuilder) Rank(value int) *AddonParameterOptionBuild
 }
 
 // Requirements sets the value of the 'requirements' attribute to the given values.
-//
-//
 func (b *AddonParameterOptionBuilder) Requirements(values ...*AddonRequirementBuilder) *AddonParameterOptionBuilder {
 	b.requirements = make([]*AddonRequirementBuilder, len(values))
 	copy(b.requirements, values)
@@ -69,8 +63,6 @@ func (b *AddonParameterOptionBuilder) Requirements(values ...*AddonRequirementBu
 }
 
 // Value sets the value of the 'value' attribute to the given value.
-//
-//
 func (b *AddonParameterOptionBuilder) Value(value string) *AddonParameterOptionBuilder {
 	b.value = value
 	b.bitmap_ |= 8

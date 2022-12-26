@@ -40,8 +40,6 @@ func (b *CapabilityBuilder) Empty() bool {
 }
 
 // Inherited sets the value of the 'inherited' attribute to the given value.
-//
-//
 func (b *CapabilityBuilder) Inherited(value bool) *CapabilityBuilder {
 	b.inherited = value
 	b.bitmap_ |= 1
@@ -49,8 +47,6 @@ func (b *CapabilityBuilder) Inherited(value bool) *CapabilityBuilder {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *CapabilityBuilder) Name(value string) *CapabilityBuilder {
 	b.name = value
 	b.bitmap_ |= 2
@@ -58,8 +54,6 @@ func (b *CapabilityBuilder) Name(value string) *CapabilityBuilder {
 }
 
 // Value sets the value of the 'value' attribute to the given value.
-//
-//
 func (b *CapabilityBuilder) Value(value string) *CapabilityBuilder {
 	b.value = value
 	b.bitmap_ |= 4

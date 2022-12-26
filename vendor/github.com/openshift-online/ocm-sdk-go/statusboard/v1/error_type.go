@@ -101,8 +101,6 @@ func (o *Error) Empty() bool {
 
 // Code returns the value of the 'code' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Error) Code() string {
 	if o != nil && o.bitmap_&8 != 0 {
 		return o.code
@@ -112,8 +110,6 @@ func (o *Error) Code() string {
 
 // GetCode returns the value of the 'code' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Error) GetCode() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
@@ -124,8 +120,6 @@ func (o *Error) GetCode() (value string, ok bool) {
 
 // Reason returns the value of the 'reason' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Error) Reason() string {
 	if o != nil && o.bitmap_&16 != 0 {
 		return o.reason
@@ -135,8 +129,6 @@ func (o *Error) Reason() string {
 
 // GetReason returns the value of the 'reason' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Error) GetReason() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {

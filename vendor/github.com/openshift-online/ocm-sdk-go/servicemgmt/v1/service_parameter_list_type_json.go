@@ -63,7 +63,7 @@ func UnmarshalServiceParameterList(source interface{}) (items []*ServiceParamete
 	return
 }
 
-// readServiceParameterList reads list of values of the ''service_parameter' type from
+// readServiceParameterList reads list of values of the ”service_parameter' type from
 // the given iterator.
 func readServiceParameterList(iterator *jsoniter.Iterator) []*ServiceParameter {
 	list := []*ServiceParameter{}

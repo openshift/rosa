@@ -33,11 +33,13 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 // With a request body like this:
 //
 // ```json
-// {
-//   "external_id": "d656aecf-11a6-4782-ad86-8f72638449ba",
-//   "subscription_id": "...",
-//   "organization_id": "..."
-// }
+//
+//	{
+//	  "external_id": "d656aecf-11a6-4782-ad86-8f72638449ba",
+//	  "subscription_id": "...",
+//	  "organization_id": "..."
+//	}
+//
 // ```
 type ClusterRegistrationBuilder struct {
 	bitmap_        uint32
@@ -58,8 +60,6 @@ func (b *ClusterRegistrationBuilder) Empty() bool {
 }
 
 // ConsoleUrl sets the value of the 'console_url' attribute to the given value.
-//
-//
 func (b *ClusterRegistrationBuilder) ConsoleUrl(value string) *ClusterRegistrationBuilder {
 	b.consoleUrl = value
 	b.bitmap_ |= 1
@@ -67,8 +67,6 @@ func (b *ClusterRegistrationBuilder) ConsoleUrl(value string) *ClusterRegistrati
 }
 
 // ExternalID sets the value of the 'external_ID' attribute to the given value.
-//
-//
 func (b *ClusterRegistrationBuilder) ExternalID(value string) *ClusterRegistrationBuilder {
 	b.externalID = value
 	b.bitmap_ |= 2
@@ -76,8 +74,6 @@ func (b *ClusterRegistrationBuilder) ExternalID(value string) *ClusterRegistrati
 }
 
 // OrganizationID sets the value of the 'organization_ID' attribute to the given value.
-//
-//
 func (b *ClusterRegistrationBuilder) OrganizationID(value string) *ClusterRegistrationBuilder {
 	b.organizationID = value
 	b.bitmap_ |= 4
@@ -85,8 +81,6 @@ func (b *ClusterRegistrationBuilder) OrganizationID(value string) *ClusterRegist
 }
 
 // SubscriptionID sets the value of the 'subscription_ID' attribute to the given value.
-//
-//
 func (b *ClusterRegistrationBuilder) SubscriptionID(value string) *ClusterRegistrationBuilder {
 	b.subscriptionID = value
 	b.bitmap_ |= 8

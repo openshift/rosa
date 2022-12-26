@@ -179,16 +179,12 @@ func (r *HTPasswdUserPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *HTPasswdUserPollResponse) Body() *HTPasswdUser {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *HTPasswdUserPollResponse) GetBody() (value *HTPasswdUser, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +417,6 @@ func (r *HTPasswdUserGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *HTPasswdUserGetResponse) Body() *HTPasswdUser {
 	if r == nil {
 		return nil
@@ -432,8 +426,6 @@ func (r *HTPasswdUserGetResponse) Body() *HTPasswdUser {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *HTPasswdUserGetResponse) GetBody() (value *HTPasswdUser, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +463,6 @@ func (r *HTPasswdUserUpdateRequest) Impersonate(user string) *HTPasswdUserUpdate
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *HTPasswdUserUpdateRequest) Body(value *HTPasswdUser) *HTPasswdUserUpdateRequest {
 	r.body = value
 	return r
@@ -570,8 +560,6 @@ func (r *HTPasswdUserUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *HTPasswdUserUpdateResponse) Body() *HTPasswdUser {
 	if r == nil {
 		return nil
@@ -581,8 +569,6 @@ func (r *HTPasswdUserUpdateResponse) Body() *HTPasswdUser {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *HTPasswdUserUpdateResponse) GetBody() (value *HTPasswdUser, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

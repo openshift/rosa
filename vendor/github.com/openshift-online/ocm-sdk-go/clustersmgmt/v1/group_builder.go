@@ -60,8 +60,6 @@ func (b *GroupBuilder) Empty() bool {
 }
 
 // Users sets the value of the 'users' attribute to the given values.
-//
-//
 func (b *GroupBuilder) Users(value *UserListBuilder) *GroupBuilder {
 	b.users = value
 	b.bitmap_ |= 8

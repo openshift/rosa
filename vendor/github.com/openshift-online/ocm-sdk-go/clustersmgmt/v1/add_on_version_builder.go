@@ -69,8 +69,6 @@ func (b *AddOnVersionBuilder) Empty() bool {
 }
 
 // AdditionalCatalogSources sets the value of the 'additional_catalog_sources' attribute to the given values.
-//
-//
 func (b *AddOnVersionBuilder) AdditionalCatalogSources(values ...*AdditionalCatalogSourceBuilder) *AddOnVersionBuilder {
 	b.additionalCatalogSources = make([]*AdditionalCatalogSourceBuilder, len(values))
 	copy(b.additionalCatalogSources, values)
@@ -79,8 +77,6 @@ func (b *AddOnVersionBuilder) AdditionalCatalogSources(values ...*AdditionalCata
 }
 
 // AvailableUpgrades sets the value of the 'available_upgrades' attribute to the given values.
-//
-//
 func (b *AddOnVersionBuilder) AvailableUpgrades(values ...string) *AddOnVersionBuilder {
 	b.availableUpgrades = make([]string, len(values))
 	copy(b.availableUpgrades, values)
@@ -89,8 +85,6 @@ func (b *AddOnVersionBuilder) AvailableUpgrades(values ...string) *AddOnVersionB
 }
 
 // Channel sets the value of the 'channel' attribute to the given value.
-//
-//
 func (b *AddOnVersionBuilder) Channel(value string) *AddOnVersionBuilder {
 	b.channel = value
 	b.bitmap_ |= 32
@@ -112,8 +106,6 @@ func (b *AddOnVersionBuilder) Config(value *AddOnConfigBuilder) *AddOnVersionBui
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
-//
-//
 func (b *AddOnVersionBuilder) Enabled(value bool) *AddOnVersionBuilder {
 	b.enabled = value
 	b.bitmap_ |= 128
@@ -121,8 +113,6 @@ func (b *AddOnVersionBuilder) Enabled(value bool) *AddOnVersionBuilder {
 }
 
 // Parameters sets the value of the 'parameters' attribute to the given values.
-//
-//
 func (b *AddOnVersionBuilder) Parameters(value *AddOnParameterListBuilder) *AddOnVersionBuilder {
 	b.parameters = value
 	b.bitmap_ |= 256
@@ -130,8 +120,6 @@ func (b *AddOnVersionBuilder) Parameters(value *AddOnParameterListBuilder) *AddO
 }
 
 // PullSecretName sets the value of the 'pull_secret_name' attribute to the given value.
-//
-//
 func (b *AddOnVersionBuilder) PullSecretName(value string) *AddOnVersionBuilder {
 	b.pullSecretName = value
 	b.bitmap_ |= 512
@@ -139,8 +127,6 @@ func (b *AddOnVersionBuilder) PullSecretName(value string) *AddOnVersionBuilder 
 }
 
 // Requirements sets the value of the 'requirements' attribute to the given values.
-//
-//
 func (b *AddOnVersionBuilder) Requirements(values ...*AddOnRequirementBuilder) *AddOnVersionBuilder {
 	b.requirements = make([]*AddOnRequirementBuilder, len(values))
 	copy(b.requirements, values)
@@ -149,8 +135,6 @@ func (b *AddOnVersionBuilder) Requirements(values ...*AddOnRequirementBuilder) *
 }
 
 // SourceImage sets the value of the 'source_image' attribute to the given value.
-//
-//
 func (b *AddOnVersionBuilder) SourceImage(value string) *AddOnVersionBuilder {
 	b.sourceImage = value
 	b.bitmap_ |= 2048
@@ -158,8 +142,6 @@ func (b *AddOnVersionBuilder) SourceImage(value string) *AddOnVersionBuilder {
 }
 
 // SubOperators sets the value of the 'sub_operators' attribute to the given values.
-//
-//
 func (b *AddOnVersionBuilder) SubOperators(values ...*AddOnSubOperatorBuilder) *AddOnVersionBuilder {
 	b.subOperators = make([]*AddOnSubOperatorBuilder, len(values))
 	copy(b.subOperators, values)

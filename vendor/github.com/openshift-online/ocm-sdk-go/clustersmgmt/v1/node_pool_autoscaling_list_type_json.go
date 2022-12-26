@@ -63,7 +63,7 @@ func UnmarshalNodePoolAutoscalingList(source interface{}) (items []*NodePoolAuto
 	return
 }
 
-// readNodePoolAutoscalingList reads list of values of the ''node_pool_autoscaling' type from
+// readNodePoolAutoscalingList reads list of values of the ”node_pool_autoscaling' type from
 // the given iterator.
 func readNodePoolAutoscalingList(iterator *jsoniter.Iterator) []*NodePoolAutoscaling {
 	list := []*NodePoolAutoscaling{}

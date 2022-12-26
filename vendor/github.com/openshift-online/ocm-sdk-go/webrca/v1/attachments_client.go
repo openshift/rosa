@@ -60,8 +60,6 @@ func (c *AttachmentsClient) List() *AttachmentsListRequest {
 }
 
 // Attachment returns the target 'attachment' resource for the given identifier.
-//
-//
 func (c *AttachmentsClient) Attachment(id string) *AttachmentClient {
 	return NewAttachmentClient(
 		c.transport,
@@ -99,16 +97,12 @@ func (r *AttachmentsListRequest) Impersonate(user string) *AttachmentsListReques
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *AttachmentsListRequest) Page(value int) *AttachmentsListRequest {
 	r.page = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *AttachmentsListRequest) Size(value int) *AttachmentsListRequest {
 	r.size = &value
 	return r
@@ -209,8 +203,6 @@ func (r *AttachmentsListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *AttachmentsListResponse) Items() *AttachmentList {
 	if r == nil {
 		return nil
@@ -220,8 +212,6 @@ func (r *AttachmentsListResponse) Items() *AttachmentList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *AttachmentsListResponse) GetItems() (value *AttachmentList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -231,8 +221,6 @@ func (r *AttachmentsListResponse) GetItems() (value *AttachmentList, ok bool) {
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *AttachmentsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -242,8 +230,6 @@ func (r *AttachmentsListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *AttachmentsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -253,8 +239,6 @@ func (r *AttachmentsListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *AttachmentsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -264,8 +248,6 @@ func (r *AttachmentsListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *AttachmentsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -275,8 +257,6 @@ func (r *AttachmentsListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *AttachmentsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -286,8 +266,6 @@ func (r *AttachmentsListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *AttachmentsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

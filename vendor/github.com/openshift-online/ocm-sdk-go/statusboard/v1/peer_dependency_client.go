@@ -51,8 +51,6 @@ func NewPeerDependencyClient(transport http.RoundTripper, path string) *PeerDepe
 }
 
 // Delete creates a request for the 'delete' method.
-//
-//
 func (c *PeerDependencyClient) Delete() *PeerDependencyDeleteRequest {
 	return &PeerDependencyDeleteRequest{
 		transport: c.transport,
@@ -61,8 +59,6 @@ func (c *PeerDependencyClient) Delete() *PeerDependencyDeleteRequest {
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *PeerDependencyClient) Get() *PeerDependencyGetRequest {
 	return &PeerDependencyGetRequest{
 		transport: c.transport,
@@ -71,8 +67,6 @@ func (c *PeerDependencyClient) Get() *PeerDependencyGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *PeerDependencyClient) Update() *PeerDependencyUpdateRequest {
 	return &PeerDependencyUpdateRequest{
 		transport: c.transport,
@@ -179,16 +173,12 @@ func (r *PeerDependencyPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *PeerDependencyPollResponse) Body() *Service {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PeerDependencyPollResponse) GetBody() (value *Service, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +411,6 @@ func (r *PeerDependencyGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *PeerDependencyGetResponse) Body() *Service {
 	if r == nil {
 		return nil
@@ -432,8 +420,6 @@ func (r *PeerDependencyGetResponse) Body() *Service {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PeerDependencyGetResponse) GetBody() (value *Service, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +457,6 @@ func (r *PeerDependencyUpdateRequest) Impersonate(user string) *PeerDependencyUp
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *PeerDependencyUpdateRequest) Body(value *PeerDependency) *PeerDependencyUpdateRequest {
 	r.body = value
 	return r
@@ -570,8 +554,6 @@ func (r *PeerDependencyUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *PeerDependencyUpdateResponse) Body() *PeerDependency {
 	if r == nil {
 		return nil
@@ -581,8 +563,6 @@ func (r *PeerDependencyUpdateResponse) Body() *PeerDependency {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PeerDependencyUpdateResponse) GetBody() (value *PeerDependency, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

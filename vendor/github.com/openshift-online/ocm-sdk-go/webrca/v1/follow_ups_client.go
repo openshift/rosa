@@ -61,8 +61,6 @@ func (c *FollowUpsClient) List() *FollowUpsListRequest {
 }
 
 // FollowUp returns the target 'follow_up' resource for the given identifier.
-//
-//
 func (c *FollowUpsClient) FollowUp(id string) *FollowUpClient {
 	return NewFollowUpClient(
 		c.transport,
@@ -104,48 +102,36 @@ func (r *FollowUpsListRequest) Impersonate(user string) *FollowUpsListRequest {
 }
 
 // CreatedAfter sets the value of the 'created_after' parameter.
-//
-//
 func (r *FollowUpsListRequest) CreatedAfter(value time.Time) *FollowUpsListRequest {
 	r.createdAfter = &value
 	return r
 }
 
 // CreatedBefore sets the value of the 'created_before' parameter.
-//
-//
 func (r *FollowUpsListRequest) CreatedBefore(value time.Time) *FollowUpsListRequest {
 	r.createdBefore = &value
 	return r
 }
 
 // FollowUpStatus sets the value of the 'follow_up_status' parameter.
-//
-//
 func (r *FollowUpsListRequest) FollowUpStatus(value string) *FollowUpsListRequest {
 	r.followUpStatus = &value
 	return r
 }
 
 // OrderBy sets the value of the 'order_by' parameter.
-//
-//
 func (r *FollowUpsListRequest) OrderBy(value string) *FollowUpsListRequest {
 	r.orderBy = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *FollowUpsListRequest) Page(value int) *FollowUpsListRequest {
 	r.page = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *FollowUpsListRequest) Size(value int) *FollowUpsListRequest {
 	r.size = &value
 	return r
@@ -258,8 +244,6 @@ func (r *FollowUpsListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *FollowUpsListResponse) Items() *FollowUpList {
 	if r == nil {
 		return nil
@@ -269,8 +253,6 @@ func (r *FollowUpsListResponse) Items() *FollowUpList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *FollowUpsListResponse) GetItems() (value *FollowUpList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -280,8 +262,6 @@ func (r *FollowUpsListResponse) GetItems() (value *FollowUpList, ok bool) {
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *FollowUpsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -291,8 +271,6 @@ func (r *FollowUpsListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *FollowUpsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -302,8 +280,6 @@ func (r *FollowUpsListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *FollowUpsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -313,8 +289,6 @@ func (r *FollowUpsListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *FollowUpsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -324,8 +298,6 @@ func (r *FollowUpsListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *FollowUpsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -335,8 +307,6 @@ func (r *FollowUpsListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *FollowUpsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

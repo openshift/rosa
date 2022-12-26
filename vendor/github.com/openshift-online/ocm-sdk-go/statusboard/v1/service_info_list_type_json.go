@@ -63,7 +63,7 @@ func UnmarshalServiceInfoList(source interface{}) (items []*ServiceInfo, err err
 	return
 }
 
-// readServiceInfoList reads list of values of the ''service_info' type from
+// readServiceInfoList reads list of values of the ”service_info' type from
 // the given iterator.
 func readServiceInfoList(iterator *jsoniter.Iterator) []*ServiceInfo {
 	list := []*ServiceInfo{}

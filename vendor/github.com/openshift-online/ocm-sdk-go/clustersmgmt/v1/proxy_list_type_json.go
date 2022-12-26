@@ -63,7 +63,7 @@ func UnmarshalProxyList(source interface{}) (items []*Proxy, err error) {
 	return
 }
 
-// readProxyList reads list of values of the ''proxy' type from
+// readProxyList reads list of values of the ”proxy' type from
 // the given iterator.
 func readProxyList(iterator *jsoniter.Iterator) []*Proxy {
 	list := []*Proxy{}

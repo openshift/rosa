@@ -63,7 +63,7 @@ func UnmarshalSTSOperatorList(source interface{}) (items []*STSOperator, err err
 	return
 }
 
-// readSTSOperatorList reads list of values of the ''STS_operator' type from
+// readSTSOperatorList reads list of values of the ”STS_operator' type from
 // the given iterator.
 func readSTSOperatorList(iterator *jsoniter.Iterator) []*STSOperator {
 	list := []*STSOperator{}

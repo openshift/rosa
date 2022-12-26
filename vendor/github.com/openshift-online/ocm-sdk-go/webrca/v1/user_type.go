@@ -156,8 +156,6 @@ func (o *User) GetDeletedAt() (value time.Time, ok bool) {
 
 // Email returns the value of the 'email' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *User) Email() string {
 	if o != nil && o.bitmap_&32 != 0 {
 		return o.email
@@ -167,8 +165,6 @@ func (o *User) Email() string {
 
 // GetEmail returns the value of the 'email' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *User) GetEmail() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
@@ -179,8 +175,6 @@ func (o *User) GetEmail() (value string, ok bool) {
 
 // FromAuth returns the value of the 'from_auth' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *User) FromAuth() bool {
 	if o != nil && o.bitmap_&64 != 0 {
 		return o.fromAuth
@@ -190,8 +184,6 @@ func (o *User) FromAuth() bool {
 
 // GetFromAuth returns the value of the 'from_auth' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *User) GetFromAuth() (value bool, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
@@ -202,8 +194,6 @@ func (o *User) GetFromAuth() (value bool, ok bool) {
 
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *User) Name() string {
 	if o != nil && o.bitmap_&128 != 0 {
 		return o.name
@@ -213,8 +203,6 @@ func (o *User) Name() string {
 
 // GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *User) GetName() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
@@ -248,8 +236,6 @@ func (o *User) GetUpdatedAt() (value time.Time, ok bool) {
 
 // Username returns the value of the 'username' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *User) Username() string {
 	if o != nil && o.bitmap_&512 != 0 {
 		return o.username
@@ -259,8 +245,6 @@ func (o *User) Username() string {
 
 // GetUsername returns the value of the 'username' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *User) GetUsername() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {

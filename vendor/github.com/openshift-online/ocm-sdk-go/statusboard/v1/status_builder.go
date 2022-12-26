@@ -69,8 +69,6 @@ func (b *StatusBuilder) Empty() bool {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *StatusBuilder) CreatedAt(value time.Time) *StatusBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 8
@@ -78,8 +76,6 @@ func (b *StatusBuilder) CreatedAt(value time.Time) *StatusBuilder {
 }
 
 // Metadata sets the value of the 'metadata' attribute to the given value.
-//
-//
 func (b *StatusBuilder) Metadata(value interface{}) *StatusBuilder {
 	b.metadata = value
 	b.bitmap_ |= 16
@@ -113,8 +109,6 @@ func (b *StatusBuilder) ServiceInfo(value *ServiceInfoBuilder) *StatusBuilder {
 }
 
 // Status sets the value of the 'status' attribute to the given value.
-//
-//
 func (b *StatusBuilder) Status(value string) *StatusBuilder {
 	b.status = value
 	b.bitmap_ |= 128
@@ -122,8 +116,6 @@ func (b *StatusBuilder) Status(value string) *StatusBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *StatusBuilder) UpdatedAt(value time.Time) *StatusBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 256

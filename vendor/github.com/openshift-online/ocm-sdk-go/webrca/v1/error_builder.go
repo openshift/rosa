@@ -61,8 +61,6 @@ func (b *ErrorBuilder) Empty() bool {
 }
 
 // Code sets the value of the 'code' attribute to the given value.
-//
-//
 func (b *ErrorBuilder) Code(value string) *ErrorBuilder {
 	b.code = value
 	b.bitmap_ |= 8
@@ -70,8 +68,6 @@ func (b *ErrorBuilder) Code(value string) *ErrorBuilder {
 }
 
 // Reason sets the value of the 'reason' attribute to the given value.
-//
-//
 func (b *ErrorBuilder) Reason(value string) *ErrorBuilder {
 	b.reason = value
 	b.bitmap_ |= 16

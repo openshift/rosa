@@ -69,8 +69,6 @@ func (b *PeerDependencyBuilder) Empty() bool {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *PeerDependencyBuilder) CreatedAt(value time.Time) *PeerDependencyBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 8
@@ -78,8 +76,6 @@ func (b *PeerDependencyBuilder) CreatedAt(value time.Time) *PeerDependencyBuilde
 }
 
 // Metadata sets the value of the 'metadata' attribute to the given value.
-//
-//
 func (b *PeerDependencyBuilder) Metadata(value interface{}) *PeerDependencyBuilder {
 	b.metadata = value
 	b.bitmap_ |= 16
@@ -87,8 +83,6 @@ func (b *PeerDependencyBuilder) Metadata(value interface{}) *PeerDependencyBuild
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *PeerDependencyBuilder) Name(value string) *PeerDependencyBuilder {
 	b.name = value
 	b.bitmap_ |= 32
@@ -96,8 +90,6 @@ func (b *PeerDependencyBuilder) Name(value string) *PeerDependencyBuilder {
 }
 
 // Owners sets the value of the 'owners' attribute to the given values.
-//
-//
 func (b *PeerDependencyBuilder) Owners(values ...*OwnerBuilder) *PeerDependencyBuilder {
 	b.owners = make([]*OwnerBuilder, len(values))
 	copy(b.owners, values)
@@ -106,8 +98,6 @@ func (b *PeerDependencyBuilder) Owners(values ...*OwnerBuilder) *PeerDependencyB
 }
 
 // Services sets the value of the 'services' attribute to the given values.
-//
-//
 func (b *PeerDependencyBuilder) Services(values ...*ServiceBuilder) *PeerDependencyBuilder {
 	b.services = make([]*ServiceBuilder, len(values))
 	copy(b.services, values)
@@ -116,8 +106,6 @@ func (b *PeerDependencyBuilder) Services(values ...*ServiceBuilder) *PeerDepende
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *PeerDependencyBuilder) UpdatedAt(value time.Time) *PeerDependencyBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 256

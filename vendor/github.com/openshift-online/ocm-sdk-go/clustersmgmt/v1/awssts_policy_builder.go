@@ -24,6 +24,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 // Representation of an sts policies for rosa cluster
 type AWSSTSPolicyBuilder struct {
 	bitmap_ uint32
+	arn     string
 	id      string
 	details string
 	type_   string
@@ -39,30 +40,31 @@ func (b *AWSSTSPolicyBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
-// ID sets the value of the 'ID' attribute to the given value.
-//
-//
-func (b *AWSSTSPolicyBuilder) ID(value string) *AWSSTSPolicyBuilder {
-	b.id = value
+// ARN sets the value of the 'ARN' attribute to the given value.
+func (b *AWSSTSPolicyBuilder) ARN(value string) *AWSSTSPolicyBuilder {
+	b.arn = value
 	b.bitmap_ |= 1
 	return b
 }
 
-// Details sets the value of the 'details' attribute to the given value.
-//
-//
-func (b *AWSSTSPolicyBuilder) Details(value string) *AWSSTSPolicyBuilder {
-	b.details = value
+// ID sets the value of the 'ID' attribute to the given value.
+func (b *AWSSTSPolicyBuilder) ID(value string) *AWSSTSPolicyBuilder {
+	b.id = value
 	b.bitmap_ |= 2
 	return b
 }
 
+// Details sets the value of the 'details' attribute to the given value.
+func (b *AWSSTSPolicyBuilder) Details(value string) *AWSSTSPolicyBuilder {
+	b.details = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // Type sets the value of the 'type' attribute to the given value.
-//
-//
 func (b *AWSSTSPolicyBuilder) Type(value string) *AWSSTSPolicyBuilder {
 	b.type_ = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -72,6 +74,7 @@ func (b *AWSSTSPolicyBuilder) Copy(object *AWSSTSPolicy) *AWSSTSPolicyBuilder {
 		return b
 	}
 	b.bitmap_ = object.bitmap_
+	b.arn = object.arn
 	b.id = object.id
 	b.details = object.details
 	b.type_ = object.type_
@@ -82,6 +85,7 @@ func (b *AWSSTSPolicyBuilder) Copy(object *AWSSTSPolicy) *AWSSTSPolicyBuilder {
 func (b *AWSSTSPolicyBuilder) Build() (object *AWSSTSPolicy, err error) {
 	object = new(AWSSTSPolicy)
 	object.bitmap_ = b.bitmap_
+	object.arn = b.arn
 	object.id = b.id
 	object.details = b.details
 	object.type_ = b.type_

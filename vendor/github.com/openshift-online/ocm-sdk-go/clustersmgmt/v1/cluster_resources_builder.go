@@ -66,8 +66,6 @@ func (b *ClusterResourcesBuilder) Empty() bool {
 }
 
 // ClusterID sets the value of the 'cluster_ID' attribute to the given value.
-//
-//
 func (b *ClusterResourcesBuilder) ClusterID(value string) *ClusterResourcesBuilder {
 	b.clusterID = value
 	b.bitmap_ |= 8
@@ -75,8 +73,6 @@ func (b *ClusterResourcesBuilder) ClusterID(value string) *ClusterResourcesBuild
 }
 
 // CreationTimestamp sets the value of the 'creation_timestamp' attribute to the given value.
-//
-//
 func (b *ClusterResourcesBuilder) CreationTimestamp(value time.Time) *ClusterResourcesBuilder {
 	b.creationTimestamp = value
 	b.bitmap_ |= 16
@@ -84,8 +80,6 @@ func (b *ClusterResourcesBuilder) CreationTimestamp(value time.Time) *ClusterRes
 }
 
 // Resources sets the value of the 'resources' attribute to the given value.
-//
-//
 func (b *ClusterResourcesBuilder) Resources(value map[string]string) *ClusterResourcesBuilder {
 	b.resources = value
 	if value != nil {

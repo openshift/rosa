@@ -61,8 +61,6 @@ func (b *AddOnInstallationBillingBuilder) Empty() bool {
 }
 
 // BillingMarketplaceAccount sets the value of the 'billing_marketplace_account' attribute to the given value.
-//
-//
 func (b *AddOnInstallationBillingBuilder) BillingMarketplaceAccount(value string) *AddOnInstallationBillingBuilder {
 	b.billingMarketplaceAccount = value
 	b.bitmap_ |= 8

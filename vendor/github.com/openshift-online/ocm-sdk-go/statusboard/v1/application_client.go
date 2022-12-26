@@ -52,8 +52,6 @@ func NewApplicationClient(transport http.RoundTripper, path string) *Application
 }
 
 // Delete creates a request for the 'delete' method.
-//
-//
 func (c *ApplicationClient) Delete() *ApplicationDeleteRequest {
 	return &ApplicationDeleteRequest{
 		transport: c.transport,
@@ -62,8 +60,6 @@ func (c *ApplicationClient) Delete() *ApplicationDeleteRequest {
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *ApplicationClient) Get() *ApplicationGetRequest {
 	return &ApplicationGetRequest{
 		transport: c.transport,
@@ -72,8 +68,6 @@ func (c *ApplicationClient) Get() *ApplicationGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *ApplicationClient) Update() *ApplicationUpdateRequest {
 	return &ApplicationUpdateRequest{
 		transport: c.transport,
@@ -82,8 +76,6 @@ func (c *ApplicationClient) Update() *ApplicationUpdateRequest {
 }
 
 // Services returns the target 'services' resource.
-//
-//
 func (c *ApplicationClient) Services() *ServicesClient {
 	return NewServicesClient(
 		c.transport,
@@ -190,16 +182,12 @@ func (r *ApplicationPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ApplicationPollResponse) Body() *Application {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ApplicationPollResponse) GetBody() (value *Application, ok bool) {
 	return r.response.GetBody()
 }
@@ -432,8 +420,6 @@ func (r *ApplicationGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ApplicationGetResponse) Body() *Application {
 	if r == nil {
 		return nil
@@ -443,8 +429,6 @@ func (r *ApplicationGetResponse) Body() *Application {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ApplicationGetResponse) GetBody() (value *Application, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -482,8 +466,6 @@ func (r *ApplicationUpdateRequest) Impersonate(user string) *ApplicationUpdateRe
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *ApplicationUpdateRequest) Body(value *Application) *ApplicationUpdateRequest {
 	r.body = value
 	return r
@@ -581,8 +563,6 @@ func (r *ApplicationUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ApplicationUpdateResponse) Body() *Application {
 	if r == nil {
 		return nil
@@ -592,8 +572,6 @@ func (r *ApplicationUpdateResponse) Body() *Application {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ApplicationUpdateResponse) GetBody() (value *Application, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

@@ -63,7 +63,7 @@ func UnmarshalInflightCheckStateList(source interface{}) (items []InflightCheckS
 	return
 }
 
-// readInflightCheckStateList reads list of values of the ''inflight_check_state' type from
+// readInflightCheckStateList reads list of values of the ”inflight_check_state' type from
 // the given iterator.
 func readInflightCheckStateList(iterator *jsoniter.Iterator) []InflightCheckState {
 	list := []InflightCheckState{}

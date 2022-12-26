@@ -61,8 +61,6 @@ func (b *NodePoolAutoscalingBuilder) Empty() bool {
 }
 
 // MaxReplica sets the value of the 'max_replica' attribute to the given value.
-//
-//
 func (b *NodePoolAutoscalingBuilder) MaxReplica(value int) *NodePoolAutoscalingBuilder {
 	b.maxReplica = value
 	b.bitmap_ |= 8
@@ -70,8 +68,6 @@ func (b *NodePoolAutoscalingBuilder) MaxReplica(value int) *NodePoolAutoscalingB
 }
 
 // MinReplica sets the value of the 'min_replica' attribute to the given value.
-//
-//
 func (b *NodePoolAutoscalingBuilder) MinReplica(value int) *NodePoolAutoscalingBuilder {
 	b.minReplica = value
 	b.bitmap_ |= 16

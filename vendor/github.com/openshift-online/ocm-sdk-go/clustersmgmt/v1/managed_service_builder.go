@@ -38,8 +38,6 @@ func (b *ManagedServiceBuilder) Empty() bool {
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
-//
-//
 func (b *ManagedServiceBuilder) Enabled(value bool) *ManagedServiceBuilder {
 	b.enabled = value
 	b.bitmap_ |= 1

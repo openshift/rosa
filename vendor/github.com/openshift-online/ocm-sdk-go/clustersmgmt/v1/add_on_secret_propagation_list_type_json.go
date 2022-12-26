@@ -63,7 +63,7 @@ func UnmarshalAddOnSecretPropagationList(source interface{}) (items []*AddOnSecr
 	return
 }
 
-// readAddOnSecretPropagationList reads list of values of the ''add_on_secret_propagation' type from
+// readAddOnSecretPropagationList reads list of values of the ”add_on_secret_propagation' type from
 // the given iterator.
 func readAddOnSecretPropagationList(iterator *jsoniter.Iterator) []*AddOnSecretPropagation {
 	list := []*AddOnSecretPropagation{}

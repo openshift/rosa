@@ -179,16 +179,12 @@ func (r *ManagementClusterPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ManagementClusterPollResponse) Body() *ManagementCluster {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ManagementClusterPollResponse) GetBody() (value *ManagementCluster, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +417,6 @@ func (r *ManagementClusterGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ManagementClusterGetResponse) Body() *ManagementCluster {
 	if r == nil {
 		return nil
@@ -432,8 +426,6 @@ func (r *ManagementClusterGetResponse) Body() *ManagementCluster {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ManagementClusterGetResponse) GetBody() (value *ManagementCluster, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +463,6 @@ func (r *ManagementClusterPostRequest) Impersonate(user string) *ManagementClust
 }
 
 // Request sets the value of the 'request' parameter.
-//
-//
 func (r *ManagementClusterPostRequest) Request(value *ManagementClusterRequestPayload) *ManagementClusterPostRequest {
 	r.request = value
 	return r
@@ -570,8 +560,6 @@ func (r *ManagementClusterPostResponse) Error() *errors.Error {
 }
 
 // Response returns the value of the 'response' parameter.
-//
-//
 func (r *ManagementClusterPostResponse) Response() *ManagementCluster {
 	if r == nil {
 		return nil
@@ -581,8 +569,6 @@ func (r *ManagementClusterPostResponse) Response() *ManagementCluster {
 
 // GetResponse returns the value of the 'response' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ManagementClusterPostResponse) GetResponse() (value *ManagementCluster, ok bool) {
 	ok = r != nil && r.response != nil
 	if ok {

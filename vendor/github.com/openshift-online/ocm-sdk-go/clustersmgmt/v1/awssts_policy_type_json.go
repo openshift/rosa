@@ -47,11 +47,20 @@ func writeAWSSTSPolicy(object *AWSSTSPolicy, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("arn")
+		stream.WriteString(object.arn)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("id")
 		stream.WriteString(object.id)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -60,7 +69,7 @@ func writeAWSSTSPolicy(object *AWSSTSPolicy, stream *jsoniter.Stream) {
 		stream.WriteString(object.details)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -92,18 +101,22 @@ func readAWSSTSPolicy(iterator *jsoniter.Iterator) *AWSSTSPolicy {
 			break
 		}
 		switch field {
+		case "arn":
+			value := iterator.ReadString()
+			object.arn = value
+			object.bitmap_ |= 1
 		case "id":
 			value := iterator.ReadString()
 			object.id = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		case "details":
 			value := iterator.ReadString()
 			object.details = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "type":
 			value := iterator.ReadString()
 			object.type_ = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

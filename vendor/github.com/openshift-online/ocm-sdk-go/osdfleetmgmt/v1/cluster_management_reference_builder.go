@@ -39,8 +39,6 @@ func (b *ClusterManagementReferenceBuilder) Empty() bool {
 }
 
 // ClusterId sets the value of the 'cluster_id' attribute to the given value.
-//
-//
 func (b *ClusterManagementReferenceBuilder) ClusterId(value string) *ClusterManagementReferenceBuilder {
 	b.clusterId = value
 	b.bitmap_ |= 1
@@ -48,8 +46,6 @@ func (b *ClusterManagementReferenceBuilder) ClusterId(value string) *ClusterMana
 }
 
 // Href sets the value of the 'href' attribute to the given value.
-//
-//
 func (b *ClusterManagementReferenceBuilder) Href(value string) *ClusterManagementReferenceBuilder {
 	b.href = value
 	b.bitmap_ |= 2

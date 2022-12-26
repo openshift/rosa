@@ -28,24 +28,28 @@ package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 // the kind, id and href attributes:
 //
 // ```json
-// {
-//   "cloud_provider": {
-//     "kind": "CloudProviderLink",
-//     "id": "123",
-//     "href": "/api/clusters_mgmt/v1/cloud_providers/123"
-//   }
-// }
+//
+//	{
+//	  "cloud_provider": {
+//	    "kind": "CloudProviderLink",
+//	    "id": "123",
+//	    "href": "/api/clusters_mgmt/v1/cloud_providers/123"
+//	  }
+//	}
+//
 // ```
 //
 // When a cluster is created this is optional, and if used it should contain the
 // identifier of the cloud provider to use:
 //
 // ```json
-// {
-//   "cloud_provider": {
-//     "id": "123",
-//   }
-// }
+//
+//	{
+//	  "cloud_provider": {
+//	    "id": "123",
+//	  }
+//	}
+//
 // ```
 //
 // If not included, then the cluster will be created using the default cloud
@@ -112,8 +116,6 @@ func (b *ManagementClusterBuilder) DNS(value *DNSBuilder) *ManagementClusterBuil
 }
 
 // CloudProvider sets the value of the 'cloud_provider' attribute to the given value.
-//
-//
 func (b *ManagementClusterBuilder) CloudProvider(value string) *ManagementClusterBuilder {
 	b.cloudProvider = value
 	b.bitmap_ |= 16
@@ -147,8 +149,6 @@ func (b *ManagementClusterBuilder) Parent(value *ManagementClusterParentBuilder)
 }
 
 // Region sets the value of the 'region' attribute to the given value.
-//
-//
 func (b *ManagementClusterBuilder) Region(value string) *ManagementClusterBuilder {
 	b.region = value
 	b.bitmap_ |= 128
@@ -156,8 +156,6 @@ func (b *ManagementClusterBuilder) Region(value string) *ManagementClusterBuilde
 }
 
 // Status sets the value of the 'status' attribute to the given value.
-//
-//
 func (b *ManagementClusterBuilder) Status(value string) *ManagementClusterBuilder {
 	b.status = value
 	b.bitmap_ |= 256

@@ -41,8 +41,6 @@ func (b *AddOnSubOperatorBuilder) Empty() bool {
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
-//
-//
 func (b *AddOnSubOperatorBuilder) Enabled(value bool) *AddOnSubOperatorBuilder {
 	b.enabled = value
 	b.bitmap_ |= 1
@@ -50,8 +48,6 @@ func (b *AddOnSubOperatorBuilder) Enabled(value bool) *AddOnSubOperatorBuilder {
 }
 
 // OperatorName sets the value of the 'operator_name' attribute to the given value.
-//
-//
 func (b *AddOnSubOperatorBuilder) OperatorName(value string) *AddOnSubOperatorBuilder {
 	b.operatorName = value
 	b.bitmap_ |= 2
@@ -59,8 +55,6 @@ func (b *AddOnSubOperatorBuilder) OperatorName(value string) *AddOnSubOperatorBu
 }
 
 // OperatorNamespace sets the value of the 'operator_namespace' attribute to the given value.
-//
-//
 func (b *AddOnSubOperatorBuilder) OperatorNamespace(value string) *AddOnSubOperatorBuilder {
 	b.operatorNamespace = value
 	b.bitmap_ |= 4

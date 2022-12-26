@@ -168,16 +168,12 @@ func (r *VersionGateAgreementPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *VersionGateAgreementPollResponse) Body() *VersionGateAgreement {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *VersionGateAgreementPollResponse) GetBody() (value *VersionGateAgreement, ok bool) {
 	return r.response.GetBody()
 }
@@ -410,8 +406,6 @@ func (r *VersionGateAgreementGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *VersionGateAgreementGetResponse) Body() *VersionGateAgreement {
 	if r == nil {
 		return nil
@@ -421,8 +415,6 @@ func (r *VersionGateAgreementGetResponse) Body() *VersionGateAgreement {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *VersionGateAgreementGetResponse) GetBody() (value *VersionGateAgreement, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

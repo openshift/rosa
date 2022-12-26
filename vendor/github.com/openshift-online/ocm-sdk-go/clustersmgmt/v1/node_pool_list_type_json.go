@@ -63,7 +63,7 @@ func UnmarshalNodePoolList(source interface{}) (items []*NodePool, err error) {
 	return
 }
 
-// readNodePoolList reads list of values of the ''node_pool' type from
+// readNodePoolList reads list of values of the ”node_pool' type from
 // the given iterator.
 func readNodePoolList(iterator *jsoniter.Iterator) []*NodePool {
 	list := []*NodePool{}

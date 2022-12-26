@@ -63,7 +63,7 @@ func UnmarshalFollowUpList(source interface{}) (items []*FollowUp, err error) {
 	return
 }
 
-// readFollowUpList reads list of values of the ''follow_up' type from
+// readFollowUpList reads list of values of the ”follow_up' type from
 // the given iterator.
 func readFollowUpList(iterator *jsoniter.Iterator) []*FollowUp {
 	list := []*FollowUp{}

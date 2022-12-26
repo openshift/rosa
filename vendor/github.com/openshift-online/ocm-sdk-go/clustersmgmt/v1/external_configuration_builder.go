@@ -40,8 +40,6 @@ func (b *ExternalConfigurationBuilder) Empty() bool {
 }
 
 // Labels sets the value of the 'labels' attribute to the given values.
-//
-//
 func (b *ExternalConfigurationBuilder) Labels(value *LabelListBuilder) *ExternalConfigurationBuilder {
 	b.labels = value
 	b.bitmap_ |= 1
@@ -49,8 +47,6 @@ func (b *ExternalConfigurationBuilder) Labels(value *LabelListBuilder) *External
 }
 
 // Manifests sets the value of the 'manifests' attribute to the given values.
-//
-//
 func (b *ExternalConfigurationBuilder) Manifests(value *ManifestListBuilder) *ExternalConfigurationBuilder {
 	b.manifests = value
 	b.bitmap_ |= 2
@@ -58,8 +54,6 @@ func (b *ExternalConfigurationBuilder) Manifests(value *ManifestListBuilder) *Ex
 }
 
 // Syncsets sets the value of the 'syncsets' attribute to the given values.
-//
-//
 func (b *ExternalConfigurationBuilder) Syncsets(value *SyncsetListBuilder) *ExternalConfigurationBuilder {
 	b.syncsets = value
 	b.bitmap_ |= 4

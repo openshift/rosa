@@ -63,7 +63,7 @@ func UnmarshalQuotaRulesList(source interface{}) (items []*QuotaRules, err error
 	return
 }
 
-// readQuotaRulesList reads list of values of the ''quota_rules' type from
+// readQuotaRulesList reads list of values of the ”quota_rules' type from
 // the given iterator.
 func readQuotaRulesList(iterator *jsoniter.Iterator) []*QuotaRules {
 	list := []*QuotaRules{}

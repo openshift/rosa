@@ -63,7 +63,7 @@ func UnmarshalOwnerList(source interface{}) (items []*Owner, err error) {
 	return
 }
 
-// readOwnerList reads list of values of the ''owner' type from
+// readOwnerList reads list of values of the ”owner' type from
 // the given iterator.
 func readOwnerList(iterator *jsoniter.Iterator) []*Owner {
 	list := []*Owner{}

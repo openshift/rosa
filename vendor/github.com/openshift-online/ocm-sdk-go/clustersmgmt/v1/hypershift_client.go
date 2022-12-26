@@ -158,16 +158,12 @@ func (r *HypershiftPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *HypershiftPollResponse) Body() *HypershiftConfig {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *HypershiftPollResponse) GetBody() (value *HypershiftConfig, ok bool) {
 	return r.response.GetBody()
 }
@@ -293,8 +289,6 @@ func (r *HypershiftGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *HypershiftGetResponse) Body() *HypershiftConfig {
 	if r == nil {
 		return nil
@@ -304,8 +298,6 @@ func (r *HypershiftGetResponse) Body() *HypershiftConfig {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *HypershiftGetResponse) GetBody() (value *HypershiftConfig, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

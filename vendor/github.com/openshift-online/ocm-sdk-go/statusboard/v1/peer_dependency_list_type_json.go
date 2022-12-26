@@ -63,7 +63,7 @@ func UnmarshalPeerDependencyList(source interface{}) (items []*PeerDependency, e
 	return
 }
 
-// readPeerDependencyList reads list of values of the ''peer_dependency' type from
+// readPeerDependencyList reads list of values of the ”peer_dependency' type from
 // the given iterator.
 func readPeerDependencyList(iterator *jsoniter.Iterator) []*PeerDependency {
 	list := []*PeerDependency{}

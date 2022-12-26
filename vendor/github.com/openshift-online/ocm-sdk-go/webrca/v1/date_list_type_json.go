@@ -64,7 +64,7 @@ func UnmarshalDateList(source interface{}) (items []time.Time, err error) {
 	return
 }
 
-// readDateList reads list of values of the ''date' type from
+// readDateList reads list of values of the ”date' type from
 // the given iterator.
 func readDateList(iterator *jsoniter.Iterator) []time.Time {
 	list := []time.Time{}

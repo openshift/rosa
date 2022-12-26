@@ -179,16 +179,12 @@ func (r *NodePoolPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *NodePoolPollResponse) Body() *NodePool {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NodePoolPollResponse) GetBody() (value *NodePool, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +417,6 @@ func (r *NodePoolGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *NodePoolGetResponse) Body() *NodePool {
 	if r == nil {
 		return nil
@@ -432,8 +426,6 @@ func (r *NodePoolGetResponse) Body() *NodePool {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NodePoolGetResponse) GetBody() (value *NodePool, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +463,6 @@ func (r *NodePoolUpdateRequest) Impersonate(user string) *NodePoolUpdateRequest 
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *NodePoolUpdateRequest) Body(value *NodePool) *NodePoolUpdateRequest {
 	r.body = value
 	return r
@@ -570,8 +560,6 @@ func (r *NodePoolUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *NodePoolUpdateResponse) Body() *NodePool {
 	if r == nil {
 		return nil
@@ -581,8 +569,6 @@ func (r *NodePoolUpdateResponse) Body() *NodePool {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NodePoolUpdateResponse) GetBody() (value *NodePool, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

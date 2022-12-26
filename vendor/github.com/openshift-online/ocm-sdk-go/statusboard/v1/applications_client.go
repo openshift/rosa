@@ -51,8 +51,6 @@ func NewApplicationsClient(transport http.RoundTripper, path string) *Applicatio
 }
 
 // Add creates a request for the 'add' method.
-//
-//
 func (c *ApplicationsClient) Add() *ApplicationsAddRequest {
 	return &ApplicationsAddRequest{
 		transport: c.transport,
@@ -71,8 +69,6 @@ func (c *ApplicationsClient) List() *ApplicationsListRequest {
 }
 
 // Application returns the target 'application' resource for the given identifier.
-//
-//
 func (c *ApplicationsClient) Application(id string) *ApplicationClient {
 	return NewApplicationClient(
 		c.transport,
@@ -109,8 +105,6 @@ func (r *ApplicationsAddRequest) Impersonate(user string) *ApplicationsAddReques
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *ApplicationsAddRequest) Body(value *Application) *ApplicationsAddRequest {
 	r.body = value
 	return r
@@ -208,8 +202,6 @@ func (r *ApplicationsAddResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ApplicationsAddResponse) Body() *Application {
 	if r == nil {
 		return nil
@@ -219,8 +211,6 @@ func (r *ApplicationsAddResponse) Body() *Application {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ApplicationsAddResponse) GetBody() (value *Application, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -261,32 +251,24 @@ func (r *ApplicationsListRequest) Impersonate(user string) *ApplicationsListRequ
 }
 
 // Fullname sets the value of the 'fullname' parameter.
-//
-//
 func (r *ApplicationsListRequest) Fullname(value string) *ApplicationsListRequest {
 	r.fullname = &value
 	return r
 }
 
 // OrderBy sets the value of the 'order_by' parameter.
-//
-//
 func (r *ApplicationsListRequest) OrderBy(value string) *ApplicationsListRequest {
 	r.orderBy = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *ApplicationsListRequest) Page(value int) *ApplicationsListRequest {
 	r.page = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *ApplicationsListRequest) Size(value int) *ApplicationsListRequest {
 	r.size = &value
 	return r
@@ -393,8 +375,6 @@ func (r *ApplicationsListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *ApplicationsListResponse) Items() *ApplicationList {
 	if r == nil {
 		return nil
@@ -404,8 +384,6 @@ func (r *ApplicationsListResponse) Items() *ApplicationList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ApplicationsListResponse) GetItems() (value *ApplicationList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -415,8 +393,6 @@ func (r *ApplicationsListResponse) GetItems() (value *ApplicationList, ok bool) 
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *ApplicationsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -426,8 +402,6 @@ func (r *ApplicationsListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ApplicationsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -437,8 +411,6 @@ func (r *ApplicationsListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *ApplicationsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -448,8 +420,6 @@ func (r *ApplicationsListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ApplicationsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -459,8 +429,6 @@ func (r *ApplicationsListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *ApplicationsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -470,8 +438,6 @@ func (r *ApplicationsListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ApplicationsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

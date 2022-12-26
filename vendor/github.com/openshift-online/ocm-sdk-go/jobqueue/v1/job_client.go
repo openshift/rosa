@@ -100,8 +100,6 @@ func (r *JobFailureRequest) Impersonate(user string) *JobFailureRequest {
 }
 
 // FailureReason sets the value of the 'failure_reason' parameter.
-//
-//
 func (r *JobFailureRequest) FailureReason(value string) *JobFailureRequest {
 	r.failureReason = &value
 	return r

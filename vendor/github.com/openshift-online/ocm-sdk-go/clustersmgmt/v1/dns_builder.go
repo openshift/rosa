@@ -38,8 +38,6 @@ func (b *DNSBuilder) Empty() bool {
 }
 
 // BaseDomain sets the value of the 'base_domain' attribute to the given value.
-//
-//
 func (b *DNSBuilder) BaseDomain(value string) *DNSBuilder {
 	b.baseDomain = value
 	b.bitmap_ |= 1

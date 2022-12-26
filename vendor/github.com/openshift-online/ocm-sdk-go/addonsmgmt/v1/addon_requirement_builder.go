@@ -42,8 +42,6 @@ func (b *AddonRequirementBuilder) Empty() bool {
 }
 
 // ID sets the value of the 'ID' attribute to the given value.
-//
-//
 func (b *AddonRequirementBuilder) ID(value string) *AddonRequirementBuilder {
 	b.id = value
 	b.bitmap_ |= 1
@@ -51,8 +49,6 @@ func (b *AddonRequirementBuilder) ID(value string) *AddonRequirementBuilder {
 }
 
 // Data sets the value of the 'data' attribute to the given value.
-//
-//
 func (b *AddonRequirementBuilder) Data(value map[string]interface{}) *AddonRequirementBuilder {
 	b.data = value
 	if value != nil {
@@ -64,8 +60,6 @@ func (b *AddonRequirementBuilder) Data(value map[string]interface{}) *AddonRequi
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
-//
-//
 func (b *AddonRequirementBuilder) Enabled(value bool) *AddonRequirementBuilder {
 	b.enabled = value
 	b.bitmap_ |= 4

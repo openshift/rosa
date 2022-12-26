@@ -163,8 +163,6 @@ func (o *Service) GetCreatedAt() (value time.Time, ok bool) {
 
 // CurrentStatus returns the value of the 'current_status' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) CurrentStatus() string {
 	if o != nil && o.bitmap_&32 != 0 {
 		return o.currentStatus
@@ -174,8 +172,6 @@ func (o *Service) CurrentStatus() string {
 
 // GetCurrentStatus returns the value of the 'current_status' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetCurrentStatus() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
@@ -186,8 +182,6 @@ func (o *Service) GetCurrentStatus() (value string, ok bool) {
 
 // Fullname returns the value of the 'fullname' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) Fullname() string {
 	if o != nil && o.bitmap_&64 != 0 {
 		return o.fullname
@@ -197,8 +191,6 @@ func (o *Service) Fullname() string {
 
 // GetFullname returns the value of the 'fullname' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetFullname() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
@@ -209,8 +201,6 @@ func (o *Service) GetFullname() (value string, ok bool) {
 
 // LastPingAt returns the value of the 'last_ping_at' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) LastPingAt() time.Time {
 	if o != nil && o.bitmap_&128 != 0 {
 		return o.lastPingAt
@@ -220,8 +210,6 @@ func (o *Service) LastPingAt() time.Time {
 
 // GetLastPingAt returns the value of the 'last_ping_at' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetLastPingAt() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
@@ -232,8 +220,6 @@ func (o *Service) GetLastPingAt() (value time.Time, ok bool) {
 
 // Metadata returns the value of the 'metadata' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) Metadata() interface{} {
 	if o != nil && o.bitmap_&256 != 0 {
 		return o.metadata
@@ -243,8 +229,6 @@ func (o *Service) Metadata() interface{} {
 
 // GetMetadata returns the value of the 'metadata' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetMetadata() (value interface{}, ok bool) {
 	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
@@ -278,8 +262,6 @@ func (o *Service) GetName() (value string, ok bool) {
 
 // Owners returns the value of the 'owners' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) Owners() []*Owner {
 	if o != nil && o.bitmap_&1024 != 0 {
 		return o.owners
@@ -289,8 +271,6 @@ func (o *Service) Owners() []*Owner {
 
 // GetOwners returns the value of the 'owners' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetOwners() (value []*Owner, ok bool) {
 	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
@@ -301,8 +281,6 @@ func (o *Service) GetOwners() (value []*Owner, ok bool) {
 
 // Private returns the value of the 'private' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) Private() bool {
 	if o != nil && o.bitmap_&2048 != 0 {
 		return o.private
@@ -312,8 +290,6 @@ func (o *Service) Private() bool {
 
 // GetPrivate returns the value of the 'private' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetPrivate() (value bool, ok bool) {
 	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
@@ -324,8 +300,6 @@ func (o *Service) GetPrivate() (value bool, ok bool) {
 
 // ServiceEndpoint returns the value of the 'service_endpoint' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) ServiceEndpoint() string {
 	if o != nil && o.bitmap_&4096 != 0 {
 		return o.serviceEndpoint
@@ -335,8 +309,6 @@ func (o *Service) ServiceEndpoint() string {
 
 // GetServiceEndpoint returns the value of the 'service_endpoint' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetServiceEndpoint() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
@@ -347,8 +319,6 @@ func (o *Service) GetServiceEndpoint() (value string, ok bool) {
 
 // StatusType returns the value of the 'status_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) StatusType() string {
 	if o != nil && o.bitmap_&8192 != 0 {
 		return o.statusType
@@ -358,8 +328,6 @@ func (o *Service) StatusType() string {
 
 // GetStatusType returns the value of the 'status_type' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetStatusType() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8192 != 0
 	if ok {
@@ -370,8 +338,6 @@ func (o *Service) GetStatusType() (value string, ok bool) {
 
 // StatusUpdatedAt returns the value of the 'status_updated_at' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) StatusUpdatedAt() time.Time {
 	if o != nil && o.bitmap_&16384 != 0 {
 		return o.statusUpdatedAt
@@ -381,8 +347,6 @@ func (o *Service) StatusUpdatedAt() time.Time {
 
 // GetStatusUpdatedAt returns the value of the 'status_updated_at' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetStatusUpdatedAt() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {
@@ -393,8 +357,6 @@ func (o *Service) GetStatusUpdatedAt() (value time.Time, ok bool) {
 
 // Token returns the value of the 'token' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Service) Token() string {
 	if o != nil && o.bitmap_&32768 != 0 {
 		return o.token
@@ -404,8 +366,6 @@ func (o *Service) Token() string {
 
 // GetToken returns the value of the 'token' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Service) GetToken() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&32768 != 0
 	if ok {

@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/servicemgmt/v1
 
 // ServiceParameter represents the values of the 'service_parameter' type.
-//
-//
 type ServiceParameter struct {
 	bitmap_ uint32
 	id      string

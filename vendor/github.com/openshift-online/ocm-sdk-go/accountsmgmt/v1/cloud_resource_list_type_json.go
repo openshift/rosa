@@ -63,7 +63,7 @@ func UnmarshalCloudResourceList(source interface{}) (items []*CloudResource, err
 	return
 }
 
-// readCloudResourceList reads list of values of the ''cloud_resource' type from
+// readCloudResourceList reads list of values of the ”cloud_resource' type from
 // the given iterator.
 func readCloudResourceList(iterator *jsoniter.Iterator) []*CloudResource {
 	list := []*CloudResource{}

@@ -63,7 +63,7 @@ func UnmarshalAddonNamespaceList(source interface{}) (items []*AddonNamespace, e
 	return
 }
 
-// readAddonNamespaceList reads list of values of the ''addon_namespace' type from
+// readAddonNamespaceList reads list of values of the ”addon_namespace' type from
 // the given iterator.
 func readAddonNamespaceList(iterator *jsoniter.Iterator) []*AddonNamespace {
 	list := []*AddonNamespace{}

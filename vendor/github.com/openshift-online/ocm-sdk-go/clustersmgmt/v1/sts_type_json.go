@@ -65,11 +65,20 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("bound_service_account_signing_key")
+		stream.WriteString(object.boundServiceAccountSigningKey)
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("external_id")
 		stream.WriteString(object.externalID)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0 && object.instanceIAMRoles != nil
+	present_ = object.bitmap_&16 != 0 && object.instanceIAMRoles != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -78,7 +87,7 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		writeInstanceIAMRoles(object.instanceIAMRoles, stream)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0 && object.operatorIAMRoles != nil
+	present_ = object.bitmap_&32 != 0 && object.operatorIAMRoles != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -87,7 +96,7 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		writeOperatorIAMRoleList(object.operatorIAMRoles, stream)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -96,7 +105,7 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		stream.WriteString(object.operatorRolePrefix)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -105,7 +114,7 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		stream.WriteString(object.permissionBoundary)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -114,7 +123,7 @@ func writeSTS(object *STS, stream *jsoniter.Stream) {
 		stream.WriteString(object.roleARN)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -154,34 +163,38 @@ func readSTS(iterator *jsoniter.Iterator) *STS {
 			value := iterator.ReadBool()
 			object.autoMode = value
 			object.bitmap_ |= 2
+		case "bound_service_account_signing_key":
+			value := iterator.ReadString()
+			object.boundServiceAccountSigningKey = value
+			object.bitmap_ |= 4
 		case "external_id":
 			value := iterator.ReadString()
 			object.externalID = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		case "instance_iam_roles":
 			value := readInstanceIAMRoles(iterator)
 			object.instanceIAMRoles = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		case "operator_iam_roles":
 			value := readOperatorIAMRoleList(iterator)
 			object.operatorIAMRoles = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "operator_role_prefix":
 			value := iterator.ReadString()
 			object.operatorRolePrefix = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "permission_boundary":
 			value := iterator.ReadString()
 			object.permissionBoundary = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "role_arn":
 			value := iterator.ReadString()
 			object.roleARN = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "support_role_arn":
 			value := iterator.ReadString()
 			object.supportRoleARN = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		default:
 			iterator.ReadAny()
 		}

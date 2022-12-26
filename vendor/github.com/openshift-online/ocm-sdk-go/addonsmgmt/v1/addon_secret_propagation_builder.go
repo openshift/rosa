@@ -41,8 +41,6 @@ func (b *AddonSecretPropagationBuilder) Empty() bool {
 }
 
 // ID sets the value of the 'ID' attribute to the given value.
-//
-//
 func (b *AddonSecretPropagationBuilder) ID(value string) *AddonSecretPropagationBuilder {
 	b.id = value
 	b.bitmap_ |= 1
@@ -50,8 +48,6 @@ func (b *AddonSecretPropagationBuilder) ID(value string) *AddonSecretPropagation
 }
 
 // DestinationSecret sets the value of the 'destination_secret' attribute to the given value.
-//
-//
 func (b *AddonSecretPropagationBuilder) DestinationSecret(value string) *AddonSecretPropagationBuilder {
 	b.destinationSecret = value
 	b.bitmap_ |= 2
@@ -59,8 +55,6 @@ func (b *AddonSecretPropagationBuilder) DestinationSecret(value string) *AddonSe
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
-//
-//
 func (b *AddonSecretPropagationBuilder) Enabled(value bool) *AddonSecretPropagationBuilder {
 	b.enabled = value
 	b.bitmap_ |= 4
@@ -68,8 +62,6 @@ func (b *AddonSecretPropagationBuilder) Enabled(value bool) *AddonSecretPropagat
 }
 
 // SourceSecret sets the value of the 'source_secret' attribute to the given value.
-//
-//
 func (b *AddonSecretPropagationBuilder) SourceSecret(value string) *AddonSecretPropagationBuilder {
 	b.sourceSecret = value
 	b.bitmap_ |= 8

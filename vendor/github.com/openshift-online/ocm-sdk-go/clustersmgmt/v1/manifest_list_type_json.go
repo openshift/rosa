@@ -63,7 +63,7 @@ func UnmarshalManifestList(source interface{}) (items []*Manifest, err error) {
 	return
 }
 
-// readManifestList reads list of values of the ''manifest' type from
+// readManifestList reads list of values of the ”manifest' type from
 // the given iterator.
 func readManifestList(iterator *jsoniter.Iterator) []*Manifest {
 	list := []*Manifest{}

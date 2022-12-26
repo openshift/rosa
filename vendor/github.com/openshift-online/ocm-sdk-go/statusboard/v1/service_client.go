@@ -52,8 +52,6 @@ func NewServiceClient(transport http.RoundTripper, path string) *ServiceClient {
 }
 
 // Delete creates a request for the 'delete' method.
-//
-//
 func (c *ServiceClient) Delete() *ServiceDeleteRequest {
 	return &ServiceDeleteRequest{
 		transport: c.transport,
@@ -62,8 +60,6 @@ func (c *ServiceClient) Delete() *ServiceDeleteRequest {
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *ServiceClient) Get() *ServiceGetRequest {
 	return &ServiceGetRequest{
 		transport: c.transport,
@@ -72,8 +68,6 @@ func (c *ServiceClient) Get() *ServiceGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *ServiceClient) Update() *ServiceUpdateRequest {
 	return &ServiceUpdateRequest{
 		transport: c.transport,
@@ -82,8 +76,6 @@ func (c *ServiceClient) Update() *ServiceUpdateRequest {
 }
 
 // Statuses returns the target 'statuses' resource.
-//
-//
 func (c *ServiceClient) Statuses() *StatusesClient {
 	return NewStatusesClient(
 		c.transport,
@@ -190,16 +182,12 @@ func (r *ServicePollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ServicePollResponse) Body() *Service {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServicePollResponse) GetBody() (value *Service, ok bool) {
 	return r.response.GetBody()
 }
@@ -432,8 +420,6 @@ func (r *ServiceGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ServiceGetResponse) Body() *Service {
 	if r == nil {
 		return nil
@@ -443,8 +429,6 @@ func (r *ServiceGetResponse) Body() *Service {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceGetResponse) GetBody() (value *Service, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -482,8 +466,6 @@ func (r *ServiceUpdateRequest) Impersonate(user string) *ServiceUpdateRequest {
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *ServiceUpdateRequest) Body(value *Service) *ServiceUpdateRequest {
 	r.body = value
 	return r
@@ -581,8 +563,6 @@ func (r *ServiceUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ServiceUpdateResponse) Body() *Service {
 	if r == nil {
 		return nil
@@ -592,8 +572,6 @@ func (r *ServiceUpdateResponse) Body() *Service {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceUpdateResponse) GetBody() (value *Service, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

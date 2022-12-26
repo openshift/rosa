@@ -40,8 +40,6 @@ func (b *HTPasswdIdentityProviderBuilder) Empty() bool {
 }
 
 // Password sets the value of the 'password' attribute to the given value.
-//
-//
 func (b *HTPasswdIdentityProviderBuilder) Password(value string) *HTPasswdIdentityProviderBuilder {
 	b.password = value
 	b.bitmap_ |= 1
@@ -49,8 +47,6 @@ func (b *HTPasswdIdentityProviderBuilder) Password(value string) *HTPasswdIdenti
 }
 
 // Username sets the value of the 'username' attribute to the given value.
-//
-//
 func (b *HTPasswdIdentityProviderBuilder) Username(value string) *HTPasswdIdentityProviderBuilder {
 	b.username = value
 	b.bitmap_ |= 2
@@ -58,8 +54,6 @@ func (b *HTPasswdIdentityProviderBuilder) Username(value string) *HTPasswdIdenti
 }
 
 // Users sets the value of the 'users' attribute to the given values.
-//
-//
 func (b *HTPasswdIdentityProviderBuilder) Users(value *HTPasswdUserListBuilder) *HTPasswdIdentityProviderBuilder {
 	b.users = value
 	b.bitmap_ |= 4

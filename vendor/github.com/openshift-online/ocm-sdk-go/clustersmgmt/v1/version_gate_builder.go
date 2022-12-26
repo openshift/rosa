@@ -71,8 +71,6 @@ func (b *VersionGateBuilder) Empty() bool {
 }
 
 // STSOnly sets the value of the 'STS_only' attribute to the given value.
-//
-//
 func (b *VersionGateBuilder) STSOnly(value bool) *VersionGateBuilder {
 	b.stsOnly = value
 	b.bitmap_ |= 8
@@ -80,8 +78,6 @@ func (b *VersionGateBuilder) STSOnly(value bool) *VersionGateBuilder {
 }
 
 // CreationTimestamp sets the value of the 'creation_timestamp' attribute to the given value.
-//
-//
 func (b *VersionGateBuilder) CreationTimestamp(value time.Time) *VersionGateBuilder {
 	b.creationTimestamp = value
 	b.bitmap_ |= 16
@@ -89,8 +85,6 @@ func (b *VersionGateBuilder) CreationTimestamp(value time.Time) *VersionGateBuil
 }
 
 // Description sets the value of the 'description' attribute to the given value.
-//
-//
 func (b *VersionGateBuilder) Description(value string) *VersionGateBuilder {
 	b.description = value
 	b.bitmap_ |= 32
@@ -98,8 +92,6 @@ func (b *VersionGateBuilder) Description(value string) *VersionGateBuilder {
 }
 
 // DocumentationURL sets the value of the 'documentation_URL' attribute to the given value.
-//
-//
 func (b *VersionGateBuilder) DocumentationURL(value string) *VersionGateBuilder {
 	b.documentationURL = value
 	b.bitmap_ |= 64
@@ -107,8 +99,6 @@ func (b *VersionGateBuilder) DocumentationURL(value string) *VersionGateBuilder 
 }
 
 // Label sets the value of the 'label' attribute to the given value.
-//
-//
 func (b *VersionGateBuilder) Label(value string) *VersionGateBuilder {
 	b.label = value
 	b.bitmap_ |= 128
@@ -116,8 +106,6 @@ func (b *VersionGateBuilder) Label(value string) *VersionGateBuilder {
 }
 
 // Value sets the value of the 'value' attribute to the given value.
-//
-//
 func (b *VersionGateBuilder) Value(value string) *VersionGateBuilder {
 	b.value = value
 	b.bitmap_ |= 256
@@ -125,8 +113,6 @@ func (b *VersionGateBuilder) Value(value string) *VersionGateBuilder {
 }
 
 // VersionRawIDPrefix sets the value of the 'version_raw_ID_prefix' attribute to the given value.
-//
-//
 func (b *VersionGateBuilder) VersionRawIDPrefix(value string) *VersionGateBuilder {
 	b.versionRawIDPrefix = value
 	b.bitmap_ |= 512
@@ -134,8 +120,6 @@ func (b *VersionGateBuilder) VersionRawIDPrefix(value string) *VersionGateBuilde
 }
 
 // WarningMessage sets the value of the 'warning_message' attribute to the given value.
-//
-//
 func (b *VersionGateBuilder) WarningMessage(value string) *VersionGateBuilder {
 	b.warningMessage = value
 	b.bitmap_ |= 1024

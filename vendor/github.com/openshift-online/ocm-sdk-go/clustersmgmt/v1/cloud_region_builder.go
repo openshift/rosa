@@ -66,8 +66,6 @@ func (b *CloudRegionBuilder) Empty() bool {
 }
 
 // CCSOnly sets the value of the 'CCS_only' attribute to the given value.
-//
-//
 func (b *CloudRegionBuilder) CCSOnly(value bool) *CloudRegionBuilder {
 	b.ccsOnly = value
 	b.bitmap_ |= 8
@@ -88,8 +86,6 @@ func (b *CloudRegionBuilder) CloudProvider(value *CloudProviderBuilder) *CloudRe
 }
 
 // DisplayName sets the value of the 'display_name' attribute to the given value.
-//
-//
 func (b *CloudRegionBuilder) DisplayName(value string) *CloudRegionBuilder {
 	b.displayName = value
 	b.bitmap_ |= 32
@@ -97,8 +93,6 @@ func (b *CloudRegionBuilder) DisplayName(value string) *CloudRegionBuilder {
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
-//
-//
 func (b *CloudRegionBuilder) Enabled(value bool) *CloudRegionBuilder {
 	b.enabled = value
 	b.bitmap_ |= 64
@@ -106,8 +100,6 @@ func (b *CloudRegionBuilder) Enabled(value bool) *CloudRegionBuilder {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *CloudRegionBuilder) Name(value string) *CloudRegionBuilder {
 	b.name = value
 	b.bitmap_ |= 128
@@ -115,8 +107,6 @@ func (b *CloudRegionBuilder) Name(value string) *CloudRegionBuilder {
 }
 
 // SupportsHypershift sets the value of the 'supports_hypershift' attribute to the given value.
-//
-//
 func (b *CloudRegionBuilder) SupportsHypershift(value bool) *CloudRegionBuilder {
 	b.supportsHypershift = value
 	b.bitmap_ |= 256
@@ -124,8 +114,6 @@ func (b *CloudRegionBuilder) SupportsHypershift(value bool) *CloudRegionBuilder 
 }
 
 // SupportsMultiAZ sets the value of the 'supports_multi_AZ' attribute to the given value.
-//
-//
 func (b *CloudRegionBuilder) SupportsMultiAZ(value bool) *CloudRegionBuilder {
 	b.supportsMultiAZ = value
 	b.bitmap_ |= 512

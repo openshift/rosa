@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 // HTPasswdUser represents the values of the 'HT_passwd_user' type.
-//
-//
 type HTPasswdUser struct {
 	bitmap_  uint32
 	id       string

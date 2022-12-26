@@ -88,8 +88,6 @@ func (r *ExportControlReviewPostRequest) Impersonate(user string) *ExportControl
 }
 
 // Request sets the value of the 'request' parameter.
-//
-//
 func (r *ExportControlReviewPostRequest) Request(value *ExportControlReviewRequest) *ExportControlReviewPostRequest {
 	r.request = value
 	return r
@@ -187,8 +185,6 @@ func (r *ExportControlReviewPostResponse) Error() *errors.Error {
 }
 
 // Response returns the value of the 'response' parameter.
-//
-//
 func (r *ExportControlReviewPostResponse) Response() *ExportControlReviewResponse {
 	if r == nil {
 		return nil
@@ -198,8 +194,6 @@ func (r *ExportControlReviewPostResponse) Response() *ExportControlReviewRespons
 
 // GetResponse returns the value of the 'response' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ExportControlReviewPostResponse) GetResponse() (value *ExportControlReviewResponse, ok bool) {
 	ok = r != nil && r.response != nil
 	if ok {

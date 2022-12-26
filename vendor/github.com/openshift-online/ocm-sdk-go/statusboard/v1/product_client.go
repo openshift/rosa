@@ -52,8 +52,6 @@ func NewProductClient(transport http.RoundTripper, path string) *ProductClient {
 }
 
 // Delete creates a request for the 'delete' method.
-//
-//
 func (c *ProductClient) Delete() *ProductDeleteRequest {
 	return &ProductDeleteRequest{
 		transport: c.transport,
@@ -62,8 +60,6 @@ func (c *ProductClient) Delete() *ProductDeleteRequest {
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *ProductClient) Get() *ProductGetRequest {
 	return &ProductGetRequest{
 		transport: c.transport,
@@ -72,8 +68,6 @@ func (c *ProductClient) Get() *ProductGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *ProductClient) Update() *ProductUpdateRequest {
 	return &ProductUpdateRequest{
 		transport: c.transport,
@@ -82,8 +76,6 @@ func (c *ProductClient) Update() *ProductUpdateRequest {
 }
 
 // Applications returns the target 'applications' resource.
-//
-//
 func (c *ProductClient) Applications() *ApplicationsClient {
 	return NewApplicationsClient(
 		c.transport,
@@ -92,8 +84,6 @@ func (c *ProductClient) Applications() *ApplicationsClient {
 }
 
 // Updates returns the target 'statuses' resource.
-//
-//
 func (c *ProductClient) Updates() *StatusesClient {
 	return NewStatusesClient(
 		c.transport,
@@ -200,16 +190,12 @@ func (r *ProductPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ProductPollResponse) Body() *Product {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ProductPollResponse) GetBody() (value *Product, ok bool) {
 	return r.response.GetBody()
 }
@@ -442,8 +428,6 @@ func (r *ProductGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ProductGetResponse) Body() *Product {
 	if r == nil {
 		return nil
@@ -453,8 +437,6 @@ func (r *ProductGetResponse) Body() *Product {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ProductGetResponse) GetBody() (value *Product, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -492,8 +474,6 @@ func (r *ProductUpdateRequest) Impersonate(user string) *ProductUpdateRequest {
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *ProductUpdateRequest) Body(value *Product) *ProductUpdateRequest {
 	r.body = value
 	return r
@@ -591,8 +571,6 @@ func (r *ProductUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ProductUpdateResponse) Body() *Product {
 	if r == nil {
 		return nil
@@ -602,8 +580,6 @@ func (r *ProductUpdateResponse) Body() *Product {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ProductUpdateResponse) GetBody() (value *Product, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

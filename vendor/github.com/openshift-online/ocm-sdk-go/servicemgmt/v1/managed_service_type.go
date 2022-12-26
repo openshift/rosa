@@ -112,8 +112,6 @@ func (o *ManagedService) Empty() bool {
 
 // Addon returns the value of the 'addon' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) Addon() *StatefulObject {
 	if o != nil && o.bitmap_&8 != 0 {
 		return o.addon
@@ -123,8 +121,6 @@ func (o *ManagedService) Addon() *StatefulObject {
 
 // GetAddon returns the value of the 'addon' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetAddon() (value *StatefulObject, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
@@ -135,8 +131,6 @@ func (o *ManagedService) GetAddon() (value *StatefulObject, ok bool) {
 
 // Cluster returns the value of the 'cluster' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) Cluster() *Cluster {
 	if o != nil && o.bitmap_&16 != 0 {
 		return o.cluster
@@ -146,8 +140,6 @@ func (o *ManagedService) Cluster() *Cluster {
 
 // GetCluster returns the value of the 'cluster' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetCluster() (value *Cluster, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
@@ -158,8 +150,6 @@ func (o *ManagedService) GetCluster() (value *Cluster, ok bool) {
 
 // CreatedAt returns the value of the 'created_at' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) CreatedAt() time.Time {
 	if o != nil && o.bitmap_&32 != 0 {
 		return o.createdAt
@@ -169,8 +159,6 @@ func (o *ManagedService) CreatedAt() time.Time {
 
 // GetCreatedAt returns the value of the 'created_at' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetCreatedAt() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
@@ -181,8 +169,6 @@ func (o *ManagedService) GetCreatedAt() (value time.Time, ok bool) {
 
 // ExpiredAt returns the value of the 'expired_at' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) ExpiredAt() time.Time {
 	if o != nil && o.bitmap_&64 != 0 {
 		return o.expiredAt
@@ -192,8 +178,6 @@ func (o *ManagedService) ExpiredAt() time.Time {
 
 // GetExpiredAt returns the value of the 'expired_at' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetExpiredAt() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
@@ -204,8 +188,6 @@ func (o *ManagedService) GetExpiredAt() (value time.Time, ok bool) {
 
 // Parameters returns the value of the 'parameters' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) Parameters() []*ServiceParameter {
 	if o != nil && o.bitmap_&128 != 0 {
 		return o.parameters
@@ -215,8 +197,6 @@ func (o *ManagedService) Parameters() []*ServiceParameter {
 
 // GetParameters returns the value of the 'parameters' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetParameters() (value []*ServiceParameter, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
@@ -227,8 +207,6 @@ func (o *ManagedService) GetParameters() (value []*ServiceParameter, ok bool) {
 
 // Resources returns the value of the 'resources' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) Resources() []*StatefulObject {
 	if o != nil && o.bitmap_&256 != 0 {
 		return o.resources
@@ -238,8 +216,6 @@ func (o *ManagedService) Resources() []*StatefulObject {
 
 // GetResources returns the value of the 'resources' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetResources() (value []*StatefulObject, ok bool) {
 	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
@@ -250,8 +226,6 @@ func (o *ManagedService) GetResources() (value []*StatefulObject, ok bool) {
 
 // Service returns the value of the 'service' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) Service() string {
 	if o != nil && o.bitmap_&512 != 0 {
 		return o.service
@@ -261,8 +235,6 @@ func (o *ManagedService) Service() string {
 
 // GetService returns the value of the 'service' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetService() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
@@ -273,8 +245,6 @@ func (o *ManagedService) GetService() (value string, ok bool) {
 
 // ServiceState returns the value of the 'service_state' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) ServiceState() string {
 	if o != nil && o.bitmap_&1024 != 0 {
 		return o.serviceState
@@ -284,8 +254,6 @@ func (o *ManagedService) ServiceState() string {
 
 // GetServiceState returns the value of the 'service_state' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetServiceState() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
@@ -296,8 +264,6 @@ func (o *ManagedService) GetServiceState() (value string, ok bool) {
 
 // UpdatedAt returns the value of the 'updated_at' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagedService) UpdatedAt() time.Time {
 	if o != nil && o.bitmap_&2048 != 0 {
 		return o.updatedAt
@@ -307,8 +273,6 @@ func (o *ManagedService) UpdatedAt() time.Time {
 
 // GetUpdatedAt returns the value of the 'updated_at' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagedService) GetUpdatedAt() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {

@@ -108,8 +108,6 @@ func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
 
 // OperatorRolePrefix returns the value of the 'operator_role_prefix' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *STS) OperatorRolePrefix() string {
 	if o != nil && o.bitmap_&8 != 0 {
 		return o.operatorRolePrefix
@@ -119,8 +117,6 @@ func (o *STS) OperatorRolePrefix() string {
 
 // GetOperatorRolePrefix returns the value of the 'operator_role_prefix' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *STS) GetOperatorRolePrefix() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {

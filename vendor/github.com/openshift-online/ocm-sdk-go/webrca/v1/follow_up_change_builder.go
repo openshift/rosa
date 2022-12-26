@@ -68,8 +68,6 @@ func (b *FollowUpChangeBuilder) Empty() bool {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *FollowUpChangeBuilder) CreatedAt(value time.Time) *FollowUpChangeBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 8
@@ -77,8 +75,6 @@ func (b *FollowUpChangeBuilder) CreatedAt(value time.Time) *FollowUpChangeBuilde
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *FollowUpChangeBuilder) DeletedAt(value time.Time) *FollowUpChangeBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 16
@@ -99,8 +95,6 @@ func (b *FollowUpChangeBuilder) FollowUp(value *FollowUpBuilder) *FollowUpChange
 }
 
 // Status sets the value of the 'status' attribute to the given value.
-//
-//
 func (b *FollowUpChangeBuilder) Status(value interface{}) *FollowUpChangeBuilder {
 	b.status = value
 	b.bitmap_ |= 64
@@ -108,8 +102,6 @@ func (b *FollowUpChangeBuilder) Status(value interface{}) *FollowUpChangeBuilder
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *FollowUpChangeBuilder) UpdatedAt(value time.Time) *FollowUpChangeBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 128

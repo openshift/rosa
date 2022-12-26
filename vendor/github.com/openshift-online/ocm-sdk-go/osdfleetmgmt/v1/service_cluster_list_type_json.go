@@ -63,7 +63,7 @@ func UnmarshalServiceClusterList(source interface{}) (items []*ServiceCluster, e
 	return
 }
 
-// readServiceClusterList reads list of values of the ''service_cluster' type from
+// readServiceClusterList reads list of values of the ”service_cluster' type from
 // the given iterator.
 func readServiceClusterList(iterator *jsoniter.Iterator) []*ServiceCluster {
 	list := []*ServiceCluster{}

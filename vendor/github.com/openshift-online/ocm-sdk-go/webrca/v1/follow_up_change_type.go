@@ -154,8 +154,6 @@ func (o *FollowUpChange) GetDeletedAt() (value time.Time, ok bool) {
 
 // FollowUp returns the value of the 'follow_up' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *FollowUpChange) FollowUp() *FollowUp {
 	if o != nil && o.bitmap_&32 != 0 {
 		return o.followUp
@@ -165,8 +163,6 @@ func (o *FollowUpChange) FollowUp() *FollowUp {
 
 // GetFollowUp returns the value of the 'follow_up' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *FollowUpChange) GetFollowUp() (value *FollowUp, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
@@ -177,8 +173,6 @@ func (o *FollowUpChange) GetFollowUp() (value *FollowUp, ok bool) {
 
 // Status returns the value of the 'status' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *FollowUpChange) Status() interface{} {
 	if o != nil && o.bitmap_&64 != 0 {
 		return o.status
@@ -188,8 +182,6 @@ func (o *FollowUpChange) Status() interface{} {
 
 // GetStatus returns the value of the 'status' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *FollowUpChange) GetStatus() (value interface{}, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {

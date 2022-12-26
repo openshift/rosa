@@ -63,7 +63,7 @@ func UnmarshalAddonVersionList(source interface{}) (items []*AddonVersion, err e
 	return
 }
 
-// readAddonVersionList reads list of values of the ''addon_version' type from
+// readAddonVersionList reads list of values of the ”addon_version' type from
 // the given iterator.
 func readAddonVersionList(iterator *jsoniter.Iterator) []*AddonVersion {
 	list := []*AddonVersion{}

@@ -63,7 +63,7 @@ func UnmarshalEnvironmentList(source interface{}) (items []*Environment, err err
 	return
 }
 
-// readEnvironmentList reads list of values of the ''environment' type from
+// readEnvironmentList reads list of values of the ”environment' type from
 // the given iterator.
 func readEnvironmentList(iterator *jsoniter.Iterator) []*Environment {
 	list := []*Environment{}

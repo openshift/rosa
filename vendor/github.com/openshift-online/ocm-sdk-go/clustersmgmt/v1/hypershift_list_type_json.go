@@ -63,7 +63,7 @@ func UnmarshalHypershiftList(source interface{}) (items []*Hypershift, err error
 	return
 }
 
-// readHypershiftList reads list of values of the ''hypershift' type from
+// readHypershiftList reads list of values of the ”hypershift' type from
 // the given iterator.
 func readHypershiftList(iterator *jsoniter.Iterator) []*Hypershift {
 	list := []*Hypershift{}

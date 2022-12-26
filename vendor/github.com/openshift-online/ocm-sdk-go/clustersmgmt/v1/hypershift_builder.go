@@ -38,8 +38,6 @@ func (b *HypershiftBuilder) Empty() bool {
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
-//
-//
 func (b *HypershiftBuilder) Enabled(value bool) *HypershiftBuilder {
 	b.enabled = value
 	b.bitmap_ |= 1

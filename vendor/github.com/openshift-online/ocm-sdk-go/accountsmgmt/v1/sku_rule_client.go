@@ -158,16 +158,12 @@ func (r *SkuRulePollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *SkuRulePollResponse) Body() *SkuRule {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *SkuRulePollResponse) GetBody() (value *SkuRule, ok bool) {
 	return r.response.GetBody()
 }
@@ -293,8 +289,6 @@ func (r *SkuRuleGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *SkuRuleGetResponse) Body() *SkuRule {
 	if r == nil {
 		return nil
@@ -304,8 +298,6 @@ func (r *SkuRuleGetResponse) Body() *SkuRule {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *SkuRuleGetResponse) GetBody() (value *SkuRule, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

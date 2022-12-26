@@ -63,7 +63,7 @@ func UnmarshalCredentialRequestList(source interface{}) (items []*CredentialRequ
 	return
 }
 
-// readCredentialRequestList reads list of values of the ''credential_request' type from
+// readCredentialRequestList reads list of values of the ”credential_request' type from
 // the given iterator.
 func readCredentialRequestList(iterator *jsoniter.Iterator) []*CredentialRequest {
 	list := []*CredentialRequest{}

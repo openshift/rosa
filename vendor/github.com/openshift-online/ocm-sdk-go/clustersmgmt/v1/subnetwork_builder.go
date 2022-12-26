@@ -41,8 +41,6 @@ func (b *SubnetworkBuilder) Empty() bool {
 }
 
 // AvailabilityZone sets the value of the 'availability_zone' attribute to the given value.
-//
-//
 func (b *SubnetworkBuilder) AvailabilityZone(value string) *SubnetworkBuilder {
 	b.availabilityZone = value
 	b.bitmap_ |= 1
@@ -50,8 +48,6 @@ func (b *SubnetworkBuilder) AvailabilityZone(value string) *SubnetworkBuilder {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *SubnetworkBuilder) Name(value string) *SubnetworkBuilder {
 	b.name = value
 	b.bitmap_ |= 2
@@ -59,8 +55,6 @@ func (b *SubnetworkBuilder) Name(value string) *SubnetworkBuilder {
 }
 
 // Public sets the value of the 'public' attribute to the given value.
-//
-//
 func (b *SubnetworkBuilder) Public(value bool) *SubnetworkBuilder {
 	b.public = value
 	b.bitmap_ |= 4
@@ -68,8 +62,6 @@ func (b *SubnetworkBuilder) Public(value bool) *SubnetworkBuilder {
 }
 
 // SubnetID sets the value of the 'subnet_ID' attribute to the given value.
-//
-//
 func (b *SubnetworkBuilder) SubnetID(value string) *SubnetworkBuilder {
 	b.subnetID = value
 	b.bitmap_ |= 8

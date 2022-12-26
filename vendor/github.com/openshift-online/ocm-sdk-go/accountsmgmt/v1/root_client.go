@@ -132,6 +132,16 @@ func (c *Client) CurrentAccount() *CurrentAccountClient {
 	)
 }
 
+// DeletedSubscriptions returns the target 'deleted_subscriptions' resource.
+//
+// Reference to the resource that manages the collection of deleted subscriptions.
+func (c *Client) DeletedSubscriptions() *DeletedSubscriptionsClient {
+	return NewDeletedSubscriptionsClient(
+		c.transport,
+		path.Join(c.path, "deleted_subscriptions"),
+	)
+}
+
 // FeatureToggles returns the target 'feature_toggles' resource.
 //
 // Reference to the resource that manages feature toggles.

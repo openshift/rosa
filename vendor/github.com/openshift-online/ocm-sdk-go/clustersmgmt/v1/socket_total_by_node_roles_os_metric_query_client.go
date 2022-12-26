@@ -158,16 +158,12 @@ func (r *SocketTotalByNodeRolesOSMetricQueryPollResponse) Error() *errors.Error 
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *SocketTotalByNodeRolesOSMetricQueryPollResponse) Body() *SocketTotalsNodeRoleOSMetricNode {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *SocketTotalByNodeRolesOSMetricQueryPollResponse) GetBody() (value *SocketTotalsNodeRoleOSMetricNode, ok bool) {
 	return r.response.GetBody()
 }
@@ -293,8 +289,6 @@ func (r *SocketTotalByNodeRolesOSMetricQueryGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *SocketTotalByNodeRolesOSMetricQueryGetResponse) Body() *SocketTotalsNodeRoleOSMetricNode {
 	if r == nil {
 		return nil
@@ -304,8 +298,6 @@ func (r *SocketTotalByNodeRolesOSMetricQueryGetResponse) Body() *SocketTotalsNod
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *SocketTotalByNodeRolesOSMetricQueryGetResponse) GetBody() (value *SocketTotalsNodeRoleOSMetricNode, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

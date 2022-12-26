@@ -40,8 +40,6 @@ func (b *TemplateParameterBuilder) Empty() bool {
 }
 
 // Content sets the value of the 'content' attribute to the given value.
-//
-//
 func (b *TemplateParameterBuilder) Content(value string) *TemplateParameterBuilder {
 	b.content = value
 	b.bitmap_ |= 1
@@ -49,8 +47,6 @@ func (b *TemplateParameterBuilder) Content(value string) *TemplateParameterBuild
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *TemplateParameterBuilder) Name(value string) *TemplateParameterBuilder {
 	b.name = value
 	b.bitmap_ |= 2

@@ -63,7 +63,7 @@ func UnmarshalAddonConfigList(source interface{}) (items []*AddonConfig, err err
 	return
 }
 
-// readAddonConfigList reads list of values of the ''addon_config' type from
+// readAddonConfigList reads list of values of the ”addon_config' type from
 // the given iterator.
 func readAddonConfigList(iterator *jsoniter.Iterator) []*AddonConfig {
 	list := []*AddonConfig{}

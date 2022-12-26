@@ -63,7 +63,7 @@ func UnmarshalIncidentList(source interface{}) (items []*Incident, err error) {
 	return
 }
 
-// readIncidentList reads list of values of the ''incident' type from
+// readIncidentList reads list of values of the ”incident' type from
 // the given iterator.
 func readIncidentList(iterator *jsoniter.Iterator) []*Incident {
 	list := []*Incident{}

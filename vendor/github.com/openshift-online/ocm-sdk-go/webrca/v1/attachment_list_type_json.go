@@ -63,7 +63,7 @@ func UnmarshalAttachmentList(source interface{}) (items []*Attachment, err error
 	return
 }
 
-// readAttachmentList reads list of values of the ''attachment' type from
+// readAttachmentList reads list of values of the ”attachment' type from
 // the given iterator.
 func readAttachmentList(iterator *jsoniter.Iterator) []*Attachment {
 	list := []*Attachment{}

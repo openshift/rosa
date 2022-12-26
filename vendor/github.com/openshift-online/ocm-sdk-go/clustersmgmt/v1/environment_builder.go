@@ -44,8 +44,6 @@ func (b *EnvironmentBuilder) Empty() bool {
 }
 
 // LastLimitedSupportCheck sets the value of the 'last_limited_support_check' attribute to the given value.
-//
-//
 func (b *EnvironmentBuilder) LastLimitedSupportCheck(value time.Time) *EnvironmentBuilder {
 	b.lastLimitedSupportCheck = value
 	b.bitmap_ |= 1
@@ -53,8 +51,6 @@ func (b *EnvironmentBuilder) LastLimitedSupportCheck(value time.Time) *Environme
 }
 
 // LastUpgradeAvailableCheck sets the value of the 'last_upgrade_available_check' attribute to the given value.
-//
-//
 func (b *EnvironmentBuilder) LastUpgradeAvailableCheck(value time.Time) *EnvironmentBuilder {
 	b.lastUpgradeAvailableCheck = value
 	b.bitmap_ |= 2
@@ -62,8 +58,6 @@ func (b *EnvironmentBuilder) LastUpgradeAvailableCheck(value time.Time) *Environ
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *EnvironmentBuilder) Name(value string) *EnvironmentBuilder {
 	b.name = value
 	b.bitmap_ |= 4

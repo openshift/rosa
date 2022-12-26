@@ -190,16 +190,12 @@ func (r *IdentityProviderPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *IdentityProviderPollResponse) Body() *IdentityProvider {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *IdentityProviderPollResponse) GetBody() (value *IdentityProvider, ok bool) {
 	return r.response.GetBody()
 }
@@ -432,8 +428,6 @@ func (r *IdentityProviderGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *IdentityProviderGetResponse) Body() *IdentityProvider {
 	if r == nil {
 		return nil
@@ -443,8 +437,6 @@ func (r *IdentityProviderGetResponse) Body() *IdentityProvider {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *IdentityProviderGetResponse) GetBody() (value *IdentityProvider, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -482,8 +474,6 @@ func (r *IdentityProviderUpdateRequest) Impersonate(user string) *IdentityProvid
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *IdentityProviderUpdateRequest) Body(value *IdentityProvider) *IdentityProviderUpdateRequest {
 	r.body = value
 	return r
@@ -581,8 +571,6 @@ func (r *IdentityProviderUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *IdentityProviderUpdateResponse) Body() *IdentityProvider {
 	if r == nil {
 		return nil
@@ -592,8 +580,6 @@ func (r *IdentityProviderUpdateResponse) Body() *IdentityProvider {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *IdentityProviderUpdateResponse) GetBody() (value *IdentityProvider, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

@@ -63,7 +63,7 @@ func UnmarshalManagedServiceList(source interface{}) (items []*ManagedService, e
 	return
 }
 
-// readManagedServiceList reads list of values of the ''managed_service' type from
+// readManagedServiceList reads list of values of the ”managed_service' type from
 // the given iterator.
 func readManagedServiceList(iterator *jsoniter.Iterator) []*ManagedService {
 	list := []*ManagedService{}

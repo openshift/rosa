@@ -51,8 +51,6 @@ func NewNotificationClient(transport http.RoundTripper, path string) *Notificati
 }
 
 // Delete creates a request for the 'delete' method.
-//
-//
 func (c *NotificationClient) Delete() *NotificationDeleteRequest {
 	return &NotificationDeleteRequest{
 		transport: c.transport,
@@ -61,8 +59,6 @@ func (c *NotificationClient) Delete() *NotificationDeleteRequest {
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *NotificationClient) Get() *NotificationGetRequest {
 	return &NotificationGetRequest{
 		transport: c.transport,
@@ -71,8 +67,6 @@ func (c *NotificationClient) Get() *NotificationGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *NotificationClient) Update() *NotificationUpdateRequest {
 	return &NotificationUpdateRequest{
 		transport: c.transport,
@@ -179,16 +173,12 @@ func (r *NotificationPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *NotificationPollResponse) Body() *Notification {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NotificationPollResponse) GetBody() (value *Notification, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +411,6 @@ func (r *NotificationGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *NotificationGetResponse) Body() *Notification {
 	if r == nil {
 		return nil
@@ -432,8 +420,6 @@ func (r *NotificationGetResponse) Body() *Notification {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NotificationGetResponse) GetBody() (value *Notification, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +457,6 @@ func (r *NotificationUpdateRequest) Impersonate(user string) *NotificationUpdate
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *NotificationUpdateRequest) Body(value *Notification) *NotificationUpdateRequest {
 	r.body = value
 	return r
@@ -570,8 +554,6 @@ func (r *NotificationUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *NotificationUpdateResponse) Body() *Notification {
 	if r == nil {
 		return nil
@@ -581,8 +563,6 @@ func (r *NotificationUpdateResponse) Body() *Notification {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NotificationUpdateResponse) GetBody() (value *Notification, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

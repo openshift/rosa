@@ -99,8 +99,6 @@ func (r *PullSecretsPostRequest) Impersonate(user string) *PullSecretsPostReques
 }
 
 // Request sets the value of the 'request' parameter.
-//
-//
 func (r *PullSecretsPostRequest) Request(value *PullSecretsRequest) *PullSecretsPostRequest {
 	r.request = value
 	return r
@@ -198,8 +196,6 @@ func (r *PullSecretsPostResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *PullSecretsPostResponse) Body() *AccessToken {
 	if r == nil {
 		return nil
@@ -209,8 +205,6 @@ func (r *PullSecretsPostResponse) Body() *AccessToken {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PullSecretsPostResponse) GetBody() (value *AccessToken, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

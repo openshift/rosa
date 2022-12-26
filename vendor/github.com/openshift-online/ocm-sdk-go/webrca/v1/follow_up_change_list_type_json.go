@@ -63,7 +63,7 @@ func UnmarshalFollowUpChangeList(source interface{}) (items []*FollowUpChange, e
 	return
 }
 
-// readFollowUpChangeList reads list of values of the ''follow_up_change' type from
+// readFollowUpChangeList reads list of values of the ”follow_up_change' type from
 // the given iterator.
 func readFollowUpChangeList(iterator *jsoniter.Iterator) []*FollowUpChange {
 	list := []*FollowUpChange{}
