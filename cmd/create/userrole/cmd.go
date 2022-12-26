@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	linkuser "github.com/openshift/rosa/cmd/link/userrole"
@@ -280,14 +281,14 @@ func buildCommands(prefix string, path string, userName string,
 
 func createRoles(r *rosa.Runtime,
 	prefix string, path string, userName string, env string, accountID string, permissionsBoundary string,
-	policies map[string]string) (string, error) {
+	policies map[string]*cmv1.AWSSTSPolicy) (string, error) {
 	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
 	}
 
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
-	policyDetail := policies[filename]
+	policyDetail := aws.GetSTSPolicyDetails(policies, filename)
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":      aws.GetPartition(),
 		"aws_account_id": aws.GetJumpAccount(env),
@@ -319,9 +320,9 @@ func createRoles(r *rosa.Runtime,
 }
 
 func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID string,
-	policies map[string]string) error {
+	policies map[string]*cmv1.AWSSTSPolicy) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
-	policyDetail := policies[filename]
+	policyDetail := aws.GetSTSPolicyDetails(policies, filename)
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":      aws.GetPartition(),
 		"aws_account_id": aws.GetJumpAccount(env),

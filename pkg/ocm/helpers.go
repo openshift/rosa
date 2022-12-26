@@ -503,11 +503,11 @@ func CheckSupportedVersion(clusterVersion string, operatorVersion string) (bool,
 	return v1.GreaterThanOrEqual(v2), nil
 }
 
-func (c *Client) GetPolicies(policyType string) (map[string]string, error) {
+func (c *Client) GetPolicies(policyType string) (map[string]*cmv1.AWSSTSPolicy, error) {
 
 	query := fmt.Sprintf("policy_type = '%s'", policyType)
 
-	m := make(map[string]string)
+	m := make(map[string]*cmv1.AWSSTSPolicy)
 
 	stmt := c.ocm.ClustersMgmt().V1().AWSInquiries().STSPolicies().List()
 	if policyType != "" {
@@ -518,7 +518,7 @@ func (c *Client) GetPolicies(policyType string) (map[string]string, error) {
 		return m, handleErr(accountRolePoliciesResponse.Error(), err)
 	}
 	accountRolePoliciesResponse.Items().Each(func(awsPolicy *cmv1.AWSSTSPolicy) bool {
-		m[awsPolicy.ID()] = awsPolicy.Details()
+		m[awsPolicy.ID()] = awsPolicy
 		return true
 	})
 	return m, nil

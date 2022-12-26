@@ -29,7 +29,7 @@ func BuildMissingOperatorRoleCommand(
 	cluster *cmv1.Cluster,
 	accountID string,
 	r *rosa.Runtime,
-	policies map[string]string,
+	policies map[string]*cmv1.AWSSTSPolicy,
 	unifiedPath string,
 	operatorRolePolicyPrefix string,
 ) (string, error) {
@@ -43,7 +43,7 @@ func BuildMissingOperatorRoleCommand(
 			operator.Name(),
 			unifiedPath,
 		)
-		policyDetails := policies["operator_iam_role_policy"]
+		policyDetails := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return "", err

@@ -258,8 +258,9 @@ func handleModeFlag(cmd *cobra.Command, mode string, err error,
 }
 
 func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
-	prefix string, isAccountRoleUpgradeNeed bool, policies map[string]string, env string, defaultPolicyVersion string,
-	credRequests map[string]*cmv1.STSOperator, cluster *cmv1.Cluster, policyPath string) error {
+	prefix string, isAccountRoleUpgradeNeed bool, policies map[string]*cmv1.AWSSTSPolicy, env string,
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
+	policyPath string) error {
 	switch mode {
 	case aws.ModeAuto:
 		if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", defaultPolicyVersion) {
@@ -305,7 +306,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 
 func createOperatorRole(
 	mode string, r *rosa.Runtime, cluster *cmv1.Cluster, prefix string,
-	missingRoles map[string]*cmv1.STSOperator, policies map[string]string, unifiedPath string) error {
+	missingRoles map[string]*cmv1.STSOperator, policies map[string]*cmv1.AWSSTSPolicy, unifiedPath string) error {
 	accountID := r.Creator.AccountID
 	switch mode {
 	case aws.ModeAuto:
@@ -333,14 +334,14 @@ func createOperatorRole(
 }
 
 func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
-	accountID string, prefix string, r *rosa.Runtime, policies map[string]string,
+	accountID string, prefix string, r *rosa.Runtime, policies map[string]*cmv1.AWSSTSPolicy,
 	unifiedPath string) error {
 	for _, operator := range missingRoles {
 		roleName := roles.GetOperatorRoleName(cluster, operator)
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 			continue
 		}
-		policyDetails := policies["operator_iam_role_policy"]
+		policyDetails := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
 
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), unifiedPath)
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
