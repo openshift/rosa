@@ -570,12 +570,13 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 }
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
-	generateOperatorRolePolicies bool, policies map[string]string, credRequests map[string]*cmv1.STSOperator) error {
+	generateOperatorRolePolicies bool, policies map[string]*cmv1.AWSSTSPolicy,
+	credRequests map[string]*cmv1.STSOperator) error {
 	if generateAccountRolePolicies {
 		for file := range AccountRoles {
 			//Get trust policy
 			filename := fmt.Sprintf("sts_%s_trust_policy", file)
-			policyDetail := policies[filename]
+			policyDetail := GetSTSPolicyDetails(policies, filename)
 			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
 				"partition":      GetPartition(),
 				"aws_account_id": GetJumpAccount(env),
@@ -589,7 +590,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			}
 			//Get the permission policy
 			filename = fmt.Sprintf("sts_%s_permission_policy", file)
-			policyDetail = policies[filename]
+			policyDetail = GetSTSPolicyDetails(policies, filename)
 			if policyDetail == "" {
 				continue
 			}
@@ -605,7 +606,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 	if generateOperatorRolePolicies {
 		for credrequest := range credRequests {
 			filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-			policyDetail := policies[filename]
+			policyDetail := GetSTSPolicyDetails(policies, filename)
 			//In case any missing policy we dont want to block the user.This might not happen
 			if policyDetail == "" {
 				continue
@@ -698,7 +699,7 @@ func UpgradeOperatorRolePolicies(
 	awsClient Client,
 	accountID string,
 	prefix string,
-	policies map[string]string,
+	policies map[string]*cmv1.AWSSTSPolicy,
 	defaultPolicyVersion string,
 	credRequests map[string]*cmv1.STSOperator,
 	path string,
@@ -706,7 +707,7 @@ func UpgradeOperatorRolePolicies(
 	for credrequest, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-		policyDetails := policies[filename]
+		policyDetails := GetSTSPolicyDetails(policies, filename)
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion:  defaultPolicyVersion,
@@ -760,5 +761,14 @@ func FindOperatorRoleBySTSOperator(operatorRoles []*cmv1.OperatorIAMRole, operat
 			return operatorRole.RoleARN()
 		}
 	}
+	return ""
+}
+
+func GetSTSPolicyDetails(policies map[string]*cmv1.AWSSTSPolicy, key string) string {
+	policyDetails, ok := policies[key]
+	if ok {
+		return policyDetails.Details()
+	}
+
 	return ""
 }

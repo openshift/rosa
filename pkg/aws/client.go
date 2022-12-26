@@ -89,7 +89,7 @@ type Client interface {
 	GetAWSAccessKeys() (*AccessKey, error)
 	GetLocalAWSAccessKeys() (*AccessKey, error)
 	GetCreator() (*Creator, error)
-	ValidateSCP(*string, map[string]string) (bool, error)
+	ValidateSCP(*string, map[string]*cmv1.AWSSTSPolicy) (bool, error)
 	GetSubnetIDs() ([]*ec2.Subnet, error)
 	GetSubnetAvailabilityZone(subnetID string) (string, error)
 	GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error)

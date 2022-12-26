@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/iam"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 // SimulateParams captures any additional details that should be used
@@ -14,8 +15,8 @@ type SimulateParams struct {
 }
 
 // ValidateSCP attempts to validate SCP policies by ensuring we have the correct permissions
-func (c *awsClient) ValidateSCP(target *string, policies map[string]string) (bool, error) {
-	policyDetails := policies["osd_scp_policy"]
+func (c *awsClient) ValidateSCP(target *string, policies map[string]*cmv1.AWSSTSPolicy) (bool, error) {
+	policyDetails := GetSTSPolicyDetails(policies, "osd_scp_policy")
 
 	sParams := &SimulateParams{
 		Region: *c.awsSession.Config.Region,

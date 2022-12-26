@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -226,7 +227,7 @@ func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, er
 }
 
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
-	policies map[string]string, policyVersion string, policyPath string, isVersionChosen bool) error {
+	policies map[string]*cmv1.AWSSTSPolicy, policyVersion string, policyPath string, isVersionChosen bool) error {
 	for file, role := range aws.AccountRoles {
 		roleName := aws.GetRoleName(prefix, role.Name)
 		promptString := fmt.Sprintf("Upgrade the '%s' role policy latest version ?", roleName)
@@ -239,7 +240,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
 		policyARN := aws.GetPolicyARN(accountID, roleName, policyPath)
 
-		policyDetails := policies[filename]
+		policyDetails := aws.GetSTSPolicyDetails(policies, filename)
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			policyVersion, map[string]string{
 				tags.OpenShiftVersion: policyVersion,

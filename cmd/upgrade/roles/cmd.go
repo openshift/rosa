@@ -495,7 +495,7 @@ func upgradeAccountRolePoliciesFromCluster(
 	awsClient aws.Client,
 	cluster *v1.Cluster,
 	accountID string,
-	policies map[string]string,
+	policies map[string]*v1.AWSSTSPolicy,
 	policyVersion string,
 	isVersionChosen bool,
 ) error {
@@ -538,7 +538,7 @@ func upgradeAccountRolePoliciesFromCluster(
 			return err
 		}
 
-		policyDetails := policies[filename]
+		policyDetails := aws.GetSTSPolicyDetails(policies, filename)
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetails,
 			policyVersion, map[string]string{
 				tags.OpenShiftVersion: policyVersion,
@@ -652,7 +652,7 @@ func upgradeOperatorPolicies(
 	mode string,
 	r *rosa.Runtime,
 	isAccountRoleUpgradeNeed bool,
-	policies map[string]string,
+	policies map[string]*v1.AWSSTSPolicy,
 	env string,
 	defaultPolicyVersion string,
 	credRequests map[string]*v1.STSOperator,
@@ -730,7 +730,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 	reporter *rprtr.Object,
 	awsClient aws.Client,
 	accountID string,
-	policies map[string]string,
+	policies map[string]*v1.AWSSTSPolicy,
 	defaultPolicyVersion string,
 	credRequests map[string]*v1.STSOperator,
 	operatorRoles []*v1.OperatorIAMRole,
@@ -776,7 +776,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 			}
 		}
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-		policyDetails := policies[filename]
+		policyDetails := aws.GetSTSPolicyDetails(policies, filename)
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion:  defaultPolicyVersion,
@@ -955,7 +955,7 @@ func createOperatorRole(
 	r *rosa.Runtime,
 	cluster *v1.Cluster,
 	missingRoles map[string]*v1.STSOperator,
-	policies map[string]string,
+	policies map[string]*v1.AWSSTSPolicy,
 	unifiedPath string,
 	operatorRolePolicyPrefix string,
 ) error {
@@ -1010,7 +1010,7 @@ func upgradeMissingOperatorRole(
 	cluster *v1.Cluster,
 	accountID string,
 	r *rosa.Runtime,
-	policies map[string]string,
+	policies map[string]*v1.AWSSTSPolicy,
 	unifiedPath string,
 	operatorRolePolicyPrefix string,
 ) error {
@@ -1022,7 +1022,7 @@ func upgradeMissingOperatorRole(
 			}
 			continue
 		}
-		policyDetails := policies["operator_iam_role_policy"]
+		policyDetails := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
 
 		policyARN := aws.GetOperatorPolicyARN(
 			accountID,

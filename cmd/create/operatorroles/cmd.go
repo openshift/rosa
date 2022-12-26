@@ -276,7 +276,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 func createRoles(r *rosa.Runtime,
 	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountRoleVersion string, policies map[string]string,
+	cluster *cmv1.Cluster, accountRoleVersion string, policies map[string]*cmv1.AWSSTSPolicy,
 	defaultVersion string, credRequests map[string]*cmv1.STSOperator) error {
 	for credrequest, operator := range credRequests {
 		ver := cluster.Version()
@@ -305,7 +305,7 @@ func createRoles(r *rosa.Runtime,
 		policyARN := aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
 			operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-		policyDetails := policies[filename]
+		policyDetails := aws.GetSTSPolicyDetails(policies, filename)
 
 		policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
 			defaultVersion, map[string]string{
@@ -318,7 +318,7 @@ func createRoles(r *rosa.Runtime,
 		if err != nil {
 			return err
 		}
-		policyDetails = policies["operator_iam_role_policy"]
+		policyDetails = aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
 
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetails)
 		if err != nil {
@@ -352,7 +352,7 @@ func createRoles(r *rosa.Runtime,
 
 func buildCommands(r *rosa.Runtime, env string,
 	prefix string, permissionsBoundary string, defaultPolicyVersion string, cluster *cmv1.Cluster,
-	policies map[string]string, credRequests map[string]*cmv1.STSOperator) (string, error) {
+	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator) (string, error) {
 
 	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
 		true, policies, credRequests)
@@ -402,7 +402,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			commands = append(commands, createPolicy)
 		}
 
-		policyDetail := policies["operator_iam_role_policy"]
+		policyDetail := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetail)
 		if err != nil {
 			return "", err

@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/login"
@@ -363,7 +364,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 }
 
 func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env string,
-	policies map[string]string, defaultPolicyVersion string,
+	policies map[string]*cmv1.AWSSTSPolicy, defaultPolicyVersion string,
 	path string) error {
 
 	for file, role := range aws.AccountRoles {
@@ -374,7 +375,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 		}
 
 		filename := fmt.Sprintf("sts_%s_trust_policy", file)
-		policyDetail := policies[filename]
+		policyDetail := aws.GetSTSPolicyDetails(policies, filename)
 
 		policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 			"partition":      aws.GetPartition(),
@@ -394,7 +395,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 		r.Reporter.Infof("Created role '%s' with ARN '%s'", accRoleName, roleARN)
 
 		filename = fmt.Sprintf("sts_%s_permission_policy", file)
-		policyDetail = policies[filename]
+		policyDetail = aws.GetSTSPolicyDetails(policies, filename)
 
 		r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
 		policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetail,
