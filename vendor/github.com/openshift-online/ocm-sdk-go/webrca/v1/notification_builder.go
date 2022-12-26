@@ -70,8 +70,6 @@ func (b *NotificationBuilder) Empty() bool {
 }
 
 // Checked sets the value of the 'checked' attribute to the given value.
-//
-//
 func (b *NotificationBuilder) Checked(value bool) *NotificationBuilder {
 	b.checked = value
 	b.bitmap_ |= 8
@@ -79,8 +77,6 @@ func (b *NotificationBuilder) Checked(value bool) *NotificationBuilder {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *NotificationBuilder) CreatedAt(value time.Time) *NotificationBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 16
@@ -88,8 +84,6 @@ func (b *NotificationBuilder) CreatedAt(value time.Time) *NotificationBuilder {
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *NotificationBuilder) DeletedAt(value time.Time) *NotificationBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 32
@@ -110,8 +104,6 @@ func (b *NotificationBuilder) Incident(value *IncidentBuilder) *NotificationBuil
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *NotificationBuilder) Name(value string) *NotificationBuilder {
 	b.name = value
 	b.bitmap_ |= 128
@@ -119,8 +111,6 @@ func (b *NotificationBuilder) Name(value string) *NotificationBuilder {
 }
 
 // Rank sets the value of the 'rank' attribute to the given value.
-//
-//
 func (b *NotificationBuilder) Rank(value int) *NotificationBuilder {
 	b.rank = value
 	b.bitmap_ |= 256
@@ -128,8 +118,6 @@ func (b *NotificationBuilder) Rank(value int) *NotificationBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *NotificationBuilder) UpdatedAt(value time.Time) *NotificationBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 512

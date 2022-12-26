@@ -61,8 +61,6 @@ func (c *ProvisionShardsClient) Add() *ProvisionShardsAddRequest {
 }
 
 // List creates a request for the 'list' method.
-//
-//
 func (c *ProvisionShardsClient) List() *ProvisionShardsListRequest {
 	return &ProvisionShardsListRequest{
 		transport: c.transport,

@@ -111,8 +111,6 @@ func (o *Attachment) Empty() bool {
 
 // ContentType returns the value of the 'content_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Attachment) ContentType() string {
 	if o != nil && o.bitmap_&8 != 0 {
 		return o.contentType
@@ -122,8 +120,6 @@ func (o *Attachment) ContentType() string {
 
 // GetContentType returns the value of the 'content_type' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Attachment) GetContentType() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
@@ -157,8 +153,6 @@ func (o *Attachment) GetCreatedAt() (value time.Time, ok bool) {
 
 // Creator returns the value of the 'creator' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Attachment) Creator() *User {
 	if o != nil && o.bitmap_&32 != 0 {
 		return o.creator
@@ -168,8 +162,6 @@ func (o *Attachment) Creator() *User {
 
 // GetCreator returns the value of the 'creator' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Attachment) GetCreator() (value *User, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
@@ -203,8 +195,6 @@ func (o *Attachment) GetDeletedAt() (value time.Time, ok bool) {
 
 // Event returns the value of the 'event' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Attachment) Event() *Event {
 	if o != nil && o.bitmap_&128 != 0 {
 		return o.event
@@ -214,8 +204,6 @@ func (o *Attachment) Event() *Event {
 
 // GetEvent returns the value of the 'event' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Attachment) GetEvent() (value *Event, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
@@ -226,8 +214,6 @@ func (o *Attachment) GetEvent() (value *Event, ok bool) {
 
 // FileSize returns the value of the 'file_size' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Attachment) FileSize() int {
 	if o != nil && o.bitmap_&256 != 0 {
 		return o.fileSize
@@ -237,8 +223,6 @@ func (o *Attachment) FileSize() int {
 
 // GetFileSize returns the value of the 'file_size' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Attachment) GetFileSize() (value int, ok bool) {
 	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
@@ -249,8 +233,6 @@ func (o *Attachment) GetFileSize() (value int, ok bool) {
 
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Attachment) Name() string {
 	if o != nil && o.bitmap_&512 != 0 {
 		return o.name
@@ -260,8 +242,6 @@ func (o *Attachment) Name() string {
 
 // GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Attachment) GetName() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {

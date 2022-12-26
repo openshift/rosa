@@ -63,7 +63,7 @@ func UnmarshalApplicationList(source interface{}) (items []*Application, err err
 	return
 }
 
-// readApplicationList reads list of values of the ''application' type from
+// readApplicationList reads list of values of the ”application' type from
 // the given iterator.
 func readApplicationList(iterator *jsoniter.Iterator) []*Application {
 	list := []*Application{}

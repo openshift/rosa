@@ -45,8 +45,6 @@ func (b *AWSBuilder) Empty() bool {
 }
 
 // KMSKeyArn sets the value of the 'KMS_key_arn' attribute to the given value.
-//
-//
 func (b *AWSBuilder) KMSKeyArn(value string) *AWSBuilder {
 	b.kmsKeyArn = value
 	b.bitmap_ |= 1
@@ -67,8 +65,6 @@ func (b *AWSBuilder) STS(value *STSBuilder) *AWSBuilder {
 }
 
 // AccessKeyID sets the value of the 'access_key_ID' attribute to the given value.
-//
-//
 func (b *AWSBuilder) AccessKeyID(value string) *AWSBuilder {
 	b.accessKeyID = value
 	b.bitmap_ |= 4
@@ -76,8 +72,6 @@ func (b *AWSBuilder) AccessKeyID(value string) *AWSBuilder {
 }
 
 // AccountID sets the value of the 'account_ID' attribute to the given value.
-//
-//
 func (b *AWSBuilder) AccountID(value string) *AWSBuilder {
 	b.accountID = value
 	b.bitmap_ |= 8
@@ -85,8 +79,6 @@ func (b *AWSBuilder) AccountID(value string) *AWSBuilder {
 }
 
 // PrivateLink sets the value of the 'private_link' attribute to the given value.
-//
-//
 func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 	b.privateLink = value
 	b.bitmap_ |= 16
@@ -94,8 +86,6 @@ func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 }
 
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
-//
-//
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	b.secretAccessKey = value
 	b.bitmap_ |= 32
@@ -103,8 +93,6 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 }
 
 // SubnetIDs sets the value of the 'subnet_IDs' attribute to the given values.
-//
-//
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
@@ -113,8 +101,6 @@ func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 }
 
 // Tags sets the value of the 'tags' attribute to the given value.
-//
-//
 func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	b.tags = value
 	if value != nil {

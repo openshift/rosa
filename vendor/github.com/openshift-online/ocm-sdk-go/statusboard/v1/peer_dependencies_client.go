@@ -51,8 +51,6 @@ func NewPeerDependenciesClient(transport http.RoundTripper, path string) *PeerDe
 }
 
 // Add creates a request for the 'add' method.
-//
-//
 func (c *PeerDependenciesClient) Add() *PeerDependenciesAddRequest {
 	return &PeerDependenciesAddRequest{
 		transport: c.transport,
@@ -71,8 +69,6 @@ func (c *PeerDependenciesClient) List() *PeerDependenciesListRequest {
 }
 
 // PeerDependency returns the target 'peer_dependency' resource for the given identifier.
-//
-//
 func (c *PeerDependenciesClient) PeerDependency(id string) *PeerDependencyClient {
 	return NewPeerDependencyClient(
 		c.transport,
@@ -109,8 +105,6 @@ func (r *PeerDependenciesAddRequest) Impersonate(user string) *PeerDependenciesA
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *PeerDependenciesAddRequest) Body(value *PeerDependency) *PeerDependenciesAddRequest {
 	r.body = value
 	return r
@@ -208,8 +202,6 @@ func (r *PeerDependenciesAddResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *PeerDependenciesAddResponse) Body() *PeerDependency {
 	if r == nil {
 		return nil
@@ -219,8 +211,6 @@ func (r *PeerDependenciesAddResponse) Body() *PeerDependency {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PeerDependenciesAddResponse) GetBody() (value *PeerDependency, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -260,24 +250,18 @@ func (r *PeerDependenciesListRequest) Impersonate(user string) *PeerDependencies
 }
 
 // OrderBy sets the value of the 'order_by' parameter.
-//
-//
 func (r *PeerDependenciesListRequest) OrderBy(value string) *PeerDependenciesListRequest {
 	r.orderBy = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *PeerDependenciesListRequest) Page(value int) *PeerDependenciesListRequest {
 	r.page = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *PeerDependenciesListRequest) Size(value int) *PeerDependenciesListRequest {
 	r.size = &value
 	return r
@@ -381,8 +365,6 @@ func (r *PeerDependenciesListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *PeerDependenciesListResponse) Items() *PeerDependencyList {
 	if r == nil {
 		return nil
@@ -392,8 +374,6 @@ func (r *PeerDependenciesListResponse) Items() *PeerDependencyList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PeerDependenciesListResponse) GetItems() (value *PeerDependencyList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -403,8 +383,6 @@ func (r *PeerDependenciesListResponse) GetItems() (value *PeerDependencyList, ok
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *PeerDependenciesListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -414,8 +392,6 @@ func (r *PeerDependenciesListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PeerDependenciesListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -425,8 +401,6 @@ func (r *PeerDependenciesListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *PeerDependenciesListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -436,8 +410,6 @@ func (r *PeerDependenciesListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PeerDependenciesListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -447,8 +419,6 @@ func (r *PeerDependenciesListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *PeerDependenciesListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -458,8 +428,6 @@ func (r *PeerDependenciesListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *PeerDependenciesListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

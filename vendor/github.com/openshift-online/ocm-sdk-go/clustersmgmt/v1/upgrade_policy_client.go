@@ -190,16 +190,12 @@ func (r *UpgradePolicyPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *UpgradePolicyPollResponse) Body() *UpgradePolicy {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *UpgradePolicyPollResponse) GetBody() (value *UpgradePolicy, ok bool) {
 	return r.response.GetBody()
 }
@@ -432,8 +428,6 @@ func (r *UpgradePolicyGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *UpgradePolicyGetResponse) Body() *UpgradePolicy {
 	if r == nil {
 		return nil
@@ -443,8 +437,6 @@ func (r *UpgradePolicyGetResponse) Body() *UpgradePolicy {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *UpgradePolicyGetResponse) GetBody() (value *UpgradePolicy, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -482,8 +474,6 @@ func (r *UpgradePolicyUpdateRequest) Impersonate(user string) *UpgradePolicyUpda
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *UpgradePolicyUpdateRequest) Body(value *UpgradePolicy) *UpgradePolicyUpdateRequest {
 	r.body = value
 	return r
@@ -581,8 +571,6 @@ func (r *UpgradePolicyUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *UpgradePolicyUpdateResponse) Body() *UpgradePolicy {
 	if r == nil {
 		return nil
@@ -592,8 +580,6 @@ func (r *UpgradePolicyUpdateResponse) Body() *UpgradePolicy {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *UpgradePolicyUpdateResponse) GetBody() (value *UpgradePolicy, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

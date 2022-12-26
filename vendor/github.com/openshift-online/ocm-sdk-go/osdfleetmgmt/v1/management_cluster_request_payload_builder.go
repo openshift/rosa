@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
 // ManagementClusterRequestPayloadBuilder contains the data and logic needed to build 'management_cluster_request_payload' objects.
-//
-//
 type ManagementClusterRequestPayloadBuilder struct {
 	bitmap_                                                                    uint32
 	service_cluster_idService_cluster_idService_cluster_idService_cluster_idId string
@@ -38,8 +36,6 @@ func (b *ManagementClusterRequestPayloadBuilder) Empty() bool {
 }
 
 // Service_cluster_idService_cluster_idService_cluster_idService_cluster_idId sets the value of the 'service_cluster_id_service_cluster_id_service_cluster_id_service_cluster_id_id' attribute to the given value.
-//
-//
 func (b *ManagementClusterRequestPayloadBuilder) Service_cluster_idService_cluster_idService_cluster_idService_cluster_idId(value string) *ManagementClusterRequestPayloadBuilder {
 	b.service_cluster_idService_cluster_idService_cluster_idService_cluster_idId = value
 	b.bitmap_ |= 1

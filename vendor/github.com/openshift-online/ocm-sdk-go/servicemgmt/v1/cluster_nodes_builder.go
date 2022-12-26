@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/servicemgmt/v1
 
 // ClusterNodesBuilder contains the data and logic needed to build 'cluster_nodes' objects.
-//
-//
 type ClusterNodesBuilder struct {
 	bitmap_           uint32
 	availabilityZones []string
@@ -38,8 +36,6 @@ func (b *ClusterNodesBuilder) Empty() bool {
 }
 
 // AvailabilityZones sets the value of the 'availability_zones' attribute to the given values.
-//
-//
 func (b *ClusterNodesBuilder) AvailabilityZones(values ...string) *ClusterNodesBuilder {
 	b.availabilityZones = make([]string, len(values))
 	copy(b.availabilityZones, values)

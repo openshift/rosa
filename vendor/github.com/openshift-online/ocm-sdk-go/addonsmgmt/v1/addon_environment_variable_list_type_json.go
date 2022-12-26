@@ -63,7 +63,7 @@ func UnmarshalAddonEnvironmentVariableList(source interface{}) (items []*AddonEn
 	return
 }
 
-// readAddonEnvironmentVariableList reads list of values of the ''addon_environment_variable' type from
+// readAddonEnvironmentVariableList reads list of values of the ”addon_environment_variable' type from
 // the given iterator.
 func readAddonEnvironmentVariableList(iterator *jsoniter.Iterator) []*AddonEnvironmentVariable {
 	list := []*AddonEnvironmentVariable{}

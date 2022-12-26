@@ -39,8 +39,6 @@ func (b *EventBuilder) Empty() bool {
 }
 
 // Body sets the value of the 'body' attribute to the given value.
-//
-//
 func (b *EventBuilder) Body(value map[string]string) *EventBuilder {
 	b.body = value
 	if value != nil {
@@ -52,8 +50,6 @@ func (b *EventBuilder) Body(value map[string]string) *EventBuilder {
 }
 
 // Key sets the value of the 'key' attribute to the given value.
-//
-//
 func (b *EventBuilder) Key(value string) *EventBuilder {
 	b.key = value
 	b.bitmap_ |= 2

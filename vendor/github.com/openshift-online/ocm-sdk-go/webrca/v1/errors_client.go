@@ -60,8 +60,6 @@ func (c *ErrorsClient) List() *ErrorsListRequest {
 }
 
 // Error returns the target 'error' resource for the given identifier.
-//
-//
 func (c *ErrorsClient) Error(id string) *ErrorClient {
 	return NewErrorClient(
 		c.transport,
@@ -99,16 +97,12 @@ func (r *ErrorsListRequest) Impersonate(user string) *ErrorsListRequest {
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *ErrorsListRequest) Page(value int) *ErrorsListRequest {
 	r.page = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *ErrorsListRequest) Size(value int) *ErrorsListRequest {
 	r.size = &value
 	return r
@@ -209,8 +203,6 @@ func (r *ErrorsListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *ErrorsListResponse) Items() *ErrorList {
 	if r == nil {
 		return nil
@@ -220,8 +212,6 @@ func (r *ErrorsListResponse) Items() *ErrorList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ErrorsListResponse) GetItems() (value *ErrorList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -231,8 +221,6 @@ func (r *ErrorsListResponse) GetItems() (value *ErrorList, ok bool) {
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *ErrorsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -242,8 +230,6 @@ func (r *ErrorsListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ErrorsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -253,8 +239,6 @@ func (r *ErrorsListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *ErrorsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -264,8 +248,6 @@ func (r *ErrorsListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ErrorsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -275,8 +257,6 @@ func (r *ErrorsListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *ErrorsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -286,8 +266,6 @@ func (r *ErrorsListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ErrorsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

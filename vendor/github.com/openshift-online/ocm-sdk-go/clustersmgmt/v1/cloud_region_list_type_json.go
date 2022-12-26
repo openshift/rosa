@@ -63,7 +63,7 @@ func UnmarshalCloudRegionList(source interface{}) (items []*CloudRegion, err err
 	return
 }
 
-// readCloudRegionList reads list of values of the ''cloud_region' type from
+// readCloudRegionList reads list of values of the ”cloud_region' type from
 // the given iterator.
 func readCloudRegionList(iterator *jsoniter.Iterator) []*CloudRegion {
 	list := []*CloudRegion{}

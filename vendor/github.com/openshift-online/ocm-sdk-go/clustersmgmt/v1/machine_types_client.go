@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -56,6 +57,16 @@ func (c *MachineTypesClient) List() *MachineTypesListRequest {
 		transport: c.transport,
 		path:      c.path,
 	}
+}
+
+// MachineType returns the target 'machine_type' resource for the given identifier.
+//
+// Returns a reference to the service that manages an specific MachineType.
+func (c *MachineTypesClient) MachineType(id string) *MachineTypeClient {
+	return NewMachineTypeClient(
+		c.transport,
+		path.Join(c.path, id),
+	)
 }
 
 // MachineTypesListRequest is the request for the 'list' method.

@@ -63,7 +63,7 @@ func UnmarshalApplicationDependencyList(source interface{}) (items []*Applicatio
 	return
 }
 
-// readApplicationDependencyList reads list of values of the ''application_dependency' type from
+// readApplicationDependencyList reads list of values of the ”application_dependency' type from
 // the given iterator.
 func readApplicationDependencyList(iterator *jsoniter.Iterator) []*ApplicationDependency {
 	list := []*ApplicationDependency{}

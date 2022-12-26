@@ -59,3 +59,11 @@ func (c *Client) Addons() *AddonsClient {
 		path.Join(c.path, "addons"),
 	)
 }
+
+// Clusters returns the target 'clusters' resource.
+func (c *Client) Clusters() *ClustersClient {
+	return NewClustersClient(
+		c.transport,
+		path.Join(c.path, "clusters"),
+	)
+}

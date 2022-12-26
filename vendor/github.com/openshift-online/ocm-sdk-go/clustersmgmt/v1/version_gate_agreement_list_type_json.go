@@ -63,7 +63,7 @@ func UnmarshalVersionGateAgreementList(source interface{}) (items []*VersionGate
 	return
 }
 
-// readVersionGateAgreementList reads list of values of the ''version_gate_agreement' type from
+// readVersionGateAgreementList reads list of values of the ”version_gate_agreement' type from
 // the given iterator.
 func readVersionGateAgreementList(iterator *jsoniter.Iterator) []*VersionGateAgreement {
 	list := []*VersionGateAgreement{}

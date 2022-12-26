@@ -60,8 +60,6 @@ func (c *NotificationsClient) List() *NotificationsListRequest {
 }
 
 // Notification returns the target 'notification' resource for the given identifier.
-//
-//
 func (c *NotificationsClient) Notification(id string) *NotificationClient {
 	return NewNotificationClient(
 		c.transport,
@@ -100,24 +98,18 @@ func (r *NotificationsListRequest) Impersonate(user string) *NotificationsListRe
 }
 
 // Checked sets the value of the 'checked' parameter.
-//
-//
 func (r *NotificationsListRequest) Checked(value bool) *NotificationsListRequest {
 	r.checked = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *NotificationsListRequest) Page(value int) *NotificationsListRequest {
 	r.page = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *NotificationsListRequest) Size(value int) *NotificationsListRequest {
 	r.size = &value
 	return r
@@ -221,8 +213,6 @@ func (r *NotificationsListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *NotificationsListResponse) Items() *NotificationList {
 	if r == nil {
 		return nil
@@ -232,8 +222,6 @@ func (r *NotificationsListResponse) Items() *NotificationList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NotificationsListResponse) GetItems() (value *NotificationList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -243,8 +231,6 @@ func (r *NotificationsListResponse) GetItems() (value *NotificationList, ok bool
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *NotificationsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -254,8 +240,6 @@ func (r *NotificationsListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NotificationsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -265,8 +249,6 @@ func (r *NotificationsListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *NotificationsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -276,8 +258,6 @@ func (r *NotificationsListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NotificationsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -287,8 +267,6 @@ func (r *NotificationsListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *NotificationsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -298,8 +276,6 @@ func (r *NotificationsListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *NotificationsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

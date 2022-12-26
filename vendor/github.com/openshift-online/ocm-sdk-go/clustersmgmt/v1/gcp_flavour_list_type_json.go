@@ -63,7 +63,7 @@ func UnmarshalGCPFlavourList(source interface{}) (items []*GCPFlavour, err error
 	return
 }
 
-// readGCPFlavourList reads list of values of the ''GCP_flavour' type from
+// readGCPFlavourList reads list of values of the ”GCP_flavour' type from
 // the given iterator.
 func readGCPFlavourList(iterator *jsoniter.Iterator) []*GCPFlavour {
 	list := []*GCPFlavour{}

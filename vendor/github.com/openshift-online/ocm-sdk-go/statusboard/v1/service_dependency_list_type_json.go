@@ -63,7 +63,7 @@ func UnmarshalServiceDependencyList(source interface{}) (items []*ServiceDepende
 	return
 }
 
-// readServiceDependencyList reads list of values of the ''service_dependency' type from
+// readServiceDependencyList reads list of values of the ”service_dependency' type from
 // the given iterator.
 func readServiceDependencyList(iterator *jsoniter.Iterator) []*ServiceDependency {
 	list := []*ServiceDependency{}

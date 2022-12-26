@@ -61,8 +61,6 @@ func (b *ServerConfigBuilder) Empty() bool {
 }
 
 // Kubeconfig sets the value of the 'kubeconfig' attribute to the given value.
-//
-//
 func (b *ServerConfigBuilder) Kubeconfig(value string) *ServerConfigBuilder {
 	b.kubeconfig = value
 	b.bitmap_ |= 8
@@ -70,8 +68,6 @@ func (b *ServerConfigBuilder) Kubeconfig(value string) *ServerConfigBuilder {
 }
 
 // Server sets the value of the 'server' attribute to the given value.
-//
-//
 func (b *ServerConfigBuilder) Server(value string) *ServerConfigBuilder {
 	b.server = value
 	b.bitmap_ |= 16

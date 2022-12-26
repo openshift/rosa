@@ -40,8 +40,6 @@ func (b *ManagementClusterParentBuilder) Empty() bool {
 }
 
 // ClusterId sets the value of the 'cluster_id' attribute to the given value.
-//
-//
 func (b *ManagementClusterParentBuilder) ClusterId(value string) *ManagementClusterParentBuilder {
 	b.clusterId = value
 	b.bitmap_ |= 1
@@ -49,8 +47,6 @@ func (b *ManagementClusterParentBuilder) ClusterId(value string) *ManagementClus
 }
 
 // Href sets the value of the 'href' attribute to the given value.
-//
-//
 func (b *ManagementClusterParentBuilder) Href(value string) *ManagementClusterParentBuilder {
 	b.href = value
 	b.bitmap_ |= 2
@@ -58,8 +54,6 @@ func (b *ManagementClusterParentBuilder) Href(value string) *ManagementClusterPa
 }
 
 // Kind sets the value of the 'kind' attribute to the given value.
-//
-//
 func (b *ManagementClusterParentBuilder) Kind(value string) *ManagementClusterParentBuilder {
 	b.kind = value
 	b.bitmap_ |= 4

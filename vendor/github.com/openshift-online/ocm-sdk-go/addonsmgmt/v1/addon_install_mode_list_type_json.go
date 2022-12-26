@@ -63,7 +63,7 @@ func UnmarshalAddonInstallModeList(source interface{}) (items []AddonInstallMode
 	return
 }
 
-// readAddonInstallModeList reads list of values of the ''addon_install_mode' type from
+// readAddonInstallModeList reads list of values of the ”addon_install_mode' type from
 // the given iterator.
 func readAddonInstallModeList(iterator *jsoniter.Iterator) []AddonInstallMode {
 	list := []AddonInstallMode{}

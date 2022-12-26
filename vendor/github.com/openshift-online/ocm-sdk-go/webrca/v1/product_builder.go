@@ -68,8 +68,6 @@ func (b *ProductBuilder) Empty() bool {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *ProductBuilder) CreatedAt(value time.Time) *ProductBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 8
@@ -77,8 +75,6 @@ func (b *ProductBuilder) CreatedAt(value time.Time) *ProductBuilder {
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *ProductBuilder) DeletedAt(value time.Time) *ProductBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 16
@@ -86,8 +82,6 @@ func (b *ProductBuilder) DeletedAt(value time.Time) *ProductBuilder {
 }
 
 // ProductId sets the value of the 'product_id' attribute to the given value.
-//
-//
 func (b *ProductBuilder) ProductId(value string) *ProductBuilder {
 	b.productId = value
 	b.bitmap_ |= 32
@@ -95,8 +89,6 @@ func (b *ProductBuilder) ProductId(value string) *ProductBuilder {
 }
 
 // ProductName sets the value of the 'product_name' attribute to the given value.
-//
-//
 func (b *ProductBuilder) ProductName(value string) *ProductBuilder {
 	b.productName = value
 	b.bitmap_ |= 64
@@ -104,8 +96,6 @@ func (b *ProductBuilder) ProductName(value string) *ProductBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *ProductBuilder) UpdatedAt(value time.Time) *ProductBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 128

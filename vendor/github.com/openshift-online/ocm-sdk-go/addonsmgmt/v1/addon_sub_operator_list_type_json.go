@@ -63,7 +63,7 @@ func UnmarshalAddonSubOperatorList(source interface{}) (items []*AddonSubOperato
 	return
 }
 
-// readAddonSubOperatorList reads list of values of the ''addon_sub_operator' type from
+// readAddonSubOperatorList reads list of values of the ”addon_sub_operator' type from
 // the given iterator.
 func readAddonSubOperatorList(iterator *jsoniter.Iterator) []*AddonSubOperator {
 	list := []*AddonSubOperator{}

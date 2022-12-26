@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/servicemgmt/v1
 
 // StatefulObject represents the values of the 'stateful_object' type.
-//
-//
 type StatefulObject struct {
 	bitmap_ uint32
 	id      string
@@ -37,8 +35,6 @@ func (o *StatefulObject) Empty() bool {
 
 // ID returns the value of the 'ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *StatefulObject) ID() string {
 	if o != nil && o.bitmap_&1 != 0 {
 		return o.id
@@ -48,8 +44,6 @@ func (o *StatefulObject) ID() string {
 
 // GetID returns the value of the 'ID' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *StatefulObject) GetID() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
@@ -60,8 +54,6 @@ func (o *StatefulObject) GetID() (value string, ok bool) {
 
 // Href returns the value of the 'href' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *StatefulObject) Href() string {
 	if o != nil && o.bitmap_&2 != 0 {
 		return o.href
@@ -71,8 +63,6 @@ func (o *StatefulObject) Href() string {
 
 // GetHref returns the value of the 'href' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *StatefulObject) GetHref() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
@@ -83,8 +73,6 @@ func (o *StatefulObject) GetHref() (value string, ok bool) {
 
 // Kind returns the value of the 'kind' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *StatefulObject) Kind() string {
 	if o != nil && o.bitmap_&4 != 0 {
 		return o.kind
@@ -94,8 +82,6 @@ func (o *StatefulObject) Kind() string {
 
 // GetKind returns the value of the 'kind' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *StatefulObject) GetKind() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
@@ -106,8 +92,6 @@ func (o *StatefulObject) GetKind() (value string, ok bool) {
 
 // State returns the value of the 'state' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *StatefulObject) State() string {
 	if o != nil && o.bitmap_&8 != 0 {
 		return o.state
@@ -117,8 +101,6 @@ func (o *StatefulObject) State() string {
 
 // GetState returns the value of the 'state' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *StatefulObject) GetState() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {

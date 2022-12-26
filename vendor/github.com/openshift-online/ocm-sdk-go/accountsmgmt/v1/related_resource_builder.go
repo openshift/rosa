@@ -45,8 +45,6 @@ func (b *RelatedResourceBuilder) Empty() bool {
 }
 
 // BYOC sets the value of the 'BYOC' attribute to the given value.
-//
-//
 func (b *RelatedResourceBuilder) BYOC(value string) *RelatedResourceBuilder {
 	b.byoc = value
 	b.bitmap_ |= 1
@@ -54,8 +52,6 @@ func (b *RelatedResourceBuilder) BYOC(value string) *RelatedResourceBuilder {
 }
 
 // AvailabilityZoneType sets the value of the 'availability_zone_type' attribute to the given value.
-//
-//
 func (b *RelatedResourceBuilder) AvailabilityZoneType(value string) *RelatedResourceBuilder {
 	b.availabilityZoneType = value
 	b.bitmap_ |= 2
@@ -63,8 +59,6 @@ func (b *RelatedResourceBuilder) AvailabilityZoneType(value string) *RelatedReso
 }
 
 // BillingModel sets the value of the 'billing_model' attribute to the given value.
-//
-//
 func (b *RelatedResourceBuilder) BillingModel(value string) *RelatedResourceBuilder {
 	b.billingModel = value
 	b.bitmap_ |= 4
@@ -72,8 +66,6 @@ func (b *RelatedResourceBuilder) BillingModel(value string) *RelatedResourceBuil
 }
 
 // CloudProvider sets the value of the 'cloud_provider' attribute to the given value.
-//
-//
 func (b *RelatedResourceBuilder) CloudProvider(value string) *RelatedResourceBuilder {
 	b.cloudProvider = value
 	b.bitmap_ |= 8
@@ -81,8 +73,6 @@ func (b *RelatedResourceBuilder) CloudProvider(value string) *RelatedResourceBui
 }
 
 // Cost sets the value of the 'cost' attribute to the given value.
-//
-//
 func (b *RelatedResourceBuilder) Cost(value int) *RelatedResourceBuilder {
 	b.cost = value
 	b.bitmap_ |= 16
@@ -90,8 +80,6 @@ func (b *RelatedResourceBuilder) Cost(value int) *RelatedResourceBuilder {
 }
 
 // Product sets the value of the 'product' attribute to the given value.
-//
-//
 func (b *RelatedResourceBuilder) Product(value string) *RelatedResourceBuilder {
 	b.product = value
 	b.bitmap_ |= 32
@@ -99,8 +87,6 @@ func (b *RelatedResourceBuilder) Product(value string) *RelatedResourceBuilder {
 }
 
 // ResourceName sets the value of the 'resource_name' attribute to the given value.
-//
-//
 func (b *RelatedResourceBuilder) ResourceName(value string) *RelatedResourceBuilder {
 	b.resourceName = value
 	b.bitmap_ |= 64
@@ -108,8 +94,6 @@ func (b *RelatedResourceBuilder) ResourceName(value string) *RelatedResourceBuil
 }
 
 // ResourceType sets the value of the 'resource_type' attribute to the given value.
-//
-//
 func (b *RelatedResourceBuilder) ResourceType(value string) *RelatedResourceBuilder {
 	b.resourceType = value
 	b.bitmap_ |= 128

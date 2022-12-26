@@ -38,8 +38,6 @@ func (b *GCPVolumeBuilder) Empty() bool {
 }
 
 // Size sets the value of the 'size' attribute to the given value.
-//
-//
 func (b *GCPVolumeBuilder) Size(value int) *GCPVolumeBuilder {
 	b.size = value
 	b.bitmap_ |= 1

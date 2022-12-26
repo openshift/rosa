@@ -63,7 +63,7 @@ func UnmarshalNotificationList(source interface{}) (items []*Notification, err e
 	return
 }
 
-// readNotificationList reads list of values of the ''notification' type from
+// readNotificationList reads list of values of the ”notification' type from
 // the given iterator.
 func readNotificationList(iterator *jsoniter.Iterator) []*Notification {
 	list := []*Notification{}

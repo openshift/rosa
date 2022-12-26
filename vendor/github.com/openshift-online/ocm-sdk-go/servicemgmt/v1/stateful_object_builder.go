@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/servicemgmt/v1
 
 // StatefulObjectBuilder contains the data and logic needed to build 'stateful_object' objects.
-//
-//
 type StatefulObjectBuilder struct {
 	bitmap_ uint32
 	id      string
@@ -41,8 +39,6 @@ func (b *StatefulObjectBuilder) Empty() bool {
 }
 
 // ID sets the value of the 'ID' attribute to the given value.
-//
-//
 func (b *StatefulObjectBuilder) ID(value string) *StatefulObjectBuilder {
 	b.id = value
 	b.bitmap_ |= 1
@@ -50,8 +46,6 @@ func (b *StatefulObjectBuilder) ID(value string) *StatefulObjectBuilder {
 }
 
 // Href sets the value of the 'href' attribute to the given value.
-//
-//
 func (b *StatefulObjectBuilder) Href(value string) *StatefulObjectBuilder {
 	b.href = value
 	b.bitmap_ |= 2
@@ -59,8 +53,6 @@ func (b *StatefulObjectBuilder) Href(value string) *StatefulObjectBuilder {
 }
 
 // Kind sets the value of the 'kind' attribute to the given value.
-//
-//
 func (b *StatefulObjectBuilder) Kind(value string) *StatefulObjectBuilder {
 	b.kind = value
 	b.bitmap_ |= 4
@@ -68,8 +60,6 @@ func (b *StatefulObjectBuilder) Kind(value string) *StatefulObjectBuilder {
 }
 
 // State sets the value of the 'state' attribute to the given value.
-//
-//
 func (b *StatefulObjectBuilder) State(value string) *StatefulObjectBuilder {
 	b.state = value
 	b.bitmap_ |= 8

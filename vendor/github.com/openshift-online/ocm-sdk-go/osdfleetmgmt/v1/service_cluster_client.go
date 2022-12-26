@@ -179,16 +179,12 @@ func (r *ServiceClusterPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ServiceClusterPollResponse) Body() *ServiceCluster {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceClusterPollResponse) GetBody() (value *ServiceCluster, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +417,6 @@ func (r *ServiceClusterGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ServiceClusterGetResponse) Body() *ServiceCluster {
 	if r == nil {
 		return nil
@@ -432,8 +426,6 @@ func (r *ServiceClusterGetResponse) Body() *ServiceCluster {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceClusterGetResponse) GetBody() (value *ServiceCluster, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +463,6 @@ func (r *ServiceClusterPostRequest) Impersonate(user string) *ServiceClusterPost
 }
 
 // Request sets the value of the 'request' parameter.
-//
-//
 func (r *ServiceClusterPostRequest) Request(value *ServiceClusterRequestPayload) *ServiceClusterPostRequest {
 	r.request = value
 	return r
@@ -570,8 +560,6 @@ func (r *ServiceClusterPostResponse) Error() *errors.Error {
 }
 
 // Response returns the value of the 'response' parameter.
-//
-//
 func (r *ServiceClusterPostResponse) Response() *ServiceCluster {
 	if r == nil {
 		return nil
@@ -581,8 +569,6 @@ func (r *ServiceClusterPostResponse) Response() *ServiceCluster {
 
 // GetResponse returns the value of the 'response' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceClusterPostResponse) GetResponse() (value *ServiceCluster, ok bool) {
 	ok = r != nil && r.response != nil
 	if ok {

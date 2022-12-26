@@ -24,6 +24,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 // Representation of an sts policies for rosa cluster
 type AWSSTSPolicy struct {
 	bitmap_ uint32
+	arn     string
 	id      string
 	details string
 	type_   string
@@ -34,12 +35,35 @@ func (o *AWSSTSPolicy) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
+// ARN returns the value of the 'ARN' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The ARN of the managed policy
+func (o *AWSSTSPolicy) ARN() string {
+	if o != nil && o.bitmap_&1 != 0 {
+		return o.arn
+	}
+	return ""
+}
+
+// GetARN returns the value of the 'ARN' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The ARN of the managed policy
+func (o *AWSSTSPolicy) GetARN() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&1 != 0
+	if ok {
+		value = o.arn
+	}
+	return
+}
+
 // ID returns the value of the 'ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Policy ID
 func (o *AWSSTSPolicy) ID() string {
-	if o != nil && o.bitmap_&1 != 0 {
+	if o != nil && o.bitmap_&2 != 0 {
 		return o.id
 	}
 	return ""
@@ -50,7 +74,7 @@ func (o *AWSSTSPolicy) ID() string {
 //
 // Policy ID
 func (o *AWSSTSPolicy) GetID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1 != 0
+	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.id
 	}
@@ -62,7 +86,7 @@ func (o *AWSSTSPolicy) GetID() (value string, ok bool) {
 //
 // Policy Details
 func (o *AWSSTSPolicy) Details() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.details
 	}
 	return ""
@@ -73,7 +97,7 @@ func (o *AWSSTSPolicy) Details() string {
 //
 // Policy Details
 func (o *AWSSTSPolicy) GetDetails() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.details
 	}
@@ -85,7 +109,7 @@ func (o *AWSSTSPolicy) GetDetails() (value string, ok bool) {
 //
 // Type of policy operator/account role
 func (o *AWSSTSPolicy) Type() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.type_
 	}
 	return ""
@@ -96,7 +120,7 @@ func (o *AWSSTSPolicy) Type() string {
 //
 // Type of policy operator/account role
 func (o *AWSSTSPolicy) GetType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.type_
 	}

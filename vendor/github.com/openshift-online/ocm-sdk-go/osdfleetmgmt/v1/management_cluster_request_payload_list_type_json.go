@@ -63,7 +63,7 @@ func UnmarshalManagementClusterRequestPayloadList(source interface{}) (items []*
 	return
 }
 
-// readManagementClusterRequestPayloadList reads list of values of the ''management_cluster_request_payload' type from
+// readManagementClusterRequestPayloadList reads list of values of the ”management_cluster_request_payload' type from
 // the given iterator.
 func readManagementClusterRequestPayloadList(iterator *jsoniter.Iterator) []*ManagementClusterRequestPayload {
 	list := []*ManagementClusterRequestPayload{}

@@ -51,8 +51,6 @@ func NewServiceDependenciesClient(transport http.RoundTripper, path string) *Ser
 }
 
 // Add creates a request for the 'add' method.
-//
-//
 func (c *ServiceDependenciesClient) Add() *ServiceDependenciesAddRequest {
 	return &ServiceDependenciesAddRequest{
 		transport: c.transport,
@@ -71,8 +69,6 @@ func (c *ServiceDependenciesClient) List() *ServiceDependenciesListRequest {
 }
 
 // ServiceDependency returns the target 'service_dependency' resource for the given identifier.
-//
-//
 func (c *ServiceDependenciesClient) ServiceDependency(id string) *ServiceDependencyClient {
 	return NewServiceDependencyClient(
 		c.transport,
@@ -109,8 +105,6 @@ func (r *ServiceDependenciesAddRequest) Impersonate(user string) *ServiceDepende
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *ServiceDependenciesAddRequest) Body(value *ServiceDependency) *ServiceDependenciesAddRequest {
 	r.body = value
 	return r
@@ -208,8 +202,6 @@ func (r *ServiceDependenciesAddResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ServiceDependenciesAddResponse) Body() *ServiceDependency {
 	if r == nil {
 		return nil
@@ -219,8 +211,6 @@ func (r *ServiceDependenciesAddResponse) Body() *ServiceDependency {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceDependenciesAddResponse) GetBody() (value *ServiceDependency, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -260,24 +250,18 @@ func (r *ServiceDependenciesListRequest) Impersonate(user string) *ServiceDepend
 }
 
 // OrderBy sets the value of the 'order_by' parameter.
-//
-//
 func (r *ServiceDependenciesListRequest) OrderBy(value string) *ServiceDependenciesListRequest {
 	r.orderBy = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *ServiceDependenciesListRequest) Page(value int) *ServiceDependenciesListRequest {
 	r.page = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *ServiceDependenciesListRequest) Size(value int) *ServiceDependenciesListRequest {
 	r.size = &value
 	return r
@@ -381,8 +365,6 @@ func (r *ServiceDependenciesListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *ServiceDependenciesListResponse) Items() *ServiceDependencyList {
 	if r == nil {
 		return nil
@@ -392,8 +374,6 @@ func (r *ServiceDependenciesListResponse) Items() *ServiceDependencyList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceDependenciesListResponse) GetItems() (value *ServiceDependencyList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -403,8 +383,6 @@ func (r *ServiceDependenciesListResponse) GetItems() (value *ServiceDependencyLi
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *ServiceDependenciesListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -414,8 +392,6 @@ func (r *ServiceDependenciesListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceDependenciesListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -425,8 +401,6 @@ func (r *ServiceDependenciesListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *ServiceDependenciesListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -436,8 +410,6 @@ func (r *ServiceDependenciesListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceDependenciesListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -447,8 +419,6 @@ func (r *ServiceDependenciesListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *ServiceDependenciesListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -458,8 +428,6 @@ func (r *ServiceDependenciesListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ServiceDependenciesListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

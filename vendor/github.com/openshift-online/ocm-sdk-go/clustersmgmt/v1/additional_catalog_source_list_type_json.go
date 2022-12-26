@@ -63,7 +63,7 @@ func UnmarshalAdditionalCatalogSourceList(source interface{}) (items []*Addition
 	return
 }
 
-// readAdditionalCatalogSourceList reads list of values of the ''additional_catalog_source' type from
+// readAdditionalCatalogSourceList reads list of values of the ”additional_catalog_source' type from
 // the given iterator.
 func readAdditionalCatalogSourceList(iterator *jsoniter.Iterator) []*AdditionalCatalogSource {
 	list := []*AdditionalCatalogSource{}

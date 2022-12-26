@@ -139,8 +139,6 @@ func (o *Event) GetCreatedAt() (value time.Time, ok bool) {
 
 // Creator returns the value of the 'creator' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) Creator() *User {
 	if o != nil && o.bitmap_&16 != 0 {
 		return o.creator
@@ -150,8 +148,6 @@ func (o *Event) Creator() *User {
 
 // GetCreator returns the value of the 'creator' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetCreator() (value *User, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
@@ -185,8 +181,6 @@ func (o *Event) GetDeletedAt() (value time.Time, ok bool) {
 
 // Escalation returns the value of the 'escalation' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) Escalation() *Escalation {
 	if o != nil && o.bitmap_&64 != 0 {
 		return o.escalation
@@ -196,8 +190,6 @@ func (o *Event) Escalation() *Escalation {
 
 // GetEscalation returns the value of the 'escalation' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetEscalation() (value *Escalation, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
@@ -208,8 +200,6 @@ func (o *Event) GetEscalation() (value *Escalation, ok bool) {
 
 // EventType returns the value of the 'event_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) EventType() string {
 	if o != nil && o.bitmap_&128 != 0 {
 		return o.eventType
@@ -219,8 +209,6 @@ func (o *Event) EventType() string {
 
 // GetEventType returns the value of the 'event_type' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetEventType() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
@@ -231,8 +219,6 @@ func (o *Event) GetEventType() (value string, ok bool) {
 
 // ExternalReferenceUrl returns the value of the 'external_reference_url' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) ExternalReferenceUrl() string {
 	if o != nil && o.bitmap_&256 != 0 {
 		return o.externalReferenceUrl
@@ -242,8 +228,6 @@ func (o *Event) ExternalReferenceUrl() string {
 
 // GetExternalReferenceUrl returns the value of the 'external_reference_url' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetExternalReferenceUrl() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
@@ -254,8 +238,6 @@ func (o *Event) GetExternalReferenceUrl() (value string, ok bool) {
 
 // FollowUp returns the value of the 'follow_up' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) FollowUp() *FollowUp {
 	if o != nil && o.bitmap_&512 != 0 {
 		return o.followUp
@@ -265,8 +247,6 @@ func (o *Event) FollowUp() *FollowUp {
 
 // GetFollowUp returns the value of the 'follow_up' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetFollowUp() (value *FollowUp, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
@@ -277,8 +257,6 @@ func (o *Event) GetFollowUp() (value *FollowUp, ok bool) {
 
 // FollowUpChange returns the value of the 'follow_up_change' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) FollowUpChange() *FollowUpChange {
 	if o != nil && o.bitmap_&1024 != 0 {
 		return o.followUpChange
@@ -288,8 +266,6 @@ func (o *Event) FollowUpChange() *FollowUpChange {
 
 // GetFollowUpChange returns the value of the 'follow_up_change' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetFollowUpChange() (value *FollowUpChange, ok bool) {
 	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
@@ -300,8 +276,6 @@ func (o *Event) GetFollowUpChange() (value *FollowUpChange, ok bool) {
 
 // Handoff returns the value of the 'handoff' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) Handoff() *Handoff {
 	if o != nil && o.bitmap_&2048 != 0 {
 		return o.handoff
@@ -311,8 +285,6 @@ func (o *Event) Handoff() *Handoff {
 
 // GetHandoff returns the value of the 'handoff' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetHandoff() (value *Handoff, ok bool) {
 	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
@@ -323,8 +295,6 @@ func (o *Event) GetHandoff() (value *Handoff, ok bool) {
 
 // Incident returns the value of the 'incident' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) Incident() *Incident {
 	if o != nil && o.bitmap_&4096 != 0 {
 		return o.incident
@@ -334,8 +304,6 @@ func (o *Event) Incident() *Incident {
 
 // GetIncident returns the value of the 'incident' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetIncident() (value *Incident, ok bool) {
 	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
@@ -346,8 +314,6 @@ func (o *Event) GetIncident() (value *Incident, ok bool) {
 
 // Note returns the value of the 'note' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) Note() string {
 	if o != nil && o.bitmap_&8192 != 0 {
 		return o.note
@@ -357,8 +323,6 @@ func (o *Event) Note() string {
 
 // GetNote returns the value of the 'note' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetNote() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8192 != 0
 	if ok {
@@ -369,8 +333,6 @@ func (o *Event) GetNote() (value string, ok bool) {
 
 // StatusChange returns the value of the 'status_change' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *Event) StatusChange() *StatusChange {
 	if o != nil && o.bitmap_&16384 != 0 {
 		return o.statusChange
@@ -380,8 +342,6 @@ func (o *Event) StatusChange() *StatusChange {
 
 // GetStatusChange returns the value of the 'status_change' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *Event) GetStatusChange() (value *StatusChange, ok bool) {
 	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {

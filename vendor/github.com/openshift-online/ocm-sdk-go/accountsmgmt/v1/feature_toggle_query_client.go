@@ -88,8 +88,6 @@ func (r *FeatureToggleQueryPostRequest) Impersonate(user string) *FeatureToggleQ
 }
 
 // Request sets the value of the 'request' parameter.
-//
-//
 func (r *FeatureToggleQueryPostRequest) Request(value *FeatureToggleQueryRequest) *FeatureToggleQueryPostRequest {
 	r.request = value
 	return r
@@ -187,8 +185,6 @@ func (r *FeatureToggleQueryPostResponse) Error() *errors.Error {
 }
 
 // Response returns the value of the 'response' parameter.
-//
-//
 func (r *FeatureToggleQueryPostResponse) Response() *FeatureToggle {
 	if r == nil {
 		return nil
@@ -198,8 +194,6 @@ func (r *FeatureToggleQueryPostResponse) Response() *FeatureToggle {
 
 // GetResponse returns the value of the 'response' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *FeatureToggleQueryPostResponse) GetResponse() (value *FeatureToggle, ok bool) {
 	ok = r != nil && r.response != nil
 	if ok {

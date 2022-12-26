@@ -63,7 +63,7 @@ func UnmarshalAWSSTSPolicyList(source interface{}) (items []*AWSSTSPolicy, err e
 	return
 }
 
-// readAWSSTSPolicyList reads list of values of the ''AWSSTS_policy' type from
+// readAWSSTSPolicyList reads list of values of the ”AWSSTS_policy' type from
 // the given iterator.
 func readAWSSTSPolicyList(iterator *jsoniter.Iterator) []*AWSSTSPolicy {
 	list := []*AWSSTSPolicy{}

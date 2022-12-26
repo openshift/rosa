@@ -44,8 +44,6 @@ func (b *AccessReviewRequestBuilder) Empty() bool {
 }
 
 // AccountUsername sets the value of the 'account_username' attribute to the given value.
-//
-//
 func (b *AccessReviewRequestBuilder) AccountUsername(value string) *AccessReviewRequestBuilder {
 	b.accountUsername = value
 	b.bitmap_ |= 1
@@ -53,8 +51,6 @@ func (b *AccessReviewRequestBuilder) AccountUsername(value string) *AccessReview
 }
 
 // Action sets the value of the 'action' attribute to the given value.
-//
-//
 func (b *AccessReviewRequestBuilder) Action(value string) *AccessReviewRequestBuilder {
 	b.action = value
 	b.bitmap_ |= 2
@@ -62,8 +58,6 @@ func (b *AccessReviewRequestBuilder) Action(value string) *AccessReviewRequestBu
 }
 
 // ClusterID sets the value of the 'cluster_ID' attribute to the given value.
-//
-//
 func (b *AccessReviewRequestBuilder) ClusterID(value string) *AccessReviewRequestBuilder {
 	b.clusterID = value
 	b.bitmap_ |= 4
@@ -71,8 +65,6 @@ func (b *AccessReviewRequestBuilder) ClusterID(value string) *AccessReviewReques
 }
 
 // ClusterUUID sets the value of the 'cluster_UUID' attribute to the given value.
-//
-//
 func (b *AccessReviewRequestBuilder) ClusterUUID(value string) *AccessReviewRequestBuilder {
 	b.clusterUUID = value
 	b.bitmap_ |= 8
@@ -80,8 +72,6 @@ func (b *AccessReviewRequestBuilder) ClusterUUID(value string) *AccessReviewRequ
 }
 
 // OrganizationID sets the value of the 'organization_ID' attribute to the given value.
-//
-//
 func (b *AccessReviewRequestBuilder) OrganizationID(value string) *AccessReviewRequestBuilder {
 	b.organizationID = value
 	b.bitmap_ |= 16
@@ -89,8 +79,6 @@ func (b *AccessReviewRequestBuilder) OrganizationID(value string) *AccessReviewR
 }
 
 // ResourceType sets the value of the 'resource_type' attribute to the given value.
-//
-//
 func (b *AccessReviewRequestBuilder) ResourceType(value string) *AccessReviewRequestBuilder {
 	b.resourceType = value
 	b.bitmap_ |= 32
@@ -98,8 +86,6 @@ func (b *AccessReviewRequestBuilder) ResourceType(value string) *AccessReviewReq
 }
 
 // SubscriptionID sets the value of the 'subscription_ID' attribute to the given value.
-//
-//
 func (b *AccessReviewRequestBuilder) SubscriptionID(value string) *AccessReviewRequestBuilder {
 	b.subscriptionID = value
 	b.bitmap_ |= 64

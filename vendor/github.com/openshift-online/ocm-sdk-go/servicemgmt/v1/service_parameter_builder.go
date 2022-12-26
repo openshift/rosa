@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/servicemgmt/v1
 
 // ServiceParameterBuilder contains the data and logic needed to build 'service_parameter' objects.
-//
-//
 type ServiceParameterBuilder struct {
 	bitmap_ uint32
 	id      string
@@ -39,8 +37,6 @@ func (b *ServiceParameterBuilder) Empty() bool {
 }
 
 // ID sets the value of the 'ID' attribute to the given value.
-//
-//
 func (b *ServiceParameterBuilder) ID(value string) *ServiceParameterBuilder {
 	b.id = value
 	b.bitmap_ |= 1
@@ -48,8 +44,6 @@ func (b *ServiceParameterBuilder) ID(value string) *ServiceParameterBuilder {
 }
 
 // Value sets the value of the 'value' attribute to the given value.
-//
-//
 func (b *ServiceParameterBuilder) Value(value string) *ServiceParameterBuilder {
 	b.value = value
 	b.bitmap_ |= 2

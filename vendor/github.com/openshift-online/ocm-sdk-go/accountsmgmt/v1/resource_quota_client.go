@@ -179,16 +179,12 @@ func (r *ResourceQuotaPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ResourceQuotaPollResponse) Body() *ResourceQuota {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ResourceQuotaPollResponse) GetBody() (value *ResourceQuota, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +417,6 @@ func (r *ResourceQuotaGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ResourceQuotaGetResponse) Body() *ResourceQuota {
 	if r == nil {
 		return nil
@@ -432,8 +426,6 @@ func (r *ResourceQuotaGetResponse) Body() *ResourceQuota {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ResourceQuotaGetResponse) GetBody() (value *ResourceQuota, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +463,6 @@ func (r *ResourceQuotaUpdateRequest) Impersonate(user string) *ResourceQuotaUpda
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *ResourceQuotaUpdateRequest) Body(value *ResourceQuota) *ResourceQuotaUpdateRequest {
 	r.body = value
 	return r
@@ -570,8 +560,6 @@ func (r *ResourceQuotaUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ResourceQuotaUpdateResponse) Body() *ResourceQuota {
 	if r == nil {
 		return nil
@@ -581,8 +569,6 @@ func (r *ResourceQuotaUpdateResponse) Body() *ResourceQuota {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ResourceQuotaUpdateResponse) GetBody() (value *ResourceQuota, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

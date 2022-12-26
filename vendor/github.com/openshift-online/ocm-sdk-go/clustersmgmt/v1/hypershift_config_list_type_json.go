@@ -63,7 +63,7 @@ func UnmarshalHypershiftConfigList(source interface{}) (items []*HypershiftConfi
 	return
 }
 
-// readHypershiftConfigList reads list of values of the ''hypershift_config' type from
+// readHypershiftConfigList reads list of values of the ”hypershift_config' type from
 // the given iterator.
 func readHypershiftConfigList(iterator *jsoniter.Iterator) []*HypershiftConfig {
 	list := []*HypershiftConfig{}

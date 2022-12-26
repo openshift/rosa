@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 // QuotaRulesBuilder contains the data and logic needed to build 'quota_rules' objects.
-//
-//
 type QuotaRulesBuilder struct {
 	bitmap_          uint32
 	availabilityZone string
@@ -45,8 +43,6 @@ func (b *QuotaRulesBuilder) Empty() bool {
 }
 
 // AvailabilityZone sets the value of the 'availability_zone' attribute to the given value.
-//
-//
 func (b *QuotaRulesBuilder) AvailabilityZone(value string) *QuotaRulesBuilder {
 	b.availabilityZone = value
 	b.bitmap_ |= 1
@@ -54,8 +50,6 @@ func (b *QuotaRulesBuilder) AvailabilityZone(value string) *QuotaRulesBuilder {
 }
 
 // BillingModel sets the value of the 'billing_model' attribute to the given value.
-//
-//
 func (b *QuotaRulesBuilder) BillingModel(value string) *QuotaRulesBuilder {
 	b.billingModel = value
 	b.bitmap_ |= 2
@@ -63,8 +57,6 @@ func (b *QuotaRulesBuilder) BillingModel(value string) *QuotaRulesBuilder {
 }
 
 // Byoc sets the value of the 'byoc' attribute to the given value.
-//
-//
 func (b *QuotaRulesBuilder) Byoc(value string) *QuotaRulesBuilder {
 	b.byoc = value
 	b.bitmap_ |= 4
@@ -72,8 +64,6 @@ func (b *QuotaRulesBuilder) Byoc(value string) *QuotaRulesBuilder {
 }
 
 // Cloud sets the value of the 'cloud' attribute to the given value.
-//
-//
 func (b *QuotaRulesBuilder) Cloud(value string) *QuotaRulesBuilder {
 	b.cloud = value
 	b.bitmap_ |= 8
@@ -81,8 +71,6 @@ func (b *QuotaRulesBuilder) Cloud(value string) *QuotaRulesBuilder {
 }
 
 // Cost sets the value of the 'cost' attribute to the given value.
-//
-//
 func (b *QuotaRulesBuilder) Cost(value int) *QuotaRulesBuilder {
 	b.cost = value
 	b.bitmap_ |= 16
@@ -90,8 +78,6 @@ func (b *QuotaRulesBuilder) Cost(value int) *QuotaRulesBuilder {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *QuotaRulesBuilder) Name(value string) *QuotaRulesBuilder {
 	b.name = value
 	b.bitmap_ |= 32
@@ -99,8 +85,6 @@ func (b *QuotaRulesBuilder) Name(value string) *QuotaRulesBuilder {
 }
 
 // Product sets the value of the 'product' attribute to the given value.
-//
-//
 func (b *QuotaRulesBuilder) Product(value string) *QuotaRulesBuilder {
 	b.product = value
 	b.bitmap_ |= 64
@@ -108,8 +92,6 @@ func (b *QuotaRulesBuilder) Product(value string) *QuotaRulesBuilder {
 }
 
 // QuotaId sets the value of the 'quota_id' attribute to the given value.
-//
-//
 func (b *QuotaRulesBuilder) QuotaId(value string) *QuotaRulesBuilder {
 	b.quotaId = value
 	b.bitmap_ |= 128

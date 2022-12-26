@@ -63,7 +63,7 @@ func UnmarshalUserList(source interface{}) (items []*User, err error) {
 	return
 }
 
-// readUserList reads list of values of the ''user' type from
+// readUserList reads list of values of the ”user' type from
 // the given iterator.
 func readUserList(iterator *jsoniter.Iterator) []*User {
 	list := []*User{}

@@ -43,8 +43,6 @@ func (b *STSBuilder) Empty() bool {
 }
 
 // OIDCEndpointURL sets the value of the 'OIDC_endpoint_URL' attribute to the given value.
-//
-//
 func (b *STSBuilder) OIDCEndpointURL(value string) *STSBuilder {
 	b.oidcEndpointURL = value
 	b.bitmap_ |= 1
@@ -65,8 +63,6 @@ func (b *STSBuilder) InstanceIAMRoles(value *InstanceIAMRolesBuilder) *STSBuilde
 }
 
 // OperatorIAMRoles sets the value of the 'operator_IAM_roles' attribute to the given values.
-//
-//
 func (b *STSBuilder) OperatorIAMRoles(values ...*OperatorIAMRoleBuilder) *STSBuilder {
 	b.operatorIAMRoles = make([]*OperatorIAMRoleBuilder, len(values))
 	copy(b.operatorIAMRoles, values)
@@ -75,8 +71,6 @@ func (b *STSBuilder) OperatorIAMRoles(values ...*OperatorIAMRoleBuilder) *STSBui
 }
 
 // OperatorRolePrefix sets the value of the 'operator_role_prefix' attribute to the given value.
-//
-//
 func (b *STSBuilder) OperatorRolePrefix(value string) *STSBuilder {
 	b.operatorRolePrefix = value
 	b.bitmap_ |= 8
@@ -84,8 +78,6 @@ func (b *STSBuilder) OperatorRolePrefix(value string) *STSBuilder {
 }
 
 // RoleARN sets the value of the 'role_ARN' attribute to the given value.
-//
-//
 func (b *STSBuilder) RoleARN(value string) *STSBuilder {
 	b.roleARN = value
 	b.bitmap_ |= 16
@@ -93,8 +85,6 @@ func (b *STSBuilder) RoleARN(value string) *STSBuilder {
 }
 
 // SupportRoleARN sets the value of the 'support_role_ARN' attribute to the given value.
-//
-//
 func (b *STSBuilder) SupportRoleARN(value string) *STSBuilder {
 	b.supportRoleARN = value
 	b.bitmap_ |= 32

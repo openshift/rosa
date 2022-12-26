@@ -63,7 +63,7 @@ func UnmarshalSubnetworkList(source interface{}) (items []*Subnetwork, err error
 	return
 }
 
-// readSubnetworkList reads list of values of the ''subnetwork' type from
+// readSubnetworkList reads list of values of the ”subnetwork' type from
 // the given iterator.
 func readSubnetworkList(iterator *jsoniter.Iterator) []*Subnetwork {
 	list := []*Subnetwork{}

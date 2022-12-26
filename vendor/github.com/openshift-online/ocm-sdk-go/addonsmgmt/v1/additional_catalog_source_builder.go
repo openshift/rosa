@@ -41,8 +41,6 @@ func (b *AdditionalCatalogSourceBuilder) Empty() bool {
 }
 
 // ID sets the value of the 'ID' attribute to the given value.
-//
-//
 func (b *AdditionalCatalogSourceBuilder) ID(value string) *AdditionalCatalogSourceBuilder {
 	b.id = value
 	b.bitmap_ |= 1
@@ -50,8 +48,6 @@ func (b *AdditionalCatalogSourceBuilder) ID(value string) *AdditionalCatalogSour
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
-//
-//
 func (b *AdditionalCatalogSourceBuilder) Enabled(value bool) *AdditionalCatalogSourceBuilder {
 	b.enabled = value
 	b.bitmap_ |= 2
@@ -59,8 +55,6 @@ func (b *AdditionalCatalogSourceBuilder) Enabled(value bool) *AdditionalCatalogS
 }
 
 // Image sets the value of the 'image' attribute to the given value.
-//
-//
 func (b *AdditionalCatalogSourceBuilder) Image(value string) *AdditionalCatalogSourceBuilder {
 	b.image = value
 	b.bitmap_ |= 4
@@ -68,8 +62,6 @@ func (b *AdditionalCatalogSourceBuilder) Image(value string) *AdditionalCatalogS
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *AdditionalCatalogSourceBuilder) Name(value string) *AdditionalCatalogSourceBuilder {
 	b.name = value
 	b.bitmap_ |= 8

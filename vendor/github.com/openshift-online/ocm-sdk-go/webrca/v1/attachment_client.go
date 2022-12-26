@@ -51,8 +51,6 @@ func NewAttachmentClient(transport http.RoundTripper, path string) *AttachmentCl
 }
 
 // Delete creates a request for the 'delete' method.
-//
-//
 func (c *AttachmentClient) Delete() *AttachmentDeleteRequest {
 	return &AttachmentDeleteRequest{
 		transport: c.transport,
@@ -61,8 +59,6 @@ func (c *AttachmentClient) Delete() *AttachmentDeleteRequest {
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *AttachmentClient) Get() *AttachmentGetRequest {
 	return &AttachmentGetRequest{
 		transport: c.transport,
@@ -71,8 +67,6 @@ func (c *AttachmentClient) Get() *AttachmentGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *AttachmentClient) Update() *AttachmentUpdateRequest {
 	return &AttachmentUpdateRequest{
 		transport: c.transport,
@@ -179,16 +173,12 @@ func (r *AttachmentPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *AttachmentPollResponse) Body() *Attachment {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *AttachmentPollResponse) GetBody() (value *Attachment, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +411,6 @@ func (r *AttachmentGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *AttachmentGetResponse) Body() *Attachment {
 	if r == nil {
 		return nil
@@ -432,8 +420,6 @@ func (r *AttachmentGetResponse) Body() *Attachment {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *AttachmentGetResponse) GetBody() (value *Attachment, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +457,6 @@ func (r *AttachmentUpdateRequest) Impersonate(user string) *AttachmentUpdateRequ
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *AttachmentUpdateRequest) Body(value *Attachment) *AttachmentUpdateRequest {
 	r.body = value
 	return r
@@ -570,8 +554,6 @@ func (r *AttachmentUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *AttachmentUpdateResponse) Body() *Attachment {
 	if r == nil {
 		return nil
@@ -581,8 +563,6 @@ func (r *AttachmentUpdateResponse) Body() *Attachment {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *AttachmentUpdateResponse) GetBody() (value *Attachment, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

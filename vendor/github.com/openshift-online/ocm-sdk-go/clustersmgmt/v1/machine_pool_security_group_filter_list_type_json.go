@@ -63,7 +63,7 @@ func UnmarshalMachinePoolSecurityGroupFilterList(source interface{}) (items []*M
 	return
 }
 
-// readMachinePoolSecurityGroupFilterList reads list of values of the ''machine_pool_security_group_filter' type from
+// readMachinePoolSecurityGroupFilterList reads list of values of the ”machine_pool_security_group_filter' type from
 // the given iterator.
 func readMachinePoolSecurityGroupFilterList(iterator *jsoniter.Iterator) []*MachinePoolSecurityGroupFilter {
 	list := []*MachinePoolSecurityGroupFilter{}

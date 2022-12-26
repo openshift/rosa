@@ -65,8 +65,6 @@ func (b *VersionGateAgreementBuilder) Empty() bool {
 }
 
 // AgreedTimestamp sets the value of the 'agreed_timestamp' attribute to the given value.
-//
-//
 func (b *VersionGateAgreementBuilder) AgreedTimestamp(value time.Time) *VersionGateAgreementBuilder {
 	b.agreedTimestamp = value
 	b.bitmap_ |= 8

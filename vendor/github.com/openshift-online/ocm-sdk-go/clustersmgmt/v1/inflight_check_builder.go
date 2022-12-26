@@ -69,8 +69,6 @@ func (b *InflightCheckBuilder) Empty() bool {
 }
 
 // Details sets the value of the 'details' attribute to the given value.
-//
-//
 func (b *InflightCheckBuilder) Details(value interface{}) *InflightCheckBuilder {
 	b.details = value
 	b.bitmap_ |= 8
@@ -78,8 +76,6 @@ func (b *InflightCheckBuilder) Details(value interface{}) *InflightCheckBuilder 
 }
 
 // EndedAt sets the value of the 'ended_at' attribute to the given value.
-//
-//
 func (b *InflightCheckBuilder) EndedAt(value time.Time) *InflightCheckBuilder {
 	b.endedAt = value
 	b.bitmap_ |= 16
@@ -87,8 +83,6 @@ func (b *InflightCheckBuilder) EndedAt(value time.Time) *InflightCheckBuilder {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *InflightCheckBuilder) Name(value string) *InflightCheckBuilder {
 	b.name = value
 	b.bitmap_ |= 32
@@ -96,8 +90,6 @@ func (b *InflightCheckBuilder) Name(value string) *InflightCheckBuilder {
 }
 
 // Restarts sets the value of the 'restarts' attribute to the given value.
-//
-//
 func (b *InflightCheckBuilder) Restarts(value int) *InflightCheckBuilder {
 	b.restarts = value
 	b.bitmap_ |= 64
@@ -105,8 +97,6 @@ func (b *InflightCheckBuilder) Restarts(value int) *InflightCheckBuilder {
 }
 
 // StartedAt sets the value of the 'started_at' attribute to the given value.
-//
-//
 func (b *InflightCheckBuilder) StartedAt(value time.Time) *InflightCheckBuilder {
 	b.startedAt = value
 	b.bitmap_ |= 128

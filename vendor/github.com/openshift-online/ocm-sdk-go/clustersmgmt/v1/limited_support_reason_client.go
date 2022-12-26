@@ -168,16 +168,12 @@ func (r *LimitedSupportReasonPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *LimitedSupportReasonPollResponse) Body() *LimitedSupportReason {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *LimitedSupportReasonPollResponse) GetBody() (value *LimitedSupportReason, ok bool) {
 	return r.response.GetBody()
 }
@@ -410,8 +406,6 @@ func (r *LimitedSupportReasonGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *LimitedSupportReasonGetResponse) Body() *LimitedSupportReason {
 	if r == nil {
 		return nil
@@ -421,8 +415,6 @@ func (r *LimitedSupportReasonGetResponse) Body() *LimitedSupportReason {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *LimitedSupportReasonGetResponse) GetBody() (value *LimitedSupportReason, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

@@ -63,7 +63,7 @@ func UnmarshalCloudAccountList(source interface{}) (items []*CloudAccount, err e
 	return
 }
 
-// readCloudAccountList reads list of values of the ''cloud_account' type from
+// readCloudAccountList reads list of values of the ”cloud_account' type from
 // the given iterator.
 func readCloudAccountList(iterator *jsoniter.Iterator) []*CloudAccount {
 	list := []*CloudAccount{}

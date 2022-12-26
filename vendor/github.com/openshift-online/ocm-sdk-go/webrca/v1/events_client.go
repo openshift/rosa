@@ -61,8 +61,6 @@ func (c *EventsClient) List() *EventsListRequest {
 }
 
 // Event returns the target 'event' resource for the given identifier.
-//
-//
 func (c *EventsClient) Event(id string) *EventClient {
 	return NewEventClient(
 		c.transport,
@@ -106,64 +104,48 @@ func (r *EventsListRequest) Impersonate(user string) *EventsListRequest {
 }
 
 // CreatedAfter sets the value of the 'created_after' parameter.
-//
-//
 func (r *EventsListRequest) CreatedAfter(value time.Time) *EventsListRequest {
 	r.createdAfter = &value
 	return r
 }
 
 // CreatedBefore sets the value of the 'created_before' parameter.
-//
-//
 func (r *EventsListRequest) CreatedBefore(value time.Time) *EventsListRequest {
 	r.createdBefore = &value
 	return r
 }
 
 // EventType sets the value of the 'event_type' parameter.
-//
-//
 func (r *EventsListRequest) EventType(value string) *EventsListRequest {
 	r.eventType = &value
 	return r
 }
 
 // Note sets the value of the 'note' parameter.
-//
-//
 func (r *EventsListRequest) Note(value string) *EventsListRequest {
 	r.note = &value
 	return r
 }
 
 // OrderBy sets the value of the 'order_by' parameter.
-//
-//
 func (r *EventsListRequest) OrderBy(value string) *EventsListRequest {
 	r.orderBy = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *EventsListRequest) Page(value int) *EventsListRequest {
 	r.page = &value
 	return r
 }
 
 // ShowSystemEvents sets the value of the 'show_system_events' parameter.
-//
-//
 func (r *EventsListRequest) ShowSystemEvents(value bool) *EventsListRequest {
 	r.showSystemEvents = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *EventsListRequest) Size(value int) *EventsListRequest {
 	r.size = &value
 	return r
@@ -282,8 +264,6 @@ func (r *EventsListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *EventsListResponse) Items() *EventList {
 	if r == nil {
 		return nil
@@ -293,8 +273,6 @@ func (r *EventsListResponse) Items() *EventList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *EventsListResponse) GetItems() (value *EventList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -304,8 +282,6 @@ func (r *EventsListResponse) GetItems() (value *EventList, ok bool) {
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *EventsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -315,8 +291,6 @@ func (r *EventsListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *EventsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -326,8 +300,6 @@ func (r *EventsListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *EventsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -337,8 +309,6 @@ func (r *EventsListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *EventsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -348,8 +318,6 @@ func (r *EventsListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *EventsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -359,8 +327,6 @@ func (r *EventsListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *EventsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

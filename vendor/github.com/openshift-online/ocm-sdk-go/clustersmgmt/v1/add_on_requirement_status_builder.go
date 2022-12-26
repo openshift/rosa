@@ -39,8 +39,6 @@ func (b *AddOnRequirementStatusBuilder) Empty() bool {
 }
 
 // ErrorMsgs sets the value of the 'error_msgs' attribute to the given values.
-//
-//
 func (b *AddOnRequirementStatusBuilder) ErrorMsgs(values ...string) *AddOnRequirementStatusBuilder {
 	b.errorMsgs = make([]string, len(values))
 	copy(b.errorMsgs, values)
@@ -49,8 +47,6 @@ func (b *AddOnRequirementStatusBuilder) ErrorMsgs(values ...string) *AddOnRequir
 }
 
 // Fulfilled sets the value of the 'fulfilled' attribute to the given value.
-//
-//
 func (b *AddOnRequirementStatusBuilder) Fulfilled(value bool) *AddOnRequirementStatusBuilder {
 	b.fulfilled = value
 	b.bitmap_ |= 2

@@ -63,7 +63,7 @@ func UnmarshalGCPNetworkList(source interface{}) (items []*GCPNetwork, err error
 	return
 }
 
-// readGCPNetworkList reads list of values of the ''GCP_network' type from
+// readGCPNetworkList reads list of values of the ”GCP_network' type from
 // the given iterator.
 func readGCPNetworkList(iterator *jsoniter.Iterator) []*GCPNetwork {
 	list := []*GCPNetwork{}

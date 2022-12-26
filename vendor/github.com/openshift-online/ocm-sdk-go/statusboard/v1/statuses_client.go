@@ -52,8 +52,6 @@ func NewStatusesClient(transport http.RoundTripper, path string) *StatusesClient
 }
 
 // Add creates a request for the 'add' method.
-//
-//
 func (c *StatusesClient) Add() *StatusesAddRequest {
 	return &StatusesAddRequest{
 		transport: c.transport,
@@ -72,8 +70,6 @@ func (c *StatusesClient) List() *StatusesListRequest {
 }
 
 // Status returns the target 'status' resource for the given identifier.
-//
-//
 func (c *StatusesClient) Status(id string) *StatusClient {
 	return NewStatusClient(
 		c.transport,
@@ -110,8 +106,6 @@ func (r *StatusesAddRequest) Impersonate(user string) *StatusesAddRequest {
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *StatusesAddRequest) Body(value *Status) *StatusesAddRequest {
 	r.body = value
 	return r
@@ -209,8 +203,6 @@ func (r *StatusesAddResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *StatusesAddResponse) Body() *Status {
 	if r == nil {
 		return nil
@@ -220,8 +212,6 @@ func (r *StatusesAddResponse) Body() *Status {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *StatusesAddResponse) GetBody() (value *Status, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -265,56 +255,42 @@ func (r *StatusesListRequest) Impersonate(user string) *StatusesListRequest {
 }
 
 // CreatedAfter sets the value of the 'created_after' parameter.
-//
-//
 func (r *StatusesListRequest) CreatedAfter(value time.Time) *StatusesListRequest {
 	r.createdAfter = &value
 	return r
 }
 
 // CreatedBefore sets the value of the 'created_before' parameter.
-//
-//
 func (r *StatusesListRequest) CreatedBefore(value time.Time) *StatusesListRequest {
 	r.createdBefore = &value
 	return r
 }
 
 // FullNames sets the value of the 'full_names' parameter.
-//
-//
 func (r *StatusesListRequest) FullNames(value string) *StatusesListRequest {
 	r.fullNames = &value
 	return r
 }
 
 // LimitScope sets the value of the 'limit_scope' parameter.
-//
-//
 func (r *StatusesListRequest) LimitScope(value time.Time) *StatusesListRequest {
 	r.limitScope = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
-//
-//
 func (r *StatusesListRequest) Page(value int) *StatusesListRequest {
 	r.page = &value
 	return r
 }
 
 // ProductIds sets the value of the 'product_ids' parameter.
-//
-//
 func (r *StatusesListRequest) ProductIds(value string) *StatusesListRequest {
 	r.productIds = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
-//
-//
 func (r *StatusesListRequest) Size(value int) *StatusesListRequest {
 	r.size = &value
 	return r
@@ -430,8 +406,6 @@ func (r *StatusesListResponse) Error() *errors.Error {
 }
 
 // Items returns the value of the 'items' parameter.
-//
-//
 func (r *StatusesListResponse) Items() *StatusList {
 	if r == nil {
 		return nil
@@ -441,8 +415,6 @@ func (r *StatusesListResponse) Items() *StatusList {
 
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *StatusesListResponse) GetItems() (value *StatusList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
@@ -452,8 +424,6 @@ func (r *StatusesListResponse) GetItems() (value *StatusList, ok bool) {
 }
 
 // Page returns the value of the 'page' parameter.
-//
-//
 func (r *StatusesListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
@@ -463,8 +433,6 @@ func (r *StatusesListResponse) Page() int {
 
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *StatusesListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
@@ -474,8 +442,6 @@ func (r *StatusesListResponse) GetPage() (value int, ok bool) {
 }
 
 // Size returns the value of the 'size' parameter.
-//
-//
 func (r *StatusesListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
@@ -485,8 +451,6 @@ func (r *StatusesListResponse) Size() int {
 
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *StatusesListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
@@ -496,8 +460,6 @@ func (r *StatusesListResponse) GetSize() (value int, ok bool) {
 }
 
 // Total returns the value of the 'total' parameter.
-//
-//
 func (r *StatusesListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
@@ -507,8 +469,6 @@ func (r *StatusesListResponse) Total() int {
 
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *StatusesListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {

@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
 // ManagementClusterRequestPayload represents the values of the 'management_cluster_request_payload' type.
-//
-//
 type ManagementClusterRequestPayload struct {
 	bitmap_                                                                    uint32
 	service_cluster_idService_cluster_idService_cluster_idService_cluster_idId string
@@ -34,8 +32,6 @@ func (o *ManagementClusterRequestPayload) Empty() bool {
 
 // Service_cluster_idService_cluster_idService_cluster_idService_cluster_idId returns the value of the 'service_cluster_id_service_cluster_id_service_cluster_id_service_cluster_id_id' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *ManagementClusterRequestPayload) Service_cluster_idService_cluster_idService_cluster_idService_cluster_idId() string {
 	if o != nil && o.bitmap_&1 != 0 {
 		return o.service_cluster_idService_cluster_idService_cluster_idService_cluster_idId
@@ -45,8 +41,6 @@ func (o *ManagementClusterRequestPayload) Service_cluster_idService_cluster_idSe
 
 // GetService_cluster_idService_cluster_idService_cluster_idService_cluster_idId returns the value of the 'service_cluster_id_service_cluster_id_service_cluster_id_service_cluster_id_id' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *ManagementClusterRequestPayload) GetService_cluster_idService_cluster_idService_cluster_idService_cluster_idId() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {

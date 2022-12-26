@@ -24,9 +24,9 @@ package v1 // github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1
 // Representation of an addon config.
 // The attributes under it are to be used by the addon once its installed in the cluster.
 type AddonConfig struct {
-	bitmap_              uint32
-	environmentVariables []*AddonEnvironmentVariable
-	secretPropagations   []*AddonSecretPropagation
+	bitmap_                   uint32
+	addOnEnvironmentVariables []*AddonEnvironmentVariable
+	addOnSecretPropagations   []*AddonSecretPropagation
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -34,48 +34,48 @@ func (o *AddonConfig) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// EnvironmentVariables returns the value of the 'environment_variables' attribute, or
+// AddOnEnvironmentVariables returns the value of the 'add_on_environment_variables' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // List of environment variables for the addon
-func (o *AddonConfig) EnvironmentVariables() []*AddonEnvironmentVariable {
+func (o *AddonConfig) AddOnEnvironmentVariables() []*AddonEnvironmentVariable {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.environmentVariables
+		return o.addOnEnvironmentVariables
 	}
 	return nil
 }
 
-// GetEnvironmentVariables returns the value of the 'environment_variables' attribute and
+// GetAddOnEnvironmentVariables returns the value of the 'add_on_environment_variables' attribute and
 // a flag indicating if the attribute has a value.
 //
 // List of environment variables for the addon
-func (o *AddonConfig) GetEnvironmentVariables() (value []*AddonEnvironmentVariable, ok bool) {
+func (o *AddonConfig) GetAddOnEnvironmentVariables() (value []*AddonEnvironmentVariable, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.environmentVariables
+		value = o.addOnEnvironmentVariables
 	}
 	return
 }
 
-// SecretPropagations returns the value of the 'secret_propagations' attribute, or
+// AddOnSecretPropagations returns the value of the 'add_on_secret_propagations' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // List of secret propagations for the addon
-func (o *AddonConfig) SecretPropagations() []*AddonSecretPropagation {
+func (o *AddonConfig) AddOnSecretPropagations() []*AddonSecretPropagation {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.secretPropagations
+		return o.addOnSecretPropagations
 	}
 	return nil
 }
 
-// GetSecretPropagations returns the value of the 'secret_propagations' attribute and
+// GetAddOnSecretPropagations returns the value of the 'add_on_secret_propagations' attribute and
 // a flag indicating if the attribute has a value.
 //
 // List of secret propagations for the addon
-func (o *AddonConfig) GetSecretPropagations() (value []*AddonSecretPropagation, ok bool) {
+func (o *AddonConfig) GetAddOnSecretPropagations() (value []*AddonSecretPropagation, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.secretPropagations
+		value = o.addOnSecretPropagations
 	}
 	return
 }

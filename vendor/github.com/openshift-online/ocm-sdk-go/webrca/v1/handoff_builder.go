@@ -69,8 +69,6 @@ func (b *HandoffBuilder) Empty() bool {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *HandoffBuilder) CreatedAt(value time.Time) *HandoffBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 8
@@ -78,8 +76,6 @@ func (b *HandoffBuilder) CreatedAt(value time.Time) *HandoffBuilder {
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *HandoffBuilder) DeletedAt(value time.Time) *HandoffBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 16
@@ -113,8 +109,6 @@ func (b *HandoffBuilder) HandoffTo(value *UserBuilder) *HandoffBuilder {
 }
 
 // HandoffType sets the value of the 'handoff_type' attribute to the given value.
-//
-//
 func (b *HandoffBuilder) HandoffType(value string) *HandoffBuilder {
 	b.handoffType = value
 	b.bitmap_ |= 128
@@ -122,8 +116,6 @@ func (b *HandoffBuilder) HandoffType(value string) *HandoffBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *HandoffBuilder) UpdatedAt(value time.Time) *HandoffBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 256

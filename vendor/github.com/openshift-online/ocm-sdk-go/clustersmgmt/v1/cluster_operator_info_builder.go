@@ -24,8 +24,6 @@ import (
 )
 
 // ClusterOperatorInfoBuilder contains the data and logic needed to build 'cluster_operator_info' objects.
-//
-//
 type ClusterOperatorInfoBuilder struct {
 	bitmap_   uint32
 	condition ClusterOperatorState
@@ -55,8 +53,6 @@ func (b *ClusterOperatorInfoBuilder) Condition(value ClusterOperatorState) *Clus
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *ClusterOperatorInfoBuilder) Name(value string) *ClusterOperatorInfoBuilder {
 	b.name = value
 	b.bitmap_ |= 2
@@ -64,8 +60,6 @@ func (b *ClusterOperatorInfoBuilder) Name(value string) *ClusterOperatorInfoBuil
 }
 
 // Reason sets the value of the 'reason' attribute to the given value.
-//
-//
 func (b *ClusterOperatorInfoBuilder) Reason(value string) *ClusterOperatorInfoBuilder {
 	b.reason = value
 	b.bitmap_ |= 4
@@ -73,8 +67,6 @@ func (b *ClusterOperatorInfoBuilder) Reason(value string) *ClusterOperatorInfoBu
 }
 
 // Time sets the value of the 'time' attribute to the given value.
-//
-//
 func (b *ClusterOperatorInfoBuilder) Time(value time.Time) *ClusterOperatorInfoBuilder {
 	b.time = value
 	b.bitmap_ |= 8
@@ -82,8 +74,6 @@ func (b *ClusterOperatorInfoBuilder) Time(value time.Time) *ClusterOperatorInfoB
 }
 
 // Version sets the value of the 'version' attribute to the given value.
-//
-//
 func (b *ClusterOperatorInfoBuilder) Version(value string) *ClusterOperatorInfoBuilder {
 	b.version = value
 	b.bitmap_ |= 16

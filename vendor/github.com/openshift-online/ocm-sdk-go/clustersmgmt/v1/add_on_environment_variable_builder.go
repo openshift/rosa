@@ -61,8 +61,6 @@ func (b *AddOnEnvironmentVariableBuilder) Empty() bool {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *AddOnEnvironmentVariableBuilder) Name(value string) *AddOnEnvironmentVariableBuilder {
 	b.name = value
 	b.bitmap_ |= 8
@@ -70,8 +68,6 @@ func (b *AddOnEnvironmentVariableBuilder) Name(value string) *AddOnEnvironmentVa
 }
 
 // Value sets the value of the 'value' attribute to the given value.
-//
-//
 func (b *AddOnEnvironmentVariableBuilder) Value(value string) *AddOnEnvironmentVariableBuilder {
 	b.value = value
 	b.bitmap_ |= 16

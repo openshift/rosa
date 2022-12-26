@@ -71,8 +71,6 @@ func (c *ManagedServiceClient) Get() *ManagedServiceGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *ManagedServiceClient) Update() *ManagedServiceUpdateRequest {
 	return &ManagedServiceUpdateRequest{
 		transport: c.transport,
@@ -179,16 +177,12 @@ func (r *ManagedServicePollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ManagedServicePollResponse) Body() *ManagedService {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ManagedServicePollResponse) GetBody() (value *ManagedService, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +415,6 @@ func (r *ManagedServiceGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ManagedServiceGetResponse) Body() *ManagedService {
 	if r == nil {
 		return nil
@@ -432,8 +424,6 @@ func (r *ManagedServiceGetResponse) Body() *ManagedService {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ManagedServiceGetResponse) GetBody() (value *ManagedService, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +461,6 @@ func (r *ManagedServiceUpdateRequest) Impersonate(user string) *ManagedServiceUp
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *ManagedServiceUpdateRequest) Body(value *ManagedService) *ManagedServiceUpdateRequest {
 	r.body = value
 	return r
@@ -570,8 +558,6 @@ func (r *ManagedServiceUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *ManagedServiceUpdateResponse) Body() *ManagedService {
 	if r == nil {
 		return nil
@@ -581,8 +567,6 @@ func (r *ManagedServiceUpdateResponse) Body() *ManagedService {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *ManagedServiceUpdateResponse) GetBody() (value *ManagedService, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

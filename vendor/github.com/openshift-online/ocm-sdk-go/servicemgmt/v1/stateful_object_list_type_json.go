@@ -63,7 +63,7 @@ func UnmarshalStatefulObjectList(source interface{}) (items []*StatefulObject, e
 	return
 }
 
-// readStatefulObjectList reads list of values of the ''stateful_object' type from
+// readStatefulObjectList reads list of values of the ”stateful_object' type from
 // the given iterator.
 func readStatefulObjectList(iterator *jsoniter.Iterator) []*StatefulObject {
 	list := []*StatefulObject{}

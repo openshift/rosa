@@ -51,8 +51,6 @@ func NewStatusUpdateClient(transport http.RoundTripper, path string) *StatusUpda
 }
 
 // Delete creates a request for the 'delete' method.
-//
-//
 func (c *StatusUpdateClient) Delete() *StatusUpdateDeleteRequest {
 	return &StatusUpdateDeleteRequest{
 		transport: c.transport,
@@ -61,8 +59,6 @@ func (c *StatusUpdateClient) Delete() *StatusUpdateDeleteRequest {
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *StatusUpdateClient) Get() *StatusUpdateGetRequest {
 	return &StatusUpdateGetRequest{
 		transport: c.transport,
@@ -71,8 +67,6 @@ func (c *StatusUpdateClient) Get() *StatusUpdateGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *StatusUpdateClient) Update() *StatusUpdateUpdateRequest {
 	return &StatusUpdateUpdateRequest{
 		transport: c.transport,
@@ -179,16 +173,12 @@ func (r *StatusUpdatePollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *StatusUpdatePollResponse) Body() *Status {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *StatusUpdatePollResponse) GetBody() (value *Status, ok bool) {
 	return r.response.GetBody()
 }
@@ -421,8 +411,6 @@ func (r *StatusUpdateGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *StatusUpdateGetResponse) Body() *Status {
 	if r == nil {
 		return nil
@@ -432,8 +420,6 @@ func (r *StatusUpdateGetResponse) Body() *Status {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *StatusUpdateGetResponse) GetBody() (value *Status, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -471,8 +457,6 @@ func (r *StatusUpdateUpdateRequest) Impersonate(user string) *StatusUpdateUpdate
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *StatusUpdateUpdateRequest) Body(value *Status) *StatusUpdateUpdateRequest {
 	r.body = value
 	return r
@@ -570,8 +554,6 @@ func (r *StatusUpdateUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *StatusUpdateUpdateResponse) Body() *Status {
 	if r == nil {
 		return nil
@@ -581,8 +563,6 @@ func (r *StatusUpdateUpdateResponse) Body() *Status {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *StatusUpdateUpdateResponse) GetBody() (value *Status, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

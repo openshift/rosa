@@ -63,7 +63,7 @@ func UnmarshalGCPVolumeList(source interface{}) (items []*GCPVolume, err error) 
 	return
 }
 
-// readGCPVolumeList reads list of values of the ''GCP_volume' type from
+// readGCPVolumeList reads list of values of the ”GCP_volume' type from
 // the given iterator.
 func readGCPVolumeList(iterator *jsoniter.Iterator) []*GCPVolume {
 	list := []*GCPVolume{}

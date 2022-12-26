@@ -52,8 +52,6 @@ func NewEventClient(transport http.RoundTripper, path string) *EventClient {
 }
 
 // Delete creates a request for the 'delete' method.
-//
-//
 func (c *EventClient) Delete() *EventDeleteRequest {
 	return &EventDeleteRequest{
 		transport: c.transport,
@@ -62,8 +60,6 @@ func (c *EventClient) Delete() *EventDeleteRequest {
 }
 
 // Get creates a request for the 'get' method.
-//
-//
 func (c *EventClient) Get() *EventGetRequest {
 	return &EventGetRequest{
 		transport: c.transport,
@@ -72,8 +68,6 @@ func (c *EventClient) Get() *EventGetRequest {
 }
 
 // Update creates a request for the 'update' method.
-//
-//
 func (c *EventClient) Update() *EventUpdateRequest {
 	return &EventUpdateRequest{
 		transport: c.transport,
@@ -82,8 +76,6 @@ func (c *EventClient) Update() *EventUpdateRequest {
 }
 
 // Attachments returns the target 'attachments' resource.
-//
-//
 func (c *EventClient) Attachments() *AttachmentsClient {
 	return NewAttachmentsClient(
 		c.transport,
@@ -190,16 +182,12 @@ func (r *EventPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *EventPollResponse) Body() *Event {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *EventPollResponse) GetBody() (value *Event, ok bool) {
 	return r.response.GetBody()
 }
@@ -432,8 +420,6 @@ func (r *EventGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *EventGetResponse) Body() *Event {
 	if r == nil {
 		return nil
@@ -443,8 +429,6 @@ func (r *EventGetResponse) Body() *Event {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *EventGetResponse) GetBody() (value *Event, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
@@ -482,8 +466,6 @@ func (r *EventUpdateRequest) Impersonate(user string) *EventUpdateRequest {
 }
 
 // Body sets the value of the 'body' parameter.
-//
-//
 func (r *EventUpdateRequest) Body(value *Event) *EventUpdateRequest {
 	r.body = value
 	return r
@@ -581,8 +563,6 @@ func (r *EventUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-//
-//
 func (r *EventUpdateResponse) Body() *Event {
 	if r == nil {
 		return nil
@@ -592,8 +572,6 @@ func (r *EventUpdateResponse) Body() *Event {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *EventUpdateResponse) GetBody() (value *Event, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {

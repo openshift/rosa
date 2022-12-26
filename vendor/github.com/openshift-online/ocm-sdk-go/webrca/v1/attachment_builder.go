@@ -71,8 +71,6 @@ func (b *AttachmentBuilder) Empty() bool {
 }
 
 // ContentType sets the value of the 'content_type' attribute to the given value.
-//
-//
 func (b *AttachmentBuilder) ContentType(value string) *AttachmentBuilder {
 	b.contentType = value
 	b.bitmap_ |= 8
@@ -80,8 +78,6 @@ func (b *AttachmentBuilder) ContentType(value string) *AttachmentBuilder {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *AttachmentBuilder) CreatedAt(value time.Time) *AttachmentBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 16
@@ -102,8 +98,6 @@ func (b *AttachmentBuilder) Creator(value *UserBuilder) *AttachmentBuilder {
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *AttachmentBuilder) DeletedAt(value time.Time) *AttachmentBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 64
@@ -124,8 +118,6 @@ func (b *AttachmentBuilder) Event(value *EventBuilder) *AttachmentBuilder {
 }
 
 // FileSize sets the value of the 'file_size' attribute to the given value.
-//
-//
 func (b *AttachmentBuilder) FileSize(value int) *AttachmentBuilder {
 	b.fileSize = value
 	b.bitmap_ |= 256
@@ -133,8 +125,6 @@ func (b *AttachmentBuilder) FileSize(value int) *AttachmentBuilder {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *AttachmentBuilder) Name(value string) *AttachmentBuilder {
 	b.name = value
 	b.bitmap_ |= 512
@@ -142,8 +132,6 @@ func (b *AttachmentBuilder) Name(value string) *AttachmentBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *AttachmentBuilder) UpdatedAt(value time.Time) *AttachmentBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 1024

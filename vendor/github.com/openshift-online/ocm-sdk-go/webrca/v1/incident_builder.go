@@ -77,8 +77,6 @@ func (b *IncidentBuilder) Empty() bool {
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) CreatedAt(value time.Time) *IncidentBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 8
@@ -86,8 +84,6 @@ func (b *IncidentBuilder) CreatedAt(value time.Time) *IncidentBuilder {
 }
 
 // CreatorId sets the value of the 'creator_id' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) CreatorId(value string) *IncidentBuilder {
 	b.creatorId = value
 	b.bitmap_ |= 16
@@ -95,8 +91,6 @@ func (b *IncidentBuilder) CreatorId(value string) *IncidentBuilder {
 }
 
 // DeletedAt sets the value of the 'deleted_at' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) DeletedAt(value time.Time) *IncidentBuilder {
 	b.deletedAt = value
 	b.bitmap_ |= 32
@@ -104,8 +98,6 @@ func (b *IncidentBuilder) DeletedAt(value time.Time) *IncidentBuilder {
 }
 
 // Description sets the value of the 'description' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) Description(value string) *IncidentBuilder {
 	b.description = value
 	b.bitmap_ |= 64
@@ -113,8 +105,6 @@ func (b *IncidentBuilder) Description(value string) *IncidentBuilder {
 }
 
 // ExternalCoordination sets the value of the 'external_coordination' attribute to the given values.
-//
-//
 func (b *IncidentBuilder) ExternalCoordination(values ...string) *IncidentBuilder {
 	b.externalCoordination = make([]string, len(values))
 	copy(b.externalCoordination, values)
@@ -123,8 +113,6 @@ func (b *IncidentBuilder) ExternalCoordination(values ...string) *IncidentBuilde
 }
 
 // IncidentId sets the value of the 'incident_id' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) IncidentId(value string) *IncidentBuilder {
 	b.incidentId = value
 	b.bitmap_ |= 256
@@ -132,8 +120,6 @@ func (b *IncidentBuilder) IncidentId(value string) *IncidentBuilder {
 }
 
 // IncidentType sets the value of the 'incident_type' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) IncidentType(value string) *IncidentBuilder {
 	b.incidentType = value
 	b.bitmap_ |= 512
@@ -141,8 +127,6 @@ func (b *IncidentBuilder) IncidentType(value string) *IncidentBuilder {
 }
 
 // LastUpdated sets the value of the 'last_updated' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) LastUpdated(value time.Time) *IncidentBuilder {
 	b.lastUpdated = value
 	b.bitmap_ |= 1024
@@ -150,8 +134,6 @@ func (b *IncidentBuilder) LastUpdated(value time.Time) *IncidentBuilder {
 }
 
 // PrimaryTeam sets the value of the 'primary_team' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) PrimaryTeam(value string) *IncidentBuilder {
 	b.primaryTeam = value
 	b.bitmap_ |= 2048
@@ -159,8 +141,6 @@ func (b *IncidentBuilder) PrimaryTeam(value string) *IncidentBuilder {
 }
 
 // Severity sets the value of the 'severity' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) Severity(value string) *IncidentBuilder {
 	b.severity = value
 	b.bitmap_ |= 4096
@@ -168,8 +148,6 @@ func (b *IncidentBuilder) Severity(value string) *IncidentBuilder {
 }
 
 // Status sets the value of the 'status' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) Status(value string) *IncidentBuilder {
 	b.status = value
 	b.bitmap_ |= 8192
@@ -177,8 +155,6 @@ func (b *IncidentBuilder) Status(value string) *IncidentBuilder {
 }
 
 // Summary sets the value of the 'summary' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) Summary(value string) *IncidentBuilder {
 	b.summary = value
 	b.bitmap_ |= 16384
@@ -186,8 +162,6 @@ func (b *IncidentBuilder) Summary(value string) *IncidentBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) UpdatedAt(value time.Time) *IncidentBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 32768
@@ -195,8 +169,6 @@ func (b *IncidentBuilder) UpdatedAt(value time.Time) *IncidentBuilder {
 }
 
 // WorkedAt sets the value of the 'worked_at' attribute to the given value.
-//
-//
 func (b *IncidentBuilder) WorkedAt(value time.Time) *IncidentBuilder {
 	b.workedAt = value
 	b.bitmap_ |= 65536

@@ -63,7 +63,7 @@ func UnmarshalInflightCheckList(source interface{}) (items []*InflightCheck, err
 	return
 }
 
-// readInflightCheckList reads list of values of the ''inflight_check' type from
+// readInflightCheckList reads list of values of the ”inflight_check' type from
 // the given iterator.
 func readInflightCheckList(iterator *jsoniter.Iterator) []*InflightCheck {
 	list := []*InflightCheck{}

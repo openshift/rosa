@@ -38,8 +38,6 @@ func (b *CloudRegionBuilder) Empty() bool {
 }
 
 // ID sets the value of the 'ID' attribute to the given value.
-//
-//
 func (b *CloudRegionBuilder) ID(value string) *CloudRegionBuilder {
 	b.id = value
 	b.bitmap_ |= 1

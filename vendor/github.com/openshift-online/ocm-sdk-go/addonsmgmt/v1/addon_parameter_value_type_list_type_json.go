@@ -63,7 +63,7 @@ func UnmarshalAddonParameterValueTypeList(source interface{}) (items []AddonPara
 	return
 }
 
-// readAddonParameterValueTypeList reads list of values of the ''addon_parameter_value_type' type from
+// readAddonParameterValueTypeList reads list of values of the ”addon_parameter_value_type' type from
 // the given iterator.
 func readAddonParameterValueTypeList(iterator *jsoniter.Iterator) []AddonParameterValueType {
 	list := []AddonParameterValueType{}

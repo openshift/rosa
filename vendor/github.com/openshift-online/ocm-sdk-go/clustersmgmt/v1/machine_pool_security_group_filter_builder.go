@@ -39,8 +39,6 @@ func (b *MachinePoolSecurityGroupFilterBuilder) Empty() bool {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *MachinePoolSecurityGroupFilterBuilder) Name(value string) *MachinePoolSecurityGroupFilterBuilder {
 	b.name = value
 	b.bitmap_ |= 1
@@ -48,8 +46,6 @@ func (b *MachinePoolSecurityGroupFilterBuilder) Name(value string) *MachinePoolS
 }
 
 // Value sets the value of the 'value' attribute to the given value.
-//
-//
 func (b *MachinePoolSecurityGroupFilterBuilder) Value(value string) *MachinePoolSecurityGroupFilterBuilder {
 	b.value = value
 	b.bitmap_ |= 2

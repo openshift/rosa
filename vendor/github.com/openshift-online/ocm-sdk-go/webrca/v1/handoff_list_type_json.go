@@ -63,7 +63,7 @@ func UnmarshalHandoffList(source interface{}) (items []*Handoff, err error) {
 	return
 }
 
-// readHandoffList reads list of values of the ''handoff' type from
+// readHandoffList reads list of values of the ”handoff' type from
 // the given iterator.
 func readHandoffList(iterator *jsoniter.Iterator) []*Handoff {
 	list := []*Handoff{}

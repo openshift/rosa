@@ -62,8 +62,6 @@ func (b *AWSNodePoolBuilder) Empty() bool {
 }
 
 // InstanceProfile sets the value of the 'instance_profile' attribute to the given value.
-//
-//
 func (b *AWSNodePoolBuilder) InstanceProfile(value string) *AWSNodePoolBuilder {
 	b.instanceProfile = value
 	b.bitmap_ |= 8
@@ -71,8 +69,6 @@ func (b *AWSNodePoolBuilder) InstanceProfile(value string) *AWSNodePoolBuilder {
 }
 
 // InstanceType sets the value of the 'instance_type' attribute to the given value.
-//
-//
 func (b *AWSNodePoolBuilder) InstanceType(value string) *AWSNodePoolBuilder {
 	b.instanceType = value
 	b.bitmap_ |= 16
@@ -80,8 +76,6 @@ func (b *AWSNodePoolBuilder) InstanceType(value string) *AWSNodePoolBuilder {
 }
 
 // Tags sets the value of the 'tags' attribute to the given value.
-//
-//
 func (b *AWSNodePoolBuilder) Tags(value map[string]string) *AWSNodePoolBuilder {
 	b.tags = value
 	if value != nil {

@@ -42,22 +42,22 @@ func writeAddonConfig(object *AddonConfig, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0 && object.environmentVariables != nil
+	present_ = object.bitmap_&1 != 0 && object.addOnEnvironmentVariables != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("environment_variables")
-		writeAddonEnvironmentVariableList(object.environmentVariables, stream)
+		stream.WriteObjectField("add_on_environment_variables")
+		writeAddonEnvironmentVariableList(object.addOnEnvironmentVariables, stream)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0 && object.secretPropagations != nil
+	present_ = object.bitmap_&2 != 0 && object.addOnSecretPropagations != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("secret_propagations")
-		writeAddonSecretPropagationList(object.secretPropagations, stream)
+		stream.WriteObjectField("add_on_secret_propagations")
+		writeAddonSecretPropagationList(object.addOnSecretPropagations, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -83,13 +83,13 @@ func readAddonConfig(iterator *jsoniter.Iterator) *AddonConfig {
 			break
 		}
 		switch field {
-		case "environment_variables":
+		case "add_on_environment_variables":
 			value := readAddonEnvironmentVariableList(iterator)
-			object.environmentVariables = value
+			object.addOnEnvironmentVariables = value
 			object.bitmap_ |= 1
-		case "secret_propagations":
+		case "add_on_secret_propagations":
 			value := readAddonSecretPropagationList(iterator)
-			object.secretPropagations = value
+			object.addOnSecretPropagations = value
 			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()

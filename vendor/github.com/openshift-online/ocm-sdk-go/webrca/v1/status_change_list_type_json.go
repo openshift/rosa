@@ -63,7 +63,7 @@ func UnmarshalStatusChangeList(source interface{}) (items []*StatusChange, err e
 	return
 }
 
-// readStatusChangeList reads list of values of the ''status_change' type from
+// readStatusChangeList reads list of values of the ”status_change' type from
 // the given iterator.
 func readStatusChangeList(iterator *jsoniter.Iterator) []*StatusChange {
 	list := []*StatusChange{}

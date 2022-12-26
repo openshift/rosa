@@ -79,8 +79,6 @@ func (b *NodePoolBuilder) AWSNodePool(value *AWSNodePoolBuilder) *NodePoolBuilde
 }
 
 // AutoRepair sets the value of the 'auto_repair' attribute to the given value.
-//
-//
 func (b *NodePoolBuilder) AutoRepair(value bool) *NodePoolBuilder {
 	b.autoRepair = value
 	b.bitmap_ |= 16
@@ -101,8 +99,6 @@ func (b *NodePoolBuilder) Autoscaling(value *NodePoolAutoscalingBuilder) *NodePo
 }
 
 // AvailabilityZone sets the value of the 'availability_zone' attribute to the given value.
-//
-//
 func (b *NodePoolBuilder) AvailabilityZone(value string) *NodePoolBuilder {
 	b.availabilityZone = value
 	b.bitmap_ |= 64
@@ -118,24 +114,28 @@ func (b *NodePoolBuilder) AvailabilityZone(value string) *NodePoolBuilder {
 // the kind, id and href attributes:
 //
 // ```json
-// {
-//   "cloud_provider": {
-//     "kind": "CloudProviderLink",
-//     "id": "123",
-//     "href": "/api/clusters_mgmt/v1/cloud_providers/123"
-//   }
-// }
+//
+//	{
+//	  "cloud_provider": {
+//	    "kind": "CloudProviderLink",
+//	    "id": "123",
+//	    "href": "/api/clusters_mgmt/v1/cloud_providers/123"
+//	  }
+//	}
+//
 // ```
 //
 // When a cluster is created this is optional, and if used it should contain the
 // identifier of the cloud provider to use:
 //
 // ```json
-// {
-//   "cloud_provider": {
-//     "id": "123",
-//   }
-// }
+//
+//	{
+//	  "cloud_provider": {
+//	    "id": "123",
+//	  }
+//	}
+//
 // ```
 //
 // If not included, then the cluster will be created using the default cloud
@@ -157,8 +157,6 @@ func (b *NodePoolBuilder) Cluster(value *ClusterBuilder) *NodePoolBuilder {
 }
 
 // Replicas sets the value of the 'replicas' attribute to the given value.
-//
-//
 func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 	b.replicas = value
 	b.bitmap_ |= 256
@@ -166,8 +164,6 @@ func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 }
 
 // Subnet sets the value of the 'subnet' attribute to the given value.
-//
-//
 func (b *NodePoolBuilder) Subnet(value string) *NodePoolBuilder {
 	b.subnet = value
 	b.bitmap_ |= 512

@@ -63,7 +63,7 @@ func UnmarshalEscalationList(source interface{}) (items []*Escalation, err error
 	return
 }
 
-// readEscalationList reads list of values of the ''escalation' type from
+// readEscalationList reads list of values of the ”escalation' type from
 // the given iterator.
 func readEscalationList(iterator *jsoniter.Iterator) []*Escalation {
 	list := []*Escalation{}

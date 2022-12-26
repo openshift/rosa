@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 // CloudAccountBuilder contains the data and logic needed to build 'cloud_account' objects.
-//
-//
 type CloudAccountBuilder struct {
 	bitmap_         uint32
 	cloudAccountID  string
@@ -39,8 +37,6 @@ func (b *CloudAccountBuilder) Empty() bool {
 }
 
 // CloudAccountID sets the value of the 'cloud_account_ID' attribute to the given value.
-//
-//
 func (b *CloudAccountBuilder) CloudAccountID(value string) *CloudAccountBuilder {
 	b.cloudAccountID = value
 	b.bitmap_ |= 1
@@ -48,8 +44,6 @@ func (b *CloudAccountBuilder) CloudAccountID(value string) *CloudAccountBuilder 
 }
 
 // CloudProviderID sets the value of the 'cloud_provider_ID' attribute to the given value.
-//
-//
 func (b *CloudAccountBuilder) CloudProviderID(value string) *CloudAccountBuilder {
 	b.cloudProviderID = value
 	b.bitmap_ |= 2

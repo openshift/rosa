@@ -20,8 +20,6 @@ limitations under the License.
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 // QuotaRules represents the values of the 'quota_rules' type.
-//
-//
 type QuotaRules struct {
 	bitmap_          uint32
 	availabilityZone string
@@ -41,8 +39,6 @@ func (o *QuotaRules) Empty() bool {
 
 // AvailabilityZone returns the value of the 'availability_zone' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *QuotaRules) AvailabilityZone() string {
 	if o != nil && o.bitmap_&1 != 0 {
 		return o.availabilityZone
@@ -52,8 +48,6 @@ func (o *QuotaRules) AvailabilityZone() string {
 
 // GetAvailabilityZone returns the value of the 'availability_zone' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *QuotaRules) GetAvailabilityZone() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
@@ -64,8 +58,6 @@ func (o *QuotaRules) GetAvailabilityZone() (value string, ok bool) {
 
 // BillingModel returns the value of the 'billing_model' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *QuotaRules) BillingModel() string {
 	if o != nil && o.bitmap_&2 != 0 {
 		return o.billingModel
@@ -75,8 +67,6 @@ func (o *QuotaRules) BillingModel() string {
 
 // GetBillingModel returns the value of the 'billing_model' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *QuotaRules) GetBillingModel() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
@@ -87,8 +77,6 @@ func (o *QuotaRules) GetBillingModel() (value string, ok bool) {
 
 // Byoc returns the value of the 'byoc' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *QuotaRules) Byoc() string {
 	if o != nil && o.bitmap_&4 != 0 {
 		return o.byoc
@@ -98,8 +86,6 @@ func (o *QuotaRules) Byoc() string {
 
 // GetByoc returns the value of the 'byoc' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *QuotaRules) GetByoc() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
@@ -110,8 +96,6 @@ func (o *QuotaRules) GetByoc() (value string, ok bool) {
 
 // Cloud returns the value of the 'cloud' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *QuotaRules) Cloud() string {
 	if o != nil && o.bitmap_&8 != 0 {
 		return o.cloud
@@ -121,8 +105,6 @@ func (o *QuotaRules) Cloud() string {
 
 // GetCloud returns the value of the 'cloud' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *QuotaRules) GetCloud() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
@@ -133,8 +115,6 @@ func (o *QuotaRules) GetCloud() (value string, ok bool) {
 
 // Cost returns the value of the 'cost' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *QuotaRules) Cost() int {
 	if o != nil && o.bitmap_&16 != 0 {
 		return o.cost
@@ -144,8 +124,6 @@ func (o *QuotaRules) Cost() int {
 
 // GetCost returns the value of the 'cost' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *QuotaRules) GetCost() (value int, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
@@ -156,8 +134,6 @@ func (o *QuotaRules) GetCost() (value int, ok bool) {
 
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *QuotaRules) Name() string {
 	if o != nil && o.bitmap_&32 != 0 {
 		return o.name
@@ -167,8 +143,6 @@ func (o *QuotaRules) Name() string {
 
 // GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *QuotaRules) GetName() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
@@ -179,8 +153,6 @@ func (o *QuotaRules) GetName() (value string, ok bool) {
 
 // Product returns the value of the 'product' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *QuotaRules) Product() string {
 	if o != nil && o.bitmap_&64 != 0 {
 		return o.product
@@ -190,8 +162,6 @@ func (o *QuotaRules) Product() string {
 
 // GetProduct returns the value of the 'product' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *QuotaRules) GetProduct() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
@@ -202,8 +172,6 @@ func (o *QuotaRules) GetProduct() (value string, ok bool) {
 
 // QuotaId returns the value of the 'quota_id' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-//
 func (o *QuotaRules) QuotaId() string {
 	if o != nil && o.bitmap_&128 != 0 {
 		return o.quotaId
@@ -213,8 +181,6 @@ func (o *QuotaRules) QuotaId() string {
 
 // GetQuotaId returns the value of the 'quota_id' attribute and
 // a flag indicating if the attribute has a value.
-//
-//
 func (o *QuotaRules) GetQuotaId() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {

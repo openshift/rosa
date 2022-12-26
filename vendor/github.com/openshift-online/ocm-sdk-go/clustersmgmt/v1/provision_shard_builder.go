@@ -88,8 +88,6 @@ func (b *ProvisionShardBuilder) AWSAccountOperatorConfig(value *ServerConfigBuil
 }
 
 // AWSBaseDomain sets the value of the 'AWS_base_domain' attribute to the given value.
-//
-//
 func (b *ProvisionShardBuilder) AWSBaseDomain(value string) *ProvisionShardBuilder {
 	b.awsBaseDomain = value
 	b.bitmap_ |= 16
@@ -97,8 +95,6 @@ func (b *ProvisionShardBuilder) AWSBaseDomain(value string) *ProvisionShardBuild
 }
 
 // GCPBaseDomain sets the value of the 'GCP_base_domain' attribute to the given value.
-//
-//
 func (b *ProvisionShardBuilder) GCPBaseDomain(value string) *ProvisionShardBuilder {
 	b.gcpBaseDomain = value
 	b.bitmap_ |= 32
@@ -132,8 +128,6 @@ func (b *ProvisionShardBuilder) CloudProvider(value *CloudProviderBuilder) *Prov
 }
 
 // CreationTimestamp sets the value of the 'creation_timestamp' attribute to the given value.
-//
-//
 func (b *ProvisionShardBuilder) CreationTimestamp(value time.Time) *ProvisionShardBuilder {
 	b.creationTimestamp = value
 	b.bitmap_ |= 256
@@ -167,8 +161,6 @@ func (b *ProvisionShardBuilder) HypershiftConfig(value *ServerConfigBuilder) *Pr
 }
 
 // LastUpdateTimestamp sets the value of the 'last_update_timestamp' attribute to the given value.
-//
-//
 func (b *ProvisionShardBuilder) LastUpdateTimestamp(value time.Time) *ProvisionShardBuilder {
 	b.lastUpdateTimestamp = value
 	b.bitmap_ |= 2048
@@ -176,8 +168,6 @@ func (b *ProvisionShardBuilder) LastUpdateTimestamp(value time.Time) *ProvisionS
 }
 
 // ManagementCluster sets the value of the 'management_cluster' attribute to the given value.
-//
-//
 func (b *ProvisionShardBuilder) ManagementCluster(value string) *ProvisionShardBuilder {
 	b.managementCluster = value
 	b.bitmap_ |= 4096
@@ -198,8 +188,6 @@ func (b *ProvisionShardBuilder) Region(value *CloudRegionBuilder) *ProvisionShar
 }
 
 // Status sets the value of the 'status' attribute to the given value.
-//
-//
 func (b *ProvisionShardBuilder) Status(value string) *ProvisionShardBuilder {
 	b.status = value
 	b.bitmap_ |= 16384

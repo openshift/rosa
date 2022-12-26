@@ -33,11 +33,13 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 // With a request body like this:
 //
 // ```json
-// {
-//   "external_id": "d656aecf-11a6-4782-ad86-8f72638449ba",
-//   "subscription_id": "...",
-//   "organization_id": "..."
-// }
+//
+//	{
+//	  "external_id": "d656aecf-11a6-4782-ad86-8f72638449ba",
+//	  "subscription_id": "...",
+//	  "organization_id": "..."
+//	}
+//
 // ```
 type ClusterRegistration struct {
 	bitmap_        uint32

@@ -63,7 +63,7 @@ func UnmarshalAddonRequirementResourceList(source interface{}) (items []AddonReq
 	return
 }
 
-// readAddonRequirementResourceList reads list of values of the ''addon_requirement_resource' type from
+// readAddonRequirementResourceList reads list of values of the ”addon_requirement_resource' type from
 // the given iterator.
 func readAddonRequirementResourceList(iterator *jsoniter.Iterator) []AddonRequirementResource {
 	list := []AddonRequirementResource{}

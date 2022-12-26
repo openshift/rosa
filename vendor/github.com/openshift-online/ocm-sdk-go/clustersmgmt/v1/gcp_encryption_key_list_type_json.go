@@ -63,7 +63,7 @@ func UnmarshalGCPEncryptionKeyList(source interface{}) (items []*GCPEncryptionKe
 	return
 }
 
-// readGCPEncryptionKeyList reads list of values of the ''GCP_encryption_key' type from
+// readGCPEncryptionKeyList reads list of values of the ”GCP_encryption_key' type from
 // the given iterator.
 func readGCPEncryptionKeyList(iterator *jsoniter.Iterator) []*GCPEncryptionKey {
 	list := []*GCPEncryptionKey{}

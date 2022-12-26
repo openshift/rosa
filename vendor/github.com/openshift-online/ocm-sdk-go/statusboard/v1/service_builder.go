@@ -90,8 +90,6 @@ func (b *ServiceBuilder) Application(value *ApplicationBuilder) *ServiceBuilder 
 }
 
 // CreatedAt sets the value of the 'created_at' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) CreatedAt(value time.Time) *ServiceBuilder {
 	b.createdAt = value
 	b.bitmap_ |= 16
@@ -99,8 +97,6 @@ func (b *ServiceBuilder) CreatedAt(value time.Time) *ServiceBuilder {
 }
 
 // CurrentStatus sets the value of the 'current_status' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) CurrentStatus(value string) *ServiceBuilder {
 	b.currentStatus = value
 	b.bitmap_ |= 32
@@ -108,8 +104,6 @@ func (b *ServiceBuilder) CurrentStatus(value string) *ServiceBuilder {
 }
 
 // Fullname sets the value of the 'fullname' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) Fullname(value string) *ServiceBuilder {
 	b.fullname = value
 	b.bitmap_ |= 64
@@ -117,8 +111,6 @@ func (b *ServiceBuilder) Fullname(value string) *ServiceBuilder {
 }
 
 // LastPingAt sets the value of the 'last_ping_at' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) LastPingAt(value time.Time) *ServiceBuilder {
 	b.lastPingAt = value
 	b.bitmap_ |= 128
@@ -126,8 +118,6 @@ func (b *ServiceBuilder) LastPingAt(value time.Time) *ServiceBuilder {
 }
 
 // Metadata sets the value of the 'metadata' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) Metadata(value interface{}) *ServiceBuilder {
 	b.metadata = value
 	b.bitmap_ |= 256
@@ -135,8 +125,6 @@ func (b *ServiceBuilder) Metadata(value interface{}) *ServiceBuilder {
 }
 
 // Name sets the value of the 'name' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) Name(value string) *ServiceBuilder {
 	b.name = value
 	b.bitmap_ |= 512
@@ -144,8 +132,6 @@ func (b *ServiceBuilder) Name(value string) *ServiceBuilder {
 }
 
 // Owners sets the value of the 'owners' attribute to the given values.
-//
-//
 func (b *ServiceBuilder) Owners(values ...*OwnerBuilder) *ServiceBuilder {
 	b.owners = make([]*OwnerBuilder, len(values))
 	copy(b.owners, values)
@@ -154,8 +140,6 @@ func (b *ServiceBuilder) Owners(values ...*OwnerBuilder) *ServiceBuilder {
 }
 
 // Private sets the value of the 'private' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) Private(value bool) *ServiceBuilder {
 	b.private = value
 	b.bitmap_ |= 2048
@@ -163,8 +147,6 @@ func (b *ServiceBuilder) Private(value bool) *ServiceBuilder {
 }
 
 // ServiceEndpoint sets the value of the 'service_endpoint' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) ServiceEndpoint(value string) *ServiceBuilder {
 	b.serviceEndpoint = value
 	b.bitmap_ |= 4096
@@ -172,8 +154,6 @@ func (b *ServiceBuilder) ServiceEndpoint(value string) *ServiceBuilder {
 }
 
 // StatusType sets the value of the 'status_type' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) StatusType(value string) *ServiceBuilder {
 	b.statusType = value
 	b.bitmap_ |= 8192
@@ -181,8 +161,6 @@ func (b *ServiceBuilder) StatusType(value string) *ServiceBuilder {
 }
 
 // StatusUpdatedAt sets the value of the 'status_updated_at' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) StatusUpdatedAt(value time.Time) *ServiceBuilder {
 	b.statusUpdatedAt = value
 	b.bitmap_ |= 16384
@@ -190,8 +168,6 @@ func (b *ServiceBuilder) StatusUpdatedAt(value time.Time) *ServiceBuilder {
 }
 
 // Token sets the value of the 'token' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) Token(value string) *ServiceBuilder {
 	b.token = value
 	b.bitmap_ |= 32768
@@ -199,8 +175,6 @@ func (b *ServiceBuilder) Token(value string) *ServiceBuilder {
 }
 
 // UpdatedAt sets the value of the 'updated_at' attribute to the given value.
-//
-//
 func (b *ServiceBuilder) UpdatedAt(value time.Time) *ServiceBuilder {
 	b.updatedAt = value
 	b.bitmap_ |= 65536

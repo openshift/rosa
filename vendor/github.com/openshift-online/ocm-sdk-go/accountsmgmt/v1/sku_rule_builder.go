@@ -62,8 +62,6 @@ func (b *SkuRuleBuilder) Empty() bool {
 }
 
 // Allowed sets the value of the 'allowed' attribute to the given value.
-//
-//
 func (b *SkuRuleBuilder) Allowed(value int) *SkuRuleBuilder {
 	b.allowed = value
 	b.bitmap_ |= 8
@@ -71,8 +69,6 @@ func (b *SkuRuleBuilder) Allowed(value int) *SkuRuleBuilder {
 }
 
 // QuotaId sets the value of the 'quota_id' attribute to the given value.
-//
-//
 func (b *SkuRuleBuilder) QuotaId(value string) *SkuRuleBuilder {
 	b.quotaId = value
 	b.bitmap_ |= 16
@@ -80,8 +76,6 @@ func (b *SkuRuleBuilder) QuotaId(value string) *SkuRuleBuilder {
 }
 
 // Sku sets the value of the 'sku' attribute to the given value.
-//
-//
 func (b *SkuRuleBuilder) Sku(value string) *SkuRuleBuilder {
 	b.sku = value
 	b.bitmap_ |= 32

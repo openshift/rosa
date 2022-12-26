@@ -31,8 +31,6 @@ import (
 )
 
 // CapabilitiesClient is the client of the 'capabilities' resource.
-//
-//
 type CapabilitiesClient struct {
 	transport http.RoundTripper
 	path      string

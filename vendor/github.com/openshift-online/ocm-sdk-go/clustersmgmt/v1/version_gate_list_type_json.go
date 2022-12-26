@@ -63,7 +63,7 @@ func UnmarshalVersionGateList(source interface{}) (items []*VersionGate, err err
 	return
 }
 
-// readVersionGateList reads list of values of the ''version_gate' type from
+// readVersionGateList reads list of values of the ”version_gate' type from
 // the given iterator.
 func readVersionGateList(iterator *jsoniter.Iterator) []*VersionGate {
 	list := []*VersionGate{}

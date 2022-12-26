@@ -24,9 +24,9 @@ package v1 // github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1
 // Representation of an addon config.
 // The attributes under it are to be used by the addon once its installed in the cluster.
 type AddonConfigBuilder struct {
-	bitmap_              uint32
-	environmentVariables []*AddonEnvironmentVariableBuilder
-	secretPropagations   []*AddonSecretPropagationBuilder
+	bitmap_                   uint32
+	addOnEnvironmentVariables []*AddonEnvironmentVariableBuilder
+	addOnSecretPropagations   []*AddonSecretPropagationBuilder
 }
 
 // NewAddonConfig creates a new builder of 'addon_config' objects.
@@ -39,22 +39,18 @@ func (b *AddonConfigBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
-// EnvironmentVariables sets the value of the 'environment_variables' attribute to the given values.
-//
-//
-func (b *AddonConfigBuilder) EnvironmentVariables(values ...*AddonEnvironmentVariableBuilder) *AddonConfigBuilder {
-	b.environmentVariables = make([]*AddonEnvironmentVariableBuilder, len(values))
-	copy(b.environmentVariables, values)
+// AddOnEnvironmentVariables sets the value of the 'add_on_environment_variables' attribute to the given values.
+func (b *AddonConfigBuilder) AddOnEnvironmentVariables(values ...*AddonEnvironmentVariableBuilder) *AddonConfigBuilder {
+	b.addOnEnvironmentVariables = make([]*AddonEnvironmentVariableBuilder, len(values))
+	copy(b.addOnEnvironmentVariables, values)
 	b.bitmap_ |= 1
 	return b
 }
 
-// SecretPropagations sets the value of the 'secret_propagations' attribute to the given values.
-//
-//
-func (b *AddonConfigBuilder) SecretPropagations(values ...*AddonSecretPropagationBuilder) *AddonConfigBuilder {
-	b.secretPropagations = make([]*AddonSecretPropagationBuilder, len(values))
-	copy(b.secretPropagations, values)
+// AddOnSecretPropagations sets the value of the 'add_on_secret_propagations' attribute to the given values.
+func (b *AddonConfigBuilder) AddOnSecretPropagations(values ...*AddonSecretPropagationBuilder) *AddonConfigBuilder {
+	b.addOnSecretPropagations = make([]*AddonSecretPropagationBuilder, len(values))
+	copy(b.addOnSecretPropagations, values)
 	b.bitmap_ |= 2
 	return b
 }
@@ -65,21 +61,21 @@ func (b *AddonConfigBuilder) Copy(object *AddonConfig) *AddonConfigBuilder {
 		return b
 	}
 	b.bitmap_ = object.bitmap_
-	if object.environmentVariables != nil {
-		b.environmentVariables = make([]*AddonEnvironmentVariableBuilder, len(object.environmentVariables))
-		for i, v := range object.environmentVariables {
-			b.environmentVariables[i] = NewAddonEnvironmentVariable().Copy(v)
+	if object.addOnEnvironmentVariables != nil {
+		b.addOnEnvironmentVariables = make([]*AddonEnvironmentVariableBuilder, len(object.addOnEnvironmentVariables))
+		for i, v := range object.addOnEnvironmentVariables {
+			b.addOnEnvironmentVariables[i] = NewAddonEnvironmentVariable().Copy(v)
 		}
 	} else {
-		b.environmentVariables = nil
+		b.addOnEnvironmentVariables = nil
 	}
-	if object.secretPropagations != nil {
-		b.secretPropagations = make([]*AddonSecretPropagationBuilder, len(object.secretPropagations))
-		for i, v := range object.secretPropagations {
-			b.secretPropagations[i] = NewAddonSecretPropagation().Copy(v)
+	if object.addOnSecretPropagations != nil {
+		b.addOnSecretPropagations = make([]*AddonSecretPropagationBuilder, len(object.addOnSecretPropagations))
+		for i, v := range object.addOnSecretPropagations {
+			b.addOnSecretPropagations[i] = NewAddonSecretPropagation().Copy(v)
 		}
 	} else {
-		b.secretPropagations = nil
+		b.addOnSecretPropagations = nil
 	}
 	return b
 }
@@ -88,19 +84,19 @@ func (b *AddonConfigBuilder) Copy(object *AddonConfig) *AddonConfigBuilder {
 func (b *AddonConfigBuilder) Build() (object *AddonConfig, err error) {
 	object = new(AddonConfig)
 	object.bitmap_ = b.bitmap_
-	if b.environmentVariables != nil {
-		object.environmentVariables = make([]*AddonEnvironmentVariable, len(b.environmentVariables))
-		for i, v := range b.environmentVariables {
-			object.environmentVariables[i], err = v.Build()
+	if b.addOnEnvironmentVariables != nil {
+		object.addOnEnvironmentVariables = make([]*AddonEnvironmentVariable, len(b.addOnEnvironmentVariables))
+		for i, v := range b.addOnEnvironmentVariables {
+			object.addOnEnvironmentVariables[i], err = v.Build()
 			if err != nil {
 				return
 			}
 		}
 	}
-	if b.secretPropagations != nil {
-		object.secretPropagations = make([]*AddonSecretPropagation, len(b.secretPropagations))
-		for i, v := range b.secretPropagations {
-			object.secretPropagations[i], err = v.Build()
+	if b.addOnSecretPropagations != nil {
+		object.addOnSecretPropagations = make([]*AddonSecretPropagation, len(b.addOnSecretPropagations))
+		for i, v := range b.addOnSecretPropagations {
+			object.addOnSecretPropagations[i], err = v.Build()
 			if err != nil {
 				return
 			}

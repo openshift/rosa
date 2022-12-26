@@ -63,7 +63,7 @@ func UnmarshalAddOnEnvironmentVariableList(source interface{}) (items []*AddOnEn
 	return
 }
 
-// readAddOnEnvironmentVariableList reads list of values of the ''add_on_environment_variable' type from
+// readAddOnEnvironmentVariableList reads list of values of the ”add_on_environment_variable' type from
 // the given iterator.
 func readAddOnEnvironmentVariableList(iterator *jsoniter.Iterator) []*AddOnEnvironmentVariable {
 	list := []*AddOnEnvironmentVariable{}

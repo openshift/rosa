@@ -63,7 +63,7 @@ func UnmarshalAddOnInstallationBillingList(source interface{}) (items []*AddOnIn
 	return
 }
 
-// readAddOnInstallationBillingList reads list of values of the ''add_on_installation_billing' type from
+// readAddOnInstallationBillingList reads list of values of the ”add_on_installation_billing' type from
 // the given iterator.
 func readAddOnInstallationBillingList(iterator *jsoniter.Iterator) []*AddOnInstallationBilling {
 	list := []*AddOnInstallationBilling{}

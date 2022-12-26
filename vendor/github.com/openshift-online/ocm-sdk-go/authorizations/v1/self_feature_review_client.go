@@ -88,8 +88,6 @@ func (r *SelfFeatureReviewPostRequest) Impersonate(user string) *SelfFeatureRevi
 }
 
 // Request sets the value of the 'request' parameter.
-//
-//
 func (r *SelfFeatureReviewPostRequest) Request(value *SelfFeatureReviewRequest) *SelfFeatureReviewPostRequest {
 	r.request = value
 	return r
@@ -187,8 +185,6 @@ func (r *SelfFeatureReviewPostResponse) Error() *errors.Error {
 }
 
 // Request returns the value of the 'request' parameter.
-//
-//
 func (r *SelfFeatureReviewPostResponse) Request() *SelfFeatureReviewResponse {
 	if r == nil {
 		return nil
@@ -198,8 +194,6 @@ func (r *SelfFeatureReviewPostResponse) Request() *SelfFeatureReviewResponse {
 
 // GetRequest returns the value of the 'request' parameter and
 // a flag indicating if the parameter has a value.
-//
-//
 func (r *SelfFeatureReviewPostResponse) GetRequest() (value *SelfFeatureReviewResponse, ok bool) {
 	ok = r != nil && r.request != nil
 	if ok {
