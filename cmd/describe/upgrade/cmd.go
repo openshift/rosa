@@ -59,16 +59,15 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if len(upgrades) < 1 {
-		r.Reporter.Errorf("No available upgrades for cluster id '%s'", cluster.ID())
+		r.Reporter.Warnf("No scheduled upgrades for cluster id '%s'", cluster.ID())
 		os.Exit(1)
 	}
 
 	for _, upgrade := range upgrades {
-		fmt.Printf(`
-                %-28s%s
+		fmt.Printf(`%19s%61s
 		%-28s%s
 		%-28s%s
-                %-28s%s
+		%-28s%s
 `,
 			"ID:", upgrade.ID(),
 			"Cluster ID:", upgrade.ClusterID(),
