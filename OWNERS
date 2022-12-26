@@ -9,6 +9,7 @@ reviewers:
 - oriAdler
 - gdbranco
 - renan-campos
+- tzvatot
 approvers:
 - ciaranRoche
 - igoihman
@@ -22,6 +23,7 @@ approvers:
 - oriAdler
 - gdbranco
 - renan-campos
+- tzvatot
 maintainers:
 - ciaranRoche
 - igoihman
@@ -33,3 +35,4 @@ maintainers:
 - oriAdler
 - gdbranco
 - renan-campos
+- tzvatot
