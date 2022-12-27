@@ -332,7 +332,7 @@ func createRoles(r *rosa.Runtime,
 				tags.OperatorNamespace: operator.Namespace(),
 				tags.OperatorName:      operator.Name(),
 				tags.RedHatManaged:     "true",
-			}, path)
+			}, path, false)
 		if err != nil {
 			return err
 		}
@@ -355,7 +355,7 @@ func buildCommands(r *rosa.Runtime, env string,
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator) (string, error) {
 
 	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-		true, policies, credRequests)
+		true, policies, credRequests, false)
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 		os.Exit(1)

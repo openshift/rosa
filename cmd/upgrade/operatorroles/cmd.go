@@ -281,7 +281,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 		return nil
 	case aws.ModeManual:
 		err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-			true, policies, credRequests)
+			true, policies, credRequests, false)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -355,7 +355,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 				tags.OperatorNamespace: operator.Namespace(),
 				tags.OperatorName:      operator.Name(),
 				tags.RedHatManaged:     "true",
-			}, unifiedPath)
+			}, unifiedPath, false)
 		if err != nil {
 			return err
 		}

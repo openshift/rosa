@@ -43,6 +43,7 @@ var args struct {
 	path                string
 	version             string
 	channelGroup        string
+	managed             bool
 }
 
 var Cmd = &cobra.Command{
@@ -98,6 +99,15 @@ func init() {
 	)
 	flags.MarkHidden("channel-group")
 
+	// TODO: change to `unmanaged` once AWS managed policies are in place (managed will be the default)
+	flags.BoolVar(
+		&args.managed,
+		"managed",
+		false,
+		"Attach AWS managed policies to the account roles",
+	)
+	flags.MarkHidden("managed")
+
 	aws.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
@@ -129,6 +139,14 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
 		os.Exit(1)
 	}
+
+	// Determine if managed policies are enabled
+	isManagedSet := cmd.Flags().Changed("managed")
+	if isManagedSet && env == ocm.Production {
+		r.Reporter.Errorf("Managed policies are not supported in this environment")
+		os.Exit(1)
+	}
+	managedPolicies := args.managed
 
 	r.WithAWS()
 	// Validate AWS credentials for current user
@@ -273,7 +291,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 
 		err = createRoles(r, prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
-			policyVersion, path)
+			policyVersion, path, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the account roles: %s", err)
 			if strings.Contains(err.Error(), "Throttling") {
@@ -296,7 +314,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Version:  policyVersion,
 		})
 	case aws.ModeManual:
-		err = aws.GeneratePolicyFiles(r.Reporter, env, true, false, policies, nil)
+		err = aws.GeneratePolicyFiles(r.Reporter, env, true, false, policies, nil, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
@@ -305,7 +323,7 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		commands := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID, policyVersion,
-			path)
+			path, managedPolicies)
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
@@ -321,9 +339,8 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func buildCommands(prefix string, permissionsBoundary string, accountID string, defaultPolicyVersion string,
-	path string) string {
+	path string, managedPolicies bool) string {
 	commands := []string{}
-
 	for file, role := range aws.AccountRoles {
 		accRoleName := aws.GetRoleName(prefix, role.Name)
 		iamTags := map[string]string{
@@ -331,6 +348,9 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 			tags.RolePrefix:       prefix,
 			tags.RoleType:         file,
 			tags.RedHatManaged:    "true",
+		}
+		if managedPolicies {
+			iamTags[tags.ManagedPolicies] = "true"
 		}
 
 		createRole := awscb.NewIAMCommandBuilder().
@@ -357,7 +377,11 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 			AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, accRoleName, path)).
 			Build()
 
-		commands = append(commands, createRole, createPolicy, attachRolePolicy)
+		if managedPolicies {
+			commands = append(commands, createRole, attachRolePolicy)
+		} else {
+			commands = append(commands, createRole, createPolicy, attachRolePolicy)
+		}
 	}
 
 	return awscb.JoinCommands(commands)
@@ -365,8 +389,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 
 func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env string,
 	policies map[string]*cmv1.AWSSTSPolicy, defaultPolicyVersion string,
-	path string) error {
-
+	path string, managedPolicies bool) error {
 	for file, role := range aws.AccountRoles {
 		accRoleName := aws.GetRoleName(prefix, role.Name)
 		policyARN := aws.GetPolicyARN(r.Creator.AccountID, accRoleName, path)
@@ -382,32 +405,38 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 			"aws_account_id": aws.GetJumpAccount(env),
 		})
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
+		tagsList := map[string]string{
+			tags.OpenShiftVersion: defaultPolicyVersion,
+			tags.RolePrefix:       prefix,
+			tags.RoleType:         file,
+			tags.RedHatManaged:    "true"}
+		if managedPolicies {
+			tagsList[tags.ManagedPolicies] = "true"
+		}
 		roleARN, err := r.AWSClient.EnsureRole(accRoleName, policy, permissionsBoundary,
-			defaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: defaultPolicyVersion,
-				tags.RolePrefix:       prefix,
-				tags.RoleType:         file,
-				tags.RedHatManaged:    "true",
-			}, path)
+			defaultPolicyVersion, tagsList, path, managedPolicies)
 		if err != nil {
 			return err
 		}
 		r.Reporter.Infof("Created role '%s' with ARN '%s'", accRoleName, roleARN)
 
 		filename = fmt.Sprintf("sts_%s_permission_policy", file)
-		policyDetail = aws.GetSTSPolicyDetails(policies, filename)
+		if managedPolicies {
+			policyARN, err = aws.GetSTSPolicyARN(policies, filename)
+			if err != nil {
+				return err
+			}
+		} else {
+			policyPermissionDetail := aws.GetSTSPolicyDetails(policies, filename)
 
-		r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
-		policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetail,
-			defaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion: defaultPolicyVersion,
-				tags.RolePrefix:       prefix,
-				tags.RoleType:         file,
-				tags.RedHatManaged:    "true",
-			}, path)
-		if err != nil {
-			return err
+			r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
+			policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyPermissionDetail,
+				defaultPolicyVersion, tagsList, path)
+			if err != nil {
+				return err
+			}
 		}
+
 		r.Reporter.Debugf("Attaching permission policy to role '%s'", filename)
 		err = r.AWSClient.AttachRolePolicy(accRoleName, policyARN)
 		if err != nil {

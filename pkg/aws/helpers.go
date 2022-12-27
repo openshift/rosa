@@ -571,7 +571,7 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
 	generateOperatorRolePolicies bool, policies map[string]*cmv1.AWSSTSPolicy,
-	credRequests map[string]*cmv1.STSOperator) error {
+	credRequests map[string]*cmv1.STSOperator, managedPolicies bool) error {
 	if generateAccountRolePolicies {
 		for file := range AccountRoles {
 			//Get trust policy
@@ -581,25 +581,19 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 				"partition":      GetPartition(),
 				"aws_account_id": GetJumpAccount(env),
 			})
-
 			filename = GetFormattedFileName(filename)
 			reporter.Debugf("Saving '%s' to the current directory", filename)
 			err := helper.SaveDocument(policy, filename)
 			if err != nil {
 				return err
 			}
+
 			//Get the permission policy
-			filename = fmt.Sprintf("sts_%s_permission_policy", file)
-			policyDetail = GetSTSPolicyDetails(policies, filename)
-			if policyDetail == "" {
-				continue
-			}
-			//Check and save it as json file
-			filename = GetFormattedFileName(filename)
-			reporter.Debugf("Saving '%s' to the current directory", filename)
-			err = helper.SaveDocument(policyDetail, filename)
-			if err != nil {
-				return err
+			if !managedPolicies {
+				err = generatePermissionPolicyFile(reporter, file, policies)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -620,6 +614,19 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 		}
 	}
 	return nil
+}
+
+func generatePermissionPolicyFile(reporter *rprtr.Object, file string, policies map[string]*cmv1.AWSSTSPolicy) error {
+	filename := fmt.Sprintf("sts_%s_permission_policy", file)
+	policyDetail := GetSTSPolicyDetails(policies, filename)
+	if policyDetail == "" {
+		return nil
+	}
+	//Check and save it as json file
+	filename = GetFormattedFileName(filename)
+	reporter.Debugf("Saving '%s' to the current directory", filename)
+
+	return helper.SaveDocument(policyDetail, filename)
 }
 
 func GetFormattedFileName(filename string) string {
@@ -765,10 +772,22 @@ func FindOperatorRoleBySTSOperator(operatorRoles []*cmv1.OperatorIAMRole, operat
 }
 
 func GetSTSPolicyDetails(policies map[string]*cmv1.AWSSTSPolicy, key string) string {
-	policyDetails, ok := policies[key]
+	policy, ok := policies[key]
 	if ok {
-		return policyDetails.Details()
+		return policy.Details()
 	}
 
 	return ""
+}
+
+func GetSTSPolicyARN(policies map[string]*cmv1.AWSSTSPolicy, key string) (string, error) {
+	policy, ok := policies[key]
+	if !ok {
+		return "", fmt.Errorf("failed to find policy ARN for '%s'", key)
+	}
+	if policy.ARN() == "" {
+		return "", fmt.Errorf("failed to find policy ARN for '%s'", key)
+	}
+
+	return policy.ARN(), nil
 }

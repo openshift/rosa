@@ -97,7 +97,7 @@ type Client interface {
 	TagUserRegion(username string, region string) error
 	GetClusterRegionTagForUser(username string) (string, error)
 	EnsureRole(name string, policy string, permissionsBoundary string,
-		version string, tagList map[string]string, path string) (string, error)
+		version string, tagList map[string]string, path string, managedPolicies bool) (string, error)
 	ValidateRoleNameAvailable(name string) (err error)
 	PutRolePolicy(roleName string, policyName string, policy string) error
 	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string,

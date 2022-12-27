@@ -310,7 +310,7 @@ func createRoles(r *rosa.Runtime,
 			tags.RoleType:      aws.OCMUserRole,
 			tags.Environment:   env,
 			tags.RedHatManaged: "true",
-		}, path)
+		}, path, false)
 	if err != nil {
 		return "", err
 	}

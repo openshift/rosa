@@ -95,7 +95,7 @@ var roleTypeMap = map[string]string{
 }
 
 func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
-	version string, tagList map[string]string, path string) (string, error) {
+	version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
 	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(name),
 	})
@@ -108,6 +108,10 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 				return "", err
 			}
 		}
+	}
+
+	if managedPolicies && !c.isManagedRole(output.Role.Tags) {
+		return "", fmt.Errorf("Role '%s' with unmanaged policies already exists", *output.Role.Arn)
 	}
 
 	outputPath, err := GetPathFromARN(aws.StringValue(output.Role.Arn))
@@ -214,6 +218,16 @@ func (c *awsClient) createRole(name string, policy string, permissionsBoundary s
 		return "", err
 	}
 	return aws.StringValue(output.Role.Arn), nil
+}
+
+func (c *awsClient) isManagedRole(roleTags []*iam.Tag) bool {
+	for _, tag := range roleTags {
+		if aws.StringValue(tag.Key) == tags.ManagedPolicies && aws.StringValue(tag.Value) == "true" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c *awsClient) isRoleCompatible(name string, version string) (bool, error) {
