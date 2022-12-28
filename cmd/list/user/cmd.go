@@ -101,12 +101,11 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	idLabel := "ID"
-	fmt.Fprintf(writer, "%s%-*sGROUPS\n", idLabel, int(longestUserId)-len(idLabel)+1, "")
+	writer := tabwriter.NewWriter(os.Stdout, int(longestUserId)+2, 4, 2, ' ', 0)
+	fmt.Fprintf(writer, "ID\tGROUPS\t\n")
 
 	for u, r := range groups {
-		fmt.Fprintf(writer, "%s%-*s%s\n", u, int(longestUserId)-len(u)+1, "", strings.Join(r, ", "))
+		fmt.Fprintf(writer, "%s\t%s\t\n", u, strings.Join(r, ", "))
 		writer.Flush()
 	}
 }
