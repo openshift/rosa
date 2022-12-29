@@ -234,6 +234,9 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 	autoscaling = args.autoscalingEnabled
 	replicasRequired := existingAutoscaling == nil
 
+	scalingUpdated = isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet ||
+		askForScalingParams || interactive.Enabled()
+
 	// if the user set min/max replicas and hasn't enabled autoscaling, or existing is disabled
 	if (isMinReplicasSet || isMaxReplicasSet) && !autoscaling && existingAutoscaling == nil {
 		reporter.Errorf("Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas",
@@ -265,9 +268,8 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 	}
 
 	if autoscaling {
-		scalingUpdated = true
 		// Prompt for min replicas if neither min or max is set or interactive mode
-		if !isMinReplicasSet && (interactive.Enabled() || !isMaxReplicasSet) {
+		if !isMinReplicasSet && (interactive.Enabled() || !isMaxReplicasSet && askForScalingParams) {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
@@ -281,7 +283,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 		}
 
 		// Prompt for max replicas if neither min or max is set or interactive mode
-		if !isMaxReplicasSet && (interactive.Enabled() || !isMinReplicasSet) {
+		if !isMaxReplicasSet && (interactive.Enabled() || !isMinReplicasSet && askForScalingParams) {
 			maxReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Max replicas",
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
@@ -293,7 +295,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 				os.Exit(1)
 			}
 		}
-		scalingUpdated = true
+	} else if interactive.Enabled() || !isReplicasSet && askForScalingParams {
 		if !isReplicasSet {
 			replicas = existingReplicas
 		}
