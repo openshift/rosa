@@ -322,8 +322,12 @@ func run(cmd *cobra.Command, argv []string) {
 			})
 			os.Exit(1)
 		}
-		commands := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID, policyVersion,
-			path, managedPolicies)
+		commands, err := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID, policyVersion,
+			path, managedPolicies, policies)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("All policy files saved to the current directory")
 			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
@@ -339,7 +343,7 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func buildCommands(prefix string, permissionsBoundary string, accountID string, defaultPolicyVersion string,
-	path string, managedPolicies bool) string {
+	path string, managedPolicies bool, policies map[string]*cmv1.AWSSTSPolicy) (string, error) {
 	commands := []string{}
 	for file, role := range aws.AccountRoles {
 		accRoleName := aws.GetRoleName(prefix, role.Name)
@@ -371,10 +375,22 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 			AddParam(awscb.Path, path).
 			Build()
 
+		// Determine policy ARN
+		var policyARN string
+		var err error
+		if managedPolicies {
+			policyARN, err = aws.GetManagedPolicyARN(policies, fmt.Sprintf("sts_%s_permission_policy", file))
+			if err != nil {
+				return "", err
+			}
+		} else {
+			policyARN = aws.GetPolicyARN(accountID, accRoleName, path)
+		}
+
 		attachRolePolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.AttachRolePolicy).
 			AddParam(awscb.RoleName, accRoleName).
-			AddParam(awscb.PolicyArn, aws.GetPolicyARN(accountID, accRoleName, path)).
+			AddParam(awscb.PolicyArn, policyARN).
 			Build()
 
 		if managedPolicies {
@@ -384,7 +400,7 @@ func buildCommands(prefix string, permissionsBoundary string, accountID string, 
 		}
 	}
 
-	return awscb.JoinCommands(commands)
+	return awscb.JoinCommands(commands), nil
 }
 
 func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env string,
@@ -398,7 +414,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 		}
 
 		filename := fmt.Sprintf("sts_%s_trust_policy", file)
-		policyDetail := aws.GetSTSPolicyDetails(policies, filename)
+		policyDetail := aws.GetManagedPolicyDetails(policies, filename)
 
 		policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 			"partition":      aws.GetPartition(),
@@ -422,12 +438,12 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 
 		filename = fmt.Sprintf("sts_%s_permission_policy", file)
 		if managedPolicies {
-			policyARN, err = aws.GetSTSPolicyARN(policies, filename)
+			policyARN, err = aws.GetManagedPolicyARN(policies, filename)
 			if err != nil {
 				return err
 			}
 		} else {
-			policyPermissionDetail := aws.GetSTSPolicyDetails(policies, filename)
+			policyPermissionDetail := aws.GetManagedPolicyDetails(policies, filename)
 
 			r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
 			policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyPermissionDetail,
