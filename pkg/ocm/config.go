@@ -26,6 +26,8 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 )
 
+const Production = "production"
+
 // URLAliases allows the value of the `--env` option to map to the various API URLs.
 var URLAliases = map[string]string{
 	"production":  "https://api.openshift.com",

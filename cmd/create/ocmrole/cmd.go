@@ -401,7 +401,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		r.Reporter.Debugf("Creating role '%s'", roleName)
 
 		roleARN, err = r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary,
-			"", iamTags, rolePath)
+			"", iamTags, rolePath, false)
 		if err != nil {
 			return "", err
 		}
