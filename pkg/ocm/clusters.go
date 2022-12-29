@@ -89,14 +89,17 @@ type Spec struct {
 	DisableSCPChecks *bool
 
 	// STS
-	IsSTS               bool
-	RoleARN             string
-	ExternalID          string
-	SupportRoleARN      string
-	OperatorIAMRoles    []OperatorIAMRole
-	ControlPlaneRoleARN string
-	WorkerRoleARN       string
-	Mode                string
+	IsSTS                               bool
+	RoleARN                             string
+	ExternalID                          string
+	SupportRoleARN                      string
+	OperatorIAMRoles                    []OperatorIAMRole
+	ControlPlaneRoleARN                 string
+	WorkerRoleARN                       string
+	OidcEndpointUrl                     string
+	BoundServiceAccountSigningKey       string
+	BoundServiceAccountSigningKeyKmsArn string
+	Mode                                string
 
 	NodeDrainGracePeriodInMinutes float64
 
@@ -768,6 +771,12 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 				)
 			}
 			stsBuilder = stsBuilder.OperatorIAMRoles(roles...)
+		}
+		if config.OidcEndpointUrl != "" && config.BoundServiceAccountSigningKey != "" &&
+			config.BoundServiceAccountSigningKeyKmsArn != "" {
+			stsBuilder = stsBuilder.OIDCEndpointURL(config.OidcEndpointUrl).
+				BoundServiceAccountSigningKey(config.BoundServiceAccountSigningKey).
+				BoundServiceAccountKeyKmsId(config.BoundServiceAccountSigningKeyKmsArn)
 		}
 		instanceIAMRolesBuilder := cmv1.NewInstanceIAMRoles()
 		if config.ControlPlaneRoleARN != "" {
