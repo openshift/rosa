@@ -414,7 +414,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 		}
 
 		filename := fmt.Sprintf("sts_%s_trust_policy", file)
-		policyDetail := aws.GetManagedPolicyDetails(policies, filename)
+		policyDetail := aws.GetPolicyDetails(policies, filename)
 
 		policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 			"partition":      aws.GetPartition(),
@@ -443,7 +443,7 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 				return err
 			}
 		} else {
-			policyPermissionDetail := aws.GetManagedPolicyDetails(policies, filename)
+			policyPermissionDetail := aws.GetPolicyDetails(policies, filename)
 
 			r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
 			policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyPermissionDetail,

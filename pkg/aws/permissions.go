@@ -16,7 +16,7 @@ type SimulateParams struct {
 
 // ValidateSCP attempts to validate SCP policies by ensuring we have the correct permissions
 func (c *awsClient) ValidateSCP(target *string, policies map[string]*cmv1.AWSSTSPolicy) (bool, error) {
-	policyDetails := GetSTSPolicyDetails(policies, "osd_scp_policy")
+	policyDetails := GetPolicyDetails(policies, "osd_scp_policy")
 
 	sParams := &SimulateParams{
 		Region: *c.awsSession.Config.Region,

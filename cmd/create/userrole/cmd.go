@@ -288,7 +288,7 @@ func createRoles(r *rosa.Runtime,
 	}
 
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
-	policyDetail := aws.GetSTSPolicyDetails(policies, filename)
+	policyDetail := aws.GetPolicyDetails(policies, filename)
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":      aws.GetPartition(),
 		"aws_account_id": aws.GetJumpAccount(env),
@@ -322,7 +322,7 @@ func createRoles(r *rosa.Runtime,
 func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID string,
 	policies map[string]*cmv1.AWSSTSPolicy) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
-	policyDetail := aws.GetSTSPolicyDetails(policies, filename)
+	policyDetail := aws.GetPolicyDetails(policies, filename)
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":      aws.GetPartition(),
 		"aws_account_id": aws.GetJumpAccount(env),

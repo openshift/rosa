@@ -43,7 +43,7 @@ func BuildMissingOperatorRoleCommand(
 			operator.Name(),
 			unifiedPath,
 		)
-		policyDetails := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
+		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return "", err
