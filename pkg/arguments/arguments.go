@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/profile"
 	"github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/debug"
+	"github.com/openshift/rosa/pkg/helper"
 )
 
 var hasUnknownFlags bool
@@ -225,4 +226,13 @@ func IsValidMode(modes []string, mode string) bool {
 		}
 	}
 	return false
+}
+
+func MarkGlobalFlagsHidden(command *cobra.Command, hidden ...string) {
+	command.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+		name := flag.Name
+		if helper.Contains(hidden, name) {
+			flag.Hidden = true
+		}
+	})
 }
