@@ -676,7 +676,7 @@ func (c *Client) CheckUpgradeClusterVersion(
 	if !validVersion {
 		return weberr.Errorf(
 			"Expected a valid version to upgrade cluster to.\nValid versions: %s",
-			helper.SliceToString(availableUpgrades),
+			helper.SliceToSortedString(availableUpgrades),
 		)
 	}
 	return nil

@@ -116,7 +116,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	if !helper.Contains(supportedRegions, awsRegion) {
 		r.Reporter.Errorf("Unsupported region '%s', available regions: %s",
-			awsRegion, helper.SliceToString(supportedRegions))
+			awsRegion, helper.SliceToSortedString(supportedRegions))
 		os.Exit(1)
 	}
 	// Create the AWS client:

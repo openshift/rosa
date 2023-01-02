@@ -95,14 +95,8 @@ func SliceToMap(s []string) map[string]bool {
 	return m
 }
 
-func SliceToString(s []string) string {
-	sort.Slice(s, func(i, j int) bool {
-		l1, l2 := len(s[i]), len(s[j])
-		if l1 != l2 {
-			return l1 < l2
-		}
-		return s[i] < s[j]
-	})
+func SliceToSortedString(s []string) string {
+	SortStringRespectLength(s)
 	return "[" + strings.Join(s, ", ") + "]"
 }
 
@@ -111,14 +105,17 @@ func MapKeysToString(m map[string]bool) string {
 	for k := range m {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		l1, l2 := len(keys[i]), len(keys[j])
+	return SliceToSortedString(keys)
+}
+
+func SortStringRespectLength(s []string) {
+	sort.Slice(s, func(i, j int) bool {
+		l1, l2 := len(s[i]), len(s[j])
 		if l1 != l2 {
 			return l1 < l2
 		}
-		return keys[i] < keys[j]
+		return s[i] < s[j]
 	})
-	return "[" + strings.Join(keys, ", ") + "]"
 }
 
 // RemoveStrFromSlice removes one occurrence of 'str' from the 's' slice if exists.
