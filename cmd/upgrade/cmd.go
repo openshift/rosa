@@ -44,8 +44,9 @@ func init() {
 	arguments.AddRegionFlag(flags)
 	interactive.AddFlag(flags)
 
-	accountroles.Cmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
-		arguments.MarkGlobalFlagsHidden(Cmd, "region")
-		command.Parent().HelpFunc()(command, strings)
-	})
+	globallyAvailableCommands := []*cobra.Command{
+		accountroles.Cmd, operatorroles.Cmd,
+		roles.Cmd,
+	}
+	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
 }
