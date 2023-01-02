@@ -31,6 +31,8 @@ const (
 	digitCount  = nineCode - zeroCode + 1
 )
 
+const True = "true"
+
 func RandomLabel(size int) string {
 	value := rand.Int() // #nosec G404
 	chars := make([]byte, size)

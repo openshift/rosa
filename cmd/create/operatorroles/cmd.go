@@ -209,7 +209,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	managedPolicies, err := r.AWSClient.HasManagedPolicies(cluster)
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine if cluster has managed policies", err)
+		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
 		os.Exit(1)
 	}
 	// TODO: remove once AWS managed policies are in place
@@ -246,7 +246,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("There was an error creating the operator roles: %s", err)
 			isThrottle := "false"
 			if strings.Contains(err.Error(), "Throttling") {
-				isThrottle = "true"
+				isThrottle = helper.True
 			}
 			r.OCMClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
 				ocm.ClusterID:  clusterKey,
@@ -330,7 +330,7 @@ func createRoles(r *rosa.Runtime,
 				defaultVersion, map[string]string{
 					tags.OpenShiftVersion:  accountRoleVersion,
 					tags.RolePrefix:        prefix,
-					tags.RedHatManaged:     "true",
+					tags.RedHatManaged:     helper.True,
 					tags.OperatorNamespace: operator.Namespace(),
 					tags.OperatorName:      operator.Name(),
 				}, path)
@@ -350,10 +350,10 @@ func createRoles(r *rosa.Runtime,
 			tags.ClusterID:         cluster.ID(),
 			tags.OperatorNamespace: operator.Namespace(),
 			tags.OperatorName:      operator.Name(),
-			tags.RedHatManaged:     "true",
+			tags.RedHatManaged:     helper.True,
 		}
 		if managedPolicies {
-			tagsList[tags.ManagedPolicies] = "true"
+			tagsList[tags.ManagedPolicies] = helper.True
 		}
 
 		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
@@ -422,7 +422,7 @@ func buildCommands(r *rosa.Runtime, env string,
 					tags.RolePrefix:        prefix,
 					tags.OperatorNamespace: operator.Namespace(),
 					tags.OperatorName:      operator.Name(),
-					tags.RedHatManaged:     "true",
+					tags.RedHatManaged:     helper.True,
 				}
 				createPolicy := awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.CreatePolicy).
@@ -453,10 +453,10 @@ func buildCommands(r *rosa.Runtime, env string,
 			tags.RolePrefix:        prefix,
 			tags.OperatorNamespace: operator.Namespace(),
 			tags.OperatorName:      operator.Name(),
-			tags.RedHatManaged:     "true",
+			tags.RedHatManaged:     helper.True,
 		}
 		if managedPolicies {
-			iamTags[tags.ManagedPolicies] = "true"
+			iamTags[tags.ManagedPolicies] = helper.True
 		}
 		createRole := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreateRole).
