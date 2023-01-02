@@ -207,6 +207,17 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	managedPolicies, err := r.AWSClient.HasManagedPolicies(cluster)
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine if cluster has managed policies", err)
+		os.Exit(1)
+	}
+	// TODO: remove once AWS managed policies are in place
+	if managedPolicies && env == ocm.Production {
+		r.Reporter.Errorf("Managed policies are not supported in this environment")
+		os.Exit(1)
+	}
+
 	defaultPolicyVersion, err := r.OCMClient.GetDefaultVersion()
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest default version: %s", err)
@@ -230,7 +241,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 		}
 		err = createRoles(r, operatorRolePolicyPrefix, permissionsBoundary, cluster,
-			accountRoleVersion, policies, defaultPolicyVersion, credRequests)
+			accountRoleVersion, policies, defaultPolicyVersion, credRequests, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the operator roles: %s", err)
 			isThrottle := "false"
@@ -250,7 +261,7 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 	case aws.ModeManual:
 		commands, err := buildCommands(r, env, operatorRolePolicyPrefix, permissionsBoundary, defaultPolicyVersion,
-			cluster, policies, credRequests)
+			cluster, policies, credRequests, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -277,7 +288,7 @@ func run(cmd *cobra.Command, argv []string) {
 func createRoles(r *rosa.Runtime,
 	prefix string, permissionsBoundary string,
 	cluster *cmv1.Cluster, accountRoleVersion string, policies map[string]*cmv1.AWSSTSPolicy,
-	defaultVersion string, credRequests map[string]*cmv1.STSOperator) error {
+	defaultVersion string, credRequests map[string]*cmv1.STSOperator, managedPolicies bool) error {
 	for credrequest, operator := range credRequests {
 		ver := cluster.Version()
 		if ver != nil && operator.MinVersion() != "" {
@@ -302,37 +313,51 @@ func createRoles(r *rosa.Runtime,
 		if err != nil {
 			return err
 		}
-		policyARN := aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
-			operator.Name(), path)
+
+		var policyARN string
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-		policyDetails := aws.GetPolicyDetails(policies, filename)
+		if managedPolicies {
+			policyARN, err = aws.GetManagedPolicyARN(policies, filename)
+			if err != nil {
+				return err
+			}
+		} else {
+			policyARN = aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
+				operator.Name(), path)
+			policyDetails := aws.GetPolicyDetails(policies, filename)
 
-		policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
-			defaultVersion, map[string]string{
-				tags.OpenShiftVersion:  accountRoleVersion,
-				tags.RolePrefix:        prefix,
-				tags.RedHatManaged:     "true",
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
-			}, path)
-		if err != nil {
-			return err
+			policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
+				defaultVersion, map[string]string{
+					tags.OpenShiftVersion:  accountRoleVersion,
+					tags.RolePrefix:        prefix,
+					tags.RedHatManaged:     "true",
+					tags.OperatorNamespace: operator.Namespace(),
+					tags.OperatorName:      operator.Name(),
+				}, path)
+			if err != nil {
+				return err
+			}
 		}
-		policyDetails = aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 
+		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}
+
 		r.Reporter.Debugf("Creating role '%s'", roleName)
+		tagsList := map[string]string{
+			tags.ClusterID:         cluster.ID(),
+			tags.OperatorNamespace: operator.Namespace(),
+			tags.OperatorName:      operator.Name(),
+			tags.RedHatManaged:     "true",
+		}
+		if managedPolicies {
+			tagsList[tags.ManagedPolicies] = "true"
+		}
 
 		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
-			map[string]string{
-				tags.ClusterID:         cluster.ID(),
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
-				tags.RedHatManaged:     "true",
-			}, path, false)
+			tagsList, path, managedPolicies)
 		if err != nil {
 			return err
 		}
@@ -352,10 +377,10 @@ func createRoles(r *rosa.Runtime,
 
 func buildCommands(r *rosa.Runtime, env string,
 	prefix string, permissionsBoundary string, defaultPolicyVersion string, cluster *cmv1.Cluster,
-	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator) (string, error) {
-
+	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
+	managedPolicies bool) (string, error) {
 	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-		true, policies, credRequests, false)
+		true, policies, credRequests, managedPolicies)
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 		os.Exit(1)
@@ -380,26 +405,34 @@ func buildCommands(r *rosa.Runtime, env string,
 		if err != nil {
 			return "", err
 		}
-		policyARN := getPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
 
-		name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
-		_, err = r.AWSClient.IsPolicyExists(policyARN)
-		if err != nil {
-			iamTags := map[string]string{
-				tags.OpenShiftVersion:  defaultPolicyVersion,
-				tags.RolePrefix:        prefix,
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
-				tags.RedHatManaged:     "true",
+		var policyARN string
+		if managedPolicies {
+			policyARN, err = aws.GetManagedPolicyARN(policies, fmt.Sprintf("openshift_%s_policy", credrequest))
+			if err != nil {
+				return "", err
 			}
-			createPolicy := awscb.NewIAMCommandBuilder().
-				SetCommand(awscb.CreatePolicy).
-				AddParam(awscb.PolicyName, name).
-				AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", credrequest)).
-				AddTags(iamTags).
-				AddParam(awscb.Path, path).
-				Build()
-			commands = append(commands, createPolicy)
+		} else {
+			policyARN = getPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
+			name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
+			_, err = r.AWSClient.IsPolicyExists(policyARN)
+			if err != nil {
+				iamTags := map[string]string{
+					tags.OpenShiftVersion:  defaultPolicyVersion,
+					tags.RolePrefix:        prefix,
+					tags.OperatorNamespace: operator.Namespace(),
+					tags.OperatorName:      operator.Name(),
+					tags.RedHatManaged:     "true",
+				}
+				createPolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.CreatePolicy).
+					AddParam(awscb.PolicyName, name).
+					AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", credrequest)).
+					AddTags(iamTags).
+					AddParam(awscb.Path, path).
+					Build()
+				commands = append(commands, createPolicy)
+			}
 		}
 
 		policyDetail := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
@@ -421,6 +454,9 @@ func buildCommands(r *rosa.Runtime, env string,
 			tags.OperatorNamespace: operator.Namespace(),
 			tags.OperatorName:      operator.Name(),
 			tags.RedHatManaged:     "true",
+		}
+		if managedPolicies {
+			iamTags[tags.ManagedPolicies] = "true"
 		}
 		createRole := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreateRole).

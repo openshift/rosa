@@ -1342,6 +1342,19 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 	return false, nil
 }
 
+func (c *awsClient) HasManagedPolicies(cluster *cmv1.Cluster) (bool, error) {
+	if cluster.AWS().STS().RoleARN() == "" {
+		return false, nil
+	}
+
+	role, err := c.GetRoleByARN(cluster.AWS().STS().RoleARN())
+	if err != nil {
+		return false, err
+	}
+
+	return c.isManagedRole(role.Tags), nil
+}
+
 func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesForCluster(cluster *cmv1.Cluster,
 	version string) (bool, error) {
 
