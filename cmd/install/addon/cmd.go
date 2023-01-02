@@ -315,7 +315,7 @@ func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialReques
 	if err != nil {
 		return err
 	}
-	policyDetails := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
+	policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 	assumePolicy, err := aws.GenerateAddonPolicyDoc(cluster, r.Creator.AccountID, cr, policyDetails)
 	if err != nil {
 		return err

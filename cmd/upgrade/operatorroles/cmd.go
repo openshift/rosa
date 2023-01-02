@@ -341,7 +341,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 			continue
 		}
-		policyDetails := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
+		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 
 		policyARN := aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), unifiedPath)
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)

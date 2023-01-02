@@ -240,7 +240,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
 		policyARN := aws.GetPolicyARN(accountID, roleName, policyPath)
 
-		policyDetails := aws.GetSTSPolicyDetails(policies, filename)
+		policyDetails := aws.GetPolicyDetails(policies, filename)
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			policyVersion, map[string]string{
 				tags.OpenShiftVersion: policyVersion,

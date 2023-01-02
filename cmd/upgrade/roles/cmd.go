@@ -538,7 +538,7 @@ func upgradeAccountRolePoliciesFromCluster(
 			return err
 		}
 
-		policyDetails := aws.GetSTSPolicyDetails(policies, filename)
+		policyDetails := aws.GetPolicyDetails(policies, filename)
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetails,
 			policyVersion, map[string]string{
 				tags.OpenShiftVersion: policyVersion,
@@ -776,7 +776,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 			}
 		}
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-		policyDetails := aws.GetSTSPolicyDetails(policies, filename)
+		policyDetails := aws.GetPolicyDetails(policies, filename)
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion:  defaultPolicyVersion,
@@ -1022,7 +1022,7 @@ func upgradeMissingOperatorRole(
 			}
 			continue
 		}
-		policyDetails := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
+		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 
 		policyARN := aws.GetOperatorPolicyARN(
 			accountID,

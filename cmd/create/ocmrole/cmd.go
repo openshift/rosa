@@ -375,7 +375,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		os.Exit(0)
 	}
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
-	policyDetail := aws.GetSTSPolicyDetails(policies, filename)
+	policyDetail := aws.GetPolicyDetails(policies, filename)
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":           aws.GetPartition(),
 		"aws_account_id":      aws.GetJumpAccount(env),
@@ -409,7 +409,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 
 		// create and attach the permission policy to the role
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
-		policyDetail = aws.GetSTSPolicyDetails(policies, filename)
+		policyDetail = aws.GetPolicyDetails(policies, filename)
 		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail)
 		if err != nil {
 			return "", err
@@ -427,7 +427,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		policyARN := aws.GetAdminPolicyARN(accountID, roleName, "")
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMAdminRolePolicyFile)
 		iamTags[tags.AdminRole] = "true"
-		policyDetail = aws.GetSTSPolicyDetails(policies, filename)
+		policyDetail = aws.GetPolicyDetails(policies, filename)
 		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail)
 		if err != nil {
 			return "", err
@@ -441,7 +441,7 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 	policies map[string]*cmv1.AWSSTSPolicy) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 
-	policyDetail := aws.GetSTSPolicyDetails(policies, filename)
+	policyDetail := aws.GetPolicyDetails(policies, filename)
 	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
 		"partition":           aws.GetPartition(),
 		"aws_account_id":      aws.GetJumpAccount(env),
@@ -454,7 +454,7 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 		return err
 	}
 	filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
-	policyDetail = aws.GetSTSPolicyDetails(policies, filename)
+	policyDetail = aws.GetPolicyDetails(policies, filename)
 	filename = aws.GetFormattedFileName(filename)
 	r.Reporter.Debugf("Saving '%s' to the current directory", filename)
 	err = helper.SaveDocument(policyDetail, filename)
@@ -464,7 +464,7 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 
 	if isAdmin {
 		filename = fmt.Sprintf("sts_%s_admin_permission_policy", aws.OCMRolePolicyFile)
-		policyDetail = aws.GetSTSPolicyDetails(policies, filename)
+		policyDetail = aws.GetPolicyDetails(policies, filename)
 		filename = aws.GetFormattedFileName(filename)
 		r.Reporter.Debugf("Saving '%s' to the current directory", filename)
 		err = helper.SaveDocument(policyDetail, filename)

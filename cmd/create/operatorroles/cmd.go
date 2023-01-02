@@ -305,7 +305,7 @@ func createRoles(r *rosa.Runtime,
 		policyARN := aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
 			operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-		policyDetails := aws.GetSTSPolicyDetails(policies, filename)
+		policyDetails := aws.GetPolicyDetails(policies, filename)
 
 		policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
 			defaultVersion, map[string]string{
@@ -318,7 +318,7 @@ func createRoles(r *rosa.Runtime,
 		if err != nil {
 			return err
 		}
-		policyDetails = aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
+		policyDetails = aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetails)
 		if err != nil {
@@ -402,7 +402,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			commands = append(commands, createPolicy)
 		}
 
-		policyDetail := aws.GetSTSPolicyDetails(policies, "operator_iam_role_policy")
+		policyDetail := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetail)
 		if err != nil {
 			return "", err

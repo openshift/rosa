@@ -576,7 +576,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 		for file := range AccountRoles {
 			//Get trust policy
 			filename := fmt.Sprintf("sts_%s_trust_policy", file)
-			policyDetail := GetSTSPolicyDetails(policies, filename)
+			policyDetail := GetPolicyDetails(policies, filename)
 			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
 				"partition":      GetPartition(),
 				"aws_account_id": GetJumpAccount(env),
@@ -600,7 +600,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 	if generateOperatorRolePolicies {
 		for credrequest := range credRequests {
 			filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-			policyDetail := GetSTSPolicyDetails(policies, filename)
+			policyDetail := GetPolicyDetails(policies, filename)
 			//In case any missing policy we dont want to block the user.This might not happen
 			if policyDetail == "" {
 				continue
@@ -618,7 +618,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 
 func generatePermissionPolicyFile(reporter *rprtr.Object, file string, policies map[string]*cmv1.AWSSTSPolicy) error {
 	filename := fmt.Sprintf("sts_%s_permission_policy", file)
-	policyDetail := GetSTSPolicyDetails(policies, filename)
+	policyDetail := GetPolicyDetails(policies, filename)
 	if policyDetail == "" {
 		return nil
 	}
@@ -714,7 +714,7 @@ func UpgradeOperatorRolePolicies(
 	for credrequest, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
-		policyDetails := GetSTSPolicyDetails(policies, filename)
+		policyDetails := GetPolicyDetails(policies, filename)
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion:  defaultPolicyVersion,
@@ -771,7 +771,8 @@ func FindOperatorRoleBySTSOperator(operatorRoles []*cmv1.OperatorIAMRole, operat
 	return ""
 }
 
-func GetSTSPolicyDetails(policies map[string]*cmv1.AWSSTSPolicy, key string) string {
+// GetPolicyDetails retrieves from the map the policy details for unmanaged and managed policies.
+func GetPolicyDetails(policies map[string]*cmv1.AWSSTSPolicy, key string) string {
 	policy, ok := policies[key]
 	if ok {
 		return policy.Details()
@@ -780,7 +781,7 @@ func GetSTSPolicyDetails(policies map[string]*cmv1.AWSSTSPolicy, key string) str
 	return ""
 }
 
-func GetSTSPolicyARN(policies map[string]*cmv1.AWSSTSPolicy, key string) (string, error) {
+func GetManagedPolicyARN(policies map[string]*cmv1.AWSSTSPolicy, key string) (string, error) {
 	policy, ok := policies[key]
 	if !ok {
 		return "", fmt.Errorf("failed to find policy ARN for '%s'", key)
