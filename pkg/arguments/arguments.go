@@ -228,11 +228,20 @@ func IsValidMode(modes []string, mode string) bool {
 	return false
 }
 
-func MarkGlobalFlagsHidden(command *cobra.Command, hidden ...string) {
+func markGlobalFlagsHidden(command *cobra.Command, hidden ...string) {
 	command.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
 		name := flag.Name
 		if helper.Contains(hidden, name) {
 			flag.Hidden = true
 		}
 	})
+}
+
+func MarkRegionHidden(parentCmd *cobra.Command, childrenCmds []*cobra.Command) {
+	for _, cmd := range childrenCmds {
+		cmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
+			markGlobalFlagsHidden(parentCmd, "region")
+			command.Parent().HelpFunc()(command, strings)
+		})
+	}
 }
