@@ -152,7 +152,7 @@ func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger, su
 	}
 	if !helper.Contains(supportedRegions, awsRegionInUserConfig) {
 		reporter.Errorf("Unsupported region '%s', available regions: %s",
-			awsRegionInUserConfig, helper.SliceToString(supportedRegions))
+			awsRegionInUserConfig, helper.SliceToSortedString(supportedRegions))
 		os.Exit(1)
 	}
 
@@ -173,7 +173,7 @@ func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger, su
 	if regionUsedForInit != awsRegionInUserConfig {
 		if !helper.Contains(supportedRegions, regionUsedForInit) {
 			reporter.Errorf("Unsupported region '%s', available regions: %s",
-				regionUsedForInit, helper.SliceToString(supportedRegions))
+				regionUsedForInit, helper.SliceToSortedString(supportedRegions))
 			os.Exit(1)
 		}
 		// Create the AWS client with the region used in the init
