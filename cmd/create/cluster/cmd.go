@@ -1149,7 +1149,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Custom tags for AWS resources
 	tags := args.tags
 	tagsList := map[string]string{}
-	if interactive.Enabled() {
+	if len(tags) > 0 && interactive.Enabled() {
 		tagsInput, err := interactive.GetString(interactive.Input{
 			Question: "Tags",
 			Help:     cmd.Flags().Lookup("tags").Usage,
