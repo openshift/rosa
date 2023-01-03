@@ -1,8 +1,11 @@
 package machinepool
 
 import (
+	"fmt"
 	"os"
+	"time"
 
+	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -120,6 +123,59 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	} else {
 		npBuilder = npBuilder.Replicas(replicas)
 	}
+
+	// Machine pool instance type:
+	// NodePools don't support MultiAZ yet, so the availabilityZonesFilters is calculated from the cluster
+
+	var spin *spinner.Spinner
+	if r.Reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
+	if spin != nil {
+		r.Reporter.Infof("Fetching instance types")
+		spin.Start()
+	}
+
+	availabilityZonesFilter := cluster.Nodes().AvailabilityZones()
+	instanceType := args.instanceType
+	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
+		availabilityZonesFilter, cluster.AWS().STS().RoleARN(), r.AWSClient)
+	if err != nil {
+		r.Reporter.Errorf(fmt.Sprintf("%s", err))
+		os.Exit(1)
+	}
+
+	if spin != nil {
+		spin.Stop()
+	}
+
+	if interactive.Enabled() {
+		if instanceType == "" {
+			instanceType = instanceTypeList[0].MachineType.ID()
+		}
+		instanceType, err = interactive.GetOption(interactive.Input{
+			Question: "Instance type",
+			Help:     cmd.Flags().Lookup("instance-type").Usage,
+			Options:  instanceTypeList.GetAvailableIDs(cluster.MultiAZ()),
+			Default:  instanceType,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid machine type: %s", err)
+			os.Exit(1)
+		}
+	}
+	if instanceType == "" {
+		r.Reporter.Errorf("Expected a valid machine type")
+		os.Exit(1)
+	}
+	err = instanceTypeList.ValidateMachineType(instanceType, cluster.MultiAZ())
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid machine type: %s", err)
+		os.Exit(1)
+	}
+
+	npBuilder.AWSNodePool(cmv1.NewAWSNodePool().InstanceType(instanceType))
 
 	nodePool, err := npBuilder.Build()
 	if err != nil {
