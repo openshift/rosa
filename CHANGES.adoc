@@ -2,6 +2,48 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.11 Jan 3 2023
+
+- fix: check if any new operator roles have been created
+- fix: spacing listing users
+- fix: phrasing
+- fix: remove auth url info from LDAP idp when listing
+- Upgrade to ocm-sdk-go 0.1.299
+- Support nodepools under machinepool commands
+- fix: upgrading from pre release would fail to validate version
+- Log a warning if the user's organization doesn't have the needed capability
+- fix: using unified path on upgrade roles/operator-roles
+- feat: validates machine pool label
+- fix: add error message when CA is passed but github hostname is not
+- Describe cluster - print `infra_id` to the output
+- fix: using lower case before comparing expected acc role arns
+- feat: retrieve operator role prefix from backend
+- fix: Accomodate inline policies in new upgrade roles flow
+- feat: using LCP to retrieve operator policy prefix
+- Adjust NodePool headers
+- Allow editing default machine pool labels
+- Enable day1 default machine pool labels
+- fix: hide region arg in account roles commands
+- fix: removing local contains in favor of helper.Contains
+- fix: Use default/in-place value for addon param first
+- Add default machine pool labels validations
+- make rosa describe upgrade
+- fix: remove channel group from recreate output, this is treated within creation flow
+- Bump OCM SDK GO version to v0.1.303
+- Refactor `GetPolicies` function
+- fix ux issues related to rosa describe
+- fix: using tabwritters options instead of manually formatting
+- Fix scaling bug and improve interactive mode
+- Create account roles with existing policies
+- Fix bug - create managed account roles
+- Refactor get policy details and ARN
+- Create operator role with existing policies
+- Fix linter errors - add constant for string "true"
+- chore: refactor sort strings helper
+- feat: hide region from other globally available commands
+- SDA-7521 Support instanceType selection on NodePools
+- Release v1.2.11
+
 == 1.2.10 Dec 1 2022
 
 - Check HostedCP version support also in interactive mode + align versions
