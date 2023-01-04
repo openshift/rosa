@@ -1163,7 +1163,9 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid set of tags: %s", err)
 			os.Exit(1)
 		}
-		tags = strings.Split(tagsInput, ",")
+		if len(tags) > 0 {
+			tags = strings.Split(tagsInput, ",")
+		}
 	}
 	if len(tags) > 0 {
 		duplicate, found := aws.HasDuplicateTagKey(tags)
