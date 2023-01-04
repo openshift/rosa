@@ -1149,7 +1149,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Custom tags for AWS resources
 	tags := args.tags
 	tagsList := map[string]string{}
-	if len(tags) > 0 && interactive.Enabled() {
+	if interactive.Enabled() {
 		tagsInput, err := interactive.GetString(interactive.Input{
 			Question: "Tags",
 			Help:     cmd.Flags().Lookup("tags").Usage,
@@ -1163,7 +1163,9 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid set of tags: %s", err)
 			os.Exit(1)
 		}
-		tags = strings.Split(tagsInput, ",")
+		if len(tags) > 0 {
+			tags = strings.Split(tagsInput, ",")
+		}
 	}
 	if len(tags) > 0 {
 		duplicate, found := aws.HasDuplicateTagKey(tags)
