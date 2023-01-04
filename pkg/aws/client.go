@@ -156,7 +156,9 @@ type Client interface {
 	DescribeAvailabilityZones() ([]string, error)
 	IsLocalAvailabilityZone(availabilityZoneName string) (bool, error)
 	DetachRolePolicies(roleName string) error
-	HasManagedPolicies(cluster *cmv1.Cluster) (bool, error)
+	HasManagedPolicies(roleARN string) (bool, error)
+	GetAccountRoleARN(prefix string, roleType string) (string, error)
+	ValidateAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.

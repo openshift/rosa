@@ -1342,12 +1342,12 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 	return false, nil
 }
 
-func (c *awsClient) HasManagedPolicies(cluster *cmv1.Cluster) (bool, error) {
-	if cluster.AWS().STS().RoleARN() == "" {
+func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
+	if roleARN == "" {
 		return false, nil
 	}
 
-	role, err := c.GetRoleByARN(cluster.AWS().STS().RoleARN())
+	role, err := c.GetRoleByARN(roleARN)
 	if err != nil {
 		return false, err
 	}
@@ -1559,4 +1559,73 @@ func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, error) {
+	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: aws.String(GetRoleName(prefix, roleType)),
+	})
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
+				return "", errors.NotFound.Errorf("Role with the prefix '%s' not found", prefix)
+			}
+		}
+
+		return "", err
+	}
+
+	return aws.StringValue(output.Role.Arn), nil
+}
+
+func (c *awsClient) ValidateAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error {
+	for key, accountRole := range AccountRoles {
+		roleName := GetRoleName(prefix, accountRole.Name)
+		managedPolicyARN, err := GetManagedPolicyARN(policies, fmt.Sprintf("sts_%s_permission_policy", key))
+		if err != nil {
+			return err
+		}
+
+		isPolicyAttached, err := c.isManagedPolicyAttached(roleName, managedPolicyARN)
+		if err != nil {
+			return err
+		}
+		if !isPolicyAttached {
+			return fmt.Errorf("role '%s' is missing the attached managed policy '%s'", roleName, managedPolicyARN)
+		}
+	}
+
+	return nil
+}
+
+func (c *awsClient) isManagedPolicyAttached(roleName string, managedPolicyARN string) (bool, error) {
+	policies, err := c.listRoleAttachedPolicies(roleName)
+	if err != nil {
+		return false, fmt.Errorf("failed to list role '%s' attached policies: %v", roleName, err)
+	}
+
+	for _, policy := range policies {
+		if aws.StringValue(policy.PolicyArn) == managedPolicyARN {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (c *awsClient) listRoleAttachedPolicies(roleName string) ([]*iam.AttachedPolicy, error) {
+	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(
+		&iam.ListAttachedRolePoliciesInput{RoleName: aws.String(roleName)},
+	)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
+				return []*iam.AttachedPolicy{}, errors.NotFound.Errorf("Role with name '%s' not found", roleName)
+			}
+		}
+
+		return []*iam.AttachedPolicy{}, err
+	}
+
+	return attachedPoliciesOutput.AttachedPolicies, nil
 }

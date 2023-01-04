@@ -118,6 +118,35 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
+	roleARN, err := awsClient.GetAccountRoleARN(prefix, aws.InstallerAccountRole)
+	if err != nil {
+		reporter.Errorf("Failed to get account role ARN: %v", err)
+		os.Exit(1)
+	}
+
+	managedPolicies, err := awsClient.HasManagedPolicies(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		os.Exit(1)
+	}
+	// TODO: remove once AWS managed policies are in place
+	if managedPolicies && env == ocm.Production {
+		r.Reporter.Errorf("Managed policies are not supported in this environment")
+		os.Exit(1)
+	}
+
+	if managedPolicies {
+		err = validateManagedPolicies(r, prefix)
+		if err != nil {
+			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
+			os.Exit(1)
+		}
+
+		r.Reporter.Infof("Account roles with the prefix '%s' have attached managed policies. "+
+			"An upgrade isn't needed", prefix)
+		os.Exit(0)
+	}
+
 	creator, err := awsClient.GetCreator()
 	if err != nil {
 		reporter.Errorf("Failed to get IAM credentials: %s", err)
@@ -332,4 +361,14 @@ func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
 	}
 	return "", fmt.Errorf("Could not find account policies that are attached to account roles." +
 		"We need at least one in order to detect account policies path")
+}
+
+func validateManagedPolicies(r *rosa.Runtime, prefix string) error {
+	policies, err := r.OCMClient.GetPolicies("")
+	if err != nil {
+		r.Reporter.Errorf("Failed to fetch policies: %v", err)
+		os.Exit(1)
+	}
+
+	return r.AWSClient.ValidateAccountRolesManagedPolicies(prefix, policies)
 }
