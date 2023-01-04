@@ -207,7 +207,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	managedPolicies, err := r.AWSClient.HasManagedPolicies(cluster)
+	managedPolicies, err := r.AWSClient.HasManagedPolicies(cluster.AWS().STS().RoleARN())
 	if err != nil {
 		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
 		os.Exit(1)
