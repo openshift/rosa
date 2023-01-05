@@ -40,6 +40,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -116,12 +117,12 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	bucketUrl, privateKey := oidcConfigStrategy.execute(r)
-	r.Reporter.Infof("Created oidc config with\n bucketUrl: %s\n private key: %s", bucketUrl, privateKey)
-	r.Reporter.Infof("Please save your private key in a file for next step.")
-	r.Reporter.Infof("To create a cluster with this oidc config, please run:\n"+
-		"rosa create cluster --sts --oidc-endpoint-url %s "+
-		"--bound-service-account-signing-key-path <path_to_file_containing_private_key>", bucketUrl)
+	bucketUrl, privateKeyFilename := oidcConfigStrategy.execute(r)
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("To create a cluster with this oidc config, please run:\n"+
+			"rosa create cluster --sts --oidc-endpoint-url %s "+
+			"--bound-service-account-signing-key-path ./%s", bucketUrl, privateKeyFilename)
+	}
 }
 
 type CreateOidcConfigStrategy interface {
@@ -129,6 +130,11 @@ type CreateOidcConfigStrategy interface {
 }
 
 type CreateOidcConfigAutoStrategy struct{}
+
+const (
+	discoveryDocumentKey = ".well-known/openid-configuration"
+	jwksKey              = "keys.json"
+)
 
 func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) (string, string) {
 	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
@@ -144,10 +150,15 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) (string, string)
 		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
 		os.Exit(1)
 	}
+	privateKeyFilename := fmt.Sprintf("private-key-%s.key", bucketName)
+	err = helper.SaveDocument(string(privateKey[:]), privateKeyFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
+		os.Exit(1)
+	}
 	discoveryDocument := generateDiscoveryDocument(bucketUrl)
-	bodyKey := ".well-known/openid-configuration"
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(
-		bucketName, strings.NewReader(discoveryDocument), bodyKey)
+		bucketName, strings.NewReader(discoveryDocument), discoveryDocumentKey)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem populating discovery "+
 			"document to S3 bucket '%s': %s", bucketName, err)
@@ -158,21 +169,79 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) (string, string)
 		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
 		os.Exit(1)
 	}
-	jwksKey := "keys.json"
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, bytes.NewReader(jwks), jwksKey)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem populating JWKS "+
 			"to S3 bucket '%s': %s", bucketName, err)
 		os.Exit(1)
 	}
-	return bucketUrl, string(privateKey[:])
+	return bucketUrl, privateKeyFilename
 }
 
 type CreateOidcConfigManualStrategy struct{}
 
 func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, string) {
-	r.Reporter.Warnf("Manual strategy not yet implemented")
-	return "", ""
+	commands := []string{}
+	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
+	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
+	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
+	createBucketConfig := ""
+	if args.region != "us-east-1" {
+		createBucketConfig = fmt.Sprintf("LocationConstraint=%s", args.region)
+	}
+	createS3BucketCommand := awscb.NewS3CommandBuilder().
+		SetCommand(awscb.CreateBucket).
+		AddParam(awscb.Bucket, bucketName).
+		AddParam(awscb.CreateBucketConfiguration, createBucketConfig).
+		Build()
+	commands = append(commands, createS3BucketCommand)
+	privateKey, publicKey, err := createKeyPair()
+	if err != nil {
+		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
+		os.Exit(1)
+	}
+	privateKeyFilename := fmt.Sprintf("private-key-%s.key", bucketName)
+	err = helper.SaveDocument(string(privateKey[:]), privateKeyFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
+		os.Exit(1)
+	}
+	discoveryDocument := generateDiscoveryDocument(bucketUrl)
+	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
+	err = helper.SaveDocument(discoveryDocument, discoveryDocumentFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving discovery document to a file: %s", err)
+		os.Exit(1)
+	}
+	putDiscoveryDocumentCommand := awscb.NewS3CommandBuilder().
+		SetCommand(awscb.PutObject).
+		AddParam(awscb.Acl, "public-read").
+		AddParam(awscb.Body, fmt.Sprintf("./%s", discoveryDocumentFilename)).
+		AddParam(awscb.Bucket, bucketName).
+		AddParam(awscb.Key, discoveryDocumentKey).
+		Build()
+	commands = append(commands, putDiscoveryDocumentCommand)
+	jwks, err := buildJSONWebKeySet(publicKey)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
+		os.Exit(1)
+	}
+	jwksFilename := fmt.Sprintf("jwks-%s.json", bucketName)
+	err = helper.SaveDocument(string(jwks[:]), jwksFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving JSON Web Key Set to a file: %s", err)
+		os.Exit(1)
+	}
+	putJwksCommand := awscb.NewS3CommandBuilder().
+		SetCommand(awscb.PutObject).
+		AddParam(awscb.Acl, "public-read").
+		AddParam(awscb.Body, fmt.Sprintf("./%s", jwksFilename)).
+		AddParam(awscb.Bucket, bucketName).
+		AddParam(awscb.Key, jwksKey).
+		Build()
+	commands = append(commands, putJwksCommand)
+	fmt.Println(awscb.JoinCommands(commands))
+	return bucketUrl, privateKeyFilename
 }
 
 func getOidcConfigStrategy(mode string) (CreateOidcConfigStrategy, error) {
@@ -278,26 +347,26 @@ func keyIDFromPublicKey(publicKey interface{}) (string, error) {
 
 const (
 	discoveryDocumentTemplate = `{
-		"issuer": "%s",
-		"jwks_uri": "%s/keys.json",
-		"response_types_supported": [
-			"id_token"
-		],
-		"subject_types_supported": [
-			"public"
-		],
-		"id_token_signing_alg_values_supported": [
-			"RS256"
-		],
-		"claims_supported": [
-			"aud",
-			"exp",
-			"sub",
-			"iat",
-			"iss",
-			"sub"
-		]
-	}`
+	"issuer": "%s",
+	"jwks_uri": "%s/keys.json",
+	"response_types_supported": [
+		"id_token"
+	],
+	"subject_types_supported": [
+		"public"
+	],
+	"id_token_signing_alg_values_supported": [
+		"RS256"
+	],
+	"claims_supported": [
+		"aud",
+		"exp",
+		"sub",
+		"iat",
+		"iss",
+		"sub"
+	]
+}`
 )
 
 func generateDiscoveryDocument(bucketURL string) string {

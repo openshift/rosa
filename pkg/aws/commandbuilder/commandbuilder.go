@@ -12,11 +12,13 @@ type Service string
 
 const (
 	IAM Service = "iam"
+	S3  Service = "s3api"
 )
 
 type Command string
 
 const (
+	//IAM
 	CreateRole                    Command = "create-role"
 	DeleteRole                    Command = "delete-role"
 	CreatePolicy                  Command = "create-policy"
@@ -30,11 +32,15 @@ const (
 	CreateOpenIdConnectProvider   Command = "create-open-id-connect-provider"
 	DeleteOpenIdConnectProvider   Command = "delete-open-id-connect-provider"
 	DeleteRolePermissionsBoundary Command = "delete-role-permissions-boundary"
+	//S3
+	CreateBucket Command = "create-bucket"
+	PutObject    Command = "put-object"
 )
 
 type Param string
 
 const (
+	//IAM
 	Tags                     Param = "tags"
 	RoleName                 Param = "role-name"
 	AssumeRolePolicyDocument Param = "assume-role-policy-document"
@@ -48,6 +54,14 @@ const (
 	ThumbprintList           Param = "thumbprint-list"
 	OpenIdConnectProviderArn Param = "open-id-connect-provider-arn"
 	SetAsDefault             Param = "set-as-default"
+
+	//S3
+	Bucket                    Param = "bucket"
+	Region                    Param = "region"
+	Acl                       Param = "acl"
+	CreateBucketConfiguration Param = "create-bucket-configuration"
+	Body                      Param = "body"
+	Key                       Param = "key"
 )
 
 type CommandBuilder struct {
@@ -118,6 +132,10 @@ func (b *CommandBuilder) Build() string {
 
 func NewIAMCommandBuilder() *CommandBuilder {
 	return &CommandBuilder{service: IAM}
+}
+
+func NewS3CommandBuilder() *CommandBuilder {
+	return &CommandBuilder{service: S3}
 }
 
 func createParamString(awsParam Param, value string) string {
