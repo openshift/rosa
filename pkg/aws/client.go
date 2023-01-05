@@ -106,7 +106,7 @@ type Client interface {
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string, clusterID string) (string, error)
 	DeleteOpenIDConnectProvider(providerURL string) error
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
-	FindAccRoleArnBundles(version string) (map[string]map[string]string, error)
+	FindAccountRoleArnBundles(version string) (map[string]map[string]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListUserRoles() ([]Role, error)
 	ListOCMRoles() ([]Role, error)

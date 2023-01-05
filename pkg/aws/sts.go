@@ -205,72 +205,98 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 	return commands
 }
 
-func (c *awsClient) FindAccRoleArnBundles(version string) (map[string]map[string]string, error) {
-	roleARNs := make(map[string]map[string]string)
+func (c *awsClient) FindAccountRoleArnBundles(version string) (map[string]map[string]string, error) {
+
 	roles, err := c.ListRoles()
 	if err != nil {
-		return roleARNs, err
+		return map[string]map[string]string{}, err
 	}
 	prefixesCountMap := make(map[string]int)
 	prefixesARNMap := make(map[string]map[string]string)
 	for _, role := range roles {
-		matches := PrefixAccRoleRE.FindStringSubmatch(*role.RoleName)
-		prefixIndex := PrefixAccRoleRE.SubexpIndex("Prefix")
-		if len(matches) == 0 {
+		foundPrefix, foundType, ok := isMatchWithAccountRolePrefix(role)
+		if !ok {
 			continue
 		}
-		foundPrefix := strings.ToLower(matches[prefixIndex])
-		if _, ok := prefixesCountMap[foundPrefix]; !ok {
+		if _, mapOk := prefixesCountMap[foundPrefix]; !mapOk {
 			prefixesCountMap[foundPrefix] = 0
 			prefixesARNMap[foundPrefix] = make(map[string]string)
 		}
 		prefixesCountMap[foundPrefix]++
-		typeIndex := PrefixAccRoleRE.SubexpIndex("Type")
-		foundType := matches[typeIndex]
-		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
-			RoleName: role.RoleName,
-		})
+
+		isTagged, skip, err := c.checkRoleTagsCompatibility(role, version)
 		if err != nil {
-			return roleARNs, err
-		}
-		skip := false
-		isTagged := false
-		for _, tag := range listRoleTagsOutput.Tags {
-			tagValue := aws.StringValue(tag.Value)
-			switch aws.StringValue(tag.Key) {
-			case tags.RoleType:
-				isTagged = true
-			case tags.OpenShiftVersion:
-				isTagged = true
-				clusterVersion, err := semver.NewVersion(version)
-				if err != nil {
-					skip = true
-					break
-				}
-				policyVersion, err := semver.NewVersion(tagValue)
-				if err != nil {
-					skip = true
-					break
-				}
-				if policyVersion.LessThan(clusterVersion) {
-					skip = true
-					break
-				}
-			}
+			return map[string]map[string]string{}, err
 		}
 		if isTagged && !skip {
 			prefixesCountMap[foundPrefix]++
 			prefixesARNMap[foundPrefix][foundType] = *role.Arn
 		}
 	}
+
+	return extractCompleteAccountBundles(prefixesCountMap, prefixesARNMap), nil
+}
+
+func (c *awsClient) checkRoleTagsCompatibility(role *iam.Role, version string) (bool, bool, error) {
+	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+		RoleName: role.RoleName,
+	})
+	if err != nil {
+		return false, false, err
+	}
+	skip := false
+	isTagged := false
+	for _, tag := range listRoleTagsOutput.Tags {
+		tagValue := aws.StringValue(tag.Value)
+		switch aws.StringValue(tag.Key) {
+		case tags.RoleType:
+			isTagged = true
+		case tags.OpenShiftVersion:
+			isTagged = true
+			clusterVersion, err := semver.NewVersion(version)
+			if err != nil {
+				skip = true
+				break
+			}
+			policyVersion, err := semver.NewVersion(tagValue)
+			if err != nil {
+				skip = true
+				break
+			}
+			if policyVersion.LessThan(clusterVersion) {
+				skip = true
+				break
+			}
+		}
+	}
+	return isTagged, skip, nil
+}
+
+func isMatchWithAccountRolePrefix(role *iam.Role) (foundPrefix string, foundType string, ok bool) {
+	matches := PrefixAccRoleRE.FindStringSubmatch(*role.RoleName)
+	if len(matches) == 0 {
+		return "", "", false
+	}
+	prefixIndex := PrefixAccRoleRE.SubexpIndex("Prefix")
+	typeIndex := PrefixAccRoleRE.SubexpIndex("Type")
+	foundPrefix = strings.ToLower(matches[prefixIndex])
+	foundType = matches[typeIndex]
+	return foundPrefix, foundType, true
+
+}
+
+func extractCompleteAccountBundles(prefixesCountMap map[string]int,
+	prefixesArnMap map[string]map[string]string) map[string]map[string]string {
+	bundles := make(map[string]map[string]string)
 	for key, value := range prefixesCountMap {
-		if value == len(AccountRoles)*2 {
-			path, err := GetPathFromARN(prefixesARNMap[key][AccountRoles[InstallerAccountRole].Name])
+		isBundleComplete := value == len(AccountRoles)*2
+		if isBundleComplete {
+			path, err := GetPathFromARN(prefixesArnMap[key][AccountRoles[InstallerAccountRole].Name])
 			if err != nil {
 				continue
 			}
-			roleARNs[path+key] = prefixesARNMap[key]
+			bundles[path+key] = prefixesArnMap[key]
 		}
 	}
-	return roleARNs, nil
+	return bundles
 }

@@ -317,7 +317,7 @@ func run(cmd *cobra.Command, argv []string) {
 	role := aws.AccountRoles[aws.InstallerAccountRole]
 
 	// Find all installer roles in the current account using AWS resource tags
-	currentArnBundles, err := r.AWSClient.FindAccRoleArnBundles(minor)
+	currentArnBundles, err := r.AWSClient.FindAccountRoleArnBundles(minor)
 	if err != nil {
 		r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 		os.Exit(1)

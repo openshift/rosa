@@ -773,12 +773,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if spin != nil {
 			if !output.HasFlag() && r.Reporter.IsTerminal() {
-				r.Reporter.Infof("Fetching acc roles for the aws account: %s", awsCreator.AccountID)
+				r.Reporter.Infof("Fetching account roles for the aws account: %s", awsCreator.AccountID)
 			}
 			spin.Start()
 		}
 		// Find all installer roles in the current account using AWS resource tags
-		currentArnBundles, err := awsClient.FindAccRoleArnBundles(minor)
+		currentArnBundles, err := awsClient.FindAccountRoleArnBundles(minor)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find account role bundles: %s", err)
 			os.Exit(1)

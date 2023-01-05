@@ -31,7 +31,7 @@ const RoleNameREString = `[\w+=,.@-]+`
 
 var RoleNameRE = regexp.MustCompile(fmt.Sprintf("^%s$", RoleNameREString))
 
-func getREOfAllAccRolesSuffixes() string {
+func computeRegularExpressionForAllAccountRolesSuffixes() string {
 	suffixes := make([]string, 0, len(AccountRoles))
 	for _, role := range AccountRoles {
 		suffixes = append(suffixes, role.Name)
@@ -43,7 +43,7 @@ var PrefixAccRoleRE = regexp.MustCompile("(?i)" +
 	fmt.Sprintf(
 		`(?P<Prefix>%s)-(?P<Type>%s)(-Role$)`,
 		RoleNameREString,
-		getREOfAllAccRolesSuffixes()))
+		computeRegularExpressionForAllAccountRolesSuffixes()))
 
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
 var UserTagKeyRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
