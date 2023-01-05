@@ -2069,7 +2069,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
 			command := buildCommand(clusterConfig, operatorRolesPrefix, operatorRolePath,
-				isAvailabilityZonesSet || selectAvailabilityZones)
+				isAvailabilityZonesSet || selectAvailabilityZones, labels)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
@@ -2377,7 +2377,7 @@ func parseRFC3339(s string) (time.Time, error) {
 }
 
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
-	operatorRolePath string, userSelectedAvailabilityZones bool) string {
+	operatorRolePath string, userSelectedAvailabilityZones bool, labels string) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.IsSTS {
@@ -2443,6 +2443,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.ComputeMachineType != "" {
 		command += fmt.Sprintf(" --compute-machine-type %s", spec.ComputeMachineType)
+	}
+
+	if len(spec.ComputeLabels) != 0 {
+		command += fmt.Sprintf(" --default-mp-labels \"%s\"", labels)
 	}
 
 	if spec.NetworkType != "" {
