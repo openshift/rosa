@@ -222,9 +222,9 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	sameRouteSelectors := reflect.DeepEqual(curRouteSelectors, ingress.RouteSelectors()) || ingress.RouteSelectors() == nil
+	sameRouteSelectors := ingress.RouteSelectors() == nil || reflect.DeepEqual(curRouteSelectors, ingress.RouteSelectors())
 	// If private arg is nil no change to listening method will be made anyway
-	sameListeningMethod := curListening == ingress.Listening() || private == nil
+	sameListeningMethod := private == nil || curListening == ingress.Listening()
 
 	if sameListeningMethod && sameRouteSelectors {
 		r.Reporter.Warnf("No need to update ingress as there are no changes")
