@@ -9,7 +9,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func GetAddonParameter(param *cmv1.AddOnParameter, input Input, dflt string) (string, error) {
+func GetAddonArgument(param *cmv1.AddOnParameter, input Input, dflt string) (string, error) {
 	// Set default value based on existing parameter, otherwise use parameter default
 
 	// add a prompt to question name to indicate if the boolean param is required and check validation

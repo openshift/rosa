@@ -75,7 +75,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	parameters, err := r.OCMClient.GetAddOnParameters(cluster.ID(), addOnID)
+	addonParameters, err := r.OCMClient.GetAddOnParameters(cluster.ID(), addOnID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get add-on '%s' parameters: %v", addOnID, err)
 		os.Exit(1)
@@ -87,7 +87,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if parameters.Len() == 0 {
+	if addonParameters.Len() == 0 {
 		r.Reporter.Errorf("Add-on '%s' has no parameters to edit", addOnID)
 		os.Exit(1)
 	}
@@ -97,7 +97,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// set as flags, then we also ensure that interactive mode is enabled so that the
 	// user gets prompted.
 	if arguments.HasUnknownFlags() {
-		parameters.Each(func(param *cmv1.AddOnParameter) bool {
+		addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
 			flag := cmd.Flags().Lookup(param.ID())
 			if flag != nil && !param.Editable() {
 				r.Reporter.Errorf("Parameter '%s' on addon '%s' cannot be modified", param.ID(), addOnID)
@@ -109,8 +109,8 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	var params []ocm.AddOnParam
-	parameters.Each(func(param *cmv1.AddOnParameter) bool {
+	var addonArguments []ocm.AddOnParam
+	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
 		// Find the installation parameter corresponding to the addon parameter
 		var addOnInstallationParam *cmv1.AddOnInstallationParameter
 		addOnInstallation.Parameters().Each(func(p *cmv1.AddOnInstallationParameter) bool {
@@ -156,7 +156,12 @@ func run(cmd *cobra.Command, argv []string) {
 			input.Required = param.Required()
 			input.Options = options
 
-			val, err = interactive.GetAddonParameter(param, input, dflt)
+			dflt := param.DefaultValue()
+			if addOnInstallationParam != nil {
+				dflt = addOnInstallationParam.Value()
+			}
+
+			val, err = interactive.GetAddonArgument(param, input, dflt)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -175,13 +180,13 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Expected %v to match one of the options /%v/", val, values)
 			os.Exit(1)
 		}
-		params = append(params, ocm.AddOnParam{Key: param.ID(), Val: val})
+		addonArguments = append(addonArguments, ocm.AddOnParam{Key: param.ID(), Val: val})
 
 		return true
 	})
 
 	r.Reporter.Debugf("Updating add-on parameters for '%s' on cluster '%s'", addOnID, clusterKey)
-	err = r.OCMClient.UpdateAddOnInstallation(cluster.ID(), addOnID, params)
+	err = r.OCMClient.UpdateAddOnInstallation(cluster.ID(), addOnID, addonArguments)
 	if err != nil {
 		r.Reporter.Errorf("Failed to update add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
 		os.Exit(1)

@@ -168,20 +168,20 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	parameters, err := r.OCMClient.GetAddOnParameters(cluster.ID(), addOnID)
+	addonParameters, err := r.OCMClient.GetAddOnParameters(cluster.ID(), addOnID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get add-on '%s' parameters: %v", addOnID, err)
 		os.Exit(1)
 	}
 
-	var params []ocm.AddOnParam
-	if parameters.Len() > 0 {
+	var addonArguments []ocm.AddOnParam
+	if addonParameters.Len() > 0 {
 		// Determine if all required parameters have already been set as flags and ensure
 		// that interactive mode is enabled if they have not. If there are no parameters
 		// set as flags, then we also ensure that interactive mode is enabled so that the
 		// user gets prompted.
 		if arguments.HasUnknownFlags() {
-			parameters.Each(func(param *cmv1.AddOnParameter) bool {
+			addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
 				flag := cmd.Flags().Lookup(param.ID())
 				if param.Required() && (flag == nil || flag.Value.String() == "") {
 					interactive.Enable()
@@ -193,7 +193,7 @@ func run(cmd *cobra.Command, argv []string) {
 			interactive.Enable()
 		}
 
-		parameters.Each(func(param *cmv1.AddOnParameter) bool {
+		addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
 			var val string
 			var options []string
 			var values []string
@@ -216,7 +216,7 @@ func run(cmd *cobra.Command, argv []string) {
 				input.Required = param.Required()
 				input.Options = options
 
-				val, err = interactive.GetAddonParameter(param, input, param.DefaultValue())
+				val, err = interactive.GetAddonArgument(param, input, param.DefaultValue())
 				if err != nil {
 					r.Reporter.Errorf("%s", err)
 					os.Exit(1)
@@ -236,7 +236,7 @@ func run(cmd *cobra.Command, argv []string) {
 				r.Reporter.Errorf("Expected %v to match one of the options /%v/", val, options)
 				os.Exit(1)
 			}
-			params = append(params, ocm.AddOnParam{Key: param.ID(), Val: val})
+			addonArguments = append(addonArguments, ocm.AddOnParam{Key: param.ID(), Val: val})
 
 			return true
 		})
@@ -281,7 +281,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	r.Reporter.Debugf("Installing add-on '%s' on cluster '%s'", addOnID, clusterKey)
-	err = r.OCMClient.InstallAddOn(cluster.ID(), addOnID, params, billing)
+	err = r.OCMClient.InstallAddOn(cluster.ID(), addOnID, addonArguments, billing)
 	if err != nil {
 		r.Reporter.Errorf("Failed to add add-on installation '%s' for cluster '%s': %v", addOnID, clusterKey, err)
 		os.Exit(1)
@@ -290,7 +290,7 @@ func run(cmd *cobra.Command, argv []string) {
 		addOnID, clusterKey)
 	if interactive.Enabled() {
 		r.Reporter.Infof("To install this addOn again in the future, you can run:\n   %s",
-			buildCommand(cluster.Name(), addOnID, params, billing))
+			buildCommand(cluster.Name(), addOnID, addonArguments, billing))
 	}
 }
 
@@ -341,12 +341,12 @@ func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialReques
 	return nil
 }
 
-func buildCommand(clusterName string, addonName string, params []ocm.AddOnParam, billing ocm.AddOnBilling) string {
+func buildCommand(clusterName string, addonName string, addonArguments []ocm.AddOnParam, billing ocm.AddOnBilling) string {
 	command := fmt.Sprintf("rosa install addon --cluster %s %s -y", clusterName, addonName)
 
-	for _, param := range params {
-		if param.Val != "" {
-			command += fmt.Sprintf(" --%s %s", param.Key, param.Val)
+	for _, arg := range addonArguments {
+		if arg.Val != "" {
+			command += fmt.Sprintf(" --%s %s", arg.Key, arg.Val)
 		}
 	}
 
