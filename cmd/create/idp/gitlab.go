@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
-	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive"
@@ -62,8 +62,10 @@ func buildGitlabIdp(cmd *cobra.Command,
 
 	if interactive.Enabled() {
 		instructionsURL := fmt.Sprintf("%s/profile/applications", gitlabURL)
-		consoleURL := cluster.Console().URL()
-		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
+		oauthURL, err := ocm.BuildOAuthURL(cluster)
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
+		}
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use GitLab as an identity provider, register the application by opening:",
 			Steps:   []string{instructionsURL},

@@ -18,7 +18,10 @@ package ocm
 
 import (
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper"
@@ -146,4 +149,39 @@ func HasAuthURLSupport(idp *cmv1.IdentityProvider) bool {
 
 func getIDPListWithoutAuthURLSupport() []string {
 	return []string{HTPasswdIDPType, LDAPIDPType}
+}
+
+// BuildOAuthURL builds the correct OAuthURL depending on the cluster type
+func BuildOAuthURL(cluster *cmv1.Cluster) (string, error) {
+	var oauthURL string
+	if cluster.Hypershift().Enabled() {
+		// TODO(adecorte): this logic is not valid if ExternalDNS is not configured. This should be the case only in
+		// local env. We should either align local or have a specific logic for this case
+		// https://api.example.com:443 -> https://oauth.example.com
+		apiURL := cluster.API().URL()
+		u, err := url.ParseRequestURI(apiURL)
+		if err != nil {
+			return oauthURL, err
+		}
+		host, _, err := net.SplitHostPort(u.Host)
+		if err != nil {
+			return oauthURL, err
+		}
+		oauthURL = "https://" + strings.Replace(host, "api", "oauth", 1)
+	} else {
+		oauthURL = strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
+	}
+	return oauthURL, nil
+}
+
+// GetOAuthURL builds the full OAuthURL depending on the cluster type and the idp name
+func GetOAuthURL(cluster *cmv1.Cluster, idp *cmv1.IdentityProvider) (string, error) {
+	if !HasAuthURLSupport(idp) {
+		return "", nil
+	}
+	oauthURL, err := BuildOAuthURL(cluster)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idp.Name()), nil
 }
