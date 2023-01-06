@@ -150,18 +150,7 @@ func run(cmd *cobra.Command, argv []string) {
 			val = flag.Value.String()
 		}
 		if interactive.Enabled() {
-			input := interactive.Input{}
-			input.Question = param.Name()
-			input.Help = fmt.Sprintf("%s: %s", param.ID(), param.Description())
-			input.Required = param.Required()
-			input.Options = options
-
-			dflt := param.DefaultValue()
-			if addOnInstallationParam != nil {
-				dflt = addOnInstallationParam.Value()
-			}
-
-			val, err = interactive.GetAddonArgument(param, input, dflt)
+			val, err = interactive.GetAddonArgument(*param, dflt)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)

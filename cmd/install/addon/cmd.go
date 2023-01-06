@@ -210,31 +210,24 @@ func run(cmd *cobra.Command, argv []string) {
 				val = flag.Value.String()
 			}
 			if interactive.Enabled() {
-				input := interactive.Input{}
-				input.Question = param.Name()
-				input.Help = fmt.Sprintf("%s: %s", param.ID(), param.Description())
-				input.Required = param.Required()
-				input.Options = options
-
-				val, err = interactive.GetAddonArgument(param, input, param.DefaultValue())
+				val, err = interactive.GetAddonArgument(*param, param.DefaultValue())
 				if err != nil {
 					r.Reporter.Errorf("%s", err)
 					os.Exit(1)
 				}
-
 			}
 
 			val = strings.Trim(val, " ")
+			if len(options) > 0 && !helper.Contains(values, val) {
+				r.Reporter.Errorf("Expected %v to match one of the options /%v/", val, options)
+				os.Exit(1)
+			}
 			if val != "" && param.Validation() != "" {
 				isValid, err := regexp.MatchString(param.Validation(), val)
 				if err != nil || !isValid {
 					r.Reporter.Errorf("Expected %v to match /%s/", val, param.Validation())
 					os.Exit(1)
 				}
-			}
-			if len(options) > 0 && !helper.Contains(values, val) {
-				r.Reporter.Errorf("Expected %v to match one of the options /%v/", val, options)
-				os.Exit(1)
 			}
 			addonArguments = append(addonArguments, ocm.AddOnParam{Key: param.ID(), Val: val})
 
@@ -341,7 +334,12 @@ func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialReques
 	return nil
 }
 
-func buildCommand(clusterName string, addonName string, addonArguments []ocm.AddOnParam, billing ocm.AddOnBilling) string {
+func buildCommand(
+	clusterName string,
+	addonName string,
+	addonArguments []ocm.AddOnParam,
+	billing ocm.AddOnBilling,
+) string {
 	command := fmt.Sprintf("rosa install addon --cluster %s %s -y", clusterName, addonName)
 
 	for _, arg := range addonArguments {
