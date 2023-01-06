@@ -777,6 +777,13 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 			instanceIAMRolesBuilder.WorkerRoleARN(config.WorkerRoleARN)
 		}
 		stsBuilder = stsBuilder.InstanceIAMRoles(instanceIAMRolesBuilder)
+
+		mode := false
+		if config.Mode == "auto" {
+			mode = true
+		}
+		stsBuilder.AutoMode(mode)
+
 		awsBuilder = awsBuilder.STS(stsBuilder)
 	} else {
 		awsBuilder = awsBuilder.
