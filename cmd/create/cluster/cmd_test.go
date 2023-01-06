@@ -27,7 +27,7 @@ var _ = Describe("Validates OCP version", func() {
 			v, err := validateVersion("4.12.0-0.nightly-2022-11-25-185455-nightly",
 				[]string{"4.12.0-0.nightly-2022-11-25-185455-nightly"}, nightly, false, true)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(v).To(Equal("openshift-v4.12.0-0.nightly-2022-11-25-185455-nightly"))
+			Expect(v).To(Equal("openshift-v4.12.0-0.nightly-2022-11-25-185455-nightly-nightly"))
 		})
 
 		It("KO: Fails with a nightly version of OCP for hosted clusters "+
@@ -44,7 +44,7 @@ var _ = Describe("Validates OCP version", func() {
 			"with a supported version", func() {
 			v, err := validateVersion("4.13.0", []string{"4.13.0"}, fast, false, true)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(v).To(Equal("openshift-v4.13.0"))
+			Expect(v).To(Equal("openshift-v4.13.0-fast"))
 		})
 
 		It(`KO: Fails to validate a cluster for a hosted

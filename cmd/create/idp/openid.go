@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/ocm"
 )
 
 func buildOpenidIdp(cmd *cobra.Command,
@@ -48,7 +49,10 @@ func buildOpenidIdp(cmd *cobra.Command,
 	if interactive.Enabled() {
 		instructionsURL := "https://docs.openshift.com/dedicated/identity_providers/" +
 			"config-identity-providers.html#config-openid-idp_config-identity-providers"
-		oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
+		oauthURL, err := ocm.BuildOAuthURL(cluster)
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
+		}
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use OpenID as an identity provider, you must first register the application:",
 			Steps: []string{

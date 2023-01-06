@@ -19,7 +19,6 @@ package idp
 import (
 	"fmt"
 	"os"
-	"strings"
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -87,15 +86,11 @@ func run(_ *cobra.Command, _ []string) {
 		fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
 	}
 	for _, idp := range idps {
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), ocm.IdentityProviderType(idp), getAuthURL(cluster, idp))
+		oauthURL, err := ocm.GetOAuthURL(cluster, idp)
+		if err != nil {
+			r.Reporter.Warnf("Error building OAuth URL for %s: %v", idp.Name(), err)
+		}
+		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), ocm.IdentityProviderType(idp), oauthURL)
 	}
 	writer.Flush()
-}
-
-func getAuthURL(cluster *cmv1.Cluster, idp *cmv1.IdentityProvider) string {
-	if !ocm.HasAuthURLSupport(idp) {
-		return ""
-	}
-	oauthURL := strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
-	return fmt.Sprintf("%s/oauth2callback/%s", oauthURL, idp.Name())
 }

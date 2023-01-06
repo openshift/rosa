@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/ocm"
 )
 
 func buildGithubIdp(cmd *cobra.Command,
@@ -36,6 +37,12 @@ func buildGithubIdp(cmd *cobra.Command,
 	teams := args.githubTeams
 	clientID := args.clientID
 	clientSecret := args.clientSecret
+
+	consoleURL := cluster.Console().URL()
+	// GitHub IDP uses Console URL as Homepage URL. Console may not yet be available during cluster creation.
+	if consoleURL == "" {
+		return idpBuilder, errors.New("Console URL not available yet. Please retry in a few minutes")
+	}
 
 	if organizations != "" && teams != "" {
 		return idpBuilder, errors.New("GitHub IDP only allows either organizations or teams, but not both")
@@ -127,8 +134,10 @@ func buildGithubIdp(cmd *cobra.Command,
 		}
 
 		// Populate fields in the GitHub registration form
-		consoleURL := cluster.Console().URL()
-		oauthURL := strings.Replace(consoleURL, "console-openshift-console", "oauth-openshift", 1)
+		oauthURL, err := ocm.BuildOAuthURL(cluster)
+		if err != nil {
+			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
+		}
 		urlParams := url.Values{}
 		urlParams.Add("oauth_application[name]", cluster.Name())
 		urlParams.Add("oauth_application[url]", consoleURL)
