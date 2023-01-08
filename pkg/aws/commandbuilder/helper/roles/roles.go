@@ -16,6 +16,7 @@ type ManualCommandsForMissingOperatorRolesInput struct {
 	Filename                 string
 	RolePath                 string
 	PolicyARN                string
+	ManagedPolicies          bool
 }
 
 func ManualCommandsForMissingOperatorRole(input ManualCommandsForMissingOperatorRolesInput) []string {
@@ -26,6 +27,9 @@ func ManualCommandsForMissingOperatorRole(input ManualCommandsForMissingOperator
 		tags.OperatorNamespace: input.Operator.Namespace(),
 		tags.OperatorName:      input.Operator.Name(),
 		tags.RedHatManaged:     "true",
+	}
+	if input.ManagedPolicies {
+		iamTags[tags.ManagedPolicies] = "true"
 	}
 
 	createRole := awscb.NewIAMCommandBuilder().
