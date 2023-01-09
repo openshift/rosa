@@ -19,6 +19,7 @@ package aws
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -39,6 +40,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/organizations"
 	"github.com/aws/aws-sdk-go/service/organizations/organizationsiface"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/servicequotas"
 	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -65,6 +68,7 @@ const (
 	DefaultRegion = "us-east-1"
 	Inline        = "inline"
 	Attached      = "attached"
+	AclPublicRead = "public-read"
 )
 
 // addROSAVersionToUserAgent is a named handler that will add ROSA CLI
@@ -161,6 +165,8 @@ type Client interface {
 	ValidateAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error
 	ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster, operatorRoles map[string]*cmv1.STSOperator,
 		policies map[string]*cmv1.AWSSTSPolicy) error
+	CreateS3Bucket(bucketName string, region string) error
+	PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -175,6 +181,7 @@ type awsClient struct {
 	iamClient           iamiface.IAMAPI
 	ec2Client           ec2iface.EC2API
 	orgClient           organizationsiface.OrganizationsAPI
+	s3Client            s3iface.S3API
 	stsClient           stsiface.STSAPI
 	cfClient            cloudformationiface.CloudFormationAPI
 	servicequotasClient servicequotasiface.ServiceQuotasAPI
@@ -204,6 +211,7 @@ func New(
 	iamClient iamiface.IAMAPI,
 	ec2Client ec2iface.EC2API,
 	orgClient organizationsiface.OrganizationsAPI,
+	s3Client s3iface.S3API,
 	stsClient stsiface.STSAPI,
 	cfClient cloudformationiface.CloudFormationAPI,
 	servicequotasClient servicequotasiface.ServiceQuotasAPI,
@@ -216,6 +224,7 @@ func New(
 		iamClient,
 		ec2Client,
 		orgClient,
+		s3Client,
 		stsClient,
 		cfClient,
 		servicequotasClient,
@@ -358,6 +367,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 		iamClient:           iam.New(sess),
 		ec2Client:           ec2.New(sess),
 		orgClient:           organizations.New(sess),
+		s3Client:            s3.New(sess),
 		stsClient:           sts.New(sess),
 		cfClient:            cloudformation.New(sess),
 		servicequotasClient: servicequotas.New(sess),
@@ -915,6 +925,36 @@ func (c *awsClient) DetachRolePolicies(roleName string) error {
 
 func (c *awsClient) detachRolePolicy(policyArn string, roleName string) error {
 	_, err := c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{PolicyArn: &policyArn, RoleName: &roleName})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
+	bucketInput := &s3.CreateBucketInput{
+		Bucket: &bucketName,
+	}
+	if region != DefaultRegion {
+		bucketInput.SetCreateBucketConfiguration(&s3.CreateBucketConfiguration{
+			LocationConstraint: &region,
+		})
+	}
+	_, err := c.s3Client.CreateBucket(bucketInput)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error {
+	acl := AclPublicRead
+	_, err := c.s3Client.PutObject(&s3.PutObjectInput{
+		ACL:    &acl,
+		Body:   body,
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+	})
 	if err != nil {
 		return err
 	}

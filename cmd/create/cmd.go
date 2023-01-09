@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/ingress"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/openshift/rosa/cmd/create/ocmrole"
+	"github.com/openshift/rosa/cmd/create/oidcconfig"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	"github.com/openshift/rosa/cmd/create/service"
@@ -49,6 +50,7 @@ func init() {
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
+	Cmd.AddCommand(oidcconfig.Cmd)
 	Cmd.AddCommand(oidcprovider.Cmd)
 	Cmd.AddCommand(operatorroles.Cmd)
 	Cmd.AddCommand(userrole.Cmd)
