@@ -1578,21 +1578,46 @@ func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, e
 	return aws.StringValue(output.Role.Arn), nil
 }
 
+func (c *awsClient) ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster,
+	operatorRoles map[string]*cmv1.STSOperator, policies map[string]*cmv1.AWSSTSPolicy) error {
+	for key, operatorRole := range operatorRoles {
+		roleName, exist := FindOperatorRoleNameBySTSOperator(cluster, operatorRole)
+		if exist {
+			err := c.validateManagedPolicy(policies, fmt.Sprintf("openshift_%s_policy", key), roleName)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (c *awsClient) ValidateAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error {
 	for key, accountRole := range AccountRoles {
 		roleName := GetRoleName(prefix, accountRole.Name)
-		managedPolicyARN, err := GetManagedPolicyARN(policies, fmt.Sprintf("sts_%s_permission_policy", key))
+		err := c.validateManagedPolicy(policies, fmt.Sprintf("sts_%s_permission_policy", key), roleName)
 		if err != nil {
 			return err
 		}
+	}
 
-		isPolicyAttached, err := c.isManagedPolicyAttached(roleName, managedPolicyARN)
-		if err != nil {
-			return err
-		}
-		if !isPolicyAttached {
-			return fmt.Errorf("role '%s' is missing the attached managed policy '%s'", roleName, managedPolicyARN)
-		}
+	return nil
+}
+
+func (c *awsClient) validateManagedPolicy(policies map[string]*cmv1.AWSSTSPolicy, policyKey string,
+	roleName string) error {
+	managedPolicyARN, err := GetManagedPolicyARN(policies, policyKey)
+	if err != nil {
+		return err
+	}
+
+	isPolicyAttached, err := c.isManagedPolicyAttached(roleName, managedPolicyARN)
+	if err != nil {
+		return err
+	}
+	if !isPolicyAttached {
+		return fmt.Errorf("role '%s' is missing the attached managed policy '%s'", roleName, managedPolicyARN)
 	}
 
 	return nil

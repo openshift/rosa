@@ -762,6 +762,17 @@ func GetResourceIdFromARN(stringARN string) (string, error) {
 	return parsedARN.Resource[index+1:], nil
 }
 
+func FindOperatorRoleNameBySTSOperator(cluster *cmv1.Cluster, operator *cmv1.STSOperator) (string, bool) {
+	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
+		if role.Namespace() == operator.Namespace() && role.Name() == operator.Name() {
+			name, _ := GetResourceIdFromARN(role.RoleARN())
+			return name, true
+		}
+	}
+
+	return "", false
+}
+
 func FindOperatorRoleBySTSOperator(operatorRoles []*cmv1.OperatorIAMRole, operator *cmv1.STSOperator) string {
 	for _, operatorRole := range operatorRoles {
 		if operatorRole.Name() == operator.Name() && operatorRole.Namespace() == operator.Namespace() {

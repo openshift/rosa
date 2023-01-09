@@ -984,6 +984,8 @@ func createOperatorRole(
 			policies,
 			unifiedPath,
 			operatorRolePolicyPrefix,
+			// TODO: pass the actual managed policies value when the command is updated
+			false,
 		)
 		if err != nil {
 			return err

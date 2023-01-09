@@ -301,7 +301,7 @@ func createRoles(r *rosa.Runtime,
 				continue
 			}
 		}
-		roleName, _ := getRoleNameAndARN(cluster, operator)
+		roleName, _ := aws.FindOperatorRoleNameBySTSOperator(cluster, operator)
 		if roleName == "" {
 			return fmt.Errorf("Failed to find operator IAM role")
 		}
@@ -400,7 +400,7 @@ func buildCommands(r *rosa.Runtime, env string,
 				continue
 			}
 		}
-		roleName, _ := getRoleNameAndARN(cluster, operator)
+		roleName, _ := aws.FindOperatorRoleNameBySTSOperator(cluster, operator)
 		path, err := getPathFromInstallerRole(cluster)
 		if err != nil {
 			return "", err
@@ -475,16 +475,6 @@ func buildCommands(r *rosa.Runtime, env string,
 		commands = append(commands, createRole, attachRolePolicy)
 	}
 	return awscb.JoinCommands(commands), nil
-}
-
-func getRoleNameAndARN(cluster *cmv1.Cluster, operator *cmv1.STSOperator) (string, string) {
-	for _, role := range cluster.AWS().STS().OperatorIAMRoles() {
-		if role.Namespace() == operator.Namespace() && role.Name() == operator.Name() {
-			name, _ := aws.GetResourceIdFromARN(role.RoleARN())
-			return name, role.RoleARN()
-		}
-	}
-	return "", ""
 }
 
 func getPathFromInstallerRole(cluster *cmv1.Cluster) (string, error) {

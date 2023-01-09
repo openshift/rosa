@@ -32,17 +32,28 @@ func BuildMissingOperatorRoleCommand(
 	policies map[string]*cmv1.AWSSTSPolicy,
 	unifiedPath string,
 	operatorRolePolicyPrefix string,
+	managedPolicies bool,
 ) (string, error) {
 	commands := []string{}
 	for missingRole, operator := range missingRoles {
 		roleName := GetOperatorRoleName(cluster, operator)
-		policyARN := aws.GetOperatorPolicyARN(
-			accountID,
-			operatorRolePolicyPrefix,
-			operator.Namespace(),
-			operator.Name(),
-			unifiedPath,
-		)
+
+		var policyARN string
+		var err error
+		if managedPolicies {
+			policyARN, err = aws.GetManagedPolicyARN(policies, fmt.Sprintf("openshift_%s_policy", missingRole))
+			if err != nil {
+				return "", err
+			}
+		} else {
+			policyARN = aws.GetOperatorPolicyARN(
+				accountID,
+				operatorRolePolicyPrefix,
+				operator.Namespace(),
+				operator.Name(),
+				unifiedPath,
+			)
+		}
 		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
 		if err != nil {
@@ -64,6 +75,7 @@ func BuildMissingOperatorRoleCommand(
 				Filename:                 filename,
 				RolePath:                 unifiedPath,
 				PolicyARN:                policyARN,
+				ManagedPolicies:          managedPolicies,
 			},
 		)
 		commands = append(commands, missingCommands...)
