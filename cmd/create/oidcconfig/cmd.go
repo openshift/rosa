@@ -186,7 +186,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, strin
 	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
 	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
 	createBucketConfig := ""
-	if args.region != "us-east-1" {
+	if args.region != aws.DefaultRegion {
 		createBucketConfig = fmt.Sprintf("LocationConstraint=%s", args.region)
 	}
 	createS3BucketCommand := awscb.NewS3CommandBuilder().
@@ -215,7 +215,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, strin
 	}
 	putDiscoveryDocumentCommand := awscb.NewS3CommandBuilder().
 		SetCommand(awscb.PutObject).
-		AddParam(awscb.Acl, "public-read").
+		AddParam(awscb.Acl, aws.AclPublicRead).
 		AddParam(awscb.Body, fmt.Sprintf("./%s", discoveryDocumentFilename)).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.Key, discoveryDocumentKey).
@@ -234,7 +234,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, strin
 	}
 	putJwksCommand := awscb.NewS3CommandBuilder().
 		SetCommand(awscb.PutObject).
-		AddParam(awscb.Acl, "public-read").
+		AddParam(awscb.Acl, aws.AclPublicRead).
 		AddParam(awscb.Body, fmt.Sprintf("./%s", jwksFilename)).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.Key, jwksKey).

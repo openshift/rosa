@@ -68,6 +68,7 @@ const (
 	DefaultRegion = "us-east-1"
 	Inline        = "inline"
 	Attached      = "attached"
+	AclPublicRead = "public-read"
 )
 
 // addROSAVersionToUserAgent is a named handler that will add ROSA CLI
@@ -934,7 +935,7 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 	bucketInput := &s3.CreateBucketInput{
 		Bucket: &bucketName,
 	}
-	if region != "us-east-1" {
+	if region != DefaultRegion {
 		bucketInput.SetCreateBucketConfiguration(&s3.CreateBucketConfiguration{
 			LocationConstraint: &region,
 		})
@@ -947,7 +948,7 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 }
 
 func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error {
-	acl := "public-read"
+	acl := AclPublicRead
 	_, err := c.s3Client.PutObject(&s3.PutObjectInput{
 		ACL:    &acl,
 		Body:   body,
