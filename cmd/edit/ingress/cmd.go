@@ -19,6 +19,7 @@ package ingress
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -196,6 +197,9 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	curListening := ingress.Listening()
+	curRouteSelectors := ingress.RouteSelectors()
+
 	ingressBuilder := cmv1.NewIngress().ID(ingress.ID())
 
 	// Toggle private mode
@@ -218,7 +222,11 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if private == nil && len(routeSelectors) == 0 {
+	sameRouteSelectors := ingress.RouteSelectors() == nil || reflect.DeepEqual(curRouteSelectors, ingress.RouteSelectors())
+	// If private arg is nil no change to listening method will be made anyway
+	sameListeningMethod := private == nil || curListening == ingress.Listening()
+
+	if sameListeningMethod && sameRouteSelectors {
 		r.Reporter.Warnf("No need to update ingress as there are no changes")
 		os.Exit(0)
 	}
