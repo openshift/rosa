@@ -17,6 +17,7 @@ limitations under the License.
 package aws
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -38,6 +39,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
+	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
 	"github.com/aws/aws-sdk-go/service/organizations"
 	"github.com/aws/aws-sdk-go/service/organizations/organizationsiface"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -167,6 +170,7 @@ type Client interface {
 		policies map[string]*cmv1.AWSSTSPolicy) error
 	CreateS3Bucket(bucketName string, region string) error
 	PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error
+	EncryptPlainByKmsId(kmsId string, plain []byte) (string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -180,6 +184,7 @@ type awsClient struct {
 	logger              *logrus.Logger
 	iamClient           iamiface.IAMAPI
 	ec2Client           ec2iface.EC2API
+	kmsClient           kmsiface.KMSAPI
 	orgClient           organizationsiface.OrganizationsAPI
 	s3Client            s3iface.S3API
 	stsClient           stsiface.STSAPI
@@ -210,6 +215,7 @@ func New(
 	logger *logrus.Logger,
 	iamClient iamiface.IAMAPI,
 	ec2Client ec2iface.EC2API,
+	kmsClient kmsiface.KMSAPI,
 	orgClient organizationsiface.OrganizationsAPI,
 	s3Client s3iface.S3API,
 	stsClient stsiface.STSAPI,
@@ -223,6 +229,7 @@ func New(
 		logger,
 		iamClient,
 		ec2Client,
+		kmsClient,
 		orgClient,
 		s3Client,
 		stsClient,
@@ -366,6 +373,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 		logger:              b.logger,
 		iamClient:           iam.New(sess),
 		ec2Client:           ec2.New(sess),
+		kmsClient:           kms.New(sess),
 		orgClient:           organizations.New(sess),
 		s3Client:            s3.New(sess),
 		stsClient:           sts.New(sess),
@@ -959,6 +967,18 @@ func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.Rea
 		return err
 	}
 	return nil
+}
+
+func (c *awsClient) EncryptPlainByKmsId(kmsArn string, plain []byte) (string, error) {
+	output, err := c.kmsClient.Encrypt(&kms.EncryptInput{
+		KeyId:     &kmsArn,
+		Plaintext: plain,
+	})
+	if err != nil {
+		return "", err
+	}
+	blobString := base64.StdEncoding.EncodeToString(output.CiphertextBlob)
+	return blobString, nil
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for

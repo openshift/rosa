@@ -53,6 +53,7 @@ const (
 
 var args struct {
 	region string
+	kmsArn string
 }
 
 var Cmd = &cobra.Command{
@@ -67,6 +68,13 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+
+	flags.StringVar(
+		&args.kmsArn,
+		"kms-arn",
+		"",
+		"AWS KMS ARN to be used to encrypt private key for bound service account signing key.",
+	)
 
 	aws.AddModeFlag(Cmd)
 
@@ -92,9 +100,10 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	args.region = region
+	kmsArn := args.kmsArn
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !cmd.Flags().Changed("kms-arn") {
 		interactive.Enable()
 	}
 
@@ -110,23 +119,89 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
 			os.Exit(1)
 		}
+
+		kmsArn, err = interactive.GetString(
+			interactive.Input{
+				Question: "KMS ARN",
+				Help:     cmd.Flags().Lookup("kms-arn").Usage,
+				Required: true,
+				Default:  args.kmsArn,
+				Validators: []interactive.Validator{
+					aws.ARNValidator,
+				},
+			})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid KMS ARN: %s", err)
+			os.Exit(1)
+		}
 	}
 
+	if kmsArn != "" {
+		err := aws.ARNValidator(kmsArn)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid KMS ARN for encrypting: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	oidcConfigInput := buildOidcConfigInput(r, kmsArn)
 	oidcConfigStrategy, err := getOidcConfigStrategy(mode)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	bucketUrl, privateKeyFilename := oidcConfigStrategy.execute(r)
+	oidcConfigStrategy.execute(r, oidcConfigInput)
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("To create a cluster with this oidc config, please run:\n"+
 			"rosa create cluster --sts --oidc-endpoint-url %s "+
-			"--bound-service-account-signing-key-path ./%s", bucketUrl, privateKeyFilename)
+			"--bound-service-account-signing-key-path ./%s "+
+			"--bound-service-account-signing-key-kms-arn %s",
+			oidcConfigInput.BucketUrl, oidcConfigInput.EncryptedKeyFilename, kmsArn)
+	}
+}
+
+type OidcConfigInput struct {
+	BucketName           string
+	BucketUrl            string
+	PrivateKey           []byte
+	PrivateKeyFilename   string
+	EncryptedKeyFilename string
+	DiscoveryDocument    string
+	Jwks                 []byte
+	KmsId                string
+}
+
+func buildOidcConfigInput(r *rosa.Runtime, kmsId string) OidcConfigInput {
+	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
+	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
+	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
+	privateKey, publicKey, err := createKeyPair()
+	if err != nil {
+		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
+		os.Exit(1)
+	}
+	privateKeyFilename := fmt.Sprintf("private-key-%s.key", bucketName)
+	encryptedKeyFilename := fmt.Sprintf("encrypted-%s", privateKeyFilename)
+	discoveryDocument := generateDiscoveryDocument(bucketUrl)
+	jwks, err := buildJSONWebKeySet(publicKey)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
+		os.Exit(1)
+	}
+	return OidcConfigInput{
+		BucketName:           bucketName,
+		BucketUrl:            bucketUrl,
+		PrivateKey:           privateKey,
+		PrivateKeyFilename:   privateKeyFilename,
+		EncryptedKeyFilename: encryptedKeyFilename,
+		DiscoveryDocument:    discoveryDocument,
+		Jwks:                 jwks,
+		KmsId:                kmsId,
 	}
 }
 
 type CreateOidcConfigStrategy interface {
-	execute(r *rosa.Runtime) (string, string)
+	execute(r *rosa.Runtime, input OidcConfigInput)
 }
 
 type CreateOidcConfigAutoStrategy struct{}
@@ -136,37 +211,32 @@ const (
 	jwksKey              = "keys.json"
 )
 
-func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) (string, string) {
-	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
-	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
-	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
-	err := r.AWSClient.CreateS3Bucket(bucketName, args.region)
+func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime, input OidcConfigInput) {
+	bucketName := input.BucketName
+	discoveryDocument := input.DiscoveryDocument
+	jwks := input.Jwks
+	kmsId := input.KmsId
+	privateKey := input.PrivateKey
+	encryptedKey, err := r.AWSClient.EncryptPlainByKmsId(kmsId, privateKey)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem creating S3 bucket '%s': %s", bucketName, err)
+		r.Reporter.Errorf("There was a problem encrypting private key with KMS ID '%s': %s", kmsId, err)
 		os.Exit(1)
 	}
-	privateKey, publicKey, err := createKeyPair()
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
-		os.Exit(1)
-	}
-	privateKeyFilename := fmt.Sprintf("private-key-%s.key", bucketName)
-	err = helper.SaveDocument(string(privateKey[:]), privateKeyFilename)
+	err = helper.SaveDocument(encryptedKey, input.EncryptedKeyFilename)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
 		os.Exit(1)
 	}
-	discoveryDocument := generateDiscoveryDocument(bucketUrl)
+	err = r.AWSClient.CreateS3Bucket(bucketName, args.region)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem creating S3 bucket '%s': %s", bucketName, err)
+		os.Exit(1)
+	}
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(
 		bucketName, strings.NewReader(discoveryDocument), discoveryDocumentKey)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem populating discovery "+
 			"document to S3 bucket '%s': %s", bucketName, err)
-		os.Exit(1)
-	}
-	jwks, err := buildJSONWebKeySet(publicKey)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
 		os.Exit(1)
 	}
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, bytes.NewReader(jwks), jwksKey)
@@ -175,38 +245,39 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) (string, string)
 			"to S3 bucket '%s': %s", bucketName, err)
 		os.Exit(1)
 	}
-	return bucketUrl, privateKeyFilename
 }
 
 type CreateOidcConfigManualStrategy struct{}
 
-func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, string) {
+func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime, input OidcConfigInput) {
 	commands := []string{}
-	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
-	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
-	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
+	bucketName := input.BucketName
+	discoveryDocument := input.DiscoveryDocument
+	jwks := input.Jwks
 	createBucketConfig := ""
 	if args.region != aws.DefaultRegion {
 		createBucketConfig = fmt.Sprintf("LocationConstraint=%s", args.region)
 	}
+	err := helper.SaveDocument(string(input.PrivateKey), input.PrivateKeyFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
+		os.Exit(1)
+	}
+	encryptPrivateKeyCommand := awscb.NewKMSCommandBuilder().
+		SetCommand(awscb.Encrypt).
+		AddParam(awscb.KeyId, input.KmsId).
+		AddParam(awscb.Plaintext, fmt.Sprintf("fileb://%s", input.PrivateKeyFilename)).
+		AddParam(awscb.Output, "text").
+		AddParam(awscb.Query, "CiphertextBlob").
+		AddRedirect(awscb.FileRewrite, input.EncryptedKeyFilename).
+		Build()
+	commands = append(commands, encryptPrivateKeyCommand)
 	createS3BucketCommand := awscb.NewS3CommandBuilder().
 		SetCommand(awscb.CreateBucket).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.CreateBucketConfiguration, createBucketConfig).
 		Build()
 	commands = append(commands, createS3BucketCommand)
-	privateKey, publicKey, err := createKeyPair()
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
-		os.Exit(1)
-	}
-	privateKeyFilename := fmt.Sprintf("private-key-%s.key", bucketName)
-	err = helper.SaveDocument(string(privateKey[:]), privateKeyFilename)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
-		os.Exit(1)
-	}
-	discoveryDocument := generateDiscoveryDocument(bucketUrl)
 	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
 	err = helper.SaveDocument(discoveryDocument, discoveryDocumentFilename)
 	if err != nil {
@@ -221,11 +292,6 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, strin
 		AddParam(awscb.Key, discoveryDocumentKey).
 		Build()
 	commands = append(commands, putDiscoveryDocumentCommand)
-	jwks, err := buildJSONWebKeySet(publicKey)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
-		os.Exit(1)
-	}
 	jwksFilename := fmt.Sprintf("jwks-%s.json", bucketName)
 	err = helper.SaveDocument(string(jwks[:]), jwksFilename)
 	if err != nil {
@@ -241,7 +307,6 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, strin
 		Build()
 	commands = append(commands, putJwksCommand)
 	fmt.Println(awscb.JoinCommands(commands))
-	return bucketUrl, privateKeyFilename
 }
 
 func getOidcConfigStrategy(mode string) (CreateOidcConfigStrategy, error) {

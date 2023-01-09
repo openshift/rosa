@@ -23,6 +23,7 @@ var _ = Describe("Client", func() {
 		mockCfAPI  *mocks.MockCloudFormationAPI
 		mockIamAPI *mocks.MockIAMAPI
 		mockS3API  *mocks.MockS3API
+		mockKMSAPI *mocks.MockKMSAPI
 	)
 
 	BeforeEach(func() {
@@ -31,10 +32,12 @@ var _ = Describe("Client", func() {
 		mockIamAPI = mocks.NewMockIAMAPI(mockCtrl)
 		mockEC2API = mocks.NewMockEC2API(mockCtrl)
 		mockS3API = mocks.NewMockS3API(mockCtrl)
+		mockKMSAPI = mocks.NewMockKMSAPI(mockCtrl)
 		client = aws.New(
 			logrus.New(),
 			mockIamAPI,
 			mockEC2API,
+			mockKMSAPI,
 			mocks.NewMockOrganizationsAPI(mockCtrl),
 			mockS3API,
 			mocks.NewMockSTSAPI(mockCtrl),
