@@ -36,7 +36,6 @@ import (
 )
 
 var NetworkTypes = []string{"OpenShiftSDN", "OVNKubernetes"}
-var modeAuto = "auto"
 
 // Spec is the configuration for a cluster spec.
 type Spec struct {
@@ -780,7 +779,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		stsBuilder = stsBuilder.InstanceIAMRoles(instanceIAMRolesBuilder)
 
 		mode := false
-		if config.Mode == modeAuto {
+		if config.Mode == aws.ModeAuto {
 			mode = true
 		}
 		stsBuilder.AutoMode(mode)
