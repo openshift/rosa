@@ -20,21 +20,17 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
-	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
 var args struct {
@@ -162,7 +158,13 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if managedPolicies {
-		err = validateManagedPolicies(cmd, r, cluster, credRequests, policies, mode, prefix, unifiedPath,
+		mode, err = handleModeFlag(cmd, mode)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		err = roles.ValidateOperatorRolesManagedPolicies(r, cluster, credRequests, policies, mode, prefix, unifiedPath,
 			args.upgradeVersion)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
@@ -217,7 +219,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		r.Reporter.Infof("Starting to upgrade the operator IAM roles and policies")
 	}
 
-	mode, err = handleModeFlag(cmd, mode, err, r.Reporter)
+	mode, err = handleModeFlag(cmd, mode)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -233,64 +235,13 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if len(missingRolesInCS) > 0 {
-		err = createMissingRoles(r, missingRolesInCS, cluster, mode, prefix, policies, unifiedPath, false)
+		err = roles.CreateMissingRoles(r, missingRolesInCS, cluster, mode, prefix, policies, unifiedPath, false)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func createMissingRoles(r *rosa.Runtime, missingRolesInCS map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
-	mode string, prefix string, policies map[string]*cmv1.AWSSTSPolicy, unifiedPath string, managedPolicies bool) error {
-	createdMissingRoles := 0
-	for _, operator := range missingRolesInCS {
-		roleName := roles.GetOperatorRoleName(cluster, operator)
-		exists, _, err := r.AWSClient.CheckRoleExists(roleName)
-		if err != nil {
-			return r.Reporter.Errorf("Error when detecting checking missing operator IAM roles %s", err)
-		}
-		if !exists {
-			err = createOperatorRole(mode, r, cluster, prefix, missingRolesInCS, policies, unifiedPath, managedPolicies)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-			createdMissingRoles++
-		}
-	}
-	if createdMissingRoles == 0 {
-		r.Reporter.Infof(
-			"Missing roles/policies have already been created. Please continue with cluster upgrade process.",
-		)
-	}
-
-	return nil
-}
-
-func handleModeFlag(cmd *cobra.Command, mode string, err error,
-	reporter *rprtr.Object) (string, error) {
-	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
-		interactive.Enable()
-	}
-
-	if interactive.Enabled() {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Operator IAM role/policy upgrade mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
-		if err != nil {
-			reporter.Errorf("Expected a valid operator IAM role upgrade mode: %s", err)
-			os.Exit(1)
-		}
-	}
-	aws.SetModeKey(mode)
-	return mode, err
 }
 
 func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
@@ -340,108 +291,26 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 	return nil
 }
 
-func createOperatorRole(
-	mode string, r *rosa.Runtime, cluster *cmv1.Cluster, prefix string, missingRoles map[string]*cmv1.STSOperator,
-	policies map[string]*cmv1.AWSSTSPolicy, unifiedPath string, managedPolicies bool) error {
-	accountID := r.Creator.AccountID
-	switch mode {
-	case aws.ModeAuto:
-		err := upgradeMissingOperatorRole(missingRoles, cluster, accountID, prefix, r,
-			policies, unifiedPath, managedPolicies)
-		if err != nil {
-			return err
-		}
-		helper.DisplaySpinnerWithDelay(r.Reporter, "Waiting for operator roles to reconcile", 5*time.Second)
-	case aws.ModeManual:
-		commands, err := roles.BuildMissingOperatorRoleCommand(
-			missingRoles, cluster, accountID, r, policies, unifiedPath, prefix, managedPolicies)
-		if err != nil {
-			return err
-		}
-		if r.Reporter.IsTerminal() {
-			r.Reporter.Infof("Run the following commands to create the operator roles:\n")
-		}
-		fmt.Println(commands)
-	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
-		os.Exit(1)
+func handleModeFlag(cmd *cobra.Command, mode string) (string, error) {
+	// Determine if interactive mode is needed
+	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+		interactive.Enable()
 	}
-	return nil
-}
 
-func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
-	accountID string, prefix string, r *rosa.Runtime, policies map[string]*cmv1.AWSSTSPolicy,
-	unifiedPath string, managedPolicies bool) error {
-	for key, operator := range missingRoles {
-		roleName := roles.GetOperatorRoleName(cluster, operator)
-		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
-			continue
-		}
-		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-
-		var policyARN string
+	if interactive.Enabled() {
 		var err error
-		if managedPolicies {
-			policyARN, err = aws.GetManagedPolicyARN(policies, fmt.Sprintf("openshift_%s_policy", key))
-			if err != nil {
-				return err
-			}
-		} else {
-			policyARN = aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), unifiedPath)
-		}
-
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
+		mode, err = interactive.GetOption(interactive.Input{
+			Question: "Operator IAM role/policy upgrade mode",
+			Help:     cmd.Flags().Lookup("mode").Usage,
+			Default:  aws.ModeAuto,
+			Options:  aws.Modes,
+			Required: true,
+		})
 		if err != nil {
-			return err
-		}
-		tagsList := map[string]string{
-			tags.ClusterID:         cluster.ID(),
-			tags.OperatorNamespace: operator.Namespace(),
-			tags.OperatorName:      operator.Name(),
-			tags.RedHatManaged:     "true",
-		}
-		if managedPolicies {
-			tagsList[tags.ManagedPolicies] = "true"
-		}
-		r.Reporter.Debugf("Creating role '%s'", roleName)
-		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, "", "",
-			tagsList, unifiedPath, false)
-		if err != nil {
-			return err
-		}
-		r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
-		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
-		err = r.AWSClient.AttachRolePolicy(roleName, policyARN)
-		if err != nil {
-			return fmt.Errorf("Failed to attach role policy. Check your prefix or run "+
-				"'rosa create account-roles' to create the necessary policies: %s", err)
+			return "", fmt.Errorf("expected a valid operator IAM role upgrade mode: %s", err)
 		}
 	}
-	return nil
-}
+	aws.SetModeKey(mode)
 
-func validateManagedPolicies(cmd *cobra.Command, r *rosa.Runtime, cluster *cmv1.Cluster,
-	operatorRoles map[string]*cmv1.STSOperator, policies map[string]*cmv1.AWSSTSPolicy, mode string, prefix string,
-	unifiedPath string, upgradeVersion string) error {
-	if upgradeVersion != "" {
-		missingRolesInCS, err := r.OCMClient.FindMissingOperatorRolesForUpgrade(cluster, upgradeVersion)
-		if err != nil {
-			return err
-		}
-		if len(missingRolesInCS) > 0 {
-			r.Reporter.Infof("Starting to upgrade the operator IAM roles")
-			mode, err = handleModeFlag(cmd, mode, err, r.Reporter)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-
-			err = createMissingRoles(r, missingRolesInCS, cluster, mode, prefix, policies, unifiedPath, true)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return r.AWSClient.ValidateOperatorRolesManagedPolicies(cluster, operatorRoles, policies)
+	return mode, nil
 }

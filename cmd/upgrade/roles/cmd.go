@@ -124,15 +124,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	policyVersion := args.policyUpgradeversion
-	isPolicyVersionChosen := policyVersion != ""
-	channelGroup := args.channelGroup
-	policyVersion, err = ocmClient.GetPolicyVersion(policyVersion, channelGroup)
-	if err != nil {
-		reporter.Errorf("Error getting version: %s", err)
-		os.Exit(1)
-	}
-
 	clusterUpgradeVersion := args.clusterUpgradeVersion
 
 	availableUpgrades, err := r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
@@ -150,21 +141,32 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	err = checkPolicyAndClusterVersionCompatibility(policyVersion, clusterUpgradeVersion)
-	if err != nil {
-		reporter.Errorf("%v", err)
-		os.Exit(1)
-	}
-
 	env, err := ocm.GetEnv()
 	if err != nil {
 		reporter.Errorf("Failed to determine OCM environment: %v", err)
 		os.Exit(1)
 	}
 
-	creator, err := awsClient.GetCreator()
+	managedPolicies, err := awsClient.HasManagedPolicies(cluster.AWS().STS().RoleARN())
 	if err != nil {
-		reporter.Errorf("Failed to get IAM credentials: %s", err)
+		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		os.Exit(1)
+	}
+	// TODO: remove once AWS managed policies are in place
+	if managedPolicies && env == ocm.Production {
+		r.Reporter.Errorf("Managed policies are not supported in this environment")
+		os.Exit(1)
+	}
+
+	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
+		os.Exit(1)
+	}
+
+	credRequests, err := ocmClient.GetCredRequests(cluster.Hypershift().Enabled())
+	if err != nil {
+		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 		os.Exit(1)
 	}
 
@@ -174,6 +176,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if interactive.Enabled() && !skipInteractive {
+		var err error
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Roles upgrade mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
@@ -182,10 +185,60 @@ func run(cmd *cobra.Command, argv []string) error {
 			Required: true,
 		})
 		if err != nil {
-			reporter.Errorf("Expected a valid Account role upgrade mode: %s", err)
+			r.Reporter.Errorf("expected a valid Account role upgrade mode: %s", err)
 			os.Exit(1)
 		}
 		aws.SetModeKey(mode)
+	}
+
+	if managedPolicies {
+		var accountRolePrefix string
+		accountRolePrefix, err = aws.GetPrefixFromAccountRole(cluster, "Installer")
+		if err != nil {
+			r.Reporter.Errorf("Failed while trying to get account role prefix: '%v'", err)
+			os.Exit(1)
+		}
+		err = roles.ValidateAccountRolesManagedPolicies(r, accountRolePrefix)
+		if err != nil {
+			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
+			os.Exit(1)
+		}
+		r.Reporter.Infof("Account roles with the prefix '%s' have attached managed policies.", accountRolePrefix)
+
+		policies, err := r.OCMClient.GetPolicies("OperatorRole")
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
+			os.Exit(1)
+		}
+		err = roles.ValidateOperatorRolesManagedPolicies(r, cluster, credRequests, policies, mode,
+			accountRolePrefix, unifiedPath, clusterUpgradeVersion)
+		if err != nil {
+			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
+			os.Exit(1)
+		}
+		r.Reporter.Infof("Cluster '%s' operator roles have attached managed policies", cluster.Name())
+		os.Exit(0)
+	}
+
+	policyVersion := args.policyUpgradeversion
+	isPolicyVersionChosen := policyVersion != ""
+	channelGroup := args.channelGroup
+	policyVersion, err = ocmClient.GetPolicyVersion(policyVersion, channelGroup)
+	if err != nil {
+		reporter.Errorf("Error getting version: %s", err)
+		os.Exit(1)
+	}
+
+	err = checkPolicyAndClusterVersionCompatibility(policyVersion, clusterUpgradeVersion)
+	if err != nil {
+		reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
+
+	creator, err := awsClient.GetCreator()
+	if err != nil {
+		reporter.Errorf("Failed to get IAM credentials: %s", err)
+		os.Exit(1)
 	}
 
 	var spin *spinner.Spinner
@@ -302,18 +355,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
-		os.Exit(1)
-	}
-
-	credRequests, err := ocmClient.GetCredRequests(cluster.Hypershift().Enabled())
-	if err != nil {
-		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-		os.Exit(1)
-	}
-
 	operatorRolePolicyPrefix, err := aws.GetOperatorRolePolicyPrefixFromCluster(cluster, r.AWSClient)
 	if err != nil {
 		return err
@@ -393,6 +434,7 @@ func run(cmd *cobra.Command, argv []string) error {
 					operatorRolePolicies,
 					unifiedPath,
 					operatorRolePolicyPrefix,
+					managedPolicies,
 				)
 				if err != nil {
 					r.Reporter.Errorf("%s", err)
@@ -958,6 +1000,7 @@ func createOperatorRole(
 	policies map[string]*v1.AWSSTSPolicy,
 	unifiedPath string,
 	operatorRolePolicyPrefix string,
+	managedPolicies bool,
 ) error {
 	accountID := r.Creator.AccountID
 	switch mode {
@@ -984,8 +1027,7 @@ func createOperatorRole(
 			policies,
 			unifiedPath,
 			operatorRolePolicyPrefix,
-			// TODO: pass the actual managed policies value when the command is updated
-			false,
+			managedPolicies,
 		)
 		if err != nil {
 			return err

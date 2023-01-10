@@ -136,7 +136,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if managedPolicies {
-		err = validateManagedPolicies(r, prefix)
+		err = roles.ValidateAccountRolesManagedPolicies(r, prefix)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
 			os.Exit(1)
@@ -361,14 +361,4 @@ func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
 	}
 	return "", fmt.Errorf("Could not find account policies that are attached to account roles." +
 		"We need at least one in order to detect account policies path")
-}
-
-func validateManagedPolicies(r *rosa.Runtime, prefix string) error {
-	policies, err := r.OCMClient.GetPolicies("")
-	if err != nil {
-		r.Reporter.Errorf("Failed to fetch policies: %v", err)
-		os.Exit(1)
-	}
-
-	return r.AWSClient.ValidateAccountRolesManagedPolicies(prefix, policies)
 }
