@@ -339,8 +339,8 @@ func (c *Client) GetClusterByID(clusterKey string, creator *aws.Creator) (*cmv1.
 }
 
 func (c *Client) GetClusterUsingSubscription(clusterKey string, creator *aws.Creator) (*amv1.Subscription, error) {
-	query := fmt.Sprintf("plan.id = 'MOA' AND (display_name  = '%s' OR "+
-		"cluster_id = '%s') AND status = 'Deprovisioned'", clusterKey, clusterKey)
+	query := fmt.Sprintf("(plan.id = 'MOA' OR plan.id = 'MOA-HostedControlPlane')"+
+		" AND (display_name  = '%s' OR cluster_id = '%s') AND status = 'Deprovisioned'", clusterKey, clusterKey)
 	response, err := c.ocm.AccountsMgmt().V1().Subscriptions().List().
 		Search(query).
 		Page(1).
