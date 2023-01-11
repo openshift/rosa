@@ -28,7 +28,6 @@ import (
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/spf13/cobra"
@@ -678,7 +677,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	permissionsBoundary := args.operatorRolesPermissionsBoundary
 	if permissionsBoundary != "" {
-		_, err := arn.Parse(permissionsBoundary)
+		err = aws.ARNValidator(permissionsBoundary)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
 			os.Exit(1)
@@ -883,8 +882,9 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+
 	if roleARN != "" {
-		_, err = arn.Parse(roleARN)
+		err = aws.ARNValidator(roleARN)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid Role ARN: %s", err)
 			os.Exit(1)
@@ -932,7 +932,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if supportRoleARN != "" {
-		_, err = arn.Parse(supportRoleARN)
+		err = aws.ARNValidator(supportRoleARN)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid Support Role ARN: %s", err)
 			os.Exit(1)
@@ -965,7 +965,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if controlPlaneRoleARN != "" {
-		_, err = arn.Parse(controlPlaneRoleARN)
+		err = aws.ARNValidator(controlPlaneRoleARN)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid control plane instance IAM role ARN: %s", err)
 			os.Exit(1)
@@ -991,7 +991,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if workerRoleARN != "" {
-		_, err = arn.Parse(workerRoleARN)
+		err = aws.ARNValidator(workerRoleARN)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid worker instance IAM role ARN: %s", err)
 			os.Exit(1)

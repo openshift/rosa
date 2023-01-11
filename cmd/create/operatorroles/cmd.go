@@ -21,7 +21,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -154,8 +153,9 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
+
 	if permissionsBoundary != "" {
-		_, err := arn.Parse(permissionsBoundary)
+		err = aws.ARNValidator(permissionsBoundary)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
 			os.Exit(1)

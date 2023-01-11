@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
 	unlinkuserrole "github.com/openshift/rosa/cmd/unlink/userrole"
@@ -101,7 +100,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	_, err = arn.Parse(roleARN)
+	err = aws.ARNValidator(roleARN)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
 		os.Exit(1)

@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	linkocmrole "github.com/openshift/rosa/cmd/link/ocmrole"
@@ -33,6 +31,8 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var args struct {
@@ -172,8 +172,9 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
+
 	if permissionsBoundary != "" {
-		_, err := arn.Parse(permissionsBoundary)
+		err = aws.ARNValidator(permissionsBoundary)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
 			os.Exit(1)

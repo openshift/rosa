@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 
 	unlinkocmrole "github.com/openshift/rosa/cmd/unlink/ocmrole"
@@ -113,7 +112,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	}
 
-	_, err = arn.Parse(roleARN)
+	err = aws.ARNValidator(roleARN)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
 		os.Exit(1)
