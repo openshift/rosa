@@ -223,7 +223,7 @@ func resolveSTSRole(ARN arn.ARN) (*string, error) {
 		roleARNString := fmt.Sprintf(
 			"arn:%s:iam::%s:role/%s", ARN.Partition, ARN.AccountID, resource[parentResource])
 		// Parse it to validate its ok
-		_, err := arn.Parse(roleARNString)
+		err := ARNValidator(roleARNString)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to parse role ARN %s created from sts role: %v", roleARNString, err)
 		}

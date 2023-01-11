@@ -17,7 +17,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
@@ -108,7 +107,7 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		}
 	}
 	if roleArn != "" {
-		_, err := arn.Parse(roleArn)
+		err = aws.ARNValidator(roleArn)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid ocm role ARN to unlink from the current organization: %s", err)
 			os.Exit(1)
