@@ -1163,7 +1163,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid set of tags: %s", err)
 			os.Exit(1)
 		}
-		if len(tags) > 0 {
+		if len(tagsInput) > 0 {
 			tags = strings.Split(tagsInput, ",")
 		}
 	}
