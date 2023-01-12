@@ -64,9 +64,17 @@ func Print(resource interface{}) error {
 		if machinePools, ok := resource.([]*cmv1.MachinePool); ok {
 			cmv1.MarshalMachinePoolList(machinePools, &b)
 		}
+	case "*v1.MachinePool":
+		if machinePool, ok := resource.(*cmv1.MachinePool); ok {
+			cmv1.MarshalMachinePool(machinePool, &b)
+		}
 	case "[]*v1.MachineType":
 		if machineTypes, ok := resource.([]*cmv1.MachineType); ok {
 			cmv1.MarshalMachineTypeList(machineTypes, &b)
+		}
+	case "*v1.NodePool":
+		if nodePool, ok := resource.(*cmv1.NodePool); ok {
+			cmv1.MarshalNodePool(nodePool, &b)
 		}
 	case "[]*v1.Version":
 		if versions, ok := resource.([]*cmv1.Version); ok {

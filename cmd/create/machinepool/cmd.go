@@ -22,6 +22,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 
@@ -169,6 +170,7 @@ func init() {
 		"Select subnet to create a single AZ machine pool for BYOVPC cluster")
 
 	interactive.AddFlag(flags)
+	output.AddFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
