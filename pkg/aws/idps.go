@@ -33,6 +33,15 @@ const (
 
 func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint string, clusterID string) (
 	string, error) {
+	var iamTags []*iam.Tag
+	if clusterID != "" {
+		iamTags = []*iam.Tag{
+			{
+				Key:   aws.String(tags.ClusterID),
+				Value: aws.String(clusterID),
+			},
+		}
+	}
 	output, err := c.iamClient.CreateOpenIDConnectProvider(&iam.CreateOpenIDConnectProviderInput{
 		ClientIDList: []*string{
 			aws.String(OIDCClientIDOpenShift),
@@ -40,12 +49,7 @@ func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint s
 		},
 		ThumbprintList: []*string{aws.String(thumbprint)},
 		Url:            aws.String(providerURL),
-		Tags: []*iam.Tag{
-			{
-				Key:   aws.String(tags.ClusterID),
-				Value: aws.String(clusterID),
-			},
-		},
+		Tags:           iamTags,
 	})
 	if err != nil {
 		return "", err

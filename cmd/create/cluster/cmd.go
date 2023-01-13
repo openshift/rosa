@@ -19,8 +19,8 @@ package cluster
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -28,6 +28,7 @@ import (
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/spf13/cobra"
@@ -127,6 +128,10 @@ var args struct {
 	operatorIAMRoles                 []string
 	operatorRolesPrefix              string
 	operatorRolesPermissionsBoundary string
+
+	// Byo Oidc
+	oidcEndpointUrl                        string
+	boundServiceAccountSigningKeySecretArn string
 
 	// Proxy
 	enableProxy               bool
@@ -248,6 +253,20 @@ func init() {
 		"",
 		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
 			"Leave empty to use an auto-generated one.",
+	)
+
+	flags.StringVar(
+		&args.oidcEndpointUrl,
+		"oidc-endpoint-url",
+		"",
+		"Endpoint url for BYO OIDC config",
+	)
+
+	flags.StringVar(
+		&args.boundServiceAccountSigningKeySecretArn,
+		"bound-service-account-signing-key-secret-arn",
+		"",
+		"AWS Secrets Manager ARN for retrieval of bound service account signing key",
 	)
 
 	flags.StringSliceVar(
@@ -1145,6 +1164,78 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	}
+	oidcEndpointUrl := args.oidcEndpointUrl
+	boundServiceAccountSigningKeySecretArn := args.boundServiceAccountSigningKeySecretArn
+	isByoOidcSet := false
+	if isSTS {
+		// Support byo oidc config
+		if interactive.Enabled() {
+			oidcEndpointUrl, err = interactive.GetString(
+				interactive.Input{
+					Question:   "OIDC Endpoint URL",
+					Help:       cmd.Flags().Lookup("oidc-endpoint-url").Usage,
+					Required:   false,
+					Default:    oidcEndpointUrl,
+					Validators: []interactive.Validator{interactive.IsURL, interactive.IsURLReachable},
+				})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid OIDC Endpoint Url: %s", err)
+				os.Exit(1)
+			}
+			if oidcEndpointUrl != "" {
+				boundServiceAccountSigningKeySecretArn, err = interactive.GetString(
+					interactive.Input{
+						Question: "Bound Service Account Signing Key Secrets Manager ARN",
+						Help:     cmd.Flags().Lookup("bound-service-account-signing-key-kms-arn").Usage,
+						Required: true,
+						Default:  boundServiceAccountSigningKeySecretArn,
+					})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid ARN to the secret containing the bound service account signing key: %s", err)
+					os.Exit(1)
+				}
+			}
+		}
+		isByoOidcSet = oidcEndpointUrl != "" || boundServiceAccountSigningKeySecretArn != ""
+		if isByoOidcSet {
+			attributesForByoOidc := []string{}
+			if oidcEndpointUrl == "" {
+				attributesForByoOidc = append(attributesForByoOidc, "oidc-endpoint-url")
+			}
+			if boundServiceAccountSigningKeySecretArn == "" {
+				attributesForByoOidc = append(attributesForByoOidc, "bound-service-account-signing-key-secret-arn")
+			}
+			if len(attributesForByoOidc) > 0 {
+				r.Reporter.Errorf("Missing attributes for byo oidc '%s'", helper.SliceToSortedString(attributesForByoOidc))
+				os.Exit(1)
+			}
+			err = interactive.IsURL(oidcEndpointUrl)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			parsedURI, _ := url.ParseRequestURI(oidcEndpointUrl)
+			err := interactive.IsURLReachable(fmt.Sprintf("%s:%s", parsedURI.Host, parsedURI.Scheme))
+			if err != nil {
+				r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
+				os.Exit(1)
+			}
+			err = aws.ARNValidator(boundServiceAccountSigningKeySecretArn)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			parsedSecretArn, _ := arn.Parse(boundServiceAccountSigningKeySecretArn)
+			if parsedSecretArn.Service != "secretsmanager" {
+				r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
+				os.Exit(1)
+			}
+			if parsedSecretArn.Region != args.region {
+				r.Reporter.Errorf("Supplied secret ARN must be in the same region of the cluster")
+				os.Exit(1)
+			}
+		}
+	}
 
 	// Custom tags for AWS resources
 	tags := args.tags
@@ -1968,7 +2059,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get certificate contents
 	var additionalTrustBundle *string
 	if additionalTrustBundleFile != "" {
-		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
+		cert, err := os.ReadFile(additionalTrustBundleFile)
 		if err != nil {
 			r.Reporter.Errorf("Failed to read additional trust bundle file: %s", err)
 			os.Exit(1)
@@ -1983,45 +2074,47 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterConfig := ocm.Spec{
-		Name:                      clusterName,
-		Region:                    region,
-		MultiAZ:                   multiAZ,
-		Version:                   version,
-		ChannelGroup:              channelGroup,
-		Flavour:                   args.flavour,
-		FIPS:                      fips,
-		EtcdEncryption:            etcdEncryption,
-		EnableProxy:               enableProxy,
-		AdditionalTrustBundle:     additionalTrustBundle,
-		Expiration:                expiration,
-		ComputeMachineType:        computeMachineType,
-		ComputeNodes:              computeNodes,
-		Autoscaling:               autoscaling,
-		MinReplicas:               minReplicas,
-		MaxReplicas:               maxReplicas,
-		ComputeLabels:             labelMap,
-		NetworkType:               networkType,
-		MachineCIDR:               machineCIDR,
-		ServiceCIDR:               serviceCIDR,
-		PodCIDR:                   podCIDR,
-		HostPrefix:                hostPrefix,
-		Private:                   &private,
-		DryRun:                    &args.dryRun,
-		DisableSCPChecks:          &args.disableSCPChecks,
-		AvailabilityZones:         availabilityZones,
-		SubnetIds:                 subnetIDs,
-		PrivateLink:               &privateLink,
-		IsSTS:                     isSTS,
-		RoleARN:                   roleARN,
-		ExternalID:                externalID,
-		SupportRoleARN:            supportRoleARN,
-		OperatorIAMRoles:          operatorIAMRoleList,
-		ControlPlaneRoleARN:       controlPlaneRoleARN,
-		WorkerRoleARN:             workerRoleARN,
-		Mode:                      mode,
-		Tags:                      tagsList,
-		KMSKeyArn:                 kmsKeyARN,
-		DisableWorkloadMonitoring: &disableWorkloadMonitoring,
+		Name:                                   clusterName,
+		Region:                                 region,
+		MultiAZ:                                multiAZ,
+		Version:                                version,
+		ChannelGroup:                           channelGroup,
+		Flavour:                                args.flavour,
+		FIPS:                                   fips,
+		EtcdEncryption:                         etcdEncryption,
+		EnableProxy:                            enableProxy,
+		AdditionalTrustBundle:                  additionalTrustBundle,
+		Expiration:                             expiration,
+		ComputeMachineType:                     computeMachineType,
+		ComputeNodes:                           computeNodes,
+		Autoscaling:                            autoscaling,
+		MinReplicas:                            minReplicas,
+		MaxReplicas:                            maxReplicas,
+		ComputeLabels:                          labelMap,
+		NetworkType:                            networkType,
+		MachineCIDR:                            machineCIDR,
+		ServiceCIDR:                            serviceCIDR,
+		PodCIDR:                                podCIDR,
+		HostPrefix:                             hostPrefix,
+		Private:                                &private,
+		DryRun:                                 &args.dryRun,
+		DisableSCPChecks:                       &args.disableSCPChecks,
+		AvailabilityZones:                      availabilityZones,
+		SubnetIds:                              subnetIDs,
+		PrivateLink:                            &privateLink,
+		IsSTS:                                  isSTS,
+		RoleARN:                                roleARN,
+		ExternalID:                             externalID,
+		SupportRoleARN:                         supportRoleARN,
+		OperatorIAMRoles:                       operatorIAMRoleList,
+		ControlPlaneRoleARN:                    controlPlaneRoleARN,
+		WorkerRoleARN:                          workerRoleARN,
+		OidcEndpointUrl:                        oidcEndpointUrl,
+		BoundServiceAccountSigningKeySecretArn: boundServiceAccountSigningKeySecretArn,
+		Mode:                                   mode,
+		Tags:                                   tagsList,
+		KMSKeyArn:                              kmsKeyARN,
+		DisableWorkloadMonitoring:              &disableWorkloadMonitoring,
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
@@ -2111,13 +2204,22 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
-			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode})
+			if !isByoOidcSet {
+				oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
+			} else {
+				oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcEndpointUrl})
+			}
 		} else {
 			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
-			oidcCMD := fmt.Sprintf("rosa create oidc-provider --cluster %s", clusterName)
-
 			if permissionsBoundary != "" {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
+			}
+
+			oidcCMD := "rosa create oidc-provider"
+			if !isByoOidcSet {
+				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
+			} else {
+				oidcCMD = fmt.Sprintf("%s --oidc-endpoint-url %s", oidcCMD, oidcEndpointUrl)
 			}
 
 			r.Reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
@@ -2397,6 +2499,11 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if operatorRolesPrefix != "" {
 		command += fmt.Sprintf(" --operator-roles-prefix %s", operatorRolesPrefix)
+	}
+	if spec.OidcEndpointUrl != "" && spec.BoundServiceAccountSigningKeySecretArn != "" {
+		command += fmt.Sprintf(" --oidc-endpoint-url %s", spec.OidcEndpointUrl)
+		command += fmt.Sprintf(" --bound-service-account-signing-key-secret-arn %s",
+			spec.BoundServiceAccountSigningKeySecretArn)
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
