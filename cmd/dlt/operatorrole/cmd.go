@@ -62,6 +62,10 @@ func init() {
 	confirm.AddFlag(flags)
 }
 
+const (
+	hypershiftSubscriptionPlanId = "MOA-HostedControlPlane"
+)
+
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
@@ -104,14 +108,16 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
-	clusterID := clusterKey
 	if sub != nil {
-		clusterID = sub.ClusterID()
+		clusterKey = sub.ClusterID()
 	}
-	c, err := r.OCMClient.GetClusterByID(clusterID, r.Creator)
+	c, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 	if err != nil {
 		if errors.GetType(err) != errors.NotFound {
 			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		} else if sub == nil {
+			r.Reporter.Errorf("Failed to get cluster '%s': %v", r.ClusterKey, err)
 			os.Exit(1)
 		}
 	}
@@ -127,7 +133,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Error getting environment %s", err)
 		os.Exit(1)
 	}
-	if env != "production" {
+	if env != ocm.Production {
 		if !confirm.Prompt(true, "You are running delete operation from '%s' environment. Please ensure "+
 			"there are no clusters using these operator roles in the production. "+
 			"Are you sure you want to proceed?", env) {
@@ -157,7 +163,14 @@ func run(cmd *cobra.Command, argv []string) {
 		spin.Start()
 	}
 
-	credRequests, err := r.OCMClient.GetCredRequests(c.Hypershift().Enabled())
+	isHypershift := false
+	if c != nil {
+		isHypershift = c.Hypershift().Enabled()
+	} else {
+		subPlanId := sub.Plan().ID()
+		isHypershift = subPlanId == hypershiftSubscriptionPlanId
+	}
+	credRequests, err := r.OCMClient.GetCredRequests(isHypershift)
 	if err != nil {
 		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 		os.Exit(1)
