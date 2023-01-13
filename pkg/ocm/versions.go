@@ -322,8 +322,9 @@ func CheckAndParseVersion(availableUpgrades []string, version string) (string, e
 	if err != nil {
 		return "", err
 	}
+	isPreRelease := a.Prerelease() != ""
 	versionSplit := a.Segments64()
-	if versionSplit[2] > 0 {
+	if len(versionSplit) > 2 && versionSplit[2] > 0 || (versionSplit[2] == 0 && isPreRelease) {
 		return version, nil
 	}
 	return availableUpgrades[0], nil
