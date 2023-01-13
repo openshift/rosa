@@ -41,6 +41,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -52,21 +53,36 @@ const (
 )
 
 var args struct {
-	region string
+	region   string
+	rawFiles bool
 }
 
 var Cmd = &cobra.Command{
 	Use:     "oidc-config",
 	Aliases: []string{"oidcconfig"},
-	Short:   "Create OIDC config for an STS cluster.",
-	Long: "Create OIDC config in an S3 bucket for the " +
-		"client AWS account and populates it to be compliant with OIDC protocol.",
+	Short:   "Create OIDC config compliant with OIDC protocol.",
+	Long: "Create OIDC config in a S3 bucket for the " +
+		"client AWS account and populates it to be compliant with OIDC protocol. " +
+		"It also creates a Secret in Secrets Manager containing the private key.",
 	Example: `  # Create OIDC config rosa create oidc-config`,
+	Hidden:  true,
 	Run:     run,
 }
 
+const (
+	rawFilesFlag = "raw-files"
+)
+
 func init() {
 	flags := Cmd.Flags()
+
+	flags.BoolVar(
+		&args.rawFiles,
+		rawFilesFlag,
+		false,
+		"Creates OIDC config documents (Private RSA key, Discovery document, JSON Web Key Set) "+
+			"and saves locally for the client to create the configuration.",
+	)
 
 	aws.AddModeFlag(Cmd)
 
@@ -94,11 +110,16 @@ func run(cmd *cobra.Command, argv []string) {
 	args.region = region
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !cmd.Flags().Changed(rawFilesFlag) {
 		interactive.Enable()
 	}
 
-	if interactive.Enabled() {
+	if args.rawFiles && mode != "" {
+		r.Reporter.Warnf("--raw-files param is not supported alongside --mode param.")
+		os.Exit(1)
+	}
+
+	if !args.rawFiles && interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC config creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
@@ -112,61 +133,125 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	oidcConfigStrategy, err := getOidcConfigStrategy(mode)
+	if !args.rawFiles {
+		r.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
+			"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key.")
+	}
+
+	oidcConfigInput := buildOidcConfigInput(r)
+	oidcConfigStrategy, err := getOidcConfigStrategy(mode, oidcConfigInput)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	bucketUrl, privateKeyFilename := oidcConfigStrategy.execute(r)
-	if r.Reporter.IsTerminal() {
-		r.Reporter.Infof("To create a cluster with this oidc config, please run:\n"+
-			"rosa create cluster --sts --oidc-endpoint-url %s "+
-			"--bound-service-account-signing-key-path ./%s", bucketUrl, privateKeyFilename)
+	oidcConfigStrategy.execute(r)
+}
+
+type OidcConfigInput struct {
+	BucketName           string
+	BucketUrl            string
+	PrivateKey           []byte
+	PrivateKeyFilename   string
+	DiscoveryDocument    string
+	Jwks                 []byte
+	PrivateKeySecretName string
+}
+
+func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
+	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
+	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
+	privateKeySecretName := fmt.Sprintf("rosa-private-key-%s", bucketName)
+	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
+	privateKey, publicKey, err := createKeyPair()
+	if err != nil {
+		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
+		os.Exit(1)
+	}
+	privateKeyFilename := fmt.Sprintf("%s.key", privateKeySecretName)
+	discoveryDocument := generateDiscoveryDocument(bucketUrl)
+	jwks, err := buildJSONWebKeySet(publicKey)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
+		os.Exit(1)
+	}
+	return OidcConfigInput{
+		BucketName:           bucketName,
+		BucketUrl:            bucketUrl,
+		PrivateKey:           privateKey,
+		PrivateKeyFilename:   privateKeyFilename,
+		DiscoveryDocument:    discoveryDocument,
+		Jwks:                 jwks,
+		PrivateKeySecretName: privateKeySecretName,
 	}
 }
 
 type CreateOidcConfigStrategy interface {
-	execute(r *rosa.Runtime) (string, string)
+	execute(r *rosa.Runtime)
 }
 
-type CreateOidcConfigAutoStrategy struct{}
+type CreateOidcConfigRawStrategy struct {
+	oidcConfig OidcConfigInput
+}
+
+func (s *CreateOidcConfigRawStrategy) execute(r *rosa.Runtime) {
+	bucketName := s.oidcConfig.BucketName
+	discoveryDocument := s.oidcConfig.DiscoveryDocument
+	jwks := s.oidcConfig.Jwks
+	privateKey := s.oidcConfig.PrivateKey
+	privateKeyFilename := s.oidcConfig.PrivateKeyFilename
+	err := helper.SaveDocument(string(privateKey), privateKeyFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
+		os.Exit(1)
+	}
+	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
+	err = helper.SaveDocument(discoveryDocument, discoveryDocumentFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving discovery document to a file: %s", err)
+		os.Exit(1)
+	}
+	jwksFilename := fmt.Sprintf("jwks-%s.json", bucketName)
+	err = helper.SaveDocument(string(jwks[:]), jwksFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving JSON Web Key Set to a file: %s", err)
+		os.Exit(1)
+	}
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Please use generated files to create an OIDC compliant configuration.")
+	}
+}
+
+type CreateOidcConfigAutoStrategy struct {
+	oidcConfig OidcConfigInput
+}
 
 const (
 	discoveryDocumentKey = ".well-known/openid-configuration"
 	jwksKey              = "keys.json"
 )
 
-func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) (string, string) {
-	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
-	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
-	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
-	err := r.AWSClient.CreateS3Bucket(bucketName, args.region)
+func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+	bucketUrl := s.oidcConfig.BucketUrl
+	bucketName := s.oidcConfig.BucketName
+	discoveryDocument := s.oidcConfig.DiscoveryDocument
+	jwks := s.oidcConfig.Jwks
+	privateKey := s.oidcConfig.PrivateKey
+	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
+	secretsARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving private key to secrets manager: %s", err)
+		os.Exit(1)
+	}
+	err = r.AWSClient.CreateS3Bucket(bucketName, args.region)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem creating S3 bucket '%s': %s", bucketName, err)
 		os.Exit(1)
 	}
-	privateKey, publicKey, err := createKeyPair()
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
-		os.Exit(1)
-	}
-	privateKeyFilename := fmt.Sprintf("private-key-%s.key", bucketName)
-	err = helper.SaveDocument(string(privateKey[:]), privateKeyFilename)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
-		os.Exit(1)
-	}
-	discoveryDocument := generateDiscoveryDocument(bucketUrl)
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(
 		bucketName, strings.NewReader(discoveryDocument), discoveryDocumentKey)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem populating discovery "+
 			"document to S3 bucket '%s': %s", bucketName, err)
-		os.Exit(1)
-	}
-	jwks, err := buildJSONWebKeySet(publicKey)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
 		os.Exit(1)
 	}
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, bytes.NewReader(jwks), jwksKey)
@@ -175,16 +260,41 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) (string, string)
 			"to S3 bucket '%s': %s", bucketName, err)
 		os.Exit(1)
 	}
-	return bucketUrl, privateKeyFilename
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Please run command below to create a cluster with this oidc config:\n"+
+			"rosa create cluster --sts \\\n --oidc-endpoint-url %s \\\n --oidc-private-key-secret-arn %s",
+			bucketUrl, secretsARN)
+	}
 }
 
-type CreateOidcConfigManualStrategy struct{}
+type CreateOidcConfigManualStrategy struct {
+	oidcConfig OidcConfigInput
+}
 
-func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, string) {
+func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	commands := []string{}
-	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
-	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
-	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
+	bucketName := s.oidcConfig.BucketName
+	discoveryDocument := s.oidcConfig.DiscoveryDocument
+	jwks := s.oidcConfig.Jwks
+	privateKey := s.oidcConfig.PrivateKey
+	privateKeyFilename := s.oidcConfig.PrivateKeyFilename
+	err := helper.SaveDocument(string(privateKey), privateKeyFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
+		os.Exit(1)
+	}
+	createSecretCommand := awscb.NewSecretsManagerCommandBuilder().
+		SetCommand(awscb.CreateSecret).
+		AddParam(awscb.Name, bucketName).
+		AddParam(awscb.SecretString, fmt.Sprintf("file://%s", privateKeyFilename)).
+		AddParam(awscb.Description, fmt.Sprintf("\"Secret for %s\"", bucketName)).
+		AddParam(awscb.Region, args.region).
+		AddTags(map[string]string{
+			tags.RedHatManaged: "true",
+		}).
+		Build()
+	commands = append(commands, createSecretCommand)
+	commands = append(commands, fmt.Sprintf("rm %s", privateKeyFilename))
 	createBucketConfig := ""
 	if args.region != aws.DefaultRegion {
 		createBucketConfig = fmt.Sprintf("LocationConstraint=%s", args.region)
@@ -195,18 +305,6 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, strin
 		AddParam(awscb.CreateBucketConfiguration, createBucketConfig).
 		Build()
 	commands = append(commands, createS3BucketCommand)
-	privateKey, publicKey, err := createKeyPair()
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
-		os.Exit(1)
-	}
-	privateKeyFilename := fmt.Sprintf("private-key-%s.key", bucketName)
-	err = helper.SaveDocument(string(privateKey[:]), privateKeyFilename)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
-		os.Exit(1)
-	}
-	discoveryDocument := generateDiscoveryDocument(bucketUrl)
 	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
 	err = helper.SaveDocument(discoveryDocument, discoveryDocumentFilename)
 	if err != nil {
@@ -221,11 +319,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, strin
 		AddParam(awscb.Key, discoveryDocumentKey).
 		Build()
 	commands = append(commands, putDiscoveryDocumentCommand)
-	jwks, err := buildJSONWebKeySet(publicKey)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
-		os.Exit(1)
-	}
+	commands = append(commands, fmt.Sprintf("rm %s", discoveryDocumentFilename))
 	jwksFilename := fmt.Sprintf("jwks-%s.json", bucketName)
 	err = helper.SaveDocument(string(jwks[:]), jwksFilename)
 	if err != nil {
@@ -240,16 +334,22 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) (string, strin
 		AddParam(awscb.Key, jwksKey).
 		Build()
 	commands = append(commands, putJwksCommand)
+	commands = append(commands, fmt.Sprintf("rm %s", jwksFilename))
 	fmt.Println(awscb.JoinCommands(commands))
-	return bucketUrl, privateKeyFilename
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Please run commands above to generate OIDC compliant configuration in your AWS account.")
+	}
 }
 
-func getOidcConfigStrategy(mode string) (CreateOidcConfigStrategy, error) {
+func getOidcConfigStrategy(mode string, input OidcConfigInput) (CreateOidcConfigStrategy, error) {
+	if args.rawFiles {
+		return &CreateOidcConfigRawStrategy{oidcConfig: input}, nil
+	}
 	switch mode {
 	case aws.ModeAuto:
-		return &CreateOidcConfigAutoStrategy{}, nil
+		return &CreateOidcConfigAutoStrategy{oidcConfig: input}, nil
 	case aws.ModeManual:
-		return &CreateOidcConfigManualStrategy{}, nil
+		return &CreateOidcConfigManualStrategy{oidcConfig: input}, nil
 	default:
 		return nil, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 	}

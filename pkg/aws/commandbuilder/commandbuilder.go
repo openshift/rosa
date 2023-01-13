@@ -13,6 +13,7 @@ type Service string
 const (
 	IAM Service = "iam"
 	S3  Service = "s3api"
+	SM  Service = "secretsmanager"
 )
 
 type Command string
@@ -35,6 +36,8 @@ const (
 	//S3
 	CreateBucket Command = "create-bucket"
 	PutObject    Command = "put-object"
+	//SecretsManager
+	CreateSecret Command = "create-secret"
 )
 
 type Param string
@@ -62,13 +65,25 @@ const (
 	CreateBucketConfiguration Param = "create-bucket-configuration"
 	Body                      Param = "body"
 	Key                       Param = "key"
+
+	//SecretsManager
+	Name         Param = "name"
+	SecretString Param = "secret-string"
+	Description  Param = "description"
+)
+
+type Redirect string
+
+const (
+	FileRewrite Redirect = ">"
 )
 
 type CommandBuilder struct {
-	service Service
-	command Command
-	params  []string
-	tags    map[string]string
+	service  Service
+	command  Command
+	params   []string
+	tags     map[string]string
+	redirect string
 }
 
 func (b *CommandBuilder) SetService(awsService Service) *CommandBuilder {
@@ -103,6 +118,11 @@ func (b *CommandBuilder) AddParamNoValue(awsParam Param) *CommandBuilder {
 	return b
 }
 
+func (b *CommandBuilder) AddRedirect(awsRedirect Redirect, filename string) *CommandBuilder {
+	b.redirect = fmt.Sprintf("\t%s %s", awsRedirect, filename)
+	return b
+}
+
 func (b *CommandBuilder) Build() string {
 	serviceString := ""
 	if b.service != "" {
@@ -122,11 +142,18 @@ func (b *CommandBuilder) Build() string {
 		sort.Strings(b.params)
 		paramsString = strings.Join(b.params, ParamNewLineSeparator)
 	}
+
+	redirectString := ""
+	if b.redirect != "" {
+		redirectString = fmt.Sprintf("%s%s", ParamNewLineSeparator, b.redirect)
+	}
+
 	return fmt.Sprintf(
-		"aws %s%s%s",
+		"aws %s%s%s%s",
 		serviceString,
 		commandString,
 		paramsString,
+		redirectString,
 	)
 }
 
@@ -136,6 +163,10 @@ func NewIAMCommandBuilder() *CommandBuilder {
 
 func NewS3CommandBuilder() *CommandBuilder {
 	return &CommandBuilder{service: S3}
+}
+
+func NewSecretsManagerCommandBuilder() *CommandBuilder {
+	return &CommandBuilder{service: SM}
 }
 
 func createParamString(awsParam Param, value string) string {
