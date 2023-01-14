@@ -1176,7 +1176,7 @@ func run(cmd *cobra.Command, _ []string) {
 					Help:       cmd.Flags().Lookup("oidc-endpoint-url").Usage,
 					Required:   false,
 					Default:    oidcEndpointUrl,
-					Validators: []interactive.Validator{interactive.IsURL, interactive.IsURLReachable},
+					Validators: []interactive.Validator{interactive.IsURL},
 				})
 			if err != nil {
 				r.Reporter.Errorf("Expected a valid OIDC Endpoint Url: %s", err)
@@ -1228,10 +1228,6 @@ func run(cmd *cobra.Command, _ []string) {
 			parsedSecretArn, _ := arn.Parse(boundServiceAccountSigningKeySecretArn)
 			if parsedSecretArn.Service != "secretsmanager" {
 				r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
-				os.Exit(1)
-			}
-			if parsedSecretArn.Region != args.region {
-				r.Reporter.Errorf("Supplied secret ARN must be in the same region of the cluster")
 				os.Exit(1)
 			}
 		}
