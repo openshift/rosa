@@ -21,16 +21,15 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tAVAILABILITY ZONE\tSUBNET\tINSTANCE PREFIX\t\n")
+	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tAVAILABILITY ZONE\tSUBNET\t\n")
 	for _, nodePool := range nodePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			printNodePoolAutoscaling(nodePool.Autoscaling()),
 			printNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
 			printNodePoolInstanceType(nodePool.AWSNodePool()),
 			nodePool.AvailabilityZone(),
 			nodePool.Subnet(),
-			printNodePoolName(nodePool.AWSNodePool()),
 		)
 	}
 	writer.Flush()
@@ -57,15 +56,4 @@ func printNodePoolInstanceType(aws *cmv1.AWSNodePool) string {
 		return ""
 	}
 	return aws.InstanceType()
-}
-
-func printNodePoolName(aws *cmv1.AWSNodePool) string {
-	if aws == nil || aws.Tags() == nil {
-		return ""
-	}
-	tags := aws.Tags()
-	if nodePoolName, ok := tags["api.openshift.com/nodepool"]; ok {
-		return nodePoolName
-	}
-	return ""
 }

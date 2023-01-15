@@ -3,6 +3,7 @@ package machinepool
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -31,9 +32,29 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		os.Exit(1)
 	}
 
-	// Hosted clusters create identifiers for NodePools, users don't interact directly with these resources
-	if cmd.Flags().Changed("name") {
-		r.Reporter.Errorf("Setting the `name` is not supported for hosted clusters")
+	// Machine pool name:
+	name := strings.Trim(args.name, " \t")
+	if name == "" && !interactive.Enabled() {
+		interactive.Enable()
+		r.Reporter.Infof("Enabling interactive mode")
+	}
+	if name == "" || interactive.Enabled() {
+		name, err = interactive.GetString(interactive.Input{
+			Question: "Machine pool name",
+			Default:  name,
+			Required: true,
+			Validators: []interactive.Validator{
+				interactive.RegExp(machinePoolKeyRE.String()),
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid name for the machine pool: %s", err)
+			os.Exit(1)
+		}
+	}
+	name = strings.Trim(name, " \t")
+	if !machinePoolKeyRE.MatchString(name) {
+		r.Reporter.Errorf("Expected a valid name for the machine pool")
 		os.Exit(1)
 	}
 
@@ -114,6 +135,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	}
 
 	npBuilder := cmv1.NewNodePool()
+	npBuilder.ID(name)
 
 	if autoscaling {
 		npBuilder = npBuilder.Autoscaling(
