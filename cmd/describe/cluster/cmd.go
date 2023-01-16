@@ -138,6 +138,13 @@ func run(cmd *cobra.Command, argv []string) {
 		)
 	}
 
+	var openshiftVersion string
+	if cluster.Hypershift().Enabled() {
+		openshiftVersion = cluster.Version().ID()
+	} else {
+		openshiftVersion = cluster.OpenshiftVersion()
+	}
+
 	// Print short cluster description:
 	str = fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
@@ -163,7 +170,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.ID(),
 		cluster.ExternalID(),
 		controlPlaneConfig(cluster),
-		cluster.OpenshiftVersion(),
+		openshiftVersion,
 		cluster.Version().ChannelGroup(),
 		cluster.Name(), cluster.DNS().BaseDomain(),
 		creatorARN.AccountID,
