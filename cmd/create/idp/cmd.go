@@ -80,8 +80,8 @@ var args struct {
 	htpasswdPassword string
 }
 
-var validIdps []string = []string{"github", "gitlab", "google", "htpasswd", "ldap", "openid"}
-var validMappingMethods []string = []string{"add", "claim", "generate", "lookup"}
+var validIdps = []string{"github", "gitlab", "google", "htpasswd", "ldap", "openid"}
+var validMappingMethods = []string{"add", "claim", "generate", "lookup"}
 
 var idRE = regexp.MustCompile(`(?i)^[0-9a-z]+([-_][0-9a-z]+)*$`)
 
@@ -435,10 +435,13 @@ func doCreateIDP(
 	r.Reporter.Infof(
 		"Identity Provider '%s' has been created.\n"+
 			"   It may take several minutes for this access to become active.\n"+
-			"   To add cluster administrators, see 'rosa grant user --help'.\n"+
-			"   To login into the console, open %s and click on %s.",
-		idpName, cluster.Console().URL(), idpName,
-	)
+			"   To add cluster administrators, see 'rosa grant user --help'.\n", idpName)
+	// Console may not be available yet
+	if cluster.Console() != nil && cluster.Console().URL() != "" {
+		clusterConsole := cluster.Console().URL()
+		r.Reporter.Infof(
+			"   To login into the console, open %s and click on %s.", clusterConsole, idpName)
+	}
 	return createdIdp
 }
 
