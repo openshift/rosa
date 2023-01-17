@@ -192,7 +192,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 
 	if output.HasFlag() {
 		if err = output.Print(createdNodePool); err != nil {
-			r.Reporter.Errorf("unable to print nodepool: %v", err)
+			r.Reporter.Errorf("Unable to print node pool: %v", err)
 			os.Exit(1)
 		}
 	} else {
