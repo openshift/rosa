@@ -8,6 +8,7 @@ import (
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
@@ -128,7 +129,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	// NodePools don't support MultiAZ yet, so the availabilityZonesFilters is calculated from the cluster
 
 	var spin *spinner.Spinner
-	if r.Reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() && !output.HasFlag() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
@@ -189,6 +190,13 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		os.Exit(1)
 	}
 
-	r.Reporter.Infof("Machine pool '%s' created successfully on hosted cluster '%s'", createdNodePool.ID(), clusterKey)
-	r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
+	if output.HasFlag() {
+		if err = output.Print(createdNodePool); err != nil {
+			r.Reporter.Errorf("Unable to print machine pool: %v", err)
+			os.Exit(1)
+		}
+	} else {
+		r.Reporter.Infof("Machine pool '%s' created successfully on hosted cluster '%s'", createdNodePool.ID(), clusterKey)
+		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
+	}
 }

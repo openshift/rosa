@@ -13,6 +13,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
@@ -247,7 +248,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	}
 
 	var spin *spinner.Spinner
-	if r.Reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() && !output.HasFlag() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
@@ -450,14 +451,21 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
-	_, err = r.OCMClient.CreateMachinePool(cluster.ID(), machinePool)
+	createdMachinePool, err := r.OCMClient.CreateMachinePool(cluster.ID(), machinePool)
 	if err != nil {
 		r.Reporter.Errorf("Failed to add machine pool to cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 
-	r.Reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
-	r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
+	if output.HasFlag() {
+		if err = output.Print(createdMachinePool); err != nil {
+			r.Reporter.Errorf("Unable to print machine pool: %v", err)
+			os.Exit(1)
+		}
+	} else {
+		r.Reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
+		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
+	}
 }
 
 func Split(r rune) bool {
