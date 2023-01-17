@@ -459,7 +459,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	if output.HasFlag() {
 		if err = output.Print(createdMachinePool); err != nil {
-			r.Reporter.Errorf("unable to print nodepool: %v", err)
+			r.Reporter.Errorf("Unable to print machine pool: %v", err)
 			os.Exit(1)
 		}
 	} else {
