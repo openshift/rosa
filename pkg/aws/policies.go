@@ -384,7 +384,9 @@ func (c *awsClient) HasCompatibleVersionTags(iamTags []*iam.Tag, version string)
 			if err != nil {
 				return false, err
 			}
-			return currentVersion.GreaterThanOrEqual(wantedVersion), nil
+			// Current version equals to wanted is not necessarily compatible
+			// as actions can be altered to accommodate more permissions
+			return currentVersion.GreaterThan(wantedVersion), nil
 		}
 	}
 	return false, nil
