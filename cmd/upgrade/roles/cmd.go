@@ -255,7 +255,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	//ACCOUNT ROLES
 
-	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePoliciesForCluster(
+	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePoliciesUsingCluster(
 		cluster,
 		policyVersion,
 	)

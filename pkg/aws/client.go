@@ -132,7 +132,7 @@ type Client interface {
 	GetOpenIDConnectProvider(clusterID string) (string, error)
 	GetInstanceProfilesForRole(role string) ([]string, error)
 	IsUpgradedNeededForAccountRolePolicies(rolePrefix string, version string) (bool, error)
-	IsUpgradedNeededForAccountRolePoliciesForCluster(clusterID *cmv1.Cluster, version string) (bool, error)
+	IsUpgradedNeededForAccountRolePoliciesUsingCluster(clusterID *cmv1.Cluster, version string) (bool, error)
 	IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 		cluster *cmv1.Cluster,
 		accountID string,
