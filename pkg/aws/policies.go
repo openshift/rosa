@@ -1357,26 +1357,17 @@ func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
 	return c.isManagedRole(role.Tags), nil
 }
 
-func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesForCluster(cluster *cmv1.Cluster,
-	version string) (bool, error) {
-
-	roles := []string{}
-	roles = append(roles, cluster.AWS().STS().RoleARN(), cluster.AWS().STS().SupportRoleARN(),
-		cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN(), cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN())
-
-	for _, accountRoleARN := range roles {
-		role, err := c.GetRoleByARN(accountRoleARN)
+func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesUsingCluster(
+	cluster *cmv1.Cluster, version string) (bool, error) {
+	for _, role := range AccountRoles {
+		roleName, err := GetAccountRoleName(cluster, role.Name)
 		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					return false, errors.NotFound.Errorf("'%s' role not found", accountRoleARN)
-				}
-			}
 			return false, err
 		}
-		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.StringValue(role.RoleName),
-			version)
+		if roleName == "" {
+			continue
+		}
+		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.StringValue(&roleName), version)
 
 		if err != nil {
 			return false, err
