@@ -2,6 +2,35 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.12 Jan 18 2023
+
+- fix: Incorrect OIDC Provider Sometimes Targeted for Deletion
+- Removed len(tags) > 0 from if for Tags question in interactive
+- Revert "[SDA-7662] Display Tags question in interactive mode"
+- Upgrade account roles with managed policies
+- fix: check current values to see if there are no real changes
+- Fixed panic
+- Re-added tags question
+- Add the default-mp-labels flag to cluster create command on interactive mode
+- fix: code review
+- Now updating stsBuilder.AutoMode properly
+- Added constant for "auto" string
+- Upgrade operator roles with managed policies
+- feat: command create oidc-config
+- fix: add mocks
+- feat: add manual mode
+- fix: review comments
+- Used better flag
+- Edited query for GetClusterUsingSubscription to fix deletions
+- Fix tags passing in cluster creation interactive mode
+- fix: using ARNValidator instead of arn Parse when parsed is not used
+- Upgrade roles command - handle managed policies
+- fix: only checking '"' character and leaving regex validation for CS
+- fix: accept pre release version during upgrade
+- Ensure console URL is available before offering it to the user
+- feat: consider current version incompatible
+- SDCICD-893: cmd/create/machinepool: support output flag (#1014)
+
 == 1.2.11 Jan 3 2023
 
 - fix: check if any new operator roles have been created
