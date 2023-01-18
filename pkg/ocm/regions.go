@@ -143,7 +143,8 @@ func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.
 }
 
 func (c *Client) GetRegionList(multiAZ bool, roleARN string,
-	externalID string, version string, awsClient aws.Client, isHostedCP bool) (regionList []string,
+	externalID string, version string, awsClient aws.Client, isHostedCP bool,
+	shardPinningEnabled bool) (regionList []string,
 	regionAZ map[string]bool, err error) {
 	regions, err := c.GetFilteredRegionsByVersion(roleARN, version, awsClient, externalID)
 	if err != nil {
@@ -158,7 +159,7 @@ func (c *Client) GetRegionList(multiAZ bool, roleARN string,
 			continue
 		}
 
-		if isHostedCP && !v.SupportsHypershift() {
+		if isHostedCP && !shardPinningEnabled && !v.SupportsHypershift() {
 			continue
 		}
 
