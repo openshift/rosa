@@ -50,6 +50,10 @@ var Cmd = &cobra.Command{
 	Run: run,
 }
 
+const (
+	OidcEndpointUrlFlag = "oidc-endpoint-url"
+)
+
 var args struct {
 	oidcEndpointUrl string
 }
@@ -59,10 +63,11 @@ func init() {
 
 	flags.StringVar(
 		&args.oidcEndpointUrl,
-		"oidc-endpoint-url",
+		OidcEndpointUrlFlag,
 		"",
 		"Endpoint url for BYO OIDC config",
 	)
+	flags.MarkHidden(OidcEndpointUrlFlag)
 
 	ocm.AddOptionalClusterFlag(Cmd)
 	aws.AddModeFlag(Cmd)

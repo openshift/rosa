@@ -54,6 +54,12 @@ var kmsArnRE = regexp.MustCompile(
 	`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
 )
 
+const (
+	OidcEndpointUrlFlag = "oidc-endpoint-url"
+	//nolint
+	OidcPrivateKeySecretArnFlag = "oidc-private-key-secret-arn"
+)
+
 var args struct {
 	// Watch logs during cluster installation
 	watch bool
@@ -130,8 +136,8 @@ var args struct {
 	operatorRolesPermissionsBoundary string
 
 	// Byo Oidc
-	oidcEndpointUrl                        string
-	boundServiceAccountSigningKeySecretArn string
+	oidcEndpointUrl         string
+	oidcPrivateKeySecretArn string
 
 	// Proxy
 	enableProxy               bool
@@ -257,17 +263,19 @@ func init() {
 
 	flags.StringVar(
 		&args.oidcEndpointUrl,
-		"oidc-endpoint-url",
+		OidcEndpointUrlFlag,
 		"",
 		"Endpoint url for BYO OIDC config",
 	)
+	flags.MarkHidden(OidcEndpointUrlFlag)
 
 	flags.StringVar(
-		&args.boundServiceAccountSigningKeySecretArn,
-		"bound-service-account-signing-key-secret-arn",
+		&args.oidcPrivateKeySecretArn,
+		OidcPrivateKeySecretArnFlag,
 		"",
-		"AWS Secrets Manager ARN for retrieval of bound service account signing key",
+		"AWS Secrets Manager ARN for retrieval of private key",
 	)
+	flags.MarkHidden(OidcPrivateKeySecretArnFlag)
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -1165,15 +1173,15 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	oidcEndpointUrl := args.oidcEndpointUrl
-	boundServiceAccountSigningKeySecretArn := args.boundServiceAccountSigningKeySecretArn
+	oidcPrivateKeySecretArn := args.oidcPrivateKeySecretArn
 	isByoOidcSet := false
 	if isSTS {
 		// Support byo oidc config
-		if interactive.Enabled() {
+		if oidcEndpointUrl != "" && interactive.Enabled() {
 			oidcEndpointUrl, err = interactive.GetString(
 				interactive.Input{
 					Question:   "OIDC Endpoint URL",
-					Help:       cmd.Flags().Lookup("oidc-endpoint-url").Usage,
+					Help:       cmd.Flags().Lookup(OidcEndpointUrlFlag).Usage,
 					Required:   false,
 					Default:    oidcEndpointUrl,
 					Validators: []interactive.Validator{interactive.IsURL},
@@ -1183,49 +1191,44 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 			if oidcEndpointUrl != "" {
-				boundServiceAccountSigningKeySecretArn, err = interactive.GetString(
+				oidcPrivateKeySecretArn, err = interactive.GetString(
 					interactive.Input{
-						Question: "Bound Service Account Signing Key Secrets Manager ARN",
-						Help:     cmd.Flags().Lookup("bound-service-account-signing-key-kms-arn").Usage,
+						Question: "OIDC Private Key Secret ARN",
+						Help:     cmd.Flags().Lookup(OidcPrivateKeySecretArnFlag).Usage,
 						Required: true,
-						Default:  boundServiceAccountSigningKeySecretArn,
+						Default:  oidcPrivateKeySecretArn,
 					})
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid ARN to the secret containing the bound service account signing key: %s", err)
+					r.Reporter.Errorf("Expected a valid ARN to the secret containing the private key: %s", err)
 					os.Exit(1)
 				}
 			}
 		}
-		isByoOidcSet = oidcEndpointUrl != "" || boundServiceAccountSigningKeySecretArn != ""
+		isByoOidcSet = oidcEndpointUrl != "" || oidcPrivateKeySecretArn != ""
 		if isByoOidcSet {
 			attributesForByoOidc := []string{}
 			if oidcEndpointUrl == "" {
-				attributesForByoOidc = append(attributesForByoOidc, "oidc-endpoint-url")
+				attributesForByoOidc = append(attributesForByoOidc, OidcEndpointUrlFlag)
 			}
-			if boundServiceAccountSigningKeySecretArn == "" {
-				attributesForByoOidc = append(attributesForByoOidc, "bound-service-account-signing-key-secret-arn")
+			if oidcPrivateKeySecretArn == "" {
+				attributesForByoOidc = append(attributesForByoOidc, OidcPrivateKeySecretArnFlag)
 			}
 			if len(attributesForByoOidc) > 0 {
 				r.Reporter.Errorf("Missing attributes for byo oidc '%s'", helper.SliceToSortedString(attributesForByoOidc))
 				os.Exit(1)
 			}
-			err = interactive.IsURL(oidcEndpointUrl)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
 			parsedURI, _ := url.ParseRequestURI(oidcEndpointUrl)
-			err := interactive.IsURLReachable(fmt.Sprintf("%s:%s", parsedURI.Host, parsedURI.Scheme))
+			err := helper.IsURLReachable(fmt.Sprintf("%s:%s", parsedURI.Host, parsedURI.Scheme))
 			if err != nil {
 				r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
 				os.Exit(1)
 			}
-			err = aws.ARNValidator(boundServiceAccountSigningKeySecretArn)
+			err = aws.ARNValidator(oidcPrivateKeySecretArn)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
-			parsedSecretArn, _ := arn.Parse(boundServiceAccountSigningKeySecretArn)
+			parsedSecretArn, _ := arn.Parse(oidcPrivateKeySecretArn)
 			if parsedSecretArn.Service != "secretsmanager" {
 				r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
 				os.Exit(1)
@@ -2106,7 +2109,7 @@ func run(cmd *cobra.Command, _ []string) {
 		ControlPlaneRoleARN:                    controlPlaneRoleARN,
 		WorkerRoleARN:                          workerRoleARN,
 		OidcEndpointUrl:                        oidcEndpointUrl,
-		BoundServiceAccountSigningKeySecretArn: boundServiceAccountSigningKeySecretArn,
+		BoundServiceAccountSigningKeySecretArn: oidcPrivateKeySecretArn,
 		Mode:                                   mode,
 		Tags:                                   tagsList,
 		KMSKeyArn:                              kmsKeyARN,
@@ -2215,7 +2218,7 @@ func run(cmd *cobra.Command, _ []string) {
 			if !isByoOidcSet {
 				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
 			} else {
-				oidcCMD = fmt.Sprintf("%s --oidc-endpoint-url %s", oidcCMD, oidcEndpointUrl)
+				oidcCMD = fmt.Sprintf("%s %s %s", oidcCMD, OidcEndpointUrlFlag, oidcEndpointUrl)
 			}
 
 			r.Reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
@@ -2497,8 +2500,8 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --operator-roles-prefix %s", operatorRolesPrefix)
 	}
 	if spec.OidcEndpointUrl != "" && spec.BoundServiceAccountSigningKeySecretArn != "" {
-		command += fmt.Sprintf(" --oidc-endpoint-url %s", spec.OidcEndpointUrl)
-		command += fmt.Sprintf(" --bound-service-account-signing-key-secret-arn %s",
+		command += fmt.Sprintf(" --%s %s", OidcEndpointUrlFlag, spec.OidcEndpointUrl)
+		command += fmt.Sprintf(" --%s %s", OidcPrivateKeySecretArnFlag,
 			spec.BoundServiceAccountSigningKeySecretArn)
 	}
 	if len(spec.Tags) > 0 {

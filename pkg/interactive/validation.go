@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
@@ -60,28 +59,6 @@ func IsURL(val interface{}) error {
 		}
 		_, err := url.ParseRequestURI(fmt.Sprintf("%v", val))
 		return err
-	}
-	return fmt.Errorf("can only validate strings, got %v", val)
-}
-
-// IsURLReachable validates whether the given value is a reachable URL
-func IsURLReachable(val interface{}) error {
-	if val == nil {
-		return nil
-	}
-	if s, ok := val.(string); ok {
-		if s == "" {
-			return nil
-		}
-		dialer := &net.Dialer{
-			Timeout: time.Second,
-		}
-		externalConnection, err := dialer.Dial("tcp", fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
-		defer externalConnection.Close()
-		return nil
 	}
 	return fmt.Errorf("can only validate strings, got %v", val)
 }
