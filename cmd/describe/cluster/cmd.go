@@ -138,11 +138,9 @@ func run(cmd *cobra.Command, argv []string) {
 		)
 	}
 
-	var openshiftVersion string
-	if cluster.Hypershift().Enabled() {
+	openshiftVersion := cluster.OpenshiftVersion()
+	if cluster.Hypershift().Enabled() && cluster.OpenshiftVersion() == "" {
 		openshiftVersion = cluster.Version().ID()
-	} else {
-		openshiftVersion = cluster.OpenshiftVersion()
 	}
 
 	// Print short cluster description:
