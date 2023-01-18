@@ -44,6 +44,7 @@ var args struct {
 	version             string
 	channelGroup        string
 	managed             bool
+	forcePolicyCreation bool
 }
 
 var Cmd = &cobra.Command{
@@ -107,6 +108,14 @@ func init() {
 		"Attach AWS managed policies to the account roles",
 	)
 	flags.MarkHidden("managed")
+
+	flags.BoolVarP(
+		&args.forcePolicyCreation,
+		"force-policy-creation",
+		"f",
+		false,
+		"Forces creation of policies skipping compatibility check",
+	)
 
 	aws.AddModeFlag(Cmd)
 
@@ -281,7 +290,13 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
-	policies, err := r.OCMClient.GetPolicies("")
+
+	if args.forcePolicyCreation && mode != aws.ModeAuto {
+		r.Reporter.Warnf("Forcing creation of policies only works in auto mode")
+		os.Exit(1)
+	}
+
+	policies, err := r.OCMClient.GetPolicies("AccountRole")
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 		os.Exit(1)
@@ -447,8 +462,13 @@ func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env st
 			policyPermissionDetail := aws.GetPolicyDetails(policies, filename)
 
 			r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
-			policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyPermissionDetail,
-				defaultPolicyVersion, tagsList, path)
+			if args.forcePolicyCreation {
+				policyARN, err = r.AWSClient.ForceEnsurePolicy(policyARN, policyPermissionDetail,
+					defaultPolicyVersion, tagsList, path)
+			} else {
+				policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyPermissionDetail,
+					defaultPolicyVersion, tagsList, path)
+			}
 			if err != nil {
 				return err
 			}

@@ -104,6 +104,8 @@ type Client interface {
 		version string, tagList map[string]string, path string, managedPolicies bool) (string, error)
 	ValidateRoleNameAvailable(name string) (err error)
 	PutRolePolicy(roleName string, policyName string, policy string) error
+	ForceEnsurePolicy(policyArn string, document string, version string, tagList map[string]string,
+		path string) (string, error)
 	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string,
 		path string) (string, error)
 	AttachRolePolicy(roleName string, policyARN string) error

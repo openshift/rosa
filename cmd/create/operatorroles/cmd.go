@@ -38,6 +38,7 @@ import (
 var args struct {
 	prefix              string
 	permissionsBoundary string
+	forcePolicyCreation bool
 }
 
 var Cmd = &cobra.Command{
@@ -71,6 +72,14 @@ func init() {
 		"permissions-boundary",
 		"",
 		"The ARN of the policy that is used to set the permissions boundary for the operator roles.",
+	)
+
+	flags.BoolVarP(
+		&args.forcePolicyCreation,
+		"force-policy-creation",
+		"f",
+		false,
+		"Forces creation of policies skipping compatibility check",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -126,15 +135,15 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if len(missingRoles) == 0 &&
-		cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
+		cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending &&
+		!args.forcePolicyCreation {
 		r.Reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 			clusterKey, cluster.State())
 		os.Exit(0)
 	}
 
-	prefix, err := aws.GetPrefixFromInstallerAccountRole(cluster)
-	if err != nil {
-		r.Reporter.Errorf("Failed to find prefix from %s account role", aws.InstallerAccountRole)
+	if args.forcePolicyCreation && mode != aws.ModeAuto {
+		r.Reporter.Warnf("Forcing creation of policies only works in auto mode")
 		os.Exit(1)
 	}
 
@@ -181,14 +190,16 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
+
 	path, err := getPathFromInstallerRole(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 		os.Exit(1)
 	}
 	if path != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
-		r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
-			" created operator roles and policies, for the account roles with prefix '%s'", path, prefix)
+		r.Reporter.Infof("ARN path '%s' detected in installer role '%s'. "+
+			"This ARN path will be used for subsequent created operator roles and policies.",
+			path, cluster.AWS().STS().RoleARN())
 	}
 	accountRoleVersion, err := r.AWSClient.GetAccountRoleVersion(roleName)
 	if err != nil {
@@ -326,16 +337,26 @@ func createRoles(r *rosa.Runtime,
 				operator.Name(), path)
 			policyDetails := aws.GetPolicyDetails(policies, filename)
 
-			policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
-				defaultVersion, map[string]string{
-					tags.OpenShiftVersion:  accountRoleVersion,
-					tags.RolePrefix:        prefix,
-					tags.RedHatManaged:     helper.True,
-					tags.OperatorNamespace: operator.Namespace(),
-					tags.OperatorName:      operator.Name(),
-				}, path)
-			if err != nil {
-				return err
+			operatorPolicyTags := map[string]string{
+				tags.OpenShiftVersion:  accountRoleVersion,
+				tags.RolePrefix:        prefix,
+				tags.RedHatManaged:     helper.True,
+				tags.OperatorNamespace: operator.Namespace(),
+				tags.OperatorName:      operator.Name(),
+			}
+
+			if args.forcePolicyCreation {
+				policyARN, err = r.AWSClient.ForceEnsurePolicy(policyARN, policyDetails,
+					defaultVersion, operatorPolicyTags, path)
+				if err != nil {
+					return err
+				}
+			} else {
+				policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
+					defaultVersion, operatorPolicyTags, path)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
