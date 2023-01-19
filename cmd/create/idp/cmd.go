@@ -437,10 +437,18 @@ func doCreateIDP(
 			"   It may take several minutes for this access to become active.\n"+
 			"   To add cluster administrators, see 'rosa grant user --help'.\n", idpName)
 	// Console may not be available yet
-	if cluster.Console() != nil && cluster.Console().URL() != "" {
+	if ocm.IsConsoleAvailable(cluster) {
 		clusterConsole := cluster.Console().URL()
 		r.Reporter.Infof(
-			"   To login into the console, open %s and click on %s.", clusterConsole, idpName)
+			"To log in to the console, open %s and click on '%s'.", clusterConsole, idpName)
+	} else {
+		// This warning is because IDPs depends on HostedCluster network which may not be available yet.
+		// HTPasswd has no external dependencies so no warning needed.
+		if createdIdp.Type() != cmv1.IdentityProviderTypeHtpasswd {
+			r.Reporter.Warnf(
+				"Authentication traffic for '%s' will be ready when workload\n"+
+					"   nodes are provisioned and ready in your AWS account.", idpName)
+		}
 	}
 	return createdIdp
 }
