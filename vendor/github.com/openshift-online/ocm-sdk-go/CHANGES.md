@@ -3,6 +3,13 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.311
+- Update to model v0.0.252
+  - Update `STS` resource attributes
+    * Remove `BoundServiceAccountSigningKey`
+    * Remove `BoundServiceAccountKeyKmsId`
+    * Rename `BoundServiceAccountKeySecretArn` to `OidcPrivateKeySecretArn`
+
 ## 0.1.310
 - Update to model v0.0.251
   - Update `NodePool` with status attributes

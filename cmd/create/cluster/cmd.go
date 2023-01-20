@@ -1172,69 +1172,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	}
-	oidcEndpointUrl := args.oidcEndpointUrl
-	oidcPrivateKeySecretArn := args.oidcPrivateKeySecretArn
-	isByoOidcSet := false
-	if isSTS {
-		// Support byo oidc config
-		if oidcEndpointUrl != "" && interactive.Enabled() {
-			oidcEndpointUrl, err = interactive.GetString(
-				interactive.Input{
-					Question:   "OIDC Endpoint URL",
-					Help:       cmd.Flags().Lookup(OidcEndpointUrlFlag).Usage,
-					Required:   false,
-					Default:    oidcEndpointUrl,
-					Validators: []interactive.Validator{interactive.IsURL},
-				})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid OIDC Endpoint Url: %s", err)
-				os.Exit(1)
-			}
-			if oidcEndpointUrl != "" {
-				oidcPrivateKeySecretArn, err = interactive.GetString(
-					interactive.Input{
-						Question: "OIDC Private Key Secret ARN",
-						Help:     cmd.Flags().Lookup(OidcPrivateKeySecretArnFlag).Usage,
-						Required: true,
-						Default:  oidcPrivateKeySecretArn,
-					})
-				if err != nil {
-					r.Reporter.Errorf("Expected a valid ARN to the secret containing the private key: %s", err)
-					os.Exit(1)
-				}
-			}
-		}
-		isByoOidcSet = oidcEndpointUrl != "" || oidcPrivateKeySecretArn != ""
-		if isByoOidcSet {
-			attributesForByoOidc := []string{}
-			if oidcEndpointUrl == "" {
-				attributesForByoOidc = append(attributesForByoOidc, OidcEndpointUrlFlag)
-			}
-			if oidcPrivateKeySecretArn == "" {
-				attributesForByoOidc = append(attributesForByoOidc, OidcPrivateKeySecretArnFlag)
-			}
-			if len(attributesForByoOidc) > 0 {
-				r.Reporter.Errorf("Missing attributes for byo oidc '%s'", helper.SliceToSortedString(attributesForByoOidc))
-				os.Exit(1)
-			}
-			parsedURI, _ := url.ParseRequestURI(oidcEndpointUrl)
-			err := helper.IsURLReachable(fmt.Sprintf("%s:%s", parsedURI.Host, parsedURI.Scheme))
-			if err != nil {
-				r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
-				os.Exit(1)
-			}
-			err = aws.ARNValidator(oidcPrivateKeySecretArn)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-			parsedSecretArn, _ := arn.Parse(oidcPrivateKeySecretArn)
-			if parsedSecretArn.Service != "secretsmanager" {
-				r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
-				os.Exit(1)
-			}
-		}
-	}
+	isByoOidcSet, oidcEndpointUrl, oidcPrivateKeySecretArn := handleByoOidcOptions(r, cmd, isSTS)
 
 	// Custom tags for AWS resources
 	tags := args.tags
@@ -2073,47 +2011,47 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterConfig := ocm.Spec{
-		Name:                                   clusterName,
-		Region:                                 region,
-		MultiAZ:                                multiAZ,
-		Version:                                version,
-		ChannelGroup:                           channelGroup,
-		Flavour:                                args.flavour,
-		FIPS:                                   fips,
-		EtcdEncryption:                         etcdEncryption,
-		EnableProxy:                            enableProxy,
-		AdditionalTrustBundle:                  additionalTrustBundle,
-		Expiration:                             expiration,
-		ComputeMachineType:                     computeMachineType,
-		ComputeNodes:                           computeNodes,
-		Autoscaling:                            autoscaling,
-		MinReplicas:                            minReplicas,
-		MaxReplicas:                            maxReplicas,
-		ComputeLabels:                          labelMap,
-		NetworkType:                            networkType,
-		MachineCIDR:                            machineCIDR,
-		ServiceCIDR:                            serviceCIDR,
-		PodCIDR:                                podCIDR,
-		HostPrefix:                             hostPrefix,
-		Private:                                &private,
-		DryRun:                                 &args.dryRun,
-		DisableSCPChecks:                       &args.disableSCPChecks,
-		AvailabilityZones:                      availabilityZones,
-		SubnetIds:                              subnetIDs,
-		PrivateLink:                            &privateLink,
-		IsSTS:                                  isSTS,
-		RoleARN:                                roleARN,
-		ExternalID:                             externalID,
-		SupportRoleARN:                         supportRoleARN,
-		OperatorIAMRoles:                       operatorIAMRoleList,
-		ControlPlaneRoleARN:                    controlPlaneRoleARN,
-		WorkerRoleARN:                          workerRoleARN,
-		OidcEndpointUrl:                        oidcEndpointUrl,
-		BoundServiceAccountSigningKeySecretArn: oidcPrivateKeySecretArn,
-		Mode:                                   mode,
-		Tags:                                   tagsList,
-		KMSKeyArn:                              kmsKeyARN,
-		DisableWorkloadMonitoring:              &disableWorkloadMonitoring,
+		Name:                      clusterName,
+		Region:                    region,
+		MultiAZ:                   multiAZ,
+		Version:                   version,
+		ChannelGroup:              channelGroup,
+		Flavour:                   args.flavour,
+		FIPS:                      fips,
+		EtcdEncryption:            etcdEncryption,
+		EnableProxy:               enableProxy,
+		AdditionalTrustBundle:     additionalTrustBundle,
+		Expiration:                expiration,
+		ComputeMachineType:        computeMachineType,
+		ComputeNodes:              computeNodes,
+		Autoscaling:               autoscaling,
+		MinReplicas:               minReplicas,
+		MaxReplicas:               maxReplicas,
+		ComputeLabels:             labelMap,
+		NetworkType:               networkType,
+		MachineCIDR:               machineCIDR,
+		ServiceCIDR:               serviceCIDR,
+		PodCIDR:                   podCIDR,
+		HostPrefix:                hostPrefix,
+		Private:                   &private,
+		DryRun:                    &args.dryRun,
+		DisableSCPChecks:          &args.disableSCPChecks,
+		AvailabilityZones:         availabilityZones,
+		SubnetIds:                 subnetIDs,
+		PrivateLink:               &privateLink,
+		IsSTS:                     isSTS,
+		RoleARN:                   roleARN,
+		ExternalID:                externalID,
+		SupportRoleARN:            supportRoleARN,
+		OperatorIAMRoles:          operatorIAMRoleList,
+		ControlPlaneRoleARN:       controlPlaneRoleARN,
+		WorkerRoleARN:             workerRoleARN,
+		OidcEndpointUrl:           oidcEndpointUrl,
+		OidcPrivateKeySecretArn:   oidcPrivateKeySecretArn,
+		Mode:                      mode,
+		Tags:                      tagsList,
+		KMSKeyArn:                 kmsKeyARN,
+		DisableWorkloadMonitoring: &disableWorkloadMonitoring,
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
@@ -2240,6 +2178,73 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+}
+
+func handleByoOidcOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) (bool, string, string) {
+	oidcEndpointUrl := args.oidcEndpointUrl
+	oidcPrivateKeySecretArn := args.oidcPrivateKeySecretArn
+	isByoOidcSet := false
+	if isSTS {
+		// Support byo oidc config
+		if oidcEndpointUrl != "" && interactive.Enabled() {
+			oidcEndpointUrl, err := interactive.GetString(
+				interactive.Input{
+					Question:   "OIDC Endpoint URL",
+					Help:       cmd.Flags().Lookup(OidcEndpointUrlFlag).Usage,
+					Required:   false,
+					Default:    oidcEndpointUrl,
+					Validators: []interactive.Validator{interactive.IsURL},
+				})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid OIDC Endpoint Url: %s", err)
+				os.Exit(1)
+			}
+			if oidcEndpointUrl != "" {
+				oidcPrivateKeySecretArn, err = interactive.GetString(
+					interactive.Input{
+						Question: "OIDC Private Key Secret ARN",
+						Help:     cmd.Flags().Lookup(OidcPrivateKeySecretArnFlag).Usage,
+						Required: true,
+						Default:  oidcPrivateKeySecretArn,
+					})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid ARN to the secret containing the private key: %s", err)
+					os.Exit(1)
+				}
+			}
+		}
+		isByoOidcSet = oidcEndpointUrl != "" || oidcPrivateKeySecretArn != ""
+		if isByoOidcSet {
+			missingAttributesForByoOidc := []string{}
+			if oidcEndpointUrl == "" {
+				missingAttributesForByoOidc = append(missingAttributesForByoOidc, OidcEndpointUrlFlag)
+			}
+			if oidcPrivateKeySecretArn == "" {
+				missingAttributesForByoOidc = append(missingAttributesForByoOidc, OidcPrivateKeySecretArnFlag)
+			}
+			if len(missingAttributesForByoOidc) > 0 {
+				r.Reporter.Errorf("Missing attributes for byo oidc '%s'", helper.SliceToSortedString(missingAttributesForByoOidc))
+				os.Exit(1)
+			}
+			parsedURI, _ := url.ParseRequestURI(oidcEndpointUrl)
+			err := helper.IsURLReachable(fmt.Sprintf("%s:%s", parsedURI.Host, parsedURI.Scheme))
+			if err != nil {
+				r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
+				os.Exit(1)
+			}
+			err = aws.ARNValidator(oidcPrivateKeySecretArn)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			parsedSecretArn, _ := arn.Parse(oidcPrivateKeySecretArn)
+			if parsedSecretArn.Service != "secretsmanager" {
+				r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
+				os.Exit(1)
+			}
+		}
+	}
+	return isByoOidcSet, oidcEndpointUrl, oidcPrivateKeySecretArn
 }
 
 func minReplicaValidator(multiAZ bool) interactive.Validator {
@@ -2499,10 +2504,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if operatorRolesPrefix != "" {
 		command += fmt.Sprintf(" --operator-roles-prefix %s", operatorRolesPrefix)
 	}
-	if spec.OidcEndpointUrl != "" && spec.BoundServiceAccountSigningKeySecretArn != "" {
+	if spec.OidcEndpointUrl != "" && spec.OidcPrivateKeySecretArn != "" {
 		command += fmt.Sprintf(" --%s %s", OidcEndpointUrlFlag, spec.OidcEndpointUrl)
-		command += fmt.Sprintf(" --%s %s", OidcPrivateKeySecretArnFlag,
-			spec.BoundServiceAccountSigningKeySecretArn)
+		command += fmt.Sprintf(" --%s %s", OidcPrivateKeySecretArnFlag, spec.OidcPrivateKeySecretArn)
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
