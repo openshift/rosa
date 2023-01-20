@@ -43,6 +43,7 @@ type NodePool struct {
 	availabilityZone string
 	cluster          *Cluster
 	replicas         int
+	status           *NodePoolStatus
 	subnet           string
 	autoRepair       bool
 }
@@ -246,12 +247,35 @@ func (o *NodePool) GetReplicas() (value int, ok bool) {
 	return
 }
 
+// Status returns the value of the 'status' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// NodePool status.
+func (o *NodePool) Status() *NodePoolStatus {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.status
+	}
+	return nil
+}
+
+// GetStatus returns the value of the 'status' attribute and
+// a flag indicating if the attribute has a value.
+//
+// NodePool status.
+func (o *NodePool) GetStatus() (value *NodePoolStatus, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.status
+	}
+	return
+}
+
 // Subnet returns the value of the 'subnet' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The subnet upon which the nodes are created.
 func (o *NodePool) Subnet() string {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.subnet
 	}
 	return ""
@@ -262,7 +286,7 @@ func (o *NodePool) Subnet() string {
 //
 // The subnet upon which the nodes are created.
 func (o *NodePool) GetSubnet() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.subnet
 	}

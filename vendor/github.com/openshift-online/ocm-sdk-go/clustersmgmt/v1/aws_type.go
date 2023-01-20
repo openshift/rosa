@@ -28,6 +28,7 @@ type AWS struct {
 	sts             *STS
 	accessKeyID     string
 	accountID       string
+	etcdEncryption  *AwsEtcdEncryption
 	secretAccessKey string
 	subnetIDs       []string
 	tags            map[string]string
@@ -131,12 +132,35 @@ func (o *AWS) GetAccountID() (value string, ok bool) {
 	return
 }
 
+// EtcdEncryption returns the value of the 'etcd_encryption' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Related etcd encryption configuration
+func (o *AWS) EtcdEncryption() *AwsEtcdEncryption {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.etcdEncryption
+	}
+	return nil
+}
+
+// GetEtcdEncryption returns the value of the 'etcd_encryption' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Related etcd encryption configuration
+func (o *AWS) GetEtcdEncryption() (value *AwsEtcdEncryption, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.etcdEncryption
+	}
+	return
+}
+
 // PrivateLink returns the value of the 'private_link' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Sets cluster to be inaccessible externally.
 func (o *AWS) PrivateLink() bool {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.privateLink
 	}
 	return false
@@ -147,7 +171,7 @@ func (o *AWS) PrivateLink() bool {
 //
 // Sets cluster to be inaccessible externally.
 func (o *AWS) GetPrivateLink() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.privateLink
 	}
@@ -159,7 +183,7 @@ func (o *AWS) GetPrivateLink() (value bool, ok bool) {
 //
 // AWS secret access key.
 func (o *AWS) SecretAccessKey() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.secretAccessKey
 	}
 	return ""
@@ -170,7 +194,7 @@ func (o *AWS) SecretAccessKey() string {
 //
 // AWS secret access key.
 func (o *AWS) GetSecretAccessKey() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.secretAccessKey
 	}
@@ -182,7 +206,7 @@ func (o *AWS) GetSecretAccessKey() (value string, ok bool) {
 //
 // The subnet ids to be used when installing the cluster.
 func (o *AWS) SubnetIDs() []string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.subnetIDs
 	}
 	return nil
@@ -193,7 +217,7 @@ func (o *AWS) SubnetIDs() []string {
 //
 // The subnet ids to be used when installing the cluster.
 func (o *AWS) GetSubnetIDs() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.subnetIDs
 	}
@@ -205,7 +229,7 @@ func (o *AWS) GetSubnetIDs() (value []string, ok bool) {
 //
 // Optional keys and values that the installer will add as tags to all AWS resources it creates
 func (o *AWS) Tags() map[string]string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.tags
 	}
 	return nil
@@ -216,7 +240,7 @@ func (o *AWS) Tags() map[string]string {
 //
 // Optional keys and values that the installer will add as tags to all AWS resources it creates
 func (o *AWS) GetTags() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.tags
 	}

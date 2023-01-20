@@ -31,6 +31,7 @@ type NodePoolBuilder struct {
 	availabilityZone string
 	cluster          *ClusterBuilder
 	replicas         int
+	status           *NodePoolStatusBuilder
 	subnet           string
 	autoRepair       bool
 }
@@ -163,10 +164,23 @@ func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 	return b
 }
 
+// Status sets the value of the 'status' attribute to the given value.
+//
+// Representation of the status of a node pool.
+func (b *NodePoolBuilder) Status(value *NodePoolStatusBuilder) *NodePoolBuilder {
+	b.status = value
+	if value != nil {
+		b.bitmap_ |= 512
+	} else {
+		b.bitmap_ &^= 512
+	}
+	return b
+}
+
 // Subnet sets the value of the 'subnet' attribute to the given value.
 func (b *NodePoolBuilder) Subnet(value string) *NodePoolBuilder {
 	b.subnet = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -196,6 +210,11 @@ func (b *NodePoolBuilder) Copy(object *NodePool) *NodePoolBuilder {
 		b.cluster = nil
 	}
 	b.replicas = object.replicas
+	if object.status != nil {
+		b.status = NewNodePoolStatus().Copy(object.status)
+	} else {
+		b.status = nil
+	}
 	b.subnet = object.subnet
 	return b
 }
@@ -227,6 +246,12 @@ func (b *NodePoolBuilder) Build() (object *NodePool, err error) {
 		}
 	}
 	object.replicas = b.replicas
+	if b.status != nil {
+		object.status, err = b.status.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.subnet = b.subnet
 	return
 }

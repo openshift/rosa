@@ -24,6 +24,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1
 // Representation of an addon env object.
 type AddonEnvironmentVariable struct {
 	bitmap_ uint32
+	id      string
 	name    string
 	value   string
 	enabled bool
@@ -34,12 +35,35 @@ func (o *AddonEnvironmentVariable) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
+// ID returns the value of the 'ID' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// ID for the environment variable
+func (o *AddonEnvironmentVariable) ID() string {
+	if o != nil && o.bitmap_&1 != 0 {
+		return o.id
+	}
+	return ""
+}
+
+// GetID returns the value of the 'ID' attribute and
+// a flag indicating if the attribute has a value.
+//
+// ID for the environment variable
+func (o *AddonEnvironmentVariable) GetID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&1 != 0
+	if ok {
+		value = o.id
+	}
+	return
+}
+
 // Enabled returns the value of the 'enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Indicates is this environment variable is enabled for the addon
 func (o *AddonEnvironmentVariable) Enabled() bool {
-	if o != nil && o.bitmap_&1 != 0 {
+	if o != nil && o.bitmap_&2 != 0 {
 		return o.enabled
 	}
 	return false
@@ -50,7 +74,7 @@ func (o *AddonEnvironmentVariable) Enabled() bool {
 //
 // Indicates is this environment variable is enabled for the addon
 func (o *AddonEnvironmentVariable) GetEnabled() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&1 != 0
+	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.enabled
 	}
@@ -60,9 +84,9 @@ func (o *AddonEnvironmentVariable) GetEnabled() (value bool, ok bool) {
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Name of the env object.
+// Name of the environment variable
 func (o *AddonEnvironmentVariable) Name() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.name
 	}
 	return ""
@@ -71,9 +95,9 @@ func (o *AddonEnvironmentVariable) Name() string {
 // GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Name of the env object.
+// Name of the environment variable
 func (o *AddonEnvironmentVariable) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.name
 	}
@@ -83,9 +107,9 @@ func (o *AddonEnvironmentVariable) GetName() (value string, ok bool) {
 // Value returns the value of the 'value' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Value of the env object.
+// Value of the environment variable
 func (o *AddonEnvironmentVariable) Value() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.value
 	}
 	return ""
@@ -94,9 +118,9 @@ func (o *AddonEnvironmentVariable) Value() string {
 // GetValue returns the value of the 'value' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Value of the env object.
+// Value of the environment variable
 func (o *AddonEnvironmentVariable) GetValue() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.value
 	}

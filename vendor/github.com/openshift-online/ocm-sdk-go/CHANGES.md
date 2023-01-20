@@ -3,6 +3,37 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.310
+- Update to model v0.0.251
+  - Update `NodePool` with status attributes
+  - Added `current_compute` attribute in `ClusterStatus` for hosted clusters.
+  - Added missing variable to `addon environment variable` for addons mgmt
+
+## 0.1.309
+- Update to model v0.0.250
+  - Add `Addon Inquiries API` to `addons_mgmt` 
+
+## 0.1.308
+- Update to model v0.0.249
+  - Add `BoundServiceAccountKeySecretArn` attribute to the `Sts` model.
+
+## 0.1.307
+- Update to model v0.0.248
+  - Add `AwsEtcdEncryption` type model and reference from `AWS`.
+  - Add `Enabled` attribute to `STS` model.
+
+## 0.1.306
+- Update to model v0.0.247
+  - Corrected `Metrics` type on `DeletedSubscription`
+
+## 0.1.305
+- Update to model v0.0.246
+  - Add Search to `Capabilities` resource
+
+## 0.1.304
+- Update to model v0.0.245
+  - Add `BoundServiceAccountKeyKmsId` attribute to the `Sts` model.
+
 ## 0.1.303
 - Update to model v0.0.244
   - Add `ARN` attribute to the `AWSSTSPolicy` model.
