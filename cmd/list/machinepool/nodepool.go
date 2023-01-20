@@ -21,15 +21,18 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tAVAILABILITY ZONE\tSUBNET\t\n")
+	fmt.Fprintf(writer, "ID\tAUTOSCALING\tDESIRED REPLICAS\tCURRENT REPLICAS\t"+
+		"INSTANCE TYPE\tAVAILABILITY ZONE\tSUBNET\tMESSAGE\t\n")
 	for _, nodePool := range nodePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			printNodePoolAutoscaling(nodePool.Autoscaling()),
 			printNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
+			printNodePoolCurrentReplicas(nodePool.Status()),
 			printNodePoolInstanceType(nodePool.AWSNodePool()),
 			nodePool.AvailabilityZone(),
 			nodePool.Subnet(),
+			printNodePoolMessage(nodePool.Status()),
 		)
 	}
 	writer.Flush()
@@ -56,4 +59,18 @@ func printNodePoolInstanceType(aws *cmv1.AWSNodePool) string {
 		return ""
 	}
 	return aws.InstanceType()
+}
+
+func printNodePoolCurrentReplicas(status *cmv1.NodePoolStatus) string {
+	if status != nil {
+		return fmt.Sprintf("%d", status.CurrentReplicas())
+	}
+	return ""
+}
+
+func printNodePoolMessage(status *cmv1.NodePoolStatus) string {
+	if status != nil {
+		return status.Message()
+	}
+	return ""
 }

@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1
 
 import (
 	"bufio"
@@ -25,71 +25,102 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// CapabilitiesClient is the client of the 'capabilities' resource.
-type CapabilitiesClient struct {
+// AddonInquiriesClient is the client of the 'addon_inquiries' resource.
+//
+// Manages add-on inquiries, inquiries perform validation of add-on(s) on a per cluster basis
+// based on add-on conditions and requirements.
+type AddonInquiriesClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewCapabilitiesClient creates a new client for the 'capabilities'
+// NewAddonInquiriesClient creates a new client for the 'addon_inquiries'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewCapabilitiesClient(transport http.RoundTripper, path string) *CapabilitiesClient {
-	return &CapabilitiesClient{
+func NewAddonInquiriesClient(transport http.RoundTripper, path string) *AddonInquiriesClient {
+	return &AddonInquiriesClient{
 		transport: transport,
 		path:      path,
 	}
 }
 
 // List creates a request for the 'list' method.
-//
-// Retrieves a list of Capabilities.
-func (c *CapabilitiesClient) List() *CapabilitiesListRequest {
-	return &CapabilitiesListRequest{
+func (c *AddonInquiriesClient) List() *AddonInquiriesListRequest {
+	return &AddonInquiriesListRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// CapabilitiesListRequest is the request for the 'list' method.
-type CapabilitiesListRequest struct {
+// AddonInquiry returns the target 'addon_inquiry' resource for the given identifier.
+func (c *AddonInquiriesClient) AddonInquiry(id string) *AddonInquiryClient {
+	return NewAddonInquiryClient(
+		c.transport,
+		path.Join(c.path, id),
+	)
+}
+
+// AddonInquiriesListRequest is the request for the 'list' method.
+type AddonInquiriesListRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
+	order     *string
 	page      *int
 	search    *string
 	size      *int
 }
 
 // Parameter adds a query parameter.
-func (r *CapabilitiesListRequest) Parameter(name string, value interface{}) *CapabilitiesListRequest {
+func (r *AddonInquiriesListRequest) Parameter(name string, value interface{}) *AddonInquiriesListRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *CapabilitiesListRequest) Header(name string, value interface{}) *CapabilitiesListRequest {
+func (r *AddonInquiriesListRequest) Header(name string, value interface{}) *AddonInquiriesListRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *CapabilitiesListRequest) Impersonate(user string) *CapabilitiesListRequest {
+func (r *AddonInquiriesListRequest) Impersonate(user string) *AddonInquiriesListRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
+// Order sets the value of the 'order' parameter.
+//
+// Order criteria.
+//
+// The syntax of this parameter is similar to the syntax of the _order by_ clause of
+// a SQL statement, but using the names of the attributes of the add-on instead of
+// the names of the columns of a table. For example, in order to sort the add-ons
+// descending by name the value should be:
+//
+// ```sql
+// name desc
+// ```
+//
+// If the parameter isn't provided, or if the value is empty, then the order of the
+// results is undefined.
+func (r *AddonInquiriesListRequest) Order(value string) *AddonInquiriesListRequest {
+	r.order = &value
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *CapabilitiesListRequest) Page(value int) *CapabilitiesListRequest {
+func (r *AddonInquiriesListRequest) Page(value int) *AddonInquiriesListRequest {
 	r.page = &value
 	return r
 }
@@ -98,18 +129,18 @@ func (r *CapabilitiesListRequest) Page(value int) *CapabilitiesListRequest {
 //
 // Search criteria.
 //
-// The syntax of this parameter is similar to the syntax of the _where_ clause
-// of an SQL statement, but using the names of the attributes of the organization
-// instead of the names of the columns of a table. For example, in order to
-// retrieve organizations with name starting with my:
+// The syntax of this parameter is similar to the syntax of the _where_ clause of an
+// SQL statement, but using the names of the attributes of the add-on instead of
+// the names of the columns of a table. For example, in order to retrieve all the
+// add-ons with a name starting with `my` the value should be:
 //
 // ```sql
 // name like 'my%'
 // ```
 //
-// If the parameter isn't provided, or if the value is empty, then all the
-// items that the user has permission to see will be returned.
-func (r *CapabilitiesListRequest) Search(value string) *CapabilitiesListRequest {
+// If the parameter isn't provided, or if the value is empty, then all the add-ons
+// that the user has permission to see will be returned.
+func (r *AddonInquiriesListRequest) Search(value string) *AddonInquiriesListRequest {
 	r.search = &value
 	return r
 }
@@ -117,7 +148,7 @@ func (r *CapabilitiesListRequest) Search(value string) *CapabilitiesListRequest 
 // Size sets the value of the 'size' parameter.
 //
 // Maximum number of items that will be contained in the returned page.
-func (r *CapabilitiesListRequest) Size(value int) *CapabilitiesListRequest {
+func (r *AddonInquiriesListRequest) Size(value int) *AddonInquiriesListRequest {
 	r.size = &value
 	return r
 }
@@ -126,13 +157,16 @@ func (r *CapabilitiesListRequest) Size(value int) *CapabilitiesListRequest {
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *CapabilitiesListRequest) Send() (result *CapabilitiesListResponse, err error) {
+func (r *AddonInquiriesListRequest) Send() (result *AddonInquiriesListResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *CapabilitiesListRequest) SendContext(ctx context.Context) (result *CapabilitiesListResponse, err error) {
+func (r *AddonInquiriesListRequest) SendContext(ctx context.Context) (result *AddonInquiriesListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
+	if r.order != nil {
+		helpers.AddValue(&query, "order", *r.order)
+	}
 	if r.page != nil {
 		helpers.AddValue(&query, "page", *r.page)
 	}
@@ -160,7 +194,7 @@ func (r *CapabilitiesListRequest) SendContext(ctx context.Context) (result *Capa
 		return
 	}
 	defer response.Body.Close()
-	result = &CapabilitiesListResponse{}
+	result = &AddonInquiriesListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -177,26 +211,26 @@ func (r *CapabilitiesListRequest) SendContext(ctx context.Context) (result *Capa
 		err = result.err
 		return
 	}
-	err = readCapabilitiesListResponse(result, reader)
+	err = readAddonInquiriesListResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// CapabilitiesListResponse is the response for the 'list' method.
-type CapabilitiesListResponse struct {
+// AddonInquiriesListResponse is the response for the 'list' method.
+type AddonInquiriesListResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	items  *CapabilityList
+	items  *AddonList
 	page   *int
 	size   *int
 	total  *int
 }
 
 // Status returns the response status code.
-func (r *CapabilitiesListResponse) Status() int {
+func (r *AddonInquiriesListResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -204,7 +238,7 @@ func (r *CapabilitiesListResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *CapabilitiesListResponse) Header() http.Header {
+func (r *AddonInquiriesListResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -212,7 +246,7 @@ func (r *CapabilitiesListResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *CapabilitiesListResponse) Error() *errors.Error {
+func (r *AddonInquiriesListResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -221,8 +255,8 @@ func (r *CapabilitiesListResponse) Error() *errors.Error {
 
 // Items returns the value of the 'items' parameter.
 //
-// Retrieved list of Capabilities.
-func (r *CapabilitiesListResponse) Items() *CapabilityList {
+// Retrieved list of add-ons.
+func (r *AddonInquiriesListResponse) Items() *AddonList {
 	if r == nil {
 		return nil
 	}
@@ -232,8 +266,8 @@ func (r *CapabilitiesListResponse) Items() *CapabilityList {
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Retrieved list of Capabilities.
-func (r *CapabilitiesListResponse) GetItems() (value *CapabilityList, ok bool) {
+// Retrieved list of add-ons.
+func (r *AddonInquiriesListResponse) GetItems() (value *AddonList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
 		value = r.items
@@ -244,7 +278,7 @@ func (r *CapabilitiesListResponse) GetItems() (value *CapabilityList, ok bool) {
 // Page returns the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *CapabilitiesListResponse) Page() int {
+func (r *AddonInquiriesListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
 	}
@@ -255,7 +289,7 @@ func (r *CapabilitiesListResponse) Page() int {
 // a flag indicating if the parameter has a value.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *CapabilitiesListResponse) GetPage() (value int, ok bool) {
+func (r *AddonInquiriesListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
 		value = *r.page
@@ -266,7 +300,7 @@ func (r *CapabilitiesListResponse) GetPage() (value int, ok bool) {
 // Size returns the value of the 'size' parameter.
 //
 // Maximum number of items that will be contained in the returned page.
-func (r *CapabilitiesListResponse) Size() int {
+func (r *AddonInquiriesListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
 	}
@@ -277,7 +311,7 @@ func (r *CapabilitiesListResponse) Size() int {
 // a flag indicating if the parameter has a value.
 //
 // Maximum number of items that will be contained in the returned page.
-func (r *CapabilitiesListResponse) GetSize() (value int, ok bool) {
+func (r *AddonInquiriesListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
 		value = *r.size
@@ -289,7 +323,7 @@ func (r *CapabilitiesListResponse) GetSize() (value int, ok bool) {
 //
 // Total number of items of the collection that match the search criteria,
 // regardless of the size of the page.
-func (r *CapabilitiesListResponse) Total() int {
+func (r *AddonInquiriesListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
 	}
@@ -301,7 +335,7 @@ func (r *CapabilitiesListResponse) Total() int {
 //
 // Total number of items of the collection that match the search criteria,
 // regardless of the size of the page.
-func (r *CapabilitiesListResponse) GetTotal() (value int, ok bool) {
+func (r *AddonInquiriesListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {
 		value = *r.total
