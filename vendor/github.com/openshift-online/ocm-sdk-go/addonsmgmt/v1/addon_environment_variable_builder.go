@@ -24,6 +24,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1
 // Representation of an addon env object.
 type AddonEnvironmentVariableBuilder struct {
 	bitmap_ uint32
+	id      string
 	name    string
 	value   string
 	enabled bool
@@ -39,24 +40,31 @@ func (b *AddonEnvironmentVariableBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
+// ID sets the value of the 'ID' attribute to the given value.
+func (b *AddonEnvironmentVariableBuilder) ID(value string) *AddonEnvironmentVariableBuilder {
+	b.id = value
+	b.bitmap_ |= 1
+	return b
+}
+
 // Enabled sets the value of the 'enabled' attribute to the given value.
 func (b *AddonEnvironmentVariableBuilder) Enabled(value bool) *AddonEnvironmentVariableBuilder {
 	b.enabled = value
-	b.bitmap_ |= 1
+	b.bitmap_ |= 2
 	return b
 }
 
 // Name sets the value of the 'name' attribute to the given value.
 func (b *AddonEnvironmentVariableBuilder) Name(value string) *AddonEnvironmentVariableBuilder {
 	b.name = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
 // Value sets the value of the 'value' attribute to the given value.
 func (b *AddonEnvironmentVariableBuilder) Value(value string) *AddonEnvironmentVariableBuilder {
 	b.value = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -66,6 +74,7 @@ func (b *AddonEnvironmentVariableBuilder) Copy(object *AddonEnvironmentVariable)
 		return b
 	}
 	b.bitmap_ = object.bitmap_
+	b.id = object.id
 	b.enabled = object.enabled
 	b.name = object.name
 	b.value = object.value
@@ -76,6 +85,7 @@ func (b *AddonEnvironmentVariableBuilder) Copy(object *AddonEnvironmentVariable)
 func (b *AddonEnvironmentVariableBuilder) Build() (object *AddonEnvironmentVariable, err error) {
 	object = new(AddonEnvironmentVariable)
 	object.bitmap_ = b.bitmap_
+	object.id = b.id
 	object.enabled = b.enabled
 	object.name = b.name
 	object.value = b.value

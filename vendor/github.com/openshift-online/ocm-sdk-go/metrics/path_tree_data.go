@@ -120,6 +120,9 @@ var pathTreeData = `{
         },
         "clusters": {
           "-": {
+            "addon_inquiries": {
+              "-": null
+            },
             "status": {
               "-": null
             }

@@ -119,7 +119,16 @@ func writeNodePool(object *NodePool, stream *jsoniter.Stream) {
 		stream.WriteInt(object.replicas)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&512 != 0 && object.status != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("status")
+		writeNodePoolStatus(object.status, stream)
+		count++
+	}
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -186,10 +195,14 @@ func readNodePool(iterator *jsoniter.Iterator) *NodePool {
 			value := iterator.ReadInt()
 			object.replicas = value
 			object.bitmap_ |= 256
+		case "status":
+			value := readNodePoolStatus(iterator)
+			object.status = value
+			object.bitmap_ |= 512
 		case "subnet":
 			value := iterator.ReadString()
 			object.subnet = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}

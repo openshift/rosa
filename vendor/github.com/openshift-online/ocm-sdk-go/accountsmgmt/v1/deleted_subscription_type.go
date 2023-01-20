@@ -56,7 +56,7 @@ type DeletedSubscription struct {
 	lastReconcileDate         time.Time
 	lastReleasedAt            time.Time
 	lastTelemetryDate         time.Time
-	metrics                   []*SubscriptionMetrics
+	metrics                   string
 	organizationID            string
 	planID                    string
 	productBundle             string
@@ -456,16 +456,16 @@ func (o *DeletedSubscription) GetManaged() (value bool, ok bool) {
 
 // Metrics returns the value of the 'metrics' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-func (o *DeletedSubscription) Metrics() []*SubscriptionMetrics {
+func (o *DeletedSubscription) Metrics() string {
 	if o != nil && o.bitmap_&1048576 != 0 {
 		return o.metrics
 	}
-	return nil
+	return ""
 }
 
 // GetMetrics returns the value of the 'metrics' attribute and
 // a flag indicating if the attribute has a value.
-func (o *DeletedSubscription) GetMetrics() (value []*SubscriptionMetrics, ok bool) {
+func (o *DeletedSubscription) GetMetrics() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1048576 != 0
 	if ok {
 		value = o.metrics

@@ -28,6 +28,7 @@ type AWSBuilder struct {
 	sts             *STSBuilder
 	accessKeyID     string
 	accountID       string
+	etcdEncryption  *AwsEtcdEncryptionBuilder
 	secretAccessKey string
 	subnetIDs       []string
 	tags            map[string]string
@@ -78,17 +79,30 @@ func (b *AWSBuilder) AccountID(value string) *AWSBuilder {
 	return b
 }
 
+// EtcdEncryption sets the value of the 'etcd_encryption' attribute to the given value.
+//
+// Contains the necessary attributes to support etcd encryption for AWS based clusters.
+func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder {
+	b.etcdEncryption = value
+	if value != nil {
+		b.bitmap_ |= 16
+	} else {
+		b.bitmap_ &^= 16
+	}
+	return b
+}
+
 // PrivateLink sets the value of the 'private_link' attribute to the given value.
 func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 	b.privateLink = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	b.secretAccessKey = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -96,7 +110,7 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -104,9 +118,9 @@ func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	b.tags = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -125,6 +139,11 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 	}
 	b.accessKeyID = object.accessKeyID
 	b.accountID = object.accountID
+	if object.etcdEncryption != nil {
+		b.etcdEncryption = NewAwsEtcdEncryption().Copy(object.etcdEncryption)
+	} else {
+		b.etcdEncryption = nil
+	}
 	b.privateLink = object.privateLink
 	b.secretAccessKey = object.secretAccessKey
 	if object.subnetIDs != nil {
@@ -157,6 +176,12 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 	}
 	object.accessKeyID = b.accessKeyID
 	object.accountID = b.accountID
+	if b.etcdEncryption != nil {
+		object.etcdEncryption, err = b.etcdEncryption.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.privateLink = b.privateLink
 	object.secretAccessKey = b.secretAccessKey
 	if b.subnetIDs != nil {

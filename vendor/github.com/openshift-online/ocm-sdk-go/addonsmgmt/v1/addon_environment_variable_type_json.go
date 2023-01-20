@@ -47,11 +47,20 @@ func writeAddonEnvironmentVariable(object *AddonEnvironmentVariable, stream *jso
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("id")
+		stream.WriteString(object.id)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("enabled")
 		stream.WriteBool(object.enabled)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -60,7 +69,7 @@ func writeAddonEnvironmentVariable(object *AddonEnvironmentVariable, stream *jso
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -92,18 +101,22 @@ func readAddonEnvironmentVariable(iterator *jsoniter.Iterator) *AddonEnvironment
 			break
 		}
 		switch field {
+		case "id":
+			value := iterator.ReadString()
+			object.id = value
+			object.bitmap_ |= 1
 		case "enabled":
 			value := iterator.ReadBool()
 			object.enabled = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "value":
 			value := iterator.ReadString()
 			object.value = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

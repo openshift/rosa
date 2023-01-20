@@ -23,17 +23,20 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Contains the necessary attributes to support role-based authentication on AWS.
 type STSBuilder struct {
-	bitmap_                       uint32
-	oidcEndpointURL               string
-	boundServiceAccountSigningKey string
-	externalID                    string
-	instanceIAMRoles              *InstanceIAMRolesBuilder
-	operatorIAMRoles              []*OperatorIAMRoleBuilder
-	operatorRolePrefix            string
-	permissionBoundary            string
-	roleARN                       string
-	supportRoleARN                string
-	autoMode                      bool
+	bitmap_                         uint32
+	oidcEndpointURL                 string
+	boundServiceAccountKeyKmsId     string
+	boundServiceAccountKeySecretArn string
+	boundServiceAccountSigningKey   string
+	externalID                      string
+	instanceIAMRoles                *InstanceIAMRolesBuilder
+	operatorIAMRoles                []*OperatorIAMRoleBuilder
+	operatorRolePrefix              string
+	permissionBoundary              string
+	roleARN                         string
+	supportRoleARN                  string
+	autoMode                        bool
+	enabled                         bool
 }
 
 // NewSTS creates a new builder of 'STS' objects.
@@ -60,17 +63,38 @@ func (b *STSBuilder) AutoMode(value bool) *STSBuilder {
 	return b
 }
 
+// BoundServiceAccountKeyKmsId sets the value of the 'bound_service_account_key_kms_id' attribute to the given value.
+func (b *STSBuilder) BoundServiceAccountKeyKmsId(value string) *STSBuilder {
+	b.boundServiceAccountKeyKmsId = value
+	b.bitmap_ |= 4
+	return b
+}
+
+// BoundServiceAccountKeySecretArn sets the value of the 'bound_service_account_key_secret_arn' attribute to the given value.
+func (b *STSBuilder) BoundServiceAccountKeySecretArn(value string) *STSBuilder {
+	b.boundServiceAccountKeySecretArn = value
+	b.bitmap_ |= 8
+	return b
+}
+
 // BoundServiceAccountSigningKey sets the value of the 'bound_service_account_signing_key' attribute to the given value.
 func (b *STSBuilder) BoundServiceAccountSigningKey(value string) *STSBuilder {
 	b.boundServiceAccountSigningKey = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 16
+	return b
+}
+
+// Enabled sets the value of the 'enabled' attribute to the given value.
+func (b *STSBuilder) Enabled(value bool) *STSBuilder {
+	b.enabled = value
+	b.bitmap_ |= 32
 	return b
 }
 
 // ExternalID sets the value of the 'external_ID' attribute to the given value.
 func (b *STSBuilder) ExternalID(value string) *STSBuilder {
 	b.externalID = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -80,9 +104,9 @@ func (b *STSBuilder) ExternalID(value string) *STSBuilder {
 func (b *STSBuilder) InstanceIAMRoles(value *InstanceIAMRolesBuilder) *STSBuilder {
 	b.instanceIAMRoles = value
 	if value != nil {
-		b.bitmap_ |= 16
+		b.bitmap_ |= 128
 	} else {
-		b.bitmap_ &^= 16
+		b.bitmap_ &^= 128
 	}
 	return b
 }
@@ -91,35 +115,35 @@ func (b *STSBuilder) InstanceIAMRoles(value *InstanceIAMRolesBuilder) *STSBuilde
 func (b *STSBuilder) OperatorIAMRoles(values ...*OperatorIAMRoleBuilder) *STSBuilder {
 	b.operatorIAMRoles = make([]*OperatorIAMRoleBuilder, len(values))
 	copy(b.operatorIAMRoles, values)
-	b.bitmap_ |= 32
+	b.bitmap_ |= 256
 	return b
 }
 
 // OperatorRolePrefix sets the value of the 'operator_role_prefix' attribute to the given value.
 func (b *STSBuilder) OperatorRolePrefix(value string) *STSBuilder {
 	b.operatorRolePrefix = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 512
 	return b
 }
 
 // PermissionBoundary sets the value of the 'permission_boundary' attribute to the given value.
 func (b *STSBuilder) PermissionBoundary(value string) *STSBuilder {
 	b.permissionBoundary = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 1024
 	return b
 }
 
 // RoleARN sets the value of the 'role_ARN' attribute to the given value.
 func (b *STSBuilder) RoleARN(value string) *STSBuilder {
 	b.roleARN = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 2048
 	return b
 }
 
 // SupportRoleARN sets the value of the 'support_role_ARN' attribute to the given value.
 func (b *STSBuilder) SupportRoleARN(value string) *STSBuilder {
 	b.supportRoleARN = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -131,7 +155,10 @@ func (b *STSBuilder) Copy(object *STS) *STSBuilder {
 	b.bitmap_ = object.bitmap_
 	b.oidcEndpointURL = object.oidcEndpointURL
 	b.autoMode = object.autoMode
+	b.boundServiceAccountKeyKmsId = object.boundServiceAccountKeyKmsId
+	b.boundServiceAccountKeySecretArn = object.boundServiceAccountKeySecretArn
 	b.boundServiceAccountSigningKey = object.boundServiceAccountSigningKey
+	b.enabled = object.enabled
 	b.externalID = object.externalID
 	if object.instanceIAMRoles != nil {
 		b.instanceIAMRoles = NewInstanceIAMRoles().Copy(object.instanceIAMRoles)
@@ -159,7 +186,10 @@ func (b *STSBuilder) Build() (object *STS, err error) {
 	object.bitmap_ = b.bitmap_
 	object.oidcEndpointURL = b.oidcEndpointURL
 	object.autoMode = b.autoMode
+	object.boundServiceAccountKeyKmsId = b.boundServiceAccountKeyKmsId
+	object.boundServiceAccountKeySecretArn = b.boundServiceAccountKeySecretArn
 	object.boundServiceAccountSigningKey = b.boundServiceAccountSigningKey
+	object.enabled = b.enabled
 	object.externalID = b.externalID
 	if b.instanceIAMRoles != nil {
 		object.instanceIAMRoles, err = b.instanceIAMRoles.Build()

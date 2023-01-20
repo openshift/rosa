@@ -44,7 +44,7 @@ type DeletedSubscriptionBuilder struct {
 	lastReconcileDate         time.Time
 	lastReleasedAt            time.Time
 	lastTelemetryDate         time.Time
-	metrics                   []*SubscriptionMetricsBuilder
+	metrics                   string
 	organizationID            string
 	planID                    string
 	productBundle             string
@@ -213,10 +213,9 @@ func (b *DeletedSubscriptionBuilder) Managed(value bool) *DeletedSubscriptionBui
 	return b
 }
 
-// Metrics sets the value of the 'metrics' attribute to the given values.
-func (b *DeletedSubscriptionBuilder) Metrics(values ...*SubscriptionMetricsBuilder) *DeletedSubscriptionBuilder {
-	b.metrics = make([]*SubscriptionMetricsBuilder, len(values))
-	copy(b.metrics, values)
+// Metrics sets the value of the 'metrics' attribute to the given value.
+func (b *DeletedSubscriptionBuilder) Metrics(value string) *DeletedSubscriptionBuilder {
+	b.metrics = value
 	b.bitmap_ |= 1048576
 	return b
 }
@@ -344,14 +343,7 @@ func (b *DeletedSubscriptionBuilder) Copy(object *DeletedSubscription) *DeletedS
 	b.lastReleasedAt = object.lastReleasedAt
 	b.lastTelemetryDate = object.lastTelemetryDate
 	b.managed = object.managed
-	if object.metrics != nil {
-		b.metrics = make([]*SubscriptionMetricsBuilder, len(object.metrics))
-		for i, v := range object.metrics {
-			b.metrics[i] = NewSubscriptionMetrics().Copy(v)
-		}
-	} else {
-		b.metrics = nil
-	}
+	b.metrics = object.metrics
 	b.organizationID = object.organizationID
 	b.planID = object.planID
 	b.productBundle = object.productBundle
@@ -392,15 +384,7 @@ func (b *DeletedSubscriptionBuilder) Build() (object *DeletedSubscription, err e
 	object.lastReleasedAt = b.lastReleasedAt
 	object.lastTelemetryDate = b.lastTelemetryDate
 	object.managed = b.managed
-	if b.metrics != nil {
-		object.metrics = make([]*SubscriptionMetrics, len(b.metrics))
-		for i, v := range b.metrics {
-			object.metrics[i], err = v.Build()
-			if err != nil {
-				return
-			}
-		}
-	}
+	object.metrics = b.metrics
 	object.organizationID = b.organizationID
 	object.planID = b.planID
 	object.productBundle = b.productBundle

@@ -79,7 +79,16 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.accountID)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&16 != 0 && object.etcdEncryption != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("etcd_encryption")
+		writeAwsEtcdEncryption(object.etcdEncryption, stream)
+		count++
+	}
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -88,7 +97,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteBool(object.privateLink)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -97,7 +106,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.secretAccessKey)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.subnetIDs != nil
+	present_ = object.bitmap_&128 != 0 && object.subnetIDs != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -106,7 +115,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		writeStringList(object.subnetIDs, stream)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.tags != nil
+	present_ = object.bitmap_&256 != 0 && object.tags != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -174,18 +183,22 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 			value := iterator.ReadString()
 			object.accountID = value
 			object.bitmap_ |= 8
+		case "etcd_encryption":
+			value := readAwsEtcdEncryption(iterator)
+			object.etcdEncryption = value
+			object.bitmap_ |= 16
 		case "private_link":
 			value := iterator.ReadBool()
 			object.privateLink = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "secret_access_key":
 			value := iterator.ReadString()
 			object.secretAccessKey = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "subnet_ids":
 			value := readStringList(iterator)
 			object.subnetIDs = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "tags":
 			value := map[string]string{}
 			for {
@@ -197,7 +210,7 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 				value[key] = item
 			}
 			object.tags = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		default:
 			iterator.ReadAny()
 		}

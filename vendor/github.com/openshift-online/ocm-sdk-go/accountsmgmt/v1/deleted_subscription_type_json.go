@@ -219,13 +219,13 @@ func writeDeletedSubscription(object *DeletedSubscription, stream *jsoniter.Stre
 		stream.WriteBool(object.managed)
 		count++
 	}
-	present_ = object.bitmap_&1048576 != 0 && object.metrics != nil
+	present_ = object.bitmap_&1048576 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("metrics")
-		writeSubscriptionMetricsList(object.metrics, stream)
+		stream.WriteString(object.metrics)
 		count++
 	}
 	present_ = object.bitmap_&2097152 != 0
@@ -478,7 +478,7 @@ func readDeletedSubscription(iterator *jsoniter.Iterator) *DeletedSubscription {
 			object.managed = value
 			object.bitmap_ |= 524288
 		case "metrics":
-			value := readSubscriptionMetricsList(iterator)
+			value := iterator.ReadString()
 			object.metrics = value
 			object.bitmap_ |= 1048576
 		case "organization_id":

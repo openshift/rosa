@@ -27,6 +27,7 @@ type ClusterStatusBuilder struct {
 	id                        string
 	href                      string
 	configurationMode         ClusterConfigurationMode
+	currentCompute            int
 	description               string
 	limitedSupportReasonCount int
 	provisionErrorCode        string
@@ -89,31 +90,38 @@ func (b *ClusterStatusBuilder) ConfigurationMode(value ClusterConfigurationMode)
 	return b
 }
 
+// CurrentCompute sets the value of the 'current_compute' attribute to the given value.
+func (b *ClusterStatusBuilder) CurrentCompute(value int) *ClusterStatusBuilder {
+	b.currentCompute = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // Description sets the value of the 'description' attribute to the given value.
 func (b *ClusterStatusBuilder) Description(value string) *ClusterStatusBuilder {
 	b.description = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
 // LimitedSupportReasonCount sets the value of the 'limited_support_reason_count' attribute to the given value.
 func (b *ClusterStatusBuilder) LimitedSupportReasonCount(value int) *ClusterStatusBuilder {
 	b.limitedSupportReasonCount = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
 // ProvisionErrorCode sets the value of the 'provision_error_code' attribute to the given value.
 func (b *ClusterStatusBuilder) ProvisionErrorCode(value string) *ClusterStatusBuilder {
 	b.provisionErrorCode = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
 // ProvisionErrorMessage sets the value of the 'provision_error_message' attribute to the given value.
 func (b *ClusterStatusBuilder) ProvisionErrorMessage(value string) *ClusterStatusBuilder {
 	b.provisionErrorMessage = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -122,7 +130,7 @@ func (b *ClusterStatusBuilder) ProvisionErrorMessage(value string) *ClusterStatu
 // Overall state of a cluster.
 func (b *ClusterStatusBuilder) State(value ClusterState) *ClusterStatusBuilder {
 	b.state = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -137,6 +145,7 @@ func (b *ClusterStatusBuilder) Copy(object *ClusterStatus) *ClusterStatusBuilder
 	b.dnsReady = object.dnsReady
 	b.oidcReady = object.oidcReady
 	b.configurationMode = object.configurationMode
+	b.currentCompute = object.currentCompute
 	b.description = object.description
 	b.limitedSupportReasonCount = object.limitedSupportReasonCount
 	b.provisionErrorCode = object.provisionErrorCode
@@ -154,6 +163,7 @@ func (b *ClusterStatusBuilder) Build() (object *ClusterStatus, err error) {
 	object.dnsReady = b.dnsReady
 	object.oidcReady = b.oidcReady
 	object.configurationMode = b.configurationMode
+	object.currentCompute = b.currentCompute
 	object.description = b.description
 	object.limitedSupportReasonCount = b.limitedSupportReasonCount
 	object.provisionErrorCode = b.provisionErrorCode
