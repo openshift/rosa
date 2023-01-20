@@ -877,3 +877,7 @@ func (c *Client) ResumeCluster(clusterID string) error {
 
 	return nil
 }
+
+func IsConsoleAvailable(cluster *cmv1.Cluster) bool {
+	return cluster.Console() != nil && cluster.Console().URL() != ""
+}

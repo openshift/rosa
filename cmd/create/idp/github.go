@@ -38,12 +38,6 @@ func buildGithubIdp(cmd *cobra.Command,
 	clientID := args.clientID
 	clientSecret := args.clientSecret
 
-	consoleURL := cluster.Console().URL()
-	// GitHub IDP uses Console URL as Homepage URL. Console may not yet be available during cluster creation.
-	if consoleURL == "" {
-		return idpBuilder, errors.New("Console URL not available yet. Please retry in a few minutes")
-	}
-
 	if organizations != "" && teams != "" {
 		return idpBuilder, errors.New("GitHub IDP only allows either organizations or teams, but not both")
 	}
@@ -138,9 +132,13 @@ func buildGithubIdp(cmd *cobra.Command,
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
 		}
+		oauthApplicationURL := oauthURL
+		if ocm.IsConsoleAvailable(cluster) {
+			oauthApplicationURL = cluster.Console().URL()
+		}
 		urlParams := url.Values{}
 		urlParams.Add("oauth_application[name]", cluster.Name())
-		urlParams.Add("oauth_application[url]", consoleURL)
+		urlParams.Add("oauth_application[url]", oauthApplicationURL)
 		urlParams.Add("oauth_application[callback_url]", oauthURL+"/oauth2callback/"+idpName)
 
 		registerURL.RawQuery = urlParams.Encode()
