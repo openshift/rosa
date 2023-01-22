@@ -324,11 +324,46 @@ func controlPlaneConfig(cluster *cmv1.Cluster) string {
 func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtime) string {
 	var infraConfig string
 	if cluster.Hypershift().Enabled() {
-		infraConfig = fmt.Sprintf(""+
-			"Nodes:\n"+
-			" - Compute (workers):           %d\n",
-			cluster.Nodes().Compute(),
-		)
+		minNodes := 0
+		maxNodes := 0
+		currentNodes := 0
+		// Reusing design as classic machinePools, in the future those both APIs will converge
+		nodePools, err := r.OCMClient.GetNodePools(cluster.ID())
+		if err != nil {
+			r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+		// Accumulate all replicas across machine pools
+		for _, nodePool := range nodePools {
+			if nodePool.Autoscaling() != nil {
+				minNodes += nodePool.Autoscaling().MinReplica()
+				maxNodes += nodePool.Autoscaling().MaxReplica()
+			} else {
+				minNodes += nodePool.Replicas()
+				maxNodes += nodePool.Replicas()
+			}
+			if nodePool.Status() != nil {
+				currentNodes += nodePool.Status().CurrentReplicas()
+			}
+		}
+		if minNodes != maxNodes {
+			infraConfig = fmt.Sprintf(""+
+				"Nodes:\n"+
+				" - Compute (Autoscaled):        %d-%d\n"+
+				" - Compute (current):           %d\n",
+				minNodes,
+				maxNodes,
+				currentNodes,
+			)
+		} else {
+			infraConfig = fmt.Sprintf(""+
+				"Nodes:\n"+
+				" - Compute (desired):           %d\n"+
+				" - Compute (current):           %d\n",
+				maxNodes,
+				currentNodes,
+			)
+		}
 	} else {
 		// Display number of all worker nodes across the cluster
 		minNodes := 0
