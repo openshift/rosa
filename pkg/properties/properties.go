@@ -32,3 +32,5 @@ const FakeCluster = "fake_cluster"
 
 // nolint:gosec // Linter thinks there are hardcoded credentials here...
 const UseLocalCredentials = "use_local_credentials"
+
+const ProvisionShardId = "provision_shard_id"

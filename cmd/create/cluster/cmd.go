@@ -572,6 +572,14 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	shardPinningEnabled := false
+	for _, value := range args.properties {
+		if strings.HasPrefix(value, properties.ProvisionShardId) {
+			shardPinningEnabled = true
+			break
+		}
+	}
+
 	isBYOVPC := cmd.Flags().Changed("subnet-ids")
 	isAvailabilityZonesSet := cmd.Flags().Changed("availability-zones")
 	// Setting subnet IDs is choosing BYOVPC implicitly,
@@ -1214,7 +1222,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID, versionFilter,
-		awsClient, isHostedCP)
+		awsClient, isHostedCP, shardPinningEnabled)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -1237,7 +1245,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Expected a valid AWS region")
 		os.Exit(1)
 	} else {
-		if isHostedCP && !interactive.Enabled() {
+		if isHostedCP && !interactive.Enabled() && !shardPinningEnabled {
 			found := helper.Contains(regionList, region)
 			if !found {
 				r.Reporter.Errorf("Region '%s' not currently available for Hosted Cluster. "+
