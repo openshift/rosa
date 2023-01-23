@@ -19,8 +19,8 @@ package cluster
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -28,6 +28,7 @@ import (
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/spf13/cobra"
@@ -51,6 +52,12 @@ import (
 //nolint
 var kmsArnRE = regexp.MustCompile(
 	`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
+)
+
+const (
+	OidcEndpointUrlFlag = "oidc-endpoint-url"
+	//nolint
+	OidcPrivateKeySecretArnFlag = "oidc-private-key-secret-arn"
 )
 
 var args struct {
@@ -127,6 +134,10 @@ var args struct {
 	operatorIAMRoles                 []string
 	operatorRolesPrefix              string
 	operatorRolesPermissionsBoundary string
+
+	// Byo Oidc
+	oidcEndpointUrl         string
+	oidcPrivateKeySecretArn string
 
 	// Proxy
 	enableProxy               bool
@@ -249,6 +260,22 @@ func init() {
 		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
 			"Leave empty to use an auto-generated one.",
 	)
+
+	flags.StringVar(
+		&args.oidcEndpointUrl,
+		OidcEndpointUrlFlag,
+		"",
+		"Endpoint url for BYO OIDC config",
+	)
+	flags.MarkHidden(OidcEndpointUrlFlag)
+
+	flags.StringVar(
+		&args.oidcPrivateKeySecretArn,
+		OidcPrivateKeySecretArnFlag,
+		"",
+		"AWS Secrets Manager ARN for retrieval of private key",
+	)
+	flags.MarkHidden(OidcPrivateKeySecretArnFlag)
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -1153,6 +1180,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	}
+	isByoOidcSet, oidcEndpointUrl, oidcPrivateKeySecretArn := handleByoOidcOptions(r, cmd, isSTS)
 
 	// Custom tags for AWS resources
 	tags := args.tags
@@ -1976,7 +2004,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get certificate contents
 	var additionalTrustBundle *string
 	if additionalTrustBundleFile != "" {
-		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
+		cert, err := os.ReadFile(additionalTrustBundleFile)
 		if err != nil {
 			r.Reporter.Errorf("Failed to read additional trust bundle file: %s", err)
 			os.Exit(1)
@@ -2026,6 +2054,8 @@ func run(cmd *cobra.Command, _ []string) {
 		OperatorIAMRoles:          operatorIAMRoleList,
 		ControlPlaneRoleARN:       controlPlaneRoleARN,
 		WorkerRoleARN:             workerRoleARN,
+		OidcEndpointUrl:           oidcEndpointUrl,
+		OidcPrivateKeySecretArn:   oidcPrivateKeySecretArn,
 		Mode:                      mode,
 		Tags:                      tagsList,
 		KMSKeyArn:                 kmsKeyARN,
@@ -2119,13 +2149,22 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
-			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode})
+			if !isByoOidcSet {
+				oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
+			} else {
+				oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcEndpointUrl})
+			}
 		} else {
 			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
-			oidcCMD := fmt.Sprintf("rosa create oidc-provider --cluster %s", clusterName)
-
 			if permissionsBoundary != "" {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
+			}
+
+			oidcCMD := "rosa create oidc-provider"
+			if !isByoOidcSet {
+				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
+			} else {
+				oidcCMD = fmt.Sprintf("%s %s %s", oidcCMD, OidcEndpointUrlFlag, oidcEndpointUrl)
 			}
 
 			r.Reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
@@ -2147,6 +2186,73 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+}
+
+func handleByoOidcOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) (bool, string, string) {
+	oidcEndpointUrl := args.oidcEndpointUrl
+	oidcPrivateKeySecretArn := args.oidcPrivateKeySecretArn
+	isByoOidcSet := false
+	if isSTS {
+		// Support byo oidc config
+		if oidcEndpointUrl != "" && interactive.Enabled() {
+			oidcEndpointUrl, err := interactive.GetString(
+				interactive.Input{
+					Question:   "OIDC Endpoint URL",
+					Help:       cmd.Flags().Lookup(OidcEndpointUrlFlag).Usage,
+					Required:   false,
+					Default:    oidcEndpointUrl,
+					Validators: []interactive.Validator{interactive.IsURL},
+				})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid OIDC Endpoint Url: %s", err)
+				os.Exit(1)
+			}
+			if oidcEndpointUrl != "" {
+				oidcPrivateKeySecretArn, err = interactive.GetString(
+					interactive.Input{
+						Question: "OIDC Private Key Secret ARN",
+						Help:     cmd.Flags().Lookup(OidcPrivateKeySecretArnFlag).Usage,
+						Required: true,
+						Default:  oidcPrivateKeySecretArn,
+					})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid ARN to the secret containing the private key: %s", err)
+					os.Exit(1)
+				}
+			}
+		}
+		isByoOidcSet = oidcEndpointUrl != "" || oidcPrivateKeySecretArn != ""
+		if isByoOidcSet {
+			missingAttributesForByoOidc := []string{}
+			if oidcEndpointUrl == "" {
+				missingAttributesForByoOidc = append(missingAttributesForByoOidc, OidcEndpointUrlFlag)
+			}
+			if oidcPrivateKeySecretArn == "" {
+				missingAttributesForByoOidc = append(missingAttributesForByoOidc, OidcPrivateKeySecretArnFlag)
+			}
+			if len(missingAttributesForByoOidc) > 0 {
+				r.Reporter.Errorf("Missing attributes for byo oidc '%s'", helper.SliceToSortedString(missingAttributesForByoOidc))
+				os.Exit(1)
+			}
+			parsedURI, _ := url.ParseRequestURI(oidcEndpointUrl)
+			err := helper.IsURLReachable(fmt.Sprintf("%s:%s", parsedURI.Host, parsedURI.Scheme))
+			if err != nil {
+				r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
+				os.Exit(1)
+			}
+			err = aws.ARNValidator(oidcPrivateKeySecretArn)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			parsedSecretArn, _ := arn.Parse(oidcPrivateKeySecretArn)
+			if parsedSecretArn.Service != "secretsmanager" {
+				r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
+				os.Exit(1)
+			}
+		}
+	}
+	return isByoOidcSet, oidcEndpointUrl, oidcPrivateKeySecretArn
 }
 
 func minReplicaValidator(multiAZ bool) interactive.Validator {
@@ -2405,6 +2511,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if operatorRolesPrefix != "" {
 		command += fmt.Sprintf(" --operator-roles-prefix %s", operatorRolesPrefix)
+	}
+	if spec.OidcEndpointUrl != "" && spec.OidcPrivateKeySecretArn != "" {
+		command += fmt.Sprintf(" --%s %s", OidcEndpointUrlFlag, spec.OidcEndpointUrl)
+		command += fmt.Sprintf(" --%s %s", OidcPrivateKeySecretArnFlag, spec.OidcPrivateKeySecretArn)
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}

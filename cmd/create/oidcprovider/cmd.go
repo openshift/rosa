@@ -50,10 +50,26 @@ var Cmd = &cobra.Command{
 	Run: run,
 }
 
+const (
+	OidcEndpointUrlFlag = "oidc-endpoint-url"
+)
+
+var args struct {
+	oidcEndpointUrl string
+}
+
 func init() {
 	flags := Cmd.Flags()
 
-	ocm.AddClusterFlag(Cmd)
+	flags.StringVar(
+		&args.oidcEndpointUrl,
+		OidcEndpointUrlFlag,
+		"",
+		"Endpoint url for BYO OIDC config",
+	)
+	flags.MarkHidden(OidcEndpointUrlFlag)
+
+	ocm.AddOptionalClusterFlag(Cmd)
 	aws.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
@@ -66,16 +82,18 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Allow the command to be called programmatically
 	skipInteractive := false
-	if len(argv) == 2 && !cmd.Flag("cluster").Changed {
+	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		aws.SetModeKey(argv[1])
 
 		if argv[1] != "" {
 			skipInteractive = true
 		}
-	}
 
-	clusterKey := r.GetClusterKey()
+		if argv[2] != "" {
+			args.oidcEndpointUrl = argv[2]
+		}
+	}
 
 	mode, err := aws.GetMode()
 	if err != nil {
@@ -88,9 +106,20 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	cluster := r.FetchCluster()
-	if cluster.AWS().STS().RoleARN() == "" {
+	var cluster *cmv1.Cluster
+	clusterKey := ""
+	if args.oidcEndpointUrl == "" {
+		clusterKey = r.GetClusterKey()
+		cluster = r.FetchCluster()
+	} else {
+		r.WithAWS()
+	}
+	if cluster != nil && cluster.AWS().STS().RoleARN() == "" {
 		r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
+		os.Exit(1)
+	}
+	if cluster == nil && args.oidcEndpointUrl == "" {
+		r.Reporter.Errorf("Either a cluster key for STS cluster or an OIDC Endpoint URL must be specified.")
 		os.Exit(1)
 	}
 
@@ -108,14 +137,22 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	clusterId := ""
+	oidcEndpointURL := ""
+	if cluster != nil {
+		oidcEndpointURL = cluster.AWS().STS().OIDCEndpointURL()
+		clusterId = cluster.ID()
+	} else {
+		oidcEndpointURL = args.oidcEndpointUrl
+	}
+
 	switch mode {
 	case aws.ModeAuto:
-		if cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
+		if cluster != nil && cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
 			r.Reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 				clusterKey, cluster.State())
 			os.Exit(0)
 		}
-		oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
 		oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
 		if err != nil {
 			if strings.Contains(err.Error(), "AccessDenied") {
@@ -126,17 +163,26 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 		}
 		if oidcProviderExists {
-			r.Reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
-				"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
-			os.Exit(1)
+			if args.oidcEndpointUrl == "" {
+				r.Reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
+					"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
+				os.Exit(1)
+			}
+			// Returns so that when called from create cluster does not interrupt flow
+			r.Reporter.Warnf("OIDC provider already exists.")
+			return
 		}
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating OIDC provider using '%s'", r.Creator.ARN)
 		}
-		if !confirm.Prompt(true, "Create the OIDC provider for cluster '%s'?", clusterKey) {
+		confirmPromptMessage := "Create the OIDC provider?"
+		if clusterKey != "" {
+			confirmPromptMessage = fmt.Sprintf("Create the OIDC provider for cluster '%s'?", clusterKey)
+		}
+		if !confirm.Prompt(true, confirmPromptMessage) {
 			os.Exit(0)
 		}
-		err = createProvider(r, cluster)
+		err = createProvider(r, oidcEndpointURL, clusterId)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the OIDC provider: %s", err)
 			r.OCMClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
@@ -150,8 +196,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Response:  ocm.Success,
 		})
 	case aws.ModeManual:
-
-		commands, err := buildCommands(r, cluster)
+		commands, err := buildCommands(r, oidcEndpointURL, clusterId)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -173,16 +218,14 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func createProvider(r *rosa.Runtime, cluster *cmv1.Cluster) error {
-	oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
-
-	thumbprint, err := getThumbprint(oidcEndpointURL)
+func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) error {
+	thumbprint, err := getThumbprint(oidcEndpointUrl)
 	if err != nil {
 		return err
 	}
 	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint)
 
-	oidcProviderARN, err := r.AWSClient.CreateOpenIDConnectProvider(oidcEndpointURL, thumbprint, cluster.ID())
+	oidcProviderARN, err := r.AWSClient.CreateOpenIDConnectProvider(oidcEndpointUrl, thumbprint, clusterId)
 	if err != nil {
 		return err
 	}
@@ -193,29 +236,28 @@ func createProvider(r *rosa.Runtime, cluster *cmv1.Cluster) error {
 	return nil
 }
 
-func buildCommands(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) {
+func buildCommands(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) (string, error) {
 	commands := []string{}
 
-	oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
-
-	thumbprint, err := getThumbprint(oidcEndpointURL)
+	thumbprint, err := getThumbprint(oidcEndpointUrl)
 	if err != nil {
 		return "", err
 	}
 	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint)
 
-	tag := map[string]string{
-		tags.ClusterID: cluster.ID(),
+	iamTags := map[string]string{}
+	if clusterId != "" {
+		iamTags[tags.ClusterID] = clusterId
 	}
 
 	clientIdList := strings.Join([]string{aws.OIDCClientIDOpenShift, aws.OIDCClientIDSTSAWS}, " ")
 
 	createOpenIDConnectProvider := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.CreateOpenIdConnectProvider).
-		AddParam(awscb.Url, oidcEndpointURL).
+		AddParam(awscb.Url, oidcEndpointUrl).
 		AddParam(awscb.ClientIdList, clientIdList).
 		AddParam(awscb.ThumbprintList, thumbprint).
-		AddTags(tag).
+		AddTags(iamTags).
 		Build()
 	commands = append(commands, createOpenIDConnectProvider)
 

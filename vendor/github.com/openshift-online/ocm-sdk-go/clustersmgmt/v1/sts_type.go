@@ -23,20 +23,18 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Contains the necessary attributes to support role-based authentication on AWS.
 type STS struct {
-	bitmap_                         uint32
-	oidcEndpointURL                 string
-	boundServiceAccountKeyKmsId     string
-	boundServiceAccountKeySecretArn string
-	boundServiceAccountSigningKey   string
-	externalID                      string
-	instanceIAMRoles                *InstanceIAMRoles
-	operatorIAMRoles                []*OperatorIAMRole
-	operatorRolePrefix              string
-	permissionBoundary              string
-	roleARN                         string
-	supportRoleARN                  string
-	autoMode                        bool
-	enabled                         bool
+	bitmap_                 uint32
+	oidcEndpointURL         string
+	externalID              string
+	instanceIAMRoles        *InstanceIAMRoles
+	oidcPrivateKeySecretArn string
+	operatorIAMRoles        []*OperatorIAMRole
+	operatorRolePrefix      string
+	permissionBoundary      string
+	roleARN                 string
+	supportRoleARN          string
+	autoMode                bool
+	enabled                 bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -90,81 +88,12 @@ func (o *STS) GetAutoMode() (value bool, ok bool) {
 	return
 }
 
-// BoundServiceAccountKeyKmsId returns the value of the 'bound_service_account_key_kms_id' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Kms Id for the bound service account signing key.
-func (o *STS) BoundServiceAccountKeyKmsId() string {
-	if o != nil && o.bitmap_&4 != 0 {
-		return o.boundServiceAccountKeyKmsId
-	}
-	return ""
-}
-
-// GetBoundServiceAccountKeyKmsId returns the value of the 'bound_service_account_key_kms_id' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Kms Id for the bound service account signing key.
-func (o *STS) GetBoundServiceAccountKeyKmsId() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
-	if ok {
-		value = o.boundServiceAccountKeyKmsId
-	}
-	return
-}
-
-// BoundServiceAccountKeySecretArn returns the value of the 'bound_service_account_key_secret_arn' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Secrets Manager ARN for the bound service account signing key.
-func (o *STS) BoundServiceAccountKeySecretArn() string {
-	if o != nil && o.bitmap_&8 != 0 {
-		return o.boundServiceAccountKeySecretArn
-	}
-	return ""
-}
-
-// GetBoundServiceAccountKeySecretArn returns the value of the 'bound_service_account_key_secret_arn' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Secrets Manager ARN for the bound service account signing key.
-func (o *STS) GetBoundServiceAccountKeySecretArn() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
-	if ok {
-		value = o.boundServiceAccountKeySecretArn
-	}
-	return
-}
-
-// BoundServiceAccountSigningKey returns the value of the 'bound_service_account_signing_key' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Private key used to sign the service account token and allow cluster resources to authenticate against the cloud provider.
-func (o *STS) BoundServiceAccountSigningKey() string {
-	if o != nil && o.bitmap_&16 != 0 {
-		return o.boundServiceAccountSigningKey
-	}
-	return ""
-}
-
-// GetBoundServiceAccountSigningKey returns the value of the 'bound_service_account_signing_key' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Private key used to sign the service account token and allow cluster resources to authenticate against the cloud provider.
-func (o *STS) GetBoundServiceAccountSigningKey() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
-	if ok {
-		value = o.boundServiceAccountSigningKey
-	}
-	return
-}
-
 // Enabled returns the value of the 'enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // If STS is enabled or disabled
 func (o *STS) Enabled() bool {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.enabled
 	}
 	return false
@@ -175,7 +104,7 @@ func (o *STS) Enabled() bool {
 //
 // If STS is enabled or disabled
 func (o *STS) GetEnabled() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.enabled
 	}
@@ -187,7 +116,7 @@ func (o *STS) GetEnabled() (value bool, ok bool) {
 //
 // Optional unique identifier when assuming role in another account
 func (o *STS) ExternalID() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.externalID
 	}
 	return ""
@@ -198,7 +127,7 @@ func (o *STS) ExternalID() string {
 //
 // Optional unique identifier when assuming role in another account
 func (o *STS) GetExternalID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.externalID
 	}
@@ -210,7 +139,7 @@ func (o *STS) GetExternalID() (value string, ok bool) {
 //
 // Instance IAM roles to use for the instance profiles of the master and worker instances
 func (o *STS) InstanceIAMRoles() *InstanceIAMRoles {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.instanceIAMRoles
 	}
 	return nil
@@ -221,9 +150,32 @@ func (o *STS) InstanceIAMRoles() *InstanceIAMRoles {
 //
 // Instance IAM roles to use for the instance profiles of the master and worker instances
 func (o *STS) GetInstanceIAMRoles() (value *InstanceIAMRoles, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.instanceIAMRoles
+	}
+	return
+}
+
+// OidcPrivateKeySecretArn returns the value of the 'oidc_private_key_secret_arn' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Secrets Manager ARN for the OIDC private key key.
+func (o *STS) OidcPrivateKeySecretArn() string {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.oidcPrivateKeySecretArn
+	}
+	return ""
+}
+
+// GetOidcPrivateKeySecretArn returns the value of the 'oidc_private_key_secret_arn' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Secrets Manager ARN for the OIDC private key key.
+func (o *STS) GetOidcPrivateKeySecretArn() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.oidcPrivateKeySecretArn
 	}
 	return
 }
@@ -233,7 +185,7 @@ func (o *STS) GetInstanceIAMRoles() (value *InstanceIAMRoles, ok bool) {
 //
 // List of roles necessary to access the AWS resources of the various operators used during installation
 func (o *STS) OperatorIAMRoles() []*OperatorIAMRole {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.operatorIAMRoles
 	}
 	return nil
@@ -244,7 +196,7 @@ func (o *STS) OperatorIAMRoles() []*OperatorIAMRole {
 //
 // List of roles necessary to access the AWS resources of the various operators used during installation
 func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.operatorIAMRoles
 	}
@@ -256,7 +208,7 @@ func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
 //
 // Optional user provided prefix for operator roles.
 func (o *STS) OperatorRolePrefix() string {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.operatorRolePrefix
 	}
 	return ""
@@ -267,7 +219,7 @@ func (o *STS) OperatorRolePrefix() string {
 //
 // Optional user provided prefix for operator roles.
 func (o *STS) GetOperatorRolePrefix() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.operatorRolePrefix
 	}
@@ -279,7 +231,7 @@ func (o *STS) GetOperatorRolePrefix() (value string, ok bool) {
 //
 // Optional user provided permission boundary.
 func (o *STS) PermissionBoundary() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.permissionBoundary
 	}
 	return ""
@@ -290,7 +242,7 @@ func (o *STS) PermissionBoundary() string {
 //
 // Optional user provided permission boundary.
 func (o *STS) GetPermissionBoundary() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.permissionBoundary
 	}
@@ -302,7 +254,7 @@ func (o *STS) GetPermissionBoundary() (value string, ok bool) {
 //
 // ARN of the AWS role to assume when installing the cluster
 func (o *STS) RoleARN() string {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.roleARN
 	}
 	return ""
@@ -313,7 +265,7 @@ func (o *STS) RoleARN() string {
 //
 // ARN of the AWS role to assume when installing the cluster
 func (o *STS) GetRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.roleARN
 	}
@@ -325,7 +277,7 @@ func (o *STS) GetRoleARN() (value string, ok bool) {
 //
 // ARN of the AWS role used by SREs to access the cluster AWS account in order to provide support
 func (o *STS) SupportRoleARN() string {
-	if o != nil && o.bitmap_&4096 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.supportRoleARN
 	}
 	return ""
@@ -336,7 +288,7 @@ func (o *STS) SupportRoleARN() string {
 //
 // ARN of the AWS role used by SREs to access the cluster AWS account in order to provide support
 func (o *STS) GetSupportRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4096 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.supportRoleARN
 	}
