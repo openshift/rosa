@@ -117,13 +117,13 @@ type Client interface {
 	ListAccountRoles(version string) ([]Role, error)
 	GetRoleByARN(roleARN string) (*iam.Role, error)
 	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
-	DeleteOperatorRole(roles string) error
+	DeleteOperatorRole(roles string, managedPolicies bool) error
 	GetOperatorRolesFromAccount(clusterID string, credRequests map[string]*cmv1.STSOperator) ([]string, error)
 	GetPolicies(roles []string) (map[string][]string, error)
 	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
 	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
 	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string) ([]Role, error)
-	DeleteAccountRole(roles string) error
+	DeleteAccountRole(roleName string, managedPolicies bool) error
 	DeleteOCMRole(roleARN string) error
 	DeleteUserRole(roleName string) error
 	GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error)
