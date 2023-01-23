@@ -144,7 +144,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 		r.Reporter.Infof("Account roles with the prefix '%s' have attached managed policies. "+
 			"An upgrade isn't needed", prefix)
-		os.Exit(0)
+		return nil
 	}
 
 	creator, err := awsClient.GetCreator()

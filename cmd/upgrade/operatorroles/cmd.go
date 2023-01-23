@@ -172,7 +172,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 
 		r.Reporter.Infof("Cluster '%s' operator roles have attached managed policies", cluster.Name())
-		os.Exit(0)
+		return nil
 	}
 
 	isAccountRoleUpgradeNeed := false
