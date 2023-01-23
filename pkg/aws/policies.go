@@ -745,7 +745,7 @@ func checkIfROSAOperatorRole(roleName *string, credRequest map[string]*cmv1.STSO
 	return false
 }
 
-func (c *awsClient) DeleteOperatorRole(roleName string) error {
+func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) error {
 	role := aws.String(roleName)
 	policies, err := c.GetPolicies([]string{*role})
 	if err != nil {
@@ -771,7 +771,9 @@ func (c *awsClient) DeleteOperatorRole(roleName string) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.deletePolicies(policies[*role])
+	if !managedPolicies {
+		_, err = c.deletePolicies(policies[*role])
+	}
 	return err
 }
 
@@ -812,7 +814,7 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 	return instanceProfiles, nil
 }
 
-func (c *awsClient) DeleteAccountRole(roleName string) error {
+func (c *awsClient) DeleteAccountRole(roleName string, managedPolicies bool) error {
 	role := aws.String(roleName)
 	err := c.DeleteInlineRolePolicies(aws.StringValue(role))
 	if err != nil {
@@ -845,7 +847,9 @@ func (c *awsClient) DeleteAccountRole(roleName string) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.deletePolicies(policyMap[*role])
+	if !managedPolicies {
+		_, err = c.deletePolicies(policyMap[*role])
+	}
 	return err
 }
 

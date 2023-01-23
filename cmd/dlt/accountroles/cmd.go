@@ -153,6 +153,17 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	managedPolicies, err := r.AWSClient.HasManagedPolicies(roles[0].RoleARN)
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		os.Exit(1)
+	}
+	// TODO: remove once AWS managed policies are in place
+	if managedPolicies && env == ocm.Production {
+		r.Reporter.Errorf("Managed policies are not supported in this environment")
+		os.Exit(1)
+	}
+
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Account role deletion mode",
@@ -173,7 +184,7 @@ func run(cmd *cobra.Command, _ []string) {
 			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
 				continue
 			}
-			err := r.AWSClient.DeleteAccountRole(role)
+			err := r.AWSClient.DeleteAccountRole(role, managedPolicies)
 			if err != nil {
 				r.Reporter.Warnf("There was an error deleting the account roles or policies: %s", err)
 				continue
@@ -187,7 +198,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
-		commands := buildCommand(finalRoleList, policyMap)
+		commands := buildCommand(finalRoleList, policyMap, managedPolicies)
 
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the account roles and policies:\n")
@@ -211,7 +222,7 @@ func checkIfRoleAssociated(clusters []*cmv1.Cluster, role aws.Role) string {
 	return ""
 }
 
-func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail) string {
+func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail, managedPolicies bool) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
 		policyDetails := policyMap[roleName]
@@ -224,11 +235,13 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail) s
 					Build()
 				commands = append(commands, detachPolicy)
 
-				deletePolicy := awscb.NewIAMCommandBuilder().
-					SetCommand(awscb.DeletePolicy).
-					AddParam(awscb.PolicyArn, policyDetail.PolicyArn).
-					Build()
-				commands = append(commands, deletePolicy)
+				if !managedPolicies {
+					deletePolicy := awscb.NewIAMCommandBuilder().
+						SetCommand(awscb.DeletePolicy).
+						AddParam(awscb.PolicyArn, policyDetail.PolicyArn).
+						Build()
+					commands = append(commands, deletePolicy)
+				}
 			}
 			if policyDetail.PolicType == aws.Inline && policyDetail.PolicyName != "" {
 				deletePolicy := awscb.NewIAMCommandBuilder().

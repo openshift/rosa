@@ -188,6 +188,22 @@ func run(cmd *cobra.Command, argv []string) {
 		spin.Stop()
 	}
 
+	_, roleARN, err := r.AWSClient.CheckRoleExists(roles[0])
+	if err != nil {
+		r.Reporter.Errorf("Failed to get '%s' role ARN", roles[0])
+		os.Exit(1)
+	}
+	managedPolicies, err := r.AWSClient.HasManagedPolicies(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		os.Exit(1)
+	}
+	// TODO: remove once AWS managed policies are in place
+	if managedPolicies && env == ocm.Production {
+		r.Reporter.Errorf("Managed policies are not supported in this environment")
+		os.Exit(1)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
@@ -195,7 +211,7 @@ func run(cmd *cobra.Command, argv []string) {
 			if !confirm.Prompt(true, "Delete the operator roles  '%s'?", role) {
 				continue
 			}
-			err := r.AWSClient.DeleteOperatorRole(role)
+			err := r.AWSClient.DeleteOperatorRole(role, managedPolicies)
 
 			if err != nil {
 				r.Reporter.Warnf("There was an error deleting the Operator Roles or Policies: %s", err)
@@ -210,7 +226,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
-		commands := buildCommand(roles, policyMap)
+		commands := buildCommand(roles, policyMap, managedPolicies)
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the Operator roles and policies:\n")
 		}
@@ -221,7 +237,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func buildCommand(roleNames []string, policyMap map[string][]string) string {
+func buildCommand(roleNames []string, policyMap map[string][]string, managedPolicies bool) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
 		policyARN := policyMap[roleName]
@@ -233,10 +249,12 @@ func buildCommand(roleNames []string, policyMap map[string][]string) string {
 				AddParam(awscb.RoleName, roleName).
 				AddParam(awscb.PolicyArn, policyARN[0]).Build()
 
-			deletePolicy = awscb.NewIAMCommandBuilder().
-				SetCommand(awscb.DeletePolicy).
-				AddParam(awscb.PolicyArn, policyARN[0]).
-				Build()
+			if !managedPolicies {
+				deletePolicy = awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DeletePolicy).
+					AddParam(awscb.PolicyArn, policyARN[0]).
+					Build()
+			}
 		}
 		deleteRole := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.DeleteRole).
