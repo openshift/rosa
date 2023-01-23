@@ -42,6 +42,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/organizations/organizationsiface"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go/service/secretsmanager/secretsmanageriface"
 	"github.com/aws/aws-sdk-go/service/servicequotas"
 	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -167,6 +169,7 @@ type Client interface {
 		policies map[string]*cmv1.AWSSTSPolicy) error
 	CreateS3Bucket(bucketName string, region string) error
 	PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error
+	CreateSecretInSecretsManager(name string, secret string) (string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -182,6 +185,7 @@ type awsClient struct {
 	ec2Client           ec2iface.EC2API
 	orgClient           organizationsiface.OrganizationsAPI
 	s3Client            s3iface.S3API
+	smClient            secretsmanageriface.SecretsManagerAPI
 	stsClient           stsiface.STSAPI
 	cfClient            cloudformationiface.CloudFormationAPI
 	servicequotasClient servicequotasiface.ServiceQuotasAPI
@@ -212,6 +216,7 @@ func New(
 	ec2Client ec2iface.EC2API,
 	orgClient organizationsiface.OrganizationsAPI,
 	s3Client s3iface.S3API,
+	smClient secretsmanageriface.SecretsManagerAPI,
 	stsClient stsiface.STSAPI,
 	cfClient cloudformationiface.CloudFormationAPI,
 	servicequotasClient servicequotasiface.ServiceQuotasAPI,
@@ -225,6 +230,7 @@ func New(
 		ec2Client,
 		orgClient,
 		s3Client,
+		smClient,
 		stsClient,
 		cfClient,
 		servicequotasClient,
@@ -368,6 +374,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 		ec2Client:           ec2.New(sess),
 		orgClient:           organizations.New(sess),
 		s3Client:            s3.New(sess),
+		smClient:            secretsmanager.New(sess),
 		stsClient:           sts.New(sess),
 		cfClient:            cloudformation.New(sess),
 		servicequotasClient: servicequotas.New(sess),
@@ -950,7 +957,7 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error {
 	acl := AclPublicRead
 	_, err := c.s3Client.PutObject(&s3.PutObjectInput{
-		ACL:    &acl,
+		ACL:    aws.String(acl),
 		Body:   body,
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(key),
@@ -959,6 +966,23 @@ func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.Rea
 		return err
 	}
 	return nil
+}
+
+func (c *awsClient) CreateSecretInSecretsManager(name string, secret string) (string, error) {
+	createSecretResponse, err := c.smClient.CreateSecret(
+		&secretsmanager.CreateSecretInput{
+			Description:  aws.String(fmt.Sprintf("Secret for %s", name)),
+			Name:         aws.String(name),
+			SecretString: aws.String(secret),
+			Tags: []*secretsmanager.Tag{{
+				Key:   aws.String(tags.RedHatManaged),
+				Value: aws.String("true"),
+			}},
+		})
+	if err != nil {
+		return "", err
+	}
+	return *createSecretResponse.ARN, nil
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
