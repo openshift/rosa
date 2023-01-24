@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/rosa/cmd/verify/oc"
 	"github.com/openshift/rosa/cmd/verify/permissions"
 	"github.com/openshift/rosa/cmd/verify/quota"
+	"github.com/openshift/rosa/cmd/verify/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -34,4 +35,5 @@ func init() {
 	Cmd.AddCommand(oc.Cmd)
 	Cmd.AddCommand(permissions.Cmd)
 	Cmd.AddCommand(quota.Cmd)
+	Cmd.AddCommand(rosa.Cmd)
 }

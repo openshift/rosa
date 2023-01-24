@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/download/oc"
+	"github.com/openshift/rosa/cmd/download/rosa"
 )
 
 var Cmd = &cobra.Command{
@@ -30,4 +31,5 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(oc.Cmd)
+	Cmd.AddCommand(rosa.Cmd)
 }
