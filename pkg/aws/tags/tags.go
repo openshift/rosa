@@ -55,3 +55,5 @@ const ManagedPolicies = prefix + "managed_policies"
 const OperatorNamespace = "operator_namespace"
 
 const OperatorName = "operator_name"
+
+const True = "true"
