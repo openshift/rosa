@@ -1,6 +1,6 @@
 module github.com/openshift/rosa
 
-go 1.18
+go 1.19
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
