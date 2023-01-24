@@ -45,8 +45,8 @@ func (c *awsClient) DeleteUserRole(roleName string) error {
 	return c.DeleteRole(roleName, aws.String(roleName))
 }
 
-func (c *awsClient) DeleteOCMRole(roleName string) error {
-	err := c.deleteOCMRolePolicies(roleName)
+func (c *awsClient) DeleteOCMRole(roleName string, managedPolicies bool) error {
+	err := c.deleteOCMRolePolicies(roleName, managedPolicies)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (c *awsClient) deletePermissionsBoundary(roleName string) error {
 	return nil
 }
 
-func (c *awsClient) deleteOCMRolePolicies(roleName string) error {
+func (c *awsClient) deleteOCMRolePolicies(roleName string, managedPolicies bool) error {
 	policiesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
 		RoleName: aws.String(roleName),
 	})
@@ -125,14 +125,16 @@ func (c *awsClient) deleteOCMRolePolicies(roleName string) error {
 			return err
 		}
 
-		_, err = c.iamClient.DeletePolicy(&iam.DeletePolicyInput{PolicyArn: policy.PolicyArn})
-		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				if awsErr.Code() == iam.ErrCodeDeleteConflictException { // policy is attached to another entity
-					continue
+		if !managedPolicies {
+			_, err = c.iamClient.DeletePolicy(&iam.DeletePolicyInput{PolicyArn: policy.PolicyArn})
+			if err != nil {
+				if awsErr, ok := err.(awserr.Error); ok {
+					if awsErr.Code() == iam.ErrCodeDeleteConflictException { // policy is attached to another entity
+						continue
+					}
 				}
+				return err
 			}
-			return err
 		}
 	}
 

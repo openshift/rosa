@@ -124,6 +124,12 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
+	managedPolicies, err := r.AWSClient.HasManagedPolicies(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		os.Exit(1)
+	}
+
 	if !confirm.Prompt(true, "Delete '%s' ocm role?", roleARN) {
 		os.Exit(0)
 	}
@@ -184,7 +190,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			}
 		}
 		if roleExistOnAWS {
-			err := r.AWSClient.DeleteOCMRole(roleName)
+			err := r.AWSClient.DeleteOCMRole(roleName, managedPolicies)
 			if err != nil {
 				r.Reporter.Errorf("There was an error deleting the OCM role: %s", err)
 				os.Exit(1)
@@ -193,7 +199,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	case aws.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOCMRoleModeManual", nil)
-		commands, err := buildCommands(roleName, roleARN, isLinked, r.AWSClient, roleExistOnAWS)
+		commands, err := buildCommands(roleName, roleARN, isLinked, r.AWSClient, roleExistOnAWS, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -215,7 +221,7 @@ func run(cmd *cobra.Command, argv []string) error {
 }
 
 func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws.Client,
-	roleExistOnAWS bool) (string, error) {
+	roleExistOnAWS bool, managedPolicies bool) (string, error) {
 	var commands []string
 
 	if isLinked {
@@ -237,11 +243,13 @@ func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws
 				Build()
 			commands = append(commands, detachPolicy)
 
-			deletePolicy := awscb.NewIAMCommandBuilder().
-				SetCommand(awscb.DeletePolicy).
-				AddParam(awscb.PolicyArn, policy.PolicyArn).
-				Build()
-			commands = append(commands, deletePolicy)
+			if !managedPolicies {
+				deletePolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DeletePolicy).
+					AddParam(awscb.PolicyArn, policy.PolicyArn).
+					Build()
+				commands = append(commands, deletePolicy)
+			}
 		}
 
 		hasPermissionBoundary, err := awsClient.HasPermissionsBoundary(roleName)
