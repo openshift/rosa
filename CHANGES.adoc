@@ -2,6 +2,20 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.13 Jan 24 2023
+
+- Skip region check if we use shard pinning
+- Remove GitHub IDP dependency to console availability
+- Bump ocm-sdk-go to v0.1.310
+- Fix managed policies cluster upgrade path
+- Delete roles with managed policies
+- feat: store private key for byo oidc in secrets manager
+- [SDA-7757] byo OIDC secret arn support (#1018)
+- feat: add download rosa option
+- Create OCM role with managed policies
+- Upgrade to Go 1.19
+- Delete OCM role with managed policies
+
 == 1.2.12 Jan 18 2023
 
 - fix: Incorrect OIDC Provider Sometimes Targeted for Deletion
