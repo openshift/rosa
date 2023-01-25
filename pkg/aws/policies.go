@@ -257,8 +257,18 @@ func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy str
 	return nil
 }
 
+func (c *awsClient) ForceEnsurePolicy(policyArn string, document string,
+	version string, tagList map[string]string, path string) (string, error) {
+	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, true)
+}
+
 func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	version string, tagList map[string]string, path string) (string, error) {
+	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false)
+}
+
+func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
+	version string, tagList map[string]string, path string, force bool) (string, error) {
 	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
 		var policyArnLocal string
@@ -284,9 +294,12 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 
 	policyArn = aws.StringValue(output.Policy.Arn)
 
-	isCompatible, err := c.IsPolicyCompatible(policyArn, version)
-	if err != nil {
-		return policyArn, err
+	isCompatible := false
+	if !force {
+		isCompatible, err = c.IsPolicyCompatible(policyArn, version)
+		if err != nil {
+			return policyArn, err
+		}
 	}
 
 	if !isCompatible {
@@ -384,9 +397,7 @@ func (c *awsClient) HasCompatibleVersionTags(iamTags []*iam.Tag, version string)
 			if err != nil {
 				return false, err
 			}
-			// Current version equals to wanted is not necessarily compatible
-			// as actions can be altered to accommodate more permissions
-			return currentVersion.GreaterThan(wantedVersion), nil
+			return currentVersion.GreaterThanOrEqual(wantedVersion), nil
 		}
 	}
 	return false, nil
