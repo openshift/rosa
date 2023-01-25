@@ -148,7 +148,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	permissionsBoundary := args.permissionsBoundary
-	if interactive.Enabled() {
+	if interactive.Enabled() && !skipInteractive {
 		permissionsBoundary, err = interactive.GetString(interactive.Input{
 			Question: "Permissions boundary ARN",
 			Help:     cmd.Flags().Lookup("permissions-boundary").Usage,
