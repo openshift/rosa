@@ -146,7 +146,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 
 	// Create new IDP with GitLab provider
 	idpBuilder.
-		Type("GitlabIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
+		Type(cmv1.IdentityProviderTypeGitlab).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		Gitlab(gitlabIDP)

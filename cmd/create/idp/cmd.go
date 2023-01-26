@@ -97,8 +97,6 @@ var Cmd = &cobra.Command{
 	Run: run,
 }
 
-var clusterKey string
-
 func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false

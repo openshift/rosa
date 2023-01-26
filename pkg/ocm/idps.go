@@ -126,17 +126,17 @@ func (c *Client) DeleteIdentityProvider(clusterID string, idpID string) error {
 
 func IdentityProviderType(idp *cmv1.IdentityProvider) string {
 	switch idp.Type() {
-	case "GithubIdentityProvider":
+	case cmv1.IdentityProviderTypeGithub:
 		return GithubIDPType
-	case "GitlabIdentityProvider":
+	case cmv1.IdentityProviderTypeGitlab:
 		return GitlabIDPType
-	case "GoogleIdentityProvider":
+	case cmv1.IdentityProviderTypeGoogle:
 		return GoogleIDPType
-	case "HTPasswdIdentityProvider":
+	case cmv1.IdentityProviderTypeHtpasswd:
 		return HTPasswdIDPType
-	case "LDAPIdentityProvider":
+	case cmv1.IdentityProviderTypeLDAP:
 		return LDAPIDPType
-	case "OpenIDIdentityProvider":
+	case cmv1.IdentityProviderTypeOpenID:
 		return OpenIDIDPType
 	}
 

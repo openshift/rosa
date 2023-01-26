@@ -89,7 +89,7 @@ func createHTPasswdIDP(cmd *cobra.Command,
 		}
 
 		idpBuilder := cmv1.NewIdentityProvider().
-			Type("HTPasswdIdentityProvider").
+			Type(cmv1.IdentityProviderTypeHtpasswd).
 			Name(idpName).
 			Htpasswd(
 				cmv1.NewHTPasswdIdentityProvider().Users(
@@ -124,7 +124,7 @@ func getUserDetails(cmd *cobra.Command, r *rosa.Runtime) (string, string) {
 		},
 	})
 	if err != nil {
-		exitHTPasswdCreate("Expected a valid username: %s", clusterKey, err, r)
+		exitHTPasswdCreate("Expected a valid username: %s", r.ClusterKey, err, r)
 	}
 	password, err := interactive.GetPassword(interactive.Input{
 		Question: "Password",
@@ -136,7 +136,7 @@ func getUserDetails(cmd *cobra.Command, r *rosa.Runtime) (string, string) {
 		},
 	})
 	if err != nil {
-		exitHTPasswdCreate("Expected a valid password: %s", clusterKey, err, r)
+		exitHTPasswdCreate("Expected a valid password: %s", r.ClusterKey, err, r)
 	}
 	return username, password
 }
@@ -148,7 +148,7 @@ func shouldAddAnotherUser(r *rosa.Runtime) bool {
 		Default:  false,
 	})
 	if err != nil {
-		exitHTPasswdCreate("Expected a valid reply: %s", clusterKey, err, r)
+		exitHTPasswdCreate("Expected a valid reply: %s", r.ClusterKey, err, r)
 	}
 	return addAnother
 }
@@ -223,7 +223,7 @@ func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (
 	r.Reporter.Debugf("Loading cluster's identity providers")
 	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
-		r.Reporter.Errorf("Failed to get identity providers for cluster '%s': %v", clusterKey, err)
+		r.Reporter.Errorf("Failed to get identity providers for cluster '%s': %v", r.ClusterKey, err)
 		os.Exit(1)
 	}
 
@@ -235,7 +235,7 @@ func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (
 	if htpasswdIDP != nil {
 		userList, err = r.OCMClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
 		if err != nil {
-			r.Reporter.Errorf("Failed to get user list of the HTPasswd IDP of '%s': %v", clusterKey, err)
+			r.Reporter.Errorf("Failed to get user list of the HTPasswd IDP of '%s': %v", r.ClusterKey, err)
 			os.Exit(1)
 		}
 	}

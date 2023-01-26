@@ -235,7 +235,7 @@ func buildLdapIdp(cmd *cobra.Command,
 
 	// Create new IDP with LDAP provider
 	idpBuilder.
-		Type("LDAPIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
+		Type(cmv1.IdentityProviderTypeLDAP).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		LDAP(ldapIDP)
