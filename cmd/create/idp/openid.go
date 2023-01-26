@@ -40,6 +40,7 @@ func buildOpenidIdp(cmd *cobra.Command,
 	name := args.openidName
 	username := args.openidUsername
 	groups := args.openidGroups
+	idpType := cmv1.IdentityProviderTypeOpenID
 
 	if clientID == "" || clientSecret == "" || issuerURL == "" || (email == "" && name == "" && username == "" &&
 		groups == "") {
@@ -49,7 +50,7 @@ func buildOpenidIdp(cmd *cobra.Command,
 	if interactive.Enabled() {
 		instructionsURL := "https://docs.openshift.com/dedicated/identity_providers/" +
 			"config-identity-providers.html#config-openid-idp_config-identity-providers"
-		oauthURL, err := ocm.BuildOAuthURL(cluster)
+		oauthURL, err := ocm.BuildOAuthURL(cluster, idpType)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
 		}
@@ -232,7 +233,7 @@ separated by commas.`,
 
 	// Create new IDP with OpenID provider
 	idpBuilder.
-		Type(cmv1.IdentityProviderTypeOpenID).
+		Type(idpType).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		OpenID(openIDIDP)

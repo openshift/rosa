@@ -147,27 +147,39 @@ func HasAuthURLSupport(idp *cmv1.IdentityProvider) bool {
 	return !helper.Contains(getIDPListWithoutAuthURLSupport(), IdentityProviderType(idp))
 }
 
+// OAuthURLNeedsPort defines if an IDP needs a port for the callback URL
+func OAuthURLNeedsPort(idpType cmv1.IdentityProviderType) bool {
+	return idpType == cmv1.IdentityProviderTypeOpenID
+}
+
 func getIDPListWithoutAuthURLSupport() []string {
 	return []string{HTPasswdIDPType, LDAPIDPType}
 }
 
 // BuildOAuthURL builds the correct OAuthURL depending on the cluster type
-func BuildOAuthURL(cluster *cmv1.Cluster) (string, error) {
+func BuildOAuthURL(cluster *cmv1.Cluster, idpType cmv1.IdentityProviderType) (string, error) {
 	var oauthURL string
 	if cluster.Hypershift().Enabled() {
 		// TODO(adecorte): this logic is not valid if ExternalDNS is not configured. This should be the case only in
 		// local env. We should either align local or have a specific logic for this case
 		// https://api.example.com:443 -> https://oauth.example.com
 		apiURL := cluster.API().URL()
-		u, err := url.ParseRequestURI(apiURL)
-		if err != nil {
-			return oauthURL, err
+		if OAuthURLNeedsPort(idpType) {
+			// Some IDPs require the port, so just replace what is needed
+			oauthURL = strings.Replace(apiURL, "api", "oauth", 1)
+		} else {
+			// Otherwise, remove the port and replace what is needed
+			u, err := url.ParseRequestURI(apiURL)
+			if err != nil {
+				return oauthURL, err
+			}
+			host, _, err := net.SplitHostPort(u.Host)
+			if err != nil {
+				return oauthURL, err
+			}
+			u.Host = host
+			oauthURL = strings.Replace(u.String(), "api", "oauth", 1)
 		}
-		host, _, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			return oauthURL, err
-		}
-		oauthURL = "https://" + strings.Replace(host, "api", "oauth", 1)
 	} else {
 		oauthURL = strings.Replace(cluster.Console().URL(), "console-openshift-console", "oauth-openshift", 1)
 	}
@@ -179,7 +191,7 @@ func GetOAuthURL(cluster *cmv1.Cluster, idp *cmv1.IdentityProvider) (string, err
 	if !HasAuthURLSupport(idp) {
 		return "", nil
 	}
-	oauthURL, err := BuildOAuthURL(cluster)
+	oauthURL, err := BuildOAuthURL(cluster, idp.Type())
 	if err != nil {
 		return "", err
 	}
