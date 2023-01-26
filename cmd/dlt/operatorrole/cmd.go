@@ -117,8 +117,9 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		} else if sub == nil {
-			r.Reporter.Errorf("Failed to get cluster '%s': %v", r.ClusterKey, err)
-			os.Exit(1)
+			r.Reporter.Warnf("Failed to get subscription for cluster '%s': %v", clusterKey, err)
+			r.Reporter.Warnf("The subscription resource might have already been cleaned up, "+
+				"moving forward to check operator roles tagged with id '%s'", clusterKey)
 		}
 	}
 
