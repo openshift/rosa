@@ -59,6 +59,12 @@ var Cmd = &cobra.Command{
 	RunE: run,
 }
 
+const (
+	clusterVersionFlag = "cluster-version"
+	policyVersionFlag  = "policy-version"
+	channelGroupFlag   = "channel-group"
+)
+
 func init() {
 	flags := Cmd.Flags()
 
@@ -68,28 +74,27 @@ func init() {
 
 	flags.StringVar(
 		&args.clusterUpgradeVersion,
-		"cluster-version",
+		clusterVersionFlag,
 		"",
 		"Version of OpenShift that the cluster will be upgraded to",
 	)
-
-	Cmd.MarkFlagRequired("cluster-version")
+	Cmd.MarkFlagRequired(clusterVersionFlag)
 
 	flags.StringVar(
 		&args.policyUpgradeversion,
-		"policy-version",
+		policyVersionFlag,
 		"",
 		"Version of OpenShift that will be used to setup policy tag, for example \"4.11\"",
 	)
-	flags.MarkHidden("version")
+	flags.MarkHidden(policyVersionFlag)
 
 	flags.StringVar(
 		&args.channelGroup,
-		"channel-group",
+		channelGroupFlag,
 		ocm.DefaultChannelGroup,
 		"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"fast\".",
 	)
-	flags.MarkHidden("channel-group")
+	flags.MarkHidden(channelGroupFlag)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)

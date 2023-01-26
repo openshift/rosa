@@ -203,7 +203,7 @@ func run(cmd *cobra.Command, _ []string) {
 			" are compatible with upgrade.", cluster.ID())
 		err = roles.Cmd.RunE(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup()})
 		if err != nil {
-			rolesStr := fmt.Sprintf("rosa upgrade roles -c %s --version=%s --mode=%s", clusterKey, version, mode)
+			rolesStr := fmt.Sprintf("rosa upgrade roles -c %s --cluster-version=%s --mode=%s", clusterKey, version, mode)
 			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
 
 			r.Reporter.Infof("Account/Operator Role policies are not valid with upgrade version %s. "+
