@@ -232,7 +232,7 @@ separated by commas.`,
 
 	// Create new IDP with OpenID provider
 	idpBuilder.
-		Type("OpenIDIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
+		Type(cmv1.IdentityProviderTypeOpenID).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		OpenID(openIDIDP)

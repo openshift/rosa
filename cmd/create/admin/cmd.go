@@ -115,7 +115,7 @@ func run(cmd *cobra.Command, _ []string) {
 			idp.CreateHTPasswdUser(idp.ClusterAdminUsername, password),
 		))
 		newIDP, err := cmv1.NewIdentityProvider().
-			Type("HTPasswdIdentityProvider").
+			Type(cmv1.IdentityProviderTypeHtpasswd).
 			Name(idp.HTPasswdIDPName).
 			Htpasswd(htpasswdIDP).
 			Build()

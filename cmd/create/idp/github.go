@@ -247,7 +247,7 @@ func buildGithubIdp(cmd *cobra.Command,
 
 	// Create new IDP with GitHub provider
 	idpBuilder.
-		Type("GithubIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
+		Type(cmv1.IdentityProviderTypeGithub).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		Github(githubIDP)

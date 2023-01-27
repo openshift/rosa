@@ -123,7 +123,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 
 	// Create new IDP with Google provider
 	idpBuilder.
-		Type("GoogleIdentityProvider"). // FIXME: ocm-api-model has the wrong enum values
+		Type(cmv1.IdentityProviderTypeGoogle).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		Google(googleIDP)
