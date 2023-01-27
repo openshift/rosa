@@ -434,6 +434,12 @@ func doCreateIDP(
 		"Identity Provider '%s' has been created.\n"+
 			"   It may take several minutes for this access to become active.\n"+
 			"   To add cluster administrators, see 'rosa grant user --help'.\n", idpName)
+	if !interactive.Enabled() && ocm.HasAuthURLSupport(createdIdp) {
+		callbackURL, err := ocm.GetOAuthURL(cluster, createdIdp)
+		if err == nil {
+			r.Reporter.Infof("Callback URI: %s", callbackURL)
+		}
+	}
 	// Console may not be available yet
 	if ocm.IsConsoleAvailable(cluster) {
 		clusterConsole := cluster.Console().URL()

@@ -35,6 +35,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 	clientID := args.clientID
 	clientSecret := args.clientSecret
 	gitlabURL := args.gitlabURL
+	idpType := cmv1.IdentityProviderTypeGitlab
 
 	if clientID == "" || clientSecret == "" {
 		interactive.Enable()
@@ -62,7 +63,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 
 	if interactive.Enabled() {
 		instructionsURL := fmt.Sprintf("%s/profile/applications", gitlabURL)
-		oauthURL, err := ocm.BuildOAuthURL(cluster)
+		oauthURL, err := ocm.BuildOAuthURL(cluster, idpType)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
 		}
@@ -146,7 +147,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 
 	// Create new IDP with GitLab provider
 	idpBuilder.
-		Type(cmv1.IdentityProviderTypeGitlab).
+		Type(idpType).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		Gitlab(gitlabIDP)

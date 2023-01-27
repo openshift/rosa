@@ -33,6 +33,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 	idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
 	clientID := args.clientID
 	clientSecret := args.clientSecret
+	idpType := cmv1.IdentityProviderTypeGoogle
 
 	if clientID == "" || clientSecret == "" {
 		interactive.Enable()
@@ -40,7 +41,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 
 	if interactive.Enabled() {
 		instructionsURL := "https://console.developers.google.com/projectcreate"
-		oauthURL, err := ocm.BuildOAuthURL(cluster)
+		oauthURL, err := ocm.BuildOAuthURL(cluster, idpType)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
 		}
@@ -123,7 +124,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 
 	// Create new IDP with Google provider
 	idpBuilder.
-		Type(cmv1.IdentityProviderTypeGoogle).
+		Type(idpType).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		Google(googleIDP)

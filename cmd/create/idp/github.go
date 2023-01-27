@@ -37,6 +37,7 @@ func buildGithubIdp(cmd *cobra.Command,
 	teams := args.githubTeams
 	clientID := args.clientID
 	clientSecret := args.clientSecret
+	idpType := cmv1.IdentityProviderTypeGithub
 
 	if organizations != "" && teams != "" {
 		return idpBuilder, errors.New("GitHub IDP only allows either organizations or teams, but not both")
@@ -128,7 +129,7 @@ func buildGithubIdp(cmd *cobra.Command,
 		}
 
 		// Populate fields in the GitHub registration form
-		oauthURL, err := ocm.BuildOAuthURL(cluster)
+		oauthURL, err := ocm.BuildOAuthURL(cluster, idpType)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
 		}
@@ -247,7 +248,7 @@ func buildGithubIdp(cmd *cobra.Command,
 
 	// Create new IDP with GitHub provider
 	idpBuilder.
-		Type(cmv1.IdentityProviderTypeGithub).
+		Type(idpType).
 		Name(idpName).
 		MappingMethod(cmv1.IdentityProviderMappingMethod(mappingMethod)).
 		Github(githubIDP)
