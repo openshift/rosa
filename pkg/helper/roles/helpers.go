@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -95,6 +96,32 @@ func ValidateAccountRolesManagedPolicies(r *rosa.Runtime, prefix string) error {
 	}
 
 	return r.AWSClient.ValidateAccountRolesManagedPolicies(prefix, policies)
+}
+
+func ValidateUnmanagedAccountRoles(roleARNs []string, awsClient aws.Client, version string) error {
+	// iterate and validate role arns against openshift version
+	for _, ARN := range roleARNs {
+		if ARN == "" {
+			continue
+		}
+		// get role from arn
+		role, err := awsClient.GetRoleByARN(ARN)
+		if err != nil {
+			return fmt.Errorf("Could not get Role '%s' : %v", ARN, err)
+		}
+
+		validVersion, err := awsClient.HasCompatibleVersionTags(role.Tags, ocm.GetVersionMinor(version))
+		if err != nil {
+			return fmt.Errorf("Could not validate Role '%s' : %v", ARN, err)
+		}
+		if !validVersion {
+			return fmt.Errorf("Account role '%s' is not compatible with version %s. "+
+				"Run 'rosa create account-roles' to create compatible roles and try again.",
+				ARN, version)
+		}
+	}
+
+	return nil
 }
 
 func ValidateOperatorRolesManagedPolicies(r *rosa.Runtime, cluster *cmv1.Cluster,

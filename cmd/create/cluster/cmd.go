@@ -31,6 +31,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/machinepool"
+	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -592,6 +593,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
 	}
 	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions)
+	r.AWSClient = awsClient
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
@@ -1044,27 +1046,39 @@ func run(cmd *cobra.Command, _ []string) {
 		workerRoleARN,
 	}
 
-	// iterate and validate role arns against openshift version
-	for _, ARN := range roleARNs {
-		if ARN == "" {
-			continue
-		}
-		// get role from arn
-		role, err := awsClient.GetRoleByARN(ARN)
+	env, err := ocm.GetEnv()
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
+		os.Exit(1)
+	}
+	managedPolicies, err := awsClient.HasManagedPolicies(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		os.Exit(1)
+	}
+	// TODO: remove once AWS managed policies are in place
+	if managedPolicies && env == ocm.Production {
+		r.Reporter.Errorf("Managed policies are not supported in this environment")
+		os.Exit(1)
+	}
+
+	if managedPolicies {
+		role := aws.AccountRoles[aws.InstallerAccountRole]
+		rolePrefix, err := getAccountRolePrefix(roleARN, role)
 		if err != nil {
-			r.Reporter.Errorf("Could not get Role '%s' : %v", ARN, err)
+			r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
 			os.Exit(1)
 		}
 
-		validVersion, err := awsClient.HasCompatibleVersionTags(role.Tags, ocm.GetVersionMinor(version))
+		err = roles.ValidateAccountRolesManagedPolicies(r, rolePrefix)
 		if err != nil {
-			r.Reporter.Errorf("Could not validate Role '%s' : %v", ARN, err)
+			r.Reporter.Errorf("Failed while validating account roles: %s", err)
 			os.Exit(1)
 		}
-		if !validVersion {
-			r.Reporter.Errorf("Account role '%s' is not compatible with version %s. "+
-				"Run 'rosa create account-roles' to create compatible roles and try again.",
-				ARN, version)
+	} else {
+		err = roles.ValidateUnmanagedAccountRoles(roleARNs, awsClient, version)
+		if err != nil {
+			r.Reporter.Errorf("Failed while validating account roles: %s", err)
 			os.Exit(1)
 		}
 	}
