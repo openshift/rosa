@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -96,7 +97,9 @@ func main() {
 	root.SetArgs(os.Args[1:])
 	err := root.Execute()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to execute root command: %s\n", err)
+		if !strings.Contains(err.Error(), "Did you mean this?") {
+			fmt.Fprintf(os.Stderr, "Failed to execute root command: %s\n", err)
+		}
 		os.Exit(1)
 	}
 }
