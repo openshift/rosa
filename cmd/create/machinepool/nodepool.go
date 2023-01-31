@@ -17,19 +17,11 @@ import (
 func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
 
-	// TODO NodePool commands don't support (yet) some of the machinepool flags
-	if cmd.Flags().Changed("multi-availability-zone") {
-		r.Reporter.Errorf("Setting the `multi-availability-zone` flag is not yet supported for hosted clusters")
-		os.Exit(1)
-	}
-
-	if cmd.Flags().Changed("availability-zone") {
-		r.Reporter.Errorf("Setting the `availability-zone` flag is not yet supported for hosted clusters")
-		os.Exit(1)
-	}
-
-	if cmd.Flags().Changed("subnet") {
-		r.Reporter.Errorf("Setting the `subnet` flag is not yet supported for hosted clusters")
+	isAvailabilityZoneSet := cmd.Flags().Changed("availability-zone")
+	isSubnetSet := cmd.Flags().Changed("subnet")
+	if isSubnetSet && isAvailabilityZoneSet {
+		r.Reporter.Errorf("Setting both `subnet` and `availability-zone` flag is not supported." +
+			" Please select `subnet` or `availability-zone` to create a single availability zone machine pool")
 		os.Exit(1)
 	}
 
@@ -57,6 +49,18 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	if !machinePoolKeyRE.MatchString(name) {
 		r.Reporter.Errorf("Expected a valid name for the machine pool")
 		os.Exit(1)
+	}
+
+	// Allow the user to select subnet for a single AZ BYOVPC cluster
+	subnet := getSubnetFromUser(cmd, r, isSubnetSet, cluster)
+
+	// Select availability zone if the user didn't select subnet
+	if subnet == "" {
+		subnet, err = getSubnetFromAvailabilityZone(cmd, r, isAvailabilityZoneSet, cluster)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 	}
 
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
@@ -147,6 +151,10 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		npBuilder = npBuilder.Replicas(replicas)
 	}
 
+	if subnet != "" {
+		npBuilder.Subnet(subnet)
+	}
+
 	// Machine pool instance type:
 	// NodePools don't support MultiAZ yet, so the availabilityZonesFilters is calculated from the cluster
 
@@ -221,4 +229,58 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		r.Reporter.Infof("Machine pool '%s' created successfully on hosted cluster '%s'", createdNodePool.ID(), clusterKey)
 		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
 	}
+}
+
+func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvailabilityZoneSet bool,
+	cluster *cmv1.Cluster) (string, error) {
+
+	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
+	if err != nil {
+		return "", err
+	}
+
+	// Fetching the availability zones from the VPC private subnets
+	subnetsMap := make(map[string][]string)
+	for _, privateSubnet := range privateSubnets {
+		subnetsPerAZ, exist := subnetsMap[*privateSubnet.AvailabilityZone]
+		if !exist {
+			subnetsPerAZ = []string{*privateSubnet.SubnetId}
+		} else {
+			subnetsPerAZ = append(subnetsPerAZ, *privateSubnet.SubnetId)
+		}
+		subnetsMap[*privateSubnet.AvailabilityZone] = subnetsPerAZ
+	}
+	availabilityZones := make([]string, 0)
+	for availabilizyZone := range subnetsMap {
+		availabilityZones = append(availabilityZones, availabilizyZone)
+	}
+
+	availabilityZone := cluster.Nodes().AvailabilityZones()[0]
+	if !isAvailabilityZoneSet && interactive.Enabled() {
+		availabilityZone, err = interactive.GetOption(interactive.Input{
+			Question: "AWS availability zone",
+			Help:     cmd.Flags().Lookup("availability-zone").Usage,
+			Options:  availabilityZones,
+			Default:  availabilityZone,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid AWS availability zone: %s", err)
+			os.Exit(1)
+		}
+	} else if isAvailabilityZoneSet {
+		availabilityZone = args.availabilityZone
+	}
+
+	if subnets, ok := subnetsMap[availabilityZone]; ok {
+		if len(subnets) == 1 {
+			return subnets[0], nil
+		}
+		r.Reporter.Infof("There are several subnets for availability zone '%s'", availabilityZone)
+		interactive.Enable()
+		subnet := getSubnetFromUser(cmd, r, false, cluster)
+		return subnet, nil
+	}
+
+	return "", fmt.Errorf("Failed to find a private subnet for '%s' availability zone", availabilityZone)
 }
