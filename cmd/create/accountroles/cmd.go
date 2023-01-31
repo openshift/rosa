@@ -27,14 +27,10 @@ import (
 	"github.com/openshift/rosa/cmd/verify/oc"
 	"github.com/openshift/rosa/cmd/verify/quota"
 	"github.com/openshift/rosa/pkg/aws"
-	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
-	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var args struct {
@@ -302,12 +298,15 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	rolesCreator := initCreator(managedPolicies)
+	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
+		policyVersion, path)
+
 	switch mode {
 	case aws.ModeAuto:
 		r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 
-		err = createRoles(r, prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
-			policyVersion, path, managedPolicies)
+		err = rolesCreator.createRoles(r, input)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the account roles: %s", err)
 			if strings.Contains(err.Error(), "Throttling") {
@@ -338,8 +337,7 @@ func run(cmd *cobra.Command, argv []string) {
 			})
 			os.Exit(1)
 		}
-		commands, err := buildCommands(prefix, permissionsBoundary, r.Creator.AccountID, policyVersion,
-			path, managedPolicies, policies)
+		commands, err := rolesCreator.buildCommands(input)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -356,130 +354,4 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
-}
-
-func buildCommands(prefix string, permissionsBoundary string, accountID string, defaultPolicyVersion string,
-	path string, managedPolicies bool, policies map[string]*cmv1.AWSSTSPolicy) (string, error) {
-	commands := []string{}
-	for file, role := range aws.AccountRoles {
-		accRoleName := aws.GetRoleName(prefix, role.Name)
-		iamTags := map[string]string{
-			tags.OpenShiftVersion: defaultPolicyVersion,
-			tags.RolePrefix:       prefix,
-			tags.RoleType:         file,
-			tags.RedHatManaged:    "true",
-		}
-		if managedPolicies {
-			iamTags[tags.ManagedPolicies] = "true"
-		}
-
-		createRole := awscb.NewIAMCommandBuilder().
-			SetCommand(awscb.CreateRole).
-			AddParam(awscb.RoleName, accRoleName).
-			AddParam(awscb.AssumeRolePolicyDocument, fmt.Sprintf("file://sts_%s_trust_policy.json", file)).
-			AddParam(awscb.PermissionsBoundary, permissionsBoundary).
-			AddTags(iamTags).
-			AddParam(awscb.Path, path).
-			Build()
-
-		policyName := aws.GetPolicyName(accRoleName)
-		createPolicy := awscb.NewIAMCommandBuilder().
-			SetCommand(awscb.CreatePolicy).
-			AddParam(awscb.PolicyName, policyName).
-			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", file)).
-			AddTags(iamTags).
-			AddParam(awscb.Path, path).
-			Build()
-
-		// Determine policy ARN
-		var policyARN string
-		var err error
-		if managedPolicies {
-			policyARN, err = aws.GetManagedPolicyARN(policies, fmt.Sprintf("sts_%s_permission_policy", file))
-			if err != nil {
-				return "", err
-			}
-		} else {
-			policyARN = aws.GetPolicyARN(accountID, accRoleName, path)
-		}
-
-		attachRolePolicy := awscb.NewIAMCommandBuilder().
-			SetCommand(awscb.AttachRolePolicy).
-			AddParam(awscb.RoleName, accRoleName).
-			AddParam(awscb.PolicyArn, policyARN).
-			Build()
-
-		if managedPolicies {
-			commands = append(commands, createRole, attachRolePolicy)
-		} else {
-			commands = append(commands, createRole, createPolicy, attachRolePolicy)
-		}
-	}
-
-	return awscb.JoinCommands(commands), nil
-}
-
-func createRoles(r *rosa.Runtime, prefix, permissionsBoundary, accountID, env string,
-	policies map[string]*cmv1.AWSSTSPolicy, defaultPolicyVersion string,
-	path string, managedPolicies bool) error {
-	for file, role := range aws.AccountRoles {
-		accRoleName := aws.GetRoleName(prefix, role.Name)
-		policyARN := aws.GetPolicyARN(r.Creator.AccountID, accRoleName, path)
-		if !confirm.Prompt(true, "Create the '%s' role?", accRoleName) {
-			continue
-		}
-
-		filename := fmt.Sprintf("sts_%s_trust_policy", file)
-		policyDetail := aws.GetPolicyDetails(policies, filename)
-
-		policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-			"partition":      aws.GetPartition(),
-			"aws_account_id": aws.GetJumpAccount(env),
-		})
-		r.Reporter.Debugf("Creating role '%s'", accRoleName)
-		tagsList := map[string]string{
-			tags.OpenShiftVersion: defaultPolicyVersion,
-			tags.RolePrefix:       prefix,
-			tags.RoleType:         file,
-			tags.RedHatManaged:    "true"}
-		if managedPolicies {
-			tagsList[tags.ManagedPolicies] = "true"
-		}
-		roleARN, err := r.AWSClient.EnsureRole(accRoleName, policy, permissionsBoundary,
-			defaultPolicyVersion, tagsList, path, managedPolicies)
-		if err != nil {
-			return err
-		}
-		r.Reporter.Infof("Created role '%s' with ARN '%s'", accRoleName, roleARN)
-
-		filename = fmt.Sprintf("sts_%s_permission_policy", file)
-		if managedPolicies {
-			policyARN, err = aws.GetManagedPolicyARN(policies, filename)
-			if err != nil {
-				return err
-			}
-		} else {
-			policyPermissionDetail := aws.GetPolicyDetails(policies, filename)
-
-			r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
-			if args.forcePolicyCreation {
-				policyARN, err = r.AWSClient.ForceEnsurePolicy(policyARN, policyPermissionDetail,
-					defaultPolicyVersion, tagsList, path)
-			} else {
-				policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyPermissionDetail,
-					defaultPolicyVersion, tagsList, path)
-			}
-			if err != nil {
-				return err
-			}
-		}
-
-		r.Reporter.Debugf("Attaching permission policy to role '%s'", filename)
-		err = r.AWSClient.AttachRolePolicy(accRoleName, policyARN)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
