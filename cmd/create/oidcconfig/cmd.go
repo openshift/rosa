@@ -303,6 +303,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		SetCommand(awscb.CreateBucket).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.CreateBucketConfiguration, createBucketConfig).
+		AddParam(awscb.Region, args.region).
 		Build()
 	commands = append(commands, createS3BucketCommand)
 	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
