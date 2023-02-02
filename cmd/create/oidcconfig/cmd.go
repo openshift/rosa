@@ -49,12 +49,14 @@ import (
 )
 
 const (
-	DEFAULT_LENGTH_RANDOM_LABEL = 4
+	defaultLengthRandomLabel = 4
+	maxLengthUserPrefix      = 15
 )
 
 var args struct {
-	region   string
-	rawFiles bool
+	region     string
+	rawFiles   bool
+	userPrefix string
 }
 
 var Cmd = &cobra.Command{
@@ -70,7 +72,10 @@ var Cmd = &cobra.Command{
 }
 
 const (
-	rawFilesFlag = "raw-files"
+	rawFilesFlag                  = "raw-files"
+	userPrefixFlag                = "prefix"
+	prefixForPrivateKeySecret     = "rosa-private-key"
+	defaultPrefixForConfiguration = "oidc"
 )
 
 func init() {
@@ -82,6 +87,13 @@ func init() {
 		false,
 		"Creates OIDC config documents (Private RSA key, Discovery document, JSON Web Key Set) "+
 			"and saves locally for the client to create the configuration.",
+	)
+
+	flags.StringVar(
+		&args.userPrefix,
+		userPrefixFlag,
+		"",
+		"Prefix for the OIDC configuration, secret and provider.",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -138,6 +150,27 @@ func run(cmd *cobra.Command, argv []string) {
 			"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key.")
 	}
 
+	if interactive.Enabled() {
+		prefix, err := interactive.GetString(interactive.Input{
+			Question:   "Prefix for OIDC",
+			Help:       cmd.Flags().Lookup(userPrefixFlag).Usage,
+			Default:    args.userPrefix,
+			Validators: []interactive.Validator{interactive.MaxLength(maxLengthUserPrefix)},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid prefix for the configuration: %s", err)
+			os.Exit(1)
+		}
+		args.userPrefix = prefix
+	}
+	args.userPrefix = strings.Trim(args.userPrefix, " \t")
+
+	if len([]rune(args.userPrefix)) > maxLengthUserPrefix {
+		r.Reporter.Errorf("Expected a valid prefix for the configuration: "+
+			"length of prefix is limited to %d characters", maxLengthUserPrefix)
+		os.Exit(1)
+	}
+
 	oidcConfigInput := buildOidcConfigInput(r)
 	oidcConfigStrategy, err := getOidcConfigStrategy(mode, oidcConfigInput)
 	if err != nil {
@@ -158,9 +191,12 @@ type OidcConfigInput struct {
 }
 
 func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
-	randomLabel := helper.RandomLabel(DEFAULT_LENGTH_RANDOM_LABEL)
-	bucketName := fmt.Sprintf("oidc-%s", randomLabel)
-	privateKeySecretName := fmt.Sprintf("rosa-private-key-%s", bucketName)
+	randomLabel := helper.RandomLabel(defaultLengthRandomLabel)
+	bucketName := fmt.Sprintf("%s-%s", defaultPrefixForConfiguration, randomLabel)
+	if args.userPrefix != "" {
+		bucketName = fmt.Sprintf("%s-%s", args.userPrefix, bucketName)
+	}
+	privateKeySecretName := fmt.Sprintf("%s-%s", prefixForPrivateKeySecret, bucketName)
 	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
 	privateKey, publicKey, err := createKeyPair()
 	if err != nil {
@@ -262,7 +298,7 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	}
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Please run command below to create a cluster with this oidc config:\n"+
-			"rosa create cluster --sts \\\n --oidc-endpoint-url %s \\\n --oidc-private-key-secret-arn %s",
+			"rosa create cluster --sts \\\n--oidc-endpoint-url %s \\\n--oidc-private-key-secret-arn %s",
 			bucketUrl, secretsARN)
 	}
 }
