@@ -32,7 +32,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
@@ -273,6 +275,14 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	jwks := s.oidcConfig.Jwks
 	privateKey := s.oidcConfig.PrivateKey
 	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
+	var spin *spinner.Spinner
+	if r.Reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
+	if spin != nil {
+		r.Reporter.Infof("Setting up OIDC configuration '%s'", bucketName)
+		spin.Start()
+	}
 	secretsARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
 	if err != nil {
 		r.Reporter.Errorf("There was a problem saving private key to secrets manager: %s", err)
@@ -292,11 +302,17 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	}
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, bytes.NewReader(jwks), jwksKey)
 	if err != nil {
+		if spin != nil {
+			spin.Stop()
+		}
 		r.Reporter.Errorf("There was a problem populating JWKS "+
 			"to S3 bucket '%s': %s", bucketName, err)
 		os.Exit(1)
 	}
 	if r.Reporter.IsTerminal() {
+		if spin != nil {
+			spin.Stop()
+		}
 		r.Reporter.Infof("Please run command below to create a cluster with this oidc config:\n"+
 			"rosa create cluster --sts \\\n--oidc-endpoint-url %s \\\n--oidc-private-key-secret-arn %s",
 			bucketUrl, secretsARN)
