@@ -211,11 +211,21 @@ func run(cmd *cobra.Command, argv []string) {
 			if !confirm.Prompt(true, "Delete the operator roles  '%s'?", role) {
 				continue
 			}
+			r.Reporter.Infof("Deleting operator role '%s'", role)
+			if spin != nil {
+				spin.Start()
+			}
 			err := r.AWSClient.DeleteOperatorRole(role, managedPolicies)
 
 			if err != nil {
+				if spin != nil {
+					spin.Stop()
+				}
 				r.Reporter.Warnf("There was an error deleting the Operator Roles or Policies: %s", err)
 				continue
+			}
+			if spin != nil {
+				spin.Stop()
 			}
 		}
 		r.Reporter.Infof("Successfully deleted the operator roles")
