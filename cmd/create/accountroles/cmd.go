@@ -153,6 +153,11 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	managedPolicies := args.managed
 
+	if args.forcePolicyCreation && managedPolicies {
+		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
+		os.Exit(1)
+	}
+
 	r.WithAWS()
 	// Validate AWS credentials for current user
 	if r.Reporter.IsTerminal() {

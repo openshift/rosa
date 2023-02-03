@@ -223,6 +223,10 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
 		os.Exit(1)
 	}
+	if args.forcePolicyCreation && managedPolicies {
+		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
+		os.Exit(1)
+	}
 	// TODO: remove once AWS managed policies are in place
 	if managedPolicies && env == ocm.Production {
 		r.Reporter.Errorf("Managed policies are not supported in this environment")
