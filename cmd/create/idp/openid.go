@@ -26,6 +26,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 )
@@ -247,7 +248,7 @@ func validateOpenidIssuerURL(val interface{}) error {
 	if err != nil {
 		return fmt.Errorf("Expected a valid OpenID issuer URL: %v", err)
 	}
-	if parsedIssuerURL.Scheme != "https" {
+	if parsedIssuerURL.Scheme != helper.ProtocolHttps {
 		return errors.New("Expected OpenID issuer URL to use an https:// scheme")
 	}
 	if parsedIssuerURL.RawQuery != "" {
