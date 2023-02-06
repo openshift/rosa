@@ -819,3 +819,16 @@ func GetManagedPolicyARN(policies map[string]*cmv1.AWSSTSPolicy, key string) (st
 
 	return policy.ARN(), nil
 }
+
+// GetAccountRolePolicyKeys returns the policy key for fetching the managed policy ARN
+func GetAccountRolePolicyKeys(roleType string) []string {
+	if roleType == InstallerAccountRole {
+		return []string{
+			InstallerCoreKey,
+			InstallerVPCKey,
+			InstallerPrivateLinkKey,
+		}
+	}
+
+	return []string{fmt.Sprintf("sts_%s_permission_policy", roleType)}
+}
