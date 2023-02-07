@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/zgalor/weberr"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -757,6 +758,21 @@ func GetResourceIdFromARN(stringARN string) (string, error) {
 	index := strings.LastIndex(parsedARN.Resource, "/")
 	if index == -1 || index == len(parsedARN.Resource)-1 {
 		return "", fmt.Errorf("can't find resource-id in ARN '%s'", stringARN)
+	}
+
+	return parsedARN.Resource[index+1:], nil
+}
+
+func GetResourceIdFromSecretArn(secretArn string) (string, error) {
+	parsedARN, err := arn.Parse(secretArn)
+
+	if err != nil {
+		return "", err
+	}
+
+	index := strings.LastIndex(parsedARN.Resource, ":")
+	if index == -1 || index == len(parsedARN.Resource)-1 {
+		return "", weberr.Errorf("can't find resource-id in ARN '%s'", secretArn)
 	}
 
 	return parsedARN.Resource[index+1:], nil

@@ -63,14 +63,15 @@ var args struct {
 
 var Cmd = &cobra.Command{
 	Use:     "oidc-config",
-	Aliases: []string{"oidcconfig"},
+	Aliases: []string{"oidcconfig", "oidcconfig"},
 	Short:   "Create OIDC config compliant with OIDC protocol.",
 	Long: "Create OIDC config in a S3 bucket for the " +
 		"client AWS account and populates it to be compliant with OIDC protocol. " +
 		"It also creates a Secret in Secrets Manager containing the private key.",
-	Example: `  # Create OIDC config rosa create oidc-config`,
-	Hidden:  true,
-	Run:     run,
+	Example: `  # Create OIDC config
+	rosa create oidc-config`,
+	Hidden: true,
+	Run:    run,
 }
 
 const (
@@ -278,9 +279,9 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		r.Reporter.Infof("Setting up OIDC configuration '%s'", bucketName)
 	}
 	if spin != nil {
-		r.Reporter.Infof("Setting up OIDC configuration '%s'", bucketName)
 		spin.Start()
 	}
 	secretsARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
@@ -330,6 +331,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	jwks := s.oidcConfig.Jwks
 	privateKey := s.oidcConfig.PrivateKey
 	privateKeyFilename := s.oidcConfig.PrivateKeyFilename
+	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
 	err := helper.SaveDocument(string(privateKey), privateKeyFilename)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
@@ -337,7 +339,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	}
 	createSecretCommand := awscb.NewSecretsManagerCommandBuilder().
 		SetCommand(awscb.CreateSecret).
-		AddParam(awscb.Name, bucketName).
+		AddParam(awscb.Name, privateKeySecretName).
 		AddParam(awscb.SecretString, fmt.Sprintf("file://%s", privateKeyFilename)).
 		AddParam(awscb.Description, fmt.Sprintf("\"Secret for %s\"", bucketName)).
 		AddParam(awscb.Region, args.region).
@@ -351,7 +353,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	if args.region != aws.DefaultRegion {
 		createBucketConfig = fmt.Sprintf("LocationConstraint=%s", args.region)
 	}
-	createS3BucketCommand := awscb.NewS3CommandBuilder().
+	createS3BucketCommand := awscb.NewS3ApiCommandBuilder().
 		SetCommand(awscb.CreateBucket).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.CreateBucketConfiguration, createBucketConfig).
@@ -364,7 +366,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		r.Reporter.Errorf("There was a problem saving discovery document to a file: %s", err)
 		os.Exit(1)
 	}
-	putDiscoveryDocumentCommand := awscb.NewS3CommandBuilder().
+	putDiscoveryDocumentCommand := awscb.NewS3ApiCommandBuilder().
 		SetCommand(awscb.PutObject).
 		AddParam(awscb.Acl, aws.AclPublicRead).
 		AddParam(awscb.Body, fmt.Sprintf("./%s", discoveryDocumentFilename)).
@@ -379,7 +381,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		r.Reporter.Errorf("There was a problem saving JSON Web Key Set to a file: %s", err)
 		os.Exit(1)
 	}
-	putJwksCommand := awscb.NewS3CommandBuilder().
+	putJwksCommand := awscb.NewS3ApiCommandBuilder().
 		SetCommand(awscb.PutObject).
 		AddParam(awscb.Acl, aws.AclPublicRead).
 		AddParam(awscb.Body, fmt.Sprintf("./%s", jwksFilename)).
