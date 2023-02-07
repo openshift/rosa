@@ -170,8 +170,10 @@ type Client interface {
 	ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster, operatorRoles map[string]*cmv1.STSOperator,
 		policies map[string]*cmv1.AWSSTSPolicy) error
 	CreateS3Bucket(bucketName string, region string) error
+	DeleteS3Bucket(bucketName string) error
 	PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error
 	CreateSecretInSecretsManager(name string, secret string) (string, error)
+	DeleteSecretInSecretsManager(secretArn string) error
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -956,6 +958,37 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 	return nil
 }
 
+func (c *awsClient) DeleteS3Bucket(bucketName string) error {
+	c.emptyS3Bucket(bucketName)
+	bucketInput := &s3.DeleteBucketInput{
+		Bucket: aws.String(bucketName),
+	}
+	_, err := c.s3Client.DeleteBucket(bucketInput)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *awsClient) emptyS3Bucket(bucketName string) error {
+	objects, err := c.s3Client.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucketName),
+	})
+	if err != nil {
+		return err
+	}
+	for _, object := range (*objects).Contents {
+		_, err = c.s3Client.DeleteObject(&s3.DeleteObjectInput{
+			Bucket: aws.String(bucketName),
+			Key:    object.Key,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error {
 	acl := AclPublicRead
 	_, err := c.s3Client.PutObject(&s3.PutObjectInput{
@@ -985,6 +1018,18 @@ func (c *awsClient) CreateSecretInSecretsManager(name string, secret string) (st
 		return "", err
 	}
 	return *createSecretResponse.ARN, nil
+}
+
+func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
+	_, err := c.smClient.DeleteSecret(
+		&secretsmanager.DeleteSecretInput{
+			ForceDeleteWithoutRecovery: aws.Bool(true),
+			SecretId:                   aws.String(secretArn),
+		})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for

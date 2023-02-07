@@ -11,9 +11,10 @@ const ParamNewLineSeparator = " \\\n"
 type Service string
 
 const (
-	IAM Service = "iam"
-	S3  Service = "s3api"
-	SM  Service = "secretsmanager"
+	IAM   Service = "iam"
+	S3Api Service = "s3api"
+	S3    Service = "s3"
+	SM    Service = "secretsmanager"
 )
 
 type Command string
@@ -33,11 +34,15 @@ const (
 	CreateOpenIdConnectProvider   Command = "create-open-id-connect-provider"
 	DeleteOpenIdConnectProvider   Command = "delete-open-id-connect-provider"
 	DeleteRolePermissionsBoundary Command = "delete-role-permissions-boundary"
-	//S3
+	//S3Api
 	CreateBucket Command = "create-bucket"
 	PutObject    Command = "put-object"
+	//S3
+	Remove       Command = "rm"
+	RemoveBucket Command = "rb"
 	//SecretsManager
 	CreateSecret Command = "create-secret"
+	DeleteSecret Command = "delete-secret"
 )
 
 type Param string
@@ -70,6 +75,8 @@ const (
 	Name         Param = "name"
 	SecretString Param = "secret-string"
 	Description  Param = "description"
+	SecretID     Param = "secret-id"
+	Recursive    Param = "recursive"
 )
 
 type Redirect string
@@ -110,6 +117,11 @@ func (b *CommandBuilder) AddTags(value map[string]string) *CommandBuilder {
 	for k, v := range value {
 		b.tags[k] = v
 	}
+	return b
+}
+
+func (b *CommandBuilder) AddValueNoParam(value string) *CommandBuilder {
+	b.params = append(b.params, fmt.Sprintf("\t%s", value))
 	return b
 }
 
@@ -159,6 +171,10 @@ func (b *CommandBuilder) Build() string {
 
 func NewIAMCommandBuilder() *CommandBuilder {
 	return &CommandBuilder{service: IAM}
+}
+
+func NewS3ApiCommandBuilder() *CommandBuilder {
+	return &CommandBuilder{service: S3Api}
 }
 
 func NewS3CommandBuilder() *CommandBuilder {
