@@ -23,6 +23,7 @@ import (
 	"net/url"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/spf13/cobra"
 
@@ -161,7 +162,7 @@ func validateGitlabHostURL(val interface{}) error {
 	if err != nil {
 		return fmt.Errorf("Expected a valid GitLab provider URL: %s", err)
 	}
-	if parsedIssuerURL.Scheme != "https" {
+	if parsedIssuerURL.Scheme != helper.ProtocolHttps {
 		return errors.New("Expected GitLab provider URL to use an https:// scheme")
 	}
 	if parsedIssuerURL.RawQuery != "" {

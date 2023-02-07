@@ -33,6 +33,7 @@ const (
 )
 
 const True = "true"
+const ProtocolHttps = "https"
 
 func RandomLabel(size int) string {
 	value := rand.Int() // #nosec G404

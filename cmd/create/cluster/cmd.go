@@ -2249,6 +2249,10 @@ func handleByoOidcOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) (bool
 				os.Exit(1)
 			}
 			parsedURI, _ := url.ParseRequestURI(oidcEndpointUrl)
+			if parsedURI.Scheme != helper.ProtocolHttps {
+				r.Reporter.Errorf("Expected OIDC endpoint URL '%s' to use an https:// scheme", oidcEndpointUrl)
+				os.Exit(1)
+			}
 			err := helper.IsURLReachable(fmt.Sprintf("%s:%s", parsedURI.Host, parsedURI.Scheme))
 			if err != nil {
 				r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
