@@ -51,6 +51,7 @@ const (
 	OidcPrivateKeySecretArnFlag = "oidc-private-key-secret-arn"
 
 	prefixForPrivateKeySecret = "rosa-private-key-"
+	secretsManagerService     = "secretsmanager"
 )
 
 var args struct {
@@ -109,6 +110,32 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
 			os.Exit(1)
 		}
+	}
+
+	oidcPrivateKeySecretArn := args.oidcPrivateKeySecretArn
+	if oidcPrivateKeySecretArn == "" || interactive.Enabled() {
+		oidcPrivateKeySecretArn, err = interactive.GetString(
+			interactive.Input{
+				Question: "OIDC Private Key Secret ARN",
+				Help:     cmd.Flags().Lookup(OidcPrivateKeySecretArnFlag).Usage,
+				Required: true,
+				Default:  oidcPrivateKeySecretArn,
+			})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid ARN to the secret containing the private key: %s", err)
+			os.Exit(1)
+		}
+		err = aws.ARNValidator(oidcPrivateKeySecretArn)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		parsedSecretArn, _ := arn.Parse(oidcPrivateKeySecretArn)
+		if parsedSecretArn.Service != secretsManagerService {
+			r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
+			os.Exit(1)
+		}
+		args.oidcPrivateKeySecretArn = oidcPrivateKeySecretArn
 	}
 
 	oidcConfigInput := buildOidcConfigInput(r)
