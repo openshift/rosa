@@ -76,7 +76,7 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	r := rosa.NewRuntime().WithAWS()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
 	mode, err := aws.GetMode()
@@ -172,6 +172,15 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 	index := strings.LastIndex(bucketName, "-")
 	if index != -1 {
 		bucketName = bucketName[:index]
+	}
+	hasClusterUsingOidcConfig, err := r.OCMClient.HasAClusterUsingOidcConfig(bucketName)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC config '%s' : %v", bucketName, err)
+		os.Exit(1)
+	}
+	if hasClusterUsingOidcConfig {
+		r.Reporter.Errorf("There are clusters using OIDC config '%s', can't delete the configuration", bucketName)
+		os.Exit(1)
 	}
 	return OidcConfigInput{
 		BucketName:          bucketName,
