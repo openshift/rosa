@@ -2,6 +2,30 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.14 Feb 8 2023
+
+- minor refactor to improve code clarity wrt addons
+- fix: reprompt user when passed invalid addon argument
+- fix: permissions boundary shouldn't be asked if supposed to skip interactive
+- feat: add force param to forcefully ensure policies
+- Edit machinepool min replicas
+- fix: incorrect flags in message and hidden for upgrade roles
+- IDP related minor cleanup
+- Add port for OAuth Callback URI in OpenID
+- Create cluster - validate account roles have managed policies attached
+- fix: only show root failure if it is not a suggestion error
+- Refactor `create account roles command` to use interfaces
+- fix: add region when creating manual s3 bucket for oidc config
+- feat: add user prefix to oidc configuration
+- SDA-7895 Enable editing subnet in machinepools for hosted clusters
+- feat: add spinner creating oidc config
+- fix: show info report when deleting operator roles
+- fix: forcing creation only works for unmanaged policies
+- fix: oidc endpoint url should be of https scheme
+- cmd/dlt/machinepool: add confirm flag
+- feat: Add command delete oidc-config and minor fixes
+- fix: add question for private key secret arn
+
 == 1.2.13 Jan 24 2023
 
 - Skip region check if we use shard pinning
