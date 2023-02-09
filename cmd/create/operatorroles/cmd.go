@@ -515,9 +515,9 @@ func getPolicyARN(accountID string, prefix string, namespace string, name string
 		policy = policy[0:64]
 	}
 	if path != "" {
-		return fmt.Sprintf("arn:aws:iam::%s:policy%s%s", accountID, path, policy)
+		return fmt.Sprintf("arn:%s:iam::%s:policy%s%s", aws.GetPartition(), accountID, path, policy)
 	}
-	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, policy)
+	return fmt.Sprintf("arn:%s:iam::%s:policy/%s", aws.GetPartition(), accountID, policy)
 }
 
 func validateOperatorRoles(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {

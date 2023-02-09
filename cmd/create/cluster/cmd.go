@@ -2335,7 +2335,7 @@ func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.
 	if len(role) > 64 {
 		role = role[0:64]
 	}
-	str := fmt.Sprintf("arn:aws:iam::%s:role", creator.AccountID)
+	str := fmt.Sprintf("arn:%s:iam::%s:role", aws.GetPartition(), creator.AccountID)
 	if path != "" {
 		str = fmt.Sprintf("%s%s", str, path)
 		return fmt.Sprintf("%s%s", str, role)
