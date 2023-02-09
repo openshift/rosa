@@ -409,7 +409,8 @@ func GetPolicyARN(accountID string, name string, path string) string {
 }
 
 func getPolicyARN(accountID string, name string, path string) string {
-	str := fmt.Sprintf("arn:aws:iam::%s:policy", accountID)
+	partition := GetPartition()
+	str := fmt.Sprintf("arn:%s:iam::%s:policy", partition, accountID)
 	if path != "" {
 		str = fmt.Sprintf("%s%s", str, path)
 		return fmt.Sprintf("%s%s", str, name)
