@@ -52,6 +52,7 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/sirupsen/logrus"
+	"github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
@@ -943,6 +944,12 @@ func (c *awsClient) detachRolePolicy(policyArn string, roleName string) error {
 }
 
 func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
+	_, err := c.s3Client.HeadBucket(&s3.HeadBucketInput{
+		Bucket: aws.String(bucketName),
+	})
+	if err == nil {
+		return weberr.Errorf("Bucket '%s' already exists.", bucketName)
+	}
 	bucketInput := &s3.CreateBucketInput{
 		Bucket: &bucketName,
 	}
@@ -951,7 +958,7 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 			LocationConstraint: &region,
 		})
 	}
-	_, err := c.s3Client.CreateBucket(bucketInput)
+	_, err = c.s3Client.CreateBucket(bucketInput)
 	if err != nil {
 		return err
 	}
@@ -959,11 +966,20 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 }
 
 func (c *awsClient) DeleteS3Bucket(bucketName string) error {
+	_, err := c.s3Client.HeadBucket(&s3.HeadBucketInput{
+		Bucket: aws.String(bucketName),
+	})
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NotFound" {
+			return weberr.Errorf("Bucket '%s' does not exist.", bucketName)
+		}
+		return err
+	}
 	c.emptyS3Bucket(bucketName)
 	bucketInput := &s3.DeleteBucketInput{
 		Bucket: aws.String(bucketName),
 	}
-	_, err := c.s3Client.DeleteBucket(bucketInput)
+	_, err = c.s3Client.DeleteBucket(bucketInput)
 	if err != nil {
 		return err
 	}
@@ -1021,7 +1037,13 @@ func (c *awsClient) CreateSecretInSecretsManager(name string, secret string) (st
 }
 
 func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
-	_, err := c.smClient.DeleteSecret(
+	_, err := c.smClient.DescribeSecret(&secretsmanager.DescribeSecretInput{
+		SecretId: aws.String(secretArn),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = c.smClient.DeleteSecret(
 		&secretsmanager.DeleteSecretInput{
 			ForceDeleteWithoutRecovery: aws.Bool(true),
 			SecretId:                   aws.String(secretArn),
