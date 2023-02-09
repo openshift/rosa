@@ -31,6 +31,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -193,11 +194,31 @@ type OidcConfigInput struct {
 	PrivateKeySecretName string
 }
 
+const (
+	bucketNameRegex = "^[a-z][a-z0-9\\-]+[a-z0-9]$"
+)
+
+func isValidBucketName(bucketName string) bool {
+	if bucketName[0] == '.' || bucketName[len(bucketName)-1] == '.' {
+		return false
+	}
+	if match, _ := regexp.MatchString("\\.\\.", bucketName); match {
+		return false
+	}
+	// We don't support buckets with '.' in them
+	match, _ := regexp.MatchString(bucketNameRegex, bucketName)
+	return match
+}
+
 func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 	randomLabel := helper.RandomLabel(defaultLengthRandomLabel)
 	bucketName := fmt.Sprintf("%s-%s", defaultPrefixForConfiguration, randomLabel)
 	if args.userPrefix != "" {
 		bucketName = fmt.Sprintf("%s-%s", args.userPrefix, bucketName)
+	}
+	if !isValidBucketName(bucketName) {
+		r.Reporter.Errorf("The bucket name '%s' is not valid", bucketName)
+		os.Exit(1)
 	}
 	privateKeySecretName := fmt.Sprintf("%s-%s", prefixForPrivateKeySecret, bucketName)
 	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
@@ -284,12 +305,7 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	if spin != nil {
 		spin.Start()
 	}
-	secretsARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
-	if err != nil {
-		r.Reporter.Errorf("There was a problem saving private key to secrets manager: %s", err)
-		os.Exit(1)
-	}
-	err = r.AWSClient.CreateS3Bucket(bucketName, args.region)
+	err := r.AWSClient.CreateS3Bucket(bucketName, args.region)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem creating S3 bucket '%s': %s", bucketName, err)
 		os.Exit(1)
@@ -308,6 +324,11 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		}
 		r.Reporter.Errorf("There was a problem populating JWKS "+
 			"to S3 bucket '%s': %s", bucketName, err)
+		os.Exit(1)
+	}
+	secretsARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving private key to secrets manager: %s", err)
 		os.Exit(1)
 	}
 	if r.Reporter.IsTerminal() {
@@ -337,18 +358,6 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
 		os.Exit(1)
 	}
-	createSecretCommand := awscb.NewSecretsManagerCommandBuilder().
-		SetCommand(awscb.CreateSecret).
-		AddParam(awscb.Name, privateKeySecretName).
-		AddParam(awscb.SecretString, fmt.Sprintf("file://%s", privateKeyFilename)).
-		AddParam(awscb.Description, fmt.Sprintf("\"Secret for %s\"", bucketName)).
-		AddParam(awscb.Region, args.region).
-		AddTags(map[string]string{
-			tags.RedHatManaged: "true",
-		}).
-		Build()
-	commands = append(commands, createSecretCommand)
-	commands = append(commands, fmt.Sprintf("rm %s", privateKeyFilename))
 	createBucketConfig := ""
 	if args.region != aws.DefaultRegion {
 		createBucketConfig = fmt.Sprintf("LocationConstraint=%s", args.region)
@@ -390,6 +399,18 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		Build()
 	commands = append(commands, putJwksCommand)
 	commands = append(commands, fmt.Sprintf("rm %s", jwksFilename))
+	createSecretCommand := awscb.NewSecretsManagerCommandBuilder().
+		SetCommand(awscb.CreateSecret).
+		AddParam(awscb.Name, privateKeySecretName).
+		AddParam(awscb.SecretString, fmt.Sprintf("file://%s", privateKeyFilename)).
+		AddParam(awscb.Description, fmt.Sprintf("\"Secret for %s\"", bucketName)).
+		AddParam(awscb.Region, args.region).
+		AddTags(map[string]string{
+			tags.RedHatManaged: "true",
+		}).
+		Build()
+	commands = append(commands, createSecretCommand)
+	commands = append(commands, fmt.Sprintf("rm %s", privateKeyFilename))
 	fmt.Println(awscb.JoinCommands(commands))
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Please run commands above to generate OIDC compliant configuration in your AWS account.")
