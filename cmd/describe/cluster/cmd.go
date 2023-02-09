@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
@@ -121,6 +122,11 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	clusterDNS := "Not ready"
+	if cluster.Status() != nil && cluster.Status().DNSReady() {
+		clusterDNS = strings.Join([]string{cluster.Name(), cluster.DNS().BaseDomain()}, ".")
+	}
+
 	clusterName := cluster.Name()
 
 	isPrivate := "No"
@@ -146,7 +152,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"Control Plane:              %s\n"+
 		"OpenShift Version:          %s\n"+
 		"Channel Group:              %s\n"+
-		"DNS:                        %s.%s\n"+
+		"DNS:                        %s\n"+
 		"AWS Account:                %s\n"+
 		"API URL:                    %s\n"+
 		"Console URL:                %s\n"+
@@ -165,7 +171,7 @@ func run(cmd *cobra.Command, argv []string) {
 		controlPlaneConfig(cluster),
 		cluster.OpenshiftVersion(),
 		cluster.Version().ChannelGroup(),
-		cluster.Name(), cluster.DNS().BaseDomain(),
+		clusterDNS,
 		creatorARN.AccountID,
 		cluster.API().URL(),
 		cluster.Console().URL(),
