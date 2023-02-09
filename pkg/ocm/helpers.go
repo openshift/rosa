@@ -747,3 +747,24 @@ func (c *Client) GetVersionsList(channelGroup string) ([]string, error) {
 	}
 	return versionList, nil
 }
+
+func ValidateOperatorRolesMatchOidcProvider(awsClient aws.Client,
+	operatorIAMRoleList []OperatorIAMRole, oidcEndpointUrl string) error {
+	operatorIAMRoles := operatorIAMRoleList
+	parsedUrl, err := url.Parse(oidcEndpointUrl)
+	if err != nil {
+		return err
+	}
+
+	for _, operatorIAMRole := range operatorIAMRoles {
+		roleARN := operatorIAMRole.RoleARN
+		roleObject, err := awsClient.GetRoleByARN(roleARN)
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(*roleObject.AssumeRolePolicyDocument, parsedUrl.Host) {
+			return weberr.Errorf("Operator role '%s' does not have trusted relationship to '%s' issuer URL", roleARN, parsedUrl)
+		}
+	}
+	return nil
+}

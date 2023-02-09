@@ -1136,8 +1136,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	credRequests, err := r.OCMClient.GetCredRequests(isHostedCP)
+	isByoOidcSet := false
+	oidcEndpointUrl := ""
+	oidcPrivateKeySecretArn := ""
 	if isSTS {
+		credRequests, err := r.OCMClient.GetCredRequests(isHostedCP)
 		if err != nil {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 			os.Exit(1)
@@ -1194,22 +1197,21 @@ func run(cmd *cobra.Command, _ []string) {
 				})
 			}
 		}
-		// Validate the role names are available on AWS
-		for _, role := range operatorIAMRoleList {
-			name, err := aws.GetResourceIdFromARN(role.RoleARN)
-			if err != nil {
-				r.Reporter.Errorf("Error validating role arn. Arn: %v. Error: %v", role.RoleARN, err)
+		isByoOidcSet, oidcEndpointUrl, oidcPrivateKeySecretArn = handleByoOidcOptions(r, cmd, isSTS)
+		err = validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient, operatorIAMRoleList)
+		if err != nil {
+			if !isByoOidcSet {
+				r.Reporter.Errorf("%v", err)
 				os.Exit(1)
-			}
-
-			err = awsClient.ValidateRoleNameAvailable(name)
-			if err != nil {
-				r.Reporter.Errorf("Error validating role: %v", err)
-				os.Exit(1)
+			} else {
+				err = ocm.ValidateOperatorRolesMatchOidcProvider(awsClient, operatorIAMRoleList, oidcEndpointUrl)
+				if err != nil {
+					r.Reporter.Errorf("%v", err)
+					os.Exit(1)
+				}
 			}
 		}
 	}
-	isByoOidcSet, oidcEndpointUrl, oidcPrivateKeySecretArn := handleByoOidcOptions(r, cmd, isSTS)
 
 	// Custom tags for AWS resources
 	tags := args.tags
@@ -2208,7 +2210,11 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create operator roles.")
 			}
-			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
+			err := operatorroles.Cmd.RunE(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
+			if err != nil {
+				r.Reporter.Errorf("There was a problem creating operator roles: %v", err)
+				os.Exit(1)
+			}
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
@@ -2222,18 +2228,17 @@ func run(cmd *cobra.Command, _ []string) {
 			if permissionsBoundary != "" {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
 			}
-
 			oidcCMD := "rosa create oidc-provider"
 			if !isByoOidcSet {
 				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
 			} else {
 				oidcCMD = fmt.Sprintf("%s --%s %s", oidcCMD, OidcEndpointUrlFlag, oidcEndpointUrl)
 			}
+			output := "Run the following commands to continue the cluster creation:\n\n"
+			output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
+			output = fmt.Sprintf("%s\t%s\n", output, oidcCMD)
+			r.Reporter.Infof(output)
 
-			r.Reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
-				"\t%s\n"+
-				"\t%s\n",
-				rolesCMD, oidcCMD)
 		}
 	}
 
@@ -2249,6 +2254,22 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+}
+
+func validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient aws.Client,
+	operatorIAMRoleList []ocm.OperatorIAMRole) error {
+	for _, role := range operatorIAMRoleList {
+		name, err := aws.GetResourceIdFromARN(role.RoleARN)
+		if err != nil {
+			return err
+		}
+
+		err = awsClient.ValidateRoleNameAvailable(name)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func handleByoOidcOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) (bool, string, string) {
