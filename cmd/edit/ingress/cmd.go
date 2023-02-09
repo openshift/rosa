@@ -73,6 +73,11 @@ func shouldEnableInteractive(flagSet *pflag.FlagSet, params []string) bool {
 	return unchanged
 }
 
+const (
+	privateFlag    = "private"
+	labelMatchFlag = "label-match"
+)
+
 func init() {
 	flags := Cmd.Flags()
 
@@ -80,14 +85,14 @@ func init() {
 
 	flags.BoolVar(
 		&args.private,
-		"private",
+		privateFlag,
 		false,
 		"Restrict application route to direct, private connectivity.",
 	)
 
 	flags.StringVar(
 		&args.labelMatch,
-		"label-match",
+		labelMatchFlag,
 		"",
 		"Label match for ingress. Format should be a comma-separated list of 'key=value'. "+
 			"If no label is specified, all routes will be exposed on both routers.",
@@ -108,40 +113,34 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	clusterKey := r.GetClusterKey()
-	var err error
-	labelMatch := args.labelMatch
-	routeSelectors := make(map[string]string)
 
-	if !interactive.Enabled() && shouldEnableInteractive(cmd.Flags(), []string{"label-match", "private"}) {
+	if !interactive.Enabled() && shouldEnableInteractive(cmd.Flags(), []string{labelMatchFlag, privateFlag}) {
 		interactive.Enable()
 	}
 
-	if interactive.Enabled() {
-		labelMatch, err = interactive.GetString(interactive.Input{
+	var labelMatch *string
+	if cmd.Flags().Changed(labelMatchFlag) {
+		labelMatch = &args.labelMatch
+	} else if interactive.Enabled() {
+		labelMatchArg, err := interactive.GetString(interactive.Input{
 			Question: "Label match for ingress",
-			Help:     cmd.Flags().Lookup("label-match").Usage,
+			Help:     cmd.Flags().Lookup(labelMatchFlag).Usage,
 			Default:  labelMatch,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
-	}
-	if labelMatch != "" {
-		routeSelectors, err = getRouteSelector(labelMatch)
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
+		labelMatch = &labelMatchArg
 	}
 
 	var private *bool
-	if cmd.Flags().Changed("private") {
+	if cmd.Flags().Changed(privateFlag) {
 		private = &args.private
 	} else if interactive.Enabled() {
 		privArg, err := interactive.GetBool(interactive.Input{
 			Question: "Private ingress",
-			Help:     cmd.Flags().Lookup("private").Usage,
+			Help:     cmd.Flags().Lookup(privateFlag).Usage,
 			Default:  args.private,
 		})
 		if err != nil {
@@ -163,7 +162,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Private: private,
 		}
 
-		err = r.OCMClient.UpdateCluster(clusterKey, r.Creator, clusterConfig)
+		err := r.OCMClient.UpdateCluster(clusterKey, r.Creator, clusterConfig)
 		if err != nil {
 			r.Reporter.Errorf("Failed to update cluster API on cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
@@ -210,9 +209,15 @@ func run(cmd *cobra.Command, argv []string) {
 			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodExternal)
 		}
 	}
-
-	// Add route selectors
-	if cmd.Flags().Changed("label-match") || len(routeSelectors) > 0 {
+	if labelMatch != nil {
+		routeSelectors := map[string]string{}
+		if *labelMatch != "" {
+			routeSelectors, err = getRouteSelector(*labelMatch)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		}
 		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
 	}
 
@@ -222,7 +227,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	sameRouteSelectors := ingress.RouteSelectors() == nil || reflect.DeepEqual(curRouteSelectors, ingress.RouteSelectors())
+	sameRouteSelectors := labelMatch == nil || reflect.DeepEqual(curRouteSelectors, ingress.RouteSelectors())
 	// If private arg is nil no change to listening method will be made anyway
 	sameListeningMethod := private == nil || curListening == ingress.Listening()
 
