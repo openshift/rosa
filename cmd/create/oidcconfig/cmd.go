@@ -202,6 +202,12 @@ func isValidBucketName(bucketName string) bool {
 	if bucketName[0] == '.' || bucketName[len(bucketName)-1] == '.' {
 		return false
 	}
+	if strings.HasPrefix(bucketName, "xn--") {
+		return false
+	}
+	if strings.HasSuffix(bucketName, "-s3alias") {
+		return false
+	}
 	if match, _ := regexp.MatchString("\\.\\.", bucketName); match {
 		return false
 	}
