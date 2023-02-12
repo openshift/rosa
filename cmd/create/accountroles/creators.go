@@ -69,14 +69,26 @@ func (mp *managedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRol
 		}
 		r.Reporter.Infof("Created role '%s' with ARN '%s'", accRoleName, roleARN)
 
-		filename := fmt.Sprintf("sts_%s_permission_policy", file)
-		var policyARN string
-		policyARN, err = aws.GetManagedPolicyARN(input.policies, filename)
+		err = attachManagedPolicies(r, input, file, accRoleName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func attachManagedPolicies(r *rosa.Runtime, input *accountRolesCreationInput, roleType string,
+	accRoleName string) error {
+	policyKeys := aws.GetAccountRolePolicyKeys(roleType)
+
+	for _, policyKey := range policyKeys {
+		policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
 		if err != nil {
 			return err
 		}
 
-		r.Reporter.Debugf("Attaching permission policy to role '%s'", filename)
+		r.Reporter.Debugf("Attaching permission policy to role '%s'", policyKey)
 		err = r.AWSClient.AttachRolePolicy(accRoleName, policyARN)
 		if err != nil {
 			return err
@@ -93,15 +105,18 @@ func (mp *managedPoliciesCreator) buildCommands(input *accountRolesCreationInput
 		iamTags := mp.getRoleTags(file, input)
 
 		createRole := buildCreateRoleCommand(accRoleName, file, iamTags, input)
+		commands = append(commands, createRole)
 
-		policyARN, err := aws.GetManagedPolicyARN(input.policies, fmt.Sprintf("sts_%s_permission_policy", file))
-		if err != nil {
-			return "", err
+		policyKeys := aws.GetAccountRolePolicyKeys(file)
+		for _, policyKey := range policyKeys {
+			policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
+			if err != nil {
+				return "", err
+			}
+
+			attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
+			commands = append(commands, attachRolePolicy)
 		}
-
-		attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
-
-		commands = append(commands, createRole, attachRolePolicy)
 	}
 
 	return awscb.JoinCommands(commands), nil

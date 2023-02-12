@@ -76,6 +76,12 @@ const (
 	OCMUserRole             = "User"
 )
 
+const (
+	InstallerCoreKey        = "sts_installer_core_permission_policy"
+	InstallerVPCKey         = "sts_installer_vpc_permission_policy"
+	InstallerPrivateLinkKey = "sts_installer_privatelink_permission_policy"
+)
+
 var AccountRoles map[string]AccountRole = map[string]AccountRole{
 	InstallerAccountRole:    {Name: "Installer", Flag: "role-arn"},
 	ControlPlaneAccountRole: {Name: "ControlPlane", Flag: "controlplane-iam-role"},
@@ -1602,11 +1608,15 @@ func (c *awsClient) ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster,
 }
 
 func (c *awsClient) ValidateAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error {
-	for key, accountRole := range AccountRoles {
+	for roleType, accountRole := range AccountRoles {
 		roleName := GetRoleName(prefix, accountRole.Name)
-		err := c.validateManagedPolicy(policies, fmt.Sprintf("sts_%s_permission_policy", key), roleName)
-		if err != nil {
-			return err
+
+		policyKeys := GetAccountRolePolicyKeys(roleType)
+		for _, policyKey := range policyKeys {
+			err := c.validateManagedPolicy(policies, policyKey, roleName)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
