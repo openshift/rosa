@@ -50,7 +50,7 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-//nolint
+// nolint
 var kmsArnRE = regexp.MustCompile(
 	`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
 )
@@ -95,6 +95,7 @@ var args struct {
 	fips                     bool
 	enableCustomerManagedKey bool
 	kmsKeyARN                string
+	etcdEncryptionKmsARN     string
 	// Scaling options
 	computeMachineType       string
 	computeNodes             int
@@ -368,6 +369,13 @@ func init() {
 		"kms-key-arn",
 		"",
 		"The key ARN is the Amazon Resource Name (ARN) of a CMK. It is a unique, "+
+			"fully qualified identifier for the CMK. A key ARN includes the AWS account, Region, and the key ID.")
+
+	flags.StringVar(&args.etcdEncryptionKmsARN,
+		"etcd-encryption-kms-arn",
+		"",
+		"The etcd encryption kms key ARN is the key used to encrypt etcd. "+
+			"If set it will override etcd-encryption flag to true. It is a unique, "+
 			"fully qualified identifier for the CMK. A key ARN includes the AWS account, Region, and the key ID.")
 
 	flags.StringVar(
@@ -678,6 +686,13 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if isHostedCP && cmd.Flags().Changed("default-mp-labels") {
 		r.Reporter.Errorf("Setting the default machine pool labels is not supported for hosted clusters")
+		os.Exit(1)
+	}
+
+	etcdEncryptionKmsARN := args.etcdEncryptionKmsARN
+
+	if etcdEncryptionKmsARN != "" && !isHostedCP {
+		r.Reporter.Errorf("etcd encryption kms arn is only allowed for hosted cp")
 		os.Exit(1)
 	}
 
@@ -1588,6 +1603,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Expected a valid value for kms-key-arn matching %s", kmsArnRE)
 		os.Exit(1)
 	}
+
 	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
 		GetDefaultClusterFlavors(args.flavour)
 	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
@@ -1871,7 +1887,16 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	etcdEncryption := args.etcdEncryption
-	if interactive.Enabled() && !fips {
+
+	// validate and force etcd encryption
+	if etcdEncryptionKmsARN != "" && cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
+		r.Reporter.Errorf("etcd encryption cannot be disabled when encryption kms arn is provided")
+		os.Exit(1)
+	} else {
+		etcdEncryption = true
+	}
+
+	if interactive.Enabled() && !(fips || etcdEncryptionKmsARN != "") {
 		etcdEncryption, err = interactive.GetBool(interactive.Input{
 			Question: "Encrypt etcd data",
 			Help:     cmd.Flags().Lookup("etcd-encryption").Usage,
@@ -1889,6 +1914,27 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			etcdEncryption = true
 		}
+	}
+
+	if etcdEncryption && isHostedCP && (etcdEncryptionKmsARN == "" || interactive.Enabled()) {
+		etcdEncryptionKmsARN, err = interactive.GetString(interactive.Input{
+			Question: "Etcd encryption KMS ARN",
+			Help:     cmd.Flags().Lookup("etcd-encryption-kms-arn").Usage,
+			Default:  etcdEncryptionKmsARN,
+			Required: true,
+			Validators: []interactive.Validator{
+				interactive.RegExp(kmsArnRE.String()),
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if etcdEncryptionKmsARN != "" && !kmsArnRE.MatchString(etcdEncryptionKmsARN) {
+		r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn matching %s", kmsArnRE)
+		os.Exit(1)
 	}
 
 	disableWorkloadMonitoring := args.disableWorkloadMonitoring
@@ -2041,6 +2087,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Flavour:                   args.flavour,
 		FIPS:                      fips,
 		EtcdEncryption:            etcdEncryption,
+		EtcdEncryptionKMSArn:      etcdEncryptionKmsARN,
 		EnableProxy:               enableProxy,
 		AdditionalTrustBundle:     additionalTrustBundle,
 		Expiration:                expiration,
