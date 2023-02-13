@@ -84,9 +84,16 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\tADMIN\n")
+	fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\tADMIN\tAWS Managed\n")
 	for _, ocmRole := range ocmRoles {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n", ocmRole.RoleName, ocmRole.RoleARN, ocmRole.Linked, ocmRole.Admin)
+		var awsManaged string
+		if ocmRole.ManagedPolicy {
+			awsManaged = "Yes"
+		} else {
+			awsManaged = "No"
+		}
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", ocmRole.RoleName, ocmRole.RoleARN, ocmRole.Linked, ocmRole.Admin,
+			awsManaged)
 	}
 	writer.Flush()
 }
