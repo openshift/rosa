@@ -50,9 +50,10 @@ type Spec struct {
 	DisableWorkloadMonitoring *bool
 
 	//Encryption
-	FIPS           bool
-	EtcdEncryption bool
-	KMSKeyArn      string
+	FIPS                 bool
+	EtcdEncryption       bool
+	KMSKeyArn            string
+	EtcdEncryptionKMSArn string
 	// Scaling config
 	ComputeMachineType string
 	ComputeNodes       int
@@ -801,6 +802,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 	if len(config.Tags) > 0 {
 		awsBuilder = awsBuilder.Tags(config.Tags)
+	}
+
+	// etcd encryption kms key arn
+	if config.EtcdEncryptionKMSArn != "" {
+		awsBuilder = awsBuilder.EtcdEncryption(cmv1.NewAwsEtcdEncryption().KMSKeyARN(config.EtcdEncryptionKMSArn))
 	}
 
 	clusterBuilder = clusterBuilder.AWS(awsBuilder)
