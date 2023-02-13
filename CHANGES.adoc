@@ -2,6 +2,18 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.15 Feb 13 2023
+
+- fix: improve error messages for deleting oidc-config
+- fix: adding some validations to bucket name
+- fix: allow empty label match editing ingress interactive
+- aws: Ensure ARNs have the correct partition
+- Attach three policies to the installer role - managed policies
+- to fix empty DNS domain when DNS not ready: SDA-7418
+- fix: add a few more validations to bucket/folder name
+- Add a `AWS managed` column to list role commands
+- Add etcd encyprtion kms arn support
+
 == 1.2.14 Feb 8 2023
 
 - minor refactor to improve code clarity wrt addons
