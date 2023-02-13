@@ -46,14 +46,15 @@ type AccountRole struct {
 }
 
 type Role struct {
-	RoleType   string   `json:"RoleType,omitempty"`
-	Version    string   `json:"Version,omitempty"`
-	RolePrefix string   `json:"RolePrefix,omitempty"`
-	RoleName   string   `json:"RoleName,omitempty"`
-	RoleARN    string   `json:"RoleARN,omitempty"`
-	Linked     string   `json:"Linked,omitempty"`
-	Admin      string   `json:"Admin,omitempty"`
-	Policy     []Policy `json:"Policy,omitempty"`
+	RoleType      string   `json:"RoleType,omitempty"`
+	Version       string   `json:"Version,omitempty"`
+	RolePrefix    string   `json:"RolePrefix,omitempty"`
+	RoleName      string   `json:"RoleName,omitempty"`
+	RoleARN       string   `json:"RoleARN,omitempty"`
+	Linked        string   `json:"Linked,omitempty"`
+	Admin         string   `json:"Admin,omitempty"`
+	Policy        []Policy `json:"Policy,omitempty"`
+	ManagedPolicy bool     `json:"ManagedPolicy,omitempty"`
 }
 
 type PolicyDetail struct {
@@ -648,10 +649,13 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 			if err != nil {
 				return nil, err
 			}
-			if roleHasTag(roleTags.Tags, tags.AdminRole, "true") {
+			if roleHasTag(roleTags.Tags, tags.AdminRole, tags.True) {
 				ocmRole.Admin = "Yes"
 			} else {
 				ocmRole.Admin = "No"
+			}
+			if roleHasTag(roleTags.Tags, tags.ManagedPolicies, tags.True) {
+				ocmRole.ManagedPolicy = true
 			}
 
 			ocmRoles = append(ocmRoles, ocmRole)
@@ -725,6 +729,10 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 				}
 				isTagged = true
 				accountRole.Version = tagValue
+			case tags.ManagedPolicies:
+				if aws.StringValue(tag.Value) == tags.True {
+					accountRole.ManagedPolicy = true
+				}
 			}
 		}
 		if isTagged && !skip {
