@@ -8,13 +8,15 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/util/validation"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
 )
 
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
@@ -562,11 +564,9 @@ func ParseLabels(labels string) (map[string]string, error) {
 			return nil, fmt.Errorf("Expected key=value format for labels")
 		}
 		tokens := strings.Split(label, "=")
-		if strings.Contains(tokens[0], "\"") {
-			return nil, fmt.Errorf("Invalid label key '%s': name part must not contain '\"'", tokens[0])
-		}
-		if strings.Contains(tokens[1], "\"") {
-			return nil, fmt.Errorf("Invalid label value '%s': name part must not contain '\"'", tokens[1])
+		err := validateLabelKeyValuePair(tokens[0], tokens[1])
+		if err != nil {
+			return nil, err
 		}
 		key := strings.TrimSpace(tokens[0])
 		value := strings.TrimSpace(tokens[1])
@@ -576,6 +576,18 @@ func ParseLabels(labels string) (map[string]string, error) {
 		labelMap[key] = value
 	}
 	return labelMap, nil
+}
+
+func validateLabelKeyValuePair(key, value string) error {
+	if errs := validation.IsQualifiedName(key); len(errs) != 0 {
+		return fmt.Errorf("Invalid label key '%s': %s", key, strings.Join(errs, "; "))
+	}
+
+	if errs := validation.IsValidLabelValue(value); len(errs) != 0 {
+		return fmt.Errorf("Invalid label value '%s': at key: '%s': %s",
+			value, key, strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 func taintValidator(val interface{}) error {
