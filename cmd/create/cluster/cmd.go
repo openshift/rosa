@@ -1889,11 +1889,13 @@ func run(cmd *cobra.Command, _ []string) {
 	etcdEncryption := args.etcdEncryption
 
 	// validate and force etcd encryption
-	if etcdEncryptionKmsARN != "" && cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
-		r.Reporter.Errorf("etcd encryption cannot be disabled when encryption kms arn is provided")
-		os.Exit(1)
-	} else {
-		etcdEncryption = true
+	if etcdEncryptionKmsARN != "" {
+		if cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
+			r.Reporter.Errorf("etcd encryption cannot be disabled when encryption kms arn is provided")
+			os.Exit(1)
+		} else {
+			etcdEncryption = true
+		}
 	}
 
 	if interactive.Enabled() && !(fips || etcdEncryptionKmsARN != "") {
