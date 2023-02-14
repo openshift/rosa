@@ -4,6 +4,7 @@ This document describes the relevant changes between releases of the `rosa` comm
 
 == 1.2.15 Feb 13 2023
 
+- Fix etcd encryption default enforecment
 - fix: improve error messages for deleting oidc-config
 - fix: adding some validations to bucket name
 - fix: allow empty label match editing ingress interactive
