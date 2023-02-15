@@ -380,6 +380,22 @@ func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cl
 	return response.Items().Get(0), nil
 }
 
+func (c *Client) HasAClusterUsingOidcConfig(bucketName string) (bool, error) {
+	query := fmt.Sprintf(
+		"aws.sts.oidc_endpoint_url like '%%%s%%'", bucketName,
+	)
+	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
+	page := 1
+	response, err := request.Page(page).Send()
+	if err != nil {
+		return false, err
+	}
+	if response.Total() > 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (c *Client) IsSTSClusterExists(creator *aws.Creator, count int, roleARN string) (exists bool, err error) {
 	if count < 1 {
 		err = errors.Errorf("Cannot fetch fewer than 1 cluster")
