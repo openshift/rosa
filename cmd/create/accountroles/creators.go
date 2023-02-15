@@ -118,6 +118,13 @@ type unmanagedPoliciesCreator struct{}
 
 func (up *unmanagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRolesCreationInput) error {
 	for file, role := range aws.AccountRoles {
+		// If hosted-cp flag was passed, create only the hosted CP installer policy
+		if r.HostedCP != nil {
+			if *r.HostedCP && file == aws.InstallerAccountRole {
+				continue
+			}
+		}
+
 		accRoleName := aws.GetRoleName(input.prefix, role.Name)
 		if !confirm.Prompt(true, "Create the '%s' role?", accRoleName) {
 			continue

@@ -68,19 +68,21 @@ type Policy struct {
 }
 
 const (
-	InstallerAccountRole    = "installer"
-	ControlPlaneAccountRole = "instance_controlplane"
-	WorkerAccountRole       = "instance_worker"
-	SupportAccountRole      = "support"
-	OCMRole                 = "OCM"
-	OCMUserRole             = "User"
+	InstallerAccountRole         = "installer"
+	HostedCPInstallerAccountRole = "installer_hosted_cp"
+	ControlPlaneAccountRole      = "instance_controlplane"
+	WorkerAccountRole            = "instance_worker"
+	SupportAccountRole           = "support"
+	OCMRole                      = "OCM"
+	OCMUserRole                  = "User"
 )
 
 var AccountRoles map[string]AccountRole = map[string]AccountRole{
-	InstallerAccountRole:    {Name: "Installer", Flag: "role-arn"},
-	ControlPlaneAccountRole: {Name: "ControlPlane", Flag: "controlplane-iam-role"},
-	WorkerAccountRole:       {Name: "Worker", Flag: "worker-iam-role"},
-	SupportAccountRole:      {Name: "Support", Flag: "support-role-arn"},
+	InstallerAccountRole:         {Name: "Installer", Flag: "role-arn"},
+	HostedCPInstallerAccountRole: {Name: "Installer", Flag: "role-arn"},
+	ControlPlaneAccountRole:      {Name: "ControlPlane", Flag: "controlplane-iam-role"},
+	WorkerAccountRole:            {Name: "Worker", Flag: "worker-iam-role"},
+	SupportAccountRole:           {Name: "Support", Flag: "support-role-arn"},
 }
 
 var OCMUserRolePolicyFile = "ocm_user"

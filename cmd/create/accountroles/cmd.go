@@ -41,6 +41,9 @@ var args struct {
 	channelGroup        string
 	managed             bool
 	forcePolicyCreation bool
+
+	// Hypershift options:
+	hostedCPEnabled bool
 }
 
 var Cmd = &cobra.Command{
@@ -113,6 +116,16 @@ func init() {
 		"Forces creation of policies skipping compatibility check",
 	)
 
+	// Options releated to HyperShift:
+	flags.BoolVar(
+		&args.hostedCPEnabled,
+		"hosted-cp",
+		false,
+		"Enable the use of hosted control planes (HyperShift)",
+	)
+
+	flags.MarkHidden("hosted-cp")
+
 	aws.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
@@ -143,6 +156,12 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
 		os.Exit(1)
+	}
+
+	// Set HostedCP for Runtime if we are creating HostedCP roles and policies
+	isHostedCP := cmd.Flags().Changed("hosted-cp")
+	if isHostedCP {
+		r.IsHostedCP()
 	}
 
 	// Determine if managed policies are enabled

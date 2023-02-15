@@ -19,6 +19,7 @@ type Runtime struct {
 	Creator    *aws.Creator
 	ClusterKey string
 	Cluster    *cmv1.Cluster
+	HostedCP   *bool
 }
 
 func NewRuntime() *Runtime {
@@ -48,6 +49,16 @@ func (r *Runtime) WithAWS() *Runtime {
 			os.Exit(1)
 		}
 	}
+	return r
+}
+
+func (r *Runtime) IsHostedCP() *Runtime {
+	isHostedCP := true
+	if r.HostedCP != nil && r.HostedCP != &isHostedCP {
+		r.Reporter.Errorf("Runtime HostedCP already set to %s", r.HostedCP)
+	}
+
+	r.HostedCP = &isHostedCP
 	return r
 }
 
@@ -94,5 +105,11 @@ func (r *Runtime) FetchCluster() *cmv1.Cluster {
 		os.Exit(1)
 	}
 	r.Cluster = cluster
+
+	isHostedCP := cluster.Hypershift().Enabled()
+	if isHostedCP {
+		r.HostedCP = &isHostedCP
+	}
+
 	return cluster
 }
