@@ -14,6 +14,8 @@ This document describes the relevant changes between releases of the `rosa` comm
 - fix: add a few more validations to bucket/folder name
 - Add a `AWS managed` column to list role commands
 - Add etcd encyprtion kms arn support
+- Check if any clusters are using the oidc config before deletion
+- Using k8s/apimachinery/validation for machine pool labels
 
 == 1.2.14 Feb 8 2023
 
