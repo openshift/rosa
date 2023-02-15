@@ -19,6 +19,7 @@ package roles
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,6 +48,7 @@ var args struct {
 	clusterUpgradeVersion       string
 	policyUpgradeversion        string
 	channelGroup                string
+	hostedCPEnabled             bool
 }
 
 var Cmd = &cobra.Command{
@@ -96,6 +98,16 @@ func init() {
 	)
 	flags.MarkHidden(channelGroupFlag)
 
+	// Options releated to HyperShift:
+	flags.BoolVar(
+		&args.hostedCPEnabled,
+		"hosted-cp",
+		false,
+		"Enable the use of hosted control planes (HyperShift)",
+	)
+
+	flags.MarkHidden("hosted-cp")
+
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
@@ -108,6 +120,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	ocmClient := r.OCMClient
 
 	isInvokedFromClusterUpgrade := false
+	isHostedCP := false
 	skipInteractive := false
 	var cluster *v1.Cluster
 	if len(argv) >= 2 && !cmd.Flag("cluster").Changed {
@@ -118,6 +131,17 @@ func run(cmd *cobra.Command, argv []string) error {
 		args.channelGroup = argv[3]
 		isInvokedFromClusterUpgrade = true
 	}
+
+	var err error
+
+	if len(argv) > 3 {
+		args.hostedCPEnabled, err = strconv.ParseBool(argv[4])
+		if err != nil {
+			r.Reporter.Errorf("Can't determine if cluster is Hosted CP enabled")
+		}
+		isHostedCP = args.hostedCPEnabled
+	}
+
 	args.isInvokedFromClusterUpgrade = isInvokedFromClusterUpgrade
 
 	r.GetClusterKey()
@@ -296,6 +320,7 @@ func run(cmd *cobra.Command, argv []string) error {
 					accountRolePolicies,
 					policyVersion,
 					isPolicyVersionChosen,
+					isHostedCP,
 				)
 				if err != nil {
 					LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
@@ -545,9 +570,13 @@ func upgradeAccountRolePoliciesFromCluster(
 	policies map[string]*v1.AWSSTSPolicy,
 	policyVersion string,
 	isVersionChosen bool,
+	isHostedCP bool,
 ) error {
 	for file, role := range aws.AccountRoles {
 		roleName, err := aws.GetAccountRoleName(cluster, role.Name)
+		if isHostedCP && file == aws.InstallerAccountRole {
+			continue
+		}
 		if err != nil {
 			return err
 		}

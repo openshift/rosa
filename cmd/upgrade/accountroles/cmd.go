@@ -39,9 +39,10 @@ import (
 )
 
 var args struct {
-	prefix       string
-	version      string
-	channelGroup string
+	prefix          string
+	version         string
+	channelGroup    string
+	hostedCPEnabled bool
 }
 
 var Cmd = &cobra.Command{
@@ -84,6 +85,16 @@ func init() {
 	)
 	flags.MarkHidden("channel-group")
 
+	// Options releated to HyperShift:
+	flags.BoolVar(
+		&args.hostedCPEnabled,
+		"hosted-cp",
+		false,
+		"Enable the use of hosted control planes (HyperShift)",
+	)
+
+	flags.MarkHidden("hosted-cp")
+
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
@@ -94,6 +105,12 @@ func run(cmd *cobra.Command, argv []string) error {
 	reporter := r.Reporter
 	awsClient := r.AWSClient
 	ocmClient := r.OCMClient
+
+	// Set HostedCP for Runtime if we are creating HostedCP roles and policies
+	isHostedCP := cmd.Flags().Changed("hosted-cp")
+	if isHostedCP {
+		r.IsHostedCP()
+	}
 
 	skipInteractive := false
 	mode, err := aws.GetMode()
@@ -214,7 +231,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		if isUpgradeNeedForAccountRolePolicies {
 			reporter.Infof("Starting to upgrade the policies")
 			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
-				policyVersion, policyPath, isVersionChosen)
+				policyVersion, policyPath, isVersionChosen, isHostedCP)
 			if err != nil {
 				LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
 				reporter.Errorf("Error upgrading the role polices: %s", err)
@@ -256,8 +273,11 @@ func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, er
 }
 
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
-	policies map[string]*cmv1.AWSSTSPolicy, policyVersion string, policyPath string, isVersionChosen bool) error {
+	policies map[string]*cmv1.AWSSTSPolicy, policyVersion string, policyPath string, isVersionChosen bool, isHostedCP bool) error {
 	for file, role := range aws.AccountRoles {
+		if isHostedCP && file == aws.InstallerAccountRole {
+			continue
+		}
 		roleName := aws.GetRoleName(prefix, role.Name)
 		promptString := fmt.Sprintf("Upgrade the '%s' role policy latest version ?", roleName)
 		if isVersionChosen {

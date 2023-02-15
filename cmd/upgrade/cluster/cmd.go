@@ -39,6 +39,7 @@ var args struct {
 	scheduleDate         string
 	scheduleTime         string
 	nodeDrainGracePeriod string
+	hostedCPEnabled      bool
 }
 
 var nodeDrainOptions = []string{
@@ -101,6 +102,16 @@ func init() {
 			"options are ['%s']", strings.Join(nodeDrainOptions, "','")),
 	)
 
+	// Options releated to HyperShift:
+	flags.BoolVar(
+		&args.hostedCPEnabled,
+		"hosted-cp",
+		false,
+		"Enable the use of hosted control planes (HyperShift)",
+	)
+
+	flags.MarkHidden("hosted-cp")
+
 	confirm.AddFlag(flags)
 }
 
@@ -126,6 +137,16 @@ func run(cmd *cobra.Command, _ []string) {
 	if !isSTS && mode != "" {
 		r.Reporter.Errorf("The 'mode' option is only supported for STS clusters")
 		os.Exit(1)
+	}
+
+	// Set HostedCP for Runtime if we are creating HostedCP roles and policies
+	// Not setting this if the cluster is a hosted control plane beacuse
+	// we might only update one policy accidentially.
+	// The current default flow if you don't pass --hosted-cp to `rosa create account-roles`
+	// will create and attach both the classic installer and hosted cp policies
+	isHostedCP := cmd.Flags().Changed("hosted-cp")
+	if isHostedCP {
+		r.IsHostedCP()
 	}
 
 	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
@@ -201,9 +222,12 @@ func run(cmd *cobra.Command, _ []string) {
 	if isSTS {
 		r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
 			" are compatible with upgrade.", cluster.ID())
-		err = roles.Cmd.RunE(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup()})
+		err = roles.Cmd.RunE(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup(), strconv.FormatBool(isHostedCP)})
 		if err != nil {
 			rolesStr := fmt.Sprintf("rosa upgrade roles -c %s --cluster-version=%s --mode=%s", clusterKey, version, mode)
+			if isHostedCP {
+				rolesStr = fmt.Sprintf("rosa upgrade roles -c %s --cluster-version=%s --mode=%s --hosted-cp", clusterKey, version, mode)
+			}
 			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
 
 			r.Reporter.Infof("Account/Operator Role policies are not valid with upgrade version %s. "+
