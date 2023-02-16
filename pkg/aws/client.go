@@ -849,7 +849,7 @@ func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
 	// validate arn
 	parsedARN, err := arn.Parse(roleARN)
 	if err != nil {
-		return nil, fmt.Errorf("expected a valid IAM role ARN: %s", err)
+		return nil, fmt.Errorf("expected '%s' to be a valid IAM role ARN: %s", roleARN, err)
 	}
 
 	// validate arn is for a role resource
