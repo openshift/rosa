@@ -96,14 +96,20 @@ func init() {
 	)
 	flags.MarkHidden("channel-group")
 
-	// TODO: change to `unmanaged` once AWS managed policies are in place (managed will be the default)
+	// TODO: add `legacy-policies` once AWS managed policies are in place (managed-policies will be the default)
 	flags.BoolVar(
 		&args.managed,
-		"managed",
+		"managed-policies",
 		false,
 		"Attach AWS managed policies to the account roles",
 	)
-	flags.MarkHidden("managed")
+	flags.MarkHidden("managed-policies")
+	flags.BoolVar(
+		&args.managed,
+		"mp",
+		false,
+		"Attach AWS managed policies to the account roles. This is an alias for --managed-policies")
+	flags.MarkHidden("mp")
 
 	flags.BoolVarP(
 		&args.forcePolicyCreation,
@@ -146,7 +152,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Determine if managed policies are enabled
-	isManagedSet := cmd.Flags().Changed("managed")
+	isManagedSet := cmd.Flags().Changed("managed-policies") || cmd.Flags().Changed("mp")
 	if isManagedSet && env == ocm.Production {
 		r.Reporter.Errorf("Managed policies are not supported in this environment")
 		os.Exit(1)
