@@ -79,8 +79,8 @@ func writePermission(object *Permission, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("resource_type")
-		stream.WriteString(object.resourceType)
+		stream.WriteObjectField("resource")
+		stream.WriteString(object.resource)
 	}
 	stream.WriteObjectEnd()
 }
@@ -122,9 +122,9 @@ func readPermission(iterator *jsoniter.Iterator) *Permission {
 			value := Action(text)
 			object.action = value
 			object.bitmap_ |= 8
-		case "resource_type":
+		case "resource":
 			value := iterator.ReadString()
-			object.resourceType = value
+			object.resource = value
 			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()

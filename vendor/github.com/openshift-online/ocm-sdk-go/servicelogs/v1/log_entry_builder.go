@@ -32,6 +32,7 @@ type LogEntryBuilder struct {
 	clusterUUID    string
 	description    string
 	eventStreamID  string
+	logType        LogType
 	serviceName    string
 	severity       Severity
 	subscriptionID string
@@ -106,45 +107,54 @@ func (b *LogEntryBuilder) InternalOnly(value bool) *LogEntryBuilder {
 	return b
 }
 
+// LogType sets the value of the 'log_type' attribute to the given value.
+//
+// Representation of the log type field used in cluster log type model.
+func (b *LogEntryBuilder) LogType(value LogType) *LogEntryBuilder {
+	b.logType = value
+	b.bitmap_ |= 256
+	return b
+}
+
 // ServiceName sets the value of the 'service_name' attribute to the given value.
 func (b *LogEntryBuilder) ServiceName(value string) *LogEntryBuilder {
 	b.serviceName = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
 // Severity sets the value of the 'severity' attribute to the given value.
 func (b *LogEntryBuilder) Severity(value Severity) *LogEntryBuilder {
 	b.severity = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
 // SubscriptionID sets the value of the 'subscription_ID' attribute to the given value.
 func (b *LogEntryBuilder) SubscriptionID(value string) *LogEntryBuilder {
 	b.subscriptionID = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
 // Summary sets the value of the 'summary' attribute to the given value.
 func (b *LogEntryBuilder) Summary(value string) *LogEntryBuilder {
 	b.summary = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
 // Timestamp sets the value of the 'timestamp' attribute to the given value.
 func (b *LogEntryBuilder) Timestamp(value time.Time) *LogEntryBuilder {
 	b.timestamp = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
 // Username sets the value of the 'username' attribute to the given value.
 func (b *LogEntryBuilder) Username(value string) *LogEntryBuilder {
 	b.username = value
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -161,6 +171,7 @@ func (b *LogEntryBuilder) Copy(object *LogEntry) *LogEntryBuilder {
 	b.description = object.description
 	b.eventStreamID = object.eventStreamID
 	b.internalOnly = object.internalOnly
+	b.logType = object.logType
 	b.serviceName = object.serviceName
 	b.severity = object.severity
 	b.subscriptionID = object.subscriptionID
@@ -181,6 +192,7 @@ func (b *LogEntryBuilder) Build() (object *LogEntry, err error) {
 	object.description = b.description
 	object.eventStreamID = b.eventStreamID
 	object.internalOnly = b.internalOnly
+	object.logType = b.logType
 	object.serviceName = b.serviceName
 	object.severity = b.severity
 	object.subscriptionID = b.subscriptionID

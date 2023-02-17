@@ -24,9 +24,9 @@ type AddonStatusConditionValue string
 
 const (
 	//
-	AddonStatusConditionValueFalse AddonStatusConditionValue = "false"
+	AddonStatusConditionValueFalse AddonStatusConditionValue = "False"
 	//
-	AddonStatusConditionValueTrue AddonStatusConditionValue = "true"
+	AddonStatusConditionValueTrue AddonStatusConditionValue = "True"
 	//
-	AddonStatusConditionValueUnknown AddonStatusConditionValue = "unknown"
+	AddonStatusConditionValueUnknown AddonStatusConditionValue = "Unknown"
 )

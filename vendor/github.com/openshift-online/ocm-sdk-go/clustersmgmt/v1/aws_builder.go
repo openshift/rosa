@@ -23,16 +23,17 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // _Amazon Web Services_ specific settings of a cluster.
 type AWSBuilder struct {
-	bitmap_         uint32
-	kmsKeyArn       string
-	sts             *STSBuilder
-	accessKeyID     string
-	accountID       string
-	etcdEncryption  *AwsEtcdEncryptionBuilder
-	secretAccessKey string
-	subnetIDs       []string
-	tags            map[string]string
-	privateLink     bool
+	bitmap_                  uint32
+	kmsKeyArn                string
+	sts                      *STSBuilder
+	accessKeyID              string
+	accountID                string
+	etcdEncryption           *AwsEtcdEncryptionBuilder
+	privateLinkConfiguration *PrivateLinkClusterConfigurationBuilder
+	secretAccessKey          string
+	subnetIDs                []string
+	tags                     map[string]string
+	privateLink              bool
 }
 
 // NewAWS creates a new builder of 'AWS' objects.
@@ -99,10 +100,23 @@ func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 	return b
 }
 
+// PrivateLinkConfiguration sets the value of the 'private_link_configuration' attribute to the given value.
+//
+// Manages the configuration for the Private Links.
+func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigurationBuilder) *AWSBuilder {
+	b.privateLinkConfiguration = value
+	if value != nil {
+		b.bitmap_ |= 64
+	} else {
+		b.bitmap_ &^= 64
+	}
+	return b
+}
+
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	b.secretAccessKey = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -110,7 +124,7 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -118,9 +132,9 @@ func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	b.tags = value
 	if value != nil {
-		b.bitmap_ |= 256
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 256
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -145,6 +159,11 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 		b.etcdEncryption = nil
 	}
 	b.privateLink = object.privateLink
+	if object.privateLinkConfiguration != nil {
+		b.privateLinkConfiguration = NewPrivateLinkClusterConfiguration().Copy(object.privateLinkConfiguration)
+	} else {
+		b.privateLinkConfiguration = nil
+	}
 	b.secretAccessKey = object.secretAccessKey
 	if object.subnetIDs != nil {
 		b.subnetIDs = make([]string, len(object.subnetIDs))
@@ -183,6 +202,12 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 		}
 	}
 	object.privateLink = b.privateLink
+	if b.privateLinkConfiguration != nil {
+		object.privateLinkConfiguration, err = b.privateLinkConfiguration.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.secretAccessKey = b.secretAccessKey
 	if b.subnetIDs != nil {
 		object.subnetIDs = make([]string, len(b.subnetIDs))

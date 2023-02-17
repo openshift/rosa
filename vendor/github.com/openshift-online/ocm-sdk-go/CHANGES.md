@@ -3,6 +3,33 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.317
+- Update to model v0.0.257
+  - Add `ByoOidc` type to Cluster type model
+  - Add addon upgrade policy to clusters_mgmt
+  - Add `Labels` and `Taints` to NodePool type
+
+## 0.1.316
+- Update to model v0.0.256
+  - Add `LogType` field to Cluster Log type model
+  - Fix Addon status type and value constants
+
+## 0.1.315
+- Update to model v0.0.255
+  - Add `Version` field to node pool
+
+## 0.1.314
+- Update to model v0.0.254
+  - Add `PrivateLinkConfiguration` type with related endpoints
+
+## 0.1.313
+- Update to model v0.0.253
+  - Update Permission resource attributes
+    * Rename ResourceType to Resource
+
+## 0.1.312
+- Update to metamodel 0.0.57
+
 ## 0.1.311
 - Update to model v0.0.252
   - Update `STS` resource attributes
