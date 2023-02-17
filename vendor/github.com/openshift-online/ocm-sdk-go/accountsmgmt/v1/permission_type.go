@@ -33,11 +33,11 @@ const PermissionNilKind = "PermissionNil"
 
 // Permission represents the values of the 'permission' type.
 type Permission struct {
-	bitmap_      uint32
-	id           string
-	href         string
-	action       Action
-	resourceType string
+	bitmap_  uint32
+	id       string
+	href     string
+	action   Action
+	resource string
 }
 
 // Kind returns the name of the type of the object.
@@ -116,21 +116,21 @@ func (o *Permission) GetAction() (value Action, ok bool) {
 	return
 }
 
-// ResourceType returns the value of the 'resource_type' attribute, or
+// Resource returns the value of the 'resource' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-func (o *Permission) ResourceType() string {
+func (o *Permission) Resource() string {
 	if o != nil && o.bitmap_&16 != 0 {
-		return o.resourceType
+		return o.resource
 	}
 	return ""
 }
 
-// GetResourceType returns the value of the 'resource_type' attribute and
+// GetResource returns the value of the 'resource' attribute and
 // a flag indicating if the attribute has a value.
-func (o *Permission) GetResourceType() (value string, ok bool) {
+func (o *Permission) GetResource() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
-		value = o.resourceType
+		value = o.resource
 	}
 	return
 }

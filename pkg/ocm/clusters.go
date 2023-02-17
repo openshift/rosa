@@ -791,6 +791,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		if config.OidcEndpointUrl != "" && config.OidcPrivateKeySecretArn != "" {
 			stsBuilder = stsBuilder.OIDCEndpointURL(config.OidcEndpointUrl).
 				OidcPrivateKeySecretArn(config.OidcPrivateKeySecretArn)
+			clusterBuilder = clusterBuilder.ByoOidc(cmv1.NewByoOidc().Enabled(true))
 		}
 		instanceIAMRolesBuilder := cmv1.NewInstanceIAMRoles()
 		if config.ControlPlaneRoleARN != "" {

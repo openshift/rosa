@@ -102,6 +102,14 @@ func (c *ClusterClient) Update() *ClusterUpdateRequest {
 	}
 }
 
+// AWS returns the target 'AWS' resource.
+func (c *ClusterClient) AWS() *AWSClient {
+	return NewAWSClient(
+		c.transport,
+		path.Join(c.path, "aws"),
+	)
+}
+
 // AWSInfrastructureAccessRoleGrants returns the target 'AWS_infrastructure_access_role_grants' resource.
 //
 // Reference to the resource that manages the collection of AWS infrastructure
@@ -128,6 +136,16 @@ func (c *ClusterClient) AddonInquiries() *AddonInquiriesClient {
 	return NewAddonInquiriesClient(
 		c.transport,
 		path.Join(c.path, "addon_inquiries"),
+	)
+}
+
+// AddonUpgradePolicies returns the target 'addon_upgrade_policies' resource.
+//
+// Reference to the resource that manages the collection of addon upgrade policies defined for this cluster.
+func (c *ClusterClient) AddonUpgradePolicies() *AddonUpgradePoliciesClient {
+	return NewAddonUpgradePoliciesClient(
+		c.transport,
+		path.Join(c.path, "addon_upgrade_policies"),
 	)
 }
 

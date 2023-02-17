@@ -176,8 +176,20 @@ var pathTreeData = `{
             "addon_inquiries": {
               "-": null
             },
+            "addon_upgrade_policies": {
+              "-": {
+                "state": null
+              }
+            },
             "addons": {
               "-": null
+            },
+            "aws": {
+              "private_link_configuration": {
+                "principals": {
+                  "-": null
+                }
+              }
             },
             "aws_infrastructure_access_role_grants": {
               "-": null

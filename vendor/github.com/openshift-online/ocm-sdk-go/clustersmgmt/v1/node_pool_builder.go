@@ -30,9 +30,12 @@ type NodePoolBuilder struct {
 	autoscaling      *NodePoolAutoscalingBuilder
 	availabilityZone string
 	cluster          *ClusterBuilder
+	labels           map[string]string
 	replicas         int
 	status           *NodePoolStatusBuilder
 	subnet           string
+	taints           []*TaintBuilder
+	version          *VersionBuilder
 	autoRepair       bool
 }
 
@@ -157,10 +160,21 @@ func (b *NodePoolBuilder) Cluster(value *ClusterBuilder) *NodePoolBuilder {
 	return b
 }
 
+// Labels sets the value of the 'labels' attribute to the given value.
+func (b *NodePoolBuilder) Labels(value map[string]string) *NodePoolBuilder {
+	b.labels = value
+	if value != nil {
+		b.bitmap_ |= 256
+	} else {
+		b.bitmap_ &^= 256
+	}
+	return b
+}
+
 // Replicas sets the value of the 'replicas' attribute to the given value.
 func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 	b.replicas = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -170,9 +184,9 @@ func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 func (b *NodePoolBuilder) Status(value *NodePoolStatusBuilder) *NodePoolBuilder {
 	b.status = value
 	if value != nil {
-		b.bitmap_ |= 512
+		b.bitmap_ |= 1024
 	} else {
-		b.bitmap_ &^= 512
+		b.bitmap_ &^= 1024
 	}
 	return b
 }
@@ -180,7 +194,28 @@ func (b *NodePoolBuilder) Status(value *NodePoolStatusBuilder) *NodePoolBuilder 
 // Subnet sets the value of the 'subnet' attribute to the given value.
 func (b *NodePoolBuilder) Subnet(value string) *NodePoolBuilder {
 	b.subnet = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
+	return b
+}
+
+// Taints sets the value of the 'taints' attribute to the given values.
+func (b *NodePoolBuilder) Taints(values ...*TaintBuilder) *NodePoolBuilder {
+	b.taints = make([]*TaintBuilder, len(values))
+	copy(b.taints, values)
+	b.bitmap_ |= 4096
+	return b
+}
+
+// Version sets the value of the 'version' attribute to the given value.
+//
+// Representation of an _OpenShift_ version.
+func (b *NodePoolBuilder) Version(value *VersionBuilder) *NodePoolBuilder {
+	b.version = value
+	if value != nil {
+		b.bitmap_ |= 8192
+	} else {
+		b.bitmap_ &^= 8192
+	}
 	return b
 }
 
@@ -209,6 +244,14 @@ func (b *NodePoolBuilder) Copy(object *NodePool) *NodePoolBuilder {
 	} else {
 		b.cluster = nil
 	}
+	if len(object.labels) > 0 {
+		b.labels = map[string]string{}
+		for k, v := range object.labels {
+			b.labels[k] = v
+		}
+	} else {
+		b.labels = nil
+	}
 	b.replicas = object.replicas
 	if object.status != nil {
 		b.status = NewNodePoolStatus().Copy(object.status)
@@ -216,6 +259,19 @@ func (b *NodePoolBuilder) Copy(object *NodePool) *NodePoolBuilder {
 		b.status = nil
 	}
 	b.subnet = object.subnet
+	if object.taints != nil {
+		b.taints = make([]*TaintBuilder, len(object.taints))
+		for i, v := range object.taints {
+			b.taints[i] = NewTaint().Copy(v)
+		}
+	} else {
+		b.taints = nil
+	}
+	if object.version != nil {
+		b.version = NewVersion().Copy(object.version)
+	} else {
+		b.version = nil
+	}
 	return b
 }
 
@@ -245,6 +301,12 @@ func (b *NodePoolBuilder) Build() (object *NodePool, err error) {
 			return
 		}
 	}
+	if b.labels != nil {
+		object.labels = make(map[string]string)
+		for k, v := range b.labels {
+			object.labels[k] = v
+		}
+	}
 	object.replicas = b.replicas
 	if b.status != nil {
 		object.status, err = b.status.Build()
@@ -253,5 +315,20 @@ func (b *NodePoolBuilder) Build() (object *NodePool, err error) {
 		}
 	}
 	object.subnet = b.subnet
+	if b.taints != nil {
+		object.taints = make([]*Taint, len(b.taints))
+		for i, v := range b.taints {
+			object.taints[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
+	if b.version != nil {
+		object.version, err = b.version.Build()
+		if err != nil {
+			return
+		}
+	}
 	return
 }

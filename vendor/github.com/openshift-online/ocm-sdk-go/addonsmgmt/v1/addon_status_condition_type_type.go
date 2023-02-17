@@ -24,15 +24,15 @@ type AddonStatusConditionType string
 
 const (
 	//
-	AddonStatusConditionTypeAvailable AddonStatusConditionType = "available"
+	AddonStatusConditionTypeAvailable AddonStatusConditionType = "Available"
 	//
-	AddonStatusConditionTypeDegraded AddonStatusConditionType = "degraded"
+	AddonStatusConditionTypeDegraded AddonStatusConditionType = "Degraded"
 	//
-	AddonStatusConditionTypeHealthy AddonStatusConditionType = "healthy"
+	AddonStatusConditionTypeHealthy AddonStatusConditionType = "Healthy"
 	//
-	AddonStatusConditionTypeInstalled AddonStatusConditionType = "installed"
+	AddonStatusConditionTypeInstalled AddonStatusConditionType = "Installed"
 	//
-	AddonStatusConditionTypePaused AddonStatusConditionType = "paused"
+	AddonStatusConditionTypePaused AddonStatusConditionType = "Paused"
 	//
-	AddonStatusConditionTypeUpgrading AddonStatusConditionType = "upgrading"
+	AddonStatusConditionTypeUpgrading AddonStatusConditionType = "Upgrading"
 )

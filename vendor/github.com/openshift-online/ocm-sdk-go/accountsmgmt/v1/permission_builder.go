@@ -21,11 +21,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 // PermissionBuilder contains the data and logic needed to build 'permission' objects.
 type PermissionBuilder struct {
-	bitmap_      uint32
-	id           string
-	href         string
-	action       Action
-	resourceType string
+	bitmap_  uint32
+	id       string
+	href     string
+	action   Action
+	resource string
 }
 
 // NewPermission creates a new builder of 'permission' objects.
@@ -67,9 +67,9 @@ func (b *PermissionBuilder) Action(value Action) *PermissionBuilder {
 	return b
 }
 
-// ResourceType sets the value of the 'resource_type' attribute to the given value.
-func (b *PermissionBuilder) ResourceType(value string) *PermissionBuilder {
-	b.resourceType = value
+// Resource sets the value of the 'resource' attribute to the given value.
+func (b *PermissionBuilder) Resource(value string) *PermissionBuilder {
+	b.resource = value
 	b.bitmap_ |= 16
 	return b
 }
@@ -83,7 +83,7 @@ func (b *PermissionBuilder) Copy(object *Permission) *PermissionBuilder {
 	b.id = object.id
 	b.href = object.href
 	b.action = object.action
-	b.resourceType = object.resourceType
+	b.resource = object.resource
 	return b
 }
 
@@ -94,6 +94,6 @@ func (b *PermissionBuilder) Build() (object *Permission, err error) {
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
 	object.action = b.action
-	object.resourceType = b.resourceType
+	object.resource = b.resource
 	return
 }

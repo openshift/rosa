@@ -116,11 +116,20 @@ func writeLogEntry(object *LogEntry, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("log_type")
+		stream.WriteString(string(object.logType))
+		count++
+	}
+	present_ = object.bitmap_&512 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("service_name")
 		stream.WriteString(object.serviceName)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -129,7 +138,7 @@ func writeLogEntry(object *LogEntry, stream *jsoniter.Stream) {
 		stream.WriteString(string(object.severity))
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -138,7 +147,7 @@ func writeLogEntry(object *LogEntry, stream *jsoniter.Stream) {
 		stream.WriteString(object.subscriptionID)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0
+	present_ = object.bitmap_&4096 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -147,7 +156,7 @@ func writeLogEntry(object *LogEntry, stream *jsoniter.Stream) {
 		stream.WriteString(object.summary)
 		count++
 	}
-	present_ = object.bitmap_&4096 != 0
+	present_ = object.bitmap_&8192 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -156,7 +165,7 @@ func writeLogEntry(object *LogEntry, stream *jsoniter.Stream) {
 		stream.WriteString((object.timestamp).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&8192 != 0
+	present_ = object.bitmap_&16384 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -219,23 +228,28 @@ func readLogEntry(iterator *jsoniter.Iterator) *LogEntry {
 			value := iterator.ReadBool()
 			object.internalOnly = value
 			object.bitmap_ |= 128
+		case "log_type":
+			text := iterator.ReadString()
+			value := LogType(text)
+			object.logType = value
+			object.bitmap_ |= 256
 		case "service_name":
 			value := iterator.ReadString()
 			object.serviceName = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "severity":
 			text := iterator.ReadString()
 			value := Severity(text)
 			object.severity = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "subscription_id":
 			value := iterator.ReadString()
 			object.subscriptionID = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		case "summary":
 			value := iterator.ReadString()
 			object.summary = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 4096
 		case "timestamp":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -243,11 +257,11 @@ func readLogEntry(iterator *jsoniter.Iterator) *LogEntry {
 				iterator.ReportError("", err.Error())
 			}
 			object.timestamp = value
-			object.bitmap_ |= 4096
+			object.bitmap_ |= 8192
 		case "username":
 			value := iterator.ReadString()
 			object.username = value
-			object.bitmap_ |= 8192
+			object.bitmap_ |= 16384
 		default:
 			iterator.ReadAny()
 		}
