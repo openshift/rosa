@@ -139,8 +139,13 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		}
 	}
 
+	labelMap := getLabelMap(cmd, r)
+
+	taintBuilders := getTaints(cmd, r)
+
 	npBuilder := cmv1.NewNodePool()
-	npBuilder.ID(name)
+	npBuilder.ID(name).Labels(labelMap).
+		Taints(taintBuilders...)
 
 	if autoscaling {
 		npBuilder = npBuilder.Autoscaling(

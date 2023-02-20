@@ -12,6 +12,9 @@ import (
 
 func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
+	isLabelsSet := cmd.Flags().Changed("labels")
+	isTaintsSet := cmd.Flags().Changed("taints")
+	isLabelOrTaintSet := isLabelsSet || isTaintsSet
 
 	// Try to find the node pool
 	r.Reporter.Debugf("Loading machine pool for hosted cluster '%s'", clusterKey)
@@ -22,7 +25,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	}
 
 	autoscaling, replicas, minReplicas, maxReplicas := getNodePoolReplicas(cmd, r.Reporter, nodePoolID,
-		nodePool.Replicas(), nodePool.Autoscaling())
+		nodePool.Replicas(), nodePool.Autoscaling(), isLabelOrTaintSet)
 
 	if !autoscaling && replicas < 0 ||
 		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 0) {
@@ -30,8 +33,22 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 		os.Exit(1)
 	}
 
+	labelMap := getLabels(cmd, r.Reporter, nodePool.Labels())
+
+	taintBuilders := getTaints(cmd, r, nodePool.Taints())
+
 	npBuilder := cmv1.NewNodePool().
 		ID(nodePool.ID())
+
+	// Check either for an explicit flag or interactive mode. Since
+	// interactive will always show both labels and taints we can safely
+	// assume that the value entered is the same as the value desired.
+	if isLabelsSet || interactive.Enabled() {
+		npBuilder = npBuilder.Labels(labelMap)
+	}
+	if isTaintsSet || interactive.Enabled() {
+		npBuilder = npBuilder.Taints(taintBuilders...)
+	}
 
 	if autoscaling {
 		asBuilder := cmv1.NewNodePoolAutoscaling()
@@ -68,7 +85,8 @@ func getNodePoolReplicas(cmd *cobra.Command,
 	reporter *rprtr.Object,
 	nodePoolID string,
 	existingReplicas int,
-	existingAutoscaling *cmv1.NodePoolAutoscaling) (autoscaling bool, replicas, minReplicas, maxReplicas int) {
+	existingAutoscaling *cmv1.NodePoolAutoscaling, isLabelOrTaintSet bool) (autoscaling bool,
+	replicas, minReplicas, maxReplicas int) {
 	var err error
 
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
@@ -136,6 +154,10 @@ func getNodePoolReplicas(cmd *cobra.Command,
 	} else if interactive.Enabled() || !isReplicasSet {
 		if !isReplicasSet {
 			replicas = existingReplicas
+		}
+		if !interactive.Enabled() && isLabelOrTaintSet {
+			// Not interactive mode and Label or taints set, just keep the existing replicas
+			return
 		}
 		replicas, err = interactive.GetInt(interactive.Input{
 			Question: "Replicas",

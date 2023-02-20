@@ -304,47 +304,9 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
-	labels := args.labels
-	if interactive.Enabled() {
-		labels, err = interactive.GetString(interactive.Input{
-			Question: "Labels",
-			Help:     cmd.Flags().Lookup("labels").Usage,
-			Default:  labels,
-			Validators: []interactive.Validator{
-				LabelValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-			os.Exit(1)
-		}
-	}
-	labelMap, err := ParseLabels(labels)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	labelMap := getLabelMap(cmd, r)
 
-	taints := args.taints
-	if interactive.Enabled() {
-		taints, err = interactive.GetString(interactive.Input{
-			Question: "Taints",
-			Help:     cmd.Flags().Lookup("taints").Usage,
-			Default:  taints,
-			Validators: []interactive.Validator{
-				taintValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-			os.Exit(1)
-		}
-	}
-	taintBuilders, err := parseTaints(taints)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+	taintBuilders := getTaints(cmd, r)
 
 	// Spot instances
 	isSpotSet := cmd.Flags().Changed("use-spot-instances")
