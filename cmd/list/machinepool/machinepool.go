@@ -3,7 +3,6 @@ package machinepool
 import (
 	"fmt"
 	"os"
-	"strings"
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -82,37 +81,6 @@ func printMachinePoolReplicas(autoscaling *cmv1.MachinePoolAutoscaling, replicas
 			autoscaling.MaxReplicas())
 	}
 	return fmt.Sprintf("%d", replicas)
-}
-
-func printLabels(labels map[string]string) string {
-	if len(labels) == 0 {
-		return ""
-	}
-	output := []string{}
-	for k, v := range labels {
-		output = append(output, fmt.Sprintf("%s=%s", k, v))
-	}
-
-	return strings.Join(output, ", ")
-}
-
-func printTaints(taints []*cmv1.Taint) string {
-	if len(taints) == 0 {
-		return ""
-	}
-	output := []string{}
-	for _, taint := range taints {
-		output = append(output, fmt.Sprintf("%s=%s:%s", taint.Key(), taint.Value(), taint.Effect()))
-	}
-
-	return strings.Join(output, ", ")
-}
-
-func printStringSlice(in []string) string {
-	if len(in) == 0 {
-		return ""
-	}
-	return strings.Join(in, ", ")
 }
 
 func printSpot(mp *cmv1.MachinePool) string {
