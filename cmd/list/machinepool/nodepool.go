@@ -22,14 +22,16 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(writer, "ID\tAUTOSCALING\tDESIRED REPLICAS\tCURRENT REPLICAS\t"+
-		"INSTANCE TYPE\tAVAILABILITY ZONE\tSUBNET\tMESSAGE\t\n")
+		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tMESSAGE\t\n")
 	for _, nodePool := range nodePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			printNodePoolAutoscaling(nodePool.Autoscaling()),
 			printNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
 			printNodePoolCurrentReplicas(nodePool.Status()),
 			printNodePoolInstanceType(nodePool.AWSNodePool()),
+			printLabels(nodePool.Labels()),
+			printTaints(nodePool.Taints()),
 			nodePool.AvailabilityZone(),
 			nodePool.Subnet(),
 			printNodePoolMessage(nodePool.Status()),
