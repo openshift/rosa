@@ -108,12 +108,15 @@ func getDefaultNodes(multiAZ bool) int {
 
 type MachineType struct {
 	MachineType *cmv1.MachineType
-	Available   bool
-	nodeQuota   float64 // may be +Inf when Cost == 0.
+	Available   bool // TODO what exactly does this mean? for what kind of cluster?
+	nodeQuota   int  // may be MaxInt when Cost == 0.
+	// TODO: compute clusterQuota?
 }
 
 func (mt MachineType) HasQuota(multiAZ bool) bool {
-	return mt.MachineType.Category() != AcceleratedComputing || mt.nodeQuota > float64(getDefaultNodes(multiAZ))
+	// Assumption: most machine types have unilimited quota for ROSA.
+	// We didn't even fetch quotas other than GPU.
+	return mt.MachineType.Category() != AcceleratedComputing || mt.nodeQuota > getDefaultNodes(multiAZ)
 }
 
 // GetAvailableMachineTypesInRegion get the supported machine type in the region.
@@ -175,6 +178,8 @@ func (c *Client) getQuotaCosts() (*amsv1.QuotaCostList, error) {
 		QuotaCost().
 		List().
 		Parameter("fetchRelatedResources", true).
+		// Assumption: most machine types have unilimited quota for ROSA.
+		// TODO: this only matches "compute.node" quotas; also want "cluster"?
 		Parameter("search", "quota_id~='gpu'").
 		Page(1).
 		Size(-1).
@@ -222,23 +227,38 @@ func (mtl *MachineTypeList) Filter(fn func(*MachineType) bool) MachineTypeList {
 func (mtl *MachineTypeList) UpdateAvailableQuota(quotaCosts *amsv1.QuotaCostList) {
 	for _, machineType := range *mtl {
 		if machineType.MachineType.Category() != AcceleratedComputing {
+			// Assumption: most machine types have unilimited quota for ROSA.
+			// We didn't even fetch quotas other than GPU.
+			machineType.nodeQuota = math.MaxInt
 			machineType.Available = true
 			continue
 		}
 		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
+			// Match at most one RelatedResource; in unlikely case several match, take highest quota (lowest cost).
+			bestQuota := 0
 			for _, relatedResource := range quotaCost.RelatedResources() {
+				// TODO: check ResourceType is "compute.node"
 				if machineType.MachineType.GenericName() == relatedResource.ResourceName() && isCompatible(relatedResource) {
 					if relatedResource.Cost() == 0 {
-						machineType.nodeQuota = math.Inf(+1)
-					} else {
-						machineType.nodeQuota += float64((quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost())
+						// Special case "infinite" quota
+						machineType.nodeQuota = math.MaxInt
+						machineType.Available = true
+						// break from quotaCosts.Each.
+						// To not waste time (won't find anything better)
+						// but also to avoid `+=` overflowing the MaxInt!
+						return false
 					}
-					return false
+					// Integer division rounding down: 7 available at cost 4/node allows 1 node.
+					foundQuota := (quotaCost.Allowed() - quotaCost.Consumed()) / relatedResource.Cost()
+					if bestQuota < foundQuota {
+						bestQuota = foundQuota
+					}
 				}
 			}
-			return true
+			machineType.nodeQuota += bestQuota
+			return true // continue quotaCosts.Each
 		})
-		machineType.Available = machineType.nodeQuota > 1 // TODO refine
+		machineType.Available = machineType.nodeQuota > 1
 	}
 }
 
