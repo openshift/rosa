@@ -45,7 +45,6 @@ func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err
 		var response *cmv1.VersionsListResponse
 		response, err = collection.List().
 			Search(filter).
-			Order("default desc, id desc").
 			Page(page).
 			Size(size).
 			Send()
@@ -59,14 +58,8 @@ func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err
 		page++
 	}
 
-	// Sort list in descending order, ensuring the 'default' version at the top
+	// Sort list in descending order
 	sort.Slice(versions, func(i, j int) bool {
-		if versions[i].Default() {
-			return true
-		}
-		if versions[j].Default() {
-			return false
-		}
 		a, erra := ver.NewVersion(versions[i].RawID())
 		b, errb := ver.NewVersion(versions[j].RawID())
 		if erra != nil || errb != nil {

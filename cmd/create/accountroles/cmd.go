@@ -86,7 +86,6 @@ func init() {
 		"",
 		"Version of OpenShift that will be used to setup policy tag, for example \"4.11\"",
 	)
-	flags.MarkHidden("version")
 
 	flags.StringVar(
 		&args.channelGroup,
