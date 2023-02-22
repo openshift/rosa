@@ -67,6 +67,15 @@ func writeManagementClusterParent(object *ManagementClusterParent, stream *jsoni
 		}
 		stream.WriteObjectField("kind")
 		stream.WriteString(object.kind)
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("name")
+		stream.WriteString(object.name)
 	}
 	stream.WriteObjectEnd()
 }
@@ -104,6 +113,10 @@ func readManagementClusterParent(iterator *jsoniter.Iterator) *ManagementCluster
 			value := iterator.ReadString()
 			object.kind = value
 			object.bitmap_ |= 4
+		case "name":
+			value := iterator.ReadString()
+			object.name = value
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

@@ -79,6 +79,7 @@ type ManagementCluster struct {
 	dns                        *DNS
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReference
+	name                       string
 	parent                     *ManagementClusterParent
 	region                     string
 	status                     string
@@ -210,12 +211,35 @@ func (o *ManagementCluster) GetClusterManagementReference() (value *ClusterManag
 	return
 }
 
+// Name returns the value of the 'name' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Cluster name
+func (o *ManagementCluster) Name() string {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.name
+	}
+	return ""
+}
+
+// GetName returns the value of the 'name' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Cluster name
+func (o *ManagementCluster) GetName() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.name
+	}
+	return
+}
+
 // Parent returns the value of the 'parent' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Management cluster handling the management cluster
 func (o *ManagementCluster) Parent() *ManagementClusterParent {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.parent
 	}
 	return nil
@@ -226,7 +250,7 @@ func (o *ManagementCluster) Parent() *ManagementClusterParent {
 //
 // Management cluster handling the management cluster
 func (o *ManagementCluster) GetParent() (value *ManagementClusterParent, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.parent
 	}
@@ -238,7 +262,7 @@ func (o *ManagementCluster) GetParent() (value *ManagementClusterParent, ok bool
 //
 // Cloud provider region where the cluster is installed.
 func (o *ManagementCluster) Region() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.region
 	}
 	return ""
@@ -249,7 +273,7 @@ func (o *ManagementCluster) Region() string {
 //
 // Cloud provider region where the cluster is installed.
 func (o *ManagementCluster) GetRegion() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.region
 	}
@@ -261,7 +285,7 @@ func (o *ManagementCluster) GetRegion() (value string, ok bool) {
 //
 // Status of cluster
 func (o *ManagementCluster) Status() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.status
 	}
 	return ""
@@ -272,7 +296,7 @@ func (o *ManagementCluster) Status() string {
 //
 // Status of cluster
 func (o *ManagementCluster) GetStatus() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.status
 	}

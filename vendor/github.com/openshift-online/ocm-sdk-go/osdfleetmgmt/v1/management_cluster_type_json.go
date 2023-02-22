@@ -92,7 +92,16 @@ func writeManagementCluster(object *ManagementCluster, stream *jsoniter.Stream) 
 		writeClusterManagementReference(object.clusterManagementReference, stream)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.parent != nil
+	present_ = object.bitmap_&64 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("name")
+		stream.WriteString(object.name)
+		count++
+	}
+	present_ = object.bitmap_&128 != 0 && object.parent != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -101,7 +110,7 @@ func writeManagementCluster(object *ManagementCluster, stream *jsoniter.Stream) 
 		writeManagementClusterParent(object.parent, stream)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -110,7 +119,7 @@ func writeManagementCluster(object *ManagementCluster, stream *jsoniter.Stream) 
 		stream.WriteString(object.region)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -165,18 +174,22 @@ func readManagementCluster(iterator *jsoniter.Iterator) *ManagementCluster {
 			value := readClusterManagementReference(iterator)
 			object.clusterManagementReference = value
 			object.bitmap_ |= 32
+		case "name":
+			value := iterator.ReadString()
+			object.name = value
+			object.bitmap_ |= 64
 		case "parent":
 			value := readManagementClusterParent(iterator)
 			object.parent = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "region":
 			value := iterator.ReadString()
 			object.region = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "status":
 			value := iterator.ReadString()
 			object.status = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		default:
 			iterator.ReadAny()
 		}
