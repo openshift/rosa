@@ -2227,7 +2227,7 @@ func run(cmd *cobra.Command, _ []string) {
 			if !isByoOidcSet {
 				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
 			} else {
-				oidcCMD = fmt.Sprintf("%s %s %s", oidcCMD, OidcEndpointUrlFlag, oidcEndpointUrl)
+				oidcCMD = fmt.Sprintf("%s --%s %s", oidcCMD, OidcEndpointUrlFlag, oidcEndpointUrl)
 			}
 
 			r.Reporter.Infof("Run the following commands to continue the cluster creation:\n\n"+
