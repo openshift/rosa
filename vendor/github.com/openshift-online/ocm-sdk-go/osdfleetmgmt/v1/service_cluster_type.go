@@ -79,6 +79,7 @@ type ServiceCluster struct {
 	dns                        *DNS
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReference
+	name                       string
 	region                     string
 	status                     string
 }
@@ -209,12 +210,35 @@ func (o *ServiceCluster) GetClusterManagementReference() (value *ClusterManageme
 	return
 }
 
+// Name returns the value of the 'name' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Cluster name
+func (o *ServiceCluster) Name() string {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.name
+	}
+	return ""
+}
+
+// GetName returns the value of the 'name' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Cluster name
+func (o *ServiceCluster) GetName() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.name
+	}
+	return
+}
+
 // Region returns the value of the 'region' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Cloud provider region where the cluster is installed.
 func (o *ServiceCluster) Region() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.region
 	}
 	return ""
@@ -225,7 +249,7 @@ func (o *ServiceCluster) Region() string {
 //
 // Cloud provider region where the cluster is installed.
 func (o *ServiceCluster) GetRegion() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.region
 	}
@@ -237,7 +261,7 @@ func (o *ServiceCluster) GetRegion() (value string, ok bool) {
 //
 // Status of cluster
 func (o *ServiceCluster) Status() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.status
 	}
 	return ""
@@ -248,7 +272,7 @@ func (o *ServiceCluster) Status() string {
 //
 // Status of cluster
 func (o *ServiceCluster) GetStatus() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.status
 	}

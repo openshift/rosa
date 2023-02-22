@@ -67,6 +67,7 @@ type ManagementClusterBuilder struct {
 	dns                        *DNSBuilder
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReferenceBuilder
+	name                       string
 	parent                     *ManagementClusterParentBuilder
 	region                     string
 	status                     string
@@ -135,15 +136,22 @@ func (b *ManagementClusterBuilder) ClusterManagementReference(value *ClusterMana
 	return b
 }
 
+// Name sets the value of the 'name' attribute to the given value.
+func (b *ManagementClusterBuilder) Name(value string) *ManagementClusterBuilder {
+	b.name = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // Parent sets the value of the 'parent' attribute to the given value.
 //
 // ManagementClusterParent reference settings of the cluster.
 func (b *ManagementClusterBuilder) Parent(value *ManagementClusterParentBuilder) *ManagementClusterBuilder {
 	b.parent = value
 	if value != nil {
-		b.bitmap_ |= 64
+		b.bitmap_ |= 128
 	} else {
-		b.bitmap_ &^= 64
+		b.bitmap_ &^= 128
 	}
 	return b
 }
@@ -151,14 +159,14 @@ func (b *ManagementClusterBuilder) Parent(value *ManagementClusterParentBuilder)
 // Region sets the value of the 'region' attribute to the given value.
 func (b *ManagementClusterBuilder) Region(value string) *ManagementClusterBuilder {
 	b.region = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
 // Status sets the value of the 'status' attribute to the given value.
 func (b *ManagementClusterBuilder) Status(value string) *ManagementClusterBuilder {
 	b.status = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -181,6 +189,7 @@ func (b *ManagementClusterBuilder) Copy(object *ManagementCluster) *ManagementCl
 	} else {
 		b.clusterManagementReference = nil
 	}
+	b.name = object.name
 	if object.parent != nil {
 		b.parent = NewManagementClusterParent().Copy(object.parent)
 	} else {
@@ -210,6 +219,7 @@ func (b *ManagementClusterBuilder) Build() (object *ManagementCluster, err error
 			return
 		}
 	}
+	object.name = b.name
 	if b.parent != nil {
 		object.parent, err = b.parent.Build()
 		if err != nil {

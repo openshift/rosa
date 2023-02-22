@@ -35,6 +35,7 @@ type STS struct {
 	supportRoleARN          string
 	autoMode                bool
 	enabled                 bool
+	managedPolicies         bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -157,12 +158,35 @@ func (o *STS) GetInstanceIAMRoles() (value *InstanceIAMRoles, ok bool) {
 	return
 }
 
+// ManagedPolicies returns the value of the 'managed_policies' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// If true, cluster account and operator roles have managed policies attached.
+func (o *STS) ManagedPolicies() bool {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.managedPolicies
+	}
+	return false
+}
+
+// GetManagedPolicies returns the value of the 'managed_policies' attribute and
+// a flag indicating if the attribute has a value.
+//
+// If true, cluster account and operator roles have managed policies attached.
+func (o *STS) GetManagedPolicies() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.managedPolicies
+	}
+	return
+}
+
 // OidcPrivateKeySecretArn returns the value of the 'oidc_private_key_secret_arn' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Secrets Manager ARN for the OIDC private key key.
 func (o *STS) OidcPrivateKeySecretArn() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.oidcPrivateKeySecretArn
 	}
 	return ""
@@ -173,7 +197,7 @@ func (o *STS) OidcPrivateKeySecretArn() string {
 //
 // Secrets Manager ARN for the OIDC private key key.
 func (o *STS) GetOidcPrivateKeySecretArn() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.oidcPrivateKeySecretArn
 	}
@@ -185,7 +209,7 @@ func (o *STS) GetOidcPrivateKeySecretArn() (value string, ok bool) {
 //
 // List of roles necessary to access the AWS resources of the various operators used during installation
 func (o *STS) OperatorIAMRoles() []*OperatorIAMRole {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.operatorIAMRoles
 	}
 	return nil
@@ -196,7 +220,7 @@ func (o *STS) OperatorIAMRoles() []*OperatorIAMRole {
 //
 // List of roles necessary to access the AWS resources of the various operators used during installation
 func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.operatorIAMRoles
 	}
@@ -208,7 +232,7 @@ func (o *STS) GetOperatorIAMRoles() (value []*OperatorIAMRole, ok bool) {
 //
 // Optional user provided prefix for operator roles.
 func (o *STS) OperatorRolePrefix() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.operatorRolePrefix
 	}
 	return ""
@@ -219,7 +243,7 @@ func (o *STS) OperatorRolePrefix() string {
 //
 // Optional user provided prefix for operator roles.
 func (o *STS) GetOperatorRolePrefix() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.operatorRolePrefix
 	}
@@ -231,7 +255,7 @@ func (o *STS) GetOperatorRolePrefix() (value string, ok bool) {
 //
 // Optional user provided permission boundary.
 func (o *STS) PermissionBoundary() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.permissionBoundary
 	}
 	return ""
@@ -242,7 +266,7 @@ func (o *STS) PermissionBoundary() string {
 //
 // Optional user provided permission boundary.
 func (o *STS) GetPermissionBoundary() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.permissionBoundary
 	}
@@ -254,7 +278,7 @@ func (o *STS) GetPermissionBoundary() (value string, ok bool) {
 //
 // ARN of the AWS role to assume when installing the cluster
 func (o *STS) RoleARN() string {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.roleARN
 	}
 	return ""
@@ -265,7 +289,7 @@ func (o *STS) RoleARN() string {
 //
 // ARN of the AWS role to assume when installing the cluster
 func (o *STS) GetRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.roleARN
 	}
@@ -277,7 +301,7 @@ func (o *STS) GetRoleARN() (value string, ok bool) {
 //
 // ARN of the AWS role used by SREs to access the cluster AWS account in order to provide support
 func (o *STS) SupportRoleARN() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.supportRoleARN
 	}
 	return ""
@@ -288,7 +312,7 @@ func (o *STS) SupportRoleARN() string {
 //
 // ARN of the AWS role used by SREs to access the cluster AWS account in order to provide support
 func (o *STS) GetSupportRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.supportRoleARN
 	}

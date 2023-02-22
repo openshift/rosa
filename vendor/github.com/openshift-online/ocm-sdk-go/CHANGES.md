@@ -3,6 +3,16 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.319
+- Update to model v0.0.260
+  - Add `ManagedPolicies` field to the `STS` type model.
+
+## 0.1.318
+- Update to model v0.0.259
+  - Add master and infra instance types to cluster nodes
+- Update to model v0.0.258
+  - Export cluster name for mgmt, mgmt_parent, and svc clusters
+
 ## 0.1.317
 - Update to model v0.0.257
   - Add `ByoOidc` type to Cluster type model

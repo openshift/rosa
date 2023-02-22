@@ -67,6 +67,7 @@ type ServiceClusterBuilder struct {
 	dns                        *DNSBuilder
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReferenceBuilder
+	name                       string
 	region                     string
 	status                     string
 }
@@ -134,17 +135,24 @@ func (b *ServiceClusterBuilder) ClusterManagementReference(value *ClusterManagem
 	return b
 }
 
+// Name sets the value of the 'name' attribute to the given value.
+func (b *ServiceClusterBuilder) Name(value string) *ServiceClusterBuilder {
+	b.name = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // Region sets the value of the 'region' attribute to the given value.
 func (b *ServiceClusterBuilder) Region(value string) *ServiceClusterBuilder {
 	b.region = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
 // Status sets the value of the 'status' attribute to the given value.
 func (b *ServiceClusterBuilder) Status(value string) *ServiceClusterBuilder {
 	b.status = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -167,6 +175,7 @@ func (b *ServiceClusterBuilder) Copy(object *ServiceCluster) *ServiceClusterBuil
 	} else {
 		b.clusterManagementReference = nil
 	}
+	b.name = object.name
 	b.region = object.region
 	b.status = object.status
 	return b
@@ -191,6 +200,7 @@ func (b *ServiceClusterBuilder) Build() (object *ServiceCluster, err error) {
 			return
 		}
 	}
+	object.name = b.name
 	object.region = b.region
 	object.status = b.status
 	return

@@ -27,6 +27,7 @@ type ManagementClusterParent struct {
 	clusterId string
 	href      string
 	kind      string
+	name      string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -99,6 +100,29 @@ func (o *ManagementClusterParent) GetKind() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.kind
+	}
+	return
+}
+
+// Name returns the value of the 'name' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Parent Cluster Name
+func (o *ManagementClusterParent) Name() string {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.name
+	}
+	return ""
+}
+
+// GetName returns the value of the 'name' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Parent Cluster Name
+func (o *ManagementClusterParent) GetName() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.name
 	}
 	return
 }

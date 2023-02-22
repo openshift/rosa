@@ -35,6 +35,7 @@ type STSBuilder struct {
 	supportRoleARN          string
 	autoMode                bool
 	enabled                 bool
+	managedPolicies         bool
 }
 
 // NewSTS creates a new builder of 'STS' objects.
@@ -88,10 +89,17 @@ func (b *STSBuilder) InstanceIAMRoles(value *InstanceIAMRolesBuilder) *STSBuilde
 	return b
 }
 
+// ManagedPolicies sets the value of the 'managed_policies' attribute to the given value.
+func (b *STSBuilder) ManagedPolicies(value bool) *STSBuilder {
+	b.managedPolicies = value
+	b.bitmap_ |= 32
+	return b
+}
+
 // OidcPrivateKeySecretArn sets the value of the 'oidc_private_key_secret_arn' attribute to the given value.
 func (b *STSBuilder) OidcPrivateKeySecretArn(value string) *STSBuilder {
 	b.oidcPrivateKeySecretArn = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -99,35 +107,35 @@ func (b *STSBuilder) OidcPrivateKeySecretArn(value string) *STSBuilder {
 func (b *STSBuilder) OperatorIAMRoles(values ...*OperatorIAMRoleBuilder) *STSBuilder {
 	b.operatorIAMRoles = make([]*OperatorIAMRoleBuilder, len(values))
 	copy(b.operatorIAMRoles, values)
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
 // OperatorRolePrefix sets the value of the 'operator_role_prefix' attribute to the given value.
 func (b *STSBuilder) OperatorRolePrefix(value string) *STSBuilder {
 	b.operatorRolePrefix = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
 // PermissionBoundary sets the value of the 'permission_boundary' attribute to the given value.
 func (b *STSBuilder) PermissionBoundary(value string) *STSBuilder {
 	b.permissionBoundary = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
 // RoleARN sets the value of the 'role_ARN' attribute to the given value.
 func (b *STSBuilder) RoleARN(value string) *STSBuilder {
 	b.roleARN = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
 // SupportRoleARN sets the value of the 'support_role_ARN' attribute to the given value.
 func (b *STSBuilder) SupportRoleARN(value string) *STSBuilder {
 	b.supportRoleARN = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -146,6 +154,7 @@ func (b *STSBuilder) Copy(object *STS) *STSBuilder {
 	} else {
 		b.instanceIAMRoles = nil
 	}
+	b.managedPolicies = object.managedPolicies
 	b.oidcPrivateKeySecretArn = object.oidcPrivateKeySecretArn
 	if object.operatorIAMRoles != nil {
 		b.operatorIAMRoles = make([]*OperatorIAMRoleBuilder, len(object.operatorIAMRoles))
@@ -176,6 +185,7 @@ func (b *STSBuilder) Build() (object *STS, err error) {
 			return
 		}
 	}
+	object.managedPolicies = b.managedPolicies
 	object.oidcPrivateKeySecretArn = b.oidcPrivateKeySecretArn
 	if b.operatorIAMRoles != nil {
 		object.operatorIAMRoles = make([]*OperatorIAMRole, len(b.operatorIAMRoles))

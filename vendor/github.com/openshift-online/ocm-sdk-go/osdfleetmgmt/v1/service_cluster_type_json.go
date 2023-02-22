@@ -97,11 +97,20 @@ func writeServiceCluster(object *ServiceCluster, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("name")
+		stream.WriteString(object.name)
+		count++
+	}
+	present_ = object.bitmap_&128 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("region")
 		stream.WriteString(object.region)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -156,14 +165,18 @@ func readServiceCluster(iterator *jsoniter.Iterator) *ServiceCluster {
 			value := readClusterManagementReference(iterator)
 			object.clusterManagementReference = value
 			object.bitmap_ |= 32
+		case "name":
+			value := iterator.ReadString()
+			object.name = value
+			object.bitmap_ |= 64
 		case "region":
 			value := iterator.ReadString()
 			object.region = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "status":
 			value := iterator.ReadString()
 			object.status = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		default:
 			iterator.ReadAny()
 		}

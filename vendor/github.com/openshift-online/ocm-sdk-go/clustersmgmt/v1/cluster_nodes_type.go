@@ -30,7 +30,9 @@ type ClusterNodes struct {
 	computeLabels        map[string]string
 	computeMachineType   *MachineType
 	infra                int
+	infraMachineType     *MachineType
 	master               int
+	masterMachineType    *MachineType
 	securityGroupFilters []*MachinePoolSecurityGroupFilter
 	total                int
 }
@@ -182,12 +184,35 @@ func (o *ClusterNodes) GetInfra() (value int, ok bool) {
 	return
 }
 
+// InfraMachineType returns the value of the 'infra_machine_type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The infra machine type to use, for example `r5.xlarge` (Optional).
+func (o *ClusterNodes) InfraMachineType() *MachineType {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.infraMachineType
+	}
+	return nil
+}
+
+// GetInfraMachineType returns the value of the 'infra_machine_type' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The infra machine type to use, for example `r5.xlarge` (Optional).
+func (o *ClusterNodes) GetInfraMachineType() (value *MachineType, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.infraMachineType
+	}
+	return
+}
+
 // Master returns the value of the 'master' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Number of master nodes of the cluster.
 func (o *ClusterNodes) Master() int {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.master
 	}
 	return 0
@@ -198,9 +223,32 @@ func (o *ClusterNodes) Master() int {
 //
 // Number of master nodes of the cluster.
 func (o *ClusterNodes) GetMaster() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.master
+	}
+	return
+}
+
+// MasterMachineType returns the value of the 'master_machine_type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The master machine type to use, for example `r5.xlarge` (Optional).
+func (o *ClusterNodes) MasterMachineType() *MachineType {
+	if o != nil && o.bitmap_&256 != 0 {
+		return o.masterMachineType
+	}
+	return nil
+}
+
+// GetMasterMachineType returns the value of the 'master_machine_type' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The master machine type to use, for example `r5.xlarge` (Optional).
+func (o *ClusterNodes) GetMasterMachineType() (value *MachineType, ok bool) {
+	ok = o != nil && o.bitmap_&256 != 0
+	if ok {
+		value = o.masterMachineType
 	}
 	return
 }
@@ -208,9 +256,9 @@ func (o *ClusterNodes) GetMaster() (value int, ok bool) {
 // SecurityGroupFilters returns the value of the 'security_group_filters' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// List of security groups to be applied to nodes (Optional)
+// List of security groups to be applied to nodes (Optional).
 func (o *ClusterNodes) SecurityGroupFilters() []*MachinePoolSecurityGroupFilter {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.securityGroupFilters
 	}
 	return nil
@@ -219,9 +267,9 @@ func (o *ClusterNodes) SecurityGroupFilters() []*MachinePoolSecurityGroupFilter 
 // GetSecurityGroupFilters returns the value of the 'security_group_filters' attribute and
 // a flag indicating if the attribute has a value.
 //
-// List of security groups to be applied to nodes (Optional)
+// List of security groups to be applied to nodes (Optional).
 func (o *ClusterNodes) GetSecurityGroupFilters() (value []*MachinePoolSecurityGroupFilter, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.securityGroupFilters
 	}
@@ -233,7 +281,7 @@ func (o *ClusterNodes) GetSecurityGroupFilters() (value []*MachinePoolSecurityGr
 //
 // Total number of nodes of the cluster.
 func (o *ClusterNodes) Total() int {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.total
 	}
 	return 0
@@ -244,7 +292,7 @@ func (o *ClusterNodes) Total() int {
 //
 // Total number of nodes of the cluster.
 func (o *ClusterNodes) GetTotal() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.total
 	}

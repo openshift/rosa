@@ -27,6 +27,7 @@ type ManagementClusterParentBuilder struct {
 	clusterId string
 	href      string
 	kind      string
+	name      string
 }
 
 // NewManagementClusterParent creates a new builder of 'management_cluster_parent' objects.
@@ -60,6 +61,13 @@ func (b *ManagementClusterParentBuilder) Kind(value string) *ManagementClusterPa
 	return b
 }
 
+// Name sets the value of the 'name' attribute to the given value.
+func (b *ManagementClusterParentBuilder) Name(value string) *ManagementClusterParentBuilder {
+	b.name = value
+	b.bitmap_ |= 8
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *ManagementClusterParentBuilder) Copy(object *ManagementClusterParent) *ManagementClusterParentBuilder {
 	if object == nil {
@@ -69,6 +77,7 @@ func (b *ManagementClusterParentBuilder) Copy(object *ManagementClusterParent) *
 	b.clusterId = object.clusterId
 	b.href = object.href
 	b.kind = object.kind
+	b.name = object.name
 	return b
 }
 
@@ -79,5 +88,6 @@ func (b *ManagementClusterParentBuilder) Build() (object *ManagementClusterParen
 	object.clusterId = b.clusterId
 	object.href = b.href
 	object.kind = b.kind
+	object.name = b.name
 	return
 }
