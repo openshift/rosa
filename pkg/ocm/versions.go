@@ -155,6 +155,15 @@ func CreateVersionID(version string, channelGroup string) string {
 	return versionID
 }
 
+func GetRawVersionId(versionId string) string {
+	trimmedPrefix := strings.TrimPrefix(versionId, "openshift-v")
+	channelSeparator := strings.LastIndex(trimmedPrefix, "-")
+	if channelSeparator > 0 {
+		return trimmedPrefix[:channelSeparator]
+	}
+	return trimmedPrefix
+}
+
 // Get a list of all STS-supported minor versions
 func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 	vs, err := ocmClient.GetVersions("")

@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -22,9 +23,9 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(writer, "ID\tAUTOSCALING\tDESIRED REPLICAS\tCURRENT REPLICAS\t"+
-		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tMESSAGE\t\n")
+		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tMESSAGE\t\n")
 	for _, nodePool := range nodePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			printNodePoolAutoscaling(nodePool.Autoscaling()),
 			printNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
@@ -34,6 +35,7 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 			printTaints(nodePool.Taints()),
 			nodePool.AvailabilityZone(),
 			nodePool.Subnet(),
+			printNodePoolVersion(nodePool.Version()),
 			printNodePoolMessage(nodePool.Status()),
 		)
 	}
@@ -75,4 +77,8 @@ func printNodePoolMessage(status *cmv1.NodePoolStatus) string {
 		return status.Message()
 	}
 	return ""
+}
+
+func printNodePoolVersion(version *cmv1.Version) string {
+	return ocm.GetRawVersionId(version.ID())
 }

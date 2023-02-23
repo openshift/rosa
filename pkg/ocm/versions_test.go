@@ -33,6 +33,27 @@ var _ = Describe("Versions", Ordered, func() {
 				func() string { return "candidate" }, true, nil),
 		)
 	})
+
+	Context("when listing machinepools versions", func() {
+		DescribeTable("Parse correctly raw versions from version id",
+			func(versionId string, expected string) {
+				rawId := GetRawVersionId(versionId)
+				Expect(rawId).To(Equal(expected))
+			},
+			Entry("stable channel",
+				"openshift-v4.10.21",
+				"4.10.21",
+			),
+			Entry("candidate channel",
+				"openshift-v4.11.0-fc.0-candidate",
+				"4.11.0-fc.0",
+			),
+			Entry("nightly channel",
+				"openshift-v4.7.0-0.nightly-2021-05-21-224816-nightly",
+				"4.7.0-0.nightly-2021-05-21-224816",
+			),
+		)
+	})
 })
 
 func validateVersion(version func() string, channelGroup func() string, expectedValidation bool, expectedErr error) {

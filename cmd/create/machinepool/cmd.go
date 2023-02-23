@@ -48,6 +48,7 @@ var args struct {
 	multiAvailabilityZone bool
 	availabilityZone      string
 	subnet                string
+	version               string
 }
 
 var Cmd = &cobra.Command{
@@ -168,6 +169,14 @@ func init() {
 		"subnet",
 		"",
 		"Select subnet to create a single AZ machine pool for BYOVPC cluster")
+
+	flags.StringVar(
+		&args.version,
+		"version",
+		"",
+		"Version of OpenShift that will be used to install a machine pool for a hosted cluster,"+
+			" for example \"4.12.4\"",
+	)
 
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
