@@ -35,8 +35,9 @@ const (
 	DeleteOpenIdConnectProvider   Command = "delete-open-id-connect-provider"
 	DeleteRolePermissionsBoundary Command = "delete-role-permissions-boundary"
 	//S3Api
-	CreateBucket Command = "create-bucket"
-	PutObject    Command = "put-object"
+	CreateBucket     Command = "create-bucket"
+	PutObject        Command = "put-object"
+	PutBucketTagging Command = "put-bucket-tagging"
 	//S3
 	Remove       Command = "rm"
 	RemoveBucket Command = "rb"
@@ -70,6 +71,7 @@ const (
 	CreateBucketConfiguration Param = "create-bucket-configuration"
 	Body                      Param = "body"
 	Key                       Param = "key"
+	Tagging                   Param = "tagging"
 
 	//SecretsManager
 	Name         Param = "name"

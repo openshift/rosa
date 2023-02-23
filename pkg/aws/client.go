@@ -951,7 +951,7 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 		return weberr.Errorf("Bucket '%s' already exists.", bucketName)
 	}
 	bucketInput := &s3.CreateBucketInput{
-		Bucket: &bucketName,
+		Bucket: aws.String(bucketName),
 	}
 	if region != DefaultRegion {
 		bucketInput.SetCreateBucketConfiguration(&s3.CreateBucketConfiguration{
@@ -959,6 +959,20 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 		})
 	}
 	_, err = c.s3Client.CreateBucket(bucketInput)
+	if err != nil {
+		return err
+	}
+	_, err = c.s3Client.PutBucketTagging(&s3.PutBucketTaggingInput{
+		Bucket: aws.String(bucketName),
+		Tagging: &s3.Tagging{
+			TagSet: []*s3.Tag{
+				{
+					Key:   aws.String(tags.RedHatManaged),
+					Value: aws.String(tags.True),
+				},
+			},
+		},
+	})
 	if err != nil {
 		return err
 	}
@@ -975,11 +989,13 @@ func (c *awsClient) DeleteS3Bucket(bucketName string) error {
 		}
 		return err
 	}
-	c.emptyS3Bucket(bucketName)
-	bucketInput := &s3.DeleteBucketInput{
-		Bucket: aws.String(bucketName),
+	err = c.emptyS3Bucket(bucketName)
+	if err != nil {
+		return err
 	}
-	_, err = c.s3Client.DeleteBucket(bucketInput)
+	_, err = c.s3Client.DeleteBucket(&s3.DeleteBucketInput{
+		Bucket: aws.String(bucketName),
+	})
 	if err != nil {
 		return err
 	}
@@ -1008,10 +1024,11 @@ func (c *awsClient) emptyS3Bucket(bucketName string) error {
 func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error {
 	acl := AclPublicRead
 	_, err := c.s3Client.PutObject(&s3.PutObjectInput{
-		ACL:    aws.String(acl),
-		Body:   body,
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(key),
+		ACL:     aws.String(acl),
+		Body:    body,
+		Bucket:  aws.String(bucketName),
+		Key:     aws.String(key),
+		Tagging: aws.String(fmt.Sprintf("%s=%s", tags.RedHatManaged, tags.True)),
 	})
 	if err != nil {
 		return err

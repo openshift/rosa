@@ -245,7 +245,9 @@ func buildCommands(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) (s
 	}
 	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint)
 
-	iamTags := map[string]string{}
+	iamTags := map[string]string{
+		tags.RedHatManaged: tags.True,
+	}
 	if clusterId != "" {
 		iamTags[tags.ClusterID] = clusterId
 	}
