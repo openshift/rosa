@@ -2,10 +2,10 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
-== 1.2.15 Feb 13 2023
+== 1.2.15 Feb 23 2023
 
-- Fix etcd encryption default enforecment
 - fix: improve error messages for deleting oidc-config
+- feat: check if any clusters are using the oidc config
 - fix: adding some validations to bucket name
 - fix: allow empty label match editing ingress interactive
 - aws: Ensure ARNs have the correct partition
@@ -14,8 +14,18 @@ This document describes the relevant changes between releases of the `rosa` comm
 - fix: add a few more validations to bucket/folder name
 - Add a `AWS managed` column to list role commands
 - Add etcd encyprtion kms arn support
-- Check if any clusters are using the oidc config before deletion
-- Using k8s/apimachinery/validation for machine pool labels
+- Release v1.2.15
+- Fix etcd encryption default enforecment
+- Update `CHANGES.adoc` with the recent bug fix
+- fix: using k8s/apimachinery/validation for labels
+- chore: update changes for 1.2.15
+- Improve logging so that it's more obvious what is wrong
+- feat: set byo oidc enabled when specifying byo oidc attributes
+- Add labels and taints to the list machinepools command
+- Change managed policies flag name to `aws-policies`
+- fix: missing '--' for the oidc endpoint url flag
+- Use latest OCP version instead of the default version
+- Bump ocm-sdk-go version to v0.1.319
 
 == 1.2.14 Feb 8 2023
 
@@ -32,7 +42,6 @@ This document describes the relevant changes between releases of the `rosa` comm
 - Refactor `create account roles command` to use interfaces
 - fix: add region when creating manual s3 bucket for oidc config
 - feat: add user prefix to oidc configuration
-- SDA-7895 Enable editing subnet in machinepools for hosted clusters
 - feat: add spinner creating oidc config
 - fix: show info report when deleting operator roles
 - fix: forcing creation only works for unmanaged policies
