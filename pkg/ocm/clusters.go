@@ -427,18 +427,6 @@ func (c *Client) IsSTSClusterExists(creator *aws.Creator, count int, roleARN str
 	return false, nil
 }
 
-func (c *Client) GetClusterStatus(clusterID string) (*cmv1.ClusterStatus, error) {
-	response, err := c.ocm.ClustersMgmt().V1().Clusters().
-		Cluster(clusterID).
-		Status().
-		Get().
-		Send()
-	if err != nil || response.Body() == nil {
-		return nil, err
-	}
-	return response.Body(), nil
-}
-
 func (c *Client) GetClusterState(clusterID string) (cmv1.ClusterState, error) {
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Cluster(clusterID).
