@@ -243,6 +243,13 @@ func run(cmd *cobra.Command, argv []string) {
 					operatorIAMRole.RoleARN())
 			}
 		}
+		var awsManaged string
+		if cluster.AWS().STS().ManagedPolicies() {
+			awsManaged = "Yes"
+		} else {
+			awsManaged = "No"
+		}
+		str = fmt.Sprintf("%sManaged Policies:           %s\n", str, awsManaged)
 	}
 
 	str = fmt.Sprintf("%s"+
