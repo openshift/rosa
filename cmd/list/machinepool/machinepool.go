@@ -33,6 +33,12 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 				MaxReplicas(cluster.Nodes().AutoscaleCompute().MaxReplicas()),
 		)
 	}
+
+	// In case of AWS clusters we can query the subnbets
+	if cluster.AWS() != nil && len(cluster.AWS().SubnetIDs()) > 0 {
+		defaultMachinePoolBuilder.Subnets(cluster.AWS().SubnetIDs()...)
+	}
+
 	defaultMachinePool, _ := defaultMachinePoolBuilder.Build()
 
 	machinePools = append([]*cmv1.MachinePool{defaultMachinePool}, machinePools...)
