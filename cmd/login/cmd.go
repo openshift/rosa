@@ -149,7 +149,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Determine if we should be using the FedRAMP environment:
 	if fedramp.HasFlag(cmd) ||
-		(cfg.FedRAMP && token == "") ||
+		fedramp.Enabled() ||
 		fedramp.IsGovRegion(arguments.GetRegion()) ||
 		config.IsEncryptedToken(token) {
 		fedramp.Enable()
@@ -244,7 +244,6 @@ func run(cmd *cobra.Command, argv []string) {
 	cfg.Scopes = args.scopes
 	cfg.URL = gatewayURL
 	cfg.Insecure = args.insecure
-	cfg.FedRAMP = fedramp.Enabled()
 
 	if token != "" {
 		if config.IsEncryptedToken(token) {

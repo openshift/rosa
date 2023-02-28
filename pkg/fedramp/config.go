@@ -19,13 +19,31 @@ limitations under the License.
 
 package fedramp
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/openshift/rosa/pkg/config"
+)
 
 var regions = []string{"us-gov-west-1", "us-gov-east-1"}
 
+// Verifies if configured region is GovCloud
 func IsGovRegion(region string) bool {
 	for _, r := range regions {
 		if r == region {
+			return true
+		}
+	}
+	return false
+}
+
+// Verifies if API URL in config is for FedRAMP
+func IsFedRAMP(cfg *config.Config) bool {
+	if cfg == nil {
+		return false
+	}
+	for _, api := range URLAliases {
+		if api == cfg.URL {
 			return true
 		}
 	}

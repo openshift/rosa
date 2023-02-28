@@ -89,7 +89,7 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 	}
 
 	// Enable the FedRAMP flag globally
-	if b.cfg.FedRAMP {
+	if fedramp.IsFedRAMP(b.cfg) {
 		fedramp.Enable()
 	}
 

@@ -44,12 +44,13 @@ func GetEnv() (string, error) {
 		return "", err
 	}
 
-	urlAliases := URLAliases
-	if cfg.FedRAMP {
-		urlAliases = fedramp.URLAliases
+	for env, api := range URLAliases {
+		if api == cfg.URL {
+			return env, nil
+		}
 	}
 
-	for env, api := range urlAliases {
+	for env, api := range fedramp.URLAliases {
 		if api == cfg.URL {
 			return env, nil
 		}

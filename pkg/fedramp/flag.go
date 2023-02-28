@@ -52,7 +52,7 @@ func Enabled() bool {
 	if err != nil {
 		return false
 	}
-	if cfg != nil && cfg.FedRAMP {
+	if IsFedRAMP(cfg) {
 		Enable()
 	}
 	return enabled
@@ -65,12 +65,6 @@ func Enable() {
 
 func Disable() {
 	enabled = false
-	cfg, err := config.Load()
-	if err != nil || cfg == nil {
-		return
-	}
-	cfg.FedRAMP = false
-	config.Save(cfg)
 }
 
 // enabled is a boolean flag that indicates that the govcloud mode is enabled.
