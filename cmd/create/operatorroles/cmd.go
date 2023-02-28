@@ -51,7 +51,7 @@ var Cmd = &cobra.Command{
 
   # Create operator roles with a specific permissions boundary
   rosa create operator-roles -c mycluster --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	Run: run,
+	RunE: run,
 }
 
 func init() {
@@ -87,7 +87,11 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func isByoOidcSet(cluster *cmv1.Cluster) bool {
+	return cluster != nil && !strings.Contains(cluster.AWS().STS().OIDCEndpointURL(), cluster.ID())
+}
+
+func run(cmd *cobra.Command, argv []string) error {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -132,6 +136,15 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Failed to verify if operator roles exist: %s", err)
 			os.Exit(1)
 		}
+	}
+
+	if isByoOidcSet(cluster) && len(missingRoles) == 0 {
+		err := validateOperatorRolesMatchOidcProvider(r, cluster)
+		if err != nil {
+			return err
+		}
+		r.Reporter.Warnf("Cluster '%s' is using BYO OIDC and operator roles already exist.", clusterKey)
+		return nil
 	}
 
 	if len(missingRoles) == 0 &&
@@ -294,6 +307,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
+	return nil
 }
 
 func createRoles(r *rosa.Runtime,
@@ -368,10 +382,12 @@ func createRoles(r *rosa.Runtime,
 
 		r.Reporter.Debugf("Creating role '%s'", roleName)
 		tagsList := map[string]string{
-			tags.ClusterID:         cluster.ID(),
 			tags.OperatorNamespace: operator.Namespace(),
 			tags.OperatorName:      operator.Name(),
 			tags.RedHatManaged:     helper.True,
+		}
+		if !isByoOidcSet(cluster) {
+			tagsList[tags.ClusterID] = cluster.ID()
 		}
 		if managedPolicies {
 			tagsList[tags.ManagedPolicies] = helper.True
@@ -470,11 +486,12 @@ func buildCommands(r *rosa.Runtime, env string,
 			return "", err
 		}
 		iamTags := map[string]string{
-			tags.ClusterID:         cluster.ID(),
-			tags.RolePrefix:        prefix,
 			tags.OperatorNamespace: operator.Namespace(),
 			tags.OperatorName:      operator.Name(),
 			tags.RedHatManaged:     helper.True,
+		}
+		if !isByoOidcSet(cluster) {
+			iamTags[tags.ClusterID] = cluster.ID()
 		}
 		if managedPolicies {
 			iamTags[tags.ManagedPolicies] = helper.True
@@ -537,4 +554,22 @@ func validateOperatorRoles(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, er
 		}
 	}
 	return missingRoles, nil
+}
+
+func validateOperatorRolesMatchOidcProvider(r *rosa.Runtime, cluster *cmv1.Cluster) error {
+	operatorRolesList := []ocm.OperatorIAMRole{}
+	for _, operatorIAMRole := range cluster.AWS().STS().OperatorIAMRoles() {
+		path, err := aws.GetPathFromARN(operatorIAMRole.RoleARN())
+		if err != nil {
+			return err
+		}
+		operatorRolesList = append(operatorRolesList, ocm.OperatorIAMRole{
+			Name:      operatorIAMRole.Name(),
+			Namespace: operatorIAMRole.Namespace(),
+			RoleARN:   operatorIAMRole.RoleARN(),
+			Path:      path,
+		})
+	}
+	return ocm.ValidateOperatorRolesMatchOidcProvider(r.AWSClient, operatorRolesList,
+		cluster.AWS().STS().OIDCEndpointURL())
 }
