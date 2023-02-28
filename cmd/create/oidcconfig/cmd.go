@@ -375,6 +375,14 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		AddParam(awscb.Region, args.region).
 		Build()
 	commands = append(commands, createS3BucketCommand)
+
+	putBucketTaggingCommand := awscb.NewS3ApiCommandBuilder().
+		SetCommand(awscb.PutBucketTagging).
+		AddParam(awscb.Bucket, bucketName).
+		AddParam(awscb.Tagging, fmt.Sprintf("'TagSet=[{Key=%s,Value=%s}]'", tags.RedHatManaged, tags.True)).
+		Build()
+	commands = append(commands, putBucketTaggingCommand)
+
 	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
 	err = helper.SaveDocument(discoveryDocument, discoveryDocumentFilename)
 	if err != nil {
@@ -387,6 +395,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		AddParam(awscb.Body, fmt.Sprintf("./%s", discoveryDocumentFilename)).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.Key, discoveryDocumentKey).
+		AddParam(awscb.Tagging, fmt.Sprintf("'%s=%s'", tags.RedHatManaged, tags.True)).
 		Build()
 	commands = append(commands, putDiscoveryDocumentCommand)
 	commands = append(commands, fmt.Sprintf("rm %s", discoveryDocumentFilename))
@@ -402,6 +411,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		AddParam(awscb.Body, fmt.Sprintf("./%s", jwksFilename)).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.Key, jwksKey).
+		AddParam(awscb.Tagging, fmt.Sprintf("'%s=%s'", tags.RedHatManaged, tags.True)).
 		Build()
 	commands = append(commands, putJwksCommand)
 	commands = append(commands, fmt.Sprintf("rm %s", jwksFilename))
