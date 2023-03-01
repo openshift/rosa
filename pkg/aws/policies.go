@@ -482,6 +482,12 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 				}
 			case tags.OpenShiftVersion:
 				isTagged = true
+
+				if roleHasTag(listRoleTagsOutput.Tags, tags.ManagedPolicies, tags.True) {
+					// Managed policies will be up-to-date no need to check version tags
+					break
+				}
+
 				clusterVersion, err := semver.NewVersion(version)
 				if err != nil {
 					skip = true
