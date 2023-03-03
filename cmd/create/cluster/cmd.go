@@ -29,7 +29,6 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/spf13/cobra"
@@ -1170,7 +1169,8 @@ func run(cmd *cobra.Command, _ []string) {
 			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name(),
 				Namespace: operator.Namespace(),
-				RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, awsCreator, operatorRolePath),
+				RoleARN: aws.ComputeOperatorRoleArn(operatorRolesPrefix, operator,
+					awsCreator, operatorRolePath),
 			})
 
 		}
@@ -2398,19 +2398,6 @@ func hostPrefixValidator(val interface{}) error {
 			hostPrefix, HostPrefixMin, HostPrefixMax)
 	}
 	return nil
-}
-
-func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {
-	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
-	if len(role) > 64 {
-		role = role[0:64]
-	}
-	str := fmt.Sprintf("arn:%s:iam::%s:role", aws.GetPartition(), creator.AccountID)
-	if path != "" {
-		str = fmt.Sprintf("%s%s", str, path)
-		return fmt.Sprintf("%s%s", str, role)
-	}
-	return fmt.Sprintf("%s/%s", str, role)
 }
 
 func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {

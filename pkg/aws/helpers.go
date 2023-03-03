@@ -837,3 +837,21 @@ func GetAccountRolePolicyKeys(roleType string) []string {
 
 	return []string{fmt.Sprintf("sts_%s_permission_policy", roleType)}
 }
+
+func ComputeOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *Creator, path string) string {
+	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
+	if len(role) > 64 {
+		role = role[0:64]
+	}
+	str := fmt.Sprintf("arn:%s:iam::%s:role", GetPartition(), creator.AccountID)
+	if path != "" {
+		str = fmt.Sprintf("%s%s", str, path)
+		return fmt.Sprintf("%s%s", str, role)
+	}
+	return fmt.Sprintf("%s/%s", str, role)
+}
+
+func IsStandardNamedAccountRole(accountRoleName, roleSuffix string) (bool, string) {
+	accountRolePrefix := TrimRoleSuffix(accountRoleName, fmt.Sprintf("-%s-Role", roleSuffix))
+	return accountRolePrefix != accountRoleName, accountRolePrefix
+}

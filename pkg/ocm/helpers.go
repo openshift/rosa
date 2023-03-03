@@ -44,14 +44,15 @@ const (
 	HibernateCapability  = "capability.organization.hibernate_cluster"
 	HypershiftCapability = "capability.organization.hypershift"
 	//Pendo Events
-	Success    = "Success"
-	Failure    = "Failure"
-	Response   = "Response"
-	ClusterID  = "ClusterID"
-	Version    = "Version"
-	Username   = "Username"
-	URL        = "URL"
-	IsThrottle = "IsThrottle"
+	Success             = "Success"
+	Failure             = "Failure"
+	Response            = "Response"
+	ClusterID           = "ClusterID"
+	OperatorRolesPrefix = "OperatorRolePrefix"
+	Version             = "Version"
+	Username            = "Username"
+	URL                 = "URL"
+	IsThrottle          = "IsThrottle"
 
 	OCMRoleLabel  = "sts_ocm_role"
 	USERRoleLabel = "sts_user_role"
@@ -763,7 +764,8 @@ func ValidateOperatorRolesMatchOidcProvider(awsClient aws.Client,
 			return err
 		}
 		if !strings.Contains(*roleObject.AssumeRolePolicyDocument, parsedUrl.Host) {
-			return weberr.Errorf("Operator role '%s' does not have trusted relationship to '%s' issuer URL", roleARN, parsedUrl)
+			return weberr.Errorf("Operator role '%s' does not have trusted relationship to '%s' issuer URL",
+				roleARN, parsedUrl.Host)
 		}
 	}
 	return nil
