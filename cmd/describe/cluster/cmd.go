@@ -139,6 +139,19 @@ func run(cmd *cobra.Command, argv []string) {
 		)
 	}
 
+	var machinePools []*cmv1.MachinePool
+	var nodePools []*cmv1.NodePool
+
+	if cluster.Hypershift().Enabled() {
+		nodePools, err = r.OCMClient.GetNodePools(cluster.ID())
+	} else {
+		machinePools, err = r.OCMClient.GetMachinePools(cluster.ID())
+	}
+	if err != nil {
+		r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
 	// Print short cluster description:
 	str = fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
@@ -152,7 +165,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"API URL:                    %s\n"+
 		"Console URL:                %s\n"+
 		"Region:                     %s\n"+
-		"Multi-AZ:                   %t\n"+
+		"%s"+
 		"%s"+
 		"Network:\n"+
 		"%s"+
@@ -171,8 +184,8 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.API().URL(),
 		cluster.Console().URL(),
 		cluster.Region().ID(),
-		cluster.MultiAZ(),
-		clusterInfraConfig(cluster, clusterKey, r),
+		clusterMultiAZ(cluster, nodePools),
+		clusterInfraConfig(cluster, clusterKey, r, machinePools, nodePools),
 		networkType,
 		cluster.Network().ServiceCIDR(),
 		cluster.Network().MachineCIDR(),
@@ -324,23 +337,41 @@ func run(cmd *cobra.Command, argv []string) {
 
 func controlPlaneConfig(cluster *cmv1.Cluster) string {
 	if cluster.Hypershift().Enabled() {
-		return "Red Hat hosted"
+		return "ROSA Service Hosted"
 	}
-	return "Customer hosted"
+	return "Customer Hosted"
 }
 
-func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtime) string {
+func clusterMultiAZ(cluster *cmv1.Cluster, nodePools []*cmv1.NodePool) string {
+	var multiaz string
+	if cluster.Hypershift().Enabled() {
+		dataPlaneAvailability := "SingleAZ"
+		if cluster.NodePools() != nil {
+			multiAzMap := make(map[string]struct{})
+			for _, nodePool := range nodePools {
+				multiAzMap[nodePool.AvailabilityZone()] = struct{}{}
+			}
+			if len(multiAzMap) > 1 {
+				dataPlaneAvailability = "MultiAZ"
+			}
+		}
+		multiaz = fmt.Sprintf("Availability:\n"+
+			" - Control Plane:           MultiAZ\n"+
+			" - Data Plane:              %s\n",
+			dataPlaneAvailability)
+	} else {
+		multiaz = fmt.Sprintf("Multi-AZ:                   %t\n", cluster.MultiAZ())
+	}
+	return multiaz
+}
+
+func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtime,
+	machinePools []*cmv1.MachinePool, nodePools []*cmv1.NodePool) string {
 	var infraConfig string
 	if cluster.Hypershift().Enabled() {
 		minNodes := 0
 		maxNodes := 0
 		currentNodes := 0
-		// Reusing design as classic machinePools, in the future those both APIs will converge
-		nodePools, err := r.OCMClient.GetNodePools(cluster.ID())
-		if err != nil {
-			r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		}
 		// Accumulate all replicas across machine pools
 		for _, nodePool := range nodePools {
 			if nodePool.Autoscaling() != nil {
@@ -357,8 +388,8 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 		if minNodes != maxNodes {
 			infraConfig = fmt.Sprintf(""+
 				"Nodes:\n"+
-				" - Compute (Autoscaled):        %d-%d\n"+
-				" - Compute (current):           %d\n",
+				" - Compute (Autoscaled):    %d-%d\n"+
+				" - Compute (current):       %d\n",
 				minNodes,
 				maxNodes,
 				currentNodes,
@@ -366,8 +397,8 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 		} else {
 			infraConfig = fmt.Sprintf(""+
 				"Nodes:\n"+
-				" - Compute (desired):           %d\n"+
-				" - Compute (current):           %d\n",
+				" - Compute (desired):       %d\n"+
+				" - Compute (current):       %d\n",
 				maxNodes,
 				currentNodes,
 			)
@@ -376,11 +407,6 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 		// Display number of all worker nodes across the cluster
 		minNodes := 0
 		maxNodes := 0
-		machinePools, err := r.OCMClient.GetMachinePools(cluster.ID())
-		if err != nil {
-			r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		}
 		// Accumulate all replicas across machine pools
 		for _, machinePool := range machinePools {
 			if machinePool.Autoscaling() != nil {
