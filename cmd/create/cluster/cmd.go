@@ -2334,7 +2334,7 @@ func handleByoOidcOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) (bool
 				os.Exit(1)
 			}
 			parsedSecretArn, _ := arn.Parse(oidcPrivateKeySecretArn)
-			if parsedSecretArn.Service != "secretsmanager" {
+			if parsedSecretArn.Service != aws.SecretsManager {
 				r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
 				os.Exit(1)
 			}

@@ -24,6 +24,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
 	uninstallLogs "github.com/openshift/rosa/cmd/logs/uninstall"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -111,6 +112,10 @@ func buildCommands(cluster *cmv1.Cluster) string {
 	commands := []string{}
 	deleteOperatorRole := fmt.Sprintf("\trosa delete operator-roles -c %s", cluster.ID())
 	deleteOIDCProvider := fmt.Sprintf("\trosa delete oidc-provider -c %s", cluster.ID())
+	if cluster.ByoOidc().Enabled() {
+		deleteOIDCProvider = fmt.Sprintf("\trosa delete oidc-provider --%s %s",
+			oidcprovider.OidcEndpointUrlFlag, cluster.AWS().STS().OIDCEndpointURL())
+	}
 	commands = append(commands, deleteOperatorRole, deleteOIDCProvider)
 	return strings.Join(commands, "\n")
 }
