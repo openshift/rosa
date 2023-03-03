@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
+	"github.com/openshift/rosa/cmd/dlt/operatorrole"
 	uninstallLogs "github.com/openshift/rosa/cmd/logs/uninstall"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -113,6 +114,8 @@ func buildCommands(cluster *cmv1.Cluster) string {
 	deleteOperatorRole := fmt.Sprintf("\trosa delete operator-roles -c %s", cluster.ID())
 	deleteOIDCProvider := fmt.Sprintf("\trosa delete oidc-provider -c %s", cluster.ID())
 	if cluster.ByoOidc().Enabled() {
+		deleteOperatorRole = fmt.Sprintf("\trosa delete operator-roles --%s %s",
+			operatorrole.PrefixFlag, cluster.AWS().STS().OperatorRolePrefix())
 		deleteOIDCProvider = fmt.Sprintf("\trosa delete oidc-provider --%s %s",
 			oidcprovider.OidcEndpointUrlFlag, cluster.AWS().STS().OIDCEndpointURL())
 	}

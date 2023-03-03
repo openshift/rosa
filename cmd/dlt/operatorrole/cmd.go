@@ -34,8 +34,12 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const (
+	PrefixFlag = "prefix"
+)
+
 var args struct {
-	clusterKey string
+	prefix string
 }
 
 var Cmd = &cobra.Command{
@@ -51,13 +55,15 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	flags.StringVarP(
-		&args.clusterKey,
-		"cluster",
-		"c",
+	flags.StringVar(
+		&args.prefix,
+		PrefixFlag,
 		"",
-		"ID or Name of the cluster (deleted/archived) to delete the operator roles from (required).",
+		"Operator role prefix, this flag needs to be used in case of BYO OIDC",
 	)
+	flags.MarkHidden(PrefixFlag)
+
+	ocm.AddOptionalClusterFlag(Cmd)
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 }
@@ -70,25 +76,9 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	if len(argv) == 1 && !cmd.Flag("cluster").Changed {
-		args.clusterKey = argv[0]
-	}
-
 	mode, err := aws.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-
-	// Check that the cluster key (name, identifier or external identifier) given by the user
-	// is reasonably safe so that there is no risk of SQL injection:
-	clusterKey := args.clusterKey
-	if !ocm.IsValidClusterKey(clusterKey) {
-		r.Reporter.Errorf(
-			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
-				"must contain only letters, digits, dashes and underscores",
-			clusterKey,
-		)
 		os.Exit(1)
 	}
 
@@ -97,34 +87,8 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
-	sub, err := r.OCMClient.GetClusterUsingSubscription(clusterKey, r.Creator)
-	if err != nil {
-		if errors.GetType(err) == errors.Conflict {
-			r.Reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
-				"use cluster ID instead", clusterKey)
-			os.Exit(1)
-		}
-		r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-	if sub != nil {
-		clusterKey = sub.ClusterID()
-	}
-	c, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
-	if err != nil {
-		if errors.GetType(err) != errors.NotFound {
-			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		} else if sub == nil {
-			r.Reporter.Errorf("Failed to get cluster '%s': %v", r.ClusterKey, err)
-			os.Exit(1)
-		}
-	}
-
-	if c != nil && c.ID() != "" {
-		r.Reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
-			"uninstalled clusters", c.ID(), c.State())
+	if !cmd.Flag("cluster").Changed && !cmd.Flag(PrefixFlag).Changed {
+		r.Reporter.Errorf("Either a cluster key or a prefix must be specified.")
 		os.Exit(1)
 	}
 
@@ -154,43 +118,109 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
+
+	clusterKey := ""
+	var foundOperatorRoles []string
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
-	if spin != nil {
-		r.Reporter.Infof("Fetching operator roles for the cluster: %s", clusterKey)
-		spin.Start()
-	}
+	fetchingReporterOutput := "Fetching operator roles for the"
+	if args.prefix == "" {
+		clusterKey = r.GetClusterKey()
+		r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
+		sub, err := r.OCMClient.GetClusterUsingSubscription(clusterKey, r.Creator)
+		if err != nil {
+			if errors.GetType(err) == errors.Conflict {
+				r.Reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
+					"use cluster ID instead", clusterKey)
+				os.Exit(1)
+			}
+			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+		if sub != nil {
+			clusterKey = sub.ClusterID()
+		}
+		cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
+		if err != nil {
+			if errors.GetType(err) != errors.NotFound {
+				r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
+				os.Exit(1)
+			} else if sub == nil {
+				r.Reporter.Errorf("Failed to get cluster '%s': %v", r.ClusterKey, err)
+				os.Exit(1)
+			}
+		}
 
-	isHypershift := false
-	if c != nil {
-		isHypershift = c.Hypershift().Enabled()
+		if cluster != nil && cluster.ID() != "" {
+			r.Reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
+				"uninstalled clusters", cluster.ID(), cluster.State())
+			os.Exit(1)
+		}
+		isHypershift := false
+		if cluster != nil {
+			isHypershift = cluster.Hypershift().Enabled()
+		} else {
+			subPlanId := sub.Plan().ID()
+			isHypershift = subPlanId == hypershiftSubscriptionPlanId
+		}
+		if spin != nil {
+			fetchingReporterOutput = fmt.Sprintf("%s cluster: %s", fetchingReporterOutput, clusterKey)
+			r.Reporter.Infof("%s", fetchingReporterOutput)
+			spin.Start()
+		}
+		credRequests, err := r.OCMClient.GetCredRequests(isHypershift)
+		if err != nil {
+			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
+			os.Exit(1)
+		}
+		foundOperatorRoles, _ = r.AWSClient.GetOperatorRolesFromAccountByClusterID(sub.ClusterID(), credRequests)
 	} else {
-		subPlanId := sub.Plan().ID()
-		isHypershift = subPlanId == hypershiftSubscriptionPlanId
-	}
-	credRequests, err := r.OCMClient.GetCredRequests(isHypershift)
-	if err != nil {
-		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-		os.Exit(1)
+		if spin != nil {
+			fetchingReporterOutput = fmt.Sprintf("%s prefix: %s", fetchingReporterOutput, args.prefix)
+			r.Reporter.Infof("%s", fetchingReporterOutput)
+			spin.Start()
+		}
+		credRequests, err := r.OCMClient.GetCredRequests(true)
+		if err != nil {
+			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
+			os.Exit(1)
+		}
+		foundOperatorRoles, _ = r.AWSClient.GetOperatorRolesFromAccountByPrefix(args.prefix, credRequests)
+		if len(foundOperatorRoles) != 0 {
+			if spin != nil {
+				spin.Stop()
+			}
+			if !confirm.Prompt(true, "You are running delete operation for '%s' prefix."+
+				" Please ensure there are no clusters using these operator roles."+
+				" In case of BYO OIDC clusters, when reusing the operator roles deleting them is not necessary."+
+				"Are you sure you want to proceed?", args.prefix) {
+				os.Exit(1)
+			}
+		}
 	}
 
-	roles, _ := r.AWSClient.GetOperatorRolesFromAccount(sub.ClusterID(), credRequests)
-	if len(roles) == 0 {
+	if len(foundOperatorRoles) == 0 {
 		if spin != nil {
 			spin.Stop()
 		}
-		r.Reporter.Infof("There are no operator roles to delete for the cluster '%s'", clusterKey)
+		noRoleOutput := "There are no operator roles to delete"
+		if args.prefix != "" {
+			noRoleOutput = fmt.Sprintf("%s for prefix '%s'", noRoleOutput, args.prefix)
+		} else {
+			noRoleOutput = fmt.Sprintf("%s for cluster '%s'", noRoleOutput, clusterKey)
+		}
+		r.Reporter.Infof("%s", noRoleOutput)
 		return
 	}
 	if spin != nil {
 		spin.Stop()
 	}
 
-	_, roleARN, err := r.AWSClient.CheckRoleExists(roles[0])
+	_, roleARN, err := r.AWSClient.CheckRoleExists(foundOperatorRoles[0])
 	if err != nil {
-		r.Reporter.Errorf("Failed to get '%s' role ARN", roles[0])
+		r.Reporter.Errorf("Failed to get '%s' role ARN", foundOperatorRoles[0])
 		os.Exit(1)
 	}
 	managedPolicies, err := r.AWSClient.HasManagedPolicies(roleARN)
@@ -207,8 +237,8 @@ func run(cmd *cobra.Command, argv []string) {
 	switch mode {
 	case aws.ModeAuto:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
-		for _, role := range roles {
-			if !confirm.Prompt(true, "Delete the operator roles  '%s'?", role) {
+		for _, role := range foundOperatorRoles {
+			if !confirm.Prompt(true, "Delete the operator role '%s'?", role) {
 				continue
 			}
 			r.Reporter.Infof("Deleting operator role '%s'", role)
@@ -231,12 +261,12 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Infof("Successfully deleted the operator roles")
 	case aws.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
-		policyMap, err := r.AWSClient.GetPolicies(roles)
+		policyMap, err := r.AWSClient.GetPolicies(foundOperatorRoles)
 		if err != nil {
 			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
-		commands := buildCommand(roles, policyMap, managedPolicies)
+		commands := buildCommand(foundOperatorRoles, policyMap, managedPolicies)
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the Operator roles and policies:\n")
 		}

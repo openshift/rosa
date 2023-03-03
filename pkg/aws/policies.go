@@ -799,7 +799,7 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 			return err
 		}
 	}
-	err = c.DeleteRole(roleName, role)
+	err = c.DeleteRole(*role)
 	if err != nil {
 		return err
 	}
@@ -809,8 +809,8 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 	return err
 }
 
-func (c *awsClient) DeleteRole(role string, r *string) error {
-	_, err := c.iamClient.DeleteRole(&iam.DeleteRoleInput{RoleName: r})
+func (c *awsClient) DeleteRole(role string) error {
+	_, err := c.iamClient.DeleteRole(&iam.DeleteRoleInput{RoleName: aws.String(role)})
 	if err != nil {
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
@@ -875,7 +875,7 @@ func (c *awsClient) DeleteAccountRole(roleName string, managedPolicies bool) err
 			return err
 		}
 	}
-	err = c.DeleteRole(roleName, role)
+	err = c.DeleteRole(*role)
 	if err != nil {
 		return err
 	}
@@ -1062,7 +1062,7 @@ func (c *awsClient) detachOperatorRolePolicies(role *string) error {
 	return nil
 }
 
-func (c *awsClient) GetOperatorRolesFromAccount(clusterID string,
+func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 	credRequest map[string]*cmv1.STSOperator) ([]string, error) {
 	roleList := []string{}
 	roles, err := c.ListRoles()
@@ -1090,6 +1090,24 @@ func (c *awsClient) GetOperatorRolesFromAccount(clusterID string,
 			}
 		}
 		if isTagged {
+			roleList = append(roleList, aws.StringValue(role.RoleName))
+		}
+	}
+	return roleList, nil
+}
+
+func (c *awsClient) GetOperatorRolesFromAccountByPrefix(prefix string,
+	credRequest map[string]*cmv1.STSOperator) ([]string, error) {
+	roleList := []string{}
+	roles, err := c.ListRoles()
+	if err != nil {
+		return roleList, err
+	}
+	for _, role := range roles {
+		if !checkIfROSAOperatorRole(role.RoleName, credRequest) {
+			continue
+		}
+		if strings.HasPrefix(*role.RoleName, prefix) {
 			roleList = append(roleList, aws.StringValue(role.RoleName))
 		}
 	}
