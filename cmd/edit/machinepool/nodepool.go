@@ -12,9 +12,19 @@ import (
 
 func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
+
+	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
+	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
+	isReplicasSet := cmd.Flags().Changed("replicas")
+	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
 	isLabelsSet := cmd.Flags().Changed("labels")
 	isTaintsSet := cmd.Flags().Changed("taints")
 	isLabelOrTaintSet := isLabelsSet || isTaintsSet
+
+	// if no value set enter interactive mode
+	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet) {
+		interactive.Enable()
+	}
 
 	// Try to find the node pool
 	r.Reporter.Debugf("Loading machine pool for hosted cluster '%s'", clusterKey)
