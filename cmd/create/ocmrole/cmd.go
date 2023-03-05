@@ -403,6 +403,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 				SetCommand(awscb.CreatePolicy).
 				AddParam(awscb.PolicyName, policyName).
 				AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", aws.OCMAdminRolePolicyFile)).
+				AddTags(iamTags).
 				AddTags(adminTags).
 				AddParam(awscb.Path, rolePath).
 				Build()
