@@ -275,8 +275,9 @@ func getPolicyDocument(policyDocument *string) (*PolicyDocument, error) {
 	return &data, nil
 }
 
-func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID, serviceAccounts, policyDetails string) (string, error) {
-	oidcEndpointURL, err := url.ParseRequestURI(cluster.AWS().STS().OIDCEndpointURL())
+func GenerateRolePolicyDoc(oidcEndpointUrl,
+	accountID, serviceAccounts, policyDetails string) (string, error) {
+	oidcEndpointURL, err := url.ParseRequestURI(oidcEndpointUrl)
 	if err != nil {
 		return "", err
 	}
@@ -293,7 +294,8 @@ func GenerateRolePolicyDoc(cluster *cmv1.Cluster, accountID, serviceAccounts, po
 	return policy, nil
 }
 
-func GenerateOperatorRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
+func GenerateOperatorRolePolicyDocByOidcEndpointUrl(oidcEndpointURL string,
+	accountID string, operator *cmv1.STSOperator,
 	policyDetails string) (string, error) {
 	serviceAccounts := make([]string, len(operator.ServiceAccounts()))
 	for i, sa := range operator.ServiceAccounts() {
@@ -301,11 +303,18 @@ func GenerateOperatorRolePolicyDoc(cluster *cmv1.Cluster, accountID string, oper
 	}
 	service_accounts := strings.Join(serviceAccounts, `" , "`)
 
-	return GenerateRolePolicyDoc(cluster, accountID, service_accounts, policyDetails)
+	return GenerateRolePolicyDoc(oidcEndpointURL, accountID, service_accounts, policyDetails)
+}
+
+func GenerateOperatorRolePolicyDoc(cluster *cmv1.Cluster, accountID string, operator *cmv1.STSOperator,
+	policyDetails string) (string, error) {
+	return GenerateOperatorRolePolicyDocByOidcEndpointUrl(cluster.AWS().STS().OIDCEndpointURL(),
+		accountID, operator, policyDetails)
 }
 
 func GenerateAddonPolicyDoc(cluster *cmv1.Cluster, accountID string, cr *cmv1.CredentialRequest,
 	policyDetails string) (string, error) {
 	service_accounts := fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace(), cr.ServiceAccount())
-	return GenerateRolePolicyDoc(cluster, accountID, service_accounts, policyDetails)
+	return GenerateRolePolicyDoc(cluster.AWS().STS().OIDCEndpointURL(),
+		accountID, service_accounts, policyDetails)
 }

@@ -426,7 +426,8 @@ func run(cmd *cobra.Command, argv []string) {
 		operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
 			Name:      operator.Name(),
 			Namespace: operator.Namespace(),
-			RoleARN:   getOperatorRoleArn(operatorRolesPrefix, operator, r.Creator, path),
+			RoleARN: aws.ComputeOperatorRoleArn(operatorRolesPrefix, operator,
+				r.Creator, path),
 		})
 	}
 
@@ -499,12 +500,4 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 
 func getRolePrefix(clusterName string) string {
 	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
-}
-
-func getOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *aws.Creator, path string) string {
-	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
-	if len(role) > 64 {
-		role = role[0:64]
-	}
-	return aws.GetRoleARN(creator.AccountID, role, path)
 }
