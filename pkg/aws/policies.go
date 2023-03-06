@@ -28,6 +28,7 @@ import (
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 )
 
 var DefaultPrefix = "ManagedOpenShift"
@@ -1301,7 +1302,7 @@ func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyD
 	return roleMap, nil
 }
 
-func (c *awsClient) GetOpenIDConnectProvider(clusterID string) (string, error) {
+func (c *awsClient) GetOpenIDConnectProviderByClusterIdTag(clusterID string) (string, error) {
 	providers, err := c.iamClient.ListOpenIDConnectProviders(&iam.ListOpenIDConnectProvidersInput{})
 	if err != nil {
 		return "", err
@@ -1328,6 +1329,28 @@ func (c *awsClient) GetOpenIDConnectProvider(clusterID string) (string, error) {
 			return providerValue, nil
 		}
 		if strings.Contains(providerValue, clusterID) {
+			return providerValue, nil
+		}
+	}
+	return "", nil
+}
+
+func (c *awsClient) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl string) (string, error) {
+	providers, err := c.iamClient.ListOpenIDConnectProviders(&iam.ListOpenIDConnectProvidersInput{})
+	if err != nil {
+		return "", err
+	}
+	oidcEndpointUrl = strings.TrimPrefix(oidcEndpointUrl, fmt.Sprintf("%s://", helper.ProtocolHttps))
+	for _, provider := range providers.OpenIDConnectProviderList {
+		providerValue := aws.StringValue(provider.Arn)
+		if err != nil {
+			return "", err
+		}
+		providerName, err := GetResourceIdFromARN(providerValue)
+		if err != nil {
+			return "", err
+		}
+		if strings.Contains(providerName, oidcEndpointUrl) {
 			return providerValue, nil
 		}
 	}

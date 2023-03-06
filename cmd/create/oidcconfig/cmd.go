@@ -41,6 +41,7 @@ import (
 	"github.com/zgalor/weberr"
 	"gopkg.in/square/go-jose.v2"
 
+	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
@@ -182,6 +183,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	oidcConfigStrategy.execute(r)
+	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.BucketUrl})
 }
 
 type OidcConfigInput struct {

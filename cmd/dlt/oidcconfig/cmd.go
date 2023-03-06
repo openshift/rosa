@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
 
+	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
@@ -145,6 +146,8 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	oidcConfigStrategy.execute(r)
+	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode,
+		fmt.Sprintf("https://%s.s3.%s.amazonaws.com", oidcConfigInput.BucketName, args.region)})
 }
 
 type OidcConfigInput struct {
@@ -156,6 +159,10 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 	parsedSecretArn, err := arn.Parse(args.oidcPrivateKeySecretArn)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem parsing secret ARN '%s' : %v", args.oidcPrivateKeySecretArn, err)
+		os.Exit(1)
+	}
+	if parsedSecretArn.Service != aws.SecretsManager {
+		r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
 		os.Exit(1)
 	}
 	if args.region != parsedSecretArn.Region {
