@@ -527,9 +527,10 @@ func init() {
 			"platform metrics.",
 	)
 
-	flags.BoolVar(
+	flags.BoolVarP(
 		&args.watch,
 		"watch",
+		"w",
 		false,
 		"Watch cluster installation logs.",
 	)
