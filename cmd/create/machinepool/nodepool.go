@@ -8,10 +8,12 @@ import (
 
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
 )
 
 func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
@@ -49,6 +51,55 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	if !machinePoolKeyRE.MatchString(name) {
 		r.Reporter.Errorf("Expected a valid name for the machine pool")
 		os.Exit(1)
+	}
+
+	// OpenShift version:
+	isVersionSet := cmd.Flags().Changed("version")
+	version := args.version
+	if isVersionSet || interactive.Enabled() {
+		// NodePool will take channel group from the cluster
+		channelGroup := cluster.Version().ChannelGroup()
+		clusterVersion := cluster.Version().RawID()
+		versionList, err := versions.GetVersionList(r, channelGroup, true, true)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		// Calculate the minimal version for a new hosted machine pool
+		minVersion, err := versions.GetMinimalHostedMachinePoolVersion(clusterVersion)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		// Filter the available list of versions for a hosted machine pool
+		filteredVersionList := versions.GetFilteredVersionList(versionList, minVersion, clusterVersion)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		if version == "" {
+			version = clusterVersion
+		}
+		if interactive.Enabled() {
+			version, err = interactive.GetOption(interactive.Input{
+				Question: "OpenShift version",
+				Help:     cmd.Flags().Lookup("version").Usage,
+				Options:  filteredVersionList,
+				Default:  version,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
+				os.Exit(1)
+			}
+		}
+		version, err = versions.ValidateVersion(version, filteredVersionList, channelGroup, true, true)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	// Allow the user to select subnet for a single AZ BYOVPC cluster
@@ -212,6 +263,10 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	}
 
 	npBuilder.AWSNodePool(cmv1.NewAWSNodePool().InstanceType(instanceType))
+
+	if version != "" {
+		npBuilder.Version(cmv1.NewVersion().ID(version))
+	}
 
 	nodePool, err := npBuilder.Build()
 	if err != nil {

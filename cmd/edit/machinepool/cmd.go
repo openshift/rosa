@@ -32,6 +32,7 @@ var args struct {
 	maxReplicas        int
 	labels             string
 	taints             string
+	version            string
 }
 
 var Cmd = &cobra.Command{
@@ -101,6 +102,14 @@ func init() {
 		"",
 		"Taints for machine pool. Format should be a comma-separated list of 'key=value:ScheduleType'. "+
 			"This list will overwrite any modifications made to node taints on an ongoing basis.",
+	)
+
+	flags.StringVar(
+		&args.version,
+		"version",
+		"",
+		"Version of OpenShift that will be used to install a machine pool for a hosted cluster,"+
+			" for example \"4.12.4\"",
 	)
 }
 

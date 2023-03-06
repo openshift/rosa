@@ -29,10 +29,9 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/openshift/rosa/cmd/create/machinepool"
-	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
@@ -41,6 +40,8 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/roles"
+	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -778,7 +779,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	version, err = validateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
+	version, err = versions.ValidateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
@@ -2407,42 +2408,6 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 	}
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
-}
-
-// Validate OpenShift versions
-func validateVersion(version string, versionList []string, channelGroup string, isSTS,
-	isHostedCP bool) (string, error) {
-	if version == "" {
-		return version, nil
-	}
-	// Check and set the cluster version
-	hasVersion := false
-	for _, v := range versionList {
-		if v == version {
-			hasVersion = true
-		}
-	}
-	if !hasVersion {
-		allVersions := strings.Join(versionList, " ")
-		err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
-		return version, err
-	}
-
-	if isSTS && !ocm.HasSTSSupport(version, channelGroup) {
-		err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
-		return version, err
-	}
-	if isHostedCP {
-		valid, err := ocm.HasHostedCPSupport(version)
-		if err != nil {
-			return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
-		}
-		if !valid {
-			return "", fmt.Errorf("version '%s' is not supported for hosted clusters", version)
-		}
-	}
-
-	return ocm.CreateVersionID(version, channelGroup), nil
 }
 
 func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool) (versionList []string,

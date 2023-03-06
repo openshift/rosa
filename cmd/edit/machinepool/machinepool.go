@@ -24,6 +24,12 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 		os.Exit(1)
 	}
 
+	isVersionSet := cmd.Flags().Changed("version")
+	if isVersionSet {
+		r.Reporter.Errorf("Setting `version` flag is not supported on classic rosa clusters")
+		os.Exit(1)
+	}
+
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
 	isReplicasSet := cmd.Flags().Changed("replicas")

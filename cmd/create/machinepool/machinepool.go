@@ -22,6 +22,12 @@ import (
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
 
+	isVersionSet := cmd.Flags().Changed("version")
+	if isVersionSet {
+		r.Reporter.Errorf("Setting `version` flag is not supported on classic rosa clusters")
+		os.Exit(1)
+	}
+
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
