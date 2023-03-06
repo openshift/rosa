@@ -123,7 +123,8 @@ type Client interface {
 	GetRoleByARN(roleARN string) (*iam.Role, error)
 	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
 	DeleteOperatorRole(roles string, managedPolicies bool) error
-	GetOperatorRolesFromAccount(clusterID string, credRequests map[string]*cmv1.STSOperator) ([]string, error)
+	GetOperatorRolesFromAccountByClusterID(clusterID string, credRequests map[string]*cmv1.STSOperator) ([]string, error)
+	GetOperatorRolesFromAccountByPrefix(prefix string, credRequest map[string]*cmv1.STSOperator) ([]string, error)
 	GetPolicies(roles []string) (map[string][]string, error)
 	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
 	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)

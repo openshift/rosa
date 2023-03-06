@@ -42,7 +42,7 @@ func (c *awsClient) DeleteUserRole(roleName string) error {
 		return err
 	}
 
-	return c.DeleteRole(roleName, aws.String(roleName))
+	return c.DeleteRole(roleName)
 }
 
 func (c *awsClient) DeleteOCMRole(roleName string, managedPolicies bool) error {
@@ -56,7 +56,7 @@ func (c *awsClient) DeleteOCMRole(roleName string, managedPolicies bool) error {
 		return err
 	}
 
-	return c.DeleteRole(roleName, aws.String(roleName))
+	return c.DeleteRole(roleName)
 }
 
 func (c *awsClient) ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string) error {
