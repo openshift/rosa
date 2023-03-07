@@ -53,9 +53,10 @@ func init() {
 
 	ocm.AddClusterFlag(Cmd)
 
-	flags.BoolVar(
+	flags.BoolVarP(
 		&args.watch,
 		"watch",
+		"w",
 		false,
 		"Watch cluster uninstallation logs.",
 	)
