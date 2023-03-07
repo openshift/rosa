@@ -1265,7 +1265,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Multi-AZ:
 	multiAZ := args.multiAZ
-	if interactive.Enabled() {
+	if interactive.Enabled() && !isHostedCP {
 		multiAZ, err = interactive.GetBool(interactive.Input{
 			Question: "Multiple availability zones",
 			Help:     cmd.Flags().Lookup("multi-az").Usage,
@@ -1274,6 +1274,16 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid multi-AZ value: %s", err)
 			os.Exit(1)
+		}
+	}
+
+	// Hosted clusters will be multiAZ by definition
+	if isHostedCP {
+		multiAZ = true
+		if cmd.Flags().Changed("multi-az") {
+			r.Reporter.Warnf("Hosted clusters deprecate the --multi-az flag. " +
+				"The hosted control plane will be MultiAZ, machinepools will be created in the different private " +
+				"subnets provided under --subnet-ids flag.")
 		}
 	}
 
@@ -1450,6 +1460,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// For hosted cluster we will need the number of the private subnets the users has selected
+	privateSubnetsCount := 0
+
 	var availabilityZones []string
 	if useExistingVPC || subnetsProvided {
 		subnets, err := awsClient.GetSubnetIDs()
@@ -1516,9 +1529,17 @@ func run(cmd *cobra.Command, _ []string) {
 				subnetIDs[i] = aws.ParseSubnet(subnet)
 			}
 		}
+
 		// Validate subnets in the case the user has provided them using the `args.subnets`
 		if subnetsProvided {
-			err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
+			if isHostedCP {
+				// Hosted cluster should validate that
+				// - Public hosted clusters have at least one public subnet
+				// - Private hosted clusters have all subnets private
+				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs)
+			} else {
+				err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
+			}
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -1698,7 +1719,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  minReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZ),
+					minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount),
 				},
 			})
 			if err != nil {
@@ -1706,7 +1727,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = minReplicaValidator(multiAZ)(minReplicas)
+		err = minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount)(minReplicas)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -1719,7 +1740,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  maxReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					maxReplicaValidator(multiAZ, minReplicas),
+					maxReplicaValidator(multiAZ, minReplicas, isHostedCP, privateSubnetsCount),
 				},
 			})
 			if err != nil {
@@ -1727,7 +1748,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = maxReplicaValidator(multiAZ, minReplicas)(maxReplicas)
+		err = maxReplicaValidator(multiAZ, minReplicas, isHostedCP, privateSubnetsCount)(maxReplicas)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -1753,7 +1774,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("compute-nodes").Usage,
 				Default:  computeNodes,
 				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZ),
+					minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount),
 				},
 			})
 			if err != nil {
@@ -1761,7 +1782,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = minReplicaValidator(multiAZ)(computeNodes)
+		err = minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount)(computeNodes)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -2362,12 +2383,29 @@ func handleByoOidcOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) (bool
 	return isByoOidcSet, oidcEndpointUrl, oidcPrivateKeySecretArn
 }
 
-func minReplicaValidator(multiAZ bool) interactive.Validator {
+func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int) interactive.Validator {
 	return func(val interface{}) error {
 		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
 			return err
 		}
+
+		if minReplicas < 0 {
+			return fmt.Errorf("min-replica must be greater than zero")
+		}
+		if isHostedCP {
+			// This value should be validated in a previous step when checking the subnets
+			if privateSubnetsCount < 1 {
+				return fmt.Errorf("Hosted clusters require at least a private subnet")
+			}
+
+			if minReplicas%privateSubnetsCount != 0 {
+				return fmt.Errorf("Hosted clusters require that the number of compute nodes be a multiple of "+
+					"the number of private subnets %d, instead received: %d", privateSubnetsCount, minReplicas)
+			}
+			return nil
+		}
+
 		if multiAZ {
 			if minReplicas < 3 {
 				return fmt.Errorf("Multi AZ cluster requires at least 3 compute nodes")
@@ -2382,7 +2420,8 @@ func minReplicaValidator(multiAZ bool) interactive.Validator {
 	}
 }
 
-func maxReplicaValidator(multiAZ bool, minReplicas int) interactive.Validator {
+func maxReplicaValidator(multiAZ bool, minReplicas int, isHostedCP bool,
+	privateSubnetsCount int) interactive.Validator {
 	return func(val interface{}) error {
 		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
@@ -2391,6 +2430,15 @@ func maxReplicaValidator(multiAZ bool, minReplicas int) interactive.Validator {
 		if minReplicas > maxReplicas {
 			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
 		}
+
+		if isHostedCP {
+			if maxReplicas%privateSubnetsCount != 0 {
+				return fmt.Errorf("Hosted clusters require that the number of compute nodes be a multiple of "+
+					"the number of private subnets %d, instead received: %d", privateSubnetsCount, maxReplicas)
+			}
+			return nil
+		}
+
 		if multiAZ && maxReplicas%3 != 0 {
 			return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
 		}

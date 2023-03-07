@@ -99,7 +99,9 @@ type Client interface {
 	ValidateSCP(*string, map[string]*cmv1.AWSSTSPolicy) (bool, error)
 	GetSubnetIDs() ([]*ec2.Subnet, error)
 	GetSubnetAvailabilityZone(subnetID string) (string, error)
+	GetVPCSubnets(subnetID string) ([]*ec2.Subnet, error)
 	GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error)
+	FilterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subnet, error)
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
 	GetClusterRegionTagForUser(username string) (string, error)
@@ -425,16 +427,16 @@ func (c *awsClient) GetSubnetAvailabilityZone(subnetID string) (string, error) {
 }
 
 func (c *awsClient) GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error) {
-	subnets, err := c.getVPCSubnets(subnetID)
+	subnets, err := c.GetVPCSubnets(subnetID)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.filterVPCsPrivateSubnets(subnets)
+	return c.FilterVPCsPrivateSubnets(subnets)
 }
 
 // getVPCSubnets gets a subnet ID and fetches all the subnets that belong to the same VPC as the provided subnet.
-func (c *awsClient) getVPCSubnets(subnetID string) ([]*ec2.Subnet, error) {
+func (c *awsClient) GetVPCSubnets(subnetID string) ([]*ec2.Subnet, error) {
 	// Fetch the subnet details
 	subnets, err := c.getSubnetIDs(&ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
@@ -473,7 +475,7 @@ func (c *awsClient) getVPCSubnets(subnetID string) ([]*ec2.Subnet, error) {
 
 // FilterPrivateSubnets gets a slice of subnets that belongs to the same VPC and filters the private subnets.
 // Assumption: subnets - non-empty slice.
-func (c *awsClient) filterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subnet, error) {
+func (c *awsClient) FilterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subnet, error) {
 	// Fetch VPC route tables
 	vpcID := subnets[0].VpcId
 	describeRouteTablesOutput, err := c.ec2Client.DescribeRouteTables(&ec2.DescribeRouteTablesInput{
