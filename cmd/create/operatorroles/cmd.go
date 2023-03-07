@@ -121,7 +121,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	defer r.Cleanup()
 
 	// Allow the command to be called programmatically
-	skipInteractive := false
+	isProgmaticallyCalled := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		aws.SetModeKey(argv[1])
@@ -129,7 +129,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 		// if mode is empty skip interactive is true
 		if argv[1] != "" {
-			skipInteractive = true
+			isProgmaticallyCalled = true
 		}
 	}
 
@@ -146,11 +146,11 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !skipInteractive {
+	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !isProgmaticallyCalled {
 		interactive.Enable()
 	}
 
-	if !cmd.Flag("cluster").Changed && !cmd.Flag(PrefixFlag).Changed {
+	if !cmd.Flag("cluster").Changed && !cmd.Flag(PrefixFlag).Changed && !isProgmaticallyCalled {
 		r.Reporter.Errorf("Either a cluster key for STS cluster or an operator roles prefix must be specified.")
 		os.Exit(1)
 	}
@@ -165,7 +165,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	if interactive.Enabled() && !skipInteractive {
+	if interactive.Enabled() && !isProgmaticallyCalled {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Role creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
@@ -179,12 +179,12 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	}
 
-	if cluster == nil && interactive.Enabled() && !skipInteractive {
+	if cluster == nil && interactive.Enabled() && !isProgmaticallyCalled {
 		handleOperatorRolesPrefixOptions(r, cmd)
 	}
 
 	permissionsBoundary := args.permissionsBoundary
-	if interactive.Enabled() && !skipInteractive {
+	if interactive.Enabled() && !isProgmaticallyCalled {
 		permissionsBoundary, err = interactive.GetString(interactive.Input{
 			Question: "Permissions boundary ARN",
 			Help:     cmd.Flags().Lookup("permissions-boundary").Usage,
