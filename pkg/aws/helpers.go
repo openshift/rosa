@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
+	"github.com/openshift/rosa/pkg/aws/profile"
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -102,6 +103,7 @@ func ARNPathValidator(input interface{}) error {
 func GetRegion(region string) (string, error) {
 	if region == "" {
 		defaultSession, err := session.NewSessionWithOptions(session.Options{
+			Profile:           profile.Profile(),
 			SharedConfigState: session.SharedConfigEnable,
 		})
 
