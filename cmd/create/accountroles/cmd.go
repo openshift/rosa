@@ -42,6 +42,7 @@ var args struct {
 	managed             bool
 	forcePolicyCreation bool
 	hostedCP            bool
+	classic             bool
 }
 
 var Cmd = &cobra.Command{
@@ -96,7 +97,6 @@ func init() {
 	)
 	flags.MarkHidden("channel-group")
 
-	// TODO: add `legacy-policies` once AWS managed policies are in place (managed-policies will be the default)
 	flags.BoolVar(
 		&args.managed,
 		"managed-policies",
@@ -126,6 +126,13 @@ func init() {
 		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
 	flags.MarkHidden("hosted-cp")
+
+	flags.BoolVar(
+		&args.classic,
+		"classic",
+		false,
+		"Create only classic Rosa account roles",
+	)
 
 	aws.AddModeFlag(Cmd)
 
@@ -180,7 +187,6 @@ func run(cmd *cobra.Command, argv []string) {
 	// Hosted cluster roles always use managed policies
 	if cmd.Flags().Changed("hosted-cp") && cmd.Flags().Changed("managed-policies") && !args.managed {
 		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
-		os.Exit(1)
 	}
 
 	r.WithAWS()
@@ -332,30 +338,50 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	createHostedCP := args.hostedCP
-	if env != ocm.Production { // TODO: remove env check once AWS publishes all the hcp Managed Policies
-		if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
-			createHostedCP, err = interactive.GetBool(interactive.Input{
-				Question: "Create Hosted CP account roles",
-				Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-				Default:  false,
-				Required: false,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid value: %s", err)
-				os.Exit(1)
-			}
+	isClassicValueSet := cmd.Flags().Changed("classic")
+	isHostedCPValueSet := cmd.Flags().Changed("hosted-cp")
+
+	createClassic := args.classic
+	if interactive.Enabled() && !cmd.Flags().Changed("classic") {
+		createClassic, err = interactive.GetBool(interactive.Input{
+			Question: "Create Classic account roles",
+			Help:     cmd.Flags().Lookup("classic").Usage,
+			Default:  true,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
 		}
+		isClassicValueSet = true
 	}
 
-	rolesCreator := initCreator(managedPolicies, createHostedCP)
+	createHostedCP := args.hostedCP
+	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
+		createHostedCP, err = interactive.GetBool(interactive.Input{
+			Question: "Create Hosted CP account roles",
+			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+			Default:  false,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+		isHostedCPValueSet = true
+	}
+
+	rolesCreator, createRoles := initCreator(managedPolicies, createClassic, createHostedCP,
+		isClassicValueSet, isHostedCPValueSet)
+	if !createRoles {
+		os.Exit(1)
+	}
+
 	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
 		policyVersion, path)
 
 	switch mode {
 	case aws.ModeAuto:
-		r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
-
 		err = rolesCreator.createRoles(r, input)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the account roles: %s", err)
@@ -397,19 +423,17 @@ func run(cmd *cobra.Command, argv []string) {
 			})
 			os.Exit(1)
 		}
-		commands, err := rolesCreator.buildCommands(input)
+		err = rolesCreator.printCommands(r, input)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("All policy files saved to the current directory")
-			r.Reporter.Infof("Run the following commands to create the account roles and policies:\n")
 		}
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
 			ocm.Version: policyVersion,
 		})
-		fmt.Println(commands)
 	default:
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
