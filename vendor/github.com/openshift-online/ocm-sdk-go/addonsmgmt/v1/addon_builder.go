@@ -26,6 +26,8 @@ type AddonBuilder struct {
 	bitmap_              uint32
 	id                   string
 	href                 string
+	commonAnnotations    map[string]string
+	commonLabels         map[string]string
 	config               *AddonConfigBuilder
 	credentialsRequests  []*CredentialRequestBuilder
 	description          string
@@ -79,12 +81,9 @@ func (b *AddonBuilder) Empty() bool {
 	return b == nil || b.bitmap_&^1 == 0
 }
 
-// Config sets the value of the 'config' attribute to the given value.
-//
-// Representation of an addon config.
-// The attributes under it are to be used by the addon once its installed in the cluster.
-func (b *AddonBuilder) Config(value *AddonConfigBuilder) *AddonBuilder {
-	b.config = value
+// CommonAnnotations sets the value of the 'common_annotations' attribute to the given value.
+func (b *AddonBuilder) CommonAnnotations(value map[string]string) *AddonBuilder {
+	b.commonAnnotations = value
 	if value != nil {
 		b.bitmap_ |= 8
 	} else {
@@ -93,53 +92,78 @@ func (b *AddonBuilder) Config(value *AddonConfigBuilder) *AddonBuilder {
 	return b
 }
 
+// CommonLabels sets the value of the 'common_labels' attribute to the given value.
+func (b *AddonBuilder) CommonLabels(value map[string]string) *AddonBuilder {
+	b.commonLabels = value
+	if value != nil {
+		b.bitmap_ |= 16
+	} else {
+		b.bitmap_ &^= 16
+	}
+	return b
+}
+
+// Config sets the value of the 'config' attribute to the given value.
+//
+// Representation of an addon config.
+// The attributes under it are to be used by the addon once its installed in the cluster.
+func (b *AddonBuilder) Config(value *AddonConfigBuilder) *AddonBuilder {
+	b.config = value
+	if value != nil {
+		b.bitmap_ |= 32
+	} else {
+		b.bitmap_ &^= 32
+	}
+	return b
+}
+
 // CredentialsRequests sets the value of the 'credentials_requests' attribute to the given values.
 func (b *AddonBuilder) CredentialsRequests(values ...*CredentialRequestBuilder) *AddonBuilder {
 	b.credentialsRequests = make([]*CredentialRequestBuilder, len(values))
 	copy(b.credentialsRequests, values)
-	b.bitmap_ |= 16
+	b.bitmap_ |= 64
 	return b
 }
 
 // Description sets the value of the 'description' attribute to the given value.
 func (b *AddonBuilder) Description(value string) *AddonBuilder {
 	b.description = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 128
 	return b
 }
 
 // DocsLink sets the value of the 'docs_link' attribute to the given value.
 func (b *AddonBuilder) DocsLink(value string) *AddonBuilder {
 	b.docsLink = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 256
 	return b
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
 func (b *AddonBuilder) Enabled(value bool) *AddonBuilder {
 	b.enabled = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 512
 	return b
 }
 
 // HasExternalResources sets the value of the 'has_external_resources' attribute to the given value.
 func (b *AddonBuilder) HasExternalResources(value bool) *AddonBuilder {
 	b.hasExternalResources = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 1024
 	return b
 }
 
 // Hidden sets the value of the 'hidden' attribute to the given value.
 func (b *AddonBuilder) Hidden(value bool) *AddonBuilder {
 	b.hidden = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 2048
 	return b
 }
 
 // Icon sets the value of the 'icon' attribute to the given value.
 func (b *AddonBuilder) Icon(value string) *AddonBuilder {
 	b.icon = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -148,28 +172,28 @@ func (b *AddonBuilder) Icon(value string) *AddonBuilder {
 // Representation of an addon InstallMode field.
 func (b *AddonBuilder) InstallMode(value AddonInstallMode) *AddonBuilder {
 	b.installMode = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 8192
 	return b
 }
 
 // Label sets the value of the 'label' attribute to the given value.
 func (b *AddonBuilder) Label(value string) *AddonBuilder {
 	b.label = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 16384
 	return b
 }
 
 // ManagedService sets the value of the 'managed_service' attribute to the given value.
 func (b *AddonBuilder) ManagedService(value bool) *AddonBuilder {
 	b.managedService = value
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 32768
 	return b
 }
 
 // Name sets the value of the 'name' attribute to the given value.
 func (b *AddonBuilder) Name(value string) *AddonBuilder {
 	b.name = value
-	b.bitmap_ |= 16384
+	b.bitmap_ |= 65536
 	return b
 }
 
@@ -177,14 +201,14 @@ func (b *AddonBuilder) Name(value string) *AddonBuilder {
 func (b *AddonBuilder) Namespaces(values ...*AddonNamespaceBuilder) *AddonBuilder {
 	b.namespaces = make([]*AddonNamespaceBuilder, len(values))
 	copy(b.namespaces, values)
-	b.bitmap_ |= 32768
+	b.bitmap_ |= 131072
 	return b
 }
 
 // OperatorName sets the value of the 'operator_name' attribute to the given value.
 func (b *AddonBuilder) OperatorName(value string) *AddonBuilder {
 	b.operatorName = value
-	b.bitmap_ |= 65536
+	b.bitmap_ |= 262144
 	return b
 }
 
@@ -192,7 +216,7 @@ func (b *AddonBuilder) OperatorName(value string) *AddonBuilder {
 func (b *AddonBuilder) Parameters(values ...*AddonParameterBuilder) *AddonBuilder {
 	b.parameters = make([]*AddonParameterBuilder, len(values))
 	copy(b.parameters, values)
-	b.bitmap_ |= 131072
+	b.bitmap_ |= 524288
 	return b
 }
 
@@ -200,21 +224,21 @@ func (b *AddonBuilder) Parameters(values ...*AddonParameterBuilder) *AddonBuilde
 func (b *AddonBuilder) Requirements(values ...*AddonRequirementBuilder) *AddonBuilder {
 	b.requirements = make([]*AddonRequirementBuilder, len(values))
 	copy(b.requirements, values)
-	b.bitmap_ |= 262144
+	b.bitmap_ |= 1048576
 	return b
 }
 
 // ResourceCost sets the value of the 'resource_cost' attribute to the given value.
 func (b *AddonBuilder) ResourceCost(value float64) *AddonBuilder {
 	b.resourceCost = value
-	b.bitmap_ |= 524288
+	b.bitmap_ |= 2097152
 	return b
 }
 
 // ResourceName sets the value of the 'resource_name' attribute to the given value.
 func (b *AddonBuilder) ResourceName(value string) *AddonBuilder {
 	b.resourceName = value
-	b.bitmap_ |= 1048576
+	b.bitmap_ |= 4194304
 	return b
 }
 
@@ -222,14 +246,14 @@ func (b *AddonBuilder) ResourceName(value string) *AddonBuilder {
 func (b *AddonBuilder) SubOperators(values ...*AddonSubOperatorBuilder) *AddonBuilder {
 	b.subOperators = make([]*AddonSubOperatorBuilder, len(values))
 	copy(b.subOperators, values)
-	b.bitmap_ |= 2097152
+	b.bitmap_ |= 8388608
 	return b
 }
 
 // TargetNamespace sets the value of the 'target_namespace' attribute to the given value.
 func (b *AddonBuilder) TargetNamespace(value string) *AddonBuilder {
 	b.targetNamespace = value
-	b.bitmap_ |= 4194304
+	b.bitmap_ |= 16777216
 	return b
 }
 
@@ -239,9 +263,9 @@ func (b *AddonBuilder) TargetNamespace(value string) *AddonBuilder {
 func (b *AddonBuilder) Version(value *AddonVersionBuilder) *AddonBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 8388608
+		b.bitmap_ |= 33554432
 	} else {
-		b.bitmap_ &^= 8388608
+		b.bitmap_ &^= 33554432
 	}
 	return b
 }
@@ -254,6 +278,22 @@ func (b *AddonBuilder) Copy(object *Addon) *AddonBuilder {
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
+	if len(object.commonAnnotations) > 0 {
+		b.commonAnnotations = map[string]string{}
+		for k, v := range object.commonAnnotations {
+			b.commonAnnotations[k] = v
+		}
+	} else {
+		b.commonAnnotations = nil
+	}
+	if len(object.commonLabels) > 0 {
+		b.commonLabels = map[string]string{}
+		for k, v := range object.commonLabels {
+			b.commonLabels[k] = v
+		}
+	} else {
+		b.commonLabels = nil
+	}
 	if object.config != nil {
 		b.config = NewAddonConfig().Copy(object.config)
 	} else {
@@ -327,6 +367,18 @@ func (b *AddonBuilder) Build() (object *Addon, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
+	if b.commonAnnotations != nil {
+		object.commonAnnotations = make(map[string]string)
+		for k, v := range b.commonAnnotations {
+			object.commonAnnotations[k] = v
+		}
+	}
+	if b.commonLabels != nil {
+		object.commonLabels = make(map[string]string)
+		for k, v := range b.commonLabels {
+			object.commonLabels[k] = v
+		}
+	}
 	if b.config != nil {
 		object.config, err = b.config.Build()
 		if err != nil {

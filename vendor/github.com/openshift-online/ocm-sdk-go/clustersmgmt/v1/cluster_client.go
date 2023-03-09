@@ -169,6 +169,16 @@ func (c *ClusterClient) Clusterdeployment() *ClusterdeploymentClient {
 	)
 }
 
+// ControlPlane returns the target 'control_plane' resource.
+//
+// Reference to the resource that manages the collection of upgrade policies defined for control plane for this cluster.
+func (c *ClusterClient) ControlPlane() *ControlPlaneClient {
+	return NewControlPlaneClient(
+		c.transport,
+		path.Join(c.path, "control_plane"),
+	)
+}
+
 // Credentials returns the target 'credentials' resource.
 //
 // Reference to the resource that manages the credentials of the cluster.

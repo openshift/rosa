@@ -125,11 +125,20 @@ func writeVersion(object *Version, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("hypershift_enabled")
+		stream.WriteBool(object.hypershiftEnabled)
+		count++
+	}
+	present_ = object.bitmap_&1024 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("raw_id")
 		stream.WriteString(object.rawID)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -200,14 +209,18 @@ func readVersion(iterator *jsoniter.Iterator) *Version {
 			}
 			object.endOfLifeTimestamp = value
 			object.bitmap_ |= 256
+		case "hypershift_enabled":
+			value := iterator.ReadBool()
+			object.hypershiftEnabled = value
+			object.bitmap_ |= 512
 		case "raw_id":
 			value := iterator.ReadString()
 			object.rawID = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "release_image":
 			value := iterator.ReadString()
 			object.releaseImage = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		default:
 			iterator.ReadAny()
 		}
