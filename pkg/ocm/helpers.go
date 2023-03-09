@@ -750,7 +750,8 @@ func (c *Client) GetVersionsList(channelGroup string) ([]string, error) {
 }
 
 func ValidateOperatorRolesMatchOidcProvider(awsClient aws.Client,
-	operatorIAMRoleList []OperatorIAMRole, oidcEndpointUrl string) error {
+	operatorIAMRoleList []OperatorIAMRole, oidcEndpointUrl string,
+	clusterVersion string) error {
 	operatorIAMRoles := operatorIAMRoleList
 	parsedUrl, err := url.Parse(oidcEndpointUrl)
 	if err != nil {
@@ -766,6 +767,22 @@ func ValidateOperatorRolesMatchOidcProvider(awsClient aws.Client,
 		if !strings.Contains(*roleObject.AssumeRolePolicyDocument, parsedUrl.Host) {
 			return weberr.Errorf("Operator role '%s' does not have trusted relationship to '%s' issuer URL",
 				roleARN, parsedUrl.Host)
+		}
+		policiesDetails, err := awsClient.GetAttachedPolicy(roleObject.RoleName)
+		if err != nil {
+			return err
+		}
+		for _, policyDetails := range policiesDetails {
+			if policyDetails.PolicType == aws.Inline {
+				continue
+			}
+			isCompatible, err := awsClient.IsPolicyCompatible(policyDetails.PolicyArn, clusterVersion)
+			if err != nil {
+				return err
+			}
+			if !isCompatible {
+				return weberr.Errorf("Operator role '%s' is not compatible with cluster version '%s'", roleARN, clusterVersion)
+			}
 		}
 	}
 	return nil

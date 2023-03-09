@@ -388,5 +388,5 @@ func validateOperatorRolesMatchOidcProvider(r *rosa.Runtime, cluster *cmv1.Clust
 		})
 	}
 	return ocm.ValidateOperatorRolesMatchOidcProvider(r.AWSClient, operatorRolesList,
-		cluster.AWS().STS().OIDCEndpointURL())
+		cluster.AWS().STS().OIDCEndpointURL(), ocm.GetVersionMinor(cluster.Version().RawID()))
 }
