@@ -50,6 +50,7 @@ type Version struct {
 	rosaEnabled        bool
 	default_           bool
 	enabled            bool
+	hypershiftEnabled  bool
 }
 
 // Kind returns the name of the type of the object.
@@ -255,12 +256,35 @@ func (o *Version) GetEndOfLifeTimestamp() (value time.Time, ok bool) {
 	return
 }
 
+// HypershiftEnabled returns the value of the 'hypershift_enabled' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// HypershiftEnabled indicates whether this version can be used to create Hypershift clusters.
+func (o *Version) HypershiftEnabled() bool {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.hypershiftEnabled
+	}
+	return false
+}
+
+// GetHypershiftEnabled returns the value of the 'hypershift_enabled' attribute and
+// a flag indicating if the attribute has a value.
+//
+// HypershiftEnabled indicates whether this version can be used to create Hypershift clusters.
+func (o *Version) GetHypershiftEnabled() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.hypershiftEnabled
+	}
+	return
+}
+
 // RawID returns the value of the 'raw_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // RawID is the id of the version - without channel group and prefix.
 func (o *Version) RawID() string {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.rawID
 	}
 	return ""
@@ -271,7 +295,7 @@ func (o *Version) RawID() string {
 //
 // RawID is the id of the version - without channel group and prefix.
 func (o *Version) GetRawID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.rawID
 	}
@@ -283,7 +307,7 @@ func (o *Version) GetRawID() (value string, ok bool) {
 //
 // ReleaseImage contains the URI of Openshift release image
 func (o *Version) ReleaseImage() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.releaseImage
 	}
 	return ""
@@ -294,7 +318,7 @@ func (o *Version) ReleaseImage() string {
 //
 // ReleaseImage contains the URI of Openshift release image
 func (o *Version) GetReleaseImage() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.releaseImage
 	}

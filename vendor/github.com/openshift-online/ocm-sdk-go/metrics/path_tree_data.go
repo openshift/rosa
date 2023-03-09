@@ -195,6 +195,11 @@ var pathTreeData = `{
               "-": null
             },
             "clusterdeployment": null,
+            "control_plane": {
+              "upgrade_policies": {
+                "-": null
+              }
+            },
             "credentials": null,
             "external_configuration": {
               "labels": {
