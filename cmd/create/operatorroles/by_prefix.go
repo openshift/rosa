@@ -241,6 +241,11 @@ func validateArgumentsOperatorRolesCreationByPrefix(r *rosa.Runtime, operatorRol
 		r.Reporter.Errorf("Expected OIDC endpoint URL '%s' to use an https:// scheme", oidcEndpointUrl)
 		os.Exit(1)
 	}
+	err = helper.IsURLReachable(fmt.Sprintf("%s:%s", parsedURI.Host, parsedURI.Scheme))
+	if err != nil {
+		r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
+		os.Exit(1)
+	}
 	err = aws.ARNValidator(installerRoleArn)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
