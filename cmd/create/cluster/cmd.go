@@ -808,8 +808,16 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if args.watch && isSTS && mode == aws.ModeAuto && !confirm.Yes() {
-		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'auto'." +
+		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'auto' " +
+			"without also supplying '--yes' option." +
 			"To watch your cluster installation logs, run 'rosa logs install' instead after the cluster has began creating.")
+		os.Exit(1)
+	}
+
+	if args.watch && isSTS && mode == aws.ModeManual {
+		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'manual'." +
+			"It requires manual commands to be performed as part of the process." +
+			"To watch your cluster installation logs, run 'rosa logs install' after the cluster has began creating.")
 		os.Exit(1)
 	}
 
