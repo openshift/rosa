@@ -71,12 +71,12 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	skipInteractive := false
+	isProgmaticallyCalled := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		aws.SetModeKey(argv[1])
 		if argv[1] != "" {
-			skipInteractive = true
+			isProgmaticallyCalled = true
 		}
 
 		if argv[2] != "" {
@@ -90,7 +90,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if !cmd.Flag("cluster").Changed && !cmd.Flag(OidcEndpointUrlFlag).Changed {
+	if !cmd.Flag("cluster").Changed && !cmd.Flag(OidcEndpointUrlFlag).Changed && !isProgmaticallyCalled {
 		r.Reporter.Errorf("Either a cluster key or an OIDC Endpoint URL must be specified.")
 		os.Exit(1)
 	}
@@ -174,7 +174,7 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	if interactive.Enabled() && !skipInteractive {
+	if interactive.Enabled() && !isProgmaticallyCalled {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
