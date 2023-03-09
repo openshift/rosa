@@ -1206,7 +1206,8 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Errorf("%v", err)
 				os.Exit(1)
 			} else {
-				err = ocm.ValidateOperatorRolesMatchOidcProvider(awsClient, operatorIAMRoleList, oidcEndpointUrl)
+				err = ocm.ValidateOperatorRolesMatchOidcProvider(awsClient, operatorIAMRoleList, oidcEndpointUrl,
+					ocm.GetVersionMinor(version))
 				if err != nil {
 					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
