@@ -50,6 +50,7 @@ var Cmd = &cobra.Command{
 const (
 	//nolint
 	OidcPrivateKeySecretArnFlag = "oidc-private-key-secret-arn"
+	redHatHostedFlag            = "rh-hosted"
 
 	prefixForPrivateKeySecret = "rosa-private-key-"
 	secretsManagerService     = "secretsmanager"
@@ -58,6 +59,7 @@ const (
 var args struct {
 	oidcPrivateKeySecretArn string
 	region                  string
+	redHatHosted            bool
 }
 
 func init() {
@@ -68,6 +70,13 @@ func init() {
 		OidcPrivateKeySecretArnFlag,
 		"",
 		"AWS Secrets Manager ARN for identification of config",
+	)
+
+	flags.BoolVar(
+		&args.redHatHosted,
+		redHatHostedFlag,
+		false,
+		"Indicates whether it is a Red Hat hosted or Customer hosted OIDC Configuration.",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -83,6 +92,11 @@ func run(cmd *cobra.Command, argv []string) {
 	mode, err := aws.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if args.redHatHosted && mode != aws.ModeAuto {
+		r.Reporter.Warnf("--rh-hosted param is not supported outside --mode auto flow.")
 		os.Exit(1)
 	}
 
@@ -176,9 +190,11 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 		os.Exit(1)
 	}
 	bucketName := strings.TrimPrefix(secretResourceName, prefixForPrivateKeySecret)
-	index := strings.LastIndex(bucketName, "-")
-	if index != -1 {
-		bucketName = bucketName[:index]
+	if !args.redHatHosted {
+		index := strings.LastIndex(bucketName, "-")
+		if index != -1 {
+			bucketName = bucketName[:index]
+		}
 	}
 	hasClusterUsingOidcConfig, err := r.OCMClient.HasAClusterUsingOidcConfig(bucketName)
 	if err != nil {
@@ -197,6 +213,39 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 
 type DeleteOidcConfigStrategy interface {
 	execute(r *rosa.Runtime)
+}
+
+type DeleteRedHatHostedOidcConfigAutoStrategy struct {
+	oidcConfig OidcConfigInput
+}
+
+func (s *DeleteRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+	r.WithOCM()
+	privateKeySecretArn := s.oidcConfig.PrivateKeySecretArn
+	var spin *spinner.Spinner
+	if r.Reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		r.Reporter.Infof("Deleting Red Hat hosted OIDC configuration")
+	}
+	if spin != nil {
+		spin.Start()
+	}
+	err := r.OCMClient.DeleteRedHatHostedOidcConfig()
+	if err != nil {
+		r.Reporter.Errorf("There was a problem deleting Red Hat Hosted OIDC Configuration: %s", err)
+		os.Exit(1)
+	}
+	err = r.AWSClient.DeleteSecretInSecretsManager(privateKeySecretArn)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem deleting private key from secrets manager: %s", err)
+		os.Exit(1)
+	}
+	if spin != nil {
+		spin.Stop()
+	}
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Deleted OIDC configuration")
+	}
 }
 
 type DeleteOidcConfigAutoStrategy struct {
@@ -230,7 +279,6 @@ func (s *DeleteOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Deleted OIDC configuration")
 	}
-
 }
 
 type DeleteOidcConfigManualStrategy struct {
@@ -262,6 +310,9 @@ func (s *DeleteOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 }
 
 func getOidcConfigStrategy(mode string, input OidcConfigInput) (DeleteOidcConfigStrategy, error) {
+	if args.redHatHosted {
+		return &DeleteRedHatHostedOidcConfigAutoStrategy{oidcConfig: input}, nil
+	}
 	switch mode {
 	case aws.ModeAuto:
 		return &DeleteOidcConfigAutoStrategy{oidcConfig: input}, nil

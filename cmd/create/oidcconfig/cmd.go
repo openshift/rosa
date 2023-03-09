@@ -58,9 +58,11 @@ const (
 )
 
 var args struct {
-	region     string
-	rawFiles   bool
-	userPrefix string
+	region           string
+	rawFiles         bool
+	userPrefix       string
+	redHatHosted     bool
+	installerRoleArn string
 }
 
 var Cmd = &cobra.Command{
@@ -77,8 +79,11 @@ var Cmd = &cobra.Command{
 }
 
 const (
-	rawFilesFlag                  = "raw-files"
-	userPrefixFlag                = "prefix"
+	rawFilesFlag         = "raw-files"
+	userPrefixFlag       = "prefix"
+	redHatHostedFlag     = "rh-hosted"
+	installerRoleArnFlag = "installer-role-arn"
+
 	prefixForPrivateKeySecret     = "rosa-private-key"
 	defaultPrefixForConfiguration = "oidc"
 )
@@ -99,6 +104,20 @@ func init() {
 		userPrefixFlag,
 		"",
 		"Prefix for the OIDC configuration, secret and provider.",
+	)
+
+	flags.BoolVar(
+		&args.redHatHosted,
+		redHatHostedFlag,
+		false,
+		"Indicates whether it is a Red Hat hosted or Customer hosted OIDC Configuration.",
+	)
+
+	flags.StringVar(
+		&args.installerRoleArn,
+		installerRoleArnFlag,
+		"",
+		"STS Role ARN with get secrets permission.",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -133,6 +152,11 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if args.rawFiles && mode != "" {
 		r.Reporter.Warnf("--raw-files param is not supported alongside --mode param.")
+		os.Exit(1)
+	}
+
+	if args.redHatHosted && mode != aws.ModeAuto {
+		r.Reporter.Warnf("--rh-hosted param is not supported outside --mode auto flow.")
 		os.Exit(1)
 	}
 
@@ -289,6 +313,35 @@ func (s *CreateOidcConfigRawStrategy) execute(r *rosa.Runtime) {
 	}
 }
 
+type CreateRedHatHostedOidcConfigAutoStrategy struct {
+	oidcConfig OidcConfigInput
+}
+
+func (s *CreateRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+	r.WithOCM()
+	privateKey := s.oidcConfig.PrivateKey
+	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
+	var spin *spinner.Spinner
+	if r.Reporter.IsTerminal() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		r.Reporter.Infof("Setting up Red Hat hosted OIDC configuration")
+	}
+	secretsARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving private key to secrets manager: %s", err)
+		os.Exit(1)
+	}
+	oidcEndpointUrl, err := r.OCMClient.CreateRedHatHostedOidcConfig(secretsARN, args.installerRoleArn)
+	if r.Reporter.IsTerminal() {
+		if spin != nil {
+			spin.Stop()
+		}
+		r.Reporter.Infof("Please run command below to create a cluster with this oidc config:\n"+
+			"rosa create cluster --sts \\\n--oidc-endpoint-url %s \\\n--oidc-private-key-secret-arn %s",
+			oidcEndpointUrl, secretsARN)
+	}
+}
+
 type CreateOidcConfigAutoStrategy struct {
 	oidcConfig OidcConfigInput
 }
@@ -438,6 +491,9 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 func getOidcConfigStrategy(mode string, input OidcConfigInput) (CreateOidcConfigStrategy, error) {
 	if args.rawFiles {
 		return &CreateOidcConfigRawStrategy{oidcConfig: input}, nil
+	}
+	if args.redHatHosted {
+		return &CreateRedHatHostedOidcConfigAutoStrategy{oidcConfig: input}, nil
 	}
 	switch mode {
 	case aws.ModeAuto:
