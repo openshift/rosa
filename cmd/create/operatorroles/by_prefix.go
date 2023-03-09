@@ -354,7 +354,11 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 	commands := []string{}
 
 	for credrequest, operator := range credRequests {
-		roleName := aws.FindOperatorRoleBySTSOperator(operatorIAMRoleList, operator)
+		roleArn := aws.FindOperatorRoleBySTSOperator(operatorIAMRoleList, operator)
+		roleName, err := aws.GetResourceIdFromARN(roleArn)
+		if err != nil {
+			return "", err
+		}
 
 		var policyARN string
 		if managedPolicies {
