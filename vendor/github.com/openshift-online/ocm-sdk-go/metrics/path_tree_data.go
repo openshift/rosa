@@ -283,6 +283,9 @@ var pathTreeData = `{
           "regions": null,
           "vpcs": null
         },
+        "hosted_oidc_configs": {
+          "-": null
+        },
         "limited_support_reason_templates": {
           "-": null
         },

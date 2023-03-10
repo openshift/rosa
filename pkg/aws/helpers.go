@@ -768,6 +768,21 @@ func GetResourceIdFromARN(stringARN string) (string, error) {
 	return parsedARN.Resource[index+1:], nil
 }
 
+func GetResourceIdFromOidcProviderARN(stringARN string) (string, error) {
+	parsedARN, err := arn.Parse(stringARN)
+
+	if err != nil {
+		return "", err
+	}
+
+	index := strings.LastIndex(parsedARN.Resource, "oidc-provider")
+	if index == -1 || index == len(parsedARN.Resource)-1 {
+		return "", fmt.Errorf("can't find resource-id in ARN '%s'", stringARN)
+	}
+
+	return parsedARN.Resource[index+1:], nil
+}
+
 func GetResourceIdFromSecretArn(secretArn string) (string, error) {
 	parsedARN, err := arn.Parse(secretArn)
 

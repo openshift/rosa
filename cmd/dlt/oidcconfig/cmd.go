@@ -159,14 +159,18 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	oidcConfigStrategy.execute(r)
-	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode,
-		fmt.Sprintf("https://%s.s3.%s.amazonaws.com", oidcConfigInput.BucketName, args.region)})
+	oidcConfigInput = oidcConfigStrategy.execute(r)
+	oidcEndpointUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", oidcConfigInput.BucketName, args.region)
+	if args.redHatHosted {
+		oidcEndpointUrl = oidcConfigInput.RHHostedUrl
+	}
+	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcEndpointUrl})
 }
 
 type OidcConfigInput struct {
 	PrivateKeySecretArn string
 	BucketName          string
+	RHHostedUrl         string
 }
 
 func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
@@ -212,14 +216,14 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 }
 
 type DeleteOidcConfigStrategy interface {
-	execute(r *rosa.Runtime)
+	execute(r *rosa.Runtime) OidcConfigInput
 }
 
 type DeleteRedHatHostedOidcConfigAutoStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *DeleteRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *DeleteRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) OidcConfigInput {
 	r.WithOCM()
 	privateKeySecretArn := s.oidcConfig.PrivateKeySecretArn
 	var spin *spinner.Spinner
@@ -230,14 +234,14 @@ func (s *DeleteRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	if spin != nil {
 		spin.Start()
 	}
-	err := r.OCMClient.DeleteRedHatHostedOidcConfig()
+	deletedHostedConfig, err := r.OCMClient.DeleteRedHatHostedOidcConfig()
 	if err != nil {
-		r.Reporter.Errorf("There was a problem deleting Red Hat Hosted OIDC Configuration: %s", err)
+		r.Reporter.Errorf("There was a problem deleting the Red Hat Hosted OIDC Configuration: %s", err)
 		os.Exit(1)
 	}
 	err = r.AWSClient.DeleteSecretInSecretsManager(privateKeySecretArn)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem deleting private key from secrets manager: %s", err)
+		r.Reporter.Errorf("There was a problem deleting the private key from secrets manager: %s", err)
 		os.Exit(1)
 	}
 	if spin != nil {
@@ -246,13 +250,15 @@ func (s *DeleteRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Deleted OIDC configuration")
 	}
+	s.oidcConfig.RHHostedUrl = deletedHostedConfig.OidcEndpointUrl()
+	return s.oidcConfig
 }
 
 type DeleteOidcConfigAutoStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *DeleteOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *DeleteOidcConfigAutoStrategy) execute(r *rosa.Runtime) OidcConfigInput {
 	bucketName := s.oidcConfig.BucketName
 	privateKeySecretArn := s.oidcConfig.PrivateKeySecretArn
 	var spin *spinner.Spinner
@@ -279,13 +285,14 @@ func (s *DeleteOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Deleted OIDC configuration")
 	}
+	return s.oidcConfig
 }
 
 type DeleteOidcConfigManualStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *DeleteOidcConfigManualStrategy) execute(r *rosa.Runtime) {
+func (s *DeleteOidcConfigManualStrategy) execute(r *rosa.Runtime) OidcConfigInput {
 	commands := []string{}
 	bucketName := s.oidcConfig.BucketName
 	privateKeySecretArn := s.oidcConfig.PrivateKeySecretArn
@@ -307,6 +314,7 @@ func (s *DeleteOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		Build()
 	commands = append(commands, deleteS3BucketCommand)
 	fmt.Println(awscb.JoinCommands(commands))
+	return s.oidcConfig
 }
 
 func getOidcConfigStrategy(mode string, input OidcConfigInput) (DeleteOidcConfigStrategy, error) {

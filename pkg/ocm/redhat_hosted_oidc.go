@@ -5,12 +5,13 @@ import (
 	"github.com/zgalor/weberr"
 )
 
-func (c *Client) CreateRedHatHostedOidcConfig(secretsArn string, installerRoleArn string) (*cmv1.HostedOidcConfig, error) {
+func (c *Client) CreateRedHatHostedOidcConfig(secretsArn string,
+	installerRoleArn string) (*cmv1.HostedOidcConfig, error) {
 	oidcConfig, err := cmv1.NewHostedOidcConfig().
-		InstallerRoleArn("arn:aws:iam::.../ManagedOpenShift-Installer-Role").
-		OidcPrivateKeySecretArn("arn:aws:secretsmanager:xxx").Build()
+		InstallerRoleArn(installerRoleArn).
+		OidcPrivateKeySecretArn(secretsArn).Build()
 	if err != nil {
-		return nil, weberr.Errorf("Failed to create Hosted Oidc Config: %v", clusterKey, err)
+		return nil, weberr.Errorf("Failed to create Hosted Oidc Config: %v", err)
 	}
 	response, err := c.ocm.ClustersMgmt().V1().HostedOidcConfigs().
 		Add().Body(oidcConfig).Send()
@@ -32,15 +33,15 @@ func (c *Client) GetRedHatHostedOidcConfig() (*cmv1.HostedOidcConfig, error) {
 	return response.Items().Get(0), nil
 }
 
-func (c *Client) DeleteRedHatHostedOidcConfig() error {
+func (c *Client) DeleteRedHatHostedOidcConfig() (*cmv1.HostedOidcConfig, error) {
 	response, err := c.GetRedHatHostedOidcConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err := c.ocm.ClustersMgmt().V1().
+	_, err = c.ocm.ClustersMgmt().V1().HostedOidcConfigs().
 		HostedOidcConfig(response.ID()).Delete().Send()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return response, nil
 }

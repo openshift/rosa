@@ -146,7 +146,9 @@ func run(cmd *cobra.Command, argv []string) {
 	args.region = region
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !cmd.Flags().Changed(rawFilesFlag) {
+	if !interactive.Enabled() &&
+		((!cmd.Flags().Changed("mode") && !cmd.Flags().Changed(rawFilesFlag)) ||
+			(args.redHatHosted && !cmd.Flags().Changed(installerRoleArnFlag))) {
 		interactive.Enable()
 	}
 
@@ -200,14 +202,36 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if args.redHatHosted && interactive.Enabled() {
+		installerRoleArn := args.installerRoleArn
+		installerRoleArn, err = interactive.GetString(interactive.Input{
+			Question: "Installer Role ARN",
+			Help:     cmd.Flags().Lookup(installerRoleArnFlag).Usage,
+			Default:  installerRoleArn,
+			Required: true,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid ARN: %s", err)
+			os.Exit(1)
+		}
+		args.installerRoleArn = installerRoleArn
+	}
+
 	oidcConfigInput := buildOidcConfigInput(r)
 	oidcConfigStrategy, err := getOidcConfigStrategy(mode, oidcConfigInput)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	oidcConfigStrategy.execute(r)
-	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.BucketUrl})
+	oidcConfigInput = oidcConfigStrategy.execute(r)
+	oidcEndpointUrl := oidcConfigInput.BucketUrl
+	if args.redHatHosted {
+		oidcEndpointUrl = oidcConfigInput.RHHostedUrl
+	}
+	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcEndpointUrl})
 }
 
 type OidcConfigInput struct {
@@ -218,6 +242,7 @@ type OidcConfigInput struct {
 	DiscoveryDocument    string
 	Jwks                 []byte
 	PrivateKeySecretName string
+	RHHostedUrl          string
 }
 
 const (
@@ -278,14 +303,14 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 }
 
 type CreateOidcConfigStrategy interface {
-	execute(r *rosa.Runtime)
+	execute(r *rosa.Runtime) OidcConfigInput
 }
 
 type CreateOidcConfigRawStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *CreateOidcConfigRawStrategy) execute(r *rosa.Runtime) {
+func (s *CreateOidcConfigRawStrategy) execute(r *rosa.Runtime) OidcConfigInput {
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
 	jwks := s.oidcConfig.Jwks
@@ -311,16 +336,33 @@ func (s *CreateOidcConfigRawStrategy) execute(r *rosa.Runtime) {
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Please use generated files to create an OIDC compliant configuration.")
 	}
+	return s.oidcConfig
 }
 
 type CreateRedHatHostedOidcConfigAutoStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *CreateRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *CreateRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) OidcConfigInput {
 	r.WithOCM()
 	privateKey := s.oidcConfig.PrivateKey
 	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
+	err := aws.ARNValidator(args.installerRoleArn)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	rhHostedConfig, err := r.OCMClient.GetRedHatHostedOidcConfig()
+	if err != nil {
+		if !strings.Contains(err.Error(), "No Red Hat Hosted OIDC Honfigurations for your organization are present") {
+			r.Reporter.Errorf("There was a problem checking Red Hat Hosted OIDC Configurations for your organization: %s", err)
+			os.Exit(1)
+		}
+	}
+	if rhHostedConfig != nil && rhHostedConfig.ID() != "" {
+		r.Reporter.Warnf("Your organization already has a Red Hat Hosted OIDC Configuration")
+		os.Exit(1)
+	}
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -331,15 +373,21 @@ func (s *CreateRedHatHostedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		r.Reporter.Errorf("There was a problem saving private key to secrets manager: %s", err)
 		os.Exit(1)
 	}
-	oidcEndpointUrl, err := r.OCMClient.CreateRedHatHostedOidcConfig(secretsARN, args.installerRoleArn)
+	hostedOidcConfig, err := r.OCMClient.CreateRedHatHostedOidcConfig(secretsARN, args.installerRoleArn)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem created the Red Hat Hosted OIDC Configuration: %s", err)
+		os.Exit(1)
+	}
+	s.oidcConfig.RHHostedUrl = hostedOidcConfig.OidcEndpointUrl()
 	if r.Reporter.IsTerminal() {
 		if spin != nil {
 			spin.Stop()
 		}
 		r.Reporter.Infof("Please run command below to create a cluster with this oidc config:\n"+
 			"rosa create cluster --sts \\\n--oidc-endpoint-url %s \\\n--oidc-private-key-secret-arn %s",
-			oidcEndpointUrl, secretsARN)
+			hostedOidcConfig.OidcEndpointUrl(), secretsARN)
 	}
+	return s.oidcConfig
 }
 
 type CreateOidcConfigAutoStrategy struct {
@@ -351,7 +399,7 @@ const (
 	jwksKey              = "keys.json"
 )
 
-func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) OidcConfigInput {
 	bucketUrl := s.oidcConfig.BucketUrl
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
@@ -400,13 +448,14 @@ func (s *CreateOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 			"rosa create cluster --sts \\\n--oidc-endpoint-url %s \\\n--oidc-private-key-secret-arn %s",
 			bucketUrl, secretsARN)
 	}
+	return s.oidcConfig
 }
 
 type CreateOidcConfigManualStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
+func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) OidcConfigInput {
 	commands := []string{}
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
@@ -486,6 +535,7 @@ func (s *CreateOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Please run commands above to generate OIDC compliant configuration in your AWS account.")
 	}
+	return s.oidcConfig
 }
 
 func getOidcConfigStrategy(mode string, input OidcConfigInput) (CreateOidcConfigStrategy, error) {

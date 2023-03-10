@@ -154,6 +154,10 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Failed to get the OIDC provider for cluster '%s'.", clusterKey)
 			os.Exit(1)
 		}
+		if providerArn == "" {
+			r.Reporter.Infof("Provider '%s' not found.", oidcEndpointUrl)
+			return
+		}
 		hasClusterUsingOidcProvider, err := r.OCMClient.HasAClusterUsingOidcProvider(oidcEndpointUrl)
 		if err != nil {
 			r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC provider '%s' : %v",
@@ -163,10 +167,6 @@ func run(cmd *cobra.Command, argv []string) {
 		if hasClusterUsingOidcProvider {
 			r.Reporter.Errorf("There are clusters using OIDC config '%s', can't delete the provider", oidcEndpointUrl)
 			os.Exit(1)
-		}
-		if providerArn == "" {
-			r.Reporter.Infof("Provider '%s' not found.", oidcEndpointUrl)
-			return
 		}
 	}
 	// Determine if interactive mode is needed
