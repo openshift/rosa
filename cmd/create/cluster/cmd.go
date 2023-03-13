@@ -17,6 +17,7 @@ limitations under the License.
 package cluster
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -2338,6 +2339,13 @@ func handleByoOidcOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) (bool
 			if err != nil {
 				r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
 				os.Exit(1)
+			}
+			if strings.Contains(oidcEndpointUrl, ".s3.") {
+				err = helper.IsBucketReacheable(context.Background(), oidcEndpointUrl)
+				if err != nil {
+					r.Reporter.Errorf("%v", err)
+					os.Exit(1)
+				}
 			}
 			err = aws.ARNValidator(oidcPrivateKeySecretArn)
 			if err != nil {
