@@ -865,8 +865,12 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			roleARN = roleARNs[0]
 		} else {
-			r.Reporter.Warnf("No account roles found. You will need to manually set them in the " +
-				"next steps or run 'rosa create account-roles' to create them first.")
+			createAccountRolesCommand := "rosa create account-roles"
+			if isHostedCP {
+				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+			}
+			r.Reporter.Warnf(fmt.Sprintf("No account roles found. You will need to manually set them in the "+
+				"next steps or run '%s' to create them first.", createAccountRolesCommand))
 			interactive.Enable()
 		}
 
@@ -883,6 +887,10 @@ func run(cmd *cobra.Command, _ []string) {
 			for roleType, role := range aws.AccountRoles {
 				if roleType == aws.InstallerAccountRole {
 					// Already dealt with
+					continue
+				}
+				if isHostedCP && roleType == aws.ControlPlaneAccountRole {
+					// Not needed for Hypershift clusters
 					continue
 				}
 				roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
@@ -905,9 +913,13 @@ func run(cmd *cobra.Command, _ []string) {
 					}
 				}
 				if selectedARN == "" {
-					r.Reporter.Warnf("No %s account roles found. You will need to manually set "+
-						"them in the next steps or run 'rosa create account-roles' to create "+
-						"them first.", role.Name)
+					createAccountRolesCommand := "rosa create account-roles"
+					if isHostedCP {
+						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+					}
+					r.Reporter.Warnf(fmt.Sprintf("No %s account roles found. You will need to manually set "+
+						"them in the next steps or run '%s' to create "+
+						"them first.", createAccountRolesCommand, role.Name))
 					interactive.Enable()
 					hasRoles = false
 					break
@@ -1005,36 +1017,41 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Instance IAM Roles
-	// Ensure interactive mode if missing required role ARNs on STS clusters
-	if isSTS && !hasRoles && !interactive.Enabled() {
-		if controlPlaneRoleARN == "" || workerRoleARN == "" {
+	if !isHostedCP {
+		// Ensure interactive mode if missing required role ARNs on STS clusters
+		if isSTS && !hasRoles && !interactive.Enabled() && controlPlaneRoleARN == "" {
 			interactive.Enable()
 		}
-	}
-	if isSTS && !hasRoles && interactive.Enabled() {
-		controlPlaneRoleARN, err = interactive.GetString(interactive.Input{
-			Question: "Control plane IAM Role ARN",
-			Help:     cmd.Flags().Lookup("controlplane-iam-role").Usage,
-			Default:  controlPlaneRoleARN,
-			Required: true,
-			Validators: []interactive.Validator{
-				aws.ARNValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid control plane IAM role ARN: %s", err)
+		if isSTS && !hasRoles && interactive.Enabled() {
+			controlPlaneRoleARN, err = interactive.GetString(interactive.Input{
+				Question: "Control plane IAM Role ARN",
+				Help:     cmd.Flags().Lookup("controlplane-iam-role").Usage,
+				Default:  controlPlaneRoleARN,
+				Required: true,
+				Validators: []interactive.Validator{
+					aws.ARNValidator,
+				},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid control plane IAM role ARN: %s", err)
+				os.Exit(1)
+			}
+		}
+		if controlPlaneRoleARN != "" {
+			err = aws.ARNValidator(controlPlaneRoleARN)
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid control plane instance IAM role ARN: %s", err)
+				os.Exit(1)
+			}
+		} else if roleARN != "" {
+			r.Reporter.Errorf("Control plane instance IAM role ARN is required: %s", err)
 			os.Exit(1)
 		}
 	}
-	if controlPlaneRoleARN != "" {
-		err = aws.ARNValidator(controlPlaneRoleARN)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid control plane instance IAM role ARN: %s", err)
-			os.Exit(1)
-		}
-	} else if roleARN != "" {
-		r.Reporter.Errorf("Control plane instance IAM role ARN is required: %s", err)
-		os.Exit(1)
+
+	// Ensure interactive mode if missing required role ARNs on STS clusters
+	if isSTS && !hasRoles && !interactive.Enabled() && workerRoleARN == "" {
+		interactive.Enable()
 	}
 
 	if isSTS && !hasRoles && interactive.Enabled() {
@@ -1087,15 +1104,30 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	var hostedCPPolicies bool
+	if isHostedCP {
+		hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
+		if err != nil {
+			r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	if managedPolicies {
-		role := aws.AccountRoles[aws.InstallerAccountRole]
+		var role aws.AccountRole
+		if hostedCPPolicies {
+			role = aws.HCPAccountRoles[aws.InstallerAccountRole]
+		} else {
+			role = aws.AccountRoles[aws.InstallerAccountRole]
+		}
+
 		rolePrefix, err := getAccountRolePrefix(roleARN, role)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
 			os.Exit(1)
 		}
 
-		err = roles.ValidateAccountRolesManagedPolicies(r, rolePrefix)
+		err = roles.ValidateAccountRolesManagedPolicies(r, rolePrefix, hostedCPPolicies)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating account roles: %s", err)
 			os.Exit(1)
@@ -1155,7 +1187,12 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 			os.Exit(1)
 		}
-		installerRole := aws.AccountRoles[aws.InstallerAccountRole]
+		var installerRole aws.AccountRole
+		if hostedCPPolicies {
+			installerRole = aws.HCPAccountRoles[aws.InstallerAccountRole]
+		} else {
+			installerRole = aws.AccountRoles[aws.InstallerAccountRole]
+		}
 		accRolesPrefix, err := getAccountRolePrefix(roleARN, installerRole)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
@@ -2561,7 +2598,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.RoleARN != "" {
 		command += fmt.Sprintf(" --role-arn %s", spec.RoleARN)
 		command += fmt.Sprintf(" --support-role-arn %s", spec.SupportRoleARN)
-		command += fmt.Sprintf(" --controlplane-iam-role %s", spec.ControlPlaneRoleARN)
+		if !spec.Hypershift.Enabled {
+			command += fmt.Sprintf(" --controlplane-iam-role %s", spec.ControlPlaneRoleARN)
+		}
 		command += fmt.Sprintf(" --worker-iam-role %s", spec.WorkerRoleARN)
 	}
 	if spec.ExternalID != "" {

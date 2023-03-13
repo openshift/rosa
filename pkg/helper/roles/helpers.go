@@ -89,10 +89,14 @@ func BuildMissingOperatorRoleCommand(
 	return awscb.JoinCommands(commands), nil
 }
 
-func ValidateAccountRolesManagedPolicies(r *rosa.Runtime, prefix string) error {
+func ValidateAccountRolesManagedPolicies(r *rosa.Runtime, prefix string, hostedCPPolicies bool) error {
 	policies, err := r.OCMClient.GetPolicies("")
 	if err != nil {
 		return fmt.Errorf("Failed to fetch policies: %v", err)
+	}
+
+	if hostedCPPolicies {
+		return r.AWSClient.ValidateHCPAccountRolesManagedPolicies(prefix, policies)
 	}
 
 	return r.AWSClient.ValidateAccountRolesManagedPolicies(prefix, policies)
