@@ -41,6 +41,7 @@ var args struct {
 	channelGroup        string
 	managed             bool
 	forcePolicyCreation bool
+	hostedCP            bool
 }
 
 var Cmd = &cobra.Command{
@@ -118,6 +119,13 @@ func init() {
 		"Forces creation of policies skipping compatibility check",
 	)
 
+	flags.BoolVar(
+		&args.hostedCP,
+		"hosted-cp",
+		false,
+		"Enable the use of hosted control planes (HyperShift)",
+	)
+
 	aws.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
@@ -160,6 +168,12 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if args.forcePolicyCreation && managedPolicies {
 		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
+		os.Exit(1)
+	}
+
+	// Hosted cluster roles always use managed policies
+	if cmd.Flags().Changed("hosted-cp") && cmd.Flags().Changed("managed-policies") && !args.managed {
+		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
 		os.Exit(1)
 	}
 
@@ -308,7 +322,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	rolesCreator := initCreator(managedPolicies)
+	rolesCreator := initCreator(managedPolicies, args.hostedCP)
 	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
 		policyVersion, path)
 
