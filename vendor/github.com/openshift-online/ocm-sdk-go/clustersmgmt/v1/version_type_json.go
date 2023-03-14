@@ -125,8 +125,8 @@ func writeVersion(object *Version, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("hypershift_enabled")
-		stream.WriteBool(object.hypershiftEnabled)
+		stream.WriteObjectField("hosted_control_plane_enabled")
+		stream.WriteBool(object.hostedControlPlaneEnabled)
 		count++
 	}
 	present_ = object.bitmap_&1024 != 0
@@ -209,9 +209,9 @@ func readVersion(iterator *jsoniter.Iterator) *Version {
 			}
 			object.endOfLifeTimestamp = value
 			object.bitmap_ |= 256
-		case "hypershift_enabled":
+		case "hosted_control_plane_enabled":
 			value := iterator.ReadBool()
-			object.hypershiftEnabled = value
+			object.hostedControlPlaneEnabled = value
 			object.bitmap_ |= 512
 		case "raw_id":
 			value := iterator.ReadString()

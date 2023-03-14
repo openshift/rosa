@@ -141,6 +141,16 @@ func (c *Client) Flavours() *FlavoursClient {
 	)
 }
 
+// HostedOidcConfigs returns the target 'hosted_oidc_configs' resource.
+//
+// Reference to the resource that manages oidc
+func (c *Client) HostedOidcConfigs() *HostedOidcConfigsClient {
+	return NewHostedOidcConfigsClient(
+		c.transport,
+		path.Join(c.path, "hosted_oidc_configs"),
+	)
+}
+
 // LimitedSupportReasonTemplates returns the target 'limited_support_reason_templates' resource.
 //
 // Reference to limited support reason templates.

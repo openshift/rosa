@@ -27,18 +27,18 @@ import (
 //
 // Representation of an _OpenShift_ version.
 type VersionBuilder struct {
-	bitmap_            uint32
-	id                 string
-	href               string
-	availableUpgrades  []string
-	channelGroup       string
-	endOfLifeTimestamp time.Time
-	rawID              string
-	releaseImage       string
-	rosaEnabled        bool
-	default_           bool
-	enabled            bool
-	hypershiftEnabled  bool
+	bitmap_                   uint32
+	id                        string
+	href                      string
+	availableUpgrades         []string
+	channelGroup              string
+	endOfLifeTimestamp        time.Time
+	rawID                     string
+	releaseImage              string
+	rosaEnabled               bool
+	default_                  bool
+	enabled                   bool
+	hostedControlPlaneEnabled bool
 }
 
 // NewVersion creates a new builder of 'version' objects.
@@ -114,9 +114,9 @@ func (b *VersionBuilder) EndOfLifeTimestamp(value time.Time) *VersionBuilder {
 	return b
 }
 
-// HypershiftEnabled sets the value of the 'hypershift_enabled' attribute to the given value.
-func (b *VersionBuilder) HypershiftEnabled(value bool) *VersionBuilder {
-	b.hypershiftEnabled = value
+// HostedControlPlaneEnabled sets the value of the 'hosted_control_plane_enabled' attribute to the given value.
+func (b *VersionBuilder) HostedControlPlaneEnabled(value bool) *VersionBuilder {
+	b.hostedControlPlaneEnabled = value
 	b.bitmap_ |= 512
 	return b
 }
@@ -154,7 +154,7 @@ func (b *VersionBuilder) Copy(object *Version) *VersionBuilder {
 	b.default_ = object.default_
 	b.enabled = object.enabled
 	b.endOfLifeTimestamp = object.endOfLifeTimestamp
-	b.hypershiftEnabled = object.hypershiftEnabled
+	b.hostedControlPlaneEnabled = object.hostedControlPlaneEnabled
 	b.rawID = object.rawID
 	b.releaseImage = object.releaseImage
 	return b
@@ -175,7 +175,7 @@ func (b *VersionBuilder) Build() (object *Version, err error) {
 	object.default_ = b.default_
 	object.enabled = b.enabled
 	object.endOfLifeTimestamp = b.endOfLifeTimestamp
-	object.hypershiftEnabled = b.hypershiftEnabled
+	object.hostedControlPlaneEnabled = b.hostedControlPlaneEnabled
 	object.rawID = b.rawID
 	object.releaseImage = b.releaseImage
 	return
