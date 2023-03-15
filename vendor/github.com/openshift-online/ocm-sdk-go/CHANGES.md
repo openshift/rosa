@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.324
+- Update model to v0.0.265
+  - Rename `HypershiftEnabled` boolean to `HostedControlPlaneEnabled` in `Version` Type model.
+
+## 0.1.323
+- Update model to v0.0.264
+  - Add `Hosted Oidc Configs` endpoints.
+
 ## 0.1.322
 - Update model to v0.0.263
   - Add `HypershiftEnabled` boolean to `Version` Type model.

@@ -39,18 +39,18 @@ const VersionNilKind = "VersionNil"
 //
 // Representation of an _OpenShift_ version.
 type Version struct {
-	bitmap_            uint32
-	id                 string
-	href               string
-	availableUpgrades  []string
-	channelGroup       string
-	endOfLifeTimestamp time.Time
-	rawID              string
-	releaseImage       string
-	rosaEnabled        bool
-	default_           bool
-	enabled            bool
-	hypershiftEnabled  bool
+	bitmap_                   uint32
+	id                        string
+	href                      string
+	availableUpgrades         []string
+	channelGroup              string
+	endOfLifeTimestamp        time.Time
+	rawID                     string
+	releaseImage              string
+	rosaEnabled               bool
+	default_                  bool
+	enabled                   bool
+	hostedControlPlaneEnabled bool
 }
 
 // Kind returns the name of the type of the object.
@@ -256,25 +256,25 @@ func (o *Version) GetEndOfLifeTimestamp() (value time.Time, ok bool) {
 	return
 }
 
-// HypershiftEnabled returns the value of the 'hypershift_enabled' attribute, or
+// HostedControlPlaneEnabled returns the value of the 'hosted_control_plane_enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// HypershiftEnabled indicates whether this version can be used to create Hypershift clusters.
-func (o *Version) HypershiftEnabled() bool {
+// HostedControlPlaneEnabled indicates whether this version can be used to create HCP clusters.
+func (o *Version) HostedControlPlaneEnabled() bool {
 	if o != nil && o.bitmap_&512 != 0 {
-		return o.hypershiftEnabled
+		return o.hostedControlPlaneEnabled
 	}
 	return false
 }
 
-// GetHypershiftEnabled returns the value of the 'hypershift_enabled' attribute and
+// GetHostedControlPlaneEnabled returns the value of the 'hosted_control_plane_enabled' attribute and
 // a flag indicating if the attribute has a value.
 //
-// HypershiftEnabled indicates whether this version can be used to create Hypershift clusters.
-func (o *Version) GetHypershiftEnabled() (value bool, ok bool) {
+// HostedControlPlaneEnabled indicates whether this version can be used to create HCP clusters.
+func (o *Version) GetHostedControlPlaneEnabled() (value bool, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
-		value = o.hypershiftEnabled
+		value = o.hostedControlPlaneEnabled
 	}
 	return
 }
