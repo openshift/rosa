@@ -74,8 +74,13 @@ const (
 	ControlPlaneAccountRole = "instance_controlplane"
 	WorkerAccountRole       = "instance_worker"
 	SupportAccountRole      = "support"
-	OCMRole                 = "OCM"
-	OCMUserRole             = "User"
+
+	HCPInstallerRole = "installer"
+	HCPWorkerRole    = "instance_worker"
+	HCPSupportRole   = "support"
+
+	OCMRole     = "OCM"
+	OCMUserRole = "User"
 )
 
 const (
@@ -89,6 +94,12 @@ var AccountRoles map[string]AccountRole = map[string]AccountRole{
 	ControlPlaneAccountRole: {Name: "ControlPlane", Flag: "controlplane-iam-role"},
 	WorkerAccountRole:       {Name: "Worker", Flag: "worker-iam-role"},
 	SupportAccountRole:      {Name: "Support", Flag: "support-role-arn"},
+}
+
+var HCPAccountRoles = map[string]AccountRole{
+	HCPInstallerRole: {Name: "HCP-Installer", Flag: "role-arn"},
+	HCPSupportRole:   {Name: "HCP-Support", Flag: "support-role-arn"},
+	HCPWorkerRole:    {Name: "HCP-Worker", Flag: "worker-iam-role"},
 }
 
 var OCMUserRolePolicyFile = "ocm_user"
