@@ -346,8 +346,14 @@ func run(cmd *cobra.Command, argv []string) {
 			})
 			os.Exit(1)
 		}
-		r.Reporter.Infof("To create a cluster with these roles, run the following command:\n" +
-			"rosa create cluster --sts")
+		var createClusterFlag string
+		if args.hostedCP {
+			createClusterFlag = "--hosted-cp"
+		} else {
+			createClusterFlag = "--sts"
+		}
+		r.Reporter.Infof(fmt.Sprintf("To create a cluster with these roles, run the following command:\n"+
+			"rosa create cluster %s", createClusterFlag))
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 			ocm.Version:  policyVersion,
