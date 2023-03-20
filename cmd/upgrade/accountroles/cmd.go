@@ -135,7 +135,8 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if managedPolicies {
-		err = roles.ValidateAccountRolesManagedPolicies(r, prefix)
+		// TODO: handle Hypershift account roles
+		err = roles.ValidateAccountRolesManagedPolicies(r, prefix, false)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
 			os.Exit(1)

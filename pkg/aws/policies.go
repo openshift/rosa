@@ -1431,6 +1431,19 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 	return false, nil
 }
 
+func (c *awsClient) HasHostedCPPolicies(roleARN string) (bool, error) {
+	if roleARN == "" {
+		return false, nil
+	}
+
+	role, err := c.GetRoleByARN(roleARN)
+	if err != nil {
+		return false, err
+	}
+
+	return roleHasTag(role.Tags, tags.HypershiftPolicies, tags.True), nil
+}
+
 func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
 	if roleARN == "" {
 		return false, nil
@@ -1683,6 +1696,21 @@ func (c *awsClient) ValidateAccountRolesManagedPolicies(prefix string, policies 
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	return nil
+}
+
+func (c *awsClient) ValidateHCPAccountRolesManagedPolicies(prefix string,
+	policies map[string]*cmv1.AWSSTSPolicy) error {
+	for roleType, accountRole := range HCPAccountRoles {
+		roleName := GetRoleName(prefix, accountRole.Name)
+
+		policyKey := fmt.Sprintf("sts_hcp_%s_permission_policy", roleType)
+		err := c.validateManagedPolicy(policies, policyKey, roleName)
+		if err != nil {
+			return err
 		}
 	}
 

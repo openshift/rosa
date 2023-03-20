@@ -168,8 +168,10 @@ type Client interface {
 	IsLocalAvailabilityZone(availabilityZoneName string) (bool, error)
 	DetachRolePolicies(roleName string) error
 	HasManagedPolicies(roleARN string) (bool, error)
+	HasHostedCPPolicies(roleARN string) (bool, error)
 	GetAccountRoleARN(prefix string, roleType string) (string, error)
 	ValidateAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error
+	ValidateHCPAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error
 	ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster, operatorRoles map[string]*cmv1.STSOperator,
 		policies map[string]*cmv1.AWSSTSPolicy) error
 	CreateS3Bucket(bucketName string, region string) error
