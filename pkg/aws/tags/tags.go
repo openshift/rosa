@@ -52,7 +52,7 @@ const RedHatManaged = "red-hat-managed"
 
 const ManagedPolicies = prefix + "managed_policies"
 
-const HypershiftPolicies = prefix + "hypershift_policies"
+const HypershiftPolicies = prefix + "hcp_policies"
 
 const OperatorNamespace = "operator_namespace"
 

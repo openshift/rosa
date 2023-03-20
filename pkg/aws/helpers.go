@@ -825,6 +825,14 @@ func GetManagedPolicyARN(policies map[string]*cmv1.AWSSTSPolicy, key string) (st
 	return policy.ARN(), nil
 }
 
+func GetOperatorPolicyKey(roleType string, hostedCP bool) string {
+	if hostedCP {
+		return fmt.Sprintf("openshift_hcp_%s_policy", roleType)
+	}
+
+	return fmt.Sprintf("openshift_%s_policy", roleType)
+}
+
 // GetAccountRolePolicyKeys returns the policy key for fetching the managed policy ARN
 func GetAccountRolePolicyKeys(roleType string) []string {
 	if roleType == InstallerAccountRole {
