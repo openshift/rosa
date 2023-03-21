@@ -10,7 +10,6 @@ import (
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -94,13 +93,23 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 	}
+
+	var hostedCPPolicies bool
+	if cluster.Hypershift().Enabled() {
+		hostedCPPolicies, err = r.AWSClient.HasHostedCPPolicies(cluster.AWS().STS().RoleARN())
+		if err != nil {
+			r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 		}
 		err = createRoles(r, operatorRolePolicyPrefix, permissionsBoundary, cluster,
-			accountRoleVersion, policies, defaultPolicyVersion, credRequests, managedPolicies)
+			accountRoleVersion, policies, defaultPolicyVersion, credRequests, managedPolicies, hostedCPPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the operator roles: %s", err)
 			isThrottle := "false"
@@ -120,7 +129,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		})
 	case aws.ModeManual:
 		commands, err := buildCommands(r, env, operatorRolePolicyPrefix, permissionsBoundary, defaultPolicyVersion,
-			cluster, policies, credRequests, managedPolicies)
+			cluster, policies, credRequests, managedPolicies, hostedCPPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -148,7 +157,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 func createRoles(r *rosa.Runtime,
 	prefix string, permissionsBoundary string,
 	cluster *cmv1.Cluster, accountRoleVersion string, policies map[string]*cmv1.AWSSTSPolicy,
-	defaultVersion string, credRequests map[string]*cmv1.STSOperator, managedPolicies bool) error {
+	defaultVersion string, credRequests map[string]*cmv1.STSOperator, managedPolicies bool, hostedCPPolicies bool) error {
 	for credrequest, operator := range credRequests {
 		ver := cluster.Version()
 		if ver != nil && operator.MinVersion() != "" {
@@ -165,9 +174,6 @@ func createRoles(r *rosa.Runtime,
 		if roleName == "" {
 			return fmt.Errorf("Failed to find operator IAM role")
 		}
-		if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
-			continue
-		}
 
 		path, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
 		if err != nil {
@@ -175,7 +181,7 @@ func createRoles(r *rosa.Runtime,
 		}
 
 		var policyARN string
-		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
+		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies)
 		if managedPolicies {
 			policyARN, err = aws.GetManagedPolicyARN(policies, filename)
 			if err != nil {
@@ -227,6 +233,9 @@ func createRoles(r *rosa.Runtime,
 		if managedPolicies {
 			tagsList[tags.ManagedPolicies] = helper.True
 		}
+		if hostedCPPolicies {
+			tagsList[tags.HypershiftPolicies] = helper.True
+		}
 
 		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
 			tagsList, path, managedPolicies)
@@ -250,7 +259,7 @@ func createRoles(r *rosa.Runtime,
 func buildCommands(r *rosa.Runtime, env string,
 	prefix string, permissionsBoundary string, defaultPolicyVersion string, cluster *cmv1.Cluster,
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
-	managedPolicies bool) (string, error) {
+	managedPolicies bool, hostedCPPolicies bool) (string, error) {
 	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
 		true, policies, credRequests, managedPolicies)
 	if err != nil {
@@ -280,7 +289,7 @@ func buildCommands(r *rosa.Runtime, env string,
 
 		var policyARN string
 		if managedPolicies {
-			policyARN, err = aws.GetManagedPolicyARN(policies, fmt.Sprintf("openshift_%s_policy", credrequest))
+			policyARN, err = aws.GetManagedPolicyARN(policies, aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies))
 			if err != nil {
 				return "", err
 			}
@@ -330,6 +339,9 @@ func buildCommands(r *rosa.Runtime, env string,
 		}
 		if managedPolicies {
 			iamTags[tags.ManagedPolicies] = helper.True
+		}
+		if hostedCPPolicies {
+			iamTags[tags.HypershiftPolicies] = helper.True
 		}
 		createRole := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreateRole).
