@@ -2,6 +2,7 @@ package machinepool
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"os"
 	"strconv"
 	"strings"
@@ -574,13 +575,23 @@ func parseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 	if taints == "" {
 		return taintBuilders, nil
 	}
+
+	var errs []error
 	for _, taint := range strings.Split(taints, ",") {
 		if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
 			return nil, fmt.Errorf("Expected key=value:scheduleType format for taints")
 		}
 		tokens := strings.FieldsFunc(taint, Split)
 		taintBuilders = append(taintBuilders, cmv1.NewTaint().Key(tokens[0]).Value(tokens[1]).Effect(tokens[2]))
+
+		if err := validateLabelKeyValuePair(tokens[0], tokens[1]); err != nil {
+			errs = append(errs, err)
+		}
 	}
+	if len(errs) > 0 {
+		return nil, errors.NewAggregate(errs)
+	}
+
 	return taintBuilders, nil
 }
 
