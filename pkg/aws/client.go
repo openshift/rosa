@@ -128,7 +128,8 @@ type Client interface {
 	GetPolicies(roles []string) (map[string][]string, error)
 	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
 	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
-	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string) ([]Role, error)
+	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string,
+		accountRolesMap map[string]AccountRole) ([]Role, error)
 	DeleteAccountRole(roleName string, managedPolicies bool) error
 	DeleteOCMRole(roleARN string, managedPolicies bool) error
 	DeleteUserRole(roleName string) error
