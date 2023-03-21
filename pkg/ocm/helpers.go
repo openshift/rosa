@@ -26,7 +26,9 @@ import (
 	"regexp"
 	"strings"
 
+	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	semver "github.com/hashicorp/go-version"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/zgalor/weberr"
@@ -634,6 +636,49 @@ func ValidateSubnetsCount(multiAZ bool, privateLink bool, subnetsInputCount int)
 	}
 
 	return nil
+}
+
+func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetIDs []string) (int, error) {
+	if isPrivate && len(subnetIDs) < 1 {
+		return 0, fmt.Errorf("The number of subnets for a private hosted cluster should be at least one")
+	}
+	if !isPrivate && len(subnetIDs) < 2 {
+		return 0, fmt.Errorf("The number of subnets for a public hosted cluster should be at least two")
+	}
+	vpcSubnets, vpcSubnetsErr := awsClient.GetVPCSubnets(subnetIDs[0])
+	if vpcSubnetsErr != nil {
+		return 0, vpcSubnetsErr
+	}
+
+	var subnets []*ec2.Subnet
+	for _, subnet := range vpcSubnets {
+		for _, subnetId := range subnetIDs {
+			if awssdk.StringValue(subnet.SubnetId) == subnetId {
+				subnets = append(subnets, subnet)
+				break
+			}
+		}
+	}
+
+	privateSubnets, privateSubnetsErr := awsClient.FilterVPCsPrivateSubnets(subnets)
+	if privateSubnetsErr != nil {
+		return 0, privateSubnetsErr
+	}
+
+	privateSubnetCount := len(privateSubnets)
+	publicSubnetsCount := len(subnets) - privateSubnetCount
+
+	if isPrivate {
+		if publicSubnetsCount > 0 {
+			return 0, fmt.Errorf("The number of public subnets for a private hosted cluster should be zero")
+		}
+	} else {
+		if publicSubnetsCount == 0 {
+			return 0, fmt.Errorf("The number of public subnets for a public hosted " +
+				"cluster should be at least one")
+		}
+	}
+	return privateSubnetCount, nil
 }
 
 const (
