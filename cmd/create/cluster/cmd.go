@@ -1555,7 +1555,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Options:  options,
 				Default:  defaultOptions,
 				Validators: []interactive.Validator{
-					interactive.SubnetsCountValidator(multiAZ, privateLink),
+					interactive.SubnetsCountValidator(multiAZ, privateLink, isHostedCP),
 				},
 			})
 			if err != nil {
@@ -1568,15 +1568,20 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		// Validate subnets in the case the user has provided them using the `args.subnets`
-		if subnetsProvided {
-			if isHostedCP {
-				// Hosted cluster should validate that
-				// - Public hosted clusters have at least one public subnet
-				// - Private hosted clusters have all subnets private
-				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs)
-			} else {
-				err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
+		if subnetsProvided && !isHostedCP {
+			err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
 			}
+		}
+
+		// In both cases (interactive and subnetsProvided) hosted clusters need to validate the private subnets
+		if isHostedCP {
+			// Hosted cluster should validate that
+			// - Public hosted clusters have at least one public subnet
+			// - Private hosted clusters have all subnets private
+			privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)

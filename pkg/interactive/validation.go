@@ -139,9 +139,18 @@ func RegExpBoolean(restr string) Validator {
 
 // SubnetsCountValidator get a slice of `[]core.OptionAnswer` as an interface.
 // e.g. core.OptionAnswer { Value: subnet-04f67939f44a97dbe (us-west-2b), Index: 0 }
-func SubnetsCountValidator(multiAZ bool, privateLink bool) Validator {
+func SubnetsCountValidator(multiAZ bool, privateLink bool, hostedCP bool) Validator {
 	return func(input interface{}) error {
 		if answers, ok := input.([]core.OptionAnswer); ok {
+			if hostedCP {
+				if privateLink && len(answers) < 1 {
+					return fmt.Errorf("The number of subnets for a private hosted cluster should be at least one")
+				}
+				if !privateLink && len(answers) < 2 {
+					return fmt.Errorf("The number of subnets for a public hosted cluster should be at least two")
+				}
+				return nil
+			}
 			return ocm.ValidateSubnetsCount(multiAZ, privateLink, len(answers))
 		}
 
