@@ -33,7 +33,8 @@ import (
 )
 
 var args struct {
-	prefix string
+	prefix   string
+	hostedCP bool
 }
 
 var Cmd = &cobra.Command{
@@ -56,6 +57,14 @@ func init() {
 		"",
 		"Prefix of the account roles to be deleted.",
 	)
+
+	flags.BoolVar(
+		&args.hostedCP,
+		"hosted-cp",
+		false,
+		"Delete hosted control planes roles (HyperShift)",
+	)
+	flags.MarkHidden("hosted-cp")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
@@ -114,56 +123,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	finalRoleList := []string{}
-	roles, err := r.AWSClient.GetAccountRoleForCurrentEnvWithPrefix(env, prefix)
-	if err != nil {
-		r.Reporter.Errorf("Error getting role: %s", err)
-		os.Exit(1)
-	}
-	if len(roles) == 0 {
-		r.Reporter.Errorf("There are no roles to be deleted")
-		os.Exit(1)
-	}
-	for _, role := range roles {
-		if role.RoleName == "" {
-			continue
-		}
-		clusterID := checkIfRoleAssociated(clusters, role)
-		if clusterID != "" {
-			r.Reporter.Errorf("Role %s is associated with the cluster %s", role.RoleName, clusterID)
-			os.Exit(1)
-		}
-		finalRoleList = append(finalRoleList, role.RoleName)
-	}
-
-	if len(finalRoleList) == 0 {
-		r.Reporter.Errorf("There are no roles to be deleted")
-		os.Exit(1)
-	}
-	for _, role := range finalRoleList {
-		instanceProfiles, err := r.AWSClient.GetInstanceProfilesForRole(role)
-		if err != nil {
-			r.Reporter.Errorf("Error checking for instance roles: %s", err)
-			os.Exit(1)
-		}
-		if len(instanceProfiles) > 0 {
-			r.Reporter.Errorf("Instance Profiles are attached to the role. Please make sure it is deleted: %s",
-				strings.Join(instanceProfiles, ","))
-			os.Exit(1)
-		}
-	}
-
-	managedPolicies, err := r.AWSClient.HasManagedPolicies(roles[0].RoleARN)
-	if err != nil {
-		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
-		os.Exit(1)
-	}
-	// TODO: remove once AWS managed policies are in place
-	if managedPolicies && env == ocm.Production {
-		r.Reporter.Errorf("Managed policies are not supported in this environment")
-		os.Exit(1)
-	}
-
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Account role deletion mode",
@@ -177,8 +136,38 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+
+	// TODO: delete both classic and hosted CP roles by default, once managed policies are in place
+	err = deleteAccountRoles(r, env, prefix, clusters, mode, args.hostedCP)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+}
+
+func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*cmv1.Cluster, mode string,
+	hostedCP bool) error {
+	var accountRolesMap map[string]aws.AccountRole
+	var roleTypeString string
+	if hostedCP {
+		accountRolesMap = aws.HCPAccountRoles
+		roleTypeString = "hosted CP "
+	} else {
+		accountRolesMap = aws.AccountRoles
+	}
+
+	finalRoleList, managedPolicies, err := getRoleListForDeletion(r, env, prefix, clusters, accountRolesMap)
+	if err != nil {
+		return err
+	}
+	if len(finalRoleList) == 0 {
+		return fmt.Errorf("There are no %saccount roles to be deleted", roleTypeString)
+	}
+
 	switch mode {
 	case aws.ModeAuto:
+		r.Reporter.Infof(fmt.Sprintf("Deleting %saccount roles", roleTypeString))
+
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
 		for _, role := range finalRoleList {
 			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
@@ -190,13 +179,12 @@ func run(cmd *cobra.Command, _ []string) {
 				continue
 			}
 		}
-		r.Reporter.Infof("Successfully deleted the account roles")
+		r.Reporter.Infof(fmt.Sprintf("Successfully deleted the %saccount roles", roleTypeString))
 	case aws.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
 		policyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList)
 		if err != nil {
-			r.Reporter.Errorf("There was an error getting the policy: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("There was an error getting the policy: %v", err)
 		}
 		commands := buildCommand(finalRoleList, policyMap, managedPolicies)
 
@@ -205,9 +193,59 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
-		os.Exit(1)
+		return fmt.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 	}
+
+	return nil
+}
+
+func getRoleListForDeletion(r *rosa.Runtime, env string, prefix string, clusters []*cmv1.Cluster,
+	accountRolesMap map[string]aws.AccountRole) ([]string, bool, error) {
+	finalRoleList := []string{}
+	roles, err := r.AWSClient.GetAccountRoleForCurrentEnvWithPrefix(env, prefix, accountRolesMap)
+	if err != nil {
+		return finalRoleList, false, fmt.Errorf("Error getting role: %s", err)
+	}
+	if len(roles) == 0 {
+		return finalRoleList, false, nil
+	}
+
+	for _, role := range roles {
+		if role.RoleName == "" {
+			continue
+		}
+		clusterID := checkIfRoleAssociated(clusters, role)
+		if clusterID != "" {
+			return finalRoleList, false, fmt.Errorf("Role %s is associated with the cluster %s", role.RoleName, clusterID)
+		}
+		finalRoleList = append(finalRoleList, role.RoleName)
+	}
+
+	if len(finalRoleList) == 0 {
+		return finalRoleList, false, nil
+	}
+	for _, role := range finalRoleList {
+		instanceProfiles, err := r.AWSClient.GetInstanceProfilesForRole(role)
+		if err != nil {
+			return finalRoleList, false, fmt.Errorf("Error checking for instance roles: %s", err)
+		}
+		if len(instanceProfiles) > 0 {
+			return finalRoleList, false, fmt.Errorf(
+				"Instance Profiles are attached to the role. Please make sure it is deleted: %s",
+				strings.Join(instanceProfiles, ","))
+		}
+	}
+
+	managedPolicies, err := r.AWSClient.HasManagedPolicies(roles[0].RoleARN)
+	if err != nil {
+		return finalRoleList, false, fmt.Errorf("Failed to determine if cluster has managed policies: %v", err)
+	}
+	// TODO: remove once AWS managed policies are in place
+	if managedPolicies && env == ocm.Production {
+		return finalRoleList, false, fmt.Errorf("Managed policies are not supported in this environment")
+	}
+
+	return finalRoleList, managedPolicies, nil
 }
 
 func checkIfRoleAssociated(clusters []*cmv1.Cluster, role aws.Role) string {

@@ -89,7 +89,7 @@ const (
 	InstallerPrivateLinkKey = "sts_installer_privatelink_permission_policy"
 )
 
-var AccountRoles map[string]AccountRole = map[string]AccountRole{
+var AccountRoles = map[string]AccountRole{
 	InstallerAccountRole:    {Name: "Installer", Flag: "role-arn"},
 	ControlPlaneAccountRole: {Name: "ControlPlane", Flag: "controlplane-iam-role"},
 	WorkerAccountRole:       {Name: "Worker", Flag: "worker-iam-role"},
@@ -1270,9 +1270,10 @@ func (c *awsClient) checkInstallerRoleExists(roleName string) (*iam.Role, error)
 	return installerRoleResponse.Role, nil
 }
 
-func (c *awsClient) GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string) ([]Role, error) {
+func (c *awsClient) GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string,
+	accountRolesMap map[string]AccountRole) ([]Role, error) {
 	roleList := []Role{}
-	for _, prefix := range AccountRoles {
+	for _, prefix := range accountRolesMap {
 		role, err := c.GetAccountRoleForCurrentEnv(env, fmt.Sprintf("%s-%s-Role", rolePrefix, prefix.Name))
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
