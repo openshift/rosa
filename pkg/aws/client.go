@@ -175,7 +175,7 @@ type Client interface {
 	ValidateAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error
 	ValidateHCPAccountRolesManagedPolicies(prefix string, policies map[string]*cmv1.AWSSTSPolicy) error
 	ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster, operatorRoles map[string]*cmv1.STSOperator,
-		policies map[string]*cmv1.AWSSTSPolicy) error
+		policies map[string]*cmv1.AWSSTSPolicy, hostedCPPolicies bool) error
 	CreateS3Bucket(bucketName string, region string) error
 	DeleteS3Bucket(bucketName string) error
 	PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error

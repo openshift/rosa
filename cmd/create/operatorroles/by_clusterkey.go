@@ -94,14 +94,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		r.Reporter.Errorf("%s", err)
 	}
 
-	var hostedCPPolicies bool
-	if cluster.Hypershift().Enabled() {
-		hostedCPPolicies, err = r.AWSClient.HasHostedCPPolicies(cluster.AWS().STS().RoleARN())
-		if err != nil {
-			r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
-			os.Exit(1)
-		}
-	}
+	hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
 
 	switch mode {
 	case aws.ModeAuto:

@@ -160,8 +160,10 @@ func run(cmd *cobra.Command, argv []string) error {
 			os.Exit(1)
 		}
 
+		hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
+
 		err = roles.ValidateOperatorRolesManagedPolicies(r, cluster, credRequests, policies, mode, prefix, unifiedPath,
-			args.upgradeVersion)
+			args.upgradeVersion, hostedCPPolicies)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
 			os.Exit(1)

@@ -475,7 +475,15 @@ func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (str
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", roleNameSuffix))
+
+	var suffix string
+	if IsHostedCPManagedPolicies(cluster) {
+		suffix = fmt.Sprintf("-HCP-%s-Role", roleNameSuffix)
+	} else {
+		suffix = fmt.Sprintf("-%s-Role", roleNameSuffix)
+	}
+
+	rolePrefix := TrimRoleSuffix(roleName, suffix)
 	return rolePrefix, nil
 }
 
@@ -862,4 +870,8 @@ func ComputeOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *
 func IsStandardNamedAccountRole(accountRoleName, roleSuffix string) (bool, string) {
 	accountRolePrefix := TrimRoleSuffix(accountRoleName, fmt.Sprintf("-%s-Role", roleSuffix))
 	return accountRolePrefix != accountRoleName, accountRolePrefix
+}
+
+func IsHostedCPManagedPolicies(cluster *cmv1.Cluster) bool {
+	return cluster.Hypershift().Enabled() && cluster.AWS().STS().ManagedPolicies()
 }

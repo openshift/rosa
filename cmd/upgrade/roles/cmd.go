@@ -199,8 +199,10 @@ func run(cmd *cobra.Command, argv []string) error {
 			r.Reporter.Errorf("Failed while trying to get account role prefix: '%v'", err)
 			os.Exit(1)
 		}
-		// TODO: handle Hypershift account roles
-		err = roles.ValidateAccountRolesManagedPolicies(r, accountRolePrefix, false)
+
+		hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
+
+		err = roles.ValidateAccountRolesManagedPolicies(r, accountRolePrefix, hostedCPPolicies)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
 			os.Exit(1)
@@ -213,7 +215,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			os.Exit(1)
 		}
 		err = roles.ValidateOperatorRolesManagedPolicies(r, cluster, credRequests, policies, mode,
-			accountRolePrefix, unifiedPath, clusterUpgradeVersion)
+			accountRolePrefix, unifiedPath, clusterUpgradeVersion, hostedCPPolicies)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
 			os.Exit(1)

@@ -130,7 +130,7 @@ func ValidateUnmanagedAccountRoles(roleARNs []string, awsClient aws.Client, vers
 
 func ValidateOperatorRolesManagedPolicies(r *rosa.Runtime, cluster *cmv1.Cluster,
 	operatorRoles map[string]*cmv1.STSOperator, policies map[string]*cmv1.AWSSTSPolicy, mode string, prefix string,
-	unifiedPath string, upgradeVersion string) error {
+	unifiedPath string, upgradeVersion string, hostedCPPolicies bool) error {
 	if upgradeVersion != "" {
 		missingRolesInCS, err := r.OCMClient.FindMissingOperatorRolesForUpgrade(cluster, upgradeVersion)
 		if err != nil {
@@ -145,7 +145,7 @@ func ValidateOperatorRolesManagedPolicies(r *rosa.Runtime, cluster *cmv1.Cluster
 		}
 	}
 
-	return r.AWSClient.ValidateOperatorRolesManagedPolicies(cluster, operatorRoles, policies)
+	return r.AWSClient.ValidateOperatorRolesManagedPolicies(cluster, operatorRoles, policies, hostedCPPolicies)
 }
 
 func CreateMissingRoles(r *rosa.Runtime, missingRolesInCS map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,

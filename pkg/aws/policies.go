@@ -1672,11 +1672,11 @@ func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, e
 }
 
 func (c *awsClient) ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster,
-	operatorRoles map[string]*cmv1.STSOperator, policies map[string]*cmv1.AWSSTSPolicy) error {
+	operatorRoles map[string]*cmv1.STSOperator, policies map[string]*cmv1.AWSSTSPolicy, hostedCPPolicies bool) error {
 	for key, operatorRole := range operatorRoles {
 		roleName, exist := FindOperatorRoleNameBySTSOperator(cluster, operatorRole)
 		if exist {
-			err := c.validateManagedPolicy(policies, fmt.Sprintf("openshift_%s_policy", key), roleName)
+			err := c.validateManagedPolicy(policies, GetOperatorPolicyKey(key, hostedCPPolicies), roleName)
 			if err != nil {
 				return err
 			}
