@@ -42,7 +42,6 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/roles"
-	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -781,7 +780,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	version, err = versions.ValidateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
+	version, err = r.OCMClient.ValidateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
@@ -2531,7 +2530,7 @@ func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 			continue
 		}
 		if isHostedCP {
-			valid, err := ocm.HasHostedCPSupport(v.RawID())
+			valid, err := ocm.HasHostedCPSupport(v)
 			if err != nil {
 				return versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
 			}

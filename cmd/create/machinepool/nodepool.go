@@ -95,7 +95,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				os.Exit(1)
 			}
 		}
-		version, err = versions.ValidateVersion(version, filteredVersionList, channelGroup, true, true)
+		version, err = r.OCMClient.ValidateVersion(version, filteredVersionList, channelGroup, true, true)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 			os.Exit(1)
