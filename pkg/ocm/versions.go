@@ -101,11 +101,11 @@ func HasHostedCPSupport(version *cmv1.Version) (bool, error) {
 	}
 	v, err := ver.NewVersion(version.RawID())
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
 	}
 	b, err := ver.NewVersion(LowestHostedCPSupport)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
 	}
 	// Check minimum OCP supported version
 	return v.GreaterThanOrEqual(b), nil
@@ -349,11 +349,8 @@ func (c *Client) ValidateVersion(version string, versionList []string, channelGr
 			return "", handleErr(response.Error(), err)
 		}
 		valid, err := HasHostedCPSupport(response.Items().Get(0))
-		if err != nil {
-			return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
-		}
-		if !valid {
-			return "", fmt.Errorf("version '%s' is not supported for hosted clusters", version)
+		if err != nil || !valid {
+			return "", err
 		}
 	}
 
