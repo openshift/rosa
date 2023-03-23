@@ -101,11 +101,11 @@ func HasHostedCPSupport(version *cmv1.Version) (bool, error) {
 	}
 	v, err := ver.NewVersion(version.RawID())
 	if err != nil {
-		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
+		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version.RawID(), err)
 	}
 	b, err := ver.NewVersion(LowestHostedCPSupport)
 	if err != nil {
-		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
+		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version.RawID(), err)
 	}
 	// Check minimum OCP supported version
 	return v.GreaterThanOrEqual(b), nil
