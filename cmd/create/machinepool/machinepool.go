@@ -9,6 +9,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -574,13 +575,33 @@ func parseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 	if taints == "" {
 		return taintBuilders, nil
 	}
+	var errs []error
 	for _, taint := range strings.Split(taints, ",") {
 		if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
-			return nil, fmt.Errorf("Expected key=value:scheduleType format for taints")
+			return nil, fmt.Errorf("Expected key=value:scheduleType format for taints. Got '%s'", taint)
 		}
-		tokens := strings.FieldsFunc(taint, Split)
-		taintBuilders = append(taintBuilders, cmv1.NewTaint().Key(tokens[0]).Value(tokens[1]).Effect(tokens[2]))
+		// First split effect
+		splitEffect := strings.Split(taint, ":")
+		// Then split key and value
+		splitKeyValue := strings.Split(splitEffect[0], "=")
+		newTaintBuilder := cmv1.NewTaint().Key(splitKeyValue[0]).Value(splitKeyValue[1]).Effect(splitEffect[1])
+		newTaint, _ := newTaintBuilder.Build()
+		if err := validateLabelKeyValuePair(newTaint.Key(), newTaint.Value()); err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		if newTaint.Effect() == "" {
+			// Note: an empty effect means any effect. For the moment this is not supported
+			errs = append(errs, fmt.Errorf("Expected a not empty effect"))
+			continue
+		}
+		taintBuilders = append(taintBuilders, newTaintBuilder)
 	}
+
+	if len(errs) > 0 {
+		return nil, errors.NewAggregate(errs)
+	}
+
 	return taintBuilders, nil
 }
 
