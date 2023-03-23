@@ -67,25 +67,52 @@ func run(cmd *cobra.Command, argv []string) {
 	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
+	isHypershift := cluster.Hypershift().Enabled()
 
-	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
+	var scheduledUpgrade *cmv1.UpgradePolicy
+	var upgradeState *cmv1.UpgradePolicyState
+	var controlPlaneScheduledUpgrade *cmv1.ControlPlaneUpgradePolicy
 
-	if output.HasFlag() {
-		f, err := formatCluster(cluster, scheduledUpgrade, upgradeState)
+	if !isHypershift {
+		scheduledUpgrade, upgradeState, err = r.OCMClient.GetScheduledUpgrade(cluster.ID())
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
+			r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
-		err = output.Print(f)
+
+		if output.HasFlag() {
+			f, err := formatCluster(cluster, scheduledUpgrade, upgradeState)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			err = output.Print(f)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			return
+		}
+	} else {
+		controlPlaneScheduledUpgrade, err = r.OCMClient.GetControlPlaneScheduledUpgrade(cluster.ID())
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
+			r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
-		return
+
+		if output.HasFlag() {
+			f, err := formatClusterHypershift(cluster, controlPlaneScheduledUpgrade)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			err = output.Print(f)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			return
+		}
 	}
 
 	var str string
@@ -142,7 +169,7 @@ func run(cmd *cobra.Command, argv []string) {
 	var machinePools []*cmv1.MachinePool
 	var nodePools []*cmv1.NodePool
 
-	if cluster.Hypershift().Enabled() {
+	if isHypershift {
 		nodePools, err = r.OCMClient.GetNodePools(cluster.ID())
 	} else {
 		machinePools, err = r.OCMClient.GetMachinePools(cluster.ID())
@@ -295,14 +322,26 @@ func run(cmd *cobra.Command, argv []string) {
 			"OIDC Endpoint URL:          %s\n", str,
 			cluster.AWS().STS().OIDCEndpointURL())
 	}
-	if scheduledUpgrade != nil {
-		str = fmt.Sprintf("%s"+
-			"Scheduled Upgrade:          %s %s on %s\n",
-			str,
-			upgradeState.Value(),
-			scheduledUpgrade.Version(),
-			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
-		)
+	if !isHypershift {
+		if scheduledUpgrade != nil {
+			str = fmt.Sprintf("%s"+
+				"Scheduled Upgrade:          %s %s on %s\n",
+				str,
+				upgradeState.Value(),
+				scheduledUpgrade.Version(),
+				scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
+			)
+		}
+	} else {
+		if controlPlaneScheduledUpgrade != nil {
+			str = fmt.Sprintf("%s"+
+				"Scheduled Upgrade:          %s %s on %s\n",
+				str,
+				controlPlaneScheduledUpgrade.State().Value(),
+				controlPlaneScheduledUpgrade.Version(),
+				controlPlaneScheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
+			)
+		}
 	}
 
 	if cluster.Status().State() == cmv1.ClusterStateError {
@@ -489,6 +528,33 @@ func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
 		upgrade := make(map[string]interface{})
 		upgrade["version"] = scheduledUpgrade.Version()
 		upgrade["state"] = upgradeState.Value()
+		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
+		ret["scheduledUpgrade"] = upgrade
+	}
+
+	return ret, nil
+}
+
+func formatClusterHypershift(cluster *cmv1.Cluster,
+	scheduledUpgrade *cmv1.ControlPlaneUpgradePolicy) (map[string]interface{}, error) {
+
+	var b bytes.Buffer
+	err := cmv1.MarshalCluster(cluster, &b)
+	if err != nil {
+		return nil, err
+	}
+	ret := make(map[string]interface{})
+	err = json.Unmarshal(b.Bytes(), &ret)
+	if err != nil {
+		return nil, err
+	}
+	if scheduledUpgrade != nil &&
+		scheduledUpgrade.State() != nil &&
+		len(scheduledUpgrade.Version()) > 0 &&
+		len(scheduledUpgrade.State().Value()) > 0 {
+		upgrade := make(map[string]interface{})
+		upgrade["version"] = scheduledUpgrade.Version()
+		upgrade["state"] = scheduledUpgrade.State().Value()
 		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
 		ret["scheduledUpgrade"] = upgrade
 	}
