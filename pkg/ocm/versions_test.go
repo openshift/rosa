@@ -60,7 +60,7 @@ var _ = Describe("Versions", Ordered, func() {
 func validateVersion(version func() string, channelGroup func() string, hypershiftEnabled bool,
 	expectedValidation bool, expectedErr error) {
 
-	v, err := cmv1.NewVersion().ID(version()).RawID(version()).HypershiftEnabled(hypershiftEnabled).Build()
+	v, err := cmv1.NewVersion().ID(version()).RawID(version()).HostedControlPlaneEnabled(hypershiftEnabled).Build()
 	Expect(err).NotTo(HaveOccurred())
 
 	b, err := HasHostedCPSupport(v)
