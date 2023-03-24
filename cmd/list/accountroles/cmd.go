@@ -66,8 +66,7 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	_, err = r.OCMClient.ValidateVersion(args.version, versionList,
-		r.Cluster.Version().ChannelGroup(), r.Cluster.AWS().STS().RoleARN() == "", r.Cluster.Hypershift().Enabled())
+	_, err = ocm.ValidateVersion(args.version, versionList)
 	if err != nil {
 		r.Reporter.Errorf("Version '%s' is invalid", args.version)
 		os.Exit(1)

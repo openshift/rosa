@@ -2,6 +2,7 @@ package versions
 
 import (
 	"fmt"
+	"strings"
 
 	ver "github.com/hashicorp/go-version"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -25,7 +26,7 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 			continue
 		}
 		if isHostedCP {
-			valid, err := ocm.HasHostedCPSupport(v)
+			valid, err := ocm.HasHostedCPSupport(v.RawID())
 			if err != nil {
 				return versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
 			}
@@ -92,4 +93,40 @@ func GetMinimalHostedMachinePoolVersion(controlPlaneVersion string) (string, err
 	}
 
 	return version, nil
+}
+
+// Validate OpenShift versions
+func ValidateVersion(version string, versionList []string, channelGroup string, isSTS,
+	isHostedCP bool) (string, error) {
+	if version == "" {
+		return version, nil
+	}
+	// Check and set the cluster version
+	hasVersion := false
+	for _, v := range versionList {
+		if v == version {
+			hasVersion = true
+		}
+	}
+	if !hasVersion {
+		allVersions := strings.Join(versionList, " ")
+		err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
+		return version, err
+	}
+
+	if isSTS && !ocm.HasSTSSupport(version, channelGroup) {
+		err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
+		return version, err
+	}
+	if isHostedCP {
+		valid, err := ocm.HasHostedCPSupport(version)
+		if err != nil {
+			return "", fmt.Errorf("error while parsing OCP version '%s': %v", version, err)
+		}
+		if !valid {
+			return "", fmt.Errorf("version '%s' is not supported for hosted clusters", version)
+		}
+	}
+
+	return ocm.CreateVersionID(version, channelGroup), nil
 }
