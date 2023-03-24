@@ -84,6 +84,11 @@ func Print(resource interface{}) error {
 		if versionGate, ok := resource.(*cmv1.VersionGate); ok {
 			cmv1.MarshalVersionGate(versionGate, &b)
 		}
+
+	case "[]*v1.OidcConfig":
+		if oidcConfigs, ok := resource.([]*cmv1.OidcConfig); ok {
+			cmv1.MarshalOidcConfigList(oidcConfigs, &b)
+		}
 	case "[]aws.Role":
 		{
 			if roles, ok := resource.([]aws.Role); ok {
