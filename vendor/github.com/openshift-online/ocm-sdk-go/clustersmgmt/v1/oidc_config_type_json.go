@@ -27,10 +27,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHostedOidcConfig writes a value of the 'hosted_oidc_config' type to the given writer.
-func MarshalHostedOidcConfig(object *HostedOidcConfig, writer io.Writer) error {
+// MarshalOidcConfig writes a value of the 'oidc_config' type to the given writer.
+func MarshalOidcConfig(object *OidcConfig, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHostedOidcConfig(object, stream)
+	writeOidcConfig(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,8 +38,8 @@ func MarshalHostedOidcConfig(object *HostedOidcConfig, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeHostedOidcConfig writes a value of the 'hosted_oidc_config' type to the given stream.
-func writeHostedOidcConfig(object *HostedOidcConfig, stream *jsoniter.Stream) {
+// writeOidcConfig writes a value of the 'oidc_config' type to the given stream.
+func writeOidcConfig(object *OidcConfig, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -84,8 +84,8 @@ func writeHostedOidcConfig(object *HostedOidcConfig, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("oidc_endpoint_url")
-		stream.WriteString(object.oidcEndpointUrl)
+		stream.WriteObjectField("issuer_url")
+		stream.WriteString(object.issuerUrl)
 		count++
 	}
 	present_ = object.bitmap_&32 != 0
@@ -93,8 +93,8 @@ func writeHostedOidcConfig(object *HostedOidcConfig, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("oidc_folder_name")
-		stream.WriteString(object.oidcFolderName)
+		stream.WriteObjectField("last_update_timestamp")
+		stream.WriteString((object.lastUpdateTimestamp).Format(time.RFC3339))
 		count++
 	}
 	present_ = object.bitmap_&64 != 0
@@ -102,8 +102,8 @@ func writeHostedOidcConfig(object *HostedOidcConfig, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("oidc_private_key_secret_arn")
-		stream.WriteString(object.oidcPrivateKeySecretArn)
+		stream.WriteObjectField("last_used_timestamp")
+		stream.WriteString((object.lastUsedTimestamp).Format(time.RFC3339))
 		count++
 	}
 	present_ = object.bitmap_&128 != 0
@@ -111,27 +111,54 @@ func writeHostedOidcConfig(object *HostedOidcConfig, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("managed")
+		stream.WriteBool(object.managed)
+		count++
+	}
+	present_ = object.bitmap_&256 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("organization_id")
 		stream.WriteString(object.organizationId)
+		count++
+	}
+	present_ = object.bitmap_&512 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("reusable")
+		stream.WriteBool(object.reusable)
+		count++
+	}
+	present_ = object.bitmap_&1024 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("secret_arn")
+		stream.WriteString(object.secretArn)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalHostedOidcConfig reads a value of the 'hosted_oidc_config' type from the given
+// UnmarshalOidcConfig reads a value of the 'oidc_config' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalHostedOidcConfig(source interface{}) (object *HostedOidcConfig, err error) {
+func UnmarshalOidcConfig(source interface{}) (object *OidcConfig, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readHostedOidcConfig(iterator)
+	object = readOidcConfig(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHostedOidcConfig reads a value of the 'hosted_oidc_config' type from the given iterator.
-func readHostedOidcConfig(iterator *jsoniter.Iterator) *HostedOidcConfig {
-	object := &HostedOidcConfig{}
+// readOidcConfig reads a value of the 'oidc_config' type from the given iterator.
+func readOidcConfig(iterator *jsoniter.Iterator) *OidcConfig {
+	object := &OidcConfig{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
@@ -158,22 +185,42 @@ func readHostedOidcConfig(iterator *jsoniter.Iterator) *HostedOidcConfig {
 			value := iterator.ReadString()
 			object.installerRoleArn = value
 			object.bitmap_ |= 8
-		case "oidc_endpoint_url":
+		case "issuer_url":
 			value := iterator.ReadString()
-			object.oidcEndpointUrl = value
+			object.issuerUrl = value
 			object.bitmap_ |= 16
-		case "oidc_folder_name":
-			value := iterator.ReadString()
-			object.oidcFolderName = value
+		case "last_update_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.lastUpdateTimestamp = value
 			object.bitmap_ |= 32
-		case "oidc_private_key_secret_arn":
-			value := iterator.ReadString()
-			object.oidcPrivateKeySecretArn = value
+		case "last_used_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.lastUsedTimestamp = value
 			object.bitmap_ |= 64
+		case "managed":
+			value := iterator.ReadBool()
+			object.managed = value
+			object.bitmap_ |= 128
 		case "organization_id":
 			value := iterator.ReadString()
 			object.organizationId = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
+		case "reusable":
+			value := iterator.ReadBool()
+			object.reusable = value
+			object.bitmap_ |= 512
+		case "secret_arn":
+			value := iterator.ReadString()
+			object.secretArn = value
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}

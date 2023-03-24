@@ -18,7 +18,6 @@ package operatorroles
 
 import (
 	"os"
-	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -112,8 +111,9 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func isByoOidcSet(cluster *cmv1.Cluster) bool {
-	return cluster != nil && !strings.Contains(cluster.AWS().STS().OIDCEndpointURL(), cluster.ID())
+func isOidcConfigReusable(cluster *cmv1.Cluster) bool {
+	return cluster != nil &&
+		cluster.AWS().STS().OidcConfig() != nil && cluster.AWS().STS().OidcConfig().Reusable()
 }
 
 func run(cmd *cobra.Command, argv []string) error {

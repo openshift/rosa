@@ -290,10 +290,17 @@ func run(cmd *cobra.Command, argv []string) {
 			"Details Page:               %s%s\n", str,
 			detailsPage, cluster.Subscription().ID())
 	}
+	managementType := "Classic"
+	if cluster.AWS().STS().OidcConfig() != nil {
+		managementType = "Unmanaged"
+		if cluster.AWS().STS().OidcConfig().Managed() {
+			managementType = "Managed"
+		}
+	}
 	if cluster.AWS().STS().OIDCEndpointURL() != "" {
 		str = fmt.Sprintf("%s"+
-			"OIDC Endpoint URL:          %s\n", str,
-			cluster.AWS().STS().OIDCEndpointURL())
+			"OIDC Endpoint URL:          %s (%s)\n", str,
+			cluster.AWS().STS().OIDCEndpointURL(), managementType)
 	}
 	if scheduledUpgrade != nil {
 		str = fmt.Sprintf("%s"+

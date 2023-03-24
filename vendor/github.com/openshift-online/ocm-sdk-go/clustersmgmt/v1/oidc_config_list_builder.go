@@ -19,53 +19,53 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// HostedOidcConfigListBuilder contains the data and logic needed to build
-// 'hosted_oidc_config' objects.
-type HostedOidcConfigListBuilder struct {
-	items []*HostedOidcConfigBuilder
+// OidcConfigListBuilder contains the data and logic needed to build
+// 'oidc_config' objects.
+type OidcConfigListBuilder struct {
+	items []*OidcConfigBuilder
 }
 
-// NewHostedOidcConfigList creates a new builder of 'hosted_oidc_config' objects.
-func NewHostedOidcConfigList() *HostedOidcConfigListBuilder {
-	return new(HostedOidcConfigListBuilder)
+// NewOidcConfigList creates a new builder of 'oidc_config' objects.
+func NewOidcConfigList() *OidcConfigListBuilder {
+	return new(OidcConfigListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *HostedOidcConfigListBuilder) Items(values ...*HostedOidcConfigBuilder) *HostedOidcConfigListBuilder {
-	b.items = make([]*HostedOidcConfigBuilder, len(values))
+func (b *OidcConfigListBuilder) Items(values ...*OidcConfigBuilder) *OidcConfigListBuilder {
+	b.items = make([]*OidcConfigBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Empty returns true if the list is empty.
-func (b *HostedOidcConfigListBuilder) Empty() bool {
+func (b *OidcConfigListBuilder) Empty() bool {
 	return b == nil || len(b.items) == 0
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *HostedOidcConfigListBuilder) Copy(list *HostedOidcConfigList) *HostedOidcConfigListBuilder {
+func (b *OidcConfigListBuilder) Copy(list *OidcConfigList) *OidcConfigListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*HostedOidcConfigBuilder, len(list.items))
+		b.items = make([]*OidcConfigBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewHostedOidcConfig().Copy(v)
+			b.items[i] = NewOidcConfig().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'hosted_oidc_config' objects using the
+// Build creates a list of 'oidc_config' objects using the
 // configuration stored in the builder.
-func (b *HostedOidcConfigListBuilder) Build() (list *HostedOidcConfigList, err error) {
-	items := make([]*HostedOidcConfig, len(b.items))
+func (b *OidcConfigListBuilder) Build() (list *OidcConfigList, err error) {
+	items := make([]*OidcConfig, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(HostedOidcConfigList)
+	list = new(OidcConfigList)
 	list.items = items
 	return
 }

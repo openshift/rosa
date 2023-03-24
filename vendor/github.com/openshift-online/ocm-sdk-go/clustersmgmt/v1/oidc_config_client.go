@@ -21,6 +21,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
 	"net/http"
@@ -31,19 +32,19 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// HostedOidcConfigClient is the client of the 'hosted_oidc_config' resource.
+// OidcConfigClient is the client of the 'oidc_config' resource.
 //
-// Manages a hosted oidc configuration.
-type HostedOidcConfigClient struct {
+// Manages an Oidc Config configuration.
+type OidcConfigClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewHostedOidcConfigClient creates a new client for the 'hosted_oidc_config'
+// NewOidcConfigClient creates a new client for the 'oidc_config'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewHostedOidcConfigClient(transport http.RoundTripper, path string) *HostedOidcConfigClient {
-	return &HostedOidcConfigClient{
+func NewOidcConfigClient(transport http.RoundTripper, path string) *OidcConfigClient {
+	return &OidcConfigClient{
 		transport: transport,
 		path:      path,
 	}
@@ -51,9 +52,9 @@ func NewHostedOidcConfigClient(transport http.RoundTripper, path string) *Hosted
 
 // Delete creates a request for the 'delete' method.
 //
-// Deletes the HostedOidcConfig.
-func (c *HostedOidcConfigClient) Delete() *HostedOidcConfigDeleteRequest {
-	return &HostedOidcConfigDeleteRequest{
+// Deletes the OidcConfig.
+func (c *OidcConfigClient) Delete() *OidcConfigDeleteRequest {
+	return &OidcConfigDeleteRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -61,43 +62,53 @@ func (c *HostedOidcConfigClient) Delete() *HostedOidcConfigDeleteRequest {
 
 // Get creates a request for the 'get' method.
 //
-// Retrieves the details of a HostedOidcConfig
-func (c *HostedOidcConfigClient) Get() *HostedOidcConfigGetRequest {
-	return &HostedOidcConfigGetRequest{
+// Retrieves the details of an OidcConfig.
+func (c *OidcConfigClient) Get() *OidcConfigGetRequest {
+	return &OidcConfigGetRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// HostedOidcConfigPollRequest is the request for the Poll method.
-type HostedOidcConfigPollRequest struct {
-	request    *HostedOidcConfigGetRequest
+// Update creates a request for the 'update' method.
+//
+// Updates attributes of an OidcConfig.
+func (c *OidcConfigClient) Update() *OidcConfigUpdateRequest {
+	return &OidcConfigUpdateRequest{
+		transport: c.transport,
+		path:      c.path,
+	}
+}
+
+// OidcConfigPollRequest is the request for the Poll method.
+type OidcConfigPollRequest struct {
+	request    *OidcConfigGetRequest
 	interval   time.Duration
 	statuses   []int
 	predicates []func(interface{}) bool
 }
 
 // Parameter adds a query parameter to all the requests that will be used to retrieve the object.
-func (r *HostedOidcConfigPollRequest) Parameter(name string, value interface{}) *HostedOidcConfigPollRequest {
+func (r *OidcConfigPollRequest) Parameter(name string, value interface{}) *OidcConfigPollRequest {
 	r.request.Parameter(name, value)
 	return r
 }
 
 // Header adds a request header to all the requests that will be used to retrieve the object.
-func (r *HostedOidcConfigPollRequest) Header(name string, value interface{}) *HostedOidcConfigPollRequest {
+func (r *OidcConfigPollRequest) Header(name string, value interface{}) *OidcConfigPollRequest {
 	r.request.Header(name, value)
 	return r
 }
 
 // Interval sets the polling interval. This parameter is mandatory and must be greater than zero.
-func (r *HostedOidcConfigPollRequest) Interval(value time.Duration) *HostedOidcConfigPollRequest {
+func (r *OidcConfigPollRequest) Interval(value time.Duration) *OidcConfigPollRequest {
 	r.interval = value
 	return r
 }
 
 // Status set the expected status of the response. Multiple values can be set calling this method
 // multiple times. The response will be considered successful if the status is any of those values.
-func (r *HostedOidcConfigPollRequest) Status(value int) *HostedOidcConfigPollRequest {
+func (r *OidcConfigPollRequest) Status(value int) *OidcConfigPollRequest {
 	r.statuses = append(r.statuses, value)
 	return r
 }
@@ -105,9 +116,9 @@ func (r *HostedOidcConfigPollRequest) Status(value int) *HostedOidcConfigPollReq
 // Predicate adds a predicate that the response should satisfy be considered successful. Multiple
 // predicates can be set calling this method multiple times. The response will be considered successful
 // if all the predicates are satisfied.
-func (r *HostedOidcConfigPollRequest) Predicate(value func(*HostedOidcConfigGetResponse) bool) *HostedOidcConfigPollRequest {
+func (r *OidcConfigPollRequest) Predicate(value func(*OidcConfigGetResponse) bool) *OidcConfigPollRequest {
 	r.predicates = append(r.predicates, func(response interface{}) bool {
-		return value(response.(*HostedOidcConfigGetResponse))
+		return value(response.(*OidcConfigGetResponse))
 	})
 	return r
 }
@@ -117,11 +128,11 @@ func (r *HostedOidcConfigPollRequest) Predicate(value func(*HostedOidcConfigGetR
 // method return nil.
 //
 // The context must have a timeout or deadline, otherwise this method will immediately return an error.
-func (r *HostedOidcConfigPollRequest) StartContext(ctx context.Context) (response *HostedOidcConfigPollResponse, err error) {
+func (r *OidcConfigPollRequest) StartContext(ctx context.Context) (response *OidcConfigPollResponse, err error) {
 	result, err := helpers.PollContext(ctx, r.interval, r.statuses, r.predicates, r.task)
 	if result != nil {
-		response = &HostedOidcConfigPollResponse{
-			response: result.(*HostedOidcConfigGetResponse),
+		response = &OidcConfigPollResponse{
+			response: result.(*OidcConfigGetResponse),
 		}
 	}
 	return
@@ -129,7 +140,7 @@ func (r *HostedOidcConfigPollRequest) StartContext(ctx context.Context) (respons
 
 // task adapts the types of the request/response types so that they can be used with the generic
 // polling function from the helpers package.
-func (r *HostedOidcConfigPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
+func (r *OidcConfigPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
 	response, err := r.request.SendContext(ctx)
 	if response != nil {
 		status = response.Status()
@@ -138,13 +149,13 @@ func (r *HostedOidcConfigPollRequest) task(ctx context.Context) (status int, res
 	return
 }
 
-// HostedOidcConfigPollResponse is the response for the Poll method.
-type HostedOidcConfigPollResponse struct {
-	response *HostedOidcConfigGetResponse
+// OidcConfigPollResponse is the response for the Poll method.
+type OidcConfigPollResponse struct {
+	response *OidcConfigGetResponse
 }
 
 // Status returns the response status code.
-func (r *HostedOidcConfigPollResponse) Status() int {
+func (r *OidcConfigPollResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -152,7 +163,7 @@ func (r *HostedOidcConfigPollResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *HostedOidcConfigPollResponse) Header() http.Header {
+func (r *OidcConfigPollResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -160,7 +171,7 @@ func (r *HostedOidcConfigPollResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *HostedOidcConfigPollResponse) Error() *errors.Error {
+func (r *OidcConfigPollResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -168,26 +179,26 @@ func (r *HostedOidcConfigPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *HostedOidcConfigPollResponse) Body() *HostedOidcConfig {
+func (r *OidcConfigPollResponse) Body() *OidcConfig {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *HostedOidcConfigPollResponse) GetBody() (value *HostedOidcConfig, ok bool) {
+func (r *OidcConfigPollResponse) GetBody() (value *OidcConfig, ok bool) {
 	return r.response.GetBody()
 }
 
 // Poll creates a request to repeatedly retrieve the object till the response has one of a given set
 // of states and satisfies a set of predicates.
-func (c *HostedOidcConfigClient) Poll() *HostedOidcConfigPollRequest {
-	return &HostedOidcConfigPollRequest{
+func (c *OidcConfigClient) Poll() *OidcConfigPollRequest {
+	return &OidcConfigPollRequest{
 		request: c.Get(),
 	}
 }
 
-// HostedOidcConfigDeleteRequest is the request for the 'delete' method.
-type HostedOidcConfigDeleteRequest struct {
+// OidcConfigDeleteRequest is the request for the 'delete' method.
+type OidcConfigDeleteRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -195,20 +206,20 @@ type HostedOidcConfigDeleteRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *HostedOidcConfigDeleteRequest) Parameter(name string, value interface{}) *HostedOidcConfigDeleteRequest {
+func (r *OidcConfigDeleteRequest) Parameter(name string, value interface{}) *OidcConfigDeleteRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *HostedOidcConfigDeleteRequest) Header(name string, value interface{}) *HostedOidcConfigDeleteRequest {
+func (r *OidcConfigDeleteRequest) Header(name string, value interface{}) *OidcConfigDeleteRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *HostedOidcConfigDeleteRequest) Impersonate(user string) *HostedOidcConfigDeleteRequest {
+func (r *OidcConfigDeleteRequest) Impersonate(user string) *OidcConfigDeleteRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -217,12 +228,12 @@ func (r *HostedOidcConfigDeleteRequest) Impersonate(user string) *HostedOidcConf
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *HostedOidcConfigDeleteRequest) Send() (result *HostedOidcConfigDeleteResponse, err error) {
+func (r *OidcConfigDeleteRequest) Send() (result *OidcConfigDeleteResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *HostedOidcConfigDeleteRequest) SendContext(ctx context.Context) (result *HostedOidcConfigDeleteResponse, err error) {
+func (r *OidcConfigDeleteRequest) SendContext(ctx context.Context) (result *OidcConfigDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -242,7 +253,7 @@ func (r *HostedOidcConfigDeleteRequest) SendContext(ctx context.Context) (result
 		return
 	}
 	defer response.Body.Close()
-	result = &HostedOidcConfigDeleteResponse{}
+	result = &OidcConfigDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -262,15 +273,15 @@ func (r *HostedOidcConfigDeleteRequest) SendContext(ctx context.Context) (result
 	return
 }
 
-// HostedOidcConfigDeleteResponse is the response for the 'delete' method.
-type HostedOidcConfigDeleteResponse struct {
+// OidcConfigDeleteResponse is the response for the 'delete' method.
+type OidcConfigDeleteResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
 }
 
 // Status returns the response status code.
-func (r *HostedOidcConfigDeleteResponse) Status() int {
+func (r *OidcConfigDeleteResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -278,7 +289,7 @@ func (r *HostedOidcConfigDeleteResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *HostedOidcConfigDeleteResponse) Header() http.Header {
+func (r *OidcConfigDeleteResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -286,15 +297,15 @@ func (r *HostedOidcConfigDeleteResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *HostedOidcConfigDeleteResponse) Error() *errors.Error {
+func (r *OidcConfigDeleteResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
 	return r.err
 }
 
-// HostedOidcConfigGetRequest is the request for the 'get' method.
-type HostedOidcConfigGetRequest struct {
+// OidcConfigGetRequest is the request for the 'get' method.
+type OidcConfigGetRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -302,20 +313,20 @@ type HostedOidcConfigGetRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *HostedOidcConfigGetRequest) Parameter(name string, value interface{}) *HostedOidcConfigGetRequest {
+func (r *OidcConfigGetRequest) Parameter(name string, value interface{}) *OidcConfigGetRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *HostedOidcConfigGetRequest) Header(name string, value interface{}) *HostedOidcConfigGetRequest {
+func (r *OidcConfigGetRequest) Header(name string, value interface{}) *OidcConfigGetRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *HostedOidcConfigGetRequest) Impersonate(user string) *HostedOidcConfigGetRequest {
+func (r *OidcConfigGetRequest) Impersonate(user string) *OidcConfigGetRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -324,12 +335,12 @@ func (r *HostedOidcConfigGetRequest) Impersonate(user string) *HostedOidcConfigG
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *HostedOidcConfigGetRequest) Send() (result *HostedOidcConfigGetResponse, err error) {
+func (r *OidcConfigGetRequest) Send() (result *OidcConfigGetResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *HostedOidcConfigGetRequest) SendContext(ctx context.Context) (result *HostedOidcConfigGetResponse, err error) {
+func (r *OidcConfigGetRequest) SendContext(ctx context.Context) (result *OidcConfigGetResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -349,7 +360,7 @@ func (r *HostedOidcConfigGetRequest) SendContext(ctx context.Context) (result *H
 		return
 	}
 	defer response.Body.Close()
-	result = &HostedOidcConfigGetResponse{}
+	result = &OidcConfigGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -366,23 +377,23 @@ func (r *HostedOidcConfigGetRequest) SendContext(ctx context.Context) (result *H
 		err = result.err
 		return
 	}
-	err = readHostedOidcConfigGetResponse(result, reader)
+	err = readOidcConfigGetResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// HostedOidcConfigGetResponse is the response for the 'get' method.
-type HostedOidcConfigGetResponse struct {
+// OidcConfigGetResponse is the response for the 'get' method.
+type OidcConfigGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *HostedOidcConfig
+	body   *OidcConfig
 }
 
 // Status returns the response status code.
-func (r *HostedOidcConfigGetResponse) Status() int {
+func (r *OidcConfigGetResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -390,7 +401,7 @@ func (r *HostedOidcConfigGetResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *HostedOidcConfigGetResponse) Header() http.Header {
+func (r *OidcConfigGetResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -398,7 +409,7 @@ func (r *HostedOidcConfigGetResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *HostedOidcConfigGetResponse) Error() *errors.Error {
+func (r *OidcConfigGetResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -406,7 +417,7 @@ func (r *HostedOidcConfigGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *HostedOidcConfigGetResponse) Body() *HostedOidcConfig {
+func (r *OidcConfigGetResponse) Body() *OidcConfig {
 	if r == nil {
 		return nil
 	}
@@ -415,7 +426,150 @@ func (r *HostedOidcConfigGetResponse) Body() *HostedOidcConfig {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *HostedOidcConfigGetResponse) GetBody() (value *HostedOidcConfig, ok bool) {
+func (r *OidcConfigGetResponse) GetBody() (value *OidcConfig, ok bool) {
+	ok = r != nil && r.body != nil
+	if ok {
+		value = r.body
+	}
+	return
+}
+
+// OidcConfigUpdateRequest is the request for the 'update' method.
+type OidcConfigUpdateRequest struct {
+	transport http.RoundTripper
+	path      string
+	query     url.Values
+	header    http.Header
+	body      *OidcConfig
+}
+
+// Parameter adds a query parameter.
+func (r *OidcConfigUpdateRequest) Parameter(name string, value interface{}) *OidcConfigUpdateRequest {
+	helpers.AddValue(&r.query, name, value)
+	return r
+}
+
+// Header adds a request header.
+func (r *OidcConfigUpdateRequest) Header(name string, value interface{}) *OidcConfigUpdateRequest {
+	helpers.AddHeader(&r.header, name, value)
+	return r
+}
+
+// Impersonate wraps requests on behalf of another user.
+// Note: Services that do not support this feature may silently ignore this call.
+func (r *OidcConfigUpdateRequest) Impersonate(user string) *OidcConfigUpdateRequest {
+	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
+// Body sets the value of the 'body' parameter.
+func (r *OidcConfigUpdateRequest) Body(value *OidcConfig) *OidcConfigUpdateRequest {
+	r.body = value
+	return r
+}
+
+// Send sends this request, waits for the response, and returns it.
+//
+// This is a potentially lengthy operation, as it requires network communication.
+// Consider using a context and the SendContext method.
+func (r *OidcConfigUpdateRequest) Send() (result *OidcConfigUpdateResponse, err error) {
+	return r.SendContext(context.Background())
+}
+
+// SendContext sends this request, waits for the response, and returns it.
+func (r *OidcConfigUpdateRequest) SendContext(ctx context.Context) (result *OidcConfigUpdateResponse, err error) {
+	query := helpers.CopyQuery(r.query)
+	header := helpers.CopyHeader(r.header)
+	buffer := &bytes.Buffer{}
+	err = writeOidcConfigUpdateRequest(r, buffer)
+	if err != nil {
+		return
+	}
+	uri := &url.URL{
+		Path:     r.path,
+		RawQuery: query.Encode(),
+	}
+	request := &http.Request{
+		Method: "PATCH",
+		URL:    uri,
+		Header: header,
+		Body:   io.NopCloser(buffer),
+	}
+	if ctx != nil {
+		request = request.WithContext(ctx)
+	}
+	response, err := r.transport.RoundTrip(request)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+	result = &OidcConfigUpdateResponse{}
+	result.status = response.StatusCode
+	result.header = response.Header
+	reader := bufio.NewReader(response.Body)
+	_, err = reader.Peek(1)
+	if err == io.EOF {
+		err = nil
+		return
+	}
+	if result.status >= 400 {
+		result.err, err = errors.UnmarshalErrorStatus(reader, result.status)
+		if err != nil {
+			return
+		}
+		err = result.err
+		return
+	}
+	err = readOidcConfigUpdateResponse(result, reader)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// OidcConfigUpdateResponse is the response for the 'update' method.
+type OidcConfigUpdateResponse struct {
+	status int
+	header http.Header
+	err    *errors.Error
+	body   *OidcConfig
+}
+
+// Status returns the response status code.
+func (r *OidcConfigUpdateResponse) Status() int {
+	if r == nil {
+		return 0
+	}
+	return r.status
+}
+
+// Header returns header of the response.
+func (r *OidcConfigUpdateResponse) Header() http.Header {
+	if r == nil {
+		return nil
+	}
+	return r.header
+}
+
+// Error returns the response error.
+func (r *OidcConfigUpdateResponse) Error() *errors.Error {
+	if r == nil {
+		return nil
+	}
+	return r.err
+}
+
+// Body returns the value of the 'body' parameter.
+func (r *OidcConfigUpdateResponse) Body() *OidcConfig {
+	if r == nil {
+		return nil
+	}
+	return r.body
+}
+
+// GetBody returns the value of the 'body' parameter and
+// a flag indicating if the parameter has a value.
+func (r *OidcConfigUpdateResponse) GetBody() (value *OidcConfig, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body

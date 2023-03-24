@@ -59,7 +59,7 @@ func init() {
 		&args.prefix,
 		PrefixFlag,
 		"",
-		"Operator role prefix, this flag needs to be used in case of BYO OIDC",
+		"Operator role prefix, this flag needs to be used in case of reusable OIDC Config",
 	)
 	flags.MarkHidden(PrefixFlag)
 
@@ -194,7 +194,7 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 			if !confirm.Prompt(true, "You are running delete operation for '%s' prefix."+
 				" Please ensure there are no clusters using these operator roles."+
-				" In case of BYO OIDC clusters, when reusing the operator roles deleting them is not necessary."+
+				" In case of reusable OIDC configs, when reusing the operator roles deleting them might not be necessary."+
 				"Are you sure you want to proceed?", args.prefix) {
 				os.Exit(1)
 			}

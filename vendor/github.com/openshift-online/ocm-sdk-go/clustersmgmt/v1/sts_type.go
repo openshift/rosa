@@ -23,19 +23,19 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Contains the necessary attributes to support role-based authentication on AWS.
 type STS struct {
-	bitmap_                 uint32
-	oidcEndpointURL         string
-	externalID              string
-	instanceIAMRoles        *InstanceIAMRoles
-	oidcPrivateKeySecretArn string
-	operatorIAMRoles        []*OperatorIAMRole
-	operatorRolePrefix      string
-	permissionBoundary      string
-	roleARN                 string
-	supportRoleARN          string
-	autoMode                bool
-	enabled                 bool
-	managedPolicies         bool
+	bitmap_            uint32
+	oidcEndpointURL    string
+	externalID         string
+	instanceIAMRoles   *InstanceIAMRoles
+	oidcConfig         *OidcConfig
+	operatorIAMRoles   []*OperatorIAMRole
+	operatorRolePrefix string
+	permissionBoundary string
+	roleARN            string
+	supportRoleARN     string
+	autoMode           bool
+	enabled            bool
+	managedPolicies    bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -181,25 +181,25 @@ func (o *STS) GetManagedPolicies() (value bool, ok bool) {
 	return
 }
 
-// OidcPrivateKeySecretArn returns the value of the 'oidc_private_key_secret_arn' attribute, or
+// OidcConfig returns the value of the 'oidc_config' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Secrets Manager ARN for the OIDC private key key.
-func (o *STS) OidcPrivateKeySecretArn() string {
+// Registered Oidc Config, if available holds information related to the oidc config
+func (o *STS) OidcConfig() *OidcConfig {
 	if o != nil && o.bitmap_&64 != 0 {
-		return o.oidcPrivateKeySecretArn
+		return o.oidcConfig
 	}
-	return ""
+	return nil
 }
 
-// GetOidcPrivateKeySecretArn returns the value of the 'oidc_private_key_secret_arn' attribute and
+// GetOidcConfig returns the value of the 'oidc_config' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Secrets Manager ARN for the OIDC private key key.
-func (o *STS) GetOidcPrivateKeySecretArn() (value string, ok bool) {
+// Registered Oidc Config, if available holds information related to the oidc config
+func (o *STS) GetOidcConfig() (value *OidcConfig, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
-		value = o.oidcPrivateKeySecretArn
+		value = o.oidcConfig
 	}
 	return
 }

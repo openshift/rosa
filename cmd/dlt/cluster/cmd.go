@@ -114,7 +114,7 @@ func buildCommands(cluster *cmv1.Cluster) string {
 	commands := []string{}
 	deleteOperatorRole := fmt.Sprintf("\trosa delete operator-roles -c %s", cluster.ID())
 	deleteOIDCProvider := fmt.Sprintf("\trosa delete oidc-provider -c %s", cluster.ID())
-	if cluster.ByoOidc().Enabled() {
+	if cluster.AWS().STS().OidcConfig().Reusable() {
 		deleteOperatorRole = fmt.Sprintf("\trosa delete operator-roles --%s %s",
 			operatorrole.PrefixFlag, cluster.AWS().STS().OperatorRolePrefix())
 		deleteOIDCProvider = fmt.Sprintf("\trosa delete oidc-provider --%s %s",
