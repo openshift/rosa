@@ -3,6 +3,19 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.327
+- Update model to v0.0.268
+  - Replace `OidcConfigId` for `OidcConfig` in `STS` resource.
+
+## 0.1.326
+- Update model to v0.0.267
+  - Add `OidcConfigId` to `STS` resource.
+  - Remove `OidcPrivateKeySecretArn` from `STS` resource.
+
+## 0.1.325
+- Update model to v0.0.266
+  - Adjust `Oidc Configs` endpoints.
+
 ## 0.1.324
 - Update model to v0.0.265
   - Rename `HypershiftEnabled` boolean to `HostedControlPlaneEnabled` in `Version` Type model.

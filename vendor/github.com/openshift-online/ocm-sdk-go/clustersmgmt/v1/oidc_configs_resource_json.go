@@ -25,18 +25,18 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-func writeHostedOidcConfigsAddRequest(request *HostedOidcConfigsAddRequest, writer io.Writer) error {
-	return MarshalHostedOidcConfig(request.body, writer)
+func writeOidcConfigsAddRequest(request *OidcConfigsAddRequest, writer io.Writer) error {
+	return MarshalOidcConfig(request.body, writer)
 }
-func readHostedOidcConfigsAddResponse(response *HostedOidcConfigsAddResponse, reader io.Reader) error {
+func readOidcConfigsAddResponse(response *OidcConfigsAddResponse, reader io.Reader) error {
 	var err error
-	response.body, err = UnmarshalHostedOidcConfig(reader)
+	response.body, err = UnmarshalOidcConfig(reader)
 	return err
 }
-func writeHostedOidcConfigsListRequest(request *HostedOidcConfigsListRequest, writer io.Writer) error {
+func writeOidcConfigsListRequest(request *OidcConfigsListRequest, writer io.Writer) error {
 	return nil
 }
-func readHostedOidcConfigsListResponse(response *HostedOidcConfigsListResponse, reader io.Reader) error {
+func readOidcConfigsListResponse(response *OidcConfigsListResponse, reader io.Reader) error {
 	iterator, err := helpers.NewIterator(reader)
 	if err != nil {
 		return err
@@ -57,8 +57,8 @@ func readHostedOidcConfigsListResponse(response *HostedOidcConfigsListResponse, 
 			value := iterator.ReadInt()
 			response.total = &value
 		case "items":
-			items := readHostedOidcConfigList(iterator)
-			response.items = &HostedOidcConfigList{
+			items := readOidcConfigList(iterator)
+			response.items = &OidcConfigList{
 				items: items,
 			}
 		default:

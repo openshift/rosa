@@ -32,19 +32,19 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// HostedOidcConfigsClient is the client of the 'hosted_oidc_configs' resource.
+// OidcConfigsClient is the client of the 'oidc_configs' resource.
 //
-// Manages the collection hosted oidc configurations.
-type HostedOidcConfigsClient struct {
+// Manages the collection of oidc configurations.
+type OidcConfigsClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewHostedOidcConfigsClient creates a new client for the 'hosted_oidc_configs'
+// NewOidcConfigsClient creates a new client for the 'oidc_configs'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewHostedOidcConfigsClient(transport http.RoundTripper, path string) *HostedOidcConfigsClient {
-	return &HostedOidcConfigsClient{
+func NewOidcConfigsClient(transport http.RoundTripper, path string) *OidcConfigsClient {
+	return &OidcConfigsClient{
 		transport: transport,
 		path:      path,
 	}
@@ -53,8 +53,8 @@ func NewHostedOidcConfigsClient(transport http.RoundTripper, path string) *Hoste
 // Add creates a request for the 'add' method.
 //
 // Creates a hosting under Red Hat's S3 bucket for byo oidc configuration
-func (c *HostedOidcConfigsClient) Add() *HostedOidcConfigsAddRequest {
-	return &HostedOidcConfigsAddRequest{
+func (c *OidcConfigsClient) Add() *OidcConfigsAddRequest {
+	return &OidcConfigsAddRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -62,54 +62,54 @@ func (c *HostedOidcConfigsClient) Add() *HostedOidcConfigsAddRequest {
 
 // List creates a request for the 'list' method.
 //
-// Retrieves the list of hosted oidc configs.
-func (c *HostedOidcConfigsClient) List() *HostedOidcConfigsListRequest {
-	return &HostedOidcConfigsListRequest{
+// Retrieves the list of oidc configs.
+func (c *OidcConfigsClient) List() *OidcConfigsListRequest {
+	return &OidcConfigsListRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// HostedOidcConfig returns the target 'hosted_oidc_config' resource for the given identifier.
+// OidcConfig returns the target 'oidc_config' resource for the given identifier.
 //
 // Reference to the service that manages an specific identity provider.
-func (c *HostedOidcConfigsClient) HostedOidcConfig(id string) *HostedOidcConfigClient {
-	return NewHostedOidcConfigClient(
+func (c *OidcConfigsClient) OidcConfig(id string) *OidcConfigClient {
+	return NewOidcConfigClient(
 		c.transport,
 		path.Join(c.path, id),
 	)
 }
 
-// HostedOidcConfigsAddRequest is the request for the 'add' method.
-type HostedOidcConfigsAddRequest struct {
+// OidcConfigsAddRequest is the request for the 'add' method.
+type OidcConfigsAddRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
-	body      *HostedOidcConfig
+	body      *OidcConfig
 }
 
 // Parameter adds a query parameter.
-func (r *HostedOidcConfigsAddRequest) Parameter(name string, value interface{}) *HostedOidcConfigsAddRequest {
+func (r *OidcConfigsAddRequest) Parameter(name string, value interface{}) *OidcConfigsAddRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *HostedOidcConfigsAddRequest) Header(name string, value interface{}) *HostedOidcConfigsAddRequest {
+func (r *OidcConfigsAddRequest) Header(name string, value interface{}) *OidcConfigsAddRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *HostedOidcConfigsAddRequest) Impersonate(user string) *HostedOidcConfigsAddRequest {
+func (r *OidcConfigsAddRequest) Impersonate(user string) *OidcConfigsAddRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
 // Body sets the value of the 'body' parameter.
-func (r *HostedOidcConfigsAddRequest) Body(value *HostedOidcConfig) *HostedOidcConfigsAddRequest {
+func (r *OidcConfigsAddRequest) Body(value *OidcConfig) *OidcConfigsAddRequest {
 	r.body = value
 	return r
 }
@@ -118,16 +118,16 @@ func (r *HostedOidcConfigsAddRequest) Body(value *HostedOidcConfig) *HostedOidcC
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *HostedOidcConfigsAddRequest) Send() (result *HostedOidcConfigsAddResponse, err error) {
+func (r *OidcConfigsAddRequest) Send() (result *OidcConfigsAddResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *HostedOidcConfigsAddRequest) SendContext(ctx context.Context) (result *HostedOidcConfigsAddResponse, err error) {
+func (r *OidcConfigsAddRequest) SendContext(ctx context.Context) (result *OidcConfigsAddResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	buffer := &bytes.Buffer{}
-	err = writeHostedOidcConfigsAddRequest(r, buffer)
+	err = writeOidcConfigsAddRequest(r, buffer)
 	if err != nil {
 		return
 	}
@@ -149,7 +149,7 @@ func (r *HostedOidcConfigsAddRequest) SendContext(ctx context.Context) (result *
 		return
 	}
 	defer response.Body.Close()
-	result = &HostedOidcConfigsAddResponse{}
+	result = &OidcConfigsAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -166,23 +166,23 @@ func (r *HostedOidcConfigsAddRequest) SendContext(ctx context.Context) (result *
 		err = result.err
 		return
 	}
-	err = readHostedOidcConfigsAddResponse(result, reader)
+	err = readOidcConfigsAddResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// HostedOidcConfigsAddResponse is the response for the 'add' method.
-type HostedOidcConfigsAddResponse struct {
+// OidcConfigsAddResponse is the response for the 'add' method.
+type OidcConfigsAddResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *HostedOidcConfig
+	body   *OidcConfig
 }
 
 // Status returns the response status code.
-func (r *HostedOidcConfigsAddResponse) Status() int {
+func (r *OidcConfigsAddResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -190,7 +190,7 @@ func (r *HostedOidcConfigsAddResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *HostedOidcConfigsAddResponse) Header() http.Header {
+func (r *OidcConfigsAddResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -198,7 +198,7 @@ func (r *HostedOidcConfigsAddResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *HostedOidcConfigsAddResponse) Error() *errors.Error {
+func (r *OidcConfigsAddResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -206,7 +206,7 @@ func (r *HostedOidcConfigsAddResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *HostedOidcConfigsAddResponse) Body() *HostedOidcConfig {
+func (r *OidcConfigsAddResponse) Body() *OidcConfig {
 	if r == nil {
 		return nil
 	}
@@ -215,7 +215,7 @@ func (r *HostedOidcConfigsAddResponse) Body() *HostedOidcConfig {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *HostedOidcConfigsAddResponse) GetBody() (value *HostedOidcConfig, ok bool) {
+func (r *OidcConfigsAddResponse) GetBody() (value *OidcConfig, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -223,8 +223,8 @@ func (r *HostedOidcConfigsAddResponse) GetBody() (value *HostedOidcConfig, ok bo
 	return
 }
 
-// HostedOidcConfigsListRequest is the request for the 'list' method.
-type HostedOidcConfigsListRequest struct {
+// OidcConfigsListRequest is the request for the 'list' method.
+type OidcConfigsListRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -234,20 +234,20 @@ type HostedOidcConfigsListRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *HostedOidcConfigsListRequest) Parameter(name string, value interface{}) *HostedOidcConfigsListRequest {
+func (r *OidcConfigsListRequest) Parameter(name string, value interface{}) *OidcConfigsListRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *HostedOidcConfigsListRequest) Header(name string, value interface{}) *HostedOidcConfigsListRequest {
+func (r *OidcConfigsListRequest) Header(name string, value interface{}) *OidcConfigsListRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *HostedOidcConfigsListRequest) Impersonate(user string) *HostedOidcConfigsListRequest {
+func (r *OidcConfigsListRequest) Impersonate(user string) *OidcConfigsListRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -255,7 +255,7 @@ func (r *HostedOidcConfigsListRequest) Impersonate(user string) *HostedOidcConfi
 // Page sets the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *HostedOidcConfigsListRequest) Page(value int) *HostedOidcConfigsListRequest {
+func (r *OidcConfigsListRequest) Page(value int) *OidcConfigsListRequest {
 	r.page = &value
 	return r
 }
@@ -263,7 +263,7 @@ func (r *HostedOidcConfigsListRequest) Page(value int) *HostedOidcConfigsListReq
 // Size sets the value of the 'size' parameter.
 //
 // Number of items contained in the returned page.
-func (r *HostedOidcConfigsListRequest) Size(value int) *HostedOidcConfigsListRequest {
+func (r *OidcConfigsListRequest) Size(value int) *OidcConfigsListRequest {
 	r.size = &value
 	return r
 }
@@ -272,12 +272,12 @@ func (r *HostedOidcConfigsListRequest) Size(value int) *HostedOidcConfigsListReq
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *HostedOidcConfigsListRequest) Send() (result *HostedOidcConfigsListResponse, err error) {
+func (r *OidcConfigsListRequest) Send() (result *OidcConfigsListResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *HostedOidcConfigsListRequest) SendContext(ctx context.Context) (result *HostedOidcConfigsListResponse, err error) {
+func (r *OidcConfigsListRequest) SendContext(ctx context.Context) (result *OidcConfigsListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	if r.page != nil {
 		helpers.AddValue(&query, "page", *r.page)
@@ -303,7 +303,7 @@ func (r *HostedOidcConfigsListRequest) SendContext(ctx context.Context) (result 
 		return
 	}
 	defer response.Body.Close()
-	result = &HostedOidcConfigsListResponse{}
+	result = &OidcConfigsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -320,26 +320,26 @@ func (r *HostedOidcConfigsListRequest) SendContext(ctx context.Context) (result 
 		err = result.err
 		return
 	}
-	err = readHostedOidcConfigsListResponse(result, reader)
+	err = readOidcConfigsListResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// HostedOidcConfigsListResponse is the response for the 'list' method.
-type HostedOidcConfigsListResponse struct {
+// OidcConfigsListResponse is the response for the 'list' method.
+type OidcConfigsListResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	items  *HostedOidcConfigList
+	items  *OidcConfigList
 	page   *int
 	size   *int
 	total  *int
 }
 
 // Status returns the response status code.
-func (r *HostedOidcConfigsListResponse) Status() int {
+func (r *OidcConfigsListResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -347,7 +347,7 @@ func (r *HostedOidcConfigsListResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *HostedOidcConfigsListResponse) Header() http.Header {
+func (r *OidcConfigsListResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -355,7 +355,7 @@ func (r *HostedOidcConfigsListResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *HostedOidcConfigsListResponse) Error() *errors.Error {
+func (r *OidcConfigsListResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -365,7 +365,7 @@ func (r *HostedOidcConfigsListResponse) Error() *errors.Error {
 // Items returns the value of the 'items' parameter.
 //
 // Retrieved list of identity providers.
-func (r *HostedOidcConfigsListResponse) Items() *HostedOidcConfigList {
+func (r *OidcConfigsListResponse) Items() *OidcConfigList {
 	if r == nil {
 		return nil
 	}
@@ -376,7 +376,7 @@ func (r *HostedOidcConfigsListResponse) Items() *HostedOidcConfigList {
 // a flag indicating if the parameter has a value.
 //
 // Retrieved list of identity providers.
-func (r *HostedOidcConfigsListResponse) GetItems() (value *HostedOidcConfigList, ok bool) {
+func (r *OidcConfigsListResponse) GetItems() (value *OidcConfigList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
 		value = r.items
@@ -387,7 +387,7 @@ func (r *HostedOidcConfigsListResponse) GetItems() (value *HostedOidcConfigList,
 // Page returns the value of the 'page' parameter.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *HostedOidcConfigsListResponse) Page() int {
+func (r *OidcConfigsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
 	}
@@ -398,7 +398,7 @@ func (r *HostedOidcConfigsListResponse) Page() int {
 // a flag indicating if the parameter has a value.
 //
 // Index of the requested page, where one corresponds to the first page.
-func (r *HostedOidcConfigsListResponse) GetPage() (value int, ok bool) {
+func (r *OidcConfigsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
 		value = *r.page
@@ -409,7 +409,7 @@ func (r *HostedOidcConfigsListResponse) GetPage() (value int, ok bool) {
 // Size returns the value of the 'size' parameter.
 //
 // Number of items contained in the returned page.
-func (r *HostedOidcConfigsListResponse) Size() int {
+func (r *OidcConfigsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
 	}
@@ -420,7 +420,7 @@ func (r *HostedOidcConfigsListResponse) Size() int {
 // a flag indicating if the parameter has a value.
 //
 // Number of items contained in the returned page.
-func (r *HostedOidcConfigsListResponse) GetSize() (value int, ok bool) {
+func (r *OidcConfigsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
 		value = *r.size
@@ -431,7 +431,7 @@ func (r *HostedOidcConfigsListResponse) GetSize() (value int, ok bool) {
 // Total returns the value of the 'total' parameter.
 //
 // Total number of items of the collection.
-func (r *HostedOidcConfigsListResponse) Total() int {
+func (r *OidcConfigsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
 	}
@@ -442,7 +442,7 @@ func (r *HostedOidcConfigsListResponse) Total() int {
 // a flag indicating if the parameter has a value.
 //
 // Total number of items of the collection.
-func (r *HostedOidcConfigsListResponse) GetTotal() (value int, ok bool) {
+func (r *OidcConfigsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {
 		value = *r.total

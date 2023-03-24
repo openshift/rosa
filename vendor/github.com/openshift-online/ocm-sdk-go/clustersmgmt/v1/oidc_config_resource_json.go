@@ -21,17 +21,25 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import "io"
 
-func writeHostedOidcConfigDeleteRequest(request *HostedOidcConfigDeleteRequest, writer io.Writer) error {
+func writeOidcConfigDeleteRequest(request *OidcConfigDeleteRequest, writer io.Writer) error {
 	return nil
 }
-func readHostedOidcConfigDeleteResponse(response *HostedOidcConfigDeleteResponse, reader io.Reader) error {
+func readOidcConfigDeleteResponse(response *OidcConfigDeleteResponse, reader io.Reader) error {
 	return nil
 }
-func writeHostedOidcConfigGetRequest(request *HostedOidcConfigGetRequest, writer io.Writer) error {
+func writeOidcConfigGetRequest(request *OidcConfigGetRequest, writer io.Writer) error {
 	return nil
 }
-func readHostedOidcConfigGetResponse(response *HostedOidcConfigGetResponse, reader io.Reader) error {
+func readOidcConfigGetResponse(response *OidcConfigGetResponse, reader io.Reader) error {
 	var err error
-	response.body, err = UnmarshalHostedOidcConfig(reader)
+	response.body, err = UnmarshalOidcConfig(reader)
+	return err
+}
+func writeOidcConfigUpdateRequest(request *OidcConfigUpdateRequest, writer io.Writer) error {
+	return MarshalOidcConfig(request.body, writer)
+}
+func readOidcConfigUpdateResponse(response *OidcConfigUpdateResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalOidcConfig(reader)
 	return err
 }

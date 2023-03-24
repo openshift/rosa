@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHostedOidcConfigList writes a list of values of the 'hosted_oidc_config' type to
+// MarshalOidcConfigList writes a list of values of the 'oidc_config' type to
 // the given writer.
-func MarshalHostedOidcConfigList(list []*HostedOidcConfig, writer io.Writer) error {
+func MarshalOidcConfigList(list []*OidcConfig, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHostedOidcConfigList(list, stream)
+	writeOidcConfigList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalHostedOidcConfigList(list []*HostedOidcConfig, writer io.Writer) err
 	return stream.Error
 }
 
-// writeHostedOidcConfigList writes a list of value of the 'hosted_oidc_config' type to
+// writeOidcConfigList writes a list of value of the 'oidc_config' type to
 // the given stream.
-func writeHostedOidcConfigList(list []*HostedOidcConfig, stream *jsoniter.Stream) {
+func writeOidcConfigList(list []*OidcConfig, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeHostedOidcConfig(value, stream)
+		writeOidcConfig(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalHostedOidcConfigList reads a list of values of the 'hosted_oidc_config' type
+// UnmarshalOidcConfigList reads a list of values of the 'oidc_config' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalHostedOidcConfigList(source interface{}) (items []*HostedOidcConfig, err error) {
+func UnmarshalOidcConfigList(source interface{}) (items []*OidcConfig, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readHostedOidcConfigList(iterator)
+	items = readOidcConfigList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHostedOidcConfigList reads list of values of the ”hosted_oidc_config' type from
+// readOidcConfigList reads list of values of the ”oidc_config' type from
 // the given iterator.
-func readHostedOidcConfigList(iterator *jsoniter.Iterator) []*HostedOidcConfig {
-	list := []*HostedOidcConfig{}
+func readOidcConfigList(iterator *jsoniter.Iterator) []*OidcConfig {
+	list := []*OidcConfig{}
 	for iterator.ReadArray() {
-		item := readHostedOidcConfig(iterator)
+		item := readOidcConfig(iterator)
 		list = append(list, item)
 	}
 	return list

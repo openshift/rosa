@@ -58,7 +58,7 @@ func init() {
 		&args.oidcEndpointUrl,
 		OidcEndpointUrlFlag,
 		"",
-		"Endpoint url for deleting OIDC provider, this flag needs to be used in case of BYO OIDC",
+		"Endpoint url for deleting OIDC provider, this flag needs to be used in case of reusable OIDC Config",
 	)
 	flags.MarkHidden(OidcEndpointUrlFlag)
 
@@ -138,7 +138,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		if providerArn == "" {
 			r.Reporter.Infof("Cluster '%s' doesn't have OIDC provider associated with it. "+
-				"In case of BYO OIDC cluster please use '%s' flag.",
+				"In case of reusable OIDC config please use '%s' flag.",
 				clusterKey, OidcEndpointUrlFlag)
 			return
 		}

@@ -65,7 +65,7 @@ func init() {
 		&args.oidcEndpointUrl,
 		OidcEndpointUrlFlag,
 		"",
-		"Endpoint url for BYO OIDC config",
+		"Endpoint url for reusable OIDC config",
 	)
 	flags.MarkHidden(OidcEndpointUrlFlag)
 

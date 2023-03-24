@@ -23,19 +23,19 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Contains the necessary attributes to support role-based authentication on AWS.
 type STSBuilder struct {
-	bitmap_                 uint32
-	oidcEndpointURL         string
-	externalID              string
-	instanceIAMRoles        *InstanceIAMRolesBuilder
-	oidcPrivateKeySecretArn string
-	operatorIAMRoles        []*OperatorIAMRoleBuilder
-	operatorRolePrefix      string
-	permissionBoundary      string
-	roleARN                 string
-	supportRoleARN          string
-	autoMode                bool
-	enabled                 bool
-	managedPolicies         bool
+	bitmap_            uint32
+	oidcEndpointURL    string
+	externalID         string
+	instanceIAMRoles   *InstanceIAMRolesBuilder
+	oidcConfig         *OidcConfigBuilder
+	operatorIAMRoles   []*OperatorIAMRoleBuilder
+	operatorRolePrefix string
+	permissionBoundary string
+	roleARN            string
+	supportRoleARN     string
+	autoMode           bool
+	enabled            bool
+	managedPolicies    bool
 }
 
 // NewSTS creates a new builder of 'STS' objects.
@@ -96,10 +96,16 @@ func (b *STSBuilder) ManagedPolicies(value bool) *STSBuilder {
 	return b
 }
 
-// OidcPrivateKeySecretArn sets the value of the 'oidc_private_key_secret_arn' attribute to the given value.
-func (b *STSBuilder) OidcPrivateKeySecretArn(value string) *STSBuilder {
-	b.oidcPrivateKeySecretArn = value
-	b.bitmap_ |= 64
+// OidcConfig sets the value of the 'oidc_config' attribute to the given value.
+//
+// Contains the necessary attributes to support oidc configuration hosting under Red Hat or registering a Customer's byo oidc config.
+func (b *STSBuilder) OidcConfig(value *OidcConfigBuilder) *STSBuilder {
+	b.oidcConfig = value
+	if value != nil {
+		b.bitmap_ |= 64
+	} else {
+		b.bitmap_ &^= 64
+	}
 	return b
 }
 
@@ -155,7 +161,11 @@ func (b *STSBuilder) Copy(object *STS) *STSBuilder {
 		b.instanceIAMRoles = nil
 	}
 	b.managedPolicies = object.managedPolicies
-	b.oidcPrivateKeySecretArn = object.oidcPrivateKeySecretArn
+	if object.oidcConfig != nil {
+		b.oidcConfig = NewOidcConfig().Copy(object.oidcConfig)
+	} else {
+		b.oidcConfig = nil
+	}
 	if object.operatorIAMRoles != nil {
 		b.operatorIAMRoles = make([]*OperatorIAMRoleBuilder, len(object.operatorIAMRoles))
 		for i, v := range object.operatorIAMRoles {
@@ -186,7 +196,12 @@ func (b *STSBuilder) Build() (object *STS, err error) {
 		}
 	}
 	object.managedPolicies = b.managedPolicies
-	object.oidcPrivateKeySecretArn = b.oidcPrivateKeySecretArn
+	if b.oidcConfig != nil {
+		object.oidcConfig, err = b.oidcConfig.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.operatorIAMRoles != nil {
 		object.operatorIAMRoles = make([]*OperatorIAMRole, len(b.operatorIAMRoles))
 		for i, v := range b.operatorIAMRoles {
