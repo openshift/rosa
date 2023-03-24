@@ -95,17 +95,14 @@ func HasSTSSupportMinor(minor string) bool {
 	return a.GreaterThanOrEqual(b)
 }
 
-func HasHostedCPSupport(version *cmv1.Version) (bool, error) {
-	if !version.HostedControlPlaneEnabled() {
-		return false, nil
-	}
-	v, err := ver.NewVersion(version.RawID())
+func HasHostedCPSupport(rawVersion string) (bool, error) {
+	v, err := ver.NewVersion(rawVersion)
 	if err != nil {
-		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version.RawID(), err)
+		return false, err
 	}
 	b, err := ver.NewVersion(LowestHostedCPSupport)
 	if err != nil {
-		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version.RawID(), err)
+		return false, err
 	}
 	// Check minimum OCP supported version
 	return v.GreaterThanOrEqual(b), nil
@@ -196,6 +193,31 @@ func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 	}
 
 	return
+}
+
+// Validate OpenShift versions
+func ValidateVersion(version string, versionList []string) (string, error) {
+	if version != "" {
+		// Check and set the cluster version
+		hasVersion := false
+		for _, v := range versionList {
+			if v == version {
+				hasVersion = true
+			}
+		}
+		if !hasVersion {
+			allVersions := strings.Join(versionList, " ")
+			err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
+			return version, err
+		}
+
+		if !HasSTSSupportMinor(version) {
+			err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
+			return version, err
+		}
+	}
+
+	return version, nil
 }
 
 func (c *Client) GetDefaultVersion() (version string, err error) {
@@ -308,51 +330,4 @@ func CheckAndParseVersion(availableUpgrades []string, version string) (string, e
 		return version, nil
 	}
 	return availableUpgrades[0], nil
-}
-
-// Validate OpenShift versions
-func (c *Client) ValidateVersion(version string, versionList []string, channelGroup string, isSTS,
-	isHostedCP bool) (string, error) {
-	if version == "" {
-		return version, nil
-	}
-	// Check and set the cluster version
-	hasVersion := false
-	for _, v := range versionList {
-		if v == version {
-			hasVersion = true
-		}
-	}
-	if !hasVersion {
-		allVersions := strings.Join(versionList, " ")
-		err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
-		return version, err
-	}
-
-	if isSTS && !HasSTSSupport(version, channelGroup) {
-		err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
-		return version, err
-	}
-	if !HasSTSSupportMinor(version) {
-		err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
-		return version, err
-	}
-	if isHostedCP {
-		collection := c.ocm.ClustersMgmt().V1().Versions()
-		filter := fmt.Sprintf("raw_id='%s'", version)
-		response, err := collection.List().
-			Search(filter).
-			Page(1).
-			Size(1).
-			Send()
-		if err != nil {
-			return "", handleErr(response.Error(), err)
-		}
-		valid, err := HasHostedCPSupport(response.Items().Get(0))
-		if err != nil || !valid {
-			return "", err
-		}
-	}
-
-	return CreateVersionID(version, channelGroup), nil
 }
