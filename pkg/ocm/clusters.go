@@ -379,9 +379,9 @@ func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cl
 	return response.Items().Get(0), nil
 }
 
-func (c *Client) HasAClusterUsingOidcConfig(bucketName string) (bool, error) {
+func (c *Client) HasAClusterUsingOidcConfig(issuerUrl string) (bool, error) {
 	query := fmt.Sprintf(
-		"aws.sts.oidc_endpoint_url like '%%%s%%'", bucketName,
+		"aws.sts.oidc_endpoint_url = '%s'", issuerUrl,
 	)
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1

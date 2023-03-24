@@ -27,3 +27,37 @@ func (c *Client) GetOidcConfig(id string) (*cmv1.OidcConfig, error) {
 
 	return response.Body(), nil
 }
+
+func (c *Client) ListOidcConfigs() ([]*cmv1.OidcConfig, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		OidcConfigs().
+		List().Page(1).Size(-1).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	return response.Items().Slice(), nil
+}
+
+func (c *Client) CreateOidcConfig(oidcConfig *cmv1.OidcConfig) (*cmv1.OidcConfig, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		OidcConfigs().
+		Add().Body(oidcConfig).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
+func (c *Client) DeleteOidcConfig(id string) error {
+	response, err := c.ocm.ClustersMgmt().V1().
+		OidcConfigs().OidcConfig(id).
+		Delete().
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}

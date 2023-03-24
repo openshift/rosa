@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/instancetypes"
 	"github.com/openshift/rosa/cmd/list/machinepool"
 	"github.com/openshift/rosa/cmd/list/ocmroles"
+	"github.com/openshift/rosa/cmd/list/oidcconfig"
 	"github.com/openshift/rosa/cmd/list/region"
 	"github.com/openshift/rosa/cmd/list/service"
 	"github.com/openshift/rosa/cmd/list/upgrade"
@@ -59,13 +60,14 @@ func init() {
 	Cmd.AddCommand(ocmroles.Cmd)
 	Cmd.AddCommand(userroles.Cmd)
 	Cmd.AddCommand(service.Cmd)
+	Cmd.AddCommand(oidcconfig.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
 
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, userroles.Cmd,
-		ocmroles.Cmd,
+		ocmroles.Cmd, oidcconfig.Cmd,
 	}
 	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
 }

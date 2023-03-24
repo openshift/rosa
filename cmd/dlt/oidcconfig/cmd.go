@@ -49,25 +49,23 @@ var Cmd = &cobra.Command{
 
 const (
 	//nolint
-	OidcPrivateKeySecretArnFlag = "oidc-private-key-secret-arn"
-
+	OidcConfigIdFlag          = "oidc-config-id"
 	prefixForPrivateKeySecret = "rosa-private-key-"
-	secretsManagerService     = "secretsmanager"
 )
 
 var args struct {
-	oidcPrivateKeySecretArn string
-	region                  string
+	oidcConfigId string
+	region       string
 }
 
 func init() {
 	flags := Cmd.Flags()
 
 	flags.StringVar(
-		&args.oidcPrivateKeySecretArn,
-		OidcPrivateKeySecretArnFlag,
+		&args.oidcConfigId,
+		OidcConfigIdFlag,
 		"",
-		"AWS Secrets Manager ARN for identification of config",
+		"Registered ID for identification of OIDC config",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -113,30 +111,20 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	oidcPrivateKeySecretArn := args.oidcPrivateKeySecretArn
-	if oidcPrivateKeySecretArn == "" || interactive.Enabled() {
-		oidcPrivateKeySecretArn, err = interactive.GetString(
+	oidcConfigId := args.oidcConfigId
+	if oidcConfigId == "" || interactive.Enabled() {
+		oidcConfigId, err = interactive.GetString(
 			interactive.Input{
-				Question: "OIDC Private Key Secret ARN",
-				Help:     cmd.Flags().Lookup(OidcPrivateKeySecretArnFlag).Usage,
+				Question: "Registered OIDC Config ID",
+				Help:     cmd.Flags().Lookup(OidcConfigIdFlag).Usage,
 				Required: true,
-				Default:  oidcPrivateKeySecretArn,
+				Default:  oidcConfigId,
 			})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid ARN to the secret containing the private key: %s", err)
+			r.Reporter.Errorf("Expected a OIDC Config ID: %s", err)
 			os.Exit(1)
 		}
-		err = aws.ARNValidator(oidcPrivateKeySecretArn)
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
-		parsedSecretArn, _ := arn.Parse(oidcPrivateKeySecretArn)
-		if parsedSecretArn.Service != secretsManagerService {
-			r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
-			os.Exit(1)
-		}
-		args.oidcPrivateKeySecretArn = oidcPrivateKeySecretArn
+		args.oidcConfigId = oidcConfigId
 	}
 
 	oidcConfigInput := buildOidcConfigInput(r)
@@ -146,33 +134,43 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	oidcConfigStrategy.execute(r)
-	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode,
-		fmt.Sprintf("https://%s.s3.%s.amazonaws.com", oidcConfigInput.BucketName, args.region)})
+	r.OCMClient.DeleteOidcConfig(args.oidcConfigId)
+	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.IssuerUrl})
 }
 
 type OidcConfigInput struct {
 	PrivateKeySecretArn string
 	BucketName          string
+	IssuerUrl           string
+	Managed             bool
 }
 
 func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
-	parsedSecretArn, err := arn.Parse(args.oidcPrivateKeySecretArn)
+	oidcConfig, err := r.OCMClient.GetOidcConfig(args.oidcConfigId)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem parsing secret ARN '%s' : %v", args.oidcPrivateKeySecretArn, err)
+		r.Reporter.Errorf("There was a problem retrieving the OIDC Config '%s': %v", args.oidcConfigId, err)
 		os.Exit(1)
 	}
-	if parsedSecretArn.Service != aws.SecretsManager {
-		r.Reporter.Errorf("Supplied secret ARN is not a valid Secrets Manager ARN")
-		os.Exit(1)
-	}
+	secretArn := oidcConfig.SecretArn()
+	parsedSecretArn, _ := arn.Parse(secretArn)
 	if args.region != parsedSecretArn.Region {
 		r.Reporter.Errorf("Secret region '%s' differs from chosen region '%s', "+
 			"please run the command supplying region parameter.", parsedSecretArn.Region, args.region)
 		os.Exit(1)
 	}
-	secretResourceName, err := aws.GetResourceIdFromSecretArn(args.oidcPrivateKeySecretArn)
+	issuerUrl := oidcConfig.IssuerUrl()
+	hasClusterUsingOidcConfig, err := r.OCMClient.HasAClusterUsingOidcConfig(issuerUrl)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem parsing secret ARN '%s' : %v", args.oidcPrivateKeySecretArn, err)
+		r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC config '%s' : %v", issuerUrl, err)
+		os.Exit(1)
+	}
+	if hasClusterUsingOidcConfig {
+		r.Reporter.Errorf("There are clusters using OIDC config '%s', can't delete the configuration", issuerUrl)
+		os.Exit(1)
+	}
+	secretResourceName, err := aws.GetResourceIdFromSecretArn(secretArn)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem parsing secret ARN '%s' : %v", secretArn, err)
 		os.Exit(1)
 	}
 	bucketName := strings.TrimPrefix(secretResourceName, prefixForPrivateKeySecret)
@@ -180,18 +178,11 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 	if index != -1 {
 		bucketName = bucketName[:index]
 	}
-	hasClusterUsingOidcConfig, err := r.OCMClient.HasAClusterUsingOidcConfig(bucketName)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC config '%s' : %v", bucketName, err)
-		os.Exit(1)
-	}
-	if hasClusterUsingOidcConfig {
-		r.Reporter.Errorf("There are clusters using OIDC config '%s', can't delete the configuration", bucketName)
-		os.Exit(1)
-	}
 	return OidcConfigInput{
 		BucketName:          bucketName,
-		PrivateKeySecretArn: args.oidcPrivateKeySecretArn,
+		PrivateKeySecretArn: secretArn,
+		IssuerUrl:           issuerUrl,
+		Managed:             oidcConfig.Managed(),
 	}
 }
 
@@ -199,11 +190,11 @@ type DeleteOidcConfigStrategy interface {
 	execute(r *rosa.Runtime)
 }
 
-type DeleteOidcConfigAutoStrategy struct {
+type DeleteManagedOidcConfigAutoStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *DeleteOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *DeleteManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	bucketName := s.oidcConfig.BucketName
 	privateKeySecretArn := s.oidcConfig.PrivateKeySecretArn
 	var spin *spinner.Spinner
@@ -230,14 +221,13 @@ func (s *DeleteOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Deleted OIDC configuration")
 	}
-
 }
 
-type DeleteOidcConfigManualStrategy struct {
+type DeleteManagedOidcConfigManualStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *DeleteOidcConfigManualStrategy) execute(r *rosa.Runtime) {
+func (s *DeleteManagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	commands := []string{}
 	bucketName := s.oidcConfig.BucketName
 	privateKeySecretArn := s.oidcConfig.PrivateKeySecretArn
@@ -261,12 +251,19 @@ func (s *DeleteOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	fmt.Println(awscb.JoinCommands(commands))
 }
 
+type DeleteManagedOidcConfigStrategy struct{}
+
+func (s *DeleteManagedOidcConfigStrategy) execute(r *rosa.Runtime) {}
+
 func getOidcConfigStrategy(mode string, input OidcConfigInput) (DeleteOidcConfigStrategy, error) {
+	if input.Managed {
+		return &DeleteManagedOidcConfigStrategy{}, nil
+	}
 	switch mode {
 	case aws.ModeAuto:
-		return &DeleteOidcConfigAutoStrategy{oidcConfig: input}, nil
+		return &DeleteManagedOidcConfigAutoStrategy{oidcConfig: input}, nil
 	case aws.ModeManual:
-		return &DeleteOidcConfigManualStrategy{oidcConfig: input}, nil
+		return &DeleteManagedOidcConfigManualStrategy{oidcConfig: input}, nil
 	default:
 		return nil, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 	}
