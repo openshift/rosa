@@ -154,6 +154,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		roleTypeString = "hosted CP "
 	} else {
 		accountRolesMap = aws.AccountRoles
+		roleTypeString = "classic "
 	}
 
 	finalRoleList, managedPolicies, err := getRoleListForDeletion(r, env, prefix, clusters, accountRolesMap)
