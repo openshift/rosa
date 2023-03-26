@@ -64,6 +64,12 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
+	isAutoRepairSet := cmd.Flags().Changed("autorepair")
+	if isAutoRepairSet {
+		r.Reporter.Errorf("Setting the `autorepair` flag is only supported for hosted clusters")
+		os.Exit(1)
+	}
+
 	// Machine pool name:
 	name := strings.Trim(args.name, " \t")
 	if name == "" && !interactive.Enabled() {

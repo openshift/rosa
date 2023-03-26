@@ -23,9 +23,11 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	isTaintsSet := cmd.Flags().Changed("taints")
 	isLabelOrTaintSet := isLabelsSet || isTaintsSet
 	isVersionSet := cmd.Flags().Changed("version")
+	isAutorepairSet := cmd.Flags().Changed("autorepair")
 
 	// if no value set enter interactive mode
-	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet) {
+	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet ||
+		isAutorepairSet) {
 		interactive.Enable()
 	}
 
@@ -114,6 +116,22 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 			os.Exit(1)
 		}
 		npBuilder.Version(cmv1.NewVersion().ID(version))
+	}
+
+	if isAutorepairSet || interactive.Enabled() {
+		autorepair := args.autorepair
+		autorepair, err = interactive.GetBool(interactive.Input{
+			Question: "Autorepair",
+			Help:     cmd.Flags().Lookup("autorepair").Usage,
+			Default:  autorepair,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for autorepair: %s", err)
+			os.Exit(1)
+		}
+
+		npBuilder.AutoRepair(autorepair)
 	}
 
 	nodePool, err = npBuilder.Build()

@@ -23,9 +23,9 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(writer, "ID\tAUTOSCALING\tDESIRED REPLICAS\tCURRENT REPLICAS\t"+
-		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tMESSAGE\t\n")
+		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tAUTOREPAIR\tMESSAGE\t\n")
 	for _, nodePool := range nodePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			printNodePoolAutoscaling(nodePool.Autoscaling()),
 			printNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
@@ -36,6 +36,7 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 			nodePool.AvailabilityZone(),
 			nodePool.Subnet(),
 			printNodePoolVersion(nodePool.Version()),
+			printNodePoolAutorepair(nodePool.AutoRepair()),
 			printNodePoolMessage(nodePool.Status()),
 		)
 	}
@@ -81,4 +82,11 @@ func printNodePoolMessage(status *cmv1.NodePoolStatus) string {
 
 func printNodePoolVersion(version *cmv1.Version) string {
 	return ocm.GetRawVersionId(version.ID())
+}
+
+func printNodePoolAutorepair(autorepair bool) string {
+	if autorepair {
+		return Yes
+	}
+	return No
 }

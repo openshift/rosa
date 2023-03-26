@@ -49,6 +49,7 @@ var args struct {
 	availabilityZone      string
 	subnet                string
 	version               string
+	autorepair            bool
 }
 
 var Cmd = &cobra.Command{
@@ -176,6 +177,13 @@ func init() {
 		"",
 		"Version of OpenShift that will be used to install a machine pool for a hosted cluster,"+
 			" for example \"4.12.4\"",
+	)
+
+	flags.BoolVar(
+		&args.autorepair,
+		"autorepair",
+		true,
+		"Select auto-repair behaviour for a machinepool in a hosted cluster.",
 	)
 
 	interactive.AddFlag(flags)

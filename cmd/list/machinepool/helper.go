@@ -7,6 +7,11 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
+const (
+	Yes = "Yes"
+	No  = "No"
+)
+
 func printStringSlice(in []string) string {
 	if len(in) == 0 {
 		return ""
