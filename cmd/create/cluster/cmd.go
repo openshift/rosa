@@ -2340,7 +2340,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) *v
 			_oidcConfigId, err := interactive.GetString(
 				interactive.Input{
 					Question: "OIDC Config ID",
-					Help:     cmd.Flags().Lookup(oidcConfigId).Usage,
+					Help:     cmd.Flags().Lookup(OidcConfigIdFlag).Usage,
 					Required: false,
 					Default:  oidcConfigId,
 				})
