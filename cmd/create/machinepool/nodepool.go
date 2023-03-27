@@ -10,6 +10,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/output"
@@ -151,11 +152,19 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
 				Default:  minReplicas,
 				Required: true,
+				Validators: []interactive.Validator{
+					machinepools.MinNodePoolReplicaValidator(),
+				},
 			})
 			if err != nil {
 				r.Reporter.Errorf("Expected a valid number of min replicas: %s", err)
 				os.Exit(1)
 			}
+		}
+		err = machinepools.MinNodePoolReplicaValidator()(minReplicas)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
 		}
 
 		if interactive.Enabled() || !isMaxReplicasSet {
@@ -164,11 +173,19 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
 				Default:  maxReplicas,
 				Required: true,
+				Validators: []interactive.Validator{
+					machinepools.MaxNodePoolReplicaValidator(minReplicas),
+				},
 			})
 			if err != nil {
 				r.Reporter.Errorf("Expected a valid number of max replicas: %s", err)
 				os.Exit(1)
 			}
+		}
+		err = machinepools.MaxNodePoolReplicaValidator(minReplicas)(maxReplicas)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
 		}
 	} else {
 		// if the user set min/max replicas and hasn't enabled autoscaling
@@ -182,11 +199,19 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				Help:     cmd.Flags().Lookup("replicas").Usage,
 				Default:  replicas,
 				Required: true,
+				Validators: []interactive.Validator{
+					machinepools.MinNodePoolReplicaValidator(),
+				},
 			})
 			if err != nil {
 				r.Reporter.Errorf("Expected a valid number of replicas: %s", err)
 				os.Exit(1)
 			}
+		}
+		err = machinepools.MinNodePoolReplicaValidator()(replicas)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
 		}
 	}
 
