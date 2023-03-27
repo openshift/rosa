@@ -1114,6 +1114,9 @@ func (c *awsClient) GetOperatorRolesFromAccountByPrefix(prefix string,
 	if err != nil {
 		return roleList, err
 	}
+	// An extra '-' is needed to end the prefix where the suffixes for openshift/kube starts
+	// This ensures other similar prefixes will not be deleted
+	prefix = prefix + "-"
 	for _, role := range roles {
 		if !checkIfROSAOperatorRole(role.RoleName, credRequest) {
 			continue
