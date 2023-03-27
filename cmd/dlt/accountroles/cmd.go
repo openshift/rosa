@@ -173,6 +173,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
 				continue
 			}
+			r.Reporter.Infof("Deleting account role '%s'", role)
 			err := r.AWSClient.DeleteAccountRole(role, managedPolicies)
 			if err != nil {
 				r.Reporter.Warnf("There was an error deleting the account roles or policies: %s", err)
