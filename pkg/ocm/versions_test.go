@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var _ = Describe("Versions", Ordered, func() {
@@ -15,22 +16,22 @@ var _ = Describe("Versions", Ordered, func() {
 			Entry("OK: When the minimum version is provided",
 				func() string { return LowestHostedCPSupport },
 				func() string { return DefaultChannelGroup },
-				true, nil),
+				true, true, nil),
 			Entry("KO: Nightly channel group but too old",
 				func() string { return "4.11.0-0.nightly-2022-10-17-040259-nightly" },
-				func() string { return NightlyChannelGroup }, false, nil),
+				func() string { return NightlyChannelGroup }, false, false, nil),
 			Entry("OK: Nightly channel group and good version",
 				func() string { return "4.12.0-0.nightly-2022-11-25-185455-nightly" },
-				func() string { return NightlyChannelGroup }, true, nil),
+				func() string { return NightlyChannelGroup }, true, true, nil),
 			Entry("OK: When a greater version than the minimum is provided",
 				func() string { return "4.13.0" },
-				func() string { return DefaultChannelGroup }, true, nil),
+				func() string { return DefaultChannelGroup }, true, true, nil),
 			Entry("KO: When the minimum version requirement is not met",
 				func() string { return "4.11.5" },
-				func() string { return DefaultChannelGroup }, false, nil),
+				func() string { return DefaultChannelGroup }, false, false, nil),
 			Entry("OK: When a greater RC version than the minimum is provided",
 				func() string { return "4.12.0-rc.1" },
-				func() string { return "candidate" }, true, nil),
+				func() string { return "candidate" }, true, true, nil),
 		)
 	})
 
@@ -56,9 +57,13 @@ var _ = Describe("Versions", Ordered, func() {
 	})
 })
 
-func validateVersion(version func() string, channelGroup func() string, expectedValidation bool, expectedErr error) {
+func validateVersion(version func() string, channelGroup func() string, hypershiftEnabled bool,
+	expectedValidation bool, expectedErr error) {
 
-	b, err := HasHostedCPSupport(version())
+	v, err := cmv1.NewVersion().ID(version()).RawID(version()).HostedControlPlaneEnabled(hypershiftEnabled).Build()
+	Expect(err).NotTo(HaveOccurred())
+
+	b, err := HasHostedCPSupport(v)
 	if expectedErr != nil {
 		Expect(err).To(BeEquivalentTo(expectedErr))
 	}
