@@ -2293,7 +2293,8 @@ func run(cmd *cobra.Command, _ []string) {
 			if oidcConfig == nil {
 				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
 			} else {
-				oidcCMD = fmt.Sprintf("%s --%s %s", oidcCMD, OidcConfigIdFlag, oidcConfig.IssuerUrl())
+				oidcCMD = fmt.Sprintf("%s --%s %s", oidcCMD,
+					oidcprovider.OidcEndpointUrlFlag, oidcConfig.IssuerUrl())
 			}
 			output := "Run the following commands to continue the cluster creation:\n\n"
 			output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
