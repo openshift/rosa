@@ -126,6 +126,16 @@ func init() {
 	arguments.AddRegionFlag(flags)
 }
 
+func checkInteractiveModeNeeded(cmd *cobra.Command) {
+	if !cmd.Flags().Changed("mode") && !cmd.Flags().Changed(rawFilesFlag) {
+		interactive.Enable()
+	}
+	if !args.managed &&
+		(!cmd.Flags().Changed("mode") || !cmd.Flags().Changed(installerRoleArnFlag)) {
+		interactive.Enable()
+	}
+}
+
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
@@ -144,11 +154,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	args.region = region
 
-	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !cmd.Flags().Changed(rawFilesFlag) ||
-		(args.managed && !cmd.Flags().Changed(installerRoleArnFlag)) {
-		interactive.Enable()
-	}
+	checkInteractiveModeNeeded(cmd)
 
 	if args.rawFiles && mode != "" {
 		r.Reporter.Warnf("--raw-files param is not supported alongside --mode param.")
