@@ -197,7 +197,10 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 	if err == nil {
 		// If we found an existing role with this name we want to error
 		return fmt.Errorf("A role named '%s' already exists. "+
-			"Please delete the existing role, or provide a different prefix", name)
+			"Please delete the existing role, or provide a different prefix.\n"+
+			"If you'd like to reuse the operator roles, please provide a "+
+			"OIDC Configuration ID which has Issuer URL linked as the trusted relationship"+
+			"of the chosen operator roles prefix.", name)
 	}
 
 	if aerr, ok := err.(awserr.Error); ok {
