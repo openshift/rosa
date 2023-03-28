@@ -30,6 +30,12 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 		os.Exit(1)
 	}
 
+	isAutoRepairSet := cmd.Flags().Changed("autorepair")
+	if isAutoRepairSet {
+		r.Reporter.Errorf("Setting the `autorepair` flag is only supported for hosted clusters")
+		os.Exit(1)
+	}
+
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
 	isReplicasSet := cmd.Flags().Changed("replicas")

@@ -262,6 +262,22 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		os.Exit(1)
 	}
 
+	autorepair := args.autorepair
+	if interactive.Enabled() {
+		autorepair, err = interactive.GetBool(interactive.Input{
+			Question: "Autorepair",
+			Help:     cmd.Flags().Lookup("autorepair").Usage,
+			Default:  autorepair,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for autorepair: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	npBuilder.AutoRepair(autorepair)
+
 	npBuilder.AWSNodePool(cmv1.NewAWSNodePool().InstanceType(instanceType))
 
 	if version != "" {

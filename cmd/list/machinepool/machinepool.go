@@ -75,9 +75,9 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 
 func printMachinePoolAutoscaling(autoscaling *cmv1.MachinePoolAutoscaling) string {
 	if autoscaling != nil {
-		return "Yes"
+		return Yes
 	}
-	return "No"
+	return No
 }
 
 func printMachinePoolReplicas(autoscaling *cmv1.MachinePoolAutoscaling, replicas int) string {
@@ -103,5 +103,5 @@ func printSpot(mp *cmv1.MachinePool) string {
 			return fmt.Sprintf("Yes (%s)", price)
 		}
 	}
-	return "No"
+	return No
 }
