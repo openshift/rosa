@@ -35,6 +35,7 @@ import (
 var args struct {
 	prefix   string
 	hostedCP bool
+	classic  bool
 }
 
 var Cmd = &cobra.Command{
@@ -65,6 +66,14 @@ func init() {
 		"Delete hosted control planes roles (HyperShift)",
 	)
 	flags.MarkHidden("hosted-cp")
+
+	flags.BoolVar(
+		&args.classic,
+		"classic",
+		false,
+		"Delete classic account roles",
+	)
+	flags.MarkHidden("classic")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
@@ -137,11 +146,24 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// TODO: delete both classic and hosted CP roles by default, once managed policies are in place
-	err = deleteAccountRoles(r, env, prefix, clusters, mode, args.hostedCP)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+	// Default flow deletes both classic and hosted-CP roles
+	if !args.classic && !args.hostedCP {
+		args.classic, args.hostedCP = true, true
+	}
+
+	if args.classic {
+		err = deleteAccountRoles(r, env, prefix, clusters, mode, false)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+	if args.hostedCP {
+		err = deleteAccountRoles(r, env, prefix, clusters, mode, true)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -162,7 +184,8 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		return err
 	}
 	if len(finalRoleList) == 0 {
-		return fmt.Errorf("There are no %saccount roles to be deleted", roleTypeString)
+		r.Reporter.Warnf("There are no %saccount roles to be deleted", roleTypeString)
+		return nil
 	}
 
 	switch mode {
