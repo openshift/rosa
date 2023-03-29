@@ -199,7 +199,7 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 		return fmt.Errorf("A role named '%s' already exists. "+
 			"Please delete the existing role, or provide a different prefix.\n"+
 			"If you'd like to reuse the operator roles, please provide a "+
-			"OIDC Configuration ID which has Issuer URL linked as the trusted relationship"+
+			"OIDC Configuration ID which has Issuer URL linked as the trusted relationship "+
 			"of the chosen operator roles prefix.", name)
 	}
 
@@ -503,6 +503,9 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 					break
 				}
 
+				if version == "" {
+					break
+				}
 				clusterVersion, err := semver.NewVersion(version)
 				if err != nil {
 					skip = true
@@ -1386,7 +1389,8 @@ func (c *awsClient) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl st
 		if err != nil {
 			return "", err
 		}
-		if strings.Contains(providerName, oidcEndpointUrl) {
+		if strings.Contains(providerName, oidcEndpointUrl) ||
+			strings.Contains(oidcEndpointUrl, providerName) {
 			return providerValue, nil
 		}
 	}

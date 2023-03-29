@@ -111,9 +111,8 @@ func run(cmd *cobra.Command, argv []string) {
 	if args.oidcEndpointUrl == "" {
 		clusterKey = r.GetClusterKey()
 		cluster = r.FetchCluster()
-	} else {
-		r.WithAWS()
 	}
+
 	if cluster != nil && cluster.AWS().STS().RoleARN() == "" {
 		r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
 		os.Exit(1)

@@ -40,9 +40,9 @@ var Cmd = &cobra.Command{
 	Use:     "oidc-config",
 	Aliases: []string{"oidconfig, oidcconfig"},
 	Short:   "Delete OIDC Config",
-	Long:    "Cleans up OIDC config based on secret ARN.",
-	Example: `  # Delete OIDC config based on secret ARN that has been supplied
-	rosa delete oidc-config --oidc-private-key-secret-arn <oidc_private_key_secret_arn>`,
+	Long:    "Cleans up OIDC config based on registered OIDC Config ID.",
+	Example: `  # Delete OIDC config based on registered OIDC Config ID that has been supplied
+	rosa delete oidc-config --oidc-config-id <oidc_config_id>`,
 	Hidden: true,
 	Run:    run,
 }
@@ -111,20 +111,8 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	oidcConfigId := args.oidcConfigId
-	if oidcConfigId == "" || interactive.Enabled() {
-		oidcConfigId, err = interactive.GetString(
-			interactive.Input{
-				Question: "Registered OIDC Config ID",
-				Help:     cmd.Flags().Lookup(OidcConfigIdFlag).Usage,
-				Required: true,
-				Default:  oidcConfigId,
-			})
-		if err != nil {
-			r.Reporter.Errorf("Expected a OIDC Config ID: %s", err)
-			os.Exit(1)
-		}
-		args.oidcConfigId = oidcConfigId
+	if args.oidcConfigId == "" || interactive.Enabled() {
+		args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
 	}
 
 	oidcConfigInput := buildOidcConfigInput(r)
@@ -152,12 +140,29 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 		os.Exit(1)
 	}
 	secretArn := oidcConfig.SecretArn()
-	parsedSecretArn, _ := arn.Parse(secretArn)
-	if args.region != parsedSecretArn.Region {
-		r.Reporter.Errorf("Secret region '%s' differs from chosen region '%s', "+
-			"please run the command supplying region parameter.", parsedSecretArn.Region, args.region)
-		os.Exit(1)
+	bucketName := ""
+	if !oidcConfig.Managed() {
+		parsedSecretArn, _ := arn.Parse(secretArn)
+		if args.region != parsedSecretArn.Region {
+			r.Reporter.Errorf("Secret region '%s' differs from chosen region '%s', "+
+				"please run the command supplying region parameter.", parsedSecretArn.Region, args.region)
+			os.Exit(1)
+		}
+		secretResourceName, err := aws.GetResourceIdFromSecretArn(secretArn)
+		if err != nil {
+			r.Reporter.Errorf("There was a problem parsing secret ARN '%s' : %v", secretArn, err)
+			os.Exit(1)
+		}
+		// The secret when creating from ROSA options has the following format
+		// rosa-private-key-<prefix>-oidc-<random-hash-length-4>-<random-aws-created-hash>
+		// The bucket is expected to be <prefix>-oidc-<random-hash-length-4>
+		bucketName = strings.TrimPrefix(secretResourceName, prefixForPrivateKeySecret)
+		index := strings.LastIndex(bucketName, "-")
+		if index != -1 {
+			bucketName = bucketName[:index]
+		}
 	}
+
 	issuerUrl := oidcConfig.IssuerUrl()
 	hasClusterUsingOidcConfig, err := r.OCMClient.HasAClusterUsingOidcConfig(issuerUrl)
 	if err != nil {
@@ -167,16 +172,6 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 	if hasClusterUsingOidcConfig {
 		r.Reporter.Errorf("There are clusters using OIDC config '%s', can't delete the configuration", issuerUrl)
 		os.Exit(1)
-	}
-	secretResourceName, err := aws.GetResourceIdFromSecretArn(secretArn)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem parsing secret ARN '%s' : %v", secretArn, err)
-		os.Exit(1)
-	}
-	bucketName := strings.TrimPrefix(secretResourceName, prefixForPrivateKeySecret)
-	index := strings.LastIndex(bucketName, "-")
-	if index != -1 {
-		bucketName = bucketName[:index]
 	}
 	return OidcConfigInput{
 		BucketName:          bucketName,

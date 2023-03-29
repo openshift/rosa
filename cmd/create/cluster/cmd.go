@@ -2337,18 +2337,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) *v
 	oidcConfigId := args.oidcConfigId
 	if isSTS {
 		if oidcConfigId == "" && interactive.Enabled() {
-			_oidcConfigId, err := interactive.GetString(
-				interactive.Input{
-					Question: "OIDC Config ID",
-					Help:     cmd.Flags().Lookup(OidcConfigIdFlag).Usage,
-					Required: false,
-					Default:  oidcConfigId,
-				})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid OIDC Config ID: %s", err)
-				os.Exit(1)
-			}
-			oidcConfigId = _oidcConfigId
+			oidcConfigId = interactive.GetOidcConfigID(r, cmd)
 		}
 		if oidcConfigId == "" {
 			return nil

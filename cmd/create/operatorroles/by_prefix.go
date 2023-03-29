@@ -63,21 +63,7 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 		os.Exit(1)
 	}
 	args.hostedCp = isHostedCP
-	installerRoleArn := args.installerRoleArn
-	installerRoleArn, err = interactive.GetString(interactive.Input{
-		Question: "Installer Role ARN",
-		Help:     cmd.Flags().Lookup(InstallerRoleArnFlag).Usage,
-		Default:  installerRoleArn,
-		Required: true,
-		Validators: []interactive.Validator{
-			aws.ARNValidator,
-		},
-	})
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid ARN: %s", err)
-		os.Exit(1)
-	}
-	args.installerRoleArn = installerRoleArn
+	args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, "")
 }
 
 func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
