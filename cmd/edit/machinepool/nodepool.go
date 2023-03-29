@@ -4,6 +4,7 @@ import (
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -42,9 +43,9 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	autoscaling, replicas, minReplicas, maxReplicas := getNodePoolReplicas(cmd, r.Reporter, nodePoolID,
 		nodePool.Replicas(), nodePool.Autoscaling(), isLabelOrTaintSet)
 
-	if !autoscaling && replicas < 0 ||
-		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 0) {
-		r.Reporter.Errorf("The number of machine pool replicas needs to be a non-negative integer")
+	if !autoscaling && replicas < 1 ||
+		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1) {
+		r.Reporter.Errorf("The number of machine pool replicas needs to be greater than zero")
 		os.Exit(1)
 	}
 
@@ -68,10 +69,10 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	if autoscaling {
 		asBuilder := cmv1.NewNodePoolAutoscaling()
 
-		if minReplicas > 0 {
+		if minReplicas > 1 {
 			asBuilder = asBuilder.MinReplica(minReplicas)
 		}
-		if maxReplicas > 0 {
+		if maxReplicas > 1 {
 			asBuilder = asBuilder.MaxReplica(maxReplicas)
 		}
 
@@ -200,6 +201,9 @@ func getNodePoolReplicas(cmd *cobra.Command,
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
 				Default:  existingAutoscaling.MinReplica(),
 				Required: replicasRequired,
+				Validators: []interactive.Validator{
+					machinepools.MinNodePoolReplicaValidator(),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of min replicas: %s", err)
@@ -214,6 +218,9 @@ func getNodePoolReplicas(cmd *cobra.Command,
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
 				Default:  existingAutoscaling.MaxReplica(),
 				Required: replicasRequired,
+				Validators: []interactive.Validator{
+					machinepools.MaxNodePoolReplicaValidator(minReplicas),
+				},
 			})
 			if err != nil {
 				reporter.Errorf("Expected a valid number of max replicas: %s", err)
@@ -233,6 +240,9 @@ func getNodePoolReplicas(cmd *cobra.Command,
 			Help:     cmd.Flags().Lookup("replicas").Usage,
 			Default:  replicas,
 			Required: true,
+			Validators: []interactive.Validator{
+				machinepools.MinNodePoolReplicaValidator(),
+			},
 		})
 		if err != nil {
 			reporter.Errorf("Expected a valid number of replicas: %s", err)
