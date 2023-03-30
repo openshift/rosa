@@ -992,7 +992,7 @@ func (c *awsClient) DeleteS3Bucket(bucketName string) error {
 	})
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NotFound" {
-			return weberr.Errorf("Bucket '%s' does not exist.", bucketName)
+			return nil
 		}
 		return err
 	}
@@ -1073,6 +1073,9 @@ func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
 			SecretId:                   aws.String(secretArn),
 		})
 	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == secretsmanager.ErrCodeResourceNotFoundException {
+			return nil
+		}
 		return err
 	}
 	return nil

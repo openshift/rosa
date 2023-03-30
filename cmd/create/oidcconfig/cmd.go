@@ -177,11 +177,15 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if !args.rawFiles && interactive.Enabled() && !cmd.Flags().Changed("mode") {
+		modeOptions := aws.Modes
+		if args.managed {
+			modeOptions = []string{aws.ModeAuto}
+		}
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC config creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
+			Options:  modeOptions,
 			Required: true,
 		})
 		if err != nil {
@@ -197,6 +201,11 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if args.managed && args.userPrefix != "" {
 		r.Reporter.Warnf("--%s param is not supported for managed OIDC config", userPrefixFlag)
+		os.Exit(1)
+	}
+
+	if args.managed && args.installerRoleArn != "" {
+		r.Reporter.Warnf("--%s param is not supported for managed OIDC config", installerRoleArnFlag)
 		os.Exit(1)
 	}
 
@@ -222,6 +231,16 @@ func run(cmd *cobra.Command, argv []string) {
 			err := aws.ARNValidator(args.installerRoleArn)
 			if err != nil {
 				r.Reporter.Errorf("Expected a valid ARN: %s", err)
+				os.Exit(1)
+			}
+			roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
+			roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
+			if err != nil {
+				r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", args.installerRoleArn, err)
+				os.Exit(1)
+			}
+			if !roleExists {
+				r.Reporter.Errorf("Role '%s' does not exist", args.installerRoleArn)
 				os.Exit(1)
 			}
 		}

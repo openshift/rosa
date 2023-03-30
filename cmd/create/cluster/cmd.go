@@ -54,7 +54,8 @@ var kmsArnRE = regexp.MustCompile(
 )
 
 const (
-	OidcConfigIdFlag = "oidc-config-id"
+	OidcConfigIdFlag      = "oidc-config-id"
+	ClassicOidcConfigFlag = "classic-oidc-config"
 )
 
 var args struct {
@@ -134,7 +135,8 @@ var args struct {
 	operatorRolesPermissionsBoundary string
 
 	// Oidc Config
-	oidcConfigId string
+	oidcConfigId      string
+	classicOidcConfig bool
 
 	// Proxy
 	enableProxy               bool
@@ -264,6 +266,14 @@ func init() {
 		"",
 		"Registered OIDC Configuration ID to use for cluster creation",
 	)
+
+	flags.BoolVar(
+		&args.classicOidcConfig,
+		ClassicOidcConfigFlag,
+		false,
+		"Use classic OIDC configuration without registering an ID.",
+	)
+	flags.MarkHidden(ClassicOidcConfigFlag)
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -1228,7 +1238,7 @@ func run(cmd *cobra.Command, _ []string) {
 				})
 			}
 		}
-		oidcConfig = handleOidcConfigOptions(r, cmd, isSTS)
+		oidcConfig = handleOidcConfigOptions(r, cmd, isSTS, isHostedCP)
 		err = validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient, operatorIAMRoleList)
 		if err != nil {
 			if !oidcConfig.Reusable() {
@@ -2333,23 +2343,49 @@ func validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient aws.Client,
 	return nil
 }
 
-func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool) *v1.OidcConfig {
+func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, isHostedCP bool) *v1.OidcConfig {
+	if !isSTS {
+		return nil
+	}
 	oidcConfigId := args.oidcConfigId
-	if isSTS {
-		if oidcConfigId == "" && interactive.Enabled() {
+	isOidcConfig := false
+	if isHostedCP {
+		isOidcConfig = true
+	}
+	if oidcConfigId == "" && interactive.Enabled() {
+		if !isHostedCP {
+			_isOidcConfig, err := interactive.GetBool(interactive.Input{
+				Question: "Deploy cluster using pre registered OIDC Configuration ID",
+				Default:  true,
+				Required: true,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value: %s", err)
+				os.Exit(1)
+			}
+			isOidcConfig = _isOidcConfig
+		}
+		if isOidcConfig {
 			oidcConfigId = interactive.GetOidcConfigID(r, cmd)
 		}
-		if oidcConfigId == "" {
+	}
+	if oidcConfigId == "" {
+		if !isHostedCP {
 			return nil
 		}
-		oidcConfig, err := r.OCMClient.GetOidcConfig(oidcConfigId)
-		if err != nil {
-			r.Reporter.Errorf("There was a problem retrieving OIDC Config '%s': %v", oidcConfigId, err)
-			os.Exit(1)
+		if args.classicOidcConfig {
+			return nil
 		}
-		return oidcConfig
+		r.Reporter.Errorf("Hosted Control Plane requires an OIDC Configuration ID\n" +
+			"Please run `rosa create oidc-config -h` and create one.")
+		os.Exit(1)
 	}
-	return nil
+	oidcConfig, err := r.OCMClient.GetOidcConfig(oidcConfigId)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem retrieving OIDC Config '%s': %v", oidcConfigId, err)
+		os.Exit(1)
+	}
+	return oidcConfig
 }
 
 func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int) interactive.Validator {
