@@ -48,18 +48,58 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Loading upgrade with id '%s'", cluster.ID())
-	upgrades, err := r.OCMClient.GetUpgradePolicies(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to get upgrade with cluster id '%s': %v", cluster.ID(), err)
-		os.Exit(1)
+	if cluster.Hypershift().Enabled() {
+		returnHypershiftUpgrades(r, cluster.ID())
+	} else {
+		returnClassicUpgrades(r, cluster.ID())
 	}
-	_, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
+}
+
+func returnHypershiftUpgrades(r *rosa.Runtime, clusterID string) {
+	upgrades, err := r.OCMClient.GetControlPlaneUpgradePolicies(clusterID)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", cluster.ID(), err)
+		r.Reporter.Errorf("Failed to get upgrade with cluster id '%s': %v", clusterID, err)
 		os.Exit(1)
 	}
 	if len(upgrades) < 1 {
-		r.Reporter.Warnf("No scheduled upgrades for cluster id '%s'", cluster.ID())
+		r.Reporter.Warnf("No scheduled upgrades for cluster id '%s'", clusterID)
+		os.Exit(1)
+	}
+
+	for _, upgrade := range upgrades {
+		fmt.Printf(`%19s%61s
+		%-28s%s
+		%-28s%s
+		%-28s%s
+`,
+			"ID:", upgrade.ID(),
+			"Cluster ID:", upgrade.ClusterID(),
+			"Next Run:", upgrade.NextRun(),
+			"Upgrade State:", upgrade.State().Value())
+		if upgrade.Schedule() != "" {
+			fmt.Printf(`                %-28s%s
+`, "Schedule At:", upgrade.Schedule())
+		}
+		if upgrade.Version() != "" {
+			fmt.Printf(`                %-28s%s
+`, "Version:", upgrade.Version())
+		}
+	}
+}
+
+func returnClassicUpgrades(r *rosa.Runtime, clusterID string) {
+	upgrades, err := r.OCMClient.GetUpgradePolicies(clusterID)
+	if err != nil {
+		r.Reporter.Errorf("Failed to get upgrade with cluster id '%s': %v", clusterID, err)
+		os.Exit(1)
+	}
+	_, upgradeState, err := r.OCMClient.GetScheduledUpgrade(clusterID)
+	if err != nil {
+		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterID, err)
+		os.Exit(1)
+	}
+	if len(upgrades) < 1 {
+		r.Reporter.Warnf("No scheduled upgrades for cluster id '%s'", clusterID)
 		os.Exit(1)
 	}
 

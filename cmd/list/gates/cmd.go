@@ -129,7 +129,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		// check if the cluster upgrade requires gate agreements
-		versionGates, err = r.OCMClient.GetMissingGateAgreements(cluster.ID(), upgradePolicy)
+		versionGates, err = r.OCMClient.GetMissingGateAgreementsClassic(cluster.ID(), upgradePolicy)
 		if err != nil {
 			r.Reporter.Errorf("Failed to check for missing gate agreements upgrade for "+
 				"cluster '%s': %v", clusterKey, err)

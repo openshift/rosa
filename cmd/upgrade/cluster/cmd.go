@@ -39,6 +39,7 @@ var args struct {
 	scheduleDate         string
 	scheduleTime         string
 	nodeDrainGracePeriod string
+	controlPlane         bool
 }
 
 var nodeDrainOptions = []string{
@@ -101,6 +102,13 @@ func init() {
 			"options are ['%s']", strings.Join(nodeDrainOptions, "','")),
 	)
 
+	flags.BoolVar(
+		&args.controlPlane,
+		"control-plane",
+		false,
+		"For Hosted Control Plane, whether the upgrade should cover only the control plane",
+	)
+
 	confirm.AddFlag(flags)
 }
 
@@ -109,6 +117,10 @@ func run(cmd *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	clusterKey := r.GetClusterKey()
+	cluster := r.FetchCluster()
+	scheduleDate := args.scheduleDate
+	scheduleTime := args.scheduleTime
+	isHypershift := cluster.Hypershift().Enabled()
 
 	mode, err := aws.GetMode()
 	if err != nil {
@@ -116,7 +128,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	cluster := r.FetchCluster()
 	if cluster.State() != cmv1.ClusterStateReady {
 		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
@@ -128,24 +139,119 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+	if args.controlPlane && !isHypershift {
+		r.Reporter.Errorf("The '--control-plane' option is only supported for Hosted Control Planes")
 		os.Exit(1)
 	}
-	if scheduledUpgrade != nil {
-		r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
-			upgradeState.Value(),
-			scheduledUpgrade.Version(),
-			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
-		)
+
+	if !args.controlPlane && isHypershift {
+		r.Reporter.Errorf("The '--control-plane' option is currently mandatory for Hosted Control Planes")
+		os.Exit(1)
+	}
+
+	checkExistingScheduledUpgrade(r, cluster, clusterKey)
+
+	availableUpgrades, version := buildVersion(r, cmd, cluster, args.version)
+	err = r.OCMClient.CheckUpgradeClusterVersion(availableUpgrades, version, cluster)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
+
+	if scheduleDate == "" || scheduleTime == "" {
+		interactive.Enable()
+	}
+
+	if isSTS && mode == "" {
+		mode = setMode(r, cmd)
+	}
+
+	// if cluster is sts validate roles are compatible with upgrade version
+	if isSTS {
+		checkSTSRolesCompatibility(r, cluster, mode, version, clusterKey)
+	}
+
+	version, err = ocm.CheckAndParseVersion(availableUpgrades, version)
+	if err != nil {
+		r.Reporter.Errorf("Error parsing version to upgrade to")
+		os.Exit(1)
+	}
+	if !confirm.Confirm("upgrade cluster to version '%s'", version) {
 		os.Exit(0)
 	}
 
-	version := args.version
-	scheduleDate := args.scheduleDate
-	scheduleTime := args.scheduleTime
+	if isHypershift {
+		err = createUpgradePolicyHypershift(r, cmd, clusterKey, cluster, version, scheduleDate, scheduleTime)
+	} else {
+		err = createUpgradePolicyClassic(r, cmd, clusterKey, cluster, version, scheduleDate, scheduleTime)
+	}
+	if err != nil {
+		r.Reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
 
+	// Drain grace period config
+	clusterSpec := buildNodeDrainGracePeriod(r, cmd, cluster)
+	err = r.OCMClient.UpdateCluster(cluster.ID(), r.Creator, clusterSpec)
+	if err != nil {
+		r.Reporter.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	r.Reporter.Infof("Upgrade successfully scheduled for cluster '%s'", clusterKey)
+}
+
+func createUpgradePolicyHypershift(r *rosa.Runtime, cmd *cobra.Command, clusterKey string,
+	cluster *cmv1.Cluster, version string, scheduleDate string, scheduleTime string) error {
+	upgradePolicyBuilder := cmv1.NewControlPlaneUpgradePolicy().ScheduleType("manual").
+		UpgradeType("ControlPlane").Version(version)
+	// TODO: remove forceNow when we support scheduling
+	nextRun := buildUpgradeSchedule(r, cmd, scheduleDate, scheduleTime, true)
+	upgradePolicyBuilder = upgradePolicyBuilder.NextRun(nextRun)
+	upgradePolicy, err := upgradePolicyBuilder.Build()
+	if err != nil {
+		return err
+	}
+	err = checkAndAckMissingAgreementsHypershift(r, cluster, upgradePolicy, clusterKey)
+	if err != nil {
+		return err
+	}
+
+	err = r.OCMClient.ScheduleHypershiftControlPlaneUpgrade(cluster.ID(), upgradePolicy)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func createUpgradePolicyClassic(r *rosa.Runtime, cmd *cobra.Command, clusterKey string,
+	cluster *cmv1.Cluster, version string, scheduleDate string, scheduleTime string) error {
+	upgradePolicyBuilder := cmv1.NewUpgradePolicy().
+		ScheduleType("manual").
+		Version(version)
+	upgradePolicy, err := upgradePolicyBuilder.Build()
+	if err != nil {
+		return err
+	}
+	err = checkAndAckMissingAgreementsClassic(r, cluster, upgradePolicy, clusterKey)
+	if err != nil {
+		return err
+	}
+
+	nextRun := buildUpgradeSchedule(r, cmd, scheduleDate, scheduleTime, false)
+	upgradePolicyBuilder = upgradePolicyBuilder.NextRun(nextRun)
+	upgradePolicy, err = upgradePolicyBuilder.Build()
+	if err != nil {
+		return err
+	}
+	err = r.OCMClient.ScheduleUpgrade(cluster.ID(), upgradePolicy)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func buildVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, version string) ([]string, string) {
 	availableUpgrades, err := r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
 	if err != nil {
 		r.Reporter.Errorf("Failed to find available upgrades: %v", err)
@@ -171,83 +277,71 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
+	return availableUpgrades, version
+}
 
-	err = r.OCMClient.CheckUpgradeClusterVersion(availableUpgrades, version, cluster)
+func setMode(r *rosa.Runtime, cmd *cobra.Command) string {
+	mode, err := interactive.GetOption(interactive.Input{
+		Question: "IAM Roles/Policies upgrade mode",
+		Help:     cmd.Flags().Lookup("mode").Usage,
+		Default:  aws.ModeAuto,
+		Options:  aws.Modes,
+		Required: true,
+	})
 	if err != nil {
-		r.Reporter.Errorf("%v", err)
+		r.Reporter.Errorf("Expected a valid role upgrade mode: %v", err)
 		os.Exit(1)
 	}
+	aws.SetModeKey(mode)
+	return mode
+}
 
-	if scheduleDate == "" || scheduleTime == "" {
-		interactive.Enable()
-	}
-
-	if isSTS && mode == "" {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "IAM Roles/Policies upgrade mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid role upgrade mode: %s", err)
-			os.Exit(1)
-		}
-		aws.SetModeKey(mode)
-	}
-
-	// if cluster is sts validate roles are compatible with upgrade version
-	if isSTS {
-		r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
-			" are compatible with upgrade.", cluster.ID())
-		err = roles.Cmd.RunE(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup()})
-		if err != nil {
-			rolesStr := fmt.Sprintf("rosa upgrade roles -c %s --cluster-version=%s --mode=%s", clusterKey, version, mode)
-			upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
-
-			r.Reporter.Infof("Account/Operator Role policies are not valid with upgrade version %s. "+
-				"Run the following command(s) to upgrade the roles and run the upgrade command again:\n\n"+
-				"\t%s\n"+
-				"\t%s\n", version, rolesStr, upgradeClusterStr)
-			os.Exit(0)
-		}
-		r.Reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
-	}
-
-	version, err = ocm.CheckAndParseVersion(availableUpgrades, version)
+func checkExistingScheduledUpgrade(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string) {
+	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
-		r.Reporter.Errorf("Error parsing version to upgrade to")
+		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
-	if !confirm.Confirm("upgrade cluster to version '%s'", version) {
+	if scheduledUpgrade != nil {
+		r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
+			upgradeState.Value(),
+			scheduledUpgrade.Version(),
+			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
+		)
 		os.Exit(0)
 	}
+}
 
-	upgradePolicyBuilder := cmv1.NewUpgradePolicy().
-		ScheduleType("manual").
-		Version(version)
+func checkSTSRolesCompatibility(r *rosa.Runtime, cluster *cmv1.Cluster, mode string,
+	version string, clusterKey string) {
+	r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
+		" are compatible with upgrade.", cluster.ID())
+	err := roles.Cmd.RunE(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup()})
+	if err != nil {
+		rolesStr := fmt.Sprintf("rosa upgrade roles -c %s --cluster-version=%s --mode=%s", clusterKey, version, mode)
+		upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
 
-	upgradePolicy, err := upgradePolicyBuilder.Build()
-	if err != nil {
-		r.Reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		r.Reporter.Infof("Account/Operator Role policies are not valid with upgrade version %s. "+
+			"Run the following command(s) to upgrade the roles and run the upgrade command again:\n\n"+
+			"\t%s\n"+
+			"\t%s\n", version, rolesStr, upgradeClusterStr)
+		os.Exit(0)
 	}
-	err = checkAndAckMissingAgreements(r, cluster, upgradePolicy, clusterKey)
-	if err != nil {
-		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
-	}
+	r.Reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
+}
+
+func buildUpgradeSchedule(r *rosa.Runtime, cmd *cobra.Command, scheduleDate string, scheduleTime string,
+	forceNow bool) time.Time {
 	// Set the default next run within the next 10 minutes
 	now := time.Now().UTC().Add(time.Minute * 10)
-	if scheduleDate == "" {
+	if forceNow || scheduleDate == "" {
 		scheduleDate = now.Format("2006-01-02")
 	}
-	if scheduleTime == "" {
+	if forceNow || scheduleTime == "" {
 		scheduleTime = now.Format("15:04")
 	}
 
-	if interactive.Enabled() {
+	if !forceNow && interactive.Enabled() {
 		// If datetimes are set, use them in the interactive form, otherwise fallback to 'now'
 		scheduleParsed, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%s %s", scheduleDate, scheduleTime))
 		if err != nil {
@@ -301,9 +395,10 @@ func run(cmd *cobra.Command, _ []string) {
 			"   Schedule time should use the format 'HH:mm'")
 		os.Exit(1)
 	}
+	return nextRun
+}
 
-	upgradePolicyBuilder = upgradePolicyBuilder.NextRun(nextRun)
-
+func buildNodeDrainGracePeriod(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster) ocm.Spec {
 	nodeDrainGracePeriod := ""
 	// Determine if the cluster already has a node drain grace period set and use that as the default
 	nd := cluster.NodeDrainGracePeriod()
@@ -326,6 +421,7 @@ func run(cmd *cobra.Command, _ []string) {
 		nodeDrainGracePeriod = args.nodeDrainGracePeriod
 	}
 	if interactive.Enabled() {
+		var err error
 		nodeDrainGracePeriod, err = interactive.GetOption(interactive.Input{
 			Question: "Node draining",
 			Help:     cmd.Flags().Lookup("node-drain-grace-period").Usage,
@@ -359,40 +455,35 @@ func run(cmd *cobra.Command, _ []string) {
 	if nodeDrainParsed[1] == "hours" || nodeDrainParsed[1] == "hour" {
 		nodeDrainValue = nodeDrainValue * 60
 	}
-
 	clusterSpec := ocm.Spec{
 		NodeDrainGracePeriodInMinutes: nodeDrainValue,
 	}
-
-	upgradePolicy, err = upgradePolicyBuilder.Build()
-	if err != nil {
-		r.Reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
-	err = r.OCMClient.ScheduleUpgrade(cluster.ID(), upgradePolicy)
-	if err != nil {
-		r.Reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
-	err = r.OCMClient.UpdateCluster(cluster.ID(), r.Creator, clusterSpec)
-	if err != nil {
-		r.Reporter.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
-	r.Reporter.Infof("Upgrade successfully scheduled for cluster '%s'", clusterKey)
+	return clusterSpec
 }
 
-func checkAndAckMissingAgreements(r *rosa.Runtime, cluster *cmv1.Cluster, upgradePolicy *cmv1.UpgradePolicy,
+func checkAndAckMissingAgreementsClassic(r *rosa.Runtime, cluster *cmv1.Cluster, upgradePolicy *cmv1.UpgradePolicy,
 	clusterKey string) error {
 	// check if the cluster upgrade requires gate agreements
-	gates, err := r.OCMClient.GetMissingGateAgreements(cluster.ID(), upgradePolicy)
+	gates, err := r.OCMClient.GetMissingGateAgreementsClassic(cluster.ID(), upgradePolicy)
 	if err != nil {
 		return fmt.Errorf("failed to check for missing gate agreements upgrade for "+
 			"cluster '%s': %v", clusterKey, err)
 	}
+	return checkGates(r, cluster, gates, clusterKey)
+}
+
+func checkAndAckMissingAgreementsHypershift(r *rosa.Runtime, cluster *cmv1.Cluster,
+	upgradePolicy *cmv1.ControlPlaneUpgradePolicy, clusterKey string) error {
+	// check if the cluster upgrade requires gate agreements
+	gates, err := r.OCMClient.GetMissingGateAgreementsHypershift(cluster.ID(), upgradePolicy)
+	if err != nil {
+		return fmt.Errorf("failed to check for missing gate agreements upgrade for "+
+			"cluster '%s': %v", clusterKey, err)
+	}
+	return checkGates(r, cluster, gates, clusterKey)
+}
+
+func checkGates(r *rosa.Runtime, cluster *cmv1.Cluster, gates []*cmv1.VersionGate, clusterKey string) error {
 	isWarningDisplayed := false
 	for _, gate := range gates {
 		if !gate.STSOnly() {
@@ -409,7 +500,7 @@ func checkAndAckMissingAgreements(r *rosa.Runtime, cluster *cmv1.Cluster, upgrad
 			str = fmt.Sprintf("%s"+
 				"    URL:         %s\n", str, gate.DocumentationURL())
 
-			err = interactive.PrintHelp(interactive.Help{
+			err := interactive.PrintHelp(interactive.Help{
 				Message: "Read the below description and acknowledge to proceed with upgrade",
 				Steps:   []string{str},
 			})
@@ -422,11 +513,11 @@ func checkAndAckMissingAgreements(r *rosa.Runtime, cluster *cmv1.Cluster, upgrad
 				os.Exit(0)
 			}
 		}
-		err = r.OCMClient.AckVersionGate(cluster.ID(), gate.ID())
+		err := r.OCMClient.AckVersionGate(cluster.ID(), gate.ID())
 		if err != nil {
 			return fmt.Errorf("failed to acknowledge version gate '%s' for cluster '%s': %v",
 				gate.ID(), clusterKey, err)
 		}
 	}
-	return err
+	return nil
 }
