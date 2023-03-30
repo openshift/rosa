@@ -73,27 +73,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	var (
-		hcpVersions       []*cmv1.Version
-		availableVersions []*cmv1.Version
-	)
+	var availableVersions []*cmv1.Version
 
-	// Create a separate slice of only hcp-enabled versions
+	// Remove disabled versions and filter non-HCP versions if needed
 	for _, version := range versions {
-		if !version.HostedControlPlaneEnabled() {
-			continue
-		}
-		hcpVersions = append(hcpVersions, version)
-	}
-
-	// If hosted-cp arg is supplied, use the hcp enabled versions
-	if args.hostedCp {
-		versions = hcpVersions
-	}
-
-	// Remove disabled versions
-	for _, version := range versions {
-		if !version.Enabled() {
+		if !version.Enabled() || (args.hostedCp && !version.HostedControlPlaneEnabled()) {
 			continue
 		}
 		availableVersions = append(availableVersions, version)
