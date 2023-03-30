@@ -32,6 +32,7 @@ import (
 
 var args struct {
 	channelGroup string
+	hostedCp     bool
 }
 
 var Cmd = &cobra.Command{
@@ -52,6 +53,11 @@ func init() {
 		ocm.DefaultChannelGroup,
 		"List only versions from the specified channel group",
 	)
+	flags.BoolVar(
+		&args.hostedCp,
+		"hosted-cp",
+		false,
+		"Lists only versions that are hosted-cp enabled")
 	output.AddFlag(Cmd)
 }
 
@@ -69,9 +75,9 @@ func run(cmd *cobra.Command, _ []string) {
 
 	var availableVersions []*cmv1.Version
 
-	// Remove disabled versions
+	// Remove disabled versions and filter non-HCP versions if needed
 	for _, version := range versions {
-		if !version.Enabled() {
+		if !version.Enabled() || (args.hostedCp && !version.HostedControlPlaneEnabled()) {
 			continue
 		}
 		availableVersions = append(availableVersions, version)
