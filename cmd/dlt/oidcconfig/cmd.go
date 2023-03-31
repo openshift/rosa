@@ -99,7 +99,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
-			Question: "OIDC config creation mode",
+			Question: "OIDC Config deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  aws.ModeAuto,
 			Options:  aws.Modes,

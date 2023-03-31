@@ -133,9 +133,9 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 		interactive.Enable()
 		return
 	}
-	if !args.managed &&
-		(modeNotChanged ||
-			(cmd.Flag("mode").Value.String() == aws.ModeAuto && !cmd.Flags().Changed(installerRoleArnFlag))) {
+	modeIsAuto := cmd.Flag("mode").Value.String() == aws.ModeAuto
+	installerRoleArnNotSet := !cmd.Flags().Changed(installerRoleArnFlag) || args.installerRoleArn == ""
+	if !args.managed && (modeNotChanged || (modeIsAuto && installerRoleArnNotSet)) {
 		interactive.Enable()
 		return
 	}
@@ -177,26 +177,23 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if !args.rawFiles && interactive.Enabled() && !cmd.Flags().Changed("mode") {
-		modeOptions := aws.Modes
+		question := "OIDC Config creation mode"
 		if args.managed {
-			modeOptions = []string{aws.ModeAuto}
+			r.Reporter.Warnf("For a managed OIDC Config only auto mode is supported. " +
+				"However, you may choose the provider creation mode")
+			question = "OIDC Provider creation mode"
 		}
 		mode, err = interactive.GetOption(interactive.Input{
-			Question: "OIDC config creation mode",
+			Question: question,
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  aws.ModeAuto,
-			Options:  modeOptions,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
 			os.Exit(1)
 		}
-	}
-
-	if args.managed && mode != aws.ModeAuto {
-		r.Reporter.Warnf("--%s=true param is not supported outside --mode auto flow", managedFlag)
-		os.Exit(1)
 	}
 
 	if args.managed && args.userPrefix != "" {
@@ -214,7 +211,9 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
 				"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
 			if interactive.Enabled() {
-				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
+				if mode == aws.ModeAuto {
+					args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
+				}
 
 				prefix, err := interactive.GetString(interactive.Input{
 					Question:   "Prefix for OIDC",
@@ -234,14 +233,16 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 			roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
-			roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
-			if err != nil {
-				r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", args.installerRoleArn, err)
-				os.Exit(1)
-			}
-			if !roleExists {
-				r.Reporter.Errorf("Role '%s' does not exist", args.installerRoleArn)
-				os.Exit(1)
+			if roleName != "" {
+				roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
+				if err != nil {
+					r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", args.installerRoleArn, err)
+					os.Exit(1)
+				}
+				if !roleExists {
+					r.Reporter.Errorf("Role '%s' does not exist", args.installerRoleArn)
+					os.Exit(1)
+				}
 			}
 		}
 
