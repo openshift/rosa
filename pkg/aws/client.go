@@ -1065,7 +1065,9 @@ func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
 		SecretId: aws.String(secretArn),
 	})
 	if err != nil {
-		return err
+		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == secretsmanager.ErrCodeResourceNotFoundException {
+			return nil
+		}
 	}
 	_, err = c.smClient.DeleteSecret(
 		&secretsmanager.DeleteSecretInput{
@@ -1073,9 +1075,6 @@ func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
 			SecretId:                   aws.String(secretArn),
 		})
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == secretsmanager.ErrCodeResourceNotFoundException {
-			return nil
-		}
 		return err
 	}
 	return nil
