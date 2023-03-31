@@ -2349,7 +2349,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	}
 	oidcConfigId := args.oidcConfigId
 	isOidcConfig := false
-	if isHostedCP {
+	if isHostedCP && !args.classicOidcConfig {
 		isOidcConfig = true
 	}
 	if oidcConfigId == "" && interactive.Enabled() {
@@ -2627,6 +2627,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.OidcConfigId != "" {
 		command += fmt.Sprintf(" --%s %s", OidcConfigIdFlag, spec.OidcConfigId)
+	}
+	if args.classicOidcConfig {
+		command += fmt.Sprintf(" --%s", ClassicOidcConfigFlag)
 	}
 	if len(spec.Tags) > 0 {
 		tags := []string{}
