@@ -134,7 +134,7 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 		return
 	}
 	modeIsAuto := cmd.Flag("mode").Value.String() == aws.ModeAuto
-	installerRoleArnNotSet := !cmd.Flags().Changed(installerRoleArnFlag) || args.installerRoleArn == ""
+	installerRoleArnNotSet := (!cmd.Flags().Changed(installerRoleArnFlag) || args.installerRoleArn == "") && !confirm.Yes()
 	if !args.managed && (modeNotChanged || (modeIsAuto && installerRoleArnNotSet)) {
 		interactive.Enable()
 		return
@@ -210,11 +210,10 @@ func run(cmd *cobra.Command, argv []string) {
 		if !args.rawFiles {
 			r.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
 				"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
+			if mode == aws.ModeAuto && (interactive.Enabled() || confirm.Yes()) {
+				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
+			}
 			if interactive.Enabled() {
-				if mode == aws.ModeAuto {
-					args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
-				}
-
 				prefix, err := interactive.GetString(interactive.Input{
 					Question:   "Prefix for OIDC",
 					Help:       cmd.Flags().Lookup(userPrefixFlag).Usage,
