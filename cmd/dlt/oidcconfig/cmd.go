@@ -122,11 +122,13 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	oidcConfigStrategy.execute(r)
-	r.OCMClient.DeleteOidcConfig(args.oidcConfigId)
 	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.IssuerUrl})
-	if r.Reporter.IsTerminal() && mode == aws.ModeManual {
-		r.Reporter.Infof("Registered OIDC Config ID has been removed from OCM and can no longer be used. " +
-			"Remember to run given commands to clean up aws resources.")
+	r.OCMClient.DeleteOidcConfig(args.oidcConfigId)
+	if r.Reporter.IsTerminal() {
+		r.Reporter.Infof("Registered OIDC Config ID has been removed from OCM and can no longer be used")
+		if mode == aws.ModeManual {
+			r.Reporter.Infof("Remember to run given commands to clean up aws resources")
+		}
 	}
 }
 
@@ -189,11 +191,11 @@ type DeleteOidcConfigStrategy interface {
 	execute(r *rosa.Runtime)
 }
 
-type DeleteManagedOidcConfigAutoStrategy struct {
+type deleteUnmanagedOidcConfigAutoStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *DeleteManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *deleteUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	bucketName := s.oidcConfig.BucketName
 	privateKeySecretArn := s.oidcConfig.PrivateKeySecretArn
 	var spin *spinner.Spinner
@@ -222,11 +224,11 @@ func (s *DeleteManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	}
 }
 
-type DeleteManagedOidcConfigManualStrategy struct {
+type deleteUnmanagedOidcConfigManualStrategy struct {
 	oidcConfig OidcConfigInput
 }
 
-func (s *DeleteManagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
+func (s *deleteUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	commands := []string{}
 	bucketName := s.oidcConfig.BucketName
 	privateKeySecretArn := s.oidcConfig.PrivateKeySecretArn
@@ -250,19 +252,21 @@ func (s *DeleteManagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	fmt.Println(awscb.JoinCommands(commands))
 }
 
-type DeleteManagedOidcConfigStrategy struct{}
+type deleteManagedOidcConfigStrategy struct{}
 
-func (s *DeleteManagedOidcConfigStrategy) execute(r *rosa.Runtime) {}
+func (s *deleteManagedOidcConfigStrategy) execute(r *rosa.Runtime) {
+	//It is supposed to do nothing as the call to unregister from OCM does everything
+}
 
 func getOidcConfigStrategy(mode string, input OidcConfigInput) (DeleteOidcConfigStrategy, error) {
 	if input.Managed {
-		return &DeleteManagedOidcConfigStrategy{}, nil
+		return &deleteManagedOidcConfigStrategy{}, nil
 	}
 	switch mode {
 	case aws.ModeAuto:
-		return &DeleteManagedOidcConfigAutoStrategy{oidcConfig: input}, nil
+		return &deleteUnmanagedOidcConfigAutoStrategy{oidcConfig: input}, nil
 	case aws.ModeManual:
-		return &DeleteManagedOidcConfigManualStrategy{oidcConfig: input}, nil
+		return &deleteUnmanagedOidcConfigManualStrategy{oidcConfig: input}, nil
 	default:
 		return nil, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 	}
