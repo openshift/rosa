@@ -68,6 +68,7 @@ var pathTreeData = `{
         "pull_secrets": {
           "-": null
         },
+        "quota_authorizations": null,
         "registries": {
           "-": null
         },
@@ -201,6 +202,7 @@ var pathTreeData = `{
               }
             },
             "credentials": null,
+            "delete_protection": null,
             "external_configuration": {
               "labels": {
                 "-": null
@@ -347,7 +349,8 @@ var pathTreeData = `{
     "service_mgmt": {
       "v1": {
         "services": {
-          "-": null
+          "-": null,
+          "version_inquiry": null
         }
       }
     },

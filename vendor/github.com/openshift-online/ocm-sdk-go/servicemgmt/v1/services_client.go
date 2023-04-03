@@ -80,6 +80,14 @@ func (c *ServicesClient) Service(id string) *ManagedServiceClient {
 	)
 }
 
+// VersionInquiry returns the target 'version_inquiry' resource.
+func (c *ServicesClient) VersionInquiry() *VersionInquiryClient {
+	return NewVersionInquiryClient(
+		c.transport,
+		path.Join(c.path, "version_inquiry"),
+	)
+}
+
 // ServicesAddRequest is the request for the 'add' method.
 type ServicesAddRequest struct {
 	transport http.RoundTripper
