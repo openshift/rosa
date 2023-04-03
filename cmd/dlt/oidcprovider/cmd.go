@@ -60,7 +60,6 @@ func init() {
 		"",
 		"Endpoint url for deleting OIDC provider, this flag needs to be used in case of reusable OIDC Config",
 	)
-	flags.MarkHidden(OidcEndpointUrlFlag)
 
 	ocm.AddOptionalClusterFlag(Cmd)
 	aws.AddModeFlag(Cmd)

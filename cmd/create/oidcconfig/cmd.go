@@ -70,8 +70,7 @@ var Cmd = &cobra.Command{
 		"It also creates a Secret in Secrets Manager containing the private key.",
 	Example: `  # Create OIDC config
 	rosa create oidc-config`,
-	Hidden: true,
-	Run:    run,
+	Run: run,
 }
 
 const (

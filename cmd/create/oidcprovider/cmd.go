@@ -67,7 +67,6 @@ func init() {
 		"",
 		"Endpoint url for reusable OIDC config",
 	)
-	flags.MarkHidden(OidcEndpointUrlFlag)
 
 	ocm.AddOptionalClusterFlag(Cmd)
 	aws.AddModeFlag(Cmd)

@@ -74,14 +74,15 @@ func init() {
 		&args.oidcEndpointUrl,
 		OidcEndpointUrlFlag,
 		"",
-		"Oidc endpoint URL to add as the trusted relationship to the operator roles.",
+		"Oidc endpoint URL to add as the trusted relationship to the operator roles. "+
+			"Not to be used alongside --cluster flag.",
 	)
 
 	flags.StringVar(
 		&args.installerRoleArn,
 		InstallerRoleArnFlag,
 		"",
-		"Installer role ARN supplied to retrieve operator policy prefix and path.",
+		"Installer role ARN supplied to retrieve operator policy prefix and path. Not to be used alongside --cluster flag.",
 	)
 
 	flags.BoolVar(
@@ -152,6 +153,12 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	if !cmd.Flag("cluster").Changed && !cmd.Flag(PrefixFlag).Changed && !isProgmaticallyCalled {
 		r.Reporter.Errorf("Either a cluster key for STS cluster or an operator roles prefix must be specified.")
+		os.Exit(1)
+	}
+
+	if cmd.Flag("cluster").Changed && cmd.Flag(PrefixFlag).Changed {
+		r.Reporter.Errorf("A cluster key for STS cluster and an operator roles prefix " +
+			"cannot be specified alongside each other.")
 		os.Exit(1)
 	}
 
