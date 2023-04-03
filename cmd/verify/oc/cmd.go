@@ -44,7 +44,7 @@ func run(_ *cobra.Command, _ []string) {
 		reporter.Infof("Verifying whether OpenShift command-line tool is available...")
 	}
 
-	output, err := exec.Command("oc", "version").Output()
+	output, err := exec.Command("oc", "version", "--client").Output()
 	if output == nil && err != nil {
 		reporter.Warnf("OpenShift command-line tool is not installed.\n" +
 			"Run 'rosa download oc' to download the latest version, then add it to your PATH.")
