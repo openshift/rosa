@@ -61,7 +61,6 @@ func init() {
 		"",
 		"Operator role prefix, this flag needs to be used in case of reusable OIDC Config",
 	)
-	flags.MarkHidden(PrefixFlag)
 
 	ocm.AddOptionalClusterFlag(Cmd)
 	aws.AddModeFlag(Cmd)

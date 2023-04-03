@@ -43,8 +43,7 @@ var Cmd = &cobra.Command{
 	Long:    "Cleans up OIDC config based on registered OIDC Config ID.",
 	Example: `  # Delete OIDC config based on registered OIDC Config ID that has been supplied
 	rosa delete oidc-config --oidc-config-id <oidc_config_id>`,
-	Hidden: true,
-	Run:    run,
+	Run: run,
 }
 
 const (
