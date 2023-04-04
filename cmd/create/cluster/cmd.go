@@ -1323,7 +1323,6 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Error getting region: %v", err)
 		os.Exit(1)
 	}
-
 	// Filter regions by OCP version for displaying in interactive mode
 	var versionFilter string
 	if interactive.Enabled() {
@@ -1331,13 +1330,20 @@ func run(cmd *cobra.Command, _ []string) {
 	} else {
 		versionFilter = ""
 	}
-
 	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID, versionFilter,
 		awsClient, isHostedCP, shardPinningEnabled)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
+	if region == "" {
+		r.Reporter.Errorf("Expected a valid AWS region")
+		os.Exit(1)
+	} else if found := helper.Contains(regionList, region); isHostedCP && !shardPinningEnabled && !found {
+		r.Reporter.Warnf("Region '%s' not currently available for Hosted Control Plane cluster.", region)
+		interactive.Enable()
+	}
+
 	if interactive.Enabled() {
 		region, err = interactive.GetOption(interactive.Input{
 			Question: "AWS region",
@@ -1351,29 +1357,14 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
-	if region == "" {
-		r.Reporter.Errorf("Expected a valid AWS region")
-		os.Exit(1)
-	} else {
-		if isHostedCP && !interactive.Enabled() && !shardPinningEnabled {
-			found := helper.Contains(regionList, region)
-			if !found {
-				r.Reporter.Errorf("Region '%s' not currently available for Hosted Cluster. "+
-					"Use --region to specify another region, and rosa list regions to see what's available.", region)
-				os.Exit(1)
-			}
-		}
-
-		if supportsMultiAZ, found := regionAZ[region]; found {
-			if !supportsMultiAZ && multiAZ {
-				r.Reporter.Errorf("Region '%s' does not support multiple availability zones", region)
-				os.Exit(1)
-			}
-		} else {
-			r.Reporter.Errorf("Region '%s' is not supported for this AWS account", region)
+	if supportsMultiAZ, found := regionAZ[region]; found {
+		if !supportsMultiAZ && multiAZ {
+			r.Reporter.Errorf("Region '%s' does not support multiple availability zones", region)
 			os.Exit(1)
 		}
+	} else {
+		r.Reporter.Errorf("Region '%s' is not supported for this AWS account", region)
+		os.Exit(1)
 	}
 
 	awsClient, err = aws.NewClient().
@@ -1538,6 +1529,9 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			mapSubnetToAZ[subnetID] = availabilityZone
 			mapAZCreated[availabilityZone] = false
+		}
+		if isHostedCP && !subnetsProvided {
+			interactive.Enable()
 		}
 		if ((privateLink && !subnetsProvided) || interactive.Enabled()) &&
 			len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3) {
@@ -2351,6 +2345,9 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	isOidcConfig := false
 	if isHostedCP && !args.classicOidcConfig {
 		isOidcConfig = true
+		if oidcConfigId == "" {
+			interactive.Enable()
+		}
 	}
 	if oidcConfigId == "" && interactive.Enabled() {
 		if !isHostedCP {
