@@ -72,11 +72,11 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tNAME\tSTATE\tTYPE\n")
+	fmt.Fprintf(writer, "ID\tNAME\tSTATE\tTOPOLOGY\n")
 	for _, cluster := range clusters {
-		typeOutput := "Classic - Mint"
+		typeOutput := "Classic"
 		if cluster.AWS() != nil && cluster.AWS().STS() != nil && cluster.AWS().STS().Enabled() {
-			typeOutput = "Classic - STS"
+			typeOutput = "Classic (STS)"
 		}
 		if cluster.Hypershift().Enabled() {
 			typeOutput = "Hosted CP"
