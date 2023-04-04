@@ -179,13 +179,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Openshift version to use.
-	versionList, err := getVersionList(r.OCMClient)
+	version, err := r.OCMClient.ManagedServiceVersionInquiry(args.ServiceType)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	version := versionList[0]
-	minor := ocm.GetVersionMinor(version)
+	versionMajorMinor := ocm.GetVersionMinor(version)
 
 	// Add-on parameter logic
 	addOn, err := r.OCMClient.GetAddOn(args.ServiceType)
@@ -315,7 +314,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	role := aws.AccountRoles[aws.InstallerAccountRole]
 
-	roleARNs, err := r.AWSClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+	roleARNs, err := r.AWSClient.FindRoleARNs(aws.InstallerAccountRole, versionMajorMinor)
 	if err != nil {
 		r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 		os.Exit(1)
@@ -356,7 +355,7 @@ func run(cmd *cobra.Command, argv []string) {
 				// Already dealt with
 				continue
 			}
-			roleARNs, err := r.AWSClient.FindRoleARNs(roleType, minor)
+			roleARNs, err := r.AWSClient.FindRoleARNs(roleType, versionMajorMinor)
 			if err != nil {
 				r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 				os.Exit(1)
@@ -465,28 +464,6 @@ func run(cmd *cobra.Command, argv []string) {
 		"\t%s\n"+
 		"\t%s\n",
 		rolesCMD, oidcCMD)
-}
-
-func getVersionList(ocmClient *ocm.Client) (versionList []string, err error) {
-	vs, err := ocmClient.GetVersions("")
-	if err != nil {
-		err = fmt.Errorf("Failed to find available OpenShift versions: %s", err)
-		return
-	}
-
-	for _, v := range vs {
-		if !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
-			continue
-		}
-		versionList = append(versionList, v.ID())
-	}
-
-	if len(versionList) == 0 {
-		err = fmt.Errorf("Failed to find available OpenShift versions")
-		return
-	}
-
-	return
 }
 
 func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {

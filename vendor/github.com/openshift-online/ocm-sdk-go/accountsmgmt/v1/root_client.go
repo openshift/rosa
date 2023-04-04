@@ -203,6 +203,16 @@ func (c *Client) PullSecrets() *PullSecretsClient {
 	)
 }
 
+// QuotaAuthorizations returns the target 'quota_authorizations' resource.
+//
+// Reference to the resource that manages quota authorizations.
+func (c *Client) QuotaAuthorizations() *QuotaAuthorizationsClient {
+	return NewQuotaAuthorizationsClient(
+		c.transport,
+		path.Join(c.path, "quota_authorizations"),
+	)
+}
+
 // Registries returns the target 'registries' resource.
 //
 // Reference to the resource that manages the collection of registries.

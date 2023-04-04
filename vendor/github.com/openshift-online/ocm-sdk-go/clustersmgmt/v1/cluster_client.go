@@ -189,6 +189,14 @@ func (c *ClusterClient) Credentials() *CredentialsClient {
 	)
 }
 
+// DeleteProtection returns the target 'delete_protection' resource.
+func (c *ClusterClient) DeleteProtection() *DeleteProtectionClient {
+	return NewDeleteProtectionClient(
+		c.transport,
+		path.Join(c.path, "delete_protection"),
+	)
+}
+
 // ExternalConfiguration returns the target 'external_configuration' resource.
 //
 // Reference to the resource that manages the external configuration.
