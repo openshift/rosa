@@ -110,11 +110,9 @@ func run(_ *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "ROLE NAME\tROLE TYPE\tROLE ARN\tOPENSHIFT VERSION\tAWS Managed\n")
 	for _, accountRole := range accountRoles {
-		var awsManaged string
+		awsManaged := "No"
 		if accountRole.ManagedPolicy {
 			awsManaged = "Yes"
-		} else {
-			awsManaged = "No"
 		}
 		fmt.Fprintf(
 			writer,
