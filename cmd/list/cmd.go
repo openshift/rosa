@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/machinepool"
 	"github.com/openshift/rosa/cmd/list/ocmroles"
 	"github.com/openshift/rosa/cmd/list/oidcconfig"
+	"github.com/openshift/rosa/cmd/list/operatorroles"
 	"github.com/openshift/rosa/cmd/list/region"
 	"github.com/openshift/rosa/cmd/list/service"
 	"github.com/openshift/rosa/cmd/list/upgrade"
@@ -57,6 +58,7 @@ func init() {
 	Cmd.AddCommand(version.Cmd)
 	Cmd.AddCommand(instancetypes.Cmd)
 	Cmd.AddCommand(accountroles.Cmd)
+	Cmd.AddCommand(operatorroles.Cmd)
 	Cmd.AddCommand(ocmroles.Cmd)
 	Cmd.AddCommand(userroles.Cmd)
 	Cmd.AddCommand(service.Cmd)

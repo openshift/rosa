@@ -775,6 +775,91 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 	return accountRoles, nil
 }
 
+func (c *awsClient) ListOperatorRoles(version string) (map[string][]Role, error) {
+	operatorMap := map[string][]Role{}
+	roles, err := c.ListRoles()
+	if err != nil {
+		return operatorMap, err
+	}
+	prefixOperatorRoleRE := regexp.MustCompile(`(?i)(?P<Prefix>[\w+=,.@-]+)-(openshift|kube-system)`)
+	for _, role := range roles {
+		operatorRole := Role{}
+		matches := prefixOperatorRoleRE.FindStringSubmatch(*role.RoleName)
+		if len(matches) == 0 {
+			continue
+		}
+		prefixIndex := prefixOperatorRoleRE.SubexpIndex("Prefix")
+		foundPrefix := strings.ToLower(matches[prefixIndex])
+		if _, mapOk := operatorMap[foundPrefix]; !mapOk {
+			operatorMap[foundPrefix] = []Role{}
+		}
+		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return operatorMap, err
+		}
+		for _, tag := range listRoleTagsOutput.Tags {
+			switch aws.StringValue(tag.Key) {
+			case tags.ManagedPolicies:
+				if aws.StringValue(tag.Value) == tags.True {
+					operatorRole.ManagedPolicy = true
+				}
+			}
+		}
+		if operatorRole.ManagedPolicy {
+			operatorRole.RoleName = aws.StringValue(role.RoleName)
+			operatorRole.RoleARN = aws.StringValue(role.Arn)
+			operatorMap[foundPrefix] = append(operatorMap[foundPrefix], operatorRole)
+			continue
+		}
+
+		attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return operatorMap, err
+		}
+		for _, policy := range attachedPoliciesOutput.AttachedPolicies {
+			listPolicyTagsOutput, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
+				PolicyArn: policy.PolicyArn,
+			})
+			if err != nil {
+				return operatorMap, err
+			}
+			isTagged := false
+			skip := false
+			for _, tag := range listPolicyTagsOutput.Tags {
+				switch aws.StringValue(tag.Key) {
+				case tags.OpenShiftVersion:
+					tagValue := aws.StringValue(tag.Value)
+					if version != "" && tagValue != version {
+						skip = true
+						break
+					}
+					isTagged = true
+					operatorRole.Version = tagValue
+				}
+			}
+			if isTagged && !skip {
+				operatorRole.RoleName = aws.StringValue(role.RoleName)
+				operatorRole.RoleARN = aws.StringValue(role.Arn)
+				operatorMap[foundPrefix] = append(operatorMap[foundPrefix], operatorRole)
+			}
+		}
+	}
+	emptyListKeys := []string{}
+	for key, list := range operatorMap {
+		if len(list) == 0 {
+			emptyListKeys = append(emptyListKeys, key)
+		}
+	}
+	for _, key := range emptyListKeys {
+		delete(operatorMap, key)
+	}
+	return operatorMap, nil
+}
+
 // Check if it is one of the ROSA account roles
 func checkIfAccountRole(roleName *string) bool {
 	for _, prefix := range AccountRoles {
@@ -1121,7 +1206,7 @@ func (c *awsClient) GetOperatorRolesFromAccountByPrefix(prefix string,
 	if err != nil {
 		return roleList, err
 	}
-	prefixOperatorRoleRE := regexp.MustCompile(("(?i)" + fmt.Sprintf("(%s)-(openshift|kube)", prefix)))
+	prefixOperatorRoleRE := regexp.MustCompile(("(?i)" + fmt.Sprintf("(%s)-(openshift|kube-system)", prefix)))
 	for _, role := range roles {
 		if !checkIfROSAOperatorRole(role.RoleName, credRequest) {
 			continue
