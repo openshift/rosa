@@ -17,7 +17,6 @@ limitations under the License.
 package rosa
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -48,7 +47,6 @@ const (
 func run(_ *cobra.Command, _ []string) {
 	rprtr := reporter.CreateReporterOrExit()
 
-	message := "Your ROSA CLI is up to date.\n"
 	currVersion, err := version.NewVersion(info.Version)
 	if err != nil {
 		rprtr.Errorf("There was a problem retrieving current version: %s", err)
@@ -60,12 +58,13 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if currVersion.LessThan(latestVersionFromMirror) {
-		message = fmt.Sprintf(
-			"There is a newer release version '%s', please consider updating: %s\n",
+		rprtr.Warnf(
+			"There is a newer release version '%s', please consider updating: %s",
 			latestVersionFromMirror, DownloadLatestMirrorFolder,
 		)
+	} else if rprtr.IsTerminal() {
+		rprtr.Infof("Your ROSA CLI is up to date.")
 	}
-	fmt.Fprint(os.Stdout, message)
 }
 
 func retrievePossibleVersionsFromMirror() ([]string, error) {
