@@ -2,6 +2,72 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.16 Apr 10 2023
+
+- Use cluster attribute `ManagedPolicies` to identify cluster with managed policies
+- fix: add red-hat-managed tag to oidc config and oidc provider resources
+- feat: add possibility to reuse operator roles
+- feat: add description when available for error state in describe cluster
+- Describe cluster - add managed policies field to the output
+- SDA-8325 Add subnets field for Default Worker
+- Create cluster - roles with managed policies
+- fix: block --watch when on manual mode for creating cluster
+- SDA-8040 Align machinepool condition for enter in interactive mode
+- Update k8s.io/apimachinery to v0.26.2
+- Create OCM admin roles in manual mode - add all tags to policy
+- feat: Add option to remove oidc provider created from BYO OIDC
+- feat: add possibility to delete operator roles from prefix
+- feat: Allow creating operator roles using prefix and byo oidc options
+- SDA-8218 Support version parameter on hosted machine pools
+- Fix inconsistencies across commands providing a watch flag
+- fix: check if cmd was progmatically called before erroring
+- fix: does not check flags when is progmatically called
+- fix: add reachability check for oidc endpoint url when creating operator role by prefix
+- fix: use role name instead of role arn for manual creation by prefix
+- fix: add check for cluster version compatibility when reusing the operator roles
+- Bump sdk to 0.1.322
+- Ran go mod vendor
+- Go mod tidy
+- fix: adhering to aws change where it now returns 404
+- Bump SDK to v0.1.324 and go mod vendor+tidy
+- Create account roles - hide `hosted-cp` flag
+- Create account roles - prompt accurate message for cluster creation
+- Fix hostedcp multiaz subnets validation on interactive mode
+- Upgrade cluster with hosted CP policies
+- Addressed review comments
+- Rawid
+- Modification
+- feat: use oidc-config-id in cluster flow
+- feat: update oidc config commands to use /oidc_configs endpoints
+- Delete account roles - classic ROSA
+- fix: use oidcConfigIdFlag instead of var
+- feat: Add message informing which role is being deleted
+- fix: check specific prefix instead of all op roles that start with prefix
+- Fixed rebase issue
+- fix: cluster flow oidc provider flow should use issuer url instead
+- fix: interactive mode in unmanaged oidc config creation
+- feat: Extra message when operator roles prefix is already in use
+- fix: favoring regex when deleting operator roles by prefix
+- feat: Better UX when using oidc config id and related commands
+- Delete account-roles - delete both types for the default flow
+- Added hosted-cp to rosa list versions
+- Better way of checking for hcp-enabled versions
+- fix: ux for oidc-config cmds and cluster creation
+- fix: fixing some ui issues for oidc configs
+- fix: interactive mode --classic-oidc-config param
+- Improve taint validation
+- oc client version local check only
+- fix: always show message for unregistering oidc configuration
+- fix: if -y is specified no need to go into interactive mode creating oidc-config
+- feat: Expose oidc config commands and params
+- go: upgraded github.com/openshift-online/ocm-sdk-go v0.1.327 => v0.1.330
+- fix: checking Account roles against proper Openshift version for the 'create service' command.
+- feat: Add type of cluster in list clusters command
+- fix: force interactive enable if required params for hcp are not supplied
+- fix: proper naming for topology description in list clusters
+- feat: add list operator-roles command
+- verify: Ensure stdout is only printed in terminal mode
+
 == 1.2.15 Feb 23 2023
 
 - fix: improve error messages for deleting oidc-config
