@@ -124,7 +124,8 @@ func run(cmd *cobra.Command, argv []string) {
 	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.IssuerUrl})
 	r.OCMClient.DeleteOidcConfig(args.oidcConfigId)
 	if r.Reporter.IsTerminal() {
-		r.Reporter.Infof("Registered OIDC Config ID has been removed from OCM and can no longer be used")
+		r.Reporter.Infof("Registered OIDC Config ID '%s'"+
+			" has been removed from OCM and can no longer be used", args.oidcConfigId)
 		if mode == aws.ModeManual {
 			r.Reporter.Infof("Remember to run given commands to clean up aws resources")
 		}
