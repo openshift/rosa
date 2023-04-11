@@ -19,10 +19,10 @@ package ocm
 import (
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 
@@ -115,7 +115,7 @@ func ValidateAdditionalTrustBundle(val interface{}) error {
 		if additionalTrustBundleFile == "" {
 			return nil
 		}
-		cert, err := ioutil.ReadFile(additionalTrustBundleFile)
+		cert, err := os.ReadFile(additionalTrustBundleFile)
 		if err != nil {
 			return err
 		}

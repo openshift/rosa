@@ -22,7 +22,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -65,7 +64,7 @@ func Load() (cfg *Config, err error) {
 		return
 	}
 	// #nosec G304
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		err = fmt.Errorf("Failed to read config file '%s': %v", file, err)
 		return
@@ -94,7 +93,7 @@ func Save(cfg *Config) error {
 	if err != nil {
 		return fmt.Errorf("Failed to marshal config: %v", err)
 	}
-	err = ioutil.WriteFile(file, data, 0600)
+	err = os.WriteFile(file, data, 0600)
 	if err != nil {
 		return fmt.Errorf("Failed to write file '%s': %v", file, err)
 	}

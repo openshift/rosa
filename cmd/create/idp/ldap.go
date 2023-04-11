@@ -19,8 +19,8 @@ package idp
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -109,7 +109,7 @@ func buildLdapIdp(cmd *cobra.Command,
 		if ldapInsecure {
 			return idpBuilder, fmt.Errorf("Cannot use certificate bundle with an insecure connection")
 		}
-		cert, err := ioutil.ReadFile(caPath)
+		cert, err := os.ReadFile(caPath)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
 		}
