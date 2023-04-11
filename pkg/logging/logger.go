@@ -30,6 +30,7 @@ func NewLogger() (result *logrus.Logger) {
 	result = logrus.New()
 	result.SetFormatter(&logrus.TextFormatter{
 		DisableColors: true,
+		DisableQuote:  true,
 		FullTimestamp: true,
 	})
 
