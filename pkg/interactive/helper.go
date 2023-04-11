@@ -67,7 +67,6 @@ func GetInstallerRoleArn(r *rosa.Runtime, cmd *cobra.Command,
 		}
 		r.Reporter.Warnf("More than one %s role found", role.Name)
 		if !Enabled() && confirm.Yes() {
-			r.Reporter.Infof("Using %s for the %s role", defaultRoleARN, role.Name)
 			roleARN = defaultRoleARN
 		} else {
 			if roleARN != "" {

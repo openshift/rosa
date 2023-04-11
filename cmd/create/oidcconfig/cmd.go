@@ -207,10 +207,15 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if !args.managed {
 		if !args.rawFiles {
-			r.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
-				"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
-			if mode == aws.ModeAuto && (interactive.Enabled() || confirm.Yes()) {
+			if r.Reporter.IsTerminal() {
+				r.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
+					"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
+			}
+			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
 				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
+			}
+			if r.Reporter.IsTerminal() {
+				r.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
 			}
 			if interactive.Enabled() {
 				prefix, err := interactive.GetString(interactive.Input{
