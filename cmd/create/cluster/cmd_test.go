@@ -12,9 +12,10 @@ import (
 var _ = Describe("Validates OCP version", func() {
 
 	const (
-		nightly = "nightly"
-		stable  = "stable"
-		fast    = "fast"
+		nightly   = "nightly"
+		stable    = "stable"
+		candidate = "candidate"
+		fast      = "fast"
 	)
 	var client *ocm.Client
 	BeforeEach(func() {
@@ -26,34 +27,34 @@ var _ = Describe("Validates OCP version", func() {
 	var _ = Context("when creating a hosted cluster", func() {
 
 		It("OK: Validates successfully a cluster for hosted clusters with a supported version", func() {
-			v, err := client.ValidateVersion("4.12.0", []string{"4.12.0"}, stable, false, true)
+			v, err := client.ValidateVersion("4.12.5", []string{"4.12.5"}, stable, false, true)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(v).To(Equal("openshift-v4.12.0"))
+			Expect(v).To(Equal("openshift-v4.12.5"))
 		})
 
 		It("OK: Validates successfully a nightly version of OCP for hosted clusters "+
 			"with a supported version", func() {
-			v, err := client.ValidateVersion("4.12.0-0.nightly-2022-11-25-185455-nightly",
-				[]string{"4.12.0-0.nightly-2022-11-25-185455-nightly"}, nightly, false, true)
+			v, err := client.ValidateVersion("4.12.0-0.nightly-2023-04-10-222146",
+				[]string{"4.12.0-0.nightly-2023-04-10-222146"}, nightly, false, true)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(v).To(Equal("openshift-v4.12.0-0.nightly-2022-11-25-185455-nightly-nightly"))
+			Expect(v).To(Equal("openshift-v4.12.0-0.nightly-2023-04-10-222146-nightly"))
 		})
 
 		It("KO: Fails with a nightly version of OCP for hosted clusters "+
 			"in a not supported version", func() {
-			v, err := client.ValidateVersion("4.11.0-0.nightly-2022-10-17-040259-nightly",
-				[]string{"4.11.0-0.nightly-2022-10-17-040259-nightly"}, nightly, false, true)
+			v, err := client.ValidateVersion("4.11.0-0.nightly-2022-10-17-040259",
+				[]string{"4.11.0-0.nightly-2022-10-17-040259"}, nightly, false, true)
 			Expect(err).To(BeEquivalentTo(
-				fmt.Errorf("version '4.11.0-0.nightly-2022-10-17-040259-nightly' " +
+				fmt.Errorf("version '4.11.0-0.nightly-2022-10-17-040259' " +
 					"is not supported for hosted clusters")))
 			Expect(v).To(Equal(""))
 		})
 
 		It("OK: Validates successfully the next major release of OCP for hosted clusters "+
 			"with a supported version", func() {
-			v, err := client.ValidateVersion("4.13.0", []string{"4.13.0"}, fast, false, true)
+			v, err := client.ValidateVersion("4.13.0-rc.2", []string{"4.13.0-rc.2"}, candidate, false, true)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(v).To(Equal("openshift-v4.13.0-fast"))
+			Expect(v).To(Equal("openshift-v4.13.0-rc.2-candidate"))
 		})
 
 		It(`KO: Fails to validate a cluster for a hosted
@@ -67,7 +68,7 @@ var _ = Describe("Validates OCP version", func() {
 		when the user provides an invalid or malformed version`, func() {
 			v, err := client.ValidateVersion("foo.bar", []string{"foo.bar"}, stable, false, true)
 			Expect(err).To(BeEquivalentTo(
-				fmt.Errorf("error while parsing OCP version 'foo.bar': Malformed version: foo.bar")))
+				fmt.Errorf("version 'foo.bar' was not found")))
 			Expect(v).To(BeEmpty())
 		})
 	})

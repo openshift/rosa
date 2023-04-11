@@ -115,7 +115,7 @@ func HasSTSSupportMinor(minor string) bool {
 
 func HasHostedCPSupport(version *cmv1.Version) (bool, error) {
 	if !version.HostedControlPlaneEnabled() {
-		return false, nil
+		return false, fmt.Errorf("version '%s' is not supported for hosted clusters", version.RawID())
 	}
 	v, err := ver.NewVersion(version.RawID())
 	if err != nil {
@@ -365,6 +365,9 @@ func (c *Client) ValidateVersion(version string, versionList []string, channelGr
 			Send()
 		if err != nil {
 			return "", handleErr(response.Error(), err)
+		}
+		if response.Total() == 0 {
+			return "", fmt.Errorf("version '%s' was not found", version)
 		}
 		valid, err := HasHostedCPSupport(response.Items().Get(0))
 		if err != nil || !valid {
