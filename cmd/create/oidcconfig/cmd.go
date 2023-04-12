@@ -491,6 +491,28 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 		Build()
 	commands = append(commands, putBucketTaggingCommand)
 
+	PutPublicAccessBlockCommand := awscb.NewS3ApiCommandBuilder().
+		SetCommand(awscb.PutPublicAccessBlock).
+		AddParam(awscb.Bucket, bucketName).
+		AddParam(awscb.PublicAccessBlockConfiguration,
+			"BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=false,RestrictPublicBuckets=false").
+		Build()
+	commands = append(commands, PutPublicAccessBlockCommand)
+
+	readOnlyPolicyFilename := fmt.Sprintf("readOnlyPolicy-%s.json", bucketName)
+	err = helper.SaveDocument(fmt.Sprintf(aws.ReadOnlyAnonUserPolicyTemplate, bucketName), readOnlyPolicyFilename)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem saving bucket policy document to a file: %s", err)
+		os.Exit(1)
+	}
+	putBucketBucketPolicyCommand := awscb.NewS3ApiCommandBuilder().
+		SetCommand(awscb.PutBucketPolicy).
+		AddParam(awscb.Bucket, bucketName).
+		AddParam(awscb.Policy, fmt.Sprintf("file://%s", readOnlyPolicyFilename)).
+		Build()
+	commands = append(commands, putBucketBucketPolicyCommand)
+	commands = append(commands, fmt.Sprintf("rm %s", readOnlyPolicyFilename))
+
 	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
 	err = helper.SaveDocument(discoveryDocument, discoveryDocumentFilename)
 	if err != nil {
@@ -499,7 +521,6 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	}
 	putDiscoveryDocumentCommand := awscb.NewS3ApiCommandBuilder().
 		SetCommand(awscb.PutObject).
-		AddParam(awscb.Acl, aws.AclPublicRead).
 		AddParam(awscb.Body, fmt.Sprintf("./%s", discoveryDocumentFilename)).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.Key, discoveryDocumentKey).
@@ -515,7 +536,6 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	}
 	putJwksCommand := awscb.NewS3ApiCommandBuilder().
 		SetCommand(awscb.PutObject).
-		AddParam(awscb.Acl, aws.AclPublicRead).
 		AddParam(awscb.Body, fmt.Sprintf("./%s", jwksFilename)).
 		AddParam(awscb.Bucket, bucketName).
 		AddParam(awscb.Key, jwksKey).

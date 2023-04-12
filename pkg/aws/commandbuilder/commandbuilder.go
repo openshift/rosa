@@ -35,9 +35,11 @@ const (
 	DeleteOpenIdConnectProvider   Command = "delete-open-id-connect-provider"
 	DeleteRolePermissionsBoundary Command = "delete-role-permissions-boundary"
 	//S3Api
-	CreateBucket     Command = "create-bucket"
-	PutObject        Command = "put-object"
-	PutBucketTagging Command = "put-bucket-tagging"
+	CreateBucket         Command = "create-bucket"
+	PutObject            Command = "put-object"
+	PutBucketTagging     Command = "put-bucket-tagging"
+	PutPublicAccessBlock Command = "put-public-access-block"
+	PutBucketPolicy      Command = "put-bucket-policy"
 	//S3
 	Remove       Command = "rm"
 	RemoveBucket Command = "rb"
@@ -65,13 +67,15 @@ const (
 	SetAsDefault             Param = "set-as-default"
 
 	//S3
-	Bucket                    Param = "bucket"
-	Region                    Param = "region"
-	Acl                       Param = "acl"
-	CreateBucketConfiguration Param = "create-bucket-configuration"
-	Body                      Param = "body"
-	Key                       Param = "key"
-	Tagging                   Param = "tagging"
+	Bucket                         Param = "bucket"
+	Region                         Param = "region"
+	Acl                            Param = "acl"
+	CreateBucketConfiguration      Param = "create-bucket-configuration"
+	Body                           Param = "body"
+	Key                            Param = "key"
+	Tagging                        Param = "tagging"
+	PublicAccessBlockConfiguration Param = "public-access-block-configuration"
+	Policy                         Param = "policy"
 
 	//SecretsManager
 	Name         Param = "name"
