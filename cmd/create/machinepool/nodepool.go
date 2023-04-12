@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/helper/machinepools"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/output"
@@ -215,9 +216,11 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		}
 	}
 
-	labelMap := getLabelMap(cmd, r)
+	existingLabels := make(map[string]string, 0)
+	labelMap := mpHelpers.GetLabelMap(cmd, r, existingLabels, args.labels)
 
-	taintBuilders := getTaints(cmd, r)
+	existingTaints := make([]*cmv1.Taint, 0)
+	taintBuilders := mpHelpers.GetTaints(cmd, r, existingTaints, args.taints)
 
 	npBuilder := cmv1.NewNodePool()
 	npBuilder.ID(name).Labels(labelMap).

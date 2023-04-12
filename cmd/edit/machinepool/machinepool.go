@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -88,7 +89,7 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 			}
 		}
 
-		labelMap := getLabels(cmd, r.Reporter, cluster.Nodes().ComputeLabels())
+		labelMap := mpHelpers.GetLabelMap(cmd, r, cluster.Nodes().ComputeLabels(), args.labels)
 
 		if isLabelsSet || interactive.Enabled() {
 			clusterConfig.ComputeLabels = labelMap
@@ -144,9 +145,9 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 		}
 	}
 
-	labelMap := getLabels(cmd, r.Reporter, machinePool.Labels())
+	labelMap := mpHelpers.GetLabelMap(cmd, r, machinePool.Labels(), args.labels)
 
-	taintBuilders := getTaints(cmd, r, machinePool.Taints())
+	taintBuilders := mpHelpers.GetTaints(cmd, r, machinePool.Taints(), args.taints)
 
 	mpBuilder := cmv1.NewMachinePool().
 		ID(machinePool.ID())

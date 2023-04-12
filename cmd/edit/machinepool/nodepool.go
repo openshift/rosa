@@ -5,6 +5,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -49,9 +50,9 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 		os.Exit(1)
 	}
 
-	labelMap := getLabels(cmd, r.Reporter, nodePool.Labels())
+	labelMap := mpHelpers.GetLabelMap(cmd, r, nodePool.Labels(), args.labels)
 
-	taintBuilders := getTaints(cmd, r, nodePool.Taints())
+	taintBuilders := mpHelpers.GetTaints(cmd, r, nodePool.Taints(), args.taints)
 
 	npBuilder := cmv1.NewNodePool().
 		ID(nodePool.ID())
