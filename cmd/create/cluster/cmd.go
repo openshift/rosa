@@ -590,7 +590,7 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithOCM()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()

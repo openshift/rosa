@@ -15,7 +15,7 @@ import (
 )
 
 func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command) string {
-	oidcConfigs, err := r.OCMClient.ListOidcConfigs()
+	oidcConfigs, err := r.OCMClient.ListOidcConfigs(r.Creator.AccountID)
 	if err != nil {
 		r.Reporter.Warnf("There was a problem retrieving OIDC Configurations "+
 			"for your organization: %v", err)

@@ -42,12 +42,12 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithOCM()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
 	// Load any existing ingresses for this cluster
 	r.Reporter.Debugf("Loading oidc configs for current org id")
-	oidcConfigs, err := r.OCMClient.ListOidcConfigs()
+	oidcConfigs, err := r.OCMClient.ListOidcConfigs(r.Creator.AccountID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to list OIDC Configurations: %v", err)
 		os.Exit(1)

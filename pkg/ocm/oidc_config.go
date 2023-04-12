@@ -14,6 +14,8 @@ limitations under the License.
 package ocm
 
 import (
+	"fmt"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -28,10 +30,11 @@ func (c *Client) GetOidcConfig(id string) (*cmv1.OidcConfig, error) {
 	return response.Body(), nil
 }
 
-func (c *Client) ListOidcConfigs() ([]*cmv1.OidcConfig, error) {
+func (c *Client) ListOidcConfigs(awsAccountId string) ([]*cmv1.OidcConfig, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		OidcConfigs().
 		List().Page(1).Size(-1).
+		Parameter("search", fmt.Sprintf("aws.account_id='%s' or aws.account_id=''", awsAccountId)).
 		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
