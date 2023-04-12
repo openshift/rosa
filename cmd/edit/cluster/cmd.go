@@ -19,7 +19,6 @@ package cluster
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -497,7 +496,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			// Get certificate contents
 			if len(*additionalTrustBundleFile) > 0 {
-				cert, err := ioutil.ReadFile(*additionalTrustBundleFile)
+				cert, err := os.ReadFile(*additionalTrustBundleFile)
 				if err != nil {
 					r.Reporter.Errorf("Failed to read additional trust bundle file: %s", err)
 					os.Exit(1)

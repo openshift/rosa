@@ -19,8 +19,8 @@ package idp
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper"
@@ -123,7 +123,7 @@ func buildGitlabIdp(cmd *cobra.Command,
 	// Get certificate contents
 	ca := ""
 	if caPath != "" {
-		cert, err := ioutil.ReadFile(caPath)
+		cert, err := os.ReadFile(caPath)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Expected a valid certificate bundle: %s", err)
 		}
