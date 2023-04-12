@@ -170,7 +170,7 @@ func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
 	}
 
 	issuerUrl := oidcConfig.IssuerUrl()
-	hasClusterUsingOidcConfig, err := r.OCMClient.HasAClusterUsingOidcConfig(issuerUrl)
+	hasClusterUsingOidcConfig, err := r.OCMClient.HasAClusterUsingOidcEndpointUrl(issuerUrl)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC config '%s' : %v", issuerUrl, err)
 		os.Exit(1)

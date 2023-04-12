@@ -379,9 +379,9 @@ func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cl
 	return response.Items().Get(0), nil
 }
 
-func (c *Client) HasAClusterUsingOidcConfig(issuerUrl string) (bool, error) {
+func (c *Client) HasAClusterUsingOperatorRolesPrefix(prefix string) (bool, error) {
 	query := fmt.Sprintf(
-		"aws.sts.oidc_endpoint_url = '%s'", issuerUrl,
+		"aws.sts.operator_iam_roles.role_arn like '%%/%s-%%'", prefix,
 	)
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1
@@ -395,9 +395,9 @@ func (c *Client) HasAClusterUsingOidcConfig(issuerUrl string) (bool, error) {
 	return false, nil
 }
 
-func (c *Client) HasAClusterUsingOidcProvider(oidcEndpointURL string) (bool, error) {
+func (c *Client) HasAClusterUsingOidcEndpointUrl(issuerUrl string) (bool, error) {
 	query := fmt.Sprintf(
-		"aws.sts.oidc_endpoint_url = '%s'", oidcEndpointURL,
+		"aws.sts.oidc_endpoint_url = '%s'", issuerUrl,
 	)
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1

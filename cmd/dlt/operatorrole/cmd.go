@@ -96,13 +96,6 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Error getting environment %s", err)
 		os.Exit(1)
 	}
-	if env != ocm.Production {
-		if !confirm.Prompt(true, "You are running delete operation from '%s' environment. Please ensure "+
-			"there are no clusters using these operator roles in the production. "+
-			"Are you sure you want to proceed?", env) {
-			os.Exit(1)
-		}
-	}
 
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
@@ -180,6 +173,19 @@ func run(cmd *cobra.Command, argv []string) {
 			fetchingReporterOutput = fmt.Sprintf("%s prefix: %s", fetchingReporterOutput, args.prefix)
 			r.Reporter.Infof("%s", fetchingReporterOutput)
 			spin.Start()
+		}
+		hasClusterUsingOperatorRolesPrefix, err := r.OCMClient.HasAClusterUsingOperatorRolesPrefix(args.prefix)
+		if err != nil {
+			r.Reporter.Errorf("There was a problem checking if any clusters"+
+				" are using Operator Roles Prefix '%s' : %v", args.prefix, err)
+			os.Exit(1)
+		}
+		if hasClusterUsingOperatorRolesPrefix {
+			if spin != nil {
+				spin.Stop()
+			}
+			r.Reporter.Errorf("There are clusters using Operator Roles Prefix '%s', can't delete the IAM roles", args.prefix)
+			os.Exit(1)
 		}
 		credRequests, err := r.OCMClient.GetCredRequests(true)
 		if err != nil {
