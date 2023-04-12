@@ -84,7 +84,6 @@ func Print(resource interface{}) error {
 		if versionGate, ok := resource.(*cmv1.VersionGate); ok {
 			cmv1.MarshalVersionGate(versionGate, &b)
 		}
-
 	case "[]*v1.OidcConfig":
 		if oidcConfigs, ok := resource.([]*cmv1.OidcConfig); ok {
 			cmv1.MarshalOidcConfigList(oidcConfigs, &b)
@@ -93,6 +92,15 @@ func Print(resource interface{}) error {
 		{
 			if roles, ok := resource.([]aws.Role); ok {
 				err := aws.MarshalRoles(roles, &b)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	case "map[string][]aws.Role":
+		{
+			for _, operatorRoles := range resource.(map[string][]aws.Role) {
+				err := Print(operatorRoles)
 				if err != nil {
 					return err
 				}
