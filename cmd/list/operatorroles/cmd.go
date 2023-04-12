@@ -113,7 +113,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 	if output.HasFlag() {
-		err = output.Print(operatorsMap)
+		var resource interface{} = operatorsMap
+		if args.prefix != "" {
+			if _, ok := operatorsMap[args.prefix]; !ok {
+				r.Reporter.Infof("No operator roles available for prefix '%s'", args.prefix)
+				os.Exit(0)
+			}
+			resource = operatorsMap[args.prefix]
+		}
+		err = output.Print(resource)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -136,8 +144,7 @@ func run(cmd *cobra.Command, _ []string) {
 			)
 		}
 		writer.Flush()
-		confirm.Prompt(true, "Would you like to detail a specific prefix")
-		if !confirm.Yes() {
+		if !confirm.Prompt(true, "Would you like to detail a specific prefix") {
 			os.Exit(0)
 		}
 		args.prefix, err = interactive.GetOption(interactive.Input{
@@ -153,6 +160,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if args.prefix != "" {
+		if _, ok := operatorsMap[args.prefix]; !ok {
+			r.Reporter.Infof("No operator roles available for prefix '%s'", args.prefix)
+			os.Exit(0)
+		}
 		fmt.Fprintf(writer, "ROLE NAME\tROLE ARN\tVERSION\tMANAGED\n")
 		for _, operatorRole := range operatorsMap[args.prefix] {
 			awsManaged := "No"
