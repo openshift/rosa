@@ -1,4 +1,4 @@
-package machinepool
+package machinepools
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -8,7 +8,7 @@ import (
 var _ = Describe("MachinePool", func() {
 	DescribeTable("ParseTaints validation",
 		func(taint, expectedError string, numberOfTaints int) {
-			taints, err := parseTaints(taint)
+			taints, err := ParseTaints(taint)
 			if expectedError == "" {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(taints)).To(Equal(numberOfTaints))

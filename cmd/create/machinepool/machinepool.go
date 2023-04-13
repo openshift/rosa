@@ -8,16 +8,14 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/validation"
-
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/spf13/cobra"
 )
 
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
@@ -317,9 +315,11 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
-	labelMap := getLabelMap(cmd, r)
+	existingLabels := make(map[string]string, 0)
+	labelMap := mpHelpers.GetLabelMap(cmd, r, existingLabels, args.labels)
 
-	taintBuilders := getTaints(cmd, r)
+	existingTaints := make([]*cmv1.Taint, 0)
+	taintBuilders := mpHelpers.GetTaints(cmd, r, existingTaints, args.taints)
 
 	// Spot instances
 	isSpotSet := cmd.Flags().Changed("use-spot-instances")
@@ -516,99 +516,6 @@ func spotMaxPriceValidator(val interface{}) error {
 		return fmt.Errorf("Spot max price must be positive")
 	}
 	return nil
-}
-
-func LabelValidator(val interface{}) error {
-	if labels, ok := val.(string); ok {
-		_, err := ParseLabels(labels)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("can only validate strings, got %v", val)
-}
-
-func ParseLabels(labels string) (map[string]string, error) {
-	labelMap := make(map[string]string)
-	if labels == "" {
-		return labelMap, nil
-	}
-	for _, label := range strings.Split(labels, ",") {
-		if !strings.Contains(label, "=") {
-			return nil, fmt.Errorf("Expected key=value format for labels")
-		}
-		tokens := strings.Split(label, "=")
-		err := validateLabelKeyValuePair(tokens[0], tokens[1])
-		if err != nil {
-			return nil, err
-		}
-		key := strings.TrimSpace(tokens[0])
-		value := strings.TrimSpace(tokens[1])
-		if _, exists := labelMap[key]; exists {
-			return nil, fmt.Errorf("Duplicated label key '%s' used", key)
-		}
-		labelMap[key] = value
-	}
-	return labelMap, nil
-}
-
-func validateLabelKeyValuePair(key, value string) error {
-	if errs := validation.IsQualifiedName(key); len(errs) != 0 {
-		return fmt.Errorf("Invalid label key '%s': %s", key, strings.Join(errs, "; "))
-	}
-
-	if errs := validation.IsValidLabelValue(value); len(errs) != 0 {
-		return fmt.Errorf("Invalid label value '%s': at key: '%s': %s",
-			value, key, strings.Join(errs, "; "))
-	}
-	return nil
-}
-
-func taintValidator(val interface{}) error {
-	if taints, ok := val.(string); ok {
-		_, err := parseTaints(taints)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("can only validate strings, got %v", val)
-}
-
-func parseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
-	taintBuilders := []*cmv1.TaintBuilder{}
-	if taints == "" {
-		return taintBuilders, nil
-	}
-	var errs []error
-	for _, taint := range strings.Split(taints, ",") {
-		if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
-			return nil, fmt.Errorf("Expected key=value:scheduleType format for taints. Got '%s'", taint)
-		}
-		// First split effect
-		splitEffect := strings.Split(taint, ":")
-		// Then split key and value
-		splitKeyValue := strings.Split(splitEffect[0], "=")
-		newTaintBuilder := cmv1.NewTaint().Key(splitKeyValue[0]).Value(splitKeyValue[1]).Effect(splitEffect[1])
-		newTaint, _ := newTaintBuilder.Build()
-		if err := validateLabelKeyValuePair(newTaint.Key(), newTaint.Value()); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		if newTaint.Effect() == "" {
-			// Note: an empty effect means any effect. For the moment this is not supported
-			errs = append(errs, fmt.Errorf("Expected a not empty effect"))
-			continue
-		}
-		taintBuilders = append(taintBuilders, newTaintBuilder)
-	}
-
-	if len(errs) > 0 {
-		return nil, errors.NewAggregate(errs)
-	}
-
-	return taintBuilders, nil
 }
 
 func isBYOVPC(cluster *cmv1.Cluster) bool {

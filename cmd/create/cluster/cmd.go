@@ -28,9 +28,9 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
@@ -1826,7 +1826,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("default-mp-labels").Usage,
 			Default:  labels,
 			Validators: []interactive.Validator{
-				machinepool.LabelValidator,
+				mpHelpers.LabelValidator,
 			},
 		})
 		if err != nil {
@@ -1834,7 +1834,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	labelMap, err := machinepool.ParseLabels(labels)
+	labelMap, err := mpHelpers.ParseLabels(labels)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
