@@ -109,7 +109,11 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if len(operatorsMap) == 0 {
-		r.Reporter.Infof("No operator roles available")
+		noOperatorRolesOutput := "No operator roles available"
+		if args.version != "" {
+			noOperatorRolesOutput = fmt.Sprintf("%s in version '%s'", noOperatorRolesOutput, args.version)
+		}
+		r.Reporter.Infof(noOperatorRolesOutput)
 		os.Exit(0)
 	}
 	if output.HasFlag() {
@@ -161,7 +165,12 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if args.prefix != "" {
 		if _, ok := operatorsMap[args.prefix]; !ok {
-			r.Reporter.Infof("No operator roles available for prefix '%s'", args.prefix)
+			noOperatorRolesPrefixOutput := fmt.Sprintf("No operator roles available for prefix '%s'", args.prefix)
+			if args.version != "" {
+				noOperatorRolesPrefixOutput =
+					fmt.Sprintf("%s in version '%s'", noOperatorRolesPrefixOutput, args.version)
+			}
+			r.Reporter.Infof(noOperatorRolesPrefixOutput)
 			os.Exit(0)
 		}
 		fmt.Fprintf(writer, "ROLE NAME\tROLE ARN\tVERSION\tMANAGED\n")
