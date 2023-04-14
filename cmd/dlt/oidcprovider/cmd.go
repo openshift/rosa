@@ -150,7 +150,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		providerArn, err = r.AWSClient.GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl)
 		if err != nil {
-			r.Reporter.Errorf("Failed to get the OIDC provider for cluster '%s'.", clusterKey)
+			r.Reporter.Errorf("Failed to get the OIDC provider for endpoint URL '%s': %v", oidcEndpointUrl, err)
 			os.Exit(1)
 		}
 		hasClusterUsingOidcProvider, err := r.OCMClient.HasAClusterUsingOidcEndpointUrl(oidcEndpointUrl)
