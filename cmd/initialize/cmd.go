@@ -65,7 +65,7 @@ func init() {
 		&args.dlt,
 		"delete-stack",
 		false,
-		"Deletes stack template applied to your AWS account during the 'init' command.\n",
+		"Deletes stack template applied to your AWS account during the 'init' command.",
 	)
 	flags.MarkDeprecated("delete-stack", "use --delete instead")
 
@@ -73,7 +73,7 @@ func init() {
 		&args.dlt,
 		"delete",
 		false,
-		"",
+		"Deletes stack template applied to your AWS account during the 'init' command.",
 	)
 
 	flags.BoolVar(
