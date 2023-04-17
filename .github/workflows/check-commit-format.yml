@@ -12,7 +12,7 @@ jobs:
       - name: Validate commit message format
         run: |
           commit_msg=$(git log --format=%B -n 1 $GITHUB_SHA)
-          if ! echo "$commit_msg" | grep -qE "^[A-Z]+-[0-9]+ \| (feat|fix|docs|style|refactor|test|chore) : .*$"; then
+          if ! echo "$commit_msg" | grep -qE "^[A-Z]+-[0-9]+ \| (feat|fix|docs|style|refactor|test|chore|build|ci|perf) : .*$"; then
             echo "Invalid commit message format. Expected format: JIRA_TICKET | TYPE : MESSAGE"
             exit 1
           fi
