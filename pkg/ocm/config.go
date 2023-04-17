@@ -21,6 +21,7 @@ package ocm
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/fedramp"
@@ -50,7 +51,7 @@ func GetEnv() (string, error) {
 	}
 
 	for env, api := range urlAliases {
-		if api == cfg.URL {
+		if api == strings.TrimSuffix(cfg.URL, "/") {
 			return env, nil
 		}
 	}
