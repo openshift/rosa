@@ -172,6 +172,11 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if args.hostedCP && cmd.Flags().Changed("version") {
+		r.Reporter.Warnf("Setting `version` flag for hosted CP managed policies has no effect, " +
+			"any supported ROSA version can be installed with managed policies")
+	}
+
 	// Hosted cluster roles always use managed policies
 	if cmd.Flags().Changed("hosted-cp") && cmd.Flags().Changed("managed-policies") && !args.managed {
 		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
