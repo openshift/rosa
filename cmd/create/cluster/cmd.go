@@ -280,7 +280,7 @@ func init() {
 		"tags",
 		nil,
 		"Apply user defined tags to all resources created by ROSA in AWS."+
-			"Tags are comma separated, for example: --tags=foo:bar,bar:baz",
+			"Tags are comma separated, for example: 'foo:bar,bar:baz'",
 	)
 
 	flags.BoolVar(
