@@ -50,6 +50,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -124,6 +125,7 @@ func init() {
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 	arguments.AddRegionFlag(flags)
+	output.AddFlag(Cmd)
 }
 
 func checkInteractiveModeNeeded(cmd *cobra.Command) {
@@ -159,6 +161,11 @@ func run(cmd *cobra.Command, argv []string) {
 	args.region = region
 
 	checkInteractiveModeNeeded(cmd)
+
+	if output.HasFlag() && mode != aws.ModeAuto {
+		r.Reporter.Warnf("--output param is not supported outside auto mode.")
+		os.Exit(1)
+	}
 
 	if args.rawFiles && mode != "" {
 		r.Reporter.Warnf("--%s param is not supported alongside --mode param.", rawFilesFlag)
@@ -207,14 +214,14 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if !args.managed {
 		if !args.rawFiles {
-			if r.Reporter.IsTerminal() {
+			if !output.HasFlag() && r.Reporter.IsTerminal() {
 				r.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
 					"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
 			}
 			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
 				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
 			}
-			if r.Reporter.IsTerminal() {
+			if !output.HasFlag() && r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
 			}
 			if interactive.Enabled() {
@@ -371,7 +378,7 @@ func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
 		r.Reporter.Errorf("There was a problem saving JSON Web Key Set to a file: %s", err)
 		os.Exit(1)
 	}
-	if r.Reporter.IsTerminal() {
+	if !output.HasFlag() && r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Please refer to documentation to use generated files to create an OIDC compliant configuration.")
 	}
 }
@@ -394,7 +401,7 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
 	installerRoleArn := args.installerRoleArn
 	var spin *spinner.Spinner
-	if r.Reporter.IsTerminal() {
+	if !output.HasFlag() && r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 		r.Reporter.Infof("Setting up unmanaged OIDC configuration '%s'", bucketName)
 	}
@@ -444,6 +451,14 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 			"with OCM: %v.\nPlease refer to documentation and try again through OCM CLI.", err)
 		r.Reporter.Warnf("Secret ARN: %s\tBucketUrl: %s", secretARN, bucketUrl)
 		os.Exit(1)
+	}
+	if output.HasFlag() {
+		err = output.Print(oidcConfig)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 	if r.Reporter.IsTerminal() {
 		if spin != nil {
@@ -569,7 +584,7 @@ type CreateManagedOidcConfigAutoStrategy struct {
 
 func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	var spin *spinner.Spinner
-	if r.Reporter.IsTerminal() {
+	if !output.HasFlag() && r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 		r.Reporter.Infof("Setting up managed OIDC configuration")
 	}
@@ -589,6 +604,15 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		r.Reporter.Errorf("There was a problem registering your managed OIDC Configuration: %v", err)
 		os.Exit(1)
 	}
+	s.oidcConfigInput.IssuerUrl = oidcConfig.IssuerUrl()
+	if output.HasFlag() {
+		err = output.Print(oidcConfig)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	if r.Reporter.IsTerminal() {
 		if spin != nil {
 			spin.Stop()
@@ -597,7 +621,6 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		output = fmt.Sprintf("%s\nrosa create cluster --sts --oidc-config-id %s", output, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
-	s.oidcConfigInput.IssuerUrl = oidcConfig.IssuerUrl()
 }
 
 func getOidcConfigStrategy(mode string, input *OidcConfigInput) (CreateOidcConfigStrategy, error) {
