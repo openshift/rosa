@@ -88,6 +88,10 @@ func Print(resource interface{}) error {
 		if oidcConfigs, ok := resource.([]*cmv1.OidcConfig); ok {
 			cmv1.MarshalOidcConfigList(oidcConfigs, &b)
 		}
+	case "*v1.OidcConfig":
+		if oidcConfig, ok := resource.(*cmv1.OidcConfig); ok {
+			cmv1.MarshalOidcConfig(oidcConfig, &b)
+		}
 	case "[]aws.Role":
 		{
 			if roles, ok := resource.([]aws.Role); ok {
