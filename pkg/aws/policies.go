@@ -547,6 +547,91 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 	return true, nil
 }
 
+func (c *awsClient) FindRoleARNsByPolicyType(roleType string, version string,
+	requireHostedCPPolicies bool) ([]string, error) {
+	roleARNs := []string{}
+	roles, err := c.ListRoles()
+	if err != nil {
+		return roleARNs, err
+	}
+	for _, role := range roles {
+		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
+			continue
+		}
+		isValid, err := c.ValidateAccountRoleVersionCompatibilityByPolicyType(*role.RoleName, roleType, version,
+			requireHostedCPPolicies)
+		if err != nil {
+			return roleARNs, err
+		}
+		if !isValid {
+			continue
+		}
+		roleARNs = append(roleARNs, aws.StringValue(role.Arn))
+	}
+	return roleARNs, nil
+}
+
+func (c *awsClient) ValidateAccountRoleVersionCompatibilityByPolicyType(
+	roleName string, roleType string, minVersion string, requireHostedCPPolicies bool) (bool, error) {
+	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return false, err
+	}
+	skip := false
+	isTagged := false
+	hasHostedCPPolicies := false
+	for _, tag := range listRoleTagsOutput.Tags {
+		tagValue := aws.StringValue(tag.Value)
+		switch aws.StringValue(tag.Key) {
+		case tags.RoleType:
+			isTagged = true
+			if tagValue != roleType {
+				skip = true
+				break
+			}
+		case tags.OpenShiftVersion:
+			isTagged = true
+
+			if roleHasTag(listRoleTagsOutput.Tags, tags.ManagedPolicies, tags.True) {
+				// Managed policies will be up-to-date no need to check version tags
+				break
+			}
+
+			if minVersion == "" {
+				break
+			}
+			minExpectedVersion, err := semver.NewVersion(minVersion)
+			if err != nil {
+				skip = true
+				break
+			}
+			policyVersion, err := semver.NewVersion(tagValue)
+			if err != nil {
+				skip = true
+				break
+			}
+			if policyVersion.LessThan(minExpectedVersion) {
+				skip = true
+				break
+			}
+
+		case tags.HypershiftPolicies:
+			isTagged = true
+			hasHostedCPPolicies = true
+		}
+	}
+	// Check that the role's policy is matching the required policy.
+	if requireHostedCPPolicies != hasHostedCPPolicies {
+		skip = true
+	}
+	if !isTagged || skip {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (c *awsClient) ListRoles() ([]*iam.Role, error) {
 	roles := []*iam.Role{}
 	err := c.iamClient.ListRolesPages(&iam.ListRolesInput{}, func(page *iam.ListRolesOutput, lastPage bool) bool {

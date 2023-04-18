@@ -117,6 +117,7 @@ type Client interface {
 	DeleteOpenIDConnectProvider(providerURL string) error
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
+	FindRoleARNsByPolicyType(roleType string, version string, requireHostedCPPolicies bool) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListUserRoles() ([]Role, error)
 	ListOCMRoles() ([]Role, error)
@@ -185,6 +186,8 @@ type Client interface {
 	DeleteSecretInSecretsManager(secretArn string) error
 	ValidateAccountRoleVersionCompatibility(
 		roleName string, roleType string, minVersion string) (bool, error)
+	ValidateAccountRoleVersionCompatibilityByPolicyType(
+		roleName string, roleType string, minVersion string, requireHostedCPPolicies bool) (bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
