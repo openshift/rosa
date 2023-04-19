@@ -42,6 +42,7 @@ var args struct {
 	prefix       string
 	version      string
 	channelGroup string
+	hostedCP     bool
 }
 
 var Cmd = &cobra.Command{
@@ -83,6 +84,14 @@ func init() {
 	)
 	flags.MarkHidden("channel-group")
 
+	flags.BoolVar(
+		&args.hostedCP,
+		"hosted-cp",
+		false,
+		"Enable the use of hosted control planes (HyperShift)",
+	)
+	flags.MarkHidden("hosted-cp")
+
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
@@ -117,7 +126,14 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	roleARN, err := awsClient.GetAccountRoleARN(prefix, aws.InstallerAccountRole)
+	var role aws.AccountRole
+	if args.hostedCP {
+		role = aws.HCPAccountRoles[aws.InstallerAccountRole]
+	} else {
+		role = aws.AccountRoles[aws.InstallerAccountRole]
+	}
+
+	roleARN, err := awsClient.GetAccountRoleARN(prefix, role.Name)
 	if err != nil {
 		reporter.Errorf("Failed to get account role ARN: %v", err)
 		os.Exit(1)
@@ -135,8 +151,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if managedPolicies {
-		// TODO: handle Hypershift account roles
-		err = roles.ValidateAccountRolesManagedPolicies(r, prefix, false)
+		err = roles.ValidateAccountRolesManagedPolicies(r, prefix, args.hostedCP)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
 			os.Exit(1)
