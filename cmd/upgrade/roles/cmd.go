@@ -330,13 +330,6 @@ func run(cmd *cobra.Command, argv []string) error {
 			}
 
 			fmt.Println(commands)
-			if args.isInvokedFromClusterUpgrade {
-				reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
-					" once account and operator roles have been upgraded : \n\n"+
-					"\trosa upgrade cluster --cluster %s\n", r.ClusterKey)
-				return nil
-			}
-
 		default:
 			reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 			os.Exit(1)
@@ -447,11 +440,23 @@ func run(cmd *cobra.Command, argv []string) error {
 				createdMissingRoles++
 			}
 		}
-		if createdMissingRoles == 0 {
+		if r.Reporter.IsTerminal() &&
+			createdMissingRoles == 0 &&
+			mode == aws.ModeAuto {
 			r.Reporter.Infof(
 				"Missing roles/policies have already been created. Please continue with cluster upgrade process.",
 			)
 		}
+	}
+	if r.Reporter.IsTerminal() &&
+		args.isInvokedFromClusterUpgrade &&
+		mode == aws.ModeManual &&
+		(isUpgradeNeedForAccountRolePolicies ||
+			len(missingRolesInCS) > 0 || isOperatorPolicyUpgradeNeeded) {
+		r.Reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
+			" once account and operator roles have been upgraded : \n\n"+
+			"\trosa upgrade cluster --cluster %s\n", cluster.ID())
+		os.Exit(0)
 	}
 	return nil
 }
@@ -1040,12 +1045,6 @@ func createOperatorRole(
 			r.Reporter.Infof("Run the following commands to create the operator roles:\n")
 		}
 		fmt.Println(commands)
-		if args.isInvokedFromClusterUpgrade {
-			r.Reporter.Infof("Run the following command to continue scheduling cluster upgrade"+
-				" once account and operator roles have been upgraded : \n\n"+
-				"\trosa upgrade cluster --cluster %s\n", cluster.ID())
-			os.Exit(0)
-		}
 	default:
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
