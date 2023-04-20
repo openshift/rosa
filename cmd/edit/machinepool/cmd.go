@@ -34,6 +34,7 @@ var args struct {
 	taints             string
 	version            string
 	autorepair         bool
+	tuningConfigs      string
 }
 
 var Cmd = &cobra.Command{
@@ -118,6 +119,15 @@ func init() {
 		"autorepair",
 		true,
 		"Select auto-repair behaviour for a machinepool in a hosted cluster.",
+	)
+
+	flags.StringVar(
+		&args.tuningConfigs,
+		"tuning-configs",
+		"",
+		"Name of the tuning configs to be applied to the machine pool. Format should be a comma-separated list. "+
+			"Tuning config must already exist. "+
+			"This list will overwrite any modifications made to node tuning configs on an ongoing basis.",
 	)
 }
 

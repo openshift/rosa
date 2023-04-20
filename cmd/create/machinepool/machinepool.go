@@ -21,12 +21,6 @@ import (
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
 
-	isVersionSet := cmd.Flags().Changed("version")
-	if isVersionSet {
-		r.Reporter.Errorf("Setting `version` flag is not supported on classic rosa clusters")
-		os.Exit(1)
-	}
-
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
@@ -63,11 +57,9 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
-	isAutoRepairSet := cmd.Flags().Changed("autorepair")
-	if isAutoRepairSet {
-		r.Reporter.Errorf("Setting the `autorepair` flag is only supported for hosted clusters")
-		os.Exit(1)
-	}
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "version")
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
 
 	// Machine pool name:
 	name := strings.Trim(args.name, " \t")

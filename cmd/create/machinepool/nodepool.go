@@ -306,6 +306,33 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 
 	npBuilder.AutoRepair(autorepair)
 
+	tuningConfigs := args.tuningConfigs
+	inputTuningConfig := strings.Split(tuningConfigs, ",")
+	if interactive.Enabled() {
+		// Get the list of available tuning configs
+		availableTuningConfigs, err := r.OCMClient.GetTuningConfigsName(cluster.ID())
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		inputTuningConfig, err = interactive.GetMultipleOptions(interactive.Input{
+			Question: "Tuning configs",
+			Help:     cmd.Flags().Lookup("tuning-configs").Usage,
+			Options:  availableTuningConfigs,
+			Default:  inputTuningConfig,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for tuning configs: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if len(inputTuningConfig) != 0 {
+		npBuilder.TuningConfigs(inputTuningConfig...)
+	}
+
 	npBuilder.AWSNodePool(cmv1.NewAWSNodePool().InstanceType(instanceType))
 
 	if version != "" {

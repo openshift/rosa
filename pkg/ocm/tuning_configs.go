@@ -72,7 +72,7 @@ func (c *Client) DeleteTuningConfig(clusterID string, tuningConfigID string) err
 }
 
 func (c *Client) FindTuningConfigByName(clusterID string, tuningConfigName string) (*cmv1.TuningConfig, error) {
-	// TODO search by name. Currently search is not exposed by the backend.
+	// TODO search directly by name instead of post processing. Currently, search is not exposed by the backend.
 	tuningConfigs, err := c.GetTuningConfigs(clusterID)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get tuning configs for cluster '%s': %v", clusterID, err)
@@ -89,4 +89,18 @@ func (c *Client) FindTuningConfigByName(clusterID string, tuningConfigName strin
 		return nil, fmt.Errorf("Tuning config '%s' does not exist on cluster '%s'", tuningConfigName, clusterID)
 	}
 	return tuningConfig, nil
+}
+
+func (c *Client) GetTuningConfigsName(clusterID string) ([]string, error) {
+	var tuningConfigsNames []string
+	tuningConfigs, err := c.GetTuningConfigs(clusterID)
+	if err != nil {
+		return tuningConfigsNames, err
+	}
+	for i := range tuningConfigs {
+		if tuningConfigs[i] != nil {
+			tuningConfigsNames = append(tuningConfigsNames, tuningConfigs[i].Name())
+		}
+	}
+	return tuningConfigsNames, nil
 }

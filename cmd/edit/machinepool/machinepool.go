@@ -25,17 +25,9 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 		os.Exit(1)
 	}
 
-	isVersionSet := cmd.Flags().Changed("version")
-	if isVersionSet {
-		r.Reporter.Errorf("Setting `version` flag is not supported on classic rosa clusters")
-		os.Exit(1)
-	}
-
-	isAutoRepairSet := cmd.Flags().Changed("autorepair")
-	if isAutoRepairSet {
-		r.Reporter.Errorf("Setting the `autorepair` flag is only supported for hosted clusters")
-		os.Exit(1)
-	}
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "version")
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
 
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
