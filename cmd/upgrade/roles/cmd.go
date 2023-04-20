@@ -301,7 +301,7 @@ func run(cmd *cobra.Command, argv []string) error {
 					if args.isInvokedFromClusterUpgrade {
 						return err
 					}
-					reporter.Errorf("Error upgrading the account role polices: %s", err)
+					reporter.Errorf("Error upgrading the account role policies: %s", err)
 					os.Exit(1)
 				}
 			}

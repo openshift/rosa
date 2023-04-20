@@ -813,6 +813,14 @@ func ValidateOperatorRolesMatchOidcProvider(awsClient aws.Client,
 			return weberr.Errorf("Operator role '%s' does not have trusted relationship to '%s' issuer URL",
 				roleARN, parsedUrl.Host)
 		}
+		hasManagedPolicies, err := awsClient.HasManagedPolicies(roleARN)
+		if err != nil {
+			return err
+		}
+		if hasManagedPolicies {
+			// Managed policies should be compatible with all versions
+			continue
+		}
 		policiesDetails, err := awsClient.GetAttachedPolicy(roleObject.RoleName)
 		if err != nil {
 			return err
