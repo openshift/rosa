@@ -51,19 +51,57 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	scheduledUpgrade, _, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
+	if cluster.Hypershift().Enabled() {
+		deleteHypershiftUpgrade(r, cluster.ID(), clusterKey)
+	} else {
+		deleteClassicUpgrade(r, cluster.ID(), clusterKey)
+	}
+
+}
+
+func deleteClassicUpgrade(r *rosa.Runtime, clusterID, clusterKey string) {
+	scheduledUpgrade, _, err := r.OCMClient.GetScheduledUpgrade(clusterID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
 	}
 	if scheduledUpgrade == nil {
-		r.Reporter.Warnf("There are no scheduled upgrades on cluster '%s'", clusterKey)
+		r.Reporter.Infof("There are no scheduled upgrades on cluster '%s'", clusterKey)
 		os.Exit(0)
 	}
 
 	if confirm.Confirm("cancel scheduled upgrade on cluster %s", clusterKey) {
 		r.Reporter.Debugf("Deleting scheduled upgrade for cluster '%s'", clusterKey)
-		canceled, err := r.OCMClient.CancelUpgrade(cluster.ID())
+		canceled, err := r.OCMClient.CancelUpgrade(clusterID)
+		if err != nil {
+			r.Reporter.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+
+		if !canceled {
+			r.Reporter.Warnf("There were no scheduled upgrades on cluster '%s'", clusterKey)
+			os.Exit(0)
+		}
+
+		r.Reporter.Infof("Successfully canceled scheduled upgrade on cluster '%s'", clusterKey)
+	}
+}
+
+func deleteHypershiftUpgrade(r *rosa.Runtime, clusterID, clusterKey string) {
+	scheduledUpgrade, err := r.OCMClient.GetControlPlaneScheduledUpgrade(clusterID)
+	if err != nil {
+		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	if scheduledUpgrade == nil {
+		r.Reporter.Infof("There are no scheduled upgrades on cluster '%s'", clusterKey)
+		os.Exit(0)
+	}
+
+	if confirm.Confirm("cancel scheduled upgrade on cluster %s", clusterKey) {
+		r.Reporter.Debugf("Deleting scheduled upgrade for cluster '%s'", clusterKey)
+		canceled, err := r.OCMClient.CancelControlPlaneUpgrade(clusterID, scheduledUpgrade.ID())
 		if err != nil {
 			r.Reporter.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
