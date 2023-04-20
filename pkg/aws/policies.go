@@ -1703,7 +1703,7 @@ func (c *awsClient) checkPolicyExistsAndUpToDate(policyARN string, policyVersion
 func (c *awsClient) isRolePolicyUpToDate(policyARN string, policyVersion string) (bool, error) {
 	isCompatible, err := c.isRolePoliciesCompatibleForUpgrade(policyARN, policyVersion)
 	if err != nil {
-		return false, errors.Errorf("Failed to validate role polices : %v", err)
+		return false, errors.Errorf("Failed to validate role policies : %v", err)
 	}
 	if !isCompatible {
 		return false, nil
