@@ -162,7 +162,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	checkInteractiveModeNeeded(cmd)
 
-	if output.HasFlag() && mode != aws.ModeAuto {
+	if output.HasFlag() && mode != "" && mode != aws.ModeAuto {
 		r.Reporter.Warnf("--output param is not supported outside auto mode.")
 		os.Exit(1)
 	}
@@ -189,11 +189,15 @@ func run(cmd *cobra.Command, argv []string) {
 				"However, you may choose the provider creation mode")
 			question = "OIDC Provider creation mode"
 		}
+		modes := aws.Modes
+		if output.HasFlag() {
+			modes = []string{aws.ModeAuto}
+		}
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: question,
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
+			Options:  modes,
 			Required: true,
 		})
 		if err != nil {
