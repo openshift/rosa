@@ -38,6 +38,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	ocm.AddClusterFlag(Cmd)
+	confirm.AddFlag(Cmd.Flags())
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -53,7 +54,7 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterKey, cluster.State())
 		os.Exit(1)
 	}
-	if !confirm.Confirm("resume cluster %s", clusterKey) {
+	if !confirm.Yes() && !confirm.Confirm("resume cluster %s", clusterKey) {
 		os.Exit(1)
 	}
 	err := r.OCMClient.ResumeCluster(cluster.ID())

@@ -38,6 +38,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	ocm.AddClusterFlag(Cmd)
+	confirm.AddFlag(Cmd.Flags())
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -55,7 +56,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if !confirm.Confirm("hibernate cluster %s", clusterKey) {
+	if !confirm.Yes() && !confirm.Confirm("hibernate cluster %s", clusterKey) {
 		os.Exit(1)
 	}
 
