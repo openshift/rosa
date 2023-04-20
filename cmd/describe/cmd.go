@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/cmd/describe/cluster"
 	"github.com/openshift/rosa/cmd/describe/installation"
 	"github.com/openshift/rosa/cmd/describe/service"
+	"github.com/openshift/rosa/cmd/describe/tuningconfigs"
 	"github.com/openshift/rosa/cmd/describe/upgrade"
 	"github.com/openshift/rosa/pkg/arguments"
 )
@@ -41,6 +42,7 @@ func init() {
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(installation.Cmd)
 	Cmd.AddCommand(upgrade.Cmd)
+	Cmd.AddCommand(tuningconfigs.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

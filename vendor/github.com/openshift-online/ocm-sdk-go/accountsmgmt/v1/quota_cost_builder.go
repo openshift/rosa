@@ -28,6 +28,7 @@ type QuotaCostBuilder struct {
 	organizationID   string
 	quotaID          string
 	relatedResources []*RelatedResourceBuilder
+	version          string
 }
 
 // NewQuotaCost creates a new builder of 'quota_cost' objects.
@@ -84,6 +85,13 @@ func (b *QuotaCostBuilder) RelatedResources(values ...*RelatedResourceBuilder) *
 	return b
 }
 
+// Version sets the value of the 'version' attribute to the given value.
+func (b *QuotaCostBuilder) Version(value string) *QuotaCostBuilder {
+	b.version = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *QuotaCostBuilder) Copy(object *QuotaCost) *QuotaCostBuilder {
 	if object == nil {
@@ -110,6 +118,7 @@ func (b *QuotaCostBuilder) Copy(object *QuotaCost) *QuotaCostBuilder {
 	} else {
 		b.relatedResources = nil
 	}
+	b.version = object.version
 	return b
 }
 
@@ -139,5 +148,6 @@ func (b *QuotaCostBuilder) Build() (object *QuotaCost, err error) {
 			}
 		}
 	}
+	object.version = b.version
 	return
 }

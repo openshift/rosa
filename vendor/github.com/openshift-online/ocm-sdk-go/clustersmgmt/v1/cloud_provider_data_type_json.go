@@ -96,7 +96,16 @@ func writeCloudProviderData(object *CloudProviderData, stream *jsoniter.Stream) 
 		writeCloudRegion(object.region, stream)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.version != nil
+	present_ = object.bitmap_&64 != 0 && object.subnets != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("subnets")
+		writeStringList(object.subnets, stream)
+		count++
+	}
+	present_ = object.bitmap_&128 != 0 && object.version != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -152,10 +161,14 @@ func readCloudProviderData(iterator *jsoniter.Iterator) *CloudProviderData {
 			value := readCloudRegion(iterator)
 			object.region = value
 			object.bitmap_ |= 32
+		case "subnets":
+			value := readStringList(iterator)
+			object.subnets = value
+			object.bitmap_ |= 64
 		case "version":
 			value := readVersion(iterator)
 			object.version = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		default:
 			iterator.ReadAny()
 		}

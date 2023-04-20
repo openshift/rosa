@@ -75,16 +75,7 @@ func writeIngress(object *Ingress, stream *jsoniter.Stream) {
 		stream.WriteString(object.dnsName)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0 && object.cluster != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("cluster")
-		writeCluster(object.cluster, stream)
-		count++
-	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -93,7 +84,7 @@ func writeIngress(object *Ingress, stream *jsoniter.Stream) {
 		stream.WriteBool(object.default_)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -102,7 +93,7 @@ func writeIngress(object *Ingress, stream *jsoniter.Stream) {
 		stream.WriteString(string(object.listening))
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.routeSelectors != nil
+	present_ = object.bitmap_&64 != 0 && object.routeSelectors != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -169,19 +160,15 @@ func readIngress(iterator *jsoniter.Iterator) *Ingress {
 			value := iterator.ReadString()
 			object.dnsName = value
 			object.bitmap_ |= 8
-		case "cluster":
-			value := readCluster(iterator)
-			object.cluster = value
-			object.bitmap_ |= 16
 		case "default":
 			value := iterator.ReadBool()
 			object.default_ = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 16
 		case "listening":
 			text := iterator.ReadString()
 			value := ListeningMethod(text)
 			object.listening = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 32
 		case "route_selectors":
 			value := map[string]string{}
 			for {
@@ -193,7 +180,7 @@ func readIngress(iterator *jsoniter.Iterator) *Ingress {
 				value[key] = item
 			}
 			object.routeSelectors = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

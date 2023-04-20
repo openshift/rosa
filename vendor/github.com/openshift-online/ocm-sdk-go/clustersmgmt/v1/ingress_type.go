@@ -39,7 +39,6 @@ type Ingress struct {
 	id             string
 	href           string
 	dnsName        string
-	cluster        *Cluster
 	listening      ListeningMethod
 	routeSelectors map[string]string
 	default_       bool
@@ -125,35 +124,12 @@ func (o *Ingress) GetDNSName() (value string, ok bool) {
 	return
 }
 
-// Cluster returns the value of the 'cluster' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// ID used to identify the cluster that this ingress is attached to.
-func (o *Ingress) Cluster() *Cluster {
-	if o != nil && o.bitmap_&16 != 0 {
-		return o.cluster
-	}
-	return nil
-}
-
-// GetCluster returns the value of the 'cluster' attribute and
-// a flag indicating if the attribute has a value.
-//
-// ID used to identify the cluster that this ingress is attached to.
-func (o *Ingress) GetCluster() (value *Cluster, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
-	if ok {
-		value = o.cluster
-	}
-	return
-}
-
 // Default returns the value of the 'default' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Indicates if this is the default ingress.
 func (o *Ingress) Default() bool {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.default_
 	}
 	return false
@@ -164,7 +140,7 @@ func (o *Ingress) Default() bool {
 //
 // Indicates if this is the default ingress.
 func (o *Ingress) GetDefault() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.default_
 	}
@@ -176,7 +152,7 @@ func (o *Ingress) GetDefault() (value bool, ok bool) {
 //
 // Listening method of the ingress
 func (o *Ingress) Listening() ListeningMethod {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.listening
 	}
 	return ListeningMethod("")
@@ -187,7 +163,7 @@ func (o *Ingress) Listening() ListeningMethod {
 //
 // Listening method of the ingress
 func (o *Ingress) GetListening() (value ListeningMethod, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.listening
 	}
@@ -199,7 +175,7 @@ func (o *Ingress) GetListening() (value ListeningMethod, ok bool) {
 //
 // A set of labels for the ingress.
 func (o *Ingress) RouteSelectors() map[string]string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.routeSelectors
 	}
 	return nil
@@ -210,7 +186,7 @@ func (o *Ingress) RouteSelectors() map[string]string {
 //
 // A set of labels for the ingress.
 func (o *Ingress) GetRouteSelectors() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.routeSelectors
 	}

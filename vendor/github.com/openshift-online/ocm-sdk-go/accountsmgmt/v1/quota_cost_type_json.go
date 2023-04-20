@@ -94,6 +94,15 @@ func writeQuotaCost(object *QuotaCost, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("related_resources")
 		writeRelatedResourceList(object.relatedResources, stream)
+		count++
+	}
+	present_ = object.bitmap_&64 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("version")
+		stream.WriteString(object.version)
 	}
 	stream.WriteObjectEnd()
 }
@@ -143,6 +152,10 @@ func readQuotaCost(iterator *jsoniter.Iterator) *QuotaCost {
 			value := readRelatedResourceList(iterator)
 			object.relatedResources = value
 			object.bitmap_ |= 32
+		case "version":
+			value := iterator.ReadString()
+			object.version = value
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

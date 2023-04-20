@@ -92,6 +92,14 @@ func Print(resource interface{}) error {
 		if oidcConfig, ok := resource.(*cmv1.OidcConfig); ok {
 			cmv1.MarshalOidcConfig(oidcConfig, &b)
 		}
+	case "[]*v1.TuningConfig":
+		if tuningConfigs, ok := resource.([]*cmv1.TuningConfig); ok {
+			cmv1.MarshalTuningConfigList(tuningConfigs, &b)
+		}
+	case "*v1.TuningConfig":
+		if tuningConfig, ok := resource.(*cmv1.TuningConfig); ok {
+			cmv1.MarshalTuningConfig(tuningConfig, &b)
+		}
 	case "[]aws.Role":
 		{
 			if roles, ok := resource.([]aws.Role); ok {

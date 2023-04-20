@@ -28,6 +28,7 @@ type QuotaCost struct {
 	organizationID   string
 	quotaID          string
 	relatedResources []*RelatedResource
+	version          string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -145,6 +146,25 @@ func (o *QuotaCost) GetRelatedResources() (value []*RelatedResource, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.relatedResources
+	}
+	return
+}
+
+// Version returns the value of the 'version' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+func (o *QuotaCost) Version() string {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.version
+	}
+	return ""
+}
+
+// GetVersion returns the value of the 'version' attribute and
+// a flag indicating if the attribute has a value.
+func (o *QuotaCost) GetVersion() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.version
 	}
 	return
 }

@@ -3,6 +3,27 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.334
+- Update model version v0.0.276
+  - Add delete method to `Account` resource.
+  - Add `tuning_configs` endpoints.
+  - Add `tuning_configs` field to Node Pools.
+
+## 0.1.333
+- Update model version v0.0.275
+  - Add pending delete cluster API.
+- Update model version v0.0.274
+  - Add `Subnets` property to the CloudProviderData model.
+
+## 0.1.332
+- Update model version v0.0.273
+  - update metamodel version 0.0.57
+  - remove circular dependencies from clusters mgmt
+
+## 0.1.331
+- Update model to v0.0.272
+  - adding quota version
+
 ## 0.1.330
 - Update model to v0.0.271
   - Adding `version_inquiry` endpoint to Managed Services.

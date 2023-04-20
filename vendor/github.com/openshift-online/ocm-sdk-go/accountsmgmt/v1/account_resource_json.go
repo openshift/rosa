@@ -21,6 +21,12 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import "io"
 
+func writeAccountDeleteRequest(request *AccountDeleteRequest, writer io.Writer) error {
+	return nil
+}
+func readAccountDeleteResponse(response *AccountDeleteResponse, reader io.Reader) error {
+	return nil
+}
 func writeAccountGetRequest(request *AccountGetRequest, writer io.Writer) error {
 	return nil
 }

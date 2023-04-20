@@ -29,7 +29,6 @@ type MachinePoolBuilder struct {
 	aws                  *AWSMachinePoolBuilder
 	autoscaling          *MachinePoolAutoscalingBuilder
 	availabilityZones    []string
-	cluster              *ClusterBuilder
 	instanceType         string
 	labels               map[string]string
 	replicas             int
@@ -102,61 +101,10 @@ func (b *MachinePoolBuilder) AvailabilityZones(values ...string) *MachinePoolBui
 	return b
 }
 
-// Cluster sets the value of the 'cluster' attribute to the given value.
-//
-// Definition of an _OpenShift_ cluster.
-//
-// The `cloud_provider` attribute is a reference to the cloud provider. When a
-// cluster is retrieved it will be a link to the cloud provider, containing only
-// the kind, id and href attributes:
-//
-// ```json
-//
-//	{
-//	  "cloud_provider": {
-//	    "kind": "CloudProviderLink",
-//	    "id": "123",
-//	    "href": "/api/clusters_mgmt/v1/cloud_providers/123"
-//	  }
-//	}
-//
-// ```
-//
-// When a cluster is created this is optional, and if used it should contain the
-// identifier of the cloud provider to use:
-//
-// ```json
-//
-//	{
-//	  "cloud_provider": {
-//	    "id": "123",
-//	  }
-//	}
-//
-// ```
-//
-// If not included, then the cluster will be created using the default cloud
-// provider, which is currently Amazon Web Services.
-//
-// The region attribute is mandatory when a cluster is created.
-//
-// The `aws.access_key_id`, `aws.secret_access_key` and `dns.base_domain`
-// attributes are mandatory when creation a cluster with your own Amazon Web
-// Services account.
-func (b *MachinePoolBuilder) Cluster(value *ClusterBuilder) *MachinePoolBuilder {
-	b.cluster = value
-	if value != nil {
-		b.bitmap_ |= 64
-	} else {
-		b.bitmap_ &^= 64
-	}
-	return b
-}
-
 // InstanceType sets the value of the 'instance_type' attribute to the given value.
 func (b *MachinePoolBuilder) InstanceType(value string) *MachinePoolBuilder {
 	b.instanceType = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -164,9 +112,9 @@ func (b *MachinePoolBuilder) InstanceType(value string) *MachinePoolBuilder {
 func (b *MachinePoolBuilder) Labels(value map[string]string) *MachinePoolBuilder {
 	b.labels = value
 	if value != nil {
-		b.bitmap_ |= 256
+		b.bitmap_ |= 128
 	} else {
-		b.bitmap_ &^= 256
+		b.bitmap_ &^= 128
 	}
 	return b
 }
@@ -174,7 +122,7 @@ func (b *MachinePoolBuilder) Labels(value map[string]string) *MachinePoolBuilder
 // Replicas sets the value of the 'replicas' attribute to the given value.
 func (b *MachinePoolBuilder) Replicas(value int) *MachinePoolBuilder {
 	b.replicas = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -182,7 +130,7 @@ func (b *MachinePoolBuilder) Replicas(value int) *MachinePoolBuilder {
 func (b *MachinePoolBuilder) SecurityGroupFilters(values ...*MachinePoolSecurityGroupFilterBuilder) *MachinePoolBuilder {
 	b.securityGroupFilters = make([]*MachinePoolSecurityGroupFilterBuilder, len(values))
 	copy(b.securityGroupFilters, values)
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -190,7 +138,7 @@ func (b *MachinePoolBuilder) SecurityGroupFilters(values ...*MachinePoolSecurity
 func (b *MachinePoolBuilder) Subnets(values ...string) *MachinePoolBuilder {
 	b.subnets = make([]string, len(values))
 	copy(b.subnets, values)
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -198,7 +146,7 @@ func (b *MachinePoolBuilder) Subnets(values ...string) *MachinePoolBuilder {
 func (b *MachinePoolBuilder) Taints(values ...*TaintBuilder) *MachinePoolBuilder {
 	b.taints = make([]*TaintBuilder, len(values))
 	copy(b.taints, values)
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -225,11 +173,6 @@ func (b *MachinePoolBuilder) Copy(object *MachinePool) *MachinePoolBuilder {
 		copy(b.availabilityZones, object.availabilityZones)
 	} else {
 		b.availabilityZones = nil
-	}
-	if object.cluster != nil {
-		b.cluster = NewCluster().Copy(object.cluster)
-	} else {
-		b.cluster = nil
 	}
 	b.instanceType = object.instanceType
 	if len(object.labels) > 0 {
@@ -287,12 +230,6 @@ func (b *MachinePoolBuilder) Build() (object *MachinePool, err error) {
 	if b.availabilityZones != nil {
 		object.availabilityZones = make([]string, len(b.availabilityZones))
 		copy(object.availabilityZones, b.availabilityZones)
-	}
-	if b.cluster != nil {
-		object.cluster, err = b.cluster.Build()
-		if err != nil {
-			return
-		}
 	}
 	object.instanceType = b.instanceType
 	if b.labels != nil {
