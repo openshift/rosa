@@ -176,6 +176,10 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Error parsing version to upgrade to")
 		os.Exit(1)
 	}
+
+	// Compute drain grace period config
+	clusterSpec := buildNodeDrainGracePeriod(r, cmd, cluster)
+
 	if !confirm.Confirm("upgrade cluster to version '%s'", version) {
 		os.Exit(0)
 	}
@@ -190,8 +194,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Drain grace period config
-	clusterSpec := buildNodeDrainGracePeriod(r, cmd, cluster)
+	// Update cluster with grace period configuration
 	err = r.OCMClient.UpdateCluster(cluster.ID(), r.Creator, clusterSpec)
 	if err != nil {
 		r.Reporter.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
