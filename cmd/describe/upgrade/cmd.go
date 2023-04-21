@@ -48,7 +48,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Loading upgrade with id '%s'", cluster.ID())
-	if cluster.Hypershift().Enabled() {
+	if ocm.IsHyperShiftCluster(cluster) {
 		returnHypershiftUpgrades(r, cluster.ID())
 	} else {
 		returnClassicUpgrades(r, cluster.ID())

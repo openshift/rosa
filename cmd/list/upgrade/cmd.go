@@ -47,12 +47,17 @@ func run(_ *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	clusterKey := r.GetClusterKey()
-
 	cluster := r.FetchCluster()
 	if cluster.State() != cmv1.ClusterStateReady {
 		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
+
+	isHypershift := ocm.IsHyperShiftCluster(cluster)
+
+	var scheduledUpgrade *cmv1.UpgradePolicy
+	var upgradeState *cmv1.UpgradePolicyState
+	var controlPlaneScheduledUpgrade *cmv1.ControlPlaneUpgradePolicy
 
 	// Load available upgrades for this cluster
 	r.Reporter.Debugf("Loading available upgrades for cluster '%s'", clusterKey)
@@ -70,10 +75,18 @@ func run(_ *cobra.Command, _ []string) {
 	latestRev := latestInCurrentMinor(ocm.GetVersionID(cluster), availableUpgrades)
 
 	r.Reporter.Debugf("Loading scheduled upgrades for cluster '%s'", clusterKey)
-	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+	if !isHypershift {
+		scheduledUpgrade, upgradeState, err = r.OCMClient.GetScheduledUpgrade(cluster.ID())
+		if err != nil {
+			r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+	} else {
+		controlPlaneScheduledUpgrade, err = r.OCMClient.GetControlPlaneScheduledUpgrade(cluster.ID())
+		if err != nil {
+			r.Reporter.Errorf("Failed to get scheduled control plane upgrades for cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
 	}
 
 	// Create the writer that will be used to print the tabulated results:
@@ -84,13 +97,32 @@ func run(_ *cobra.Command, _ []string) {
 		if notes == "" && (i == 0 || availableUpgrade == latestRev) {
 			notes = "recommended"
 		}
-		if availableUpgrade == scheduledUpgrade.Version() {
-			notes = fmt.Sprintf("%s for %s", upgradeState.Value(),
-				scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"))
+		if !isHypershift {
+			notes = formatScheduledUpgrade(availableUpgrade, scheduledUpgrade, notes, upgradeState)
+		} else {
+			notes = formatScheduledUpgradeHypershift(availableUpgrade, controlPlaneScheduledUpgrade, notes)
 		}
 		fmt.Fprintf(writer, "%s\t%s\n", availableUpgrade, notes)
 	}
 	writer.Flush()
+}
+
+func formatScheduledUpgrade(availableUpgrade string,
+	scheduledUpgrade *cmv1.UpgradePolicy, notes string, upgradeState *cmv1.UpgradePolicyState) string {
+	if availableUpgrade == scheduledUpgrade.Version() {
+		notes = fmt.Sprintf("%s for %s", upgradeState.Value(),
+			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"))
+	}
+	return notes
+}
+
+func formatScheduledUpgradeHypershift(availableUpgrade string,
+	scheduledUpgrade *cmv1.ControlPlaneUpgradePolicy, notes string) string {
+	if availableUpgrade == scheduledUpgrade.Version() {
+		notes = fmt.Sprintf("%s for %s", scheduledUpgrade.State().Value(),
+			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"))
+	}
+	return notes
 }
 
 func latestInCurrentMinor(current string, versions []string) string {
