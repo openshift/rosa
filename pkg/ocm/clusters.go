@@ -911,3 +911,7 @@ func (c *Client) ResumeCluster(clusterID string) error {
 func IsConsoleAvailable(cluster *cmv1.Cluster) bool {
 	return cluster.Console() != nil && cluster.Console().URL() != ""
 }
+
+func IsHyperShiftCluster(cluster *cmv1.Cluster) bool {
+	return cluster != nil && cluster.Hypershift() != nil && cluster.Hypershift().Enabled()
+}
