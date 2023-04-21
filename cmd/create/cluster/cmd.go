@@ -51,6 +51,7 @@ import (
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
+	_ "k8s.io/apimachinery/pkg/api/resource"
 )
 
 // nolint
