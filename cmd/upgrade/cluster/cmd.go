@@ -149,7 +149,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	checkExistingScheduledUpgrade(r, cluster, clusterKey)
+	if isHypershift {
+		checkExistingScheduledUpgradeHypershift(r, cluster, clusterKey)
+	} else {
+		checkExistingScheduledUpgrade(r, cluster, clusterKey)
+	}
 
 	availableUpgrades, version := buildVersion(r, cmd, cluster, args.version)
 	err = r.OCMClient.CheckUpgradeClusterVersion(availableUpgrades, version, cluster)
@@ -308,6 +312,22 @@ func checkExistingScheduledUpgrade(r *rosa.Runtime, cluster *cmv1.Cluster, clust
 	if scheduledUpgrade != nil {
 		r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
 			upgradeState.Value(),
+			scheduledUpgrade.Version(),
+			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
+		)
+		os.Exit(0)
+	}
+}
+
+func checkExistingScheduledUpgradeHypershift(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string) {
+	scheduledUpgrade, err := r.OCMClient.GetControlPlaneScheduledUpgrade(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get scheduled control plane upgrades for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+	if scheduledUpgrade != nil {
+		r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
+			scheduledUpgrade.State().Value(),
 			scheduledUpgrade.Version(),
 			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
 		)
