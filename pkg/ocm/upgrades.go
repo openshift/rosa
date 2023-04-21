@@ -152,6 +152,16 @@ func (c *Client) CancelUpgrade(clusterID string) (bool, error) {
 	return true, nil
 }
 
+func (c *Client) CancelControlPlaneUpgrade(clusterID, upgradeID string) (bool, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).ControlPlane().UpgradePolicies().
+		ControlPlaneUpgradePolicy(upgradeID).Delete().Send()
+	if err != nil {
+		return false, handleErr(response.Error(), err)
+	}
+	return true, nil
+}
+
 func (c *Client) GetMissingGateAgreementsHypershift(
 	clusterID string,
 	upgradePolicy *cmv1.ControlPlaneUpgradePolicy) ([]*cmv1.VersionGate, error) {
