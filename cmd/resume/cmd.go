@@ -23,16 +23,16 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 )
 
-var Cmd = &cobra.Command{
-	Use:    "resume",
-	Short:  "Resume cluster",
-	Long:   "Resume Hibernate cluster",
-	Hidden: true,
-}
-
-func init() {
-	Cmd.AddCommand(cluster.Cmd)
+func GenerateCommand() *cobra.Command {
+	var Cmd = &cobra.Command{
+		Use:    "resume",
+		Short:  "Resume cluster",
+		Long:   "Resume Hibernate cluster",
+		Hidden: true,
+	}
+	Cmd.AddCommand(cluster.GenerateCommand())
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
+	return Cmd
 }
