@@ -135,13 +135,18 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	roleARN, err := awsClient.GetAccountRoleARN(prefix, role.Name)
 	if err != nil {
-		reporter.Errorf("Failed to get account role ARN: %v", err)
+		if args.hostedCP {
+			reporter.Errorf("Failed to get hosted CP account roles ARN: %v", err)
+		} else {
+			reporter.Errorf("Failed to get classic account role ARN: %v. "+
+				"To delete hosted CP account roles use the '--hosted-cp' flag", err)
+		}
 		os.Exit(1)
 	}
 
 	managedPolicies, err := awsClient.HasManagedPolicies(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		r.Reporter.Errorf("Failed to determine if the role has managed policies: %v", err)
 		os.Exit(1)
 	}
 	// TODO: remove once AWS managed policies are in place
@@ -151,7 +156,19 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if managedPolicies {
-		err = roles.ValidateAccountRolesManagedPolicies(r, prefix, args.hostedCP)
+		hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
+		if err != nil {
+			r.Reporter.Errorf("Failed to determine if the role has hosted CP managed policies: %v", err)
+			os.Exit(1)
+		}
+
+		if hostedCPPolicies && !args.hostedCP {
+			r.Reporter.Errorf("Role with ARN '%s' has hosted CP managed policies, "+
+				"please run the command with the flag '--hosted-cp'", roleARN)
+			os.Exit(1)
+		}
+
+		err = roles.ValidateAccountRolesManagedPolicies(r, prefix, hostedCPPolicies)
 		if err != nil {
 			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
 			os.Exit(1)
