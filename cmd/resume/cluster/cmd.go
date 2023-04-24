@@ -27,17 +27,18 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:   "cluster",
-	Short: "Resume cluster",
-	Long:  "Resume cluster.",
-	Example: `  # Resume the cluster
+func GenerateCommand() *cobra.Command {
+	var Cmd = &cobra.Command{
+		Use:   "cluster",
+		Short: "Resume cluster",
+		Long:  "Resume cluster.",
+		Example: `  # Resume the cluster
   rosa resume cluster -c mycluster`,
-	Run: run,
-}
-
-func init() {
+		Run: run,
+	}
 	ocm.AddClusterFlag(Cmd)
+	confirm.AddFlag(Cmd.Flags())
+	return Cmd
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -53,7 +54,7 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterKey, cluster.State())
 		os.Exit(1)
 	}
-	if !confirm.Confirm("resume cluster %s", clusterKey) {
+	if !confirm.Yes() && !confirm.Confirm("resume cluster %s", clusterKey) {
 		os.Exit(1)
 	}
 	err := r.OCMClient.ResumeCluster(cluster.ID())

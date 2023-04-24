@@ -86,8 +86,8 @@ func init() {
 	root.AddCommand(verify.Cmd)
 	root.AddCommand(version.Cmd)
 	root.AddCommand(whoami.Cmd)
-	root.AddCommand(hibernate.Cmd)
-	root.AddCommand(resume.Cmd)
+	root.AddCommand(hibernate.GenerateCommand())
+	root.AddCommand(resume.GenerateCommand())
 	root.AddCommand(link.Cmd)
 	root.AddCommand(unlink.Cmd)
 }

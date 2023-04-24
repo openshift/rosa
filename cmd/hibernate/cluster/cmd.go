@@ -27,17 +27,18 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:   "cluster",
-	Short: "Hibernate cluster",
-	Long:  "Hibernate cluster.",
-	Example: `  # Hibernate the cluster
+func GenerateCommand() *cobra.Command {
+	var Cmd = &cobra.Command{
+		Use:   "cluster",
+		Short: "Hibernate cluster",
+		Long:  "Hibernate cluster.",
+		Example: `  # Hibernate the cluster
   rosa hibernate cluster -c mycluster`,
-	Run: run,
-}
-
-func init() {
+		Run: run,
+	}
 	ocm.AddClusterFlag(Cmd)
+	confirm.AddFlag(Cmd.Flags())
+	return Cmd
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -55,7 +56,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if !confirm.Confirm("hibernate cluster %s", clusterKey) {
+	if !confirm.Yes() && !confirm.Confirm("hibernate cluster %s", clusterKey) {
 		os.Exit(1)
 	}
 
