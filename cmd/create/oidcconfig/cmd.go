@@ -162,11 +162,6 @@ func run(cmd *cobra.Command, argv []string) {
 
 	checkInteractiveModeNeeded(cmd)
 
-	if output.HasFlag() && mode != "" && mode != aws.ModeAuto {
-		r.Reporter.Warnf("--output param is not supported outside auto mode.")
-		os.Exit(1)
-	}
-
 	if args.rawFiles && mode != "" {
 		r.Reporter.Warnf("--%s param is not supported alongside --mode param.", rawFilesFlag)
 		os.Exit(1)
@@ -189,21 +184,22 @@ func run(cmd *cobra.Command, argv []string) {
 				"However, you may choose the provider creation mode")
 			question = "OIDC Provider creation mode"
 		}
-		modes := aws.Modes
-		if output.HasFlag() {
-			modes = []string{aws.ModeAuto}
-		}
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: question,
 			Help:     cmd.Flags().Lookup("mode").Usage,
 			Default:  aws.ModeAuto,
-			Options:  modes,
+			Options:  aws.Modes,
 			Required: true,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
 			os.Exit(1)
 		}
+	}
+
+	if output.HasFlag() && mode != "" && mode != aws.ModeAuto {
+		r.Reporter.Warnf("--output param is not supported outside auto mode.")
+		os.Exit(1)
 	}
 
 	if args.managed && args.userPrefix != "" {
