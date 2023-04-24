@@ -2,6 +2,38 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.17 Apr 24 2023
+
+- logging: Disable quoting of values - makes request/response dumps readable
+- chore: remove deprecated lib `io/ioutil`
+- fix: version tests
+- SDA-8789 | feat: add oidc config id to message
+- SDA-8777 | feat: check if there are clusters using operator roles prefix
+- SDA-8790 | fix: use parameter installer role arn when passed
+- Fix version validation error handling
+- SDA-8804,8805 | fix: better behavior for listing operator roles
+- SDA-8775: Align label and taints validation between create and edit
+- SDA-8786 | feat: add bucket policy to allow public read
+- SDA-8808 | feat: add aws account ID to filter unmanaged OIDC configs
+- SDA-8805 | fix: better messages when listing operator roles for specific version
+- fix: small issue when customer sets up oidc provider with issuer url '/' at the end
+- SDA-6239 | fix: Add message to helper --delete param on init cmd
+- feat: add output json/yaml to create oidc config
+- chore: add initial github action to checking commit message format
+- docs: update contribution guide with commit hygiene
+- SDA-7708 | fix: remove --tags param from example for usage
+- Warn about `version` flag in combination with HCP managed policies
+- fix: trims trailing slash in ocm api when checking env
+- SDA-8861 | feat: add --etcd-encryption-kms-arn to cluster build command when in use
+- SDA-8882 | fix: add more validations before terminating run for upgrade roles
+- fix: upgrade account roles - support hosted CP managed policies
+- SDA-8897 | fix: shared operator roles with managed policies
+- SDA-8900 | feat: only allow aws auto mode when choosing and output flag enabled
+- SDA-8892|fix:Ask for drain period before scheduling the update
+- SDA-8905 | feat:Implement delete upgrade command for hypershift
+- SDA-8880 | Fix: implement list upgrades for Hypershift
+- SDA-8880 | Fix: correctly check if an upgrade is already scheduled
+
 == 1.2.16 Apr 10 2023
 
 - Use cluster attribute `ManagedPolicies` to identify cluster with managed policies
