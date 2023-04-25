@@ -2,6 +2,7 @@ package machinepool
 
 import (
 	"os"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
@@ -26,10 +27,11 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	isLabelOrTaintSet := isLabelsSet || isTaintsSet
 	isVersionSet := cmd.Flags().Changed("version")
 	isAutorepairSet := cmd.Flags().Changed("autorepair")
+	isTuningsConfigSet := cmd.Flags().Changed("tuning-configs")
 
 	// if no value set enter interactive mode
 	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet ||
-		isAutorepairSet) {
+		isAutorepairSet || isTuningsConfigSet) {
 		interactive.Enable()
 	}
 
@@ -134,6 +136,40 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 		}
 
 		npBuilder.AutoRepair(autorepair)
+	}
+
+	if isTuningsConfigSet || interactive.Enabled() {
+		tuningConfigs := args.tuningConfigs
+		inputTuningConfig := strings.Split(tuningConfigs, ",")
+		if interactive.Enabled() {
+			if !isTuningsConfigSet {
+				// Interactive mode without explicit input parameter. Take the existing value
+				inputTuningConfig = nodePool.TuningConfigs()
+			}
+
+			// Get the list of available tuning configs
+			availableTuningConfigs, err := r.OCMClient.GetTuningConfigsName(cluster.ID())
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			inputTuningConfig, err = interactive.GetMultipleOptions(interactive.Input{
+				Question: "Tuning configs",
+				Help:     cmd.Flags().Lookup("tuning-configs").Usage,
+				Options:  availableTuningConfigs,
+				Default:  inputTuningConfig,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for tuning configs: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		if len(inputTuningConfig) != 0 {
+			npBuilder.TuningConfigs(inputTuningConfig...)
+		}
 	}
 
 	nodePool, err = npBuilder.Build()

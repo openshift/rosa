@@ -345,6 +345,16 @@ func (c *ClusterClient) Status() *ClusterStatusClient {
 	)
 }
 
+// TuningConfigs returns the target 'tuning_configs' resource.
+//
+// Reference to the resource that manages the collection of tuning configs for this cluster.
+func (c *ClusterClient) TuningConfigs() *TuningConfigsClient {
+	return NewTuningConfigsClient(
+		c.transport,
+		path.Join(c.path, "tuning_configs"),
+	)
+}
+
 // UpgradePolicies returns the target 'upgrade_policies' resource.
 //
 // Reference to the resource that manages the collection of upgrade policies defined for this cluster.

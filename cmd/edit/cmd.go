@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/cmd/edit/ingress"
 	"github.com/openshift/rosa/cmd/edit/machinepool"
 	"github.com/openshift/rosa/cmd/edit/service"
+	"github.com/openshift/rosa/cmd/edit/tuningconfigs"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
 )
@@ -41,6 +42,7 @@ func init() {
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(service.Cmd)
+	Cmd.AddCommand(tuningconfigs.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

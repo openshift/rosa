@@ -3,6 +3,7 @@ package machinepool
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -23,9 +24,9 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(writer, "ID\tAUTOSCALING\tDESIRED REPLICAS\tCURRENT REPLICAS\t"+
-		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tAUTOREPAIR\tMESSAGE\t\n")
+		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tAUTOREPAIR\tTUNING CONFIGS\tMESSAGE\t\n")
 	for _, nodePool := range nodePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			printNodePoolAutoscaling(nodePool.Autoscaling()),
 			printNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
@@ -37,6 +38,7 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 			nodePool.Subnet(),
 			printNodePoolVersion(nodePool.Version()),
 			printNodePoolAutorepair(nodePool.AutoRepair()),
+			printTuningConfigs(nodePool.TuningConfigs()),
 			printNodePoolMessage(nodePool.Status()),
 		)
 	}
@@ -89,4 +91,11 @@ func printNodePoolAutorepair(autorepair bool) string {
 		return Yes
 	}
 	return No
+}
+
+func printTuningConfigs(tuningConfigs []string) string {
+	if len(tuningConfigs) == 0 {
+		return ""
+	}
+	return strings.Join(tuningConfigs, ",")
 }
