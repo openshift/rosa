@@ -436,7 +436,8 @@ func init() {
 		"replicas",
 		2,
 		"Number of worker nodes to provision. Single zone clusters need at least 2 nodes, "+
-			"multizone clusters need at least 3 nodes.",
+			"multizone clusters need at least 3 nodes. Hosted clusters require that the number of worker nodes be a "+
+			"multiple of the number of private subnets.",
 	)
 
 	flags.BoolVar(
