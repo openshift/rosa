@@ -28,7 +28,7 @@ import (
 )
 
 var Cmd = &cobra.Command{
-	Use:     "tuning config name",
+	Use:     "tuning-configs",
 	Aliases: []string{"tuningconfig", "tuningconfigs", "tuning-config"},
 	Short:   "Delete tuning config",
 	Long:    "Delete a tuning config for a cluster.",
