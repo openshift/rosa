@@ -3,6 +3,11 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.335
+- Update model version v0.0.278
+  - Add InflightChecks locator to cluster resource
+  - Add BillingAccountID to AWS model
+
 ## 0.1.334
 - Update model version v0.0.276
   - Add delete method to `Account` resource.

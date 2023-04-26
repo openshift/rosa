@@ -110,7 +110,8 @@ type Spec struct {
 	AdditionalTrustBundle     *string
 
 	// HyperShift options:
-	Hypershift Hypershift
+	Hypershift     Hypershift
+	BillingAccount string
 }
 
 type OperatorIAMRole struct {
@@ -770,6 +771,10 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		if *config.PrivateLink {
 			*config.Private = true
 		}
+	}
+
+	if config.BillingAccount != "" {
+		awsBuilder = awsBuilder.BillingAccountID(config.BillingAccount)
 	}
 
 	if config.RoleARN != "" {
