@@ -3,9 +3,11 @@ package machinepool
 import (
 	"os"
 
+	ver "github.com/hashicorp/go-version"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
@@ -65,6 +67,25 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 
 // getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
 func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {
+
+	lowestLocalZoneSupportVer, err := ver.NewVersion(ocm.LowestLocalZoneSupport)
+	if err != nil {
+		return nil, err
+	}
+
+	checkLocalZone := false
+	if version, ok := cluster.GetVersion(); ok {
+		if rawID, ok := version.GetRawID(); ok {
+			clusterVer, err := ver.NewVersion(rawID)
+			if err != nil {
+				return nil, err
+			}
+			if !clusterVer.GreaterThanOrEqual(lowestLocalZoneSupportVer) {
+				checkLocalZone = true
+			}
+		}
+	}
+
 	// Fetch VPC's subnets
 	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
 	if err != nil {
@@ -74,6 +95,15 @@ func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) 
 	// Format subnet options
 	var subnetOptions []string
 	for _, subnet := range privateSubnets {
+		if checkLocalZone {
+			isLocal, err := r.AWSClient.IsLocalAvailabilityZone(*subnet.AvailabilityZone)
+			if err != nil {
+				return nil, err
+			}
+			if isLocal {
+				continue
+			}
+		}
 		subnetOptions = append(subnetOptions, aws.SetSubnetOption(*subnet.SubnetId, *subnet.AvailabilityZone))
 	}
 

@@ -27,11 +27,12 @@ import (
 )
 
 const (
-	DefaultChannelGroup   = "stable"
-	NightlyChannelGroup   = "nightly"
-	LowestSTSSupport      = "4.7.11"
-	LowestSTSMinor        = "4.7"
-	LowestHostedCPSupport = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
+	DefaultChannelGroup    = "stable"
+	NightlyChannelGroup    = "nightly"
+	LowestSTSSupport       = "4.7.11"
+	LowestSTSMinor         = "4.7"
+	LowestHostedCPSupport  = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
+	LowestLocalZoneSupport = "4.12"
 )
 
 func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error) {
