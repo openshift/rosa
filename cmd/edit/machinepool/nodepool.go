@@ -75,10 +75,10 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	if autoscaling {
 		asBuilder := cmv1.NewNodePoolAutoscaling()
 
-		if minReplicas > 1 {
+		if minReplicas >= 1 {
 			asBuilder = asBuilder.MinReplica(minReplicas)
 		}
-		if maxReplicas > 1 {
+		if maxReplicas >= 1 {
 			asBuilder = asBuilder.MaxReplica(maxReplicas)
 		}
 
