@@ -120,7 +120,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 		if !multiAZMachinePool {
 			// Allow to create a single AZ machine pool providing the subnet
-			if isBYOVPC(cluster) {
+			if isBYOVPC(cluster) && args.availabilityZone == "" {
 				subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster)
 			}
 
