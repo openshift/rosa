@@ -51,8 +51,5 @@ func (c *Client) GetBillingAccounts() ([]string, error) {
 }
 
 func IsValidAWSAccount(account string) bool {
-	if awsAccountRegexp.MatchString(account) {
-		return true
-	}
-	return false
+	return awsAccountRegexp.MatchString(account)
 }
