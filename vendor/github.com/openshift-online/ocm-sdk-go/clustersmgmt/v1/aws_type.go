@@ -28,6 +28,7 @@ type AWS struct {
 	sts                      *STS
 	accessKeyID              string
 	accountID                string
+	auditLog                 *AuditLog
 	billingAccountID         string
 	etcdEncryption           *AwsEtcdEncryption
 	privateLinkConfiguration *PrivateLinkClusterConfiguration
@@ -134,12 +135,35 @@ func (o *AWS) GetAccountID() (value string, ok bool) {
 	return
 }
 
+// AuditLog returns the value of the 'audit_log' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Audit log forwarding configuration
+func (o *AWS) AuditLog() *AuditLog {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.auditLog
+	}
+	return nil
+}
+
+// GetAuditLog returns the value of the 'audit_log' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Audit log forwarding configuration
+func (o *AWS) GetAuditLog() (value *AuditLog, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.auditLog
+	}
+	return
+}
+
 // BillingAccountID returns the value of the 'billing_account_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // BillingAccountID is the account used for billing subscriptions purchased via the marketplace
 func (o *AWS) BillingAccountID() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.billingAccountID
 	}
 	return ""
@@ -150,7 +174,7 @@ func (o *AWS) BillingAccountID() string {
 //
 // BillingAccountID is the account used for billing subscriptions purchased via the marketplace
 func (o *AWS) GetBillingAccountID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.billingAccountID
 	}
@@ -162,7 +186,7 @@ func (o *AWS) GetBillingAccountID() (value string, ok bool) {
 //
 // Related etcd encryption configuration
 func (o *AWS) EtcdEncryption() *AwsEtcdEncryption {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.etcdEncryption
 	}
 	return nil
@@ -173,7 +197,7 @@ func (o *AWS) EtcdEncryption() *AwsEtcdEncryption {
 //
 // Related etcd encryption configuration
 func (o *AWS) GetEtcdEncryption() (value *AwsEtcdEncryption, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.etcdEncryption
 	}
@@ -185,7 +209,7 @@ func (o *AWS) GetEtcdEncryption() (value *AwsEtcdEncryption, ok bool) {
 //
 // Sets cluster to be inaccessible externally.
 func (o *AWS) PrivateLink() bool {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.privateLink
 	}
 	return false
@@ -196,7 +220,7 @@ func (o *AWS) PrivateLink() bool {
 //
 // Sets cluster to be inaccessible externally.
 func (o *AWS) GetPrivateLink() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.privateLink
 	}
@@ -208,7 +232,7 @@ func (o *AWS) GetPrivateLink() (value bool, ok bool) {
 //
 // Manages additional configuration for Private Links.
 func (o *AWS) PrivateLinkConfiguration() *PrivateLinkClusterConfiguration {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.privateLinkConfiguration
 	}
 	return nil
@@ -219,7 +243,7 @@ func (o *AWS) PrivateLinkConfiguration() *PrivateLinkClusterConfiguration {
 //
 // Manages additional configuration for Private Links.
 func (o *AWS) GetPrivateLinkConfiguration() (value *PrivateLinkClusterConfiguration, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.privateLinkConfiguration
 	}
@@ -231,7 +255,7 @@ func (o *AWS) GetPrivateLinkConfiguration() (value *PrivateLinkClusterConfigurat
 //
 // AWS secret access key.
 func (o *AWS) SecretAccessKey() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.secretAccessKey
 	}
 	return ""
@@ -242,7 +266,7 @@ func (o *AWS) SecretAccessKey() string {
 //
 // AWS secret access key.
 func (o *AWS) GetSecretAccessKey() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.secretAccessKey
 	}
@@ -254,7 +278,7 @@ func (o *AWS) GetSecretAccessKey() (value string, ok bool) {
 //
 // The subnet ids to be used when installing the cluster.
 func (o *AWS) SubnetIDs() []string {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.subnetIDs
 	}
 	return nil
@@ -265,7 +289,7 @@ func (o *AWS) SubnetIDs() []string {
 //
 // The subnet ids to be used when installing the cluster.
 func (o *AWS) GetSubnetIDs() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.subnetIDs
 	}
@@ -277,7 +301,7 @@ func (o *AWS) GetSubnetIDs() (value []string, ok bool) {
 //
 // Optional keys and values that the installer will add as tags to all AWS resources it creates
 func (o *AWS) Tags() map[string]string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.tags
 	}
 	return nil
@@ -288,7 +312,7 @@ func (o *AWS) Tags() map[string]string {
 //
 // Optional keys and values that the installer will add as tags to all AWS resources it creates
 func (o *AWS) GetTags() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.tags
 	}
