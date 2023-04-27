@@ -735,8 +735,8 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if !ocm.IsValidAWSAccount(billingAccount) {
-		r.Reporter.Errorf("Expected a valid AWS account")
+	if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
+		r.Reporter.Errorf("Expected a valid billing account")
 		os.Exit(1)
 	}
 
