@@ -234,6 +234,9 @@ var pathTreeData = `{
                 }
               }
             },
+            "inflight_checks": {
+              "-": null
+            },
             "ingresses": {
               "-": null
             },
