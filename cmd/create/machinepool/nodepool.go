@@ -306,26 +306,37 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 
 	npBuilder.AutoRepair(autorepair)
 
+	var inputTuningConfig []string
 	tuningConfigs := args.tuningConfigs
-	inputTuningConfig := strings.Split(tuningConfigs, ",")
-	if interactive.Enabled() {
-		// Get the list of available tuning configs
-		availableTuningConfigs, err := r.OCMClient.GetTuningConfigsName(cluster.ID())
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+	// Get the list of available tuning configs
+	availableTuningConfigs, err := r.OCMClient.GetTuningConfigsName(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if tuningConfigs != "" {
+		if len(availableTuningConfigs) > 0 {
+			inputTuningConfig = strings.Split(tuningConfigs, ",")
+		} else {
+			// Parameter will be ignored
+			r.Reporter.Warnf("No tuning config available for cluster '%s'. "+
+				"Any tuning config in input will be ignored", cluster.ID())
 		}
-
-		inputTuningConfig, err = interactive.GetMultipleOptions(interactive.Input{
-			Question: "Tuning configs",
-			Help:     cmd.Flags().Lookup("tuning-configs").Usage,
-			Options:  availableTuningConfigs,
-			Default:  inputTuningConfig,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for tuning configs: %s", err)
-			os.Exit(1)
+	}
+	if interactive.Enabled() {
+		// Skip if no tuning configs are available
+		if len(availableTuningConfigs) > 0 {
+			inputTuningConfig, err = interactive.GetMultipleOptions(interactive.Input{
+				Question: "Tuning configs",
+				Help:     cmd.Flags().Lookup("tuning-configs").Usage,
+				Options:  availableTuningConfigs,
+				Default:  inputTuningConfig,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for tuning configs: %s", err)
+				os.Exit(1)
+			}
 		}
 	}
 
