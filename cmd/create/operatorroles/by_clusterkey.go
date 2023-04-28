@@ -36,7 +36,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		}
 	}
 
-	if isOidcConfigReusable(cluster) && len(missingRoles) == 0 {
+	if ocm.IsOidcConfigReusable(cluster) && len(missingRoles) == 0 {
 		err := validateOperatorRolesMatchOidcProvider(r, cluster)
 		if err != nil {
 			return err
@@ -220,7 +220,7 @@ func createRoles(r *rosa.Runtime,
 			tags.OperatorName:      operator.Name(),
 			tags.RedHatManaged:     helper.True,
 		}
-		if !isOidcConfigReusable(cluster) {
+		if !ocm.IsOidcConfigReusable(cluster) {
 			tagsList[tags.ClusterID] = cluster.ID()
 		}
 		if managedPolicies {
@@ -327,7 +327,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			tags.OperatorName:      operator.Name(),
 			tags.RedHatManaged:     helper.True,
 		}
-		if !isOidcConfigReusable(cluster) {
+		if !ocm.IsOidcConfigReusable(cluster) {
 			iamTags[tags.ClusterID] = cluster.ID()
 		}
 		if managedPolicies {

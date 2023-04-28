@@ -37,20 +37,11 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 		os.Exit(1)
 	}
 	args.prefix = operatorRolesPrefix
-	oidcEndpointUrl := args.oidcEndpointUrl
-	oidcEndpointUrl, err = interactive.GetString(
-		interactive.Input{
-			Question:   "OIDC Endpoint URL",
-			Help:       cmd.Flags().Lookup(OidcEndpointUrlFlag).Usage,
-			Required:   true,
-			Default:    oidcEndpointUrl,
-			Validators: []interactive.Validator{interactive.IsURL},
-		})
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid OIDC Endpoint Url: %s", err)
-		os.Exit(1)
+
+	if args.oidcConfigId == "" {
+		args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
 	}
-	args.oidcEndpointUrl = oidcEndpointUrl
+
 	isHostedCP := args.hostedCp
 	isHostedCP, err = interactive.GetBool(interactive.Input{
 		Question: "Create hosted control plane operator roles",
@@ -70,9 +61,14 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	permissionsBoundary string, mode string,
 	policies map[string]*cmv1.AWSSTSPolicy,
 	defaultPolicyVersion string) error {
+	oidcConfig, err := r.OCMClient.GetOidcConfig(args.oidcConfigId)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem retrieving OIDC Config '%s': %v", args.oidcConfigId, err)
+		os.Exit(1)
+	}
 	includeHostedCpSet := args.hostedCp
 	operatorRolesPrefix := args.prefix
-	oidcEndpointUrl := args.oidcEndpointUrl
+	oidcEndpointUrl := oidcConfig.IssuerUrl()
 	installerRoleArn := args.installerRoleArn
 
 	validateArgumentsOperatorRolesCreationByPrefix(r, operatorRolesPrefix, oidcEndpointUrl, installerRoleArn)

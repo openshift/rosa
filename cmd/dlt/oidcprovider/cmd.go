@@ -44,10 +44,11 @@ var Cmd = &cobra.Command{
 }
 
 const (
-	OidcEndpointUrlFlag = "oidc-endpoint-url"
+	OidcConfigIdFlag = "oidc-config-id"
 )
 
 var args struct {
+	oidcConfigId    string
 	oidcEndpointUrl string
 }
 
@@ -55,10 +56,11 @@ func init() {
 	flags := Cmd.Flags()
 
 	flags.StringVar(
-		&args.oidcEndpointUrl,
-		OidcEndpointUrlFlag,
+		&args.oidcConfigId,
+		OidcConfigIdFlag,
 		"",
-		"Endpoint url for deleting OIDC provider, this flag needs to be used in case of reusable OIDC Config",
+		"Registered OIDC configuration ID to retrieve it's issuer URL. "+
+			"Not to be used alongside --cluster flag.",
 	)
 
 	ocm.AddOptionalClusterFlag(Cmd)
@@ -89,14 +91,29 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if !cmd.Flag("cluster").Changed && !cmd.Flag(OidcEndpointUrlFlag).Changed && !isProgmaticallyCalled {
-		r.Reporter.Errorf("Either a cluster key or an OIDC Endpoint URL must be specified.")
-		os.Exit(1)
+	// Determine if interactive mode is needed
+	if !isProgmaticallyCalled && !interactive.Enabled() &&
+		(!cmd.Flags().Changed("cluster") || !cmd.Flags().Changed("mode")) {
+		interactive.Enable()
+	}
+
+	if interactive.Enabled() && !isProgmaticallyCalled {
+		mode, err = interactive.GetOption(interactive.Input{
+			Question: "OIDC provider deletion mode",
+			Help:     cmd.Flags().Lookup("mode").Usage,
+			Default:  aws.ModeAuto,
+			Options:  aws.Modes,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid OIDC provider deletion mode: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	clusterKey := ""
 	providerArn := ""
-	if args.oidcEndpointUrl == "" {
+	if cmd.Flag("cluster").Changed {
 		clusterKey = r.GetClusterKey()
 		r.Reporter.Debugf("Loading cluster '%s'", clusterKey)
 		sub, err := r.OCMClient.GetClusterUsingSubscription(clusterKey, r.Creator)
@@ -138,11 +155,24 @@ func run(cmd *cobra.Command, argv []string) {
 		if providerArn == "" {
 			r.Reporter.Infof("Cluster '%s' doesn't have OIDC provider associated with it. "+
 				"In case of reusable OIDC config please use '%s' flag.",
-				clusterKey, OidcEndpointUrlFlag)
+				clusterKey, OidcConfigIdFlag)
 			return
 		}
 	} else {
-		oidcEndpointUrl := args.oidcEndpointUrl
+		oidcEndpointUrl := ""
+		if isProgmaticallyCalled && args.oidcEndpointUrl != "" {
+			oidcEndpointUrl = args.oidcEndpointUrl
+		} else {
+			if args.oidcConfigId == "" {
+				args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
+			}
+			oidcConfig, err := r.OCMClient.GetOidcConfig(args.oidcConfigId)
+			if err != nil {
+				r.Reporter.Errorf("There was a problem retrieving OIDC Config '%s': %v", args.oidcConfigId, err)
+				os.Exit(1)
+			}
+			oidcEndpointUrl = oidcConfig.IssuerUrl()
+		}
 		parsedURI, _ := url.ParseRequestURI(oidcEndpointUrl)
 		if parsedURI.Scheme != helper.ProtocolHttps {
 			r.Reporter.Errorf("Expected OIDC endpoint URL '%s' to use an https:// scheme", oidcEndpointUrl)
@@ -153,6 +183,10 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Failed to get the OIDC provider for endpoint URL '%s': %v", oidcEndpointUrl, err)
 			os.Exit(1)
 		}
+		if providerArn == "" {
+			r.Reporter.Infof("Provider '%s' not found.", oidcEndpointUrl)
+			return
+		}
 		hasClusterUsingOidcProvider, err := r.OCMClient.HasAClusterUsingOidcEndpointUrl(oidcEndpointUrl)
 		if err != nil {
 			r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC provider '%s' : %v",
@@ -161,28 +195,6 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		if hasClusterUsingOidcProvider {
 			r.Reporter.Errorf("There are clusters using OIDC config '%s', can't delete the provider", oidcEndpointUrl)
-			os.Exit(1)
-		}
-		if providerArn == "" {
-			r.Reporter.Infof("Provider '%s' not found.", oidcEndpointUrl)
-			return
-		}
-	}
-	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
-		interactive.Enable()
-	}
-
-	if interactive.Enabled() && !isProgmaticallyCalled {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "OIDC provider deletion mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid OIDC provider deletion mode: %s", err)
 			os.Exit(1)
 		}
 	}

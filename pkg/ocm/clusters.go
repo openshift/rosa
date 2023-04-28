@@ -920,3 +920,12 @@ func IsConsoleAvailable(cluster *cmv1.Cluster) bool {
 func IsHyperShiftCluster(cluster *cmv1.Cluster) bool {
 	return cluster != nil && cluster.Hypershift() != nil && cluster.Hypershift().Enabled()
 }
+
+func IsOidcConfigReusable(cluster *cmv1.Cluster) bool {
+	return cluster != nil &&
+		cluster.AWS().STS().OidcConfig() != nil && cluster.AWS().STS().OidcConfig().Reusable()
+}
+
+func IsSts(cluster *cmv1.Cluster) bool {
+	return cluster != nil && cluster.AWS().STS().RoleARN() != ""
+}
