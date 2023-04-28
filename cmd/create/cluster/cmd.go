@@ -2342,28 +2342,18 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
-			if oidcConfig == nil {
-				oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
-			} else {
-				oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfig.IssuerUrl()})
-			}
+			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
 		} else {
 			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
 			if permissionsBoundary != "" {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
 			}
 			oidcCMD := "rosa create oidc-provider"
-			if oidcConfig == nil {
-				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
-			} else {
-				oidcCMD = fmt.Sprintf("%s --%s %s", oidcCMD,
-					oidcprovider.OidcEndpointUrlFlag, oidcConfig.IssuerUrl())
-			}
+			oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
 			output := "Run the following commands to continue the cluster creation:\n\n"
 			output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			output = fmt.Sprintf("%s\t%s\n", output, oidcCMD)
 			r.Reporter.Infof(output)
-
 		}
 	}
 

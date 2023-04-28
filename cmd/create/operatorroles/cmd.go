@@ -32,7 +32,7 @@ import (
 const (
 	PrefixFlag           = "prefix"
 	HostedCpFlag         = "hosted-cp"
-	OidcEndpointUrlFlag  = "oidc-endpoint-url"
+	OidcConfigIdFlag     = "oidc-config-id"
 	InstallerRoleArnFlag = "installer-role-arn"
 )
 
@@ -42,7 +42,7 @@ var args struct {
 	installerRoleArn    string
 	permissionsBoundary string
 	forcePolicyCreation bool
-	oidcEndpointUrl     string
+	oidcConfigId        string
 }
 
 var Cmd = &cobra.Command{
@@ -71,10 +71,10 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.oidcEndpointUrl,
-		OidcEndpointUrlFlag,
+		&args.oidcConfigId,
+		OidcConfigIdFlag,
 		"",
-		"Oidc endpoint URL to add as the trusted relationship to the operator roles. "+
+		"Registered OIDC configuration ID to add it's issuer URL as the trusted relationship to the operator roles. "+
 			"Not to be used alongside --cluster flag.",
 	)
 
@@ -110,11 +110,6 @@ func init() {
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
-}
-
-func isOidcConfigReusable(cluster *cmv1.Cluster) bool {
-	return cluster != nil &&
-		cluster.AWS().STS().OidcConfig() != nil && cluster.AWS().STS().OidcConfig().Reusable()
 }
 
 func run(cmd *cobra.Command, argv []string) error {
@@ -227,8 +222,8 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if args.prefix != "" {
-		if args.oidcEndpointUrl == "" {
-			r.Reporter.Errorf("%s is mandatory for %s param flow.", OidcEndpointUrlFlag, PrefixFlag)
+		if args.oidcConfigId == "" {
+			r.Reporter.Errorf("%s is mandatory for %s param flow.", OidcConfigIdFlag, PrefixFlag)
 			os.Exit(1)
 		}
 
