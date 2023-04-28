@@ -139,37 +139,47 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	}
 
 	if isTuningsConfigSet || interactive.Enabled() {
+		var inputTuningConfig []string
 		tuningConfigs := args.tuningConfigs
-		inputTuningConfig := strings.Split(tuningConfigs, ",")
+		// Get the list of available tuning configs
+		availableTuningConfigs, err := r.OCMClient.GetTuningConfigsName(cluster.ID())
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		if tuningConfigs != "" {
+			if len(availableTuningConfigs) > 0 {
+				inputTuningConfig = strings.Split(tuningConfigs, ",")
+			} else {
+				// Parameter will be ignored
+				r.Reporter.Warnf("No tuning config available for cluster '%s'. "+
+					"Any tuning config in input will be ignored", cluster.ID())
+			}
+		}
+
 		if interactive.Enabled() {
 			if !isTuningsConfigSet {
 				// Interactive mode without explicit input parameter. Take the existing value
 				inputTuningConfig = nodePool.TuningConfigs()
 			}
 
-			// Get the list of available tuning configs
-			availableTuningConfigs, err := r.OCMClient.GetTuningConfigsName(cluster.ID())
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-
-			inputTuningConfig, err = interactive.GetMultipleOptions(interactive.Input{
-				Question: "Tuning configs",
-				Help:     cmd.Flags().Lookup("tuning-configs").Usage,
-				Options:  availableTuningConfigs,
-				Default:  inputTuningConfig,
-				Required: false,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid value for tuning configs: %s", err)
-				os.Exit(1)
+			// Skip if no tuning configs are available
+			if len(availableTuningConfigs) > 0 {
+				inputTuningConfig, err = interactive.GetMultipleOptions(interactive.Input{
+					Question: "Tuning configs",
+					Help:     cmd.Flags().Lookup("tuning-configs").Usage,
+					Options:  availableTuningConfigs,
+					Default:  inputTuningConfig,
+					Required: false,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for tuning configs: %s", err)
+					os.Exit(1)
+				}
 			}
 		}
 
-		if len(inputTuningConfig) != 0 {
-			npBuilder.TuningConfigs(inputTuningConfig...)
-		}
+		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
 	nodePool, err = npBuilder.Build()
