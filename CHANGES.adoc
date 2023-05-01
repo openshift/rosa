@@ -2,6 +2,28 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.18 May 1 2023
+
+- SDA-8382|feat:Add create/list/describe/update/delete tuning configs
+- SDA-8382|feat:Add tuning config support for node pools
+- SDA-8883 | Feat: expose scheduling time for hypershift upgrade
+- fix: Add flag to bypass confirmation for hibernate/resume
+- refactor: removing init and global variables for hibernate/resume
+- SDA-8920 | fix: improve upgrade roles / operator-roles info messages
+- SDA-8900 | fix: adjust behavior for creating with -o
+- SDA-8971 | build : update dep golang.org/x/net
+- SDA-8690 Update replicas help message for hosted-cp cluster
+- SDA-8382| Fix: delete tuning config bad definition
+- added billing account parameter for hypershift clusters
+- Refactor oidcconfig and move a reuse-able code to a new helper packagex
+- SDA-6562 | feat: skip subnet choice when AZ is supplied
+- PR feedback: updated validation message and moved check for empty string out of IsValidAWSAccount function
+- golangci-lint feedback: simplified IsValidAWSAccount function
+- SDA-8990 | chore: bump ocm-sdk v0.1.337
+- SDA-8990 | chore: bump ocm-sdk to v0.1.338
+- SDA-8636 | feat: use OIDC Config ID to create OIDC provider and operator roles
+- SDA-9008 | Fix node pool edit/create behaviour when no tuning config in a cluster
+
 == 1.2.17 Apr 24 2023
 
 - logging: Disable quoting of values - makes request/response dumps readable
