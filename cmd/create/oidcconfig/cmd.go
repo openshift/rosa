@@ -97,7 +97,7 @@ func init() {
 	flags.BoolVar(
 		&args.managed,
 		managedFlag,
-		false,
+		true,
 		"Indicates whether it is a Red Hat managed or unmanaged (Customer hosted) OIDC Configuration.",
 	)
 
