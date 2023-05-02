@@ -256,6 +256,10 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
+	if !args.hostedCP && strings.HasSuffix(prefix, "-HCP") {
+		r.Reporter.Errorf("The '-HCP' suffix is reserved for hosted CP managed policies")
+		os.Exit(1)
+	}
 
 	permissionsBoundary := args.permissionsBoundary
 	if interactive.Enabled() {
