@@ -2418,6 +2418,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	}
 	if oidcConfigId == "" {
 		if !isHostedCP {
+			r.Reporter.Warnf("No OIDC Configuration found; will continue with the classic flow.")
 			return nil
 		}
 		if args.classicOidcConfig {
