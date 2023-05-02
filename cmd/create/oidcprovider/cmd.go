@@ -83,6 +83,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Allow the command to be called programmatically
 	isProgmaticallyCalled := false
+	shouldUseClusterKey := true
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		aws.SetModeKey(argv[1])
@@ -93,6 +94,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 		if argv[2] != "" {
 			args.oidcEndpointUrl = argv[2]
+			shouldUseClusterKey = false
 		}
 	}
 
@@ -116,7 +118,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	var cluster *cmv1.Cluster
 	clusterKey := ""
-	if cmd.Flags().Changed("cluster") || isProgmaticallyCalled {
+	if cmd.Flags().Changed("cluster") || (isProgmaticallyCalled && shouldUseClusterKey) {
 		clusterKey = r.GetClusterKey()
 		cluster = r.FetchCluster()
 		if !ocm.IsSts(cluster) {
