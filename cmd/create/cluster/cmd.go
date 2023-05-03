@@ -56,6 +56,9 @@ var kmsArnRE = regexp.MustCompile(
 const (
 	OidcConfigIdFlag      = "oidc-config-id"
 	ClassicOidcConfigFlag = "classic-oidc-config"
+
+	MinReplicasSingleAZ = 2
+	MinReplicaMultiAZ   = 3
 )
 
 var args struct {
@@ -1787,22 +1790,20 @@ func run(cmd *cobra.Command, _ []string) {
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
 
-	minReplicas := args.minReplicas
-	maxReplicas := args.maxReplicas
+	minReplicas, maxReplicas := calculateReplicas(
+		isMinReplicasSet,
+		isMaxReplicasSet,
+		args.minReplicas,
+		args.maxReplicas,
+		privateSubnetsCount,
+		isHostedCP,
+		multiAZ)
+
 	if autoscaling {
 		// if the user set compute-nodes and enabled autoscaling
 		if isReplicasSet {
 			r.Reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
 			os.Exit(1)
-		}
-
-		if multiAZ {
-			if !isMinReplicasSet {
-				minReplicas = 3
-			}
-			if !isMaxReplicasSet {
-				maxReplicas = minReplicas
-			}
 		}
 		if interactive.Enabled() || !isMinReplicasSet {
 			minReplicas, err = interactive.GetInt(interactive.Input{
@@ -1851,7 +1852,7 @@ func run(cmd *cobra.Command, _ []string) {
 	computeNodes := args.computeNodes
 	// Compute node requirements for multi-AZ clusters are higher
 	if multiAZ && !autoscaling && !isReplicasSet {
-		computeNodes = 3
+		computeNodes = minReplicas
 	}
 	if !autoscaling {
 		// if the user set min/max replicas and hasn't enabled autoscaling
@@ -2798,4 +2799,35 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 func getRolePrefix(clusterName string) string {
 	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
+}
+
+func calculateReplicas(
+	isMinReplicasSet bool,
+	isMaxReplicasSet bool,
+	minReplicas int,
+	maxReplicas int,
+	privateSubnetsCount int,
+	isHostedCP bool,
+	multiAZ bool) (int, int) {
+
+	newMinReplicas := minReplicas
+	newMaxReplicas := maxReplicas
+
+	if !isMinReplicasSet {
+		if isHostedCP {
+			newMinReplicas = privateSubnetsCount
+			if privateSubnetsCount == 1 {
+				newMinReplicas = MinReplicasSingleAZ
+			}
+		} else {
+			if multiAZ {
+				newMinReplicas = MinReplicaMultiAZ
+			}
+		}
+	}
+	if !isMaxReplicasSet && multiAZ {
+		newMaxReplicas = newMinReplicas
+	}
+
+	return newMinReplicas, newMaxReplicas
 }
