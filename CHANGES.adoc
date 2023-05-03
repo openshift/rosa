@@ -2,6 +2,10 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.20 May 3 2023
+
+- fix: aws path differs from ocm expected path
+
 == 1.2.19 May 3 2023
 
 - SDA-8770 | fix: accept only official default prefix when selecting default prefix
