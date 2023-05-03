@@ -1202,9 +1202,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorRolesPrefix := args.operatorRolesPrefix
-	operatorRolePath, _ := aws.GetPathFromARN(roleARN)
+	expectedOperatorRolePath, _ := aws.GetPathFromARN(roleARN)
 	operatorIAMRoles := args.operatorIAMRoles
-	operatorIAMRoleList := []ocm.OperatorIAMRole{}
+	computedOperatorIamRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
 		if operatorRolesPrefix == "" {
 			operatorRolesPrefix = getRolePrefix(clusterName)
@@ -1257,9 +1257,10 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
 			os.Exit(1)
 		}
-		if operatorRolePath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
+		if expectedOperatorRolePath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
 			r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
-				" created operator roles and policies, for the account roles with prefix '%s'", operatorRolePath, accRolesPrefix)
+				" created operator roles and policies, for the account roles with prefix '%s'",
+				expectedOperatorRolePath, accRolesPrefix)
 		}
 		for _, operator := range credRequests {
 			//If the cluster version is less than the supported operator version
@@ -1273,18 +1274,17 @@ func run(cmd *cobra.Command, _ []string) {
 					continue
 				}
 			}
-			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
+			computedOperatorIamRoleList = append(computedOperatorIamRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name(),
 				Namespace: operator.Namespace(),
 				RoleARN: aws.ComputeOperatorRoleArn(operatorRolesPrefix, operator,
-					awsCreator, operatorRolePath),
+					awsCreator, expectedOperatorRolePath),
 			})
-
 		}
 		// If user insists on using the deprecated --operator-iam-roles
 		// override the values to support the legacy documentation
 		if cmd.Flags().Changed("operator-iam-roles") {
-			operatorIAMRoleList = []ocm.OperatorIAMRole{}
+			computedOperatorIamRoleList = []ocm.OperatorIAMRole{}
 			for _, role := range operatorIAMRoles {
 				if !strings.Contains(role, ",") {
 					r.Reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
@@ -1297,7 +1297,7 @@ func run(cmd *cobra.Command, _ []string) {
 						"list of name,namespace,role_arn")
 					os.Exit(1)
 				}
-				operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
+				computedOperatorIamRoleList = append(computedOperatorIamRoleList, ocm.OperatorIAMRole{
 					Name:      roleData[0],
 					Namespace: roleData[1],
 					RoleARN:   roleData[2],
@@ -1305,14 +1305,14 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 		oidcConfig = handleOidcConfigOptions(r, cmd, isSTS, isHostedCP)
-		err = validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient, operatorIAMRoleList)
+		err = validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient, computedOperatorIamRoleList)
 		if err != nil {
 			if !oidcConfig.Reusable() {
 				r.Reporter.Errorf("%v", err)
 				os.Exit(1)
 			} else {
-				err = ocm.ValidateOperatorRolesMatchOidcProvider(awsClient, operatorIAMRoleList, oidcConfig.IssuerUrl(),
-					ocm.GetVersionMinor(version))
+				err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, awsClient, computedOperatorIamRoleList,
+					oidcConfig.IssuerUrl(), ocm.GetVersionMinor(version), expectedOperatorRolePath)
 				if err != nil {
 					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
@@ -2242,7 +2242,7 @@ func run(cmd *cobra.Command, _ []string) {
 		RoleARN:                   roleARN,
 		ExternalID:                externalID,
 		SupportRoleARN:            supportRoleARN,
-		OperatorIAMRoles:          operatorIAMRoleList,
+		OperatorIAMRoles:          computedOperatorIamRoleList,
 		ControlPlaneRoleARN:       controlPlaneRoleARN,
 		WorkerRoleARN:             workerRoleARN,
 		Mode:                      mode,
@@ -2300,7 +2300,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
-			command := buildCommand(clusterConfig, operatorRolesPrefix, operatorRolePath,
+			command := buildCommand(clusterConfig, operatorRolesPrefix, expectedOperatorRolePath,
 				isAvailabilityZonesSet || selectAvailabilityZones, labels)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
@@ -2349,13 +2349,18 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
 		} else {
+			output := ""
+			if cluster.AWS().STS().OidcConfig().Reusable() {
+				output = "When using reusable OIDC Config and resources have been created " +
+					"prior to cluster specification, this step is not required."
+			}
 			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
 			if permissionsBoundary != "" {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
 			}
 			oidcCMD := "rosa create oidc-provider"
 			oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
-			output := "Run the following commands to continue the cluster creation:\n\n"
+			output += "\nRun the following commands to continue the cluster creation:\n\n"
 			output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			output = fmt.Sprintf("%s\t%s\n", output, oidcCMD)
 			r.Reporter.Infof(output)
@@ -2374,6 +2379,7 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+	os.Exit(0)
 }
 
 func validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient aws.Client,
