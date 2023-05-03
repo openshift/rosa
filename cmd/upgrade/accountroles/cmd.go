@@ -139,7 +139,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Errorf("Failed to get hosted CP account roles ARN: %v", err)
 		} else {
 			reporter.Errorf("Failed to get classic account role ARN: %v. "+
-				"To delete hosted CP account roles use the '--hosted-cp' flag", err)
+				"To upgrade hosted CP account roles use the '--hosted-cp' flag", err)
 		}
 		os.Exit(1)
 	}
