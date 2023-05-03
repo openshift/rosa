@@ -892,7 +892,11 @@ func run(cmd *cobra.Command, _ []string) {
 			defaultRoleARN := roleARNs[0]
 			// Prioritize roles with the default prefix
 			for _, rARN := range roleARNs {
-				if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)) {
+				roleName, err := aws.GetResourceIdFromARN(rARN)
+				if err != nil {
+					continue
+				}
+				if roleName == fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name) {
 					defaultRoleARN = rARN
 				}
 			}
