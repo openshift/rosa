@@ -2,19 +2,33 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.19 May 3 2023
+
+- SDA-8770 | fix: accept only official default prefix when selecting default prefix
+- SDA-8914 | fix: rosa upgrade account roles - handle edge cases
+- SDA-8382| Fix: skip replicas when passing tuning configs to edit
+- SDA-8636 | fix: OIDC provider behavior when calling internally from oidc config flow
+- SDA-9041 | feat: defaults to managed oidc configs
+- SDA-8716 | Fix: provide warning message when no OIDC config is found
+- added billing account information to rosa describe cluster command
+- SDA-8600 | feat: add interactive option for delete account roles
+- SDA-9051 | fix: Upgrade account roles - fix error message
+- SDA-8689 Adjust default replicas on clusters
+- SDA-9048 | feat: add messages and checks to ensure a better flow UX wise
+
 == 1.2.18 May 1 2023
 
 - SDA-8382|feat:Add create/list/describe/update/delete tuning configs
 - SDA-8382|feat:Add tuning config support for node pools
-- SDA-8883 | Feat: expose scheduling time for hypershift upgrade
+- SDA-8883 | Feat: expose scheduling time for upgrade
 - fix: Add flag to bypass confirmation for hibernate/resume
 - refactor: removing init and global variables for hibernate/resume
 - SDA-8920 | fix: improve upgrade roles / operator-roles info messages
 - SDA-8900 | fix: adjust behavior for creating with -o
 - SDA-8971 | build : update dep golang.org/x/net
-- SDA-8690 Update replicas help message for hosted-cp cluster
+- SDA-8690 Update replicas help message for cluster
 - SDA-8382| Fix: delete tuning config bad definition
-- added billing account parameter for hypershift clusters
+- added billing account parameter for clusters
 - Refactor oidcconfig and move a reuse-able code to a new helper packagex
 - SDA-6562 | feat: skip subnet choice when AZ is supplied
 - PR feedback: updated validation message and moved check for empty string out of IsValidAWSAccount function
@@ -48,12 +62,12 @@ This document describes the relevant changes between releases of the `rosa` comm
 - fix: trims trailing slash in ocm api when checking env
 - SDA-8861 | feat: add --etcd-encryption-kms-arn to cluster build command when in use
 - SDA-8882 | fix: add more validations before terminating run for upgrade roles
-- fix: upgrade account roles - support hosted CP managed policies
+- fix: upgrade account roles - support managed policies
 - SDA-8897 | fix: shared operator roles with managed policies
 - SDA-8900 | feat: only allow aws auto mode when choosing and output flag enabled
 - SDA-8892|fix:Ask for drain period before scheduling the update
-- SDA-8905 | feat:Implement delete upgrade command for hypershift
-- SDA-8880 | Fix: implement list upgrades for Hypershift
+- SDA-8905 | feat:Implement delete upgrade command
+- SDA-8880 | Fix: implement list upgrades
 - SDA-8880 | Fix: correctly check if an upgrade is already scheduled
 
 == 1.2.16 Apr 10 2023
@@ -72,7 +86,7 @@ This document describes the relevant changes between releases of the `rosa` comm
 - feat: Add option to remove oidc provider created from BYO OIDC
 - feat: add possibility to delete operator roles from prefix
 - feat: Allow creating operator roles using prefix and byo oidc options
-- SDA-8218 Support version parameter on hosted machine pools
+- SDA-8218 Support version parameter on machine pools
 - Fix inconsistencies across commands providing a watch flag
 - fix: check if cmd was progmatically called before erroring
 - fix: does not check flags when is progmatically called
