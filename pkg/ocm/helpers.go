@@ -812,7 +812,11 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 			return err
 		}
 		roleARN := *roleObject.Arn
-		if *roleObject.Path != expectedOperatorRolePath {
+		pathFromArn, err := aws.GetPathFromARN(roleARN)
+		if err != nil {
+			return err
+		}
+		if pathFromArn != expectedOperatorRolePath {
 			return errors.Errorf("Operator Role '%s' does not match the path from Installer Role, "+
 				"please choose correct Installer Role and try again.", roleARN)
 		}
