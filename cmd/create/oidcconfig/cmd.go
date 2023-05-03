@@ -74,6 +74,10 @@ const (
 
 	prefixForPrivateKeySecret = "rosa-private-key"
 	minorVersionForGetSecret  = "4.12"
+	informOperatorRolesOutput = "To create Operator Roles for this OIDC Configuration, " +
+		"run the following command and remember to replace <user-defined> with a prefix of your choice:\n" +
+		"\trosa create operator-roles --prefix <user-defined> --oidc-config-id %s\n" +
+		"If you are going to create a Hosted Control Plane cluster please include '--hosted-cp'"
 )
 
 func init() {
@@ -390,8 +394,7 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		if spin != nil {
 			spin.Stop()
 		}
-		output := "Please run the following command to create a cluster with this oidc config"
-		output = fmt.Sprintf("%s\nrosa create cluster --sts --oidc-config-id %s", output, oidcConfig.ID())
+		output := fmt.Sprintf(informOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
 }
@@ -543,8 +546,7 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		if spin != nil {
 			spin.Stop()
 		}
-		output := "Please run the following command to create a cluster with this oidc config"
-		output = fmt.Sprintf("%s\nrosa create cluster --sts --oidc-config-id %s", output, oidcConfig.ID())
+		output := fmt.Sprintf(informOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
 }

@@ -182,13 +182,14 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 		}
 		if oidcProviderExists {
-			if cluster != nil {
+			if cluster != nil &&
+				cluster.AWS().STS().OidcConfig() != nil && !cluster.AWS().STS().OidcConfig().Reusable() {
 				r.Reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
 					"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
 				os.Exit(1)
 			}
 			// Returns so that when called from create cluster does not interrupt flow
-			r.Reporter.Warnf("OIDC provider already exists.")
+			r.Reporter.Infof("OIDC provider already exists.")
 			return
 		}
 		if !output.HasFlag() || r.Reporter.IsTerminal() {

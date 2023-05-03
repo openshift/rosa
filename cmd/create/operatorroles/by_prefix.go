@@ -156,6 +156,15 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 			})
 			os.Exit(1)
 		}
+		if r.Reporter.IsTerminal() {
+			hostedCpOutputParam := ""
+			if args.hostedCp {
+				hostedCpOutputParam = fmt.Sprintf(" --%s", HostedCpFlag)
+			}
+			r.Reporter.Infof(fmt.Sprintf("To create a cluster with these roles, run the following command:\n"+
+				"\trosa create cluster --sts --oidc-config-id %s --operator-roles-prefix %s%s",
+				args.oidcConfigId, args.prefix, hostedCpOutputParam))
+		}
 		r.OCMClient.LogEvent("ROSACreateOperatorRolesModeAuto", map[string]string{
 			ocm.OperatorRolesPrefix: operatorRolesPrefix,
 			ocm.Response:            ocm.Success,

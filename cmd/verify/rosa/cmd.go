@@ -58,13 +58,14 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if currVersion.LessThan(latestVersionFromMirror) {
-		rprtr.Warnf(
+		rprtr.Infof(
 			"There is a newer release version '%s', please consider updating: %s",
 			latestVersionFromMirror, DownloadLatestMirrorFolder,
 		)
 	} else if rprtr.IsTerminal() {
 		rprtr.Infof("Your ROSA CLI is up to date.")
 	}
+	os.Exit(0)
 }
 
 func retrievePossibleVersionsFromMirror() ([]string, error) {

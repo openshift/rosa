@@ -31,7 +31,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	semver "github.com/hashicorp/go-version"
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/zgalor/weberr"
+	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/reporter"
 	errors "github.com/zgalor/weberr"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -720,7 +721,7 @@ func (c *Client) CheckUpgradeClusterVersion(
 		}
 	}
 	if !validVersion {
-		return weberr.Errorf(
+		return errors.Errorf(
 			"Expected a valid version to upgrade cluster to.\nValid versions: %s",
 			helper.SliceToSortedString(availableUpgrades),
 		)
@@ -749,7 +750,7 @@ func (c *Client) GetPolicyVersion(userRequestedVersion string, channelGroup stri
 
 	if !hasVersion {
 		versionSet := helper.SliceToMap(versionList)
-		err := weberr.Errorf(
+		err := errors.Errorf(
 			"A valid policy version number must be specified\nValid versions: %v",
 			helper.MapKeysToString(versionSet),
 		)
@@ -794,23 +795,33 @@ func (c *Client) GetVersionsList(channelGroup string) ([]string, error) {
 	return versionList, nil
 }
 
-func ValidateOperatorRolesMatchOidcProvider(awsClient aws.Client,
+func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient aws.Client,
 	operatorIAMRoleList []OperatorIAMRole, oidcEndpointUrl string,
-	clusterVersion string) error {
+	clusterVersion string, expectedOperatorRolePath string) error {
 	operatorIAMRoles := operatorIAMRoleList
 	parsedUrl, err := url.Parse(oidcEndpointUrl)
 	if err != nil {
 		return err
 	}
-
+	if reporter.IsTerminal() && !output.HasFlag() {
+		reporter.Infof("Reusable OIDC Configuration detected. Validating trusted relationships to operator roles: ")
+	}
 	for _, operatorIAMRole := range operatorIAMRoles {
-		roleARN := operatorIAMRole.RoleARN
-		roleObject, err := awsClient.GetRoleByARN(roleARN)
+		roleObject, err := awsClient.GetRoleByARN(operatorIAMRole.RoleARN)
 		if err != nil {
 			return err
 		}
+		roleARN := *roleObject.Arn
+		if *roleObject.Path != expectedOperatorRolePath {
+			return errors.Errorf("Operator Role '%s' does not match the path from Installer Role, "+
+				"please choose correct Installer Role and try again.", roleARN)
+		}
+		if roleARN != operatorIAMRole.RoleARN {
+			return errors.Errorf("Computed Operator Role '%s' does not match role ARN found in AWS '%s', "+
+				"please check if the correct parameters have been supplied.", operatorIAMRole.RoleARN, roleARN)
+		}
 		if !strings.Contains(*roleObject.AssumeRolePolicyDocument, parsedUrl.Host) {
-			return weberr.Errorf("Operator role '%s' does not have trusted relationship to '%s' issuer URL",
+			return errors.Errorf("Operator role '%s' does not have trusted relationship to '%s' issuer URL",
 				roleARN, parsedUrl.Host)
 		}
 		hasManagedPolicies, err := awsClient.HasManagedPolicies(roleARN)
@@ -834,8 +845,11 @@ func ValidateOperatorRolesMatchOidcProvider(awsClient aws.Client,
 				return err
 			}
 			if !isCompatible {
-				return weberr.Errorf("Operator role '%s' is not compatible with cluster version '%s'", roleARN, clusterVersion)
+				return errors.Errorf("Operator role '%s' is not compatible with cluster version '%s'", roleARN, clusterVersion)
 			}
+		}
+		if reporter.IsTerminal() && !output.HasFlag() {
+			reporter.Infof("Using '%s'", *roleObject.Arn)
 		}
 	}
 	return nil
