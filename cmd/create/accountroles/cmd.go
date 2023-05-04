@@ -332,7 +332,23 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	rolesCreator := initCreator(managedPolicies, args.hostedCP)
+	createHostedCP := args.hostedCP
+	if env != ocm.Production { // TODO: remove env check once AWS publishes all the hcp Managed Policies
+		if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
+			createHostedCP, err = interactive.GetBool(interactive.Input{
+				Question: "Create Hosted CP account roles",
+				Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+				Default:  false,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value: %s", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	rolesCreator := initCreator(managedPolicies, createHostedCP)
 	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
 		policyVersion, path)
 
