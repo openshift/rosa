@@ -590,7 +590,6 @@ func init() {
 		"",
 		"Account used for billing subscriptions purchased via the AWS marketplace",
 	)
-	flags.MarkHidden("billing-account")
 
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
@@ -702,45 +701,41 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if interactive.Enabled() && isHostedCP {
-		requestBillingAccount, err := interactive.GetBool(interactive.Input{
-			Question: "Specify a separate billing account",
-			Default:  false,
-			Required: true,
-		})
+		cloudAccounts, err := r.OCMClient.GetBillingAccounts()
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
-		if requestBillingAccount {
-			cloudAccounts, err := r.OCMClient.GetBillingAccounts()
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+		if !helper.Contains(cloudAccounts, billingAccount) {
+			// if a billing account is not provided or it's not subscribed
+			// then we will try to use the infrastructure account as default
+			if helper.Contains(cloudAccounts, awsCreator.AccountID) {
+				billingAccount = awsCreator.AccountID
 			}
+		}
 
-			if billingAccount == "" {
-				billingAccount = cloudAccounts[0]
-			}
-
-			billingAccount, err = interactive.GetOption(interactive.Input{
-				Question: "Billing Account",
-				Help:     cmd.Flags().Lookup("billing-account").Usage,
-				Options:  cloudAccounts,
-				Default:  billingAccount,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid billing account: %s", err)
-				os.Exit(1)
-			}
-		} else {
-			billingAccount = ""
+		billingAccount, err = interactive.GetOption(interactive.Input{
+			Question: "Billing Account",
+			Help:     cmd.Flags().Lookup("billing-account").Usage,
+			Options:  cloudAccounts,
+			Default:  billingAccount,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid billing account: %s", err)
+			os.Exit(1)
 		}
 	}
 
-	if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-		r.Reporter.Errorf("Expected a valid billing account")
-		os.Exit(1)
+	if isHostedCP {
+		if billingAccount == "" {
+			r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		if !ocm.IsValidAWSAccount(billingAccount) {
+			r.Reporter.Errorf("Expected a valid billing account")
+			os.Exit(1)
+		}
 	}
 
 	if isHostedCP && cmd.Flags().Changed("default-mp-labels") {
