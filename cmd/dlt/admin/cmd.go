@@ -131,8 +131,7 @@ func run(cmd *cobra.Command, _ []string) {
 			idp.ClusterAdminUsername, r.ClusterKey)
 		err = r.OCMClient.DeleteUser(clusterID, "cluster-admins", idp.ClusterAdminUsername)
 		if err != nil {
-			r.Reporter.Errorf("Failed to delete '%s' user from cluster-admins groups of cluster '%s': %s",
-				idp.ClusterAdminUsername, r.ClusterKey, err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
