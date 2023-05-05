@@ -252,6 +252,18 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	}
 
 	availabilityZonesFilter := cluster.Nodes().AvailabilityZones()
+
+	// If the user selects a subnet which is in a different AZ than day 1, the instance type list should be filter
+	// by the new AZ not the cluster ones
+	if subnet != "" {
+		availabilityZone, err := r.AWSClient.GetSubnetAvailabilityZone(subnet)
+		if err != nil {
+			r.Reporter.Errorf(fmt.Sprintf("%s", err))
+			os.Exit(1)
+		}
+		availabilityZonesFilter = []string{availabilityZone}
+	}
+
 	instanceType := args.instanceType
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
 		availabilityZonesFilter, cluster.AWS().STS().RoleARN(), r.AWSClient)
@@ -266,7 +278,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 
 	if interactive.Enabled() {
 		if instanceType == "" {
-			instanceType = instanceTypeList[0].MachineType.ID()
+			instanceType = instanceTypeList.Items[0].MachineType.ID()
 		}
 		instanceType, err = interactive.GetOption(interactive.Input{
 			Question: "Instance type",

@@ -54,14 +54,14 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(machineTypes) == 0 {
+	if len(machineTypes.Items) == 0 {
 		r.Reporter.Warnf("There are no machine types supported for your account. Contact Red Hat support.")
 		os.Exit(1)
 	}
 
 	if output.HasFlag() {
 		var instanceTypes []*cmv1.MachineType
-		for _, machine := range machineTypes {
+		for _, machine := range machineTypes.Items {
 			instanceTypes = append(instanceTypes, machine.MachineType)
 		}
 		err = output.Print(instanceTypes)
@@ -76,7 +76,7 @@ func run(cmd *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\t\n")
 
-	for _, machine := range machineTypes {
+	for _, machine := range machineTypes.Items {
 		if !machine.Available {
 			continue
 		}
