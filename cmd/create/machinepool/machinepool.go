@@ -283,7 +283,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	if interactive.Enabled() {
 		if instanceType == "" {
-			instanceType = instanceTypeList[0].MachineType.ID()
+			instanceType = instanceTypeList.Items[0].MachineType.ID()
 		}
 		instanceType, err = interactive.GetOption(interactive.Input{
 			Question: "Instance type",
