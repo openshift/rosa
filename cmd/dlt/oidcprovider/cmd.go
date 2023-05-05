@@ -97,7 +97,7 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	if interactive.Enabled() && !isProgmaticallyCalled {
+	if !cmd.Flags().Changed("mode") && interactive.Enabled() && !isProgmaticallyCalled {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
