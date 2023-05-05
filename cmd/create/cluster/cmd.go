@@ -2697,7 +2697,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		}
 		command += fmt.Sprintf(" --tags %s", strings.Join(tags, ","))
 	}
-	if spec.MultiAZ {
+	if spec.MultiAZ && !spec.Hypershift.Enabled {
 		command += " --multi-az"
 	}
 	if spec.Region != "" {
