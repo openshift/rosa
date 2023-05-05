@@ -222,7 +222,9 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 		}
-		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
+		if len(routeSelectors) > 0 {
+			ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
+		}
 	}
 
 	ingress, err = ingressBuilder.Build()
