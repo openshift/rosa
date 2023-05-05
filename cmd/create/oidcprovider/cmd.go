@@ -127,7 +127,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if interactive.Enabled() && !isProgmaticallyCalled {
+	if !cmd.Flags().Changed("mode") && interactive.Enabled() && !isProgmaticallyCalled {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
