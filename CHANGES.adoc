@@ -2,6 +2,17 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.21 May 5 2023
+
+- Allow editing ingress privacy for private
+- SDA-6451/Fix: Improve error msg displayed when deletion of admin user fails
+- SDA-8718 Update rosa create message
+- fix : update action to run on each commit in a pull request
+- SDA-9074 | fix : only create route selector builder on ingress edit if route selectors exist
+- OCM-186 | fix: only print success message if no errors occur
+- SDA-9078 | fix: only ask mode if flag is not changed
+- SDA-8963 Improve machine type not found message SDA-9075 Use the AZ selected for fetching instance types
+
 == 1.2.20 May 3 2023
 
 - fix: aws path differs from ocm expected path
