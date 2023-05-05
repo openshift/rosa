@@ -228,6 +228,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	errOccured := false
 	switch mode {
 	case aws.ModeAuto:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
@@ -245,14 +246,17 @@ func run(cmd *cobra.Command, argv []string) {
 				if spin != nil {
 					spin.Stop()
 				}
-				r.Reporter.Warnf("There was an error deleting the Operator Roles or Policies: %s", err)
+				r.Reporter.Warnf("There was an error deleting the Operator Role or Policies: %s", err)
+				errOccured = true
 				continue
 			}
 			if spin != nil {
 				spin.Stop()
 			}
 		}
-		r.Reporter.Infof("Successfully deleted the operator roles")
+		if !errOccured {
+			r.Reporter.Infof("Successfully deleted the operator roles")
+		}
 	case aws.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
 		policyMap, err := r.AWSClient.GetPolicies(foundOperatorRoles)
