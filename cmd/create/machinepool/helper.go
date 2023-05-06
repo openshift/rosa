@@ -12,7 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool, cluster *cmv1.Cluster) string {
+func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
+	cluster *cmv1.Cluster) string {
 	var selectSubnet bool
 	var subnet string
 	var err error
@@ -67,22 +68,9 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool, cl
 // getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
 func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {
 
-	lowestLocalZoneSupportVer, err := ver.NewVersion(ocm.LowestLocalZoneSupport)
+	checkLocalZone, err := isCheckLocalZoneRequired(cluster)
 	if err != nil {
 		return nil, err
-	}
-
-	checkLocalZone := false
-	if version, ok := cluster.GetVersion(); ok {
-		if rawID, ok := version.GetRawID(); ok {
-			clusterVer, err := ver.NewVersion(rawID)
-			if err != nil {
-				return nil, err
-			}
-			if !clusterVer.GreaterThanOrEqual(lowestLocalZoneSupportVer) {
-				checkLocalZone = true
-			}
-		}
 	}
 
 	// Fetch VPC's subnets
@@ -107,4 +95,28 @@ func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) 
 	}
 
 	return subnetOptions, nil
+}
+
+// isCheckLocalZoneRequired check whether needs to filter the subnet in local zone for the provided cluster.
+// if cluster version is lower than 4.12, the subnet in local zone will be filtered.
+func isCheckLocalZoneRequired(cluster *cmv1.Cluster) (bool, error) {
+	lowestLocalZoneSupportVer, err := ver.NewVersion(ocm.LowestLocalZoneSupport)
+	if err != nil {
+		return false, err
+	}
+
+	if version, ok := cluster.GetVersion(); ok {
+		if rawID, ok := version.GetRawID(); ok {
+			clusterVer, err := ver.NewVersion(rawID)
+			if err != nil {
+				return false, err
+			}
+			if !clusterVer.GreaterThanOrEqual(lowestLocalZoneSupportVer) {
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
 }
