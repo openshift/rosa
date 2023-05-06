@@ -252,6 +252,18 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	}
 
 	availabilityZonesFilter := cluster.Nodes().AvailabilityZones()
+
+	// If the user selects a subnet which is in a different AZ than day 1, the instance type list should be filter
+	// by the new AZ not the cluster ones
+	if subnet != "" {
+		availabilityZone, err := r.AWSClient.GetSubnetAvailabilityZone(subnet)
+		if err != nil {
+			r.Reporter.Errorf(fmt.Sprintf("%s", err))
+			os.Exit(1)
+		}
+		availabilityZonesFilter = []string{availabilityZone}
+	}
+
 	instanceType := args.instanceType
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
 		availabilityZonesFilter, cluster.AWS().STS().RoleARN(), r.AWSClient)
@@ -266,7 +278,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 
 	if interactive.Enabled() {
 		if instanceType == "" {
-			instanceType = instanceTypeList[0].MachineType.ID()
+			instanceType = instanceTypeList.Items[0].MachineType.ID()
 		}
 		instanceType, err = interactive.GetOption(interactive.Input{
 			Question: "Instance type",
@@ -305,6 +317,44 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	}
 
 	npBuilder.AutoRepair(autorepair)
+
+	var inputTuningConfig []string
+	tuningConfigs := args.tuningConfigs
+	// Get the list of available tuning configs
+	availableTuningConfigs, err := r.OCMClient.GetTuningConfigsName(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if tuningConfigs != "" {
+		if len(availableTuningConfigs) > 0 {
+			inputTuningConfig = strings.Split(tuningConfigs, ",")
+		} else {
+			// Parameter will be ignored
+			r.Reporter.Warnf("No tuning config available for cluster '%s'. "+
+				"Any tuning config in input will be ignored", cluster.ID())
+		}
+	}
+	if interactive.Enabled() {
+		// Skip if no tuning configs are available
+		if len(availableTuningConfigs) > 0 {
+			inputTuningConfig, err = interactive.GetMultipleOptions(interactive.Input{
+				Question: "Tuning configs",
+				Help:     cmd.Flags().Lookup("tuning-configs").Usage,
+				Options:  availableTuningConfigs,
+				Default:  inputTuningConfig,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for tuning configs: %s", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	if len(inputTuningConfig) != 0 {
+		npBuilder.TuningConfigs(inputTuningConfig...)
+	}
 
 	npBuilder.AWSNodePool(cmv1.NewAWSNodePool().InstanceType(instanceType))
 

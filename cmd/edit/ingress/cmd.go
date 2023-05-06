@@ -118,10 +118,15 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
+	cluster := r.FetchCluster()
 	var labelMatch *string
 	if cmd.Flags().Changed(labelMatchFlag) {
+		if ocm.IsHyperShiftCluster(cluster) {
+			r.Reporter.Errorf("Updating route selectors is not supported for hosted cp clusters")
+			os.Exit(1)
+		}
 		labelMatch = &args.labelMatch
-	} else if interactive.Enabled() {
+	} else if interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster) {
 		labelMatchArg, err := interactive.GetString(interactive.Input{
 			Question: "Label match for ingress",
 			Help:     cmd.Flags().Lookup(labelMatchFlag).Usage,
@@ -150,8 +155,7 @@ func run(cmd *cobra.Command, argv []string) {
 		private = &privArg
 	}
 
-	cluster := r.FetchCluster()
-	if cluster.AWS().PrivateLink() {
+	if cluster.AWS().PrivateLink() && !ocm.IsHyperShiftCluster(cluster) {
 		r.Reporter.Errorf("Cluster '%s' is PrivateLink and does not support updating ingresses", clusterKey)
 		os.Exit(1)
 	}
@@ -218,7 +222,9 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 		}
-		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
+		if len(routeSelectors) > 0 {
+			ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
+		}
 	}
 
 	ingress, err = ingressBuilder.Build()

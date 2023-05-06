@@ -256,6 +256,10 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
+	if !args.hostedCP && strings.HasSuffix(prefix, "-HCP") {
+		r.Reporter.Errorf("The '-HCP' suffix is reserved for hosted CP managed policies")
+		os.Exit(1)
+	}
 
 	permissionsBoundary := args.permissionsBoundary
 	if interactive.Enabled() {
@@ -358,8 +362,12 @@ func run(cmd *cobra.Command, argv []string) {
 		} else {
 			createClusterFlag = "--sts"
 		}
-		r.Reporter.Infof(fmt.Sprintf("To create a cluster with these roles, run the following command:\n"+
-			"rosa create cluster %s", createClusterFlag))
+		if r.Reporter.IsTerminal() {
+			r.Reporter.Infof("To create an OIDC Config, run the following command:\n" +
+				"\trosa create oidc-config")
+			r.Reporter.Infof(fmt.Sprintf("To create a cluster with these roles, run the following command:\n"+
+				"\trosa create cluster %s", createClusterFlag))
+		}
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 			ocm.Version:  policyVersion,

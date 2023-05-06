@@ -36,12 +36,12 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		}
 	}
 
-	if isOidcConfigReusable(cluster) && len(missingRoles) == 0 {
+	if ocm.IsOidcConfigReusable(cluster) && len(missingRoles) == 0 {
 		err := validateOperatorRolesMatchOidcProvider(r, cluster)
 		if err != nil {
 			return err
 		}
-		r.Reporter.Warnf("Cluster '%s' is using reusable OIDC Config and operator roles already exist.", clusterKey)
+		r.Reporter.Infof("Cluster '%s' is using reusable OIDC Config and operator roles already exist.", clusterKey)
 		return nil
 	}
 
@@ -220,7 +220,7 @@ func createRoles(r *rosa.Runtime,
 			tags.OperatorName:      operator.Name(),
 			tags.RedHatManaged:     helper.True,
 		}
-		if !isOidcConfigReusable(cluster) {
+		if !ocm.IsOidcConfigReusable(cluster) {
 			tagsList[tags.ClusterID] = cluster.ID()
 		}
 		if managedPolicies {
@@ -327,7 +327,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			tags.OperatorName:      operator.Name(),
 			tags.RedHatManaged:     helper.True,
 		}
-		if !isOidcConfigReusable(cluster) {
+		if !ocm.IsOidcConfigReusable(cluster) {
 			iamTags[tags.ClusterID] = cluster.ID()
 		}
 		if managedPolicies {
@@ -392,6 +392,11 @@ func validateOperatorRolesMatchOidcProvider(r *rosa.Runtime, cluster *cmv1.Clust
 			Path:      path,
 		})
 	}
-	return ocm.ValidateOperatorRolesMatchOidcProvider(r.AWSClient, operatorRolesList,
-		cluster.AWS().STS().OidcConfig().IssuerUrl(), ocm.GetVersionMinor(cluster.Version().RawID()))
+	expectedPath, err := aws.GetPathFromARN(cluster.AWS().STS().RoleARN())
+	if err != nil {
+		return err
+	}
+	return ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, r.AWSClient,
+		operatorRolesList, cluster.AWS().STS().OidcConfig().IssuerUrl(),
+		ocm.GetVersionMinor(cluster.Version().RawID()), expectedPath)
 }

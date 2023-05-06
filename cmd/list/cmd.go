@@ -32,6 +32,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/operatorroles"
 	"github.com/openshift/rosa/cmd/list/region"
 	"github.com/openshift/rosa/cmd/list/service"
+	"github.com/openshift/rosa/cmd/list/tuningconfigs"
 	"github.com/openshift/rosa/cmd/list/upgrade"
 	"github.com/openshift/rosa/cmd/list/user"
 	"github.com/openshift/rosa/cmd/list/userroles"
@@ -63,6 +64,7 @@ func init() {
 	Cmd.AddCommand(userroles.Cmd)
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(oidcconfig.Cmd)
+	Cmd.AddCommand(tuningconfigs.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)

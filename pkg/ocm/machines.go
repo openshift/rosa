@@ -46,7 +46,7 @@ func (c *Client) GetMachineTypesInRegion(cloudProviderData *cmv1.CloudProviderDa
 		}
 
 		response.Items().Each(func(item *cmv1.MachineType) bool {
-			machineTypes = append(machineTypes, &MachineType{
+			machineTypes.Items = append(machineTypes.Items, &MachineType{
 				MachineType: item,
 			})
 			return true
@@ -78,11 +78,11 @@ func (c *Client) GetMachineTypes() (machineTypes MachineTypeList, err error) {
 			if errMsg == "" {
 				errMsg = err.Error()
 			}
-			return nil, errors.New(errMsg)
+			return MachineTypeList{}, errors.New(errMsg)
 		}
 
 		response.Items().Each(func(item *cmv1.MachineType) bool {
-			machineTypes = append(machineTypes, &MachineType{
+			machineTypes.Items = append(machineTypes.Items, &MachineType{
 				MachineType: item,
 			})
 			return true
@@ -137,6 +137,9 @@ func (c *Client) GetAvailableMachineTypesInRegion(region string, availabilityZon
 		return MachineTypeList{}, err
 	}
 
+	machineTypes.Region = region
+	machineTypes.AvailabilityZones = availabilityZones
+
 	quotaCosts, err := c.getQuotaCosts()
 	if err != nil {
 		return MachineTypeList{}, err
@@ -149,12 +152,12 @@ func (c *Client) GetAvailableMachineTypesInRegion(region string, availabilityZon
 func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
 	machineTypes, err := c.GetMachineTypes()
 	if err != nil {
-		return nil, err
+		return MachineTypeList{}, err
 	}
 
 	quotaCosts, err := c.getQuotaCosts()
 	if err != nil {
-		return nil, err
+		return MachineTypeList{}, err
 	}
 
 	machineTypes.UpdateAvailableQuota(quotaCosts)
@@ -186,12 +189,16 @@ func (c *Client) getQuotaCosts() (*amsv1.QuotaCostList, error) {
 }
 
 // A list of MachineTypes with additional information
-type MachineTypeList []*MachineType
+type MachineTypeList struct {
+	Items             []*MachineType
+	Region            string
+	AvailabilityZones []string
+}
 
 // IDs extracts list of IDs from a MachineTypeList
 func (mtl *MachineTypeList) IDs() []string {
-	res := make([]string, len(*mtl))
-	for i, v := range *mtl {
+	res := make([]string, len(mtl.Items))
+	for i, v := range mtl.Items {
 		res[i] = v.MachineType.ID()
 	}
 	return res
@@ -199,7 +206,7 @@ func (mtl *MachineTypeList) IDs() []string {
 
 // Find returns the first MachineType matching the ID
 func (mtl *MachineTypeList) Find(id string) *MachineType {
-	for _, v := range *mtl {
+	for _, v := range mtl.Items {
 		if v.MachineType.ID() == id {
 			return v
 		}
@@ -210,16 +217,16 @@ func (mtl *MachineTypeList) Find(id string) *MachineType {
 // Filter returns a new MachineTypeList with only elements for which fn returned true
 func (mtl *MachineTypeList) Filter(fn func(*MachineType) bool) MachineTypeList {
 	var res MachineTypeList
-	for _, v := range *mtl {
+	for _, v := range mtl.Items {
 		if fn(v) {
-			res = append(res, v)
+			res.Items = append(res.Items, v)
 		}
 	}
 	return res
 }
 
 func (mtl *MachineTypeList) UpdateAvailableQuota(quotaCosts *amsv1.QuotaCostList) {
-	for _, machineType := range *mtl {
+	for _, machineType := range mtl.Items {
 		if machineType.MachineType.Category() != AcceleratedComputing {
 			machineType.Available = true
 			continue
@@ -254,7 +261,10 @@ func (mtl *MachineTypeList) ValidateMachineType(machineType string, multiAZ bool
 
 	if v == nil {
 		allMachineTypes := strings.Join(mtl.IDs(), " ")
-		err := fmt.Errorf("A valid machine type number must be specified\nValid machine types: %s", allMachineTypes)
+		allAvailabilityZones := strings.Join(mtl.AvailabilityZones, ",")
+		err := fmt.Errorf("Machine type '%s' not found in availability zones '%s' for region: '%s'\n"+
+			"Available machine type list: %s",
+			machineType, allAvailabilityZones, mtl.Region, allMachineTypes)
 		return err
 	}
 

@@ -189,6 +189,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"Channel Group:              %s\n"+
 		"DNS:                        %s\n"+
 		"AWS Account:                %s\n"+
+		"%s"+
 		"API URL:                    %s\n"+
 		"Console URL:                %s\n"+
 		"Region:                     %s\n"+
@@ -208,6 +209,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Version().ChannelGroup(),
 		clusterDNS,
 		creatorARN.AccountID,
+		BillingAccount(cluster, isHypershift),
 		cluster.API().URL(),
 		cluster.Console().URL(),
 		cluster.Region().ID(),
@@ -567,4 +569,11 @@ func formatClusterHypershift(cluster *cmv1.Cluster,
 	}
 
 	return ret, nil
+}
+
+func BillingAccount(cluster *cmv1.Cluster, isHostedControlPlane bool) string {
+	if !isHostedControlPlane || cluster.AWS().BillingAccountID() == "" {
+		return ""
+	}
+	return fmt.Sprintf("AWS Billing Account:        %s\n", cluster.AWS().BillingAccountID())
 }

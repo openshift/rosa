@@ -193,17 +193,6 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		foundOperatorRoles, _ = r.AWSClient.GetOperatorRolesFromAccountByPrefix(args.prefix, credRequests)
-		if len(foundOperatorRoles) != 0 {
-			if spin != nil {
-				spin.Stop()
-			}
-			if !confirm.Prompt(true, "You are running delete operation for '%s' prefix."+
-				" Please ensure there are no clusters using these operator roles."+
-				" In case of reusable OIDC configs, when reusing the operator roles deleting them might not be necessary."+
-				"Are you sure you want to proceed?", args.prefix) {
-				os.Exit(1)
-			}
-		}
 	}
 
 	if len(foundOperatorRoles) == 0 {
@@ -239,6 +228,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	errOccured := false
 	switch mode {
 	case aws.ModeAuto:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
@@ -256,14 +246,17 @@ func run(cmd *cobra.Command, argv []string) {
 				if spin != nil {
 					spin.Stop()
 				}
-				r.Reporter.Warnf("There was an error deleting the Operator Roles or Policies: %s", err)
+				r.Reporter.Warnf("There was an error deleting the Operator Role or Policies: %s", err)
+				errOccured = true
 				continue
 			}
 			if spin != nil {
 				spin.Stop()
 			}
 		}
-		r.Reporter.Infof("Successfully deleted the operator roles")
+		if !errOccured {
+			r.Reporter.Infof("Successfully deleted the operator roles")
+		}
 	case aws.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
 		policyMap, err := r.AWSClient.GetPolicies(foundOperatorRoles)

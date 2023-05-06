@@ -51,10 +51,11 @@ var Cmd = &cobra.Command{
 }
 
 const (
-	OidcEndpointUrlFlag = "oidc-endpoint-url"
+	OidcConfigIdFlag = "oidc-config-id"
 )
 
 var args struct {
+	oidcConfigId    string
 	oidcEndpointUrl string
 }
 
@@ -62,10 +63,11 @@ func init() {
 	flags := Cmd.Flags()
 
 	flags.StringVar(
-		&args.oidcEndpointUrl,
-		OidcEndpointUrlFlag,
+		&args.oidcConfigId,
+		OidcConfigIdFlag,
 		"",
-		"Endpoint url for reusable OIDC config",
+		"Registered OIDC configuration ID to retrieve it's issuer URL. "+
+			"Not to be used alongside --cluster flag.",
 	)
 
 	ocm.AddOptionalClusterFlag(Cmd)
@@ -80,18 +82,26 @@ func run(cmd *cobra.Command, argv []string) {
 	defer r.Cleanup()
 
 	// Allow the command to be called programmatically
-	skipInteractive := false
+	isProgmaticallyCalled := false
+	shouldUseClusterKey := true
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		aws.SetModeKey(argv[1])
 
 		if argv[1] != "" {
-			skipInteractive = true
+			isProgmaticallyCalled = true
 		}
 
 		if argv[2] != "" {
 			args.oidcEndpointUrl = argv[2]
+			shouldUseClusterKey = false
 		}
+	}
+
+	if cmd.Flag("cluster").Changed && cmd.Flag(OidcConfigIdFlag).Changed {
+		r.Reporter.Errorf("A cluster key for STS cluster and an OIDC Config ID " +
+			"cannot be specified alongside each other.")
+		os.Exit(1)
 	}
 
 	mode, err := aws.GetMode()
@@ -101,27 +111,23 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Determine if interactive mode is needed
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !skipInteractive {
+	if !isProgmaticallyCalled && !interactive.Enabled() &&
+		(!cmd.Flags().Changed("cluster") || !cmd.Flags().Changed("mode")) {
 		interactive.Enable()
 	}
 
 	var cluster *cmv1.Cluster
 	clusterKey := ""
-	if args.oidcEndpointUrl == "" {
+	if cmd.Flags().Changed("cluster") || (isProgmaticallyCalled && shouldUseClusterKey) {
 		clusterKey = r.GetClusterKey()
 		cluster = r.FetchCluster()
+		if !ocm.IsSts(cluster) {
+			r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
+			os.Exit(1)
+		}
 	}
 
-	if cluster != nil && cluster.AWS().STS().RoleARN() == "" {
-		r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
-		os.Exit(1)
-	}
-	if cluster == nil && args.oidcEndpointUrl == "" {
-		r.Reporter.Errorf("Either a cluster key for STS cluster or an OIDC Endpoint URL must be specified.")
-		os.Exit(1)
-	}
-
-	if interactive.Enabled() && !skipInteractive {
+	if !cmd.Flags().Changed("mode") && interactive.Enabled() && !isProgmaticallyCalled {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OIDC provider creation mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
@@ -135,13 +141,28 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	clusterId := ""
 	oidcEndpointURL := ""
 	if cluster != nil {
 		oidcEndpointURL = cluster.AWS().STS().OIDCEndpointURL()
-		clusterId = cluster.ID()
 	} else {
-		oidcEndpointURL = args.oidcEndpointUrl
+		if isProgmaticallyCalled && args.oidcEndpointUrl != "" {
+			oidcEndpointURL = args.oidcEndpointUrl
+		} else {
+			if args.oidcConfigId == "" {
+				args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
+			}
+			oidcConfig, err := r.OCMClient.GetOidcConfig(args.oidcConfigId)
+			if err != nil {
+				r.Reporter.Errorf("There was a problem retrieving OIDC Config '%s': %v", args.oidcConfigId, err)
+				os.Exit(1)
+			}
+			oidcEndpointURL = oidcConfig.IssuerUrl()
+		}
+	}
+
+	clusterId := ""
+	if !ocm.IsOidcConfigReusable(cluster) {
+		clusterId = cluster.ID()
 	}
 
 	switch mode {
@@ -161,13 +182,14 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 		}
 		if oidcProviderExists {
-			if args.oidcEndpointUrl == "" {
+			if cluster != nil &&
+				cluster.AWS().STS().OidcConfig() != nil && !cluster.AWS().STS().OidcConfig().Reusable() {
 				r.Reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
 					"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
 				os.Exit(1)
 			}
 			// Returns so that when called from create cluster does not interrupt flow
-			r.Reporter.Warnf("OIDC provider already exists.")
+			r.Reporter.Infof("OIDC provider already exists.")
 			return
 		}
 		if !output.HasFlag() || r.Reporter.IsTerminal() {

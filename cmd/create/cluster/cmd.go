@@ -56,6 +56,9 @@ var kmsArnRE = regexp.MustCompile(
 const (
 	OidcConfigIdFlag      = "oidc-config-id"
 	ClassicOidcConfigFlag = "classic-oidc-config"
+
+	MinReplicasSingleAZ = 2
+	MinReplicaMultiAZ   = 3
 )
 
 var args struct {
@@ -149,6 +152,7 @@ var args struct {
 
 	// Hypershift options:
 	hostedClusterEnabled bool
+	billingAccount       string
 }
 
 var Cmd = &cobra.Command{
@@ -436,7 +440,8 @@ func init() {
 		"replicas",
 		2,
 		"Number of worker nodes to provision. Single zone clusters need at least 2 nodes, "+
-			"multizone clusters need at least 3 nodes.",
+			"multizone clusters need at least 3 nodes. Hosted clusters require that the number of worker nodes be a "+
+			"multiple of the number of private subnets.",
 	)
 
 	flags.BoolVar(
@@ -577,8 +582,16 @@ func init() {
 		false,
 		"Enable the use of hosted control planes (HyperShift)",
 	)
-
 	flags.MarkHidden("hosted-cp")
+
+	flags.StringVar(
+		&args.billingAccount,
+		"billing-account",
+		"",
+		"Account used for billing subscriptions purchased via the AWS marketplace",
+	)
+	flags.MarkHidden("billing-account")
+
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
@@ -679,6 +692,55 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
 			os.Exit(1)
 		}
+	}
+
+	// Billing Account
+	billingAccount := args.billingAccount
+	if billingAccount != "" && !isHostedCP {
+		r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
+		os.Exit(1)
+	}
+
+	if interactive.Enabled() && isHostedCP {
+		requestBillingAccount, err := interactive.GetBool(interactive.Input{
+			Question: "Specify a separate billing account",
+			Default:  false,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+
+		if requestBillingAccount {
+			cloudAccounts, err := r.OCMClient.GetBillingAccounts()
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			if billingAccount == "" {
+				billingAccount = cloudAccounts[0]
+			}
+
+			billingAccount, err = interactive.GetOption(interactive.Input{
+				Question: "Billing Account",
+				Help:     cmd.Flags().Lookup("billing-account").Usage,
+				Options:  cloudAccounts,
+				Default:  billingAccount,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid billing account: %s", err)
+				os.Exit(1)
+			}
+		} else {
+			billingAccount = ""
+		}
+	}
+
+	if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
+		r.Reporter.Errorf("Expected a valid billing account")
+		os.Exit(1)
 	}
 
 	if isHostedCP && cmd.Flags().Changed("default-mp-labels") {
@@ -833,7 +895,11 @@ func run(cmd *cobra.Command, _ []string) {
 			defaultRoleARN := roleARNs[0]
 			// Prioritize roles with the default prefix
 			for _, rARN := range roleARNs {
-				if strings.Contains(rARN, fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)) {
+				roleName, err := aws.GetResourceIdFromARN(rARN)
+				if err != nil {
+					continue
+				}
+				if roleName == fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name) {
 					defaultRoleARN = rARN
 				}
 			}
@@ -1136,9 +1202,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorRolesPrefix := args.operatorRolesPrefix
-	operatorRolePath, _ := aws.GetPathFromARN(roleARN)
+	expectedOperatorRolePath, _ := aws.GetPathFromARN(roleARN)
 	operatorIAMRoles := args.operatorIAMRoles
-	operatorIAMRoleList := []ocm.OperatorIAMRole{}
+	computedOperatorIamRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
 		if operatorRolesPrefix == "" {
 			operatorRolesPrefix = getRolePrefix(clusterName)
@@ -1191,9 +1257,10 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
 			os.Exit(1)
 		}
-		if operatorRolePath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
+		if expectedOperatorRolePath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
 			r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
-				" created operator roles and policies, for the account roles with prefix '%s'", operatorRolePath, accRolesPrefix)
+				" created operator roles and policies, for the account roles with prefix '%s'",
+				expectedOperatorRolePath, accRolesPrefix)
 		}
 		for _, operator := range credRequests {
 			//If the cluster version is less than the supported operator version
@@ -1207,18 +1274,17 @@ func run(cmd *cobra.Command, _ []string) {
 					continue
 				}
 			}
-			operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
+			computedOperatorIamRoleList = append(computedOperatorIamRoleList, ocm.OperatorIAMRole{
 				Name:      operator.Name(),
 				Namespace: operator.Namespace(),
 				RoleARN: aws.ComputeOperatorRoleArn(operatorRolesPrefix, operator,
-					awsCreator, operatorRolePath),
+					awsCreator, expectedOperatorRolePath),
 			})
-
 		}
 		// If user insists on using the deprecated --operator-iam-roles
 		// override the values to support the legacy documentation
 		if cmd.Flags().Changed("operator-iam-roles") {
-			operatorIAMRoleList = []ocm.OperatorIAMRole{}
+			computedOperatorIamRoleList = []ocm.OperatorIAMRole{}
 			for _, role := range operatorIAMRoles {
 				if !strings.Contains(role, ",") {
 					r.Reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
@@ -1231,7 +1297,7 @@ func run(cmd *cobra.Command, _ []string) {
 						"list of name,namespace,role_arn")
 					os.Exit(1)
 				}
-				operatorIAMRoleList = append(operatorIAMRoleList, ocm.OperatorIAMRole{
+				computedOperatorIamRoleList = append(computedOperatorIamRoleList, ocm.OperatorIAMRole{
 					Name:      roleData[0],
 					Namespace: roleData[1],
 					RoleARN:   roleData[2],
@@ -1239,14 +1305,14 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 		oidcConfig = handleOidcConfigOptions(r, cmd, isSTS, isHostedCP)
-		err = validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient, operatorIAMRoleList)
+		err = validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient, computedOperatorIamRoleList)
 		if err != nil {
 			if !oidcConfig.Reusable() {
 				r.Reporter.Errorf("%v", err)
 				os.Exit(1)
 			} else {
-				err = ocm.ValidateOperatorRolesMatchOidcProvider(awsClient, operatorIAMRoleList, oidcConfig.IssuerUrl(),
-					ocm.GetVersionMinor(version))
+				err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, awsClient, computedOperatorIamRoleList,
+					oidcConfig.IssuerUrl(), ocm.GetVersionMinor(version), expectedOperatorRolePath)
 				if err != nil {
 					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
@@ -1724,22 +1790,20 @@ func run(cmd *cobra.Command, _ []string) {
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
 
-	minReplicas := args.minReplicas
-	maxReplicas := args.maxReplicas
+	minReplicas, maxReplicas := calculateReplicas(
+		isMinReplicasSet,
+		isMaxReplicasSet,
+		args.minReplicas,
+		args.maxReplicas,
+		privateSubnetsCount,
+		isHostedCP,
+		multiAZ)
+
 	if autoscaling {
 		// if the user set compute-nodes and enabled autoscaling
 		if isReplicasSet {
 			r.Reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
 			os.Exit(1)
-		}
-
-		if multiAZ {
-			if !isMinReplicasSet {
-				minReplicas = 3
-			}
-			if !isMaxReplicasSet {
-				maxReplicas = minReplicas
-			}
 		}
 		if interactive.Enabled() || !isMinReplicasSet {
 			minReplicas, err = interactive.GetInt(interactive.Input{
@@ -1788,7 +1852,7 @@ func run(cmd *cobra.Command, _ []string) {
 	computeNodes := args.computeNodes
 	// Compute node requirements for multi-AZ clusters are higher
 	if multiAZ && !autoscaling && !isReplicasSet {
-		computeNodes = 3
+		computeNodes = minReplicas
 	}
 	if !autoscaling {
 		// if the user set min/max replicas and hasn't enabled autoscaling
@@ -2178,7 +2242,7 @@ func run(cmd *cobra.Command, _ []string) {
 		RoleARN:                   roleARN,
 		ExternalID:                externalID,
 		SupportRoleARN:            supportRoleARN,
-		OperatorIAMRoles:          operatorIAMRoleList,
+		OperatorIAMRoles:          computedOperatorIamRoleList,
 		ControlPlaneRoleARN:       controlPlaneRoleARN,
 		WorkerRoleARN:             workerRoleARN,
 		Mode:                      mode,
@@ -2188,6 +2252,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
+		BillingAccount: billingAccount,
 	}
 
 	if oidcConfig != nil {
@@ -2235,7 +2300,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
-			command := buildCommand(clusterConfig, operatorRolesPrefix, operatorRolePath,
+			command := buildCommand(clusterConfig, operatorRolesPrefix, expectedOperatorRolePath,
 				isAvailabilityZonesSet || selectAvailabilityZones, labels)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
@@ -2282,28 +2347,23 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
-			if oidcConfig == nil {
-				oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
-			} else {
-				oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfig.IssuerUrl()})
-			}
+			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
 		} else {
+			output := ""
+			if cluster.AWS().STS().OidcConfig().Reusable() {
+				output = "When using reusable OIDC Config and resources have been created " +
+					"prior to cluster specification, this step is not required."
+			}
 			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
 			if permissionsBoundary != "" {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
 			}
 			oidcCMD := "rosa create oidc-provider"
-			if oidcConfig == nil {
-				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
-			} else {
-				oidcCMD = fmt.Sprintf("%s --%s %s", oidcCMD,
-					oidcprovider.OidcEndpointUrlFlag, oidcConfig.IssuerUrl())
-			}
-			output := "Run the following commands to continue the cluster creation:\n\n"
+			oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
+			output += "\nRun the following commands to continue the cluster creation:\n\n"
 			output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			output = fmt.Sprintf("%s\t%s\n", output, oidcCMD)
 			r.Reporter.Infof(output)
-
 		}
 	}
 
@@ -2319,6 +2379,7 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+	os.Exit(0)
 }
 
 func validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient aws.Client,
@@ -2368,6 +2429,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	}
 	if oidcConfigId == "" {
 		if !isHostedCP {
+			r.Reporter.Warnf("No OIDC Configuration found; will continue with the classic flow.")
 			return nil
 		}
 		if args.classicOidcConfig {
@@ -2635,7 +2697,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		}
 		command += fmt.Sprintf(" --tags %s", strings.Join(tags, ","))
 	}
-	if spec.MultiAZ {
+	if spec.MultiAZ && !spec.Hypershift.Enabled {
 		command += " --multi-az"
 	}
 	if spec.Region != "" {
@@ -2743,4 +2805,35 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 func getRolePrefix(clusterName string) string {
 	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
+}
+
+func calculateReplicas(
+	isMinReplicasSet bool,
+	isMaxReplicasSet bool,
+	minReplicas int,
+	maxReplicas int,
+	privateSubnetsCount int,
+	isHostedCP bool,
+	multiAZ bool) (int, int) {
+
+	newMinReplicas := minReplicas
+	newMaxReplicas := maxReplicas
+
+	if !isMinReplicasSet {
+		if isHostedCP {
+			newMinReplicas = privateSubnetsCount
+			if privateSubnetsCount == 1 {
+				newMinReplicas = MinReplicasSingleAZ
+			}
+		} else {
+			if multiAZ {
+				newMinReplicas = MinReplicaMultiAZ
+			}
+		}
+	}
+	if !isMaxReplicasSet && multiAZ {
+		newMaxReplicas = newMinReplicas
+	}
+
+	return newMinReplicas, newMaxReplicas
 }

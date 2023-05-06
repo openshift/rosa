@@ -2,6 +2,7 @@ package machinepool
 
 import (
 	"os"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
@@ -23,13 +24,17 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
 	isLabelsSet := cmd.Flags().Changed("labels")
 	isTaintsSet := cmd.Flags().Changed("taints")
-	isLabelOrTaintSet := isLabelsSet || isTaintsSet
 	isVersionSet := cmd.Flags().Changed("version")
 	isAutorepairSet := cmd.Flags().Changed("autorepair")
+	isTuningsConfigSet := cmd.Flags().Changed("tuning-configs")
+
+	// isAnyAdditionalParameterSet is true if at least one parameter not related to replicas and autoscaling is set
+	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isVersionSet || isAutorepairSet || isTuningsConfigSet
+	isAnyParameterSet := isMinReplicasSet || isMaxReplicasSet || isReplicasSet ||
+		isAutoscalingSet || isAnyAdditionalParameterSet
 
 	// if no value set enter interactive mode
-	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet ||
-		isAutorepairSet) {
+	if !isAnyParameterSet {
 		interactive.Enable()
 	}
 
@@ -42,7 +47,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	}
 
 	autoscaling, replicas, minReplicas, maxReplicas := getNodePoolReplicas(cmd, r.Reporter, nodePoolID,
-		nodePool.Replicas(), nodePool.Autoscaling(), isLabelOrTaintSet)
+		nodePool.Replicas(), nodePool.Autoscaling(), isAnyAdditionalParameterSet)
 
 	if !autoscaling && replicas < 1 ||
 		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1) {
@@ -70,10 +75,10 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	if autoscaling {
 		asBuilder := cmv1.NewNodePoolAutoscaling()
 
-		if minReplicas > 1 {
+		if minReplicas >= 1 {
 			asBuilder = asBuilder.MinReplica(minReplicas)
 		}
-		if maxReplicas > 1 {
+		if maxReplicas >= 1 {
 			asBuilder = asBuilder.MaxReplica(maxReplicas)
 		}
 
@@ -122,18 +127,64 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 
 	if isAutorepairSet || interactive.Enabled() {
 		autorepair := args.autorepair
-		autorepair, err = interactive.GetBool(interactive.Input{
-			Question: "Autorepair",
-			Help:     cmd.Flags().Lookup("autorepair").Usage,
-			Default:  autorepair,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for autorepair: %s", err)
-			os.Exit(1)
+		if interactive.Enabled() {
+			autorepair, err = interactive.GetBool(interactive.Input{
+				Question: "Autorepair",
+				Help:     cmd.Flags().Lookup("autorepair").Usage,
+				Default:  autorepair,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for autorepair: %s", err)
+				os.Exit(1)
+			}
 		}
 
 		npBuilder.AutoRepair(autorepair)
+	}
+
+	if isTuningsConfigSet || interactive.Enabled() {
+		var inputTuningConfig []string
+		tuningConfigs := args.tuningConfigs
+		// Get the list of available tuning configs
+		availableTuningConfigs, err := r.OCMClient.GetTuningConfigsName(cluster.ID())
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		if tuningConfigs != "" {
+			if len(availableTuningConfigs) > 0 {
+				inputTuningConfig = strings.Split(tuningConfigs, ",")
+			} else {
+				// Parameter will be ignored
+				r.Reporter.Warnf("No tuning config available for cluster '%s'. "+
+					"Any tuning config in input will be ignored", cluster.ID())
+			}
+		}
+
+		if interactive.Enabled() {
+			if !isTuningsConfigSet {
+				// Interactive mode without explicit input parameter. Take the existing value
+				inputTuningConfig = nodePool.TuningConfigs()
+			}
+
+			// Skip if no tuning configs are available
+			if len(availableTuningConfigs) > 0 {
+				inputTuningConfig, err = interactive.GetMultipleOptions(interactive.Input{
+					Question: "Tuning configs",
+					Help:     cmd.Flags().Lookup("tuning-configs").Usage,
+					Options:  availableTuningConfigs,
+					Default:  inputTuningConfig,
+					Required: false,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for tuning configs: %s", err)
+					os.Exit(1)
+				}
+			}
+		}
+
+		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
 	nodePool, err = npBuilder.Build()
@@ -156,7 +207,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 	reporter *rprtr.Object,
 	nodePoolID string,
 	existingReplicas int,
-	existingAutoscaling *cmv1.NodePoolAutoscaling, isLabelOrTaintSet bool) (autoscaling bool,
+	existingAutoscaling *cmv1.NodePoolAutoscaling, isAnyAdditionalParameterSet bool) (autoscaling bool,
 	replicas, minReplicas, maxReplicas int) {
 	var err error
 
@@ -232,8 +283,8 @@ func getNodePoolReplicas(cmd *cobra.Command,
 		if !isReplicasSet {
 			replicas = existingReplicas
 		}
-		if !interactive.Enabled() && isLabelOrTaintSet {
-			// Not interactive mode and Label or taints set, just keep the existing replicas
+		if !interactive.Enabled() && isAnyAdditionalParameterSet {
+			// Not interactive mode and we have at least an additional parameter set, just keep the existing replicas
 			return
 		}
 		replicas, err = interactive.GetInt(interactive.Input{

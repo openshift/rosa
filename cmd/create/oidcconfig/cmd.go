@@ -22,36 +22,26 @@ import (
 	//#nosec GSC-G505 -- Import blacklist: crypto/sha1
 
 	"bytes"
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/base64"
-	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"github.com/zgalor/weberr"
-	"gopkg.in/square/go-jose.v2"
-
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/oidc_config"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/spf13/cobra"
+	"github.com/zgalor/weberr"
 )
 
 var args struct {
@@ -75,17 +65,19 @@ var Cmd = &cobra.Command{
 }
 
 const (
-	defaultLengthRandomLabel = 4
-	maxLengthUserPrefix      = 15
+	maxLengthUserPrefix = 15
 
 	rawFilesFlag         = "raw-files"
 	userPrefixFlag       = "prefix"
 	managedFlag          = "managed"
 	installerRoleArnFlag = "installer-role-arn"
 
-	prefixForPrivateKeySecret     = "rosa-private-key"
-	defaultPrefixForConfiguration = "oidc"
-	minorVersionForGetSecret      = "4.12"
+	prefixForPrivateKeySecret = "rosa-private-key"
+	minorVersionForGetSecret  = "4.12"
+	informOperatorRolesOutput = "To create Operator Roles for this OIDC Configuration, " +
+		"run the following command and remember to replace <user-defined> with a prefix of your choice:\n" +
+		"\trosa create operator-roles --prefix <user-defined> --oidc-config-id %s\n" +
+		"If you are going to create a Hosted Control Plane cluster please include '--hosted-cp'"
 )
 
 func init() {
@@ -109,7 +101,7 @@ func init() {
 	flags.BoolVar(
 		&args.managed,
 		managedFlag,
-		false,
+		true,
 		"Indicates whether it is a Red Hat managed or unmanaged (Customer hosted) OIDC Configuration.",
 	)
 
@@ -265,7 +257,15 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	oidcConfigInput := buildOidcConfigInput(r)
+	oidcConfigInput := oidc_config.OidcConfigInput{}
+	if !args.managed {
+		oidcConfigInput, err = oidc_config.BuildOidcConfigInput(args.userPrefix, args.region)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
 	oidcConfigStrategy, err := getOidcConfigStrategy(mode, &oidcConfigInput)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
@@ -277,82 +277,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-type OidcConfigInput struct {
-	BucketName           string
-	IssuerUrl            string
-	PrivateKey           []byte
-	PrivateKeyFilename   string
-	DiscoveryDocument    string
-	Jwks                 []byte
-	PrivateKeySecretName string
-}
-
-const (
-	bucketNameRegex = "^[a-z][a-z0-9\\-]+[a-z0-9]$"
-)
-
-func isValidBucketName(bucketName string) bool {
-	if bucketName[0] == '.' || bucketName[len(bucketName)-1] == '.' {
-		return false
-	}
-	if strings.HasPrefix(bucketName, "xn--") {
-		return false
-	}
-	if strings.HasSuffix(bucketName, "-s3alias") {
-		return false
-	}
-	if match, _ := regexp.MatchString("\\.\\.", bucketName); match {
-		return false
-	}
-	// We don't support buckets with '.' in them
-	match, _ := regexp.MatchString(bucketNameRegex, bucketName)
-	return match
-}
-
-func buildOidcConfigInput(r *rosa.Runtime) OidcConfigInput {
-	if args.managed {
-		return OidcConfigInput{}
-	}
-	randomLabel := helper.RandomLabel(defaultLengthRandomLabel)
-	bucketName := fmt.Sprintf("%s-%s", defaultPrefixForConfiguration, randomLabel)
-	if args.userPrefix != "" {
-		bucketName = fmt.Sprintf("%s-%s", args.userPrefix, bucketName)
-	}
-	if !isValidBucketName(bucketName) {
-		r.Reporter.Errorf("The bucket name '%s' is not valid", bucketName)
-		os.Exit(1)
-	}
-	privateKeySecretName := fmt.Sprintf("%s-%s", prefixForPrivateKeySecret, bucketName)
-	bucketUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com", bucketName, args.region)
-	privateKey, publicKey, err := createKeyPair()
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating key pair: %s", err)
-		os.Exit(1)
-	}
-	privateKeyFilename := fmt.Sprintf("%s.key", privateKeySecretName)
-	discoveryDocument := generateDiscoveryDocument(bucketUrl)
-	jwks, err := buildJSONWebKeySet(publicKey)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem generating JSON Web Key Set: %s", err)
-		os.Exit(1)
-	}
-	return OidcConfigInput{
-		BucketName:           bucketName,
-		IssuerUrl:            bucketUrl,
-		PrivateKey:           privateKey,
-		PrivateKeyFilename:   privateKeyFilename,
-		DiscoveryDocument:    discoveryDocument,
-		Jwks:                 jwks,
-		PrivateKeySecretName: privateKeySecretName,
-	}
-}
-
 type CreateOidcConfigStrategy interface {
 	execute(r *rosa.Runtime)
 }
 
 type CreateUnmanagedOidcConfigRawStrategy struct {
-	oidcConfig *OidcConfigInput
+	oidcConfig *oidc_config.OidcConfigInput
 }
 
 func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
@@ -384,7 +314,7 @@ func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
 }
 
 type CreateUnmanagedOidcConfigAutoStrategy struct {
-	oidcConfig *OidcConfigInput
+	oidcConfig *oidc_config.OidcConfigInput
 }
 
 const (
@@ -464,14 +394,13 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		if spin != nil {
 			spin.Stop()
 		}
-		output := "Please run the following command to create a cluster with this oidc config"
-		output = fmt.Sprintf("%s\nrosa create cluster --sts --oidc-config-id %s", output, oidcConfig.ID())
+		output := fmt.Sprintf(informOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
 }
 
 type CreateUnmanagedOidcConfigManualStrategy struct {
-	oidcConfig *OidcConfigInput
+	oidcConfig *oidc_config.OidcConfigInput
 }
 
 func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
@@ -579,7 +508,7 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 }
 
 type CreateManagedOidcConfigAutoStrategy struct {
-	oidcConfigInput *OidcConfigInput
+	oidcConfigInput *oidc_config.OidcConfigInput
 }
 
 func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
@@ -617,13 +546,12 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		if spin != nil {
 			spin.Stop()
 		}
-		output := "Please run the following command to create a cluster with this oidc config"
-		output = fmt.Sprintf("%s\nrosa create cluster --sts --oidc-config-id %s", output, oidcConfig.ID())
+		output := fmt.Sprintf(informOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
 }
 
-func getOidcConfigStrategy(mode string, input *OidcConfigInput) (CreateOidcConfigStrategy, error) {
+func getOidcConfigStrategy(mode string, input *oidc_config.OidcConfigInput) (CreateOidcConfigStrategy, error) {
 	if args.rawFiles {
 		return &CreateUnmanagedOidcConfigRawStrategy{oidcConfig: input}, nil
 	}
@@ -638,122 +566,4 @@ func getOidcConfigStrategy(mode string, input *OidcConfigInput) (CreateOidcConfi
 	default:
 		return nil, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 	}
-}
-
-func createKeyPair() ([]byte, []byte, error) {
-	bitSize := 4096
-
-	// Generate RSA keypair
-	privateKey, err := rsa.GenerateKey(rand.Reader, bitSize)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to generate private key")
-	}
-	encodedPrivateKey := pem.EncodeToMemory(&pem.Block{
-		Type:    "RSA PRIVATE KEY",
-		Headers: nil,
-		Bytes:   x509.MarshalPKCS1PrivateKey(privateKey),
-	})
-
-	// Generate public key from private keypair
-	pubKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to generate public key from private")
-	}
-	encodedPublicKey := pem.EncodeToMemory(&pem.Block{
-		Type:    "PUBLIC KEY",
-		Headers: nil,
-		Bytes:   pubKeyBytes,
-	})
-
-	return encodedPrivateKey, encodedPublicKey, nil
-}
-
-type JSONWebKeySet struct {
-	Keys []jose.JSONWebKey `json:"keys"`
-}
-
-// buildJSONWebKeySet builds JSON web key set from the public key
-func buildJSONWebKeySet(publicKeyContent []byte) ([]byte, error) {
-	block, _ := pem.Decode(publicKeyContent)
-	if block == nil {
-		return nil, errors.Errorf("Failed to decode PEM file")
-	}
-
-	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to parse key content")
-	}
-
-	var alg jose.SignatureAlgorithm
-	switch publicKey.(type) {
-	case *rsa.PublicKey:
-		alg = jose.RS256
-	default:
-		return nil, errors.Errorf("Public key is not of type RSA")
-	}
-
-	kid, err := keyIDFromPublicKey(publicKey)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to fetch key ID from public key")
-	}
-
-	var keys []jose.JSONWebKey
-	keys = append(keys, jose.JSONWebKey{
-		Key:       publicKey,
-		KeyID:     kid,
-		Algorithm: string(alg),
-		Use:       "sig",
-	})
-
-	keySet, err := json.MarshalIndent(JSONWebKeySet{Keys: keys}, "", "    ")
-	if err != nil {
-		return nil, errors.Wrapf(err, "JSON encoding of web key set failed")
-	}
-
-	return keySet, nil
-}
-
-// keyIDFromPublicKey derives a key ID non-reversibly from a public key
-// reference: https://github.com/kubernetes/kubernetes/blob/v1.21.0/pkg/serviceaccount/jwt.go#L89-L111
-func keyIDFromPublicKey(publicKey interface{}) (string, error) {
-	publicKeyDERBytes, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		return "", errors.Wrapf(err, "Failed to serialize public key to DER format")
-	}
-
-	hasher := crypto.SHA256.New()
-	hasher.Write(publicKeyDERBytes)
-	publicKeyDERHash := hasher.Sum(nil)
-
-	keyID := base64.RawURLEncoding.EncodeToString(publicKeyDERHash)
-
-	return keyID, nil
-}
-
-const (
-	discoveryDocumentTemplate = `{
-	"issuer": "%s",
-	"jwks_uri": "%s/keys.json",
-	"response_types_supported": [
-		"id_token"
-	],
-	"subject_types_supported": [
-		"public"
-	],
-	"id_token_signing_alg_values_supported": [
-		"RS256"
-	],
-	"claims_supported": [
-		"aud",
-		"exp",
-		"sub",
-		"iat",
-		"iss",
-		"sub"
-	]
-}`
-)
-
-func generateDiscoveryDocument(bucketURL string) string {
-	return fmt.Sprintf(discoveryDocumentTemplate, bucketURL, bucketURL)
 }

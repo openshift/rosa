@@ -100,6 +100,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	deleteClassic, deleteHostedCP := setDeleteRoles(cmd.Flags().Changed("classic"),
+		cmd.Flags().Changed("hosted-cp"))
+
 	clusters, err := r.OCMClient.GetAllClusters(r.Creator)
 	if err != nil {
 		r.Reporter.Errorf("Error getting clusters %s", err)
@@ -146,25 +149,43 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// Default flow deletes both classic and hosted-CP roles
-	if !args.classic && !args.hostedCP {
-		args.classic, args.hostedCP = true, true
-	}
-
-	if args.classic {
+	if deleteClassic {
 		err = deleteAccountRoles(r, env, prefix, clusters, mode, false)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
-	if args.hostedCP {
+
+	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") && !cmd.Flags().Changed("classic") {
+		deleteHostedCP, err = interactive.GetBool(interactive.Input{
+			Question: "Delete hosted CP account roles",
+			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+			Default:  true,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if deleteHostedCP {
 		err = deleteAccountRoles(r, env, prefix, clusters, mode, true)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 	}
+}
+
+func setDeleteRoles(isClassicFlagSet bool, isHostedCPFlagSet bool) (bool, bool) {
+	// Default flow deletes both classic and hosted-CP roles if the user didn't specify topology
+	if !isClassicFlagSet && !isHostedCPFlagSet {
+		return true, true
+	}
+
+	return isClassicFlagSet, isHostedCPFlagSet
 }
 
 func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*cmv1.Cluster, mode string,

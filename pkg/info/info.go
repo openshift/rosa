@@ -18,6 +18,6 @@ limitations under the License.
 
 package info
 
-const Version = "1.2.17"
+const Version = "1.2.21"
 
 const UserAgent = "ROSACLI"

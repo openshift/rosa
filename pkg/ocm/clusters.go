@@ -110,7 +110,8 @@ type Spec struct {
 	AdditionalTrustBundle     *string
 
 	// HyperShift options:
-	Hypershift Hypershift
+	Hypershift     Hypershift
+	BillingAccount string
 }
 
 type OperatorIAMRole struct {
@@ -772,6 +773,10 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		}
 	}
 
+	if config.BillingAccount != "" {
+		awsBuilder = awsBuilder.BillingAccountID(config.BillingAccount)
+	}
+
 	if config.RoleARN != "" {
 		stsBuilder := cmv1.NewSTS().RoleARN(config.RoleARN)
 		if config.ExternalID != "" {
@@ -914,4 +919,13 @@ func IsConsoleAvailable(cluster *cmv1.Cluster) bool {
 
 func IsHyperShiftCluster(cluster *cmv1.Cluster) bool {
 	return cluster != nil && cluster.Hypershift() != nil && cluster.Hypershift().Enabled()
+}
+
+func IsOidcConfigReusable(cluster *cmv1.Cluster) bool {
+	return cluster != nil &&
+		cluster.AWS().STS().OidcConfig() != nil && cluster.AWS().STS().OidcConfig().Reusable()
+}
+
+func IsSts(cluster *cmv1.Cluster) bool {
+	return cluster != nil && cluster.AWS().STS().RoleARN() != ""
 }

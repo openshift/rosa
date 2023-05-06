@@ -12,8 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
-	cluster *cmv1.Cluster) string {
+func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool, cluster *cmv1.Cluster) string {
 	var selectSubnet bool
 	var subnet string
 	var err error

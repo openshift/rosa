@@ -28,6 +28,8 @@ type AWSBuilder struct {
 	sts                      *STSBuilder
 	accessKeyID              string
 	accountID                string
+	auditLog                 *AuditLogBuilder
+	billingAccountID         string
 	etcdEncryption           *AwsEtcdEncryptionBuilder
 	privateLinkConfiguration *PrivateLinkClusterConfigurationBuilder
 	secretAccessKey          string
@@ -80,11 +82,11 @@ func (b *AWSBuilder) AccountID(value string) *AWSBuilder {
 	return b
 }
 
-// EtcdEncryption sets the value of the 'etcd_encryption' attribute to the given value.
+// AuditLog sets the value of the 'audit_log' attribute to the given value.
 //
-// Contains the necessary attributes to support etcd encryption for AWS based clusters.
-func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder {
-	b.etcdEncryption = value
+// Contains the necessary attributes to support audit log forwarding
+func (b *AWSBuilder) AuditLog(value *AuditLogBuilder) *AWSBuilder {
+	b.auditLog = value
 	if value != nil {
 		b.bitmap_ |= 16
 	} else {
@@ -93,10 +95,30 @@ func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder
 	return b
 }
 
+// BillingAccountID sets the value of the 'billing_account_ID' attribute to the given value.
+func (b *AWSBuilder) BillingAccountID(value string) *AWSBuilder {
+	b.billingAccountID = value
+	b.bitmap_ |= 32
+	return b
+}
+
+// EtcdEncryption sets the value of the 'etcd_encryption' attribute to the given value.
+//
+// Contains the necessary attributes to support etcd encryption for AWS based clusters.
+func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder {
+	b.etcdEncryption = value
+	if value != nil {
+		b.bitmap_ |= 64
+	} else {
+		b.bitmap_ &^= 64
+	}
+	return b
+}
+
 // PrivateLink sets the value of the 'private_link' attribute to the given value.
 func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 	b.privateLink = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -106,9 +128,9 @@ func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigurationBuilder) *AWSBuilder {
 	b.privateLinkConfiguration = value
 	if value != nil {
-		b.bitmap_ |= 64
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 64
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -116,7 +138,7 @@ func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigura
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	b.secretAccessKey = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 512
 	return b
 }
 
@@ -124,7 +146,7 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
-	b.bitmap_ |= 256
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -132,9 +154,9 @@ func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	b.tags = value
 	if value != nil {
-		b.bitmap_ |= 512
+		b.bitmap_ |= 2048
 	} else {
-		b.bitmap_ &^= 512
+		b.bitmap_ &^= 2048
 	}
 	return b
 }
@@ -153,6 +175,12 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 	}
 	b.accessKeyID = object.accessKeyID
 	b.accountID = object.accountID
+	if object.auditLog != nil {
+		b.auditLog = NewAuditLog().Copy(object.auditLog)
+	} else {
+		b.auditLog = nil
+	}
+	b.billingAccountID = object.billingAccountID
 	if object.etcdEncryption != nil {
 		b.etcdEncryption = NewAwsEtcdEncryption().Copy(object.etcdEncryption)
 	} else {
@@ -195,6 +223,13 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 	}
 	object.accessKeyID = b.accessKeyID
 	object.accountID = b.accountID
+	if b.auditLog != nil {
+		object.auditLog, err = b.auditLog.Build()
+		if err != nil {
+			return
+		}
+	}
+	object.billingAccountID = b.billingAccountID
 	if b.etcdEncryption != nil {
 		object.etcdEncryption, err = b.etcdEncryption.Build()
 		if err != nil {

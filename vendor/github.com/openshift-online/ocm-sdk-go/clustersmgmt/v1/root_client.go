@@ -171,6 +171,16 @@ func (c *Client) OidcConfigs() *OidcConfigsClient {
 	)
 }
 
+// PendingDeleteClusters returns the target 'pending_delete_clusters' resource.
+//
+// Reference to the resource that manages the collection of pending delete clusters.
+func (c *Client) PendingDeleteClusters() *PendingDeleteClustersClient {
+	return NewPendingDeleteClustersClient(
+		c.transport,
+		path.Join(c.path, "pending_delete_clusters"),
+	)
+}
+
 // Products returns the target 'products' resource.
 //
 // Reference to the resource that manages the collection of products.

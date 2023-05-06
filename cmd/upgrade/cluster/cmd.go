@@ -212,8 +212,7 @@ func createUpgradePolicyHypershift(r *rosa.Runtime, cmd *cobra.Command, clusterK
 	cluster *cmv1.Cluster, version string, scheduleDate string, scheduleTime string) error {
 	upgradePolicyBuilder := cmv1.NewControlPlaneUpgradePolicy().ScheduleType("manual").
 		UpgradeType("ControlPlane").Version(version)
-	// TODO: remove forceNow when we support scheduling
-	nextRun := buildUpgradeSchedule(r, cmd, scheduleDate, scheduleTime, true)
+	nextRun := buildUpgradeSchedule(r, cmd, scheduleDate, scheduleTime)
 	upgradePolicyBuilder = upgradePolicyBuilder.NextRun(nextRun)
 	upgradePolicy, err := upgradePolicyBuilder.Build()
 	if err != nil {
@@ -245,7 +244,7 @@ func createUpgradePolicyClassic(r *rosa.Runtime, cmd *cobra.Command, clusterKey 
 		return err
 	}
 
-	nextRun := buildUpgradeSchedule(r, cmd, scheduleDate, scheduleTime, false)
+	nextRun := buildUpgradeSchedule(r, cmd, scheduleDate, scheduleTime)
 	upgradePolicyBuilder = upgradePolicyBuilder.NextRun(nextRun)
 	upgradePolicy, err = upgradePolicyBuilder.Build()
 	if err != nil {
@@ -357,18 +356,17 @@ func checkSTSRolesCompatibility(r *rosa.Runtime, cluster *cmv1.Cluster, mode str
 	}
 }
 
-func buildUpgradeSchedule(r *rosa.Runtime, cmd *cobra.Command, scheduleDate string, scheduleTime string,
-	forceNow bool) time.Time {
+func buildUpgradeSchedule(r *rosa.Runtime, cmd *cobra.Command, scheduleDate string, scheduleTime string) time.Time {
 	// Set the default next run within the next 10 minutes
 	now := time.Now().UTC().Add(time.Minute * 10)
-	if forceNow || scheduleDate == "" {
+	if scheduleDate == "" {
 		scheduleDate = now.Format("2006-01-02")
 	}
-	if forceNow || scheduleTime == "" {
+	if scheduleTime == "" {
 		scheduleTime = now.Format("15:04")
 	}
 
-	if !forceNow && interactive.Enabled() {
+	if interactive.Enabled() {
 		// If datetimes are set, use them in the interactive form, otherwise fallback to 'now'
 		scheduleParsed, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%s %s", scheduleDate, scheduleTime))
 		if err != nil {

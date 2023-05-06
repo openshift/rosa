@@ -245,6 +245,16 @@ func (c *ClusterClient) IdentityProviders() *IdentityProvidersClient {
 	)
 }
 
+// InflightChecks returns the target 'inflight_checks' resource.
+//
+// Reference to the resource that manages the collection of inflight checks.
+func (c *ClusterClient) InflightChecks() *InflightChecksClient {
+	return NewInflightChecksClient(
+		c.transport,
+		path.Join(c.path, "inflight_checks"),
+	)
+}
+
 // Ingresses returns the target 'ingresses' resource.
 //
 // Reference to the resource that manages the collection of ingress resources.
@@ -342,6 +352,16 @@ func (c *ClusterClient) Status() *ClusterStatusClient {
 	return NewClusterStatusClient(
 		c.transport,
 		path.Join(c.path, "status"),
+	)
+}
+
+// TuningConfigs returns the target 'tuning_configs' resource.
+//
+// Reference to the resource that manages the collection of tuning configs for this cluster.
+func (c *ClusterClient) TuningConfigs() *TuningConfigsClient {
+	return NewTuningConfigsClient(
+		c.transport,
+		path.Join(c.path, "tuning_configs"),
 	)
 }
 

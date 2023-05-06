@@ -234,6 +234,9 @@ var pathTreeData = `{
                 }
               }
             },
+            "inflight_checks": {
+              "-": null
+            },
             "ingresses": {
               "-": null
             },
@@ -267,6 +270,9 @@ var pathTreeData = `{
             "sts_operator_roles": {
               "-": null
             },
+            "tuning_configs": {
+              "-": null
+            },
             "upgrade_policies": {
               "-": {
                 "state": null
@@ -292,6 +298,9 @@ var pathTreeData = `{
           "-": null
         },
         "oidc_configs": {
+          "-": null
+        },
+        "pending_delete_clusters": {
           "-": null
         },
         "products": {

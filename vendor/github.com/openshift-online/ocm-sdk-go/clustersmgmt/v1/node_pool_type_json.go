@@ -102,16 +102,7 @@ func writeNodePool(object *NodePool, stream *jsoniter.Stream) {
 		stream.WriteString(object.availabilityZone)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.cluster != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("cluster")
-		writeCluster(object.cluster, stream)
-		count++
-	}
-	present_ = object.bitmap_&256 != 0 && object.labels != nil
+	present_ = object.bitmap_&128 != 0 && object.labels != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -140,7 +131,7 @@ func writeNodePool(object *NodePool, stream *jsoniter.Stream) {
 		}
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -149,7 +140,7 @@ func writeNodePool(object *NodePool, stream *jsoniter.Stream) {
 		stream.WriteInt(object.replicas)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0 && object.status != nil
+	present_ = object.bitmap_&512 != 0 && object.status != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -158,7 +149,7 @@ func writeNodePool(object *NodePool, stream *jsoniter.Stream) {
 		writeNodePoolStatus(object.status, stream)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -167,13 +158,22 @@ func writeNodePool(object *NodePool, stream *jsoniter.Stream) {
 		stream.WriteString(object.subnet)
 		count++
 	}
-	present_ = object.bitmap_&4096 != 0 && object.taints != nil
+	present_ = object.bitmap_&2048 != 0 && object.taints != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("taints")
 		writeTaintList(object.taints, stream)
+		count++
+	}
+	present_ = object.bitmap_&4096 != 0 && object.tuningConfigs != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("tuning_configs")
+		writeStringList(object.tuningConfigs, stream)
 		count++
 	}
 	present_ = object.bitmap_&8192 != 0 && object.version != nil
@@ -235,10 +235,6 @@ func readNodePool(iterator *jsoniter.Iterator) *NodePool {
 			value := iterator.ReadString()
 			object.availabilityZone = value
 			object.bitmap_ |= 64
-		case "cluster":
-			value := readCluster(iterator)
-			object.cluster = value
-			object.bitmap_ |= 128
 		case "labels":
 			value := map[string]string{}
 			for {
@@ -250,22 +246,26 @@ func readNodePool(iterator *jsoniter.Iterator) *NodePool {
 				value[key] = item
 			}
 			object.labels = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 128
 		case "replicas":
 			value := iterator.ReadInt()
 			object.replicas = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 256
 		case "status":
 			value := readNodePoolStatus(iterator)
 			object.status = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 512
 		case "subnet":
 			value := iterator.ReadString()
 			object.subnet = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 1024
 		case "taints":
 			value := readTaintList(iterator)
 			object.taints = value
+			object.bitmap_ |= 2048
+		case "tuning_configs":
+			value := readStringList(iterator)
+			object.tuningConfigs = value
 			object.bitmap_ |= 4096
 		case "version":
 			value := readVersion(iterator)
