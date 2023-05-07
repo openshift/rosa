@@ -111,11 +111,20 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("http_tokens_state")
+		stream.WriteString(string(object.httpTokensState))
+		count++
+	}
+	present_ = object.bitmap_&256 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("private_link")
 		stream.WriteBool(object.privateLink)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0 && object.privateLinkConfiguration != nil
+	present_ = object.bitmap_&512 != 0 && object.privateLinkConfiguration != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -124,7 +133,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		writePrivateLinkClusterConfiguration(object.privateLinkConfiguration, stream)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -133,7 +142,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.secretAccessKey)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0 && object.subnetIDs != nil
+	present_ = object.bitmap_&2048 != 0 && object.subnetIDs != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -142,7 +151,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		writeStringList(object.subnetIDs, stream)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0 && object.tags != nil
+	present_ = object.bitmap_&4096 != 0 && object.tags != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -222,22 +231,27 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 			value := readAwsEtcdEncryption(iterator)
 			object.etcdEncryption = value
 			object.bitmap_ |= 64
+		case "http_tokens_state":
+			text := iterator.ReadString()
+			value := HttpTokenState(text)
+			object.httpTokensState = value
+			object.bitmap_ |= 128
 		case "private_link":
 			value := iterator.ReadBool()
 			object.privateLink = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "private_link_configuration":
 			value := readPrivateLinkClusterConfiguration(iterator)
 			object.privateLinkConfiguration = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "secret_access_key":
 			value := iterator.ReadString()
 			object.secretAccessKey = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "subnet_ids":
 			value := readStringList(iterator)
 			object.subnetIDs = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		case "tags":
 			value := map[string]string{}
 			for {
@@ -249,7 +263,7 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 				value[key] = item
 			}
 			object.tags = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 4096
 		default:
 			iterator.ReadAny()
 		}

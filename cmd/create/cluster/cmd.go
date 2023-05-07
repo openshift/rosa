@@ -89,6 +89,7 @@ var args struct {
 	channelGroup              string
 	flavour                   string
 	disableWorkloadMonitoring bool
+	httpTokens                string
 
 	//Encryption
 	etcdEncryption           bool
@@ -180,6 +181,7 @@ func init() {
 		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
 	)
 	flags.MarkDeprecated("name", "use --cluster-name instead")
+
 	flags.StringVarP(
 		&args.clusterName,
 		"cluster-name",
@@ -400,6 +402,13 @@ func init() {
 		false,
 		"Provides private connectivity between VPCs, AWS services, and your on-premises networks, "+
 			"without exposing your traffic to the public internet.",
+	)
+
+	flags.StringVar(
+		&args.httpTokens,
+		"http-tokens",
+		"",
+		"Configure the use of IMDSv2 for ec2 instances, 'optional' or 'required'.",
 	)
 
 	flags.StringSliceVar(
@@ -694,6 +703,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	if isHostedCP && args.httpTokens != "" {
+		r.Reporter.Errorf("http-tokens can't be set with hosted-cp")
+		os.Exit(1)
+	}
+
 	// Billing Account
 	billingAccount := args.billingAccount
 	if billingAccount != "" && !isHostedCP {
@@ -841,6 +855,30 @@ func run(cmd *cobra.Command, _ []string) {
 	version, err = r.OCMClient.ValidateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
+		os.Exit(1)
+	}
+
+	httpTokens := args.httpTokens
+	if interactive.Enabled() && !isHostedCP {
+		httpTokens, err = interactive.GetString(interactive.Input{
+			Question: fmt.Sprintf("Configure the use of IMDSv2 for ec2 instances %s/%s",
+				v1.HttpTokenStateOptional, v1.HttpTokenStateRequired),
+			Help:    cmd.Flags().Lookup("http-tokens").Usage,
+			Default: httpTokens,
+			Validators: []interactive.Validator{
+				ocm.ValidateHttpTokensValue,
+			},
+		})
+
+	} else {
+		err = ocm.ValidateHttpTokensValue(httpTokens)
+	}
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
+		os.Exit(1)
+	}
+	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
+		r.Reporter.Errorf(err.Error())
 		os.Exit(1)
 	}
 
@@ -2255,6 +2293,9 @@ func run(cmd *cobra.Command, _ []string) {
 		BillingAccount: billingAccount,
 	}
 
+	if httpTokens != "" {
+		clusterConfig.HttpTokens = v1.HttpTokenState(httpTokens)
+	}
 	if oidcConfig != nil {
 		clusterConfig.OidcConfigId = oidcConfig.ID()
 	}

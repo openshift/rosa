@@ -31,6 +31,7 @@ type AWSBuilder struct {
 	auditLog                 *AuditLogBuilder
 	billingAccountID         string
 	etcdEncryption           *AwsEtcdEncryptionBuilder
+	httpTokensState          HttpTokenState
 	privateLinkConfiguration *PrivateLinkClusterConfigurationBuilder
 	secretAccessKey          string
 	subnetIDs                []string
@@ -115,10 +116,19 @@ func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder
 	return b
 }
 
+// HttpTokensState sets the value of the 'http_tokens_state' attribute to the given value.
+//
+// Which HttpTokensState to use for metadata service interaction options for EC2 instances
+func (b *AWSBuilder) HttpTokensState(value HttpTokenState) *AWSBuilder {
+	b.httpTokensState = value
+	b.bitmap_ |= 128
+	return b
+}
+
 // PrivateLink sets the value of the 'private_link' attribute to the given value.
 func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 	b.privateLink = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -128,9 +138,9 @@ func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigurationBuilder) *AWSBuilder {
 	b.privateLinkConfiguration = value
 	if value != nil {
-		b.bitmap_ |= 256
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 256
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -138,7 +148,7 @@ func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigura
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	b.secretAccessKey = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -146,7 +156,7 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -154,9 +164,9 @@ func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	b.tags = value
 	if value != nil {
-		b.bitmap_ |= 2048
+		b.bitmap_ |= 4096
 	} else {
-		b.bitmap_ &^= 2048
+		b.bitmap_ &^= 4096
 	}
 	return b
 }
@@ -186,6 +196,7 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 	} else {
 		b.etcdEncryption = nil
 	}
+	b.httpTokensState = object.httpTokensState
 	b.privateLink = object.privateLink
 	if object.privateLinkConfiguration != nil {
 		b.privateLinkConfiguration = NewPrivateLinkClusterConfiguration().Copy(object.privateLinkConfiguration)
@@ -236,6 +247,7 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 			return
 		}
 	}
+	object.httpTokensState = b.httpTokensState
 	object.privateLink = b.privateLink
 	if b.privateLinkConfiguration != nil {
 		object.privateLinkConfiguration, err = b.privateLinkConfiguration.Build()
