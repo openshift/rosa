@@ -189,10 +189,14 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		credRequests, err := r.OCMClient.GetCredRequests(true)
 		if err != nil {
-			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
+			r.Reporter.Errorf("Error getting operator credential request from OCM %v", err)
 			os.Exit(1)
 		}
-		foundOperatorRoles, _ = r.AWSClient.GetOperatorRolesFromAccountByPrefix(args.prefix, credRequests)
+		foundOperatorRoles, err = r.AWSClient.GetOperatorRolesFromAccountByPrefix(args.prefix, credRequests)
+		if err != nil {
+			r.Reporter.Errorf("There was a problem retrieving the Operator Roles from AWS: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	if len(foundOperatorRoles) == 0 {
