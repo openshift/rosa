@@ -41,8 +41,10 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		if err != nil {
 			return err
 		}
-		r.Reporter.Infof("Cluster '%s' is using reusable OIDC Config and operator roles already exist.", clusterKey)
-		return nil
+		if !args.forcePolicyCreation {
+			r.Reporter.Infof("Cluster '%s' is using reusable OIDC Config and operator roles already exist.", clusterKey)
+			return nil
+		}
 	}
 
 	if len(missingRoles) == 0 &&

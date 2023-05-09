@@ -1,11 +1,9 @@
 package helper
 
 import (
-	"context"
 	"math"
 	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -14,7 +12,6 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/google/uuid"
 	"github.com/openshift/rosa/pkg/reporter"
-	"github.com/zgalor/weberr"
 )
 
 func init() {
@@ -205,23 +202,6 @@ func LongestCommonPrefixBySorting(stringSlice []string) string {
 	}
 
 	return first[:i]
-}
-
-func IsBucketReacheable(ctx context.Context, bucketUrl string) error {
-	req, err := http.NewRequestWithContext(ctx, "HEAD", bucketUrl, nil)
-	if err != nil {
-		return err
-	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return weberr.BadRequest.Errorf("Bucket '%s' not found.", bucketUrl)
-	}
-	return nil
 }
 
 func IsURLReachable(apiURL string) error {
