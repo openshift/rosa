@@ -2379,7 +2379,6 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
-	os.Exit(0)
 }
 
 func validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient aws.Client,
