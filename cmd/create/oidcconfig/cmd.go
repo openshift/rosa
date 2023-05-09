@@ -126,6 +126,11 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 		interactive.Enable()
 		return
 	}
+	oidcConfigKindNotSet := !cmd.Flags().Changed(managedFlag)
+	if oidcConfigKindNotSet && !confirm.Yes() {
+		interactive.Enable()
+		return
+	}
 	modeIsAuto := cmd.Flag("mode").Value.String() == aws.ModeAuto
 	installerRoleArnNotSet := (!cmd.Flags().Changed(installerRoleArnFlag) || args.installerRoleArn == "") && !confirm.Yes()
 	if !args.managed && (modeNotChanged || (modeIsAuto && installerRoleArnNotSet)) {
@@ -153,6 +158,10 @@ func run(cmd *cobra.Command, argv []string) {
 	args.region = region
 
 	checkInteractiveModeNeeded(cmd)
+
+	if interactive.Enabled() && !cmd.Flags().Changed(managedFlag) {
+		args.managed = confirm.Prompt(true, "Would you like to create a Managed (Red Hat hosted) OIDC Configuration")
+	}
 
 	if args.rawFiles && mode != "" {
 		r.Reporter.Warnf("--%s param is not supported alongside --mode param.", rawFilesFlag)
