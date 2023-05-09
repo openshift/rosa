@@ -582,7 +582,6 @@ func init() {
 		false,
 		"Enable the use of hosted control planes (HyperShift)",
 	)
-	flags.MarkHidden("hosted-cp")
 
 	flags.StringVar(
 		&args.billingAccount,
