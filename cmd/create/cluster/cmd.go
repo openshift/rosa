@@ -580,7 +580,7 @@ func init() {
 		&args.hostedClusterEnabled,
 		"hosted-cp",
 		false,
-		"Enable the use of hosted control planes (HyperShift)",
+		"Enable the use of hosted control planes",
 	)
 
 	flags.StringVar(
@@ -695,40 +695,52 @@ func run(cmd *cobra.Command, _ []string) {
 	// Billing Account
 	billingAccount := args.billingAccount
 	if billingAccount != "" && !isHostedCP {
-		r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
+		r.Reporter.Errorf("Billing accounts are only supported for hosted clusters")
 		os.Exit(1)
 	}
 
-	if interactive.Enabled() && isHostedCP {
+	if isHostedCP {
+		if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
+			r.Reporter.Errorf("Expected a valid billing account")
+			os.Exit(1)
+		}
 		cloudAccounts, err := r.OCMClient.GetBillingAccounts()
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-
-		if !helper.Contains(cloudAccounts, billingAccount) {
-			// if a billing account is not provided or it's not subscribed
-			// then we will try to use the infrastructure account as default
+		// if a billing account is not provided we will try to use the infrastructure account as default
+		if billingAccount == "" {
 			if helper.Contains(cloudAccounts, awsCreator.AccountID) {
 				billingAccount = awsCreator.AccountID
 			}
 		}
-
-		billingAccount, err = interactive.GetOption(interactive.Input{
-			Question: "Billing Account",
-			Help:     cmd.Flags().Lookup("billing-account").Usage,
-			Options:  cloudAccounts,
-			Default:  billingAccount,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid billing account: %s", err)
+		if interactive.Enabled() {
+			billingAccount, err = interactive.GetOption(interactive.Input{
+				Question: "Billing Account",
+				Help:     cmd.Flags().Lookup("billing-account").Usage,
+				Options:  cloudAccounts,
+				Default:  billingAccount,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid billing account: %s", err)
+				os.Exit(1)
+			}
+		}
+		if billingAccount == "" {
+			r.Reporter.Errorf("A billing account is required for hosted clusters")
+			os.Exit(1)
+		}
+		r.Reporter.Infof("Using %s as billing account", billingAccount)
+		if !helper.Contains(cloudAccounts, billingAccount) {
+			r.Reporter.Errorf("Account %s does not have a subscription for ROSA with hosted control planes", billingAccount)
 			os.Exit(1)
 		}
 	}
 
 	if isHostedCP {
 		if billingAccount == "" {
-			r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters")
+			r.Reporter.Errorf("A billing account is required for hosted control plane clusters")
 			os.Exit(1)
 		}
 		if !ocm.IsValidAWSAccount(billingAccount) {
