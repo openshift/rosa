@@ -479,55 +479,69 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
 			continue
 		}
-		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
-			RoleName: role.RoleName,
-		})
+		isValid, err := c.ValidateAccountRoleVersionCompatibility(*role.RoleName, roleType, version)
 		if err != nil {
 			return roleARNs, err
 		}
-		skip := false
-		isTagged := false
-		for _, tag := range listRoleTagsOutput.Tags {
-			tagValue := aws.StringValue(tag.Value)
-			switch aws.StringValue(tag.Key) {
-			case tags.RoleType:
-				isTagged = true
-				if tagValue != roleType {
-					skip = true
-					break
-				}
-			case tags.OpenShiftVersion:
-				isTagged = true
-
-				if roleHasTag(listRoleTagsOutput.Tags, tags.ManagedPolicies, tags.True) {
-					// Managed policies will be up-to-date no need to check version tags
-					break
-				}
-
-				if version == "" {
-					break
-				}
-				clusterVersion, err := semver.NewVersion(version)
-				if err != nil {
-					skip = true
-					break
-				}
-				policyVersion, err := semver.NewVersion(tagValue)
-				if err != nil {
-					skip = true
-					break
-				}
-				if policyVersion.LessThan(clusterVersion) {
-					skip = true
-					break
-				}
-			}
+		if !isValid {
+			continue
 		}
-		if isTagged && !skip {
-			roleARNs = append(roleARNs, aws.StringValue(role.Arn))
-		}
+		roleARNs = append(roleARNs, aws.StringValue(role.Arn))
 	}
 	return roleARNs, nil
+}
+
+// FIXME: refactor similar calls to use this instead
+func (c *awsClient) ValidateAccountRoleVersionCompatibility(
+	roleName string, roleType string, minVersion string) (bool, error) {
+	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return false, err
+	}
+	skip := false
+	isTagged := false
+	for _, tag := range listRoleTagsOutput.Tags {
+		tagValue := aws.StringValue(tag.Value)
+		switch aws.StringValue(tag.Key) {
+		case tags.RoleType:
+			isTagged = true
+			if tagValue != roleType {
+				skip = true
+				break
+			}
+		case tags.OpenShiftVersion:
+			isTagged = true
+
+			if roleHasTag(listRoleTagsOutput.Tags, tags.ManagedPolicies, tags.True) {
+				// Managed policies will be up-to-date no need to check version tags
+				break
+			}
+
+			if minVersion == "" {
+				break
+			}
+			minExpectedVersion, err := semver.NewVersion(minVersion)
+			if err != nil {
+				skip = true
+				break
+			}
+			policyVersion, err := semver.NewVersion(tagValue)
+			if err != nil {
+				skip = true
+				break
+			}
+			if policyVersion.LessThan(minExpectedVersion) {
+				skip = true
+				break
+			}
+		}
+	}
+	if !isTagged || skip {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (c *awsClient) ListRoles() ([]*iam.Role, error) {
