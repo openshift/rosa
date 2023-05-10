@@ -1,7 +1,6 @@
 package operatorroles
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -244,13 +243,6 @@ func validateArgumentsOperatorRolesCreationByPrefix(r *rosa.Runtime, operatorRol
 	if err != nil {
 		r.Reporter.Errorf("URL '%s' is not reachable.", oidcEndpointUrl)
 		os.Exit(1)
-	}
-	if strings.Contains(oidcEndpointUrl, ".s3.") {
-		err = helper.IsBucketReacheable(context.Background(), oidcEndpointUrl)
-		if err != nil {
-			r.Reporter.Errorf("%v", err)
-			os.Exit(1)
-		}
 	}
 	err = aws.ARNValidator(installerRoleArn)
 	if err != nil {
