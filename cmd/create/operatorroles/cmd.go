@@ -237,3 +237,16 @@ func run(cmd *cobra.Command, argv []string) error {
 	return handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
 		mode, policies, defaultPolicyVersion)
 }
+
+func convertV1OperatorIAMRoleIntoOcmOperatorIamRole(
+	operatorIAMRoleList []*cmv1.OperatorIAMRole) ([]ocm.OperatorIAMRole, error) {
+	operatorRolesList := []ocm.OperatorIAMRole{}
+	for _, operatorIAMRole := range operatorIAMRoleList {
+		newRole, err := ocm.NewOperatorIamRoleFromCmv1(operatorIAMRole)
+		if err != nil {
+			return operatorRolesList, err
+		}
+		operatorRolesList = append(operatorRolesList, *newRole)
+	}
+	return operatorRolesList, nil
+}

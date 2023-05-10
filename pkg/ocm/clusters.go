@@ -123,6 +123,19 @@ type OperatorIAMRole struct {
 	Path      string
 }
 
+func NewOperatorIamRoleFromCmv1(operatorIAMRole *cmv1.OperatorIAMRole) (*OperatorIAMRole, error) {
+	path, err := aws.GetPathFromARN(operatorIAMRole.RoleARN())
+	if err != nil {
+		return nil, err
+	}
+	return &OperatorIAMRole{
+		Name:      operatorIAMRole.Name(),
+		Namespace: operatorIAMRole.Namespace(),
+		RoleARN:   operatorIAMRole.RoleARN(),
+		Path:      path,
+	}, nil
+}
+
 type Hypershift struct {
 	Enabled bool
 }

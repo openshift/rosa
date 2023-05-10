@@ -381,18 +381,10 @@ func validateOperatorRoles(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, er
 }
 
 func validateOperatorRolesMatchOidcProvider(r *rosa.Runtime, cluster *cmv1.Cluster) error {
-	operatorRolesList := []ocm.OperatorIAMRole{}
-	for _, operatorIAMRole := range cluster.AWS().STS().OperatorIAMRoles() {
-		path, err := aws.GetPathFromARN(operatorIAMRole.RoleARN())
-		if err != nil {
-			return err
-		}
-		operatorRolesList = append(operatorRolesList, ocm.OperatorIAMRole{
-			Name:      operatorIAMRole.Name(),
-			Namespace: operatorIAMRole.Namespace(),
-			RoleARN:   operatorIAMRole.RoleARN(),
-			Path:      path,
-		})
+	operatorRolesList, err := convertV1OperatorIAMRoleIntoOcmOperatorIamRole(
+		cluster.AWS().STS().OperatorIAMRoles())
+	if err != nil {
+		return err
 	}
 	expectedPath, err := aws.GetPathFromARN(cluster.AWS().STS().RoleARN())
 	if err != nil {
