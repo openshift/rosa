@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.339
+- Update model version v0.0.280
+  - Add `HttpTokensState` to `AWS` resource.
+
 ## 0.1.338
 - Windows: Update API CA
 
