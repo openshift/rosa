@@ -22,7 +22,6 @@ import (
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
@@ -88,16 +87,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	hypershiftEnabled, err := r.OCMClient.IsCapabilityEnabled(ocm.HypershiftCapability)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	if !hypershiftEnabled && cmd.Flags().Changed("hosted-cp") {
-		r.Reporter.Errorf("'%s' not set for current organization", ocm.HypershiftCapability)
-		os.Exit(1)
-	}
-
 	// Filter out unwanted regions
 	var availableRegions []*cmv1.CloudRegion
 	for _, region := range regions {
@@ -109,7 +98,7 @@ func run(cmd *cobra.Command, _ []string) {
 				continue
 			}
 		}
-		if hypershiftEnabled && cmd.Flags().Changed("hosted-cp") {
+		if cmd.Flags().Changed("hosted-cp") {
 			if args.hostedCluster != region.SupportsHypershift() {
 				continue
 			}
@@ -133,29 +122,17 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	headerFormat := "ID\t\tNAME\t\tMULTI-AZ SUPPORT\n"
-	if hypershiftEnabled {
-		headerFormat = "ID\t\tNAME\t\tMULTI-AZ SUPPORT\t\tHOSTED-CP SUPPORT\n"
-	}
+	headerFormat := "ID\t\tNAME\t\tMULTI-AZ SUPPORT\t\tHOSTED-CP SUPPORT\n"
 	fmt.Fprint(writer, headerFormat)
 
 	for _, region := range availableRegions {
-		if hypershiftEnabled {
-			fmt.Fprintf(writer,
-				"%s\t\t%s\t\t%t\t\t%t\n",
-				region.ID(),
-				region.DisplayName(),
-				region.SupportsMultiAZ(),
-				region.SupportsHypershift(),
-			)
-		} else {
-			fmt.Fprintf(writer,
-				"%s\t\t%s\t\t%t\n",
-				region.ID(),
-				region.DisplayName(),
-				region.SupportsMultiAZ(),
-			)
-		}
+		fmt.Fprintf(writer,
+			"%s\t\t%s\t\t%t\t\t%t\n",
+			region.ID(),
+			region.DisplayName(),
+			region.SupportsMultiAZ(),
+			region.SupportsHypershift(),
+		)
 	}
 	writer.Flush()
 }

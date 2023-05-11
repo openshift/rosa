@@ -43,9 +43,8 @@ import (
 )
 
 const (
-	ANY                  = "any"
-	HibernateCapability  = "capability.organization.hibernate_cluster"
-	HypershiftCapability = "capability.organization.hypershift"
+	ANY                 = "any"
+	HibernateCapability = "capability.organization.hibernate_cluster"
 	//Pendo Events
 	Success             = "Success"
 	Failure             = "Failure"
