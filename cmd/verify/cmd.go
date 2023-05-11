@@ -19,6 +19,7 @@ package verify
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/verify/network"
 	"github.com/openshift/rosa/cmd/verify/oc"
 	"github.com/openshift/rosa/cmd/verify/permissions"
 	"github.com/openshift/rosa/cmd/verify/quota"
@@ -32,6 +33,7 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	Cmd.AddCommand(network.Cmd)
 	Cmd.AddCommand(oc.Cmd)
 	Cmd.AddCommand(permissions.Cmd)
 	Cmd.AddCommand(quota.Cmd)
