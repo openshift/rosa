@@ -255,6 +255,16 @@ func run(cmd *cobra.Command, argv []string) {
 					os.Exit(1)
 				}
 			}
+			isValid, err := r.AWSClient.ValidateAccountRoleVersionCompatibility(
+				roleName, aws.InstallerAccountRole, minorVersionForGetSecret)
+			if err != nil {
+				r.Reporter.Errorf("There was a problem listing role tags: %v", err)
+				os.Exit(1)
+			}
+			if !isValid {
+				r.Reporter.Errorf("Role '%s' is not of minimum version '%s'", args.installerRoleArn, minorVersionForGetSecret)
+				os.Exit(1)
+			}
 		}
 
 		args.userPrefix = strings.Trim(args.userPrefix, " \t")

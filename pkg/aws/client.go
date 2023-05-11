@@ -182,6 +182,8 @@ type Client interface {
 	PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error
 	CreateSecretInSecretsManager(name string, secret string) (string, error)
 	DeleteSecretInSecretsManager(secretArn string) error
+	ValidateAccountRoleVersionCompatibility(
+		roleName string, roleType string, minVersion string) (bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
