@@ -101,14 +101,14 @@ func init() {
 		&args.managed,
 		"managed-policies",
 		false,
-		"Attach AWS managed policies to the account roles",
+		"Attach Classic ROSA AWS managed policies to the account roles",
 	)
 	flags.MarkHidden("managed-policies")
 	flags.BoolVar(
 		&args.managed,
 		"mp",
 		false,
-		"Attach AWS managed policies to the account roles. This is an alias for --managed-policies")
+		"Attach Classic ROSA AWS managed policies to the account roles. This is an alias for --managed-policies")
 	flags.MarkHidden("mp")
 
 	flags.BoolVarP(
@@ -165,10 +165,10 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Determine if managed policies are enabled
+	// Determine if Classic ROSA managed policies are enabled
 	isManagedSet := cmd.Flags().Changed("managed-policies") || cmd.Flags().Changed("mp")
 	if isManagedSet && env == ocm.Production {
-		r.Reporter.Errorf("Managed policies are not supported in this environment")
+		r.Reporter.Errorf("Classic ROSA managed policies are not supported in this environment")
 		os.Exit(1)
 	}
 	managedPolicies := args.managed

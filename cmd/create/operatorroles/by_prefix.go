@@ -107,11 +107,6 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
 		os.Exit(1)
 	}
-	// TODO: remove once AWS managed policies are in place
-	if managedPolicies && env == ocm.Production {
-		r.Reporter.Errorf("Managed policies are not supported in this environment")
-		os.Exit(1)
-	}
 	awsCreator, err := r.AWSClient.GetCreator()
 	if err != nil {
 		r.Reporter.Errorf("Unable to get IAM credentials: %v", err)

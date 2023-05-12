@@ -143,11 +143,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		r.Reporter.Errorf("Failed to determine if the role has managed policies: %v", err)
 		os.Exit(1)
 	}
-	// TODO: remove once AWS managed policies are in place
-	if managedPolicies && env == ocm.Production {
-		r.Reporter.Errorf("Managed policies are not supported in this environment")
-		os.Exit(1)
-	}
 
 	if managedPolicies {
 		hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)

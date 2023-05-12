@@ -80,11 +80,6 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
 		os.Exit(1)
 	}
-	// TODO: remove once AWS managed policies are in place
-	if managedPolicies && env == ocm.Production {
-		r.Reporter.Errorf("Managed policies are not supported in this environment")
-		os.Exit(1)
-	}
 	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
 	if err != nil {
 		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)

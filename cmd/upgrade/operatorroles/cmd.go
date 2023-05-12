@@ -135,11 +135,6 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	managedPolicies := cluster.AWS().STS().ManagedPolicies()
-	// TODO: remove once AWS managed policies are in place
-	if managedPolicies && env == ocm.Production {
-		r.Reporter.Errorf("Managed policies are not supported in this environment")
-		os.Exit(1)
-	}
 
 	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
 	if err != nil {
