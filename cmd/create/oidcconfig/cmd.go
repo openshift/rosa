@@ -222,9 +222,6 @@ func run(cmd *cobra.Command, argv []string) {
 			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
 				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
 			}
-			if !output.HasFlag() && r.Reporter.IsTerminal() {
-				r.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
-			}
 			if interactive.Enabled() {
 				prefix, err := interactive.GetString(interactive.Input{
 					Question:   "Prefix for OIDC",
@@ -238,13 +235,16 @@ func run(cmd *cobra.Command, argv []string) {
 				}
 				args.userPrefix = prefix
 			}
-			err := aws.ARNValidator(args.installerRoleArn)
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid ARN: %s", err)
-				os.Exit(1)
-			}
 			roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
 			if roleName != "" {
+				if !output.HasFlag() && r.Reporter.IsTerminal() {
+					r.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
+				}
+				err := aws.ARNValidator(args.installerRoleArn)
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid ARN: %s", err)
+					os.Exit(1)
+				}
 				roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
 				if err != nil {
 					r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", args.installerRoleArn, err)
@@ -254,16 +254,16 @@ func run(cmd *cobra.Command, argv []string) {
 					r.Reporter.Errorf("Role '%s' does not exist", args.installerRoleArn)
 					os.Exit(1)
 				}
-			}
-			isValid, err := r.AWSClient.ValidateAccountRoleVersionCompatibility(
-				roleName, aws.InstallerAccountRole, minorVersionForGetSecret)
-			if err != nil {
-				r.Reporter.Errorf("There was a problem listing role tags: %v", err)
-				os.Exit(1)
-			}
-			if !isValid {
-				r.Reporter.Errorf("Role '%s' is not of minimum version '%s'", args.installerRoleArn, minorVersionForGetSecret)
-				os.Exit(1)
+				isValid, err := r.AWSClient.ValidateAccountRoleVersionCompatibility(
+					roleName, aws.InstallerAccountRole, minorVersionForGetSecret)
+				if err != nil {
+					r.Reporter.Errorf("There was a problem listing role tags: %v", err)
+					os.Exit(1)
+				}
+				if !isValid {
+					r.Reporter.Errorf("Role '%s' is not of minimum version '%s'", args.installerRoleArn, minorVersionForGetSecret)
+					os.Exit(1)
+				}
 			}
 		}
 
