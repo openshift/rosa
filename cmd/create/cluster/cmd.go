@@ -589,9 +589,8 @@ func init() {
 		&args.hostedClusterEnabled,
 		"hosted-cp",
 		false,
-		"Enable the use of hosted control planes (HyperShift)",
+		"Enable the use of hosted control planes",
 	)
-	flags.MarkHidden("hosted-cp")
 
 	flags.StringVar(
 		&args.billingAccount,
