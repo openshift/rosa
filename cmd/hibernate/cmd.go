@@ -27,7 +27,7 @@ func GenerateCommand() *cobra.Command {
 	var Cmd = &cobra.Command{
 		Use:    "hibernate",
 		Short:  "Hibernate cluster",
-		Long:   "Hibernate Ready cluster",
+		Long:   "Hibernate a ready cluster",
 		Hidden: true,
 	}
 	Cmd.AddCommand(cluster.GenerateCommand())

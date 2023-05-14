@@ -27,7 +27,7 @@ func GenerateCommand() *cobra.Command {
 	var Cmd = &cobra.Command{
 		Use:    "resume",
 		Short:  "Resume cluster",
-		Long:   "Resume Hibernate cluster",
+		Long:   "Resume a hibernating cluster",
 		Hidden: true,
 	}
 	Cmd.AddCommand(cluster.GenerateCommand())
