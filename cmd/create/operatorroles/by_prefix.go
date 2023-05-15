@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/iam"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -140,8 +142,16 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, r.AWSClient,
 		operatorRolesList, oidcConfig.IssuerUrl(), "4.0", path)
 	if err != nil {
-		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				// If ErrCodeNoSuchEntityException we want to create so we may continue
+				break
+			default:
+				r.Reporter.Errorf("%v", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	switch mode {
