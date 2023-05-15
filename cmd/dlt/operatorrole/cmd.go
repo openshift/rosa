@@ -187,7 +187,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("There are clusters using Operator Roles Prefix '%s', can't delete the IAM roles", args.prefix)
 			os.Exit(1)
 		}
-		credRequests, err := r.OCMClient.GetCredRequests(true)
+		credRequests, err := r.OCMClient.GetAllCredRequests()
 		if err != nil {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %v", err)
 			os.Exit(1)
