@@ -528,6 +528,27 @@ func (c *Client) GetPolicies(policyType string) (map[string]*cmv1.AWSSTSPolicy, 
 	return m, nil
 }
 
+// The actual values might differ from classic to hcp
+// prefer using GetCredRequests(isHypershift bool) when there is prior knowledge of the topology
+func (c *Client) GetAllCredRequests() (map[string]*cmv1.STSOperator, error) {
+	result := make(map[string]*cmv1.STSOperator)
+	classic, err := c.GetCredRequests(false)
+	if err != nil {
+		return result, err
+	}
+	hcp, err := c.GetCredRequests(true)
+	if err != nil {
+		return result, err
+	}
+	for key, value := range classic {
+		result[key] = value
+	}
+	for key, value := range hcp {
+		result[key] = value
+	}
+	return result, nil
+}
+
 func (c *Client) GetCredRequests(isHypershift bool) (map[string]*cmv1.STSOperator, error) {
 	m := make(map[string]*cmv1.STSOperator)
 	stsCredentialResponse, err := c.ocm.ClustersMgmt().
