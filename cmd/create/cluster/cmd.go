@@ -708,43 +708,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if interactive.Enabled() && isHostedCP {
-		requestBillingAccount, err := interactive.GetBool(interactive.Input{
-			Question: "Specify a separate billing account",
-			Default:  false,
-			Required: true,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
-		}
-
-		if requestBillingAccount {
-			cloudAccounts, err := r.OCMClient.GetBillingAccounts()
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-
-			if billingAccount == "" {
-				billingAccount = cloudAccounts[0]
-			}
-
-			billingAccount, err = interactive.GetOption(interactive.Input{
-				Question: "Billing Account",
-				Help:     cmd.Flags().Lookup("billing-account").Usage,
-				Options:  cloudAccounts,
-				Default:  billingAccount,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid billing account: %s", err)
-				os.Exit(1)
-			}
-		} else {
-			billingAccount = ""
-		}
-	}
-
 	if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
 		r.Reporter.Errorf("Expected a valid billing account")
 		os.Exit(1)
