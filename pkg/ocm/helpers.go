@@ -880,23 +880,6 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 	return nil
 }
 
-func ValidateHttpTokensValue(val interface{}) error {
-	if httpTokens, ok := val.(string); ok {
-		if httpTokens == "" {
-			return nil
-		}
-		switch cmv1.HttpTokenState(httpTokens) {
-		case cmv1.HttpTokenStateRequired, cmv1.HttpTokenStateOptional:
-			return nil
-		default:
-			return errors.Errorf("http-tokens value should be one of '%s', '%s'",
-				cmv1.HttpTokenStateRequired, cmv1.HttpTokenStateOptional)
-		}
-	}
-
-	return fmt.Errorf("can only validate strings, got %v", val)
-}
-
 func validateIssuerUrlMatchesAssumePolicyDocument(
 	roleArn string, parsedUrl *url.URL, assumePolicyDocument string) error {
 	issuerUrl := parsedUrl.Host

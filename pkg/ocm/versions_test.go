@@ -1,7 +1,6 @@
 package ocm
 
 import (
-	"fmt"
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
@@ -57,39 +56,6 @@ var _ = Describe("Versions", Ordered, func() {
 		)
 	})
 })
-
-var _ = Describe("Minimal http tokens required version", Ordered, func() {
-
-	Context("validate http tokens required version", func() {
-		DescribeTable("validate http tokens required version",
-			validateMinimumHttpTokenRequiredVersion,
-			Entry("required with lower version",
-				"4.10",
-				cmv1.HttpTokenStateRequired, fmt.Errorf("version '%s' is not supported with http tokens required, "+
-					"minimum supported version is %s", "4.10", LowestHttpTokensRequiredSupport),
-			),
-			Entry("required with minimal version",
-				LowestHttpTokensRequiredSupport, cmv1.HttpTokenStateRequired, nil,
-			),
-			Entry("optional with lower version",
-				"4.10.21", cmv1.HttpTokenStateOptional, nil,
-			),
-			Entry("bad version",
-				"bad version", cmv1.HttpTokenStateRequired, fmt.Errorf("version '%s' "+
-					"is not supported: %v", "bad version", "Malformed version: bad version"),
-			),
-		)
-	})
-})
-
-func validateMinimumHttpTokenRequiredVersion(version string, httpToken cmv1.HttpTokenState, expectedErr error) {
-	err := ValidateHttpTokensVersion(version, string(httpToken))
-	if expectedErr != nil {
-		Expect(err).To(BeEquivalentTo(expectedErr))
-		return
-	}
-	Expect(err).NotTo(HaveOccurred())
-}
 
 func validateVersion(version func() string, channelGroup func() string, hypershiftEnabled bool,
 	expectedValidation bool, expectedErr error) {
