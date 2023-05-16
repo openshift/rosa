@@ -88,9 +88,8 @@ func init() {
 		&args.hostedCP,
 		"hosted-cp",
 		false,
-		"Enable the use of hosted control planes (HyperShift)",
+		"Enable the use of Hosted Control Planes",
 	)
-	flags.MarkHidden("hosted-cp")
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)

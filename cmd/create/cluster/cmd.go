@@ -589,9 +589,8 @@ func init() {
 		&args.hostedClusterEnabled,
 		"hosted-cp",
 		false,
-		"Enable the use of hosted control planes (HyperShift)",
+		"Enable the use of Hosted Control Planes",
 	)
-	flags.MarkHidden("hosted-cp")
 
 	flags.StringVar(
 		&args.billingAccount,
@@ -690,9 +689,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	isHostedCP := args.hostedClusterEnabled
-	if interactive.Enabled() && cmd.Flags().Changed("hosted-cp") {
+	if interactive.Enabled() {
 		isHostedCP, err = interactive.GetBool(interactive.Input{
-			Question: "Deploy cluster with hosted control plane",
+			Question: "Deploy cluster with Hosted Control Plane",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
 			Default:  isHostedCP,
 			Required: false,
@@ -701,6 +700,13 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
 			os.Exit(1)
 		}
+	}
+
+	// FIXME: Remove before GA
+	if isHostedCP && r.Reporter.IsTerminal() {
+		//nolint
+		r.Reporter.Infof("NOTE: Hosted control planes are currently in Technology Preview (https://access.redhat.com/support/offerings/techpreview)." +
+			" Any Technology Preview clusters will need to be destroyed and recreated prior to general availability.")
 	}
 
 	if isHostedCP && args.httpTokens != "" {
