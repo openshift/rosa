@@ -148,9 +148,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if isProgmaticallyCalled && args.oidcEndpointUrl != "" {
 			oidcEndpointURL = args.oidcEndpointUrl
 		} else {
-			if args.oidcConfigId == "" {
-				args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
-			}
+			args.oidcConfigId = interactive.GetOidcConfigID(r, cmd, args.oidcConfigId)
 			oidcConfig, err := r.OCMClient.GetOidcConfig(args.oidcConfigId)
 			if err != nil {
 				r.Reporter.Errorf("There was a problem retrieving OIDC Config '%s': %v", args.oidcConfigId, err)

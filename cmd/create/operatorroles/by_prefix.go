@@ -39,13 +39,15 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 	}
 	args.prefix = operatorRolesPrefix
 
+	args.oidcConfigId = interactive.GetOidcConfigID(r, cmd, args.oidcConfigId)
 	if args.oidcConfigId == "" {
-		args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
+		r.Reporter.Errorf("No OIDC configuration available, please create one first.")
+		os.Exit(1)
 	}
 
 	isHostedCP := args.hostedCp
 	isHostedCP, err = interactive.GetBool(interactive.Input{
-		Question: "Create hosted control plane operator roles",
+		Question: "Create Hosted Control Plane operator roles",
 		Help:     cmd.Flags().Lookup("hosted-cp").Usage,
 		Default:  isHostedCP,
 		Required: false,

@@ -2464,7 +2464,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 			isOidcConfig = _isOidcConfig
 		}
 		if isOidcConfig {
-			oidcConfigId = interactive.GetOidcConfigID(r, cmd)
+			oidcConfigId = interactive.GetOidcConfigID(r, cmd, oidcConfigId)
 		}
 	}
 	if oidcConfigId == "" {

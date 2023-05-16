@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command) string {
+func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command, defaultOidcValue string) string {
 	oidcConfigs, err := r.OCMClient.ListOidcConfigs(r.Creator.AccountID)
 	if err != nil {
 		r.Reporter.Warnf("There was a problem retrieving OIDC Configurations "+
@@ -25,14 +25,27 @@ func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command) string {
 		return ""
 	}
 	oidcConfigsIds := []string{}
+	defaultValueExists := false
 	for _, oidcConfig := range oidcConfigs {
-		oidcConfigsIds = append(oidcConfigsIds, fmt.Sprintf("%s | %s", oidcConfig.ID(), oidcConfig.IssuerUrl()))
+		selectableValue := fmt.Sprintf("%s | %s", oidcConfig.ID(), oidcConfig.IssuerUrl())
+		if defaultOidcValue != "" && oidcConfig.ID() == defaultOidcValue {
+			defaultOidcValue = selectableValue
+			defaultValueExists = true
+		}
+		oidcConfigsIds = append(oidcConfigsIds, selectableValue)
+	}
+	defaultChoice := oidcConfigsIds[0]
+	if defaultValueExists {
+		defaultChoice = defaultOidcValue
+		if !Enabled() {
+			return strings.TrimSpace(strings.Split(defaultChoice, "|")[0])
+		}
 	}
 	oidcConfigId, err := GetOption(Input{
 		Question: "OIDC Configuration ID",
 		Help:     cmd.Flags().Lookup("oidc-config-id").Usage,
 		Options:  oidcConfigsIds,
-		Default:  oidcConfigsIds[0],
+		Default:  defaultChoice,
 		Required: true,
 	})
 	if err != nil {
