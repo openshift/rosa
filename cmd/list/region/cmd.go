@@ -68,9 +68,8 @@ func init() {
 		&args.hostedCluster,
 		"hosted-cp",
 		false,
-		"List only regions with support for hosted control planes (HyperShift)",
+		"List only regions with support for Hosted Control Planes",
 	)
-	flags.MarkHidden("hosted-cp")
 
 	output.AddFlag(Cmd)
 }
