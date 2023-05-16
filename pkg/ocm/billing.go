@@ -44,7 +44,9 @@ func (c *Client) GetBillingAccounts() ([]string, error) {
 	}
 
 	if len(billingAccounts) == 0 {
-		return billingAccounts, errors.New("no billing accounts found")
+		return billingAccounts, errors.New("No accounts are subscribed to ROSA Hosted Control Plane." +
+			" Enable the ROSA Hosted Control Plane subscription" +
+			" on the account you would like to use via https://aws.amazon.com/rosa/")
 	}
 
 	return billingAccounts, nil

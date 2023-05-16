@@ -599,7 +599,6 @@ func init() {
 		"",
 		"Account used for billing subscriptions purchased via the AWS marketplace",
 	)
-	flags.MarkHidden("billing-account")
 
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
@@ -715,6 +714,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if isHostedCP && r.Reporter.IsTerminal() {
+		//nolint
+		r.Reporter.Infof("A billing account is needed. However, whilst in Technology Preview subscription charges will not be billed, Infrastructures costs still apply.")
+	}
+
 	if interactive.Enabled() && isHostedCP {
 		requestBillingAccount, err := interactive.GetBool(interactive.Input{
 			Question: "Specify a separate billing account",
@@ -738,7 +742,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 
 			billingAccount, err = interactive.GetOption(interactive.Input{
-				Question: "Billing Account",
+				Question: "Which subscribed account would you like charges to be sent to",
 				Help:     cmd.Flags().Lookup("billing-account").Usage,
 				Options:  cloudAccounts,
 				Default:  billingAccount,
