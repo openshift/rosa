@@ -27,12 +27,11 @@ import (
 )
 
 const (
-	DefaultChannelGroup             = "stable"
-	NightlyChannelGroup             = "nightly"
-	LowestSTSSupport                = "4.7.11"
-	LowestHttpTokensRequiredSupport = "4.11.0"
-	LowestSTSMinor                  = "4.7"
-	LowestHostedCPSupport           = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
+	DefaultChannelGroup   = "stable"
+	NightlyChannelGroup   = "nightly"
+	LowestSTSSupport      = "4.7.11"
+	LowestSTSMinor        = "4.7"
+	LowestHostedCPSupport = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
 )
 
 func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error) {
@@ -102,24 +101,6 @@ func HasSTSSupport(rawID string, channelGroup string) bool {
 	}
 
 	return a.GreaterThanOrEqual(b)
-}
-
-func ValidateHttpTokensVersion(version string, httpTokens string) error {
-	if cmv1.HttpTokenState(httpTokens) != cmv1.HttpTokenStateRequired {
-		return nil
-	}
-
-	a, err := ver.NewVersion(version)
-	if err != nil {
-		return fmt.Errorf("version '%s' is not supported: %v", version, err)
-	}
-	b, _ := ver.NewVersion(LowestHttpTokensRequiredSupport)
-	if !a.GreaterThanOrEqual(b) {
-		return fmt.Errorf("version '%s' is not supported with http tokens required, "+
-			"minimum supported version is %s", version, LowestHttpTokensRequiredSupport)
-	}
-
-	return nil
 }
 
 func HasSTSSupportMinor(minor string) bool {

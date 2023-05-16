@@ -112,8 +112,6 @@ type Spec struct {
 	// HyperShift options:
 	Hypershift     Hypershift
 	BillingAccount string
-
-	HttpTokens cmv1.HttpTokenState
 }
 
 type OperatorIAMRole struct {
@@ -790,10 +788,6 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 
 	if config.BillingAccount != "" {
 		awsBuilder = awsBuilder.BillingAccountID(config.BillingAccount)
-	}
-
-	if config.HttpTokens != "" {
-		awsBuilder = awsBuilder.HttpTokensState(config.HttpTokens)
 	}
 
 	if config.RoleARN != "" {
