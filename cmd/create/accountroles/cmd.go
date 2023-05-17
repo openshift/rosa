@@ -125,6 +125,7 @@ func init() {
 		false,
 		"Enable the use of Hosted Control Planes",
 	)
+	flags.MarkHidden("hosted-cp")
 
 	aws.AddModeFlag(Cmd)
 
