@@ -307,7 +307,8 @@ func run(cmd *cobra.Command, argv []string) error {
 				}
 			}
 		case aws.ModeManual:
-			err = aws.GeneratePolicyFiles(reporter, env, isUpgradeNeedForAccountRolePolicies,
+			accountRoleMap := aws.GetAccountRolesMapByTopology(cluster.Hypershift().Enabled())
+			err = aws.GeneratePolicyFiles(accountRoleMap, reporter, env, isUpgradeNeedForAccountRolePolicies,
 				false, accountRolePolicies, nil, false)
 			if err != nil {
 				reporter.Errorf("There was an error generating the policy files: %s", err)
@@ -742,7 +743,8 @@ func upgradeOperatorPolicies(
 		}
 		return nil
 	case aws.ModeManual:
-		err := aws.GeneratePolicyFiles(r.Reporter, env, false,
+		// Generate account role files is skipped, therefore, passing an empty map of account roles
+		err := aws.GeneratePolicyFiles(map[string]aws.AccountRole{}, r.Reporter, env, false,
 			true, policies, credRequests, false)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)

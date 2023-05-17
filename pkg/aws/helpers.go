@@ -583,11 +583,11 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	return GetAccountRoleName(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
-func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
-	generateOperatorRolePolicies bool, policies map[string]*cmv1.AWSSTSPolicy,
+func GeneratePolicyFiles(accountRoles map[string]AccountRole, reporter *rprtr.Object, env string,
+	generateAccountRolePolicies bool, generateOperatorRolePolicies bool, policies map[string]*cmv1.AWSSTSPolicy,
 	credRequests map[string]*cmv1.STSOperator, managedPolicies bool) error {
 	if generateAccountRolePolicies {
-		for file := range AccountRoles {
+		for file := range accountRoles {
 			//Get trust policy
 			filename := fmt.Sprintf("sts_%s_trust_policy", file)
 			policyDetail := GetPolicyDetails(policies, filename)

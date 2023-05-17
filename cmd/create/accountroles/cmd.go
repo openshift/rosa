@@ -171,17 +171,6 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if args.hostedCP && cmd.Flags().Changed("version") {
-		r.Reporter.Warnf("Setting `version` flag for hosted CP managed policies has no effect, " +
-			"any supported ROSA version can be installed with managed policies")
-	}
-
-	// Hosted cluster roles always use managed policies
-	if cmd.Flags().Changed("hosted-cp") && cmd.Flags().Changed("managed-policies") && !args.managed {
-		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
-		os.Exit(1)
-	}
-
 	r.WithAWS()
 	// Validate AWS credentials for current user
 	if r.Reporter.IsTerminal() {
@@ -332,18 +321,16 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	createHostedCP := args.hostedCP
-	if env != ocm.Production { // TODO: remove env check once AWS publishes all the hcp Managed Policies
-		if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
-			createHostedCP, err = interactive.GetBool(interactive.Input{
-				Question: "Create Hosted CP account roles",
-				Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-				Default:  false,
-				Required: false,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid value: %s", err)
-				os.Exit(1)
-			}
+	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
+		createHostedCP, err = interactive.GetBool(interactive.Input{
+			Question: "Create Hosted CP account roles",
+			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+			Default:  false,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
 		}
 	}
 
@@ -388,7 +375,8 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Version:  policyVersion,
 		})
 	case aws.ModeManual:
-		err = aws.GeneratePolicyFiles(r.Reporter, env, true, false, policies, nil, managedPolicies)
+		accountRoleMap := aws.GetAccountRolesMapByTopology(createHostedCP)
+		err = aws.GeneratePolicyFiles(accountRoleMap, r.Reporter, env, true, false, policies, nil, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{

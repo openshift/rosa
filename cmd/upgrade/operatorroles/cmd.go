@@ -178,8 +178,9 @@ func run(cmd *cobra.Command, argv []string) error {
 	// If this is invoked from upgrade cluster then we already performed upgrade account roles
 
 	//Check if account roles are up-to-date
-	isAccountRoleUpgradeNeed, err = r.AWSClient.IsUpgradedNeededForAccountRolePolicies(
-		prefix, defaultPolicyVersion)
+	accountRoleMap := aws.GetAccountRolesMapByTopology(cluster.Hypershift().Enabled())
+	isAccountRoleUpgradeNeed, err = r.AWSClient.IsUpgradedNeededForAccountRolePolicies(accountRoleMap, prefix,
+		defaultPolicyVersion)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -266,7 +267,8 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 		}
 		return nil
 	case aws.ModeManual:
-		err := aws.GeneratePolicyFiles(r.Reporter, env, false,
+		// Generate account role files is skipped, therefore, passing an empty map of account roles
+		err := aws.GeneratePolicyFiles(map[string]aws.AccountRole{}, r.Reporter, env, false,
 			true, policies, credRequests, false)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)

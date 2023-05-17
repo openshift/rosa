@@ -255,7 +255,8 @@ func buildCommands(r *rosa.Runtime, env string,
 	prefix string, permissionsBoundary string, defaultPolicyVersion string, cluster *cmv1.Cluster,
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
 	managedPolicies bool, hostedCPPolicies bool) (string, error) {
-	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
+	accountRoleMap := aws.GetAccountRolesMapByTopology(cluster.Hypershift().Enabled())
+	err := aws.GeneratePolicyFiles(accountRoleMap, r.Reporter, env, false,
 		true, policies, credRequests, managedPolicies)
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)

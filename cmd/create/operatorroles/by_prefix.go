@@ -368,7 +368,8 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 	managedPolicies bool, path string,
 	operatorIAMRoleList []*cmv1.OperatorIAMRole,
 	oidcEndpointUrl string, hostedCPPolicies bool) (string, error) {
-	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
+	// Generate account role files is skipped, therefore, passing an empty map of account roles
+	err := aws.GeneratePolicyFiles(map[string]aws.AccountRole{}, r.Reporter, env, false,
 		true, policies, credRequests, managedPolicies)
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)

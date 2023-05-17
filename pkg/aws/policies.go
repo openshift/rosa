@@ -114,6 +114,14 @@ var roleTypeMap = map[string]string{
 	"instance_worker":       "Worker",
 }
 
+func GetAccountRolesMapByTopology(isHostedCP bool) map[string]AccountRole {
+	if isHostedCP {
+		return HCPAccountRoles
+	}
+
+	return AccountRoles
+}
+
 func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
 	version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
 	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
@@ -1512,8 +1520,9 @@ func (c *awsClient) GetRoleARNPath(prefix string) (string, error) {
 	return "", nil
 }
 
-func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, version string) (bool, error) {
-	for _, accountRole := range AccountRoles {
+func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(accountRoles map[string]AccountRole, prefix string,
+	version string) (bool, error) {
+	for _, accountRole := range accountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
 		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
 			RoleName: aws.String(roleName),
@@ -1527,6 +1536,7 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 			}
 			return false, err
 		}
+
 		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.StringValue(role.Role.RoleName),
 			version)
 
