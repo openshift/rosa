@@ -494,6 +494,32 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 	return roleARNs, nil
 }
 
+func (c *awsClient) FindRoleARNsByInfix(roleType string, version string, hostedCP bool) ([]string, error) {
+	roleARNs := []string{}
+	roles, err := c.ListRoles()
+	if err != nil {
+		return roleARNs, err
+	}
+	for _, role := range roles {
+		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
+			continue
+		}
+		// Filter out roles by topology.
+		if hostedCP != strings.Contains(aws.StringValue(role.RoleName), HCPSuffixPattern) {
+			continue
+		}
+		isValid, err := c.ValidateAccountRoleVersionCompatibility(*role.RoleName, roleType, version)
+		if err != nil {
+			return roleARNs, err
+		}
+		if !isValid {
+			continue
+		}
+		roleARNs = append(roleARNs, aws.StringValue(role.Arn))
+	}
+	return roleARNs, nil
+}
+
 // FIXME: refactor similar calls to use this instead
 func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 	roleName string, roleType string, minVersion string) (bool, error) {

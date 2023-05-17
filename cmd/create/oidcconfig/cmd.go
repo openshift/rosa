@@ -220,7 +220,8 @@ func run(cmd *cobra.Command, argv []string) {
 					"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
 			}
 			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
-				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
+				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn,
+					minorVersionForGetSecret, false, false)
 			}
 			if interactive.Enabled() {
 				prefix, err := interactive.GetString(interactive.Input{

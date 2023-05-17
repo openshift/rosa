@@ -117,6 +117,7 @@ type Client interface {
 	DeleteOpenIDConnectProvider(providerURL string) error
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
+	FindRoleARNsByInfix(roleType string, version string, hostedCP bool) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListUserRoles() ([]Role, error)
 	ListOCMRoles() ([]Role, error)

@@ -55,7 +55,8 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 		os.Exit(1)
 	}
 	args.hostedCp = isHostedCP
-	args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, "")
+	args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, "",
+		true, args.hostedCp)
 }
 
 func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,

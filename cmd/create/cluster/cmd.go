@@ -892,7 +892,7 @@ func run(cmd *cobra.Command, _ []string) {
 		role := aws.AccountRoles[aws.InstallerAccountRole]
 
 		// Find all installer roles in the current account using AWS resource tags
-		roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+		roleARNs, err := awsClient.FindRoleARNsByInfix(aws.InstallerAccountRole, minor, isHostedCP)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 			os.Exit(1)
@@ -959,7 +959,7 @@ func run(cmd *cobra.Command, _ []string) {
 					// Not needed for Hypershift clusters
 					continue
 				}
-				roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
+				roleARNs, err := awsClient.FindRoleARNsByInfix(roleType, minor, isHostedCP)
 				if err != nil {
 					r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 					os.Exit(1)
@@ -1035,6 +1035,17 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		isSTS = true
+
+		if isHostedCP && !strings.Contains(roleARN, aws.HCPSuffixPattern) {
+			r.Reporter.Errorf(fmt.Sprintf("Role '%s' might not be compatible with Hosted Control Plane cluster, "+
+				"please create a new set with 'rosa create account-roles --hosted-cp'", roleARN))
+			os.Exit(1)
+		}
+		if !isHostedCP && strings.Contains(roleARN, aws.HCPSuffixPattern) {
+			r.Reporter.Errorf(fmt.Sprintf("Role '%s' was created with the '--hosted-cp' flag, "+
+				"to create a Classic ROSA cluster please create a new set with 'rosa create account-roles", roleARN))
+			os.Exit(1)
+		}
 	}
 
 	if !isSTS && mode != "" {
