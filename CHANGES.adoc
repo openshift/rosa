@@ -2,6 +2,27 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.22 May 17 2023
+
+- SDA-8538 | fix: create hcp account roles in interactive mode
+- SDA-9086 | fix: check error when retrieving operator-roles
+- remove os.Exit in cluster creation cmd
+- SDA-9105 | feat: asks for OIDC Configuration kind in interactive
+- OCM-140: ROSA Cli for IMDSv2 for OSD/ROSA adding new http-tokens params to match aws cli option
+- OCM-213 | ci : skip tests that can not be run in prow
+- fix: behavior when creating operator-roles
+- SDA-9087 | fix: validate installer role arn after selection
+- SDA-9126 | feat: remove hypershift capability check in list regions
+- fix: remidiating gramatical typo in hibernation help messages
+- SDA-9122 | fix: only validate installer arn if role name is not empty
+- OCM-264 | fix: Properly checks the path when validating trusted relationship
+- OCM-302 | fix: if no such entity move operator roles creation forward
+- OCM-301 | fix: goes through both operator roles type when deleting by prefix
+- OCM-285 | feat: unhide hcp params
+- OCM-140 | chore : reverting IMDSv2
+- OCM-756 | feat: removed prompt for subscription billing account
+- Hide hosted CP flags
+
 == 1.2.21 May 5 2023
 
 - Allow editing ingress privacy for private
