@@ -38,7 +38,27 @@ NOTE: If you don't have `$GOPATH/bin` in your `$PATH` you need to add it or move
 ```
 sudo mv $GOPATH/bin/rosa /usr/local/bin
 ```
+## Try the ROSA cli from binary
 
+If you don't want to build from sources you can retrieve the `rosa` binary from the latest image.
+
+You can copy it to your local with this command:
+
+```
+podman run --pull=always --rm registry.ci.openshift.org/ci/rosa-aws-cli:latest cat /usr/bin/rosa > ~/rosa && chmod +x ~/rosa
+```
+
+NOTE: There is a side-effect of container image registry authentication which results in an [auth error](https://docs.ci.openshift.org/docs/how-tos/use-registries-in-build-farm/#why-i-am-getting-an-authentication-error) when your token is expired even when the image requires no authentication. In that case all you need to do is authenticate again:
+```
+$ oc registry login
+info: Using registry public hostname registry.ci.openshift.org
+Saved credentials for registry.ci.openshift.org
+
+$ cat ~/.docker/config.json | jq '.auths["registry.ci.openshift.org"]'
+{
+  "auth": "token"
+}
+```
 ## Have you got feedback?
 
 We want to hear it. [Open an issue](https://github.com/openshift/rosa/issues/new) against the repo and someone from the team will be in touch.
