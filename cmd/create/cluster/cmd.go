@@ -589,7 +589,7 @@ func init() {
 		&args.hostedClusterEnabled,
 		"hosted-cp",
 		false,
-		"Enable the use of Hosted Control Planes",
+		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
 
 	flags.StringVar(
