@@ -38,6 +38,15 @@ NOTE: If you don't have `$GOPATH/bin` in your `$PATH` you need to add it or move
 ```
 sudo mv $GOPATH/bin/rosa /usr/local/bin
 ```
+## Try the ROSA cli from binary
+
+If you don't want to build from sources you can retrieve the `rosa` binary from the latest image.
+
+You can copy it to your local with this command:
+
+```
+podman run --rm registry.ci.openshift.org/ci/rosa-aws-cli:latest cat /usr/bin/rosa > ~/rosa && chmod +x ~/rosa
+```
 
 ## Have you got feedback?
 
