@@ -45,7 +45,7 @@ If you don't want to build from sources you can retrieve the `rosa` binary from 
 You can copy it to your local with this command:
 
 ```
-podman run --rm registry.ci.openshift.org/ci/rosa-aws-cli:latest cat /usr/bin/rosa > ~/rosa && chmod +x ~/rosa
+podman run --pull=always --rm registry.ci.openshift.org/ci/rosa-aws-cli:latest cat /usr/bin/rosa > ~/rosa && chmod +x ~/rosa
 ```
 
 NOTE: There is a side-effect of container image registry authentication which results in an [auth error](https://docs.ci.openshift.org/docs/how-tos/use-registries-in-build-farm/#why-i-am-getting-an-authentication-error) when your token is expired even when the image requires no authentication. In that case all you need to do is authenticate again:
