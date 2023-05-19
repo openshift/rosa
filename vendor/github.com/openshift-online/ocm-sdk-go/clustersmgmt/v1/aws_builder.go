@@ -30,8 +30,8 @@ type AWSBuilder struct {
 	accountID                string
 	auditLog                 *AuditLogBuilder
 	billingAccountID         string
+	ec2MetadataHttpTokens    Ec2MetadataHttpTokens
 	etcdEncryption           *AwsEtcdEncryptionBuilder
-	httpTokensState          HttpTokenState
 	privateLinkConfiguration *PrivateLinkClusterConfigurationBuilder
 	secretAccessKey          string
 	subnetIDs                []string
@@ -103,25 +103,25 @@ func (b *AWSBuilder) BillingAccountID(value string) *AWSBuilder {
 	return b
 }
 
+// Ec2MetadataHttpTokens sets the value of the 'ec_2_metadata_http_tokens' attribute to the given value.
+//
+// Which Ec2MetadataHttpTokens to use for metadata service interaction options for EC2 instances
+func (b *AWSBuilder) Ec2MetadataHttpTokens(value Ec2MetadataHttpTokens) *AWSBuilder {
+	b.ec2MetadataHttpTokens = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // EtcdEncryption sets the value of the 'etcd_encryption' attribute to the given value.
 //
 // Contains the necessary attributes to support etcd encryption for AWS based clusters.
 func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder {
 	b.etcdEncryption = value
 	if value != nil {
-		b.bitmap_ |= 64
+		b.bitmap_ |= 128
 	} else {
-		b.bitmap_ &^= 64
+		b.bitmap_ &^= 128
 	}
-	return b
-}
-
-// HttpTokensState sets the value of the 'http_tokens_state' attribute to the given value.
-//
-// Which HttpTokensState to use for metadata service interaction options for EC2 instances
-func (b *AWSBuilder) HttpTokensState(value HttpTokenState) *AWSBuilder {
-	b.httpTokensState = value
-	b.bitmap_ |= 128
 	return b
 }
 
@@ -191,12 +191,12 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 		b.auditLog = nil
 	}
 	b.billingAccountID = object.billingAccountID
+	b.ec2MetadataHttpTokens = object.ec2MetadataHttpTokens
 	if object.etcdEncryption != nil {
 		b.etcdEncryption = NewAwsEtcdEncryption().Copy(object.etcdEncryption)
 	} else {
 		b.etcdEncryption = nil
 	}
-	b.httpTokensState = object.httpTokensState
 	b.privateLink = object.privateLink
 	if object.privateLinkConfiguration != nil {
 		b.privateLinkConfiguration = NewPrivateLinkClusterConfiguration().Copy(object.privateLinkConfiguration)
@@ -241,13 +241,13 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 		}
 	}
 	object.billingAccountID = b.billingAccountID
+	object.ec2MetadataHttpTokens = b.ec2MetadataHttpTokens
 	if b.etcdEncryption != nil {
 		object.etcdEncryption, err = b.etcdEncryption.Build()
 		if err != nil {
 			return
 		}
 	}
-	object.httpTokensState = b.httpTokensState
 	object.privateLink = b.privateLink
 	if b.privateLinkConfiguration != nil {
 		object.privateLinkConfiguration, err = b.privateLinkConfiguration.Build()

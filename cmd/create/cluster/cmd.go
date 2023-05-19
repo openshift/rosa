@@ -89,7 +89,7 @@ var args struct {
 	channelGroup              string
 	flavour                   string
 	disableWorkloadMonitoring bool
-	httpTokens                string
+	ec2MetadataHttpTokens     string
 
 	//Encryption
 	etcdEncryption           bool
@@ -405,8 +405,8 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.httpTokens,
-		"http-tokens",
+		&args.ec2MetadataHttpTokens,
+		"ec2-metadata-http-tokens",
 		"",
 		"Configure the use of IMDSv2 for ec2 instances, 'optional' or 'required'.",
 	)
@@ -709,8 +709,8 @@ func run(cmd *cobra.Command, _ []string) {
 			" Any Technology Preview clusters will need to be destroyed and recreated prior to general availability.")
 	}
 
-	if isHostedCP && args.httpTokens != "" {
-		r.Reporter.Errorf("http-tokens can't be set with hosted-cp")
+	if isHostedCP && args.ec2MetadataHttpTokens != "" {
+		r.Reporter.Errorf("ec2-metadata-http-tokens can't be set with hosted-cp")
 		os.Exit(1)
 	}
 
@@ -827,12 +827,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	httpTokens := args.httpTokens
+	httpTokens := args.ec2MetadataHttpTokens
 	if interactive.Enabled() && !isHostedCP {
 		httpTokens, err = interactive.GetString(interactive.Input{
 			Question: fmt.Sprintf("Configure the use of IMDSv2 for ec2 instances %s/%s",
-				v1.HttpTokenStateOptional, v1.HttpTokenStateRequired),
-			Help:    cmd.Flags().Lookup("http-tokens").Usage,
+				v1.Ec2MetadataHttpTokensOptional, v1.Ec2MetadataHttpTokensRequired),
+			Help:    cmd.Flags().Lookup("ec2-metadata-http-tokens").Usage,
 			Default: httpTokens,
 			Validators: []interactive.Validator{
 				ocm.ValidateHttpTokensValue,
@@ -2257,7 +2257,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if httpTokens != "" {
-		clusterConfig.HttpTokens = v1.HttpTokenState(httpTokens)
+		clusterConfig.Ec2MetadataHttpTokens = v1.Ec2MetadataHttpTokens(httpTokens)
 	}
 	if oidcConfig != nil {
 		clusterConfig.OidcConfigId = oidcConfig.ID()

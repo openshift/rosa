@@ -105,7 +105,7 @@ func HasSTSSupport(rawID string, channelGroup string) bool {
 }
 
 func ValidateHttpTokensVersion(version string, httpTokens string) error {
-	if cmv1.HttpTokenState(httpTokens) != cmv1.HttpTokenStateRequired {
+	if cmv1.Ec2MetadataHttpTokens(httpTokens) != cmv1.Ec2MetadataHttpTokensRequired {
 		return nil
 	}
 

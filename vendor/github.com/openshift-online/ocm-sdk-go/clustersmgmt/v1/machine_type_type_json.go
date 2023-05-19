@@ -128,7 +128,16 @@ func writeMachineType(object *MachineType, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&1024 != 0 && object.rootVolume != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("root_volume")
+		writeMachineTypeRootVolume(object.rootVolume, stream)
+		count++
+	}
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -200,11 +209,15 @@ func readMachineType(iterator *jsoniter.Iterator) *MachineType {
 			value := iterator.ReadString()
 			object.name = value
 			object.bitmap_ |= 512
+		case "root_volume":
+			value := readMachineTypeRootVolume(iterator)
+			object.rootVolume = value
+			object.bitmap_ |= 1024
 		case "size":
 			text := iterator.ReadString()
 			value := MachineTypeSize(text)
 			object.size = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		default:
 			iterator.ReadAny()
 		}

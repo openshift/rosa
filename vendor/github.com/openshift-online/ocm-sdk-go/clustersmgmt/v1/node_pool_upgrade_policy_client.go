@@ -26,26 +26,25 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"time"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// NodePoolClient is the client of the 'node_pool' resource.
+// NodePoolUpgradePolicyClient is the client of the 'node_pool_upgrade_policy' resource.
 //
-// Manages a specific nodepool.
-type NodePoolClient struct {
+// Manages a specific upgrade policy for the node pool.
+type NodePoolUpgradePolicyClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewNodePoolClient creates a new client for the 'node_pool'
+// NewNodePoolUpgradePolicyClient creates a new client for the 'node_pool_upgrade_policy'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewNodePoolClient(transport http.RoundTripper, path string) *NodePoolClient {
-	return &NodePoolClient{
+func NewNodePoolUpgradePolicyClient(transport http.RoundTripper, path string) *NodePoolUpgradePolicyClient {
+	return &NodePoolUpgradePolicyClient{
 		transport: transport,
 		path:      path,
 	}
@@ -53,9 +52,9 @@ func NewNodePoolClient(transport http.RoundTripper, path string) *NodePoolClient
 
 // Delete creates a request for the 'delete' method.
 //
-// Deletes the node pool.
-func (c *NodePoolClient) Delete() *NodePoolDeleteRequest {
-	return &NodePoolDeleteRequest{
+// Deletes the upgrade policy for the node pool.
+func (c *NodePoolUpgradePolicyClient) Delete() *NodePoolUpgradePolicyDeleteRequest {
+	return &NodePoolUpgradePolicyDeleteRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -63,9 +62,9 @@ func (c *NodePoolClient) Delete() *NodePoolDeleteRequest {
 
 // Get creates a request for the 'get' method.
 //
-// Retrieves the details of the node pool.
-func (c *NodePoolClient) Get() *NodePoolGetRequest {
-	return &NodePoolGetRequest{
+// Retrieves the details of the upgrade policy for the node pool.
+func (c *NodePoolUpgradePolicyClient) Get() *NodePoolUpgradePolicyGetRequest {
+	return &NodePoolUpgradePolicyGetRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -73,53 +72,43 @@ func (c *NodePoolClient) Get() *NodePoolGetRequest {
 
 // Update creates a request for the 'update' method.
 //
-// Updates the node pool.
-func (c *NodePoolClient) Update() *NodePoolUpdateRequest {
-	return &NodePoolUpdateRequest{
+// Update the upgrade policy for the node pool.
+func (c *NodePoolUpgradePolicyClient) Update() *NodePoolUpgradePolicyUpdateRequest {
+	return &NodePoolUpgradePolicyUpdateRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// UpgradePolicies returns the target 'node_pool_upgrade_policies' resource.
-//
-// Reference to the state of the upgrade policy.
-func (c *NodePoolClient) UpgradePolicies() *NodePoolUpgradePoliciesClient {
-	return NewNodePoolUpgradePoliciesClient(
-		c.transport,
-		path.Join(c.path, "upgrade_policies"),
-	)
-}
-
-// NodePoolPollRequest is the request for the Poll method.
-type NodePoolPollRequest struct {
-	request    *NodePoolGetRequest
+// NodePoolUpgradePolicyPollRequest is the request for the Poll method.
+type NodePoolUpgradePolicyPollRequest struct {
+	request    *NodePoolUpgradePolicyGetRequest
 	interval   time.Duration
 	statuses   []int
 	predicates []func(interface{}) bool
 }
 
 // Parameter adds a query parameter to all the requests that will be used to retrieve the object.
-func (r *NodePoolPollRequest) Parameter(name string, value interface{}) *NodePoolPollRequest {
+func (r *NodePoolUpgradePolicyPollRequest) Parameter(name string, value interface{}) *NodePoolUpgradePolicyPollRequest {
 	r.request.Parameter(name, value)
 	return r
 }
 
 // Header adds a request header to all the requests that will be used to retrieve the object.
-func (r *NodePoolPollRequest) Header(name string, value interface{}) *NodePoolPollRequest {
+func (r *NodePoolUpgradePolicyPollRequest) Header(name string, value interface{}) *NodePoolUpgradePolicyPollRequest {
 	r.request.Header(name, value)
 	return r
 }
 
 // Interval sets the polling interval. This parameter is mandatory and must be greater than zero.
-func (r *NodePoolPollRequest) Interval(value time.Duration) *NodePoolPollRequest {
+func (r *NodePoolUpgradePolicyPollRequest) Interval(value time.Duration) *NodePoolUpgradePolicyPollRequest {
 	r.interval = value
 	return r
 }
 
 // Status set the expected status of the response. Multiple values can be set calling this method
 // multiple times. The response will be considered successful if the status is any of those values.
-func (r *NodePoolPollRequest) Status(value int) *NodePoolPollRequest {
+func (r *NodePoolUpgradePolicyPollRequest) Status(value int) *NodePoolUpgradePolicyPollRequest {
 	r.statuses = append(r.statuses, value)
 	return r
 }
@@ -127,9 +116,9 @@ func (r *NodePoolPollRequest) Status(value int) *NodePoolPollRequest {
 // Predicate adds a predicate that the response should satisfy be considered successful. Multiple
 // predicates can be set calling this method multiple times. The response will be considered successful
 // if all the predicates are satisfied.
-func (r *NodePoolPollRequest) Predicate(value func(*NodePoolGetResponse) bool) *NodePoolPollRequest {
+func (r *NodePoolUpgradePolicyPollRequest) Predicate(value func(*NodePoolUpgradePolicyGetResponse) bool) *NodePoolUpgradePolicyPollRequest {
 	r.predicates = append(r.predicates, func(response interface{}) bool {
-		return value(response.(*NodePoolGetResponse))
+		return value(response.(*NodePoolUpgradePolicyGetResponse))
 	})
 	return r
 }
@@ -139,11 +128,11 @@ func (r *NodePoolPollRequest) Predicate(value func(*NodePoolGetResponse) bool) *
 // method return nil.
 //
 // The context must have a timeout or deadline, otherwise this method will immediately return an error.
-func (r *NodePoolPollRequest) StartContext(ctx context.Context) (response *NodePoolPollResponse, err error) {
+func (r *NodePoolUpgradePolicyPollRequest) StartContext(ctx context.Context) (response *NodePoolUpgradePolicyPollResponse, err error) {
 	result, err := helpers.PollContext(ctx, r.interval, r.statuses, r.predicates, r.task)
 	if result != nil {
-		response = &NodePoolPollResponse{
-			response: result.(*NodePoolGetResponse),
+		response = &NodePoolUpgradePolicyPollResponse{
+			response: result.(*NodePoolUpgradePolicyGetResponse),
 		}
 	}
 	return
@@ -151,7 +140,7 @@ func (r *NodePoolPollRequest) StartContext(ctx context.Context) (response *NodeP
 
 // task adapts the types of the request/response types so that they can be used with the generic
 // polling function from the helpers package.
-func (r *NodePoolPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
+func (r *NodePoolUpgradePolicyPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
 	response, err := r.request.SendContext(ctx)
 	if response != nil {
 		status = response.Status()
@@ -160,13 +149,13 @@ func (r *NodePoolPollRequest) task(ctx context.Context) (status int, result inte
 	return
 }
 
-// NodePoolPollResponse is the response for the Poll method.
-type NodePoolPollResponse struct {
-	response *NodePoolGetResponse
+// NodePoolUpgradePolicyPollResponse is the response for the Poll method.
+type NodePoolUpgradePolicyPollResponse struct {
+	response *NodePoolUpgradePolicyGetResponse
 }
 
 // Status returns the response status code.
-func (r *NodePoolPollResponse) Status() int {
+func (r *NodePoolUpgradePolicyPollResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -174,7 +163,7 @@ func (r *NodePoolPollResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *NodePoolPollResponse) Header() http.Header {
+func (r *NodePoolUpgradePolicyPollResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -182,7 +171,7 @@ func (r *NodePoolPollResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *NodePoolPollResponse) Error() *errors.Error {
+func (r *NodePoolUpgradePolicyPollResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -190,26 +179,26 @@ func (r *NodePoolPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *NodePoolPollResponse) Body() *NodePool {
+func (r *NodePoolUpgradePolicyPollResponse) Body() *NodePoolUpgradePolicy {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *NodePoolPollResponse) GetBody() (value *NodePool, ok bool) {
+func (r *NodePoolUpgradePolicyPollResponse) GetBody() (value *NodePoolUpgradePolicy, ok bool) {
 	return r.response.GetBody()
 }
 
 // Poll creates a request to repeatedly retrieve the object till the response has one of a given set
 // of states and satisfies a set of predicates.
-func (c *NodePoolClient) Poll() *NodePoolPollRequest {
-	return &NodePoolPollRequest{
+func (c *NodePoolUpgradePolicyClient) Poll() *NodePoolUpgradePolicyPollRequest {
+	return &NodePoolUpgradePolicyPollRequest{
 		request: c.Get(),
 	}
 }
 
-// NodePoolDeleteRequest is the request for the 'delete' method.
-type NodePoolDeleteRequest struct {
+// NodePoolUpgradePolicyDeleteRequest is the request for the 'delete' method.
+type NodePoolUpgradePolicyDeleteRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -217,20 +206,20 @@ type NodePoolDeleteRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *NodePoolDeleteRequest) Parameter(name string, value interface{}) *NodePoolDeleteRequest {
+func (r *NodePoolUpgradePolicyDeleteRequest) Parameter(name string, value interface{}) *NodePoolUpgradePolicyDeleteRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *NodePoolDeleteRequest) Header(name string, value interface{}) *NodePoolDeleteRequest {
+func (r *NodePoolUpgradePolicyDeleteRequest) Header(name string, value interface{}) *NodePoolUpgradePolicyDeleteRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *NodePoolDeleteRequest) Impersonate(user string) *NodePoolDeleteRequest {
+func (r *NodePoolUpgradePolicyDeleteRequest) Impersonate(user string) *NodePoolUpgradePolicyDeleteRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -239,12 +228,12 @@ func (r *NodePoolDeleteRequest) Impersonate(user string) *NodePoolDeleteRequest 
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *NodePoolDeleteRequest) Send() (result *NodePoolDeleteResponse, err error) {
+func (r *NodePoolUpgradePolicyDeleteRequest) Send() (result *NodePoolUpgradePolicyDeleteResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *NodePoolDeleteRequest) SendContext(ctx context.Context) (result *NodePoolDeleteResponse, err error) {
+func (r *NodePoolUpgradePolicyDeleteRequest) SendContext(ctx context.Context) (result *NodePoolUpgradePolicyDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -264,7 +253,7 @@ func (r *NodePoolDeleteRequest) SendContext(ctx context.Context) (result *NodePo
 		return
 	}
 	defer response.Body.Close()
-	result = &NodePoolDeleteResponse{}
+	result = &NodePoolUpgradePolicyDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -284,15 +273,15 @@ func (r *NodePoolDeleteRequest) SendContext(ctx context.Context) (result *NodePo
 	return
 }
 
-// NodePoolDeleteResponse is the response for the 'delete' method.
-type NodePoolDeleteResponse struct {
+// NodePoolUpgradePolicyDeleteResponse is the response for the 'delete' method.
+type NodePoolUpgradePolicyDeleteResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
 }
 
 // Status returns the response status code.
-func (r *NodePoolDeleteResponse) Status() int {
+func (r *NodePoolUpgradePolicyDeleteResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -300,7 +289,7 @@ func (r *NodePoolDeleteResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *NodePoolDeleteResponse) Header() http.Header {
+func (r *NodePoolUpgradePolicyDeleteResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -308,15 +297,15 @@ func (r *NodePoolDeleteResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *NodePoolDeleteResponse) Error() *errors.Error {
+func (r *NodePoolUpgradePolicyDeleteResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
 	return r.err
 }
 
-// NodePoolGetRequest is the request for the 'get' method.
-type NodePoolGetRequest struct {
+// NodePoolUpgradePolicyGetRequest is the request for the 'get' method.
+type NodePoolUpgradePolicyGetRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -324,20 +313,20 @@ type NodePoolGetRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *NodePoolGetRequest) Parameter(name string, value interface{}) *NodePoolGetRequest {
+func (r *NodePoolUpgradePolicyGetRequest) Parameter(name string, value interface{}) *NodePoolUpgradePolicyGetRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *NodePoolGetRequest) Header(name string, value interface{}) *NodePoolGetRequest {
+func (r *NodePoolUpgradePolicyGetRequest) Header(name string, value interface{}) *NodePoolUpgradePolicyGetRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *NodePoolGetRequest) Impersonate(user string) *NodePoolGetRequest {
+func (r *NodePoolUpgradePolicyGetRequest) Impersonate(user string) *NodePoolUpgradePolicyGetRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -346,12 +335,12 @@ func (r *NodePoolGetRequest) Impersonate(user string) *NodePoolGetRequest {
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *NodePoolGetRequest) Send() (result *NodePoolGetResponse, err error) {
+func (r *NodePoolUpgradePolicyGetRequest) Send() (result *NodePoolUpgradePolicyGetResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *NodePoolGetRequest) SendContext(ctx context.Context) (result *NodePoolGetResponse, err error) {
+func (r *NodePoolUpgradePolicyGetRequest) SendContext(ctx context.Context) (result *NodePoolUpgradePolicyGetResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -371,7 +360,7 @@ func (r *NodePoolGetRequest) SendContext(ctx context.Context) (result *NodePoolG
 		return
 	}
 	defer response.Body.Close()
-	result = &NodePoolGetResponse{}
+	result = &NodePoolUpgradePolicyGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -388,23 +377,23 @@ func (r *NodePoolGetRequest) SendContext(ctx context.Context) (result *NodePoolG
 		err = result.err
 		return
 	}
-	err = readNodePoolGetResponse(result, reader)
+	err = readNodePoolUpgradePolicyGetResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// NodePoolGetResponse is the response for the 'get' method.
-type NodePoolGetResponse struct {
+// NodePoolUpgradePolicyGetResponse is the response for the 'get' method.
+type NodePoolUpgradePolicyGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *NodePool
+	body   *NodePoolUpgradePolicy
 }
 
 // Status returns the response status code.
-func (r *NodePoolGetResponse) Status() int {
+func (r *NodePoolUpgradePolicyGetResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -412,7 +401,7 @@ func (r *NodePoolGetResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *NodePoolGetResponse) Header() http.Header {
+func (r *NodePoolUpgradePolicyGetResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -420,7 +409,7 @@ func (r *NodePoolGetResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *NodePoolGetResponse) Error() *errors.Error {
+func (r *NodePoolUpgradePolicyGetResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -428,7 +417,7 @@ func (r *NodePoolGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *NodePoolGetResponse) Body() *NodePool {
+func (r *NodePoolUpgradePolicyGetResponse) Body() *NodePoolUpgradePolicy {
 	if r == nil {
 		return nil
 	}
@@ -437,7 +426,7 @@ func (r *NodePoolGetResponse) Body() *NodePool {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *NodePoolGetResponse) GetBody() (value *NodePool, ok bool) {
+func (r *NodePoolUpgradePolicyGetResponse) GetBody() (value *NodePoolUpgradePolicy, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -445,36 +434,36 @@ func (r *NodePoolGetResponse) GetBody() (value *NodePool, ok bool) {
 	return
 }
 
-// NodePoolUpdateRequest is the request for the 'update' method.
-type NodePoolUpdateRequest struct {
+// NodePoolUpgradePolicyUpdateRequest is the request for the 'update' method.
+type NodePoolUpgradePolicyUpdateRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
-	body      *NodePool
+	body      *NodePoolUpgradePolicy
 }
 
 // Parameter adds a query parameter.
-func (r *NodePoolUpdateRequest) Parameter(name string, value interface{}) *NodePoolUpdateRequest {
+func (r *NodePoolUpgradePolicyUpdateRequest) Parameter(name string, value interface{}) *NodePoolUpgradePolicyUpdateRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *NodePoolUpdateRequest) Header(name string, value interface{}) *NodePoolUpdateRequest {
+func (r *NodePoolUpgradePolicyUpdateRequest) Header(name string, value interface{}) *NodePoolUpgradePolicyUpdateRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *NodePoolUpdateRequest) Impersonate(user string) *NodePoolUpdateRequest {
+func (r *NodePoolUpgradePolicyUpdateRequest) Impersonate(user string) *NodePoolUpgradePolicyUpdateRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
 // Body sets the value of the 'body' parameter.
-func (r *NodePoolUpdateRequest) Body(value *NodePool) *NodePoolUpdateRequest {
+func (r *NodePoolUpgradePolicyUpdateRequest) Body(value *NodePoolUpgradePolicy) *NodePoolUpgradePolicyUpdateRequest {
 	r.body = value
 	return r
 }
@@ -483,16 +472,16 @@ func (r *NodePoolUpdateRequest) Body(value *NodePool) *NodePoolUpdateRequest {
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *NodePoolUpdateRequest) Send() (result *NodePoolUpdateResponse, err error) {
+func (r *NodePoolUpgradePolicyUpdateRequest) Send() (result *NodePoolUpgradePolicyUpdateResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *NodePoolUpdateRequest) SendContext(ctx context.Context) (result *NodePoolUpdateResponse, err error) {
+func (r *NodePoolUpgradePolicyUpdateRequest) SendContext(ctx context.Context) (result *NodePoolUpgradePolicyUpdateResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	buffer := &bytes.Buffer{}
-	err = writeNodePoolUpdateRequest(r, buffer)
+	err = writeNodePoolUpgradePolicyUpdateRequest(r, buffer)
 	if err != nil {
 		return
 	}
@@ -514,7 +503,7 @@ func (r *NodePoolUpdateRequest) SendContext(ctx context.Context) (result *NodePo
 		return
 	}
 	defer response.Body.Close()
-	result = &NodePoolUpdateResponse{}
+	result = &NodePoolUpgradePolicyUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -531,23 +520,23 @@ func (r *NodePoolUpdateRequest) SendContext(ctx context.Context) (result *NodePo
 		err = result.err
 		return
 	}
-	err = readNodePoolUpdateResponse(result, reader)
+	err = readNodePoolUpgradePolicyUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// NodePoolUpdateResponse is the response for the 'update' method.
-type NodePoolUpdateResponse struct {
+// NodePoolUpgradePolicyUpdateResponse is the response for the 'update' method.
+type NodePoolUpgradePolicyUpdateResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *NodePool
+	body   *NodePoolUpgradePolicy
 }
 
 // Status returns the response status code.
-func (r *NodePoolUpdateResponse) Status() int {
+func (r *NodePoolUpgradePolicyUpdateResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -555,7 +544,7 @@ func (r *NodePoolUpdateResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *NodePoolUpdateResponse) Header() http.Header {
+func (r *NodePoolUpgradePolicyUpdateResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -563,7 +552,7 @@ func (r *NodePoolUpdateResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *NodePoolUpdateResponse) Error() *errors.Error {
+func (r *NodePoolUpgradePolicyUpdateResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -571,7 +560,7 @@ func (r *NodePoolUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *NodePoolUpdateResponse) Body() *NodePool {
+func (r *NodePoolUpgradePolicyUpdateResponse) Body() *NodePoolUpgradePolicy {
 	if r == nil {
 		return nil
 	}
@@ -580,7 +569,7 @@ func (r *NodePoolUpdateResponse) Body() *NodePool {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *NodePoolUpdateResponse) GetBody() (value *NodePool, ok bool) {
+func (r *NodePoolUpgradePolicyUpdateResponse) GetBody() (value *NodePoolUpgradePolicy, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body

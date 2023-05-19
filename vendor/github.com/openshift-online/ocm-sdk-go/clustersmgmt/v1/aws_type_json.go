@@ -97,22 +97,22 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.billingAccountID)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.etcdEncryption != nil
+	present_ = object.bitmap_&64 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("ec2_metadata_http_tokens")
+		stream.WriteString(string(object.ec2MetadataHttpTokens))
+		count++
+	}
+	present_ = object.bitmap_&128 != 0 && object.etcdEncryption != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("etcd_encryption")
 		writeAwsEtcdEncryption(object.etcdEncryption, stream)
-		count++
-	}
-	present_ = object.bitmap_&128 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("http_tokens_state")
-		stream.WriteString(string(object.httpTokensState))
 		count++
 	}
 	present_ = object.bitmap_&256 != 0
@@ -227,14 +227,14 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 			value := iterator.ReadString()
 			object.billingAccountID = value
 			object.bitmap_ |= 32
+		case "ec2_metadata_http_tokens":
+			text := iterator.ReadString()
+			value := Ec2MetadataHttpTokens(text)
+			object.ec2MetadataHttpTokens = value
+			object.bitmap_ |= 64
 		case "etcd_encryption":
 			value := readAwsEtcdEncryption(iterator)
 			object.etcdEncryption = value
-			object.bitmap_ |= 64
-		case "http_tokens_state":
-			text := iterator.ReadString()
-			value := HttpTokenState(text)
-			object.httpTokensState = value
 			object.bitmap_ |= 128
 		case "private_link":
 			value := iterator.ReadBool()

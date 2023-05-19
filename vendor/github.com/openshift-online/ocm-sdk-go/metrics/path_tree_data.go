@@ -258,7 +258,11 @@ var pathTreeData = `{
               "socket_total_by_node_roles_os": null
             },
             "node_pools": {
-              "-": null
+              "-": {
+                "upgrade_policies": {
+                  "-": null
+                }
+              }
             },
             "product": null,
             "provision_shard": null,
