@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	errors "github.com/zgalor/weberr"
 )
 
 func (c *Client) GetUpgradePolicies(clusterID string) (upgradePolicies []*cmv1.UpgradePolicy, err error) {
@@ -183,6 +184,11 @@ func (c *Client) GetMissingGateAgreementsHypershift(
 			if err != nil {
 				return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
 			}
+			// return original error if invaild version gate detected
+			if len(gates) > 0 && gates[0].ID() == "" {
+				errType := errors.ErrorType(response.Error().Status())
+				return []*cmv1.VersionGate{}, errType.Set(errors.Errorf(response.Error().Reason()))
+			}
 			return gates, nil
 		}
 	}
@@ -209,6 +215,11 @@ func (c *Client) GetMissingGateAgreementsClassic(
 			gates, err := cmv1.UnmarshalVersionGateList(data)
 			if err != nil {
 				return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
+			}
+			// return original error if invaild version gate detected
+			if len(gates) > 0 && gates[0].ID() == "" {
+				errType := errors.ErrorType(response.Error().Status())
+				return []*cmv1.VersionGate{}, errType.Set(errors.Errorf(response.Error().Reason()))
 			}
 			return gates, nil
 		}
