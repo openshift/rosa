@@ -885,12 +885,12 @@ func ValidateHttpTokensValue(val interface{}) error {
 		if httpTokens == "" {
 			return nil
 		}
-		switch cmv1.HttpTokenState(httpTokens) {
-		case cmv1.HttpTokenStateRequired, cmv1.HttpTokenStateOptional:
+		switch cmv1.Ec2MetadataHttpTokens(httpTokens) {
+		case cmv1.Ec2MetadataHttpTokensRequired, cmv1.Ec2MetadataHttpTokensOptional:
 			return nil
 		default:
-			return errors.Errorf("http-tokens value should be one of '%s', '%s'",
-				cmv1.HttpTokenStateRequired, cmv1.HttpTokenStateOptional)
+			return errors.Errorf("ec2-metadata-http-tokens value should be one of '%s', '%s'",
+				cmv1.Ec2MetadataHttpTokensRequired, cmv1.Ec2MetadataHttpTokensOptional)
 		}
 	}
 

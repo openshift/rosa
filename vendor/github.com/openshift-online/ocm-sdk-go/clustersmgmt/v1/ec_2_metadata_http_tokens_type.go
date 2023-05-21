@@ -19,12 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// HttpTokenState represents the values of the 'http_token_state' enumerated type.
-type HttpTokenState string
+// Ec2MetadataHttpTokens represents the values of the 'ec_2_metadata_http_tokens' enumerated type.
+type Ec2MetadataHttpTokens string
 
 const (
 	// imdsv2 is optional
-	HttpTokenStateOptional HttpTokenState = "optional"
+	Ec2MetadataHttpTokensOptional Ec2MetadataHttpTokens = "optional"
 	// imdsv2 is required
-	HttpTokenStateRequired HttpTokenState = "required"
+	Ec2MetadataHttpTokensRequired Ec2MetadataHttpTokens = "required"
 )

@@ -30,8 +30,8 @@ type AWS struct {
 	accountID                string
 	auditLog                 *AuditLog
 	billingAccountID         string
+	ec2MetadataHttpTokens    Ec2MetadataHttpTokens
 	etcdEncryption           *AwsEtcdEncryption
-	httpTokensState          HttpTokenState
 	privateLinkConfiguration *PrivateLinkClusterConfiguration
 	secretAccessKey          string
 	subnetIDs                []string
@@ -182,12 +182,35 @@ func (o *AWS) GetBillingAccountID() (value string, ok bool) {
 	return
 }
 
+// Ec2MetadataHttpTokens returns the value of the 'ec_2_metadata_http_tokens' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Which Ec2MetadataHttpTokens to use for metadata service interaction options for EC2 instances
+func (o *AWS) Ec2MetadataHttpTokens() Ec2MetadataHttpTokens {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.ec2MetadataHttpTokens
+	}
+	return Ec2MetadataHttpTokens("")
+}
+
+// GetEc2MetadataHttpTokens returns the value of the 'ec_2_metadata_http_tokens' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Which Ec2MetadataHttpTokens to use for metadata service interaction options for EC2 instances
+func (o *AWS) GetEc2MetadataHttpTokens() (value Ec2MetadataHttpTokens, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.ec2MetadataHttpTokens
+	}
+	return
+}
+
 // EtcdEncryption returns the value of the 'etcd_encryption' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Related etcd encryption configuration
 func (o *AWS) EtcdEncryption() *AwsEtcdEncryption {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.etcdEncryption
 	}
 	return nil
@@ -198,32 +221,9 @@ func (o *AWS) EtcdEncryption() *AwsEtcdEncryption {
 //
 // Related etcd encryption configuration
 func (o *AWS) GetEtcdEncryption() (value *AwsEtcdEncryption, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
-	if ok {
-		value = o.etcdEncryption
-	}
-	return
-}
-
-// HttpTokensState returns the value of the 'http_tokens_state' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Which HttpTokensState to use for metadata service interaction options for EC2 instances
-func (o *AWS) HttpTokensState() HttpTokenState {
-	if o != nil && o.bitmap_&128 != 0 {
-		return o.httpTokensState
-	}
-	return HttpTokenState("")
-}
-
-// GetHttpTokensState returns the value of the 'http_tokens_state' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Which HttpTokensState to use for metadata service interaction options for EC2 instances
-func (o *AWS) GetHttpTokensState() (value HttpTokenState, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
-		value = o.httpTokensState
+		value = o.etcdEncryption
 	}
 	return
 }

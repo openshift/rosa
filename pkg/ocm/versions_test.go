@@ -65,24 +65,24 @@ var _ = Describe("Minimal http tokens required version", Ordered, func() {
 			validateMinimumHttpTokenRequiredVersion,
 			Entry("required with lower version",
 				"4.10",
-				cmv1.HttpTokenStateRequired, fmt.Errorf("version '%s' is not supported with http tokens required, "+
+				cmv1.Ec2MetadataHttpTokensRequired, fmt.Errorf("version '%s' is not supported with http tokens required, "+
 					"minimum supported version is %s", "4.10", LowestHttpTokensRequiredSupport),
 			),
 			Entry("required with minimal version",
-				LowestHttpTokensRequiredSupport, cmv1.HttpTokenStateRequired, nil,
+				LowestHttpTokensRequiredSupport, cmv1.Ec2MetadataHttpTokensRequired, nil,
 			),
 			Entry("optional with lower version",
-				"4.10.21", cmv1.HttpTokenStateOptional, nil,
+				"4.10.21", cmv1.Ec2MetadataHttpTokensOptional, nil,
 			),
 			Entry("bad version",
-				"bad version", cmv1.HttpTokenStateRequired, fmt.Errorf("version '%s' "+
+				"bad version", cmv1.Ec2MetadataHttpTokensRequired, fmt.Errorf("version '%s' "+
 					"is not supported: %v", "bad version", "Malformed version: bad version"),
 			),
 		)
 	})
 })
 
-func validateMinimumHttpTokenRequiredVersion(version string, httpToken cmv1.HttpTokenState, expectedErr error) {
+func validateMinimumHttpTokenRequiredVersion(version string, httpToken cmv1.Ec2MetadataHttpTokens, expectedErr error) {
 	err := ValidateHttpTokensVersion(version, string(httpToken))
 	if expectedErr != nil {
 		Expect(err).To(BeEquivalentTo(expectedErr))

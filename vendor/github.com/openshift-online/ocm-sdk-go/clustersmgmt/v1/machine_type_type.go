@@ -44,6 +44,7 @@ type MachineType struct {
 	genericName   string
 	memory        *Value
 	name          string
+	rootVolume    *MachineTypeRootVolume
 	size          MachineTypeSize
 	ccsOnly       bool
 }
@@ -272,12 +273,35 @@ func (o *MachineType) GetName() (value string, ok bool) {
 	return
 }
 
+// RootVolume returns the value of the 'root_volume' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The machine root volume capabilities.
+func (o *MachineType) RootVolume() *MachineTypeRootVolume {
+	if o != nil && o.bitmap_&1024 != 0 {
+		return o.rootVolume
+	}
+	return nil
+}
+
+// GetRootVolume returns the value of the 'root_volume' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The machine root volume capabilities.
+func (o *MachineType) GetRootVolume() (value *MachineTypeRootVolume, ok bool) {
+	ok = o != nil && o.bitmap_&1024 != 0
+	if ok {
+		value = o.rootVolume
+	}
+	return
+}
+
 // Size returns the value of the 'size' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The size of the machine type.
 func (o *MachineType) Size() MachineTypeSize {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.size
 	}
 	return MachineTypeSize("")
@@ -288,7 +312,7 @@ func (o *MachineType) Size() MachineTypeSize {
 //
 // The size of the machine type.
 func (o *MachineType) GetSize() (value MachineTypeSize, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.size
 	}

@@ -113,7 +113,7 @@ type Spec struct {
 	Hypershift     Hypershift
 	BillingAccount string
 
-	HttpTokens cmv1.HttpTokenState
+	Ec2MetadataHttpTokens cmv1.Ec2MetadataHttpTokens
 }
 
 type OperatorIAMRole struct {
@@ -792,8 +792,8 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		awsBuilder = awsBuilder.BillingAccountID(config.BillingAccount)
 	}
 
-	if config.HttpTokens != "" {
-		awsBuilder = awsBuilder.HttpTokensState(config.HttpTokens)
+	if config.Ec2MetadataHttpTokens != "" {
+		awsBuilder = awsBuilder.Ec2MetadataHttpTokens(config.Ec2MetadataHttpTokens)
 	}
 
 	if config.RoleARN != "" {

@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHttpTokenStateList writes a list of values of the 'http_token_state' type to
+// MarshalMachineTypeRootVolumeList writes a list of values of the 'machine_type_root_volume' type to
 // the given writer.
-func MarshalHttpTokenStateList(list []HttpTokenState, writer io.Writer) error {
+func MarshalMachineTypeRootVolumeList(list []*MachineTypeRootVolume, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHttpTokenStateList(list, stream)
+	writeMachineTypeRootVolumeList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,38 +38,37 @@ func MarshalHttpTokenStateList(list []HttpTokenState, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeHttpTokenStateList writes a list of value of the 'http_token_state' type to
+// writeMachineTypeRootVolumeList writes a list of value of the 'machine_type_root_volume' type to
 // the given stream.
-func writeHttpTokenStateList(list []HttpTokenState, stream *jsoniter.Stream) {
+func writeMachineTypeRootVolumeList(list []*MachineTypeRootVolume, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteString(string(value))
+		writeMachineTypeRootVolume(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalHttpTokenStateList reads a list of values of the 'http_token_state' type
+// UnmarshalMachineTypeRootVolumeList reads a list of values of the 'machine_type_root_volume' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalHttpTokenStateList(source interface{}) (items []HttpTokenState, err error) {
+func UnmarshalMachineTypeRootVolumeList(source interface{}) (items []*MachineTypeRootVolume, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readHttpTokenStateList(iterator)
+	items = readMachineTypeRootVolumeList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHttpTokenStateList reads list of values of the ”http_token_state' type from
+// readMachineTypeRootVolumeList reads list of values of the ”machine_type_root_volume' type from
 // the given iterator.
-func readHttpTokenStateList(iterator *jsoniter.Iterator) []HttpTokenState {
-	list := []HttpTokenState{}
+func readMachineTypeRootVolumeList(iterator *jsoniter.Iterator) []*MachineTypeRootVolume {
+	list := []*MachineTypeRootVolume{}
 	for iterator.ReadArray() {
-		text := iterator.ReadString()
-		item := HttpTokenState(text)
+		item := readMachineTypeRootVolume(iterator)
 		list = append(list, item)
 	}
 	return list
