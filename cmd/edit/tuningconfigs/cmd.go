@@ -84,6 +84,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	specPath := args.specPath
+	if specPath == "" && !interactive.Enabled() {
+		interactive.Enable()
+		r.Reporter.Infof("Enabling interactive mode")
+	}
 	if interactive.Enabled() {
 		specPath, err = interactive.GetString(interactive.Input{
 			Question: "Path of the file containing the spec of the tuning config",

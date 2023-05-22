@@ -75,6 +75,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 	var err error
 	name := args.name
+	if name == "" && !interactive.Enabled() {
+		interactive.Enable()
+		r.Reporter.Infof("Enabling interactive mode")
+	}
+
 	if interactive.Enabled() {
 		name, err = interactive.GetString(interactive.Input{
 			Question: "Name of the tuning config",
@@ -89,6 +94,10 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	specPath := args.specPath
+	if specPath == "" && !interactive.Enabled() {
+		interactive.Enable()
+		r.Reporter.Infof("Enabling interactive mode")
+	}
 	if interactive.Enabled() {
 		specPath, err = interactive.GetString(interactive.Input{
 			Question: "Path of the file containing the spec of the tuning config",
