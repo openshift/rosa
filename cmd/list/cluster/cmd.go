@@ -18,6 +18,7 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/openshift/rosa/pkg/aws"
 	"os"
 	"text/tabwriter"
 
@@ -38,11 +39,15 @@ var Cmd = &cobra.Command{
 	Run:  run,
 }
 
+var listAll bool
+
 func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
 
 	output.AddFlag(Cmd)
+	flags.BoolVarP(&listAll, "all", "a", false, "List all clusters across different AWS "+
+		"accounts under the same Red Hat organization")
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -50,7 +55,13 @@ func run(_ *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	// Retrieve the list of clusters:
-	clusters, err := r.OCMClient.GetClusters(r.Creator, 1000)
+	var creator *aws.Creator
+	if listAll {
+		creator = nil
+	} else {
+		creator = r.Creator
+	}
+	clusters, err := r.OCMClient.GetClusters(creator, 1000)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get clusters: %v", err)
 		os.Exit(1)

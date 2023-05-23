@@ -142,12 +142,15 @@ type Hypershift struct {
 
 // Generate a query that filters clusters running on the current AWS session account
 func getClusterFilter(creator *aws.Creator) string {
-	return fmt.Sprintf(
-		"product.id = 'rosa' AND (properties.%s LIKE '%%:%s:%%' OR aws.sts.role_arn LIKE '%%:%s:%%')",
-		properties.CreatorARN,
-		creator.AccountID,
-		creator.AccountID,
-	)
+	filter := "product.id = 'rosa'"
+	if creator != nil {
+		filter = fmt.Sprintf("%s AND (properties.%s LIKE '%%:%s:%%' OR aws.sts.role_arn LIKE '%%:%s:%%')",
+			filter,
+			properties.CreatorARN,
+			creator.AccountID,
+			creator.AccountID)
+	}
+	return filter
 }
 
 func (c *Client) HasClusters(creator *aws.Creator) (bool, error) {
