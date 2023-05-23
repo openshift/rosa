@@ -38,11 +38,15 @@ var UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
 // first pattern is to validate IPv4 address
 // second,is for IPv4 CIDR range validation
 // third pattern is to validate domains
-// and the fifth petterrn is to be able to remove the existing no-proxy value by typing empty string ("").
+// and the fifth pattern is to be able to remove the existing no-proxy value by typing empty string ("").
 // nolint
 var UserNoProxyRE = regexp.MustCompile(
 	`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(3[0-2]|[1-2][0-9]|[0-9]))$|^(.?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^""$`,
 )
+
+// the following regex defines a pattern to validate reserved configuration strings:
+// 'kubernetes.io', 'k8s.io', and 'openshift.io' which are used by internal processes.
+var UserTagReservedKeysRE = regexp.MustCompile(`^(?:kubernetes|k8s|openshift)(\.io)$`)
 
 const (
 	SecretsManager = "secretsmanager"
@@ -250,12 +254,10 @@ func UserTagValidator(input interface{}) error {
 			}
 			tag := strings.Split(t, ":")
 
-			// Keys must not match 'kubernetes.io', 'k8s.io', or 'openshift.io'.  These are reserved configuration tags used by internal processes.
-			matched, _ := regexp.MatchString(`^(?:kubernetes|k8s|openshift)(\.io)$`, strings.ToLower(tag[0]))
-			if matched {
-				return fmt.Errorf("invalid tag key '%s'", tag[0] )
+			if UserTagReservedKeysRE.MatchString(strings.ToLower(tag[0])) {
+				return fmt.Errorf("invalid tag key. '%s' is a reserved configuration key.", tag[0])
 			}
-			
+
 			if len(tag) != 2 {
 				return fmt.Errorf("invalid tag format. Expected tag format: 'key:value'")
 			}
