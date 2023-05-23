@@ -249,6 +249,13 @@ func UserTagValidator(input interface{}) error {
 				return fmt.Errorf("invalid tag format, Tags are comma separated, for example: 'foo:bar,bar:baz'")
 			}
 			tag := strings.Split(t, ":")
+
+			// Keys must not match 'kubernetes.io', 'k8s.io', or 'openshift.io'.  These are reserved configuration tags used by internal processes.
+			matched, _ := regexp.MatchString(`^(?:kubernetes|k8s|openshift)(\.io)$`, strings.ToLower(tag[0]))
+			if matched {
+				return fmt.Errorf("invalid tag key '%s'", tag[0] )
+			}
+			
 			if len(tag) != 2 {
 				return fmt.Errorf("invalid tag format. Expected tag format: 'key:value'")
 			}
