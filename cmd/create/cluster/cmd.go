@@ -57,8 +57,10 @@ const (
 	OidcConfigIdFlag      = "oidc-config-id"
 	ClassicOidcConfigFlag = "classic-oidc-config"
 
-	MinReplicasSingleAZ = 2
-	MinReplicaMultiAZ   = 3
+	MinReplicasSingleAZ             = 2
+	MinReplicaMultiAZ               = 3
+	TechPreviewAccountDeleteCommand = "rosa delete account-roles --prefix %s --hosted-cp"
+	TechPreviewAccountCreateCommand = "rosa create account-roles --prefix %s --hosted-cp"
 )
 
 var args struct {
@@ -964,7 +966,6 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 				selectedARN := ""
-				expectedResourceIDForAccRole := strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name))
 				for _, rARN := range roleARNs {
 					resourceId, err := aws.GetResourceIdFromARN(rARN)
 					if err != nil {
@@ -972,7 +973,21 @@ func run(cmd *cobra.Command, _ []string) {
 						os.Exit(1)
 					}
 					lowerCaseResourceIdToCheck := strings.ToLower(resourceId)
-					if lowerCaseResourceIdToCheck == expectedResourceIDForAccRole {
+
+					// Searches for outdated worker role and prompts users to delete and recreate
+					if lowerCaseResourceIdToCheck == getOutdatedWorkerRole(isHostedCP, rolePrefix) {
+						// Strip "-HCP" from prefix
+						strippedPrefix := strings.TrimSuffix(rolePrefix, "-HCP")
+						r.Reporter.Errorf("Account roles created with Hosted control planes, during the Technology Preview period\n"+
+							"(https://access.redhat.com/support/offerings/techpreview)\n"+
+							"need to be deleted using command: %s\n"+
+							"and recreated using command: %s",
+							fmt.Sprintf(TechPreviewAccountDeleteCommand, strippedPrefix),
+							fmt.Sprintf(TechPreviewAccountCreateCommand, strippedPrefix))
+						os.Exit(1)
+					}
+
+					if lowerCaseResourceIdToCheck == getExpectedResourceIDForAccRole(isHostedCP, rolePrefix, role.Name) {
 						selectedARN = rARN
 						break
 					}
@@ -2839,4 +2854,20 @@ func calculateReplicas(
 	}
 
 	return newMinReplicas, newMaxReplicas
+}
+
+// New worker IAM role suffix (*-ROSA-Worker) applies to HCP Clusters - Create new worker IAM role with new naming pattern
+func getExpectedResourceIDForAccRole(isHostedCP bool, rolePrefix string, roleName string) string {
+	if isHostedCP && roleName == "Worker" {
+		return strings.ToLower(fmt.Sprintf("%s-ROSA-Worker", rolePrefix))
+	}
+	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, roleName))
+}
+
+// New worker IAM role suffix (*-ROSA-Worker) applies to HCP Clusters - Used to force users to create new account roles
+func getOutdatedWorkerRole(isHostedCP bool, rolePrefix string) string {
+	if isHostedCP {
+		return strings.ToLower(fmt.Sprintf("%s-Worker-Role", rolePrefix))
+	}
+	return ""
 }

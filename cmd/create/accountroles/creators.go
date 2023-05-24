@@ -218,9 +218,9 @@ type hcpManagedPoliciesCreator struct{}
 
 func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRolesCreationInput) error {
 	for file, role := range aws.HCPAccountRoles {
-		accRoleName := aws.GetRoleName(input.prefix, role.Name)
-		assumeRolePolicy := getAssumeRolePolicy(file, input)
 
+		assumeRolePolicy := getAssumeRolePolicy(file, input)
+		accRoleName := getAccountRoleName(input.prefix, role.Name)
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
 		tagsList := hcp.getRoleTags(file, input)
 		roleARN, err := r.AWSClient.EnsureRole(accRoleName, assumeRolePolicy, input.permissionsBoundary,
@@ -302,4 +302,11 @@ func buildAttachRolePolicyCommand(accRoleName string, policyARN string) string {
 		AddParam(awscb.RoleName, accRoleName).
 		AddParam(awscb.PolicyArn, policyARN).
 		Build()
+}
+
+func getAccountRoleName(prefix string, roleName string) string {
+	if roleName == "HCP-Worker" {
+		return aws.GetROSAWorkerRoleName(prefix)
+	}
+	return aws.GetRoleName(prefix, roleName)
 }
