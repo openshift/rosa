@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/machinepool"
 	"github.com/openshift/rosa/cmd/list/ocmroles"
 	"github.com/openshift/rosa/cmd/list/oidcconfig"
+	"github.com/openshift/rosa/cmd/list/oidcprovider"
 	"github.com/openshift/rosa/cmd/list/operatorroles"
 	"github.com/openshift/rosa/cmd/list/region"
 	"github.com/openshift/rosa/cmd/list/service"
@@ -65,6 +66,7 @@ func init() {
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(oidcconfig.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
+	Cmd.AddCommand(oidcprovider.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
@@ -72,6 +74,7 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, userroles.Cmd,
 		ocmroles.Cmd, oidcconfig.Cmd,
+		oidcprovider.Cmd,
 	}
 	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
 }
