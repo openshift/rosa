@@ -100,7 +100,7 @@ var AccountRoles = map[string]AccountRole{
 var HCPAccountRoles = map[string]AccountRole{
 	HCPInstallerRole: {Name: "HCP-Installer", Flag: "role-arn"},
 	HCPSupportRole:   {Name: "HCP-Support", Flag: "support-role-arn"},
-	HCPWorkerRole:    {Name: "HCP-Worker", Flag: "worker-iam-role"},
+	HCPWorkerRole:    {Name: "HCP-ROSA-Worker", Flag: "worker-iam-role"},
 }
 
 var OCMUserRolePolicyFile = "ocm_user"

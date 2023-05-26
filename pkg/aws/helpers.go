@@ -368,14 +368,6 @@ func GetRoleName(prefix string, role string) string {
 	return name
 }
 
-func GetROSAWorkerRoleName(prefix string) string {
-	name := fmt.Sprintf("%s-HCP-ROSA-Worker", prefix)
-	if len(name) > 64 {
-		name = name[0:64]
-	}
-	return name
-}
-
 func GetOCMRoleName(prefix string, role string, postfix string) string {
 	name := fmt.Sprintf("%s-%s-Role-%s", prefix, role, postfix)
 	if len(name) > 64 {

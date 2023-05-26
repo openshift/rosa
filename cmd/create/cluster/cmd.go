@@ -57,10 +57,8 @@ const (
 	OidcConfigIdFlag      = "oidc-config-id"
 	ClassicOidcConfigFlag = "classic-oidc-config"
 
-	MinReplicasSingleAZ             = 2
-	MinReplicaMultiAZ               = 3
-	TechPreviewAccountDeleteCommand = "rosa delete account-roles --prefix %s --hosted-cp"
-	TechPreviewAccountCreateCommand = "rosa create account-roles --prefix %s --hosted-cp"
+	MinReplicasSingleAZ = 2
+	MinReplicaMultiAZ   = 3
 )
 
 var args struct {
@@ -943,7 +941,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 		if roleARN != "" {
 			// Get role prefix
-			rolePrefix, err := getAccountRolePrefix(roleARN, role)
+			rolePrefix, err := getAccountRolePrefix(isHostedCP, roleARN, role)
 			if err != nil {
 				r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
 				os.Exit(1)
@@ -973,21 +971,7 @@ func run(cmd *cobra.Command, _ []string) {
 						os.Exit(1)
 					}
 					lowerCaseResourceIdToCheck := strings.ToLower(resourceId)
-
-					// Searches for outdated worker role and prompts users to delete and recreate
-					if lowerCaseResourceIdToCheck == getOutdatedWorkerRole(isHostedCP, rolePrefix) {
-						// Strip "-HCP" from prefix
-						strippedPrefix := strings.TrimSuffix(rolePrefix, "-HCP")
-						r.Reporter.Errorf("Account roles created with Hosted control planes, during the Technology Preview period\n"+
-							"(https://access.redhat.com/support/offerings/techpreview)\n"+
-							"need to be deleted using command: %s\n"+
-							"and recreated using command: %s",
-							fmt.Sprintf(TechPreviewAccountDeleteCommand, strippedPrefix),
-							fmt.Sprintf(TechPreviewAccountCreateCommand, strippedPrefix))
-						os.Exit(1)
-					}
-
-					if lowerCaseResourceIdToCheck == getExpectedResourceIDForAccRole(isHostedCP, rolePrefix, role.Name) {
+					if lowerCaseResourceIdToCheck == getExpectedResourceIDForAccRole(isHostedCP, rolePrefix, roleType) {
 						selectedARN = rARN
 						break
 					}
@@ -1198,7 +1182,7 @@ func run(cmd *cobra.Command, _ []string) {
 			role = aws.AccountRoles[aws.InstallerAccountRole]
 		}
 
-		rolePrefix, err := getAccountRolePrefix(roleARN, role)
+		rolePrefix, err := getAccountRolePrefix(isHostedCP, roleARN, role)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
 			os.Exit(1)
@@ -1268,7 +1252,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			installerRole = aws.AccountRoles[aws.InstallerAccountRole]
 		}
-		accRolesPrefix, err := getAccountRolePrefix(roleARN, installerRole)
+		accRolesPrefix, err := getAccountRolePrefix(isHostedCP, roleARN, installerRole)
 		if err != nil {
 			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
 			os.Exit(1)
@@ -2549,12 +2533,17 @@ func hostPrefixValidator(val interface{}) error {
 	return nil
 }
 
-func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
+func getAccountRolePrefix(isHostedCP bool, roleARN string, role aws.AccountRole) (string, error) {
 	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
 		return "", err
 	}
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+
+	// remove infix '-HCP' from prefix for hostedcp account roles
+	if isHostedCP {
+		rolePrefix = aws.TrimRoleSuffix(rolePrefix, "-HCP")
+	}
 	return rolePrefix, nil
 }
 
@@ -2856,18 +2845,11 @@ func calculateReplicas(
 	return newMinReplicas, newMaxReplicas
 }
 
-// New worker IAM role suffix (*-ROSA-Worker) applies to HCP Clusters - Create new worker IAM role with new naming pattern
-func getExpectedResourceIDForAccRole(isHostedCP bool, rolePrefix string, roleName string) string {
-	if isHostedCP && roleName == "Worker" {
-		return strings.ToLower(fmt.Sprintf("%s-ROSA-Worker", rolePrefix))
-	}
-	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, roleName))
-}
-
-// New worker IAM role suffix (*-ROSA-Worker) applies to HCP Clusters - Used to force users to create new account roles
-func getOutdatedWorkerRole(isHostedCP bool, rolePrefix string) string {
+// New worker IAM role suffix (*-ROSA-Worker) applies to HCP Clusters
+func getExpectedResourceIDForAccRole(isHostedCP bool, rolePrefix string, roleType string) string {
+	accountRolesMap := aws.AccountRoles
 	if isHostedCP {
-		return strings.ToLower(fmt.Sprintf("%s-Worker-Role", rolePrefix))
+		accountRolesMap = aws.HCPAccountRoles
 	}
-	return ""
+	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRolesMap[roleType].Name))
 }
