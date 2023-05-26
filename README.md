@@ -48,6 +48,12 @@ You can copy it to your local with this command:
 podman run --pull=always --rm registry.ci.openshift.org/ci/rosa-aws-cli:latest cat /usr/bin/rosa > ~/rosa && chmod +x ~/rosa
 ```
 
+Also you can test a binary created after a specific merged commit just using the commit hash as image tag:
+
+```
+podman run --pull=always --rm registry.ci.openshift.org/ci/rosa-aws-cli:f7925249718111e3e9b61e2df608a6ea9cf5b6ce cat /usr/bin/rosa > ~/rosa && chmod +x ~/rosa
+```
+
 NOTE: There is a side-effect of container image registry authentication which results in an [auth error](https://docs.ci.openshift.org/docs/how-tos/use-registries-in-build-farm/#why-i-am-getting-an-authentication-error) when your token is expired even when the image requires no authentication. In that case all you need to do is authenticate again:
 ```
 $ oc registry login
