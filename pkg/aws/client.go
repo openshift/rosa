@@ -122,6 +122,7 @@ type Client interface {
 	ListOCMRoles() ([]Role, error)
 	ListAccountRoles(version string) ([]Role, error)
 	ListOperatorRoles(version string) (map[string][]Role, error)
+	ListOidcProviders(targetClusterId string) ([]OidcProviderOutput, error)
 	GetRoleByARN(roleARN string) (*iam.Role, error)
 	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
 	DeleteOperatorRole(roles string, managedPolicies bool) error

@@ -118,7 +118,7 @@ func Print(resource interface{}) error {
 				}
 			}
 		}
-	case "object.Object", "map[string]interface {}":
+	case "object.Object", "map[string]interface {}", "[]map[string]interface {}":
 		{
 			reqBodyBytes := new(bytes.Buffer)
 			json.NewEncoder(reqBodyBytes).Encode(resource)

@@ -204,3 +204,63 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 	}
 	return commands
 }
+
+type OidcProviderOutput struct {
+	Arn       string
+	ClusterId string
+}
+
+func (c *awsClient) ListOidcProviders(targetClusterId string) ([]OidcProviderOutput, error) {
+	providers := []OidcProviderOutput{}
+	output, err := c.iamClient.ListOpenIDConnectProviders(&iam.ListOpenIDConnectProvidersInput{})
+	if err != nil {
+		return providers, err
+	}
+	for _, provider := range output.OpenIDConnectProviderList {
+		if err != nil {
+			return providers, err
+		}
+		isTruncated := true
+		var marker *string
+		for isTruncated {
+			resp, err := c.iamClient.ListOpenIDConnectProviderTags(&iam.ListOpenIDConnectProviderTagsInput{
+				OpenIDConnectProviderArn: provider.Arn,
+				Marker:                   marker,
+			})
+			if err != nil {
+				return providers, err
+			}
+			isTruncated = *resp.IsTruncated
+			marker = resp.Marker
+			skip := true
+			clusterId := ""
+			for _, tag := range resp.Tags {
+				switch *tag.Key {
+				case tags.ClusterID:
+					clusterId = *tag.Value
+				case tags.RedHatManaged:
+					skip = false
+				}
+			}
+			if targetClusterId != "" {
+				if targetClusterId != clusterId {
+					skip = true
+				} else {
+					providers = append(providers, OidcProviderOutput{
+						Arn:       *provider.Arn,
+						ClusterId: clusterId,
+					})
+					return providers, nil
+				}
+			}
+			if skip {
+				continue
+			}
+			providers = append(providers, OidcProviderOutput{
+				Arn:       *provider.Arn,
+				ClusterId: clusterId,
+			})
+		}
+	}
+	return providers, nil
+}
