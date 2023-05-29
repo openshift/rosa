@@ -3,7 +3,6 @@ package helper
 import (
 	"math"
 	"math/rand"
-	"net"
 	"os"
 	"sort"
 	"strings"
@@ -202,16 +201,4 @@ func LongestCommonPrefixBySorting(stringSlice []string) string {
 	}
 
 	return first[:i]
-}
-
-func IsURLReachable(apiURL string) error {
-	dialer := &net.Dialer{
-		Timeout: time.Second,
-	}
-	externalConnection, err := dialer.Dial("tcp", apiURL)
-	if err != nil {
-		return err
-	}
-	defer externalConnection.Close()
-	return nil
 }
