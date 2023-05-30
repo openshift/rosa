@@ -763,7 +763,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	isSTS = isSTS || awsCreator.IsSTS
 
-	if r.Reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() && !isHostedCP {
 		r.Reporter.Warnf("In a future release STS will be the default mode.")
 		r.Reporter.Warnf("--sts flag won't be necessary if you wish to use STS.")
 		r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary if you do not wish to use STS.")
