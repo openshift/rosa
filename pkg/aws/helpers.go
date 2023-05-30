@@ -781,6 +781,26 @@ func GetResourceIdFromARN(stringARN string) (string, error) {
 	return parsedARN.Resource[index+1:], nil
 }
 
+func GetResourceIdFromOidcProviderARN(stringARN string) (string, error) {
+	parsedARN, err := arn.Parse(stringARN)
+
+	if err != nil {
+		return "", fmt.Errorf("couldn't parse arn '%s': %v", stringARN, err)
+	}
+
+	index := strings.Index(parsedARN.Resource, "/")
+	if index == -1 {
+		return "", fmt.Errorf("can't find resource-id in ARN '%s'", stringARN)
+	}
+
+	// If the customer has created the provider using a / at the end of the URL for some reason
+	if index == len(parsedARN.Resource)-1 {
+		return GetResourceIdFromOidcProviderARN(stringARN[:index])
+	}
+
+	return parsedARN.Resource[index+1:], nil
+}
+
 func GetResourceIdFromSecretArn(secretArn string) (string, error) {
 	parsedARN, err := arn.Parse(secretArn)
 

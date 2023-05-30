@@ -1483,7 +1483,7 @@ func (c *awsClient) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl st
 		if err != nil {
 			return "", err
 		}
-		providerName, err := GetResourceIdFromARN(providerValue)
+		providerName, err := GetResourceIdFromOidcProviderARN(providerValue)
 		if err != nil {
 			return "", err
 		}
