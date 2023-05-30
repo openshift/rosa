@@ -471,6 +471,7 @@ func GetPartition() string {
 }
 
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
+	// role name here is resource id (ex: dle-test-Worker-Role)
 	roleName, err := GetAccountRoleName(cluster, roleNameSuffix)
 	if err != nil {
 		return "", err
@@ -478,7 +479,7 @@ func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (str
 
 	var suffix string
 	if IsHostedCPManagedPolicies(cluster) {
-		suffix = fmt.Sprintf("-HCP-%s-Role", roleNameSuffix)
+		suffix = fmt.Sprintf("-HCP-ROSA-%s-Role", roleNameSuffix)
 	} else {
 		suffix = fmt.Sprintf("-%s-Role", roleNameSuffix)
 	}
@@ -573,9 +574,13 @@ func GetAccountRolesArnsMap(cluster *cmv1.Cluster) map[string]string {
 
 func GetAccountRoleName(cluster *cmv1.Cluster, accountRole string) (string, error) {
 	accRoles := GetAccountRolesArnsMap(cluster)
+
+	// checks to see if role arn exists from map
 	if accRoles[accountRole] == "" {
 		return "", nil
 	}
+
+	// outputs resource id (ex: "dle-test-Worker-Role") from role arn
 	return GetResourceIdFromARN(accRoles[accountRole])
 }
 
