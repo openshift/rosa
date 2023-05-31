@@ -479,7 +479,7 @@ func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (str
 
 	var suffix string
 	if IsHostedCPManagedPolicies(cluster) {
-		suffix = fmt.Sprintf("-HCP-ROSA-%s-Role", roleNameSuffix)
+		suffix = fmt.Sprintf("-%s-%s-Role", HCPSuffixPattern, roleNameSuffix)
 	} else {
 		suffix = fmt.Sprintf("-%s-Role", roleNameSuffix)
 	}

@@ -886,16 +886,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// check if sts roles have hosted cp policies
-	var hostedCPPolicies bool
-	if isHostedCP {
-		hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
-		if err != nil {
-			r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
-			os.Exit(1)
-		}
-	}
-
 	hasRoles := false
 	if isSTS && roleARN == "" {
 		minor := ocm.GetVersionMinor(version)
@@ -950,6 +940,15 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if roleARN != "" {
+			// check if role has hosted cp policy via AWS tag value
+			var hostedCPPolicies bool
+			if isHostedCP {
+				hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
+				if err != nil {
+					r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+					os.Exit(1)
+				}
+			}
 			hasRoles = true
 			for roleType, role := range aws.AccountRoles {
 				if roleType == aws.InstallerAccountRole {
@@ -1173,6 +1172,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// check if role has hosted cp policy via AWS tag value
+	var hostedCPPolicies bool
+	if isHostedCP {
+		hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
+		if err != nil {
+			r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+			os.Exit(1)
+		}
+	}
 	if managedPolicies {
 		rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
