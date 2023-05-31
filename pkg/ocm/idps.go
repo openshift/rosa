@@ -83,6 +83,15 @@ func (c *Client) AddHTPasswdUser(username, password, clusterID, idpID string) er
 	return nil
 }
 
+func (c *Client) AddHTPasswdUsers(userList *cmv1.HTPasswdUserList, clusterID, idpID string) error {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		IdentityProviders().IdentityProvider(idpID).HtpasswdUsers().Import().Items(userList.Slice()).Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
 func (c *Client) DeleteHTPasswdUser(username, clusterID string, htpasswdIDP *cmv1.IdentityProvider) error {
 	var userID string
 

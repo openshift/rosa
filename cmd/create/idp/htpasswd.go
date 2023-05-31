@@ -38,8 +38,6 @@ func createHTPasswdIDP(cmd *cobra.Command,
 	idpName string,
 	r *rosa.Runtime) {
 	var err error
-	username := args.htpasswdUsername
-	password := args.htpasswdPassword
 
 	// Choose which way to create the IDP according to whether it already has an admin or not.
 	htpasswdIDP, userList := FindExistingHTPasswdIDP(cluster, r)
@@ -67,41 +65,34 @@ func createHTPasswdIDP(cmd *cobra.Command,
 			return
 		}
 
-		// Existing IDP contains only admin. Add new user to it
+		// Existing IDP contains only admin. Add new users to it
 		r.Reporter.Infof("Cluster already has an HTPasswd IDP named '%s', new users will be added to it.",
 			htpasswdIDP.Name())
-		if username == "" || password == "" {
-			r.Reporter.Infof("At least one user is required to create the IDP.")
-			username, password = getUserDetails(cmd, r)
-		}
-		err = r.OCMClient.AddHTPasswdUser(username, password, cluster.ID(), htpasswdIDP.ID())
+
+		htpassUserList, _ := buildUserList(cmd, r).Build()
+		err = r.OCMClient.AddHTPasswdUsers(htpassUserList, cluster.ID(), htpasswdIDP.ID())
 		if err != nil {
 			r.Reporter.Errorf(
 				"Failed to add a user to the HTPasswd IDP of cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
-		r.Reporter.Infof("User '%s' added", username)
 	} else {
 		// HTPasswd IDP does not exist - create it
-		if username == "" || password == "" {
-			r.Reporter.Infof("At least one user is required to create the IDP.")
-			username, password = getUserDetails(cmd, r)
-		}
+
+		htpassUserList := buildUserList(cmd, r)
 
 		idpBuilder := cmv1.NewIdentityProvider().
 			Type(cmv1.IdentityProviderTypeHtpasswd).
 			Name(idpName).
 			Htpasswd(
-				cmv1.NewHTPasswdIdentityProvider().Users(
-					cmv1.NewHTPasswdUserList().Items(CreateHTPasswdUser(username, password)),
-				),
+				cmv1.NewHTPasswdIdentityProvider().Users(htpassUserList),
 			)
 		htpasswdIDP = doCreateIDP(idpName, *idpBuilder, cluster, clusterKey, r)
 	}
 
 	if interactive.Enabled() {
 		for shouldAddAnotherUser(r) {
-			username, password = getUserDetails(cmd, r)
+			username, password := getUserDetails(cmd, r)
 			err = r.OCMClient.AddHTPasswdUser(username, password, cluster.ID(), htpasswdIDP.ID())
 			if err != nil {
 				r.Reporter.Errorf(
@@ -111,6 +102,47 @@ func createHTPasswdIDP(cmd *cobra.Command,
 			r.Reporter.Infof("User '%s' added", username)
 		}
 	}
+}
+
+func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBuilder {
+
+	// comma separated list of users -  user1:password,user2:password,user3:password
+	users := args.htpasswdUsers
+
+	//continue support for single username/password for  backcompatibility
+	// so as not to break any existing automation
+	username := args.htpasswdUsername
+	password := args.htpasswdPassword
+
+	userList := make(map[string]string)
+
+	if len(users) != 0 {
+		//if a user list is specified then continue with the  list
+		for _, user := range users {
+			u, p, found := strings.Cut(user, ":")
+			if !found {
+				r.Reporter.Errorf(
+					"Users should be provided in the format of a comma separate list of user:password")
+				os.Exit(1)
+
+			}
+			userList[u] = p
+		}
+	} else if username != "" && password != "" {
+		//incase user list is not specified continue support for single  username & password
+		userList[username] = password
+	} else {
+		r.Reporter.Infof("At least one valid user and password is required to create the IDP.")
+		username, password = getUserDetails(cmd, r)
+		userList[username] = password
+	}
+	r.Reporter.Infof("Adding users %v", userList)
+
+	htpassUserList := cmv1.NewHTPasswdUserList()
+	for username, password := range userList {
+		htpassUserList = htpassUserList.Items(cmv1.NewHTPasswdUser().Username(username).Password(password))
+	}
+	return htpassUserList
 }
 
 func getUserDetails(cmd *cobra.Command, r *rosa.Runtime) (string, string) {
