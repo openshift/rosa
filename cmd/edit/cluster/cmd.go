@@ -66,6 +66,7 @@ func init() {
 	flags.SortFlags = false
 
 	ocm.AddClusterFlag(Cmd)
+	confirm.AddFlag(Cmd.Flags())
 
 	// Basic options
 	flags.StringVar(
