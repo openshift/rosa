@@ -965,11 +965,14 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 				selectedARN := ""
-				expectedResourceIDForAccRole, err := getExpectedResourceIDForAccRole(hostedCPPolicies, roleARN, roleType)
+				expectedResourceIDForAccRole, rolePrefix, err := getExpectedResourceIDForAccRole(
+					hostedCPPolicies, roleARN, roleType)
 				if err != nil {
 					r.Reporter.Errorf("Failed to get the expected resource ID for role type: %s", roleType)
 					os.Exit(1)
 				}
+				r.Reporter.Debugf("Using '%s' as the role prefix to retrieve the expected resource ID for role type '%s'",
+					rolePrefix, roleType)
 
 				for _, rARN := range roleARNs {
 					resourceId, err := aws.GetResourceIdFromARN(rARN)
@@ -2841,19 +2844,19 @@ func calculateReplicas(
 	return newMinReplicas, newMaxReplicas
 }
 
-func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, roleType string) (string, error) {
+func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, roleType string) (string, string, error) {
 
 	accountRoles := aws.AccountRoles
 
 	rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if hostedCPPolicies {
 		accountRoles = aws.HCPAccountRoles
 	}
 
-	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), nil
+	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
 
 }
