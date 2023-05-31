@@ -66,6 +66,7 @@ func init() {
 	flags.SortFlags = false
 
 	ocm.AddClusterFlag(Cmd)
+	confirm.AddFlag(Cmd.Flags())
 
 	// Basic options
 	flags.StringVar(
@@ -233,7 +234,7 @@ func run(cmd *cobra.Command, _ []string) {
 		private = &privateValue
 	} else if privateValue {
 		r.Reporter.Warnf("You are choosing to make your cluster API private. %s", privateWarning)
-		if !confirm.Confirm("set cluster '%s' as private", clusterKey) {
+		if !confirm.Yes() && !confirm.Confirm("set cluster '%s' as private", clusterKey) {
 			os.Exit(0)
 		}
 	}
@@ -260,7 +261,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
 	} else if disableWorkloadMonitoringValue {
-		if !confirm.Confirm("disable workload monitoring for your cluster %s", clusterKey) {
+		if !confirm.Yes() && !confirm.Confirm("disable workload monitoring for your cluster %s", clusterKey) {
 			os.Exit(0)
 		}
 	}
