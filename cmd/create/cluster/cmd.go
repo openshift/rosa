@@ -2180,7 +2180,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if args.machinePoolRootDiskSize == "" {
 			// We don't need to parse the default since it's returned from the OCM API and AWS
 			// always defaults to GiB
-			machinePoolRootDiskSizeStr = gigybyteStringer(defaultMachinePoolRootDiskSize)
+			machinePoolRootDiskSizeStr = helper.GigybyteStringer(defaultMachinePoolRootDiskSize)
 		} else {
 			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
 		}
@@ -2195,7 +2195,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("worker-disk-size").Usage,
 				Default:  machinePoolRootDiskSizeStr,
 				Validators: []interactive.Validator{
-					machinePoolRootDiskSizeValidator,
+					interactive.MachinePoolRootDiskSizeValidator,
 				},
 			})
 			if err != nil {
@@ -3211,26 +3211,4 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	}
 
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
-}
-
-func gigybyteStringer(size int) string {
-	return fmt.Sprintf("%d GiB", size)
-}
-
-func machinePoolRootDiskSizeValidator(val interface{}) error {
-	// We expect GigiByte as the unit for the root volume size
-
-	// Validate the worker root volume size is an integer
-	machinePoolRootDiskSize, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("machine pool root disk size must be an string, got %T", machinePoolRootDiskSize)
-	}
-
-	// parse it to validate it is a valid unit
-	_, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSize)
-	if err != nil {
-		return fmt.Errorf("failed to parse machine pool root disk size: %v", err)
-	}
-
-	return nil
 }

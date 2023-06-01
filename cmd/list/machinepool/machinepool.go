@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -34,6 +35,24 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 		)
 	}
 
+	// If the cluster spec has a root volume size, use it
+	if cluster.Nodes().ComputeRootVolume() != nil &&
+		cluster.Nodes().ComputeRootVolume().AWS() != nil &&
+		cluster.Nodes().ComputeRootVolume().AWS().Size() != 0 {
+		defaultMachinePoolBuilder = defaultMachinePoolBuilder.RootVolume(
+			cmv1.NewRootVolume().
+				AWS(
+					cmv1.NewAWSVolume().
+						Size(
+							cluster.Nodes().
+								ComputeRootVolume().
+								AWS().
+								Size(),
+						),
+				),
+		)
+	}
+
 	// In case of AWS clusters we can query the subnbets
 	if cluster.AWS() != nil && len(cluster.AWS().SubnetIDs()) > 0 {
 		defaultMachinePoolBuilder.Subnets(cluster.AWS().SubnetIDs()...)
@@ -56,9 +75,10 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(writer,
-		"ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\n")
+		"ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t"+
+			"\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\tDISK SIZE\t\n")
 	for _, machinePool := range machinePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\t%s\n",
 			machinePool.ID(),
 			printMachinePoolAutoscaling(machinePool.Autoscaling()),
 			printMachinePoolReplicas(machinePool.Autoscaling(), machinePool.Replicas()),
@@ -68,6 +88,7 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 			printStringSlice(machinePool.AvailabilityZones()),
 			printStringSlice(machinePool.Subnets()),
 			printSpot(machinePool),
+			printMachinePoolDiskSize(machinePool),
 		)
 	}
 	writer.Flush()
@@ -104,4 +125,16 @@ func printSpot(mp *cmv1.MachinePool) string {
 		}
 	}
 	return No
+}
+
+func printMachinePoolDiskSize(mp *cmv1.MachinePool) string {
+	if rootVolume, ok := mp.GetRootVolume(); ok {
+		if aws, ok := rootVolume.GetAWS(); ok {
+			if size, ok := aws.GetSize(); ok {
+				return helper.GigybyteStringer(size)
+			}
+		}
+	}
+
+	return "default"
 }
