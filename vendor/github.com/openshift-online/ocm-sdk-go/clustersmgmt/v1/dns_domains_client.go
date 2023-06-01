@@ -32,19 +32,19 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// CloudRegionsClient is the client of the 'cloud_regions' resource.
+// DNSDomainsClient is the client of the 'DNS_domains' resource.
 //
-// Manages the collection of regions of a cloud provider.
-type CloudRegionsClient struct {
+// Manages the collection of DNS domains.
+type DNSDomainsClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewCloudRegionsClient creates a new client for the 'cloud_regions'
+// NewDNSDomainsClient creates a new client for the 'DNS_domains'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewCloudRegionsClient(transport http.RoundTripper, path string) *CloudRegionsClient {
-	return &CloudRegionsClient{
+func NewDNSDomainsClient(transport http.RoundTripper, path string) *DNSDomainsClient {
+	return &DNSDomainsClient{
 		transport: transport,
 		path:      path,
 	}
@@ -52,68 +52,64 @@ func NewCloudRegionsClient(transport http.RoundTripper, path string) *CloudRegio
 
 // Add creates a request for the 'add' method.
 //
-// Adds a cloud region to the database.
-func (c *CloudRegionsClient) Add() *CloudRegionsAddRequest {
-	return &CloudRegionsAddRequest{
+// Adds a DNS domain.
+func (c *DNSDomainsClient) Add() *DNSDomainsAddRequest {
+	return &DNSDomainsAddRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
 // List creates a request for the 'list' method.
-//
-// Retrieves the list of regions of the cloud provider.
-//
-// IMPORTANT: This collection doesn't currently support paging or searching, so the returned
-// `page` will always be 1 and `size` and `total` will always be the total number of regions
-// of the provider.
-func (c *CloudRegionsClient) List() *CloudRegionsListRequest {
-	return &CloudRegionsListRequest{
+func (c *DNSDomainsClient) List() *DNSDomainsListRequest {
+	return &DNSDomainsListRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// Region returns the target 'cloud_region' resource for the given identifier.
+// DNSDomain returns the target 'DNS_domain' resource for the given identifier.
 //
-// Reference to the service that manages an specific region.
-func (c *CloudRegionsClient) Region(id string) *CloudRegionClient {
-	return NewCloudRegionClient(
+// Reference to the resource that manages a specific DNS doamin.
+func (c *DNSDomainsClient) DNSDomain(id string) *DNSDomainClient {
+	return NewDNSDomainClient(
 		c.transport,
 		path.Join(c.path, id),
 	)
 }
 
-// CloudRegionsAddRequest is the request for the 'add' method.
-type CloudRegionsAddRequest struct {
+// DNSDomainsAddRequest is the request for the 'add' method.
+type DNSDomainsAddRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
-	body      *CloudRegion
+	body      *DNSDomain
 }
 
 // Parameter adds a query parameter.
-func (r *CloudRegionsAddRequest) Parameter(name string, value interface{}) *CloudRegionsAddRequest {
+func (r *DNSDomainsAddRequest) Parameter(name string, value interface{}) *DNSDomainsAddRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *CloudRegionsAddRequest) Header(name string, value interface{}) *CloudRegionsAddRequest {
+func (r *DNSDomainsAddRequest) Header(name string, value interface{}) *DNSDomainsAddRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *CloudRegionsAddRequest) Impersonate(user string) *CloudRegionsAddRequest {
+func (r *DNSDomainsAddRequest) Impersonate(user string) *DNSDomainsAddRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
 // Body sets the value of the 'body' parameter.
-func (r *CloudRegionsAddRequest) Body(value *CloudRegion) *CloudRegionsAddRequest {
+//
+// Description of the DNS domain.
+func (r *DNSDomainsAddRequest) Body(value *DNSDomain) *DNSDomainsAddRequest {
 	r.body = value
 	return r
 }
@@ -122,16 +118,16 @@ func (r *CloudRegionsAddRequest) Body(value *CloudRegion) *CloudRegionsAddReques
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *CloudRegionsAddRequest) Send() (result *CloudRegionsAddResponse, err error) {
+func (r *DNSDomainsAddRequest) Send() (result *DNSDomainsAddResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *CloudRegionsAddRequest) SendContext(ctx context.Context) (result *CloudRegionsAddResponse, err error) {
+func (r *DNSDomainsAddRequest) SendContext(ctx context.Context) (result *DNSDomainsAddResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	buffer := &bytes.Buffer{}
-	err = writeCloudRegionsAddRequest(r, buffer)
+	err = writeDNSDomainsAddRequest(r, buffer)
 	if err != nil {
 		return
 	}
@@ -153,7 +149,7 @@ func (r *CloudRegionsAddRequest) SendContext(ctx context.Context) (result *Cloud
 		return
 	}
 	defer response.Body.Close()
-	result = &CloudRegionsAddResponse{}
+	result = &DNSDomainsAddResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -170,23 +166,23 @@ func (r *CloudRegionsAddRequest) SendContext(ctx context.Context) (result *Cloud
 		err = result.err
 		return
 	}
-	err = readCloudRegionsAddResponse(result, reader)
+	err = readDNSDomainsAddResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// CloudRegionsAddResponse is the response for the 'add' method.
-type CloudRegionsAddResponse struct {
+// DNSDomainsAddResponse is the response for the 'add' method.
+type DNSDomainsAddResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *CloudRegion
+	body   *DNSDomain
 }
 
 // Status returns the response status code.
-func (r *CloudRegionsAddResponse) Status() int {
+func (r *DNSDomainsAddResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -194,7 +190,7 @@ func (r *CloudRegionsAddResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *CloudRegionsAddResponse) Header() http.Header {
+func (r *DNSDomainsAddResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -202,7 +198,7 @@ func (r *CloudRegionsAddResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *CloudRegionsAddResponse) Error() *errors.Error {
+func (r *DNSDomainsAddResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -210,7 +206,9 @@ func (r *CloudRegionsAddResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *CloudRegionsAddResponse) Body() *CloudRegion {
+//
+// Description of the DNS domain.
+func (r *DNSDomainsAddResponse) Body() *DNSDomain {
 	if r == nil {
 		return nil
 	}
@@ -219,7 +217,9 @@ func (r *CloudRegionsAddResponse) Body() *CloudRegion {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *CloudRegionsAddResponse) GetBody() (value *CloudRegion, ok bool) {
+//
+// Description of the DNS domain.
+func (r *DNSDomainsAddResponse) GetBody() (value *DNSDomain, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -227,50 +227,68 @@ func (r *CloudRegionsAddResponse) GetBody() (value *CloudRegion, ok bool) {
 	return
 }
 
-// CloudRegionsListRequest is the request for the 'list' method.
-type CloudRegionsListRequest struct {
+// DNSDomainsListRequest is the request for the 'list' method.
+type DNSDomainsListRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
 	page      *int
+	search    *string
 	size      *int
 }
 
 // Parameter adds a query parameter.
-func (r *CloudRegionsListRequest) Parameter(name string, value interface{}) *CloudRegionsListRequest {
+func (r *DNSDomainsListRequest) Parameter(name string, value interface{}) *DNSDomainsListRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *CloudRegionsListRequest) Header(name string, value interface{}) *CloudRegionsListRequest {
+func (r *DNSDomainsListRequest) Header(name string, value interface{}) *DNSDomainsListRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *CloudRegionsListRequest) Impersonate(user string) *CloudRegionsListRequest {
+func (r *DNSDomainsListRequest) Impersonate(user string) *DNSDomainsListRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
 // Page sets the value of the 'page' parameter.
 //
-// Index of the returned page, where one corresponds to the first page. As this
-// collection doesn't support paging the result will always be `1`.
-func (r *CloudRegionsListRequest) Page(value int) *CloudRegionsListRequest {
+// Index of the requested page, where one corresponds to the first page.
+func (r *DNSDomainsListRequest) Page(value int) *DNSDomainsListRequest {
 	r.page = &value
+	return r
+}
+
+// Search sets the value of the 'search' parameter.
+//
+// Search criteria.
+//
+// The syntax of this parameter is similar to the syntax of the _where_ clause of a
+// SQL statement, but using the names of the attributes of the dns domain instead of
+// the names of the columns of a table. For example, in order to retrieve all the
+// dns domains with a ID starting with `02a5` should be:
+//
+// ```sql
+// id like '02a5%'
+// ```
+//
+// If the parameter isn't provided, or if the value is empty, then all the
+// dns domains that the user has permission to see will be returned.
+func (r *DNSDomainsListRequest) Search(value string) *DNSDomainsListRequest {
+	r.search = &value
 	return r
 }
 
 // Size sets the value of the 'size' parameter.
 //
-// Number of items that will be contained in the returned page. As this collection
-// doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
-func (r *CloudRegionsListRequest) Size(value int) *CloudRegionsListRequest {
+// Maximum number of items that will be contained in the returned page.
+func (r *DNSDomainsListRequest) Size(value int) *DNSDomainsListRequest {
 	r.size = &value
 	return r
 }
@@ -279,15 +297,18 @@ func (r *CloudRegionsListRequest) Size(value int) *CloudRegionsListRequest {
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *CloudRegionsListRequest) Send() (result *CloudRegionsListResponse, err error) {
+func (r *DNSDomainsListRequest) Send() (result *DNSDomainsListResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *CloudRegionsListRequest) SendContext(ctx context.Context) (result *CloudRegionsListResponse, err error) {
+func (r *DNSDomainsListRequest) SendContext(ctx context.Context) (result *DNSDomainsListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	if r.page != nil {
 		helpers.AddValue(&query, "page", *r.page)
+	}
+	if r.search != nil {
+		helpers.AddValue(&query, "search", *r.search)
 	}
 	if r.size != nil {
 		helpers.AddValue(&query, "size", *r.size)
@@ -310,7 +331,7 @@ func (r *CloudRegionsListRequest) SendContext(ctx context.Context) (result *Clou
 		return
 	}
 	defer response.Body.Close()
-	result = &CloudRegionsListResponse{}
+	result = &DNSDomainsListResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -327,26 +348,26 @@ func (r *CloudRegionsListRequest) SendContext(ctx context.Context) (result *Clou
 		err = result.err
 		return
 	}
-	err = readCloudRegionsListResponse(result, reader)
+	err = readDNSDomainsListResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// CloudRegionsListResponse is the response for the 'list' method.
-type CloudRegionsListResponse struct {
+// DNSDomainsListResponse is the response for the 'list' method.
+type DNSDomainsListResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	items  *CloudRegionList
+	items  *DNSDomainList
 	page   *int
 	size   *int
 	total  *int
 }
 
 // Status returns the response status code.
-func (r *CloudRegionsListResponse) Status() int {
+func (r *DNSDomainsListResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -354,7 +375,7 @@ func (r *CloudRegionsListResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *CloudRegionsListResponse) Header() http.Header {
+func (r *DNSDomainsListResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -362,7 +383,7 @@ func (r *CloudRegionsListResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *CloudRegionsListResponse) Error() *errors.Error {
+func (r *DNSDomainsListResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -371,8 +392,8 @@ func (r *CloudRegionsListResponse) Error() *errors.Error {
 
 // Items returns the value of the 'items' parameter.
 //
-// Retrieved list of cloud providers.
-func (r *CloudRegionsListResponse) Items() *CloudRegionList {
+// Retrieved a list of DNS domains.
+func (r *DNSDomainsListResponse) Items() *DNSDomainList {
 	if r == nil {
 		return nil
 	}
@@ -382,8 +403,8 @@ func (r *CloudRegionsListResponse) Items() *CloudRegionList {
 // GetItems returns the value of the 'items' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Retrieved list of cloud providers.
-func (r *CloudRegionsListResponse) GetItems() (value *CloudRegionList, ok bool) {
+// Retrieved a list of DNS domains.
+func (r *DNSDomainsListResponse) GetItems() (value *DNSDomainList, ok bool) {
 	ok = r != nil && r.items != nil
 	if ok {
 		value = r.items
@@ -393,9 +414,8 @@ func (r *CloudRegionsListResponse) GetItems() (value *CloudRegionList, ok bool) 
 
 // Page returns the value of the 'page' parameter.
 //
-// Index of the returned page, where one corresponds to the first page. As this
-// collection doesn't support paging the result will always be `1`.
-func (r *CloudRegionsListResponse) Page() int {
+// Index of the requested page, where one corresponds to the first page.
+func (r *DNSDomainsListResponse) Page() int {
 	if r != nil && r.page != nil {
 		return *r.page
 	}
@@ -405,9 +425,8 @@ func (r *CloudRegionsListResponse) Page() int {
 // GetPage returns the value of the 'page' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Index of the returned page, where one corresponds to the first page. As this
-// collection doesn't support paging the result will always be `1`.
-func (r *CloudRegionsListResponse) GetPage() (value int, ok bool) {
+// Index of the requested page, where one corresponds to the first page.
+func (r *DNSDomainsListResponse) GetPage() (value int, ok bool) {
 	ok = r != nil && r.page != nil
 	if ok {
 		value = *r.page
@@ -417,10 +436,8 @@ func (r *CloudRegionsListResponse) GetPage() (value int, ok bool) {
 
 // Size returns the value of the 'size' parameter.
 //
-// Number of items that will be contained in the returned page. As this collection
-// doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
-func (r *CloudRegionsListResponse) Size() int {
+// Maximum number of items that will be contained in the returned page.
+func (r *DNSDomainsListResponse) Size() int {
 	if r != nil && r.size != nil {
 		return *r.size
 	}
@@ -430,10 +447,8 @@ func (r *CloudRegionsListResponse) Size() int {
 // GetSize returns the value of the 'size' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Number of items that will be contained in the returned page. As this collection
-// doesn't support paging or searching the result will always be the total number of
-// regions of the provider.
-func (r *CloudRegionsListResponse) GetSize() (value int, ok bool) {
+// Maximum number of items that will be contained in the returned page.
+func (r *DNSDomainsListResponse) GetSize() (value int, ok bool) {
 	ok = r != nil && r.size != nil
 	if ok {
 		value = *r.size
@@ -443,10 +458,8 @@ func (r *CloudRegionsListResponse) GetSize() (value int, ok bool) {
 
 // Total returns the value of the 'total' parameter.
 //
-// Total number of items of the collection that match the search criteria,
-// regardless of the size of the page. As this collection doesn't support paging or
-// searching the result will always be the total number of regions of the provider.
-func (r *CloudRegionsListResponse) Total() int {
+// Total number of items of the collection.
+func (r *DNSDomainsListResponse) Total() int {
 	if r != nil && r.total != nil {
 		return *r.total
 	}
@@ -456,10 +469,8 @@ func (r *CloudRegionsListResponse) Total() int {
 // GetTotal returns the value of the 'total' parameter and
 // a flag indicating if the parameter has a value.
 //
-// Total number of items of the collection that match the search criteria,
-// regardless of the size of the page. As this collection doesn't support paging or
-// searching the result will always be the total number of regions of the provider.
-func (r *CloudRegionsListResponse) GetTotal() (value int, ok bool) {
+// Total number of items of the collection.
+func (r *DNSDomainsListResponse) GetTotal() (value int, ok bool) {
 	ok = r != nil && r.total != nil
 	if ok {
 		value = *r.total

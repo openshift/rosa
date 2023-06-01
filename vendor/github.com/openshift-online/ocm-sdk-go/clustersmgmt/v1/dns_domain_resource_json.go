@@ -21,25 +21,25 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import "io"
 
-func writeCloudRegionDeleteRequest(request *CloudRegionDeleteRequest, writer io.Writer) error {
+func writeDNSDomainDeleteRequest(request *DNSDomainDeleteRequest, writer io.Writer) error {
 	return nil
 }
-func readCloudRegionDeleteResponse(response *CloudRegionDeleteResponse, reader io.Reader) error {
+func readDNSDomainDeleteResponse(response *DNSDomainDeleteResponse, reader io.Reader) error {
 	return nil
 }
-func writeCloudRegionGetRequest(request *CloudRegionGetRequest, writer io.Writer) error {
+func writeDNSDomainGetRequest(request *DNSDomainGetRequest, writer io.Writer) error {
 	return nil
 }
-func readCloudRegionGetResponse(response *CloudRegionGetResponse, reader io.Reader) error {
+func readDNSDomainGetResponse(response *DNSDomainGetResponse, reader io.Reader) error {
 	var err error
-	response.body, err = UnmarshalCloudRegion(reader)
+	response.body, err = UnmarshalDNSDomain(reader)
 	return err
 }
-func writeCloudRegionUpdateRequest(request *CloudRegionUpdateRequest, writer io.Writer) error {
-	return MarshalCloudRegion(request.body, writer)
+func writeDNSDomainUpdateRequest(request *DNSDomainUpdateRequest, writer io.Writer) error {
+	return MarshalDNSDomain(request.body, writer)
 }
-func readCloudRegionUpdateResponse(response *CloudRegionUpdateResponse, reader io.Reader) error {
+func readDNSDomainUpdateResponse(response *DNSDomainUpdateResponse, reader io.Reader) error {
 	var err error
-	response.body, err = UnmarshalCloudRegion(reader)
+	response.body, err = UnmarshalDNSDomain(reader)
 	return err
 }

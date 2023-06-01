@@ -32,19 +32,19 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// CloudRegionClient is the client of the 'cloud_region' resource.
+// DNSDomainClient is the client of the 'DNS_domain' resource.
 //
-// Manages a specific cloud region.
-type CloudRegionClient struct {
+// Manages DNS domain.
+type DNSDomainClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewCloudRegionClient creates a new client for the 'cloud_region'
+// NewDNSDomainClient creates a new client for the 'DNS_domain'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewCloudRegionClient(transport http.RoundTripper, path string) *CloudRegionClient {
-	return &CloudRegionClient{
+func NewDNSDomainClient(transport http.RoundTripper, path string) *DNSDomainClient {
+	return &DNSDomainClient{
 		transport: transport,
 		path:      path,
 	}
@@ -52,9 +52,9 @@ func NewCloudRegionClient(transport http.RoundTripper, path string) *CloudRegion
 
 // Delete creates a request for the 'delete' method.
 //
-// Deletes the region.
-func (c *CloudRegionClient) Delete() *CloudRegionDeleteRequest {
-	return &CloudRegionDeleteRequest{
+// Delete the DNS domain.
+func (c *DNSDomainClient) Delete() *DNSDomainDeleteRequest {
+	return &DNSDomainDeleteRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -62,9 +62,9 @@ func (c *CloudRegionClient) Delete() *CloudRegionDeleteRequest {
 
 // Get creates a request for the 'get' method.
 //
-// Retrieves the details of the region.
-func (c *CloudRegionClient) Get() *CloudRegionGetRequest {
-	return &CloudRegionGetRequest{
+// Retrieves the details of the DNS domain.
+func (c *DNSDomainClient) Get() *DNSDomainGetRequest {
+	return &DNSDomainGetRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -72,43 +72,43 @@ func (c *CloudRegionClient) Get() *CloudRegionGetRequest {
 
 // Update creates a request for the 'update' method.
 //
-// Updates the region.
-func (c *CloudRegionClient) Update() *CloudRegionUpdateRequest {
-	return &CloudRegionUpdateRequest{
+// Updates the details of the DNS domain.
+func (c *DNSDomainClient) Update() *DNSDomainUpdateRequest {
+	return &DNSDomainUpdateRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// CloudRegionPollRequest is the request for the Poll method.
-type CloudRegionPollRequest struct {
-	request    *CloudRegionGetRequest
+// DNSDomainPollRequest is the request for the Poll method.
+type DNSDomainPollRequest struct {
+	request    *DNSDomainGetRequest
 	interval   time.Duration
 	statuses   []int
 	predicates []func(interface{}) bool
 }
 
 // Parameter adds a query parameter to all the requests that will be used to retrieve the object.
-func (r *CloudRegionPollRequest) Parameter(name string, value interface{}) *CloudRegionPollRequest {
+func (r *DNSDomainPollRequest) Parameter(name string, value interface{}) *DNSDomainPollRequest {
 	r.request.Parameter(name, value)
 	return r
 }
 
 // Header adds a request header to all the requests that will be used to retrieve the object.
-func (r *CloudRegionPollRequest) Header(name string, value interface{}) *CloudRegionPollRequest {
+func (r *DNSDomainPollRequest) Header(name string, value interface{}) *DNSDomainPollRequest {
 	r.request.Header(name, value)
 	return r
 }
 
 // Interval sets the polling interval. This parameter is mandatory and must be greater than zero.
-func (r *CloudRegionPollRequest) Interval(value time.Duration) *CloudRegionPollRequest {
+func (r *DNSDomainPollRequest) Interval(value time.Duration) *DNSDomainPollRequest {
 	r.interval = value
 	return r
 }
 
 // Status set the expected status of the response. Multiple values can be set calling this method
 // multiple times. The response will be considered successful if the status is any of those values.
-func (r *CloudRegionPollRequest) Status(value int) *CloudRegionPollRequest {
+func (r *DNSDomainPollRequest) Status(value int) *DNSDomainPollRequest {
 	r.statuses = append(r.statuses, value)
 	return r
 }
@@ -116,9 +116,9 @@ func (r *CloudRegionPollRequest) Status(value int) *CloudRegionPollRequest {
 // Predicate adds a predicate that the response should satisfy be considered successful. Multiple
 // predicates can be set calling this method multiple times. The response will be considered successful
 // if all the predicates are satisfied.
-func (r *CloudRegionPollRequest) Predicate(value func(*CloudRegionGetResponse) bool) *CloudRegionPollRequest {
+func (r *DNSDomainPollRequest) Predicate(value func(*DNSDomainGetResponse) bool) *DNSDomainPollRequest {
 	r.predicates = append(r.predicates, func(response interface{}) bool {
-		return value(response.(*CloudRegionGetResponse))
+		return value(response.(*DNSDomainGetResponse))
 	})
 	return r
 }
@@ -128,11 +128,11 @@ func (r *CloudRegionPollRequest) Predicate(value func(*CloudRegionGetResponse) b
 // method return nil.
 //
 // The context must have a timeout or deadline, otherwise this method will immediately return an error.
-func (r *CloudRegionPollRequest) StartContext(ctx context.Context) (response *CloudRegionPollResponse, err error) {
+func (r *DNSDomainPollRequest) StartContext(ctx context.Context) (response *DNSDomainPollResponse, err error) {
 	result, err := helpers.PollContext(ctx, r.interval, r.statuses, r.predicates, r.task)
 	if result != nil {
-		response = &CloudRegionPollResponse{
-			response: result.(*CloudRegionGetResponse),
+		response = &DNSDomainPollResponse{
+			response: result.(*DNSDomainGetResponse),
 		}
 	}
 	return
@@ -140,7 +140,7 @@ func (r *CloudRegionPollRequest) StartContext(ctx context.Context) (response *Cl
 
 // task adapts the types of the request/response types so that they can be used with the generic
 // polling function from the helpers package.
-func (r *CloudRegionPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
+func (r *DNSDomainPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
 	response, err := r.request.SendContext(ctx)
 	if response != nil {
 		status = response.Status()
@@ -149,13 +149,13 @@ func (r *CloudRegionPollRequest) task(ctx context.Context) (status int, result i
 	return
 }
 
-// CloudRegionPollResponse is the response for the Poll method.
-type CloudRegionPollResponse struct {
-	response *CloudRegionGetResponse
+// DNSDomainPollResponse is the response for the Poll method.
+type DNSDomainPollResponse struct {
+	response *DNSDomainGetResponse
 }
 
 // Status returns the response status code.
-func (r *CloudRegionPollResponse) Status() int {
+func (r *DNSDomainPollResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -163,7 +163,7 @@ func (r *CloudRegionPollResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *CloudRegionPollResponse) Header() http.Header {
+func (r *DNSDomainPollResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -171,7 +171,7 @@ func (r *CloudRegionPollResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *CloudRegionPollResponse) Error() *errors.Error {
+func (r *DNSDomainPollResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -179,26 +179,26 @@ func (r *CloudRegionPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *CloudRegionPollResponse) Body() *CloudRegion {
+func (r *DNSDomainPollResponse) Body() *DNSDomain {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *CloudRegionPollResponse) GetBody() (value *CloudRegion, ok bool) {
+func (r *DNSDomainPollResponse) GetBody() (value *DNSDomain, ok bool) {
 	return r.response.GetBody()
 }
 
 // Poll creates a request to repeatedly retrieve the object till the response has one of a given set
 // of states and satisfies a set of predicates.
-func (c *CloudRegionClient) Poll() *CloudRegionPollRequest {
-	return &CloudRegionPollRequest{
+func (c *DNSDomainClient) Poll() *DNSDomainPollRequest {
+	return &DNSDomainPollRequest{
 		request: c.Get(),
 	}
 }
 
-// CloudRegionDeleteRequest is the request for the 'delete' method.
-type CloudRegionDeleteRequest struct {
+// DNSDomainDeleteRequest is the request for the 'delete' method.
+type DNSDomainDeleteRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -206,20 +206,20 @@ type CloudRegionDeleteRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *CloudRegionDeleteRequest) Parameter(name string, value interface{}) *CloudRegionDeleteRequest {
+func (r *DNSDomainDeleteRequest) Parameter(name string, value interface{}) *DNSDomainDeleteRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *CloudRegionDeleteRequest) Header(name string, value interface{}) *CloudRegionDeleteRequest {
+func (r *DNSDomainDeleteRequest) Header(name string, value interface{}) *DNSDomainDeleteRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *CloudRegionDeleteRequest) Impersonate(user string) *CloudRegionDeleteRequest {
+func (r *DNSDomainDeleteRequest) Impersonate(user string) *DNSDomainDeleteRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -228,12 +228,12 @@ func (r *CloudRegionDeleteRequest) Impersonate(user string) *CloudRegionDeleteRe
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *CloudRegionDeleteRequest) Send() (result *CloudRegionDeleteResponse, err error) {
+func (r *DNSDomainDeleteRequest) Send() (result *DNSDomainDeleteResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *CloudRegionDeleteRequest) SendContext(ctx context.Context) (result *CloudRegionDeleteResponse, err error) {
+func (r *DNSDomainDeleteRequest) SendContext(ctx context.Context) (result *DNSDomainDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -253,7 +253,7 @@ func (r *CloudRegionDeleteRequest) SendContext(ctx context.Context) (result *Clo
 		return
 	}
 	defer response.Body.Close()
-	result = &CloudRegionDeleteResponse{}
+	result = &DNSDomainDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -273,15 +273,15 @@ func (r *CloudRegionDeleteRequest) SendContext(ctx context.Context) (result *Clo
 	return
 }
 
-// CloudRegionDeleteResponse is the response for the 'delete' method.
-type CloudRegionDeleteResponse struct {
+// DNSDomainDeleteResponse is the response for the 'delete' method.
+type DNSDomainDeleteResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
 }
 
 // Status returns the response status code.
-func (r *CloudRegionDeleteResponse) Status() int {
+func (r *DNSDomainDeleteResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -289,7 +289,7 @@ func (r *CloudRegionDeleteResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *CloudRegionDeleteResponse) Header() http.Header {
+func (r *DNSDomainDeleteResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -297,15 +297,15 @@ func (r *CloudRegionDeleteResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *CloudRegionDeleteResponse) Error() *errors.Error {
+func (r *DNSDomainDeleteResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
 	return r.err
 }
 
-// CloudRegionGetRequest is the request for the 'get' method.
-type CloudRegionGetRequest struct {
+// DNSDomainGetRequest is the request for the 'get' method.
+type DNSDomainGetRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -313,20 +313,20 @@ type CloudRegionGetRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *CloudRegionGetRequest) Parameter(name string, value interface{}) *CloudRegionGetRequest {
+func (r *DNSDomainGetRequest) Parameter(name string, value interface{}) *DNSDomainGetRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *CloudRegionGetRequest) Header(name string, value interface{}) *CloudRegionGetRequest {
+func (r *DNSDomainGetRequest) Header(name string, value interface{}) *DNSDomainGetRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *CloudRegionGetRequest) Impersonate(user string) *CloudRegionGetRequest {
+func (r *DNSDomainGetRequest) Impersonate(user string) *DNSDomainGetRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -335,12 +335,12 @@ func (r *CloudRegionGetRequest) Impersonate(user string) *CloudRegionGetRequest 
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *CloudRegionGetRequest) Send() (result *CloudRegionGetResponse, err error) {
+func (r *DNSDomainGetRequest) Send() (result *DNSDomainGetResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *CloudRegionGetRequest) SendContext(ctx context.Context) (result *CloudRegionGetResponse, err error) {
+func (r *DNSDomainGetRequest) SendContext(ctx context.Context) (result *DNSDomainGetResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -360,7 +360,7 @@ func (r *CloudRegionGetRequest) SendContext(ctx context.Context) (result *CloudR
 		return
 	}
 	defer response.Body.Close()
-	result = &CloudRegionGetResponse{}
+	result = &DNSDomainGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -377,23 +377,23 @@ func (r *CloudRegionGetRequest) SendContext(ctx context.Context) (result *CloudR
 		err = result.err
 		return
 	}
-	err = readCloudRegionGetResponse(result, reader)
+	err = readDNSDomainGetResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// CloudRegionGetResponse is the response for the 'get' method.
-type CloudRegionGetResponse struct {
+// DNSDomainGetResponse is the response for the 'get' method.
+type DNSDomainGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *CloudRegion
+	body   *DNSDomain
 }
 
 // Status returns the response status code.
-func (r *CloudRegionGetResponse) Status() int {
+func (r *DNSDomainGetResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -401,7 +401,7 @@ func (r *CloudRegionGetResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *CloudRegionGetResponse) Header() http.Header {
+func (r *DNSDomainGetResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -409,7 +409,7 @@ func (r *CloudRegionGetResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *CloudRegionGetResponse) Error() *errors.Error {
+func (r *DNSDomainGetResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -417,7 +417,7 @@ func (r *CloudRegionGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *CloudRegionGetResponse) Body() *CloudRegion {
+func (r *DNSDomainGetResponse) Body() *DNSDomain {
 	if r == nil {
 		return nil
 	}
@@ -426,7 +426,7 @@ func (r *CloudRegionGetResponse) Body() *CloudRegion {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *CloudRegionGetResponse) GetBody() (value *CloudRegion, ok bool) {
+func (r *DNSDomainGetResponse) GetBody() (value *DNSDomain, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -434,36 +434,36 @@ func (r *CloudRegionGetResponse) GetBody() (value *CloudRegion, ok bool) {
 	return
 }
 
-// CloudRegionUpdateRequest is the request for the 'update' method.
-type CloudRegionUpdateRequest struct {
+// DNSDomainUpdateRequest is the request for the 'update' method.
+type DNSDomainUpdateRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
-	body      *CloudRegion
+	body      *DNSDomain
 }
 
 // Parameter adds a query parameter.
-func (r *CloudRegionUpdateRequest) Parameter(name string, value interface{}) *CloudRegionUpdateRequest {
+func (r *DNSDomainUpdateRequest) Parameter(name string, value interface{}) *DNSDomainUpdateRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *CloudRegionUpdateRequest) Header(name string, value interface{}) *CloudRegionUpdateRequest {
+func (r *DNSDomainUpdateRequest) Header(name string, value interface{}) *DNSDomainUpdateRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *CloudRegionUpdateRequest) Impersonate(user string) *CloudRegionUpdateRequest {
+func (r *DNSDomainUpdateRequest) Impersonate(user string) *DNSDomainUpdateRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
 // Body sets the value of the 'body' parameter.
-func (r *CloudRegionUpdateRequest) Body(value *CloudRegion) *CloudRegionUpdateRequest {
+func (r *DNSDomainUpdateRequest) Body(value *DNSDomain) *DNSDomainUpdateRequest {
 	r.body = value
 	return r
 }
@@ -472,16 +472,16 @@ func (r *CloudRegionUpdateRequest) Body(value *CloudRegion) *CloudRegionUpdateRe
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *CloudRegionUpdateRequest) Send() (result *CloudRegionUpdateResponse, err error) {
+func (r *DNSDomainUpdateRequest) Send() (result *DNSDomainUpdateResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *CloudRegionUpdateRequest) SendContext(ctx context.Context) (result *CloudRegionUpdateResponse, err error) {
+func (r *DNSDomainUpdateRequest) SendContext(ctx context.Context) (result *DNSDomainUpdateResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	buffer := &bytes.Buffer{}
-	err = writeCloudRegionUpdateRequest(r, buffer)
+	err = writeDNSDomainUpdateRequest(r, buffer)
 	if err != nil {
 		return
 	}
@@ -503,7 +503,7 @@ func (r *CloudRegionUpdateRequest) SendContext(ctx context.Context) (result *Clo
 		return
 	}
 	defer response.Body.Close()
-	result = &CloudRegionUpdateResponse{}
+	result = &DNSDomainUpdateResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -520,23 +520,23 @@ func (r *CloudRegionUpdateRequest) SendContext(ctx context.Context) (result *Clo
 		err = result.err
 		return
 	}
-	err = readCloudRegionUpdateResponse(result, reader)
+	err = readDNSDomainUpdateResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// CloudRegionUpdateResponse is the response for the 'update' method.
-type CloudRegionUpdateResponse struct {
+// DNSDomainUpdateResponse is the response for the 'update' method.
+type DNSDomainUpdateResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *CloudRegion
+	body   *DNSDomain
 }
 
 // Status returns the response status code.
-func (r *CloudRegionUpdateResponse) Status() int {
+func (r *DNSDomainUpdateResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -544,7 +544,7 @@ func (r *CloudRegionUpdateResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *CloudRegionUpdateResponse) Header() http.Header {
+func (r *DNSDomainUpdateResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -552,7 +552,7 @@ func (r *CloudRegionUpdateResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *CloudRegionUpdateResponse) Error() *errors.Error {
+func (r *DNSDomainUpdateResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -560,7 +560,7 @@ func (r *CloudRegionUpdateResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *CloudRegionUpdateResponse) Body() *CloudRegion {
+func (r *DNSDomainUpdateResponse) Body() *DNSDomain {
 	if r == nil {
 		return nil
 	}
@@ -569,7 +569,7 @@ func (r *CloudRegionUpdateResponse) Body() *CloudRegion {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *CloudRegionUpdateResponse) GetBody() (value *CloudRegion, ok bool) {
+func (r *DNSDomainUpdateResponse) GetBody() (value *DNSDomain, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
