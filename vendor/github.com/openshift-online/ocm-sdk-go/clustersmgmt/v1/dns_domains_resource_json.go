@@ -25,18 +25,18 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-func writeCloudRegionsAddRequest(request *CloudRegionsAddRequest, writer io.Writer) error {
-	return MarshalCloudRegion(request.body, writer)
+func writeDNSDomainsAddRequest(request *DNSDomainsAddRequest, writer io.Writer) error {
+	return MarshalDNSDomain(request.body, writer)
 }
-func readCloudRegionsAddResponse(response *CloudRegionsAddResponse, reader io.Reader) error {
+func readDNSDomainsAddResponse(response *DNSDomainsAddResponse, reader io.Reader) error {
 	var err error
-	response.body, err = UnmarshalCloudRegion(reader)
+	response.body, err = UnmarshalDNSDomain(reader)
 	return err
 }
-func writeCloudRegionsListRequest(request *CloudRegionsListRequest, writer io.Writer) error {
+func writeDNSDomainsListRequest(request *DNSDomainsListRequest, writer io.Writer) error {
 	return nil
 }
-func readCloudRegionsListResponse(response *CloudRegionsListResponse, reader io.Reader) error {
+func readDNSDomainsListResponse(response *DNSDomainsListResponse, reader io.Reader) error {
 	iterator, err := helpers.NewIterator(reader)
 	if err != nil {
 		return err
@@ -57,8 +57,8 @@ func readCloudRegionsListResponse(response *CloudRegionsListResponse, reader io.
 			value := iterator.ReadInt()
 			response.total = &value
 		case "items":
-			items := readCloudRegionList(iterator)
-			response.items = &CloudRegionList{
+			items := readDNSDomainList(iterator)
+			response.items = &DNSDomainList{
 				items: items,
 			}
 		default:
