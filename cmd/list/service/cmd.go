@@ -62,6 +62,20 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if output.HasFlag() {
+		outList := []*msv1.ManagedService{}
+		servicesList.Each(func(srv *msv1.ManagedService) bool {
+			outList = append(outList, srv)
+			return true
+		})
+		output.Print(outList)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "SERVICE_ID\tSERVICE\tSERVICE_STATE\tCLUSTER_NAME\n")
 	servicesList.Each(func(srv *msv1.ManagedService) bool {
