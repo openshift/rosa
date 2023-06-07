@@ -940,14 +940,15 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if roleARN != "" {
-			// Get role prefix
-			rolePrefix, err := getAccountRolePrefix(roleARN, role)
-			if err != nil {
-				r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
-				os.Exit(1)
+			// check if role has hosted cp policy via AWS tag value
+			var hostedCPPolicies bool
+			if isHostedCP {
+				hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
+				if err != nil {
+					r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+					os.Exit(1)
+				}
 			}
-			r.Reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
-
 			hasRoles = true
 			for roleType, role := range aws.AccountRoles {
 				if roleType == aws.InstallerAccountRole {
@@ -964,7 +965,15 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 				selectedARN := ""
-				expectedResourceIDForAccRole := strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name))
+				expectedResourceIDForAccRole, rolePrefix, err := getExpectedResourceIDForAccRole(
+					hostedCPPolicies, roleARN, roleType)
+				if err != nil {
+					r.Reporter.Errorf("Failed to get the expected resource ID for role type: %s", roleType)
+					os.Exit(1)
+				}
+				r.Reporter.Debugf("Using '%s' as the role prefix to retrieve the expected resource ID for role type '%s'",
+					rolePrefix, roleType)
+
 				for _, rARN := range roleARNs {
 					resourceId, err := aws.GetResourceIdFromARN(rARN)
 					if err != nil {
@@ -1166,6 +1175,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// check if role has hosted cp policy via AWS tag value
 	var hostedCPPolicies bool
 	if isHostedCP {
 		hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
@@ -1174,18 +1184,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
 	if managedPolicies {
-		var role aws.AccountRole
-		if hostedCPPolicies {
-			role = aws.HCPAccountRoles[aws.InstallerAccountRole]
-		} else {
-			role = aws.AccountRoles[aws.InstallerAccountRole]
-		}
-
-		rolePrefix, err := getAccountRolePrefix(roleARN, role)
+		rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
-			r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+			r.Reporter.Errorf("Failed to find prefix from account role: %s", err)
 			os.Exit(1)
 		}
 
@@ -1247,15 +1249,9 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 			os.Exit(1)
 		}
-		var installerRole aws.AccountRole
-		if hostedCPPolicies {
-			installerRole = aws.HCPAccountRoles[aws.InstallerAccountRole]
-		} else {
-			installerRole = aws.AccountRoles[aws.InstallerAccountRole]
-		}
-		accRolesPrefix, err := getAccountRolePrefix(roleARN, installerRole)
+		accRolesPrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
-			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
+			r.Reporter.Errorf("Failed to find prefix from account role: %s", err)
 			os.Exit(1)
 		}
 		if expectedOperatorRolePath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
@@ -2534,12 +2530,19 @@ func hostPrefixValidator(val interface{}) error {
 	return nil
 }
 
-func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
+func getAccountRolePrefix(hostedCPPolicies bool, roleARN string, roleType string) (string, error) {
+
+	accountRoles := aws.AccountRoles
+
+	if hostedCPPolicies {
+		accountRoles = aws.HCPAccountRoles
+	}
+
 	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", accountRoles[roleType].Name))
 	return rolePrefix, nil
 }
 
@@ -2839,4 +2842,21 @@ func calculateReplicas(
 	}
 
 	return newMinReplicas, newMaxReplicas
+}
+
+func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, roleType string) (string, string, error) {
+
+	accountRoles := aws.AccountRoles
+
+	rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
+	if err != nil {
+		return "", "", err
+	}
+
+	if hostedCPPolicies {
+		accountRoles = aws.HCPAccountRoles
+	}
+
+	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
+
 }
