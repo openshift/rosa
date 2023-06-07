@@ -24,22 +24,33 @@ import (
 	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/spf13/cobra"
-
 	"github.com/openshift/rosa/cmd/upgrade/roles"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/robfig/cron/v3"
+	"github.com/spf13/cobra"
 )
 
 var args struct {
-	version              string
-	scheduleDate         string
-	scheduleTime         string
-	nodeDrainGracePeriod string
-	controlPlane         bool
+	version                  string
+	scheduleDate             string
+	scheduleTime             string
+	nodeDrainGracePeriod     string
+	controlPlane             bool
+	schedule                 string
+	allowMinorVersionUpdates bool
+}
+
+type upgradeScheduling struct {
+	scheduleDate             string
+	scheduleTime             string
+	schedule                 string
+	allowMinorVersionUpdates bool
+	automaticUpgrades        bool
+	nextRun                  time.Time
 }
 
 var nodeDrainOptions = []string{
@@ -60,7 +71,7 @@ var Cmd = &cobra.Command{
   rosa upgrade cluster --cluster=mycluster --interactive
 
   # Schedule a cluster upgrade within the hour
-  rosa upgrade cluster -c mycluster --version 4.5.20`,
+  rosa upgrade cluster -c mycluster --version 4.12.20`,
 	Run: run,
 }
 
@@ -93,6 +104,25 @@ func init() {
 	)
 
 	flags.StringVar(
+		&args.schedule,
+		"schedule",
+		"",
+		"cron expression in UTC which will be the time when an upgrade to the latest release will be "+
+			"automatically scheduled and repeated at each occurrence. Mutually exclusive with --schedule-date and "+
+			"--schedule-time. "+
+			"This is currently supported only for Hosted Control Planes. ",
+	)
+
+	flags.BoolVar(
+		&args.allowMinorVersionUpdates,
+		"allow-minor-version-updates",
+		false,
+		"When using automatic scheduling with --schedule parameter, if true it will also update to latest "+
+			"minor release, e.g. 4.12.20 -> 4.13.2. By default only z-stream updates will be scheduled. "+
+			"This is currently supported only for Hosted Control Planes. ",
+	)
+
+	flags.StringVar(
 		&args.nodeDrainGracePeriod,
 		"node-drain-grace-period",
 		"1 hour",
@@ -115,59 +145,172 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+}
 
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	// Define variables
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
-	scheduleDate := args.scheduleDate
-	scheduleTime := args.scheduleTime
+	currentUpgradeScheduling := upgradeScheduling{
+		schedule:                 args.schedule,
+		scheduleDate:             args.scheduleDate,
+		scheduleTime:             args.scheduleTime,
+		allowMinorVersionUpdates: args.allowMinorVersionUpdates,
+	}
 	isHypershift := cluster.Hypershift().Enabled()
 
-	mode, err := aws.GetMode()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-
-	if cluster.State() != cmv1.ClusterStateReady {
-		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
-		os.Exit(1)
-	}
-
-	_, isSTS := cluster.AWS().STS().GetRoleARN()
-	if !isSTS && mode != "" {
-		r.Reporter.Errorf("The 'mode' option is only supported for STS clusters")
-		os.Exit(1)
-	}
-
+	// Check parameters preconditions
 	if args.controlPlane && !isHypershift {
-		r.Reporter.Errorf("The '--control-plane' option is only supported for Hosted Control Planes")
-		os.Exit(1)
+		return fmt.Errorf("The '--control-plane' option is only supported for Hosted Control Planes")
 	}
 
-	if !args.controlPlane && isHypershift {
-		r.Reporter.Errorf("The '--control-plane' option is currently mandatory for Hosted Control Planes")
-		os.Exit(1)
+	if !interactive.Enabled() {
+		if !args.controlPlane && isHypershift {
+			return fmt.Errorf("The '--control-plane' option is currently mandatory for Hosted Control Planes")
+		}
 	}
 
+	if currentUpgradeScheduling.schedule == "" && currentUpgradeScheduling.allowMinorVersionUpdates {
+		return fmt.Errorf("The '--allow-minor-version-upgrades' option needs to be used with --schedule")
+	}
+
+	if currentUpgradeScheduling.schedule != "" && !isHypershift {
+		return fmt.Errorf("The '--schedule' option is only supported for Hosted Control Planes")
+	}
+
+	if (currentUpgradeScheduling.scheduleDate != "" || currentUpgradeScheduling.scheduleTime != "") &&
+		currentUpgradeScheduling.schedule != "" {
+		return fmt.Errorf("The '--schedule-date' and '--schedule-time' options are mutually exclusive with" +
+			" '--schedule'")
+	}
+
+	if currentUpgradeScheduling.schedule != "" && args.version != "" {
+		return fmt.Errorf("The '--schedule' option is mutually exclusive with '--version'")
+	}
+
+	// Check cluster preconditions
+	if cluster.State() != cmv1.ClusterStateReady {
+		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+	}
 	if isHypershift {
-		checkExistingScheduledUpgradeHypershift(r, cluster, clusterKey)
+		scheduledUpgrade, err := checkExistingScheduledUpgradeHypershift(r, cluster, clusterKey)
+		if err != nil {
+			return err
+		}
+		if scheduledUpgrade != nil {
+			r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
+				scheduledUpgrade.State().Value(),
+				scheduledUpgrade.Version(),
+				scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
+			)
+			return nil
+		}
 	} else {
-		checkExistingScheduledUpgrade(r, cluster, clusterKey)
+		scheduledUpgrade, upgradeState, err := checkExistingScheduledUpgrade(r, cluster, clusterKey)
+		if err != nil {
+			return err
+		}
+		if scheduledUpgrade != nil {
+			r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
+				upgradeState.Value(),
+				scheduledUpgrade.Version(),
+				scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
+			)
+			return nil
+		}
 	}
 
-	availableUpgrades, version := buildVersion(r, cmd, cluster, args.version)
-	err = r.OCMClient.CheckUpgradeClusterVersion(availableUpgrades, version, cluster)
-	if err != nil {
-		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
-	}
-
-	if scheduleDate == "" || scheduleTime == "" {
+	// Check mandatory parameters and enable interactive mode if needed
+	if currentUpgradeScheduling.scheduleDate == "" && currentUpgradeScheduling.scheduleTime == "" &&
+		currentUpgradeScheduling.schedule == "" {
 		interactive.Enable()
 	}
 
+	if interactive.Enabled() {
+		r.Reporter.Infof("Interactive mode enabled.\n" +
+			"Any optional fields can be left empty and a default will be selected.")
+	}
+
+	// Start processing parameters
+	// Mode
+	mode, err := aws.GetMode()
+	if err != nil {
+		return fmt.Errorf("%s", err)
+	}
+	_, isSTS := cluster.AWS().STS().GetRoleARN()
+	if !isSTS && mode != "" {
+		return fmt.Errorf("The 'mode' option is only supported for STS clusters")
+	}
 	if isSTS && mode == "" {
 		mode = setMode(r, cmd)
+	}
+
+	// Upgrade type, manual or automatic
+	currentUpgradeScheduling.automaticUpgrades = false
+	if isHypershift {
+		currentUpgradeScheduling.automaticUpgrades = currentUpgradeScheduling.schedule != ""
+		if interactive.Enabled() {
+			currentUpgradeScheduling.automaticUpgrades, err = interactive.GetBool(interactive.Input{
+				Question: "Enable automatic upgrades",
+				Help: "Whether the upgrade is automatic or manual.\n" +
+					"With automatic upgrades, user defines the schedule of the upgrade with a cron expression.\n" +
+					"The target version will always be the latest available version at the moment of the schedule\n" +
+					"occurrence. In the manual upgrades, user defines the schedule and a target version",
+				Default:  currentUpgradeScheduling.automaticUpgrades,
+				Required: true,
+			})
+			if err != nil {
+				return fmt.Errorf("Expected an upgrade type: %s", err)
+			}
+
+			if currentUpgradeScheduling.automaticUpgrades {
+				currentUpgradeScheduling.allowMinorVersionUpdates, err = interactive.GetBool(interactive.Input{
+					Question: "Allow minor upgrades",
+					Help:     cmd.Flags().Lookup("allow-minor-version-updates").Usage,
+					Default:  currentUpgradeScheduling.allowMinorVersionUpdates,
+					Required: false,
+				})
+				if err != nil {
+					return fmt.Errorf("Expected an choice on the versions to target: %s", err)
+				}
+			}
+		}
+		if !currentUpgradeScheduling.automaticUpgrades {
+			nextRun, err := buildManualUpgradeSchedule(cmd, currentUpgradeScheduling.scheduleDate,
+				currentUpgradeScheduling.scheduleTime)
+			if err != nil {
+				return err
+			}
+			currentUpgradeScheduling.nextRun = nextRun
+		} else {
+			schedule, err := buildAutomaticUpgradeSchedule(cmd, currentUpgradeScheduling.schedule)
+			if err != nil {
+				return err
+			}
+			currentUpgradeScheduling.schedule = schedule
+		}
+	}
+
+	// Version
+	availableUpgrades, version, err := buildVersion(r, cmd, cluster, args.version,
+		currentUpgradeScheduling.automaticUpgrades)
+	if err != nil {
+		return err
+	}
+	if len(availableUpgrades) == 0 {
+		r.Reporter.Warnf("There are no available upgrades")
+		return nil
+	}
+	if !currentUpgradeScheduling.automaticUpgrades {
+		err = r.OCMClient.CheckUpgradeClusterVersion(availableUpgrades, version, cluster)
+		if err != nil {
+			return fmt.Errorf("%v", err)
+		}
 	}
 
 	// if cluster is sts validate roles are compatible with upgrade version
@@ -175,45 +318,87 @@ func run(cmd *cobra.Command, _ []string) {
 		checkSTSRolesCompatibility(r, cluster, mode, version, clusterKey)
 	}
 
-	version, err = ocm.CheckAndParseVersion(availableUpgrades, version)
-	if err != nil {
-		r.Reporter.Errorf("Error parsing version to upgrade to")
-		os.Exit(1)
-	}
-
 	// Compute drain grace period config
 	clusterSpec := buildNodeDrainGracePeriod(r, cmd, cluster)
 
-	if !confirm.Confirm("upgrade cluster to version '%s'", version) {
-		os.Exit(0)
+	// Validate version
+	if !currentUpgradeScheduling.automaticUpgrades {
+		version, err = ocm.CheckAndParseVersion(availableUpgrades, version)
+		if err != nil {
+			return fmt.Errorf("Error parsing version to upgrade to")
+		}
+
+		if r.Reporter.IsTerminal() && !confirm.Confirm("upgrade cluster to version '%s'", version) {
+			os.Exit(0)
+		}
+	} else {
+		if r.Reporter.IsTerminal() && !confirm.Confirm("schedule automatic cluster upgrades at '%s'",
+			currentUpgradeScheduling.schedule) {
+			os.Exit(0)
+		}
 	}
 
+	// Create policy upgrade
 	if isHypershift {
-		err = createUpgradePolicyHypershift(r, cmd, clusterKey, cluster, version, scheduleDate, scheduleTime)
+		err = createUpgradePolicyHypershift(r, clusterKey, cluster, version, currentUpgradeScheduling)
 	} else {
-		err = createUpgradePolicyClassic(r, cmd, clusterKey, cluster, version, scheduleDate, scheduleTime)
+		err = createUpgradePolicyClassic(r, cmd, clusterKey, cluster, version, currentUpgradeScheduling.scheduleDate,
+			currentUpgradeScheduling.scheduleTime)
 	}
 	if err != nil {
-		r.Reporter.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
 	}
 
 	// Update cluster with grace period configuration
 	err = r.OCMClient.UpdateCluster(cluster.ID(), r.Creator, clusterSpec)
 	if err != nil {
-		r.Reporter.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
 	}
 
 	r.Reporter.Infof("Upgrade successfully scheduled for cluster '%s'", clusterKey)
+	return nil
 }
 
-func createUpgradePolicyHypershift(r *rosa.Runtime, cmd *cobra.Command, clusterKey string,
-	cluster *cmv1.Cluster, version string, scheduleDate string, scheduleTime string) error {
-	upgradePolicyBuilder := cmv1.NewControlPlaneUpgradePolicy().ScheduleType("manual").
-		UpgradeType("ControlPlane").Version(version)
-	nextRun := buildUpgradeSchedule(r, cmd, scheduleDate, scheduleTime)
-	upgradePolicyBuilder = upgradePolicyBuilder.NextRun(nextRun)
+func buildAutomaticUpgradeSchedule(cmd *cobra.Command, schedule string) (string, error) {
+	// Check automatic upgrade scheduling
+	cronParser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	var err error
+	if schedule != "" {
+		_, err = cronParser.Parse(fmt.Sprintf("CRON_TZ=UTC %s", schedule))
+		if err != nil {
+			return schedule, fmt.Errorf("Schedule '%s' is not a valid cron expression", schedule)
+		}
+	}
+	if interactive.Enabled() {
+		schedule, err = interactive.GetString(interactive.Input{
+			Question: "Please input desired automatic schedule with a cron expression",
+			Help:     cmd.Flags().Lookup("schedule").Usage,
+			Default:  schedule,
+			Required: true,
+		})
+		if err != nil {
+			return schedule, fmt.Errorf("Expected a valid automatic schedule: %s", err)
+		}
+		_, err = cronParser.Parse(fmt.Sprintf("CRON_TZ=UTC %s", schedule))
+		if err != nil {
+			return schedule, fmt.Errorf("Schedule '%s' is not a valid cron expression", schedule)
+		}
+	}
+
+	return schedule, nil
+}
+
+func createUpgradePolicyHypershift(r *rosa.Runtime, clusterKey string,
+	cluster *cmv1.Cluster, version string, currentScheduling upgradeScheduling) error {
+	upgradePolicyBuilder := cmv1.NewControlPlaneUpgradePolicy().UpgradeType("ControlPlane")
+	if currentScheduling.automaticUpgrades {
+		upgradePolicyBuilder = upgradePolicyBuilder.ScheduleType("automatic").
+			Schedule(currentScheduling.schedule).EnableMinorVersionUpgrades(currentScheduling.allowMinorVersionUpdates)
+	} else {
+		upgradePolicyBuilder = upgradePolicyBuilder.ScheduleType("manual").Version(version)
+		upgradePolicyBuilder = upgradePolicyBuilder.NextRun(currentScheduling.nextRun)
+	}
+
 	upgradePolicy, err := upgradePolicyBuilder.Build()
 	if err != nil {
 		return err
@@ -244,7 +429,10 @@ func createUpgradePolicyClassic(r *rosa.Runtime, cmd *cobra.Command, clusterKey 
 		return err
 	}
 
-	nextRun := buildUpgradeSchedule(r, cmd, scheduleDate, scheduleTime)
+	nextRun, err := buildManualUpgradeSchedule(cmd, scheduleDate, scheduleTime)
+	if err != nil {
+		return err
+	}
 	upgradePolicyBuilder = upgradePolicyBuilder.NextRun(nextRun)
 	upgradePolicy, err = upgradePolicyBuilder.Build()
 	if err != nil {
@@ -257,17 +445,16 @@ func createUpgradePolicyClassic(r *rosa.Runtime, cmd *cobra.Command, clusterKey 
 	return nil
 }
 
-func buildVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, version string) ([]string, string) {
+func buildVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster,
+	version string, isAutomaticUpgrade bool) ([]string, string, error) {
 	availableUpgrades, err := r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
 	if err != nil {
-		r.Reporter.Errorf("Failed to find available upgrades: %v", err)
-		os.Exit(1)
+		return availableUpgrades, version, fmt.Errorf("Failed to find available upgrades: %v", err)
 	}
 	if len(availableUpgrades) == 0 {
-		r.Reporter.Warnf("There are no available upgrades")
-		os.Exit(0)
+		return availableUpgrades, version, nil
 	}
-	if version == "" || interactive.Enabled() {
+	if !isAutomaticUpgrade && (version == "" || interactive.Enabled()) {
 		if version == "" {
 			version = availableUpgrades[0]
 		}
@@ -279,11 +466,10 @@ func buildVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, ve
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid version to upgrade to: %s", err)
-			os.Exit(1)
+			return availableUpgrades, version, fmt.Errorf("Expected a valid version to upgrade to: %s", err)
 		}
 	}
-	return availableUpgrades, version
+	return availableUpgrades, version, nil
 }
 
 func setMode(r *rosa.Runtime, cmd *cobra.Command) string {
@@ -302,36 +488,23 @@ func setMode(r *rosa.Runtime, cmd *cobra.Command) string {
 	return mode
 }
 
-func checkExistingScheduledUpgrade(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string) {
+func checkExistingScheduledUpgrade(r *rosa.Runtime, cluster *cmv1.Cluster,
+	clusterKey string) (*cmv1.UpgradePolicy, *cmv1.UpgradePolicyState, error) {
 	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		return nil, nil, fmt.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 	}
-	if scheduledUpgrade != nil {
-		r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
-			upgradeState.Value(),
-			scheduledUpgrade.Version(),
-			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
-		)
-		os.Exit(0)
-	}
+
+	return scheduledUpgrade, upgradeState, nil
 }
 
-func checkExistingScheduledUpgradeHypershift(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string) {
+func checkExistingScheduledUpgradeHypershift(r *rosa.Runtime, cluster *cmv1.Cluster,
+	clusterKey string) (*cmv1.ControlPlaneUpgradePolicy, error) {
 	scheduledUpgrade, err := r.OCMClient.GetControlPlaneScheduledUpgrade(cluster.ID())
 	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled control plane upgrades for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		return nil, fmt.Errorf("Failed to get scheduled control plane upgrades for cluster '%s': %v", clusterKey, err)
 	}
-	if scheduledUpgrade != nil {
-		r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
-			scheduledUpgrade.State().Value(),
-			scheduledUpgrade.Version(),
-			scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
-		)
-		os.Exit(0)
-	}
+	return scheduledUpgrade, nil
 }
 
 func checkSTSRolesCompatibility(r *rosa.Runtime, cluster *cmv1.Cluster, mode string,
@@ -356,7 +529,8 @@ func checkSTSRolesCompatibility(r *rosa.Runtime, cluster *cmv1.Cluster, mode str
 	}
 }
 
-func buildUpgradeSchedule(r *rosa.Runtime, cmd *cobra.Command, scheduleDate string, scheduleTime string) time.Time {
+func buildManualUpgradeSchedule(cmd *cobra.Command, scheduleDate string,
+	scheduleTime string) (time.Time, error) {
 	// Set the default next run within the next 10 minutes
 	now := time.Now().UTC().Add(time.Minute * 10)
 	if scheduleDate == "" {
@@ -370,9 +544,8 @@ func buildUpgradeSchedule(r *rosa.Runtime, cmd *cobra.Command, scheduleDate stri
 		// If datetimes are set, use them in the interactive form, otherwise fallback to 'now'
 		scheduleParsed, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%s %s", scheduleDate, scheduleTime))
 		if err != nil {
-			r.Reporter.Errorf("Schedule date should use the format 'yyyy-mm-dd'\n" +
+			return now, fmt.Errorf("Schedule date should use the format 'yyyy-mm-dd'\n" +
 				"   Schedule time should use the format 'HH:mm'")
-			os.Exit(1)
 		}
 		if scheduleParsed.IsZero() {
 			scheduleParsed = now
@@ -387,13 +560,11 @@ func buildUpgradeSchedule(r *rosa.Runtime, cmd *cobra.Command, scheduleDate stri
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid date: %s", err)
-			os.Exit(1)
+			return now, fmt.Errorf("Expected a valid date: %s", err)
 		}
 		_, err = time.Parse("2006-01-02", scheduleDate)
 		if err != nil {
-			r.Reporter.Errorf("Date format '%s' invalid", scheduleDate)
-			os.Exit(1)
+			return now, fmt.Errorf("Date format '%s' invalid", scheduleDate)
 		}
 
 		scheduleTime, err = interactive.GetString(interactive.Input{
@@ -403,24 +574,21 @@ func buildUpgradeSchedule(r *rosa.Runtime, cmd *cobra.Command, scheduleDate stri
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid time: %s", err)
-			os.Exit(1)
+			return now, fmt.Errorf("Expected a valid time: %s", err)
 		}
 		_, err = time.Parse("15:04", scheduleTime)
 		if err != nil {
-			r.Reporter.Errorf("Time format '%s' invalid", scheduleTime)
-			os.Exit(1)
+			return now, fmt.Errorf("Time format '%s' invalid", scheduleTime)
 		}
 	}
 
 	// Parse next run to time.Time
 	nextRun, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%s %s", scheduleDate, scheduleTime))
 	if err != nil {
-		r.Reporter.Errorf("Schedule date should use the format 'yyyy-mm-dd'\n" +
+		return now, fmt.Errorf("Schedule date should use the format 'yyyy-mm-dd'\n" +
 			"   Schedule time should use the format 'HH:mm'")
-		os.Exit(1)
 	}
-	return nextRun
+	return nextRun, nil
 }
 
 func buildNodeDrainGracePeriod(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster) ocm.Spec {
