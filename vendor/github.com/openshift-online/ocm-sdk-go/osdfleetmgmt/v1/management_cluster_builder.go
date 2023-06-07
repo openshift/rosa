@@ -19,6 +19,10 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
+import (
+	time "time"
+)
+
 // ManagementClusterBuilder contains the data and logic needed to build 'management_cluster' objects.
 //
 // Definition of an _OpenShift_ cluster.
@@ -67,10 +71,14 @@ type ManagementClusterBuilder struct {
 	dns                        *DNSBuilder
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReferenceBuilder
+	creationTimestamp          time.Time
+	labelsReference            *LabelReferenceListBuilder
 	name                       string
 	parent                     *ManagementClusterParentBuilder
 	region                     string
+	sector                     string
 	status                     string
+	updateTimestamp            time.Time
 }
 
 // NewManagementCluster creates a new builder of 'management_cluster' objects.
@@ -136,10 +144,24 @@ func (b *ManagementClusterBuilder) ClusterManagementReference(value *ClusterMana
 	return b
 }
 
+// CreationTimestamp sets the value of the 'creation_timestamp' attribute to the given value.
+func (b *ManagementClusterBuilder) CreationTimestamp(value time.Time) *ManagementClusterBuilder {
+	b.creationTimestamp = value
+	b.bitmap_ |= 64
+	return b
+}
+
+// LabelsReference sets the value of the 'labels_reference' attribute to the given values.
+func (b *ManagementClusterBuilder) LabelsReference(value *LabelReferenceListBuilder) *ManagementClusterBuilder {
+	b.labelsReference = value
+	b.bitmap_ |= 128
+	return b
+}
+
 // Name sets the value of the 'name' attribute to the given value.
 func (b *ManagementClusterBuilder) Name(value string) *ManagementClusterBuilder {
 	b.name = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -149,9 +171,9 @@ func (b *ManagementClusterBuilder) Name(value string) *ManagementClusterBuilder 
 func (b *ManagementClusterBuilder) Parent(value *ManagementClusterParentBuilder) *ManagementClusterBuilder {
 	b.parent = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -159,14 +181,28 @@ func (b *ManagementClusterBuilder) Parent(value *ManagementClusterParentBuilder)
 // Region sets the value of the 'region' attribute to the given value.
 func (b *ManagementClusterBuilder) Region(value string) *ManagementClusterBuilder {
 	b.region = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 1024
+	return b
+}
+
+// Sector sets the value of the 'sector' attribute to the given value.
+func (b *ManagementClusterBuilder) Sector(value string) *ManagementClusterBuilder {
+	b.sector = value
+	b.bitmap_ |= 2048
 	return b
 }
 
 // Status sets the value of the 'status' attribute to the given value.
 func (b *ManagementClusterBuilder) Status(value string) *ManagementClusterBuilder {
 	b.status = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 4096
+	return b
+}
+
+// UpdateTimestamp sets the value of the 'update_timestamp' attribute to the given value.
+func (b *ManagementClusterBuilder) UpdateTimestamp(value time.Time) *ManagementClusterBuilder {
+	b.updateTimestamp = value
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -189,6 +225,12 @@ func (b *ManagementClusterBuilder) Copy(object *ManagementCluster) *ManagementCl
 	} else {
 		b.clusterManagementReference = nil
 	}
+	b.creationTimestamp = object.creationTimestamp
+	if object.labelsReference != nil {
+		b.labelsReference = NewLabelReferenceList().Copy(object.labelsReference)
+	} else {
+		b.labelsReference = nil
+	}
 	b.name = object.name
 	if object.parent != nil {
 		b.parent = NewManagementClusterParent().Copy(object.parent)
@@ -196,7 +238,9 @@ func (b *ManagementClusterBuilder) Copy(object *ManagementCluster) *ManagementCl
 		b.parent = nil
 	}
 	b.region = object.region
+	b.sector = object.sector
 	b.status = object.status
+	b.updateTimestamp = object.updateTimestamp
 	return b
 }
 
@@ -219,6 +263,13 @@ func (b *ManagementClusterBuilder) Build() (object *ManagementCluster, err error
 			return
 		}
 	}
+	object.creationTimestamp = b.creationTimestamp
+	if b.labelsReference != nil {
+		object.labelsReference, err = b.labelsReference.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.name = b.name
 	if b.parent != nil {
 		object.parent, err = b.parent.Build()
@@ -227,6 +278,8 @@ func (b *ManagementClusterBuilder) Build() (object *ManagementCluster, err error
 		}
 	}
 	object.region = b.region
+	object.sector = b.sector
 	object.status = b.status
+	object.updateTimestamp = b.updateTimestamp
 	return
 }

@@ -71,6 +71,16 @@ func (c *Client) AWSInquiries() *AWSInquiriesClient {
 	)
 }
 
+// DNSDomains returns the target 'DNS_domains' resource.
+//
+// Reference to the resource that manages dns domains
+func (c *Client) DNSDomains() *DNSDomainsClient {
+	return NewDNSDomainsClient(
+		c.transport,
+		path.Join(c.path, "dns_domains"),
+	)
+}
+
 // GCPInquiries returns the target 'GCP_inquiries' resource.
 //
 // Reference to the resource that manages the collection of gcp inquiries.

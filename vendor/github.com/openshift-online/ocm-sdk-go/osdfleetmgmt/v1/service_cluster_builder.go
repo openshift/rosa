@@ -67,8 +67,11 @@ type ServiceClusterBuilder struct {
 	dns                        *DNSBuilder
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReferenceBuilder
+	labelsReference            *LabelReferenceListBuilder
 	name                       string
+	provisionShardsReference   *ProvisionShardsReferenceBuilder
 	region                     string
+	sector                     string
 	status                     string
 }
 
@@ -135,24 +138,51 @@ func (b *ServiceClusterBuilder) ClusterManagementReference(value *ClusterManagem
 	return b
 }
 
+// LabelsReference sets the value of the 'labels_reference' attribute to the given values.
+func (b *ServiceClusterBuilder) LabelsReference(value *LabelReferenceListBuilder) *ServiceClusterBuilder {
+	b.labelsReference = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // Name sets the value of the 'name' attribute to the given value.
 func (b *ServiceClusterBuilder) Name(value string) *ServiceClusterBuilder {
 	b.name = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
+	return b
+}
+
+// ProvisionShardsReference sets the value of the 'provision_shards_reference' attribute to the given value.
+//
+// Provision Shards Reference of the cluster.
+func (b *ServiceClusterBuilder) ProvisionShardsReference(value *ProvisionShardsReferenceBuilder) *ServiceClusterBuilder {
+	b.provisionShardsReference = value
+	if value != nil {
+		b.bitmap_ |= 256
+	} else {
+		b.bitmap_ &^= 256
+	}
 	return b
 }
 
 // Region sets the value of the 'region' attribute to the given value.
 func (b *ServiceClusterBuilder) Region(value string) *ServiceClusterBuilder {
 	b.region = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 512
+	return b
+}
+
+// Sector sets the value of the 'sector' attribute to the given value.
+func (b *ServiceClusterBuilder) Sector(value string) *ServiceClusterBuilder {
+	b.sector = value
+	b.bitmap_ |= 1024
 	return b
 }
 
 // Status sets the value of the 'status' attribute to the given value.
 func (b *ServiceClusterBuilder) Status(value string) *ServiceClusterBuilder {
 	b.status = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -175,8 +205,19 @@ func (b *ServiceClusterBuilder) Copy(object *ServiceCluster) *ServiceClusterBuil
 	} else {
 		b.clusterManagementReference = nil
 	}
+	if object.labelsReference != nil {
+		b.labelsReference = NewLabelReferenceList().Copy(object.labelsReference)
+	} else {
+		b.labelsReference = nil
+	}
 	b.name = object.name
+	if object.provisionShardsReference != nil {
+		b.provisionShardsReference = NewProvisionShardsReference().Copy(object.provisionShardsReference)
+	} else {
+		b.provisionShardsReference = nil
+	}
 	b.region = object.region
+	b.sector = object.sector
 	b.status = object.status
 	return b
 }
@@ -200,8 +241,21 @@ func (b *ServiceClusterBuilder) Build() (object *ServiceCluster, err error) {
 			return
 		}
 	}
+	if b.labelsReference != nil {
+		object.labelsReference, err = b.labelsReference.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.name = b.name
+	if b.provisionShardsReference != nil {
+		object.provisionShardsReference, err = b.provisionShardsReference.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.region = b.region
+	object.sector = b.sector
 	object.status = b.status
 	return
 }

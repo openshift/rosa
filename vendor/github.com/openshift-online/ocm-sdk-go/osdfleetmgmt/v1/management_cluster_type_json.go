@@ -21,6 +21,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
 import (
 	"io"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -97,11 +98,32 @@ func writeManagementCluster(object *ManagementCluster, stream *jsoniter.Stream) 
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("creation_timestamp")
+		stream.WriteString((object.creationTimestamp).Format(time.RFC3339))
+		count++
+	}
+	present_ = object.bitmap_&128 != 0 && object.labelsReference != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("labels_reference")
+		stream.WriteObjectStart()
+		stream.WriteObjectField("items")
+		writeLabelReferenceList(object.labelsReference.items, stream)
+		stream.WriteObjectEnd()
+		count++
+	}
+	present_ = object.bitmap_&256 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("name")
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0 && object.parent != nil
+	present_ = object.bitmap_&512 != 0 && object.parent != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -110,7 +132,7 @@ func writeManagementCluster(object *ManagementCluster, stream *jsoniter.Stream) 
 		writeManagementClusterParent(object.parent, stream)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -119,13 +141,31 @@ func writeManagementCluster(object *ManagementCluster, stream *jsoniter.Stream) 
 		stream.WriteString(object.region)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&2048 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("sector")
+		stream.WriteString(object.sector)
+		count++
+	}
+	present_ = object.bitmap_&4096 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("status")
 		stream.WriteString(object.status)
+		count++
+	}
+	present_ = object.bitmap_&8192 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("update_timestamp")
+		stream.WriteString((object.updateTimestamp).Format(time.RFC3339))
 	}
 	stream.WriteObjectEnd()
 }
@@ -174,22 +214,63 @@ func readManagementCluster(iterator *jsoniter.Iterator) *ManagementCluster {
 			value := readClusterManagementReference(iterator)
 			object.clusterManagementReference = value
 			object.bitmap_ |= 32
+		case "creation_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.creationTimestamp = value
+			object.bitmap_ |= 64
+		case "labels_reference":
+			value := &LabelReferenceList{}
+			for {
+				field := iterator.ReadObject()
+				if field == "" {
+					break
+				}
+				switch field {
+				case "kind":
+					text := iterator.ReadString()
+					value.link = text == LabelReferenceListLinkKind
+				case "href":
+					value.href = iterator.ReadString()
+				case "items":
+					value.items = readLabelReferenceList(iterator)
+				default:
+					iterator.ReadAny()
+				}
+			}
+			object.labelsReference = value
+			object.bitmap_ |= 128
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 256
 		case "parent":
 			value := readManagementClusterParent(iterator)
 			object.parent = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 512
 		case "region":
 			value := iterator.ReadString()
 			object.region = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 1024
+		case "sector":
+			value := iterator.ReadString()
+			object.sector = value
+			object.bitmap_ |= 2048
 		case "status":
 			value := iterator.ReadString()
 			object.status = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 4096
+		case "update_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.updateTimestamp = value
+			object.bitmap_ |= 8192
 		default:
 			iterator.ReadAny()
 		}
