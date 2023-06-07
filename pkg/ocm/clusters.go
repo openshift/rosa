@@ -414,6 +414,24 @@ func (c *Client) HasAClusterUsingOperatorRolesPrefix(prefix string) (bool, error
 	return false, nil
 }
 
+func (c *Client) HasAClusterUsingOidcProvider(
+	issuerUrl string, curAccountId string) (bool, error) {
+	query := fmt.Sprintf(
+		"aws.sts.oidc_endpoint_url = '%s' AND aws.sts.role_arn like '%%%s%%'",
+		issuerUrl, curAccountId,
+	)
+	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
+	page := 1
+	response, err := request.Page(page).Send()
+	if err != nil {
+		return false, err
+	}
+	if response.Total() > 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (c *Client) HasAClusterUsingOidcEndpointUrl(issuerUrl string) (bool, error) {
 	query := fmt.Sprintf(
 		"aws.sts.oidc_endpoint_url = '%s'", issuerUrl,
