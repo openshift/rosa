@@ -26,26 +26,25 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"time"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// ManagementClusterClient is the client of the 'management_cluster' resource.
+// LabelClient is the client of the 'label' resource.
 //
-// Manages a specific management cluster.
-type ManagementClusterClient struct {
+// Manages a specific label.
+type LabelClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewManagementClusterClient creates a new client for the 'management_cluster'
+// NewLabelClient creates a new client for the 'label'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewManagementClusterClient(transport http.RoundTripper, path string) *ManagementClusterClient {
-	return &ManagementClusterClient{
+func NewLabelClient(transport http.RoundTripper, path string) *LabelClient {
+	return &LabelClient{
 		transport: transport,
 		path:      path,
 	}
@@ -53,9 +52,9 @@ func NewManagementClusterClient(transport http.RoundTripper, path string) *Manag
 
 // Delete creates a request for the 'delete' method.
 //
-// Deletes the management cluster.
-func (c *ManagementClusterClient) Delete() *ManagementClusterDeleteRequest {
-	return &ManagementClusterDeleteRequest{
+// Deletes the label.
+func (c *LabelClient) Delete() *LabelDeleteRequest {
+	return &LabelDeleteRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -63,9 +62,9 @@ func (c *ManagementClusterClient) Delete() *ManagementClusterDeleteRequest {
 
 // Get creates a request for the 'get' method.
 //
-// Retrieves the details of the management cluster.
-func (c *ManagementClusterClient) Get() *ManagementClusterGetRequest {
-	return &ManagementClusterGetRequest{
+// Retrieves the details of the cluster.
+func (c *LabelClient) Get() *LabelGetRequest {
+	return &LabelGetRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
@@ -73,53 +72,43 @@ func (c *ManagementClusterClient) Get() *ManagementClusterGetRequest {
 
 // Post creates a request for the 'post' method.
 //
-// Updates the management cluster.
-func (c *ManagementClusterClient) Post() *ManagementClusterPostRequest {
-	return &ManagementClusterPostRequest{
+// Creates the label.
+func (c *LabelClient) Post() *LabelPostRequest {
+	return &LabelPostRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// Labels returns the target 'labels' resource.
-//
-// Reference to the resource that manages the collection of label
-func (c *ManagementClusterClient) Labels() *LabelsClient {
-	return NewLabelsClient(
-		c.transport,
-		path.Join(c.path, "labels"),
-	)
-}
-
-// ManagementClusterPollRequest is the request for the Poll method.
-type ManagementClusterPollRequest struct {
-	request    *ManagementClusterGetRequest
+// LabelPollRequest is the request for the Poll method.
+type LabelPollRequest struct {
+	request    *LabelGetRequest
 	interval   time.Duration
 	statuses   []int
 	predicates []func(interface{}) bool
 }
 
 // Parameter adds a query parameter to all the requests that will be used to retrieve the object.
-func (r *ManagementClusterPollRequest) Parameter(name string, value interface{}) *ManagementClusterPollRequest {
+func (r *LabelPollRequest) Parameter(name string, value interface{}) *LabelPollRequest {
 	r.request.Parameter(name, value)
 	return r
 }
 
 // Header adds a request header to all the requests that will be used to retrieve the object.
-func (r *ManagementClusterPollRequest) Header(name string, value interface{}) *ManagementClusterPollRequest {
+func (r *LabelPollRequest) Header(name string, value interface{}) *LabelPollRequest {
 	r.request.Header(name, value)
 	return r
 }
 
 // Interval sets the polling interval. This parameter is mandatory and must be greater than zero.
-func (r *ManagementClusterPollRequest) Interval(value time.Duration) *ManagementClusterPollRequest {
+func (r *LabelPollRequest) Interval(value time.Duration) *LabelPollRequest {
 	r.interval = value
 	return r
 }
 
 // Status set the expected status of the response. Multiple values can be set calling this method
 // multiple times. The response will be considered successful if the status is any of those values.
-func (r *ManagementClusterPollRequest) Status(value int) *ManagementClusterPollRequest {
+func (r *LabelPollRequest) Status(value int) *LabelPollRequest {
 	r.statuses = append(r.statuses, value)
 	return r
 }
@@ -127,9 +116,9 @@ func (r *ManagementClusterPollRequest) Status(value int) *ManagementClusterPollR
 // Predicate adds a predicate that the response should satisfy be considered successful. Multiple
 // predicates can be set calling this method multiple times. The response will be considered successful
 // if all the predicates are satisfied.
-func (r *ManagementClusterPollRequest) Predicate(value func(*ManagementClusterGetResponse) bool) *ManagementClusterPollRequest {
+func (r *LabelPollRequest) Predicate(value func(*LabelGetResponse) bool) *LabelPollRequest {
 	r.predicates = append(r.predicates, func(response interface{}) bool {
-		return value(response.(*ManagementClusterGetResponse))
+		return value(response.(*LabelGetResponse))
 	})
 	return r
 }
@@ -139,11 +128,11 @@ func (r *ManagementClusterPollRequest) Predicate(value func(*ManagementClusterGe
 // method return nil.
 //
 // The context must have a timeout or deadline, otherwise this method will immediately return an error.
-func (r *ManagementClusterPollRequest) StartContext(ctx context.Context) (response *ManagementClusterPollResponse, err error) {
+func (r *LabelPollRequest) StartContext(ctx context.Context) (response *LabelPollResponse, err error) {
 	result, err := helpers.PollContext(ctx, r.interval, r.statuses, r.predicates, r.task)
 	if result != nil {
-		response = &ManagementClusterPollResponse{
-			response: result.(*ManagementClusterGetResponse),
+		response = &LabelPollResponse{
+			response: result.(*LabelGetResponse),
 		}
 	}
 	return
@@ -151,7 +140,7 @@ func (r *ManagementClusterPollRequest) StartContext(ctx context.Context) (respon
 
 // task adapts the types of the request/response types so that they can be used with the generic
 // polling function from the helpers package.
-func (r *ManagementClusterPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
+func (r *LabelPollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
 	response, err := r.request.SendContext(ctx)
 	if response != nil {
 		status = response.Status()
@@ -160,13 +149,13 @@ func (r *ManagementClusterPollRequest) task(ctx context.Context) (status int, re
 	return
 }
 
-// ManagementClusterPollResponse is the response for the Poll method.
-type ManagementClusterPollResponse struct {
-	response *ManagementClusterGetResponse
+// LabelPollResponse is the response for the Poll method.
+type LabelPollResponse struct {
+	response *LabelGetResponse
 }
 
 // Status returns the response status code.
-func (r *ManagementClusterPollResponse) Status() int {
+func (r *LabelPollResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -174,7 +163,7 @@ func (r *ManagementClusterPollResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ManagementClusterPollResponse) Header() http.Header {
+func (r *LabelPollResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -182,7 +171,7 @@ func (r *ManagementClusterPollResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ManagementClusterPollResponse) Error() *errors.Error {
+func (r *LabelPollResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -190,26 +179,26 @@ func (r *ManagementClusterPollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *ManagementClusterPollResponse) Body() *ManagementCluster {
+func (r *LabelPollResponse) Body() *Label {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *ManagementClusterPollResponse) GetBody() (value *ManagementCluster, ok bool) {
+func (r *LabelPollResponse) GetBody() (value *Label, ok bool) {
 	return r.response.GetBody()
 }
 
 // Poll creates a request to repeatedly retrieve the object till the response has one of a given set
 // of states and satisfies a set of predicates.
-func (c *ManagementClusterClient) Poll() *ManagementClusterPollRequest {
-	return &ManagementClusterPollRequest{
+func (c *LabelClient) Poll() *LabelPollRequest {
+	return &LabelPollRequest{
 		request: c.Get(),
 	}
 }
 
-// ManagementClusterDeleteRequest is the request for the 'delete' method.
-type ManagementClusterDeleteRequest struct {
+// LabelDeleteRequest is the request for the 'delete' method.
+type LabelDeleteRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -217,20 +206,20 @@ type ManagementClusterDeleteRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *ManagementClusterDeleteRequest) Parameter(name string, value interface{}) *ManagementClusterDeleteRequest {
+func (r *LabelDeleteRequest) Parameter(name string, value interface{}) *LabelDeleteRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *ManagementClusterDeleteRequest) Header(name string, value interface{}) *ManagementClusterDeleteRequest {
+func (r *LabelDeleteRequest) Header(name string, value interface{}) *LabelDeleteRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *ManagementClusterDeleteRequest) Impersonate(user string) *ManagementClusterDeleteRequest {
+func (r *LabelDeleteRequest) Impersonate(user string) *LabelDeleteRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -239,12 +228,12 @@ func (r *ManagementClusterDeleteRequest) Impersonate(user string) *ManagementClu
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *ManagementClusterDeleteRequest) Send() (result *ManagementClusterDeleteResponse, err error) {
+func (r *LabelDeleteRequest) Send() (result *LabelDeleteResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *ManagementClusterDeleteRequest) SendContext(ctx context.Context) (result *ManagementClusterDeleteResponse, err error) {
+func (r *LabelDeleteRequest) SendContext(ctx context.Context) (result *LabelDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -264,7 +253,7 @@ func (r *ManagementClusterDeleteRequest) SendContext(ctx context.Context) (resul
 		return
 	}
 	defer response.Body.Close()
-	result = &ManagementClusterDeleteResponse{}
+	result = &LabelDeleteResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -284,15 +273,15 @@ func (r *ManagementClusterDeleteRequest) SendContext(ctx context.Context) (resul
 	return
 }
 
-// ManagementClusterDeleteResponse is the response for the 'delete' method.
-type ManagementClusterDeleteResponse struct {
+// LabelDeleteResponse is the response for the 'delete' method.
+type LabelDeleteResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
 }
 
 // Status returns the response status code.
-func (r *ManagementClusterDeleteResponse) Status() int {
+func (r *LabelDeleteResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -300,7 +289,7 @@ func (r *ManagementClusterDeleteResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ManagementClusterDeleteResponse) Header() http.Header {
+func (r *LabelDeleteResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -308,15 +297,15 @@ func (r *ManagementClusterDeleteResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ManagementClusterDeleteResponse) Error() *errors.Error {
+func (r *LabelDeleteResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
 	return r.err
 }
 
-// ManagementClusterGetRequest is the request for the 'get' method.
-type ManagementClusterGetRequest struct {
+// LabelGetRequest is the request for the 'get' method.
+type LabelGetRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -324,20 +313,20 @@ type ManagementClusterGetRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *ManagementClusterGetRequest) Parameter(name string, value interface{}) *ManagementClusterGetRequest {
+func (r *LabelGetRequest) Parameter(name string, value interface{}) *LabelGetRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *ManagementClusterGetRequest) Header(name string, value interface{}) *ManagementClusterGetRequest {
+func (r *LabelGetRequest) Header(name string, value interface{}) *LabelGetRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *ManagementClusterGetRequest) Impersonate(user string) *ManagementClusterGetRequest {
+func (r *LabelGetRequest) Impersonate(user string) *LabelGetRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -346,12 +335,12 @@ func (r *ManagementClusterGetRequest) Impersonate(user string) *ManagementCluste
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *ManagementClusterGetRequest) Send() (result *ManagementClusterGetResponse, err error) {
+func (r *LabelGetRequest) Send() (result *LabelGetResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *ManagementClusterGetRequest) SendContext(ctx context.Context) (result *ManagementClusterGetResponse, err error) {
+func (r *LabelGetRequest) SendContext(ctx context.Context) (result *LabelGetResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -371,7 +360,7 @@ func (r *ManagementClusterGetRequest) SendContext(ctx context.Context) (result *
 		return
 	}
 	defer response.Body.Close()
-	result = &ManagementClusterGetResponse{}
+	result = &LabelGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -388,23 +377,23 @@ func (r *ManagementClusterGetRequest) SendContext(ctx context.Context) (result *
 		err = result.err
 		return
 	}
-	err = readManagementClusterGetResponse(result, reader)
+	err = readLabelGetResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// ManagementClusterGetResponse is the response for the 'get' method.
-type ManagementClusterGetResponse struct {
+// LabelGetResponse is the response for the 'get' method.
+type LabelGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *ManagementCluster
+	body   *Label
 }
 
 // Status returns the response status code.
-func (r *ManagementClusterGetResponse) Status() int {
+func (r *LabelGetResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -412,7 +401,7 @@ func (r *ManagementClusterGetResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ManagementClusterGetResponse) Header() http.Header {
+func (r *LabelGetResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -420,7 +409,7 @@ func (r *ManagementClusterGetResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ManagementClusterGetResponse) Error() *errors.Error {
+func (r *LabelGetResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -428,7 +417,7 @@ func (r *ManagementClusterGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *ManagementClusterGetResponse) Body() *ManagementCluster {
+func (r *LabelGetResponse) Body() *Label {
 	if r == nil {
 		return nil
 	}
@@ -437,7 +426,7 @@ func (r *ManagementClusterGetResponse) Body() *ManagementCluster {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *ManagementClusterGetResponse) GetBody() (value *ManagementCluster, ok bool) {
+func (r *LabelGetResponse) GetBody() (value *Label, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body
@@ -445,36 +434,36 @@ func (r *ManagementClusterGetResponse) GetBody() (value *ManagementCluster, ok b
 	return
 }
 
-// ManagementClusterPostRequest is the request for the 'post' method.
-type ManagementClusterPostRequest struct {
+// LabelPostRequest is the request for the 'post' method.
+type LabelPostRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
 	header    http.Header
-	request   *ManagementClusterRequestPayload
+	request   *LabelRequestPayload
 }
 
 // Parameter adds a query parameter.
-func (r *ManagementClusterPostRequest) Parameter(name string, value interface{}) *ManagementClusterPostRequest {
+func (r *LabelPostRequest) Parameter(name string, value interface{}) *LabelPostRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *ManagementClusterPostRequest) Header(name string, value interface{}) *ManagementClusterPostRequest {
+func (r *LabelPostRequest) Header(name string, value interface{}) *LabelPostRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *ManagementClusterPostRequest) Impersonate(user string) *ManagementClusterPostRequest {
+func (r *LabelPostRequest) Impersonate(user string) *LabelPostRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
 
 // Request sets the value of the 'request' parameter.
-func (r *ManagementClusterPostRequest) Request(value *ManagementClusterRequestPayload) *ManagementClusterPostRequest {
+func (r *LabelPostRequest) Request(value *LabelRequestPayload) *LabelPostRequest {
 	r.request = value
 	return r
 }
@@ -483,16 +472,16 @@ func (r *ManagementClusterPostRequest) Request(value *ManagementClusterRequestPa
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *ManagementClusterPostRequest) Send() (result *ManagementClusterPostResponse, err error) {
+func (r *LabelPostRequest) Send() (result *LabelPostResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *ManagementClusterPostRequest) SendContext(ctx context.Context) (result *ManagementClusterPostResponse, err error) {
+func (r *LabelPostRequest) SendContext(ctx context.Context) (result *LabelPostResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	buffer := &bytes.Buffer{}
-	err = writeManagementClusterPostRequest(r, buffer)
+	err = writeLabelPostRequest(r, buffer)
 	if err != nil {
 		return
 	}
@@ -514,7 +503,7 @@ func (r *ManagementClusterPostRequest) SendContext(ctx context.Context) (result 
 		return
 	}
 	defer response.Body.Close()
-	result = &ManagementClusterPostResponse{}
+	result = &LabelPostResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -531,23 +520,23 @@ func (r *ManagementClusterPostRequest) SendContext(ctx context.Context) (result 
 		err = result.err
 		return
 	}
-	err = readManagementClusterPostResponse(result, reader)
+	err = readLabelPostResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// ManagementClusterPostResponse is the response for the 'post' method.
-type ManagementClusterPostResponse struct {
+// LabelPostResponse is the response for the 'post' method.
+type LabelPostResponse struct {
 	status   int
 	header   http.Header
 	err      *errors.Error
-	response *ManagementCluster
+	response *Label
 }
 
 // Status returns the response status code.
-func (r *ManagementClusterPostResponse) Status() int {
+func (r *LabelPostResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -555,7 +544,7 @@ func (r *ManagementClusterPostResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ManagementClusterPostResponse) Header() http.Header {
+func (r *LabelPostResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -563,7 +552,7 @@ func (r *ManagementClusterPostResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ManagementClusterPostResponse) Error() *errors.Error {
+func (r *LabelPostResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -571,7 +560,7 @@ func (r *ManagementClusterPostResponse) Error() *errors.Error {
 }
 
 // Response returns the value of the 'response' parameter.
-func (r *ManagementClusterPostResponse) Response() *ManagementCluster {
+func (r *LabelPostResponse) Response() *Label {
 	if r == nil {
 		return nil
 	}
@@ -580,7 +569,7 @@ func (r *ManagementClusterPostResponse) Response() *ManagementCluster {
 
 // GetResponse returns the value of the 'response' parameter and
 // a flag indicating if the parameter has a value.
-func (r *ManagementClusterPostResponse) GetResponse() (value *ManagementCluster, ok bool) {
+func (r *LabelPostResponse) GetResponse() (value *Label, ok bool) {
 	ok = r != nil && r.response != nil
 	if ok {
 		value = r.response

@@ -92,7 +92,19 @@ func writeServiceCluster(object *ServiceCluster, stream *jsoniter.Stream) {
 		writeClusterManagementReference(object.clusterManagementReference, stream)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&64 != 0 && object.labelsReference != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("labels_reference")
+		stream.WriteObjectStart()
+		stream.WriteObjectField("items")
+		writeLabelReferenceList(object.labelsReference.items, stream)
+		stream.WriteObjectEnd()
+		count++
+	}
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -101,7 +113,16 @@ func writeServiceCluster(object *ServiceCluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&256 != 0 && object.provisionShardsReference != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("provision_shards_reference")
+		writeProvisionShardsReference(object.provisionShardsReference, stream)
+		count++
+	}
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -110,7 +131,16 @@ func writeServiceCluster(object *ServiceCluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.region)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&1024 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("sector")
+		stream.WriteString(object.sector)
+		count++
+	}
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -165,18 +195,47 @@ func readServiceCluster(iterator *jsoniter.Iterator) *ServiceCluster {
 			value := readClusterManagementReference(iterator)
 			object.clusterManagementReference = value
 			object.bitmap_ |= 32
+		case "labels_reference":
+			value := &LabelReferenceList{}
+			for {
+				field := iterator.ReadObject()
+				if field == "" {
+					break
+				}
+				switch field {
+				case "kind":
+					text := iterator.ReadString()
+					value.link = text == LabelReferenceListLinkKind
+				case "href":
+					value.href = iterator.ReadString()
+				case "items":
+					value.items = readLabelReferenceList(iterator)
+				default:
+					iterator.ReadAny()
+				}
+			}
+			object.labelsReference = value
+			object.bitmap_ |= 64
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
+		case "provision_shards_reference":
+			value := readProvisionShardsReference(iterator)
+			object.provisionShardsReference = value
+			object.bitmap_ |= 256
 		case "region":
 			value := iterator.ReadString()
 			object.region = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 512
+		case "sector":
+			value := iterator.ReadString()
+			object.sector = value
+			object.bitmap_ |= 1024
 		case "status":
 			value := iterator.ReadString()
 			object.status = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 2048
 		default:
 			iterator.ReadAny()
 		}

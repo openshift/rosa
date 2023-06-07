@@ -284,6 +284,9 @@ var pathTreeData = `{
             }
           }
         },
+        "dns_domains": {
+          "-": null
+        },
         "environment": null,
         "events": null,
         "flavours": {
@@ -340,10 +343,18 @@ var pathTreeData = `{
     "osd_fleet_mgmt": {
       "v1": {
         "management_clusters": {
-          "-": null
+          "-": {
+            "labels": {
+              "-": null
+            }
+          }
         },
         "service_clusters": {
-          "-": null
+          "-": {
+            "labels": {
+              "-": null
+            }
+          }
         }
       }
     },
