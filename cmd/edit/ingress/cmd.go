@@ -39,13 +39,16 @@ var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{3,5}$`)
 var args struct {
 	private    bool
 	labelMatch string
+	lbType     string
 }
+
+var validLbTypes = []string{"classic", "nlb"}
 
 var Cmd = &cobra.Command{
 	Use:     "ingress ID",
 	Aliases: []string{"route"},
-	Short:   "Edit the additional cluster ingress",
-	Long:    "Edit the additional non-default application router for a cluster.",
+	Short:   "Edit a cluster ingress (load balancer)",
+	Long:    "Edit a cluster ingress for a cluster.",
 	Example: `  # Make additional ingress with ID 'a1b2' private on a cluster named 'mycluster'
   rosa edit ingress --private --cluster=mycluster a1b2
 
@@ -53,7 +56,10 @@ var Cmd = &cobra.Command{
   rosa edit ingress --label-match=foo=bar --cluster=mycluster a1b2
 
   # Update the default ingress using the sub-domain identifier
-  rosa edit ingress --private=false --cluster=mycluster apps`,
+  rosa edit ingress --private=false --cluster=mycluster apps
+
+  # Update the load balancer type of the apps2 ingress 
+  rosa edit ingress --lb-type=nlb --cluster=mycluster apps2`,
 	Run: run,
 	Args: func(_ *cobra.Command, argv []string) error {
 		if len(argv) != 1 {
@@ -76,6 +82,7 @@ func shouldEnableInteractive(flagSet *pflag.FlagSet, params []string) bool {
 const (
 	privateFlag    = "private"
 	labelMatchFlag = "label-match"
+	lbTypeFlag     = "lb-type"
 )
 
 func init() {
@@ -97,6 +104,19 @@ func init() {
 		"Label match for ingress. Format should be a comma-separated list of 'key=value'. "+
 			"If no label is specified, all routes will be exposed on both routers.",
 	)
+
+	flags.StringVarP(
+		&args.lbType,
+		lbTypeFlag,
+		"",
+		"",
+		fmt.Sprintf("Type of Load Balancer. Options are %s.", strings.Join(validLbTypes, `,`)),
+	)
+	Cmd.RegisterFlagCompletionFunc("lb-type", typeCompletion)
+}
+
+func typeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return validLbTypes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -114,7 +134,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	clusterKey := r.GetClusterKey()
 
-	if !interactive.Enabled() && shouldEnableInteractive(cmd.Flags(), []string{labelMatchFlag, privateFlag}) {
+	if !interactive.Enabled() && shouldEnableInteractive(cmd.Flags(), []string{labelMatchFlag, privateFlag, lbTypeFlag}) {
 		interactive.Enable()
 	}
 
@@ -153,6 +173,28 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		private = &privArg
+	}
+
+	var lbType *string
+	if cmd.Flags().Changed(lbTypeFlag) {
+		lbType = &args.lbType
+	} else {
+		if interactive.Enabled() {
+			if lbType == nil {
+				lbType = &validLbTypes[0]
+			}
+			lbTypeArg, err := interactive.GetOption(interactive.Input{
+				Question: "Type of Load Balancer",
+				Options:  validLbTypes,
+				Required: true,
+				Default:  *lbType,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid Load Balancer type: %s", err)
+				os.Exit(1)
+			}
+			lbType = &lbTypeArg
+		}
 	}
 
 	if cluster.AWS().PrivateLink() && !ocm.IsHyperShiftCluster(cluster) {
@@ -202,6 +244,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	curListening := ingress.Listening()
 	curRouteSelectors := ingress.RouteSelectors()
+	curLbType := ingress.LoadBalancerType()
 
 	ingressBuilder := cmv1.NewIngress().ID(ingress.ID())
 
@@ -226,6 +269,17 @@ func run(cmd *cobra.Command, argv []string) {
 			ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
 		}
 	}
+	if lbType != nil {
+		switch *lbType {
+		case "nlb":
+			ingressBuilder = ingressBuilder.LoadBalancerType(cmv1.LoadBalancerFlavorNlb)
+		case "classic":
+			ingressBuilder = ingressBuilder.LoadBalancerType(cmv1.LoadBalancerFlavorClassic)
+		default:
+			r.Reporter.Errorf("Expected a valid Load Balancer type. Options are: %s", strings.Join(validLbTypes, `,`))
+			os.Exit(1)
+		}
+	}
 
 	ingress, err = ingressBuilder.Build()
 	if err != nil {
@@ -237,7 +291,9 @@ func run(cmd *cobra.Command, argv []string) {
 	// If private arg is nil no change to listening method will be made anyway
 	sameListeningMethod := private == nil || curListening == ingress.Listening()
 
-	if sameListeningMethod && sameRouteSelectors {
+	sameLbType := (lbType == nil) || (curLbType == ingress.LoadBalancerType())
+
+	if sameListeningMethod && sameRouteSelectors && sameLbType {
 		r.Reporter.Warnf("No need to update ingress as there are no changes")
 		os.Exit(0)
 	}

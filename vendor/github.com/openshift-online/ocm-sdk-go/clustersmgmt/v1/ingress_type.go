@@ -35,13 +35,14 @@ const IngressNilKind = "IngressNil"
 //
 // Representation of an ingress.
 type Ingress struct {
-	bitmap_        uint32
-	id             string
-	href           string
-	dnsName        string
-	listening      ListeningMethod
-	routeSelectors map[string]string
-	default_       bool
+	bitmap_          uint32
+	id               string
+	href             string
+	dnsName          string
+	listening        ListeningMethod
+	loadBalancerType LoadBalancerFlavor
+	routeSelectors   map[string]string
+	default_         bool
 }
 
 // Kind returns the name of the type of the object.
@@ -170,12 +171,35 @@ func (o *Ingress) GetListening() (value ListeningMethod, ok bool) {
 	return
 }
 
+// LoadBalancerType returns the value of the 'load_balancer_type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Load Balancer type of the ingress
+func (o *Ingress) LoadBalancerType() LoadBalancerFlavor {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.loadBalancerType
+	}
+	return LoadBalancerFlavor("")
+}
+
+// GetLoadBalancerType returns the value of the 'load_balancer_type' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Load Balancer type of the ingress
+func (o *Ingress) GetLoadBalancerType() (value LoadBalancerFlavor, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.loadBalancerType
+	}
+	return
+}
+
 // RouteSelectors returns the value of the 'route_selectors' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // A set of labels for the ingress.
 func (o *Ingress) RouteSelectors() map[string]string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.routeSelectors
 	}
 	return nil
@@ -186,7 +210,7 @@ func (o *Ingress) RouteSelectors() map[string]string {
 //
 // A set of labels for the ingress.
 func (o *Ingress) GetRouteSelectors() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.routeSelectors
 	}
