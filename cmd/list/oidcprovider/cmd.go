@@ -87,7 +87,9 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("%v", err)
 			os.Exit(1)
 		}
-		has, err := r.OCMClient.HasAClusterUsingOidcEndpointUrl("https://" + resourceName)
+		has, err := r.OCMClient.
+			HasAClusterUsingOidcProvider(
+				fmt.Sprintf("https://%s", resourceName), r.Creator.AccountID)
 		if err != nil {
 			r.Reporter.Errorf("%v", err)
 			os.Exit(1)

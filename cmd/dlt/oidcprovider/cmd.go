@@ -187,7 +187,9 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Infof("Provider '%s' not found.", oidcEndpointUrl)
 			return
 		}
-		hasClusterUsingOidcProvider, err := r.OCMClient.HasAClusterUsingOidcEndpointUrl(oidcEndpointUrl)
+		hasClusterUsingOidcProvider, err := r.OCMClient.
+			HasAClusterUsingOidcProvider(
+				oidcEndpointUrl, r.Creator.AccountID)
 		if err != nil {
 			r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC provider '%s' : %v",
 				oidcEndpointUrl, err)
