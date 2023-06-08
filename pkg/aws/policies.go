@@ -1105,10 +1105,13 @@ func (c *awsClient) deletePolicyVersions(policyArn string) error {
 		if aws.BoolValue(version.IsDefaultVersion) {
 			continue
 		}
-		c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
+		_, err := c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
 			PolicyArn: aws.String(policyArn),
 			VersionId: version.VersionId,
 		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
