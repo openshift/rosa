@@ -62,7 +62,9 @@ function build_cmds {
 
 # Build for Linux and macOS:
 build_cmds linux amd64
+build_cmds linux arm64
 build_cmds darwin amd64
+build_cmds darwin arm64
 build_cmds windows amd64
 
 # Bye:
