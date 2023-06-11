@@ -584,7 +584,7 @@ func init() {
 			"roles in STS clusters.",
 	)
 
-	// Options releated to HyperShift:
+	// Options related to HyperShift:
 	flags.BoolVar(
 		&args.hostedClusterEnabled,
 		"hosted-cp",

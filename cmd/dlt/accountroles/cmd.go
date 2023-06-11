@@ -65,7 +65,6 @@ func init() {
 		false,
 		"Delete Hosted Control Planes roles",
 	)
-	flags.MarkHidden("hosted-cp")
 
 	flags.BoolVar(
 		&args.classic,
@@ -73,7 +72,6 @@ func init() {
 		false,
 		"Delete classic account roles",
 	)
-	flags.MarkHidden("classic")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
