@@ -134,7 +134,13 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	roleARN, err := awsClient.GetAccountRoleARN(prefix, role.Name)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get account roles ARN: %v", err)
+		if args.hostedCP {
+			r.Reporter.Errorf("Failed to get hosted CP account roles ARN: %v. "+
+				"To upgrade classic account roles run the command without the '--hosted-cp' flag", err)
+		} else {
+			r.Reporter.Errorf("Failed to get classic account roles ARN: %v. "+
+				"To upgrade hosted CP account roles use the '--hosted-cp' flag", err)
+		}
 		os.Exit(1)
 	}
 
