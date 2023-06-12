@@ -30,6 +30,10 @@ import (
 
 var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 
+var AuditLogArnRE = regexp.MustCompile(
+	`^arn:aws:iam::\d{12}:role/[a-zA-Z0-9_-]+$`,
+)
+
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
 var UserTagKeyRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
 var UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
@@ -904,4 +908,8 @@ func IsStandardNamedAccountRole(accountRoleName, roleSuffix string) (bool, strin
 
 func IsHostedCPManagedPolicies(cluster *cmv1.Cluster) bool {
 	return cluster.Hypershift().Enabled() && cluster.AWS().STS().ManagedPolicies()
+}
+
+func IsHostedCP(cluster *cmv1.Cluster) bool {
+	return cluster.Hypershift().Enabled()
 }
