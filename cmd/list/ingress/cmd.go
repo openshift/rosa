@@ -82,14 +82,15 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\t\t\tPRIVATE\t\tDEFAULT\t\tROUTE SELECTORS\n")
+	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\t\t\tPRIVATE\t\tDEFAULT\t\tROUTE SELECTORS\t\tLB-TYPE\n")
 	for _, ingress := range ingresses {
-		fmt.Fprintf(writer, "%s\thttps://%s\t\t\t%s\t\t%s\t\t%s\n",
+		fmt.Fprintf(writer, "%s\thttps://%s\t\t\t%s\t\t%s\t\t%s\t\t%s\n",
 			ingress.ID(),
 			ingress.DNSName(),
 			isPrivate(ingress.Listening()),
 			isDefault(ingress),
 			printRouteSelectors(ingress),
+			ingress.LoadBalancerType(),
 		)
 	}
 	writer.Flush()

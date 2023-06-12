@@ -93,7 +93,16 @@ func writeIngress(object *Ingress, stream *jsoniter.Stream) {
 		stream.WriteString(string(object.listening))
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.routeSelectors != nil
+	present_ = object.bitmap_&64 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("load_balancer_type")
+		stream.WriteString(string(object.loadBalancerType))
+		count++
+	}
+	present_ = object.bitmap_&128 != 0 && object.routeSelectors != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -169,6 +178,11 @@ func readIngress(iterator *jsoniter.Iterator) *Ingress {
 			value := ListeningMethod(text)
 			object.listening = value
 			object.bitmap_ |= 32
+		case "load_balancer_type":
+			text := iterator.ReadString()
+			value := LoadBalancerFlavor(text)
+			object.loadBalancerType = value
+			object.bitmap_ |= 64
 		case "route_selectors":
 			value := map[string]string{}
 			for {
@@ -180,7 +194,7 @@ func readIngress(iterator *jsoniter.Iterator) *Ingress {
 				value[key] = item
 			}
 			object.routeSelectors = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		default:
 			iterator.ReadAny()
 		}

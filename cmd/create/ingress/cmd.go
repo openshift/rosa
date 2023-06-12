@@ -32,13 +32,16 @@ import (
 var args struct {
 	private    bool
 	labelMatch string
+	lbType     string
 }
+
+var validLbTypes = []string{"classic", "nlb"}
 
 var Cmd = &cobra.Command{
 	Use:     "ingress",
 	Aliases: []string{"route", "routes", "ingresses"},
-	Short:   "Add Ingress to cluster",
-	Long:    "Add an Ingress endpoint to determine API access to the cluster.",
+	Short:   "Add Ingress (load balancer) to the cluster",
+	Long:    "Add an Ingress to determine application access to the cluster.",
 	Example: `  # Add an internal ingress to a cluster named "mycluster"
   rosa create ingress --private --cluster=mycluster
 
@@ -46,7 +49,10 @@ var Cmd = &cobra.Command{
   rosa create ingress --cluster=mycluster
 
   # Add an ingress with route selector label match
-  rosa create ingress -c mycluster --label-match="foo=bar,bar=baz"`,
+  rosa create ingress -c mycluster --label-match="foo=bar,bar=baz"
+
+  # Add an ingress of load balancer type nlb 
+  rosa create ingress --lb-type=nlb -c mycluster`,
 	Run: run,
 }
 
@@ -70,7 +76,20 @@ func init() {
 			"If no label is specified, all routes will be exposed on both routers.",
 	)
 
+	flags.StringVarP(
+		&args.lbType,
+		"lb-type",
+		"",
+		"",
+		fmt.Sprintf("Type of Load Balancer. Options are %s.", strings.Join(validLbTypes, `,`)),
+	)
+	Cmd.RegisterFlagCompletionFunc("lb-type", typeCompletion)
+
 	interactive.AddFlag(flags)
+}
+
+func typeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return validLbTypes, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -139,6 +158,41 @@ func run(cmd *cobra.Command, _ []string) {
 	if len(routeSelectors) > 0 {
 		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
 	}
+
+	var lbType *string
+	if cmd.Flags().Changed("lb-type") {
+		lbType = &args.lbType
+	} else {
+		if interactive.Enabled() {
+			if lbType == nil {
+				lbType = &validLbTypes[0]
+			}
+			lbTypeArg, err := interactive.GetOption(interactive.Input{
+				Question: "Type of Load Balancer",
+				Options:  validLbTypes,
+				Required: true,
+				Default:  *lbType,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid Load Balancer type: %s", err)
+				os.Exit(1)
+			}
+			lbType = &lbTypeArg
+		}
+	}
+
+	if lbType != nil {
+		switch *lbType {
+		case "nlb":
+			ingressBuilder = ingressBuilder.LoadBalancerType(cmv1.LoadBalancerFlavorNlb)
+		case "classic":
+			ingressBuilder = ingressBuilder.LoadBalancerType(cmv1.LoadBalancerFlavorClassic)
+		default:
+			r.Reporter.Errorf("Expected a valid Load Balancer type. Options are: %s", strings.Join(validLbTypes, `,`))
+			os.Exit(1)
+		}
+	}
+
 	ingress, err := ingressBuilder.Build()
 	if err != nil {
 		r.Reporter.Errorf("Failed to create ingress for cluster '%s': %v", clusterKey, err)

@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSSHCredentialsList writes a list of values of the 'SSH_credentials' type to
+// MarshalLoadBalancerFlavorList writes a list of values of the 'load_balancer_flavor' type to
 // the given writer.
-func MarshalSSHCredentialsList(list []*SSHCredentials, writer io.Writer) error {
+func MarshalLoadBalancerFlavorList(list []LoadBalancerFlavor, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSSHCredentialsList(list, stream)
+	writeLoadBalancerFlavorList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,38 @@ func MarshalSSHCredentialsList(list []*SSHCredentials, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSSHCredentialsList writes a list of value of the 'SSH_credentials' type to
+// writeLoadBalancerFlavorList writes a list of value of the 'load_balancer_flavor' type to
 // the given stream.
-func writeSSHCredentialsList(list []*SSHCredentials, stream *jsoniter.Stream) {
+func writeLoadBalancerFlavorList(list []LoadBalancerFlavor, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeSSHCredentials(value, stream)
+		stream.WriteString(string(value))
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalSSHCredentialsList reads a list of values of the 'SSH_credentials' type
+// UnmarshalLoadBalancerFlavorList reads a list of values of the 'load_balancer_flavor' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalSSHCredentialsList(source interface{}) (items []*SSHCredentials, err error) {
+func UnmarshalLoadBalancerFlavorList(source interface{}) (items []LoadBalancerFlavor, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readSSHCredentialsList(iterator)
+	items = readLoadBalancerFlavorList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSSHCredentialsList reads list of values of the ”SSH_credentials' type from
+// readLoadBalancerFlavorList reads list of values of the ”load_balancer_flavor' type from
 // the given iterator.
-func readSSHCredentialsList(iterator *jsoniter.Iterator) []*SSHCredentials {
-	list := []*SSHCredentials{}
+func readLoadBalancerFlavorList(iterator *jsoniter.Iterator) []LoadBalancerFlavor {
+	list := []LoadBalancerFlavor{}
 	for iterator.ReadArray() {
-		item := readSSHCredentials(iterator)
+		text := iterator.ReadString()
+		item := LoadBalancerFlavor(text)
 		list = append(list, item)
 	}
 	return list

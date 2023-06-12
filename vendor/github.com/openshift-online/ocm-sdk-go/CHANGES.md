@@ -3,6 +3,11 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.346
+- Update model version v0.0.289
+  - Add Load balancer type to Ingress model
+  - remove unused API endpoints
+
 ## 0.1.345
 - Update model version v0.0.288
   - Add `DNSDomains` resource to the `root_resource`.
