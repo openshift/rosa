@@ -65,7 +65,6 @@ func init() {
 		false,
 		"Delete Hosted Control Planes roles",
 	)
-	flags.MarkHidden("hosted-cp")
 
 	flags.BoolVar(
 		&args.classic,
