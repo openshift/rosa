@@ -73,7 +73,6 @@ func init() {
 		false,
 		"Delete classic account roles",
 	)
-	flags.MarkHidden("classic")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
