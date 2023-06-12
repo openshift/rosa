@@ -7,7 +7,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
@@ -20,7 +19,7 @@ var machinePoolKeyRE = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])?$`)
 func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string, cluster *cmv1.Cluster,
 	r *rosa.Runtime) {
 	var err error
-	if machinePoolID != "Default" && !machinePoolKeyRE.MatchString(machinePoolID) {
+	if !machinePoolKeyRE.MatchString(machinePoolID) {
 		r.Reporter.Errorf("Expected a valid identifier for the machine pool")
 		os.Exit(1)
 	}
@@ -39,64 +38,6 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 	// if no value set enter interactive mode
 	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet) {
 		interactive.Enable()
-	}
-
-	// Editing the default machine pool is a different process
-	if machinePoolID == "Default" {
-		if isTaintsSet {
-			r.Reporter.Errorf("Taints are not supported on the Default machine pool")
-			os.Exit(1)
-		}
-
-		clusterConfig := ocm.Spec{}
-
-		autoscaling, replicas, minReplicas, maxReplicas, scalingUpdated, _, _ :=
-			getMachinePoolReplicas(cmd, r.Reporter, machinePoolID, cluster.Nodes().Compute(),
-				cluster.Nodes().AutoscaleCompute(), !isLabelsSet)
-
-		if scalingUpdated {
-			if cluster.MultiAZ() {
-				if !autoscaling && replicas < 3 ||
-					(autoscaling && isMinReplicasSet && minReplicas < 3) {
-					r.Reporter.Errorf("Default machine pool for AZ cluster requires at least 3 compute nodes")
-					os.Exit(1)
-				}
-
-				if !autoscaling && replicas%3 != 0 ||
-					(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0)) {
-					r.Reporter.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-					os.Exit(1)
-				}
-			} else if !autoscaling && replicas < 2 ||
-				(autoscaling && isMinReplicasSet && minReplicas < 2) {
-				r.Reporter.Errorf("Default machine pool requires at least 2 compute nodes")
-				os.Exit(1)
-			}
-
-			clusterConfig = ocm.Spec{
-				Autoscaling:  autoscaling,
-				ComputeNodes: replicas,
-				MinReplicas:  minReplicas,
-				MaxReplicas:  maxReplicas,
-			}
-		}
-
-		labelMap := mpHelpers.GetLabelMap(cmd, r, cluster.Nodes().ComputeLabels(), args.labels)
-
-		if isLabelsSet || interactive.Enabled() {
-			clusterConfig.ComputeLabels = labelMap
-		}
-
-		r.Reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
-		err = r.OCMClient.UpdateCluster(clusterKey, r.Creator, clusterConfig)
-		if err != nil {
-			r.Reporter.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
-				machinePoolID, clusterKey, err)
-			os.Exit(1)
-		}
-		r.Reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePoolID, clusterKey)
-
-		os.Exit(0)
 	}
 
 	// Try to find the machine pool:

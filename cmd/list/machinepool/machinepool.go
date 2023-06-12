@@ -20,48 +20,6 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 		os.Exit(1)
 	}
 
-	// Add default machine pool to the list
-	defaultMachinePoolBuilder := cmv1.NewMachinePool().
-		ID("Default").
-		AvailabilityZones(cluster.Nodes().AvailabilityZones()...).
-		InstanceType(cluster.Nodes().ComputeMachineType().ID()).
-		Labels(cluster.Nodes().ComputeLabels()).
-		Replicas(cluster.Nodes().Compute())
-	if cluster.Nodes().AutoscaleCompute() != nil {
-		defaultMachinePoolBuilder = defaultMachinePoolBuilder.Autoscaling(
-			cmv1.NewMachinePoolAutoscaling().
-				MinReplicas(cluster.Nodes().AutoscaleCompute().MinReplicas()).
-				MaxReplicas(cluster.Nodes().AutoscaleCompute().MaxReplicas()),
-		)
-	}
-
-	// If the cluster spec has a root volume size, use it
-	if cluster.Nodes().ComputeRootVolume() != nil &&
-		cluster.Nodes().ComputeRootVolume().AWS() != nil &&
-		cluster.Nodes().ComputeRootVolume().AWS().Size() != 0 {
-		defaultMachinePoolBuilder = defaultMachinePoolBuilder.RootVolume(
-			cmv1.NewRootVolume().
-				AWS(
-					cmv1.NewAWSVolume().
-						Size(
-							cluster.Nodes().
-								ComputeRootVolume().
-								AWS().
-								Size(),
-						),
-				),
-		)
-	}
-
-	// In case of AWS clusters we can query the subnbets
-	if cluster.AWS() != nil && len(cluster.AWS().SubnetIDs()) > 0 {
-		defaultMachinePoolBuilder.Subnets(cluster.AWS().SubnetIDs()...)
-	}
-
-	defaultMachinePool, _ := defaultMachinePoolBuilder.Build()
-
-	machinePools = append([]*cmv1.MachinePool{defaultMachinePool}, machinePools...)
-
 	if output.HasFlag() {
 		err = output.Print(machinePools)
 		if err != nil {
@@ -111,9 +69,6 @@ func printMachinePoolReplicas(autoscaling *cmv1.MachinePoolAutoscaling, replicas
 }
 
 func printSpot(mp *cmv1.MachinePool) string {
-	if mp.ID() == "Default" {
-		return "N/A"
-	}
 
 	if mp.AWS() != nil {
 		if spot := mp.AWS().SpotMarketOptions(); spot != nil {
