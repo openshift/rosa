@@ -314,7 +314,8 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	// if cluster is sts validate roles are compatible with upgrade version
-	if isSTS {
+	// for automatic upgrades, version is not available
+	if isSTS && !currentUpgradeScheduling.automaticUpgrades {
 		checkSTSRolesCompatibility(r, cluster, mode, version, clusterKey)
 	}
 
