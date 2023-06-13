@@ -146,7 +146,7 @@ func writeMachinePool(object *MachinePool, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("root_volume")
-		writeMachineTypeRootVolume(object.rootVolume, stream)
+		writeRootVolume(object.rootVolume, stream)
 		count++
 	}
 	present_ = object.bitmap_&1024 != 0 && object.securityGroupFilters != nil
@@ -243,7 +243,7 @@ func readMachinePool(iterator *jsoniter.Iterator) *MachinePool {
 			object.replicas = value
 			object.bitmap_ |= 256
 		case "root_volume":
-			value := readMachineTypeRootVolume(iterator)
+			value := readRootVolume(iterator)
 			object.rootVolume = value
 			object.bitmap_ |= 512
 		case "security_group_filters":

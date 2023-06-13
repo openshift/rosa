@@ -19,97 +19,77 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
-// CloudAccount represents the values of the 'cloud_account' type.
-type CloudAccount struct {
-	bitmap_         uint32
-	cloudAccountID  string
-	cloudProviderID string
-	contracts       []*Contract
+// ContractDimension represents the values of the 'contract_dimension' type.
+type ContractDimension struct {
+	bitmap_ uint32
+	name    string
+	value   string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *CloudAccount) Empty() bool {
+func (o *ContractDimension) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// CloudAccountID returns the value of the 'cloud_account_ID' attribute, or
+// Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-func (o *CloudAccount) CloudAccountID() string {
+func (o *ContractDimension) Name() string {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.cloudAccountID
+		return o.name
 	}
 	return ""
 }
 
-// GetCloudAccountID returns the value of the 'cloud_account_ID' attribute and
+// GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
-func (o *CloudAccount) GetCloudAccountID() (value string, ok bool) {
+func (o *ContractDimension) GetName() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.cloudAccountID
+		value = o.name
 	}
 	return
 }
 
-// CloudProviderID returns the value of the 'cloud_provider_ID' attribute, or
+// Value returns the value of the 'value' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-func (o *CloudAccount) CloudProviderID() string {
+func (o *ContractDimension) Value() string {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.cloudProviderID
+		return o.value
 	}
 	return ""
 }
 
-// GetCloudProviderID returns the value of the 'cloud_provider_ID' attribute and
+// GetValue returns the value of the 'value' attribute and
 // a flag indicating if the attribute has a value.
-func (o *CloudAccount) GetCloudProviderID() (value string, ok bool) {
+func (o *ContractDimension) GetValue() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.cloudProviderID
+		value = o.value
 	}
 	return
 }
 
-// Contracts returns the value of the 'contracts' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-func (o *CloudAccount) Contracts() []*Contract {
-	if o != nil && o.bitmap_&4 != 0 {
-		return o.contracts
-	}
-	return nil
-}
+// ContractDimensionListKind is the name of the type used to represent list of objects of
+// type 'contract_dimension'.
+const ContractDimensionListKind = "ContractDimensionList"
 
-// GetContracts returns the value of the 'contracts' attribute and
-// a flag indicating if the attribute has a value.
-func (o *CloudAccount) GetContracts() (value []*Contract, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
-	if ok {
-		value = o.contracts
-	}
-	return
-}
+// ContractDimensionListLinkKind is the name of the type used to represent links to list
+// of objects of type 'contract_dimension'.
+const ContractDimensionListLinkKind = "ContractDimensionListLink"
 
-// CloudAccountListKind is the name of the type used to represent list of objects of
-// type 'cloud_account'.
-const CloudAccountListKind = "CloudAccountList"
+// ContractDimensionNilKind is the name of the type used to nil lists of objects of
+// type 'contract_dimension'.
+const ContractDimensionListNilKind = "ContractDimensionListNil"
 
-// CloudAccountListLinkKind is the name of the type used to represent links to list
-// of objects of type 'cloud_account'.
-const CloudAccountListLinkKind = "CloudAccountListLink"
-
-// CloudAccountNilKind is the name of the type used to nil lists of objects of
-// type 'cloud_account'.
-const CloudAccountListNilKind = "CloudAccountListNil"
-
-// CloudAccountList is a list of values of the 'cloud_account' type.
-type CloudAccountList struct {
+// ContractDimensionList is a list of values of the 'contract_dimension' type.
+type ContractDimensionList struct {
 	href  string
 	link  bool
-	items []*CloudAccount
+	items []*ContractDimension
 }
 
 // Len returns the length of the list.
-func (l *CloudAccountList) Len() int {
+func (l *ContractDimensionList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -117,13 +97,13 @@ func (l *CloudAccountList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *CloudAccountList) Empty() bool {
+func (l *ContractDimensionList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *CloudAccountList) Get(i int) *CloudAccount {
+func (l *ContractDimensionList) Get(i int) *ContractDimension {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -136,12 +116,12 @@ func (l *CloudAccountList) Get(i int) *CloudAccount {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *CloudAccountList) Slice() []*CloudAccount {
-	var slice []*CloudAccount
+func (l *ContractDimensionList) Slice() []*ContractDimension {
+	var slice []*ContractDimension
 	if l == nil {
-		slice = make([]*CloudAccount, 0)
+		slice = make([]*ContractDimension, 0)
 	} else {
-		slice = make([]*CloudAccount, len(l.items))
+		slice = make([]*ContractDimension, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -150,7 +130,7 @@ func (l *CloudAccountList) Slice() []*CloudAccount {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *CloudAccountList) Each(f func(item *CloudAccount) bool) {
+func (l *ContractDimensionList) Each(f func(item *ContractDimension) bool) {
 	if l == nil {
 		return
 	}
@@ -164,7 +144,7 @@ func (l *CloudAccountList) Each(f func(item *CloudAccount) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *CloudAccountList) Range(f func(index int, item *CloudAccount) bool) {
+func (l *ContractDimensionList) Range(f func(index int, item *ContractDimension) bool) {
 	if l == nil {
 		return
 	}

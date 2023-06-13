@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalCloudAccount writes a value of the 'cloud_account' type to the given writer.
-func MarshalCloudAccount(object *CloudAccount, writer io.Writer) error {
+// MarshalContractDimension writes a value of the 'contract_dimension' type to the given writer.
+func MarshalContractDimension(object *ContractDimension, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeCloudAccount(object, stream)
+	writeContractDimension(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalCloudAccount(object *CloudAccount, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeCloudAccount writes a value of the 'cloud_account' type to the given stream.
-func writeCloudAccount(object *CloudAccount, stream *jsoniter.Stream) {
+// writeContractDimension writes a value of the 'contract_dimension' type to the given stream.
+func writeContractDimension(object *ContractDimension, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,8 +47,8 @@ func writeCloudAccount(object *CloudAccount, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cloud_account_id")
-		stream.WriteString(object.cloudAccountID)
+		stream.WriteObjectField("name")
+		stream.WriteString(object.name)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -56,54 +56,41 @@ func writeCloudAccount(object *CloudAccount, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cloud_provider_id")
-		stream.WriteString(object.cloudProviderID)
-		count++
-	}
-	present_ = object.bitmap_&4 != 0 && object.contracts != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("contracts")
-		writeContractList(object.contracts, stream)
+		stream.WriteObjectField("value")
+		stream.WriteString(object.value)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalCloudAccount reads a value of the 'cloud_account' type from the given
+// UnmarshalContractDimension reads a value of the 'contract_dimension' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalCloudAccount(source interface{}) (object *CloudAccount, err error) {
+func UnmarshalContractDimension(source interface{}) (object *ContractDimension, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readCloudAccount(iterator)
+	object = readContractDimension(iterator)
 	err = iterator.Error
 	return
 }
 
-// readCloudAccount reads a value of the 'cloud_account' type from the given iterator.
-func readCloudAccount(iterator *jsoniter.Iterator) *CloudAccount {
-	object := &CloudAccount{}
+// readContractDimension reads a value of the 'contract_dimension' type from the given iterator.
+func readContractDimension(iterator *jsoniter.Iterator) *ContractDimension {
+	object := &ContractDimension{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "cloud_account_id":
+		case "name":
 			value := iterator.ReadString()
-			object.cloudAccountID = value
+			object.name = value
 			object.bitmap_ |= 1
-		case "cloud_provider_id":
+		case "value":
 			value := iterator.ReadString()
-			object.cloudProviderID = value
+			object.value = value
 			object.bitmap_ |= 2
-		case "contracts":
-			value := readContractList(iterator)
-			object.contracts = value
-			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

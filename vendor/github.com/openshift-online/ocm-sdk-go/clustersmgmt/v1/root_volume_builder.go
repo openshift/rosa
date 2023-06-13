@@ -19,29 +19,29 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// MachineTypeRootVolumeBuilder contains the data and logic needed to build 'machine_type_root_volume' objects.
+// RootVolumeBuilder contains the data and logic needed to build 'root_volume' objects.
 //
-// Machine type root volume.
-type MachineTypeRootVolumeBuilder struct {
+// Root volume capabilities.
+type RootVolumeBuilder struct {
 	bitmap_ uint32
 	aws     *AWSVolumeBuilder
 	gcp     *GCPVolumeBuilder
 }
 
-// NewMachineTypeRootVolume creates a new builder of 'machine_type_root_volume' objects.
-func NewMachineTypeRootVolume() *MachineTypeRootVolumeBuilder {
-	return &MachineTypeRootVolumeBuilder{}
+// NewRootVolume creates a new builder of 'root_volume' objects.
+func NewRootVolume() *RootVolumeBuilder {
+	return &RootVolumeBuilder{}
 }
 
 // Empty returns true if the builder is empty, i.e. no attribute has a value.
-func (b *MachineTypeRootVolumeBuilder) Empty() bool {
+func (b *RootVolumeBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
 // AWS sets the value of the 'AWS' attribute to the given value.
 //
 // Holds settings for an AWS storage volume.
-func (b *MachineTypeRootVolumeBuilder) AWS(value *AWSVolumeBuilder) *MachineTypeRootVolumeBuilder {
+func (b *RootVolumeBuilder) AWS(value *AWSVolumeBuilder) *RootVolumeBuilder {
 	b.aws = value
 	if value != nil {
 		b.bitmap_ |= 1
@@ -54,7 +54,7 @@ func (b *MachineTypeRootVolumeBuilder) AWS(value *AWSVolumeBuilder) *MachineType
 // GCP sets the value of the 'GCP' attribute to the given value.
 //
 // Holds settings for an GCP storage volume.
-func (b *MachineTypeRootVolumeBuilder) GCP(value *GCPVolumeBuilder) *MachineTypeRootVolumeBuilder {
+func (b *RootVolumeBuilder) GCP(value *GCPVolumeBuilder) *RootVolumeBuilder {
 	b.gcp = value
 	if value != nil {
 		b.bitmap_ |= 2
@@ -65,7 +65,7 @@ func (b *MachineTypeRootVolumeBuilder) GCP(value *GCPVolumeBuilder) *MachineType
 }
 
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
-func (b *MachineTypeRootVolumeBuilder) Copy(object *MachineTypeRootVolume) *MachineTypeRootVolumeBuilder {
+func (b *RootVolumeBuilder) Copy(object *RootVolume) *RootVolumeBuilder {
 	if object == nil {
 		return b
 	}
@@ -83,9 +83,9 @@ func (b *MachineTypeRootVolumeBuilder) Copy(object *MachineTypeRootVolume) *Mach
 	return b
 }
 
-// Build creates a 'machine_type_root_volume' object using the configuration stored in the builder.
-func (b *MachineTypeRootVolumeBuilder) Build() (object *MachineTypeRootVolume, err error) {
-	object = new(MachineTypeRootVolume)
+// Build creates a 'root_volume' object using the configuration stored in the builder.
+func (b *RootVolumeBuilder) Build() (object *RootVolume, err error) {
+	object = new(RootVolume)
 	object.bitmap_ = b.bitmap_
 	if b.aws != nil {
 		object.aws, err = b.aws.Build()

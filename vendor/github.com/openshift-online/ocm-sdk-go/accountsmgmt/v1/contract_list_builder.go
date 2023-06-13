@@ -17,55 +17,55 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
-// MachineTypeRootVolumeListBuilder contains the data and logic needed to build
-// 'machine_type_root_volume' objects.
-type MachineTypeRootVolumeListBuilder struct {
-	items []*MachineTypeRootVolumeBuilder
+// ContractListBuilder contains the data and logic needed to build
+// 'contract' objects.
+type ContractListBuilder struct {
+	items []*ContractBuilder
 }
 
-// NewMachineTypeRootVolumeList creates a new builder of 'machine_type_root_volume' objects.
-func NewMachineTypeRootVolumeList() *MachineTypeRootVolumeListBuilder {
-	return new(MachineTypeRootVolumeListBuilder)
+// NewContractList creates a new builder of 'contract' objects.
+func NewContractList() *ContractListBuilder {
+	return new(ContractListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *MachineTypeRootVolumeListBuilder) Items(values ...*MachineTypeRootVolumeBuilder) *MachineTypeRootVolumeListBuilder {
-	b.items = make([]*MachineTypeRootVolumeBuilder, len(values))
+func (b *ContractListBuilder) Items(values ...*ContractBuilder) *ContractListBuilder {
+	b.items = make([]*ContractBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Empty returns true if the list is empty.
-func (b *MachineTypeRootVolumeListBuilder) Empty() bool {
+func (b *ContractListBuilder) Empty() bool {
 	return b == nil || len(b.items) == 0
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *MachineTypeRootVolumeListBuilder) Copy(list *MachineTypeRootVolumeList) *MachineTypeRootVolumeListBuilder {
+func (b *ContractListBuilder) Copy(list *ContractList) *ContractListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*MachineTypeRootVolumeBuilder, len(list.items))
+		b.items = make([]*ContractBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewMachineTypeRootVolume().Copy(v)
+			b.items[i] = NewContract().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'machine_type_root_volume' objects using the
+// Build creates a list of 'contract' objects using the
 // configuration stored in the builder.
-func (b *MachineTypeRootVolumeListBuilder) Build() (list *MachineTypeRootVolumeList, err error) {
-	items := make([]*MachineTypeRootVolume, len(b.items))
+func (b *ContractListBuilder) Build() (list *ContractList, err error) {
+	items := make([]*Contract, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(MachineTypeRootVolumeList)
+	list = new(ContractList)
 	list.items = items
 	return
 }

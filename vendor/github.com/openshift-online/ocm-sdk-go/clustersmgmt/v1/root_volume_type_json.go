@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalMachineTypeRootVolume writes a value of the 'machine_type_root_volume' type to the given writer.
-func MarshalMachineTypeRootVolume(object *MachineTypeRootVolume, writer io.Writer) error {
+// MarshalRootVolume writes a value of the 'root_volume' type to the given writer.
+func MarshalRootVolume(object *RootVolume, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeMachineTypeRootVolume(object, stream)
+	writeRootVolume(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalMachineTypeRootVolume(object *MachineTypeRootVolume, writer io.Write
 	return stream.Error
 }
 
-// writeMachineTypeRootVolume writes a value of the 'machine_type_root_volume' type to the given stream.
-func writeMachineTypeRootVolume(object *MachineTypeRootVolume, stream *jsoniter.Stream) {
+// writeRootVolume writes a value of the 'root_volume' type to the given stream.
+func writeRootVolume(object *RootVolume, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -62,21 +62,21 @@ func writeMachineTypeRootVolume(object *MachineTypeRootVolume, stream *jsoniter.
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalMachineTypeRootVolume reads a value of the 'machine_type_root_volume' type from the given
+// UnmarshalRootVolume reads a value of the 'root_volume' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalMachineTypeRootVolume(source interface{}) (object *MachineTypeRootVolume, err error) {
+func UnmarshalRootVolume(source interface{}) (object *RootVolume, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readMachineTypeRootVolume(iterator)
+	object = readRootVolume(iterator)
 	err = iterator.Error
 	return
 }
 
-// readMachineTypeRootVolume reads a value of the 'machine_type_root_volume' type from the given iterator.
-func readMachineTypeRootVolume(iterator *jsoniter.Iterator) *MachineTypeRootVolume {
-	object := &MachineTypeRootVolume{}
+// readRootVolume reads a value of the 'root_volume' type from the given iterator.
+func readRootVolume(iterator *jsoniter.Iterator) *RootVolume {
+	object := &RootVolume{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
