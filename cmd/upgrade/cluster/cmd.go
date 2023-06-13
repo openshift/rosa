@@ -671,8 +671,7 @@ func checkAndAckMissingAgreementsHypershift(r *rosa.Runtime, cluster *cmv1.Clust
 	// check if the cluster upgrade requires gate agreements
 	gates, err := r.OCMClient.GetMissingGateAgreementsHypershift(cluster.ID(), upgradePolicy)
 	if err != nil {
-		return fmt.Errorf("failed to check for missing gate agreements upgrade for "+
-			"cluster '%s': %v", clusterKey, err)
+		return err
 	}
 	return checkGates(r, cluster, gates, clusterKey)
 }
