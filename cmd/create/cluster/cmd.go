@@ -155,6 +155,9 @@ var args struct {
 	// Hypershift options:
 	hostedClusterEnabled bool
 	billingAccount       string
+
+	// Audit Log Forwarding
+	AuditLogRoleARN string
 }
 
 var Cmd = &cobra.Command{
@@ -600,6 +603,13 @@ func init() {
 		"Account used for billing subscriptions purchased via the AWS marketplace",
 	)
 	flags.MarkHidden("billing-account")
+
+	flags.StringVar(
+		&args.AuditLogRoleARN,
+		"audit-log-arn",
+		"",
+		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
+	)
 
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
@@ -2224,6 +2234,52 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Audit Log Forwarding
+	auditLogRoleARN := args.AuditLogRoleARN
+
+	if auditLogRoleARN != "" && !isHostedCP {
+		r.Reporter.Errorf("Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters")
+		os.Exit(1)
+	}
+
+	if interactive.Enabled() && isHostedCP {
+		requestAuditLogForwarding, err := interactive.GetBool(interactive.Input{
+			Question: "Enable audit log forwarding to AWS CloudWatch (optional)",
+			Default:  false,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+		if requestAuditLogForwarding {
+
+			r.Reporter.Infof("To configure the audit log forwarding role in your AWS account, " +
+				"please refer to steps 1 through 6: https://access.redhat.com/solutions/7002219")
+
+			auditLogRoleARN, err = interactive.GetString(interactive.Input{
+				Question: "Audit log forwarding role ARN",
+				Help:     cmd.Flags().Lookup("audit-log-arn").Usage,
+				Default:  auditLogRoleARN,
+				Required: true,
+				Validators: []interactive.Validator{
+					interactive.RegExp(aws.AuditLogArnRE.String()),
+				},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for audit-log-arn: %s", err)
+				os.Exit(1)
+			}
+		} else {
+			auditLogRoleARN = ""
+		}
+	}
+
+	if auditLogRoleARN != "" && !aws.AuditLogArnRE.MatchString(auditLogRoleARN) {
+		r.Reporter.Errorf("Expected a valid value for audit log arn matching %s", aws.AuditLogArnRE)
+		os.Exit(1)
+	}
+
 	clusterConfig := ocm.Spec{
 		Name:                      clusterName,
 		Region:                    region,
@@ -2268,7 +2324,8 @@ func run(cmd *cobra.Command, _ []string) {
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
-		BillingAccount: billingAccount,
+		BillingAccount:  billingAccount,
+		AuditLogRoleARN: &auditLogRoleARN,
 	}
 
 	if httpTokens != "" {
@@ -2823,6 +2880,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.EtcdEncryptionKMSArn != "" {
 		command += fmt.Sprintf(" --etcd-encryption-kms-arn %s", spec.EtcdEncryptionKMSArn)
+	}
+
+	if spec.AuditLogRoleARN != nil {
+		command += fmt.Sprintf(" --audit-log-arn %s", *spec.AuditLogRoleARN)
 	}
 
 	return command

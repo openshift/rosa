@@ -113,6 +113,9 @@ type Spec struct {
 	Hypershift     Hypershift
 	BillingAccount string
 
+	// Audit Log Forwarding
+	AuditLogRoleARN *string
+
 	Ec2MetadataHttpTokens cmv1.Ec2MetadataHttpTokens
 }
 
@@ -587,6 +590,14 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		clusterBuilder.Hypershift(hyperShiftBuilder)
 	}
 
+	// Edit audit log role arn
+	if config.AuditLogRoleARN != nil {
+		awsBuilder := cmv1.NewAWS()
+		auditLogBuiler := cmv1.NewAuditLog().RoleArn(*config.AuditLogRoleARN)
+		awsBuilder = awsBuilder.AuditLog(auditLogBuiler)
+		clusterBuilder.AWS(awsBuilder)
+	}
+
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
 		return err
@@ -865,6 +876,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 	if len(config.Tags) > 0 {
 		awsBuilder = awsBuilder.Tags(config.Tags)
+	}
+
+	if config.AuditLogRoleARN != nil {
+		auditLogBuiler := cmv1.NewAuditLog().RoleArn(*config.AuditLogRoleARN)
+		awsBuilder = awsBuilder.AuditLog(auditLogBuiler)
 	}
 
 	// etcd encryption kms key arn
