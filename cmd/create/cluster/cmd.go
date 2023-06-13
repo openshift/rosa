@@ -31,6 +31,7 @@ import (
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/spf13/cobra"
 
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
@@ -1506,6 +1507,63 @@ func run(cmd *cobra.Command, _ []string) {
 		enableProxy = true
 	}
 
+	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
+		GetDefaultClusterFlavors(args.flavour)
+	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
+		r.Reporter.Errorf("Error retrieving default cluster flavors")
+		os.Exit(1)
+	}
+
+	// Machine CIDR:
+	machineCIDR := args.machineCIDR
+	if interactive.Enabled() {
+		if ocm.IsEmptyCIDR(machineCIDR) {
+			machineCIDR = *dMachinecidr
+		}
+		machineCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Machine CIDR",
+			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
+			Default:  machineCIDR,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Service CIDR:
+	serviceCIDR := args.serviceCIDR
+	if interactive.Enabled() {
+		if ocm.IsEmptyCIDR(serviceCIDR) {
+			serviceCIDR = *dServicecidr
+		}
+		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Service CIDR",
+			Help:     cmd.Flags().Lookup("service-cidr").Usage,
+			Default:  serviceCIDR,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
+	}
+	// Pod CIDR:
+	podCIDR := args.podCIDR
+	if interactive.Enabled() {
+		if ocm.IsEmptyCIDR(podCIDR) {
+			podCIDR = *dPodcidr
+		}
+		podCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Pod CIDR",
+			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
+			Default:  podCIDR,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	// Subnet IDs
 	subnetIDs := args.subnetIDs
 	subnetsProvided := len(subnetIDs) > 0
@@ -1538,8 +1596,9 @@ func run(cmd *cobra.Command, _ []string) {
 	privateSubnetsCount := 0
 
 	var availabilityZones []string
+	var subnets []*ec2.Subnet
 	if useExistingVPC || subnetsProvided {
-		subnets, err := awsClient.GetSubnetIDs()
+		initialSubnets, err := awsClient.GetSubnetIDs()
 		if err != nil {
 			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
@@ -1547,7 +1606,33 @@ func run(cmd *cobra.Command, _ []string) {
 		if subnetsProvided {
 			useExistingVPC = true
 		}
+		_, machineNetwork, err := net.ParseCIDR(machineCIDR.String())
+		if err != nil {
+			r.Reporter.Errorf("Unable to parse machine CIDR")
+			os.Exit(1)
+		}
+		_, serviceNetwork, err := net.ParseCIDR(serviceCIDR.String())
+		if err != nil {
+			r.Reporter.Errorf("Unable to parse service CIDR")
+			os.Exit(1)
+		}
+		for _, subnet := range initialSubnets {
+			subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
+			if err != nil {
+				r.Reporter.Errorf("Unable to parse subnet CIDR")
+				os.Exit(1)
+			}
 
+			if machineNetwork.Contains(subnetIP) &&
+				!subnetNetwork.Contains(serviceNetwork.IP) &&
+				!serviceNetwork.Contains(subnetIP) {
+				subnets = append(subnets, subnet)
+			}
+		}
+
+		if len(subnets) != len(initialSubnets) {
+			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into the Machine CIDR range")
+		}
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
 		options := make([]string, len(subnets))
@@ -1721,12 +1806,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
-		GetDefaultClusterFlavors(args.flavour)
-	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
-		r.Reporter.Errorf("Error retrieving default cluster flavors")
-		os.Exit(1)
-	}
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
 	computeMachineTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(region, availabilityZones, roleARN,
@@ -1909,56 +1988,6 @@ func run(cmd *cobra.Command, _ []string) {
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid network type: %s", err)
-			os.Exit(1)
-		}
-	}
-
-	// Machine CIDR:
-	machineCIDR := args.machineCIDR
-	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(machineCIDR) {
-			machineCIDR = *dMachinecidr
-		}
-		machineCIDR, err = interactive.GetIPNet(interactive.Input{
-			Question: "Machine CIDR",
-			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
-			Default:  machineCIDR,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
-			os.Exit(1)
-		}
-	}
-
-	// Service CIDR:
-	serviceCIDR := args.serviceCIDR
-	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(serviceCIDR) {
-			serviceCIDR = *dServicecidr
-		}
-		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
-			Question: "Service CIDR",
-			Help:     cmd.Flags().Lookup("service-cidr").Usage,
-			Default:  serviceCIDR,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
-			os.Exit(1)
-		}
-	}
-	// Pod CIDR:
-	podCIDR := args.podCIDR
-	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(podCIDR) {
-			podCIDR = *dPodcidr
-		}
-		podCIDR, err = interactive.GetIPNet(interactive.Input{
-			Question: "Pod CIDR",
-			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
-			Default:  podCIDR,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
 			os.Exit(1)
 		}
 	}
