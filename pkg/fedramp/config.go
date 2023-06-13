@@ -46,11 +46,25 @@ var LoginURLs = map[string]string{
 	"integration": "https://api.int.openshiftusgov.com/auth",
 }
 
+// SREPLoginURLs allows the value of the `--env` option to map to the various SREP login URLs.
+var SREPLoginURLs = map[string]string{
+	"production":  "https://api-admin.openshiftusgov.com/auth",
+	"staging":     "https://api-admin.stage.openshiftusgov.com/auth",
+	"integration": "https://api-admin.int.openshiftusgov.com/auth",
+}
+
 // URLAliases allows the value of the `--env` option to map to the various API URLs.
 var URLAliases = map[string]string{
 	"production":  "https://api.openshiftusgov.com",
 	"staging":     "https://api.stage.openshiftusgov.com",
 	"integration": "https://api.int.openshiftusgov.com",
+}
+
+// SREPURLAliases allows the value of the `--env` option to map to the various SREP API URLs.
+var SREPURLAliases = map[string]string{
+	"production":  "https://api-admin.openshiftusgov.com",
+	"staging":     "https://api-admin.stage.openshiftusgov.com",
+	"integration": "https://api-admin.int.openshiftusgov.com",
 }
 
 const cognitoURL = "auth-fips.us-gov-west-1.amazoncognito.com/oauth2/token"
