@@ -91,12 +91,6 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	env, err := ocm.GetEnv()
-	if err != nil {
-		r.Reporter.Errorf("Error getting environment %s", err)
-		os.Exit(1)
-	}
-
 	if interactive.Enabled() {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "Operator roles deletion mode",
@@ -224,11 +218,6 @@ func run(cmd *cobra.Command, argv []string) {
 	managedPolicies, err := r.AWSClient.HasManagedPolicies(roleARN)
 	if err != nil {
 		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
-		os.Exit(1)
-	}
-	// TODO: remove once AWS managed policies are in place
-	if managedPolicies && env == ocm.Production {
-		r.Reporter.Errorf("Managed policies are not supported in this environment")
 		os.Exit(1)
 	}
 

@@ -1159,19 +1159,9 @@ func run(cmd *cobra.Command, _ []string) {
 		workerRoleARN,
 	}
 
-	env, err := ocm.GetEnv()
-	if err != nil {
-		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
-		os.Exit(1)
-	}
 	managedPolicies, err := awsClient.HasManagedPolicies(roleARN)
 	if err != nil {
 		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
-		os.Exit(1)
-	}
-	// TODO: remove once AWS managed policies are in place
-	if managedPolicies && env == ocm.Production {
-		r.Reporter.Errorf("Managed policies are not supported in this environment")
 		os.Exit(1)
 	}
 

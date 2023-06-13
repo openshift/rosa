@@ -284,10 +284,6 @@ func getRoleListForDeletion(r *rosa.Runtime, env string, prefix string, clusters
 	if err != nil {
 		return finalRoleList, false, fmt.Errorf("Failed to determine if cluster has managed policies: %v", err)
 	}
-	// TODO: remove once AWS managed policies are in place
-	if managedPolicies && env == ocm.Production {
-		return finalRoleList, false, fmt.Errorf("Managed policies are not supported in this environment")
-	}
 
 	return finalRoleList, managedPolicies, nil
 }
