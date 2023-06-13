@@ -34,6 +34,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	. "github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/oidc_config"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -67,17 +68,9 @@ var Cmd = &cobra.Command{
 const (
 	maxLengthUserPrefix = 15
 
-	rawFilesFlag         = "raw-files"
-	userPrefixFlag       = "prefix"
-	managedFlag          = "managed"
-	installerRoleArnFlag = "installer-role-arn"
-
-	prefixForPrivateKeySecret = "rosa-private-key"
-	minorVersionForGetSecret  = "4.12"
-	informOperatorRolesOutput = "To create Operator Roles for this OIDC Configuration, " +
-		"run the following command and remember to replace <user-defined> with a prefix of your choice:\n" +
-		"\trosa create operator-roles --prefix <user-defined> --oidc-config-id %s\n" +
-		"If you are going to create a Hosted Control Plane cluster please include '--hosted-cp'"
+	rawFilesFlag   = "raw-files"
+	userPrefixFlag = "prefix"
+	managedFlag    = "managed"
 )
 
 func init() {
@@ -107,7 +100,7 @@ func init() {
 
 	flags.StringVar(
 		&args.installerRoleArn,
-		installerRoleArnFlag,
+		InstallerRoleArnFlag,
 		"",
 		"STS Role ARN with get secrets permission.",
 	)
@@ -132,7 +125,7 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 		return
 	}
 	modeIsAuto := cmd.Flag("mode").Value.String() == aws.ModeAuto
-	installerRoleArnNotSet := (!cmd.Flags().Changed(installerRoleArnFlag) || args.installerRoleArn == "") && !confirm.Yes()
+	installerRoleArnNotSet := (!cmd.Flags().Changed(InstallerRoleArnFlag) || args.installerRoleArn == "") && !confirm.Yes()
 	if !args.managed && (modeNotChanged || (modeIsAuto && installerRoleArnNotSet)) {
 		interactive.Enable()
 		return
@@ -169,7 +162,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if args.rawFiles && args.installerRoleArn != "" {
-		r.Reporter.Warnf("--%s param is not supported alongside --%s param", rawFilesFlag, installerRoleArnFlag)
+		r.Reporter.Warnf("--%s param is not supported alongside --%s param", rawFilesFlag, InstallerRoleArnFlag)
 		os.Exit(1)
 	}
 
@@ -193,7 +186,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
+			r.Reporter.Errorf("Expected a valid %s: %s", question, err)
 			os.Exit(1)
 		}
 	}
@@ -209,7 +202,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if args.managed && args.installerRoleArn != "" {
-		r.Reporter.Warnf("--%s param is not supported for managed OIDC config", installerRoleArnFlag)
+		r.Reporter.Warnf("--%s param is not supported for managed OIDC config", InstallerRoleArnFlag)
 		os.Exit(1)
 	}
 
@@ -220,7 +213,7 @@ func run(cmd *cobra.Command, argv []string) {
 					"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
 			}
 			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
-				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, minorVersionForGetSecret)
+				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret)
 			}
 			if interactive.Enabled() {
 				prefix, err := interactive.GetString(interactive.Input{
@@ -255,13 +248,13 @@ func run(cmd *cobra.Command, argv []string) {
 					os.Exit(1)
 				}
 				isValid, err := r.AWSClient.ValidateAccountRoleVersionCompatibility(
-					roleName, aws.InstallerAccountRole, minorVersionForGetSecret)
+					roleName, aws.InstallerAccountRole, MinorVersionForGetSecret)
 				if err != nil {
 					r.Reporter.Errorf("There was a problem listing role tags: %v", err)
 					os.Exit(1)
 				}
 				if !isValid {
-					r.Reporter.Errorf("Role '%s' is not of minimum version '%s'", args.installerRoleArn, minorVersionForGetSecret)
+					r.Reporter.Errorf("Role '%s' is not of minimum version '%s'", args.installerRoleArn, MinorVersionForGetSecret)
 					os.Exit(1)
 				}
 			}
@@ -396,9 +389,10 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		if spin != nil {
 			spin.Stop()
 		}
-		r.Reporter.Errorf("There was a problem building your unmanaged OIDC Configuration "+
-			"with OCM: %v.\nPlease refer to documentation and try again through OCM CLI.", err)
-		r.Reporter.Warnf("Secret ARN: %s\tBucketUrl: %s", secretARN, bucketUrl)
+		r.Reporter.Errorf("There was a problem building your unmanaged OIDC Configuration %v.\n"+
+			"Please refer to documentation and try again through:\n"+
+			"\trosa register oidc-config --issuer-url %s --secret-arn %s --installer-role-arn %s",
+			err, bucketUrl, secretARN, installerRoleArn)
 		os.Exit(1)
 	}
 	if output.HasFlag() {
@@ -413,7 +407,7 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		if spin != nil {
 			spin.Stop()
 		}
-		output := fmt.Sprintf(informOperatorRolesOutput, oidcConfig.ID())
+		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
 }
@@ -565,7 +559,7 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		if spin != nil {
 			spin.Stop()
 		}
-		output := fmt.Sprintf(informOperatorRolesOutput, oidcConfig.ID())
+		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
 }
