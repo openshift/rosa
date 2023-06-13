@@ -32,7 +32,6 @@ type MachineTypeBuilder struct {
 	genericName   string
 	memory        *ValueBuilder
 	name          string
-	rootVolume    *MachineTypeRootVolumeBuilder
 	size          MachineTypeSize
 	ccsOnly       bool
 }
@@ -170,25 +169,12 @@ func (b *MachineTypeBuilder) Name(value string) *MachineTypeBuilder {
 	return b
 }
 
-// RootVolume sets the value of the 'root_volume' attribute to the given value.
-//
-// Machine type root volume.
-func (b *MachineTypeBuilder) RootVolume(value *MachineTypeRootVolumeBuilder) *MachineTypeBuilder {
-	b.rootVolume = value
-	if value != nil {
-		b.bitmap_ |= 1024
-	} else {
-		b.bitmap_ &^= 1024
-	}
-	return b
-}
-
 // Size sets the value of the 'size' attribute to the given value.
 //
 // Machine type size.
 func (b *MachineTypeBuilder) Size(value MachineTypeSize) *MachineTypeBuilder {
 	b.size = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -219,11 +205,6 @@ func (b *MachineTypeBuilder) Copy(object *MachineType) *MachineTypeBuilder {
 		b.memory = nil
 	}
 	b.name = object.name
-	if object.rootVolume != nil {
-		b.rootVolume = NewMachineTypeRootVolume().Copy(object.rootVolume)
-	} else {
-		b.rootVolume = nil
-	}
 	b.size = object.size
 	return b
 }
@@ -256,12 +237,6 @@ func (b *MachineTypeBuilder) Build() (object *MachineType, err error) {
 		}
 	}
 	object.name = b.name
-	if b.rootVolume != nil {
-		object.rootVolume, err = b.rootVolume.Build()
-		if err != nil {
-			return
-		}
-	}
 	object.size = b.size
 	return
 }

@@ -24,6 +24,7 @@ type CloudAccountBuilder struct {
 	bitmap_         uint32
 	cloudAccountID  string
 	cloudProviderID string
+	contracts       []*ContractBuilder
 }
 
 // NewCloudAccount creates a new builder of 'cloud_account' objects.
@@ -50,6 +51,14 @@ func (b *CloudAccountBuilder) CloudProviderID(value string) *CloudAccountBuilder
 	return b
 }
 
+// Contracts sets the value of the 'contracts' attribute to the given values.
+func (b *CloudAccountBuilder) Contracts(values ...*ContractBuilder) *CloudAccountBuilder {
+	b.contracts = make([]*ContractBuilder, len(values))
+	copy(b.contracts, values)
+	b.bitmap_ |= 4
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *CloudAccountBuilder) Copy(object *CloudAccount) *CloudAccountBuilder {
 	if object == nil {
@@ -58,6 +67,14 @@ func (b *CloudAccountBuilder) Copy(object *CloudAccount) *CloudAccountBuilder {
 	b.bitmap_ = object.bitmap_
 	b.cloudAccountID = object.cloudAccountID
 	b.cloudProviderID = object.cloudProviderID
+	if object.contracts != nil {
+		b.contracts = make([]*ContractBuilder, len(object.contracts))
+		for i, v := range object.contracts {
+			b.contracts[i] = NewContract().Copy(v)
+		}
+	} else {
+		b.contracts = nil
+	}
 	return b
 }
 
@@ -67,5 +84,14 @@ func (b *CloudAccountBuilder) Build() (object *CloudAccount, err error) {
 	object.bitmap_ = b.bitmap_
 	object.cloudAccountID = b.cloudAccountID
 	object.cloudProviderID = b.cloudProviderID
+	if b.contracts != nil {
+		object.contracts = make([]*Contract, len(b.contracts))
+		for i, v := range b.contracts {
+			object.contracts[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	return
 }

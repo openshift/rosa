@@ -44,7 +44,7 @@ type MachinePool struct {
 	instanceType         string
 	labels               map[string]string
 	replicas             int
-	rootVolume           *MachineTypeRootVolume
+	rootVolume           *RootVolume
 	securityGroupFilters []*MachinePoolSecurityGroupFilter
 	subnets              []string
 	taints               []*Taint
@@ -253,7 +253,7 @@ func (o *MachinePool) GetReplicas() (value int, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The machine root volume capabilities.
-func (o *MachinePool) RootVolume() *MachineTypeRootVolume {
+func (o *MachinePool) RootVolume() *RootVolume {
 	if o != nil && o.bitmap_&512 != 0 {
 		return o.rootVolume
 	}
@@ -264,7 +264,7 @@ func (o *MachinePool) RootVolume() *MachineTypeRootVolume {
 // a flag indicating if the attribute has a value.
 //
 // The machine root volume capabilities.
-func (o *MachinePool) GetRootVolume() (value *MachineTypeRootVolume, ok bool) {
+func (o *MachinePool) GetRootVolume() (value *RootVolume, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.rootVolume

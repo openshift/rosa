@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalMachineTypeRootVolumeList writes a list of values of the 'machine_type_root_volume' type to
+// MarshalContractDimensionList writes a list of values of the 'contract_dimension' type to
 // the given writer.
-func MarshalMachineTypeRootVolumeList(list []*MachineTypeRootVolume, writer io.Writer) error {
+func MarshalContractDimensionList(list []*ContractDimension, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeMachineTypeRootVolumeList(list, stream)
+	writeContractDimensionList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalMachineTypeRootVolumeList(list []*MachineTypeRootVolume, writer io.W
 	return stream.Error
 }
 
-// writeMachineTypeRootVolumeList writes a list of value of the 'machine_type_root_volume' type to
+// writeContractDimensionList writes a list of value of the 'contract_dimension' type to
 // the given stream.
-func writeMachineTypeRootVolumeList(list []*MachineTypeRootVolume, stream *jsoniter.Stream) {
+func writeContractDimensionList(list []*ContractDimension, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeMachineTypeRootVolume(value, stream)
+		writeContractDimension(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalMachineTypeRootVolumeList reads a list of values of the 'machine_type_root_volume' type
+// UnmarshalContractDimensionList reads a list of values of the 'contract_dimension' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalMachineTypeRootVolumeList(source interface{}) (items []*MachineTypeRootVolume, err error) {
+func UnmarshalContractDimensionList(source interface{}) (items []*ContractDimension, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readMachineTypeRootVolumeList(iterator)
+	items = readContractDimensionList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readMachineTypeRootVolumeList reads list of values of the ”machine_type_root_volume' type from
+// readContractDimensionList reads list of values of the ”contract_dimension' type from
 // the given iterator.
-func readMachineTypeRootVolumeList(iterator *jsoniter.Iterator) []*MachineTypeRootVolume {
-	list := []*MachineTypeRootVolume{}
+func readContractDimensionList(iterator *jsoniter.Iterator) []*ContractDimension {
+	list := []*ContractDimension{}
 	for iterator.ReadArray() {
-		item := readMachineTypeRootVolume(iterator)
+		item := readContractDimension(iterator)
 		list = append(list, item)
 	}
 	return list
