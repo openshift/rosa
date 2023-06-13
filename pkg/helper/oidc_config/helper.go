@@ -9,9 +9,10 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"gopkg.in/square/go-jose.v2"
 	"regexp"
 	"strings"
+
+	"gopkg.in/square/go-jose.v2"
 
 	"github.com/pkg/errors"
 
