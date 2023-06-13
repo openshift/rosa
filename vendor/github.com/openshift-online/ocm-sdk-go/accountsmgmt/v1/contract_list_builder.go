@@ -17,55 +17,55 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
-// SSHCredentialsListBuilder contains the data and logic needed to build
-// 'SSH_credentials' objects.
-type SSHCredentialsListBuilder struct {
-	items []*SSHCredentialsBuilder
+// ContractListBuilder contains the data and logic needed to build
+// 'contract' objects.
+type ContractListBuilder struct {
+	items []*ContractBuilder
 }
 
-// NewSSHCredentialsList creates a new builder of 'SSH_credentials' objects.
-func NewSSHCredentialsList() *SSHCredentialsListBuilder {
-	return new(SSHCredentialsListBuilder)
+// NewContractList creates a new builder of 'contract' objects.
+func NewContractList() *ContractListBuilder {
+	return new(ContractListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *SSHCredentialsListBuilder) Items(values ...*SSHCredentialsBuilder) *SSHCredentialsListBuilder {
-	b.items = make([]*SSHCredentialsBuilder, len(values))
+func (b *ContractListBuilder) Items(values ...*ContractBuilder) *ContractListBuilder {
+	b.items = make([]*ContractBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Empty returns true if the list is empty.
-func (b *SSHCredentialsListBuilder) Empty() bool {
+func (b *ContractListBuilder) Empty() bool {
 	return b == nil || len(b.items) == 0
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *SSHCredentialsListBuilder) Copy(list *SSHCredentialsList) *SSHCredentialsListBuilder {
+func (b *ContractListBuilder) Copy(list *ContractList) *ContractListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*SSHCredentialsBuilder, len(list.items))
+		b.items = make([]*ContractBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewSSHCredentials().Copy(v)
+			b.items[i] = NewContract().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'SSH_credentials' objects using the
+// Build creates a list of 'contract' objects using the
 // configuration stored in the builder.
-func (b *SSHCredentialsListBuilder) Build() (list *SSHCredentialsList, err error) {
-	items := make([]*SSHCredentials, len(b.items))
+func (b *ContractListBuilder) Build() (list *ContractList, err error) {
+	items := make([]*Contract, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(SSHCredentialsList)
+	list = new(ContractList)
 	list.items = items
 	return
 }

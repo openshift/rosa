@@ -29,6 +29,7 @@ type ClusterNodesBuilder struct {
 	compute              int
 	computeLabels        map[string]string
 	computeMachineType   *MachineTypeBuilder
+	computeRootVolume    *RootVolumeBuilder
 	infra                int
 	infraMachineType     *MachineTypeBuilder
 	master               int
@@ -99,10 +100,23 @@ func (b *ClusterNodesBuilder) ComputeMachineType(value *MachineTypeBuilder) *Clu
 	return b
 }
 
+// ComputeRootVolume sets the value of the 'compute_root_volume' attribute to the given value.
+//
+// Root volume capabilities.
+func (b *ClusterNodesBuilder) ComputeRootVolume(value *RootVolumeBuilder) *ClusterNodesBuilder {
+	b.computeRootVolume = value
+	if value != nil {
+		b.bitmap_ |= 32
+	} else {
+		b.bitmap_ &^= 32
+	}
+	return b
+}
+
 // Infra sets the value of the 'infra' attribute to the given value.
 func (b *ClusterNodesBuilder) Infra(value int) *ClusterNodesBuilder {
 	b.infra = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -112,9 +126,9 @@ func (b *ClusterNodesBuilder) Infra(value int) *ClusterNodesBuilder {
 func (b *ClusterNodesBuilder) InfraMachineType(value *MachineTypeBuilder) *ClusterNodesBuilder {
 	b.infraMachineType = value
 	if value != nil {
-		b.bitmap_ |= 64
+		b.bitmap_ |= 128
 	} else {
-		b.bitmap_ &^= 64
+		b.bitmap_ &^= 128
 	}
 	return b
 }
@@ -122,7 +136,7 @@ func (b *ClusterNodesBuilder) InfraMachineType(value *MachineTypeBuilder) *Clust
 // Master sets the value of the 'master' attribute to the given value.
 func (b *ClusterNodesBuilder) Master(value int) *ClusterNodesBuilder {
 	b.master = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
@@ -132,9 +146,9 @@ func (b *ClusterNodesBuilder) Master(value int) *ClusterNodesBuilder {
 func (b *ClusterNodesBuilder) MasterMachineType(value *MachineTypeBuilder) *ClusterNodesBuilder {
 	b.masterMachineType = value
 	if value != nil {
-		b.bitmap_ |= 256
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 256
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -143,14 +157,14 @@ func (b *ClusterNodesBuilder) MasterMachineType(value *MachineTypeBuilder) *Clus
 func (b *ClusterNodesBuilder) SecurityGroupFilters(values ...*MachinePoolSecurityGroupFilterBuilder) *ClusterNodesBuilder {
 	b.securityGroupFilters = make([]*MachinePoolSecurityGroupFilterBuilder, len(values))
 	copy(b.securityGroupFilters, values)
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
 // Total sets the value of the 'total' attribute to the given value.
 func (b *ClusterNodesBuilder) Total(value int) *ClusterNodesBuilder {
 	b.total = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -184,6 +198,11 @@ func (b *ClusterNodesBuilder) Copy(object *ClusterNodes) *ClusterNodesBuilder {
 		b.computeMachineType = NewMachineType().Copy(object.computeMachineType)
 	} else {
 		b.computeMachineType = nil
+	}
+	if object.computeRootVolume != nil {
+		b.computeRootVolume = NewRootVolume().Copy(object.computeRootVolume)
+	} else {
+		b.computeRootVolume = nil
 	}
 	b.infra = object.infra
 	if object.infraMachineType != nil {
@@ -232,6 +251,12 @@ func (b *ClusterNodesBuilder) Build() (object *ClusterNodes, err error) {
 	}
 	if b.computeMachineType != nil {
 		object.computeMachineType, err = b.computeMachineType.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.computeRootVolume != nil {
+		object.computeRootVolume, err = b.computeRootVolume.Build()
 		if err != nil {
 			return
 		}

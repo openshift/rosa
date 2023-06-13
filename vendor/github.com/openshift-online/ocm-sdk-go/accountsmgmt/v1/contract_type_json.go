@@ -21,15 +21,16 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalCloudAccount writes a value of the 'cloud_account' type to the given writer.
-func MarshalCloudAccount(object *CloudAccount, writer io.Writer) error {
+// MarshalContract writes a value of the 'contract' type to the given writer.
+func MarshalContract(object *Contract, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeCloudAccount(object, stream)
+	writeContract(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,18 +38,18 @@ func MarshalCloudAccount(object *CloudAccount, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeCloudAccount writes a value of the 'cloud_account' type to the given stream.
-func writeCloudAccount(object *CloudAccount, stream *jsoniter.Stream) {
+// writeContract writes a value of the 'contract' type to the given stream.
+func writeContract(object *Contract, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&1 != 0 && object.dimensions != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cloud_account_id")
-		stream.WriteString(object.cloudAccountID)
+		stream.WriteObjectField("dimensions")
+		writeContractDimensionList(object.dimensions, stream)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -56,53 +57,61 @@ func writeCloudAccount(object *CloudAccount, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cloud_provider_id")
-		stream.WriteString(object.cloudProviderID)
+		stream.WriteObjectField("end_date")
+		stream.WriteString((object.endDate).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&4 != 0 && object.contracts != nil
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("contracts")
-		writeContractList(object.contracts, stream)
+		stream.WriteObjectField("start_date")
+		stream.WriteString((object.startDate).Format(time.RFC3339))
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalCloudAccount reads a value of the 'cloud_account' type from the given
+// UnmarshalContract reads a value of the 'contract' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalCloudAccount(source interface{}) (object *CloudAccount, err error) {
+func UnmarshalContract(source interface{}) (object *Contract, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readCloudAccount(iterator)
+	object = readContract(iterator)
 	err = iterator.Error
 	return
 }
 
-// readCloudAccount reads a value of the 'cloud_account' type from the given iterator.
-func readCloudAccount(iterator *jsoniter.Iterator) *CloudAccount {
-	object := &CloudAccount{}
+// readContract reads a value of the 'contract' type from the given iterator.
+func readContract(iterator *jsoniter.Iterator) *Contract {
+	object := &Contract{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "cloud_account_id":
-			value := iterator.ReadString()
-			object.cloudAccountID = value
+		case "dimensions":
+			value := readContractDimensionList(iterator)
+			object.dimensions = value
 			object.bitmap_ |= 1
-		case "cloud_provider_id":
-			value := iterator.ReadString()
-			object.cloudProviderID = value
+		case "end_date":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.endDate = value
 			object.bitmap_ |= 2
-		case "contracts":
-			value := readContractList(iterator)
-			object.contracts = value
+		case "start_date":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.startDate = value
 			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()

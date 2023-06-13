@@ -32,7 +32,7 @@ type MachinePoolBuilder struct {
 	instanceType         string
 	labels               map[string]string
 	replicas             int
-	rootVolume           *MachineTypeRootVolumeBuilder
+	rootVolume           *RootVolumeBuilder
 	securityGroupFilters []*MachinePoolSecurityGroupFilterBuilder
 	subnets              []string
 	taints               []*TaintBuilder
@@ -129,8 +129,8 @@ func (b *MachinePoolBuilder) Replicas(value int) *MachinePoolBuilder {
 
 // RootVolume sets the value of the 'root_volume' attribute to the given value.
 //
-// Machine type root volume.
-func (b *MachinePoolBuilder) RootVolume(value *MachineTypeRootVolumeBuilder) *MachinePoolBuilder {
+// Root volume capabilities.
+func (b *MachinePoolBuilder) RootVolume(value *RootVolumeBuilder) *MachinePoolBuilder {
 	b.rootVolume = value
 	if value != nil {
 		b.bitmap_ |= 512
@@ -199,7 +199,7 @@ func (b *MachinePoolBuilder) Copy(object *MachinePool) *MachinePoolBuilder {
 	}
 	b.replicas = object.replicas
 	if object.rootVolume != nil {
-		b.rootVolume = NewMachineTypeRootVolume().Copy(object.rootVolume)
+		b.rootVolume = NewRootVolume().Copy(object.rootVolume)
 	} else {
 		b.rootVolume = nil
 	}

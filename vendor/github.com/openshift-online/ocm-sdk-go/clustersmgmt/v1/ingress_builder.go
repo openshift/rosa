@@ -23,13 +23,14 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Representation of an ingress.
 type IngressBuilder struct {
-	bitmap_        uint32
-	id             string
-	href           string
-	dnsName        string
-	listening      ListeningMethod
-	routeSelectors map[string]string
-	default_       bool
+	bitmap_          uint32
+	id               string
+	href             string
+	dnsName          string
+	listening        ListeningMethod
+	loadBalancerType LoadBalancerFlavor
+	routeSelectors   map[string]string
+	default_         bool
 }
 
 // NewIngress creates a new builder of 'ingress' objects.
@@ -85,13 +86,22 @@ func (b *IngressBuilder) Listening(value ListeningMethod) *IngressBuilder {
 	return b
 }
 
+// LoadBalancerType sets the value of the 'load_balancer_type' attribute to the given value.
+//
+// Type of node received via telemetry.
+func (b *IngressBuilder) LoadBalancerType(value LoadBalancerFlavor) *IngressBuilder {
+	b.loadBalancerType = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // RouteSelectors sets the value of the 'route_selectors' attribute to the given value.
 func (b *IngressBuilder) RouteSelectors(value map[string]string) *IngressBuilder {
 	b.routeSelectors = value
 	if value != nil {
-		b.bitmap_ |= 64
+		b.bitmap_ |= 128
 	} else {
-		b.bitmap_ &^= 64
+		b.bitmap_ &^= 128
 	}
 	return b
 }
@@ -107,6 +117,7 @@ func (b *IngressBuilder) Copy(object *Ingress) *IngressBuilder {
 	b.dnsName = object.dnsName
 	b.default_ = object.default_
 	b.listening = object.listening
+	b.loadBalancerType = object.loadBalancerType
 	if len(object.routeSelectors) > 0 {
 		b.routeSelectors = map[string]string{}
 		for k, v := range object.routeSelectors {
@@ -127,6 +138,7 @@ func (b *IngressBuilder) Build() (object *Ingress, err error) {
 	object.dnsName = b.dnsName
 	object.default_ = b.default_
 	object.listening = b.listening
+	object.loadBalancerType = b.loadBalancerType
 	if b.routeSelectors != nil {
 		object.routeSelectors = make(map[string]string)
 		for k, v := range b.routeSelectors {

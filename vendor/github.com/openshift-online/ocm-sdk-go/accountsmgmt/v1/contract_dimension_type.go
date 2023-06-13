@@ -17,89 +17,79 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
-// SSHCredentials represents the values of the 'SSH_credentials' type.
-//
-// SSH key pair of a cluster.
-type SSHCredentials struct {
-	bitmap_    uint32
-	privateKey string
-	publicKey  string
+// ContractDimension represents the values of the 'contract_dimension' type.
+type ContractDimension struct {
+	bitmap_ uint32
+	name    string
+	value   string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *SSHCredentials) Empty() bool {
+func (o *ContractDimension) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// PrivateKey returns the value of the 'private_key' attribute, or
+// Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-// SSH private key of the cluster.
-func (o *SSHCredentials) PrivateKey() string {
+func (o *ContractDimension) Name() string {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.privateKey
+		return o.name
 	}
 	return ""
 }
 
-// GetPrivateKey returns the value of the 'private_key' attribute and
+// GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
-//
-// SSH private key of the cluster.
-func (o *SSHCredentials) GetPrivateKey() (value string, ok bool) {
+func (o *ContractDimension) GetName() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.privateKey
+		value = o.name
 	}
 	return
 }
 
-// PublicKey returns the value of the 'public_key' attribute, or
+// Value returns the value of the 'value' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-// SSH public key of the cluster.
-func (o *SSHCredentials) PublicKey() string {
+func (o *ContractDimension) Value() string {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.publicKey
+		return o.value
 	}
 	return ""
 }
 
-// GetPublicKey returns the value of the 'public_key' attribute and
+// GetValue returns the value of the 'value' attribute and
 // a flag indicating if the attribute has a value.
-//
-// SSH public key of the cluster.
-func (o *SSHCredentials) GetPublicKey() (value string, ok bool) {
+func (o *ContractDimension) GetValue() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.publicKey
+		value = o.value
 	}
 	return
 }
 
-// SSHCredentialsListKind is the name of the type used to represent list of objects of
-// type 'SSH_credentials'.
-const SSHCredentialsListKind = "SSHCredentialsList"
+// ContractDimensionListKind is the name of the type used to represent list of objects of
+// type 'contract_dimension'.
+const ContractDimensionListKind = "ContractDimensionList"
 
-// SSHCredentialsListLinkKind is the name of the type used to represent links to list
-// of objects of type 'SSH_credentials'.
-const SSHCredentialsListLinkKind = "SSHCredentialsListLink"
+// ContractDimensionListLinkKind is the name of the type used to represent links to list
+// of objects of type 'contract_dimension'.
+const ContractDimensionListLinkKind = "ContractDimensionListLink"
 
-// SSHCredentialsNilKind is the name of the type used to nil lists of objects of
-// type 'SSH_credentials'.
-const SSHCredentialsListNilKind = "SSHCredentialsListNil"
+// ContractDimensionNilKind is the name of the type used to nil lists of objects of
+// type 'contract_dimension'.
+const ContractDimensionListNilKind = "ContractDimensionListNil"
 
-// SSHCredentialsList is a list of values of the 'SSH_credentials' type.
-type SSHCredentialsList struct {
+// ContractDimensionList is a list of values of the 'contract_dimension' type.
+type ContractDimensionList struct {
 	href  string
 	link  bool
-	items []*SSHCredentials
+	items []*ContractDimension
 }
 
 // Len returns the length of the list.
-func (l *SSHCredentialsList) Len() int {
+func (l *ContractDimensionList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -107,13 +97,13 @@ func (l *SSHCredentialsList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *SSHCredentialsList) Empty() bool {
+func (l *ContractDimensionList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *SSHCredentialsList) Get(i int) *SSHCredentials {
+func (l *ContractDimensionList) Get(i int) *ContractDimension {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -126,12 +116,12 @@ func (l *SSHCredentialsList) Get(i int) *SSHCredentials {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *SSHCredentialsList) Slice() []*SSHCredentials {
-	var slice []*SSHCredentials
+func (l *ContractDimensionList) Slice() []*ContractDimension {
+	var slice []*ContractDimension
 	if l == nil {
-		slice = make([]*SSHCredentials, 0)
+		slice = make([]*ContractDimension, 0)
 	} else {
-		slice = make([]*SSHCredentials, len(l.items))
+		slice = make([]*ContractDimension, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -140,7 +130,7 @@ func (l *SSHCredentialsList) Slice() []*SSHCredentials {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *SSHCredentialsList) Each(f func(item *SSHCredentials) bool) {
+func (l *ContractDimensionList) Each(f func(item *ContractDimension) bool) {
 	if l == nil {
 		return
 	}
@@ -154,7 +144,7 @@ func (l *SSHCredentialsList) Each(f func(item *SSHCredentials) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *SSHCredentialsList) Range(f func(index int, item *SSHCredentials) bool) {
+func (l *ContractDimensionList) Range(f func(index int, item *ContractDimension) bool) {
 	if l == nil {
 		return
 	}

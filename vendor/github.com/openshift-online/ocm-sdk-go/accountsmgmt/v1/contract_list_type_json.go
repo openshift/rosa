@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSSHCredentialsList writes a list of values of the 'SSH_credentials' type to
+// MarshalContractList writes a list of values of the 'contract' type to
 // the given writer.
-func MarshalSSHCredentialsList(list []*SSHCredentials, writer io.Writer) error {
+func MarshalContractList(list []*Contract, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSSHCredentialsList(list, stream)
+	writeContractList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalSSHCredentialsList(list []*SSHCredentials, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSSHCredentialsList writes a list of value of the 'SSH_credentials' type to
+// writeContractList writes a list of value of the 'contract' type to
 // the given stream.
-func writeSSHCredentialsList(list []*SSHCredentials, stream *jsoniter.Stream) {
+func writeContractList(list []*Contract, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeSSHCredentials(value, stream)
+		writeContract(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalSSHCredentialsList reads a list of values of the 'SSH_credentials' type
+// UnmarshalContractList reads a list of values of the 'contract' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalSSHCredentialsList(source interface{}) (items []*SSHCredentials, err error) {
+func UnmarshalContractList(source interface{}) (items []*Contract, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readSSHCredentialsList(iterator)
+	items = readContractList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSSHCredentialsList reads list of values of the ”SSH_credentials' type from
+// readContractList reads list of values of the ”contract' type from
 // the given iterator.
-func readSSHCredentialsList(iterator *jsoniter.Iterator) []*SSHCredentials {
-	list := []*SSHCredentials{}
+func readContractList(iterator *jsoniter.Iterator) []*Contract {
+	list := []*Contract{}
 	for iterator.ReadArray() {
-		item := readSSHCredentials(iterator)
+		item := readContract(iterator)
 		list = append(list, item)
 	}
 	return list

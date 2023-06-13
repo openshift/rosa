@@ -65,25 +65,7 @@ func writeClusterCredentials(object *ClusterCredentials, stream *jsoniter.Stream
 		count++
 	}
 	var present_ bool
-	present_ = object.bitmap_&8 != 0 && object.ssh != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("ssh")
-		writeSSHCredentials(object.ssh, stream)
-		count++
-	}
-	present_ = object.bitmap_&16 != 0 && object.admin != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("admin")
-		writeAdminCredentials(object.admin, stream)
-		count++
-	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -126,18 +108,10 @@ func readClusterCredentials(iterator *jsoniter.Iterator) *ClusterCredentials {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
-		case "ssh":
-			value := readSSHCredentials(iterator)
-			object.ssh = value
-			object.bitmap_ |= 8
-		case "admin":
-			value := readAdminCredentials(iterator)
-			object.admin = value
-			object.bitmap_ |= 16
 		case "kubeconfig":
 			value := iterator.ReadString()
 			object.kubeconfig = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

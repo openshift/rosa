@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSSHCredentials writes a value of the 'SSH_credentials' type to the given writer.
-func MarshalSSHCredentials(object *SSHCredentials, writer io.Writer) error {
+// MarshalContractDimension writes a value of the 'contract_dimension' type to the given writer.
+func MarshalContractDimension(object *ContractDimension, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSSHCredentials(object, stream)
+	writeContractDimension(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalSSHCredentials(object *SSHCredentials, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSSHCredentials writes a value of the 'SSH_credentials' type to the given stream.
-func writeSSHCredentials(object *SSHCredentials, stream *jsoniter.Stream) {
+// writeContractDimension writes a value of the 'contract_dimension' type to the given stream.
+func writeContractDimension(object *ContractDimension, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,8 +47,8 @@ func writeSSHCredentials(object *SSHCredentials, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("private_key")
-		stream.WriteString(object.privateKey)
+		stream.WriteObjectField("name")
+		stream.WriteString(object.name)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -56,40 +56,40 @@ func writeSSHCredentials(object *SSHCredentials, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("public_key")
-		stream.WriteString(object.publicKey)
+		stream.WriteObjectField("value")
+		stream.WriteString(object.value)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalSSHCredentials reads a value of the 'SSH_credentials' type from the given
+// UnmarshalContractDimension reads a value of the 'contract_dimension' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalSSHCredentials(source interface{}) (object *SSHCredentials, err error) {
+func UnmarshalContractDimension(source interface{}) (object *ContractDimension, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readSSHCredentials(iterator)
+	object = readContractDimension(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSSHCredentials reads a value of the 'SSH_credentials' type from the given iterator.
-func readSSHCredentials(iterator *jsoniter.Iterator) *SSHCredentials {
-	object := &SSHCredentials{}
+// readContractDimension reads a value of the 'contract_dimension' type from the given iterator.
+func readContractDimension(iterator *jsoniter.Iterator) *ContractDimension {
+	object := &ContractDimension{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "private_key":
+		case "name":
 			value := iterator.ReadString()
-			object.privateKey = value
+			object.name = value
 			object.bitmap_ |= 1
-		case "public_key":
+		case "value":
 			value := iterator.ReadString()
-			object.publicKey = value
+			object.value = value
 			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()
