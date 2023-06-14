@@ -39,6 +39,7 @@ import (
 	"github.com/openshift/rosa/cmd/login"
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/cmd/logs"
+	"github.com/openshift/rosa/cmd/register"
 	"github.com/openshift/rosa/cmd/resume"
 	"github.com/openshift/rosa/cmd/revoke"
 	"github.com/openshift/rosa/cmd/uninstall"
@@ -80,6 +81,7 @@ func init() {
 	root.AddCommand(login.Cmd)
 	root.AddCommand(logout.Cmd)
 	root.AddCommand(logs.Cmd)
+	root.AddCommand(register.Cmd)
 	root.AddCommand(revoke.Cmd)
 	root.AddCommand(uninstall.Cmd)
 	root.AddCommand(upgrade.Cmd)
