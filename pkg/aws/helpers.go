@@ -31,7 +31,7 @@ import (
 var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 
 var AuditLogArnRE = regexp.MustCompile(
-	`^arn:aws:iam::\d{12}:role/[a-zA-Z0-9_-]+$`,
+	`^arn:aws:iam::\d{12}:role(?:\/[\w+=,.@-]+)*(?:\/[a-zA-Z0-9_-]+)$`,
 )
 
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
