@@ -28,10 +28,12 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
+// AWS accepted role name: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
 var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 
-var AuditLogArnRE = regexp.MustCompile(
-	`^arn:aws:iam::\d{12}:role(?:\/[\w+=,.@-]+)*(?:\/[a-zA-Z0-9_-]+)$`,
+// AWS accepted arn format: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html
+var RoleArnRE = regexp.MustCompile(
+	`^arn:aws[\w-]*:iam::\d{12}:role(?:\/+[\w+=,.@-]+)+$`,
 )
 
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions

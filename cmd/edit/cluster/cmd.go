@@ -600,8 +600,8 @@ func setAuditLogForwarding(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cl
 			return nil, fmt.Errorf("Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters")
 
 		}
-		if auditLogArn != "" && !aws.AuditLogArnRE.MatchString(auditLogArn) {
-			return nil, fmt.Errorf("Expected a valid value for audit-log-arn matching %s", aws.AuditLogArnRE.String())
+		if auditLogArn != "" && !aws.RoleArnRE.MatchString(auditLogArn) {
+			return nil, fmt.Errorf("Expected a valid value for audit-log-arn matching %s", aws.RoleArnRE.String())
 		}
 		argValuePtr := new(string)
 		*argValuePtr = auditLogArn
@@ -651,7 +651,7 @@ func auditLogInteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv
 			Default:  "",
 			Required: true,
 			Validators: []interactive.Validator{
-				interactive.RegExp(aws.AuditLogArnRE.String()),
+				interactive.RegExp(aws.RoleArnRE.String()),
 			},
 		})
 		if err != nil {
