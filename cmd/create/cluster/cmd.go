@@ -2892,7 +2892,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --etcd-encryption-kms-arn %s", spec.EtcdEncryptionKMSArn)
 	}
 
-	if spec.AuditLogRoleARN != nil {
+	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
 		command += fmt.Sprintf(" --audit-log-arn %s", *spec.AuditLogRoleARN)
 	}
 
