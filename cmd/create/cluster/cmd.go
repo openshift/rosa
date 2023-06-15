@@ -1526,10 +1526,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Machine CIDR:
 	machineCIDR := args.machineCIDR
+	if ocm.IsEmptyCIDR(machineCIDR) {
+		machineCIDR = *dMachinecidr
+	}
 	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(machineCIDR) {
-			machineCIDR = *dMachinecidr
-		}
 		machineCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Machine CIDR",
 			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
@@ -1543,10 +1543,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Service CIDR:
 	serviceCIDR := args.serviceCIDR
+	if ocm.IsEmptyCIDR(serviceCIDR) {
+		serviceCIDR = *dServicecidr
+	}
 	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(serviceCIDR) {
-			serviceCIDR = *dServicecidr
-		}
 		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Service CIDR",
 			Help:     cmd.Flags().Lookup("service-cidr").Usage,
@@ -1559,10 +1559,10 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	// Pod CIDR:
 	podCIDR := args.podCIDR
+	if ocm.IsEmptyCIDR(podCIDR) {
+		podCIDR = *dPodcidr
+	}
 	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(podCIDR) {
-			podCIDR = *dPodcidr
-		}
 		podCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Pod CIDR",
 			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
