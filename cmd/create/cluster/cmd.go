@@ -2273,7 +2273,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  auditLogRoleARN,
 				Required: true,
 				Validators: []interactive.Validator{
-					interactive.RegExp(aws.AuditLogArnRE.String()),
+					interactive.RegExp(aws.RoleArnRE.String()),
 				},
 			})
 			if err != nil {
@@ -2285,8 +2285,8 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if auditLogRoleARN != "" && !aws.AuditLogArnRE.MatchString(auditLogRoleARN) {
-		r.Reporter.Errorf("Expected a valid value for audit log arn matching %s", aws.AuditLogArnRE)
+	if auditLogRoleARN != "" && !aws.RoleArnRE.MatchString(auditLogRoleARN) {
+		r.Reporter.Errorf("Expected a valid value for audit log arn matching %s", aws.RoleArnRE)
 		os.Exit(1)
 	}
 
