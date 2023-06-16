@@ -17,15 +17,19 @@ limitations under the License.
 package upgrade
 
 import (
+	"fmt"
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/spf13/cobra"
-
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/spf13/cobra"
 )
+
+var args struct {
+	nodePool string
+}
 
 var Cmd = &cobra.Command{
 	Use:     "upgrade",
@@ -36,82 +40,136 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	flags := Cmd.Flags()
+	flags.SortFlags = false
+
 	ocm.AddClusterFlag(Cmd)
+
+	flags.StringVar(
+		&args.nodePool,
+		"machinepool",
+		"",
+		"Machine pool of the cluster to target",
+	)
+
+	confirm.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+	err := runWithRuntime(r)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+}
 
+func runWithRuntime(r *rosa.Runtime) error {
 	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
 	if cluster.State() != cmv1.ClusterStateReady {
-		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
-		os.Exit(1)
+		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
 	}
 
-	if cluster.Hypershift().Enabled() {
-		deleteHypershiftUpgrade(r, cluster.ID(), clusterKey)
+	if args.nodePool != "" && !ocm.IsHyperShiftCluster(cluster) {
+		return fmt.Errorf("The '--machinepool' option is only supported for Hosted Control Planes")
+	}
+
+	if args.nodePool != "" {
+		return deleteHypershiftNodePoolUpgrade(r, cluster.ID(), clusterKey, args.nodePool)
+	}
+
+	if ocm.IsHyperShiftCluster(cluster) {
+		return deleteHypershiftUpgrade(r, cluster.ID(), clusterKey)
 	} else {
-		deleteClassicUpgrade(r, cluster.ID(), clusterKey)
+		return deleteClassicUpgrade(r, cluster.ID(), clusterKey)
 	}
-
 }
 
-func deleteClassicUpgrade(r *rosa.Runtime, clusterID, clusterKey string) {
+func deleteClassicUpgrade(r *rosa.Runtime, clusterID, clusterKey string) error {
 	scheduledUpgrade, _, err := r.OCMClient.GetScheduledUpgrade(clusterID)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 	}
 	if scheduledUpgrade == nil {
 		r.Reporter.Infof("There are no scheduled upgrades on cluster '%s'", clusterKey)
-		os.Exit(0)
+		return nil
 	}
 
 	if confirm.Confirm("cancel scheduled upgrade on cluster %s", clusterKey) {
 		r.Reporter.Debugf("Deleting scheduled upgrade for cluster '%s'", clusterKey)
 		canceled, err := r.OCMClient.CancelUpgrade(clusterID)
 		if err != nil {
-			r.Reporter.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
 		}
 
 		if !canceled {
 			r.Reporter.Warnf("There were no scheduled upgrades on cluster '%s'", clusterKey)
-			os.Exit(0)
+			return nil
 		}
 
 		r.Reporter.Infof("Successfully canceled scheduled upgrade on cluster '%s'", clusterKey)
 	}
+	return nil
 }
 
-func deleteHypershiftUpgrade(r *rosa.Runtime, clusterID, clusterKey string) {
+func deleteHypershiftUpgrade(r *rosa.Runtime, clusterID, clusterKey string) error {
 	scheduledUpgrade, err := r.OCMClient.GetControlPlaneScheduledUpgrade(clusterID)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 	}
 
 	if scheduledUpgrade == nil {
 		r.Reporter.Infof("There are no scheduled upgrades on cluster '%s'", clusterKey)
-		os.Exit(0)
+		return nil
 	}
 
-	if confirm.Confirm("cancel scheduled upgrade on cluster %s", clusterKey) {
+	if confirm.Confirm("cancel scheduled upgrade on cluster '%s'", clusterKey) {
 		r.Reporter.Debugf("Deleting scheduled upgrade for cluster '%s'", clusterKey)
 		canceled, err := r.OCMClient.CancelControlPlaneUpgrade(clusterID, scheduledUpgrade.ID())
 		if err != nil {
-			r.Reporter.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to cancel scheduled upgrade on cluster '%s': %v", clusterKey, err)
 		}
 
 		if !canceled {
 			r.Reporter.Warnf("There were no scheduled upgrades on cluster '%s'", clusterKey)
-			os.Exit(0)
+			return nil
 		}
 
 		r.Reporter.Infof("Successfully canceled scheduled upgrade on cluster '%s'", clusterKey)
 	}
+	return nil
+}
+
+func deleteHypershiftNodePoolUpgrade(r *rosa.Runtime, clusterID, clusterKey, nodePoolID string) error {
+	_, scheduledUpgrade, err := r.OCMClient.GetHypershiftNodePoolUpgrade(clusterID, clusterKey, nodePoolID)
+	if err != nil {
+		return err
+	}
+
+	if scheduledUpgrade == nil {
+		r.Reporter.Infof("There are no scheduled upgrades for machine pool '%s' for cluster '%s'",
+			nodePoolID, clusterKey)
+		return nil
+	}
+
+	if confirm.Confirm("cancel scheduled upgrade on machine pool '%s'", nodePoolID) {
+		r.Reporter.Debugf("Deleting scheduled upgrade for machine pool '%s'", nodePoolID)
+		canceled, err := r.OCMClient.CancelNodePoolUpgrade(clusterID, nodePoolID, scheduledUpgrade.ID())
+		if err != nil {
+			return fmt.Errorf("Failed to cancel scheduled upgrades for machine pool '%s': %v", nodePoolID, err)
+		}
+
+		if !canceled {
+			r.Reporter.Warnf("There were no scheduled upgrades for machine pool '%s' for cluster '%s'",
+				nodePoolID, clusterKey)
+			return nil
+		}
+
+		r.Reporter.Infof("Successfully canceled scheduled upgrade for machine pool '%s' for cluster '%s'",
+			nodePoolID, clusterKey)
+	}
+	return nil
 }

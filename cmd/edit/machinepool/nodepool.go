@@ -5,11 +5,10 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/cmd/upgrade/machinepool"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
-	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
@@ -92,39 +91,16 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	}
 
 	if isVersionSet || interactive.Enabled() {
-		version := args.version
-		channelGroup := cluster.Version().ChannelGroup()
-		clusterVersion := cluster.Version().RawID()
-		nodePoolVersion := ocm.GetRawVersionId(nodePool.Version().ID())
-		versionList, err := versions.GetVersionList(r, channelGroup, true, true, false)
+		// TODO flag marked as deprecated. To be removed
+		version, err := machinepool.ComputeNodePoolVersion(r, cmd, cluster, nodePool, args.version)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-
-		// Filter the available list of versions for a hosted machine pool
-		filteredVersionList := versions.GetFilteredVersionList(versionList, nodePoolVersion, clusterVersion)
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
-
-		if interactive.Enabled() {
-			version, err = interactive.GetOption(interactive.Input{
-				Question: "OpenShift version",
-				Help:     cmd.Flags().Lookup("version").Usage,
-				Options:  filteredVersionList,
-				Default:  version,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
-				os.Exit(1)
-			}
-		}
-		version, err = r.OCMClient.ValidateVersion(version, filteredVersionList, channelGroup, true, true)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
-			os.Exit(1)
+		if version == "" {
+			r.Reporter.Infof("No upgrade available for the machine pool '%s' on cluster '%s'", nodePoolID,
+				clusterKey)
+			os.Exit(0)
 		}
 		npBuilder.Version(cmv1.NewVersion().ID(version))
 	}
