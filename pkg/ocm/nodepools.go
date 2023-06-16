@@ -26,17 +26,20 @@ func (c *Client) GetNodePools(clusterID string) ([]*cmv1.NodePool, error) {
 	return response.Items().Slice(), nil
 }
 
-func (c *Client) GetNodePool(clusterID string, nodePoolID string) (*cmv1.NodePool, error) {
+func (c *Client) GetNodePool(clusterID string, nodePoolID string) (*cmv1.NodePool, bool, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).
 		NodePools().
 		NodePool(nodePoolID).
 		Get().
 		Send()
-	if err != nil {
-		return nil, handleErr(response.Error(), err)
+	if response.Status() == 404 {
+		return nil, false, nil
 	}
-	return response.Body(), nil
+	if err != nil {
+		return nil, false, handleErr(response.Error(), err)
+	}
+	return response.Body(), true, nil
 }
 
 func (c *Client) UpdateNodePool(clusterID string, nodePool *cmv1.NodePool) (*cmv1.NodePool, error) {
