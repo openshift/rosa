@@ -9,11 +9,13 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/test"
 	"github.com/spf13/cobra"
 )
 
@@ -43,157 +45,32 @@ var _ = Describe("Upgrade", Ordered, func() {
 		"items": []
 	}`
 
-	var hypershiftClusterNotReady = `
-{
-  "kind": "ClusterList",
-  "page": 1,
-  "size": 1,
-  "total": 1,
-  "items": [
-    {
-      "kind": "Cluster",
-      "id": "241p9e7ve372j8li66cdegd7t90ro5e4",
-      "href": "/api/clusters_mgmt/v1/clusters/241p9e7ve372j8li66cdegd7t90ro5e4",
-      "name": "cluster1",
-      "external_id": "1cd93e5d-24e5-4c12-b3c5-2710ecd77e07",
-      "display_name": "cluster1",
-      "creation_timestamp": "2023-05-30T13:49:18.526324+02:00",
-      "activity_timestamp": "2023-05-30T13:49:18.526324+02:00",
-      "state": "error",
-      "status": {
-        "state": "error",
-        "description": "Manifest work deletion is stuck",
-        "dns_ready": true,
-        "oidc_ready": true,
-        "provision_error_message": "",
-        "provision_error_code": "",
-        "configuration_mode": "full",
-        "limited_support_reason_count": 0
-      },
-      "hypershift": {
-        "enabled": true
-      }
-    }
-  ]
-}`
-	var hypershiftClusterReady = `
-{
-  "kind": "ClusterList",
-  "page": 1,
-  "size": 1,
-  "total": 1,
-  "items": [
-    {
-      "kind": "Cluster",
-      "id": "241p9e7ve372j8li66cdegd7t90ro5e4",
-      "href": "/api/clusters_mgmt/v1/clusters/241p9e7ve372j8li66cdegd7t90ro5e4",
-      "name": "cluster1",
-      "external_id": "1cd93e5d-24e5-4c12-b3c5-2710ecd77e07",
-      "display_name": "cluster1",
-      "creation_timestamp": "2023-05-30T13:49:18.526324+02:00",
-      "activity_timestamp": "2023-05-30T13:49:18.526324+02:00",
-      "cloud_provider": {
-        "kind": "CloudProviderLink",
-        "id": "aws",
-        "href": "/api/clusters_mgmt/v1/cloud_providers/aws"
-      },
-      "subscription": {
-        "kind": "SubscriptionLink",
-        "id": "2QVmw1VcHO01lKSstX90BuhkkoP",
-        "href": "/api/accounts_mgmt/v1/subscriptions/2QVmw1VcHO01lKSstX90BuhkkoP"
-      },
-      "region": {
-        "kind": "CloudRegionLink",
-        "id": "us-west-2",
-        "href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-west-2"
-      },
-      "console": {
-        "url": "https://console-openshift-console.apps.00un.hypershift.sdev.devshift.net"
-      },
-      "api": {
-        "url": "https://aac3dfec32fdd455ba1d649e4b80a144-2bd3de32e0108b79.elb.us-west-2.amazonaws.com:6443",
-        "listening": "external"
-      },
-      "nodes": {
-        "compute": 2,
-        "availability_zones": [
-           "us-west-2a"
-        ],
-        "compute_machine_type": {
-          "kind": "MachineTypeLink",
-          "id": "m5.xlarge",
-          "href": "/api/clusters_mgmt/v1/machine_types/m5.xlarge"
-        }
-      },
-      "state": "ready",
-        "status": {
-        "state": "ready",
-        "description": "",
-        "dns_ready": true,
-        "oidc_ready": true,
-        "provision_error_message": "",
-        "provision_error_code": "",
-        "configuration_mode": "full",
-        "limited_support_reason_count": 0
-      },
-      "node_drain_grace_period": {
-        "value": 60,
-        "unit": "minutes"
-      },
-      "etcd_encryption": false,
-      "billing_model": "marketplace-aws",
-      "disable_user_workload_monitoring": false,
-      "managed_service": {
-        "enabled": false,
-        "managed": false
-      },
-      "hypershift": {
-        "enabled": true
-      },
-      "byo_oidc": {
-        "enabled": true
-      },
-      "delete_protection": {
-        "href": "/api/clusters_mgmt/v1/clusters/241p9e7ve372j8li66cdegd7t90ro5e4/delete_protection",
-        "enabled": false
-      },
-	  "version": {
-		"kind": "Version",
-		"id": "openshift-v4.12.18",
-		"href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.18",
-		"raw_id": "4.12.18",
-		"channel_group": "stable",
-		"available_upgrades": [
-		   "4.12.19"
-		],
-		"end_of_life_timestamp": "2024-03-17T00:00:00Z"
-	  }
-    }
-  ]
-}`
-	var classicCluster = `
-{
-  "kind": "ClusterList",
-  "page": 1,
-  "size": 1,
-  "total": 1,
-  "items": [
-    {
-      "kind": "Cluster",
-      "id": "241p9e7ve372j8li66cdegd7t90ro5e4",
-      "href": "/api/clusters_mgmt/v1/clusters/241p9e7ve372j8li66cdegd7t90ro5e4",
-      "name": "cluster1",
-      "external_id": "1cd93e5d-24e5-4c12-b3c5-2710ecd77e07",
-      "display_name": "cluster1",
-      "creation_timestamp": "2023-05-30T13:49:18.526324+02:00",
-      "activity_timestamp": "2023-05-30T13:49:18.526324+02:00",
-      "state": "ready",
-      "hypershift": {
-        "enabled": false
-      }
-    }
-  ]
-}`
+	mockClusterError, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
+		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+		c.State(cmv1.ClusterStateError)
+		c.Hypershift(cmv1.NewHypershift().Enabled(true))
+	})
+	Expect(err).To(BeNil())
+	var hypershiftClusterNotReady = test.FormatClusterList([]*cmv1.Cluster{mockClusterError})
+
+	mockClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
+		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+		c.State(cmv1.ClusterStateReady)
+		c.Hypershift(cmv1.NewHypershift().Enabled(true))
+	})
+	Expect(err).To(BeNil())
+	var hypershiftClusterReady = test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
+
+	mockClassicCluster, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
+		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+		c.State(cmv1.ClusterStateReady)
+		c.Hypershift(cmv1.NewHypershift().Enabled(false))
+	})
+	Expect(err).To(BeNil())
+	var classicCluster = test.FormatClusterList([]*cmv1.Cluster{mockClassicCluster})
 
 	BeforeEach(func() {
 		// Create the servers:

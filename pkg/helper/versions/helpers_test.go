@@ -11,9 +11,9 @@ var _ = Describe("Version Helpers", Ordered, func() {
 
 	Context("when creating a hosted machine pool ", func() {
 		DescribeTable("Filtered versions",
-			func(versionList []string, minVersion string, maxVersion string, expetedVersionList []string) {
-				filteredVersionList := GetFilteredVersionList(versionList, minVersion, maxVersion)
-				Expect(filteredVersionList).To(BeEquivalentTo(expetedVersionList))
+			func(versionList []string, minVersion string, maxVersion string, expectedVersionList []string) {
+				filteredVersionList := getFilteredVersionList(versionList, minVersion, maxVersion, false)
+				Expect(filteredVersionList).To(BeEquivalentTo(expectedVersionList))
 			},
 			Entry("machinepool create",
 				[]string{
@@ -73,6 +73,32 @@ var _ = Describe("Version Helpers", Ordered, func() {
 			),
 		)
 
+	})
+	Context("when updating a hosted machine pool ", func() {
+		DescribeTable("Filtered versions",
+			func(versionList []string, minVersion string, maxVersion string, expectedVersionList []string) {
+				filteredVersionList := getFilteredVersionList(versionList, minVersion, maxVersion, true)
+				Expect(filteredVersionList).To(BeEquivalentTo(expectedVersionList))
+			},
+			Entry("machinepool update",
+				[]string{
+					"4.12.22",
+					"4.12.23",
+					"4.12.24",
+					"4.12.25",
+					"4.12.26",
+					"4.13.0-0.nightly-2023-02-22-192922",
+				},
+				"4.12.22",
+				"4.12.26",
+				[]string{
+					"4.12.23",
+					"4.12.24",
+					"4.12.25",
+					"4.12.26",
+				},
+			),
+		)
 	})
 
 })
