@@ -30,7 +30,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/robfig/cron/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -281,14 +280,14 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			}
 		}
 		if !currentUpgradeScheduling.automaticUpgrades {
-			nextRun, err := buildManualUpgradeSchedule(cmd, currentUpgradeScheduling.scheduleDate,
+			nextRun, err := interactive.BuildManualUpgradeSchedule(cmd, currentUpgradeScheduling.scheduleDate,
 				currentUpgradeScheduling.scheduleTime)
 			if err != nil {
 				return err
 			}
 			currentUpgradeScheduling.nextRun = nextRun
 		} else {
-			schedule, err := buildAutomaticUpgradeSchedule(cmd, currentUpgradeScheduling.schedule)
+			schedule, err := interactive.BuildAutomaticUpgradeSchedule(cmd, currentUpgradeScheduling.schedule)
 			if err != nil {
 				return err
 			}
@@ -360,35 +359,6 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	return nil
 }
 
-func buildAutomaticUpgradeSchedule(cmd *cobra.Command, schedule string) (string, error) {
-	// Check automatic upgrade scheduling
-	cronParser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	var err error
-	if schedule != "" {
-		_, err = cronParser.Parse(fmt.Sprintf("CRON_TZ=UTC %s", schedule))
-		if err != nil {
-			return schedule, fmt.Errorf("Schedule '%s' is not a valid cron expression", schedule)
-		}
-	}
-	if interactive.Enabled() {
-		schedule, err = interactive.GetString(interactive.Input{
-			Question: "Please input desired automatic schedule with a cron expression",
-			Help:     cmd.Flags().Lookup("schedule").Usage,
-			Default:  schedule,
-			Required: true,
-		})
-		if err != nil {
-			return schedule, fmt.Errorf("Expected a valid automatic schedule: %s", err)
-		}
-		_, err = cronParser.Parse(fmt.Sprintf("CRON_TZ=UTC %s", schedule))
-		if err != nil {
-			return schedule, fmt.Errorf("Schedule '%s' is not a valid cron expression", schedule)
-		}
-	}
-
-	return schedule, nil
-}
-
 func createUpgradePolicyHypershift(r *rosa.Runtime, clusterKey string,
 	cluster *cmv1.Cluster, version string, currentScheduling upgradeScheduling) error {
 	upgradePolicyBuilder := cmv1.NewControlPlaneUpgradePolicy().UpgradeType("ControlPlane")
@@ -430,7 +400,7 @@ func createUpgradePolicyClassic(r *rosa.Runtime, cmd *cobra.Command, clusterKey 
 		return err
 	}
 
-	nextRun, err := buildManualUpgradeSchedule(cmd, scheduleDate, scheduleTime)
+	nextRun, err := interactive.BuildManualUpgradeSchedule(cmd, scheduleDate, scheduleTime)
 	if err != nil {
 		return err
 	}
@@ -528,68 +498,6 @@ func checkSTSRolesCompatibility(r *rosa.Runtime, cluster *cmv1.Cluster, mode str
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
 	}
-}
-
-func buildManualUpgradeSchedule(cmd *cobra.Command, scheduleDate string,
-	scheduleTime string) (time.Time, error) {
-	// Set the default next run within the next 10 minutes
-	now := time.Now().UTC().Add(time.Minute * 10)
-	if scheduleDate == "" {
-		scheduleDate = now.Format("2006-01-02")
-	}
-	if scheduleTime == "" {
-		scheduleTime = now.Format("15:04")
-	}
-
-	if interactive.Enabled() {
-		// If datetimes are set, use them in the interactive form, otherwise fallback to 'now'
-		scheduleParsed, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%s %s", scheduleDate, scheduleTime))
-		if err != nil {
-			return now, fmt.Errorf("Schedule date should use the format 'yyyy-mm-dd'\n" +
-				"   Schedule time should use the format 'HH:mm'")
-		}
-		if scheduleParsed.IsZero() {
-			scheduleParsed = now
-		}
-		scheduleDate = scheduleParsed.Format("2006-01-02")
-		scheduleTime = scheduleParsed.Format("15:04")
-
-		scheduleDate, err = interactive.GetString(interactive.Input{
-			Question: "Please input desired date in format yyyy-mm-dd",
-			Help:     cmd.Flags().Lookup("schedule-date").Usage,
-			Default:  scheduleDate,
-			Required: true,
-		})
-		if err != nil {
-			return now, fmt.Errorf("Expected a valid date: %s", err)
-		}
-		_, err = time.Parse("2006-01-02", scheduleDate)
-		if err != nil {
-			return now, fmt.Errorf("Date format '%s' invalid", scheduleDate)
-		}
-
-		scheduleTime, err = interactive.GetString(interactive.Input{
-			Question: "Please input desired UTC time in format HH:mm",
-			Help:     cmd.Flags().Lookup("schedule-time").Usage,
-			Default:  scheduleTime,
-			Required: true,
-		})
-		if err != nil {
-			return now, fmt.Errorf("Expected a valid time: %s", err)
-		}
-		_, err = time.Parse("15:04", scheduleTime)
-		if err != nil {
-			return now, fmt.Errorf("Time format '%s' invalid", scheduleTime)
-		}
-	}
-
-	// Parse next run to time.Time
-	nextRun, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%s %s", scheduleDate, scheduleTime))
-	if err != nil {
-		return now, fmt.Errorf("Schedule date should use the format 'yyyy-mm-dd'\n" +
-			"   Schedule time should use the format 'HH:mm'")
-	}
-	return nextRun, nil
 }
 
 func buildNodeDrainGracePeriod(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster) ocm.Spec {

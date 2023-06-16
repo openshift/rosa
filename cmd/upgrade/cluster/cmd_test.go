@@ -156,7 +156,18 @@ var _ = Describe("Upgrade", Ordered, func() {
       "delete_protection": {
         "href": "/api/clusters_mgmt/v1/clusters/241p9e7ve372j8li66cdegd7t90ro5e4/delete_protection",
         "enabled": false
-      }
+      },
+	  "version": {
+		"kind": "Version",
+		"id": "openshift-v4.12.18",
+		"href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.18",
+		"raw_id": "4.12.18",
+		"channel_group": "stable",
+		"available_upgrades": [
+		   "4.12.19"
+		],
+		"end_of_life_timestamp": "2024-03-17T00:00:00Z"
+	  }
     }
   ]
 }`
@@ -377,7 +388,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 			),
 		)
 		// An existing policy upgrade
-		// nolint
+		// nolint:lll
 		apiServer.AppendHandlers(
 			RespondWithJSON(
 				http.StatusOK,
@@ -473,7 +484,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 		Expect(err).ToNot(BeNil())
 		// Missing the upgrade type
 		Expect(err.Error()).To(ContainSubstring(
-			"Schedule date should use the format 'yyyy-mm-dd'\n   Schedule time should use the format 'HH:mm'"))
+			"schedule date should use the format 'yyyy-mm-dd'\n   Schedule time should use the format 'HH:mm'"))
 	})
 	It("Cluster is ready and with manual scheduling but no upgrades available", func() {
 		args.controlPlane = true
