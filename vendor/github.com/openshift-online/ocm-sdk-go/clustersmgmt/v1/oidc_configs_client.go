@@ -52,7 +52,7 @@ func NewOidcConfigsClient(transport http.RoundTripper, path string) *OidcConfigs
 
 // Add creates a request for the 'add' method.
 //
-// Creates a hosting under Red Hat's S3 bucket for byo oidc configuration
+// Creates a hosting under Red Hat's S3 bucket for byo oidc configuration.
 func (c *OidcConfigsClient) Add() *OidcConfigsAddRequest {
 	return &OidcConfigsAddRequest{
 		transport: c.transport,

@@ -28,6 +28,7 @@ type SelfAccessReviewResponse struct {
 	clusterID      string
 	clusterUUID    string
 	organizationID string
+	reason         string
 	resourceType   string
 	subscriptionID string
 	allowed        bool
@@ -153,13 +154,36 @@ func (o *SelfAccessReviewResponse) GetOrganizationID() (value string, ok bool) {
 	return
 }
 
+// Reason returns the value of the 'reason' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Defines further context for the value in allowed (if applicable)
+func (o *SelfAccessReviewResponse) Reason() string {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.reason
+	}
+	return ""
+}
+
+// GetReason returns the value of the 'reason' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Defines further context for the value in allowed (if applicable)
+func (o *SelfAccessReviewResponse) GetReason() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.reason
+	}
+	return
+}
+
 // ResourceType returns the value of the 'resource_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Indicates the type of the resource an action would be taken on.
 // See uhc-account-manager/openapi/openapi.yaml for a list of possible values
 func (o *SelfAccessReviewResponse) ResourceType() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.resourceType
 	}
 	return ""
@@ -171,7 +195,7 @@ func (o *SelfAccessReviewResponse) ResourceType() string {
 // Indicates the type of the resource an action would be taken on.
 // See uhc-account-manager/openapi/openapi.yaml for a list of possible values
 func (o *SelfAccessReviewResponse) GetResourceType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.resourceType
 	}
@@ -183,7 +207,7 @@ func (o *SelfAccessReviewResponse) GetResourceType() (value string, ok bool) {
 //
 // Indicates which Subscription the resource type belongs to
 func (o *SelfAccessReviewResponse) SubscriptionID() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.subscriptionID
 	}
 	return ""
@@ -194,7 +218,7 @@ func (o *SelfAccessReviewResponse) SubscriptionID() string {
 //
 // Indicates which Subscription the resource type belongs to
 func (o *SelfAccessReviewResponse) GetSubscriptionID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.subscriptionID
 	}
