@@ -57,6 +57,7 @@ type Role struct {
 	Admin         string   `json:"Admin,omitempty"`
 	Policy        []Policy `json:"Policy,omitempty"`
 	ManagedPolicy bool     `json:"ManagedPolicy,omitempty"`
+	ClusterID     string   `json:"ClusterID,omitempty"`
 }
 
 type PolicyDetail struct {
@@ -789,7 +790,7 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 	return accountRoles, nil
 }
 
-func (c *awsClient) ListOperatorRoles(version string) (map[string][]Role, error) {
+func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (map[string][]Role, error) {
 	operatorMap := map[string][]Role{}
 	roles, err := c.ListRoles()
 	if err != nil {
@@ -813,14 +814,26 @@ func (c *awsClient) ListOperatorRoles(version string) (map[string][]Role, error)
 		if err != nil {
 			return operatorMap, err
 		}
+		skip := false
 		for _, tag := range listRoleTagsOutput.Tags {
 			switch aws.StringValue(tag.Key) {
 			case tags.ManagedPolicies:
 				if aws.StringValue(tag.Value) == tags.True {
 					operatorRole.ManagedPolicy = true
 				}
+			case tags.ClusterID:
+				tagValue := aws.StringValue(tag.Value)
+				if targetClusterId != "" && tagValue != targetClusterId {
+					skip = true
+				}
+				operatorRole.ClusterID = tagValue
 			}
 		}
+
+		if skip {
+			continue
+		}
+
 		if operatorRole.ManagedPolicy {
 			operatorRole.RoleName = aws.StringValue(role.RoleName)
 			operatorRole.RoleARN = aws.StringValue(role.Arn)
@@ -865,6 +878,8 @@ func (c *awsClient) ListOperatorRoles(version string) (map[string][]Role, error)
 	emptyListKeys := []string{}
 	for key, list := range operatorMap {
 		if len(list) == 0 {
+			emptyListKeys = append(emptyListKeys, key)
+		} else if targetClusterId != "" && list[0].ClusterID != targetClusterId {
 			emptyListKeys = append(emptyListKeys, key)
 		}
 	}

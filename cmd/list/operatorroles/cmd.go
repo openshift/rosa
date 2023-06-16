@@ -35,6 +35,7 @@ import (
 var args struct {
 	version string
 	prefix  string
+	cluster string
 }
 
 var Cmd = &cobra.Command{
@@ -68,6 +69,7 @@ func init() {
 		"List only operator-roles that are associated with the given prefix."+
 			" The prefix must match up to openshift|kube-system",
 	)
+	ocm.AddOptionalClusterFlag(Cmd)
 	output.AddFlag(Cmd)
 }
 
@@ -97,7 +99,13 @@ func run(cmd *cobra.Command, _ []string) {
 		spin.Start()
 	}
 
-	operatorsMap, err := r.AWSClient.ListOperatorRoles(args.version)
+	clusterId := ""
+	if cmd.Flags().Changed("cluster") {
+		clusterKey := r.GetClusterKey()
+		clusterId = clusterKey
+	}
+
+	operatorsMap, err := r.AWSClient.ListOperatorRoles(args.version, clusterId)
 
 	if spin != nil {
 		spin.Stop()
@@ -135,6 +143,13 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	if clusterId != "" {
+		for key, value := range operatorsMap {
+			if value[0].ClusterID == clusterId {
+				args.prefix = key
+			}
+		}
+	}
 	if args.prefix == "" {
 		fmt.Fprintf(writer, "ROLE PREFIX\tAMOUNT IN BUNDLE\n")
 		keys := []string{}
@@ -173,7 +188,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Infof(noOperatorRolesPrefixOutput)
 			os.Exit(0)
 		}
-		fmt.Fprintf(writer, "ROLE NAME\tROLE ARN\tVERSION\tMANAGED\n")
+		fmt.Fprintf(writer, "ROLE NAME\tROLE ARN\tCLUSTER ID\tVERSION\tMANAGED\n")
 		for _, operatorRole := range operatorsMap[args.prefix] {
 			awsManaged := "No"
 			if operatorRole.ManagedPolicy {
@@ -181,9 +196,10 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			fmt.Fprintf(
 				writer,
-				"%s\t%s\t%s\t%s\n",
+				"%s\t%s\t%s\t%s\t%s\n",
 				operatorRole.RoleName,
 				operatorRole.RoleARN,
+				operatorRole.ClusterID,
 				operatorRole.Version,
 				awsManaged,
 			)
