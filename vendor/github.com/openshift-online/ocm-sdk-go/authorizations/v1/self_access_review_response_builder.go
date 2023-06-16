@@ -28,6 +28,7 @@ type SelfAccessReviewResponseBuilder struct {
 	clusterID      string
 	clusterUUID    string
 	organizationID string
+	reason         string
 	resourceType   string
 	subscriptionID string
 	allowed        bool
@@ -78,17 +79,24 @@ func (b *SelfAccessReviewResponseBuilder) OrganizationID(value string) *SelfAcce
 	return b
 }
 
+// Reason sets the value of the 'reason' attribute to the given value.
+func (b *SelfAccessReviewResponseBuilder) Reason(value string) *SelfAccessReviewResponseBuilder {
+	b.reason = value
+	b.bitmap_ |= 32
+	return b
+}
+
 // ResourceType sets the value of the 'resource_type' attribute to the given value.
 func (b *SelfAccessReviewResponseBuilder) ResourceType(value string) *SelfAccessReviewResponseBuilder {
 	b.resourceType = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
 // SubscriptionID sets the value of the 'subscription_ID' attribute to the given value.
 func (b *SelfAccessReviewResponseBuilder) SubscriptionID(value string) *SelfAccessReviewResponseBuilder {
 	b.subscriptionID = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -103,6 +111,7 @@ func (b *SelfAccessReviewResponseBuilder) Copy(object *SelfAccessReviewResponse)
 	b.clusterID = object.clusterID
 	b.clusterUUID = object.clusterUUID
 	b.organizationID = object.organizationID
+	b.reason = object.reason
 	b.resourceType = object.resourceType
 	b.subscriptionID = object.subscriptionID
 	return b
@@ -117,6 +126,7 @@ func (b *SelfAccessReviewResponseBuilder) Build() (object *SelfAccessReviewRespo
 	object.clusterID = b.clusterID
 	object.clusterUUID = b.clusterUUID
 	object.organizationID = b.organizationID
+	object.reason = b.reason
 	object.resourceType = b.resourceType
 	object.subscriptionID = b.subscriptionID
 	return

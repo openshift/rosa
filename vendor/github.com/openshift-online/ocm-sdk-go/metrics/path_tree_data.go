@@ -304,6 +304,9 @@ var pathTreeData = `{
         "machine_types": {
           "-": null
         },
+        "network_verifications": {
+          "-": null
+        },
         "oidc_configs": {
           "-": null
         },

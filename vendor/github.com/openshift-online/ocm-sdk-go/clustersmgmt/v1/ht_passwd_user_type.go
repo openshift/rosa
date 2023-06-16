@@ -25,6 +25,7 @@ type HTPasswdUser struct {
 	id       string
 	password string
 	username string
+	hash     bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -55,12 +56,37 @@ func (o *HTPasswdUser) GetID() (value string, ok bool) {
 	return
 }
 
+// Hash returns the value of the 'hash' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Encryption status of the  password for a secondory user in the _HTPasswd_ data file.
+// true indicates Password is a Hash
+func (o *HTPasswdUser) Hash() bool {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.hash
+	}
+	return false
+}
+
+// GetHash returns the value of the 'hash' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Encryption status of the  password for a secondory user in the _HTPasswd_ data file.
+// true indicates Password is a Hash
+func (o *HTPasswdUser) GetHash() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.hash
+	}
+	return
+}
+
 // Password returns the value of the 'password' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Password for a secondary user in the _HTPasswd_ data file.
 func (o *HTPasswdUser) Password() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.password
 	}
 	return ""
@@ -71,7 +97,7 @@ func (o *HTPasswdUser) Password() string {
 //
 // Password for a secondary user in the _HTPasswd_ data file.
 func (o *HTPasswdUser) GetPassword() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.password
 	}
@@ -83,7 +109,7 @@ func (o *HTPasswdUser) GetPassword() (value string, ok bool) {
 //
 // Username for a secondary user in the _HTPasswd_ data file.
 func (o *HTPasswdUser) Username() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.username
 	}
 	return ""
@@ -94,7 +120,7 @@ func (o *HTPasswdUser) Username() string {
 //
 // Username for a secondary user in the _HTPasswd_ data file.
 func (o *HTPasswdUser) GetUsername() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.username
 	}

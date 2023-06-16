@@ -25,6 +25,7 @@ type HTPasswdUserBuilder struct {
 	id       string
 	password string
 	username string
+	hash     bool
 }
 
 // NewHTPasswdUser creates a new builder of 'HT_passwd_user' objects.
@@ -44,17 +45,24 @@ func (b *HTPasswdUserBuilder) ID(value string) *HTPasswdUserBuilder {
 	return b
 }
 
+// Hash sets the value of the 'hash' attribute to the given value.
+func (b *HTPasswdUserBuilder) Hash(value bool) *HTPasswdUserBuilder {
+	b.hash = value
+	b.bitmap_ |= 2
+	return b
+}
+
 // Password sets the value of the 'password' attribute to the given value.
 func (b *HTPasswdUserBuilder) Password(value string) *HTPasswdUserBuilder {
 	b.password = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
 // Username sets the value of the 'username' attribute to the given value.
 func (b *HTPasswdUserBuilder) Username(value string) *HTPasswdUserBuilder {
 	b.username = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -65,6 +73,7 @@ func (b *HTPasswdUserBuilder) Copy(object *HTPasswdUser) *HTPasswdUserBuilder {
 	}
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
+	b.hash = object.hash
 	b.password = object.password
 	b.username = object.username
 	return b
@@ -75,6 +84,7 @@ func (b *HTPasswdUserBuilder) Build() (object *HTPasswdUser, err error) {
 	object = new(HTPasswdUser)
 	object.bitmap_ = b.bitmap_
 	object.id = b.id
+	object.hash = b.hash
 	object.password = b.password
 	object.username = b.username
 	return

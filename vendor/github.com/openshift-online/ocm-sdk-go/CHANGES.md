@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.348
+- Update model version v0.0.291
+  - Add Reason to access review responses
+  - Enable users to provide both hashed and plain-text passwords
+  - API model for network verification
+
 ## 0.1.347
 - Update model version v0.0.290
   - Rename `MachineTypeRootVolume` to `RootVolume`

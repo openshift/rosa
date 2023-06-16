@@ -73,7 +73,7 @@ func (c *Client) AWSInquiries() *AWSInquiriesClient {
 
 // DNSDomains returns the target 'DNS_domains' resource.
 //
-// Reference to the resource that manages dns domains
+// Reference to the resource that manages dns domains.
 func (c *Client) DNSDomains() *DNSDomainsClient {
 	return NewDNSDomainsClient(
 		c.transport,
@@ -171,9 +171,19 @@ func (c *Client) MachineTypes() *MachineTypesClient {
 	)
 }
 
+// NetworkVerifications returns the target 'network_verifications' resource.
+//
+// Reference to the resource that manages network verifications.
+func (c *Client) NetworkVerifications() *NetworkVerificationsClient {
+	return NewNetworkVerificationsClient(
+		c.transport,
+		path.Join(c.path, "network_verifications"),
+	)
+}
+
 // OidcConfigs returns the target 'oidc_configs' resource.
 //
-// Reference to the resource that manages oidc
+// Reference to the resource that manages oidc.
 func (c *Client) OidcConfigs() *OidcConfigsClient {
 	return NewOidcConfigsClient(
 		c.transport,

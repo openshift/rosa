@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHTPasswdUser writes a value of the 'HT_passwd_user' type to the given writer.
-func MarshalHTPasswdUser(object *HTPasswdUser, writer io.Writer) error {
+// MarshalNetworkVerification writes a value of the 'network_verification' type to the given writer.
+func MarshalNetworkVerification(object *NetworkVerification, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHTPasswdUser(object, stream)
+	writeNetworkVerification(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,27 +37,27 @@ func MarshalHTPasswdUser(object *HTPasswdUser, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeHTPasswdUser writes a value of the 'HT_passwd_user' type to the given stream.
-func writeHTPasswdUser(object *HTPasswdUser, stream *jsoniter.Stream) {
+// writeNetworkVerification writes a value of the 'network_verification' type to the given stream.
+func writeNetworkVerification(object *NetworkVerification, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&1 != 0 && object.cloudProviderData != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("id")
-		stream.WriteString(object.id)
+		stream.WriteObjectField("cloud_provider_data")
+		writeCloudProviderData(object.cloudProviderData, stream)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&2 != 0 && object.items != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("hash")
-		stream.WriteBool(object.hash)
+		stream.WriteObjectField("items")
+		writeSubnetNetworkVerificationList(object.items, stream)
 		count++
 	}
 	present_ = object.bitmap_&4 != 0
@@ -65,58 +65,45 @@ func writeHTPasswdUser(object *HTPasswdUser, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("password")
-		stream.WriteString(object.password)
-		count++
-	}
-	present_ = object.bitmap_&8 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("username")
-		stream.WriteString(object.username)
+		stream.WriteObjectField("total")
+		stream.WriteInt(object.total)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalHTPasswdUser reads a value of the 'HT_passwd_user' type from the given
+// UnmarshalNetworkVerification reads a value of the 'network_verification' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalHTPasswdUser(source interface{}) (object *HTPasswdUser, err error) {
+func UnmarshalNetworkVerification(source interface{}) (object *NetworkVerification, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readHTPasswdUser(iterator)
+	object = readNetworkVerification(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHTPasswdUser reads a value of the 'HT_passwd_user' type from the given iterator.
-func readHTPasswdUser(iterator *jsoniter.Iterator) *HTPasswdUser {
-	object := &HTPasswdUser{}
+// readNetworkVerification reads a value of the 'network_verification' type from the given iterator.
+func readNetworkVerification(iterator *jsoniter.Iterator) *NetworkVerification {
+	object := &NetworkVerification{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "id":
-			value := iterator.ReadString()
-			object.id = value
+		case "cloud_provider_data":
+			value := readCloudProviderData(iterator)
+			object.cloudProviderData = value
 			object.bitmap_ |= 1
-		case "hash":
-			value := iterator.ReadBool()
-			object.hash = value
+		case "items":
+			value := readSubnetNetworkVerificationList(iterator)
+			object.items = value
 			object.bitmap_ |= 2
-		case "password":
-			value := iterator.ReadString()
-			object.password = value
+		case "total":
+			value := iterator.ReadInt()
+			object.total = value
 			object.bitmap_ |= 4
-		case "username":
-			value := iterator.ReadString()
-			object.username = value
-			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}
