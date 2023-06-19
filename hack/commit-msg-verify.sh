@@ -4,7 +4,7 @@
 PULL_BASE_SHA="${PULL_BASE_SHA:-$(git merge-base master HEAD)}"
 PULL_PULL_SHA="${PULL_PULL_SHA:-HEAD}"
 
-pattern="^[A-Z]+-[0-9]+ \| (feat|fix|docs|style|refactor|test|chore|build|ci|perf) : .*$"
+pattern="^[A-Z]+-[0-9]+ \| (feat|fix|docs|style|refactor|test|chore|build|ci|perf): .*$"
 
 commits=$(git rev-list --no-merges $PULL_BASE_SHA..$PULL_PULL_SHA)
 
