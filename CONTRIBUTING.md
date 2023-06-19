@@ -10,8 +10,8 @@ To contribute bug fixes or features to ROSA:
 - Test your changes.
 - Open a Pull Request (PR).
 
-Communicate your intent in the form of a JIRA ticket on the [Service Development A](https://issues.redhat.com/projects/SDA/summary) board.
-All JIRA's are refined by the team on a weekly cadence.
+Communicate your intent in the form of a JIRA ticket on the [OCM](https://issues.redhat.com/projects/OCM) project.
+To ensure it is picked up by the ROSA team, please set `component = rosa` in the ticket. All JIRA's are refined by the team on a weekly cadence.
 
 Be sure to practice good git commit hygiene as you make your changes. All but the smallest changes should be broken up
 into a few commits that tell a story. Use your git commits to provide context for the folks who will review PR. We strive
@@ -19,7 +19,7 @@ to follow [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/#
 
 The commit message should follow this template:
 ```shell
-<type>[JIRA-TICKET] | [TYPE] : <MESSAGE>
+<type>[JIRA-TICKET] | [TYPE]: <MESSAGE>
 
 [optional BODY]
 

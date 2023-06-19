@@ -12,7 +12,8 @@ for sha in $commits; do
   message=$(git log --format=%B -n 1 $sha)
   if ! [[ $message =~ $pattern ]]; then
     echo "Invalid commit message: $message"
-    echo "Expected format: JIRA_TICKET | TYPE : MESSAGE"
+    echo "Expected format: JIRA_TICKET | TYPE: MESSAGE"
+    echo "Please check CONTRIBUTING.md for more details"
     exit 1
   fi
 done
