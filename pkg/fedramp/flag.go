@@ -40,6 +40,7 @@ func AddFlag(flags *pflag.FlagSet) {
 		false,
 		"Uses the FedRAMP High OpenShift Cluster Manager API Endpoint for SREP Access",
 	)
+	flags.MarkHidden("admin")
 }
 
 func HasFlag(cmd *cobra.Command) bool {
