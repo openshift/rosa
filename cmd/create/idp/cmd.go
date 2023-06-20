@@ -292,6 +292,10 @@ func init() {
 			"- Include uppercase letters, lowercase letters, and numbers or symbols (ASCII-standard characters only)",
 	)
 
+	//makring hidden as this is now only for backwards compatibility
+	flags.MarkHidden("username")
+	flags.MarkHidden("password")
+
 	// HTPasswd
 	flags.StringSliceVarP(
 		&args.htpasswdUsers,
@@ -299,7 +303,7 @@ func init() {
 		"u",
 		[]string{},
 		"HTPasswd: List of users to add to the IDP. \n"+
-			"It must be a comma separate list of  username:password, i.e user1:password,user2:password",
+			"It must be a comma separate list of  username:password, i.e user1:password,user2:password \n",
 	)
 
 	interactive.AddFlag(flags)
