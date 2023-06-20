@@ -114,6 +114,12 @@ func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBu
 	username := args.htpasswdUsername
 	password := args.htpasswdPassword
 
+	if username != "" && len(users) > 0 {
+		r.Reporter.Errorf("Only one of  'users' or 'username/password' may be specified. " +
+			"Choose the option 'users' to add one or more users to the IDP.")
+		os.Exit(1)
+	}
+
 	userList := make(map[string]string)
 
 	if len(users) != 0 {
