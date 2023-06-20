@@ -136,7 +136,6 @@ func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBu
 		username, password = getUserDetails(cmd, r)
 		userList[username] = password
 	}
-	r.Reporter.Infof("Adding users %v", userList)
 
 	htpasswdUsers := []*cmv1.HTPasswdUserBuilder{}
 	for username, password := range userList {
