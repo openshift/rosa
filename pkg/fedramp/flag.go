@@ -33,10 +33,26 @@ func AddFlag(flags *pflag.FlagSet) {
 		false,
 		"Uses the FedRAMP High OpenShift Cluster Manager API for creating clusters in AWS GovCloud regions",
 	)
+
+	flags.BoolVar(
+		&enabled,
+		"admin",
+		false,
+		"Uses the FedRAMP High OpenShift Cluster Manager API Endpoint for Administrator Access",
+	)
+	flags.MarkHidden("admin")
 }
 
 func HasFlag(cmd *cobra.Command) bool {
 	flag := cmd.Flags().Lookup("govcloud")
+	if flag == nil {
+		return false
+	}
+	return flag.Changed
+}
+
+func HasAdminFlag(cmd *cobra.Command) bool {
+	flag := cmd.Flags().Lookup("admin")
 	if flag == nil {
 		return false
 	}

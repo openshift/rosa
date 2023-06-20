@@ -157,7 +157,11 @@ func run(cmd *cobra.Command, argv []string) {
 		if env == sdk.DefaultURL {
 			env = "production"
 		}
-		uiTokenPage = fedramp.LoginURLs[env]
+		if fedramp.HasAdminFlag(cmd) {
+			uiTokenPage = fedramp.AdminLoginURLs[env]
+		} else {
+			uiTokenPage = fedramp.LoginURLs[env]
+		}
 	} else {
 		fedramp.Disable()
 	}
@@ -223,17 +227,32 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	// Override configuration details for FedRAMP:
 	if fedramp.Enabled() {
-		gatewayURL, ok = fedramp.URLAliases[env]
-		if !ok {
-			gatewayURL = env
-		}
-		tokenURL, ok = fedramp.TokenURLs[env]
-		if !ok {
-			tokenURL = args.tokenURL
-		}
-		clientID, ok = fedramp.ClientIDs[env]
-		if !ok {
-			clientID = args.clientID
+		if fedramp.HasAdminFlag(cmd) {
+			gatewayURL, ok = fedramp.AdminURLAliases[env]
+			if !ok {
+				gatewayURL = env
+			}
+			tokenURL, ok = fedramp.AdminTokenURLs[env]
+			if !ok {
+				tokenURL = args.tokenURL
+			}
+			clientID, ok = fedramp.AdminClientIDs[env]
+			if !ok {
+				clientID = args.clientID
+			}
+		} else {
+			gatewayURL, ok = fedramp.URLAliases[env]
+			if !ok {
+				gatewayURL = env
+			}
+			tokenURL, ok = fedramp.TokenURLs[env]
+			if !ok {
+				tokenURL = args.tokenURL
+			}
+			clientID, ok = fedramp.ClientIDs[env]
+			if !ok {
+				clientID = args.clientID
+			}
 		}
 	}
 
