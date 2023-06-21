@@ -258,6 +258,9 @@ func UserTagValidator(input interface{}) error {
 			if len(tag) != 2 {
 				return fmt.Errorf("invalid tag format. Expected tag format: 'key:value'")
 			}
+			if tag[1] == "" {
+				return fmt.Errorf("invalid tag format, Tags must have values. Expected tag format: 'key:value'")
+			}
 			if !UserTagKeyRE.MatchString(tag[0]) {
 				return fmt.Errorf("expected a valid user tag key '%s' matching %s", tag[0], UserTagKeyRE.String())
 			}
