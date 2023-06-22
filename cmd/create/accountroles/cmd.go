@@ -17,7 +17,6 @@ limitations under the License.
 package accountroles
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -397,17 +396,9 @@ func run(cmd *cobra.Command, argv []string) {
 			})
 			os.Exit(1)
 		}
-		var createClusterFlag string
-		if args.hostedCP {
-			createClusterFlag = "--hosted-cp"
-		} else {
-			createClusterFlag = "--sts"
-		}
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("To create an OIDC Config, run the following command:\n" +
 				"\trosa create oidc-config")
-			r.Reporter.Infof(fmt.Sprintf("To create a cluster with these roles, run the following command:\n"+
-				"\trosa create cluster %s", createClusterFlag))
 		}
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
