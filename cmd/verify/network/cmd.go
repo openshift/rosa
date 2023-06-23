@@ -198,7 +198,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if spin != nil {
 			spin.Stop()
 		}
-	} else if args.statusOnly {
+	} else {
 		for i := 0; i < len(args.subnetIDs); i++ {
 			subnet := args.subnetIDs[i]
 			status, err := r.OCMClient.GetVerifyNetworkSubnet(subnet)
@@ -207,7 +207,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if !args.watch {
-		output := "\nRun the following command to wait for verification to complete:\n\n"
+		output := "Run the following command to wait for verification to complete:\n"
 		output += "rosa verify network --watch --status-only --subnet-ids "
 		output += strings.Join(args.subnetIDs, ",")
 		r.Reporter.Infof(output)
