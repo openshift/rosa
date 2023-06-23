@@ -515,8 +515,9 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	fmt.Println(awscb.JoinCommands(commands))
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Please run commands above to generate OIDC compliant configuration in your AWS account. " +
-			"After running the commands please refer to the documentation to register your unmanaged OIDC Configuration " +
-			"with OCM.")
+			"To register this OIDC Configuration, please run the following command:\n" +
+			"rosa register oidc-config\n" +
+			"For more information please refer to the documentation")
 	}
 }
 
