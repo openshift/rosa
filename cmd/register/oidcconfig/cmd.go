@@ -218,10 +218,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if spin != nil {
 			spin.Stop()
 		}
-		r.Reporter.Errorf("There was a problem building your unmanaged OIDC Configuration: %v. "+
-			"Please try again:\n"+
-			"\trosa register oidc-config --issuer-url %s --secret-arn %s --installer-role-arn %s",
-			err, args.issuerUrl, args.secretArn, installerRoleArn)
+		r.Reporter.Errorf("There was a problem building your unmanaged OIDC Configuration: %v", err)
 		os.Exit(1)
 	}
 	if output.HasFlag() {
