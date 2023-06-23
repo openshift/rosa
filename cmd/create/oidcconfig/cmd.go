@@ -230,7 +230,7 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 			roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
 			if roleName != "" {
-				if !output.HasFlag() && r.Reporter.IsTerminal() {
+				if !output.HasFlag() && r.Reporter.IsTerminal() && mode == aws.ModeAuto {
 					r.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
 				}
 				err := aws.ARNValidator(args.installerRoleArn)
