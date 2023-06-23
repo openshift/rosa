@@ -2,6 +2,10 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.23-rc2 Jun 23 2023
+- OCM-2256 | fix: Remove debug msg that prints the user/password list
+- OCM-2257 | feat: Ensure only one of users or username flags is provided
+
 == 1.2.23-rc1 Jun 19 2023
 - handle errors when retrieve versiongates Signed-off-by: marcolan018 <llan@redhat.com>
 - SDA-9085 | Fix: enable interactive mode if missing name or spec path for tuning configs
