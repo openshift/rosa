@@ -27,12 +27,12 @@ import (
 //
 // Contains the properties of a DNS domain.
 type DNSDomainBuilder struct {
-	bitmap_          uint32
-	id               string
-	href             string
-	clusterLink      *ClusterLinkBuilder
-	organizationLink *OrganizationLinkBuilder
-	reservedAt       time.Time
+	bitmap_             uint32
+	id                  string
+	href                string
+	clusterLink         *ClusterLinkBuilder
+	organizationLink    *OrganizationLinkBuilder
+	reservedAtTimestamp time.Time
 }
 
 // NewDNSDomain creates a new builder of 'DNS_domain' objects.
@@ -91,9 +91,9 @@ func (b *DNSDomainBuilder) OrganizationLink(value *OrganizationLinkBuilder) *DNS
 	return b
 }
 
-// ReservedAt sets the value of the 'reserved_at' attribute to the given value.
-func (b *DNSDomainBuilder) ReservedAt(value time.Time) *DNSDomainBuilder {
-	b.reservedAt = value
+// ReservedAtTimestamp sets the value of the 'reserved_at_timestamp' attribute to the given value.
+func (b *DNSDomainBuilder) ReservedAtTimestamp(value time.Time) *DNSDomainBuilder {
+	b.reservedAtTimestamp = value
 	b.bitmap_ |= 32
 	return b
 }
@@ -116,7 +116,7 @@ func (b *DNSDomainBuilder) Copy(object *DNSDomain) *DNSDomainBuilder {
 	} else {
 		b.organizationLink = nil
 	}
-	b.reservedAt = object.reservedAt
+	b.reservedAtTimestamp = object.reservedAtTimestamp
 	return b
 }
 
@@ -138,6 +138,6 @@ func (b *DNSDomainBuilder) Build() (object *DNSDomain, err error) {
 			return
 		}
 	}
-	object.reservedAt = b.reservedAt
+	object.reservedAtTimestamp = b.reservedAtTimestamp
 	return
 }

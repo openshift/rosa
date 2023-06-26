@@ -18,11 +18,11 @@
 export CGO_ENABLED=0
 
 # Details of the model to use:
-model_version:=v0.0.293
+model_version:=v0.0.295
 model_url:=https://github.com/openshift-online/ocm-api-model.git
 
 # Details of the metamodel to use:
-metamodel_version:=v0.0.58
+metamodel_version:=v0.0.59
 
 # Additional flags to pass to the `ginkgo` command. This is used in the GitHub
 # actions environment to skip tests that are sensitive to the speed of the
