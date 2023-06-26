@@ -51,7 +51,16 @@ func writeServiceClusterRequestPayload(object *ServiceClusterRequestPayload, str
 		stream.WriteString(object.cloudProvider)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&2 != 0 && object.labels != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("labels")
+		writeLabelRequestPayloadList(object.labels, stream)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -87,10 +96,14 @@ func readServiceClusterRequestPayload(iterator *jsoniter.Iterator) *ServiceClust
 			value := iterator.ReadString()
 			object.cloudProvider = value
 			object.bitmap_ |= 1
+		case "labels":
+			value := readLabelRequestPayloadList(iterator)
+			object.labels = value
+			object.bitmap_ |= 2
 		case "region":
 			value := iterator.ReadString()
 			object.region = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

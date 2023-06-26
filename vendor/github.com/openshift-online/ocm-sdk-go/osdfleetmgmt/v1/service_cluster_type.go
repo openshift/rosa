@@ -79,9 +79,9 @@ type ServiceCluster struct {
 	dns                        *DNS
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReference
-	labelsReference            *LabelReferenceList
+	labels                     []*Label
 	name                       string
-	provisionShardsReference   *ProvisionShardsReference
+	provisionShardReference    *ProvisionShardReference
 	region                     string
 	sector                     string
 	status                     string
@@ -213,25 +213,25 @@ func (o *ServiceCluster) GetClusterManagementReference() (value *ClusterManageme
 	return
 }
 
-// LabelsReference returns the value of the 'labels_reference' attribute, or
+// Labels returns the value of the 'labels' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Labels refrences on service cluster
-func (o *ServiceCluster) LabelsReference() *LabelReferenceList {
+// Labels on service cluster
+func (o *ServiceCluster) Labels() []*Label {
 	if o != nil && o.bitmap_&64 != 0 {
-		return o.labelsReference
+		return o.labels
 	}
 	return nil
 }
 
-// GetLabelsReference returns the value of the 'labels_reference' attribute and
+// GetLabels returns the value of the 'labels' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Labels refrences on service cluster
-func (o *ServiceCluster) GetLabelsReference() (value *LabelReferenceList, ok bool) {
+// Labels on service cluster
+func (o *ServiceCluster) GetLabels() (value []*Label, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
-		value = o.labelsReference
+		value = o.labels
 	}
 	return
 }
@@ -259,25 +259,25 @@ func (o *ServiceCluster) GetName() (value string, ok bool) {
 	return
 }
 
-// ProvisionShardsReference returns the value of the 'provision_shards_reference' attribute, or
+// ProvisionShardReference returns the value of the 'provision_shard_reference' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Provision shard reference for the service cluster
-func (o *ServiceCluster) ProvisionShardsReference() *ProvisionShardsReference {
+func (o *ServiceCluster) ProvisionShardReference() *ProvisionShardReference {
 	if o != nil && o.bitmap_&256 != 0 {
-		return o.provisionShardsReference
+		return o.provisionShardReference
 	}
 	return nil
 }
 
-// GetProvisionShardsReference returns the value of the 'provision_shards_reference' attribute and
+// GetProvisionShardReference returns the value of the 'provision_shard_reference' attribute and
 // a flag indicating if the attribute has a value.
 //
 // Provision shard reference for the service cluster
-func (o *ServiceCluster) GetProvisionShardsReference() (value *ProvisionShardsReference, ok bool) {
+func (o *ServiceCluster) GetProvisionShardReference() (value *ProvisionShardReference, ok bool) {
 	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
-		value = o.provisionShardsReference
+		value = o.provisionShardReference
 	}
 	return
 }

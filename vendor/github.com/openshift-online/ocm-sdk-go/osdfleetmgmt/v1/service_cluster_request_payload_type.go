@@ -23,6 +23,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 type ServiceClusterRequestPayload struct {
 	bitmap_       uint32
 	cloudProvider string
+	labels        []*LabelRequestPayload
 	region        string
 }
 
@@ -50,10 +51,29 @@ func (o *ServiceClusterRequestPayload) GetCloudProvider() (value string, ok bool
 	return
 }
 
+// Labels returns the value of the 'labels' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+func (o *ServiceClusterRequestPayload) Labels() []*LabelRequestPayload {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.labels
+	}
+	return nil
+}
+
+// GetLabels returns the value of the 'labels' attribute and
+// a flag indicating if the attribute has a value.
+func (o *ServiceClusterRequestPayload) GetLabels() (value []*LabelRequestPayload, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.labels
+	}
+	return
+}
+
 // Region returns the value of the 'region' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 func (o *ServiceClusterRequestPayload) Region() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.region
 	}
 	return ""
@@ -62,7 +82,7 @@ func (o *ServiceClusterRequestPayload) Region() string {
 // GetRegion returns the value of the 'region' attribute and
 // a flag indicating if the attribute has a value.
 func (o *ServiceClusterRequestPayload) GetRegion() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.region
 	}

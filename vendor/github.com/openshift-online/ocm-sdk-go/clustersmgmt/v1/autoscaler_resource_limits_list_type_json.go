@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalProvisionShardsReferenceList writes a list of values of the 'provision_shards_reference' type to
+// MarshalAutoscalerResourceLimitsList writes a list of values of the 'autoscaler_resource_limits' type to
 // the given writer.
-func MarshalProvisionShardsReferenceList(list []*ProvisionShardsReference, writer io.Writer) error {
+func MarshalAutoscalerResourceLimitsList(list []*AutoscalerResourceLimits, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeProvisionShardsReferenceList(list, stream)
+	writeAutoscalerResourceLimitsList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalProvisionShardsReferenceList(list []*ProvisionShardsReference, write
 	return stream.Error
 }
 
-// writeProvisionShardsReferenceList writes a list of value of the 'provision_shards_reference' type to
+// writeAutoscalerResourceLimitsList writes a list of value of the 'autoscaler_resource_limits' type to
 // the given stream.
-func writeProvisionShardsReferenceList(list []*ProvisionShardsReference, stream *jsoniter.Stream) {
+func writeAutoscalerResourceLimitsList(list []*AutoscalerResourceLimits, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeProvisionShardsReference(value, stream)
+		writeAutoscalerResourceLimits(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalProvisionShardsReferenceList reads a list of values of the 'provision_shards_reference' type
+// UnmarshalAutoscalerResourceLimitsList reads a list of values of the 'autoscaler_resource_limits' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalProvisionShardsReferenceList(source interface{}) (items []*ProvisionShardsReference, err error) {
+func UnmarshalAutoscalerResourceLimitsList(source interface{}) (items []*AutoscalerResourceLimits, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readProvisionShardsReferenceList(iterator)
+	items = readAutoscalerResourceLimitsList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readProvisionShardsReferenceList reads list of values of the ”provision_shards_reference' type from
+// readAutoscalerResourceLimitsList reads list of values of the ”autoscaler_resource_limits' type from
 // the given iterator.
-func readProvisionShardsReferenceList(iterator *jsoniter.Iterator) []*ProvisionShardsReference {
-	list := []*ProvisionShardsReference{}
+func readAutoscalerResourceLimitsList(iterator *jsoniter.Iterator) []*AutoscalerResourceLimits {
+	list := []*AutoscalerResourceLimits{}
 	for iterator.ReadArray() {
-		item := readProvisionShardsReference(iterator)
+		item := readAutoscalerResourceLimits(iterator)
 		list = append(list, item)
 	}
 	return list

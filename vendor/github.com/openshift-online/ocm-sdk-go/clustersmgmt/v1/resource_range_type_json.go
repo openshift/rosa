@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalProvisionShardsReference writes a value of the 'provision_shards_reference' type to the given writer.
-func MarshalProvisionShardsReference(object *ProvisionShardsReference, writer io.Writer) error {
+// MarshalResourceRange writes a value of the 'resource_range' type to the given writer.
+func MarshalResourceRange(object *ResourceRange, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeProvisionShardsReference(object, stream)
+	writeResourceRange(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalProvisionShardsReference(object *ProvisionShardsReference, writer io
 	return stream.Error
 }
 
-// writeProvisionShardsReference writes a value of the 'provision_shards_reference' type to the given stream.
-func writeProvisionShardsReference(object *ProvisionShardsReference, stream *jsoniter.Stream) {
+// writeResourceRange writes a value of the 'resource_range' type to the given stream.
+func writeResourceRange(object *ResourceRange, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,8 +47,8 @@ func writeProvisionShardsReference(object *ProvisionShardsReference, stream *jso
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("href")
-		stream.WriteString(object.href)
+		stream.WriteObjectField("max")
+		stream.WriteInt(object.max)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -56,40 +56,40 @@ func writeProvisionShardsReference(object *ProvisionShardsReference, stream *jso
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("id")
-		stream.WriteString(object.id)
+		stream.WriteObjectField("min")
+		stream.WriteInt(object.min)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalProvisionShardsReference reads a value of the 'provision_shards_reference' type from the given
+// UnmarshalResourceRange reads a value of the 'resource_range' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalProvisionShardsReference(source interface{}) (object *ProvisionShardsReference, err error) {
+func UnmarshalResourceRange(source interface{}) (object *ResourceRange, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readProvisionShardsReference(iterator)
+	object = readResourceRange(iterator)
 	err = iterator.Error
 	return
 }
 
-// readProvisionShardsReference reads a value of the 'provision_shards_reference' type from the given iterator.
-func readProvisionShardsReference(iterator *jsoniter.Iterator) *ProvisionShardsReference {
-	object := &ProvisionShardsReference{}
+// readResourceRange reads a value of the 'resource_range' type from the given iterator.
+func readResourceRange(iterator *jsoniter.Iterator) *ResourceRange {
+	object := &ResourceRange{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "href":
-			value := iterator.ReadString()
-			object.href = value
+		case "max":
+			value := iterator.ReadInt()
+			object.max = value
 			object.bitmap_ |= 1
-		case "id":
-			value := iterator.ReadString()
-			object.id = value
+		case "min":
+			value := iterator.ReadInt()
+			object.min = value
 			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()

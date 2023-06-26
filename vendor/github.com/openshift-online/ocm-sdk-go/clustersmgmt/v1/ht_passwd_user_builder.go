@@ -21,11 +21,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 // HTPasswdUserBuilder contains the data and logic needed to build 'HT_passwd_user' objects.
 type HTPasswdUserBuilder struct {
-	bitmap_  uint32
-	id       string
-	password string
-	username string
-	hash     bool
+	bitmap_        uint32
+	id             string
+	hashedPassword string
+	password       string
+	username       string
 }
 
 // NewHTPasswdUser creates a new builder of 'HT_passwd_user' objects.
@@ -45,9 +45,9 @@ func (b *HTPasswdUserBuilder) ID(value string) *HTPasswdUserBuilder {
 	return b
 }
 
-// Hash sets the value of the 'hash' attribute to the given value.
-func (b *HTPasswdUserBuilder) Hash(value bool) *HTPasswdUserBuilder {
-	b.hash = value
+// HashedPassword sets the value of the 'hashed_password' attribute to the given value.
+func (b *HTPasswdUserBuilder) HashedPassword(value string) *HTPasswdUserBuilder {
+	b.hashedPassword = value
 	b.bitmap_ |= 2
 	return b
 }
@@ -73,7 +73,7 @@ func (b *HTPasswdUserBuilder) Copy(object *HTPasswdUser) *HTPasswdUserBuilder {
 	}
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
-	b.hash = object.hash
+	b.hashedPassword = object.hashedPassword
 	b.password = object.password
 	b.username = object.username
 	return b
@@ -84,7 +84,7 @@ func (b *HTPasswdUserBuilder) Build() (object *HTPasswdUser, err error) {
 	object = new(HTPasswdUser)
 	object.bitmap_ = b.bitmap_
 	object.id = b.id
-	object.hash = b.hash
+	object.hashedPassword = b.hashedPassword
 	object.password = b.password
 	object.username = b.username
 	return

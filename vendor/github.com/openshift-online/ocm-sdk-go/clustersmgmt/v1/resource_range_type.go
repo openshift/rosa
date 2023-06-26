@@ -17,89 +17,79 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// ProvisionShardsReference represents the values of the 'provision_shards_reference' type.
-//
-// Provision Shards Reference of the cluster.
-type ProvisionShardsReference struct {
+// ResourceRange represents the values of the 'resource_range' type.
+type ResourceRange struct {
 	bitmap_ uint32
-	href    string
-	id      string
+	max     int
+	min     int
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *ProvisionShardsReference) Empty() bool {
+func (o *ResourceRange) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// Href returns the value of the 'href' attribute, or
+// Max returns the value of the 'max' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-// link to the Provision Shards associated to the cluster
-func (o *ProvisionShardsReference) Href() string {
+func (o *ResourceRange) Max() int {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.href
+		return o.max
 	}
-	return ""
+	return 0
 }
 
-// GetHref returns the value of the 'href' attribute and
+// GetMax returns the value of the 'max' attribute and
 // a flag indicating if the attribute has a value.
-//
-// link to the Provision Shards associated to the cluster
-func (o *ProvisionShardsReference) GetHref() (value string, ok bool) {
+func (o *ResourceRange) GetMax() (value int, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.href
+		value = o.max
 	}
 	return
 }
 
-// Id returns the value of the 'id' attribute, or
+// Min returns the value of the 'min' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-//
-// Id of the Provision Shards associated to the Ocluster
-func (o *ProvisionShardsReference) Id() string {
+func (o *ResourceRange) Min() int {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.id
+		return o.min
 	}
-	return ""
+	return 0
 }
 
-// GetId returns the value of the 'id' attribute and
+// GetMin returns the value of the 'min' attribute and
 // a flag indicating if the attribute has a value.
-//
-// Id of the Provision Shards associated to the Ocluster
-func (o *ProvisionShardsReference) GetId() (value string, ok bool) {
+func (o *ResourceRange) GetMin() (value int, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.id
+		value = o.min
 	}
 	return
 }
 
-// ProvisionShardsReferenceListKind is the name of the type used to represent list of objects of
-// type 'provision_shards_reference'.
-const ProvisionShardsReferenceListKind = "ProvisionShardsReferenceList"
+// ResourceRangeListKind is the name of the type used to represent list of objects of
+// type 'resource_range'.
+const ResourceRangeListKind = "ResourceRangeList"
 
-// ProvisionShardsReferenceListLinkKind is the name of the type used to represent links to list
-// of objects of type 'provision_shards_reference'.
-const ProvisionShardsReferenceListLinkKind = "ProvisionShardsReferenceListLink"
+// ResourceRangeListLinkKind is the name of the type used to represent links to list
+// of objects of type 'resource_range'.
+const ResourceRangeListLinkKind = "ResourceRangeListLink"
 
-// ProvisionShardsReferenceNilKind is the name of the type used to nil lists of objects of
-// type 'provision_shards_reference'.
-const ProvisionShardsReferenceListNilKind = "ProvisionShardsReferenceListNil"
+// ResourceRangeNilKind is the name of the type used to nil lists of objects of
+// type 'resource_range'.
+const ResourceRangeListNilKind = "ResourceRangeListNil"
 
-// ProvisionShardsReferenceList is a list of values of the 'provision_shards_reference' type.
-type ProvisionShardsReferenceList struct {
+// ResourceRangeList is a list of values of the 'resource_range' type.
+type ResourceRangeList struct {
 	href  string
 	link  bool
-	items []*ProvisionShardsReference
+	items []*ResourceRange
 }
 
 // Len returns the length of the list.
-func (l *ProvisionShardsReferenceList) Len() int {
+func (l *ResourceRangeList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -107,13 +97,13 @@ func (l *ProvisionShardsReferenceList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *ProvisionShardsReferenceList) Empty() bool {
+func (l *ResourceRangeList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *ProvisionShardsReferenceList) Get(i int) *ProvisionShardsReference {
+func (l *ResourceRangeList) Get(i int) *ResourceRange {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -126,12 +116,12 @@ func (l *ProvisionShardsReferenceList) Get(i int) *ProvisionShardsReference {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *ProvisionShardsReferenceList) Slice() []*ProvisionShardsReference {
-	var slice []*ProvisionShardsReference
+func (l *ResourceRangeList) Slice() []*ResourceRange {
+	var slice []*ResourceRange
 	if l == nil {
-		slice = make([]*ProvisionShardsReference, 0)
+		slice = make([]*ResourceRange, 0)
 	} else {
-		slice = make([]*ProvisionShardsReference, len(l.items))
+		slice = make([]*ResourceRange, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -140,7 +130,7 @@ func (l *ProvisionShardsReferenceList) Slice() []*ProvisionShardsReference {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *ProvisionShardsReferenceList) Each(f func(item *ProvisionShardsReference) bool) {
+func (l *ResourceRangeList) Each(f func(item *ResourceRange) bool) {
 	if l == nil {
 		return
 	}
@@ -154,7 +144,7 @@ func (l *ProvisionShardsReferenceList) Each(f func(item *ProvisionShardsReferenc
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *ProvisionShardsReferenceList) Range(f func(index int, item *ProvisionShardsReference) bool) {
+func (l *ResourceRangeList) Range(f func(index int, item *ResourceRange) bool) {
 	if l == nil {
 		return
 	}

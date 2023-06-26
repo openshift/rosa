@@ -19,42 +19,84 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
+// LabelKind is the name of the type used to represent objects
+// of type 'label'.
+const LabelKind = "Label"
+
+// LabelLinkKind is the name of the type used to represent links
+// to objects of type 'label'.
+const LabelLinkKind = "LabelLink"
+
+// LabelNilKind is the name of the type used to nil references
+// to objects of type 'label'.
+const LabelNilKind = "LabelNil"
+
 // Label represents the values of the 'label' type.
 //
 // label settings of the cluster.
 type Label struct {
 	bitmap_ uint32
 	id      string
+	href    string
 	key     string
 	value   string
 }
 
-// Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *Label) Empty() bool {
-	return o == nil || o.bitmap_ == 0
+// Kind returns the name of the type of the object.
+func (o *Label) Kind() string {
+	if o == nil {
+		return LabelNilKind
+	}
+	if o.bitmap_&1 != 0 {
+		return LabelLinkKind
+	}
+	return LabelKind
 }
 
-// Id returns the value of the 'id' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Label ID associated to the OSD FM managed cluster
-func (o *Label) Id() string {
-	if o != nil && o.bitmap_&1 != 0 {
+// Link returns true iif this is a link.
+func (o *Label) Link() bool {
+	return o != nil && o.bitmap_&1 != 0
+}
+
+// ID returns the identifier of the object.
+func (o *Label) ID() string {
+	if o != nil && o.bitmap_&2 != 0 {
 		return o.id
 	}
 	return ""
 }
 
-// GetId returns the value of the 'id' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Label ID associated to the OSD FM managed cluster
-func (o *Label) GetId() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1 != 0
+// GetID returns the identifier of the object and a flag indicating if the
+// identifier has a value.
+func (o *Label) GetID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.id
 	}
 	return
+}
+
+// HREF returns the link to the object.
+func (o *Label) HREF() string {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.href
+	}
+	return ""
+}
+
+// GetHREF returns the link of the object and a flag indicating if the
+// link has a value.
+func (o *Label) GetHREF() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.href
+	}
+	return
+}
+
+// Empty returns true if the object is empty, i.e. no attribute has a value.
+func (o *Label) Empty() bool {
+	return o == nil || o.bitmap_&^1 == 0
 }
 
 // Key returns the value of the 'key' attribute, or
@@ -62,7 +104,7 @@ func (o *Label) GetId() (value string, ok bool) {
 //
 // Label key associated to the OSD FM managed cluster
 func (o *Label) Key() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.key
 	}
 	return ""
@@ -73,7 +115,7 @@ func (o *Label) Key() string {
 //
 // Label key associated to the OSD FM managed cluster
 func (o *Label) GetKey() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.key
 	}
@@ -85,7 +127,7 @@ func (o *Label) GetKey() (value string, ok bool) {
 //
 // Label value associated to the OSD FM managed cluster
 func (o *Label) Value() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.value
 	}
 	return ""
@@ -96,7 +138,7 @@ func (o *Label) Value() string {
 //
 // Label value associated to the OSD FM managed cluster
 func (o *Label) GetValue() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.value
 	}
@@ -120,6 +162,40 @@ type LabelList struct {
 	href  string
 	link  bool
 	items []*Label
+}
+
+// Kind returns the name of the type of the object.
+func (l *LabelList) Kind() string {
+	if l == nil {
+		return LabelListNilKind
+	}
+	if l.link {
+		return LabelListLinkKind
+	}
+	return LabelListKind
+}
+
+// Link returns true iif this is a link.
+func (l *LabelList) Link() bool {
+	return l != nil && l.link
+}
+
+// HREF returns the link to the list.
+func (l *LabelList) HREF() string {
+	if l != nil {
+		return l.href
+	}
+	return ""
+}
+
+// GetHREF returns the link of the list and a flag indicating if the
+// link has a value.
+func (l *LabelList) GetHREF() (value string, ok bool) {
+	ok = l != nil && l.href != ""
+	if ok {
+		value = l.href
+	}
+	return
 }
 
 // Len returns the length of the list.
