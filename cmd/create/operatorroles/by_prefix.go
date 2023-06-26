@@ -135,7 +135,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 		os.Exit(1)
 	}
 	err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, r.AWSClient,
-		operatorRolesList, oidcConfig.IssuerUrl(), "4.0", path)
+		operatorRolesList, oidcConfig.IssuerUrl(), "4.0", path, managedPolicies)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
