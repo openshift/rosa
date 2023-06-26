@@ -2,6 +2,52 @@
 
 This document describes the relevant changes between releases of the `rosa` command line tool.
 
+== 1.2.23 Jum 26 2023
+- OCM-2256 | fix: Remove debug msg that prints the user/password list
+- OCM-2257 | feat: Ensure only one of users or username flags is provided
+- handle errors when retrieve version gates
+- SDA-9085 | Fix: enable interactive mode if missing name or spec path for tuning configs
+- Create cluster - fix error messages
+- OCM-785 | docs: Add instructions to get rosa binary from latest
+- add Technology Preview to --help output for hosted-cp
+- Adds explanation and solution to possible auth errors
+- Adds pull always to command
+- Revert "OCM-140 | chore : reverting IMDSv2"
+- OCM-140: Changing parameter name from HttpTokensState to Ec2MetadataHttpTokens
+- Add specific commit binary image to README.md
+- SDA-4652 | feat: add list oidc providers command
+- OCM-1013 | fix: remove dial issuer url when creating operator roles by prefix
+- SDA-8838 | fix: STS default warning does not show for hcp
+- SDA-6425 | fix: act on output flag for list service command
+- SDA-4652 | feat: add 'in use' column list oidc providers
+- Change account role name pattern roles used with HCP
+- fix: Add flag to bypass confirmation on edit cluster
+- Commit changes requested
+- Add debug reporter to indicate role prefix being used
+- fix: remove secondary yes check from confirmation
+- OCM-842|Feat: Accept multiple users for htpasswd IDP
+- OCM-1410 | fix: correct error message when 'rosa link user-role' with account-id under different org
+- OCM-15: bump ocm-sdk-go to v0.1.343
+- Add the ability to list all clusters
+- exit link user role cmd when errors
+- OCM-953 | feat: add automatic upgrades for hyper shift control plane
+- OCM-2157 | fix: ensure policy when calling delete policy versions was not checking for errors
+- Update OCM-SDK-GO to version 0.1.345
+- OCM-2241| fix: Ensure all users are copied
+- OCM-2274 | Fix: skip version check for automated upgrade
+- fix/filter-subnets-by-cidr
+- OCM-16: bump ocm-sdk-go to v0.1.347
+- OCM-2181 | Fix: error message was misleading
+- Squashed commit of the following:
+- OCM-955 | feat: register oidc config command
+- Accept path setting thru iam role check - regex
+- OCM-2376 | ci : add script to run in prow job to validate commit messages
+- OCM-1227 | fix: use default cidr if empty outside interactive
+- OCM-2380 | fix : Rosa CLI "build command" should not show "--audit-log-arn" flag when value == ""
+- correction: accept symbols =,.@- in role name section of arn
+- OCM-954 | Feat: small refactor to prepare for node pool upgrades
+
+
 == 1.2.23-rc2 Jun 23 2023
 - OCM-2256 | fix: Remove debug msg that prints the user/password list
 - OCM-2257 | feat: Ensure only one of users or username flags is provided
