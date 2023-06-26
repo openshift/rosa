@@ -123,7 +123,7 @@ func init() {
 		&args.hostedCP,
 		"hosted-cp",
 		false,
-		"Enable the use of Hosted Control Planes",
+		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
 	flags.MarkHidden("hosted-cp")
 

@@ -48,6 +48,13 @@ func NewClient() *ClientBuilder {
 	return &ClientBuilder{}
 }
 
+// NewClientWithConnection creates a client with a preexisting connection for testing purpose
+func NewClientWithConnection(connection *sdk.Connection) *Client {
+	return &Client{
+		ocm: connection,
+	}
+}
+
 func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) *Client {
 	client, err := NewClient().
 		Logger(logger).

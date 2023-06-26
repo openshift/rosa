@@ -40,9 +40,13 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 
 	// Try to find the node pool
 	r.Reporter.Debugf("Loading machine pool for hosted cluster '%s'", clusterKey)
-	nodePool, err := r.OCMClient.GetNodePool(cluster.ID(), nodePoolID)
+	nodePool, exists, err := r.OCMClient.GetNodePool(cluster.ID(), nodePoolID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get machine pools for hosted cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+	if !exists {
+		r.Reporter.Errorf("Machine pool '%s' does not exist for hosted cluster '%s'", nodePoolID, clusterKey)
 		os.Exit(1)
 	}
 

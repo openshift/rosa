@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 import (
 	"io"
@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSSHCredentialsList writes a list of values of the 'SSH_credentials' type to
+// MarshalContractDimensionList writes a list of values of the 'contract_dimension' type to
 // the given writer.
-func MarshalSSHCredentialsList(list []*SSHCredentials, writer io.Writer) error {
+func MarshalContractDimensionList(list []*ContractDimension, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSSHCredentialsList(list, stream)
+	writeContractDimensionList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalSSHCredentialsList(list []*SSHCredentials, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSSHCredentialsList writes a list of value of the 'SSH_credentials' type to
+// writeContractDimensionList writes a list of value of the 'contract_dimension' type to
 // the given stream.
-func writeSSHCredentialsList(list []*SSHCredentials, stream *jsoniter.Stream) {
+func writeContractDimensionList(list []*ContractDimension, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeSSHCredentials(value, stream)
+		writeContractDimension(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalSSHCredentialsList reads a list of values of the 'SSH_credentials' type
+// UnmarshalContractDimensionList reads a list of values of the 'contract_dimension' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalSSHCredentialsList(source interface{}) (items []*SSHCredentials, err error) {
+func UnmarshalContractDimensionList(source interface{}) (items []*ContractDimension, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readSSHCredentialsList(iterator)
+	items = readContractDimensionList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSSHCredentialsList reads list of values of the ”SSH_credentials' type from
+// readContractDimensionList reads list of values of the ”contract_dimension' type from
 // the given iterator.
-func readSSHCredentialsList(iterator *jsoniter.Iterator) []*SSHCredentials {
-	list := []*SSHCredentials{}
+func readContractDimensionList(iterator *jsoniter.Iterator) []*ContractDimension {
+	list := []*ContractDimension{}
 	for iterator.ReadArray() {
-		item := readSSHCredentials(iterator)
+		item := readContractDimension(iterator)
 		list = append(list, item)
 	}
 	return list

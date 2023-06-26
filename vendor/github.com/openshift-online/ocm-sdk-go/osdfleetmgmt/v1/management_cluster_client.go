@@ -26,6 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
@@ -78,6 +79,16 @@ func (c *ManagementClusterClient) Post() *ManagementClusterPostRequest {
 		transport: c.transport,
 		path:      c.path,
 	}
+}
+
+// Labels returns the target 'labels' resource.
+//
+// Reference to the resource that manages the collection of label
+func (c *ManagementClusterClient) Labels() *LabelsClient {
+	return NewLabelsClient(
+		c.transport,
+		path.Join(c.path, "labels"),
+	)
 }
 
 // ManagementClusterPollRequest is the request for the Poll method.

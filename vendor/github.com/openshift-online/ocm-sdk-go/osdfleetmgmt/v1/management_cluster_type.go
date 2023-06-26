@@ -19,6 +19,10 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
+import (
+	time "time"
+)
+
 // ManagementClusterKind is the name of the type used to represent objects
 // of type 'management_cluster'.
 const ManagementClusterKind = "ManagementCluster"
@@ -79,10 +83,14 @@ type ManagementCluster struct {
 	dns                        *DNS
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReference
+	creationTimestamp          time.Time
+	labelsReference            *LabelReferenceList
 	name                       string
 	parent                     *ManagementClusterParent
 	region                     string
+	sector                     string
 	status                     string
+	updateTimestamp            time.Time
 }
 
 // Kind returns the name of the type of the object.
@@ -211,12 +219,58 @@ func (o *ManagementCluster) GetClusterManagementReference() (value *ClusterManag
 	return
 }
 
+// CreationTimestamp returns the value of the 'creation_timestamp' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Creation timestamp of the cluster
+func (o *ManagementCluster) CreationTimestamp() time.Time {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.creationTimestamp
+	}
+	return time.Time{}
+}
+
+// GetCreationTimestamp returns the value of the 'creation_timestamp' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Creation timestamp of the cluster
+func (o *ManagementCluster) GetCreationTimestamp() (value time.Time, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.creationTimestamp
+	}
+	return
+}
+
+// LabelsReference returns the value of the 'labels_reference' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Labels on management cluster
+func (o *ManagementCluster) LabelsReference() *LabelReferenceList {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.labelsReference
+	}
+	return nil
+}
+
+// GetLabelsReference returns the value of the 'labels_reference' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Labels on management cluster
+func (o *ManagementCluster) GetLabelsReference() (value *LabelReferenceList, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.labelsReference
+	}
+	return
+}
+
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Cluster name
 func (o *ManagementCluster) Name() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.name
 	}
 	return ""
@@ -227,7 +281,7 @@ func (o *ManagementCluster) Name() string {
 //
 // Cluster name
 func (o *ManagementCluster) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.name
 	}
@@ -237,9 +291,9 @@ func (o *ManagementCluster) GetName() (value string, ok bool) {
 // Parent returns the value of the 'parent' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Management cluster handling the management cluster
+// Service cluster handling the management cluster
 func (o *ManagementCluster) Parent() *ManagementClusterParent {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.parent
 	}
 	return nil
@@ -248,9 +302,9 @@ func (o *ManagementCluster) Parent() *ManagementClusterParent {
 // GetParent returns the value of the 'parent' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Management cluster handling the management cluster
+// Service cluster handling the management cluster
 func (o *ManagementCluster) GetParent() (value *ManagementClusterParent, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.parent
 	}
@@ -262,7 +316,7 @@ func (o *ManagementCluster) GetParent() (value *ManagementClusterParent, ok bool
 //
 // Cloud provider region where the cluster is installed.
 func (o *ManagementCluster) Region() string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.region
 	}
 	return ""
@@ -273,9 +327,32 @@ func (o *ManagementCluster) Region() string {
 //
 // Cloud provider region where the cluster is installed.
 func (o *ManagementCluster) GetRegion() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.region
+	}
+	return
+}
+
+// Sector returns the value of the 'sector' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Sector of cluster
+func (o *ManagementCluster) Sector() string {
+	if o != nil && o.bitmap_&2048 != 0 {
+		return o.sector
+	}
+	return ""
+}
+
+// GetSector returns the value of the 'sector' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Sector of cluster
+func (o *ManagementCluster) GetSector() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&2048 != 0
+	if ok {
+		value = o.sector
 	}
 	return
 }
@@ -285,7 +362,7 @@ func (o *ManagementCluster) GetRegion() (value string, ok bool) {
 //
 // Status of cluster
 func (o *ManagementCluster) Status() string {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.status
 	}
 	return ""
@@ -296,9 +373,32 @@ func (o *ManagementCluster) Status() string {
 //
 // Status of cluster
 func (o *ManagementCluster) GetStatus() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.status
+	}
+	return
+}
+
+// UpdateTimestamp returns the value of the 'update_timestamp' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Update timestamp of the cluster
+func (o *ManagementCluster) UpdateTimestamp() time.Time {
+	if o != nil && o.bitmap_&8192 != 0 {
+		return o.updateTimestamp
+	}
+	return time.Time{}
+}
+
+// GetUpdateTimestamp returns the value of the 'update_timestamp' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Update timestamp of the cluster
+func (o *ManagementCluster) GetUpdateTimestamp() (value time.Time, ok bool) {
+	ok = o != nil && o.bitmap_&8192 != 0
+	if ok {
+		value = o.updateTimestamp
 	}
 	return
 }

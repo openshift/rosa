@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	errors "github.com/zgalor/weberr"
 )
 
 func (c *Client) GetUpgradePolicies(clusterID string) (upgradePolicies []*cmv1.UpgradePolicy, err error) {
@@ -38,33 +39,6 @@ func (c *Client) GetUpgradePolicies(clusterID string) (upgradePolicies []*cmv1.U
 			return nil, handleErr(response.Error(), err)
 		}
 		upgradePolicies = append(upgradePolicies, response.Items().Slice()...)
-		if response.Size() < size {
-			break
-		}
-		page++
-	}
-	return
-}
-
-func (c *Client) GetControlPlaneUpgradePolicies(clusterID string) (
-	controlPlaneUpgradePolicies []*cmv1.ControlPlaneUpgradePolicy,
-	err error) {
-	collection := c.ocm.ClustersMgmt().V1().
-		Clusters().
-		Cluster(clusterID).
-		ControlPlane().
-		UpgradePolicies()
-	page := 1
-	size := 100
-	for {
-		response, err := collection.List().
-			Page(page).
-			Size(size).
-			Send()
-		if err != nil {
-			return nil, handleErr(response.Error(), err)
-		}
-		controlPlaneUpgradePolicies = append(controlPlaneUpgradePolicies, response.Items().Slice()...)
 		if response.Size() < size {
 			break
 		}
@@ -97,36 +71,9 @@ func (c *Client) GetScheduledUpgrade(clusterID string) (*cmv1.UpgradePolicy, *cm
 	return nil, nil, nil
 }
 
-func (c *Client) GetControlPlaneScheduledUpgrade(clusterID string) (*cmv1.ControlPlaneUpgradePolicy, error) {
-	upgradePolicies, err := c.GetControlPlaneUpgradePolicies(clusterID)
-	if err != nil {
-		return nil, err
-	}
-	for _, upgradePolicy := range upgradePolicies {
-		if upgradePolicy.UpgradeType() == "ControlPlane" {
-			return upgradePolicy, nil
-		}
-	}
-
-	return nil, nil
-}
-
 func (c *Client) ScheduleUpgrade(clusterID string, upgradePolicy *cmv1.UpgradePolicy) error {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).
-		UpgradePolicies().
-		Add().Body(upgradePolicy).
-		Send()
-	if err != nil {
-		return handleErr(response.Error(), err)
-	}
-	return nil
-}
-
-func (c *Client) ScheduleHypershiftControlPlaneUpgrade(clusterID string,
-	upgradePolicy *cmv1.ControlPlaneUpgradePolicy) error {
-	response, err := c.ocm.ClustersMgmt().V1().
-		Clusters().Cluster(clusterID).ControlPlane().
 		UpgradePolicies().
 		Add().Body(upgradePolicy).
 		Send()
@@ -146,16 +93,6 @@ func (c *Client) CancelUpgrade(clusterID string) (bool, error) {
 		UpgradePolicies().UpgradePolicy(scheduledUpgrade.ID()).
 		Delete().
 		Send()
-	if err != nil {
-		return false, handleErr(response.Error(), err)
-	}
-	return true, nil
-}
-
-func (c *Client) CancelControlPlaneUpgrade(clusterID, upgradeID string) (bool, error) {
-	response, err := c.ocm.ClustersMgmt().V1().
-		Clusters().Cluster(clusterID).ControlPlane().UpgradePolicies().
-		ControlPlaneUpgradePolicy(upgradeID).Delete().Send()
 	if err != nil {
 		return false, handleErr(response.Error(), err)
 	}
@@ -183,6 +120,11 @@ func (c *Client) GetMissingGateAgreementsHypershift(
 			if err != nil {
 				return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
 			}
+			// return original error if invaild version gate detected
+			if len(gates) > 0 && gates[0].ID() == "" {
+				errType := errors.ErrorType(response.Error().Status())
+				return []*cmv1.VersionGate{}, errType.Set(errors.Errorf(response.Error().Reason()))
+			}
 			return gates, nil
 		}
 	}
@@ -209,6 +151,11 @@ func (c *Client) GetMissingGateAgreementsClassic(
 			gates, err := cmv1.UnmarshalVersionGateList(data)
 			if err != nil {
 				return []*cmv1.VersionGate{}, handleErr(response.Error(), err)
+			}
+			// return original error if invaild version gate detected
+			if len(gates) > 0 && gates[0].ID() == "" {
+				errType := errors.ErrorType(response.Error().Status())
+				return []*cmv1.VersionGate{}, errType.Set(errors.Errorf(response.Error().Reason()))
 			}
 			return gates, nil
 		}

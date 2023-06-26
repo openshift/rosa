@@ -27,6 +27,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	"gitlab.com/c0b/go-ordered-json"
 )
@@ -40,6 +41,10 @@ var emptyBuffer = []byte{91, 10, 32, 32, 10, 93}
 func Print(resource interface{}) error {
 	var b bytes.Buffer
 	switch reflect.TypeOf(resource).String() {
+	case "[]*v1.ManagedService":
+		if managedServices, ok := resource.([]*msv1.ManagedService); ok {
+			msv1.MarshalManagedServiceList(managedServices, &b)
+		}
 	case "[]*v1.CloudRegion":
 		if cloudRegions, ok := resource.([]*cmv1.CloudRegion); ok {
 			cmv1.MarshalCloudRegionList(cloudRegions, &b)
@@ -118,7 +123,7 @@ func Print(resource interface{}) error {
 				}
 			}
 		}
-	case "object.Object", "map[string]interface {}":
+	case "object.Object", "map[string]interface {}", "[]map[string]interface {}":
 		{
 			reqBodyBytes := new(bytes.Buffer)
 			json.NewEncoder(reqBodyBytes).Encode(resource)

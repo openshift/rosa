@@ -3,6 +3,43 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.347
+- Update model version v0.0.290
+  - Rename `MachineTypeRootVolume` to `RootVolume`
+  - Put `RootVolume` in `ClusterNodes`
+  - add contracts to cloud accounts (#765)
+
+## 0.1.346
+- Update model version v0.0.289
+  - Add Load balancer type to Ingress model
+  - remove unused API endpoints
+
+## 0.1.345
+- Update model version v0.0.288
+  - Add `DNSDomains` resource to the `root_resource`.
+  - Complete OSD FM api for SDK usage.
+
+## 0.1.344
+- Update model version v0.0.287
+  - Add Htpasswd to Cluster
+
+## 0.1.343
+- Update model version v0.0.286
+  - Add MachineTypeRootVolume to MachinePool
+
+## 0.1.342
+- Update model version v0.0.285
+  - Changed DNS Domain from Class to a Struct.
+  - Change dns domain type to class and remove ID.
+
+## 0.1.341
+- Update model version v0.0.282
+  - Changing parameter name from HttpTokensState to Ec2MetadataHttpTokens
+
+## 0.1.340
+- Update model version v0.0.281
+  - Add `RootVolume` of type `MachineTypeRootVolume` to `MachineType` type.
+
 ## 0.1.339
 - Update model version v0.0.280
   - Add `HttpTokensState` to `AWS` resource.
@@ -89,7 +126,7 @@ SDK.
 ## 0.1.320
 - Update to model v0.0.261
   - Add `commonAnnotations` and `commonLabels` to addons
-- Update to Addon structs and openapi.json for supporting 
+- Update to Addon structs and openapi.json for supporting
   - `commonAnnotations`
   - `commonLabels`
 
@@ -145,7 +182,7 @@ SDK.
 
 ## 0.1.309
 - Update to model v0.0.250
-  - Add `Addon Inquiries API` to `addons_mgmt` 
+  - Add `Addon Inquiries API` to `addons_mgmt`
 
 ## 0.1.308
 - Update to model v0.0.249
@@ -186,20 +223,20 @@ SDK.
   - Add `DeletedSubscriptions`
   - Add `AddonCluster`
   - Add `AddonStatus`
-  
+
 ## 0.1.300
 - Update PR check to include go v1.19
 - Update goimports to v0.4.0
 - Update to model v0.0.240
   - Fix `AddonConfig` on `AddonConfigType` resource model.
 
-## 0.1.299 
+## 0.1.299
 - Update to model 0.0.239
   - Fixes for `NodePoolAutoScaling` and `AWSNodePool`.
 
 ## 0.1.298
 - Update to model 0.0.238
-  - `NodePool` fixes. 
+  - `NodePool` fixes.
 
 ## 0.1.297
 - Update to model 0.0.237

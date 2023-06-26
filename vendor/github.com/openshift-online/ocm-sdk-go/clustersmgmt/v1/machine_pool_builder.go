@@ -32,6 +32,7 @@ type MachinePoolBuilder struct {
 	instanceType         string
 	labels               map[string]string
 	replicas             int
+	rootVolume           *RootVolumeBuilder
 	securityGroupFilters []*MachinePoolSecurityGroupFilterBuilder
 	subnets              []string
 	taints               []*TaintBuilder
@@ -126,11 +127,24 @@ func (b *MachinePoolBuilder) Replicas(value int) *MachinePoolBuilder {
 	return b
 }
 
+// RootVolume sets the value of the 'root_volume' attribute to the given value.
+//
+// Root volume capabilities.
+func (b *MachinePoolBuilder) RootVolume(value *RootVolumeBuilder) *MachinePoolBuilder {
+	b.rootVolume = value
+	if value != nil {
+		b.bitmap_ |= 512
+	} else {
+		b.bitmap_ &^= 512
+	}
+	return b
+}
+
 // SecurityGroupFilters sets the value of the 'security_group_filters' attribute to the given values.
 func (b *MachinePoolBuilder) SecurityGroupFilters(values ...*MachinePoolSecurityGroupFilterBuilder) *MachinePoolBuilder {
 	b.securityGroupFilters = make([]*MachinePoolSecurityGroupFilterBuilder, len(values))
 	copy(b.securityGroupFilters, values)
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -138,7 +152,7 @@ func (b *MachinePoolBuilder) SecurityGroupFilters(values ...*MachinePoolSecurity
 func (b *MachinePoolBuilder) Subnets(values ...string) *MachinePoolBuilder {
 	b.subnets = make([]string, len(values))
 	copy(b.subnets, values)
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -146,7 +160,7 @@ func (b *MachinePoolBuilder) Subnets(values ...string) *MachinePoolBuilder {
 func (b *MachinePoolBuilder) Taints(values ...*TaintBuilder) *MachinePoolBuilder {
 	b.taints = make([]*TaintBuilder, len(values))
 	copy(b.taints, values)
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -184,6 +198,11 @@ func (b *MachinePoolBuilder) Copy(object *MachinePool) *MachinePoolBuilder {
 		b.labels = nil
 	}
 	b.replicas = object.replicas
+	if object.rootVolume != nil {
+		b.rootVolume = NewRootVolume().Copy(object.rootVolume)
+	} else {
+		b.rootVolume = nil
+	}
 	if object.securityGroupFilters != nil {
 		b.securityGroupFilters = make([]*MachinePoolSecurityGroupFilterBuilder, len(object.securityGroupFilters))
 		for i, v := range object.securityGroupFilters {
@@ -239,6 +258,12 @@ func (b *MachinePoolBuilder) Build() (object *MachinePool, err error) {
 		}
 	}
 	object.replicas = b.replicas
+	if b.rootVolume != nil {
+		object.rootVolume, err = b.rootVolume.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.securityGroupFilters != nil {
 		object.securityGroupFilters = make([]*MachinePoolSecurityGroupFilter, len(b.securityGroupFilters))
 		for i, v := range b.securityGroupFilters {

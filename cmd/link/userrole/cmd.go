@@ -122,14 +122,14 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	err = r.OCMClient.LinkAccountRole(accountID, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			r.Reporter.Errorf("Only organization admin can run this command. "+
-				"Please ask someone with the organization admin role to run the following command \n\n"+
-				"\t rosa link user-role --role-arn %s --account-id %s", roleArn, accountID)
-			return err
+			r.Reporter.Errorf("Only organization admin or the user that owns this account '%s' can run this command. "+
+				"Please ask someone with adequate permissions to run the following command \n\n"+
+				"\t rosa link user-role --role-arn %s --account-id %s", accountID, roleArn, accountID)
+			os.Exit(1)
 		}
 		r.Reporter.Errorf("Unable to link role ARN '%s' with the account id : '%s' : %v",
 			args.roleArn, accountID, err)
-		return err
+		os.Exit(1)
 	}
 	r.Reporter.Infof("Successfully linked role ARN '%s' with account '%s'", roleArn, accountID)
 	return nil

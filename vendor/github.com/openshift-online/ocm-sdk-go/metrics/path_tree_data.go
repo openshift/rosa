@@ -258,7 +258,11 @@ var pathTreeData = `{
               "socket_total_by_node_roles_os": null
             },
             "node_pools": {
-              "-": null
+              "-": {
+                "upgrade_policies": {
+                  "-": null
+                }
+              }
             },
             "product": null,
             "provision_shard": null,
@@ -279,6 +283,9 @@ var pathTreeData = `{
               }
             }
           }
+        },
+        "dns_domains": {
+          "-": null
         },
         "environment": null,
         "events": null,
@@ -336,10 +343,18 @@ var pathTreeData = `{
     "osd_fleet_mgmt": {
       "v1": {
         "management_clusters": {
-          "-": null
+          "-": {
+            "labels": {
+              "-": null
+            }
+          }
         },
         "service_clusters": {
-          "-": null
+          "-": {
+            "labels": {
+              "-": null
+            }
+          }
         }
       }
     },

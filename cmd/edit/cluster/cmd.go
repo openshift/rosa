@@ -47,6 +47,9 @@ var args struct {
 	httpsProxy                string
 	noProxySlice              []string
 	additionalTrustBundleFile string
+
+	// Audit log forwarding
+	auditLogRoleARN string
 }
 
 var Cmd = &cobra.Command{
@@ -66,6 +69,7 @@ func init() {
 	flags.SortFlags = false
 
 	ocm.AddClusterFlag(Cmd)
+	confirm.AddFlag(Cmd.Flags())
 
 	// Basic options
 	flags.StringVar(
@@ -126,6 +130,13 @@ func init() {
 		"",
 		"A file contains a PEM-encoded X.509 certificate bundle that will be "+
 			"added to the nodes' trusted certificate store.")
+
+	flags.StringVar(
+		&args.auditLogRoleARN,
+		"audit-log-arn",
+		"",
+		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
+	)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -138,7 +149,8 @@ func run(cmd *cobra.Command, _ []string) {
 	if !interactive.Enabled() {
 		changedFlags := false
 		for _, flag := range []string{"expiration-time", "expiration", "private",
-			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy", "additional-trust-bundle-file"} {
+			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy",
+			"additional-trust-bundle-file", "audit-log-arn"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
@@ -473,6 +485,20 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	// Audit Log Forwarding
+	auditLogRole, err := setAuditLogForwarding(r, cmd, cluster, args.auditLogRoleARN)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if interactive.Enabled() && aws.IsHostedCP(cluster) {
+		auditLogRole, err = auditLogInteractivePrompt(r, cmd, cluster)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
 	clusterConfig := ocm.Spec{
 		Expiration:                expiration,
 		Private:                   private,
@@ -504,6 +530,10 @@ func run(cmd *cobra.Command, _ []string) {
 				*clusterConfig.AdditionalTrustBundle = string(cert)
 			}
 		}
+	}
+	if auditLogRole != nil {
+		clusterConfig.AuditLogRoleARN = new(string)
+		*clusterConfig.AuditLogRoleARN = *auditLogRole
 	}
 
 	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)
@@ -550,4 +580,100 @@ func parseRFC3339(s string) (time.Time, error) {
 
 func isExpectedHTTPProxyOrHTTPSProxy(httpProxy, httpsProxy *string, noProxySlice []string, cluster *cmv1.Cluster) bool {
 	return httpProxy == nil && httpsProxy == nil && len(noProxySlice) > 0 && cluster.Proxy() == nil
+}
+
+func auditLogRoleExists(cluster *cmv1.Cluster) bool {
+	return cluster.AWS().AuditLog().RoleArn() != ""
+}
+
+func auditLogEnableOrUpdatePrompt(currentAuditLogRole string) string {
+	if currentAuditLogRole == "" {
+		return "Enable audit log forwarding to AWS CloudWatch"
+	}
+	return fmt.Sprintf("Update existing audit log forwarding role '%s'", currentAuditLogRole)
+}
+
+func setAuditLogForwarding(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, auditLogArn string) (
+	argValuePtr *string, err error) {
+	if cmd.Flags().Changed("audit-log-arn") {
+		if !aws.IsHostedCP(cluster) {
+			return nil, fmt.Errorf("Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters")
+
+		}
+		if auditLogArn != "" && !aws.RoleArnRE.MatchString(auditLogArn) {
+			return nil, fmt.Errorf("Expected a valid value for audit-log-arn matching %s", aws.RoleArnRE.String())
+		}
+		argValuePtr := new(string)
+		*argValuePtr = auditLogArn
+
+		confirmAuditLogForwarding(r, argValuePtr)
+		return argValuePtr, nil
+	}
+	return nil, nil
+}
+
+func confirmAuditLogForwarding(r *rosa.Runtime, auditLogArn *string) {
+
+	if *auditLogArn != "" {
+		r.Reporter.Warnf("You are choosing to enable audit log forwarding")
+		if !confirm.Confirm("enable audit log forwarding for cluster with the provided role arn '%s'", *auditLogArn) {
+			os.Exit(0)
+		}
+		return
+	}
+	r.Reporter.Warnf("You are choosing to disable audit log forwarding.")
+	if !confirm.Confirm("disable audit log forwarding for cluster") {
+		os.Exit(0)
+	}
+}
+
+func auditLogInteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster) (
+	argValuePtr *string, err error) {
+
+	auditLogRolePtr := new(string)
+
+	requestAuditLogForwarding, err := interactive.GetBool(interactive.Input{
+		Question: auditLogEnableOrUpdatePrompt(cluster.AWS().AuditLog().RoleArn()),
+		Default:  false,
+		Required: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Expected a valid value: %s", err)
+	}
+	if requestAuditLogForwarding {
+
+		r.Reporter.Infof("To configure the audit log forwarding role in your AWS account, " +
+			"please refer to steps 1 through 6: https://access.redhat.com/solutions/7002219")
+
+		auditLogRoleValue, err := interactive.GetString(interactive.Input{
+			Question: "Audit log forwarding role ARN",
+			Help:     cmd.Flags().Lookup("audit-log-arn").Usage,
+			Default:  "",
+			Required: true,
+			Validators: []interactive.Validator{
+				interactive.RegExp(aws.RoleArnRE.String()),
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Expected a valid value for audit-log-arn: %s", err)
+		}
+		*auditLogRolePtr = auditLogRoleValue
+		return auditLogRolePtr, nil
+	}
+
+	if auditLogRoleExists(cluster) && !requestAuditLogForwarding {
+		disableAuditLog, err := interactive.GetBool(interactive.Input{
+			Question: "Disable Audit Log",
+			Help:     "Disable AWS CloudWatch audit log forwarding that is currently enabled.",
+			Default:  false,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Expected a valid value: %s", err)
+		}
+		if disableAuditLog {
+			*auditLogRolePtr = ""
+			return auditLogRolePtr, nil
+		}
+	}
+	return
 }

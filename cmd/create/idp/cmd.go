@@ -78,6 +78,7 @@ var args struct {
 	// HTPasswd
 	htpasswdUsername string
 	htpasswdPassword string
+	htpasswdUsers    []string
 }
 
 var validIdps = []string{"github", "gitlab", "google", "htpasswd", "ldap", "openid"}
@@ -289,6 +290,20 @@ func init() {
 			"The password must\n"+
 			"- Be at least 14 characters (ASCII-standard) without whitespaces\n"+
 			"- Include uppercase letters, lowercase letters, and numbers or symbols (ASCII-standard characters only)",
+	)
+
+	//makring hidden as this is now only for backwards compatibility
+	flags.MarkHidden("username")
+	flags.MarkHidden("password")
+
+	// HTPasswd
+	flags.StringSliceVarP(
+		&args.htpasswdUsers,
+		"users",
+		"u",
+		[]string{},
+		"HTPasswd: List of users to add to the IDP. \n"+
+			"It must be a comma separate list of  username:password, i.e user1:password,user2:password \n",
 	)
 
 	interactive.AddFlag(flags)

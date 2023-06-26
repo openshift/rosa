@@ -58,6 +58,15 @@ func writeCloudAccount(object *CloudAccount, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("cloud_provider_id")
 		stream.WriteString(object.cloudProviderID)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0 && object.contracts != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("contracts")
+		writeContractList(object.contracts, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -91,6 +100,10 @@ func readCloudAccount(iterator *jsoniter.Iterator) *CloudAccount {
 			value := iterator.ReadString()
 			object.cloudProviderID = value
 			object.bitmap_ |= 2
+		case "contracts":
+			value := readContractList(iterator)
+			object.contracts = value
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

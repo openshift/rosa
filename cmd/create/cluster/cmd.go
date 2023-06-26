@@ -31,6 +31,7 @@ import (
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/spf13/cobra"
 
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
@@ -89,6 +90,7 @@ var args struct {
 	channelGroup              string
 	flavour                   string
 	disableWorkloadMonitoring bool
+	ec2MetadataHttpTokens     string
 
 	//Encryption
 	etcdEncryption           bool
@@ -153,6 +155,9 @@ var args struct {
 	// Hypershift options:
 	hostedClusterEnabled bool
 	billingAccount       string
+
+	// Audit Log Forwarding
+	AuditLogRoleARN string
 }
 
 var Cmd = &cobra.Command{
@@ -403,6 +408,13 @@ func init() {
 			"without exposing your traffic to the public internet.",
 	)
 
+	flags.StringVar(
+		&args.ec2MetadataHttpTokens,
+		"ec2-metadata-http-tokens",
+		"",
+		"Configure the use of IMDSv2 for ec2 instances, 'optional' or 'required'.",
+	)
+
 	flags.StringSliceVar(
 		&args.subnetIDs,
 		"subnet-ids",
@@ -581,7 +593,7 @@ func init() {
 		&args.hostedClusterEnabled,
 		"hosted-cp",
 		false,
-		"Enable the use of Hosted Control Planes",
+		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
 
 	flags.StringVar(
@@ -591,6 +603,13 @@ func init() {
 		"Account used for billing subscriptions purchased via the AWS marketplace",
 	)
 	flags.MarkHidden("billing-account")
+
+	flags.StringVar(
+		&args.AuditLogRoleARN,
+		"audit-log-arn",
+		"",
+		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
+	)
 
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
@@ -701,6 +720,11 @@ func run(cmd *cobra.Command, _ []string) {
 			" Any Technology Preview clusters will need to be destroyed and recreated prior to general availability.")
 	}
 
+	if isHostedCP && args.ec2MetadataHttpTokens != "" {
+		r.Reporter.Errorf("ec2-metadata-http-tokens can't be set with hosted-cp")
+		os.Exit(1)
+	}
+
 	// Billing Account
 	billingAccount := args.billingAccount
 	if billingAccount != "" && !isHostedCP {
@@ -750,7 +774,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	isSTS = isSTS || awsCreator.IsSTS
 
-	if r.Reporter.IsTerminal() {
+	if r.Reporter.IsTerminal() && !isHostedCP {
 		r.Reporter.Warnf("In a future release STS will be the default mode.")
 		r.Reporter.Warnf("--sts flag won't be necessary if you wish to use STS.")
 		r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary if you do not wish to use STS.")
@@ -811,6 +835,30 @@ func run(cmd *cobra.Command, _ []string) {
 	version, err = r.OCMClient.ValidateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
+		os.Exit(1)
+	}
+
+	httpTokens := args.ec2MetadataHttpTokens
+	if interactive.Enabled() && !isHostedCP {
+		httpTokens, err = interactive.GetString(interactive.Input{
+			Question: fmt.Sprintf("Configure the use of IMDSv2 for ec2 instances %s/%s",
+				v1.Ec2MetadataHttpTokensOptional, v1.Ec2MetadataHttpTokensRequired),
+			Help:    cmd.Flags().Lookup("ec2-metadata-http-tokens").Usage,
+			Default: httpTokens,
+			Validators: []interactive.Validator{
+				ocm.ValidateHttpTokensValue,
+			},
+		})
+
+	} else {
+		err = ocm.ValidateHttpTokensValue(httpTokens)
+	}
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
+		os.Exit(1)
+	}
+	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
+		r.Reporter.Errorf(err.Error())
 		os.Exit(1)
 	}
 
@@ -897,23 +945,21 @@ func run(cmd *cobra.Command, _ []string) {
 			roleARN = roleARNs[0]
 		} else {
 			createAccountRolesCommand := "rosa create account-roles"
-			if isHostedCP {
-				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
-			}
 			r.Reporter.Warnf(fmt.Sprintf("No account roles found. You will need to manually set them in the "+
 				"next steps or run '%s' to create them first.", createAccountRolesCommand))
 			interactive.Enable()
 		}
 
 		if roleARN != "" {
-			// Get role prefix
-			rolePrefix, err := getAccountRolePrefix(roleARN, role)
-			if err != nil {
-				r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
-				os.Exit(1)
+			// check if role has hosted cp policy via AWS tag value
+			var hostedCPPolicies bool
+			if isHostedCP {
+				hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
+				if err != nil {
+					r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+					os.Exit(1)
+				}
 			}
-			r.Reporter.Debugf("Using '%s' as the role prefix", rolePrefix)
-
 			hasRoles = true
 			for roleType, role := range aws.AccountRoles {
 				if roleType == aws.InstallerAccountRole {
@@ -930,7 +976,15 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 				selectedARN := ""
-				expectedResourceIDForAccRole := strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, role.Name))
+				expectedResourceIDForAccRole, rolePrefix, err := getExpectedResourceIDForAccRole(
+					hostedCPPolicies, roleARN, roleType)
+				if err != nil {
+					r.Reporter.Errorf("Failed to get the expected resource ID for role type: %s", roleType)
+					os.Exit(1)
+				}
+				r.Reporter.Debugf("Using '%s' as the role prefix to retrieve the expected resource ID for role type '%s'",
+					rolePrefix, roleType)
+
 				for _, rARN := range roleARNs {
 					resourceId, err := aws.GetResourceIdFromARN(rARN)
 					if err != nil {
@@ -945,12 +999,9 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 				if selectedARN == "" {
 					createAccountRolesCommand := "rosa create account-roles"
-					if isHostedCP {
-						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
-					}
 					r.Reporter.Warnf(fmt.Sprintf("No %s account roles found. You will need to manually set "+
 						"them in the next steps or run '%s' to create "+
-						"them first.", createAccountRolesCommand, role.Name))
+						"them first.", role.Name, createAccountRolesCommand))
 					interactive.Enable()
 					hasRoles = false
 					break
@@ -1135,6 +1186,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// check if role has hosted cp policy via AWS tag value
 	var hostedCPPolicies bool
 	if isHostedCP {
 		hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
@@ -1143,18 +1195,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
 	if managedPolicies {
-		var role aws.AccountRole
-		if hostedCPPolicies {
-			role = aws.HCPAccountRoles[aws.InstallerAccountRole]
-		} else {
-			role = aws.AccountRoles[aws.InstallerAccountRole]
-		}
-
-		rolePrefix, err := getAccountRolePrefix(roleARN, role)
+		rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
-			r.Reporter.Errorf("Failed to find prefix from %s account role", role.Name)
+			r.Reporter.Errorf("Failed to find prefix from account role: %s", err)
 			os.Exit(1)
 		}
 
@@ -1216,15 +1260,9 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
 			os.Exit(1)
 		}
-		var installerRole aws.AccountRole
-		if hostedCPPolicies {
-			installerRole = aws.HCPAccountRoles[aws.InstallerAccountRole]
-		} else {
-			installerRole = aws.AccountRoles[aws.InstallerAccountRole]
-		}
-		accRolesPrefix, err := getAccountRolePrefix(roleARN, installerRole)
+		accRolesPrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
-			r.Reporter.Errorf("Failed to find prefix from %s account role", installerRole.Name)
+			r.Reporter.Errorf("Failed to find prefix from account role: %s", err)
 			os.Exit(1)
 		}
 		if expectedOperatorRolePath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
@@ -1489,6 +1527,63 @@ func run(cmd *cobra.Command, _ []string) {
 		enableProxy = true
 	}
 
+	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
+		GetDefaultClusterFlavors(args.flavour)
+	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
+		r.Reporter.Errorf("Error retrieving default cluster flavors")
+		os.Exit(1)
+	}
+
+	// Machine CIDR:
+	machineCIDR := args.machineCIDR
+	if ocm.IsEmptyCIDR(machineCIDR) {
+		machineCIDR = *dMachinecidr
+	}
+	if interactive.Enabled() {
+		machineCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Machine CIDR",
+			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
+			Default:  machineCIDR,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Service CIDR:
+	serviceCIDR := args.serviceCIDR
+	if ocm.IsEmptyCIDR(serviceCIDR) {
+		serviceCIDR = *dServicecidr
+	}
+	if interactive.Enabled() {
+		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Service CIDR",
+			Help:     cmd.Flags().Lookup("service-cidr").Usage,
+			Default:  serviceCIDR,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
+	}
+	// Pod CIDR:
+	podCIDR := args.podCIDR
+	if ocm.IsEmptyCIDR(podCIDR) {
+		podCIDR = *dPodcidr
+	}
+	if interactive.Enabled() {
+		podCIDR, err = interactive.GetIPNet(interactive.Input{
+			Question: "Pod CIDR",
+			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
+			Default:  podCIDR,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	// Subnet IDs
 	subnetIDs := args.subnetIDs
 	subnetsProvided := len(subnetIDs) > 0
@@ -1521,8 +1616,9 @@ func run(cmd *cobra.Command, _ []string) {
 	privateSubnetsCount := 0
 
 	var availabilityZones []string
+	var subnets []*ec2.Subnet
 	if useExistingVPC || subnetsProvided {
-		subnets, err := awsClient.GetSubnetIDs()
+		initialSubnets, err := awsClient.GetSubnetIDs()
 		if err != nil {
 			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
@@ -1530,7 +1626,33 @@ func run(cmd *cobra.Command, _ []string) {
 		if subnetsProvided {
 			useExistingVPC = true
 		}
+		_, machineNetwork, err := net.ParseCIDR(machineCIDR.String())
+		if err != nil {
+			r.Reporter.Errorf("Unable to parse machine CIDR")
+			os.Exit(1)
+		}
+		_, serviceNetwork, err := net.ParseCIDR(serviceCIDR.String())
+		if err != nil {
+			r.Reporter.Errorf("Unable to parse service CIDR")
+			os.Exit(1)
+		}
+		for _, subnet := range initialSubnets {
+			subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
+			if err != nil {
+				r.Reporter.Errorf("Unable to parse subnet CIDR")
+				os.Exit(1)
+			}
 
+			if machineNetwork.Contains(subnetIP) &&
+				!subnetNetwork.Contains(serviceNetwork.IP) &&
+				!serviceNetwork.Contains(subnetIP) {
+				subnets = append(subnets, subnet)
+			}
+		}
+
+		if len(subnets) != len(initialSubnets) {
+			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into the Machine CIDR range")
+		}
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
 		options := make([]string, len(subnets))
@@ -1704,12 +1826,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
-		GetDefaultClusterFlavors(args.flavour)
-	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
-		r.Reporter.Errorf("Error retrieving default cluster flavors")
-		os.Exit(1)
-	}
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
 	computeMachineTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(region, availabilityZones, roleARN,
@@ -1892,56 +2008,6 @@ func run(cmd *cobra.Command, _ []string) {
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid network type: %s", err)
-			os.Exit(1)
-		}
-	}
-
-	// Machine CIDR:
-	machineCIDR := args.machineCIDR
-	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(machineCIDR) {
-			machineCIDR = *dMachinecidr
-		}
-		machineCIDR, err = interactive.GetIPNet(interactive.Input{
-			Question: "Machine CIDR",
-			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
-			Default:  machineCIDR,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
-			os.Exit(1)
-		}
-	}
-
-	// Service CIDR:
-	serviceCIDR := args.serviceCIDR
-	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(serviceCIDR) {
-			serviceCIDR = *dServicecidr
-		}
-		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
-			Question: "Service CIDR",
-			Help:     cmd.Flags().Lookup("service-cidr").Usage,
-			Default:  serviceCIDR,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
-			os.Exit(1)
-		}
-	}
-	// Pod CIDR:
-	podCIDR := args.podCIDR
-	if interactive.Enabled() {
-		if ocm.IsEmptyCIDR(podCIDR) {
-			podCIDR = *dPodcidr
-		}
-		podCIDR, err = interactive.GetIPNet(interactive.Input{
-			Question: "Pod CIDR",
-			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
-			Default:  podCIDR,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -2178,6 +2244,52 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Audit Log Forwarding
+	auditLogRoleARN := args.AuditLogRoleARN
+
+	if auditLogRoleARN != "" && !isHostedCP {
+		r.Reporter.Errorf("Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters")
+		os.Exit(1)
+	}
+
+	if interactive.Enabled() && isHostedCP {
+		requestAuditLogForwarding, err := interactive.GetBool(interactive.Input{
+			Question: "Enable audit log forwarding to AWS CloudWatch (optional)",
+			Default:  false,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+		if requestAuditLogForwarding {
+
+			r.Reporter.Infof("To configure the audit log forwarding role in your AWS account, " +
+				"please refer to steps 1 through 6: https://access.redhat.com/solutions/7002219")
+
+			auditLogRoleARN, err = interactive.GetString(interactive.Input{
+				Question: "Audit log forwarding role ARN",
+				Help:     cmd.Flags().Lookup("audit-log-arn").Usage,
+				Default:  auditLogRoleARN,
+				Required: true,
+				Validators: []interactive.Validator{
+					interactive.RegExp(aws.RoleArnRE.String()),
+				},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for audit-log-arn: %s", err)
+				os.Exit(1)
+			}
+		} else {
+			auditLogRoleARN = ""
+		}
+	}
+
+	if auditLogRoleARN != "" && !aws.RoleArnRE.MatchString(auditLogRoleARN) {
+		r.Reporter.Errorf("Expected a valid value for audit log arn matching %s", aws.RoleArnRE)
+		os.Exit(1)
+	}
+
 	clusterConfig := ocm.Spec{
 		Name:                      clusterName,
 		Region:                    region,
@@ -2222,9 +2334,13 @@ func run(cmd *cobra.Command, _ []string) {
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
-		BillingAccount: billingAccount,
+		BillingAccount:  billingAccount,
+		AuditLogRoleARN: &auditLogRoleARN,
 	}
 
+	if httpTokens != "" {
+		clusterConfig.Ec2MetadataHttpTokens = v1.Ec2MetadataHttpTokens(httpTokens)
+	}
 	if oidcConfig != nil {
 		clusterConfig.OidcConfigId = oidcConfig.ID()
 	}
@@ -2500,12 +2616,19 @@ func hostPrefixValidator(val interface{}) error {
 	return nil
 }
 
-func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) {
+func getAccountRolePrefix(hostedCPPolicies bool, roleARN string, roleType string) (string, error) {
+
+	accountRoles := aws.AccountRoles
+
+	if hostedCPPolicies {
+		accountRoles = aws.HCPAccountRoles
+	}
+
 	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
 		return "", err
 	}
-	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
+	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", accountRoles[roleType].Name))
 	return rolePrefix, nil
 }
 
@@ -2769,6 +2892,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --etcd-encryption-kms-arn %s", spec.EtcdEncryptionKMSArn)
 	}
 
+	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
+		command += fmt.Sprintf(" --audit-log-arn %s", *spec.AuditLogRoleARN)
+	}
+
 	return command
 }
 
@@ -2805,4 +2932,21 @@ func calculateReplicas(
 	}
 
 	return newMinReplicas, newMaxReplicas
+}
+
+func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, roleType string) (string, string, error) {
+
+	accountRoles := aws.AccountRoles
+
+	rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
+	if err != nil {
+		return "", "", err
+	}
+
+	if hostedCPPolicies {
+		accountRoles = aws.HCPAccountRoles
+	}
+
+	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
+
 }

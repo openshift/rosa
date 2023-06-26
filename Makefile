@@ -48,6 +48,10 @@ fmt:
 lint:
 	golangci-lint run --timeout 5m0s
 
+.PHONY: commits/check
+commits/check:
+	@./hack/commit-msg-verify.sh
+
 .PHONY: clean
 clean:
 	rm -rf \

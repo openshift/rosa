@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHttpTokenStateList writes a list of values of the 'http_token_state' type to
+// MarshalClusterLinkList writes a list of values of the 'cluster_link' type to
 // the given writer.
-func MarshalHttpTokenStateList(list []HttpTokenState, writer io.Writer) error {
+func MarshalClusterLinkList(list []*ClusterLink, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHttpTokenStateList(list, stream)
+	writeClusterLinkList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,38 +38,37 @@ func MarshalHttpTokenStateList(list []HttpTokenState, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeHttpTokenStateList writes a list of value of the 'http_token_state' type to
+// writeClusterLinkList writes a list of value of the 'cluster_link' type to
 // the given stream.
-func writeHttpTokenStateList(list []HttpTokenState, stream *jsoniter.Stream) {
+func writeClusterLinkList(list []*ClusterLink, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteString(string(value))
+		writeClusterLink(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalHttpTokenStateList reads a list of values of the 'http_token_state' type
+// UnmarshalClusterLinkList reads a list of values of the 'cluster_link' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalHttpTokenStateList(source interface{}) (items []HttpTokenState, err error) {
+func UnmarshalClusterLinkList(source interface{}) (items []*ClusterLink, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readHttpTokenStateList(iterator)
+	items = readClusterLinkList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHttpTokenStateList reads list of values of the ”http_token_state' type from
+// readClusterLinkList reads list of values of the ”cluster_link' type from
 // the given iterator.
-func readHttpTokenStateList(iterator *jsoniter.Iterator) []HttpTokenState {
-	list := []HttpTokenState{}
+func readClusterLinkList(iterator *jsoniter.Iterator) []*ClusterLink {
+	list := []*ClusterLink{}
 	for iterator.ReadArray() {
-		text := iterator.ReadString()
-		item := HttpTokenState(text)
+		item := readClusterLink(iterator)
 		list = append(list, item)
 	}
 	return list

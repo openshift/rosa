@@ -67,21 +67,25 @@ func returnHypershiftUpgrades(r *rosa.Runtime, clusterID string) {
 	}
 
 	for _, upgrade := range upgrades {
-		fmt.Printf(`%19s%61s
-		%-28s%s
-		%-28s%s
-		%-28s%s
+		fmt.Printf(`%19s%68s
+		%-35s%s
+		%-35s%s
+		%-35s%s
+		%-35s%s
 `,
 			"ID:", upgrade.ID(),
 			"Cluster ID:", upgrade.ClusterID(),
+			"Schedule Type:", upgrade.ScheduleType(),
 			"Next Run:", upgrade.NextRun(),
 			"Upgrade State:", upgrade.State().Value())
 		if upgrade.Schedule() != "" {
-			fmt.Printf(`                %-28s%s
+			fmt.Printf(`                %-35s%s
 `, "Schedule At:", upgrade.Schedule())
+			fmt.Printf(`                %-35s%t
+`, "Enable minor version upgrades:", upgrade.EnableMinorVersionUpgrades())
 		}
 		if upgrade.Version() != "" {
-			fmt.Printf(`                %-28s%s
+			fmt.Printf(`                %-35s%s
 `, "Version:", upgrade.Version())
 		}
 	}

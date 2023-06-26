@@ -112,6 +112,11 @@ type Spec struct {
 	// HyperShift options:
 	Hypershift     Hypershift
 	BillingAccount string
+
+	// Audit Log Forwarding
+	AuditLogRoleARN *string
+
+	Ec2MetadataHttpTokens cmv1.Ec2MetadataHttpTokens
 }
 
 type OperatorIAMRole struct {
@@ -140,12 +145,15 @@ type Hypershift struct {
 
 // Generate a query that filters clusters running on the current AWS session account
 func getClusterFilter(creator *aws.Creator) string {
-	return fmt.Sprintf(
-		"product.id = 'rosa' AND (properties.%s LIKE '%%:%s:%%' OR aws.sts.role_arn LIKE '%%:%s:%%')",
-		properties.CreatorARN,
-		creator.AccountID,
-		creator.AccountID,
-	)
+	filter := "product.id = 'rosa'"
+	if creator != nil {
+		filter = fmt.Sprintf("%s AND (properties.%s LIKE '%%:%s:%%' OR aws.sts.role_arn LIKE '%%:%s:%%')",
+			filter,
+			properties.CreatorARN,
+			creator.AccountID,
+			creator.AccountID)
+	}
+	return filter
 }
 
 func (c *Client) HasClusters(creator *aws.Creator) (bool, error) {
@@ -564,6 +572,14 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		clusterBuilder.Hypershift(hyperShiftBuilder)
 	}
 
+	// Edit audit log role arn
+	if config.AuditLogRoleARN != nil {
+		awsBuilder := cmv1.NewAWS()
+		auditLogBuiler := cmv1.NewAuditLog().RoleArn(*config.AuditLogRoleARN)
+		awsBuilder = awsBuilder.AuditLog(auditLogBuiler)
+		clusterBuilder.AWS(awsBuilder)
+	}
+
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
 		return err
@@ -790,6 +806,10 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		awsBuilder = awsBuilder.BillingAccountID(config.BillingAccount)
 	}
 
+	if config.Ec2MetadataHttpTokens != "" {
+		awsBuilder = awsBuilder.Ec2MetadataHttpTokens(config.Ec2MetadataHttpTokens)
+	}
+
 	if config.RoleARN != "" {
 		stsBuilder := cmv1.NewSTS().RoleARN(config.RoleARN)
 		if config.ExternalID != "" {
@@ -838,6 +858,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 	if len(config.Tags) > 0 {
 		awsBuilder = awsBuilder.Tags(config.Tags)
+	}
+
+	if config.AuditLogRoleARN != nil {
+		auditLogBuiler := cmv1.NewAuditLog().RoleArn(*config.AuditLogRoleARN)
+		awsBuilder = awsBuilder.AuditLog(auditLogBuiler)
 	}
 
 	// etcd encryption kms key arn

@@ -17,55 +17,55 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
+package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
-// SSHCredentialsListBuilder contains the data and logic needed to build
-// 'SSH_credentials' objects.
-type SSHCredentialsListBuilder struct {
-	items []*SSHCredentialsBuilder
+// LabelListBuilder contains the data and logic needed to build
+// 'label' objects.
+type LabelListBuilder struct {
+	items []*LabelBuilder
 }
 
-// NewSSHCredentialsList creates a new builder of 'SSH_credentials' objects.
-func NewSSHCredentialsList() *SSHCredentialsListBuilder {
-	return new(SSHCredentialsListBuilder)
+// NewLabelList creates a new builder of 'label' objects.
+func NewLabelList() *LabelListBuilder {
+	return new(LabelListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *SSHCredentialsListBuilder) Items(values ...*SSHCredentialsBuilder) *SSHCredentialsListBuilder {
-	b.items = make([]*SSHCredentialsBuilder, len(values))
+func (b *LabelListBuilder) Items(values ...*LabelBuilder) *LabelListBuilder {
+	b.items = make([]*LabelBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Empty returns true if the list is empty.
-func (b *SSHCredentialsListBuilder) Empty() bool {
+func (b *LabelListBuilder) Empty() bool {
 	return b == nil || len(b.items) == 0
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *SSHCredentialsListBuilder) Copy(list *SSHCredentialsList) *SSHCredentialsListBuilder {
+func (b *LabelListBuilder) Copy(list *LabelList) *LabelListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*SSHCredentialsBuilder, len(list.items))
+		b.items = make([]*LabelBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewSSHCredentials().Copy(v)
+			b.items[i] = NewLabel().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'SSH_credentials' objects using the
+// Build creates a list of 'label' objects using the
 // configuration stored in the builder.
-func (b *SSHCredentialsListBuilder) Build() (list *SSHCredentialsList, err error) {
-	items := make([]*SSHCredentials, len(b.items))
+func (b *LabelListBuilder) Build() (list *LabelList, err error) {
+	items := make([]*Label, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(SSHCredentialsList)
+	list = new(LabelList)
 	list.items = items
 	return
 }

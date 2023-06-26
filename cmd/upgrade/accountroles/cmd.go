@@ -88,7 +88,7 @@ func init() {
 		&args.hostedCP,
 		"hosted-cp",
 		false,
-		"Enable the use of Hosted Control Planes",
+		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
 	flags.MarkHidden("hosted-cp")
 
@@ -135,12 +135,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	roleARN, err := awsClient.GetAccountRoleARN(prefix, role.Name)
 	if err != nil {
-		if args.hostedCP {
-			reporter.Errorf("Failed to get hosted CP account roles ARN: %v", err)
-		} else {
-			reporter.Errorf("Failed to get classic account role ARN: %v. "+
-				"To upgrade hosted CP account roles use the '--hosted-cp' flag", err)
-		}
+		r.Reporter.Errorf("Failed to get account roles ARN: %v", err)
 		os.Exit(1)
 	}
 

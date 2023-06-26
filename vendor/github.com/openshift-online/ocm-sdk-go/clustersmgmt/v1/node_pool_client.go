@@ -26,6 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
@@ -78,6 +79,16 @@ func (c *NodePoolClient) Update() *NodePoolUpdateRequest {
 		transport: c.transport,
 		path:      c.path,
 	}
+}
+
+// UpgradePolicies returns the target 'node_pool_upgrade_policies' resource.
+//
+// Reference to the state of the upgrade policy.
+func (c *NodePoolClient) UpgradePolicies() *NodePoolUpgradePoliciesClient {
+	return NewNodePoolUpgradePoliciesClient(
+		c.transport,
+		path.Join(c.path, "upgrade_policies"),
+	)
 }
 
 // NodePoolPollRequest is the request for the Poll method.

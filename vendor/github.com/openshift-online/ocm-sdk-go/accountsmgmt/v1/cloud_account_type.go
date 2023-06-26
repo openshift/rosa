@@ -24,6 +24,7 @@ type CloudAccount struct {
 	bitmap_         uint32
 	cloudAccountID  string
 	cloudProviderID string
+	contracts       []*Contract
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -65,6 +66,25 @@ func (o *CloudAccount) GetCloudProviderID() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.cloudProviderID
+	}
+	return
+}
+
+// Contracts returns the value of the 'contracts' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+func (o *CloudAccount) Contracts() []*Contract {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.contracts
+	}
+	return nil
+}
+
+// GetContracts returns the value of the 'contracts' attribute and
+// a flag indicating if the attribute has a value.
+func (o *CloudAccount) GetContracts() (value []*Contract, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.contracts
 	}
 	return
 }

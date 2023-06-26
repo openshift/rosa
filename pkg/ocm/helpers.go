@@ -880,6 +880,23 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 	return nil
 }
 
+func ValidateHttpTokensValue(val interface{}) error {
+	if httpTokens, ok := val.(string); ok {
+		if httpTokens == "" {
+			return nil
+		}
+		switch cmv1.Ec2MetadataHttpTokens(httpTokens) {
+		case cmv1.Ec2MetadataHttpTokensRequired, cmv1.Ec2MetadataHttpTokensOptional:
+			return nil
+		default:
+			return errors.Errorf("ec2-metadata-http-tokens value should be one of '%s', '%s'",
+				cmv1.Ec2MetadataHttpTokensRequired, cmv1.Ec2MetadataHttpTokensOptional)
+		}
+	}
+
+	return fmt.Errorf("can only validate strings, got %v", val)
+}
+
 func validateIssuerUrlMatchesAssumePolicyDocument(
 	roleArn string, parsedUrl *url.URL, assumePolicyDocument string) error {
 	issuerUrl := parsedUrl.Host

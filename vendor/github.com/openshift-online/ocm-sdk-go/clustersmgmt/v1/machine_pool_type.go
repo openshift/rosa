@@ -44,6 +44,7 @@ type MachinePool struct {
 	instanceType         string
 	labels               map[string]string
 	replicas             int
+	rootVolume           *RootVolume
 	securityGroupFilters []*MachinePoolSecurityGroupFilter
 	subnets              []string
 	taints               []*Taint
@@ -248,12 +249,35 @@ func (o *MachinePool) GetReplicas() (value int, ok bool) {
 	return
 }
 
+// RootVolume returns the value of the 'root_volume' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The machine root volume capabilities.
+func (o *MachinePool) RootVolume() *RootVolume {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.rootVolume
+	}
+	return nil
+}
+
+// GetRootVolume returns the value of the 'root_volume' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The machine root volume capabilities.
+func (o *MachinePool) GetRootVolume() (value *RootVolume, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.rootVolume
+	}
+	return
+}
+
 // SecurityGroupFilters returns the value of the 'security_group_filters' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // List of security groups to be applied to MachinePool (Optional)
 func (o *MachinePool) SecurityGroupFilters() []*MachinePoolSecurityGroupFilter {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.securityGroupFilters
 	}
 	return nil
@@ -264,7 +288,7 @@ func (o *MachinePool) SecurityGroupFilters() []*MachinePoolSecurityGroupFilter {
 //
 // List of security groups to be applied to MachinePool (Optional)
 func (o *MachinePool) GetSecurityGroupFilters() (value []*MachinePoolSecurityGroupFilter, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.securityGroupFilters
 	}
@@ -276,7 +300,7 @@ func (o *MachinePool) GetSecurityGroupFilters() (value []*MachinePoolSecurityGro
 //
 // The subnets upon which the nodes are created.
 func (o *MachinePool) Subnets() []string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.subnets
 	}
 	return nil
@@ -287,7 +311,7 @@ func (o *MachinePool) Subnets() []string {
 //
 // The subnets upon which the nodes are created.
 func (o *MachinePool) GetSubnets() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.subnets
 	}
@@ -299,7 +323,7 @@ func (o *MachinePool) GetSubnets() (value []string, ok bool) {
 //
 // The taints set on the Nodes created.
 func (o *MachinePool) Taints() []*Taint {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.taints
 	}
 	return nil
@@ -310,7 +334,7 @@ func (o *MachinePool) Taints() []*Taint {
 //
 // The taints set on the Nodes created.
 func (o *MachinePool) GetTaints() (value []*Taint, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.taints
 	}

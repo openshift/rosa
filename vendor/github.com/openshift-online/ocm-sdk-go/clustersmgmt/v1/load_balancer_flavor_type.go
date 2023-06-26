@@ -19,12 +19,12 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// HttpTokenState represents the values of the 'http_token_state' enumerated type.
-type HttpTokenState string
+// LoadBalancerFlavor represents the values of the 'load_balancer_flavor' enumerated type.
+type LoadBalancerFlavor string
 
 const (
-	// imdsv2 is optional
-	HttpTokenStateOptional HttpTokenState = "optional"
-	// imdsv2 is required
-	HttpTokenStateRequired HttpTokenState = "required"
+	// Classic Load Balancer.
+	LoadBalancerFlavorClassic LoadBalancerFlavor = "classic"
+	// Network Load Balancer.
+	LoadBalancerFlavorNlb LoadBalancerFlavor = "nlb"
 )

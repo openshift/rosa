@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSSHCredentials writes a value of the 'SSH_credentials' type to the given writer.
-func MarshalSSHCredentials(object *SSHCredentials, writer io.Writer) error {
+// MarshalRootVolume writes a value of the 'root_volume' type to the given writer.
+func MarshalRootVolume(object *RootVolume, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSSHCredentials(object, stream)
+	writeRootVolume(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,59 +37,59 @@ func MarshalSSHCredentials(object *SSHCredentials, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSSHCredentials writes a value of the 'SSH_credentials' type to the given stream.
-func writeSSHCredentials(object *SSHCredentials, stream *jsoniter.Stream) {
+// writeRootVolume writes a value of the 'root_volume' type to the given stream.
+func writeRootVolume(object *RootVolume, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&1 != 0 && object.aws != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("private_key")
-		stream.WriteString(object.privateKey)
+		stream.WriteObjectField("aws")
+		writeAWSVolume(object.aws, stream)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&2 != 0 && object.gcp != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("public_key")
-		stream.WriteString(object.publicKey)
+		stream.WriteObjectField("gcp")
+		writeGCPVolume(object.gcp, stream)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalSSHCredentials reads a value of the 'SSH_credentials' type from the given
+// UnmarshalRootVolume reads a value of the 'root_volume' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalSSHCredentials(source interface{}) (object *SSHCredentials, err error) {
+func UnmarshalRootVolume(source interface{}) (object *RootVolume, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readSSHCredentials(iterator)
+	object = readRootVolume(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSSHCredentials reads a value of the 'SSH_credentials' type from the given iterator.
-func readSSHCredentials(iterator *jsoniter.Iterator) *SSHCredentials {
-	object := &SSHCredentials{}
+// readRootVolume reads a value of the 'root_volume' type from the given iterator.
+func readRootVolume(iterator *jsoniter.Iterator) *RootVolume {
+	object := &RootVolume{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "private_key":
-			value := iterator.ReadString()
-			object.privateKey = value
+		case "aws":
+			value := readAWSVolume(iterator)
+			object.aws = value
 			object.bitmap_ |= 1
-		case "public_key":
-			value := iterator.ReadString()
-			object.publicKey = value
+		case "gcp":
+			value := readGCPVolume(iterator)
+			object.gcp = value
 			object.bitmap_ |= 2
 		default:
 			iterator.ReadAny()

@@ -25,6 +25,14 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
+func writeCloudRegionsAddRequest(request *CloudRegionsAddRequest, writer io.Writer) error {
+	return MarshalCloudRegion(request.body, writer)
+}
+func readCloudRegionsAddResponse(response *CloudRegionsAddResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalCloudRegion(reader)
+	return err
+}
 func writeCloudRegionsListRequest(request *CloudRegionsListRequest, writer io.Writer) error {
 	return nil
 }

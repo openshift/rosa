@@ -82,6 +82,9 @@ const (
 
 	OCMRole     = "OCM"
 	OCMUserRole = "User"
+
+	// AWS preferred suffix for ROSA related account roles - HCP only
+	HCPSuffixPattern = "HCP-ROSA"
 )
 
 const (
@@ -98,9 +101,9 @@ var AccountRoles = map[string]AccountRole{
 }
 
 var HCPAccountRoles = map[string]AccountRole{
-	HCPInstallerRole: {Name: "HCP-Installer", Flag: "role-arn"},
-	HCPSupportRole:   {Name: "HCP-Support", Flag: "support-role-arn"},
-	HCPWorkerRole:    {Name: "HCP-Worker", Flag: "worker-iam-role"},
+	HCPInstallerRole: {Name: fmt.Sprintf("%s-Installer", HCPSuffixPattern), Flag: "role-arn"},
+	HCPSupportRole:   {Name: fmt.Sprintf("%s-Support", HCPSuffixPattern), Flag: "support-role-arn"},
+	HCPWorkerRole:    {Name: fmt.Sprintf("%s-Worker", HCPSuffixPattern), Flag: "worker-iam-role"},
 }
 
 var OCMUserRolePolicyFile = "ocm_user"
@@ -1102,10 +1105,13 @@ func (c *awsClient) deletePolicyVersions(policyArn string) error {
 		if aws.BoolValue(version.IsDefaultVersion) {
 			continue
 		}
-		c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
+		_, err := c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
 			PolicyArn: aws.String(policyArn),
 			VersionId: version.VersionId,
 		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -1483,7 +1489,7 @@ func (c *awsClient) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl st
 		if err != nil {
 			return "", err
 		}
-		providerName, err := GetResourceIdFromARN(providerValue)
+		providerName, err := GetResourceIdFromOidcProviderARN(providerValue)
 		if err != nil {
 			return "", err
 		}

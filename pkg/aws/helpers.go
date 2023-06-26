@@ -28,7 +28,13 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
+// AWS accepted role name: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
 var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
+
+// AWS accepted arn format: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html
+var RoleArnRE = regexp.MustCompile(
+	`^arn:aws[\w-]*:iam::\d{12}:role(?:\/+[\w+=,.@-]+)+$`,
+)
 
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
 var UserTagKeyRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
@@ -471,6 +477,7 @@ func GetPartition() string {
 }
 
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
+	// role name here is resource id (ex: dle-test-Worker-Role)
 	roleName, err := GetAccountRoleName(cluster, roleNameSuffix)
 	if err != nil {
 		return "", err
@@ -478,7 +485,7 @@ func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (str
 
 	var suffix string
 	if IsHostedCPManagedPolicies(cluster) {
-		suffix = fmt.Sprintf("-HCP-%s-Role", roleNameSuffix)
+		suffix = fmt.Sprintf("-%s-%s-Role", HCPSuffixPattern, roleNameSuffix)
 	} else {
 		suffix = fmt.Sprintf("-%s-Role", roleNameSuffix)
 	}
@@ -573,9 +580,13 @@ func GetAccountRolesArnsMap(cluster *cmv1.Cluster) map[string]string {
 
 func GetAccountRoleName(cluster *cmv1.Cluster, accountRole string) (string, error) {
 	accRoles := GetAccountRolesArnsMap(cluster)
+
+	// checks to see if role arn exists from map
 	if accRoles[accountRole] == "" {
 		return "", nil
 	}
+
+	// outputs resource id (ex: "dle-test-Worker-Role") from role arn
 	return GetResourceIdFromARN(accRoles[accountRole])
 }
 
@@ -781,6 +792,26 @@ func GetResourceIdFromARN(stringARN string) (string, error) {
 	return parsedARN.Resource[index+1:], nil
 }
 
+func GetResourceIdFromOidcProviderARN(stringARN string) (string, error) {
+	parsedARN, err := arn.Parse(stringARN)
+
+	if err != nil {
+		return "", fmt.Errorf("couldn't parse arn '%s': %v", stringARN, err)
+	}
+
+	index := strings.Index(parsedARN.Resource, "/")
+	if index == -1 {
+		return "", fmt.Errorf("can't find resource-id in ARN '%s'", stringARN)
+	}
+
+	// If the customer has created the provider using a / at the end of the URL for some reason
+	if index == len(parsedARN.Resource)-1 {
+		return GetResourceIdFromOidcProviderARN(stringARN[:index])
+	}
+
+	return parsedARN.Resource[index+1:], nil
+}
+
 func GetResourceIdFromSecretArn(secretArn string) (string, error) {
 	parsedARN, err := arn.Parse(secretArn)
 
@@ -879,4 +910,8 @@ func IsStandardNamedAccountRole(accountRoleName, roleSuffix string) (bool, strin
 
 func IsHostedCPManagedPolicies(cluster *cmv1.Cluster) bool {
 	return cluster.Hypershift().Enabled() && cluster.AWS().STS().ManagedPolicies()
+}
+
+func IsHostedCP(cluster *cmv1.Cluster) bool {
+	return cluster.Hypershift().Enabled()
 }
