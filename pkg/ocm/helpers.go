@@ -817,7 +817,7 @@ func (c *Client) GetVersionsList(channelGroup string) ([]string, error) {
 
 func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient aws.Client,
 	operatorIAMRoleList []OperatorIAMRole, oidcEndpointUrl string,
-	clusterVersion string, expectedOperatorRolePath string) error {
+	clusterVersion string, expectedOperatorRolePath string, accountRolesHasManagedPolicies bool) error {
 	operatorIAMRoles := operatorIAMRoleList
 	parsedUrl, err := url.Parse(oidcEndpointUrl)
 	if err != nil {
@@ -852,6 +852,10 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 		hasManagedPolicies, err := awsClient.HasManagedPolicies(roleARN)
 		if err != nil {
 			return err
+		}
+		if accountRolesHasManagedPolicies && !hasManagedPolicies {
+			return errors.Errorf("Operator role '%s' has unmanaged policies and is not compatible with the account "+
+				"role's managed policies.", roleARN)
 		}
 		if hasManagedPolicies {
 			// Managed policies should be compatible with all versions
