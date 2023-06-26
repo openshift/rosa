@@ -19,41 +19,41 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
-// ProvisionShardsReferenceBuilder contains the data and logic needed to build 'provision_shards_reference' objects.
+// ProvisionShardReferenceBuilder contains the data and logic needed to build 'provision_shard_reference' objects.
 //
-// Provision Shards Reference of the cluster.
-type ProvisionShardsReferenceBuilder struct {
+// Provision Shard Reference of the cluster.
+type ProvisionShardReferenceBuilder struct {
 	bitmap_ uint32
 	href    string
 	id      string
 }
 
-// NewProvisionShardsReference creates a new builder of 'provision_shards_reference' objects.
-func NewProvisionShardsReference() *ProvisionShardsReferenceBuilder {
-	return &ProvisionShardsReferenceBuilder{}
+// NewProvisionShardReference creates a new builder of 'provision_shard_reference' objects.
+func NewProvisionShardReference() *ProvisionShardReferenceBuilder {
+	return &ProvisionShardReferenceBuilder{}
 }
 
 // Empty returns true if the builder is empty, i.e. no attribute has a value.
-func (b *ProvisionShardsReferenceBuilder) Empty() bool {
+func (b *ProvisionShardReferenceBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
 // Href sets the value of the 'href' attribute to the given value.
-func (b *ProvisionShardsReferenceBuilder) Href(value string) *ProvisionShardsReferenceBuilder {
+func (b *ProvisionShardReferenceBuilder) Href(value string) *ProvisionShardReferenceBuilder {
 	b.href = value
 	b.bitmap_ |= 1
 	return b
 }
 
 // Id sets the value of the 'id' attribute to the given value.
-func (b *ProvisionShardsReferenceBuilder) Id(value string) *ProvisionShardsReferenceBuilder {
+func (b *ProvisionShardReferenceBuilder) Id(value string) *ProvisionShardReferenceBuilder {
 	b.id = value
 	b.bitmap_ |= 2
 	return b
 }
 
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
-func (b *ProvisionShardsReferenceBuilder) Copy(object *ProvisionShardsReference) *ProvisionShardsReferenceBuilder {
+func (b *ProvisionShardReferenceBuilder) Copy(object *ProvisionShardReference) *ProvisionShardReferenceBuilder {
 	if object == nil {
 		return b
 	}
@@ -63,9 +63,9 @@ func (b *ProvisionShardsReferenceBuilder) Copy(object *ProvisionShardsReference)
 	return b
 }
 
-// Build creates a 'provision_shards_reference' object using the configuration stored in the builder.
-func (b *ProvisionShardsReferenceBuilder) Build() (object *ProvisionShardsReference, err error) {
-	object = new(ProvisionShardsReference)
+// Build creates a 'provision_shard_reference' object using the configuration stored in the builder.
+func (b *ProvisionShardReferenceBuilder) Build() (object *ProvisionShardReference, err error) {
+	object = new(ProvisionShardReference)
 	object.bitmap_ = b.bitmap_
 	object.href = b.href
 	object.id = b.id

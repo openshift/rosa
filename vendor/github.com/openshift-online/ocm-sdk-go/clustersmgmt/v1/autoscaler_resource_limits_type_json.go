@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHTPasswdUser writes a value of the 'HT_passwd_user' type to the given writer.
-func MarshalHTPasswdUser(object *HTPasswdUser, writer io.Writer) error {
+// MarshalAutoscalerResourceLimits writes a value of the 'autoscaler_resource_limits' type to the given writer.
+func MarshalAutoscalerResourceLimits(object *AutoscalerResourceLimits, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHTPasswdUser(object, stream)
+	writeAutoscalerResourceLimits(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,18 +37,18 @@ func MarshalHTPasswdUser(object *HTPasswdUser, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeHTPasswdUser writes a value of the 'HT_passwd_user' type to the given stream.
-func writeHTPasswdUser(object *HTPasswdUser, stream *jsoniter.Stream) {
+// writeAutoscalerResourceLimits writes a value of the 'autoscaler_resource_limits' type to the given stream.
+func writeAutoscalerResourceLimits(object *AutoscalerResourceLimits, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&1 != 0 && object.cores != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("id")
-		stream.WriteString(object.id)
+		stream.WriteObjectField("cores")
+		writeResourceRange(object.cores, stream)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -56,67 +56,54 @@ func writeHTPasswdUser(object *HTPasswdUser, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("hashed_password")
-		stream.WriteString(object.hashedPassword)
+		stream.WriteObjectField("max_nodes_total")
+		stream.WriteInt(object.maxNodesTotal)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&4 != 0 && object.memory != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("password")
-		stream.WriteString(object.password)
-		count++
-	}
-	present_ = object.bitmap_&8 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("username")
-		stream.WriteString(object.username)
+		stream.WriteObjectField("memory")
+		writeResourceRange(object.memory, stream)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalHTPasswdUser reads a value of the 'HT_passwd_user' type from the given
+// UnmarshalAutoscalerResourceLimits reads a value of the 'autoscaler_resource_limits' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalHTPasswdUser(source interface{}) (object *HTPasswdUser, err error) {
+func UnmarshalAutoscalerResourceLimits(source interface{}) (object *AutoscalerResourceLimits, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readHTPasswdUser(iterator)
+	object = readAutoscalerResourceLimits(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHTPasswdUser reads a value of the 'HT_passwd_user' type from the given iterator.
-func readHTPasswdUser(iterator *jsoniter.Iterator) *HTPasswdUser {
-	object := &HTPasswdUser{}
+// readAutoscalerResourceLimits reads a value of the 'autoscaler_resource_limits' type from the given iterator.
+func readAutoscalerResourceLimits(iterator *jsoniter.Iterator) *AutoscalerResourceLimits {
+	object := &AutoscalerResourceLimits{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "id":
-			value := iterator.ReadString()
-			object.id = value
+		case "cores":
+			value := readResourceRange(iterator)
+			object.cores = value
 			object.bitmap_ |= 1
-		case "hashed_password":
-			value := iterator.ReadString()
-			object.hashedPassword = value
+		case "max_nodes_total":
+			value := iterator.ReadInt()
+			object.maxNodesTotal = value
 			object.bitmap_ |= 2
-		case "password":
-			value := iterator.ReadString()
-			object.password = value
+		case "memory":
+			value := readResourceRange(iterator)
+			object.memory = value
 			object.bitmap_ |= 4
-		case "username":
-			value := iterator.ReadString()
-			object.username = value
-			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

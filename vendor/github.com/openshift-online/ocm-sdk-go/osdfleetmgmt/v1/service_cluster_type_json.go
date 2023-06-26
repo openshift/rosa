@@ -92,16 +92,13 @@ func writeServiceCluster(object *ServiceCluster, stream *jsoniter.Stream) {
 		writeClusterManagementReference(object.clusterManagementReference, stream)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0 && object.labelsReference != nil
+	present_ = object.bitmap_&64 != 0 && object.labels != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("labels_reference")
-		stream.WriteObjectStart()
-		stream.WriteObjectField("items")
-		writeLabelReferenceList(object.labelsReference.items, stream)
-		stream.WriteObjectEnd()
+		stream.WriteObjectField("labels")
+		writeLabelList(object.labels, stream)
 		count++
 	}
 	present_ = object.bitmap_&128 != 0
@@ -113,13 +110,13 @@ func writeServiceCluster(object *ServiceCluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0 && object.provisionShardsReference != nil
+	present_ = object.bitmap_&256 != 0 && object.provisionShardReference != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("provision_shards_reference")
-		writeProvisionShardsReference(object.provisionShardsReference, stream)
+		stream.WriteObjectField("provision_shard_reference")
+		writeProvisionShardReference(object.provisionShardReference, stream)
 		count++
 	}
 	present_ = object.bitmap_&512 != 0
@@ -195,34 +192,17 @@ func readServiceCluster(iterator *jsoniter.Iterator) *ServiceCluster {
 			value := readClusterManagementReference(iterator)
 			object.clusterManagementReference = value
 			object.bitmap_ |= 32
-		case "labels_reference":
-			value := &LabelReferenceList{}
-			for {
-				field := iterator.ReadObject()
-				if field == "" {
-					break
-				}
-				switch field {
-				case "kind":
-					text := iterator.ReadString()
-					value.link = text == LabelReferenceListLinkKind
-				case "href":
-					value.href = iterator.ReadString()
-				case "items":
-					value.items = readLabelReferenceList(iterator)
-				default:
-					iterator.ReadAny()
-				}
-			}
-			object.labelsReference = value
+		case "labels":
+			value := readLabelList(iterator)
+			object.labels = value
 			object.bitmap_ |= 64
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
 			object.bitmap_ |= 128
-		case "provision_shards_reference":
-			value := readProvisionShardsReference(iterator)
-			object.provisionShardsReference = value
+		case "provision_shard_reference":
+			value := readProvisionShardReference(iterator)
+			object.provisionShardReference = value
 			object.bitmap_ |= 256
 		case "region":
 			value := iterator.ReadString()

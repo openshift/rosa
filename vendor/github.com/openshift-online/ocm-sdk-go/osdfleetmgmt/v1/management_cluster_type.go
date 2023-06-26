@@ -84,7 +84,7 @@ type ManagementCluster struct {
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReference
 	creationTimestamp          time.Time
-	labelsReference            *LabelReferenceList
+	labels                     []*Label
 	name                       string
 	parent                     *ManagementClusterParent
 	region                     string
@@ -242,25 +242,25 @@ func (o *ManagementCluster) GetCreationTimestamp() (value time.Time, ok bool) {
 	return
 }
 
-// LabelsReference returns the value of the 'labels_reference' attribute, or
+// Labels returns the value of the 'labels' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Labels on management cluster
-func (o *ManagementCluster) LabelsReference() *LabelReferenceList {
+func (o *ManagementCluster) Labels() []*Label {
 	if o != nil && o.bitmap_&128 != 0 {
-		return o.labelsReference
+		return o.labels
 	}
 	return nil
 }
 
-// GetLabelsReference returns the value of the 'labels_reference' attribute and
+// GetLabels returns the value of the 'labels' attribute and
 // a flag indicating if the attribute has a value.
 //
 // Labels on management cluster
-func (o *ManagementCluster) GetLabelsReference() (value *LabelReferenceList, ok bool) {
+func (o *ManagementCluster) GetLabels() (value []*Label, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
-		value = o.labelsReference
+		value = o.labels
 	}
 	return
 }

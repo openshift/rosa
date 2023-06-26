@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 type LabelBuilder struct {
 	bitmap_ uint32
 	id      string
+	href    string
 	key     string
 	value   string
 }
@@ -34,29 +35,42 @@ func NewLabel() *LabelBuilder {
 	return &LabelBuilder{}
 }
 
-// Empty returns true if the builder is empty, i.e. no attribute has a value.
-func (b *LabelBuilder) Empty() bool {
-	return b == nil || b.bitmap_ == 0
-}
-
-// Id sets the value of the 'id' attribute to the given value.
-func (b *LabelBuilder) Id(value string) *LabelBuilder {
-	b.id = value
+// Link sets the flag that indicates if this is a link.
+func (b *LabelBuilder) Link(value bool) *LabelBuilder {
 	b.bitmap_ |= 1
 	return b
+}
+
+// ID sets the identifier of the object.
+func (b *LabelBuilder) ID(value string) *LabelBuilder {
+	b.id = value
+	b.bitmap_ |= 2
+	return b
+}
+
+// HREF sets the link to the object.
+func (b *LabelBuilder) HREF(value string) *LabelBuilder {
+	b.href = value
+	b.bitmap_ |= 4
+	return b
+}
+
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *LabelBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
 }
 
 // Key sets the value of the 'key' attribute to the given value.
 func (b *LabelBuilder) Key(value string) *LabelBuilder {
 	b.key = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 8
 	return b
 }
 
 // Value sets the value of the 'value' attribute to the given value.
 func (b *LabelBuilder) Value(value string) *LabelBuilder {
 	b.value = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -67,6 +81,7 @@ func (b *LabelBuilder) Copy(object *Label) *LabelBuilder {
 	}
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
+	b.href = object.href
 	b.key = object.key
 	b.value = object.value
 	return b
@@ -75,8 +90,9 @@ func (b *LabelBuilder) Copy(object *Label) *LabelBuilder {
 // Build creates a 'label' object using the configuration stored in the builder.
 func (b *LabelBuilder) Build() (object *Label, err error) {
 	object = new(Label)
-	object.bitmap_ = b.bitmap_
 	object.id = b.id
+	object.href = b.href
+	object.bitmap_ = b.bitmap_
 	object.key = b.key
 	object.value = b.value
 	return

@@ -23,6 +23,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 type ServiceClusterRequestPayloadBuilder struct {
 	bitmap_       uint32
 	cloudProvider string
+	labels        []*LabelRequestPayloadBuilder
 	region        string
 }
 
@@ -43,10 +44,18 @@ func (b *ServiceClusterRequestPayloadBuilder) CloudProvider(value string) *Servi
 	return b
 }
 
+// Labels sets the value of the 'labels' attribute to the given values.
+func (b *ServiceClusterRequestPayloadBuilder) Labels(values ...*LabelRequestPayloadBuilder) *ServiceClusterRequestPayloadBuilder {
+	b.labels = make([]*LabelRequestPayloadBuilder, len(values))
+	copy(b.labels, values)
+	b.bitmap_ |= 2
+	return b
+}
+
 // Region sets the value of the 'region' attribute to the given value.
 func (b *ServiceClusterRequestPayloadBuilder) Region(value string) *ServiceClusterRequestPayloadBuilder {
 	b.region = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
@@ -57,6 +66,14 @@ func (b *ServiceClusterRequestPayloadBuilder) Copy(object *ServiceClusterRequest
 	}
 	b.bitmap_ = object.bitmap_
 	b.cloudProvider = object.cloudProvider
+	if object.labels != nil {
+		b.labels = make([]*LabelRequestPayloadBuilder, len(object.labels))
+		for i, v := range object.labels {
+			b.labels[i] = NewLabelRequestPayload().Copy(v)
+		}
+	} else {
+		b.labels = nil
+	}
 	b.region = object.region
 	return b
 }
@@ -66,6 +83,15 @@ func (b *ServiceClusterRequestPayloadBuilder) Build() (object *ServiceClusterReq
 	object = new(ServiceClusterRequestPayload)
 	object.bitmap_ = b.bitmap_
 	object.cloudProvider = b.cloudProvider
+	if b.labels != nil {
+		object.labels = make([]*LabelRequestPayload, len(b.labels))
+		for i, v := range b.labels {
+			object.labels[i], err = v.Build()
+			if err != nil {
+				return
+			}
+		}
+	}
 	object.region = b.region
 	return
 }

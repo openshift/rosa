@@ -72,7 +72,7 @@ type ManagementClusterBuilder struct {
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReferenceBuilder
 	creationTimestamp          time.Time
-	labelsReference            *LabelReferenceListBuilder
+	labels                     []*LabelBuilder
 	name                       string
 	parent                     *ManagementClusterParentBuilder
 	region                     string
@@ -151,9 +151,10 @@ func (b *ManagementClusterBuilder) CreationTimestamp(value time.Time) *Managemen
 	return b
 }
 
-// LabelsReference sets the value of the 'labels_reference' attribute to the given values.
-func (b *ManagementClusterBuilder) LabelsReference(value *LabelReferenceListBuilder) *ManagementClusterBuilder {
-	b.labelsReference = value
+// Labels sets the value of the 'labels' attribute to the given values.
+func (b *ManagementClusterBuilder) Labels(values ...*LabelBuilder) *ManagementClusterBuilder {
+	b.labels = make([]*LabelBuilder, len(values))
+	copy(b.labels, values)
 	b.bitmap_ |= 128
 	return b
 }
@@ -226,10 +227,13 @@ func (b *ManagementClusterBuilder) Copy(object *ManagementCluster) *ManagementCl
 		b.clusterManagementReference = nil
 	}
 	b.creationTimestamp = object.creationTimestamp
-	if object.labelsReference != nil {
-		b.labelsReference = NewLabelReferenceList().Copy(object.labelsReference)
+	if object.labels != nil {
+		b.labels = make([]*LabelBuilder, len(object.labels))
+		for i, v := range object.labels {
+			b.labels[i] = NewLabel().Copy(v)
+		}
 	} else {
-		b.labelsReference = nil
+		b.labels = nil
 	}
 	b.name = object.name
 	if object.parent != nil {
@@ -264,10 +268,13 @@ func (b *ManagementClusterBuilder) Build() (object *ManagementCluster, err error
 		}
 	}
 	object.creationTimestamp = b.creationTimestamp
-	if b.labelsReference != nil {
-		object.labelsReference, err = b.labelsReference.Build()
-		if err != nil {
-			return
+	if b.labels != nil {
+		object.labels = make([]*Label, len(b.labels))
+		for i, v := range b.labels {
+			object.labels[i], err = v.Build()
+			if err != nil {
+				return
+			}
 		}
 	}
 	object.name = b.name

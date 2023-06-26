@@ -67,9 +67,9 @@ type ServiceClusterBuilder struct {
 	dns                        *DNSBuilder
 	cloudProvider              string
 	clusterManagementReference *ClusterManagementReferenceBuilder
-	labelsReference            *LabelReferenceListBuilder
+	labels                     []*LabelBuilder
 	name                       string
-	provisionShardsReference   *ProvisionShardsReferenceBuilder
+	provisionShardReference    *ProvisionShardReferenceBuilder
 	region                     string
 	sector                     string
 	status                     string
@@ -138,9 +138,10 @@ func (b *ServiceClusterBuilder) ClusterManagementReference(value *ClusterManagem
 	return b
 }
 
-// LabelsReference sets the value of the 'labels_reference' attribute to the given values.
-func (b *ServiceClusterBuilder) LabelsReference(value *LabelReferenceListBuilder) *ServiceClusterBuilder {
-	b.labelsReference = value
+// Labels sets the value of the 'labels' attribute to the given values.
+func (b *ServiceClusterBuilder) Labels(values ...*LabelBuilder) *ServiceClusterBuilder {
+	b.labels = make([]*LabelBuilder, len(values))
+	copy(b.labels, values)
 	b.bitmap_ |= 64
 	return b
 }
@@ -152,11 +153,11 @@ func (b *ServiceClusterBuilder) Name(value string) *ServiceClusterBuilder {
 	return b
 }
 
-// ProvisionShardsReference sets the value of the 'provision_shards_reference' attribute to the given value.
+// ProvisionShardReference sets the value of the 'provision_shard_reference' attribute to the given value.
 //
-// Provision Shards Reference of the cluster.
-func (b *ServiceClusterBuilder) ProvisionShardsReference(value *ProvisionShardsReferenceBuilder) *ServiceClusterBuilder {
-	b.provisionShardsReference = value
+// Provision Shard Reference of the cluster.
+func (b *ServiceClusterBuilder) ProvisionShardReference(value *ProvisionShardReferenceBuilder) *ServiceClusterBuilder {
+	b.provisionShardReference = value
 	if value != nil {
 		b.bitmap_ |= 256
 	} else {
@@ -205,16 +206,19 @@ func (b *ServiceClusterBuilder) Copy(object *ServiceCluster) *ServiceClusterBuil
 	} else {
 		b.clusterManagementReference = nil
 	}
-	if object.labelsReference != nil {
-		b.labelsReference = NewLabelReferenceList().Copy(object.labelsReference)
+	if object.labels != nil {
+		b.labels = make([]*LabelBuilder, len(object.labels))
+		for i, v := range object.labels {
+			b.labels[i] = NewLabel().Copy(v)
+		}
 	} else {
-		b.labelsReference = nil
+		b.labels = nil
 	}
 	b.name = object.name
-	if object.provisionShardsReference != nil {
-		b.provisionShardsReference = NewProvisionShardsReference().Copy(object.provisionShardsReference)
+	if object.provisionShardReference != nil {
+		b.provisionShardReference = NewProvisionShardReference().Copy(object.provisionShardReference)
 	} else {
-		b.provisionShardsReference = nil
+		b.provisionShardReference = nil
 	}
 	b.region = object.region
 	b.sector = object.sector
@@ -241,15 +245,18 @@ func (b *ServiceClusterBuilder) Build() (object *ServiceCluster, err error) {
 			return
 		}
 	}
-	if b.labelsReference != nil {
-		object.labelsReference, err = b.labelsReference.Build()
-		if err != nil {
-			return
+	if b.labels != nil {
+		object.labels = make([]*Label, len(b.labels))
+		for i, v := range b.labels {
+			object.labels[i], err = v.Build()
+			if err != nil {
+				return
+			}
 		}
 	}
 	object.name = b.name
-	if b.provisionShardsReference != nil {
-		object.provisionShardsReference, err = b.provisionShardsReference.Build()
+	if b.provisionShardReference != nil {
+		object.provisionShardReference, err = b.provisionShardReference.Build()
 		if err != nil {
 			return
 		}

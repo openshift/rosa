@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.349
+- Update model to version v0.0.293
+  - Add label list to OSDFM cluster request payloads
+  - Replace references to labels in OSDFM cluster structs with the labels themselves
+  - Fix typos in OSDFM cluster Label struct fields
+  - Add HashedPassword field to clusters_mgmt to provide encrypted value
+  - Add cluster autoscaler structs
+
 ## 0.1.348
 - Update model version v0.0.291
   - Add Reason to access review responses

@@ -19,53 +19,53 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/osdfleetmgmt/v1
 
-// ProvisionShardsReferenceListBuilder contains the data and logic needed to build
-// 'provision_shards_reference' objects.
-type ProvisionShardsReferenceListBuilder struct {
-	items []*ProvisionShardsReferenceBuilder
+// ProvisionShardReferenceListBuilder contains the data and logic needed to build
+// 'provision_shard_reference' objects.
+type ProvisionShardReferenceListBuilder struct {
+	items []*ProvisionShardReferenceBuilder
 }
 
-// NewProvisionShardsReferenceList creates a new builder of 'provision_shards_reference' objects.
-func NewProvisionShardsReferenceList() *ProvisionShardsReferenceListBuilder {
-	return new(ProvisionShardsReferenceListBuilder)
+// NewProvisionShardReferenceList creates a new builder of 'provision_shard_reference' objects.
+func NewProvisionShardReferenceList() *ProvisionShardReferenceListBuilder {
+	return new(ProvisionShardReferenceListBuilder)
 }
 
 // Items sets the items of the list.
-func (b *ProvisionShardsReferenceListBuilder) Items(values ...*ProvisionShardsReferenceBuilder) *ProvisionShardsReferenceListBuilder {
-	b.items = make([]*ProvisionShardsReferenceBuilder, len(values))
+func (b *ProvisionShardReferenceListBuilder) Items(values ...*ProvisionShardReferenceBuilder) *ProvisionShardReferenceListBuilder {
+	b.items = make([]*ProvisionShardReferenceBuilder, len(values))
 	copy(b.items, values)
 	return b
 }
 
 // Empty returns true if the list is empty.
-func (b *ProvisionShardsReferenceListBuilder) Empty() bool {
+func (b *ProvisionShardReferenceListBuilder) Empty() bool {
 	return b == nil || len(b.items) == 0
 }
 
 // Copy copies the items of the given list into this builder, discarding any previous items.
-func (b *ProvisionShardsReferenceListBuilder) Copy(list *ProvisionShardsReferenceList) *ProvisionShardsReferenceListBuilder {
+func (b *ProvisionShardReferenceListBuilder) Copy(list *ProvisionShardReferenceList) *ProvisionShardReferenceListBuilder {
 	if list == nil || list.items == nil {
 		b.items = nil
 	} else {
-		b.items = make([]*ProvisionShardsReferenceBuilder, len(list.items))
+		b.items = make([]*ProvisionShardReferenceBuilder, len(list.items))
 		for i, v := range list.items {
-			b.items[i] = NewProvisionShardsReference().Copy(v)
+			b.items[i] = NewProvisionShardReference().Copy(v)
 		}
 	}
 	return b
 }
 
-// Build creates a list of 'provision_shards_reference' objects using the
+// Build creates a list of 'provision_shard_reference' objects using the
 // configuration stored in the builder.
-func (b *ProvisionShardsReferenceListBuilder) Build() (list *ProvisionShardsReferenceList, err error) {
-	items := make([]*ProvisionShardsReference, len(b.items))
+func (b *ProvisionShardReferenceListBuilder) Build() (list *ProvisionShardReferenceList, err error) {
+	items := make([]*ProvisionShardReference, len(b.items))
 	for i, item := range b.items {
 		items[i], err = item.Build()
 		if err != nil {
 			return
 		}
 	}
-	list = new(ProvisionShardsReferenceList)
+	list = new(ProvisionShardReferenceList)
 	list.items = items
 	return
 }
