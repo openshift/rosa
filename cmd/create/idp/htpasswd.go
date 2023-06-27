@@ -93,7 +93,7 @@ func createHTPasswdIDP(cmd *cobra.Command,
 
 	if interactive.Enabled() {
 		for shouldAddAnotherUser(r) {
-			username, password := getUserDetails(cmd, r)
+			username, password := GetUserDetails(cmd, r, "username", "password", "", "")
 			err = r.OCMClient.AddHTPasswdUser(username, password, cluster.ID(), htpasswdIDP.ID())
 			if err != nil {
 				r.Reporter.Errorf(
@@ -171,7 +171,7 @@ func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBu
 		userList[args.htpasswdUsername] = args.htpasswdPassword
 	} else {
 		r.Reporter.Infof("At least one valid user and password is required to create the IDP.")
-		username, password := getUserDetails(cmd, r)
+		username, password := GetUserDetails(cmd, r, "username", "password", "", "")
 		userList[username] = password
 	}
 
@@ -191,14 +191,15 @@ func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBu
 	return htpassUserList
 }
 
-func getUserDetails(cmd *cobra.Command, r *rosa.Runtime) (string, string) {
+func GetUserDetails(cmd *cobra.Command, r *rosa.Runtime,
+	usernameKey, passwordKey, defaultUsername, defaultPassword string) (string, string) {
 	username, err := interactive.GetString(interactive.Input{
 		Question: "Username",
-		Help:     cmd.Flags().Lookup("username").Usage,
-		Default:  "",
+		Help:     cmd.Flags().Lookup(usernameKey).Usage,
+		Default:  defaultUsername,
 		Required: true,
 		Validators: []interactive.Validator{
-			usernameValidator,
+			UsernameValidator,
 		},
 	})
 	if err != nil {
@@ -206,11 +207,11 @@ func getUserDetails(cmd *cobra.Command, r *rosa.Runtime) (string, string) {
 	}
 	password, err := interactive.GetPassword(interactive.Input{
 		Question: "Password",
-		Help:     cmd.Flags().Lookup("password").Usage,
-		Default:  "",
+		Help:     cmd.Flags().Lookup(passwordKey).Usage,
+		Default:  defaultPassword,
 		Required: true,
 		Validators: []interactive.Validator{
-			passwordValidator,
+			PasswordValidator,
 		},
 	})
 	if err != nil {
@@ -249,7 +250,7 @@ func exitHTPasswdCreate(format, clusterKey string, err error, r *rosa.Runtime) {
 	os.Exit(1)
 }
 
-func usernameValidator(val interface{}) error {
+func UsernameValidator(val interface{}) error {
 	if username, ok := val.(string); ok {
 		if username == ClusterAdminUsername {
 			return fmt.Errorf("username '%s' is not allowed", username)
@@ -263,7 +264,7 @@ func usernameValidator(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got '%v'", val)
 }
 
-func passwordValidator(val interface{}) error {
+func PasswordValidator(val interface{}) error {
 	if password, ok := val.(string); ok {
 		notAsciiOnly, _ := regexp.MatchString(`[^\x20-\x7E]`, password)
 		containsSpace := strings.Contains(password, " ")

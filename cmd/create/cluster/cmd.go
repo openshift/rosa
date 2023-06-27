@@ -32,6 +32,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
@@ -155,6 +156,10 @@ var args struct {
 	// Hypershift options:
 	hostedClusterEnabled bool
 	billingAccount       string
+
+	// Cluster Admin
+	clusterAdminUser     string
+	clusterAdminPassword string
 
 	// Audit Log Forwarding
 	AuditLogRoleARN string
@@ -605,6 +610,24 @@ func init() {
 	flags.MarkHidden("billing-account")
 
 	flags.StringVar(
+		&args.clusterAdminUser,
+		"cluster-admin-user",
+		"",
+		`Username of Cluster Admin.
+Username must not contain /, :, or %%`,
+	)
+
+	flags.StringVar(
+		&args.clusterAdminPassword,
+		"cluster-admin-password",
+		"",
+		`Password of Cluster Admin.
+The password must
+- Be at least 14 characters (ASCII-standard) without whitespaces
+- Include uppercase letters, lowercase letters, and numbers or symbols (ASCII-standard characters only)`,
+	)
+
+	flags.StringVar(
 		&args.AuditLogRoleARN,
 		"audit-log-arn",
 		"",
@@ -723,6 +746,42 @@ func run(cmd *cobra.Command, _ []string) {
 	if isHostedCP && args.ec2MetadataHttpTokens != "" {
 		r.Reporter.Errorf("ec2-metadata-http-tokens can't be set with hosted-cp")
 		os.Exit(1)
+	}
+
+	isClusterAdmin := false
+	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
+	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
+	if !isHostedCP {
+		if clusterAdminUser != "" {
+			err = idp.UsernameValidator(clusterAdminUser)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		}
+		if clusterAdminPassword != "" {
+			err = idp.PasswordValidator(clusterAdminPassword)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		}
+		if (clusterAdminUser == "" || clusterAdminPassword == "") && interactive.Enabled() {
+			isClusterAdmin, err = interactive.GetBool(interactive.Input{
+				Question: "Create cluster admin user",
+				Default:  false,
+				Required: true,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value: %s", err)
+				os.Exit(1)
+			}
+
+			if isClusterAdmin {
+				clusterAdminUser, clusterAdminPassword = idp.GetUserDetails(cmd, r,
+					"cluster-admin-user", "cluster-admin-password", clusterAdminUser, clusterAdminPassword)
+			}
+		}
 	}
 
 	// Billing Account
@@ -2355,6 +2414,10 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.AdditionalTrustBundleFile = &additionalTrustBundleFile
 		clusterConfig.AdditionalTrustBundle = additionalTrustBundle
 	}
+	if isClusterAdmin {
+		clusterConfig.ClusterAdminUser = clusterAdminUser
+		clusterConfig.ClusterAdminPassword = clusterAdminPassword
+	}
 
 	props := args.properties
 	if args.fakeCluster {
@@ -2757,6 +2820,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		if spec.Mode != "" {
 			command += fmt.Sprintf(" --mode %s", spec.Mode)
 		}
+	}
+	if spec.ClusterAdminUser != "" {
+		command += fmt.Sprintf(" --cluster-admin-user %s", spec.ClusterAdminUser)
+		command += fmt.Sprintf(" --cluster-admin-password %s", spec.ClusterAdminPassword)
 	}
 	if spec.RoleARN != "" {
 		command += fmt.Sprintf(" --role-arn %s", spec.RoleARN)

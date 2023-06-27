@@ -25,6 +25,7 @@ import (
 
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -117,6 +118,10 @@ type Spec struct {
 	AuditLogRoleARN *string
 
 	Ec2MetadataHttpTokens cmv1.Ec2MetadataHttpTokens
+
+	// Cluster Admin
+	ClusterAdminUser     string
+	ClusterAdminPassword string
 }
 
 type OperatorIAMRole struct {
@@ -927,6 +932,15 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 
 	if config.AdditionalTrustBundle != nil {
 		clusterBuilder = clusterBuilder.AdditionalTrustBundle(*config.AdditionalTrustBundle)
+	}
+
+	if config.ClusterAdminUser != "" {
+		htpasswdUsers := []*v1.HTPasswdUserBuilder{}
+		htpasswdUsers = append(htpasswdUsers, v1.NewHTPasswdUser().
+			Username(config.ClusterAdminUser).Password(config.ClusterAdminPassword))
+		htpassUserList := v1.NewHTPasswdUserList().Items(htpasswdUsers...)
+		htPasswdIDP := v1.NewHTPasswdIdentityProvider().Users(htpassUserList)
+		clusterBuilder = clusterBuilder.Htpasswd(htPasswdIDP)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
