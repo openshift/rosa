@@ -56,5 +56,12 @@ func GetEnv() (string, error) {
 		}
 	}
 
+	// Special use case for Admin users in the GovCloud environment
+	for env, api := range fedramp.AdminURLAliases {
+		if api == strings.TrimSuffix(cfg.URL, "/") {
+			return env, nil
+		}
+	}
+
 	return "", fmt.Errorf("Invalid OCM API")
 }

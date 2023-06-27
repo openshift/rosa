@@ -46,11 +46,25 @@ var LoginURLs = map[string]string{
 	"integration": "https://api.int.openshiftusgov.com/auth",
 }
 
+// AdminLoginURLs allows the value of the `--env` option to map to the various Admin login URLs.
+var AdminLoginURLs = map[string]string{
+	"production":  "https://api-admin.openshiftusgov.com/auth",
+	"staging":     "https://api-admin.stage.openshiftusgov.com/auth",
+	"integration": "https://api-admin.int.openshiftusgov.com/auth",
+}
+
 // URLAliases allows the value of the `--env` option to map to the various API URLs.
 var URLAliases = map[string]string{
 	"production":  "https://api.openshiftusgov.com",
 	"staging":     "https://api.stage.openshiftusgov.com",
 	"integration": "https://api.int.openshiftusgov.com",
+}
+
+// AdminURLAliases allows the value of the `--env` option to map to the various Admin API URLs.
+var AdminURLAliases = map[string]string{
+	"production":  "https://api-admin.openshiftusgov.com",
+	"staging":     "https://api-admin.stage.openshiftusgov.com",
+	"integration": "https://api-admin.int.openshiftusgov.com",
 }
 
 const cognitoURL = "auth-fips.us-gov-west-1.amazoncognito.com/oauth2/token"
@@ -62,8 +76,22 @@ var TokenURLs = map[string]string{
 	"integration": fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
 }
 
+// AdminTokenURLs allows the value of the `--env` option to map to the various Admin AWS Cognito token URLs.
+var AdminTokenURLs = map[string]string{
+	"production":  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
+	"staging":     fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
+	"integration": fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
+}
+
 // ClientIDs allows the value of the `--env` option to map to the various AWS Cognito user pool clients.
 var ClientIDs = map[string]string{
+	"production":  "72ekjh5laouap6qcfis521jlgi",
+	"staging":     "1lb687dlpsmsfuj53r3je06vpp",
+	"integration": "20fbrpgl28f8oehp6709mk3nnr",
+}
+
+// AdminClientIDs allows the value of the `--env` option to map to the various Admin AWS Cognito user pool clients.
+var AdminClientIDs = map[string]string{
 	"production":  "72ekjh5laouap6qcfis521jlgi",
 	"staging":     "1lb687dlpsmsfuj53r3je06vpp",
 	"integration": "20fbrpgl28f8oehp6709mk3nnr",
