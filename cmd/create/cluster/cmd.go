@@ -758,6 +758,7 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
+			isClusterAdmin = true
 		}
 		if clusterAdminPassword != "" {
 			err = idp.PasswordValidator(clusterAdminPassword)
