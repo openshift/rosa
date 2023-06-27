@@ -39,12 +39,12 @@ const DNSDomainNilKind = "DNSDomainNil"
 //
 // Contains the properties of a DNS domain.
 type DNSDomain struct {
-	bitmap_          uint32
-	id               string
-	href             string
-	clusterLink      *ClusterLink
-	organizationLink *OrganizationLink
-	reservedAt       time.Time
+	bitmap_             uint32
+	id                  string
+	href                string
+	clusterLink         *ClusterLink
+	organizationLink    *OrganizationLink
+	reservedAtTimestamp time.Time
 }
 
 // Kind returns the name of the type of the object.
@@ -150,25 +150,25 @@ func (o *DNSDomain) GetOrganizationLink() (value *OrganizationLink, ok bool) {
 	return
 }
 
-// ReservedAt returns the value of the 'reserved_at' attribute, or
+// ReservedAtTimestamp returns the value of the 'reserved_at_timestamp' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Date and time when the DNS domain was reserved.
-func (o *DNSDomain) ReservedAt() time.Time {
+func (o *DNSDomain) ReservedAtTimestamp() time.Time {
 	if o != nil && o.bitmap_&32 != 0 {
-		return o.reservedAt
+		return o.reservedAtTimestamp
 	}
 	return time.Time{}
 }
 
-// GetReservedAt returns the value of the 'reserved_at' attribute and
+// GetReservedAtTimestamp returns the value of the 'reserved_at_timestamp' attribute and
 // a flag indicating if the attribute has a value.
 //
 // Date and time when the DNS domain was reserved.
-func (o *DNSDomain) GetReservedAt() (value time.Time, ok bool) {
+func (o *DNSDomain) GetReservedAtTimestamp() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
-		value = o.reservedAt
+		value = o.reservedAtTimestamp
 	}
 	return
 }

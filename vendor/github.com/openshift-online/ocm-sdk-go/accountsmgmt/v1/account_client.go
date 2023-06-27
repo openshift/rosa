@@ -208,10 +208,11 @@ func (c *AccountClient) Poll() *AccountPollRequest {
 
 // AccountDeleteRequest is the request for the 'delete' method.
 type AccountDeleteRequest struct {
-	transport http.RoundTripper
-	path      string
-	query     url.Values
-	header    http.Header
+	transport                 http.RoundTripper
+	path                      string
+	query                     url.Values
+	header                    http.Header
+	deleteAssociatedResources *bool
 }
 
 // Parameter adds a query parameter.
@@ -233,6 +234,12 @@ func (r *AccountDeleteRequest) Impersonate(user string) *AccountDeleteRequest {
 	return r
 }
 
+// DeleteAssociatedResources sets the value of the 'delete_associated_resources' parameter.
+func (r *AccountDeleteRequest) DeleteAssociatedResources(value bool) *AccountDeleteRequest {
+	r.deleteAssociatedResources = &value
+	return r
+}
+
 // Send sends this request, waits for the response, and returns it.
 //
 // This is a potentially lengthy operation, as it requires network communication.
@@ -244,6 +251,9 @@ func (r *AccountDeleteRequest) Send() (result *AccountDeleteResponse, err error)
 // SendContext sends this request, waits for the response, and returns it.
 func (r *AccountDeleteRequest) SendContext(ctx context.Context) (result *AccountDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
+	if r.deleteAssociatedResources != nil {
+		helpers.AddValue(&query, "delete_associated_resources", *r.deleteAssociatedResources)
+	}
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
 		Path:     r.path,
