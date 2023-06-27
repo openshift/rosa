@@ -79,6 +79,7 @@ var args struct {
 	htpasswdUsername string
 	htpasswdPassword string
 	htpasswdUsers    []string
+	htpasswdFile     string
 }
 
 var validIdps = []string{"github", "gitlab", "google", "htpasswd", "ldap", "openid"}
@@ -303,7 +304,14 @@ func init() {
 		"u",
 		[]string{},
 		"HTPasswd: List of users to add to the IDP. \n"+
-			"It must be a comma separate list of  username:password, i.e user1:password,user2:password \n",
+			"It must be a comma separated list of  username:password, i.e user1:password,user2:password \n",
+	)
+
+	flags.StringVar(
+		&args.htpasswdFile,
+		"from-file",
+		"",
+		"HTPasswd: Path to a well formed htpasswd file.\n",
 	)
 
 	interactive.AddFlag(flags)

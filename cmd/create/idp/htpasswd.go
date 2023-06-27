@@ -17,6 +17,7 @@ limitations under the License.
 package idp
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"regexp"
@@ -104,26 +105,44 @@ func createHTPasswdIDP(cmd *cobra.Command,
 	}
 }
 
-func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBuilder {
+func validateUserArgs(r *rosa.Runtime) {
+
+	//validate mutually exclusive group of flags ( users | username | from-file)
+
+	numOfUserArgs := 0
 
 	// comma separated list of users -  user1:password,user2:password,user3:password
-	users := args.htpasswdUsers
-
+	if len(args.htpasswdUsers) != 0 {
+		numOfUserArgs++
+	}
 	//continue support for single username/password for  backcompatibility
 	// so as not to break any existing automation
-	username := args.htpasswdUsername
-	password := args.htpasswdPassword
-
-	if username != "" && len(users) > 0 {
-		r.Reporter.Errorf("Only one of  'users' or 'username/password' may be specified. " +
-			"Choose the option 'users' to add one or more users to the IDP.")
-		os.Exit(1)
+	if args.htpasswdUsername != "" {
+		numOfUserArgs++
 	}
 
-	userList := make(map[string]string)
+	//path to Htpasswd file
+	if args.htpasswdFile != "" {
+		numOfUserArgs++
+	}
 
-	if len(users) != 0 {
+	if numOfUserArgs > 1 {
+		r.Reporter.Errorf("Only one of  'users', 'from-file' or 'username/password' may be specified. \n" +
+			"Choose the option 'users' to add one or more users to the IDP.\n" +
+			"Choose the option 'from-file' to load users from a htpassword file")
+		os.Exit(1)
+	}
+}
+func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBuilder {
+
+	validateUserArgs(r)
+
+	userList := make(map[string]string)
+	hashed := false
+
+	if len(args.htpasswdUsers) != 0 {
 		//if a user list is specified then continue with the  list
+		users := args.htpasswdUsers
 		for _, user := range users {
 			u, p, found := strings.Cut(user, ":")
 			if !found {
@@ -134,18 +153,38 @@ func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBu
 			}
 			userList[u] = p
 		}
-	} else if username != "" && password != "" {
-		//incase user list is not specified continue support for single  username & password
-		userList[username] = password
+	} else if args.htpasswdFile != "" {
+
+		usersfile := args.htpasswdFile
+		err := parseHtpasswordFile(&userList, usersfile)
+		if err != nil {
+			r.Reporter.Errorf(
+				"Failed to load Htpasswd file '%s': %v", usersfile, err)
+			os.Exit(1)
+		}
+		//password in htpasswd are already and do not need to be hashed again in CS
+		hashed = true
+	} else if args.htpasswdUsername != "" && args.htpasswdPassword != "" {
+		//if userlist or htpasswdfile are not provided
+		//continue support for single username/password for  backcompatibility
+		//so as not to break any existing automation
+		userList[args.htpasswdUsername] = args.htpasswdPassword
 	} else {
 		r.Reporter.Infof("At least one valid user and password is required to create the IDP.")
-		username, password = getUserDetails(cmd, r)
+		username, password := getUserDetails(cmd, r)
 		userList[username] = password
 	}
 
 	htpasswdUsers := []*cmv1.HTPasswdUserBuilder{}
 	for username, password := range userList {
-		htpasswdUsers = append(htpasswdUsers, cmv1.NewHTPasswdUser().Username(username).Password(password))
+
+		userBuilder := cmv1.NewHTPasswdUser().Username(username)
+		if hashed {
+			userBuilder.HashedPassword(password)
+		} else {
+			userBuilder.Password(password)
+		}
+		htpasswdUsers = append(htpasswdUsers, userBuilder)
 	}
 
 	htpassUserList := cmv1.NewHTPasswdUserList().Items(htpasswdUsers...)
@@ -279,4 +318,40 @@ func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (
 		}
 	}
 	return
+}
+
+func parseHtpasswordFile(usersList *map[string]string, filePath string) error {
+
+	//A standard wellformed htpasswd file has rows of colon separated usernames and passwords
+	//e.g.
+	//eleven:$apr1$hRY7OJWH$km1EYH.UIRjp6CzfZQz/g1
+	//vecna:$apr1$Q58SO804$B/fECNWfn5xkJXJLvu0mF/
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		// split "user:password" at colon
+		username, password, found := strings.Cut(line, ":")
+		if !found || username == "" || password == "" {
+			return fmt.Errorf("Malformed line, Expected: validUsername:validPassword, Got: %s", line)
+		}
+
+		(*usersList)[username] = password
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
