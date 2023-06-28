@@ -62,7 +62,7 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) (err error) {
-	r := rosa.NewRuntime().WithOCM()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
 	if len(argv) > 0 {
@@ -114,6 +114,21 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			os.Exit(1)
 		}
 	}
+	roleName, err := aws.GetResourceIdFromARN(roleArn)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem getting resource ID from role '%s' exists: %v", roleArn, err)
+		os.Exit(1)
+	}
+	roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", roleArn, err)
+		os.Exit(1)
+	}
+	if !roleExists {
+		r.Reporter.Errorf("Role '%s' does not exist", roleArn)
+		os.Exit(1)
+	}
+
 	if !confirm.Prompt(true, "Link the '%s' role with organization '%s'?", roleArn, orgAccount) {
 		os.Exit(0)
 	}
