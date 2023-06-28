@@ -68,12 +68,17 @@ var AdminURLAliases = map[string]string{
 }
 
 const cognitoURL = "auth-fips.us-gov-west-1.amazoncognito.com/oauth2/token"
+const keycloakURL = "realms/redhat-external/protocol/openid-connect/token"
 
 // TokenURLs allows the value of the `--env` option to map to the various AWS Cognito token URLs.
 var TokenURLs = map[string]string{
-	"production":  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
-	"staging":     fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
-	"integration": fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
+	"integration": fmt.Sprintf("https://sso.int.openshiftusgov.com/%s", keycloakURL),
+
+	//TODO:  switch these aliases as the changes propagate to prod, then remove this TODO
+	//"production":  fmt.Sprintf("https://sso.openshiftusgov.com/%s", keycloakURL),
+	"production": fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
+	//"staging":     fmt.Sprintf("https://sso.stage.openshiftusgov.com/%s", keycloakURL),
+	"staging": fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
 }
 
 // AdminTokenURLs allows the value of the `--env` option to map to the various Admin AWS Cognito token URLs.
