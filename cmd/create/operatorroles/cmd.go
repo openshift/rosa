@@ -215,9 +215,9 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	defaultPolicyVersion, err := r.OCMClient.GetDefaultVersion()
+	latestPolicyVersion, err := r.OCMClient.GetLatestVersion()
 	if err != nil {
-		r.Reporter.Errorf("Error getting latest default version: %s", err)
+		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)
 	}
 
@@ -232,10 +232,10 @@ func run(cmd *cobra.Command, argv []string) error {
 			os.Exit(1)
 		}
 		return handleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
-			mode, policies, defaultPolicyVersion)
+			mode, policies, latestPolicyVersion)
 	}
 	return handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
-		mode, policies, defaultPolicyVersion)
+		mode, policies, latestPolicyVersion)
 }
 
 func convertV1OperatorIAMRoleIntoOcmOperatorIamRole(

@@ -62,7 +62,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		// NodePool will take channel group from the cluster
 		channelGroup := cluster.Version().ChannelGroup()
 		clusterVersion := cluster.Version().RawID()
-		versionList, err := versions.GetVersionList(r, channelGroup, true, true)
+		versionList, err := versions.GetVersionList(r, channelGroup, true, true, false)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)

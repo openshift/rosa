@@ -42,6 +42,7 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/roles"
+	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -872,7 +873,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// OpenShift version:
 	version := args.version
 	channelGroup := args.channelGroup
-	versionList, err := getVersionList(r, channelGroup, isSTS, isHostedCP)
+	versionList, err := versions.GetVersionList(r, channelGroup, isSTS, isHostedCP, true)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -2690,38 +2691,6 @@ func getAccountRolePrefix(hostedCPPolicies bool, roleARN string, roleType string
 	}
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", accountRoles[roleType].Name))
 	return rolePrefix, nil
-}
-
-func getVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool) (versionList []string,
-	err error) {
-	vs, err := r.OCMClient.GetVersions(channelGroup)
-	if err != nil {
-		err = fmt.Errorf("Failed to retrieve versions: %s", err)
-		return
-	}
-
-	for _, v := range vs {
-		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
-			continue
-		}
-		if isHostedCP {
-			valid, err := ocm.HasHostedCPSupport(v)
-			if err != nil {
-				return versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
-			}
-			if !valid {
-				continue
-			}
-		}
-		versionList = append(versionList, v.RawID())
-	}
-
-	if len(versionList) == 0 {
-		err = fmt.Errorf("Could not find versions for the provided channel-group: '%s'", channelGroup)
-		return
-	}
-
-	return
 }
 
 func validateExpiration() (expiration time.Time, err error) {

@@ -96,7 +96,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 		channelGroup := cluster.Version().ChannelGroup()
 		clusterVersion := cluster.Version().RawID()
 		nodePoolVersion := ocm.GetRawVersionId(nodePool.Version().ID())
-		versionList, err := versions.GetVersionList(r, channelGroup, true, true)
+		versionList, err := versions.GetVersionList(r, channelGroup, true, true, false)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
