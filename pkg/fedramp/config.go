@@ -68,12 +68,13 @@ var AdminURLAliases = map[string]string{
 }
 
 const cognitoURL = "auth-fips.us-gov-west-1.amazoncognito.com/oauth2/token"
+const keycloakURL = "realms/redhat-external/protocol/openid-connect/token"
 
 // TokenURLs allows the value of the `--env` option to map to the various AWS Cognito token URLs.
 var TokenURLs = map[string]string{
 	"production":  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
 	"staging":     fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
-	"integration": fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
+	"integration": fmt.Sprintf("https://sso.int.openshiftusgov.com/%s", keycloakURL),
 }
 
 // AdminTokenURLs allows the value of the `--env` option to map to the various Admin AWS Cognito token URLs.
@@ -83,11 +84,11 @@ var AdminTokenURLs = map[string]string{
 	"integration": fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
 }
 
-// ClientIDs allows the value of the `--env` option to map to the various AWS Cognito user pool clients.
+// ClientIDs allows the value of the `--env` option to map to the Keycloak clients.
 var ClientIDs = map[string]string{
 	"production":  "72ekjh5laouap6qcfis521jlgi",
 	"staging":     "1lb687dlpsmsfuj53r3je06vpp",
-	"integration": "20fbrpgl28f8oehp6709mk3nnr",
+	"integration": "console-dot",
 }
 
 // AdminClientIDs allows the value of the `--env` option to map to the various Admin AWS Cognito user pool clients.
