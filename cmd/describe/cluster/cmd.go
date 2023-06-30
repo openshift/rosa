@@ -353,6 +353,15 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	if isHypershift {
+		str = fmt.Sprintf("%s"+
+			"Audit Log Forwarding:       %s\n", str, getAuditLogForwardingStatus(cluster))
+		if cluster.AWS().AuditLog().RoleArn() != "" {
+			str = fmt.Sprintf("%s"+
+				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
+		}
+	}
+
 	if cluster.Status().State() == cmv1.ClusterStateError {
 		str = fmt.Sprintf("%s"+
 			"Provisioning Error Code:    %s\n"+
@@ -576,4 +585,12 @@ func BillingAccount(cluster *cmv1.Cluster, isHostedControlPlane bool) string {
 		return ""
 	}
 	return fmt.Sprintf("AWS Billing Account:        %s\n", cluster.AWS().BillingAccountID())
+}
+
+func getAuditLogForwardingStatus(cluster *cmv1.Cluster) string {
+	auditLogForwardingStatus := "disabled"
+	if cluster.AWS().AuditLog().RoleArn() != "" {
+		auditLogForwardingStatus = "enabled"
+	}
+	return auditLogForwardingStatus
 }
