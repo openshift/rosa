@@ -110,7 +110,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if args.oidcConfigId == "" || interactive.Enabled() {
+	if (args.oidcConfigId == "" || interactive.Enabled()) && !cmd.Flags().Changed(OidcConfigIdFlag) {
 		args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
 	}
 
