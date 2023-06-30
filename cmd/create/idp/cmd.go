@@ -391,7 +391,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	if interactive.Enabled() && idpType != "htpasswd" {
+	if interactive.Enabled() {
 		idpName = getIDPName(cmd, idpName, r)
 	}
 	idpName = strings.Trim(idpName, " \t")
@@ -498,10 +498,7 @@ func GenerateIdpName(idpType string, idps []IdentityProvider) string {
 		}
 	}
 
-	if idpType != HTPasswdIDPName {
-		return fmt.Sprintf("%s-%d", idpType, nextSuffix+1)
-	}
-	return idpType
+	return fmt.Sprintf("%s-%d", idpType, nextSuffix+1)
 }
 
 func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) {

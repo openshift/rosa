@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -40,56 +39,17 @@ func createHTPasswdIDP(cmd *cobra.Command,
 	r *rosa.Runtime) {
 	var err error
 
-	// Choose which way to create the IDP according to whether it already has an admin or not.
-	htpasswdIDP, userList := FindExistingHTPasswdIDP(cluster, r)
-	if htpasswdIDP != nil {
-		// if existing idp has any users other than `cluster-admin`, then it was created as a proper idp
-		// and not as an admin container during `rosa create admin`. A cluster may only have one
-		// htpasswd idp so `create idp` should not continue.
-		containsAdminOnly := HasClusterAdmin(userList) && userList.Len() == 1
-		if !containsAdminOnly {
-			r.Reporter.Errorf(
-				"Cluster '%s' already has an HTPasswd IDP named '%s'. "+
-					"Clusters may only have 1 HTPasswd IDP.", clusterKey, htpasswdIDP.Name())
-			os.Exit(1)
-		}
+	validateUserArgs(r)
 
-		idp, ok := htpasswdIDP.GetHtpasswd()
-		if !ok {
-			r.Reporter.Errorf(
-				"Failed to get htpasswd idp of cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		}
-		if idp.Username() != "" {
-			r.Reporter.Errorf("Users can't be added to a single user HTPasswd IDP. Delete the IDP and recreate " +
-				"it as a multi user HTPasswd IDP")
-			return
-		}
+	htpassUserList := buildUserList(cmd, r)
 
-		// Existing IDP contains only admin. Add new users to it
-		r.Reporter.Infof("Cluster already has an HTPasswd IDP named '%s', new users will be added to it.",
-			htpasswdIDP.Name())
-
-		htpassUserList, _ := buildUserList(cmd, r).Build()
-		err = r.OCMClient.AddHTPasswdUsers(htpassUserList, cluster.ID(), htpasswdIDP.ID())
-		if err != nil {
-			r.Reporter.Errorf(
-				"Failed to add a user to the HTPasswd IDP of cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
-		}
-	} else {
-		// HTPasswd IDP does not exist - create it
-
-		htpassUserList := buildUserList(cmd, r)
-
-		idpBuilder := cmv1.NewIdentityProvider().
-			Type(cmv1.IdentityProviderTypeHtpasswd).
-			Name(idpName).
-			Htpasswd(
-				cmv1.NewHTPasswdIdentityProvider().Users(htpassUserList),
-			)
-		htpasswdIDP = doCreateIDP(idpName, *idpBuilder, cluster, clusterKey, r)
-	}
+	idpBuilder := cmv1.NewIdentityProvider().
+		Type(cmv1.IdentityProviderTypeHtpasswd).
+		Name(idpName).
+		Htpasswd(
+			cmv1.NewHTPasswdIdentityProvider().Users(htpassUserList),
+		)
+	htpasswdIDP := doCreateIDP(idpName, *idpBuilder, cluster, clusterKey, r)
 
 	if interactive.Enabled() {
 		for shouldAddAnotherUser(r) {
@@ -134,8 +94,6 @@ func validateUserArgs(r *rosa.Runtime) {
 	}
 }
 func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBuilder {
-
-	validateUserArgs(r)
 
 	userList := make(map[string]string)
 	hashed := false
@@ -284,41 +242,6 @@ func PasswordValidator(val interface{}) error {
 		return nil
 	}
 	return fmt.Errorf("can only validate strings, got '%v'", val)
-}
-
-func HasClusterAdmin(userList *cmv1.HTPasswdUserList) bool {
-	hasAdmin := false
-	userList.Each(func(user *cmv1.HTPasswdUser) bool {
-		if user.Username() == ClusterAdminUsername {
-			hasAdmin = true
-		}
-		return true
-	})
-	return hasAdmin
-}
-
-func FindExistingHTPasswdIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (
-	htpasswdIDP *cmv1.IdentityProvider, userList *cmv1.HTPasswdUserList) {
-	r.Reporter.Debugf("Loading cluster's identity providers")
-	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to get identity providers for cluster '%s': %v", r.ClusterKey, err)
-		os.Exit(1)
-	}
-
-	for _, item := range idps {
-		if ocm.IdentityProviderType(item) == ocm.HTPasswdIDPType {
-			htpasswdIDP = item
-		}
-	}
-	if htpasswdIDP != nil {
-		userList, err = r.OCMClient.GetHTPasswdUserList(cluster.ID(), htpasswdIDP.ID())
-		if err != nil {
-			r.Reporter.Errorf("Failed to get user list of the HTPasswd IDP of '%s': %v", r.ClusterKey, err)
-			os.Exit(1)
-		}
-	}
-	return
 }
 
 func parseHtpasswordFile(usersList *map[string]string, filePath string) error {

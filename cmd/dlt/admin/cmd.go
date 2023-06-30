@@ -22,6 +22,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	cadmin "github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -49,11 +50,11 @@ func (d *DeleteUserAdminFromIDP) deleteAdmin(r *rosa.Runtime, identityProvider *
 	clusterID := r.Cluster.ID()
 
 	r.Reporter.Debugf("Deleting user '%s' from identity provider user list on cluster '%s'",
-		idp.ClusterAdminUsername, r.ClusterKey)
-	err := r.OCMClient.DeleteHTPasswdUser(idp.ClusterAdminUsername, clusterID, identityProvider)
+		cadmin.ClusterAdminUsername, r.ClusterKey)
+	err := r.OCMClient.DeleteHTPasswdUser(cadmin.ClusterAdminUsername, clusterID, identityProvider)
 	if err != nil {
 		r.Reporter.Errorf("Failed to delete '%s' user from htpasswd idp users list of cluster '%s': %s",
-			idp.ClusterAdminUsername, r.ClusterKey, err)
+			cadmin.ClusterAdminUsername, r.ClusterKey, err)
 		os.Exit(1)
 	}
 
@@ -106,39 +107,28 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Try to find the htpasswd identity provider:
-	r.Reporter.Debugf("Loading HTPasswd identity provider")
 	clusterID := cluster.ID()
-	idps, err := r.OCMClient.GetIdentityProviders(clusterID)
-	if err != nil {
-		r.Reporter.Errorf("Failed to get HTPasswd identity provider for cluster '%s': %v", r.ClusterKey, err)
-		os.Exit(1)
-	}
+	clusterAdminIDP, _ := cadmin.FindExistingClusterAdminIDP(cluster, r)
 
-	var identityProvider *cmv1.IdentityProvider
-	for _, item := range idps {
-		if ocm.IdentityProviderType(item) == ocm.HTPasswdIDPType {
-			identityProvider = item
-		}
-	}
-	if identityProvider == nil {
+	if clusterAdminIDP == nil {
 		r.Reporter.Errorf("Cluster '%s' does not have an admin user", r.ClusterKey)
 		os.Exit(1)
 	}
 
-	if confirm.Confirm("delete %s user on cluster %s", idp.ClusterAdminUsername, r.ClusterKey) {
+	if confirm.Confirm("delete %s user on cluster %s", cadmin.ClusterAdminUsername, r.ClusterKey) {
 		// delete `cluster-admin` user from the HTPasswd IDP
 		r.Reporter.Debugf("Deleting user '%s' from cluster-admins group on cluster '%s'",
-			idp.ClusterAdminUsername, r.ClusterKey)
-		err = r.OCMClient.DeleteUser(clusterID, "cluster-admins", idp.ClusterAdminUsername)
+			cadmin.ClusterAdminUsername, r.ClusterKey)
+		err := r.OCMClient.DeleteUser(clusterID, "cluster-admins", cadmin.ClusterAdminUsername)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
-		deletionStrategy := getAdminUserDeletionStrategy(r, identityProvider)
-		deletionStrategy.deleteAdmin(r, identityProvider)
+		deletionStrategy := getAdminUserDeletionStrategy(r, clusterAdminIDP)
+		deletionStrategy.deleteAdmin(r, clusterAdminIDP)
 
-		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", idp.ClusterAdminUsername, r.ClusterKey)
+		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", cadmin.ClusterAdminUsername, r.ClusterKey)
 	}
 }
 
@@ -155,5 +145,5 @@ func wasAdminCreatedUsingOldROSA(r *rosa.Runtime, identityProvider *cmv1.Identit
 		r.Reporter.Errorf("Failed to get htpasswd idp for cluster '%s'", r.Cluster.ID())
 		os.Exit(1)
 	}
-	return htpasswdIdp.Username() == idp.ClusterAdminUsername
+	return htpasswdIdp.Username() == cadmin.ClusterAdminUsername
 }

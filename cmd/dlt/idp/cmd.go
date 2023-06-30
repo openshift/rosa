@@ -23,7 +23,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	idpPack "github.com/openshift/rosa/cmd/create/idp"
+	cadmin "github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -72,6 +72,7 @@ func run(_ *cobra.Command, argv []string) {
 	for _, item := range idps {
 		if item.Name() == idpName {
 			idp = item
+			break
 		}
 	}
 	if idp == nil {
@@ -79,8 +80,8 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if ocm.IdentityProviderType(idp) == ocm.HTPasswdIDPType {
-		_, existingUserList := idpPack.FindExistingHTPasswdIDP(cluster, r)
-		if idpPack.HasClusterAdmin(existingUserList) {
+		clusterAdminIDP, _ := cadmin.FindExistingClusterAdminIDP(cluster, r)
+		if clusterAdminIDP != nil && clusterAdminIDP.Name() == idp.Name() {
 			r.Reporter.Warnf("The cluster-admin user is contained in the HTPasswd IDP. Deleting the IDP will " +
 				"also delete the admin user.")
 		}
