@@ -124,6 +124,7 @@ func init() {
 		false,
 		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
+	flags.MarkHidden("hosted-cp")
 
 	flags.BoolVar(
 		&args.classic,
@@ -131,6 +132,7 @@ func init() {
 		false,
 		"Create only classic Rosa account roles",
 	)
+	flags.MarkHidden("classic")
 
 	aws.AddModeFlag(Cmd)
 
@@ -171,6 +173,11 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	managedPolicies := args.managed
+
+	if cmd.Flags().Changed("hosted-cp") && env == ocm.Production {
+		r.Reporter.Errorf("Hosted control plane managed policies are not supported in this environment")
+		os.Exit(1)
+	}
 
 	if args.forcePolicyCreation && managedPolicies {
 		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
@@ -336,9 +343,6 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	isClassicValueSet := cmd.Flags().Changed("classic")
-	isHostedCPValueSet := cmd.Flags().Changed("hosted-cp")
-
 	createClassic := args.classic
 	if interactive.Enabled() && !cmd.Flags().Changed("classic") {
 		createClassic, err = interactive.GetBool(interactive.Input{
@@ -351,30 +355,25 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Expected a valid value: %s", err)
 			os.Exit(1)
 		}
-		isClassicValueSet = true
 	}
 
 	createHostedCP := args.hostedCP
-	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
-		createHostedCP, err = interactive.GetBool(interactive.Input{
-			Question: "Create Hosted CP account roles",
-			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-			Default:  false,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+	if env != ocm.Production {
+		if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
+			createHostedCP, err = interactive.GetBool(interactive.Input{
+				Question: "Create Hosted CP account roles",
+				Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+				Default:  false,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value: %s", err)
+				os.Exit(1)
+			}
 		}
-		isHostedCPValueSet = true
 	}
 
-	rolesCreator, createRoles := initCreator(managedPolicies, createClassic, createHostedCP,
-		isClassicValueSet, isHostedCPValueSet)
-	if !createRoles {
-		os.Exit(1)
-	}
-
+	rolesCreator := initCreator(managedPolicies, createClassic, createHostedCP)
 	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
 		policyVersion, path)
 
