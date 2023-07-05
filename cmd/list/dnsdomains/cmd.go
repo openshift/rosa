@@ -43,7 +43,7 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
+	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
 	r.Reporter.Debugf("Loading dns domains for current org id")
