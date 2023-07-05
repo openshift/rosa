@@ -1005,9 +1005,6 @@ func run(cmd *cobra.Command, _ []string) {
 			roleARN = roleARNs[0]
 		} else {
 			createAccountRolesCommand := "rosa create account-roles"
-			if isHostedCP {
-				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
-			}
 			r.Reporter.Warnf(fmt.Sprintf("No account roles found. You will need to manually set them in the "+
 				"next steps or run '%s' to create them first.", createAccountRolesCommand))
 			interactive.Enable()
@@ -1062,9 +1059,6 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 				if selectedARN == "" {
 					createAccountRolesCommand := "rosa create account-roles"
-					if isHostedCP {
-						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
-					}
 					r.Reporter.Warnf(fmt.Sprintf("No %s account roles found. You will need to manually set "+
 						"them in the next steps or run '%s' to create "+
 						"them first.", role.Name, createAccountRolesCommand))
