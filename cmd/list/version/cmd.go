@@ -67,7 +67,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Fetching versions")
-	versions, err := r.OCMClient.GetVersions(args.channelGroup)
+	versions, err := r.OCMClient.GetVersions(args.channelGroup, false)
 	if err != nil {
 		r.Reporter.Errorf("Failed to fetch versions: %v", err)
 		os.Exit(1)

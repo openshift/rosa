@@ -52,11 +52,12 @@ func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error
 	return versionInquiryResponse.Body().Version(), nil
 }
 
-func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err error) {
+func (c *Client) GetVersions(channelGroup string, defaultFirst bool) (versions []*cmv1.Version, err error) {
 	collection := c.ocm.ClustersMgmt().V1().Versions()
 	page := 1
 	size := 100
 	filter := "enabled = 'true' AND rosa_enabled = 'true'"
+	order := "default desc, id desc"
 	if channelGroup != "" {
 		filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
 	}
@@ -64,6 +65,7 @@ func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err
 		var response *cmv1.VersionsListResponse
 		response, err = collection.List().
 			Search(filter).
+			Order(order).
 			Page(page).
 			Size(size).
 			Send()
@@ -79,6 +81,12 @@ func (c *Client) GetVersions(channelGroup string) (versions []*cmv1.Version, err
 
 	// Sort list in descending order
 	sort.Slice(versions, func(i, j int) bool {
+		if defaultFirst && versions[i].Default() {
+			return true
+		}
+		if defaultFirst && versions[j].Default() {
+			return false
+		}
 		a, erra := ver.NewVersion(versions[i].RawID())
 		b, errb := ver.NewVersion(versions[j].RawID())
 		if erra != nil || errb != nil {
@@ -206,7 +214,7 @@ func GetRawVersionId(versionId string) string {
 
 // Get a list of all STS-supported minor versions
 func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
-	vs, err := ocmClient.GetVersions("")
+	vs, err := ocmClient.GetVersions("", false)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return
@@ -236,7 +244,15 @@ func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 }
 
 func (c *Client) GetDefaultVersion() (version string, err error) {
-	response, err := c.GetVersions("")
+	return c.getFirstVersion(true)
+}
+
+func (c *Client) GetLatestVersion() (version string, err error) {
+	return c.getFirstVersion(false)
+}
+
+func (c *Client) getFirstVersion(defaultFirst bool) (version string, err error) {
+	response, err := c.GetVersions("", true)
 	if err != nil {
 		return "", err
 	}

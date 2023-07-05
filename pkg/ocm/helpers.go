@@ -750,7 +750,7 @@ func (c *Client) CheckUpgradeClusterVersion(
 }
 
 func (c *Client) GetPolicyVersion(userRequestedVersion string, channelGroup string) (string, error) {
-	versionList, err := c.GetVersionsList(channelGroup)
+	versionList, err := c.GetVersionsList(channelGroup, false)
 	if err != nil {
 		err := fmt.Errorf("%v", err)
 		return userRequestedVersion, err
@@ -789,8 +789,8 @@ func ParseVersion(version string) (string, error) {
 	return fmt.Sprintf("%d.%d", versionSplit[0], versionSplit[1]), nil
 }
 
-func (c *Client) GetVersionsList(channelGroup string) ([]string, error) {
-	response, err := c.GetVersions(channelGroup)
+func (c *Client) GetVersionsList(channelGroup string, defaultFirst bool) ([]string, error) {
+	response, err := c.GetVersions(channelGroup, defaultFirst)
 	if err != nil {
 		err := fmt.Errorf("error getting versions: %s", err)
 		return make([]string, 0), err

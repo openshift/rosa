@@ -12,9 +12,9 @@ const (
 	MinorVersionsSupported = 2
 )
 
-func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool) (versionList []string,
-	err error) {
-	vs, err := r.OCMClient.GetVersions(channelGroup)
+func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool,
+	defaultFirst bool) (versionList []string, err error) {
+	vs, err := r.OCMClient.GetVersions(channelGroup, defaultFirst)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return
