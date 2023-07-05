@@ -57,6 +57,10 @@ func Print(resource interface{}) error {
 		if clusters, ok := resource.([]*cmv1.Cluster); ok {
 			cmv1.MarshalClusterList(clusters, &b)
 		}
+	case "[]*v1.DNSDomain":
+		if dnsdomains, ok := resource.([]*cmv1.DNSDomain); ok {
+			cmv1.MarshalDNSDomainList(dnsdomains, &b)
+		}
 	case "[]*v1.IdentityProvider":
 		if idps, ok := resource.([]*cmv1.IdentityProvider); ok {
 			cmv1.MarshalIdentityProviderList(idps, &b)
