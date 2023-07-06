@@ -23,14 +23,19 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Representation of an ingress.
 type IngressBuilder struct {
-	bitmap_          uint32
-	id               string
-	href             string
-	dnsName          string
-	listening        ListeningMethod
-	loadBalancerType LoadBalancerFlavor
-	routeSelectors   map[string]string
-	default_         bool
+	bitmap_                       uint32
+	id                            string
+	href                          string
+	dnsName                       string
+	clusterRoutesHostname         string
+	clusterRoutesTlsSecretRef     string
+	excludedNamespaces            []string
+	listening                     ListeningMethod
+	loadBalancerType              LoadBalancerFlavor
+	routeNamespaceOwnershipPolicy NamespaceOwnershipPolicy
+	routeSelectors                map[string]string
+	routeWildcardPolicy           WildcardPolicy
+	default_                      bool
 }
 
 // NewIngress creates a new builder of 'ingress' objects.
@@ -70,10 +75,32 @@ func (b *IngressBuilder) DNSName(value string) *IngressBuilder {
 	return b
 }
 
+// ClusterRoutesHostname sets the value of the 'cluster_routes_hostname' attribute to the given value.
+func (b *IngressBuilder) ClusterRoutesHostname(value string) *IngressBuilder {
+	b.clusterRoutesHostname = value
+	b.bitmap_ |= 16
+	return b
+}
+
+// ClusterRoutesTlsSecretRef sets the value of the 'cluster_routes_tls_secret_ref' attribute to the given value.
+func (b *IngressBuilder) ClusterRoutesTlsSecretRef(value string) *IngressBuilder {
+	b.clusterRoutesTlsSecretRef = value
+	b.bitmap_ |= 32
+	return b
+}
+
 // Default sets the value of the 'default' attribute to the given value.
 func (b *IngressBuilder) Default(value bool) *IngressBuilder {
 	b.default_ = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 64
+	return b
+}
+
+// ExcludedNamespaces sets the value of the 'excluded_namespaces' attribute to the given values.
+func (b *IngressBuilder) ExcludedNamespaces(values ...string) *IngressBuilder {
+	b.excludedNamespaces = make([]string, len(values))
+	copy(b.excludedNamespaces, values)
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -82,16 +109,25 @@ func (b *IngressBuilder) Default(value bool) *IngressBuilder {
 // Cluster components listening method.
 func (b *IngressBuilder) Listening(value ListeningMethod) *IngressBuilder {
 	b.listening = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 256
 	return b
 }
 
 // LoadBalancerType sets the value of the 'load_balancer_type' attribute to the given value.
 //
-// Type of node received via telemetry.
+// Type of load balancer for AWS cloud provider parameters.
 func (b *IngressBuilder) LoadBalancerType(value LoadBalancerFlavor) *IngressBuilder {
 	b.loadBalancerType = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 512
+	return b
+}
+
+// RouteNamespaceOwnershipPolicy sets the value of the 'route_namespace_ownership_policy' attribute to the given value.
+//
+// Type of Namespace Ownership Policy.
+func (b *IngressBuilder) RouteNamespaceOwnershipPolicy(value NamespaceOwnershipPolicy) *IngressBuilder {
+	b.routeNamespaceOwnershipPolicy = value
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -99,10 +135,19 @@ func (b *IngressBuilder) LoadBalancerType(value LoadBalancerFlavor) *IngressBuil
 func (b *IngressBuilder) RouteSelectors(value map[string]string) *IngressBuilder {
 	b.routeSelectors = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 2048
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 2048
 	}
+	return b
+}
+
+// RouteWildcardPolicy sets the value of the 'route_wildcard_policy' attribute to the given value.
+//
+// Type of wildcard policy.
+func (b *IngressBuilder) RouteWildcardPolicy(value WildcardPolicy) *IngressBuilder {
+	b.routeWildcardPolicy = value
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -115,9 +160,18 @@ func (b *IngressBuilder) Copy(object *Ingress) *IngressBuilder {
 	b.id = object.id
 	b.href = object.href
 	b.dnsName = object.dnsName
+	b.clusterRoutesHostname = object.clusterRoutesHostname
+	b.clusterRoutesTlsSecretRef = object.clusterRoutesTlsSecretRef
 	b.default_ = object.default_
+	if object.excludedNamespaces != nil {
+		b.excludedNamespaces = make([]string, len(object.excludedNamespaces))
+		copy(b.excludedNamespaces, object.excludedNamespaces)
+	} else {
+		b.excludedNamespaces = nil
+	}
 	b.listening = object.listening
 	b.loadBalancerType = object.loadBalancerType
+	b.routeNamespaceOwnershipPolicy = object.routeNamespaceOwnershipPolicy
 	if len(object.routeSelectors) > 0 {
 		b.routeSelectors = map[string]string{}
 		for k, v := range object.routeSelectors {
@@ -126,6 +180,7 @@ func (b *IngressBuilder) Copy(object *Ingress) *IngressBuilder {
 	} else {
 		b.routeSelectors = nil
 	}
+	b.routeWildcardPolicy = object.routeWildcardPolicy
 	return b
 }
 
@@ -136,14 +191,22 @@ func (b *IngressBuilder) Build() (object *Ingress, err error) {
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
 	object.dnsName = b.dnsName
+	object.clusterRoutesHostname = b.clusterRoutesHostname
+	object.clusterRoutesTlsSecretRef = b.clusterRoutesTlsSecretRef
 	object.default_ = b.default_
+	if b.excludedNamespaces != nil {
+		object.excludedNamespaces = make([]string, len(b.excludedNamespaces))
+		copy(object.excludedNamespaces, b.excludedNamespaces)
+	}
 	object.listening = b.listening
 	object.loadBalancerType = b.loadBalancerType
+	object.routeNamespaceOwnershipPolicy = b.routeNamespaceOwnershipPolicy
 	if b.routeSelectors != nil {
 		object.routeSelectors = make(map[string]string)
 		for k, v := range b.routeSelectors {
 			object.routeSelectors[k] = v
 		}
 	}
+	object.routeWildcardPolicy = b.routeWildcardPolicy
 	return
 }

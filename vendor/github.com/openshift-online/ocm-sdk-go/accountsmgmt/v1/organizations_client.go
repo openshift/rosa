@@ -231,15 +231,15 @@ func (r *OrganizationsAddResponse) GetBody() (value *Organization, ok bool) {
 
 // OrganizationsListRequest is the request for the 'list' method.
 type OrganizationsListRequest struct {
-	transport         http.RoundTripper
-	path              string
-	query             url.Values
-	header            http.Header
-	fetchlabelsLabels *bool
-	fields            *string
-	page              *int
-	search            *string
-	size              *int
+	transport   http.RoundTripper
+	path        string
+	query       url.Values
+	header      http.Header
+	fetchLabels *bool
+	fields      *string
+	page        *int
+	search      *string
+	size        *int
 }
 
 // Parameter adds a query parameter.
@@ -261,11 +261,11 @@ func (r *OrganizationsListRequest) Impersonate(user string) *OrganizationsListRe
 	return r
 }
 
-// FetchlabelsLabels sets the value of the 'fetchlabels_labels' parameter.
+// FetchLabels sets the value of the 'fetch_labels' parameter.
 //
 // If true, includes the labels on an organization in the output. Could slow request response time.
-func (r *OrganizationsListRequest) FetchlabelsLabels(value bool) *OrganizationsListRequest {
-	r.fetchlabelsLabels = &value
+func (r *OrganizationsListRequest) FetchLabels(value bool) *OrganizationsListRequest {
+	r.fetchLabels = &value
 	return r
 }
 
@@ -328,8 +328,8 @@ func (r *OrganizationsListRequest) Send() (result *OrganizationsListResponse, er
 // SendContext sends this request, waits for the response, and returns it.
 func (r *OrganizationsListRequest) SendContext(ctx context.Context) (result *OrganizationsListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
-	if r.fetchlabelsLabels != nil {
-		helpers.AddValue(&query, "fetchlabels_labels", *r.fetchlabelsLabels)
+	if r.fetchLabels != nil {
+		helpers.AddValue(&query, "fetchLabels", *r.fetchLabels)
 	}
 	if r.fields != nil {
 		helpers.AddValue(&query, "fields", *r.fields)
