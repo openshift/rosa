@@ -28,3 +28,15 @@ func (c *Client) ListDNSDomains() ([]*cmv1.DNSDomain, error) {
 
 	return response.Items().Slice(), nil
 }
+
+func (c *Client) DeleteDNSDomain(id string) error {
+	response, err := c.ocm.ClustersMgmt().V1().
+		DNSDomains().DNSDomain(id).
+		Delete().
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+
+	return nil
+}
