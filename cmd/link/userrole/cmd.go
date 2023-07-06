@@ -65,7 +65,7 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) (err error) {
-	r := rosa.NewRuntime().WithOCM()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
 	if len(argv) > 0 {
@@ -113,6 +113,17 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			r.Reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
 			os.Exit(1)
 		}
+	}
+
+	role, err := r.AWSClient.GetRoleByARN(roleArn)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", roleArn, err)
+		os.Exit(1)
+	}
+
+	if *role.Arn != roleArn {
+		r.Reporter.Errorf("ARN '%s' did not match the existing role ARN", *role.Arn)
+		os.Exit(1)
 	}
 
 	if !confirm.Prompt(true, "Link the '%s' role with account '%s'?", roleArn, accountID) {

@@ -114,18 +114,15 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			os.Exit(1)
 		}
 	}
-	roleName, err := aws.GetResourceIdFromARN(roleArn)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem getting resource ID from role '%s' exists: %v", roleArn, err)
-		os.Exit(1)
-	}
-	roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
+
+	role, err := r.AWSClient.GetRoleByARN(roleArn)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", roleArn, err)
 		os.Exit(1)
 	}
-	if !roleExists {
-		r.Reporter.Errorf("Role '%s' does not exist", roleArn)
+
+	if *role.Arn != roleArn {
+		r.Reporter.Errorf("ARN '%s' did not match the existing role ARN", *role.Arn)
 		os.Exit(1)
 	}
 
