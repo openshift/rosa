@@ -252,7 +252,7 @@ func (r *AccountDeleteRequest) Send() (result *AccountDeleteResponse, err error)
 func (r *AccountDeleteRequest) SendContext(ctx context.Context) (result *AccountDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	if r.deleteAssociatedResources != nil {
-		helpers.AddValue(&query, "delete_associated_resources", *r.deleteAssociatedResources)
+		helpers.AddValue(&query, "deleteAssociatedResources", *r.deleteAssociatedResources)
 	}
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{

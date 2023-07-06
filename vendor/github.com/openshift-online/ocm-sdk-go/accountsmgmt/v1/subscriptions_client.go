@@ -92,18 +92,18 @@ func (c *SubscriptionsClient) Subscription(id string) *SubscriptionClient {
 
 // SubscriptionsListRequest is the request for the 'list' method.
 type SubscriptionsListRequest struct {
-	transport             http.RoundTripper
-	path                  string
-	query                 url.Values
-	header                http.Header
-	fetchaccountsAccounts *bool
-	fetchlabelsLabels     *bool
-	fields                *string
-	labels                *string
-	order                 *string
-	page                  *int
-	search                *string
-	size                  *int
+	transport     http.RoundTripper
+	path          string
+	query         url.Values
+	header        http.Header
+	fetchAccounts *bool
+	fetchLabels   *bool
+	fields        *string
+	labels        *string
+	order         *string
+	page          *int
+	search        *string
+	size          *int
 }
 
 // Parameter adds a query parameter.
@@ -125,19 +125,19 @@ func (r *SubscriptionsListRequest) Impersonate(user string) *SubscriptionsListRe
 	return r
 }
 
-// FetchaccountsAccounts sets the value of the 'fetchaccounts_accounts' parameter.
+// FetchAccounts sets the value of the 'fetch_accounts' parameter.
 //
 // If true, includes the account reference information in the output. Could slow request response time.
-func (r *SubscriptionsListRequest) FetchaccountsAccounts(value bool) *SubscriptionsListRequest {
-	r.fetchaccountsAccounts = &value
+func (r *SubscriptionsListRequest) FetchAccounts(value bool) *SubscriptionsListRequest {
+	r.fetchAccounts = &value
 	return r
 }
 
-// FetchlabelsLabels sets the value of the 'fetchlabels_labels' parameter.
+// FetchLabels sets the value of the 'fetch_labels' parameter.
 //
 // If true, includes the labels on a subscription in the output. Could slow request response time.
-func (r *SubscriptionsListRequest) FetchlabelsLabels(value bool) *SubscriptionsListRequest {
-	r.fetchlabelsLabels = &value
+func (r *SubscriptionsListRequest) FetchLabels(value bool) *SubscriptionsListRequest {
+	r.fetchLabels = &value
 	return r
 }
 
@@ -232,11 +232,11 @@ func (r *SubscriptionsListRequest) Send() (result *SubscriptionsListResponse, er
 // SendContext sends this request, waits for the response, and returns it.
 func (r *SubscriptionsListRequest) SendContext(ctx context.Context) (result *SubscriptionsListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
-	if r.fetchaccountsAccounts != nil {
-		helpers.AddValue(&query, "fetchaccounts_accounts", *r.fetchaccountsAccounts)
+	if r.fetchAccounts != nil {
+		helpers.AddValue(&query, "fetchAccounts", *r.fetchAccounts)
 	}
-	if r.fetchlabelsLabels != nil {
-		helpers.AddValue(&query, "fetchlabels_labels", *r.fetchlabelsLabels)
+	if r.fetchLabels != nil {
+		helpers.AddValue(&query, "fetchLabels", *r.fetchLabels)
 	}
 	if r.fields != nil {
 		helpers.AddValue(&query, "fields", *r.fields)

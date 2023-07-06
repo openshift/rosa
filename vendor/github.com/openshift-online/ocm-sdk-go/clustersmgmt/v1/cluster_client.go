@@ -159,6 +159,14 @@ func (c *ClusterClient) Addons() *AddOnInstallationsClient {
 	)
 }
 
+// ClusterStsSupportRole returns the target 'cluster_sts_support_role' resource.
+func (c *ClusterClient) ClusterStsSupportRole() *ClusterStsSupportRoleClient {
+	return NewClusterStsSupportRoleClient(
+		c.transport,
+		path.Join(c.path, "cluster_sts_support_role"),
+	)
+}
+
 // Clusterdeployment returns the target 'clusterdeployment' resource.
 //
 // Reference to the resource that manages the cluster deployment.

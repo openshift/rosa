@@ -231,16 +231,16 @@ func (r *AccountsAddResponse) GetBody() (value *Account, ok bool) {
 
 // AccountsListRequest is the request for the 'list' method.
 type AccountsListRequest struct {
-	transport         http.RoundTripper
-	path              string
-	query             url.Values
-	header            http.Header
-	fetchlabelsLabels *bool
-	fields            *string
-	order             *string
-	page              *int
-	search            *string
-	size              *int
+	transport   http.RoundTripper
+	path        string
+	query       url.Values
+	header      http.Header
+	fetchLabels *bool
+	fields      *string
+	order       *string
+	page        *int
+	search      *string
+	size        *int
 }
 
 // Parameter adds a query parameter.
@@ -262,11 +262,11 @@ func (r *AccountsListRequest) Impersonate(user string) *AccountsListRequest {
 	return r
 }
 
-// FetchlabelsLabels sets the value of the 'fetchlabels_labels' parameter.
+// FetchLabels sets the value of the 'fetch_labels' parameter.
 //
 // If true, includes the labels on an account in the output. Could slow request response time.
-func (r *AccountsListRequest) FetchlabelsLabels(value bool) *AccountsListRequest {
-	r.fetchlabelsLabels = &value
+func (r *AccountsListRequest) FetchLabels(value bool) *AccountsListRequest {
+	r.fetchLabels = &value
 	return r
 }
 
@@ -348,8 +348,8 @@ func (r *AccountsListRequest) Send() (result *AccountsListResponse, err error) {
 // SendContext sends this request, waits for the response, and returns it.
 func (r *AccountsListRequest) SendContext(ctx context.Context) (result *AccountsListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
-	if r.fetchlabelsLabels != nil {
-		helpers.AddValue(&query, "fetchlabels_labels", *r.fetchlabelsLabels)
+	if r.fetchLabels != nil {
+		helpers.AddValue(&query, "fetchLabels", *r.fetchLabels)
 	}
 	if r.fields != nil {
 		helpers.AddValue(&query, "fields", *r.fields)

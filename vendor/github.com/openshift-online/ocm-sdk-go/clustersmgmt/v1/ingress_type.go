@@ -35,14 +35,19 @@ const IngressNilKind = "IngressNil"
 //
 // Representation of an ingress.
 type Ingress struct {
-	bitmap_          uint32
-	id               string
-	href             string
-	dnsName          string
-	listening        ListeningMethod
-	loadBalancerType LoadBalancerFlavor
-	routeSelectors   map[string]string
-	default_         bool
+	bitmap_                       uint32
+	id                            string
+	href                          string
+	dnsName                       string
+	clusterRoutesHostname         string
+	clusterRoutesTlsSecretRef     string
+	excludedNamespaces            []string
+	listening                     ListeningMethod
+	loadBalancerType              LoadBalancerFlavor
+	routeNamespaceOwnershipPolicy NamespaceOwnershipPolicy
+	routeSelectors                map[string]string
+	routeWildcardPolicy           WildcardPolicy
+	default_                      bool
 }
 
 // Kind returns the name of the type of the object.
@@ -125,12 +130,58 @@ func (o *Ingress) GetDNSName() (value string, ok bool) {
 	return
 }
 
+// ClusterRoutesHostname returns the value of the 'cluster_routes_hostname' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Cluster routes hostname.
+func (o *Ingress) ClusterRoutesHostname() string {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.clusterRoutesHostname
+	}
+	return ""
+}
+
+// GetClusterRoutesHostname returns the value of the 'cluster_routes_hostname' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Cluster routes hostname.
+func (o *Ingress) GetClusterRoutesHostname() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.clusterRoutesHostname
+	}
+	return
+}
+
+// ClusterRoutesTlsSecretRef returns the value of the 'cluster_routes_tls_secret_ref' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Cluster routes TLS Secret reference.
+func (o *Ingress) ClusterRoutesTlsSecretRef() string {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.clusterRoutesTlsSecretRef
+	}
+	return ""
+}
+
+// GetClusterRoutesTlsSecretRef returns the value of the 'cluster_routes_tls_secret_ref' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Cluster routes TLS Secret reference.
+func (o *Ingress) GetClusterRoutesTlsSecretRef() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.clusterRoutesTlsSecretRef
+	}
+	return
+}
+
 // Default returns the value of the 'default' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Indicates if this is the default ingress.
 func (o *Ingress) Default() bool {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.default_
 	}
 	return false
@@ -141,9 +192,32 @@ func (o *Ingress) Default() bool {
 //
 // Indicates if this is the default ingress.
 func (o *Ingress) GetDefault() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.default_
+	}
+	return
+}
+
+// ExcludedNamespaces returns the value of the 'excluded_namespaces' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// A set of excluded namespaces for the ingress.
+func (o *Ingress) ExcludedNamespaces() []string {
+	if o != nil && o.bitmap_&128 != 0 {
+		return o.excludedNamespaces
+	}
+	return nil
+}
+
+// GetExcludedNamespaces returns the value of the 'excluded_namespaces' attribute and
+// a flag indicating if the attribute has a value.
+//
+// A set of excluded namespaces for the ingress.
+func (o *Ingress) GetExcludedNamespaces() (value []string, ok bool) {
+	ok = o != nil && o.bitmap_&128 != 0
+	if ok {
+		value = o.excludedNamespaces
 	}
 	return
 }
@@ -153,7 +227,7 @@ func (o *Ingress) GetDefault() (value bool, ok bool) {
 //
 // Listening method of the ingress
 func (o *Ingress) Listening() ListeningMethod {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.listening
 	}
 	return ListeningMethod("")
@@ -164,7 +238,7 @@ func (o *Ingress) Listening() ListeningMethod {
 //
 // Listening method of the ingress
 func (o *Ingress) GetListening() (value ListeningMethod, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.listening
 	}
@@ -176,7 +250,7 @@ func (o *Ingress) GetListening() (value ListeningMethod, ok bool) {
 //
 // Load Balancer type of the ingress
 func (o *Ingress) LoadBalancerType() LoadBalancerFlavor {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.loadBalancerType
 	}
 	return LoadBalancerFlavor("")
@@ -187,9 +261,32 @@ func (o *Ingress) LoadBalancerType() LoadBalancerFlavor {
 //
 // Load Balancer type of the ingress
 func (o *Ingress) GetLoadBalancerType() (value LoadBalancerFlavor, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.loadBalancerType
+	}
+	return
+}
+
+// RouteNamespaceOwnershipPolicy returns the value of the 'route_namespace_ownership_policy' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Namespace Ownership Policy for the ingress.
+func (o *Ingress) RouteNamespaceOwnershipPolicy() NamespaceOwnershipPolicy {
+	if o != nil && o.bitmap_&1024 != 0 {
+		return o.routeNamespaceOwnershipPolicy
+	}
+	return NamespaceOwnershipPolicy("")
+}
+
+// GetRouteNamespaceOwnershipPolicy returns the value of the 'route_namespace_ownership_policy' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Namespace Ownership Policy for the ingress.
+func (o *Ingress) GetRouteNamespaceOwnershipPolicy() (value NamespaceOwnershipPolicy, ok bool) {
+	ok = o != nil && o.bitmap_&1024 != 0
+	if ok {
+		value = o.routeNamespaceOwnershipPolicy
 	}
 	return
 }
@@ -199,7 +296,7 @@ func (o *Ingress) GetLoadBalancerType() (value LoadBalancerFlavor, ok bool) {
 //
 // A set of labels for the ingress.
 func (o *Ingress) RouteSelectors() map[string]string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.routeSelectors
 	}
 	return nil
@@ -210,9 +307,32 @@ func (o *Ingress) RouteSelectors() map[string]string {
 //
 // A set of labels for the ingress.
 func (o *Ingress) GetRouteSelectors() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.routeSelectors
+	}
+	return
+}
+
+// RouteWildcardPolicy returns the value of the 'route_wildcard_policy' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Wildcard policy for the ingress.
+func (o *Ingress) RouteWildcardPolicy() WildcardPolicy {
+	if o != nil && o.bitmap_&4096 != 0 {
+		return o.routeWildcardPolicy
+	}
+	return WildcardPolicy("")
+}
+
+// GetRouteWildcardPolicy returns the value of the 'route_wildcard_policy' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Wildcard policy for the ingress.
+func (o *Ingress) GetRouteWildcardPolicy() (value WildcardPolicy, ok bool) {
+	ok = o != nil && o.bitmap_&4096 != 0
+	if ok {
+		value = o.routeWildcardPolicy
 	}
 	return
 }
