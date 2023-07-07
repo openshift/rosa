@@ -24,12 +24,14 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/object"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
+
+const ClusterAdminUsername = "cluster-admin"
+const ClusterAdminIDPname = "cluster-admin"
 
 var Cmd = &cobra.Command{
 	Use:   "admin",
@@ -69,10 +71,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Try to find an existing htpasswd identity provider and
-	// check if cluster-admin user already exists
-	existingHTPasswdIDP, existingUserList := idp.FindExistingHTPasswdIDP(cluster, r)
-	if idp.HasClusterAdmin(existingUserList) {
+	// Try to find an existing cluster admin IDP
+	existingClusterAdminIDP, _ := FindExistingClusterAdminIDP(cluster, r)
+	if existingClusterAdminIDP != nil {
 		r.Reporter.Errorf("Cluster '%s' already has an admin", clusterKey)
 		os.Exit(1)
 	}
@@ -94,76 +95,58 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Add admin user to the cluster-admins group:
-	r.Reporter.Debugf("Adding '%s' user to cluster '%s'", idp.ClusterAdminUsername, clusterKey)
-	user, err := cmv1.NewUser().ID(idp.ClusterAdminUsername).Build()
+	r.Reporter.Debugf("Adding '%s' user to cluster '%s'", ClusterAdminUsername, clusterKey)
+	user, err := cmv1.NewUser().ID(ClusterAdminUsername).Build()
 	if err != nil {
-		r.Reporter.Errorf("Failed to create user '%s' for cluster '%s'", idp.ClusterAdminUsername, clusterKey)
+		r.Reporter.Errorf("Failed to create user '%s' for cluster '%s'", ClusterAdminUsername, clusterKey)
 		os.Exit(1)
 	}
 
 	_, err = r.OCMClient.CreateUser(cluster.ID(), "cluster-admins", user)
 	if err != nil {
 		r.Reporter.Errorf("Failed to add user '%s' to cluster '%s': %s",
-			idp.ClusterAdminUsername, clusterKey, err)
+			ClusterAdminUsername, clusterKey, err)
 		os.Exit(1)
 	}
 
-	// No HTPasswd IDP - create it with cluster-admin user.
-	if existingHTPasswdIDP == nil {
-		r.Reporter.Debugf("Adding '%s' idp to cluster '%s'", idp.HTPasswdIDPName, clusterKey)
-		htpasswdIDP := cmv1.NewHTPasswdIdentityProvider().Users(cmv1.NewHTPasswdUserList().Items(
-			idp.CreateHTPasswdUser(idp.ClusterAdminUsername, password),
-		))
-		newIDP, err := cmv1.NewIdentityProvider().
-			Type(cmv1.IdentityProviderTypeHtpasswd).
-			Name(idp.HTPasswdIDPName).
-			Htpasswd(htpasswdIDP).
-			Build()
+	// No ClusterAdmin IDP exists, create an Htpasswd IDP
+	// named 'ClusterAdmin' specifically for cluster-admin user
+	r.Reporter.Debugf("Adding '%s' idp to cluster '%s'", ClusterAdminIDPname, clusterKey)
+	htpasswdIDP := cmv1.NewHTPasswdIdentityProvider().Users(cmv1.NewHTPasswdUserList().Items(
+		cmv1.NewHTPasswdUser().Username(ClusterAdminUsername).Password(password),
+	))
+	clusterAdminIDP, err := cmv1.NewIdentityProvider().
+		Type(cmv1.IdentityProviderTypeHtpasswd).
+		Name(ClusterAdminIDPname).
+		Htpasswd(htpasswdIDP).
+		Build()
+	if err != nil {
+		r.Reporter.Errorf(
+			"Failed to create '%s' identity provider for cluster '%s'",
+			ClusterAdminIDPname,
+			clusterKey,
+		)
+		os.Exit(1)
+	}
+
+	// Add HTPasswd IDP to cluster:
+	_, err = r.OCMClient.CreateIdentityProvider(cluster.ID(), clusterAdminIDP)
+	if err != nil {
+		//since we could not add the HTPasswd IDP to the cluster, roll back and remove the cluster admin
+		r.Reporter.Errorf("Failed to add '%s' identity provider to cluster '%s' as part of admin flow. "+
+			"Please try again: %s", ClusterAdminIDPname, clusterKey, err)
+
+		err = r.OCMClient.DeleteUser(cluster.ID(), "cluster-admins", user.ID())
 		if err != nil {
-			r.Reporter.Errorf(
-				"Failed to create '%s' identity provider for cluster '%s'",
-				idp.HTPasswdIDPName,
-				clusterKey,
-			)
-			os.Exit(1)
+			r.Reporter.Errorf("Failed to revert the admin user for cluster '%s'. Please try again: %s",
+				clusterKey, err)
 		}
-
-		// Add HTPasswd IDP to cluster:
-		_, err = r.OCMClient.CreateIdentityProvider(cluster.ID(), newIDP)
-		if err != nil {
-			//since we could not add the HTPasswd IDP to the cluster, roll back and remove the cluster admin
-			r.Reporter.Errorf("Failed to add '%s' identity provider to cluster '%s' as part of admin flow. "+
-				"Please try again: %s", idp.HTPasswdIDPName, clusterKey, err)
-
-			err = r.OCMClient.DeleteUser(cluster.ID(), "cluster-admins", user.ID())
-			if err != nil {
-				r.Reporter.Errorf("Failed to revert the admin user for cluster '%s'. Please try again: %s",
-					clusterKey, err)
-			}
-			os.Exit(1)
-		}
-	} else {
-		// HTPasswd IDP exists - add new cluster-admin user to it.
-		r.Reporter.Debugf("Cluster has an HTPasswd IDP, will add cluster-admin to it")
-		err = r.OCMClient.AddHTPasswdUser(idp.ClusterAdminUsername, password, cluster.ID(), existingHTPasswdIDP.ID())
-		if err != nil {
-			r.Reporter.Errorf("Failed to add user '%s' to the HTPasswd IDP of cluster '%s': %s",
-				idp.ClusterAdminUsername, clusterKey, err)
-
-			//since we could not add the cluster-admin user ot the HTPasswd IDP, roll back and remove the cluster admin
-			err = r.OCMClient.DeleteUser(cluster.ID(), "cluster-admins", user.ID())
-			if err != nil {
-				r.Reporter.Errorf("Failed to remove user '%s' to cluster '%s': %s",
-					idp.ClusterAdminUsername, clusterKey, err)
-			}
-
-			os.Exit(1)
-		}
+		os.Exit(1)
 	}
 
 	outputObject := object.Object{
 		"api_url":  cluster.API().URL(),
-		"username": idp.ClusterAdminUsername,
+		"username": ClusterAdminUsername,
 		"password": password,
 	}
 
@@ -221,4 +204,50 @@ func generateRandomPassword(length int) (string, error) {
 	}
 
 	return string(pw), nil
+}
+
+func FindExistingClusterAdminIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (
+	htpasswdIDP *cmv1.IdentityProvider, userList *cmv1.HTPasswdUserList) {
+
+	// admin user will now be created in a htpasswd IDP named 'cluster-admin'
+	// It should suffice to look for this idp but for back-compatibility ,
+	// i.e for cases where the cluster was created  with previous versions of rosacli
+	// we are going to search  all htpasswd idps
+
+	r.Reporter.Debugf("Loading cluster's identity providers")
+	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get identity providers for cluster '%s': %v", r.ClusterKey, err)
+		os.Exit(1)
+	}
+
+	for _, item := range idps {
+		if ocm.IdentityProviderType(item) == ocm.HTPasswdIDPType {
+
+			itemUserList, err := r.OCMClient.GetHTPasswdUserList(cluster.ID(), item.ID())
+			r.Reporter.Debugf("user list %s: %v", item.Name(), itemUserList)
+			if err != nil {
+				r.Reporter.Errorf("Failed to get user list of the HTPasswd IDP of '%s: %s': %v", item.Name(), r.ClusterKey, err)
+				os.Exit(1)
+			}
+			if HasClusterAdmin(itemUserList) {
+				htpasswdIDP = item
+				userList = itemUserList
+				return
+			}
+		}
+	}
+	return
+}
+
+func HasClusterAdmin(userList *cmv1.HTPasswdUserList) bool {
+	hasAdmin := false
+	userList.Each(func(user *cmv1.HTPasswdUser) bool {
+		if user.Username() == ClusterAdminUsername {
+			hasAdmin = true
+			return false
+		}
+		return true
+	})
+	return hasAdmin
 }

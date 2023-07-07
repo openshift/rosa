@@ -22,7 +22,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/create/idp"
+	cadmin "github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -54,11 +54,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Try to find an existing htpasswd identity provider and
 	// check if cluster-admin user already exists
-	_, existingUserList := idp.FindExistingHTPasswdIDP(cluster, r)
+	existingClusterAdminIdp, _ := cadmin.FindExistingClusterAdminIDP(cluster, r)
 
-	if idp.HasClusterAdmin(existingUserList) {
+	if existingClusterAdminIdp != nil {
 		r.Reporter.Infof("There is an admin on cluster '%s'. To login, run the following command:\n"+
-			"   oc login %s --username %s", clusterKey, cluster.API().URL(), idp.ClusterAdminUsername)
+			"   oc login %s --username %s", clusterKey, cluster.API().URL(), cadmin.ClusterAdminUsername)
 	} else {
 		r.Reporter.Warnf("There is no admin on cluster '%s'. To create it run the following command:\n"+
 			"   rosa create admin -c %s", clusterKey, clusterKey)
