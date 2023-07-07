@@ -177,7 +177,9 @@ func GetOption(input Input) (a string, err error) {
 	}
 	question := input.Question
 	if !input.Required && dflt == "" {
-		question = fmt.Sprintf("%s (optional)", question)
+		question = fmt.Sprintf("%s (optional, choose 'none' to skip selection)", question)
+		input.Options = append([]string{"none"}, input.Options...)
+		dflt = "none"
 	}
 	// if default is empty or not in the options, default to the first available option
 	if (dflt == "" || !containsString(input.Options, dflt)) && len(input.Options) > 0 {
@@ -193,6 +195,9 @@ func GetOption(input Input) (a string, err error) {
 		input.Validators = append([]Validator{required}, input.Validators...)
 	}
 	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)))
+	if a == "none" {
+		return "", nil
+	}
 	return
 }
 
