@@ -91,6 +91,7 @@ func init() {
 		false,
 		"Indicates whether to create the hosted control planes operator roles when using --prefix option.",
 	)
+	flags.MarkHidden(HostedCpFlag)
 
 	flags.StringVar(
 		&args.permissionsBoundary,
@@ -132,6 +133,11 @@ func run(cmd *cobra.Command, argv []string) error {
 	env, err := ocm.GetEnv()
 	if err != nil {
 		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
+		os.Exit(1)
+	}
+
+	if cmd.Flags().Changed(HostedCpFlag) && env == ocm.Production {
+		r.Reporter.Errorf("Hosted control plane managed policies are not supported in this environment")
 		os.Exit(1)
 	}
 
@@ -182,7 +188,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if cluster == nil && interactive.Enabled() && !isProgmaticallyCalled {
-		handleOperatorRolesPrefixOptions(r, cmd)
+		handleOperatorRolesPrefixOptions(r, cmd, env)
 	}
 
 	permissionsBoundary := args.permissionsBoundary

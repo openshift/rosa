@@ -21,7 +21,7 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
+func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command, env string) {
 	operatorRolesPrefix := args.prefix
 	operatorRolesPrefix, err := interactive.GetString(interactive.Input{
 		Question: "Operator roles prefix",
@@ -44,12 +44,14 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 	}
 
 	isHostedCP := args.hostedCp
-	isHostedCP, err = interactive.GetBool(interactive.Input{
-		Question: "Create hosted control plane operator roles",
-		Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-		Default:  isHostedCP,
-		Required: false,
-	})
+	if env != ocm.Production {
+		isHostedCP, err = interactive.GetBool(interactive.Input{
+			Question: "Create hosted control plane operator roles",
+			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+			Default:  isHostedCP,
+			Required: false,
+		})
+	}
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
 		os.Exit(1)
