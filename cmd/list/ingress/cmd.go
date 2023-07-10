@@ -25,6 +25,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -80,17 +81,23 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	writer := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\t\t\tPRIVATE\t\tDEFAULT\t\tROUTE SELECTORS\t\tLB-TYPE\n")
+	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\tPRIVATE\tDEFAULT\tROUTE SELECTORS\tLB-TYPE"+
+		"\tEXCLUDED NAMESPACE\tWILDCARD POLICY\tNAMESPACE OWNERSHIP\tHOSTNAME\tTLS SECRET REF\n")
 	for _, ingress := range ingresses {
-		fmt.Fprintf(writer, "%s\thttps://%s\t\t\t%s\t\t%s\t\t%s\t\t%s\n",
+		fmt.Fprintf(writer, "%s\thttps://%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			ingress.ID(),
 			ingress.DNSName(),
 			isPrivate(ingress.Listening()),
 			isDefault(ingress),
 			printRouteSelectors(ingress),
 			ingress.LoadBalancerType(),
+			helper.SliceToSortedString(ingress.ExcludedNamespaces()),
+			ingress.RouteWildcardPolicy(),
+			ingress.RouteNamespaceOwnershipPolicy(),
+			ingress.ClusterRoutesHostname(),
+			ingress.ClusterRoutesTlsSecretRef(),
 		)
 	}
 	writer.Flush()

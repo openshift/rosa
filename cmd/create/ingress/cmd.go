@@ -24,6 +24,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	helper "github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -113,7 +114,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	routeSelectors, err := getRouteSelector(labelMatch)
+	routeSelectors, err := helper.GetRouteSelector(labelMatch)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -211,26 +212,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 func labelValidator(val interface{}) error {
 	if labelMatch, ok := val.(string); ok {
-		_, err := getRouteSelector(labelMatch)
+		_, err := helper.GetRouteSelector(labelMatch)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 	return fmt.Errorf("can only validate strings, got %v", val)
-}
-
-func getRouteSelector(labelMatch string) (map[string]string, error) {
-	routeSelectors := make(map[string]string)
-	if labelMatch == "" {
-		return routeSelectors, nil
-	}
-	for _, labelMatch := range strings.Split(labelMatch, ",") {
-		if !strings.Contains(labelMatch, "=") {
-			return nil, fmt.Errorf("Expected key=value format for label-match")
-		}
-		tokens := strings.Split(labelMatch, "=")
-		routeSelectors[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
-	}
-	return routeSelectors, nil
 }
