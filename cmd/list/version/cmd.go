@@ -25,6 +25,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/list/upgrade"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -64,6 +65,7 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
+	isHostedCp := args.hostedCp
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Fetching versions")
@@ -77,7 +79,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Remove disabled versions and filter non-HCP versions if needed
 	for _, version := range versions {
-		if !version.Enabled() || (args.hostedCp && !version.HostedControlPlaneEnabled()) {
+		if !version.Enabled() || (isHostedCp && !version.HostedControlPlaneEnabled()) {
 			continue
 		}
 		availableVersions = append(availableVersions, version)
@@ -99,18 +101,27 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "VERSION\t\tDEFAULT\t\tAVAILABLE UPGRADES\n")
+	if isHostedCp {
+		r.Reporter.Infof("To list available upgrades, please use '%s'", upgrade.Cmd.CommandPath())
+		fmt.Fprintf(writer, "VERSION\t\tDEFAULT\n")
+	} else {
+		fmt.Fprintf(writer, "VERSION\t\tDEFAULT\t\tAVAILABLE UPGRADES\n")
+	}
 
 	for _, version := range availableVersions {
 		isDefault := "no"
 		if version.Default() {
 			isDefault = "yes"
 		}
+		availableUpgrades := ""
+		if !isHostedCp {
+			availableUpgrades = strings.Join(version.AvailableUpgrades(), ", ")
+		}
 		fmt.Fprintf(writer,
 			"%s\t\t%s\t\t%s\n",
 			version.RawID(),
 			isDefault,
-			strings.Join(version.AvailableUpgrades(), ", "),
+			availableUpgrades,
 		)
 	}
 	writer.Flush()
