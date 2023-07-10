@@ -2,12 +2,65 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 )
+
+var _ = Describe("Validate build command", func() {
+	Context("build tags command", func() {
+		When("tag key or values DO contain a colon", func() {
+			It("should build tags command with a space as a delimiter", func() {
+				tags := map[string]string{
+					"key1":   "value1",
+					"key2":   "value2",
+					"key3:4": "value3:4",
+					"key5":   "value5:6",
+				}
+
+				formattedTags := buildTagsCommand(tags)
+
+				Expect(len(formattedTags)).To(Equal(len(tags)),
+					"expected not to lose any tags while formatting")
+				for _, tag := range formattedTags {
+					if strings.Contains(tag, "key3") {
+						Expect(strings.Contains(tag, ":")).To(Equal(true),
+							"expected `:` to not be removed from key/value")
+					}
+
+					Expect(strings.Contains(tag, " ")).To(Equal(true),
+						"expected delim to be ' '")
+
+				}
+			})
+		})
+
+		When("tag key or values DO NOT contain a colon", func() {
+			It("should build tags command with default delimiter", func() {
+				tags := map[string]string{
+					"key1": "value1",
+					"key2": "value2",
+					"key3": "value3",
+					"key4": "value4",
+					"key5": "value5",
+				}
+
+				formattedTags := buildTagsCommand(tags)
+
+				Expect(len(formattedTags)).To(Equal(len(tags)),
+					"expected not to lose any tags while formatting")
+				for _, tag := range formattedTags {
+					Expect(strings.Contains(tag, ":")).To(Equal(true),
+						"expected delim to be ':'")
+
+				}
+			})
+		})
+	})
+})
 
 var _ = Describe("Validates OCP version", func() {
 
