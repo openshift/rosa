@@ -158,7 +158,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 	r.Reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
 	if r.Reporter.IsTerminal() {
-		r.Reporter.Infof("Verifying the following subnet IDs are configured correctly: %v", args.subnetIDs)
+		if cmd.Flags().Changed(statusOnlyFlag) {
+			r.Reporter.Infof("Checking the status of the following subnet IDs: %v", args.subnetIDs)
+		} else {
+			r.Reporter.Infof("Verifying the following subnet IDs are configured correctly: %v", args.subnetIDs)
+		}
 	}
 
 	if !args.statusOnly {
@@ -192,25 +196,31 @@ func run(cmd *cobra.Command, _ []string) {
 				args.subnetIDs = args.subnetIDs[:len(args.subnetIDs)-1]
 			}
 
-			time.Sleep(delay)
+			if len(args.subnetIDs) > 0 {
+				time.Sleep(delay)
+			}
 		}
 
 		if spin != nil {
 			spin.Stop()
 		}
 	} else {
+		var pending bool = false
 		for i := 0; i < len(args.subnetIDs); i++ {
 			subnet := args.subnetIDs[i]
 			status, err := r.OCMClient.GetVerifyNetworkSubnet(subnet)
 			printStatus(r.Reporter, nil, subnet, status, err)
+			if status.State() == string(NetworkVerifyPending) {
+				pending = true
+			}
 		}
-	}
 
-	if !args.watch {
-		output := "Run the following command to wait for verification to complete:\n"
-		output += "rosa verify network --watch --status-only --subnet-ids "
-		output += strings.Join(args.subnetIDs, ",")
-		r.Reporter.Infof(output)
+		if pending {
+			output := "Run the following command to wait for verification to all subnets to complete:\n"
+			output += "rosa verify network --watch --status-only --subnet-ids "
+			output += strings.Join(args.subnetIDs, ",")
+			r.Reporter.Infof(output)
+		}
 	}
 }
 
