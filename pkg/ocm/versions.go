@@ -394,6 +394,9 @@ func (c *Client) ValidateVersion(version string, versionList []string, channelGr
 	if isHostedCP {
 		collection := c.ocm.ClustersMgmt().V1().Versions()
 		filter := fmt.Sprintf("raw_id='%s'", version)
+		if channelGroup != "" {
+			filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
+		}
 		response, err := collection.List().
 			Search(filter).
 			Page(1).
