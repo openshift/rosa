@@ -40,3 +40,16 @@ func (c *Client) DeleteDNSDomain(id string) error {
 
 	return nil
 }
+
+func (c *Client) CreateDNSDomain() (*cmv1.DNSDomain, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		DNSDomains().
+		Add().
+		Body(&cmv1.DNSDomain{}).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	return response.Body(), nil
+}
