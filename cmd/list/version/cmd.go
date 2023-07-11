@@ -102,7 +102,8 @@ func run(cmd *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	if isHostedCp {
-		r.Reporter.Infof("To list available upgrades, please use '%s'", upgrade.Cmd.CommandPath())
+		r.Reporter.Infof("Hosted cluster upgrades are cluster-based. To list available upgrades for a cluster, "+
+			"please use '%s'", upgrade.Cmd.CommandPath())
 		fmt.Fprintf(writer, "VERSION\t\tDEFAULT\n")
 	} else {
 		fmt.Fprintf(writer, "VERSION\t\tDEFAULT\t\tAVAILABLE UPGRADES\n")
