@@ -76,9 +76,9 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	clusterKey := r.GetClusterKey()
 
-	defaultPolicyVersion, err := r.OCMClient.GetDefaultVersion()
+	latestPolicyVersion, err := r.OCMClient.GetLatestVersion()
 	if err != nil {
-		r.Reporter.Errorf("Error getting latest default version: %s", err)
+		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)
 	}
 
@@ -174,7 +174,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	//Check if account roles are up-to-date
 	isAccountRoleUpgradeNeed, err = r.AWSClient.IsUpgradedNeededForAccountRolePolicies(
-		prefix, defaultPolicyVersion)
+		prefix, latestPolicyVersion)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -187,7 +187,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	isOperatorPolicyUpgradeNeeded, err := r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
-		r.Creator.AccountID, defaultPolicyVersion, credRequests, unifiedPath)
+		r.Creator.AccountID, latestPolicyVersion, credRequests, unifiedPath)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -221,7 +221,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	if isOperatorPolicyUpgradeNeeded {
 		err = upgradeOperatorPolicies(mode, r, prefix, isAccountRoleUpgradeNeed,
-			policies, env, defaultPolicyVersion, credRequests, cluster, unifiedPath)
+			policies, env, latestPolicyVersion, credRequests, cluster, unifiedPath)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
