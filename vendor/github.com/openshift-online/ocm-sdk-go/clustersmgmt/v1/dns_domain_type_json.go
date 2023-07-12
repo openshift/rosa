@@ -91,6 +91,15 @@ func writeDNSDomain(object *DNSDomain, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("reserved_at_timestamp")
 		stream.WriteString((object.reservedAtTimestamp).Format(time.RFC3339))
+		count++
+	}
+	present_ = object.bitmap_&64 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("user_defined")
+		stream.WriteBool(object.userDefined)
 	}
 	stream.WriteObjectEnd()
 }
@@ -143,6 +152,10 @@ func readDNSDomain(iterator *jsoniter.Iterator) *DNSDomain {
 			}
 			object.reservedAtTimestamp = value
 			object.bitmap_ |= 32
+		case "user_defined":
+			value := iterator.ReadBool()
+			object.userDefined = value
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

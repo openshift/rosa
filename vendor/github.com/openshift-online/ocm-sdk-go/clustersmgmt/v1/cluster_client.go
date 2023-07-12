@@ -159,6 +159,16 @@ func (c *ClusterClient) Addons() *AddOnInstallationsClient {
 	)
 }
 
+// Autoscaler returns the target 'autoscaler' resource.
+//
+// Reference to the resource that manages the cluster autoscaler.
+func (c *ClusterClient) Autoscaler() *AutoscalerClient {
+	return NewAutoscalerClient(
+		c.transport,
+		path.Join(c.path, "autoscaler"),
+	)
+}
+
 // ClusterStsSupportRole returns the target 'cluster_sts_support_role' resource.
 func (c *ClusterClient) ClusterStsSupportRole() *ClusterStsSupportRoleClient {
 	return NewClusterStsSupportRoleClient(

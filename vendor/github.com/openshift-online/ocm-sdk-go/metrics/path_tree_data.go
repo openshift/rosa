@@ -185,6 +185,7 @@ var pathTreeData = `{
             "addons": {
               "-": null
             },
+            "autoscaler": null,
             "aws": {
               "private_link_configuration": {
                 "principals": {

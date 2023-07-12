@@ -33,6 +33,7 @@ type DNSDomainBuilder struct {
 	clusterLink         *ClusterLinkBuilder
 	organizationLink    *OrganizationLinkBuilder
 	reservedAtTimestamp time.Time
+	userDefined         bool
 }
 
 // NewDNSDomain creates a new builder of 'DNS_domain' objects.
@@ -98,6 +99,13 @@ func (b *DNSDomainBuilder) ReservedAtTimestamp(value time.Time) *DNSDomainBuilde
 	return b
 }
 
+// UserDefined sets the value of the 'user_defined' attribute to the given value.
+func (b *DNSDomainBuilder) UserDefined(value bool) *DNSDomainBuilder {
+	b.userDefined = value
+	b.bitmap_ |= 64
+	return b
+}
+
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
 func (b *DNSDomainBuilder) Copy(object *DNSDomain) *DNSDomainBuilder {
 	if object == nil {
@@ -117,6 +125,7 @@ func (b *DNSDomainBuilder) Copy(object *DNSDomain) *DNSDomainBuilder {
 		b.organizationLink = nil
 	}
 	b.reservedAtTimestamp = object.reservedAtTimestamp
+	b.userDefined = object.userDefined
 	return b
 }
 
@@ -139,5 +148,6 @@ func (b *DNSDomainBuilder) Build() (object *DNSDomain, err error) {
 		}
 	}
 	object.reservedAtTimestamp = b.reservedAtTimestamp
+	object.userDefined = b.userDefined
 	return
 }

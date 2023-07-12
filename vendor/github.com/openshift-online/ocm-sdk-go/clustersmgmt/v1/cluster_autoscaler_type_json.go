@@ -41,8 +41,31 @@ func MarshalClusterAutoscaler(object *ClusterAutoscaler, writer io.Writer) error
 func writeClusterAutoscaler(object *ClusterAutoscaler, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
+	stream.WriteObjectField("kind")
+	if object.bitmap_&1 != 0 {
+		stream.WriteString(ClusterAutoscalerLinkKind)
+	} else {
+		stream.WriteString(ClusterAutoscalerKind)
+	}
+	count++
+	if object.bitmap_&2 != 0 {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("id")
+		stream.WriteString(object.id)
+		count++
+	}
+	if object.bitmap_&4 != 0 {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("href")
+		stream.WriteString(object.href)
+		count++
+	}
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -51,7 +74,7 @@ func writeClusterAutoscaler(object *ClusterAutoscaler, stream *jsoniter.Stream) 
 		stream.WriteBool(object.balanceSimilarNodeGroups)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -60,7 +83,7 @@ func writeClusterAutoscaler(object *ClusterAutoscaler, stream *jsoniter.Stream) 
 		stream.WriteInt(object.logVerbosity)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -69,7 +92,7 @@ func writeClusterAutoscaler(object *ClusterAutoscaler, stream *jsoniter.Stream) 
 		stream.WriteInt(object.maxPodGracePeriod)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0 && object.resourceLimits != nil
+	present_ = object.bitmap_&64 != 0 && object.resourceLimits != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -78,7 +101,7 @@ func writeClusterAutoscaler(object *ClusterAutoscaler, stream *jsoniter.Stream) 
 		writeAutoscalerResourceLimits(object.resourceLimits, stream)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0 && object.scaleDown != nil
+	present_ = object.bitmap_&128 != 0 && object.scaleDown != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -87,7 +110,7 @@ func writeClusterAutoscaler(object *ClusterAutoscaler, stream *jsoniter.Stream) 
 		writeAutoscalerScaleDownConfig(object.scaleDown, stream)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -119,30 +142,41 @@ func readClusterAutoscaler(iterator *jsoniter.Iterator) *ClusterAutoscaler {
 			break
 		}
 		switch field {
+		case "kind":
+			value := iterator.ReadString()
+			if value == ClusterAutoscalerLinkKind {
+				object.bitmap_ |= 1
+			}
+		case "id":
+			object.id = iterator.ReadString()
+			object.bitmap_ |= 2
+		case "href":
+			object.href = iterator.ReadString()
+			object.bitmap_ |= 4
 		case "balance_similar_node_groups":
 			value := iterator.ReadBool()
 			object.balanceSimilarNodeGroups = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 8
 		case "log_verbosity":
 			value := iterator.ReadInt()
 			object.logVerbosity = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 16
 		case "max_pod_grace_period":
 			value := iterator.ReadInt()
 			object.maxPodGracePeriod = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 32
 		case "resource_limits":
 			value := readAutoscalerResourceLimits(iterator)
 			object.resourceLimits = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 64
 		case "scale_down":
 			value := readAutoscalerScaleDownConfig(iterator)
 			object.scaleDown = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 128
 		case "skip_nodes_with_local_storage":
 			value := iterator.ReadBool()
 			object.skipNodesWithLocalStorage = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 256
 		default:
 			iterator.ReadAny()
 		}
