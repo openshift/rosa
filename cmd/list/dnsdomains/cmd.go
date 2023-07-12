@@ -28,6 +28,10 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+var args struct {
+	all bool
+}
+
 var Cmd = &cobra.Command{
 	Use:     "dns-domain",
 	Aliases: []string{"dnsdomain", "dnsdomains", "dns-domain", "dns-domains"},
@@ -39,6 +43,16 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
+	flags := Cmd.Flags()
+
+	flags.BoolVarP(
+		&args.all,
+		"all",
+		"a",
+		false,
+		"List all DNS domains (default lists just user defined).",
+	)
+
 	output.AddFlag(Cmd)
 }
 
@@ -47,7 +61,11 @@ func run(_ *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	r.Reporter.Debugf("Loading dns domains for current org id")
-	dnsDomains, err := r.OCMClient.ListDNSDomains()
+	search := "user_defined='true'"
+	if args.all {
+		search = ""
+	}
+	dnsDomains, err := r.OCMClient.ListDNSDomains(search)
 	if err != nil {
 		r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
 		os.Exit(1)
@@ -70,12 +88,17 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\n")
+	fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\n")
 	for _, dnsdomain := range dnsDomains {
-		fmt.Fprintf(writer, "%s\t%s\t%s\n",
+		userDefind := "No"
+		if dnsdomain.UserDefined() {
+			userDefind = "Yes"
+		}
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
 			dnsdomain.ID(),
 			dnsdomain.ClusterLink().ID(),
 			dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
+			userDefind,
 		)
 	}
 	writer.Flush()

@@ -17,10 +17,12 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func (c *Client) ListDNSDomains() ([]*cmv1.DNSDomain, error) {
+func (c *Client) ListDNSDomains(search string) ([]*cmv1.DNSDomain, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		DNSDomains().
-		List().Page(1).Size(-1).
+		List().
+		Parameter("search", search).
+		Page(1).Size(-1).
 		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)

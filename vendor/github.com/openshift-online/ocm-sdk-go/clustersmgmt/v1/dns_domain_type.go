@@ -45,6 +45,7 @@ type DNSDomain struct {
 	clusterLink         *ClusterLink
 	organizationLink    *OrganizationLink
 	reservedAtTimestamp time.Time
+	userDefined         bool
 }
 
 // Kind returns the name of the type of the object.
@@ -169,6 +170,29 @@ func (o *DNSDomain) GetReservedAtTimestamp() (value time.Time, ok bool) {
 	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.reservedAtTimestamp
+	}
+	return
+}
+
+// UserDefined returns the value of the 'user_defined' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Indicates if this dns domain is user defined.
+func (o *DNSDomain) UserDefined() bool {
+	if o != nil && o.bitmap_&64 != 0 {
+		return o.userDefined
+	}
+	return false
+}
+
+// GetUserDefined returns the value of the 'user_defined' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Indicates if this dns domain is user defined.
+func (o *DNSDomain) GetUserDefined() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&64 != 0
+	if ok {
+		value = o.userDefined
 	}
 	return
 }

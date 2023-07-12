@@ -279,6 +279,14 @@ func (t *roundTripper) RoundTrip(request *http.Request) (response *http.Response
 					"will try again",
 				request.Method, request.URL, code,
 			)
+			err = response.Body.Close()
+			if err != nil {
+				t.logger.Error(
+					ctx,
+					"Failed to close response body for method '%s' and URL '%s'",
+					request.Method, request.URL,
+				)
+			}
 			continue
 		case code >= 500 && method == http.MethodGet:
 			// For any other 5xx status code we can't be sure if the server processed
@@ -290,6 +298,14 @@ func (t *roundTripper) RoundTrip(request *http.Request) (response *http.Response
 					"will try again",
 				request.Method, request.URL, code,
 			)
+			err = response.Body.Close()
+			if err != nil {
+				t.logger.Error(
+					ctx,
+					"Failed to close response body for method '%s' and URL '%s'",
+					request.Method, request.URL,
+				)
+			}
 			continue
 		default:
 			// For any other status code we can't be sure if the server processed the

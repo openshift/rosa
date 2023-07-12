@@ -448,7 +448,7 @@ func (o *Cluster) GetAddons() (value *AddOnInstallationList, ok bool) {
 // Autoscaler returns the value of the 'autoscaler' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Autoscaler.
+// Link to an optional _ClusterAutoscaler_ that is coupled with the cluster.
 func (o *Cluster) Autoscaler() *ClusterAutoscaler {
 	if o != nil && o.bitmap_&16384 != 0 {
 		return o.autoscaler
@@ -459,7 +459,7 @@ func (o *Cluster) Autoscaler() *ClusterAutoscaler {
 // GetAutoscaler returns the value of the 'autoscaler' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Autoscaler.
+// Link to an optional _ClusterAutoscaler_ that is coupled with the cluster.
 func (o *Cluster) GetAutoscaler() (value *ClusterAutoscaler, ok bool) {
 	ok = o != nil && o.bitmap_&16384 != 0
 	if ok {

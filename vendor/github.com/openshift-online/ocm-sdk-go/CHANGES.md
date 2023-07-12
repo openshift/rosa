@@ -3,6 +3,18 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.355
+- Update model version v0.0.300
+  - Add `UserDefined` in dns domain resource
+
+## 0.1.354
+- Update model version v0.0.299
+  - OCM-209 | feat: Add cluster autoscaler API resources
+  - OCM-209 | feat: Add autoscaler locator in cluster resource
+
+## 0.1.353
+- Prevent connection leak in retry wrapper
+
 ## 0.1.352
 - Update model version v0.0.297
   - Add managed ingress attributes
