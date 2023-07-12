@@ -1402,18 +1402,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if len(tags) > 0 {
-		delim := aws.GetTagsDelimiter(tags)
-		duplicate, found := aws.HasDuplicateTagKey(tags)
-		if found {
-			r.Reporter.Errorf("Invalid tags, user tag keys must be unique, duplicate key '%s' found", duplicate)
+		if err := aws.UserTagValidator(tags); err != nil {
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
+		delim := aws.GetTagsDelimiter(tags)
 		for _, tag := range tags {
-			err := aws.UserTagValidator(tag)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
 			t := strings.Split(tag, delim)
 			tagsList[t[0]] = strings.TrimSpace(t[1])
 		}

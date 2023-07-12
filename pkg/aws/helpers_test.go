@@ -58,9 +58,68 @@ var _ = Describe("UserTagValidator", func() {
 					UserTagValueRE.String())))
 			})
 
-			When("the input contains tags with colon or equals signs in the value", func() {
+			When("the input contains tags with colon or space in the value", func() {
 				It("should not return an error if the tag is properly formatted", func() {
 					err := UserTagValidator("tag1 value:1,tag:2 value2")
+					Expect(err).To(BeNil())
+				})
+			})
+		})
+	})
+
+	When("given a slice of strings", func() {
+		When("input is empty", func() {
+			It("should return nil", func() {
+				err := UserTagValidator([]string{})
+				Expect(err).To(BeNil())
+			})
+		})
+
+		When("the input contains valid tags", func() {
+			It("should return nil", func() {
+				err := UserTagValidator([]string{"tag1 value1", "tag2 value2"})
+				Expect(err).To(BeNil())
+			})
+		})
+
+		When("the input contains legacy tags format", func() {
+			It("should return nil", func() {
+				err := UserTagValidator([]string{"tag1:value1", "tag2:value2"})
+				Expect(err).To(BeNil())
+			})
+		})
+
+		When("the input contains invalid tags", func() {
+			It("should return an error", func() {
+				err := UserTagValidator([]string{"foo bar", "tag2=value2"})
+				Expect(err).To(MatchError("invalid tag format. Expected tag format: 'key value'"))
+			})
+
+			It("should return an error if a tag is missing a key", func() {
+				err := UserTagValidator([]string{":value1", "tag2:value2"})
+				Expect(err).To(MatchError("invalid tag format, tag key and tag value can not be empty"))
+			})
+
+			It("should return an error if a tag is missing a key", func() {
+				err := UserTagValidator([]string{"tag1:", "tag2:value2"})
+				Expect(err).To(MatchError("invalid tag format, tag key and tag value can not be empty"))
+			})
+
+			It("should return an error if a tag key contains invalid characters", func() {
+				err := UserTagValidator([]string{"tag1$:value1", "tag2:value2"})
+				Expect(err).To(MatchError(fmt.Sprintf("expected a valid user tag key 'tag1$' matching %s",
+					UserTagKeyRE.String())))
+			})
+
+			It("should return an error if a tag value contains invalid characters", func() {
+				err := UserTagValidator([]string{"tag1:value$1", "tag2:value2"})
+				Expect(err).To(MatchError(fmt.Sprintf("expected a valid user tag value 'value$1' matching %s",
+					UserTagValueRE.String())))
+			})
+
+			When("the input contains tags with colon or space in the value", func() {
+				It("should not return an error if the tag is properly formatted", func() {
+					err := UserTagValidator([]string{"tag1 value:1", "tag:2 value2"})
 					Expect(err).To(BeNil())
 				})
 			})
@@ -70,7 +129,15 @@ var _ = Describe("UserTagValidator", func() {
 	Describe("when given a non-string input", func() {
 		It("should return an error", func() {
 			err := UserTagValidator(42)
-			Expect(err).To(MatchError("can only validate strings, got 42"))
+			Expect(err).To(MatchError("can only validate string types, got int"))
+		})
+	})
+
+	Describe("when given a non-string slice input", func() {
+		It("should return an error", func() {
+			err := UserTagValidator([]int{42})
+			Expect(err).To(MatchError("unable to verify tags, incompatible type," +
+				" expected slice of string got: 'slice'"))
 		})
 	})
 })
