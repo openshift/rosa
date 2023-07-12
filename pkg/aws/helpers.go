@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -245,36 +246,49 @@ func resolveSTSRole(ARN arn.ARN) (*string, error) {
 }
 
 func UserTagValidator(input interface{}) error {
-	if str, ok := input.(string); ok {
-		if str == "" {
+	var inputTags []string
+	inputType := reflect.TypeOf(input).Kind()
+	switch inputType {
+	case reflect.String:
+		if input.(string) == "" {
 			return nil
 		}
-
-		inputTags := strings.Split(str, ",")
-		delimiter := GetTagsDelimiter(inputTags)
-		for _, t := range inputTags {
-			t = strings.TrimSpace(t)
-
-			tag := strings.Split(t, delimiter)
-			if len(tag) != 2 {
-				return fmt.Errorf("invalid tag format. Expected tag format: 'key%svalue'", delimiter)
-			}
-
-			if tag[0] == "" || tag[1] == "" {
-				return fmt.Errorf("invalid tag format, tag key and tag value can not be empty")
-			}
-
-			if !UserTagKeyRE.MatchString(tag[0]) {
-				return fmt.Errorf("expected a valid user tag key '%s' matching %s", tag[0], UserTagKeyRE.String())
-			}
-
-			if !UserTagValueRE.MatchString(tag[1]) {
-				return fmt.Errorf("expected a valid user tag value '%s' matching %s", tag[1], UserTagValueRE.String())
-			}
+		inputTags = strings.Split(input.(string), ",")
+	case reflect.Slice:
+		if reflect.TypeOf(input).Elem().Kind() != reflect.String {
+			return fmt.Errorf("unable to verify tags, incompatible type, expected slice of string got: '%s'",
+				inputType.String())
 		}
-		return nil
+		inputTags = input.([]string)
+	default:
+		return fmt.Errorf("can only validate string types, got %v", inputType.String())
 	}
-	return fmt.Errorf("can only validate strings, got %v", input)
+
+	if duplicate, hasDupe := hasDuplicateTagKey(inputTags); hasDupe {
+		return fmt.Errorf("invalid tags, user tag keys must be unique, duplicate key '%s' found", duplicate)
+	}
+
+	delimiter := GetTagsDelimiter(inputTags)
+	for _, t := range inputTags {
+		t = strings.TrimSpace(t)
+		tag := strings.Split(t, delimiter)
+		if len(tag) != 2 {
+			return fmt.Errorf("invalid tag format. Expected tag format: 'key%svalue'", delimiter)
+		}
+
+		if tag[0] == "" || tag[1] == "" {
+			return fmt.Errorf("invalid tag format, tag key and tag value can not be empty")
+		}
+
+		if !UserTagKeyRE.MatchString(tag[0]) {
+			return fmt.Errorf("expected a valid user tag key '%s' matching %s", tag[0], UserTagKeyRE.String())
+		}
+
+		if !UserTagValueRE.MatchString(tag[1]) {
+			return fmt.Errorf("expected a valid user tag value '%s' matching %s", tag[1], UserTagValueRE.String())
+		}
+	}
+	return nil
 }
 
 func GetTagsDelimiter(tags []string) string {
@@ -293,7 +307,7 @@ func UserTagDuplicateValidator(input interface{}) error {
 		}
 		splitTags := strings.Split(str, ",")
 		sanitizedTags := sanitizeTags(splitTags)
-		duplicate, found := HasDuplicateTagKey(sanitizedTags)
+		duplicate, found := hasDuplicateTagKey(sanitizedTags)
 		if found {
 			return fmt.Errorf("user tag keys must be unique, duplicate key '%s' found", duplicate)
 		}
@@ -302,7 +316,7 @@ func UserTagDuplicateValidator(input interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", input)
 }
 
-func HasDuplicateTagKey(tags []string) (string, bool) {
+func hasDuplicateTagKey(tags []string) (string, bool) {
 	delimiter := GetTagsDelimiter(tags)
 	visited := make(map[string]bool)
 	for _, t := range tags {
