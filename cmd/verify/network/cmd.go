@@ -27,6 +27,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -129,8 +130,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		cluster := r.FetchCluster()
 
-		if cluster.Status() != nil && cluster.Status().State() != cmv1.ClusterStateReady {
-			r.Reporter.Errorf("Cluster state is not ready: %v", cluster.Status().State())
+		if cluster.Status() != nil &&
+			!helper.Contains([]cmv1.ClusterState{cmv1.ClusterStateReady, cmv1.ClusterStateError}, cluster.Status().State()) {
+			r.Reporter.Errorf("Subnets from cluster not available when in state '%v'", cluster.Status().State())
 			os.Exit(1)
 		}
 

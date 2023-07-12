@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -78,9 +79,9 @@ func RankMapStringInt(values map[string]int) []string {
 	return ranked
 }
 
-func Contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
+func Contains[T comparable](slice []T, element T) bool {
+	for _, sliceElement := range slice {
+		if reflect.DeepEqual(sliceElement, element) {
 			return true
 		}
 	}
