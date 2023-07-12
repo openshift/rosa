@@ -82,9 +82,6 @@ func (mp *managedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRol
 		}
 	}
 
-	r.Reporter.Infof("To create a cluster with these roles, run the following command:\n" +
-		"rosa create cluster --sts")
-
 	return nil
 }
 
@@ -158,9 +155,6 @@ func (up *unmanagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountR
 			return err
 		}
 	}
-
-	r.Reporter.Infof("To create a cluster with these roles, run the following command:\n" +
-		"rosa create cluster --sts")
 
 	return nil
 }
@@ -298,9 +292,6 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 			return err
 		}
 	}
-
-	r.Reporter.Infof("To create a cluster with these roles, run the following command:\n" +
-		"rosa create cluster --hosted-cp")
 
 	return nil
 }
