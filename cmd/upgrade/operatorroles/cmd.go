@@ -75,14 +75,14 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	clusterKey := r.GetClusterKey()
+	cluster := r.FetchCluster()
 
-	latestPolicyVersion, err := r.OCMClient.GetLatestVersion()
+	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)
 	}
 
-	cluster := r.FetchCluster()
 	/**
 	we dont want to give this option to the end-user. Adding this as a support for srep if needed.
 	*/
