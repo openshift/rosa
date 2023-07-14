@@ -221,7 +221,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	latestPolicyVersion, err := r.OCMClient.GetLatestVersion()
+	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)
