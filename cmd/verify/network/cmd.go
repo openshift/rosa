@@ -17,6 +17,7 @@ limitations under the License.
 package network
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -41,13 +42,17 @@ var args struct {
 	watch      bool
 }
 
-var Cmd = &cobra.Command{
-	Use:   "network",
-	Short: "Verify VPC subnets are configured correctly",
-	Long:  "Verify that the VPC subnets are configured correctly.",
-	Example: `  # Verify two subnets
-  rosa verify network --subnet-ids subnet-03046a9b92b5014fb,subnet-03046a9c92b5014fb`,
-	Run: run,
+var Cmd = makeCmd()
+
+func makeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "network",
+		Short: "Verify VPC subnets are configured correctly",
+		Long:  "Verify that the VPC subnets are configured correctly.",
+		Example: `  # Verify two subnets
+	rosa verify network --subnet-ids subnet-03046a9b92b5014fb,subnet-03046a9c92b5014fb`,
+		Run: run,
+	}
 }
 
 type NetworkVerifyState string
@@ -67,9 +72,13 @@ const (
 )
 
 func init() {
-	flags := Cmd.Flags()
+	initFlags(Cmd)
+}
 
-	ocm.AddOptionalClusterFlag(Cmd)
+func initFlags(cmd *cobra.Command) {
+	flags := cmd.Flags()
+
+	ocm.AddOptionalClusterFlag(cmd)
 
 	flags.StringSliceVar(
 		&args.subnetIDs,
@@ -108,55 +117,54 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+}
 
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	if cmd.Flags().Changed(subnetIDsFlag) {
 		if cmd.Flags().Changed(clusterFlag) {
-			r.Reporter.Errorf("One and only one of %s or %s is required",
+			return fmt.Errorf("One and only one of %s or %s is required",
 				clusterFlag, subnetIDsFlag)
-			os.Exit(1)
 		}
 
 		region, err := aws.GetRegion(arguments.GetRegion())
 		if err != nil {
-			r.Reporter.Errorf("Error getting region: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("Error getting region: %v", err)
 		}
 		args.region = region
 	} else if cmd.Flags().Changed(clusterFlag) {
 		if cmd.Flags().Changed(subnetIDsFlag) {
-			r.Reporter.Errorf("One and only one of %s or %s is required",
+			return fmt.Errorf("One and only one of %s or %s is required",
 				clusterFlag, subnetIDsFlag)
-			os.Exit(1)
 		}
 		cluster := r.FetchCluster()
 
 		if cluster.Status() != nil &&
 			!helper.Contains([]cmv1.ClusterState{cmv1.ClusterStateReady, cmv1.ClusterStateError}, cluster.Status().State()) {
-			r.Reporter.Errorf("Subnets from cluster not available when in state '%v'", cluster.Status().State())
-			os.Exit(1)
+			return fmt.Errorf("Subnets from cluster not available when in state '%v'", cluster.Status().State())
 		}
 
 		args.subnetIDs = cluster.AWS().SubnetIDs()
 		if len(args.subnetIDs) == 0 {
-			r.Reporter.Errorf("No subnets on cluster")
-			os.Exit(1)
+			return fmt.Errorf("No subnets on cluster")
 		}
 		args.region = cluster.Region().ID()
 	} else {
-		r.Reporter.Errorf("One and only one of %s or %s is required",
+		return fmt.Errorf("One and only one of %s or %s is required",
 			clusterFlag, subnetIDsFlag)
-		os.Exit(1)
 	}
 
 	if cmd.Flags().Changed(roleArnFlag) {
 		err := aws.ARNValidator(args.roleArn)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid ARN: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("Expected a valid ARN: %s", err)
 		}
 	} else if !cmd.Flags().Changed(statusOnlyFlag) {
-		r.Reporter.Errorf("%s is required", roleArnFlag)
-		os.Exit(1)
+		return fmt.Errorf("%s is required", roleArnFlag)
 	}
 
 	r.Reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
@@ -168,11 +176,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if !args.statusOnly {
+	if !cmd.Flags().Changed(statusOnlyFlag) {
 		_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs)
 		if err != nil {
-			r.Reporter.Errorf("Error verifying subnets: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("Error verifying subnets: %s", err)
 		}
 	}
 
@@ -225,6 +232,8 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Infof(output)
 		}
 	}
+
+	return nil
 }
 
 func printStatus(reporter *reporter.Object, spin *spinner.Spinner, subnet string,
