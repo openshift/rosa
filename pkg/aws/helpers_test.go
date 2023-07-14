@@ -33,17 +33,17 @@ var _ = Describe("UserTagValidator", func() {
 		When("the input contains invalid tags", func() {
 			It("should return an error", func() {
 				err := UserTagValidator("foo bar,tag2=value2")
-				Expect(err).To(MatchError("invalid tag format. Expected tag format: 'key value'"))
+				Expect(err).To(MatchError("invalid tag format for tag '[tag2=value2]'. Expected tag format: 'key value'"))
 			})
 
 			It("should return an error if a tag is missing a key", func() {
 				err := UserTagValidator(":value1,tag2:value2")
-				Expect(err).To(MatchError("invalid tag format, tag key and tag value can not be empty"))
+				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
 			})
 
 			It("should return an error if a tag is missing a key", func() {
 				err := UserTagValidator("tag1:,tag2:value2")
-				Expect(err).To(MatchError("invalid tag format, tag key and tag value can not be empty"))
+				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
 			})
 
 			It("should return an error if a tag key contains invalid characters", func() {
@@ -92,17 +92,17 @@ var _ = Describe("UserTagValidator", func() {
 		When("the input contains invalid tags", func() {
 			It("should return an error", func() {
 				err := UserTagValidator([]string{"foo bar", "tag2=value2"})
-				Expect(err).To(MatchError("invalid tag format. Expected tag format: 'key value'"))
+				Expect(err).To(MatchError("invalid tag format for tag '[tag2=value2]'. Expected tag format: 'key value'"))
 			})
 
 			It("should return an error if a tag is missing a key", func() {
 				err := UserTagValidator([]string{":value1", "tag2:value2"})
-				Expect(err).To(MatchError("invalid tag format, tag key and tag value can not be empty"))
+				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
 			})
 
 			It("should return an error if a tag is missing a key", func() {
 				err := UserTagValidator([]string{"tag1:", "tag2:value2"})
-				Expect(err).To(MatchError("invalid tag format, tag key and tag value can not be empty"))
+				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
 			})
 
 			It("should return an error if a tag key contains invalid characters", func() {

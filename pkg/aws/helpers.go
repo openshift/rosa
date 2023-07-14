@@ -270,14 +270,13 @@ func UserTagValidator(input interface{}) error {
 
 	delimiter := GetTagsDelimiter(inputTags)
 	for _, t := range inputTags {
-		t = strings.TrimSpace(t)
 		tag := strings.Split(t, delimiter)
 		if len(tag) != 2 {
-			return fmt.Errorf("invalid tag format. Expected tag format: 'key%svalue'", delimiter)
+			return fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key%svalue'", tag, delimiter)
 		}
 
 		if tag[0] == "" || tag[1] == "" {
-			return fmt.Errorf("invalid tag format, tag key and tag value can not be empty")
+			return fmt.Errorf("invalid tag format, tag key or tag value can not be empty")
 		}
 
 		if !UserTagKeyRE.MatchString(tag[0]) {
@@ -292,7 +291,7 @@ func UserTagValidator(input interface{}) error {
 }
 
 func GetTagsDelimiter(tags []string) string {
-	tags = sanitizeTags(tags)
+	sanitizeTags(tags)
 	tagsString := strings.Join(tags, "")
 	if strings.Contains(tagsString, " ") {
 		return " "
@@ -306,8 +305,8 @@ func UserTagDuplicateValidator(input interface{}) error {
 			return nil
 		}
 		splitTags := strings.Split(str, ",")
-		sanitizedTags := sanitizeTags(splitTags)
-		duplicate, found := hasDuplicateTagKey(sanitizedTags)
+		sanitizeTags(splitTags)
+		duplicate, found := hasDuplicateTagKey(splitTags)
 		if found {
 			return fmt.Errorf("user tag keys must be unique, duplicate key '%s' found", duplicate)
 		}
@@ -329,12 +328,10 @@ func hasDuplicateTagKey(tags []string) (string, bool) {
 	return "", false
 }
 
-func sanitizeTags(tags []string) []string {
-	trimmedList := make([]string, len(tags))
+func sanitizeTags(tags []string) {
 	for i, str := range tags {
-		trimmedList[i] = strings.TrimSpace(str)
+		tags[i] = strings.TrimSpace(str)
 	}
-	return trimmedList
 }
 
 func UserNoProxyValidator(input interface{}) error {
