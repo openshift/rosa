@@ -41,7 +41,23 @@ func createHTPasswdIDP(cmd *cobra.Command,
 
 	validateUserArgs(r)
 
-	htpassUserList := buildUserList(cmd, r)
+	//get users
+	userList, isHashedPassword := getUserList(cmd, r)
+
+	//build HTPasswdUserList
+	htpasswdUsers := []*cmv1.HTPasswdUserBuilder{}
+	for username, password := range userList {
+
+		userBuilder := cmv1.NewHTPasswdUser().Username(username)
+		if isHashedPassword {
+			userBuilder.HashedPassword(password)
+		} else {
+			userBuilder.Password(password)
+		}
+		htpasswdUsers = append(htpasswdUsers, userBuilder)
+	}
+
+	htpassUserList := cmv1.NewHTPasswdUserList().Items(htpasswdUsers...)
 
 	idpBuilder := cmv1.NewIdentityProvider().
 		Type(cmv1.IdentityProviderTypeHtpasswd).
@@ -93,10 +109,42 @@ func validateUserArgs(r *rosa.Runtime) {
 		os.Exit(1)
 	}
 }
-func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBuilder {
 
-	userList := make(map[string]string)
-	hashed := false
+func getUserList(cmd *cobra.Command, r *rosa.Runtime) (userList map[string]string, hashed bool) {
+
+	userList = make(map[string]string)
+	hashed = false
+
+	//if none of the user args are set, interactively prompt starting with htpasswd-file arg
+	htpasswdFile := args.htpasswdFile
+	if htpasswdFile == "" && len(args.htpasswdUsers) == 0 && args.htpasswdUsername == "" {
+		var err error
+		htpasswdFile, err = interactive.GetString(interactive.Input{
+			Question: "Configure users from HTPasswd file",
+			Help:     cmd.Flags().Lookup("from-file").Usage,
+			Default:  htpasswdFile,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid --from-file value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	//if htpasswdFile provided, process users in the file and return
+	if htpasswdFile != "" {
+		err := parseHtpasswordFile(&userList, htpasswdFile)
+		if err != nil {
+			r.Reporter.Errorf(
+				"Failed to load Htpasswd file '%s': %v", htpasswdFile, err)
+			os.Exit(1)
+		}
+		//password in htpasswd are already and do not need to be hashed again in CS
+		hashed = true
+		return
+	}
+
+	// htpasswdFile is not set, check for other user args
 
 	if len(args.htpasswdUsers) != 0 {
 		//if a user list is specified then continue with the  list
@@ -111,42 +159,23 @@ func buildUserList(cmd *cobra.Command, r *rosa.Runtime) *cmv1.HTPasswdUserListBu
 			}
 			userList[u] = p
 		}
-	} else if args.htpasswdFile != "" {
+		return
+	}
 
-		usersfile := args.htpasswdFile
-		err := parseHtpasswordFile(&userList, usersfile)
-		if err != nil {
-			r.Reporter.Errorf(
-				"Failed to load Htpasswd file '%s': %v", usersfile, err)
-			os.Exit(1)
-		}
-		//password in htpasswd are already and do not need to be hashed again in CS
-		hashed = true
-	} else if args.htpasswdUsername != "" && args.htpasswdPassword != "" {
+	if args.htpasswdUsername != "" && args.htpasswdPassword != "" {
 		//if userlist or htpasswdfile are not provided
-		//continue support for single username/password for  backcompatibility
+		//continue support for single username/password for backcompatibility
 		//so as not to break any existing automation
 		userList[args.htpasswdUsername] = args.htpasswdPassword
-	} else {
-		r.Reporter.Infof("At least one valid user and password is required to create the IDP.")
-		username, password := GetUserDetails(cmd, r, "username", "password", "", "")
-		userList[username] = password
+		return
 	}
 
-	htpasswdUsers := []*cmv1.HTPasswdUserBuilder{}
-	for username, password := range userList {
+	// none of the userinfo args are set, prompt interactively for users
+	r.Reporter.Infof("At least one valid user and password is required to create the IDP.")
+	username, password := GetUserDetails(cmd, r, "username", "password", "", "")
+	userList[username] = password
 
-		userBuilder := cmv1.NewHTPasswdUser().Username(username)
-		if hashed {
-			userBuilder.HashedPassword(password)
-		} else {
-			userBuilder.Password(password)
-		}
-		htpasswdUsers = append(htpasswdUsers, userBuilder)
-	}
-
-	htpassUserList := cmv1.NewHTPasswdUserList().Items(htpasswdUsers...)
-	return htpassUserList
+	return
 }
 
 func GetUserDetails(cmd *cobra.Command, r *rosa.Runtime,
@@ -264,6 +293,7 @@ func parseHtpasswordFile(usersList *map[string]string, filePath string) error {
 		if line == "" {
 			continue
 		}
+
 		// split "user:password" at colon
 		username, password, found := strings.Cut(line, ":")
 		if !found || username == "" || password == "" {
