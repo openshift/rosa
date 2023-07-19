@@ -62,6 +62,26 @@ var _ = Describe("Cmd", func() {
 			})
 		})
 	})
+
+	DescribeTable("Validate Idp Name",
+		func(nameVal interface{}, errorExcepted bool) {
+			err := idp.ValidateIdpName(nameVal)
+
+			if errorExcepted {
+				Expect(err).To(HaveOccurred())
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+			}
+		},
+		Entry("Type not string",
+			1234, true),
+		Entry("Invalid identifier",
+			"///", true),
+		Entry("Reserved name cluster-admin",
+			"cluster-admin", true),
+		Entry("Valid name",
+			"awesometeam", false),
+	)
 })
 
 func expectUnique(name string, idps []idp.IdentityProvider) {
