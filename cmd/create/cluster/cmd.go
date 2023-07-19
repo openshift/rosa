@@ -653,7 +653,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
 	}
-	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions)
+	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions, args.useLocalCredentials)
 	r.AWSClient = awsClient
 
 	awsCreator, err := awsClient.GetCreator()
@@ -1490,6 +1490,7 @@ func run(cmd *cobra.Command, _ []string) {
 	awsClient, err = aws.NewClient().
 		Region(region).
 		Logger(r.Logger).
+		UseLocalCredentials(args.useLocalCredentials).
 		Build()
 	if err != nil {
 		r.Reporter.Errorf("Failed to create awsClient: %s", err)

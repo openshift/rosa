@@ -151,7 +151,8 @@ func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool,
 
 // Currently user can rosa init using the region from their config or using --region
 // When checking for cloud formation we need to check in the region used by the user
-func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger, supportedRegions []string) Client {
+func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger,
+	supportedRegions []string, useLocalCreds bool) Client {
 	// Get AWS region from env
 	awsRegionInUserConfig, err := GetRegion(arguments.GetRegion())
 	if err != nil {
@@ -172,6 +173,7 @@ func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger, su
 	client, err := NewClient().
 		Logger(logger).
 		Region(awsRegionInUserConfig).
+		UseLocalCredentials(useLocalCreds).
 		Build()
 	if err != nil {
 		reporter.Errorf("Error creating aws client for stack validation: %v", err)
@@ -193,6 +195,7 @@ func GetAWSClientForUserRegion(reporter *rprtr.Object, logger *logrus.Logger, su
 		awsClient, err := NewClient().
 			Logger(logger).
 			Region(regionUsedForInit).
+			UseLocalCredentials(useLocalCreds).
 			Build()
 		if err != nil {
 			reporter.Errorf("Error creating aws client for stack validation: %v", err)
