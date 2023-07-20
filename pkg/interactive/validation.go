@@ -27,6 +27,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
+	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	"github.com/openshift/rosa/pkg/ocm"
 )
 
@@ -161,7 +162,7 @@ func SubnetsCountValidator(multiAZ bool, privateLink bool, hostedCP bool) Valida
 func AvailabilityZonesCountValidator(multiAZ bool) Validator {
 	return func(input interface{}) error {
 		if answers, ok := input.([]core.OptionAnswer); ok {
-			return ocm.ValidateAvailabilityZonesCount(multiAZ, len(answers))
+			return clustervalidations.ValidateAvailabilityZonesCount(multiAZ, len(answers))
 		}
 
 		return fmt.Errorf("can only validate a slice of string, got %v", input)

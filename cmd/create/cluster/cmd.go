@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -736,7 +737,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Select a multi-AZ cluster implicitly by providing three availability zones
-	if len(args.availabilityZones) == ocm.MultiAZCount {
+	if len(args.availabilityZones) == clustervalidations.MultiAZCount {
 		args.multiAZ = true
 	}
 
@@ -2805,33 +2806,7 @@ func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int)
 			return err
 		}
 
-		if minReplicas < 0 {
-			return fmt.Errorf("min-replica must be greater than zero")
-		}
-		if isHostedCP {
-			// This value should be validated in a previous step when checking the subnets
-			if privateSubnetsCount < 1 {
-				return fmt.Errorf("Hosted clusters require at least a private subnet")
-			}
-
-			if minReplicas%privateSubnetsCount != 0 {
-				return fmt.Errorf("Hosted clusters require that the number of compute nodes be a multiple of "+
-					"the number of private subnets %d, instead received: %d", privateSubnetsCount, minReplicas)
-			}
-			return nil
-		}
-
-		if multiAZ {
-			if minReplicas < 3 {
-				return fmt.Errorf("Multi AZ cluster requires at least 3 compute nodes")
-			}
-			if minReplicas%3 != 0 {
-				return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-			}
-		} else if minReplicas < 2 {
-			return fmt.Errorf("Cluster requires at least 2 compute nodes")
-		}
-		return nil
+		return clustervalidations.MinReplicasValidator(minReplicas, multiAZ, isHostedCP, privateSubnetsCount)
 	}
 }
 
@@ -2842,22 +2817,7 @@ func maxReplicaValidator(multiAZ bool, minReplicas int, isHostedCP bool,
 		if err != nil {
 			return err
 		}
-		if minReplicas > maxReplicas {
-			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
-		}
-
-		if isHostedCP {
-			if maxReplicas%privateSubnetsCount != 0 {
-				return fmt.Errorf("Hosted clusters require that the number of compute nodes be a multiple of "+
-					"the number of private subnets %d, instead received: %d", privateSubnetsCount, maxReplicas)
-			}
-			return nil
-		}
-
-		if multiAZ && maxReplicas%3 != 0 {
-			return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-		}
-		return nil
+		return clustervalidations.MaxReplicasValidator(minReplicas, maxReplicas, multiAZ, isHostedCP, privateSubnetsCount)
 	}
 }
 
@@ -2959,7 +2919,7 @@ func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilit
 }
 
 func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClient aws.Client) error {
-	err := ocm.ValidateAvailabilityZonesCount(multiAZ, len(availabilityZones))
+	err := clustervalidations.ValidateAvailabilityZonesCount(multiAZ, len(availabilityZones))
 	if err != nil {
 		return err
 	}
