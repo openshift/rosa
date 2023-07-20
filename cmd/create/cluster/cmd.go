@@ -21,17 +21,17 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
-	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/spf13/cobra"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
@@ -41,8 +41,10 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/helper/versions"
+	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -59,6 +61,11 @@ var kmsArnRE = regexp.MustCompile(
 const (
 	OidcConfigIdFlag      = "oidc-config-id"
 	ClassicOidcConfigFlag = "classic-oidc-config"
+
+	defaultIngressRouteSelectorFlag            = "default-ingress-route-selector"
+	defaultIngressExcludedNamespacesFlag       = "default-ingress-excluded-namespaces"
+	defaultIngressWildcardPolicyFlag           = "default-ingress-wildcard-policy"
+	defaultIngressNamespaceOwnershipPolicyFlag = "default-ingress-namespace-ownership-policy"
 
 	MinReplicasSingleAZ = 2
 	MinReplicaMultiAZ   = 3
@@ -164,6 +171,14 @@ var args struct {
 
 	// Audit Log Forwarding
 	AuditLogRoleARN string
+
+	// Default Ingress Attributes
+	defaultIngressRouteSelectors            string
+	defaultIngressExcludedNamespaces        string
+	defaultIngressWildcardPolicy            string
+	defaultIngressNamespaceOwnershipPolicy  string
+	defaultIngressClusterRoutesHostname     string
+	defaultIngressClusterRoutesTlsSecretRef string
 }
 
 var Cmd = &cobra.Command{
@@ -633,6 +648,37 @@ The password must
 		"audit-log-arn",
 		"",
 		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
+	)
+
+	flags.StringVar(
+		&args.defaultIngressRouteSelectors,
+		defaultIngressRouteSelectorFlag,
+		"",
+		"Route Selector for ingress. Format should be a comma-separated list of 'key=value'. "+
+			"If no label is specified, all routes will be exposed on both routers.",
+	)
+
+	flags.StringVar(
+		&args.defaultIngressExcludedNamespaces,
+		defaultIngressExcludedNamespacesFlag,
+		"",
+		"Excluded namespaces for ingress. Format should be a comma-separated list 'value1, value2...'. "+
+			"If no values are specified, all namespaces will be exposed.",
+	)
+
+	flags.StringVar(
+		&args.defaultIngressWildcardPolicy,
+		defaultIngressWildcardPolicyFlag,
+		"",
+		fmt.Sprintf("Wildcard Policy for ingress. Options are %s", strings.Join(ingress.ValidWildcardPolicies, ",")),
+	)
+
+	flags.StringVar(
+		&args.defaultIngressNamespaceOwnershipPolicy,
+		defaultIngressNamespaceOwnershipPolicyFlag,
+		"",
+		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s",
+			strings.Join(ingress.ValidNamespaceOwnershipPolicies, ",")),
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -2336,6 +2382,107 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	routeSelector := ""
+	if cmd.Flags().Changed(defaultIngressRouteSelectorFlag) {
+		if isHostedCP {
+			r.Reporter.Errorf("Updating route selectors is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		routeSelector = args.defaultIngressRouteSelectors
+	} else if interactive.Enabled() && !isHostedCP {
+		routeSelectorArg, err := interactive.GetString(interactive.Input{
+			Question: "Route Selector for ingress",
+			Help:     cmd.Flags().Lookup(defaultIngressRouteSelectorFlag).Usage,
+			Default:  args.defaultIngressRouteSelectors,
+			Validators: []interactive.Validator{
+				func(routeSelector interface{}) error {
+					_, err := ingress.GetRouteSelector(routeSelector.(string))
+					return err
+				},
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+		routeSelector = routeSelectorArg
+	}
+	routeSelectors, err := ingress.GetRouteSelector(routeSelector)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	excludedNamespaces := ""
+	if cmd.Flags().Changed(defaultIngressExcludedNamespacesFlag) {
+		if isHostedCP {
+			r.Reporter.Errorf("Updating excluded namespace is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		excludedNamespaces = args.defaultIngressExcludedNamespaces
+	} else if interactive.Enabled() && !isHostedCP {
+		excludedNamespacesArg, err := interactive.GetString(interactive.Input{
+			Question: "Excluded namespaces for ingress",
+			Help:     cmd.Flags().Lookup(defaultIngressExcludedNamespacesFlag).Usage,
+			Default:  args.defaultIngressExcludedNamespaces,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+		excludedNamespaces = excludedNamespacesArg
+	}
+	sliceExcludedNamespaces := []string{}
+	if excludedNamespaces != "" {
+		sliceExcludedNamespaces = strings.Split(excludedNamespaces, ",")
+	}
+
+	wildcardPolicy := ""
+	if cmd.Flags().Changed(defaultIngressWildcardPolicyFlag) {
+		if isHostedCP {
+			r.Reporter.Errorf("Updating Wildcard Policy is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		wildcardPolicy = args.defaultIngressWildcardPolicy
+	} else {
+		if interactive.Enabled() && !isHostedCP {
+			wildcardPolicyArg, err := interactive.GetOption(interactive.Input{
+				Question: "Wildcard Policy",
+				Options:  ingress.ValidWildcardPolicies,
+				Help:     cmd.Flags().Lookup(defaultIngressWildcardPolicyFlag).Usage,
+				Default:  args.defaultIngressWildcardPolicy,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid Wildcard Policy: %s", err)
+				os.Exit(1)
+			}
+			wildcardPolicy = wildcardPolicyArg
+		}
+	}
+
+	namespaceOwnershipPolicy := ""
+	if cmd.Flags().Changed(defaultIngressNamespaceOwnershipPolicyFlag) {
+		if isHostedCP {
+			r.Reporter.Errorf("Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		namespaceOwnershipPolicy = args.defaultIngressNamespaceOwnershipPolicy
+	} else {
+		if interactive.Enabled() && !isHostedCP {
+			namespaceOwnershipPolicyArg, err := interactive.GetOption(interactive.Input{
+				Question: "Namespace Ownership Policy",
+				Options:  ingress.ValidNamespaceOwnershipPolicies,
+				Help:     cmd.Flags().Lookup(defaultIngressNamespaceOwnershipPolicyFlag).Usage,
+				Default:  args.defaultIngressNamespaceOwnershipPolicy,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid Namespace Ownership Policy: %s", err)
+				os.Exit(1)
+			}
+			namespaceOwnershipPolicy = namespaceOwnershipPolicyArg
+		}
+	}
+
 	clusterConfig := ocm.Spec{
 		Name:                      clusterName,
 		Region:                    region,
@@ -2382,6 +2529,12 @@ func run(cmd *cobra.Command, _ []string) {
 		},
 		BillingAccount:  billingAccount,
 		AuditLogRoleARN: &auditLogRoleARN,
+		DefaultIngress: ocm.DefaultIngressSpec{
+			RouteSelectors:           routeSelectors,
+			ExcludedNamespaces:       sliceExcludedNamespaces,
+			WildcardPolicy:           wildcardPolicy,
+			NamespaceOwnershipPolicy: namespaceOwnershipPolicy,
+		},
 	}
 
 	if httpTokens != "" {
@@ -2912,6 +3065,27 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
 		command += fmt.Sprintf(" --audit-log-arn %s", *spec.AuditLogRoleARN)
+	}
+
+	if !reflect.DeepEqual(spec.DefaultIngress, ocm.DefaultIngressSpec{}) {
+		if len(spec.DefaultIngress.RouteSelectors) != 0 {
+			selectors := []string{}
+			for k, v := range spec.DefaultIngress.RouteSelectors {
+				selectors = append(selectors, fmt.Sprintf("%s=%s", k, v))
+			}
+			command += fmt.Sprintf(" --%s %s", defaultIngressRouteSelectorFlag, strings.Join(selectors, ","))
+		}
+		if len(spec.DefaultIngress.ExcludedNamespaces) != 0 {
+			command += fmt.Sprintf(" --%s %s", defaultIngressExcludedNamespacesFlag,
+				strings.Join(spec.DefaultIngress.ExcludedNamespaces, ","))
+		}
+		if !helper.Contains([]string{"", "none"}, spec.DefaultIngress.WildcardPolicy) {
+			command += fmt.Sprintf(" --%s %s", defaultIngressWildcardPolicyFlag, spec.DefaultIngress.WildcardPolicy)
+		}
+		if !helper.Contains([]string{"", "none"}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
+			command += fmt.Sprintf(" --%s %s", defaultIngressNamespaceOwnershipPolicyFlag,
+				spec.DefaultIngress.NamespaceOwnershipPolicy)
+		}
 	}
 
 	return command

@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -37,6 +38,13 @@ import (
 )
 
 var NetworkTypes = []string{"OpenShiftSDN", "OVNKubernetes"}
+
+type DefaultIngressSpec struct {
+	RouteSelectors           map[string]string
+	ExcludedNamespaces       []string
+	WildcardPolicy           string
+	NamespaceOwnershipPolicy string
+}
 
 // Spec is the configuration for a cluster spec.
 type Spec struct {
@@ -122,6 +130,9 @@ type Spec struct {
 	// Cluster Admin
 	ClusterAdminUser     string
 	ClusterAdminPassword string
+
+	// Default Ingress Attributes
+	DefaultIngress DefaultIngressSpec
 }
 
 type OperatorIAMRole struct {
@@ -941,6 +952,24 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		htpassUserList := v1.NewHTPasswdUserList().Items(htpasswdUsers...)
 		htPasswdIDP := v1.NewHTPasswdIdentityProvider().Users(htpassUserList)
 		clusterBuilder = clusterBuilder.Htpasswd(htPasswdIDP)
+	}
+
+	if !reflect.DeepEqual(config.DefaultIngress, DefaultIngressSpec{}) {
+		defaultIngress := cmv1.NewIngress().Default(true)
+		if len(config.DefaultIngress.RouteSelectors) != 0 {
+			defaultIngress.RouteSelectors(config.DefaultIngress.RouteSelectors)
+		}
+		if len(config.DefaultIngress.ExcludedNamespaces) != 0 {
+			defaultIngress.ExcludedNamespaces(config.DefaultIngress.ExcludedNamespaces...)
+		}
+		if !helper.Contains([]string{"", "none"}, config.DefaultIngress.WildcardPolicy) {
+			defaultIngress.RouteWildcardPolicy(v1.WildcardPolicy(config.DefaultIngress.WildcardPolicy))
+		}
+		if !helper.Contains([]string{"", "none"}, config.DefaultIngress.NamespaceOwnershipPolicy) {
+			defaultIngress.RouteNamespaceOwnershipPolicy(
+				v1.NamespaceOwnershipPolicy(config.DefaultIngress.NamespaceOwnershipPolicy))
+		}
+		clusterBuilder.Ingresses(cmv1.NewIngressList().Items(defaultIngress))
 	}
 
 	clusterSpec, err := clusterBuilder.Build()

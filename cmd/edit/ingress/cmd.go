@@ -27,6 +27,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	utils "github.com/openshift/rosa/pkg/helper"
+	helper "github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -36,13 +38,7 @@ import (
 // user is safe and that it there is no risk of SQL injection:
 var ingressKeyRE = regexp.MustCompile(`^[a-z0-9]{3,5}$`)
 
-var args struct {
-	private    bool
-	labelMatch string
-	lbType     string
-}
-
-var validLbTypes = []string{"classic", "nlb"}
+var validLbTypes = []string{string(cmv1.LoadBalancerFlavorClassic), string(cmv1.LoadBalancerFlavorNlb)}
 
 var Cmd = &cobra.Command{
 	Use:     "ingress ID",
@@ -83,7 +79,26 @@ const (
 	privateFlag    = "private"
 	labelMatchFlag = "label-match"
 	lbTypeFlag     = "lb-type"
+
+	routeSelectorFlag             = "route-selector"
+	excludedNamespacesFlag        = "excluded-namespaces"
+	wildcardPolicyFlag            = "wildcard-policy"
+	namespaceOwnershipPolicyFlag  = "namespace-ownership-policy"
+	clusterRoutesHostnameFlag     = "cluster-routes-hostname"
+	clusterRoutesTlsSecretRefFlag = "cluster-routes-tls-secret-ref"
 )
+
+var args struct {
+	private       bool
+	routeSelector string
+	lbType        string
+
+	excludedNamespaces        string
+	wildcardPolicy            string
+	namespaceOwnershipPolicy  string
+	clusterRoutesHostname     string
+	clusterRoutesTlsSecretRef string
+}
 
 func init() {
 	flags := Cmd.Flags()
@@ -98,25 +113,82 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.labelMatch,
+		&args.routeSelector,
 		labelMatchFlag,
 		"",
-		"Label match for ingress. Format should be a comma-separated list of 'key=value'. "+
+		fmt.Sprintf("Alias to '%s' flag.", routeSelectorFlag),
+	)
+
+	flags.StringVar(
+		&args.routeSelector,
+		routeSelectorFlag,
+		"",
+		"Route Selector for ingress. Format should be a comma-separated list of 'key=value'. "+
 			"If no label is specified, all routes will be exposed on both routers.",
 	)
 
-	flags.StringVarP(
+	flags.StringVar(
 		&args.lbType,
 		lbTypeFlag,
 		"",
-		"",
-		fmt.Sprintf("Type of Load Balancer. Options are %s.", strings.Join(validLbTypes, `,`)),
+		fmt.Sprintf("Type of Load Balancer. Options are %s.", strings.Join(validLbTypes, ",")),
 	)
-	Cmd.RegisterFlagCompletionFunc("lb-type", typeCompletion)
+
+	flags.StringVar(
+		&args.excludedNamespaces,
+		excludedNamespacesFlag,
+		"",
+		"Excluded namespaces for ingress. Format should be a comma-separated list 'value1, value2...'. "+
+			"If no values are specified, all namespaces will be exposed.",
+	)
+
+	flags.StringVar(
+		&args.wildcardPolicy,
+		wildcardPolicyFlag,
+		"",
+		fmt.Sprintf("Wildcard Policy for ingress. Options are %s", strings.Join(helper.ValidWildcardPolicies, ",")),
+	)
+
+	flags.StringVar(
+		&args.namespaceOwnershipPolicy,
+		namespaceOwnershipPolicyFlag,
+		"",
+		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s",
+			strings.Join(helper.ValidNamespaceOwnershipPolicies, ",")),
+	)
+
+	flags.StringVar(
+		&args.clusterRoutesHostname,
+		clusterRoutesHostnameFlag,
+		"",
+		"Cluster Routes Hostname.",
+	)
+
+	flags.StringVar(
+		&args.clusterRoutesTlsSecretRef,
+		clusterRoutesTlsSecretRefFlag,
+		"",
+		"Cluster Routes TLS Secret Reference.",
+	)
+
+	Cmd.RegisterFlagCompletionFunc(lbTypeFlag, lbTypeCompletion)
+	Cmd.RegisterFlagCompletionFunc(wildcardPolicyFlag, wildcardPoliciesTypeCompletion)
+	Cmd.RegisterFlagCompletionFunc(namespaceOwnershipPolicyFlag, namespaceOwnershipPoliciesTypeCompletion)
 }
 
-func typeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+// TODO: Generalize this functionality for type completion
+func lbTypeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return validLbTypes, cobra.ShellCompDirectiveDefault
+}
+
+func namespaceOwnershipPoliciesTypeCompletion(cmd *cobra.Command,
+	args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return helper.ValidNamespaceOwnershipPolicies, cobra.ShellCompDirectiveDefault
+}
+
+func wildcardPoliciesTypeCompletion(cmd *cobra.Command,
+	args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return helper.ValidWildcardPolicies, cobra.ShellCompDirectiveDefault
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -134,29 +206,51 @@ func run(cmd *cobra.Command, argv []string) {
 
 	clusterKey := r.GetClusterKey()
 
-	if !interactive.Enabled() && shouldEnableInteractive(cmd.Flags(), []string{labelMatchFlag, privateFlag, lbTypeFlag}) {
+	if !interactive.Enabled() && shouldEnableInteractive(cmd.Flags(),
+		[]string{labelMatchFlag, privateFlag, lbTypeFlag, routeSelectorFlag, excludedNamespacesFlag, wildcardPolicyFlag,
+			namespaceOwnershipPolicyFlag, clusterRoutesHostnameFlag, clusterRoutesTlsSecretRefFlag}) {
 		interactive.Enable()
 	}
 
 	cluster := r.FetchCluster()
-	var labelMatch *string
-	if cmd.Flags().Changed(labelMatchFlag) {
+	var routeSelector *string
+	if cmd.Flags().Changed(routeSelectorFlag) || cmd.Flags().Changed(labelMatchFlag) {
 		if ocm.IsHyperShiftCluster(cluster) {
-			r.Reporter.Errorf("Updating route selectors is not supported for hosted cp clusters")
+			r.Reporter.Errorf("Updating route selectors is not supported for Hosted Control Plane clusters")
 			os.Exit(1)
 		}
-		labelMatch = &args.labelMatch
+		routeSelector = &args.routeSelector
 	} else if interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster) {
-		labelMatchArg, err := interactive.GetString(interactive.Input{
-			Question: "Label match for ingress",
-			Help:     cmd.Flags().Lookup(labelMatchFlag).Usage,
-			Default:  labelMatch,
+		routeSelectorArg, err := interactive.GetString(interactive.Input{
+			Question: "Route Selector for ingress",
+			Help:     cmd.Flags().Lookup(routeSelectorFlag).Usage,
+			Default:  args.routeSelector,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
 			os.Exit(1)
 		}
-		labelMatch = &labelMatchArg
+		routeSelector = &routeSelectorArg
+	}
+
+	var excludedNamespaces *string
+	if cmd.Flags().Changed(excludedNamespacesFlag) {
+		if ocm.IsHyperShiftCluster(cluster) {
+			r.Reporter.Errorf("Updating excluded namespace is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		excludedNamespaces = &args.excludedNamespaces
+	} else if interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster) {
+		excludedNamespacesArg, err := interactive.GetString(interactive.Input{
+			Question: "Excluded namespaces for ingress",
+			Help:     cmd.Flags().Lookup(excludedNamespacesFlag).Usage,
+			Default:  args.excludedNamespaces,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+			os.Exit(1)
+		}
+		excludedNamespaces = &excludedNamespacesArg
 	}
 
 	var private *bool
@@ -177,24 +271,120 @@ func run(cmd *cobra.Command, argv []string) {
 
 	var lbType *string
 	if cmd.Flags().Changed(lbTypeFlag) {
+		if ocm.IsHyperShiftCluster(cluster) {
+			r.Reporter.Errorf("Updating Load Balancer Type is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		if ocm.IsSts(cluster) {
+			r.Reporter.Errorf("Updating Load Balancer Type is not supported for STS clusters")
+			os.Exit(1)
+		}
 		lbType = &args.lbType
 	} else {
 		if interactive.Enabled() {
-			if lbType == nil {
-				lbType = &validLbTypes[0]
+			if !ocm.IsSts(cluster) {
+				if lbType == nil {
+					lbType = &validLbTypes[0]
+				}
+				lbTypeArg, err := interactive.GetOption(interactive.Input{
+					Question: "Type of Load Balancer",
+					Options:  validLbTypes,
+					Required: true,
+					Default:  lbType,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid Load Balancer type: %s", err)
+					os.Exit(1)
+				}
+				lbType = &lbTypeArg
 			}
-			lbTypeArg, err := interactive.GetOption(interactive.Input{
-				Question: "Type of Load Balancer",
-				Options:  validLbTypes,
-				Required: true,
-				Default:  *lbType,
+		}
+	}
+
+	var wildcardPolicy *string
+	if cmd.Flags().Changed(wildcardPolicyFlag) {
+		if ocm.IsHyperShiftCluster(cluster) {
+			r.Reporter.Errorf("Updating Wildcard Policy is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		wildcardPolicy = &args.wildcardPolicy
+	} else {
+		if interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster) {
+			wildcardPolicyArg, err := interactive.GetOption(interactive.Input{
+				Question: "Wildcard Policy",
+				Options:  helper.ValidWildcardPolicies,
+				Help:     cmd.Flags().Lookup(wildcardPolicyFlag).Usage,
+				Default:  args.wildcardPolicy,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid Load Balancer type: %s", err)
+				r.Reporter.Errorf("Expected a valid Wildcard Policy: %s", err)
 				os.Exit(1)
 			}
-			lbType = &lbTypeArg
+			wildcardPolicy = &wildcardPolicyArg
 		}
+	}
+
+	var namespaceOwnershipPolicy *string
+	if cmd.Flags().Changed(namespaceOwnershipPolicyFlag) {
+		if ocm.IsHyperShiftCluster(cluster) {
+			r.Reporter.Errorf("Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		namespaceOwnershipPolicy = &args.namespaceOwnershipPolicy
+	} else {
+		if interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster) {
+			namespaceOwnershipPolicyArg, err := interactive.GetOption(interactive.Input{
+				Question: "Namespace Ownership Policy",
+				Options:  helper.ValidNamespaceOwnershipPolicies,
+				Help:     cmd.Flags().Lookup(namespaceOwnershipPolicyFlag).Usage,
+				Default:  args.namespaceOwnershipPolicy,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid Namespace Ownership Policy: %s", err)
+				os.Exit(1)
+			}
+			namespaceOwnershipPolicy = &namespaceOwnershipPolicyArg
+		}
+	}
+
+	var clusterRoutesHostname *string
+	if cmd.Flags().Changed(clusterRoutesHostnameFlag) {
+		if ocm.IsHyperShiftCluster(cluster) {
+			r.Reporter.Errorf("Updating Cluster Routes Hostname is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		clusterRoutesHostname = &args.clusterRoutesHostname
+	} else if interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster) {
+		clusterRoutesHostnameArg, err := interactive.GetString(interactive.Input{
+			Question: "Cluster Routes Hostname",
+			Help:     cmd.Flags().Lookup(clusterRoutesHostnameFlag).Usage,
+			Default:  args.clusterRoutesHostname,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid Cluster Routes Hostname: %s", err)
+			os.Exit(1)
+		}
+		clusterRoutesHostname = &clusterRoutesHostnameArg
+	}
+
+	var clusterRoutesTlsSecretRef *string
+	if cmd.Flags().Changed(clusterRoutesTlsSecretRefFlag) {
+		if ocm.IsHyperShiftCluster(cluster) {
+			r.Reporter.Errorf("Updating Cluster Routes Hostname is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		clusterRoutesTlsSecretRef = &args.clusterRoutesTlsSecretRef
+	} else if interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster) {
+		clusterRoutesTlsSecretRefArg, err := interactive.GetString(interactive.Input{
+			Question: "Cluster Routes TLS Secret Reference",
+			Help:     cmd.Flags().Lookup(clusterRoutesTlsSecretRefFlag).Usage,
+			Default:  args.clusterRoutesTlsSecretRef,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid Cluster Routes TLS Secret Reference: %s", err)
+			os.Exit(1)
+		}
+		clusterRoutesTlsSecretRef = &clusterRoutesTlsSecretRefArg
 	}
 
 	if cluster.AWS().PrivateLink() && !ocm.IsHyperShiftCluster(cluster) {
@@ -245,6 +435,11 @@ func run(cmd *cobra.Command, argv []string) {
 	curListening := ingress.Listening()
 	curRouteSelectors := ingress.RouteSelectors()
 	curLbType := ingress.LoadBalancerType()
+	curWildcardPolicy := ingress.RouteWildcardPolicy()
+	curNamespaceOwnershipPolicy := ingress.RouteNamespaceOwnershipPolicy()
+	curExcludedNamespaces := ingress.ExcludedNamespaces()
+	curClusterRoutesHostname := ingress.ClusterRoutesHostname()
+	curClusterRoutesTlsSecretRef := ingress.ClusterRoutesTlsSecretRef()
 
 	ingressBuilder := cmv1.NewIngress().ID(ingress.ID())
 
@@ -256,10 +451,10 @@ func run(cmd *cobra.Command, argv []string) {
 			ingressBuilder = ingressBuilder.Listening(cmv1.ListeningMethodExternal)
 		}
 	}
-	if labelMatch != nil {
+	if routeSelector != nil {
 		routeSelectors := map[string]string{}
-		if *labelMatch != "" {
-			routeSelectors, err = getRouteSelector(*labelMatch)
+		if *routeSelector != "" {
+			routeSelectors, err = helper.GetRouteSelector(*routeSelector)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -269,16 +464,32 @@ func run(cmd *cobra.Command, argv []string) {
 			ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
 		}
 	}
+
 	if lbType != nil {
-		switch *lbType {
-		case "nlb":
-			ingressBuilder = ingressBuilder.LoadBalancerType(cmv1.LoadBalancerFlavorNlb)
-		case "classic":
-			ingressBuilder = ingressBuilder.LoadBalancerType(cmv1.LoadBalancerFlavorClassic)
-		default:
-			r.Reporter.Errorf("Expected a valid Load Balancer type. Options are: %s", strings.Join(validLbTypes, `,`))
-			os.Exit(1)
+		ingressBuilder = ingressBuilder.LoadBalancerType(cmv1.LoadBalancerFlavor(*lbType))
+	}
+
+	if excludedNamespaces != nil {
+		_excludedNamespaces := []string{}
+		if *excludedNamespaces != "" {
+			_excludedNamespaces = strings.Split(*excludedNamespaces, ",")
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 		}
+		if len(_excludedNamespaces) > 0 {
+			ingressBuilder = ingressBuilder.ExcludedNamespaces(_excludedNamespaces...)
+		}
+	}
+
+	if wildcardPolicy != nil && !utils.Contains([]string{"", "none"}, *wildcardPolicy) {
+		ingressBuilder = ingressBuilder.RouteWildcardPolicy(cmv1.WildcardPolicy(*wildcardPolicy))
+	}
+
+	if namespaceOwnershipPolicy != nil && !utils.Contains([]string{"", "none"}, *namespaceOwnershipPolicy) {
+		ingressBuilder = ingressBuilder.RouteNamespaceOwnershipPolicy(
+			cmv1.NamespaceOwnershipPolicy(*namespaceOwnershipPolicy))
 	}
 
 	ingress, err = ingressBuilder.Build()
@@ -287,13 +498,29 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	sameRouteSelectors := labelMatch == nil || reflect.DeepEqual(curRouteSelectors, ingress.RouteSelectors())
+	sameRouteSelectors := routeSelector == nil || reflect.DeepEqual(curRouteSelectors, ingress.RouteSelectors())
 	// If private arg is nil no change to listening method will be made anyway
 	sameListeningMethod := private == nil || curListening == ingress.Listening()
 
 	sameLbType := (lbType == nil) || (curLbType == ingress.LoadBalancerType())
 
-	if sameListeningMethod && sameRouteSelectors && sameLbType {
+	sameExcludedNamespaces := excludedNamespaces == nil ||
+		reflect.DeepEqual(curExcludedNamespaces, ingress.ExcludedNamespaces())
+
+	sameWildcardPolicy := (wildcardPolicy == nil) || (curWildcardPolicy == ingress.RouteWildcardPolicy())
+
+	sameNamespaceOwnershipPolicy := (namespaceOwnershipPolicy == nil) ||
+		(curNamespaceOwnershipPolicy == ingress.RouteNamespaceOwnershipPolicy())
+
+	sameClusterRoutesHostname := (clusterRoutesHostname == nil) ||
+		(curClusterRoutesHostname == ingress.ClusterRoutesHostname())
+
+	sameClusterRoutesTlsSecretRef := (clusterRoutesTlsSecretRef == nil) ||
+		(curClusterRoutesTlsSecretRef == ingress.ClusterRoutesTlsSecretRef())
+
+	if sameListeningMethod && sameRouteSelectors && sameLbType &&
+		sameExcludedNamespaces && sameWildcardPolicy && sameNamespaceOwnershipPolicy &&
+		sameClusterRoutesHostname && sameClusterRoutesTlsSecretRef {
 		r.Reporter.Warnf("No need to update ingress as there are no changes")
 		os.Exit(0)
 	}
@@ -306,18 +533,4 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	r.Reporter.Infof("Updated ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
-}
-
-func getRouteSelector(labelMatches string) (map[string]string, error) {
-	routeSelectors := make(map[string]string)
-
-	for _, labelMatch := range strings.Split(labelMatches, ",") {
-		if !strings.Contains(labelMatch, "=") {
-			return nil, fmt.Errorf("Expected key=value format for label-match")
-		}
-		tokens := strings.Split(labelMatch, "=")
-		routeSelectors[strings.TrimSpace(tokens[0])] = strings.TrimSpace(tokens[1])
-	}
-
-	return routeSelectors, nil
 }
