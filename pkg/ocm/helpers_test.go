@@ -19,6 +19,7 @@ package ocm
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -237,4 +238,42 @@ var _ = Describe("ParseDiskSizeToGigibyte", func() {
 		Expect(got).To(Equal(8589934591))
 	})
 
+})
+
+var _ = Describe("ValidateBalancingIgnoredLabels", func() {
+	It("returns an error if didn't got a string", func() {
+		var val interface{} = 1
+		err := ValidateBalancingIgnoredLabels(val)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("passes for an empty string", func() {
+		var val interface{} = ""
+		err := ValidateBalancingIgnoredLabels(val)
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	It("passes for valid label keys", func() {
+		var val interface{} = "eks.amazonaws.com/nodegroup,alpha.eksctl.io/nodegroup-name"
+		err := ValidateBalancingIgnoredLabels(val)
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	It("returns an error for a label that doesn't start with an alphanumeric character", func() {
+		var val interface{} = ".t"
+		err := ValidateBalancingIgnoredLabels(val)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns an error for a label that has illegal characters", func() {
+		var val interface{} = "a%"
+		err := ValidateBalancingIgnoredLabels(val)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns an error for a label that exceeds 63 characters", func() {
+		var val interface{} = strings.Repeat("a", 64)
+		err := ValidateBalancingIgnoredLabels(val)
+		Expect(err).To(HaveOccurred())
+	})
 })
