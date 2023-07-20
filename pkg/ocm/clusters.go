@@ -53,6 +53,46 @@ func NewDefaultIngressSpec() DefaultIngressSpec {
 	return defaultIngressSpec
 }
 
+type AutoscalerConfig struct {
+	BalanceSimilarNodeGroups    bool
+	BalancingIgnoredLabels      map[string]string
+	IgnoreDaemonsetsUtilization bool
+	SkipNodesWithLocalStorage   bool
+	LogVerbosity                int
+	MaxNodeProvisionTime        string
+	MaxPodGracePeriod           int
+	PodPriorityThreshold        int
+	ResourceLimits              ResourceLimits
+	ScaleDown                   ScaleDownConfig
+}
+
+type ResourceLimits struct {
+	MaxNodesTotal int
+	Cores         ResourceRange
+	Memory        ResourceRange
+	GPUS          GPULimit
+}
+
+type ResourceRange struct {
+	Min int
+	Max int
+}
+
+type GPULimit struct {
+	Type string
+	Min  int
+	Max  int
+}
+
+type ScaleDownConfig struct {
+	Enabled              bool
+	UnneededTime         string
+	UtilizationThreshold float64
+	DelayAfterAdd        string
+	DelayAfterDelete     string
+	DelayAfterFailure    string
+}
+
 // Spec is the configuration for a cluster spec.
 type Spec struct {
 	// Basic configs
@@ -74,6 +114,7 @@ type Spec struct {
 	ComputeMachineType string
 	ComputeNodes       int
 	Autoscaling        bool
+	AutoscalerConfig   AutoscalerConfig
 	MinReplicas        int
 	MaxReplicas        int
 	ComputeLabels      map[string]string

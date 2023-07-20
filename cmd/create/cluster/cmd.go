@@ -31,7 +31,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
-	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -48,7 +47,6 @@ import (
 	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/interactive/consts"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
@@ -117,6 +115,19 @@ var args struct {
 	maxReplicas              int
 	defaultMachinePoolLabels string
 
+	// Autoscaler Configurations
+	balanceSimilarNodeGroups    bool
+	balancingIgnoredLabelsInput string
+	balancingIgnoredLabels      map[string]string
+	ignoreDaemonsetsUtilization bool
+	skipNodesWithLocalStorage   bool
+	logVerbosity                int
+	maxNodeProvisionTime        string
+	maxPodGracePeriod           int
+	podPriorityThreshold        int
+	resourceLimits              ResourceLimits
+	scaleDown                   ScaleDownConfig
+
 	// Networking options
 	networkType string
 	machineCIDR net.IPNet
@@ -181,9 +192,47 @@ var args struct {
 	defaultIngressNamespaceOwnershipPolicy  string
 	defaultIngressClusterRoutesHostname     string
 	defaultIngressClusterRoutesTlsSecretRef string
+}
 
-	// Storage
-	machinePoolRootDiskSize string
+// type AutoscalerConfig struct {
+// balanceSimilarNodeGroups    bool
+// balancingIgnoredLabelsInput string
+// balancingIgnoredLabels      []string
+// ignoreDaemonsetsUtilization bool
+// skipNodesWithLocalStorage   bool
+// logVerbosity                int
+// maxNodeProvisionTime        string
+// maxPodGracePeriod           int
+// podPriorityThreshold        int
+// resourceLimits              ResourceLimits
+// scaleDown                   ScaleDownConfig
+// }
+
+type ResourceLimits struct {
+	MaxNodesTotal int
+	Cores         ResourceRange
+	Memory        ResourceRange
+	GPUS          GPULimit
+}
+
+type ResourceRange struct {
+	Min int
+	Max int
+}
+
+type GPULimit struct {
+	Type string
+	Min  int
+	Max  int
+}
+
+type ScaleDownConfig struct {
+	Enabled              bool
+	UnneededTime         string
+	UtilizationThreshold float64
+	DelayAfterAdd        string
+	DelayAfterDelete     string
+	DelayAfterFailure    string
 }
 
 var Cmd = &cobra.Command{
@@ -490,6 +539,169 @@ func init() {
 		"Enable autoscaling of compute nodes.",
 	)
 
+	// Cluster Autoscaler flags
+	// Ballancing Behaviour Flags
+	flags.BoolVar(
+		&args.balanceSimilarNodeGroups,
+		"balance-similar-node-groups",
+		false,
+		"Identify node groups with the same instance type and label set, and aim to balance respective sizes of those node groups.",
+	)
+
+	flags.StringVar(
+		&args.balancingIgnoredLabelsInput,
+		"balancing-ignored-labels",
+		"",
+		"Labels that cluster autoscaler should ignore when considering node group similarity. Format should be a comma-separated list of 'key=value'.",
+	)
+
+	flags.BoolVar(
+		&args.ignoreDaemonsetsUtilization,
+		"ignore-daemonsets-utilizaiton",
+		false,
+		"Should CA ignore DaemonSet pods when calculating resource utilization for scaling down",
+	)
+
+	flags.BoolVar(
+		&args.skipNodesWithLocalStorage,
+		"skip-nodes-with-local-storage",
+		true,
+		"If true cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPat.",
+	)
+
+	flags.IntVar(
+		&args.logVerbosity,
+		"log-verbosity",
+		1,
+		"Autoscaler log level.",
+	)
+
+	flags.StringVar(
+		&args.maxNodeProvisionTime,
+		"max-node-provision-time",
+		"",
+		"Maximum time CA waits for node to be provisioned. Expects string comprised of an integer and time unit (ns|us|µs|ms|s|m|h)), ex: 20m, 1h, etc.",
+	)
+
+	flags.IntVar(
+		&args.maxPodGracePeriod,
+		"max-pod-grace-period",
+		0,
+		"Gives pods graceful termination time before scaling down, measured in seconds (s).",
+	)
+
+	flags.IntVar(
+		&args.podPriorityThreshold,
+		"pod-priority-threshold",
+		0,
+		"The priority that a pod must exceed to cause the cluster autoscaler to deploy additional nodes. Expects an integer, can be negative.",
+	)
+
+	// Resource Limits
+	flags.IntVar(
+		&args.resourceLimits.MaxNodesTotal,
+		"max-nodes-total",
+		1000,
+		"Minimum number of total nodes (not just autoscaled ones).",
+	)
+
+	flags.IntVar(
+		&args.resourceLimits.Cores.Min,
+		"min-cores",
+		0,
+		"Minimum number of cores to deploy in the cluster.",
+	)
+
+	flags.IntVar(
+		&args.resourceLimits.Cores.Max,
+		"max-cores",
+		100,
+		"Maximum number of cores to deploy in the cluster.",
+	)
+
+	flags.IntVar(
+		&args.resourceLimits.Memory.Min,
+		"min-memory",
+		0,
+		"Minimum amount of memory, in GiB, in the cluster.",
+	)
+
+	flags.IntVar(
+		&args.resourceLimits.Memory.Max,
+		"max-memory",
+		4096,
+		"Maximum amount of memory, in GiB, in the cluster.",
+	)
+
+	flags.StringVar(
+		&args.resourceLimits.GPUS.Type,
+		"gpu-type",
+		"nvidia.com/gpu",
+		"The type of GPU node to deploy. "+
+			"Options: [nvidia.com/gpu, amd.com/gpu].",
+	)
+
+	flags.IntVar(
+		&args.resourceLimits.GPUS.Min,
+		"min-gpu",
+		0,
+		"Maximum number of GPUs to deploy in the cluster.",
+	)
+
+	flags.IntVar(
+		&args.resourceLimits.GPUS.Max,
+		"max-gpu",
+		0,
+		"Maximum number of GPUs to deploy in the cluster.",
+	)
+
+	// Scale down Configuration
+
+	flags.BoolVar(
+		&args.scaleDown.Enabled,
+		"scale-down-enabled",
+		true,
+		"Should Cluster Autoscaler scale down the Cluster.",
+	)
+
+	flags.StringVar(
+		&args.scaleDown.UnneededTime,
+		"scale-down-unneeded-time",
+		"",
+		"How long a node should be unneeded before it is eligible for scale down.",
+	)
+
+	flags.Float64Var(
+		&args.scaleDown.UtilizationThreshold,
+		"scale-down-utilization-threshold",
+		0.5,
+		"Node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down."+
+			"Options: between 0 and 1.",
+	)
+
+	flags.StringVar(
+		&args.scaleDown.DelayAfterAdd,
+		"scale-down-delay-after-add",
+		"",
+		"How long after scale up that scale down evaluation resumes.",
+	)
+
+	flags.StringVar(
+		&args.scaleDown.DelayAfterDelete,
+		"scale-down-delay-after-delete",
+		"",
+		"How long after node deletion that scale down evaluation resumes.",
+	)
+
+	flags.StringVar(
+		&args.scaleDown.DelayAfterFailure,
+		"scale-down-delay-after-failure",
+		"",
+		"How long after scale down failure that scale down evaluation resumes",
+	)
+
+	// End of autoscaling configuration flags
+
 	flags.IntVar(
 		&args.minReplicas,
 		"min-replicas",
@@ -622,11 +834,6 @@ func init() {
 		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
 
-	flags.StringVar(&args.machinePoolRootDiskSize,
-		"worker-disk-size",
-		"",
-		"Machine pool root disk size with a **unit suffix** like GiB or TiB, e.g. 200GiB.")
-
 	flags.StringVar(
 		&args.billingAccount,
 		"billing-account",
@@ -709,7 +916,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
 	if err != nil {
-		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
+		r.Reporter.Errorf("Unable to retrieve supported regixns: %v", err)
 	}
 	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions, args.useLocalCredentials)
 	r.AWSClient = awsClient
@@ -738,7 +945,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Select a multi-AZ cluster implicitly by providing three availability zones
-	if len(args.availabilityZones) == clustervalidations.MultiAZCount {
+	if len(args.availabilityZones) == ocm.MultiAZCount {
 		args.multiAZ = true
 	}
 
@@ -805,12 +1012,6 @@ func run(cmd *cobra.Command, _ []string) {
 	if isHostedCP && args.ec2MetadataHttpTokens != "" {
 		r.Reporter.Errorf("ec2-metadata-http-tokens can't be set with hosted-cp")
 		os.Exit(1)
-	}
-
-	// setting default for ec2MetadataHttpTokens in case cluster is not hosted
-	// or ec2MetadataHttpTokens was not set
-	if !isHostedCP && args.ec2MetadataHttpTokens == "" {
-		args.ec2MetadataHttpTokens = string(v1.Ec2MetadataHttpTokensOptional)
 	}
 
 	isClusterAdmin := false
@@ -962,12 +1163,6 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
 	}
-	if err := r.OCMClient.IsVersionCloseToEol(ocm.CloseToEolDays, version, channelGroup); err != nil {
-		r.Reporter.Warnf("%v", err)
-		if !confirm.Confirm("continue with version '%s'", ocm.GetRawVersionId(version)) {
-			os.Exit(0)
-		}
-	}
 
 	httpTokens := args.ec2MetadataHttpTokens
 	if interactive.Enabled() && !isHostedCP {
@@ -1076,9 +1271,6 @@ func run(cmd *cobra.Command, _ []string) {
 			roleARN = roleARNs[0]
 		} else {
 			createAccountRolesCommand := "rosa create account-roles"
-			if isHostedCP {
-				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
-			}
 			r.Reporter.Warnf(fmt.Sprintf("No account roles found. You will need to manually set them in the "+
 				"next steps or run '%s' to create them first.", createAccountRolesCommand))
 			interactive.Enable()
@@ -1086,10 +1278,13 @@ func run(cmd *cobra.Command, _ []string) {
 
 		if roleARN != "" {
 			// check if role has hosted cp policy via AWS tag value
-			hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
-			if err != nil {
-				r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
-				os.Exit(1)
+			var hostedCPPolicies bool
+			if isHostedCP {
+				hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
+				if err != nil {
+					r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+					os.Exit(1)
+				}
 			}
 			hasRoles = true
 			for roleType, role := range aws.AccountRoles {
@@ -1130,9 +1325,6 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 				if selectedARN == "" {
 					createAccountRolesCommand := "rosa create account-roles"
-					if isHostedCP {
-						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
-					}
 					r.Reporter.Warnf(fmt.Sprintf("No %s account roles found. You will need to manually set "+
 						"them in the next steps or run '%s' to create "+
 						"them first.", role.Name, createAccountRolesCommand))
@@ -1309,13 +1501,16 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
 		os.Exit(1)
 	}
-	// check if role has hosted cp policy via AWS tag value
-	hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
-	if err != nil {
-		r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
-		os.Exit(1)
-	}
 
+	// check if role has hosted cp policy via AWS tag value
+	var hostedCPPolicies bool
+	if isHostedCP {
+		hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
+		if err != nil {
+			r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+			os.Exit(1)
+		}
+	}
 	if managedPolicies {
 		rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
@@ -1644,12 +1839,7 @@ func run(cmd *cobra.Command, _ []string) {
 		enableProxy = true
 	}
 
-	dMachinecidr,
-		dPodcidr,
-		dServicecidr,
-		dhostPrefix,
-		defaultMachinePoolRootDiskSize,
-		defaultComputeMachineType := r.OCMClient.
+	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
 		GetDefaultClusterFlavors(args.flavour)
 	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
 		r.Reporter.Errorf("Error retrieving default cluster flavors")
@@ -1773,11 +1963,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if len(subnets) != len(initialSubnets) {
-			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into chosen CIDR ranges")
-		}
-		if len(subnets) == 0 {
-			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
-			confirm.Prompt(false, "Continue with default? A new VPC will be created for your cluster")
+			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into the Machine CIDR range")
 		}
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
@@ -1800,28 +1986,19 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		mapVpcToSubnet := map[string][]*ec2.Subnet{}
-
-		for _, subnet := range subnets {
-			mapVpcToSubnet[*subnet.VpcId] = append(mapVpcToSubnet[*subnet.VpcId], subnet)
+		for i, subnet := range subnets {
 			subnetID := awssdk.StringValue(subnet.SubnetId)
 			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
-			mapSubnetToAZ[subnetID] = availabilityZone
-			mapAZCreated[availabilityZone] = false
-		}
-		// Create the options to prompt the user.
-		i := 0
-		vpcIds := helper.MapKeys(mapVpcToSubnet)
-		helper.SortStringRespectLength(vpcIds)
-		for _, vpcId := range vpcIds {
-			subnetList := mapVpcToSubnet[vpcId]
-			for _, subnet := range subnetList {
-				options[i] = aws.SetSubnetOption(subnet)
-				i++
-				if subnetsProvided && helper.Contains(subnetIDs, *subnet.SubnetId) {
-					defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnet))
+
+			// Create the options to prompt the user.
+			options[i] = aws.SetSubnetOption(subnetID, availabilityZone)
+			if subnetsProvided {
+				for _, subnetArg := range subnetIDs {
+					defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnetArg, availabilityZone))
 				}
 			}
+			mapSubnetToAZ[subnetID] = availabilityZone
+			mapAZCreated[availabilityZone] = false
 		}
 		if isHostedCP && !subnetsProvided {
 			interactive.Enable()
@@ -2026,6 +2203,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
 			os.Exit(1)
 		}
+
 		if interactive.Enabled() || !isMinReplicasSet {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
@@ -2065,6 +2243,416 @@ func run(cmd *cobra.Command, _ []string) {
 		err = maxReplicaValidator(multiAZ, minReplicas, isHostedCP, privateSubnetsCount)(maxReplicas)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+	// Autoscaler configurations
+	// Balancing Cluster Options
+	balanceSimilarNodeGroups := args.balanceSimilarNodeGroups
+	isBalanceSimilarNodeGroupsSet := cmd.Flags().Changed("balance-similar-node-groups")
+	if interactive.Enabled() && !isBalanceSimilarNodeGroupsSet && !balanceSimilarNodeGroups {
+		balanceSimilarNodeGroups, err = interactive.GetBool(interactive.Input{
+			Question: "Balance similar node groups",
+			Help:     cmd.Flags().Lookup("balance-similar-node-groups").Usage,
+			Default:  false,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid boolean value for balanceSimilarNodeGroups: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	balancingIgnoredLabelsInput := args.balancingIgnoredLabelsInput
+	isBalancingIgnoredLabelsSet := cmd.Flags().Changed("balancing-ignored-labels")
+	if interactive.Enabled() && !isBalancingIgnoredLabelsSet && balancingIgnoredLabelsInput == "" {
+		balancingIgnoredLabelsInput, err = interactive.GetString(interactive.Input{
+			Question: "Labels that cluster autoscaler should ignore when considering node group similarity.",
+			Help:     cmd.Flags().Lookup("balancing-ignored-labels").Usage,
+			Default:  balancingIgnoredLabelsInput,
+			Required: false,
+			Validators: []interactive.Validator{
+				mpHelpers.LabelValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid comma-separated labels for balancingIgnoredLabels: %s", err)
+			os.Exit(1)
+		}
+	}
+	balancingIgnoredLabels, err := mpHelpers.ParseLabels(balancingIgnoredLabelsInput)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	ignoreDaemonsetsUtilization := args.ignoreDaemonsetsUtilization
+	isIgnoreDaemonsetsUtilizationSet := cmd.Flags().Changed("ignore-daemonsets-utilization")
+	if interactive.Enabled() && !isIgnoreDaemonsetsUtilizationSet && !ignoreDaemonsetsUtilization {
+		ignoreDaemonsetsUtilization, err = interactive.GetBool(interactive.Input{
+			Question: "Ignore Daemonset Utilization",
+			Help:     cmd.Flags().Lookup("ignore-daemonsets-utilizaiton").Usage,
+			Default:  false,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid boolean value for ignoreDaemonsetsUtilization: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	skipNodesWithLocalStorage := args.skipNodesWithLocalStorage
+	isSkipNodesWithLocalStorageSet := cmd.Flags().Changed("skip-nodes-with-local-storage")
+	if interactive.Enabled() && !isSkipNodesWithLocalStorageSet && !skipNodesWithLocalStorage {
+		skipNodesWithLocalStorage, err = interactive.GetBool(interactive.Input{
+			Question: "Skip nodes with local storage",
+			Help:     cmd.Flags().Lookup("skip-nodes-with-local-storage").Usage,
+			Default:  true,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for skipNodesWithLocalStorage: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	logVerbosity := args.logVerbosity
+	isLogVerbositySet := cmd.Flags().Changed("log-verbosity")
+	if interactive.Enabled() && !isLogVerbositySet {
+		logVerbosity, err = interactive.GetInt(interactive.Input{
+			Question: "Log verbosity",
+			Help:     cmd.Flags().Lookup("log-verbosity").Usage,
+			Default:  logVerbosity,
+			Required: false,
+			Validators: []interactive.Validator{
+				intValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid int value for logVerbosity: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = intValidator(logVerbosity)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	maxNodeProvisionTime := args.maxNodeProvisionTime
+	isMaxNodeProvisionTimeSet := cmd.Flags().Changed("max-node-provision-time")
+	if interactive.Enabled() && !isMaxNodeProvisionTimeSet {
+		maxNodeProvisionTime, err = interactive.GetString(interactive.Input{ // could opt to use getString like other duration variable
+			Question: "Max Node Provision Time",
+			Help:     cmd.Flags().Lookup("max-node-provision-time").Usage,
+			Required: false,
+			Default:  maxNodeProvisionTime,
+			Validators: []interactive.Validator{
+				timeStringValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for maxNodeProvisionTime: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = timeStringValidator(maxNodeProvisionTime)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	maxPodGracePeriod := args.maxPodGracePeriod
+	isMaxPodGracePeriodSet := cmd.Flags().Changed("max-pod-grace-period")
+	if interactive.Enabled() && maxPodGracePeriod == 0 && !isMaxPodGracePeriodSet {
+		maxPodGracePeriod, err = interactive.GetInt(interactive.Input{
+			Question: "Max Node Provision Time",
+			Help:     cmd.Flags().Lookup("max-node-provision-time").Usage,
+			Required: false,
+			Default:  maxNodeProvisionTime,
+		})
+	}
+
+	podPriorityThreshold := args.podPriorityThreshold
+	isPodPriorityThreasholdSet := cmd.Flags().Changed("pod-priority-threshold")
+	if interactive.Enabled() && podPriorityThreshold == 0 && !isPodPriorityThreasholdSet {
+		podPriorityThreshold, err = interactive.GetInt(interactive.Input{
+			Question: "Pod Priotiry Threshold",
+			Help:     cmd.Flags().Lookup("pod-priority-threshold").Usage,
+			Required: false,
+			Default:  podPriorityThreshold,
+		})
+	}
+
+	maxNodesTotal := args.resourceLimits.MaxNodesTotal
+	isMaxNodesTotalSet := cmd.Flags().Changed("max-nodes-total")
+	if interactive.Enabled() && !isMaxNodesTotalSet {
+		maxNodesTotal, err = interactive.GetInt(interactive.Input{
+			Question: "Maximum number of nodes to deploy (includes all types).",
+			Help:     cmd.Flags().Lookup("max-nodes-total").Usage,
+			Default:  maxNodesTotal,
+			Validators: []interactive.Validator{
+				nonZeroIntValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid int32, non-zero value for maxNodesTotal: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = nonZeroIntValidator(maxNodesTotal)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	minCores := args.resourceLimits.Cores.Min
+	isMinCoresSet := cmd.Flags().Changed("min-cores")
+	if interactive.Enabled() && !isMinCoresSet {
+		minCores, err = interactive.GetInt(interactive.Input{
+			Question: "Minimum number of cores to deploy in cluster.",
+			Help:     cmd.Flags().Lookup("min-cores").Usage,
+			Default:  minCores,
+			Validators: []interactive.Validator{
+				intValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid int32 value for minCores: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = intValidator(minCores)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	maxCores := args.resourceLimits.Cores.Max
+	isMaxCoresSet := cmd.Flags().Changed("max-cores")
+	if interactive.Enabled() && !isMaxCoresSet {
+		maxCores, err = interactive.GetInt(interactive.Input{
+			Question: "Maximum number of cores to deploy in cluster.",
+			Help:     cmd.Flags().Lookup("max-cores").Usage,
+			Default:  maxCores,
+			Validators: []interactive.Validator{
+				nonZeroIntValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid, non-zero int32 value for maxCores: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = nonZeroIntValidator(maxCores)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	minMemory := args.resourceLimits.Memory.Min
+	isMinMemeorySet := cmd.Flags().Changed("min-memory")
+	if interactive.Enabled() && !isMinMemeorySet {
+		minMemory, err = interactive.GetInt(interactive.Input{
+			Question: "Minimum amount of memory, in GiB, in the cluster.",
+			Help:     cmd.Flags().Lookup("min-memory").Usage,
+			Default:  maxCores,
+			Validators: []interactive.Validator{
+				intValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid int32 value for minMemory: %s", err)
+		}
+	}
+	err = intValidator(minMemory)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	maxMemory := args.resourceLimits.Memory.Max
+	isMaxMemeorySet := cmd.Flags().Changed("max-memory")
+	if interactive.Enabled() && !isMaxMemeorySet {
+		minMemory, err = interactive.GetInt(interactive.Input{
+			Question: "Maximum amount of memory, in GiB, in the cluster",
+			Help:     cmd.Flags().Lookup("max-memory").Usage,
+			Default:  maxMemory,
+			Validators: []interactive.Validator{
+				nonZeroIntValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid, non-zero int32 value for maxCores: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = nonZeroIntValidator(maxMemory)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	gpuType := args.resourceLimits.GPUS.Type
+	isGPUTypeSet := cmd.Flags().Changed("gpu-type")
+	if interactive.Enabled() && !isGPUTypeSet {
+		gpuType, err = interactive.GetOption(interactive.Input{
+			Question: "Skip nodes with local storage",
+			Help:     cmd.Flags().Lookup("skip-nodes-with-local-storage").Usage,
+			Default:  "nvidia.com/gpu",
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid option for gpuType: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	minGPU := args.resourceLimits.GPUS.Min
+	isMinGPUSet := cmd.Flags().Changed("min-gpu")
+	if interactive.Enabled() && !isMinGPUSet {
+		minGPU, err = interactive.GetInt(interactive.Input{
+			Question: "Minimum amount of GPUS in the cluster.",
+			Help:     cmd.Flags().Lookup("min-gpu").Usage,
+			Default:  minGPU,
+			Validators: []interactive.Validator{
+				intValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid int value for minGPU: %s", err)
+		}
+	}
+	err = intValidator(minGPU)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	maxGPU := args.resourceLimits.Memory.Max
+	isMaxGPUSet := cmd.Flags().Changed("max-gpu")
+	if interactive.Enabled() && !isMaxGPUSet {
+		minMemory, err = interactive.GetInt(interactive.Input{
+			Question: "Maximum amount of GPUs in the cluster",
+			Help:     cmd.Flags().Lookup("max-gpu").Usage,
+			Default:  maxGPU,
+			Validators: []interactive.Validator{
+				nonZeroIntValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid, non-zero int value for maxGPU: %s", err)
+			os.Exit(1)
+		}
+	}
+	err = nonZeroIntValidator(maxGPU)
+
+	// scaledown configs
+
+	scaleDownEnabled := args.scaleDown.Enabled
+	isScaleDownEnabledSet := cmd.Flags().Changed("scale-down-enabled")
+	if interactive.Enabled() && !scaleDownEnabled && !isScaleDownEnabledSet {
+		scaleDownEnabled, err = interactive.GetBool(interactive.Input{
+			Question: "Maximum amount of GPUs in the cluster",
+			Help:     cmd.Flags().Lookup("scale-down-enabled").Usage,
+			Default:  scaleDownEnabled,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid boolean value for skipNodesWithLocalStorage: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	scaleDownUnneededTime := args.scaleDown.UnneededTime
+	isScaleDownUnneededTime := cmd.Flags().Changed("scale-down-unneeded-time")
+	if interactive.Enabled() && !isScaleDownUnneededTime && scaleDownUnneededTime == "" {
+		scaleDownUnneededTime, err = interactive.GetString(interactive.Input{
+			Question: "How long a node should be unneeded before it is eligible for scale down.",
+			Help:     cmd.Flags().Lookup("scale-down-unneeded-time").Usage,
+			Default:  scaleDownUnneededTime,
+			Required: false,
+			Validators: []interactive.Validator{
+				timeStringValidator,
+			},
+		})
+		err = timeStringValidator(scaleDownUnneededTime)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for scaleDownUnneededTime: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	scaleDownUtilizationThreshold := args.scaleDown.UtilizationThreshold
+	isScaleDownUtilizationThresholdSet := cmd.Flags().Changed("scale-down-utilization-threshold")
+	if interactive.Enabled() && !isScaleDownUtilizationThresholdSet && scaleDownUtilizationThreshold == 0 {
+		scaleDownUtilizationThreshold, err = interactive.GetFloat(interactive.Input{
+			Question: "Node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down.",
+			Help:     cmd.Flags().Lookup("scale-down-delay-after-add").Usage,
+			Default:  scaleDownUtilizationThreshold,
+			Required: false,
+			Validators: []interactive.Validator{
+				zeroToOneFloatValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	scaleDownDelayAfterAdd := args.scaleDown.DelayAfterAdd
+	isScaleDownDelayAfterAddSet := cmd.Flags().Changed("scale-down-delay-after-add")
+	if interactive.Enabled() && !isScaleDownDelayAfterAddSet && scaleDownDelayAfterAdd == "" {
+		scaleDownDelayAfterAdd, err = interactive.GetString(interactive.Input{
+			Question: "How long after scale up should scale down evaluation resume.",
+			Help:     cmd.Flags().Lookup("scale-down-delay-after-add").Usage,
+			Default:  scaleDownDelayAfterAdd,
+			Required: false,
+			Validators: []interactive.Validator{
+				timeStringValidator,
+			},
+		})
+		err = timeStringValidator(scaleDownDelayAfterAdd)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	scaleDownDelayAfterDelete := args.scaleDown.DelayAfterDelete
+	isScaleDownDelayAfterDeleteSet := cmd.Flags().Changed("scale-down-delay-after-delete")
+	if interactive.Enabled() && !isScaleDownDelayAfterDeleteSet && scaleDownDelayAfterDelete == "" {
+		scaleDownDelayAfterDelete, err = interactive.GetString(interactive.Input{
+			Question: "How long after node deletion should scale down evaluation resume.",
+			Help:     cmd.Flags().Lookup("scale-down-delay-after-delete").Usage,
+			Default:  scaleDownDelayAfterDelete,
+			Required: false,
+			Validators: []interactive.Validator{
+				timeStringValidator,
+			},
+		})
+		err = timeStringValidator(scaleDownDelayAfterDelete)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for scaleDownAfterDelete: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	scaleDownDelayAfterFailure := args.scaleDown.DelayAfterFailure
+	isScaleDownDelayAfterFailureSet := cmd.Flags().Changed("scale-down-delay-after-failure")
+	if interactive.Enabled() && !isScaleDownDelayAfterFailureSet && scaleDownDelayAfterFailure == "" {
+		scaleDownDelayAfterFailure, err = interactive.GetString(interactive.Input{
+			Question: "How long after node failure should scale down evaluation resume.",
+			Help:     cmd.Flags().Lookup("scale-down-delay-after-failure").Usage,
+			Default:  scaleDownDelayAfterFailure,
+			Required: false,
+			Validators: []interactive.Validator{
+				timeStringValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for scaleDownAfterFailure: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -2170,52 +2758,6 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
-	}
-
-	var machinePoolRootDisk *ocm.Volume
-	if args.machinePoolRootDiskSize != "" || interactive.Enabled() {
-		var machinePoolRootDiskSizeStr string
-		if args.machinePoolRootDiskSize == "" {
-			// We don't need to parse the default since it's returned from the OCM API and AWS
-			// always defaults to GiB
-			machinePoolRootDiskSizeStr = helper.GigybyteStringer(defaultMachinePoolRootDiskSize)
-		} else {
-			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
-		}
-		if interactive.Enabled() {
-			// In order to avoid confusion, we want to display to the user what was passed as an
-			// argument
-			// Even if it was not valid, we want to display it to the user, then the CLI will show an
-			// error and the value can be corrected
-			// Also, if nothing is given, we want to display the default value fetched from the OCM API
-			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
-				Question: "Machine pool root disk size (GiB or TiB)",
-				Help:     cmd.Flags().Lookup("worker-disk-size").Usage,
-				Default:  machinePoolRootDiskSizeStr,
-				Validators: []interactive.Validator{
-					interactive.MachinePoolRootDiskSizeValidator,
-				},
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
-				os.Exit(1)
-			}
-		}
-
-		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
-		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
-			os.Exit(1)
-		}
-
-		// If the size given by the user is different than the default, we just let the OCM server
-		// handle the default root disk size
-		if machinePoolRootDiskSize != defaultMachinePoolRootDiskSize {
-			machinePoolRootDisk = &ocm.Volume{
-				Size: machinePoolRootDiskSize,
-			}
-		}
 	}
 
 	fips := args.fips || fedramp.Enabled()
@@ -2521,7 +3063,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		excludedNamespaces = excludedNamespacesArg
 	}
-	sliceExcludedNamespaces := ingress.GetExcludedNamespaces(excludedNamespaces)
+	sliceExcludedNamespaces := []string{}
+	if excludedNamespaces != "" {
+		sliceExcludedNamespaces = strings.Split(excludedNamespaces, ",")
+	}
 
 	wildcardPolicy := ""
 	if cmd.Flags().Changed(defaultIngressWildcardPolicyFlag) {
@@ -2570,21 +3115,55 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterConfig := ocm.Spec{
-		Name:                      clusterName,
-		Region:                    region,
-		MultiAZ:                   multiAZ,
-		Version:                   version,
-		ChannelGroup:              channelGroup,
-		Flavour:                   args.flavour,
-		FIPS:                      fips,
-		EtcdEncryption:            etcdEncryption,
-		EtcdEncryptionKMSArn:      etcdEncryptionKmsARN,
-		EnableProxy:               enableProxy,
-		AdditionalTrustBundle:     additionalTrustBundle,
-		Expiration:                expiration,
-		ComputeMachineType:        computeMachineType,
-		ComputeNodes:              computeNodes,
-		Autoscaling:               autoscaling,
+		Name:                  clusterName,
+		Region:                region,
+		MultiAZ:               multiAZ,
+		Version:               version,
+		ChannelGroup:          channelGroup,
+		Flavour:               args.flavour,
+		FIPS:                  fips,
+		EtcdEncryption:        etcdEncryption,
+		EtcdEncryptionKMSArn:  etcdEncryptionKmsARN,
+		EnableProxy:           enableProxy,
+		AdditionalTrustBundle: additionalTrustBundle,
+		Expiration:            expiration,
+		ComputeMachineType:    computeMachineType,
+		ComputeNodes:          computeNodes,
+		Autoscaling:           autoscaling,
+		AutoscalerConfig: ocm.AutoscalerConfig{
+			BalanceSimilarNodeGroups:    balanceSimilarNodeGroups,
+			BalancingIgnoredLabels:      balancingIgnoredLabels,
+			IgnoreDaemonsetsUtilization: ignoreDaemonsetsUtilization,
+			SkipNodesWithLocalStorage:   skipNodesWithLocalStorage,
+			LogVerbosity:                logVerbosity,
+			MaxNodeProvisionTime:        maxNodeProvisionTime,
+			MaxPodGracePeriod:           maxPodGracePeriod,
+			PodPriorityThreshold:        podPriorityThreshold,
+			ResourceLimits: ocm.ResourceLimits{
+				MaxNodesTotal: maxNodesTotal,
+				Cores: ocm.ResourceRange{
+					Min: minCores,
+					Max: maxCores,
+				},
+				Memory: ocm.ResourceRange{
+					Min: minMemory,
+					Max: maxMemory,
+				},
+				GPUS: ocm.GPULimit{
+					Type: gpuType,
+					Min:  minGPU,
+					Max:  maxGPU,
+				},
+			},
+			ScaleDown: ocm.ScaleDownConfig{
+				Enabled:              scaleDownEnabled,
+				UnneededTime:         scaleDownUnneededTime,
+				UtilizationThreshold: scaleDownUtilizationThreshold,
+				DelayAfterAdd:        scaleDownDelayAfterAdd,
+				DelayAfterDelete:     scaleDownDelayAfterDelete,
+				DelayAfterFailure:    scaleDownDelayAfterFailure,
+			},
+		},
 		MinReplicas:               minReplicas,
 		MaxReplicas:               maxReplicas,
 		ComputeLabels:             labelMap,
@@ -2621,7 +3200,6 @@ func run(cmd *cobra.Command, _ []string) {
 			WildcardPolicy:           wildcardPolicy,
 			NamespaceOwnershipPolicy: namespaceOwnershipPolicy,
 		},
-		MachinePoolRootDisk: machinePoolRootDisk,
 	}
 
 	if httpTokens != "" {
@@ -2822,6 +3400,38 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	return oidcConfig
 }
 
+func zeroToOneFloatValidator(val interface{}) error {
+	input := val.(float64)
+	if input > 1 || input < 0 {
+		fmt.Errorf("Expecting a float between the values of 0 and 1.")
+	}
+	return nil
+}
+
+func timeStringValidator(val interface{}) error {
+	re := regexp.MustCompile("^([0-9]+(.[0-9]+)?(ns|us|µs|ms|s|m|h))+$")
+	regexPass := re.MatchString(val.(string))
+	if !regexPass {
+		fmt.Errorf("Expecting an integer plus unit of time (without spaces). Options for time units include: ns, us, µs, ms, s, m, h. Examples: 2000000ns, 180s, 2m, etc.")
+	}
+	return nil
+
+}
+
+func nonZeroIntValidator(val interface{}) error {
+	if !(val.(int) > 0) {
+		return fmt.Errorf("Max Nodes must be an integer greater than 0 if set.")
+	}
+	return nil
+}
+
+func intValidator(val interface{}) error {
+	if !(val.(int) >= 0) {
+		return fmt.Errorf("Log verbosity must be a non-negative integer.")
+	}
+	return nil
+}
+
 func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int) interactive.Validator {
 	return func(val interface{}) error {
 		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
@@ -2829,7 +3439,33 @@ func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int)
 			return err
 		}
 
-		return clustervalidations.MinReplicasValidator(minReplicas, multiAZ, isHostedCP, privateSubnetsCount)
+		if minReplicas < 0 {
+			return fmt.Errorf("min-replica must be greater than zero")
+		}
+		if isHostedCP {
+			// This value should be validated in a previous step when checking the subnets
+			if privateSubnetsCount < 1 {
+				return fmt.Errorf("Hosted clusters require at least a private subnet")
+			}
+
+			if minReplicas%privateSubnetsCount != 0 {
+				return fmt.Errorf("Hosted clusters require that the number of compute nodes be a multiple of "+
+					"the number of private subnets %d, instead received: %d", privateSubnetsCount, minReplicas)
+			}
+			return nil
+		}
+
+		if multiAZ {
+			if minReplicas < 3 {
+				return fmt.Errorf("Multi AZ cluster requires at least 3 compute nodes")
+			}
+			if minReplicas%3 != 0 {
+				return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+			}
+		} else if minReplicas < 2 {
+			return fmt.Errorf("Cluster requires at least 2 compute nodes")
+		}
+		return nil
 	}
 }
 
@@ -2840,7 +3476,22 @@ func maxReplicaValidator(multiAZ bool, minReplicas int, isHostedCP bool,
 		if err != nil {
 			return err
 		}
-		return clustervalidations.MaxReplicasValidator(minReplicas, maxReplicas, multiAZ, isHostedCP, privateSubnetsCount)
+		if minReplicas > maxReplicas {
+			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
+		}
+
+		if isHostedCP {
+			if maxReplicas%privateSubnetsCount != 0 {
+				return fmt.Errorf("Hosted clusters require that the number of compute nodes be a multiple of "+
+					"the number of private subnets %d, instead received: %d", privateSubnetsCount, maxReplicas)
+			}
+			return nil
+		}
+
+		if multiAZ && maxReplicas%3 != 0 {
+			return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
+		}
+		return nil
 	}
 }
 
@@ -2881,6 +3532,12 @@ func getAccountRolePrefix(hostedCPPolicies bool, roleARN string, roleType string
 	return rolePrefix, nil
 }
 
+func evaluateDuration(duration time.Duration) (expirationTime time.Time) {
+	// round up to the nearest second
+	expirationTime = time.Now().Add(duration).Round(time.Second)
+	return
+}
+
 func validateExpiration() (expiration time.Time, err error) {
 	// Validate options
 	if len(args.expirationTime) > 0 && args.expirationDuration != 0 {
@@ -2899,8 +3556,7 @@ func validateExpiration() (expiration time.Time, err error) {
 		expiration = t
 	}
 	if args.expirationDuration != 0 {
-		// round up to the nearest second
-		expiration = time.Now().Add(args.expirationDuration).Round(time.Second)
+		expiration = evaluateDuration(args.expirationDuration)
 	}
 
 	return
@@ -2942,7 +3598,7 @@ func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilit
 }
 
 func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClient aws.Client) error {
-	err := clustervalidations.ValidateAvailabilityZonesCount(multiAZ, len(availabilityZones))
+	err := ocm.ValidateAvailabilityZonesCount(multiAZ, len(availabilityZones))
 	if err != nil {
 		return err
 	}
@@ -3016,9 +3672,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += " --disable-scp-checks"
 	}
 	if spec.Version != "" {
-		commandVersion := ocm.GetRawVersionId(spec.Version)
+		commandVersion := strings.TrimPrefix(spec.Version, "openshift-v")
 		if spec.ChannelGroup != ocm.DefaultChannelGroup {
 			command += fmt.Sprintf(" --channel-group %s", spec.ChannelGroup)
+			commandVersion = strings.TrimSuffix(commandVersion, fmt.Sprintf("-%s", spec.ChannelGroup))
 		}
 		command += fmt.Sprintf(" --version %s", commandVersion)
 	}
@@ -3111,12 +3768,6 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
 		command += fmt.Sprintf(" --audit-log-arn %s", *spec.AuditLogRoleARN)
 	}
-	if spec.MachinePoolRootDisk != nil {
-		machinePoolRootDiskSize := spec.MachinePoolRootDisk.Size
-		if machinePoolRootDiskSize != 0 {
-			command += fmt.Sprintf(" --worker-disk-size %dGiB", machinePoolRootDiskSize)
-		}
-	}
 
 	if !reflect.DeepEqual(spec.DefaultIngress, ocm.DefaultIngressSpec{}) {
 		if len(spec.DefaultIngress.RouteSelectors) != 0 {
@@ -3130,10 +3781,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 			command += fmt.Sprintf(" --%s %s", defaultIngressExcludedNamespacesFlag,
 				strings.Join(spec.DefaultIngress.ExcludedNamespaces, ","))
 		}
-		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.WildcardPolicy) {
+		if !helper.Contains([]string{"", "none"}, spec.DefaultIngress.WildcardPolicy) {
 			command += fmt.Sprintf(" --%s %s", defaultIngressWildcardPolicyFlag, spec.DefaultIngress.WildcardPolicy)
 		}
-		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
+		if !helper.Contains([]string{"", "none"}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
 			command += fmt.Sprintf(" --%s %s", defaultIngressNamespaceOwnershipPolicyFlag,
 				spec.DefaultIngress.NamespaceOwnershipPolicy)
 		}
@@ -3209,4 +3860,5 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	}
 
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
+
 }
