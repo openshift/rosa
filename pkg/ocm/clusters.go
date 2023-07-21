@@ -46,6 +46,13 @@ type DefaultIngressSpec struct {
 	NamespaceOwnershipPolicy string
 }
 
+func NewDefaultIngressSpec() DefaultIngressSpec {
+	defaultIngressSpec := DefaultIngressSpec{}
+	defaultIngressSpec.RouteSelectors = map[string]string{}
+	defaultIngressSpec.ExcludedNamespaces = []string{}
+	return defaultIngressSpec
+}
+
 // Spec is the configuration for a cluster spec.
 type Spec struct {
 	// Basic configs
@@ -954,7 +961,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		clusterBuilder = clusterBuilder.Htpasswd(htPasswdIDP)
 	}
 
-	if !reflect.DeepEqual(config.DefaultIngress, DefaultIngressSpec{}) {
+	if !reflect.DeepEqual(config.DefaultIngress, NewDefaultIngressSpec()) {
 		defaultIngress := cmv1.NewIngress().Default(true)
 		if len(config.DefaultIngress.RouteSelectors) != 0 {
 			defaultIngress.RouteSelectors(config.DefaultIngress.RouteSelectors)
