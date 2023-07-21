@@ -384,17 +384,18 @@ func run(cmd *cobra.Command, _ []string) {
 	if !cmd.Flags().Changed("name") {
 		idps := getIdps(r, cluster)
 		idpName = GenerateIdpName(idpType, idps)
-	} else {
-		isValidIdpName := idRE.MatchString(idpName)
-		if !isValidIdpName {
-			r.Reporter.Errorf("Invalid identifier '%s' for 'name'", idpName)
-			os.Exit(1)
-		}
 	}
+
 	if interactive.Enabled() {
 		idpName = getIDPName(cmd, idpName, r)
 	}
 	idpName = strings.Trim(idpName, " \t")
+
+	err = ValidateIdpName(idpName)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
 
 	var idpBuilder cmv1.IdentityProviderBuilder
 	switch idpType {
@@ -426,12 +427,33 @@ func getIDPName(cmd *cobra.Command, idpName string, r *rosa.Runtime) string {
 		Help:     cmd.Flags().Lookup("name").Usage,
 		Default:  idpName,
 		Required: true,
+		Validators: []interactive.Validator{
+			ValidateIdpName,
+		},
 	})
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid name for the identity provider: %s", err)
 		os.Exit(1)
 	}
 	return strings.Trim(idpName, " \t")
+}
+
+func ValidateIdpName(idpName interface{}) error {
+
+	name, ok := idpName.(string)
+
+	if !ok {
+		return fmt.Errorf("Invalid type for identity provider name. Expected a string,  got %T", idpName)
+	}
+
+	if !idRE.MatchString(name) {
+		return fmt.Errorf("Invalid identifier '%s' for 'name'", idpName)
+	}
+
+	if strings.EqualFold(name, "cluster-admin") {
+		return fmt.Errorf("The name \"cluster-admin\" is reserved for admin user IDP")
+	}
+	return nil
 }
 
 func doCreateIDP(
