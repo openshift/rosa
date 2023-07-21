@@ -42,6 +42,8 @@ var args struct {
 	disableSCPChecks bool
 	sts              bool
 	region           string
+	// Use local AWS credentials instead of the 'osdCcsAdmin' user
+	useLocalCredentials bool
 }
 
 var Cmd = &cobra.Command{
@@ -83,6 +85,14 @@ func init() {
 		"Indicates if cloud permission checks are disabled when attempting installation of the cluster.",
 	)
 
+	flags.BoolVar(
+		&args.useLocalCredentials,
+		"use-local-credentials",
+		false,
+		"Use local AWS credentials instead of the 'osdCcsAdmin' user. This is not supported.",
+	)
+	flags.MarkHidden("use-local-credentials")
+
 	// Force-load all flags from `login` into `init`
 	flags.AddFlagSet(login.Cmd.Flags())
 
@@ -123,6 +133,7 @@ func run(cmd *cobra.Command, argv []string) {
 	client, err := aws.NewClient().
 		Logger(r.Logger).
 		Region(awsRegion).
+		UseLocalCredentials(args.useLocalCredentials).
 		Build()
 
 	if err != nil {
@@ -149,7 +160,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	r.Reporter.Infof("AWS credentials are valid!")
 
-	cfClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions)
+	cfClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions, args.useLocalCredentials)
 
 	// Delete CloudFormation stack and exit
 	if args.dlt {

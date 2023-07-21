@@ -189,9 +189,10 @@ type Client interface {
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
 type ClientBuilder struct {
-	logger      *logrus.Logger
-	region      *string
-	credentials *AccessKey
+	logger              *logrus.Logger
+	region              *string
+	credentials         *AccessKey
+	useLocalCredentials bool
 }
 
 type awsClient struct {
@@ -206,6 +207,7 @@ type awsClient struct {
 	servicequotasClient servicequotasiface.ServiceQuotasAPI
 	awsSession          *session.Session
 	awsAccessKeys       *AccessKey
+	useLocalCredentials bool
 }
 
 func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) Client {
@@ -237,6 +239,7 @@ func New(
 	servicequotasClient servicequotasiface.ServiceQuotasAPI,
 	awsSession *session.Session,
 	awsAccessKeys *AccessKey,
+	useLocalCredentials bool,
 
 ) Client {
 	return &awsClient{
@@ -251,6 +254,7 @@ func New(
 		servicequotasClient,
 		awsSession,
 		awsAccessKeys,
+		useLocalCredentials,
 	}
 }
 
@@ -266,8 +270,12 @@ func (b *ClientBuilder) Region(value string) *ClientBuilder {
 }
 
 func (b *ClientBuilder) AccessKeys(value *AccessKey) *ClientBuilder {
-	// fmt.Printf("Using new access key %s\n", value.AccessKeyID)
 	b.credentials = value
+	return b
+}
+
+func (b *ClientBuilder) UseLocalCredentials(value bool) *ClientBuilder {
+	b.useLocalCredentials = value
 	return b
 }
 
@@ -394,6 +402,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 		cfClient:            cloudformation.New(sess),
 		servicequotasClient: servicequotas.New(sess),
 		awsSession:          sess,
+		useLocalCredentials: b.useLocalCredentials,
 	}
 
 	_, root, err := getClientDetails(c)
@@ -688,6 +697,10 @@ type AccessKey struct {
 func (c *awsClient) GetAWSAccessKeys() (*AccessKey, error) {
 	if c.awsAccessKeys != nil {
 		return c.awsAccessKeys, nil
+	}
+
+	if c.useLocalCredentials {
+		return c.GetLocalAWSAccessKeys()
 	}
 
 	accessKey, err := c.UpsertAccessKey(AdminUserName)

@@ -45,6 +45,7 @@ var _ = Describe("Client", func() {
 			mocks.NewMockServiceQuotasAPI(mockCtrl),
 			&session.Session{},
 			&aws.AccessKey{},
+			false,
 		)
 	})
 

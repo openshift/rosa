@@ -23,6 +23,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 
@@ -212,11 +213,15 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	val, ok := cluster.Properties()[properties.UseLocalCredentials]
+	useLocalCredentials := ok && val == "true"
+
 	// Initiate the AWS client with the cluster's region
 	var err error
 	r.AWSClient, err = aws.NewClient().
 		Region(cluster.Region().ID()).
 		Logger(r.Logger).
+		UseLocalCredentials(useLocalCredentials).
 		Build()
 	if err != nil {
 		r.Reporter.Errorf("Failed to create awsClient: %s", err)
