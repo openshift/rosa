@@ -249,6 +249,10 @@ func run(cmd *cobra.Command, argv []string) {
 		str = fmt.Sprintf("%s"+"Additional trust bundle:    REDACTED\n", str)
 	}
 
+	if cluster.AWS().Ec2MetadataHttpTokens() != "" {
+		str = fmt.Sprintf("%s"+"Ec2 Metadata Http Tokens:   %s\n", str, cluster.AWS().Ec2MetadataHttpTokens())
+	}
+
 	if cluster.AWS().STS().RoleARN() != "" {
 		str = fmt.Sprintf("%s"+
 			"STS Role ARN:               %s\n", str,
