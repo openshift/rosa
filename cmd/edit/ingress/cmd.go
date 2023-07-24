@@ -146,15 +146,16 @@ func init() {
 		&args.wildcardPolicy,
 		wildcardPolicyFlag,
 		"",
-		fmt.Sprintf("Wildcard Policy for ingress. Options are %s", strings.Join(helper.ValidWildcardPolicies, ",")),
+		fmt.Sprintf("Wildcard Policy for ingress. Options are %s. Default is '%s'.",
+			strings.Join(helper.ValidWildcardPolicies, ","), helper.DefaultWildcardPolicy),
 	)
 
 	flags.StringVar(
 		&args.namespaceOwnershipPolicy,
 		namespaceOwnershipPolicyFlag,
 		"",
-		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s",
-			strings.Join(helper.ValidNamespaceOwnershipPolicies, ",")),
+		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s. Default is '%s'.",
+			strings.Join(helper.ValidNamespaceOwnershipPolicies, ","), helper.DefaultNamespaceOwnershipPolicy),
 	)
 
 	flags.StringVar(

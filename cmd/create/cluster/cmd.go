@@ -670,15 +670,16 @@ The password must
 		&args.defaultIngressWildcardPolicy,
 		defaultIngressWildcardPolicyFlag,
 		"",
-		fmt.Sprintf("Wildcard Policy for ingress. Options are %s", strings.Join(ingress.ValidWildcardPolicies, ",")),
+		fmt.Sprintf("Wildcard Policy for ingress. Options are %s. Default is '%s'.",
+			strings.Join(ingress.ValidWildcardPolicies, ","), ingress.DefaultWildcardPolicy),
 	)
 
 	flags.StringVar(
 		&args.defaultIngressNamespaceOwnershipPolicy,
 		defaultIngressNamespaceOwnershipPolicyFlag,
 		"",
-		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s",
-			strings.Join(ingress.ValidNamespaceOwnershipPolicies, ",")),
+		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s. Default is '%s'.",
+			strings.Join(ingress.ValidNamespaceOwnershipPolicies, ","), ingress.DefaultNamespaceOwnershipPolicy),
 	)
 
 	aws.AddModeFlag(Cmd)
