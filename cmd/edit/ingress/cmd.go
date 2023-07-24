@@ -139,7 +139,8 @@ func init() {
 		excludedNamespacesFlag,
 		"",
 		"Excluded namespaces for ingress. Format should be a comma-separated list 'value1, value2...'. "+
-			"If no values are specified, all namespaces will be exposed.",
+			"If no values are specified, all namespaces will be exposed."+
+			" For legacy ingress support these are inclusion labels, otherwise they are treated as exclusion label.",
 	)
 
 	flags.StringVar(

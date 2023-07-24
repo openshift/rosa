@@ -655,7 +655,8 @@ The password must
 		defaultIngressRouteSelectorFlag,
 		"",
 		"Route Selector for ingress. Format should be a comma-separated list of 'key=value'. "+
-			"If no label is specified, all routes will be exposed on both routers.",
+			"If no label is specified, all routes will be exposed on both routers."+
+			" For legacy ingress support these are inclusion labels, otherwise they are treated as exclusion label.",
 	)
 
 	flags.StringVar(
