@@ -141,7 +141,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 	isLinked := helper.Contains(linkedRoles, roleARN)
 
-	if interactive.Enabled() {
+	if interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "OCM role deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
