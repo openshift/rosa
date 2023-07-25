@@ -84,6 +84,11 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	roleARN := args.roleARN
+
+	if !interactive.Enabled() && roleARN == "" {
+		interactive.Enable()
+	}
+
 	if interactive.Enabled() {
 		roleARN, err = interactive.GetString(interactive.Input{
 			Question: "User Role ARN",
@@ -129,7 +134,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	isLinked := helper.Contains(linkedRoles, roleARN)
 
-	if interactive.Enabled() {
+	if interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		mode, err = interactive.GetOption(interactive.Input{
 			Question: "User role deletion mode",
 			Help:     cmd.Flags().Lookup("mode").Usage,
