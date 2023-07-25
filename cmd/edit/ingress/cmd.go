@@ -227,6 +227,12 @@ func run(cmd *cobra.Command, argv []string) {
 			Question: "Route Selector for ingress",
 			Help:     cmd.Flags().Lookup(routeSelectorFlag).Usage,
 			Default:  args.routeSelector,
+			Validators: []interactive.Validator{
+				func(routeSelector interface{}) error {
+					_, err := helper.GetRouteSelector(routeSelector.(string))
+					return err
+				},
+			},
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
