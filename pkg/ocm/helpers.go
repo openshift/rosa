@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
@@ -34,6 +35,7 @@ import (
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/reporter"
 	errors "github.com/zgalor/weberr"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -168,19 +170,19 @@ func handleErr(res *ocmerrors.Error, err error) error {
 }
 
 func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPNet, dPodcidr *net.IPNet,
-	dServicecidr *net.IPNet, dhostPrefix int, computeInstanceType string) {
+	dServicecidr *net.IPNet, dhostPrefix, defaultMachineRootVolumeSize int, computeInstanceType string) {
 	flavourGetResponse, err := c.ocm.ClustersMgmt().V1().Flavours().Flavour(flavour).Get().Send()
 	if err != nil {
 		flavourGetResponse, _ = c.ocm.ClustersMgmt().V1().Flavours().Flavour("osd-4").Get().Send()
 	}
 	aws, ok := flavourGetResponse.Body().GetAWS()
 	if !ok {
-		return nil, nil, nil, 0, ""
+		return nil, nil, nil, 0, 0, ""
 	}
 	computeInstanceType = aws.ComputeInstanceType()
 	network, ok := flavourGetResponse.Body().GetNetwork()
 	if !ok {
-		return nil, nil, nil, 0, computeInstanceType
+		return nil, nil, nil, 0, 0, computeInstanceType
 	}
 	_, dMachinecidr, err = net.ParseCIDR(network.MachineCIDR())
 	if err != nil {
@@ -195,7 +197,11 @@ func (c *Client) GetDefaultClusterFlavors(flavour string) (dMachinecidr *net.IPN
 		dServicecidr = nil
 	}
 	dhostPrefix, _ = network.GetHostPrefix()
-	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, computeInstanceType
+
+	// default machine root volume size
+	defaultMachineRootVolumeSize = aws.WorkerVolume().Size()
+
+	return dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultMachineRootVolumeSize, computeInstanceType
 }
 
 func (c *Client) LogEvent(key string, body map[string]string) {
@@ -916,4 +922,67 @@ func validateIssuerUrlMatchesAssumePolicyDocument(
 			roleArn, issuerUrl)
 	}
 	return nil
+}
+
+func ParseDiskSizeToGigibyte(size string) (int, error) {
+	// Empty string is valid, a default will be set later
+	if size == "" {
+		return 0, nil
+	}
+
+	suffixErrorString := "accepted units are Giga or Tera in the form of g, G, GB, GiB, Gi, t, T, TB, TiB, Ti"
+
+	// Remove spaces if the value is '100 GB'
+	size = strings.ReplaceAll(size, " ", "")
+
+	// Do a bit of cleaning to avoid errors from the resources quantity parser
+	// Convert units using regular expressions, units on the left will be converted to the unit on
+	// the right if matched
+	unitToConvert := map[string]string{
+		"GB|gb|Gb|g":      "G",
+		"gib|GIB|GiB|Gib": "Gi",
+		"TB|tb|Tb|t":      "T",
+		"tib|TIB|TiB|Tib": "Ti",
+	}
+
+	for badUnit, rightUnit := range unitToConvert {
+		re, err := regexp.Compile(badUnit)
+		if err != nil {
+			return 0, err
+		}
+		size = re.ReplaceAllString(size, rightUnit)
+	}
+
+	qty, err := resource.ParseQuantity(size)
+	if err != nil {
+		if err == resource.ErrFormatWrong {
+			return 0, fmt.Errorf("invalid disk size format: %s. %s", size, suffixErrorString)
+		}
+		return 0, fmt.Errorf("invalid disk size: %w", err)
+	}
+
+	// If the value is 0, this could mean the user forgot to specify the unit suffix
+	if qty.IsZero() {
+		return 0, nil
+	}
+
+	// Check the suffix is correct
+	diskSize := qty.String()
+
+	// If we can convert the string to a number, it means there is no suffix, thus the user passes
+	// bytes and forgot to include a suffix
+	if _, err := strconv.Atoi(diskSize); err == nil {
+		return 0, fmt.Errorf("missing unit suffix: %s. %s", diskSize, suffixErrorString)
+	}
+
+	if strings.HasSuffix(diskSize, "M") ||
+		strings.HasSuffix(diskSize, "Mi") ||
+		strings.HasSuffix(diskSize, "K") ||
+		strings.HasSuffix(diskSize, "Ki") {
+		return 0, fmt.Errorf("invalid disk size format: %s. %s", diskSize, suffixErrorString)
+	}
+
+	// Return gibibytes since the AWS expects that format
+	// qty.Value() returns the value in bytes
+	return int(qty.Value() / 1024 / 1024 / 1024), nil
 }
