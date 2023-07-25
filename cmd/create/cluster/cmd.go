@@ -962,6 +962,12 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
 	}
+	if err := r.OCMClient.IsVersionCloseToEol(ocm.CloseToEolDays, version, channelGroup); err != nil {
+		r.Reporter.Warnf("%v", err)
+		if !confirm.Confirm("continue with version '%s'", ocm.GetRawVersionId(version)) {
+			os.Exit(0)
+		}
+	}
 
 	httpTokens := args.ec2MetadataHttpTokens
 	if interactive.Enabled() && !isHostedCP {
@@ -2997,10 +3003,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += " --disable-scp-checks"
 	}
 	if spec.Version != "" {
-		commandVersion := strings.TrimPrefix(spec.Version, "openshift-v")
+		commandVersion := ocm.GetRawVersionId(spec.Version)
 		if spec.ChannelGroup != ocm.DefaultChannelGroup {
 			command += fmt.Sprintf(" --channel-group %s", spec.ChannelGroup)
-			commandVersion = strings.TrimSuffix(commandVersion, fmt.Sprintf("-%s", spec.ChannelGroup))
 		}
 		command += fmt.Sprintf(" --version %s", commandVersion)
 	}
