@@ -18,7 +18,6 @@ package idp
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 
@@ -90,7 +89,7 @@ var _ = Describe("IDP Tests", func() {
 
 func CreateTmpFile(content string) (*os.File, error) {
 	// Create a temporary file
-	file, err := ioutil.TempFile("", "temp-*.txt")
+	file, err := os.CreateTemp("", "temp-*.txt")
 	if err != nil {
 		return nil, err
 	}
