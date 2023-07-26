@@ -464,6 +464,14 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 				currentNodes,
 			)
 		}
+		// Print the root volume size if it is set
+		if size, ok := cluster.Nodes().ComputeRootVolume().AWS().GetSize(); ok && size != 0 {
+			infraConfig = fmt.Sprintf("%s"+
+				"   - Root disk size:        %d GiB\n",
+				infraConfig,
+				size,
+			)
+		}
 	} else {
 		// Display number of all worker nodes across the cluster
 		minNodes := 0
@@ -506,6 +514,14 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 				cluster.Nodes().Master(),
 				cluster.Nodes().Infra(),
 				minNodes, maxNodes,
+			)
+		}
+		// Print the root volume size if it is set
+		if size, ok := cluster.Nodes().ComputeRootVolume().AWS().GetSize(); ok && size != 0 {
+			infraConfig = fmt.Sprintf("%s"+
+				"   - Root disk size:        %d GiB\n",
+				infraConfig,
+				size,
 			)
 		}
 	}

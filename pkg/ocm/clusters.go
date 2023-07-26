@@ -140,6 +140,14 @@ type Spec struct {
 
 	// Default Ingress Attributes
 	DefaultIngress DefaultIngressSpec
+
+	// Machine pool's storage
+	MachinePoolRootDisk *Volume
+}
+
+// Volume represents a volume property for a disk
+type Volume struct {
+	Size int
 }
 
 type OperatorIAMRole struct {
@@ -782,9 +790,19 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		config.Autoscaling || len(config.ComputeLabels) > 0 {
 		clusterNodesBuilder := cmv1.NewClusterNodes()
 		if config.ComputeMachineType != "" {
-			clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
-				cmv1.NewMachineType().ID(config.ComputeMachineType),
-			)
+			if machinePoolRootDisk := config.MachinePoolRootDisk; machinePoolRootDisk != nil &&
+				machinePoolRootDisk.Size != 0 {
+				machineTypeRootVolumeBuilder := cmv1.NewRootVolume().
+					AWS(cmv1.NewAWSVolume().
+						Size(machinePoolRootDisk.Size))
+				clusterNodesBuilder = clusterNodesBuilder.ComputeRootVolume(
+					(machineTypeRootVolumeBuilder),
+				)
+			} else {
+				clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
+					cmv1.NewMachineType().ID(config.ComputeMachineType),
+				)
+			}
 
 			reporter.Debugf("Using machine type '%s'", config.ComputeMachineType)
 		}

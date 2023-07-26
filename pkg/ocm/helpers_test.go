@@ -1,3 +1,19 @@
+/**
+Copyright (c) 2023 Red Hat, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package ocm
 
 import (
@@ -74,4 +90,143 @@ var _ = Describe("Validate Issuer Url Matches Assume Policy Document", func() {
 		//nolint
 		Expect(fmt.Sprintf("Operator role '%s' does not have trusted relationship to '%s' issuer URL", fakeOperatorRoleArn, parsedUrl.Host+parsedUrl.Path)).To(Equal(err.Error()))
 	})
+})
+
+var _ = Describe("ParseDiskSizeToGigibyte", func() {
+	It("returns an error for invalid unit: 1foo", func() {
+		size := "1foo"
+		_, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns 0 for valid unit: 0", func() {
+		size := "0"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(0))
+	})
+
+	It("returns 0 for invalid unit no suffix: 1 but return 0", func() {
+		size := "0"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(0))
+	})
+
+	It("returns an error for invalid unit: 1K", func() {
+		size := "1K"
+		_, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns an error for invalid unit: 1KiB", func() {
+		size := "1KiB"
+		_, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns an error for invalid unit: 1 MiB", func() {
+		size := "1 MiB"
+		_, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns an error for invalid unit: 1 mib", func() {
+		size := "1 mib"
+		_, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns 0 for invalid unit: 0 GiB", func() {
+		size := "0 GiB"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(0))
+	})
+
+	It("returns the correct value for valid unit: 100 G", func() {
+		size := "100 G"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(93))
+	})
+
+	It("returns the correct value for valid unit: 100GB", func() {
+		size := "100GB"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(93))
+	})
+
+	It("returns the correct value for valid unit: 100Gb", func() {
+		size := "100Gb"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(93))
+	})
+
+	It("returns the correct value for valid unit: 100g", func() {
+		size := "100g"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(93))
+	})
+
+	It("returns the correct value for valid unit: 100GiB", func() {
+		size := "100GiB"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(100))
+	})
+
+	//
+	It("returns the correct value for valid unit: 100gib", func() {
+		size := "100gib"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(100))
+	})
+
+	It("returns the correct value for valid unit: 100 gib", func() {
+		size := "100 gib"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(100))
+	})
+
+	It("returns the correct value for valid unit: 100 TB", func() {
+		size := "100 TB"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(93132))
+	})
+
+	It("returns the correct value for valid unit: 100 T ", func() {
+		size := "100 T "
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(93132))
+	})
+
+	It("returns the correct value for valid unit: 1000 Ti", func() {
+		size := "1000 Ti"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(1024000))
+	})
+
+	It("returns the correct value for valid unit: empty string", func() {
+		size := ""
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(got).To(Equal(0))
+	})
+
+	It("returns the correct value for valid unit: -1", func() {
+		size := "-1"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).To(HaveOccurred())
+		Expect(got).To(Equal(0))
+	})
+
 })

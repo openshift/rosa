@@ -179,6 +179,9 @@ var args struct {
 	defaultIngressNamespaceOwnershipPolicy  string
 	defaultIngressClusterRoutesHostname     string
 	defaultIngressClusterRoutesTlsSecretRef string
+
+	// Storage
+	machinePoolRootDiskSize string
 }
 
 var Cmd = &cobra.Command{
@@ -616,6 +619,11 @@ func init() {
 		false,
 		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
+
+	flags.StringVar(&args.machinePoolRootDiskSize,
+		"worker-disk-size",
+		"",
+		"Machine pool root disk size with a **unit suffix** like GiB or TiB, e.g. 200GiB.")
 
 	flags.StringVar(
 		&args.billingAccount,
@@ -1622,7 +1630,12 @@ func run(cmd *cobra.Command, _ []string) {
 		enableProxy = true
 	}
 
-	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
+	dMachinecidr,
+		dPodcidr,
+		dServicecidr,
+		dhostPrefix,
+		defaultMachinePoolRootDiskSize,
+		defaultComputeMachineType := r.OCMClient.
 		GetDefaultClusterFlavors(args.flavour)
 	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
 		r.Reporter.Errorf("Error retrieving default cluster flavors")
@@ -2132,6 +2145,52 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	var machinePoolRootDisk *ocm.Volume
+	if args.machinePoolRootDiskSize != "" || interactive.Enabled() {
+		var machinePoolRootDiskSizeStr string
+		if args.machinePoolRootDiskSize == "" {
+			// We don't need to parse the default since it's returned from the OCM API and AWS
+			// always defaults to GiB
+			machinePoolRootDiskSizeStr = gigybyteStringer(defaultMachinePoolRootDiskSize)
+		} else {
+			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
+		}
+		if interactive.Enabled() {
+			// In order to avoid confusion, we want to display to the user what was passed as an
+			// argument
+			// Even if it was not valid, we want to display it to the user, then the CLI will show an
+			// error and the value can be corrected
+			// Also, if nothing is given, we want to display the default value fetched from the OCM API
+			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
+				Question: "Machine pool root disk size (GiB or TiB)",
+				Help:     cmd.Flags().Lookup("worker-disk-size").Usage,
+				Default:  machinePoolRootDiskSizeStr,
+				Validators: []interactive.Validator{
+					machinePoolRootDiskSizeValidator,
+				},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+				os.Exit(1)
+			}
+		}
+
+		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
+		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			os.Exit(1)
+		}
+
+		// If the size given by the user is different than the default, we just let the OCM server
+		// handle the default root disk size
+		if machinePoolRootDiskSize != defaultMachinePoolRootDiskSize {
+			machinePoolRootDisk = &ocm.Volume{
+				Size: machinePoolRootDiskSize,
+			}
+		}
+	}
+
 	fips := args.fips || fedramp.Enabled()
 	if interactive.Enabled() && !fedramp.Enabled() {
 		fips, err = interactive.GetBool(interactive.Input{
@@ -2538,6 +2597,7 @@ func run(cmd *cobra.Command, _ []string) {
 			WildcardPolicy:           wildcardPolicy,
 			NamespaceOwnershipPolicy: namespaceOwnershipPolicy,
 		},
+		MachinePoolRootDisk: machinePoolRootDisk,
 	}
 
 	if httpTokens != "" {
@@ -3069,6 +3129,12 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
 		command += fmt.Sprintf(" --audit-log-arn %s", *spec.AuditLogRoleARN)
 	}
+	if spec.MachinePoolRootDisk != nil {
+		machinePoolRootDiskSize := spec.MachinePoolRootDisk.Size
+		if machinePoolRootDiskSize != 0 {
+			command += fmt.Sprintf(" --worker-disk-size %dGiB", machinePoolRootDiskSize)
+		}
+	}
 
 	if !reflect.DeepEqual(spec.DefaultIngress, ocm.DefaultIngressSpec{}) {
 		if len(spec.DefaultIngress.RouteSelectors) != 0 {
@@ -3161,5 +3227,26 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	}
 
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
+}
 
+func gigybyteStringer(size int) string {
+	return fmt.Sprintf("%d GiB", size)
+}
+
+func machinePoolRootDiskSizeValidator(val interface{}) error {
+	// We expect GigiByte as the unit for the root volume size
+
+	// Validate the worker root volume size is an integer
+	machinePoolRootDiskSize, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("machine pool root disk size must be an string, got %T", machinePoolRootDiskSize)
+	}
+
+	// parse it to validate it is a valid unit
+	_, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSize)
+	if err != nil {
+		return fmt.Errorf("failed to parse machine pool root disk size: %v", err)
+	}
+
+	return nil
 }
