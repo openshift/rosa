@@ -30,8 +30,8 @@ type DNSDomainBuilder struct {
 	bitmap_             uint32
 	id                  string
 	href                string
-	clusterLink         *ClusterLinkBuilder
-	organizationLink    *OrganizationLinkBuilder
+	cluster             *ClusterLinkBuilder
+	organization        *OrganizationLinkBuilder
 	reservedAtTimestamp time.Time
 	userDefined         bool
 }
@@ -66,11 +66,11 @@ func (b *DNSDomainBuilder) Empty() bool {
 	return b == nil || b.bitmap_&^1 == 0
 }
 
-// ClusterLink sets the value of the 'cluster_link' attribute to the given value.
+// Cluster sets the value of the 'cluster' attribute to the given value.
 //
 // Definition of a cluster link.
-func (b *DNSDomainBuilder) ClusterLink(value *ClusterLinkBuilder) *DNSDomainBuilder {
-	b.clusterLink = value
+func (b *DNSDomainBuilder) Cluster(value *ClusterLinkBuilder) *DNSDomainBuilder {
+	b.cluster = value
 	if value != nil {
 		b.bitmap_ |= 8
 	} else {
@@ -79,11 +79,11 @@ func (b *DNSDomainBuilder) ClusterLink(value *ClusterLinkBuilder) *DNSDomainBuil
 	return b
 }
 
-// OrganizationLink sets the value of the 'organization_link' attribute to the given value.
+// Organization sets the value of the 'organization' attribute to the given value.
 //
 // Definition of an organization link.
-func (b *DNSDomainBuilder) OrganizationLink(value *OrganizationLinkBuilder) *DNSDomainBuilder {
-	b.organizationLink = value
+func (b *DNSDomainBuilder) Organization(value *OrganizationLinkBuilder) *DNSDomainBuilder {
+	b.organization = value
 	if value != nil {
 		b.bitmap_ |= 16
 	} else {
@@ -114,15 +114,15 @@ func (b *DNSDomainBuilder) Copy(object *DNSDomain) *DNSDomainBuilder {
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
-	if object.clusterLink != nil {
-		b.clusterLink = NewClusterLink().Copy(object.clusterLink)
+	if object.cluster != nil {
+		b.cluster = NewClusterLink().Copy(object.cluster)
 	} else {
-		b.clusterLink = nil
+		b.cluster = nil
 	}
-	if object.organizationLink != nil {
-		b.organizationLink = NewOrganizationLink().Copy(object.organizationLink)
+	if object.organization != nil {
+		b.organization = NewOrganizationLink().Copy(object.organization)
 	} else {
-		b.organizationLink = nil
+		b.organization = nil
 	}
 	b.reservedAtTimestamp = object.reservedAtTimestamp
 	b.userDefined = object.userDefined
@@ -135,14 +135,14 @@ func (b *DNSDomainBuilder) Build() (object *DNSDomain, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
-	if b.clusterLink != nil {
-		object.clusterLink, err = b.clusterLink.Build()
+	if b.cluster != nil {
+		object.cluster, err = b.cluster.Build()
 		if err != nil {
 			return
 		}
 	}
-	if b.organizationLink != nil {
-		object.organizationLink, err = b.organizationLink.Build()
+	if b.organization != nil {
+		object.organization, err = b.organization.Build()
 		if err != nil {
 			return
 		}

@@ -71,14 +71,15 @@ func (c *CloudProvidersClient) CloudProvider(id string) *CloudProviderClient {
 
 // CloudProvidersListRequest is the request for the 'list' method.
 type CloudProvidersListRequest struct {
-	transport http.RoundTripper
-	path      string
-	query     url.Values
-	header    http.Header
-	order     *string
-	page      *int
-	search    *string
-	size      *int
+	transport    http.RoundTripper
+	path         string
+	query        url.Values
+	header       http.Header
+	fetchRegions *bool
+	order        *string
+	page         *int
+	search       *string
+	size         *int
 }
 
 // Parameter adds a query parameter.
@@ -97,6 +98,14 @@ func (r *CloudProvidersListRequest) Header(name string, value interface{}) *Clou
 // Note: Services that do not support this feature may silently ignore this call.
 func (r *CloudProvidersListRequest) Impersonate(user string) *CloudProvidersListRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
+// FetchRegions sets the value of the 'fetch_regions' parameter.
+//
+// If true, includes the regions on each provider in the output. Could slow request response time.
+func (r *CloudProvidersListRequest) FetchRegions(value bool) *CloudProvidersListRequest {
+	r.fetchRegions = &value
 	return r
 }
 
@@ -167,6 +176,9 @@ func (r *CloudProvidersListRequest) Send() (result *CloudProvidersListResponse, 
 // SendContext sends this request, waits for the response, and returns it.
 func (r *CloudProvidersListRequest) SendContext(ctx context.Context) (result *CloudProvidersListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
+	if r.fetchRegions != nil {
+		helpers.AddValue(&query, "fetchRegions", *r.fetchRegions)
+	}
 	if r.order != nil {
 		helpers.AddValue(&query, "order", *r.order)
 	}

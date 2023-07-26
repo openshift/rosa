@@ -27,6 +27,8 @@ const (
 	BillingModelMarketplace BillingModel = "marketplace"
 	// AWS Marketplace billing model.
 	BillingModelMarketplaceAWS BillingModel = "marketplace-aws"
+	// GCP Marketplace billing model.
+	BillingModelMarketplaceGCP BillingModel = "marketplace-gcp"
 	// RH Marketplace billing model.
 	BillingModelMarketplaceRHM BillingModel = "marketplace-rhm"
 	// Azure Marketplace billing model.

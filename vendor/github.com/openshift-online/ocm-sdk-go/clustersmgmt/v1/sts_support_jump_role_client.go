@@ -31,61 +31,61 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// ClusterStsSupportRoleClient is the client of the 'cluster_sts_support_role' resource.
+// StsSupportJumpRoleClient is the client of the 'sts_support_jump_role' resource.
 //
 // Provides the role arn to use to assume the support role in the customer's aws account.
-type ClusterStsSupportRoleClient struct {
+type StsSupportJumpRoleClient struct {
 	transport http.RoundTripper
 	path      string
 }
 
-// NewClusterStsSupportRoleClient creates a new client for the 'cluster_sts_support_role'
+// NewStsSupportJumpRoleClient creates a new client for the 'sts_support_jump_role'
 // resource using the given transport to send the requests and receive the
 // responses.
-func NewClusterStsSupportRoleClient(transport http.RoundTripper, path string) *ClusterStsSupportRoleClient {
-	return &ClusterStsSupportRoleClient{
+func NewStsSupportJumpRoleClient(transport http.RoundTripper, path string) *StsSupportJumpRoleClient {
+	return &StsSupportJumpRoleClient{
 		transport: transport,
 		path:      path,
 	}
 }
 
 // Get creates a request for the 'get' method.
-func (c *ClusterStsSupportRoleClient) Get() *ClusterStsSupportRoleGetRequest {
-	return &ClusterStsSupportRoleGetRequest{
+func (c *StsSupportJumpRoleClient) Get() *StsSupportJumpRoleGetRequest {
+	return &StsSupportJumpRoleGetRequest{
 		transport: c.transport,
 		path:      c.path,
 	}
 }
 
-// ClusterStsSupportRolePollRequest is the request for the Poll method.
-type ClusterStsSupportRolePollRequest struct {
-	request    *ClusterStsSupportRoleGetRequest
+// StsSupportJumpRolePollRequest is the request for the Poll method.
+type StsSupportJumpRolePollRequest struct {
+	request    *StsSupportJumpRoleGetRequest
 	interval   time.Duration
 	statuses   []int
 	predicates []func(interface{}) bool
 }
 
 // Parameter adds a query parameter to all the requests that will be used to retrieve the object.
-func (r *ClusterStsSupportRolePollRequest) Parameter(name string, value interface{}) *ClusterStsSupportRolePollRequest {
+func (r *StsSupportJumpRolePollRequest) Parameter(name string, value interface{}) *StsSupportJumpRolePollRequest {
 	r.request.Parameter(name, value)
 	return r
 }
 
 // Header adds a request header to all the requests that will be used to retrieve the object.
-func (r *ClusterStsSupportRolePollRequest) Header(name string, value interface{}) *ClusterStsSupportRolePollRequest {
+func (r *StsSupportJumpRolePollRequest) Header(name string, value interface{}) *StsSupportJumpRolePollRequest {
 	r.request.Header(name, value)
 	return r
 }
 
 // Interval sets the polling interval. This parameter is mandatory and must be greater than zero.
-func (r *ClusterStsSupportRolePollRequest) Interval(value time.Duration) *ClusterStsSupportRolePollRequest {
+func (r *StsSupportJumpRolePollRequest) Interval(value time.Duration) *StsSupportJumpRolePollRequest {
 	r.interval = value
 	return r
 }
 
 // Status set the expected status of the response. Multiple values can be set calling this method
 // multiple times. The response will be considered successful if the status is any of those values.
-func (r *ClusterStsSupportRolePollRequest) Status(value int) *ClusterStsSupportRolePollRequest {
+func (r *StsSupportJumpRolePollRequest) Status(value int) *StsSupportJumpRolePollRequest {
 	r.statuses = append(r.statuses, value)
 	return r
 }
@@ -93,9 +93,9 @@ func (r *ClusterStsSupportRolePollRequest) Status(value int) *ClusterStsSupportR
 // Predicate adds a predicate that the response should satisfy be considered successful. Multiple
 // predicates can be set calling this method multiple times. The response will be considered successful
 // if all the predicates are satisfied.
-func (r *ClusterStsSupportRolePollRequest) Predicate(value func(*ClusterStsSupportRoleGetResponse) bool) *ClusterStsSupportRolePollRequest {
+func (r *StsSupportJumpRolePollRequest) Predicate(value func(*StsSupportJumpRoleGetResponse) bool) *StsSupportJumpRolePollRequest {
 	r.predicates = append(r.predicates, func(response interface{}) bool {
-		return value(response.(*ClusterStsSupportRoleGetResponse))
+		return value(response.(*StsSupportJumpRoleGetResponse))
 	})
 	return r
 }
@@ -105,11 +105,11 @@ func (r *ClusterStsSupportRolePollRequest) Predicate(value func(*ClusterStsSuppo
 // method return nil.
 //
 // The context must have a timeout or deadline, otherwise this method will immediately return an error.
-func (r *ClusterStsSupportRolePollRequest) StartContext(ctx context.Context) (response *ClusterStsSupportRolePollResponse, err error) {
+func (r *StsSupportJumpRolePollRequest) StartContext(ctx context.Context) (response *StsSupportJumpRolePollResponse, err error) {
 	result, err := helpers.PollContext(ctx, r.interval, r.statuses, r.predicates, r.task)
 	if result != nil {
-		response = &ClusterStsSupportRolePollResponse{
-			response: result.(*ClusterStsSupportRoleGetResponse),
+		response = &StsSupportJumpRolePollResponse{
+			response: result.(*StsSupportJumpRoleGetResponse),
 		}
 	}
 	return
@@ -117,7 +117,7 @@ func (r *ClusterStsSupportRolePollRequest) StartContext(ctx context.Context) (re
 
 // task adapts the types of the request/response types so that they can be used with the generic
 // polling function from the helpers package.
-func (r *ClusterStsSupportRolePollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
+func (r *StsSupportJumpRolePollRequest) task(ctx context.Context) (status int, result interface{}, err error) {
 	response, err := r.request.SendContext(ctx)
 	if response != nil {
 		status = response.Status()
@@ -126,13 +126,13 @@ func (r *ClusterStsSupportRolePollRequest) task(ctx context.Context) (status int
 	return
 }
 
-// ClusterStsSupportRolePollResponse is the response for the Poll method.
-type ClusterStsSupportRolePollResponse struct {
-	response *ClusterStsSupportRoleGetResponse
+// StsSupportJumpRolePollResponse is the response for the Poll method.
+type StsSupportJumpRolePollResponse struct {
+	response *StsSupportJumpRoleGetResponse
 }
 
 // Status returns the response status code.
-func (r *ClusterStsSupportRolePollResponse) Status() int {
+func (r *StsSupportJumpRolePollResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -140,7 +140,7 @@ func (r *ClusterStsSupportRolePollResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ClusterStsSupportRolePollResponse) Header() http.Header {
+func (r *StsSupportJumpRolePollResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -148,7 +148,7 @@ func (r *ClusterStsSupportRolePollResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ClusterStsSupportRolePollResponse) Error() *errors.Error {
+func (r *StsSupportJumpRolePollResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -156,26 +156,26 @@ func (r *ClusterStsSupportRolePollResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *ClusterStsSupportRolePollResponse) Body() *ClusterStsSupportRole {
+func (r *StsSupportJumpRolePollResponse) Body() *StsSupportJumpRole {
 	return r.response.Body()
 }
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *ClusterStsSupportRolePollResponse) GetBody() (value *ClusterStsSupportRole, ok bool) {
+func (r *StsSupportJumpRolePollResponse) GetBody() (value *StsSupportJumpRole, ok bool) {
 	return r.response.GetBody()
 }
 
 // Poll creates a request to repeatedly retrieve the object till the response has one of a given set
 // of states and satisfies a set of predicates.
-func (c *ClusterStsSupportRoleClient) Poll() *ClusterStsSupportRolePollRequest {
-	return &ClusterStsSupportRolePollRequest{
+func (c *StsSupportJumpRoleClient) Poll() *StsSupportJumpRolePollRequest {
+	return &StsSupportJumpRolePollRequest{
 		request: c.Get(),
 	}
 }
 
-// ClusterStsSupportRoleGetRequest is the request for the 'get' method.
-type ClusterStsSupportRoleGetRequest struct {
+// StsSupportJumpRoleGetRequest is the request for the 'get' method.
+type StsSupportJumpRoleGetRequest struct {
 	transport http.RoundTripper
 	path      string
 	query     url.Values
@@ -183,20 +183,20 @@ type ClusterStsSupportRoleGetRequest struct {
 }
 
 // Parameter adds a query parameter.
-func (r *ClusterStsSupportRoleGetRequest) Parameter(name string, value interface{}) *ClusterStsSupportRoleGetRequest {
+func (r *StsSupportJumpRoleGetRequest) Parameter(name string, value interface{}) *StsSupportJumpRoleGetRequest {
 	helpers.AddValue(&r.query, name, value)
 	return r
 }
 
 // Header adds a request header.
-func (r *ClusterStsSupportRoleGetRequest) Header(name string, value interface{}) *ClusterStsSupportRoleGetRequest {
+func (r *StsSupportJumpRoleGetRequest) Header(name string, value interface{}) *StsSupportJumpRoleGetRequest {
 	helpers.AddHeader(&r.header, name, value)
 	return r
 }
 
 // Impersonate wraps requests on behalf of another user.
 // Note: Services that do not support this feature may silently ignore this call.
-func (r *ClusterStsSupportRoleGetRequest) Impersonate(user string) *ClusterStsSupportRoleGetRequest {
+func (r *StsSupportJumpRoleGetRequest) Impersonate(user string) *StsSupportJumpRoleGetRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
 	return r
 }
@@ -205,12 +205,12 @@ func (r *ClusterStsSupportRoleGetRequest) Impersonate(user string) *ClusterStsSu
 //
 // This is a potentially lengthy operation, as it requires network communication.
 // Consider using a context and the SendContext method.
-func (r *ClusterStsSupportRoleGetRequest) Send() (result *ClusterStsSupportRoleGetResponse, err error) {
+func (r *StsSupportJumpRoleGetRequest) Send() (result *StsSupportJumpRoleGetResponse, err error) {
 	return r.SendContext(context.Background())
 }
 
 // SendContext sends this request, waits for the response, and returns it.
-func (r *ClusterStsSupportRoleGetRequest) SendContext(ctx context.Context) (result *ClusterStsSupportRoleGetResponse, err error) {
+func (r *StsSupportJumpRoleGetRequest) SendContext(ctx context.Context) (result *StsSupportJumpRoleGetResponse, err error) {
 	query := helpers.CopyQuery(r.query)
 	header := helpers.CopyHeader(r.header)
 	uri := &url.URL{
@@ -230,7 +230,7 @@ func (r *ClusterStsSupportRoleGetRequest) SendContext(ctx context.Context) (resu
 		return
 	}
 	defer response.Body.Close()
-	result = &ClusterStsSupportRoleGetResponse{}
+	result = &StsSupportJumpRoleGetResponse{}
 	result.status = response.StatusCode
 	result.header = response.Header
 	reader := bufio.NewReader(response.Body)
@@ -247,23 +247,23 @@ func (r *ClusterStsSupportRoleGetRequest) SendContext(ctx context.Context) (resu
 		err = result.err
 		return
 	}
-	err = readClusterStsSupportRoleGetResponse(result, reader)
+	err = readStsSupportJumpRoleGetResponse(result, reader)
 	if err != nil {
 		return
 	}
 	return
 }
 
-// ClusterStsSupportRoleGetResponse is the response for the 'get' method.
-type ClusterStsSupportRoleGetResponse struct {
+// StsSupportJumpRoleGetResponse is the response for the 'get' method.
+type StsSupportJumpRoleGetResponse struct {
 	status int
 	header http.Header
 	err    *errors.Error
-	body   *ClusterStsSupportRole
+	body   *StsSupportJumpRole
 }
 
 // Status returns the response status code.
-func (r *ClusterStsSupportRoleGetResponse) Status() int {
+func (r *StsSupportJumpRoleGetResponse) Status() int {
 	if r == nil {
 		return 0
 	}
@@ -271,7 +271,7 @@ func (r *ClusterStsSupportRoleGetResponse) Status() int {
 }
 
 // Header returns header of the response.
-func (r *ClusterStsSupportRoleGetResponse) Header() http.Header {
+func (r *StsSupportJumpRoleGetResponse) Header() http.Header {
 	if r == nil {
 		return nil
 	}
@@ -279,7 +279,7 @@ func (r *ClusterStsSupportRoleGetResponse) Header() http.Header {
 }
 
 // Error returns the response error.
-func (r *ClusterStsSupportRoleGetResponse) Error() *errors.Error {
+func (r *StsSupportJumpRoleGetResponse) Error() *errors.Error {
 	if r == nil {
 		return nil
 	}
@@ -287,7 +287,7 @@ func (r *ClusterStsSupportRoleGetResponse) Error() *errors.Error {
 }
 
 // Body returns the value of the 'body' parameter.
-func (r *ClusterStsSupportRoleGetResponse) Body() *ClusterStsSupportRole {
+func (r *StsSupportJumpRoleGetResponse) Body() *StsSupportJumpRole {
 	if r == nil {
 		return nil
 	}
@@ -296,7 +296,7 @@ func (r *ClusterStsSupportRoleGetResponse) Body() *ClusterStsSupportRole {
 
 // GetBody returns the value of the 'body' parameter and
 // a flag indicating if the parameter has a value.
-func (r *ClusterStsSupportRoleGetResponse) GetBody() (value *ClusterStsSupportRole, ok bool) {
+func (r *StsSupportJumpRoleGetResponse) GetBody() (value *StsSupportJumpRole, ok bool) {
 	ok = r != nil && r.body != nil
 	if ok {
 		value = r.body

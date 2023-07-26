@@ -169,14 +169,6 @@ func (c *ClusterClient) Autoscaler() *AutoscalerClient {
 	)
 }
 
-// ClusterStsSupportRole returns the target 'cluster_sts_support_role' resource.
-func (c *ClusterClient) ClusterStsSupportRole() *ClusterStsSupportRoleClient {
-	return NewClusterStsSupportRoleClient(
-		c.transport,
-		path.Join(c.path, "cluster_sts_support_role"),
-	)
-}
-
 // Clusterdeployment returns the target 'clusterdeployment' resource.
 //
 // Reference to the resource that manages the cluster deployment.
@@ -370,6 +362,14 @@ func (c *ClusterClient) Status() *ClusterStatusClient {
 	return NewClusterStatusClient(
 		c.transport,
 		path.Join(c.path, "status"),
+	)
+}
+
+// StsSupportJumpRole returns the target 'sts_support_jump_role' resource.
+func (c *ClusterClient) StsSupportJumpRole() *StsSupportJumpRoleClient {
+	return NewStsSupportJumpRoleClient(
+		c.transport,
+		path.Join(c.path, "sts_support_jump_role"),
 	)
 }
 

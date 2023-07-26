@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalClusterStsSupportRole writes a value of the 'cluster_sts_support_role' type to the given writer.
-func MarshalClusterStsSupportRole(object *ClusterStsSupportRole, writer io.Writer) error {
+// MarshalStsSupportJumpRole writes a value of the 'sts_support_jump_role' type to the given writer.
+func MarshalStsSupportJumpRole(object *StsSupportJumpRole, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeClusterStsSupportRole(object, stream)
+	writeStsSupportJumpRole(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalClusterStsSupportRole(object *ClusterStsSupportRole, writer io.Write
 	return stream.Error
 }
 
-// writeClusterStsSupportRole writes a value of the 'cluster_sts_support_role' type to the given stream.
-func writeClusterStsSupportRole(object *ClusterStsSupportRole, stream *jsoniter.Stream) {
+// writeStsSupportJumpRole writes a value of the 'sts_support_jump_role' type to the given stream.
+func writeStsSupportJumpRole(object *StsSupportJumpRole, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -53,21 +53,21 @@ func writeClusterStsSupportRole(object *ClusterStsSupportRole, stream *jsoniter.
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalClusterStsSupportRole reads a value of the 'cluster_sts_support_role' type from the given
+// UnmarshalStsSupportJumpRole reads a value of the 'sts_support_jump_role' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalClusterStsSupportRole(source interface{}) (object *ClusterStsSupportRole, err error) {
+func UnmarshalStsSupportJumpRole(source interface{}) (object *StsSupportJumpRole, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readClusterStsSupportRole(iterator)
+	object = readStsSupportJumpRole(iterator)
 	err = iterator.Error
 	return
 }
 
-// readClusterStsSupportRole reads a value of the 'cluster_sts_support_role' type from the given iterator.
-func readClusterStsSupportRole(iterator *jsoniter.Iterator) *ClusterStsSupportRole {
-	object := &ClusterStsSupportRole{}
+// readStsSupportJumpRole reads a value of the 'sts_support_jump_role' type from the given iterator.
+func readStsSupportJumpRole(iterator *jsoniter.Iterator) *StsSupportJumpRole {
+	object := &StsSupportJumpRole{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
