@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalClusterStsSupportRoleList writes a list of values of the 'cluster_sts_support_role' type to
+// MarshalStsSupportJumpRoleList writes a list of values of the 'sts_support_jump_role' type to
 // the given writer.
-func MarshalClusterStsSupportRoleList(list []*ClusterStsSupportRole, writer io.Writer) error {
+func MarshalStsSupportJumpRoleList(list []*StsSupportJumpRole, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeClusterStsSupportRoleList(list, stream)
+	writeStsSupportJumpRoleList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalClusterStsSupportRoleList(list []*ClusterStsSupportRole, writer io.W
 	return stream.Error
 }
 
-// writeClusterStsSupportRoleList writes a list of value of the 'cluster_sts_support_role' type to
+// writeStsSupportJumpRoleList writes a list of value of the 'sts_support_jump_role' type to
 // the given stream.
-func writeClusterStsSupportRoleList(list []*ClusterStsSupportRole, stream *jsoniter.Stream) {
+func writeStsSupportJumpRoleList(list []*StsSupportJumpRole, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		writeClusterStsSupportRole(value, stream)
+		writeStsSupportJumpRole(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalClusterStsSupportRoleList reads a list of values of the 'cluster_sts_support_role' type
+// UnmarshalStsSupportJumpRoleList reads a list of values of the 'sts_support_jump_role' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalClusterStsSupportRoleList(source interface{}) (items []*ClusterStsSupportRole, err error) {
+func UnmarshalStsSupportJumpRoleList(source interface{}) (items []*StsSupportJumpRole, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = readClusterStsSupportRoleList(iterator)
+	items = readStsSupportJumpRoleList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readClusterStsSupportRoleList reads list of values of the ”cluster_sts_support_role' type from
+// readStsSupportJumpRoleList reads list of values of the ”sts_support_jump_role' type from
 // the given iterator.
-func readClusterStsSupportRoleList(iterator *jsoniter.Iterator) []*ClusterStsSupportRole {
-	list := []*ClusterStsSupportRole{}
+func readStsSupportJumpRoleList(iterator *jsoniter.Iterator) []*StsSupportJumpRole {
+	list := []*StsSupportJumpRole{}
 	for iterator.ReadArray() {
-		item := readClusterStsSupportRole(iterator)
+		item := readStsSupportJumpRole(iterator)
 		list = append(list, item)
 	}
 	return list

@@ -35,9 +35,9 @@ type ControlPlaneUpgradePolicyBuilder struct {
 	lastUpdateTimestamp        time.Time
 	nextRun                    time.Time
 	schedule                   string
-	scheduleType               string
+	scheduleType               ScheduleType
 	state                      *UpgradePolicyStateBuilder
-	upgradeType                string
+	upgradeType                UpgradeType
 	version                    string
 	enableMinorVersionUpgrades bool
 }
@@ -115,7 +115,9 @@ func (b *ControlPlaneUpgradePolicyBuilder) Schedule(value string) *ControlPlaneU
 }
 
 // ScheduleType sets the value of the 'schedule_type' attribute to the given value.
-func (b *ControlPlaneUpgradePolicyBuilder) ScheduleType(value string) *ControlPlaneUpgradePolicyBuilder {
+//
+// ScheduleType defines which type of scheduling should be used for the upgrade policy.
+func (b *ControlPlaneUpgradePolicyBuilder) ScheduleType(value ScheduleType) *ControlPlaneUpgradePolicyBuilder {
 	b.scheduleType = value
 	b.bitmap_ |= 512
 	return b
@@ -135,7 +137,9 @@ func (b *ControlPlaneUpgradePolicyBuilder) State(value *UpgradePolicyStateBuilde
 }
 
 // UpgradeType sets the value of the 'upgrade_type' attribute to the given value.
-func (b *ControlPlaneUpgradePolicyBuilder) UpgradeType(value string) *ControlPlaneUpgradePolicyBuilder {
+//
+// UpgradeType defines which type of upgrade should be used.
+func (b *ControlPlaneUpgradePolicyBuilder) UpgradeType(value UpgradeType) *ControlPlaneUpgradePolicyBuilder {
 	b.upgradeType = value
 	b.bitmap_ |= 2048
 	return b

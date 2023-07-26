@@ -42,8 +42,8 @@ type DNSDomain struct {
 	bitmap_             uint32
 	id                  string
 	href                string
-	clusterLink         *ClusterLink
-	organizationLink    *OrganizationLink
+	cluster             *ClusterLink
+	organization        *OrganizationLink
 	reservedAtTimestamp time.Time
 	userDefined         bool
 }
@@ -105,48 +105,48 @@ func (o *DNSDomain) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
-// ClusterLink returns the value of the 'cluster_link' attribute, or
+// Cluster returns the value of the 'cluster' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the cluster that is registered with the DNS domain (optional).
-func (o *DNSDomain) ClusterLink() *ClusterLink {
+func (o *DNSDomain) Cluster() *ClusterLink {
 	if o != nil && o.bitmap_&8 != 0 {
-		return o.clusterLink
+		return o.cluster
 	}
 	return nil
 }
 
-// GetClusterLink returns the value of the 'cluster_link' attribute and
+// GetCluster returns the value of the 'cluster' attribute and
 // a flag indicating if the attribute has a value.
 //
 // Link to the cluster that is registered with the DNS domain (optional).
-func (o *DNSDomain) GetClusterLink() (value *ClusterLink, ok bool) {
+func (o *DNSDomain) GetCluster() (value *ClusterLink, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
-		value = o.clusterLink
+		value = o.cluster
 	}
 	return
 }
 
-// OrganizationLink returns the value of the 'organization_link' attribute, or
+// Organization returns the value of the 'organization' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the organization that reserved the DNS domain.
-func (o *DNSDomain) OrganizationLink() *OrganizationLink {
+func (o *DNSDomain) Organization() *OrganizationLink {
 	if o != nil && o.bitmap_&16 != 0 {
-		return o.organizationLink
+		return o.organization
 	}
 	return nil
 }
 
-// GetOrganizationLink returns the value of the 'organization_link' attribute and
+// GetOrganization returns the value of the 'organization' attribute and
 // a flag indicating if the attribute has a value.
 //
 // Link to the organization that reserved the DNS domain.
-func (o *DNSDomain) GetOrganizationLink() (value *OrganizationLink, ok bool) {
+func (o *DNSDomain) GetOrganization() (value *OrganizationLink, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
-		value = o.organizationLink
+		value = o.organization
 	}
 	return
 }

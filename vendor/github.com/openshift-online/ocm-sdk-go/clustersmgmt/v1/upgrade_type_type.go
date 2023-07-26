@@ -19,20 +19,14 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// BillingModel represents the values of the 'billing_model' enumerated type.
-type BillingModel string
+// UpgradeType represents the values of the 'upgrade_type' enumerated type.
+type UpgradeType string
 
 const (
-	// BillingModel Marketplace Legacy Marketplace billing model. Currently only used for tests. Use cloud-provider specific billing models instead.
-	BillingModelMarketplace BillingModel = "marketplace"
-	// AWS Marketplace billing model.
-	BillingModelMarketplaceAWS BillingModel = "marketplace-aws"
-	// GCP Marketplace billing model.
-	BillingModelMarketplaceGCP BillingModel = "marketplace-gcp"
-	// RH Marketplace billing model.
-	BillingModelMarketplaceRHM BillingModel = "marketplace-rhm"
-	// Azure Marketplace billing model.
-	BillingModelMarketplaceAzure BillingModel = "marketplace-azure"
-	// Standard. This is the default billing model
-	BillingModelStandard BillingModel = "standard"
+	// Upgrade of OSD cluster, which will upgrade the cluster's control plane, and all the node pools.
+	UpgradeTypeOSD UpgradeType = "osd"
+	// Control plane upgrade, relevant only for hosted control plane clusters.
+	UpgradeTypeControlPlane UpgradeType = "control_plane"
+	// Node pool upgrade, relevant only for hosted control plane clusters.
+	UpgradeTypeNodePool UpgradeType = "node_pool"
 )

@@ -66,22 +66,22 @@ func writeDNSDomain(object *DNSDomain, stream *jsoniter.Stream) {
 		count++
 	}
 	var present_ bool
-	present_ = object.bitmap_&8 != 0 && object.clusterLink != nil
+	present_ = object.bitmap_&8 != 0 && object.cluster != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cluster_link")
-		writeClusterLink(object.clusterLink, stream)
+		stream.WriteObjectField("cluster")
+		writeClusterLink(object.cluster, stream)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0 && object.organizationLink != nil
+	present_ = object.bitmap_&16 != 0 && object.organization != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("organization_link")
-		writeOrganizationLink(object.organizationLink, stream)
+		stream.WriteObjectField("organization")
+		writeOrganizationLink(object.organization, stream)
 		count++
 	}
 	present_ = object.bitmap_&32 != 0
@@ -136,13 +136,13 @@ func readDNSDomain(iterator *jsoniter.Iterator) *DNSDomain {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
-		case "cluster_link":
+		case "cluster":
 			value := readClusterLink(iterator)
-			object.clusterLink = value
+			object.cluster = value
 			object.bitmap_ |= 8
-		case "organization_link":
+		case "organization":
 			value := readOrganizationLink(iterator)
-			object.organizationLink = value
+			object.organization = value
 			object.bitmap_ |= 16
 		case "reserved_at_timestamp":
 			text := iterator.ReadString()

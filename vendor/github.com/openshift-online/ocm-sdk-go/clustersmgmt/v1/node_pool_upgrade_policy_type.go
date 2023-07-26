@@ -48,9 +48,9 @@ type NodePoolUpgradePolicy struct {
 	nextRun                    time.Time
 	nodePoolID                 string
 	schedule                   string
-	scheduleType               string
+	scheduleType               ScheduleType
 	state                      *UpgradePolicyState
-	upgradeType                string
+	upgradeType                UpgradeType
 	version                    string
 	enableMinorVersionUpgrades bool
 }
@@ -276,19 +276,19 @@ func (o *NodePoolUpgradePolicy) GetSchedule() (value string, ok bool) {
 // ScheduleType returns the value of the 'schedule_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Schedule type can be either "manual" (single execution) or "automatic" (re-occurring).
-func (o *NodePoolUpgradePolicy) ScheduleType() string {
+// Schedule type of the upgrade.
+func (o *NodePoolUpgradePolicy) ScheduleType() ScheduleType {
 	if o != nil && o.bitmap_&1024 != 0 {
 		return o.scheduleType
 	}
-	return ""
+	return ScheduleType("")
 }
 
 // GetScheduleType returns the value of the 'schedule_type' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Schedule type can be either "manual" (single execution) or "automatic" (re-occurring).
-func (o *NodePoolUpgradePolicy) GetScheduleType() (value string, ok bool) {
+// Schedule type of the upgrade.
+func (o *NodePoolUpgradePolicy) GetScheduleType() (value ScheduleType, ok bool) {
 	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.scheduleType
@@ -322,19 +322,19 @@ func (o *NodePoolUpgradePolicy) GetState() (value *UpgradePolicyState, ok bool) 
 // UpgradeType returns the value of the 'upgrade_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Upgrade type specify the type of the upgrade. Can only be "NodePool".
-func (o *NodePoolUpgradePolicy) UpgradeType() string {
+// Upgrade type of the node pool.
+func (o *NodePoolUpgradePolicy) UpgradeType() UpgradeType {
 	if o != nil && o.bitmap_&4096 != 0 {
 		return o.upgradeType
 	}
-	return ""
+	return UpgradeType("")
 }
 
 // GetUpgradeType returns the value of the 'upgrade_type' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Upgrade type specify the type of the upgrade. Can only be "NodePool".
-func (o *NodePoolUpgradePolicy) GetUpgradeType() (value string, ok bool) {
+// Upgrade type of the node pool.
+func (o *NodePoolUpgradePolicy) GetUpgradeType() (value UpgradeType, ok bool) {
 	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.upgradeType

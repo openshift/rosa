@@ -47,9 +47,9 @@ type ControlPlaneUpgradePolicy struct {
 	lastUpdateTimestamp        time.Time
 	nextRun                    time.Time
 	schedule                   string
-	scheduleType               string
+	scheduleType               ScheduleType
 	state                      *UpgradePolicyState
-	upgradeType                string
+	upgradeType                UpgradeType
 	version                    string
 	enableMinorVersionUpgrades bool
 }
@@ -252,19 +252,19 @@ func (o *ControlPlaneUpgradePolicy) GetSchedule() (value string, ok bool) {
 // ScheduleType returns the value of the 'schedule_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Schedule type can be either "manual" (single execution) or "automatic" (re-occurring).
-func (o *ControlPlaneUpgradePolicy) ScheduleType() string {
+// Schedule type of the control plane upgrade.
+func (o *ControlPlaneUpgradePolicy) ScheduleType() ScheduleType {
 	if o != nil && o.bitmap_&512 != 0 {
 		return o.scheduleType
 	}
-	return ""
+	return ScheduleType("")
 }
 
 // GetScheduleType returns the value of the 'schedule_type' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Schedule type can be either "manual" (single execution) or "automatic" (re-occurring).
-func (o *ControlPlaneUpgradePolicy) GetScheduleType() (value string, ok bool) {
+// Schedule type of the control plane upgrade.
+func (o *ControlPlaneUpgradePolicy) GetScheduleType() (value ScheduleType, ok bool) {
 	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.scheduleType
@@ -298,19 +298,19 @@ func (o *ControlPlaneUpgradePolicy) GetState() (value *UpgradePolicyState, ok bo
 // UpgradeType returns the value of the 'upgrade_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Upgrade type specify the type of the upgrade. Can only be "ControlPlane".
-func (o *ControlPlaneUpgradePolicy) UpgradeType() string {
+// Upgrade type of the control plane.
+func (o *ControlPlaneUpgradePolicy) UpgradeType() UpgradeType {
 	if o != nil && o.bitmap_&2048 != 0 {
 		return o.upgradeType
 	}
-	return ""
+	return UpgradeType("")
 }
 
 // GetUpgradeType returns the value of the 'upgrade_type' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Upgrade type specify the type of the upgrade. Can only be "ControlPlane".
-func (o *ControlPlaneUpgradePolicy) GetUpgradeType() (value string, ok bool) {
+// Upgrade type of the control plane.
+func (o *ControlPlaneUpgradePolicy) GetUpgradeType() (value UpgradeType, ok bool) {
 	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.upgradeType

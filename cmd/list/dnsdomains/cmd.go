@@ -96,7 +96,7 @@ func run(_ *cobra.Command, _ []string) {
 		}
 		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
 			dnsdomain.ID(),
-			dnsdomain.ClusterLink().ID(),
+			dnsdomain.Cluster().ID(),
 			dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
 			userDefind,
 		)

@@ -36,9 +36,9 @@ type NodePoolUpgradePolicyBuilder struct {
 	nextRun                    time.Time
 	nodePoolID                 string
 	schedule                   string
-	scheduleType               string
+	scheduleType               ScheduleType
 	state                      *UpgradePolicyStateBuilder
-	upgradeType                string
+	upgradeType                UpgradeType
 	version                    string
 	enableMinorVersionUpgrades bool
 }
@@ -123,7 +123,9 @@ func (b *NodePoolUpgradePolicyBuilder) Schedule(value string) *NodePoolUpgradePo
 }
 
 // ScheduleType sets the value of the 'schedule_type' attribute to the given value.
-func (b *NodePoolUpgradePolicyBuilder) ScheduleType(value string) *NodePoolUpgradePolicyBuilder {
+//
+// ScheduleType defines which type of scheduling should be used for the upgrade policy.
+func (b *NodePoolUpgradePolicyBuilder) ScheduleType(value ScheduleType) *NodePoolUpgradePolicyBuilder {
 	b.scheduleType = value
 	b.bitmap_ |= 1024
 	return b
@@ -143,7 +145,9 @@ func (b *NodePoolUpgradePolicyBuilder) State(value *UpgradePolicyStateBuilder) *
 }
 
 // UpgradeType sets the value of the 'upgrade_type' attribute to the given value.
-func (b *NodePoolUpgradePolicyBuilder) UpgradeType(value string) *NodePoolUpgradePolicyBuilder {
+//
+// UpgradeType defines which type of upgrade should be used.
+func (b *NodePoolUpgradePolicyBuilder) UpgradeType(value UpgradeType) *NodePoolUpgradePolicyBuilder {
 	b.upgradeType = value
 	b.bitmap_ |= 4096
 	return b
