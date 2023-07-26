@@ -500,6 +500,14 @@ func run(cmd *cobra.Command, argv []string) {
 			cmv1.NamespaceOwnershipPolicy(*namespaceOwnershipPolicy))
 	}
 
+	if clusterRoutesHostname != nil && *clusterRoutesHostname != "" {
+		ingressBuilder = ingressBuilder.ClusterRoutesHostname(*clusterRoutesHostname)
+	}
+
+	if clusterRoutesTlsSecretRef != nil && *clusterRoutesTlsSecretRef != "" {
+		ingressBuilder = ingressBuilder.ClusterRoutesTlsSecretRef(*clusterRoutesTlsSecretRef)
+	}
+
 	ingress, err = ingressBuilder.Build()
 	if err != nil {
 		r.Reporter.Errorf("Failed to create ingress for cluster '%s': %v", clusterKey, err)
