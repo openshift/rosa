@@ -14,10 +14,6 @@ import (
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 // ASCII codes of important characters:
 const (
 	aCode    = 97
