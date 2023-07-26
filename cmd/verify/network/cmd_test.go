@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 	"github.com/openshift/rosa/pkg/aws"
@@ -369,17 +370,25 @@ rosa verify network --watch --status-only --subnet-ids subnet-0b761d44d3d9a4663,
 		err := runWithRuntime(r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("One and only one of cluster or subnet-ids is required"))
+			ContainSubstring("At least one subnet IDs is required"))
+	})
+	It("Fails if no --region without --cluster", func() {
+		cmd.Flags().Set(subnetIDsFlag, "abc,def")
+		err := runWithRuntime(r, cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(
+			ContainSubstring("Region is required"))
 	})
 	It("Fails if no --role-arn without --cluster", func() {
 		cmd.Flags().Set(subnetIDsFlag, "abc,def")
+		cmd.Flags().Set("region", "us-east1")
 		err := runWithRuntime(r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring("role-arn is required"))
 	})
 	DescribeTable("Test --cluster with various statuses",
-		func(state string, expected string) {
+		func(state cmv1.ClusterState, expected string) {
 			cmd.Flags().Lookup(statusOnlyFlag).Changed = true
 			cmd.Flags().Set(clusterFlag, "tomckay-vpc")
 
@@ -414,10 +423,11 @@ rosa verify network --watch --status-only --subnet-ids subnet-0b761d44d3d9a4663,
 			Expect(stderr).To(Equal(""))
 			Expect(stdout).To(Equal(expected))
 		},
-		Entry("ready state", "ready", successOutputPendingComplete),
-		Entry("error state", "error", successOutputPendingComplete),
-		// TODO: add other states when upcoming PR to remove restrictions is merged
-		// Entry("hibernating state", "hibernating", successOutputPendingComplete),
+		Entry("ready state", cmv1.ClusterStateReady, successOutputPendingComplete),
+		Entry("error state", cmv1.ClusterStateError, successOutputPendingComplete),
+		Entry("hibernating state", cmv1.ClusterStateHibernating, successOutputPendingComplete),
+		Entry("hibernating state", cmv1.ClusterStateInstalling, successOutputPendingComplete),
+		Entry("hibernating state", cmv1.ClusterStateUninstalling, successOutputPendingComplete),
 	)
 	It("Succeeds if --cluster with --role-arn", func() {
 		// GET /api/clusters_mgmt/v1/clusters

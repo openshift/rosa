@@ -28,7 +28,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -125,37 +124,26 @@ func run(cmd *cobra.Command, _ []string) {
 }
 
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
-	if cmd.Flags().Changed(subnetIDsFlag) {
-		if cmd.Flags().Changed(clusterFlag) {
-			return fmt.Errorf("One and only one of %s or %s is required",
-				clusterFlag, subnetIDsFlag)
-		}
+	var cluster *cmv1.Cluster
+	var err error
 
-		region, err := aws.GetRegion(arguments.GetRegion())
-		if err != nil {
-			return fmt.Errorf("Error getting region: %v", err)
-		}
-		args.region = region
-	} else if cmd.Flags().Changed(clusterFlag) {
-		if cmd.Flags().Changed(subnetIDsFlag) {
-			return fmt.Errorf("One and only one of %s or %s is required",
-				clusterFlag, subnetIDsFlag)
-		}
-		cluster := r.FetchCluster()
+	if cmd.Flags().Changed(clusterFlag) {
+		cluster = r.FetchCluster()
+	}
 
-		if cluster.Status() != nil &&
-			!helper.Contains([]cmv1.ClusterState{cmv1.ClusterStateReady, cmv1.ClusterStateError}, cluster.Status().State()) {
-			return fmt.Errorf("Subnets from cluster not available when in state '%v'", cluster.Status().State())
+	if !cmd.Flags().Changed(subnetIDsFlag) {
+		if cluster != nil {
+			args.subnetIDs = cluster.AWS().SubnetIDs()
+			if len(args.subnetIDs) == 0 {
+				return fmt.Errorf("No subnets on cluster '%s'", cluster.ID())
+			}
+		} else {
+			return fmt.Errorf("At least one subnet IDs is required")
 		}
+	}
 
-		args.subnetIDs = cluster.AWS().SubnetIDs()
-		if len(args.subnetIDs) == 0 {
-			return fmt.Errorf("No subnets on cluster")
-		}
-		args.region = cluster.Region().ID()
-	} else {
-		return fmt.Errorf("One and only one of %s or %s is required",
-			clusterFlag, subnetIDsFlag)
+	if args.region, err = getRegion(cmd, cluster); err != nil {
+		return err
 	}
 
 	if cmd.Flags().Changed(roleArnFlag) {
@@ -164,7 +152,16 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			return fmt.Errorf("Expected a valid ARN: %s", err)
 		}
 	} else if !cmd.Flags().Changed(statusOnlyFlag) {
-		return fmt.Errorf("%s is required", roleArnFlag)
+		if cmd.Flags().Changed(clusterFlag) {
+			if cluster == nil {
+				cluster = r.FetchCluster()
+			}
+			if args.roleArn = cluster.AWS().STS().RoleARN(); args.roleArn == "" {
+				return fmt.Errorf("Network verification is only available for STS clusters")
+			}
+		} else {
+			return fmt.Errorf("%s is required", roleArnFlag)
+		}
 	}
 
 	r.Reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
@@ -253,4 +250,19 @@ func printStatus(reporter *reporter.Object, spin *spinner.Spinner, subnet string
 	if spin != nil {
 		spin.Restart()
 	}
+}
+
+func getRegion(cmd *cobra.Command, cluster *cmv1.Cluster) (region string, err error) {
+	if cmd.Flags().Changed("region") {
+		region, err = aws.GetRegion(arguments.GetRegion())
+		if err != nil {
+			return "", fmt.Errorf("Error getting region: %v", err)
+		}
+		return region, nil
+	}
+	if cluster != nil {
+		return cluster.Region().ID(), nil
+	}
+
+	return "", fmt.Errorf("Region is required")
 }
