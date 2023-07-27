@@ -708,24 +708,6 @@ func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetID
 	return privateSubnetCount, nil
 }
 
-const (
-	singleAZCount = 1
-	MultiAZCount  = 3
-)
-
-func ValidateAvailabilityZonesCount(multiAZ bool, availabilityZonesCount int) error {
-	if multiAZ && availabilityZonesCount != MultiAZCount {
-		return fmt.Errorf("The number of availability zones for a multi AZ cluster should be %d, "+
-			"instead received: %d", MultiAZCount, availabilityZonesCount)
-	}
-	if !multiAZ && availabilityZonesCount != singleAZCount {
-		return fmt.Errorf("The number of availability zones for a single AZ cluster should be %d, "+
-			"instead received: %d", singleAZCount, availabilityZonesCount)
-	}
-
-	return nil
-}
-
 func (c *Client) CheckUpgradeClusterVersion(
 	availableUpgrades []string,
 	clusterUpgradeVersion string,
