@@ -28,6 +28,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/color"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/interactive/consts"
 )
 
 type Input struct {
@@ -177,9 +178,10 @@ func GetOption(input Input) (a string, err error) {
 	}
 	question := input.Question
 	if !input.Required && dflt == "" {
-		question = fmt.Sprintf("%s (optional, choose 'none' to skip selection)", question)
-		input.Options = append([]string{"none"}, input.Options...)
-		dflt = "none"
+		question = fmt.Sprintf("%s (optional, choose '%s' to skip selection. "+
+			"The default value will be supplied.)", question, consts.SkipSelectionOption)
+		input.Options = append([]string{consts.SkipSelectionOption}, input.Options...)
+		dflt = consts.SkipSelectionOption
 	}
 	// if default is empty or not in the options, default to the first available option
 	if (dflt == "" || !containsString(input.Options, dflt)) && len(input.Options) > 0 {
@@ -195,7 +197,7 @@ func GetOption(input Input) (a string, err error) {
 		input.Validators = append([]Validator{required}, input.Validators...)
 	}
 	err = survey.AskOne(prompt, &a, survey.WithValidator(compose(input.Validators)))
-	if a == "none" {
+	if a == consts.SkipSelectionOption {
 		return "", nil
 	}
 	return
