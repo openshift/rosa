@@ -164,14 +164,14 @@ func init() {
 		&args.clusterRoutesHostname,
 		clusterRoutesHostnameFlag,
 		"",
-		"Cluster Routes Hostname.",
+		"Components route hostname for oauth, console, download.",
 	)
 
 	flags.StringVar(
 		&args.clusterRoutesTlsSecretRef,
 		clusterRoutesTlsSecretRefFlag,
 		"",
-		"Cluster Routes TLS Secret Reference.",
+		"Components route TLS secret reference for oauth, console, download.",
 	)
 
 	Cmd.RegisterFlagCompletionFunc(lbTypeFlag, lbTypeCompletion)
