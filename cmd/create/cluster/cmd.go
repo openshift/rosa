@@ -805,6 +805,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// setting default for ec2MetadataHttpTokens in case cluster is not hosted
+	// or ec2MetadataHttpTokens was not set
+	if !isHostedCP && args.ec2MetadataHttpTokens == "" {
+		args.ec2MetadataHttpTokens = string(v1.Ec2MetadataHttpTokensOptional)
+	}
+
 	isClusterAdmin := false
 	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
 	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
