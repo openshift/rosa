@@ -33,8 +33,8 @@ type UpgradePolicyBuilder struct {
 	clusterID                  string
 	nextRun                    time.Time
 	schedule                   string
-	scheduleType               string
-	upgradeType                string
+	scheduleType               ScheduleType
+	upgradeType                UpgradeType
 	version                    string
 	enableMinorVersionUpgrades bool
 }
@@ -98,14 +98,18 @@ func (b *UpgradePolicyBuilder) Schedule(value string) *UpgradePolicyBuilder {
 }
 
 // ScheduleType sets the value of the 'schedule_type' attribute to the given value.
-func (b *UpgradePolicyBuilder) ScheduleType(value string) *UpgradePolicyBuilder {
+//
+// ScheduleType defines which type of scheduling should be used for the upgrade policy.
+func (b *UpgradePolicyBuilder) ScheduleType(value ScheduleType) *UpgradePolicyBuilder {
 	b.scheduleType = value
 	b.bitmap_ |= 128
 	return b
 }
 
 // UpgradeType sets the value of the 'upgrade_type' attribute to the given value.
-func (b *UpgradePolicyBuilder) UpgradeType(value string) *UpgradePolicyBuilder {
+//
+// UpgradeType defines which type of upgrade should be used.
+func (b *UpgradePolicyBuilder) UpgradeType(value UpgradeType) *UpgradePolicyBuilder {
 	b.upgradeType = value
 	b.bitmap_ |= 256
 	return b

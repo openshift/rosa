@@ -40,6 +40,7 @@ type CloudProvider struct {
 	href        string
 	displayName string
 	name        string
+	regions     []*CloudRegion
 }
 
 // Kind returns the name of the type of the object.
@@ -143,6 +144,29 @@ func (o *CloudProvider) GetName() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.name
+	}
+	return
+}
+
+// Regions returns the value of the 'regions' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// (optional) Provider's regions - only included when listing providers with `fetchRegions=true`.
+func (o *CloudProvider) Regions() []*CloudRegion {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.regions
+	}
+	return nil
+}
+
+// GetRegions returns the value of the 'regions' attribute and
+// a flag indicating if the attribute has a value.
+//
+// (optional) Provider's regions - only included when listing providers with `fetchRegions=true`.
+func (o *CloudProvider) GetRegions() (value []*CloudRegion, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.regions
 	}
 	return
 }

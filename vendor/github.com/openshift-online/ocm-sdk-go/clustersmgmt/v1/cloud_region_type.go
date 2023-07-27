@@ -38,11 +38,14 @@ type CloudRegion struct {
 	bitmap_            uint32
 	id                 string
 	href               string
+	kmsLocationID      string
+	kmsLocationName    string
 	cloudProvider      *CloudProvider
 	displayName        string
 	name               string
 	ccsOnly            bool
 	enabled            bool
+	govCloud           bool
 	supportsHypershift bool
 	supportsMultiAZ    bool
 }
@@ -127,12 +130,64 @@ func (o *CloudRegion) GetCCSOnly() (value bool, ok bool) {
 	return
 }
 
+// KMSLocationID returns the value of the 'KMS_location_ID' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// (GCP only) Comma-separated list of KMS location IDs that can be used with this region.
+// E.g. "global,nam4,us". Order is not guaranteed.
+func (o *CloudRegion) KMSLocationID() string {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.kmsLocationID
+	}
+	return ""
+}
+
+// GetKMSLocationID returns the value of the 'KMS_location_ID' attribute and
+// a flag indicating if the attribute has a value.
+//
+// (GCP only) Comma-separated list of KMS location IDs that can be used with this region.
+// E.g. "global,nam4,us". Order is not guaranteed.
+func (o *CloudRegion) GetKMSLocationID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.kmsLocationID
+	}
+	return
+}
+
+// KMSLocationName returns the value of the 'KMS_location_name' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// (GCP only) Comma-separated list of display names corresponding to KMSLocationID.
+// E.g. "Global,nam4 (Iowa, South Carolina, and Oklahoma),US". Order is not guaranteed but will match KMSLocationID.
+// Unfortunately, this API doesn't allow robust splitting - Contact ocm-feedback@redhat.com if you want to rely on this.
+func (o *CloudRegion) KMSLocationName() string {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.kmsLocationName
+	}
+	return ""
+}
+
+// GetKMSLocationName returns the value of the 'KMS_location_name' attribute and
+// a flag indicating if the attribute has a value.
+//
+// (GCP only) Comma-separated list of display names corresponding to KMSLocationID.
+// E.g. "Global,nam4 (Iowa, South Carolina, and Oklahoma),US". Order is not guaranteed but will match KMSLocationID.
+// Unfortunately, this API doesn't allow robust splitting - Contact ocm-feedback@redhat.com if you want to rely on this.
+func (o *CloudRegion) GetKMSLocationName() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.kmsLocationName
+	}
+	return
+}
+
 // CloudProvider returns the value of the 'cloud_provider' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the cloud provider that the region belongs to.
 func (o *CloudRegion) CloudProvider() *CloudProvider {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.cloudProvider
 	}
 	return nil
@@ -143,7 +198,7 @@ func (o *CloudRegion) CloudProvider() *CloudProvider {
 //
 // Link to the cloud provider that the region belongs to.
 func (o *CloudRegion) GetCloudProvider() (value *CloudProvider, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.cloudProvider
 	}
@@ -155,7 +210,7 @@ func (o *CloudRegion) GetCloudProvider() (value *CloudProvider, ok bool) {
 //
 // Name of the region for display purposes, for example `N. Virginia`.
 func (o *CloudRegion) DisplayName() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.displayName
 	}
 	return ""
@@ -166,7 +221,7 @@ func (o *CloudRegion) DisplayName() string {
 //
 // Name of the region for display purposes, for example `N. Virginia`.
 func (o *CloudRegion) GetDisplayName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.displayName
 	}
@@ -176,9 +231,9 @@ func (o *CloudRegion) GetDisplayName() (value string, ok bool) {
 // Enabled returns the value of the 'enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Whether the region is enabled for deploying an OSD cluster.
+// Whether the region is enabled for deploying a managed cluster.
 func (o *CloudRegion) Enabled() bool {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&256 != 0 {
 		return o.enabled
 	}
 	return false
@@ -187,11 +242,34 @@ func (o *CloudRegion) Enabled() bool {
 // GetEnabled returns the value of the 'enabled' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Whether the region is enabled for deploying an OSD cluster.
+// Whether the region is enabled for deploying a managed cluster.
 func (o *CloudRegion) GetEnabled() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.enabled
+	}
+	return
+}
+
+// GovCloud returns the value of the 'gov_cloud' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Whether the region is an AWS GovCloud region.
+func (o *CloudRegion) GovCloud() bool {
+	if o != nil && o.bitmap_&512 != 0 {
+		return o.govCloud
+	}
+	return false
+}
+
+// GetGovCloud returns the value of the 'gov_cloud' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Whether the region is an AWS GovCloud region.
+func (o *CloudRegion) GetGovCloud() (value bool, ok bool) {
+	ok = o != nil && o.bitmap_&512 != 0
+	if ok {
+		value = o.govCloud
 	}
 	return
 }
@@ -204,7 +282,7 @@ func (o *CloudRegion) GetEnabled() (value bool, ok bool) {
 // NOTE: Currently for all cloud providers and all regions `id` and `name` have exactly
 // the same values.
 func (o *CloudRegion) Name() string {
-	if o != nil && o.bitmap_&128 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.name
 	}
 	return ""
@@ -218,7 +296,7 @@ func (o *CloudRegion) Name() string {
 // NOTE: Currently for all cloud providers and all regions `id` and `name` have exactly
 // the same values.
 func (o *CloudRegion) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.name
 	}
@@ -230,7 +308,7 @@ func (o *CloudRegion) GetName() (value string, ok bool) {
 //
 // 'true' if the region is supported for Hypershift deployments, 'false' otherwise.
 func (o *CloudRegion) SupportsHypershift() bool {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.supportsHypershift
 	}
 	return false
@@ -241,7 +319,7 @@ func (o *CloudRegion) SupportsHypershift() bool {
 //
 // 'true' if the region is supported for Hypershift deployments, 'false' otherwise.
 func (o *CloudRegion) GetSupportsHypershift() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.supportsHypershift
 	}
@@ -253,7 +331,7 @@ func (o *CloudRegion) GetSupportsHypershift() (value bool, ok bool) {
 //
 // Whether the region supports multiple availability zones.
 func (o *CloudRegion) SupportsMultiAZ() bool {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.supportsMultiAZ
 	}
 	return false
@@ -264,7 +342,7 @@ func (o *CloudRegion) SupportsMultiAZ() bool {
 //
 // Whether the region supports multiple availability zones.
 func (o *CloudRegion) GetSupportsMultiAZ() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.supportsMultiAZ
 	}

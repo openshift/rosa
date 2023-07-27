@@ -45,8 +45,8 @@ type UpgradePolicy struct {
 	clusterID                  string
 	nextRun                    time.Time
 	schedule                   string
-	scheduleType               string
-	upgradeType                string
+	scheduleType               ScheduleType
+	upgradeType                UpgradeType
 	version                    string
 	enableMinorVersionUpgrades bool
 }
@@ -203,19 +203,19 @@ func (o *UpgradePolicy) GetSchedule() (value string, ok bool) {
 // ScheduleType returns the value of the 'schedule_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Schedule type can be either "manual" (single execution) or "automatic" (re-occurring).
-func (o *UpgradePolicy) ScheduleType() string {
+// Schedule type of the upgrade.
+func (o *UpgradePolicy) ScheduleType() ScheduleType {
 	if o != nil && o.bitmap_&128 != 0 {
 		return o.scheduleType
 	}
-	return ""
+	return ScheduleType("")
 }
 
 // GetScheduleType returns the value of the 'schedule_type' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Schedule type can be either "manual" (single execution) or "automatic" (re-occurring).
-func (o *UpgradePolicy) GetScheduleType() (value string, ok bool) {
+// Schedule type of the upgrade.
+func (o *UpgradePolicy) GetScheduleType() (value ScheduleType, ok bool) {
 	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.scheduleType
@@ -226,19 +226,19 @@ func (o *UpgradePolicy) GetScheduleType() (value string, ok bool) {
 // UpgradeType returns the value of the 'upgrade_type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Upgrade type specify the type of the upgrade. Can be "OSD" or "CVE".
-func (o *UpgradePolicy) UpgradeType() string {
+// Upgrade type specify the type of the upgrade.
+func (o *UpgradePolicy) UpgradeType() UpgradeType {
 	if o != nil && o.bitmap_&256 != 0 {
 		return o.upgradeType
 	}
-	return ""
+	return UpgradeType("")
 }
 
 // GetUpgradeType returns the value of the 'upgrade_type' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Upgrade type specify the type of the upgrade. Can be "OSD" or "CVE".
-func (o *UpgradePolicy) GetUpgradeType() (value string, ok bool) {
+// Upgrade type specify the type of the upgrade.
+func (o *UpgradePolicy) GetUpgradeType() (value UpgradeType, ok bool) {
 	ok = o != nil && o.bitmap_&256 != 0
 	if ok {
 		value = o.upgradeType

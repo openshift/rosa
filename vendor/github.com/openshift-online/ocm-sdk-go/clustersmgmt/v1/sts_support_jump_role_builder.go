@@ -19,33 +19,33 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// ClusterStsSupportRoleBuilder contains the data and logic needed to build 'cluster_sts_support_role' objects.
+// StsSupportJumpRoleBuilder contains the data and logic needed to build 'sts_support_jump_role' objects.
 //
 // Isolated STS support role created per organization.
-type ClusterStsSupportRoleBuilder struct {
+type StsSupportJumpRoleBuilder struct {
 	bitmap_ uint32
 	roleArn string
 }
 
-// NewClusterStsSupportRole creates a new builder of 'cluster_sts_support_role' objects.
-func NewClusterStsSupportRole() *ClusterStsSupportRoleBuilder {
-	return &ClusterStsSupportRoleBuilder{}
+// NewStsSupportJumpRole creates a new builder of 'sts_support_jump_role' objects.
+func NewStsSupportJumpRole() *StsSupportJumpRoleBuilder {
+	return &StsSupportJumpRoleBuilder{}
 }
 
 // Empty returns true if the builder is empty, i.e. no attribute has a value.
-func (b *ClusterStsSupportRoleBuilder) Empty() bool {
+func (b *StsSupportJumpRoleBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
 // RoleArn sets the value of the 'role_arn' attribute to the given value.
-func (b *ClusterStsSupportRoleBuilder) RoleArn(value string) *ClusterStsSupportRoleBuilder {
+func (b *StsSupportJumpRoleBuilder) RoleArn(value string) *StsSupportJumpRoleBuilder {
 	b.roleArn = value
 	b.bitmap_ |= 1
 	return b
 }
 
 // Copy copies the attributes of the given object into this builder, discarding any previous values.
-func (b *ClusterStsSupportRoleBuilder) Copy(object *ClusterStsSupportRole) *ClusterStsSupportRoleBuilder {
+func (b *StsSupportJumpRoleBuilder) Copy(object *StsSupportJumpRole) *StsSupportJumpRoleBuilder {
 	if object == nil {
 		return b
 	}
@@ -54,9 +54,9 @@ func (b *ClusterStsSupportRoleBuilder) Copy(object *ClusterStsSupportRole) *Clus
 	return b
 }
 
-// Build creates a 'cluster_sts_support_role' object using the configuration stored in the builder.
-func (b *ClusterStsSupportRoleBuilder) Build() (object *ClusterStsSupportRole, err error) {
-	object = new(ClusterStsSupportRole)
+// Build creates a 'sts_support_jump_role' object using the configuration stored in the builder.
+func (b *StsSupportJumpRoleBuilder) Build() (object *StsSupportJumpRole, err error) {
+	object = new(StsSupportJumpRole)
 	object.bitmap_ = b.bitmap_
 	object.roleArn = b.roleArn
 	return

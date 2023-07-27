@@ -19,20 +19,15 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// BillingModel represents the values of the 'billing_model' enumerated type.
-type BillingModel string
+// ScheduleType represents the values of the 'schedule_type' enumerated type.
+type ScheduleType string
 
 const (
-	// BillingModel Marketplace Legacy Marketplace billing model. Currently only used for tests. Use cloud-provider specific billing models instead.
-	BillingModelMarketplace BillingModel = "marketplace"
-	// AWS Marketplace billing model.
-	BillingModelMarketplaceAWS BillingModel = "marketplace-aws"
-	// GCP Marketplace billing model.
-	BillingModelMarketplaceGCP BillingModel = "marketplace-gcp"
-	// RH Marketplace billing model.
-	BillingModelMarketplaceRHM BillingModel = "marketplace-rhm"
-	// Azure Marketplace billing model.
-	BillingModelMarketplaceAzure BillingModel = "marketplace-azure"
-	// Standard. This is the default billing model
-	BillingModelStandard BillingModel = "standard"
+	// Automatic schedule type for automatically upgrade to the latest available version, at the next scheduled time,
+	// as defined by the 'scheduled' cron expression. Note that by default, automatic upgrade will pick only
+	// the latest Z stream. To enable minor version upgrades automatically, you will need to set the
+	// 'enable_minor_version_upgrades' to be 'true'. Major version upgrades are not supported.
+	ScheduleTypeAutomatic ScheduleType = "automatic"
+	// Manual schedule type is for upgrades scheduled manually by a user, to a specific version, at a specific time.
+	ScheduleTypeManual ScheduleType = "manual"
 )

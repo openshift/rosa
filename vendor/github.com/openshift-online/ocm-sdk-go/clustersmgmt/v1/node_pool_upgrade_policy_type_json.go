@@ -135,7 +135,7 @@ func writeNodePoolUpgradePolicy(object *NodePoolUpgradePolicy, stream *jsoniter.
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("schedule_type")
-		stream.WriteString(object.scheduleType)
+		stream.WriteString(string(object.scheduleType))
 		count++
 	}
 	present_ = object.bitmap_&2048 != 0 && object.state != nil
@@ -153,7 +153,7 @@ func writeNodePoolUpgradePolicy(object *NodePoolUpgradePolicy, stream *jsoniter.
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("upgrade_type")
-		stream.WriteString(object.upgradeType)
+		stream.WriteString(string(object.upgradeType))
 		count++
 	}
 	present_ = object.bitmap_&8192 != 0
@@ -240,7 +240,8 @@ func readNodePoolUpgradePolicy(iterator *jsoniter.Iterator) *NodePoolUpgradePoli
 			object.schedule = value
 			object.bitmap_ |= 512
 		case "schedule_type":
-			value := iterator.ReadString()
+			text := iterator.ReadString()
+			value := ScheduleType(text)
 			object.scheduleType = value
 			object.bitmap_ |= 1024
 		case "state":
@@ -248,7 +249,8 @@ func readNodePoolUpgradePolicy(iterator *jsoniter.Iterator) *NodePoolUpgradePoli
 			object.state = value
 			object.bitmap_ |= 2048
 		case "upgrade_type":
-			value := iterator.ReadString()
+			text := iterator.ReadString()
+			value := UpgradeType(text)
 			object.upgradeType = value
 			object.bitmap_ |= 4096
 		case "version":

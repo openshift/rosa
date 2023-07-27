@@ -19,16 +19,16 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// ClusterStsSupportRole represents the values of the 'cluster_sts_support_role' type.
+// StsSupportJumpRole represents the values of the 'sts_support_jump_role' type.
 //
 // Isolated STS support role created per organization.
-type ClusterStsSupportRole struct {
+type StsSupportJumpRole struct {
 	bitmap_ uint32
 	roleArn string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *ClusterStsSupportRole) Empty() bool {
+func (o *StsSupportJumpRole) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
@@ -36,7 +36,7 @@ func (o *ClusterStsSupportRole) Empty() bool {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // ARN of the support role created in the SRE jump account.
-func (o *ClusterStsSupportRole) RoleArn() string {
+func (o *StsSupportJumpRole) RoleArn() string {
 	if o != nil && o.bitmap_&1 != 0 {
 		return o.roleArn
 	}
@@ -47,7 +47,7 @@ func (o *ClusterStsSupportRole) RoleArn() string {
 // a flag indicating if the attribute has a value.
 //
 // ARN of the support role created in the SRE jump account.
-func (o *ClusterStsSupportRole) GetRoleArn() (value string, ok bool) {
+func (o *StsSupportJumpRole) GetRoleArn() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
 		value = o.roleArn
@@ -55,27 +55,27 @@ func (o *ClusterStsSupportRole) GetRoleArn() (value string, ok bool) {
 	return
 }
 
-// ClusterStsSupportRoleListKind is the name of the type used to represent list of objects of
-// type 'cluster_sts_support_role'.
-const ClusterStsSupportRoleListKind = "ClusterStsSupportRoleList"
+// StsSupportJumpRoleListKind is the name of the type used to represent list of objects of
+// type 'sts_support_jump_role'.
+const StsSupportJumpRoleListKind = "StsSupportJumpRoleList"
 
-// ClusterStsSupportRoleListLinkKind is the name of the type used to represent links to list
-// of objects of type 'cluster_sts_support_role'.
-const ClusterStsSupportRoleListLinkKind = "ClusterStsSupportRoleListLink"
+// StsSupportJumpRoleListLinkKind is the name of the type used to represent links to list
+// of objects of type 'sts_support_jump_role'.
+const StsSupportJumpRoleListLinkKind = "StsSupportJumpRoleListLink"
 
-// ClusterStsSupportRoleNilKind is the name of the type used to nil lists of objects of
-// type 'cluster_sts_support_role'.
-const ClusterStsSupportRoleListNilKind = "ClusterStsSupportRoleListNil"
+// StsSupportJumpRoleNilKind is the name of the type used to nil lists of objects of
+// type 'sts_support_jump_role'.
+const StsSupportJumpRoleListNilKind = "StsSupportJumpRoleListNil"
 
-// ClusterStsSupportRoleList is a list of values of the 'cluster_sts_support_role' type.
-type ClusterStsSupportRoleList struct {
+// StsSupportJumpRoleList is a list of values of the 'sts_support_jump_role' type.
+type StsSupportJumpRoleList struct {
 	href  string
 	link  bool
-	items []*ClusterStsSupportRole
+	items []*StsSupportJumpRole
 }
 
 // Len returns the length of the list.
-func (l *ClusterStsSupportRoleList) Len() int {
+func (l *StsSupportJumpRoleList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -83,13 +83,13 @@ func (l *ClusterStsSupportRoleList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *ClusterStsSupportRoleList) Empty() bool {
+func (l *StsSupportJumpRoleList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *ClusterStsSupportRoleList) Get(i int) *ClusterStsSupportRole {
+func (l *StsSupportJumpRoleList) Get(i int) *StsSupportJumpRole {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -102,12 +102,12 @@ func (l *ClusterStsSupportRoleList) Get(i int) *ClusterStsSupportRole {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *ClusterStsSupportRoleList) Slice() []*ClusterStsSupportRole {
-	var slice []*ClusterStsSupportRole
+func (l *StsSupportJumpRoleList) Slice() []*StsSupportJumpRole {
+	var slice []*StsSupportJumpRole
 	if l == nil {
-		slice = make([]*ClusterStsSupportRole, 0)
+		slice = make([]*StsSupportJumpRole, 0)
 	} else {
-		slice = make([]*ClusterStsSupportRole, len(l.items))
+		slice = make([]*StsSupportJumpRole, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -116,7 +116,7 @@ func (l *ClusterStsSupportRoleList) Slice() []*ClusterStsSupportRole {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *ClusterStsSupportRoleList) Each(f func(item *ClusterStsSupportRole) bool) {
+func (l *StsSupportJumpRoleList) Each(f func(item *StsSupportJumpRole) bool) {
 	if l == nil {
 		return
 	}
@@ -130,7 +130,7 @@ func (l *ClusterStsSupportRoleList) Each(f func(item *ClusterStsSupportRole) boo
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *ClusterStsSupportRoleList) Range(f func(index int, item *ClusterStsSupportRole) bool) {
+func (l *StsSupportJumpRoleList) Range(f func(index int, item *StsSupportJumpRole) bool) {
 	if l == nil {
 		return
 	}
