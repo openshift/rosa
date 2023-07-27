@@ -30,6 +30,7 @@ import (
 	utils "github.com/openshift/rosa/pkg/helper"
 	helper "github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/consts"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -491,11 +492,13 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if wildcardPolicy != nil && !utils.Contains([]string{"", "none"}, *wildcardPolicy) {
+	if wildcardPolicy != nil &&
+		!utils.Contains([]string{"", consts.SkipSelectionOption}, *wildcardPolicy) {
 		ingressBuilder = ingressBuilder.RouteWildcardPolicy(cmv1.WildcardPolicy(*wildcardPolicy))
 	}
 
-	if namespaceOwnershipPolicy != nil && !utils.Contains([]string{"", "none"}, *namespaceOwnershipPolicy) {
+	if namespaceOwnershipPolicy != nil &&
+		!utils.Contains([]string{"", consts.SkipSelectionOption}, *namespaceOwnershipPolicy) {
 		ingressBuilder = ingressBuilder.RouteNamespaceOwnershipPolicy(
 			cmv1.NamespaceOwnershipPolicy(*namespaceOwnershipPolicy))
 	}

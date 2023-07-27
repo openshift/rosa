@@ -27,10 +27,10 @@ import (
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/helper"
-
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/interactive/consts"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -987,10 +987,10 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		if len(config.DefaultIngress.ExcludedNamespaces) != 0 {
 			defaultIngress.ExcludedNamespaces(config.DefaultIngress.ExcludedNamespaces...)
 		}
-		if !helper.Contains([]string{"", "none"}, config.DefaultIngress.WildcardPolicy) {
+		if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.WildcardPolicy) {
 			defaultIngress.RouteWildcardPolicy(v1.WildcardPolicy(config.DefaultIngress.WildcardPolicy))
 		}
-		if !helper.Contains([]string{"", "none"}, config.DefaultIngress.NamespaceOwnershipPolicy) {
+		if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.NamespaceOwnershipPolicy) {
 			defaultIngress.RouteNamespaceOwnershipPolicy(
 				v1.NamespaceOwnershipPolicy(config.DefaultIngress.NamespaceOwnershipPolicy))
 		}

@@ -47,6 +47,7 @@ import (
 	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/interactive/consts"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
@@ -3154,10 +3155,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 			command += fmt.Sprintf(" --%s %s", defaultIngressExcludedNamespacesFlag,
 				strings.Join(spec.DefaultIngress.ExcludedNamespaces, ","))
 		}
-		if !helper.Contains([]string{"", "none"}, spec.DefaultIngress.WildcardPolicy) {
+		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.WildcardPolicy) {
 			command += fmt.Sprintf(" --%s %s", defaultIngressWildcardPolicyFlag, spec.DefaultIngress.WildcardPolicy)
 		}
-		if !helper.Contains([]string{"", "none"}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
+		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
 			command += fmt.Sprintf(" --%s %s", defaultIngressNamespaceOwnershipPolicyFlag,
 				spec.DefaultIngress.NamespaceOwnershipPolicy)
 		}
