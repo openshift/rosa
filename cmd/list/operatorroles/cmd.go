@@ -188,20 +188,36 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Infof(noOperatorRolesPrefixOutput)
 			os.Exit(0)
 		}
-		fmt.Fprintf(writer, "ROLE NAME\tROLE ARN\tCLUSTER ID\tVERSION\tMANAGED\n")
+		hasClusterUsingOperatorRolesPrefix, err := r.OCMClient.HasAClusterUsingOperatorRolesPrefix(args.prefix)
+		if err != nil {
+			r.Reporter.Errorf("There was a problem checking if any clusters"+
+				" are using Operator Roles Prefix '%s' : %v", args.prefix, err)
+			os.Exit(1)
+		}
+
+		fmt.Fprintf(writer, "OPERATOR NAME\tOPERATOR NAMESPACE\tROLE NAME\t"+
+			"ROLE ARN\tCLUSTER ID\tVERSION\tPOLICIES\tAWS Managed\tIN USE\n")
 		for _, operatorRole := range operatorsMap[args.prefix] {
 			awsManaged := "No"
+			inUse := "No"
 			if operatorRole.ManagedPolicy {
 				awsManaged = "Yes"
 			}
+			if hasClusterUsingOperatorRolesPrefix {
+				inUse = "Yes"
+			}
 			fmt.Fprintf(
 				writer,
-				"%s\t%s\t%s\t%s\t%s\n",
+				"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				operatorRole.OperatorName,
+				operatorRole.OperatorNamespace,
 				operatorRole.RoleName,
 				operatorRole.RoleARN,
 				operatorRole.ClusterID,
 				operatorRole.Version,
+				operatorRole.AttachedPolicies,
 				awsManaged,
+				inUse,
 			)
 		}
 		writer.Flush()

@@ -747,7 +747,7 @@ func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client
 func FindAllAttachedPolicyDetails(policiesDetails []PolicyDetail) []PolicyDetail {
 	attachedPolicies := make([]PolicyDetail, 0)
 	for _, policy := range policiesDetails {
-		if policy.PolicType == Attached {
+		if policy.PolicyType == Attached {
 			attachedPolicies = append(attachedPolicies, policy)
 		}
 	}
@@ -756,7 +756,7 @@ func FindAllAttachedPolicyDetails(policiesDetails []PolicyDetail) []PolicyDetail
 
 func FindFirstAttachedPolicy(policiesDetails []PolicyDetail) PolicyDetail {
 	for _, policy := range policiesDetails {
-		if policy.PolicType == Attached {
+		if policy.PolicyType == Attached {
 			return policy
 		}
 	}

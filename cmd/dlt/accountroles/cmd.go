@@ -307,7 +307,7 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail, m
 	for _, roleName := range roleNames {
 		policyDetails := policyMap[roleName]
 		for _, policyDetail := range policyDetails {
-			if policyDetail.PolicType == aws.Attached && policyDetail.PolicyArn != "" {
+			if policyDetail.PolicyType == aws.Attached && policyDetail.PolicyArn != "" {
 				detachPolicy := awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.DetachRolePolicy).
 					AddParam(awscb.RoleName, roleName).
@@ -323,7 +323,7 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail, m
 					commands = append(commands, deletePolicy)
 				}
 			}
-			if policyDetail.PolicType == aws.Inline && policyDetail.PolicyName != "" {
+			if policyDetail.PolicyType == aws.Inline && policyDetail.PolicyName != "" {
 				deletePolicy := awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.DeleteRolePolicy).
 					AddParam(awscb.RoleName, roleName).

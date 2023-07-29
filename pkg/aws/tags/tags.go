@@ -58,4 +58,6 @@ const OperatorNamespace = "operator_namespace"
 
 const OperatorName = "operator_name"
 
+const InUse = "in_use"
+
 const True = "true"
