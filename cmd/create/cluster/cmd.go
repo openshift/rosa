@@ -2502,10 +2502,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		excludedNamespaces = excludedNamespacesArg
 	}
-	sliceExcludedNamespaces := []string{}
-	if excludedNamespaces != "" {
-		sliceExcludedNamespaces = strings.Split(excludedNamespaces, ",")
-	}
+	sliceExcludedNamespaces := ingress.GetExcludedNamespaces(excludedNamespaces)
 
 	wildcardPolicy := ""
 	if cmd.Flags().Changed(defaultIngressWildcardPolicyFlag) {

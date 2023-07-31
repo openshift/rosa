@@ -479,14 +479,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if excludedNamespaces != nil {
-		_excludedNamespaces := []string{}
-		if *excludedNamespaces != "" {
-			_excludedNamespaces = strings.Split(*excludedNamespaces, ",")
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-		}
+		_excludedNamespaces := helper.GetExcludedNamespaces(*excludedNamespaces)
 		if len(_excludedNamespaces) > 0 {
 			ingressBuilder = ingressBuilder.ExcludedNamespaces(_excludedNamespaces...)
 		}
