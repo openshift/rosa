@@ -14,8 +14,10 @@ import (
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
+var r *rand.Rand
+
 func init() {
-	rand.Seed(time.Now().UnixNano())
+	r = rand.New(rand.NewSource(time.Now().UnixNano())) // #nosec G404
 }
 
 // ASCII codes of important characters:
@@ -36,7 +38,7 @@ const True = "true"
 const ProtocolHttps = "https"
 
 func RandomLabel(size int) string {
-	value := rand.Int() // #nosec G404
+	value := r.Int()
 	chars := make([]byte, size)
 	for size > 0 {
 		size--
