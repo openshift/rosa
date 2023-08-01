@@ -469,9 +469,7 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(1)
 			}
 		}
-		if len(routeSelectors) > 0 {
-			ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
-		}
+		ingressBuilder = ingressBuilder.RouteSelectors(routeSelectors)
 	}
 
 	if lbType != nil {
@@ -480,9 +478,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if excludedNamespaces != nil {
 		_excludedNamespaces := helper.GetExcludedNamespaces(*excludedNamespaces)
-		if len(_excludedNamespaces) > 0 {
-			ingressBuilder = ingressBuilder.ExcludedNamespaces(_excludedNamespaces...)
-		}
+		ingressBuilder = ingressBuilder.ExcludedNamespaces(_excludedNamespaces...)
 	}
 
 	if wildcardPolicy != nil &&
