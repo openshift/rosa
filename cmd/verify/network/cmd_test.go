@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//nolint:lll
 var _ = Describe("verify network", func() {
 	var ssoServer, apiServer *ghttp.Server
 
@@ -316,7 +317,7 @@ var _ = Describe("verify network", func() {
 	var successOutputPendingComplete = `INFO: subnet-0b761d44d3d9a4663: pending
 INFO: subnet-0f87f640e56934cbc: passed
 INFO: Run the following command to wait for verification to all subnets to complete:
-rosa verify network --watch --status-only --subnet-ids subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc
+rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc
 `
 	BeforeEach(func() {
 

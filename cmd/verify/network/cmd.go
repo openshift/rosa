@@ -223,9 +223,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		}
 
 		if pending {
-			output := "Run the following command to wait for verification to all subnets to complete:\n"
-			output += "rosa verify network --watch --status-only --subnet-ids "
-			output += strings.Join(args.subnetIDs, ",")
+			output := fmt.Sprintf("Run the following command to wait for verification to all subnets to complete:\n"+
+				"rosa verify network --watch --status-only --region %s --subnet-ids %s",
+				args.region, strings.Join(args.subnetIDs, ","))
 			r.Reporter.Infof(output)
 		}
 	}
