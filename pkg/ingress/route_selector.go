@@ -6,12 +6,10 @@ import (
 )
 
 func GetRouteSelector(labelMatches string) (map[string]string, error) {
-	routeSelectors := make(map[string]string)
-
 	if labelMatches == "" {
-		return routeSelectors, nil
+		return map[string]string{}, nil
 	}
-
+	routeSelectors := map[string]string{}
 	for _, labelMatch := range strings.Split(labelMatches, ",") {
 		if !strings.Contains(labelMatch, "=") {
 			return nil, fmt.Errorf("Expected key=value format for label-match")
