@@ -1806,7 +1806,7 @@ func (c *awsClient) ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster,
 	for key, operatorRole := range operatorRoles {
 		roleName, exist := FindOperatorRoleNameBySTSOperator(cluster, operatorRole)
 		if exist {
-			err := c.validateManagedPolicy(policies, GetOperatorPolicyKey(key, hostedCPPolicies), roleName)
+			err := c.validateManagedPolicy(policies, GetOperatorPolicyKey(key, hostedCPPolicies, false), roleName)
 			if err != nil {
 				return err
 			}

@@ -73,6 +73,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	operatorRolesPrefix := args.prefix
 	oidcEndpointUrl := oidcConfig.IssuerUrl()
 	installerRoleArn := args.installerRoleArn
+	sharedVpcRoleArn := args.sharedVpcRoleArn
 
 	validateArgumentsOperatorRolesCreationByPrefix(r, operatorRolesPrefix, oidcEndpointUrl, installerRoleArn)
 
@@ -107,6 +108,11 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	managedPolicies, err := r.AWSClient.HasManagedPolicies(installerRoleArn)
 	if err != nil {
 		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		os.Exit(1)
+	}
+	if managedPolicies && sharedVpcRoleArn != "" {
+		r.Reporter.Errorf("Installer role '%s' has managed policies, the 'shared-vpc-role-arn' flag is not "+
+			"supported for managed policies", installerRoleArn)
 		os.Exit(1)
 	}
 	awsCreator, err := r.AWSClient.GetCreator()
@@ -160,7 +166,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 			defaultPolicyVersion, policies,
 			credRequests, managedPolicies,
 			path, operatorIAMRoleList,
-			oidcEndpointUrl, hostedCPPolicies)
+			oidcEndpointUrl, hostedCPPolicies, sharedVpcRoleArn)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the operator roles: %s", err)
 			isThrottle := "false"
@@ -193,7 +199,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 			defaultPolicyVersion, policies,
 			credRequests, managedPolicies,
 			path, operatorIAMRoleList,
-			oidcEndpointUrl, hostedCPPolicies)
+			oidcEndpointUrl, hostedCPPolicies, sharedVpcRoleArn)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -269,7 +275,9 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
 	managedPolicies bool, path string,
 	operatorIAMRoleList []*cmv1.OperatorIAMRole,
-	oidcEndpointUrl string, hostedCPPolicies bool) error {
+	oidcEndpointUrl string, hostedCPPolicies bool, sharedVpcRoleArn string) error {
+	isSharedVpc := sharedVpcRoleArn != ""
+
 	for credrequest, operator := range credRequests {
 		roleArn := aws.FindOperatorRoleBySTSOperator(operatorIAMRoleList, operator)
 		roleName, err := aws.GetResourceIdFromARN(roleArn)
@@ -281,7 +289,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 		}
 
 		var policyArn string
-		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies)
+		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
 		if managedPolicies {
 			policyArn, err = aws.GetManagedPolicyARN(policies, filename)
 			if err != nil {
@@ -291,6 +299,12 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			policyArn = aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
 				operator.Name(), path)
 			policyDetails := aws.GetPolicyDetails(policies, filename)
+
+			if isSharedVpc {
+				policyDetails = aws.InterpolatePolicyDocument(policyDetails, map[string]string{
+					"shared_vpc_role_arn": sharedVpcRoleArn,
+				})
+			}
 
 			operatorPolicyTags := map[string]string{
 				tags.OpenShiftVersion:  defaultPolicyVersion,
@@ -359,14 +373,15 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
 	managedPolicies bool, path string,
 	operatorIAMRoleList []*cmv1.OperatorIAMRole,
-	oidcEndpointUrl string, hostedCPPolicies bool) (string, error) {
+	oidcEndpointUrl string, hostedCPPolicies bool, sharedVpcRoleArn string) (string, error) {
 	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-		true, policies, credRequests, managedPolicies)
+		true, policies, credRequests, managedPolicies, sharedVpcRoleArn)
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 		os.Exit(1)
 	}
 
+	isSharedVpc := sharedVpcRoleArn != ""
 	commands := []string{}
 
 	for credrequest, operator := range credRequests {
@@ -378,7 +393,8 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 
 		var policyARN string
 		if managedPolicies {
-			policyARN, err = aws.GetManagedPolicyARN(policies, aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies))
+			policyARN, err = aws.GetManagedPolicyARN(policies, aws.GetOperatorPolicyKey(
+				credrequest, hostedCPPolicies, false))
 			if err != nil {
 				return "", err
 			}
@@ -394,10 +410,12 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 					tags.OperatorName:      operator.Name(),
 					tags.RedHatManaged:     helper.True,
 				}
+				operatorPolicyKey := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
+				fileName := fmt.Sprintf("file://%s.json", operatorPolicyKey)
 				createPolicy := awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.CreatePolicy).
 					AddParam(awscb.PolicyName, name).
-					AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", credrequest)).
+					AddParam(awscb.PolicyDocument, fileName).
 					AddTags(iamTags).
 					AddParam(awscb.Path, path).
 					Build()
