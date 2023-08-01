@@ -36,6 +36,7 @@ func IsGovRegion(region string) bool {
 var JumpAccounts = map[string]string{
 	"production":  "448648337690",
 	"staging":     "448870092490",
+	"staging01":   "448870092490",
 	"integration": "449053620653",
 }
 
@@ -43,6 +44,7 @@ var JumpAccounts = map[string]string{
 var LoginURLs = map[string]string{
 	"production":  "https://api.openshiftusgov.com/auth",
 	"staging":     "https://api.stage.openshiftusgov.com/auth",
+	"staging01":   "https://api01.stage.openshiftusgov.com/auth",
 	"integration": "https://api.int.openshiftusgov.com/auth",
 }
 
@@ -50,6 +52,7 @@ var LoginURLs = map[string]string{
 var AdminLoginURLs = map[string]string{
 	"production":  "https://api-admin.openshiftusgov.com/auth",
 	"staging":     "https://api-admin.stage.openshiftusgov.com/auth",
+	"staging01":   "https://api-admin.stage.openshiftusgov.com/auth",
 	"integration": "https://api-admin.int.openshiftusgov.com/auth",
 }
 
@@ -57,6 +60,7 @@ var AdminLoginURLs = map[string]string{
 var URLAliases = map[string]string{
 	"production":  "https://api.openshiftusgov.com",
 	"staging":     "https://api.stage.openshiftusgov.com",
+	"staging01":   "https://api01.stage.openshiftusgov.com",
 	"integration": "https://api.int.openshiftusgov.com",
 }
 
@@ -64,6 +68,7 @@ var URLAliases = map[string]string{
 var AdminURLAliases = map[string]string{
 	"production":  "https://api-admin.openshiftusgov.com",
 	"staging":     "https://api-admin.stage.openshiftusgov.com",
+	"staging01":   "https://api-admin.stage.openshiftusgov.com",
 	"integration": "https://api-admin.int.openshiftusgov.com",
 }
 
@@ -74,6 +79,7 @@ const keycloakURL = "realms/redhat-external/protocol/openid-connect/token"
 var TokenURLs = map[string]string{
 	"production":  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
 	"staging":     fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
+	"staging01":   fmt.Sprintf("https://sso01.stage.openshiftusgov.com/%s", keycloakURL),
 	"integration": fmt.Sprintf("https://sso.int.openshiftusgov.com/%s", keycloakURL),
 }
 
@@ -81,6 +87,7 @@ var TokenURLs = map[string]string{
 var AdminTokenURLs = map[string]string{
 	"production":  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
 	"staging":     fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
+	"staging01":   fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
 	"integration": fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
 }
 
@@ -88,6 +95,7 @@ var AdminTokenURLs = map[string]string{
 var ClientIDs = map[string]string{
 	"production":  "72ekjh5laouap6qcfis521jlgi",
 	"staging":     "1lb687dlpsmsfuj53r3je06vpp",
+	"staging01":   "console-dot",
 	"integration": "console-dot",
 }
 
@@ -95,5 +103,6 @@ var ClientIDs = map[string]string{
 var AdminClientIDs = map[string]string{
 	"production":  "72ekjh5laouap6qcfis521jlgi",
 	"staging":     "1lb687dlpsmsfuj53r3je06vpp",
+	"staging01":   "1lb687dlpsmsfuj53r3je06vpp",
 	"integration": "20fbrpgl28f8oehp6709mk3nnr",
 }
