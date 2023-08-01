@@ -496,11 +496,11 @@ func run(cmd *cobra.Command, argv []string) {
 			cmv1.NamespaceOwnershipPolicy(*namespaceOwnershipPolicy))
 	}
 
-	if clusterRoutesHostname != nil && *clusterRoutesHostname != "" {
+	if clusterRoutesHostname != nil {
 		ingressBuilder = ingressBuilder.ClusterRoutesHostname(*clusterRoutesHostname)
 	}
 
-	if clusterRoutesTlsSecretRef != nil && *clusterRoutesTlsSecretRef != "" {
+	if clusterRoutesTlsSecretRef != nil {
 		ingressBuilder = ingressBuilder.ClusterRoutesTlsSecretRef(*clusterRoutesTlsSecretRef)
 	}
 
