@@ -102,6 +102,9 @@ func SliceToMap(s []string) map[string]bool {
 }
 
 func SliceToSortedString(s []string) string {
+	if len(s) == 0 {
+		return ""
+	}
 	SortStringRespectLength(s)
 	return "[" + strings.Join(s, ", ") + "]"
 }
