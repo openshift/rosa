@@ -1791,7 +1791,11 @@ func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, e
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
-				return "", errors.NotFound.Errorf("Role with the prefix '%s' not found", prefix)
+				errorMessage := "Role with the prefix '%s' not found amongst Classic cluster roles"
+				if strings.Contains(roleType, HCPSuffixPattern) {
+					errorMessage = "Role with the prefix '%s' not found amongst HCP cluster roles"
+				}
+				return "", errors.NotFound.Errorf(errorMessage, prefix)
 			}
 		}
 
