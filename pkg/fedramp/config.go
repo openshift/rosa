@@ -51,8 +51,8 @@ var LoginURLs = map[string]string{
 // AdminLoginURLs allows the value of the `--env` option to map to the various Admin login URLs.
 var AdminLoginURLs = map[string]string{
 	"production":  "https://api-admin.openshiftusgov.com/auth",
-	"staging":     "https://api-admin.stage.openshiftusgov.com/auth",
-	"staging01":   "https://api-admin.stage.openshiftusgov.com/auth",
+	"staging":     "https://api.stage.openshiftusgov.com/auth",
+	"staging01":   "https://api.stage.openshiftusgov.com/auth",
 	"integration": "https://api-admin.int.openshiftusgov.com/auth",
 }
 
@@ -67,8 +67,8 @@ var URLAliases = map[string]string{
 // AdminURLAliases allows the value of the `--env` option to map to the various Admin API URLs.
 var AdminURLAliases = map[string]string{
 	"production":  "https://api-admin.openshiftusgov.com",
-	"staging":     "https://api-admin.stage.openshiftusgov.com",
-	"staging01":   "https://api-admin.stage.openshiftusgov.com",
+	"staging":     "https://api.stage.openshiftusgov.com",
+	"staging01":   "https://api.stage.openshiftusgov.com",
 	"integration": "https://api-admin.int.openshiftusgov.com",
 }
 
