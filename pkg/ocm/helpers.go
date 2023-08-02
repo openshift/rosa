@@ -854,7 +854,7 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 			return err
 		}
 		for _, policyDetails := range policiesDetails {
-			if policyDetails.PolicType == aws.Inline {
+			if policyDetails.PolicyType == aws.Inline {
 				continue
 			}
 			isCompatible, err := awsClient.IsPolicyCompatible(policyDetails.PolicyArn, clusterVersion)

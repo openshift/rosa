@@ -369,7 +369,7 @@ func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
 		for _, rolePolicy := range rolePolicies {
 			if rolePolicy.PolicyName == policyName {
 				policyARN = rolePolicy.PolicyArn
-				policyType = rolePolicy.PolicType
+				policyType = rolePolicy.PolicyType
 				break
 			}
 		}

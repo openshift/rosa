@@ -60,10 +60,21 @@ type Role struct {
 	ClusterID     string   `json:"ClusterID,omitempty"`
 }
 
+type OperatorRoleDetail struct {
+	OperatorName      string   `json:"Name,omitempty"`
+	OperatorNamespace string   `json:"Namespace,omitempty"`
+	Version           string   `json:"Version,omitempty"`
+	RoleName          string   `json:"RoleName,omitempty"`
+	RoleARN           string   `json:"RoleARN,omitempty"`
+	ClusterID         string   `json:"ClusterID,omitempty"`
+	AttachedPolicies  []string `json:"Policy,omitempty"`
+	ManagedPolicy     bool     `json:"ManagedPolicy,omitempty"`
+}
+
 type PolicyDetail struct {
 	PolicyName string
 	PolicyArn  string
-	PolicType  string
+	PolicyType string
 }
 
 type Policy struct {
@@ -793,15 +804,15 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 	return accountRoles, nil
 }
 
-func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (map[string][]Role, error) {
-	operatorMap := map[string][]Role{}
+func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (map[string][]OperatorRoleDetail, error) {
+	operatorMap := map[string][]OperatorRoleDetail{}
 	roles, err := c.ListRoles()
 	if err != nil {
 		return operatorMap, err
 	}
 	prefixOperatorRoleRE := regexp.MustCompile(`(?i)(?P<Prefix>[\w+=,.@-]+)-(openshift|kube-system)`)
 	for _, role := range roles {
-		operatorRole := Role{}
+		operatorRole := OperatorRoleDetail{}
 		matches := prefixOperatorRoleRE.FindStringSubmatch(*role.RoleName)
 		if len(matches) == 0 {
 			continue
@@ -809,7 +820,7 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 		prefixIndex := prefixOperatorRoleRE.SubexpIndex("Prefix")
 		foundPrefix := strings.ToLower(matches[prefixIndex])
 		if _, mapOk := operatorMap[foundPrefix]; !mapOk {
-			operatorMap[foundPrefix] = []Role{}
+			operatorMap[foundPrefix] = []OperatorRoleDetail{}
 		}
 		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
 			RoleName: role.RoleName,
@@ -830,8 +841,27 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 					skip = true
 				}
 				operatorRole.ClusterID = tagValue
+			case tags.OperatorName:
+				operatorRole.OperatorName = *tag.Value
+
+			case tags.OperatorNamespace:
+				operatorRole.OperatorNamespace = *tag.Value
 			}
 		}
+
+		attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return operatorMap, err
+		}
+
+		attachedPolicies := []string{}
+
+		for _, policy := range attachedPoliciesOutput.AttachedPolicies {
+			attachedPolicies = append(attachedPolicies, (aws.StringValue(policy.PolicyName)))
+		}
+		operatorRole.AttachedPolicies = attachedPolicies
 
 		if skip {
 			continue
@@ -844,12 +874,6 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 			continue
 		}
 
-		attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
-			RoleName: role.RoleName,
-		})
-		if err != nil {
-			return operatorMap, err
-		}
 		for _, policy := range attachedPoliciesOutput.AttachedPolicies {
 			listPolicyTagsOutput, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
 				PolicyArn: policy.PolicyArn,
@@ -1154,7 +1178,7 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 		policyDetail := PolicyDetail{
 			PolicyName: aws.StringValue(policy.PolicyName),
 			PolicyArn:  aws.StringValue(policy.PolicyArn),
-			PolicType:  Attached,
+			PolicyType: Attached,
 		}
 		policies = append(policies, policyDetail)
 	}
@@ -1175,7 +1199,7 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	for _, policy := range rolePolicyOutput.PolicyNames {
 		policyDetail := PolicyDetail{
 			PolicyName: aws.StringValue(policy),
-			PolicType:  Inline,
+			PolicyType: Inline,
 		}
 		policies = append(policies, policyDetail)
 	}
@@ -1696,7 +1720,7 @@ func (c *awsClient) validateRolePolicyUpgradeVersionCompatibility(roleName strin
 		return false, err
 	}
 	for _, attachedPolicy := range attachedPolicies {
-		if attachedPolicy.PolicType == Inline {
+		if attachedPolicy.PolicyType == Inline {
 			continue
 		}
 		return c.isRolePolicyUpToDate(attachedPolicy.PolicyArn, version)
