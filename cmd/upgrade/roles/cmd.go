@@ -303,7 +303,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			}
 		case aws.ModeManual:
 			err = aws.GeneratePolicyFiles(reporter, env, isUpgradeNeedForAccountRolePolicies,
-				false, accountRolePolicies, nil, false)
+				false, accountRolePolicies, nil, false, "")
 			if err != nil {
 				reporter.Errorf("There was an error generating the policy files: %s", err)
 				os.Exit(1)
@@ -738,7 +738,7 @@ func upgradeOperatorPolicies(
 		return nil
 	case aws.ModeManual:
 		err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-			true, policies, credRequests, false)
+			true, policies, credRequests, false, "") //TODO: handle shared VPC
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)

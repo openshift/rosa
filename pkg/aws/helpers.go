@@ -636,7 +636,7 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
 	generateOperatorRolePolicies bool, policies map[string]*cmv1.AWSSTSPolicy,
-	credRequests map[string]*cmv1.STSOperator, managedPolicies bool) error {
+	credRequests map[string]*cmv1.STSOperator, managedPolicies bool, sharedVpcRoleArn string) error {
 	if generateAccountRolePolicies {
 		for file := range AccountRoles {
 			//Get trust policy
@@ -663,9 +663,15 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 		}
 	}
 	if generateOperatorRolePolicies {
+		isSharedVpc := sharedVpcRoleArn != ""
 		for credrequest := range credRequests {
-			filename := fmt.Sprintf("openshift_%s_policy", credrequest)
+			filename := GetOperatorPolicyKey(credrequest, false, isSharedVpc)
 			policyDetail := GetPolicyDetails(policies, filename)
+			if isSharedVpc {
+				policyDetail = InterpolatePolicyDocument(policyDetail, map[string]string{
+					"shared_vpc_role_arn": sharedVpcRoleArn,
+				})
+			}
 			//In case any missing policy we dont want to block the user.This might not happen
 			if policyDetail == "" {
 				continue
@@ -909,9 +915,13 @@ func GetManagedPolicyARN(policies map[string]*cmv1.AWSSTSPolicy, key string) (st
 	return policy.ARN(), nil
 }
 
-func GetOperatorPolicyKey(roleType string, hostedCP bool) string {
+func GetOperatorPolicyKey(roleType string, hostedCP bool, sharedVpc bool) string {
 	if hostedCP {
 		return fmt.Sprintf("openshift_hcp_%s_policy", roleType)
+	}
+
+	if sharedVpc && roleType == "ingress_operator_cloud_credentials" {
+		return fmt.Sprintf("shared_vpc_openshift_%s_policy", roleType)
 	}
 
 	return fmt.Sprintf("openshift_%s_policy", roleType)

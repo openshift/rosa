@@ -171,7 +171,7 @@ func createRoles(r *rosa.Runtime,
 		}
 
 		var policyARN string
-		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies)
+		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, false)
 		if managedPolicies {
 			policyARN, err = aws.GetManagedPolicyARN(policies, filename)
 			if err != nil {
@@ -251,7 +251,7 @@ func buildCommands(r *rosa.Runtime, env string,
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
 	managedPolicies bool, hostedCPPolicies bool) (string, error) {
 	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-		true, policies, credRequests, managedPolicies)
+		true, policies, credRequests, managedPolicies, "")
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 		os.Exit(1)
@@ -279,7 +279,8 @@ func buildCommands(r *rosa.Runtime, env string,
 
 		var policyARN string
 		if managedPolicies {
-			policyARN, err = aws.GetManagedPolicyARN(policies, aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies))
+			policyARN, err = aws.GetManagedPolicyARN(policies, aws.GetOperatorPolicyKey(
+				credrequest, hostedCPPolicies, false))
 			if err != nil {
 				return "", err
 			}

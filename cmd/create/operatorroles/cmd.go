@@ -43,6 +43,7 @@ var args struct {
 	permissionsBoundary string
 	forcePolicyCreation bool
 	oidcConfigId        string
+	sharedVpcRoleArn    string
 }
 
 var Cmd = &cobra.Command{
@@ -108,6 +109,13 @@ func init() {
 		"Forces creation of policies skipping compatibility check",
 	)
 
+	flags.StringVar(
+		&args.sharedVpcRoleArn,
+		"shared-vpc-role-arn",
+		"",
+		"The ARN of the role in the shared VPC account, the role is used to modify the private hosted zone records",
+	)
+
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -166,6 +174,11 @@ func run(cmd *cobra.Command, argv []string) error {
 	var cluster *cmv1.Cluster
 	if args.prefix == "" {
 		cluster = r.FetchCluster()
+	}
+
+	if args.prefix == "" && args.sharedVpcRoleArn != "" {
+		r.Reporter.Errorf("Shared VPC role ARN is only supported when setting the 'prefix' flag")
+		os.Exit(1)
 	}
 
 	if args.forcePolicyCreation && mode != aws.ModeAuto {

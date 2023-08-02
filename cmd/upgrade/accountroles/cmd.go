@@ -245,7 +245,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 	case aws.ModeManual:
 		err = aws.GeneratePolicyFiles(reporter, env, isUpgradeNeedForAccountRolePolicies,
-			false, policies, nil, false)
+			false, policies, nil, false, "")
 		if err != nil {
 			reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)

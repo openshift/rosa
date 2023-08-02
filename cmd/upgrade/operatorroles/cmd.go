@@ -262,7 +262,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 		return nil
 	case aws.ModeManual:
 		err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-			true, policies, credRequests, false)
+			true, policies, credRequests, false, "") //TODO: handle shared vpc
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
