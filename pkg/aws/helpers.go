@@ -24,6 +24,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
@@ -87,6 +88,27 @@ func ARNValidator(input interface{}) error {
 		return nil
 	}
 	return fmt.Errorf("can only validate strings, got %v", input)
+}
+
+func SecretManagerArnValidator(input interface{}) error {
+	str, ok := input.(string)
+	if !ok {
+		return fmt.Errorf("can only validate strings, got %v", input)
+	}
+	if str == "" {
+		return nil
+	}
+	if !arn.IsARN(str) {
+		return fmt.Errorf("Secret ARN '%s' is not a valid ARN", str)
+	}
+	parsedSecretArn, err := arn.Parse(str)
+	if err != nil {
+		return fmt.Errorf("Invalid ARN: %s", err)
+	}
+	if parsedSecretArn.Service != constants.SecretsManagerService {
+		return fmt.Errorf("Secret ARN '%s' is not a valid secrets manager ARN", str)
+	}
+	return nil
 }
 
 func ARNPathValidator(input interface{}) error {
