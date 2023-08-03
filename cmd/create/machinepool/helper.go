@@ -73,7 +73,7 @@ func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) 
 	// Format subnet options
 	var subnetOptions []string
 	for _, subnet := range privateSubnets {
-		subnetOptions = append(subnetOptions, aws.SetSubnetOption(*subnet.SubnetId, *subnet.AvailabilityZone))
+		subnetOptions = append(subnetOptions, aws.SetSubnetOption(subnet))
 	}
 
 	return subnetOptions, nil

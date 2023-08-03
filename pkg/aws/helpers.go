@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -801,11 +802,22 @@ func UpgradeOperatorRolePolicies(
 	return nil
 }
 
-const subnetTemplate = "%s (%s)"
+const subnetTemplate = "%s ('%s',%s)"
 
 // SetSubnetOption Creates a subnet options using a predefined template.
-func SetSubnetOption(subnet, zone string) string {
-	return fmt.Sprintf(subnetTemplate, subnet, zone)
+func SetSubnetOption(subnet *ec2.Subnet) string {
+	subnetName := ""
+	for _, tag := range subnet.Tags {
+		switch *tag.Key {
+		case "Name":
+			subnetName = *tag.Value
+		}
+		if subnetName != "" {
+			break
+		}
+	}
+	return fmt.Sprintf(subnetTemplate, aws.StringValue(subnet.SubnetId),
+		subnetName, aws.StringValue(subnet.AvailabilityZone))
 }
 
 // ParseSubnet Parses the subnet from the option chosen by the user.

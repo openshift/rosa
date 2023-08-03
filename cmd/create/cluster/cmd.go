@@ -1791,16 +1791,13 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		for i, subnet := range subnets {
-			subnetID := awssdk.StringValue(subnet.SubnetId)
-			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
-
 			// Create the options to prompt the user.
-			options[i] = aws.SetSubnetOption(subnetID, availabilityZone)
-			if subnetsProvided {
-				for _, subnetArg := range subnetIDs {
-					defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnetArg, availabilityZone))
-				}
+			options[i] = aws.SetSubnetOption(subnet)
+			subnetID := awssdk.StringValue(subnet.SubnetId)
+			if subnetsProvided && helper.Contains(subnetIDs, subnetID) {
+				defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnet))
 			}
+			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
 			mapSubnetToAZ[subnetID] = availabilityZone
 			mapAZCreated[availabilityZone] = false
 		}
