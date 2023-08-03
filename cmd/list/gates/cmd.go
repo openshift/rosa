@@ -119,7 +119,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		upgradePolicyBuilder := v1.NewUpgradePolicy().
-			ScheduleType("manual").
+			ScheduleType(v1.ScheduleTypeManual).
 			Version(args.version)
 
 		upgradePolicy, err := upgradePolicyBuilder.Build()

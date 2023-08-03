@@ -361,12 +361,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 func createUpgradePolicyHypershift(r *rosa.Runtime, clusterKey string,
 	cluster *cmv1.Cluster, version string, currentScheduling upgradeScheduling) error {
-	upgradePolicyBuilder := cmv1.NewControlPlaneUpgradePolicy().UpgradeType("ControlPlane")
+	upgradePolicyBuilder := cmv1.NewControlPlaneUpgradePolicy().UpgradeType(cmv1.UpgradeTypeControlPlane)
 	if currentScheduling.automaticUpgrades {
-		upgradePolicyBuilder = upgradePolicyBuilder.ScheduleType("automatic").
+		upgradePolicyBuilder = upgradePolicyBuilder.ScheduleType(cmv1.ScheduleTypeAutomatic).
 			Schedule(currentScheduling.schedule).EnableMinorVersionUpgrades(currentScheduling.allowMinorVersionUpdates)
 	} else {
-		upgradePolicyBuilder = upgradePolicyBuilder.ScheduleType("manual").Version(version)
+		upgradePolicyBuilder = upgradePolicyBuilder.ScheduleType(cmv1.ScheduleTypeManual).Version(version)
 		upgradePolicyBuilder = upgradePolicyBuilder.NextRun(currentScheduling.nextRun)
 	}
 
@@ -389,7 +389,7 @@ func createUpgradePolicyHypershift(r *rosa.Runtime, clusterKey string,
 func createUpgradePolicyClassic(r *rosa.Runtime, cmd *cobra.Command, clusterKey string,
 	cluster *cmv1.Cluster, version string, scheduleDate string, scheduleTime string) error {
 	upgradePolicyBuilder := cmv1.NewUpgradePolicy().
-		ScheduleType("manual").
+		ScheduleType(cmv1.ScheduleTypeManual).
 		Version(version)
 	upgradePolicy, err := upgradePolicyBuilder.Build()
 	if err != nil {

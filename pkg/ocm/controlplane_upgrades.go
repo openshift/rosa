@@ -18,8 +18,6 @@ package ocm
 
 import cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
-const controlPlaneUpgradeType = "ControlPlane"
-
 func (c *Client) CancelControlPlaneUpgrade(clusterID, upgradeID string) (bool, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).ControlPlane().UpgradePolicies().
@@ -36,7 +34,7 @@ func (c *Client) GetControlPlaneScheduledUpgrade(clusterID string) (*cmv1.Contro
 		return nil, err
 	}
 	for _, upgradePolicy := range upgradePolicies {
-		if upgradePolicy.UpgradeType() == controlPlaneUpgradeType {
+		if upgradePolicy.UpgradeType() == cmv1.UpgradeTypeControlPlane {
 			return upgradePolicy, nil
 		}
 	}

@@ -53,7 +53,7 @@ func (c *Client) GetScheduledUpgrade(clusterID string) (*cmv1.UpgradePolicy, *cm
 		return nil, nil, err
 	}
 	for _, upgradePolicy := range upgradePolicies {
-		if upgradePolicy.UpgradeType() == "OSD" {
+		if upgradePolicy.UpgradeType() == cmv1.UpgradeTypeOSD {
 			state, err := c.ocm.ClustersMgmt().V1().
 				Clusters().Cluster(clusterID).
 				UpgradePolicies().UpgradePolicy(upgradePolicy.ID()).

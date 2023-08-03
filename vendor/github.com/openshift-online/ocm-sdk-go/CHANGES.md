@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.359
+- Update model version v0.0.306
+  - Fix upgrade related constants JSON output to align with existing values
+- Update model version v0.0.305
+  - Add `PrivateHostedZoneID` and `PrivateHostedZoneRoleARN` to `cluster_type` resource
+
 ## 0.1.358
 - Update model version v0.0.304
   - Add upgrade related constants also for `NodePoolUpgradePolicy`.
