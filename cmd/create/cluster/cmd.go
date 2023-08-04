@@ -1790,16 +1790,28 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		for i, subnet := range subnets {
-			// Create the options to prompt the user.
-			options[i] = aws.SetSubnetOption(subnet)
+		mapVpcToSubnet := map[string][]*ec2.Subnet{}
+
+		for _, subnet := range subnets {
+			mapVpcToSubnet[*subnet.VpcId] = append(mapVpcToSubnet[*subnet.VpcId], subnet)
 			subnetID := awssdk.StringValue(subnet.SubnetId)
-			if subnetsProvided && helper.Contains(subnetIDs, subnetID) {
-				defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnet))
-			}
 			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
 			mapSubnetToAZ[subnetID] = availabilityZone
 			mapAZCreated[availabilityZone] = false
+		}
+		// Create the options to prompt the user.
+		i := 0
+		vpcIds := helper.MapKeys(mapVpcToSubnet)
+		helper.SortStringRespectLength(vpcIds)
+		for _, vpcId := range vpcIds {
+			subnetList := mapVpcToSubnet[vpcId]
+			for _, subnet := range subnetList {
+				options[i] = aws.SetSubnetOption(subnet)
+				i++
+				if subnetsProvided && helper.Contains(subnetIDs, *subnet.SubnetId) {
+					defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnet))
+				}
+			}
 		}
 		if isHostedCP && !subnetsProvided {
 			interactive.Enable()
