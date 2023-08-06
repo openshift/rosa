@@ -16,22 +16,28 @@ type creator interface {
 	printCommands(*rosa.Runtime, *accountRolesCreationInput) error
 }
 
-func initCreator(managedPolicies bool, classic bool, hostedCP bool) creator {
+func initCreator(managedPolicies bool, classic bool, hostedCP bool, isClassicValueSet bool,
+	isHostedCPValueSet bool) (creator, bool) {
 	// Classic ROSA managed policies
 	if managedPolicies && !hostedCP {
-		return &managedPoliciesCreator{}
+		return &managedPoliciesCreator{}, true
 	}
 
-	if hostedCP && classic {
-		return &doubleRolesCreator{}
+	// If the user didn't select topologies (default flow creates both), or selected both topologies
+	if !isClassicValueSet && !isHostedCPValueSet || hostedCP && classic {
+		return &doubleRolesCreator{}, true
 	}
 
 	if hostedCP {
-		return &hcpManagedPoliciesCreator{}
+		return &hcpManagedPoliciesCreator{}, true
 	}
 
-	// Default flow creates a set of roles with unmanaged policies
-	return &unmanagedPoliciesCreator{}
+	// Classic ROSA unmanaged policies
+	if classic {
+		return &unmanagedPoliciesCreator{}, true
+	}
+
+	return nil, false
 }
 
 type accountRolesCreationInput struct {
