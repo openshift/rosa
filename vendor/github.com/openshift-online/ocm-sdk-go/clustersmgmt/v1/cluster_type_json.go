@@ -478,25 +478,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.openshiftVersion)
 		count++
 	}
-	present_ = object.bitmap_&70368744177664 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("private_hosted_zone_id")
-		stream.WriteString(object.privateHostedZoneID)
-		count++
-	}
-	present_ = object.bitmap_&140737488355328 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("private_hosted_zone_role_arn")
-		stream.WriteString(object.privateHostedZoneRoleARN)
-		count++
-	}
-	present_ = object.bitmap_&281474976710656 != 0 && object.product != nil
+	present_ = object.bitmap_&70368744177664 != 0 && object.product != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -505,7 +487,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeProduct(object.product, stream)
 		count++
 	}
-	present_ = object.bitmap_&562949953421312 != 0 && object.properties != nil
+	present_ = object.bitmap_&140737488355328 != 0 && object.properties != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -534,7 +516,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		}
 		count++
 	}
-	present_ = object.bitmap_&1125899906842624 != 0 && object.provisionShard != nil
+	present_ = object.bitmap_&281474976710656 != 0 && object.provisionShard != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -543,7 +525,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeProvisionShard(object.provisionShard, stream)
 		count++
 	}
-	present_ = object.bitmap_&2251799813685248 != 0 && object.proxy != nil
+	present_ = object.bitmap_&562949953421312 != 0 && object.proxy != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -552,7 +534,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeProxy(object.proxy, stream)
 		count++
 	}
-	present_ = object.bitmap_&4503599627370496 != 0 && object.region != nil
+	present_ = object.bitmap_&1125899906842624 != 0 && object.region != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -561,7 +543,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeCloudRegion(object.region, stream)
 		count++
 	}
-	present_ = object.bitmap_&9007199254740992 != 0
+	present_ = object.bitmap_&2251799813685248 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -570,7 +552,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(string(object.state))
 		count++
 	}
-	present_ = object.bitmap_&18014398509481984 != 0 && object.status != nil
+	present_ = object.bitmap_&4503599627370496 != 0 && object.status != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -579,7 +561,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeClusterStatus(object.status, stream)
 		count++
 	}
-	present_ = object.bitmap_&36028797018963968 != 0 && object.storageQuota != nil
+	present_ = object.bitmap_&9007199254740992 != 0 && object.storageQuota != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -588,7 +570,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeValue(object.storageQuota, stream)
 		count++
 	}
-	present_ = object.bitmap_&72057594037927936 != 0 && object.subscription != nil
+	present_ = object.bitmap_&18014398509481984 != 0 && object.subscription != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -597,7 +579,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeSubscription(object.subscription, stream)
 		count++
 	}
-	present_ = object.bitmap_&144115188075855872 != 0 && object.version != nil
+	present_ = object.bitmap_&36028797018963968 != 0 && object.version != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -958,18 +940,10 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 			value := iterator.ReadString()
 			object.openshiftVersion = value
 			object.bitmap_ |= 35184372088832
-		case "private_hosted_zone_id":
-			value := iterator.ReadString()
-			object.privateHostedZoneID = value
-			object.bitmap_ |= 70368744177664
-		case "private_hosted_zone_role_arn":
-			value := iterator.ReadString()
-			object.privateHostedZoneRoleARN = value
-			object.bitmap_ |= 140737488355328
 		case "product":
 			value := readProduct(iterator)
 			object.product = value
-			object.bitmap_ |= 281474976710656
+			object.bitmap_ |= 70368744177664
 		case "properties":
 			value := map[string]string{}
 			for {
@@ -981,40 +955,40 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 				value[key] = item
 			}
 			object.properties = value
-			object.bitmap_ |= 562949953421312
+			object.bitmap_ |= 140737488355328
 		case "provision_shard":
 			value := readProvisionShard(iterator)
 			object.provisionShard = value
-			object.bitmap_ |= 1125899906842624
+			object.bitmap_ |= 281474976710656
 		case "proxy":
 			value := readProxy(iterator)
 			object.proxy = value
-			object.bitmap_ |= 2251799813685248
+			object.bitmap_ |= 562949953421312
 		case "region":
 			value := readCloudRegion(iterator)
 			object.region = value
-			object.bitmap_ |= 4503599627370496
+			object.bitmap_ |= 1125899906842624
 		case "state":
 			text := iterator.ReadString()
 			value := ClusterState(text)
 			object.state = value
-			object.bitmap_ |= 9007199254740992
+			object.bitmap_ |= 2251799813685248
 		case "status":
 			value := readClusterStatus(iterator)
 			object.status = value
-			object.bitmap_ |= 18014398509481984
+			object.bitmap_ |= 4503599627370496
 		case "storage_quota":
 			value := readValue(iterator)
 			object.storageQuota = value
-			object.bitmap_ |= 36028797018963968
+			object.bitmap_ |= 9007199254740992
 		case "subscription":
 			value := readSubscription(iterator)
 			object.subscription = value
-			object.bitmap_ |= 72057594037927936
+			object.bitmap_ |= 18014398509481984
 		case "version":
 			value := readVersion(iterator)
 			object.version = value
-			object.bitmap_ |= 144115188075855872
+			object.bitmap_ |= 36028797018963968
 		default:
 			iterator.ReadAny()
 		}

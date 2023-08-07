@@ -32,6 +32,8 @@ type AWSBuilder struct {
 	billingAccountID         string
 	ec2MetadataHttpTokens    Ec2MetadataHttpTokens
 	etcdEncryption           *AwsEtcdEncryptionBuilder
+	privateHostedZoneID      string
+	privateHostedZoneRoleARN string
 	privateLinkConfiguration *PrivateLinkClusterConfigurationBuilder
 	secretAccessKey          string
 	subnetIDs                []string
@@ -125,10 +127,24 @@ func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder
 	return b
 }
 
+// PrivateHostedZoneID sets the value of the 'private_hosted_zone_ID' attribute to the given value.
+func (b *AWSBuilder) PrivateHostedZoneID(value string) *AWSBuilder {
+	b.privateHostedZoneID = value
+	b.bitmap_ |= 256
+	return b
+}
+
+// PrivateHostedZoneRoleARN sets the value of the 'private_hosted_zone_role_ARN' attribute to the given value.
+func (b *AWSBuilder) PrivateHostedZoneRoleARN(value string) *AWSBuilder {
+	b.privateHostedZoneRoleARN = value
+	b.bitmap_ |= 512
+	return b
+}
+
 // PrivateLink sets the value of the 'private_link' attribute to the given value.
 func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 	b.privateLink = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -138,9 +154,9 @@ func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigurationBuilder) *AWSBuilder {
 	b.privateLinkConfiguration = value
 	if value != nil {
-		b.bitmap_ |= 512
+		b.bitmap_ |= 2048
 	} else {
-		b.bitmap_ &^= 512
+		b.bitmap_ &^= 2048
 	}
 	return b
 }
@@ -148,7 +164,7 @@ func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigura
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	b.secretAccessKey = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -156,7 +172,7 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -164,9 +180,9 @@ func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	b.tags = value
 	if value != nil {
-		b.bitmap_ |= 4096
+		b.bitmap_ |= 16384
 	} else {
-		b.bitmap_ &^= 4096
+		b.bitmap_ &^= 16384
 	}
 	return b
 }
@@ -197,6 +213,8 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 	} else {
 		b.etcdEncryption = nil
 	}
+	b.privateHostedZoneID = object.privateHostedZoneID
+	b.privateHostedZoneRoleARN = object.privateHostedZoneRoleARN
 	b.privateLink = object.privateLink
 	if object.privateLinkConfiguration != nil {
 		b.privateLinkConfiguration = NewPrivateLinkClusterConfiguration().Copy(object.privateLinkConfiguration)
@@ -248,6 +266,8 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 			return
 		}
 	}
+	object.privateHostedZoneID = b.privateHostedZoneID
+	object.privateHostedZoneRoleARN = b.privateHostedZoneRoleARN
 	object.privateLink = b.privateLink
 	if b.privateLinkConfiguration != nil {
 		object.privateLinkConfiguration, err = b.privateLinkConfiguration.Build()
