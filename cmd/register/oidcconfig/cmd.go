@@ -120,7 +120,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	checkInteractiveModeNeeded(cmd)
 
-	if args.installerRoleArn == "" && (interactive.Enabled() || confirm.Yes()) {
+	if !cmd.Flags().Changed(InstallerRoleArnFlag) && (interactive.Enabled() || confirm.Yes()) {
 		args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret)
 	}
 	roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
@@ -152,7 +152,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if interactive.Enabled() && args.issuerUrl == "" {
+	if interactive.Enabled() && !cmd.Flags().Changed(IssuerUrlFlag) {
 		issuerUrl, err := interactive.GetString(interactive.Input{
 			Question: "Issuer URL (please include 'https://')",
 			Help:     cmd.Flags().Lookup(IssuerUrlFlag).Usage,
@@ -174,7 +174,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if interactive.Enabled() && args.secretArn == "" {
+	if interactive.Enabled() && !cmd.Flags().Changed(SecretArnFlag) {
 		secretArn, err := interactive.GetString(interactive.Input{
 			Question: "Secret ARN",
 			Help:     cmd.Flags().Lookup(SecretArnFlag).Usage,
