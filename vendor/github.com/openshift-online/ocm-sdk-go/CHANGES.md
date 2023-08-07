@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.360
+- Update model version v0.0.307
+  - Move `PrivateHostedZoneID` and `PrivateHostedZoneRoleARN` to `aws_type` resource
+
 ## 0.1.359
 - Update model version v0.0.306
   - Fix upgrade related constants JSON output to align with existing values

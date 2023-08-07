@@ -106,8 +106,6 @@ type ClusterBuilder struct {
 	nodePools                         *NodePoolListBuilder
 	nodes                             *ClusterNodesBuilder
 	openshiftVersion                  string
-	privateHostedZoneID               string
-	privateHostedZoneRoleARN          string
 	product                           *ProductBuilder
 	properties                        map[string]string
 	provisionShard                    *ProvisionShardBuilder
@@ -596,29 +594,15 @@ func (b *ClusterBuilder) OpenshiftVersion(value string) *ClusterBuilder {
 	return b
 }
 
-// PrivateHostedZoneID sets the value of the 'private_hosted_zone_ID' attribute to the given value.
-func (b *ClusterBuilder) PrivateHostedZoneID(value string) *ClusterBuilder {
-	b.privateHostedZoneID = value
-	b.bitmap_ |= 70368744177664
-	return b
-}
-
-// PrivateHostedZoneRoleARN sets the value of the 'private_hosted_zone_role_ARN' attribute to the given value.
-func (b *ClusterBuilder) PrivateHostedZoneRoleARN(value string) *ClusterBuilder {
-	b.privateHostedZoneRoleARN = value
-	b.bitmap_ |= 140737488355328
-	return b
-}
-
 // Product sets the value of the 'product' attribute to the given value.
 //
 // Representation of an product that can be selected as a cluster type.
 func (b *ClusterBuilder) Product(value *ProductBuilder) *ClusterBuilder {
 	b.product = value
 	if value != nil {
-		b.bitmap_ |= 281474976710656
+		b.bitmap_ |= 70368744177664
 	} else {
-		b.bitmap_ &^= 281474976710656
+		b.bitmap_ &^= 70368744177664
 	}
 	return b
 }
@@ -627,9 +611,9 @@ func (b *ClusterBuilder) Product(value *ProductBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 	b.properties = value
 	if value != nil {
-		b.bitmap_ |= 562949953421312
+		b.bitmap_ |= 140737488355328
 	} else {
-		b.bitmap_ &^= 562949953421312
+		b.bitmap_ &^= 140737488355328
 	}
 	return b
 }
@@ -640,9 +624,9 @@ func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 func (b *ClusterBuilder) ProvisionShard(value *ProvisionShardBuilder) *ClusterBuilder {
 	b.provisionShard = value
 	if value != nil {
-		b.bitmap_ |= 1125899906842624
+		b.bitmap_ |= 281474976710656
 	} else {
-		b.bitmap_ &^= 1125899906842624
+		b.bitmap_ &^= 281474976710656
 	}
 	return b
 }
@@ -653,9 +637,9 @@ func (b *ClusterBuilder) ProvisionShard(value *ProvisionShardBuilder) *ClusterBu
 func (b *ClusterBuilder) Proxy(value *ProxyBuilder) *ClusterBuilder {
 	b.proxy = value
 	if value != nil {
-		b.bitmap_ |= 2251799813685248
+		b.bitmap_ |= 562949953421312
 	} else {
-		b.bitmap_ &^= 2251799813685248
+		b.bitmap_ &^= 562949953421312
 	}
 	return b
 }
@@ -666,9 +650,9 @@ func (b *ClusterBuilder) Proxy(value *ProxyBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 	b.region = value
 	if value != nil {
-		b.bitmap_ |= 4503599627370496
+		b.bitmap_ |= 1125899906842624
 	} else {
-		b.bitmap_ &^= 4503599627370496
+		b.bitmap_ &^= 1125899906842624
 	}
 	return b
 }
@@ -678,7 +662,7 @@ func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 // Overall state of a cluster.
 func (b *ClusterBuilder) State(value ClusterState) *ClusterBuilder {
 	b.state = value
-	b.bitmap_ |= 9007199254740992
+	b.bitmap_ |= 2251799813685248
 	return b
 }
 
@@ -688,9 +672,9 @@ func (b *ClusterBuilder) State(value ClusterState) *ClusterBuilder {
 func (b *ClusterBuilder) Status(value *ClusterStatusBuilder) *ClusterBuilder {
 	b.status = value
 	if value != nil {
-		b.bitmap_ |= 18014398509481984
+		b.bitmap_ |= 4503599627370496
 	} else {
-		b.bitmap_ &^= 18014398509481984
+		b.bitmap_ &^= 4503599627370496
 	}
 	return b
 }
@@ -718,9 +702,9 @@ func (b *ClusterBuilder) Status(value *ClusterStatusBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) StorageQuota(value *ValueBuilder) *ClusterBuilder {
 	b.storageQuota = value
 	if value != nil {
-		b.bitmap_ |= 36028797018963968
+		b.bitmap_ |= 9007199254740992
 	} else {
-		b.bitmap_ &^= 36028797018963968
+		b.bitmap_ &^= 9007199254740992
 	}
 	return b
 }
@@ -731,9 +715,9 @@ func (b *ClusterBuilder) StorageQuota(value *ValueBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) Subscription(value *SubscriptionBuilder) *ClusterBuilder {
 	b.subscription = value
 	if value != nil {
-		b.bitmap_ |= 72057594037927936
+		b.bitmap_ |= 18014398509481984
 	} else {
-		b.bitmap_ &^= 72057594037927936
+		b.bitmap_ &^= 18014398509481984
 	}
 	return b
 }
@@ -744,9 +728,9 @@ func (b *ClusterBuilder) Subscription(value *SubscriptionBuilder) *ClusterBuilde
 func (b *ClusterBuilder) Version(value *VersionBuilder) *ClusterBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 144115188075855872
+		b.bitmap_ |= 36028797018963968
 	} else {
-		b.bitmap_ &^= 144115188075855872
+		b.bitmap_ &^= 36028797018963968
 	}
 	return b
 }
@@ -914,8 +898,6 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.nodes = nil
 	}
 	b.openshiftVersion = object.openshiftVersion
-	b.privateHostedZoneID = object.privateHostedZoneID
-	b.privateHostedZoneRoleARN = object.privateHostedZoneRoleARN
 	if object.product != nil {
 		b.product = NewProduct().Copy(object.product)
 	} else {
@@ -1157,8 +1139,6 @@ func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 		}
 	}
 	object.openshiftVersion = b.openshiftVersion
-	object.privateHostedZoneID = b.privateHostedZoneID
-	object.privateHostedZoneRoleARN = b.privateHostedZoneRoleARN
 	if b.product != nil {
 		object.product, err = b.product.Build()
 		if err != nil {

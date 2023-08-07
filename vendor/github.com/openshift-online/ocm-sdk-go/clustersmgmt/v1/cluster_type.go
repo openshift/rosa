@@ -118,8 +118,6 @@ type Cluster struct {
 	nodePools                         *NodePoolList
 	nodes                             *ClusterNodes
 	openshiftVersion                  string
-	privateHostedZoneID               string
-	privateHostedZoneRoleARN          string
 	product                           *Product
 	properties                        map[string]string
 	provisionShard                    *ProvisionShard
@@ -1217,58 +1215,12 @@ func (o *Cluster) GetOpenshiftVersion() (value string, ok bool) {
 	return
 }
 
-// PrivateHostedZoneID returns the value of the 'private_hosted_zone_ID' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// ID of private hosted zone.
-func (o *Cluster) PrivateHostedZoneID() string {
-	if o != nil && o.bitmap_&70368744177664 != 0 {
-		return o.privateHostedZoneID
-	}
-	return ""
-}
-
-// GetPrivateHostedZoneID returns the value of the 'private_hosted_zone_ID' attribute and
-// a flag indicating if the attribute has a value.
-//
-// ID of private hosted zone.
-func (o *Cluster) GetPrivateHostedZoneID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&70368744177664 != 0
-	if ok {
-		value = o.privateHostedZoneID
-	}
-	return
-}
-
-// PrivateHostedZoneRoleARN returns the value of the 'private_hosted_zone_role_ARN' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Role ARN for private hosted zone.
-func (o *Cluster) PrivateHostedZoneRoleARN() string {
-	if o != nil && o.bitmap_&140737488355328 != 0 {
-		return o.privateHostedZoneRoleARN
-	}
-	return ""
-}
-
-// GetPrivateHostedZoneRoleARN returns the value of the 'private_hosted_zone_role_ARN' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Role ARN for private hosted zone.
-func (o *Cluster) GetPrivateHostedZoneRoleARN() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&140737488355328 != 0
-	if ok {
-		value = o.privateHostedZoneRoleARN
-	}
-	return
-}
-
 // Product returns the value of the 'product' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the product type of this cluster.
 func (o *Cluster) Product() *Product {
-	if o != nil && o.bitmap_&281474976710656 != 0 {
+	if o != nil && o.bitmap_&70368744177664 != 0 {
 		return o.product
 	}
 	return nil
@@ -1279,7 +1231,7 @@ func (o *Cluster) Product() *Product {
 //
 // Link to the product type of this cluster.
 func (o *Cluster) GetProduct() (value *Product, ok bool) {
-	ok = o != nil && o.bitmap_&281474976710656 != 0
+	ok = o != nil && o.bitmap_&70368744177664 != 0
 	if ok {
 		value = o.product
 	}
@@ -1291,7 +1243,7 @@ func (o *Cluster) GetProduct() (value *Product, ok bool) {
 //
 // User defined properties for tagging and querying.
 func (o *Cluster) Properties() map[string]string {
-	if o != nil && o.bitmap_&562949953421312 != 0 {
+	if o != nil && o.bitmap_&140737488355328 != 0 {
 		return o.properties
 	}
 	return nil
@@ -1302,7 +1254,7 @@ func (o *Cluster) Properties() map[string]string {
 //
 // User defined properties for tagging and querying.
 func (o *Cluster) GetProperties() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&562949953421312 != 0
+	ok = o != nil && o.bitmap_&140737488355328 != 0
 	if ok {
 		value = o.properties
 	}
@@ -1314,7 +1266,7 @@ func (o *Cluster) GetProperties() (value map[string]string, ok bool) {
 //
 // ProvisionShard contains the properties of the provision shard, including AWS and GCP related configurations
 func (o *Cluster) ProvisionShard() *ProvisionShard {
-	if o != nil && o.bitmap_&1125899906842624 != 0 {
+	if o != nil && o.bitmap_&281474976710656 != 0 {
 		return o.provisionShard
 	}
 	return nil
@@ -1325,7 +1277,7 @@ func (o *Cluster) ProvisionShard() *ProvisionShard {
 //
 // ProvisionShard contains the properties of the provision shard, including AWS and GCP related configurations
 func (o *Cluster) GetProvisionShard() (value *ProvisionShard, ok bool) {
-	ok = o != nil && o.bitmap_&1125899906842624 != 0
+	ok = o != nil && o.bitmap_&281474976710656 != 0
 	if ok {
 		value = o.provisionShard
 	}
@@ -1337,7 +1289,7 @@ func (o *Cluster) GetProvisionShard() (value *ProvisionShard, ok bool) {
 //
 // Proxy.
 func (o *Cluster) Proxy() *Proxy {
-	if o != nil && o.bitmap_&2251799813685248 != 0 {
+	if o != nil && o.bitmap_&562949953421312 != 0 {
 		return o.proxy
 	}
 	return nil
@@ -1348,7 +1300,7 @@ func (o *Cluster) Proxy() *Proxy {
 //
 // Proxy.
 func (o *Cluster) GetProxy() (value *Proxy, ok bool) {
-	ok = o != nil && o.bitmap_&2251799813685248 != 0
+	ok = o != nil && o.bitmap_&562949953421312 != 0
 	if ok {
 		value = o.proxy
 	}
@@ -1360,7 +1312,7 @@ func (o *Cluster) GetProxy() (value *Proxy, ok bool) {
 //
 // Link to the cloud provider region where the cluster is installed.
 func (o *Cluster) Region() *CloudRegion {
-	if o != nil && o.bitmap_&4503599627370496 != 0 {
+	if o != nil && o.bitmap_&1125899906842624 != 0 {
 		return o.region
 	}
 	return nil
@@ -1371,7 +1323,7 @@ func (o *Cluster) Region() *CloudRegion {
 //
 // Link to the cloud provider region where the cluster is installed.
 func (o *Cluster) GetRegion() (value *CloudRegion, ok bool) {
-	ok = o != nil && o.bitmap_&4503599627370496 != 0
+	ok = o != nil && o.bitmap_&1125899906842624 != 0
 	if ok {
 		value = o.region
 	}
@@ -1383,7 +1335,7 @@ func (o *Cluster) GetRegion() (value *CloudRegion, ok bool) {
 //
 // Overall state of the cluster.
 func (o *Cluster) State() ClusterState {
-	if o != nil && o.bitmap_&9007199254740992 != 0 {
+	if o != nil && o.bitmap_&2251799813685248 != 0 {
 		return o.state
 	}
 	return ClusterState("")
@@ -1394,7 +1346,7 @@ func (o *Cluster) State() ClusterState {
 //
 // Overall state of the cluster.
 func (o *Cluster) GetState() (value ClusterState, ok bool) {
-	ok = o != nil && o.bitmap_&9007199254740992 != 0
+	ok = o != nil && o.bitmap_&2251799813685248 != 0
 	if ok {
 		value = o.state
 	}
@@ -1406,7 +1358,7 @@ func (o *Cluster) GetState() (value ClusterState, ok bool) {
 //
 // Status of cluster
 func (o *Cluster) Status() *ClusterStatus {
-	if o != nil && o.bitmap_&18014398509481984 != 0 {
+	if o != nil && o.bitmap_&4503599627370496 != 0 {
 		return o.status
 	}
 	return nil
@@ -1417,7 +1369,7 @@ func (o *Cluster) Status() *ClusterStatus {
 //
 // Status of cluster
 func (o *Cluster) GetStatus() (value *ClusterStatus, ok bool) {
-	ok = o != nil && o.bitmap_&18014398509481984 != 0
+	ok = o != nil && o.bitmap_&4503599627370496 != 0
 	if ok {
 		value = o.status
 	}
@@ -1429,7 +1381,7 @@ func (o *Cluster) GetStatus() (value *ClusterStatus, ok bool) {
 //
 // Storage quota to be assigned to the cluster.
 func (o *Cluster) StorageQuota() *Value {
-	if o != nil && o.bitmap_&36028797018963968 != 0 {
+	if o != nil && o.bitmap_&9007199254740992 != 0 {
 		return o.storageQuota
 	}
 	return nil
@@ -1440,7 +1392,7 @@ func (o *Cluster) StorageQuota() *Value {
 //
 // Storage quota to be assigned to the cluster.
 func (o *Cluster) GetStorageQuota() (value *Value, ok bool) {
-	ok = o != nil && o.bitmap_&36028797018963968 != 0
+	ok = o != nil && o.bitmap_&9007199254740992 != 0
 	if ok {
 		value = o.storageQuota
 	}
@@ -1453,7 +1405,7 @@ func (o *Cluster) GetStorageQuota() (value *Value, ok bool) {
 // Link to the subscription that comes from the account management service when the cluster
 // is registered.
 func (o *Cluster) Subscription() *Subscription {
-	if o != nil && o.bitmap_&72057594037927936 != 0 {
+	if o != nil && o.bitmap_&18014398509481984 != 0 {
 		return o.subscription
 	}
 	return nil
@@ -1465,7 +1417,7 @@ func (o *Cluster) Subscription() *Subscription {
 // Link to the subscription that comes from the account management service when the cluster
 // is registered.
 func (o *Cluster) GetSubscription() (value *Subscription, ok bool) {
-	ok = o != nil && o.bitmap_&72057594037927936 != 0
+	ok = o != nil && o.bitmap_&18014398509481984 != 0
 	if ok {
 		value = o.subscription
 	}
@@ -1477,7 +1429,7 @@ func (o *Cluster) GetSubscription() (value *Subscription, ok bool) {
 //
 // Link to the version of _OpenShift_ that will be used to install the cluster.
 func (o *Cluster) Version() *Version {
-	if o != nil && o.bitmap_&144115188075855872 != 0 {
+	if o != nil && o.bitmap_&36028797018963968 != 0 {
 		return o.version
 	}
 	return nil
@@ -1488,7 +1440,7 @@ func (o *Cluster) Version() *Version {
 //
 // Link to the version of _OpenShift_ that will be used to install the cluster.
 func (o *Cluster) GetVersion() (value *Version, ok bool) {
-	ok = o != nil && o.bitmap_&144115188075855872 != 0
+	ok = o != nil && o.bitmap_&36028797018963968 != 0
 	if ok {
 		value = o.version
 	}
