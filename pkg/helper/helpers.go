@@ -109,7 +109,15 @@ func SliceToSortedString(s []string) string {
 	return "[" + strings.Join(s, ", ") + "]"
 }
 
-func MapKeysToString(m map[string]bool) string {
+func MapKeys[K comparable, V any](m map[K]V) []K {
+	r := make([]K, 0, len(m))
+	for k := range m {
+		r = append(r, k)
+	}
+	return r
+}
+
+func MapKeysToString[T any](m map[string]T) string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
