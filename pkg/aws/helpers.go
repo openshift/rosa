@@ -782,11 +782,18 @@ func UpgradeOperatorRolePolicies(
 	defaultPolicyVersion string,
 	credRequests map[string]*cmv1.STSOperator,
 	path string,
+	cluster *cmv1.Cluster,
 ) error {
+	isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
 	for credrequest, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
-		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
+		filename := GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
 		policyDetails := GetPolicyDetails(policies, filename)
+		if isSharedVpc {
+			policyDetails = InterpolatePolicyDocument(policyDetails, map[string]string{
+				"shared_vpc_role_arn": cluster.AWS().PrivateHostedZoneRoleARN(),
+			})
+		}
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion:  defaultPolicyVersion,

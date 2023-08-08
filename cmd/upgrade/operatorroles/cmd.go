@@ -248,7 +248,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 			return nil
 		}
 		err := aws.UpgradeOperatorRolePolicies(r.Reporter, r.AWSClient, r.Creator.AccountID, prefix, policies,
-			defaultPolicyVersion, credRequests, policyPath)
+			defaultPolicyVersion, credRequests, policyPath, cluster)
 		if err != nil {
 			if strings.Contains(err.Error(), "Throttling") {
 				r.OCMClient.LogEvent("ROSAUpgradeOperatorRolesModeAuto", map[string]string{
@@ -262,7 +262,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 		return nil
 	case aws.ModeManual:
 		err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-			true, policies, credRequests, false, "") //TODO: handle shared vpc
+			true, policies, credRequests, false, cluster.AWS().PrivateHostedZoneRoleARN())
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -277,7 +277,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 			}
 		}
 		commands := aws.BuildOperatorRoleCommands(prefix, r.Creator.AccountID, r.AWSClient,
-			defaultPolicyVersion, credRequests, policyPath)
+			defaultPolicyVersion, credRequests, policyPath, cluster)
 		fmt.Println(awscb.JoinCommands(commands))
 	default:
 		return r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
