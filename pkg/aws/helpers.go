@@ -932,7 +932,7 @@ func GetOperatorPolicyKey(roleType string, hostedCP bool, sharedVpc bool) string
 		return fmt.Sprintf("openshift_hcp_%s_policy", roleType)
 	}
 
-	if sharedVpc && roleType == "ingress_operator_cloud_credentials" {
+	if sharedVpc && roleType == IngressOperatorCloudCredentialsRoleType {
 		return fmt.Sprintf("shared_vpc_openshift_%s_policy", roleType)
 	}
 

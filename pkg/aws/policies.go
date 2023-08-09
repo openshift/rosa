@@ -97,6 +97,8 @@ const (
 
 	// AWS preferred suffix for ROSA related account roles - HCP only
 	HCPSuffixPattern = "HCP-ROSA"
+
+	IngressOperatorCloudCredentialsRoleType = "ingress_operator_cloud_credentials"
 )
 
 const (
