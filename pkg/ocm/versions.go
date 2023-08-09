@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	ver "github.com/hashicorp/go-version"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -27,6 +28,8 @@ import (
 )
 
 const (
+	CloseToEolDays                  = 60
+	OneDayHourDuration              = 24
 	DefaultChannelGroup             = "stable"
 	NightlyChannelGroup             = "nightly"
 	LowestSTSSupport                = "4.7.11"
@@ -361,6 +364,32 @@ func CheckAndParseVersion(availableUpgrades []string, version string) (string, e
 		return version, nil
 	}
 	return availableUpgrades[0], nil
+}
+
+func (c *Client) IsVersionCloseToEol(daysAwayToCheck int, version string, channelGroup string) error {
+	collection := c.ocm.ClustersMgmt().V1().Versions()
+	filter := fmt.Sprintf("raw_id='%s'", GetRawVersionId(version))
+	if channelGroup != "" {
+		filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
+	}
+	response, err := collection.List().
+		Search(filter).
+		Page(1).
+		Size(1).
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	ocmVersion := response.Items().Get(0)
+	now := time.Now().UTC()
+	if ocmVersion.EndOfLifeTimestamp().Compare(now.Add(time.Duration(daysAwayToCheck)*OneDayHourDuration*time.Hour)) <= 0 {
+		return fmt.Errorf(
+			"The version of Red Hat OpenShift Service on AWS that you are installing will no longer be supported after '%s'."+
+				" Red Hat recommends selecting a newer version. For more information,"+
+				" see https://docs.openshift.com/rosa/rosa_policy/rosa-life-cycle.html",
+			ocmVersion.EndOfLifeTimestamp().Format(time.DateOnly))
+	}
+	return nil
 }
 
 // Validate OpenShift versions
