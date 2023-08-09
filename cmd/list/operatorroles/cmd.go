@@ -25,6 +25,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -106,6 +107,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorsMap, err := r.AWSClient.ListOperatorRoles(args.version, clusterId)
+	prefixes := helper.MapKeys(operatorsMap)
+	helper.SortStringRespectLength(prefixes)
 
 	if spin != nil {
 		spin.Stop()
@@ -152,14 +155,12 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if args.prefix == "" {
 		fmt.Fprintf(writer, "ROLE PREFIX\tAMOUNT IN BUNDLE\n")
-		keys := []string{}
-		for key, operatorRoleList := range operatorsMap {
-			keys = append(keys, key)
+		for _, key := range prefixes {
 			fmt.Fprintf(
 				writer,
 				"%s\t%d\n",
 				key,
-				len(operatorRoleList),
+				len(operatorsMap[key]),
 			)
 		}
 		writer.Flush()
@@ -169,8 +170,8 @@ func run(cmd *cobra.Command, _ []string) {
 		args.prefix, err = interactive.GetOption(interactive.Input{
 			Question: "Operator Role Prefix",
 			Help:     cmd.Flags().Lookup("prefix").Usage,
-			Options:  keys,
-			Default:  keys[0],
+			Options:  prefixes,
+			Default:  prefixes[0],
 			Required: true,
 		})
 		if err != nil {

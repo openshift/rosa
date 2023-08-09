@@ -867,7 +867,7 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 			continue
 		}
 
-		if operatorRole.ManagedPolicy {
+		if operatorRole.ManagedPolicy || len(attachedPoliciesOutput.AttachedPolicies) == 0 {
 			operatorRole.RoleName = aws.StringValue(role.RoleName)
 			operatorRole.RoleARN = aws.StringValue(role.Arn)
 			operatorMap[foundPrefix] = append(operatorMap[foundPrefix], operatorRole)
