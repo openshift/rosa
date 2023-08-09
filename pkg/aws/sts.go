@@ -24,7 +24,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
-
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -171,7 +170,8 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 }
 
 func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client,
-	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, policyPath string) []string {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, policyPath string,
+	cluster *cmv1.Cluster) []string {
 	commands := []string{}
 	for credrequest, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(
@@ -188,6 +188,9 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 		)
 		_, err := awsClient.IsPolicyExists(policyARN)
 		hasPolicy := err == nil
+		isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
+		fileName := GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
+		fileName = GetFormattedFileName(fileName)
 		upgradePoliciesCommands := awscbRoles.ManualCommandsForUpgradeOperatorRolePolicy(
 			awscbRoles.ManualCommandsForUpgradeOperatorRolePolicyInput{
 				HasPolicy:                hasPolicy,
@@ -198,6 +201,7 @@ func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client
 				PolicyARN:                policyARN,
 				DefaultPolicyVersion:     defaultPolicyVersion,
 				PolicyName:               policyName,
+				FileName:                 fileName,
 			},
 		)
 		commands = append(commands, upgradePoliciesCommands...)

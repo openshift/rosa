@@ -722,7 +722,7 @@ func upgradeOperatorPolicies(
 			policies,
 			defaultPolicyVersion,
 			credRequests,
-			cluster.AWS().STS().OperatorIAMRoles(),
+			cluster,
 			operatorRolePolicyPrefix,
 		)
 		if err != nil {
@@ -738,7 +738,7 @@ func upgradeOperatorPolicies(
 		return nil
 	case aws.ModeManual:
 		err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-			true, policies, credRequests, false, "") //TODO: handle shared VPC
+			true, policies, credRequests, false, cluster.AWS().PrivateHostedZoneRoleARN())
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -759,7 +759,7 @@ func upgradeOperatorPolicies(
 			r.AWSClient,
 			defaultPolicyVersion,
 			credRequests,
-			cluster.AWS().STS().OperatorIAMRoles(),
+			cluster,
 		)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the commands: %s", err)
@@ -780,9 +780,11 @@ func upgradeOperatorRolePoliciesFromCluster(
 	policies map[string]*v1.AWSSTSPolicy,
 	defaultPolicyVersion string,
 	credRequests map[string]*v1.STSOperator,
-	operatorRoles []*v1.OperatorIAMRole,
+	cluster *v1.Cluster,
 	operatorRolePolicyPrefix string,
 ) error {
+	operatorRoles := cluster.AWS().STS().OperatorIAMRoles()
+	isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
 	generalPath, err := aws.GetPathFromARN(operatorRoles[0].RoleARN())
 	if err != nil {
 		return err
@@ -822,8 +824,14 @@ func upgradeOperatorRolePoliciesFromCluster(
 				return err
 			}
 		}
-		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
+
+		filename := aws.GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
 		policyDetails := aws.GetPolicyDetails(policies, filename)
+		if isSharedVpc {
+			policyDetails = aws.InterpolatePolicyDocument(policyDetails, map[string]string{
+				"shared_vpc_role_arn": cluster.AWS().PrivateHostedZoneRoleARN(),
+			})
+		}
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
 				tags.OpenShiftVersion:  defaultPolicyVersion,
@@ -846,8 +854,9 @@ func buildOperatorRoleCommandsFromCluster(
 	awsClient aws.Client,
 	defaultPolicyVersion string,
 	credRequests map[string]*v1.STSOperator,
-	operatorRoles []*v1.OperatorIAMRole,
+	cluster *v1.Cluster,
 ) (string, error) {
+	operatorRoles := cluster.AWS().STS().OperatorIAMRoles()
 	commands := []string{}
 	generalPath, err := aws.GetPathFromARN(operatorRoles[0].RoleARN())
 	if err != nil {
@@ -904,6 +913,10 @@ func buildOperatorRoleCommandsFromCluster(
 		_, err = awsClient.IsPolicyExists(policyARN)
 		hasPolicy := err == nil
 
+		isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
+		fileName := aws.GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
+		fileName = aws.GetFormattedFileName(fileName)
+
 		upgradePoliciesCommands := awscbRoles.ManualCommandsForUpgradeOperatorRolePolicy(
 			awscbRoles.ManualCommandsForUpgradeOperatorRolePolicyInput{
 				HasPolicy:                                hasPolicy,
@@ -916,6 +929,7 @@ func buildOperatorRoleCommandsFromCluster(
 				PolicyName:                               policyName,
 				HasDetachPolicyCommandsForExpectedPolicy: hasDetachPolicyCommandsForExpectedPolicy,
 				OperatorRoleName:                         operatorRoleName,
+				FileName:                                 fileName,
 			},
 		)
 		commands = append(commands, upgradePoliciesCommands...)

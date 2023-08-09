@@ -59,6 +59,7 @@ type ManualCommandsForUpgradeOperatorRolePolicyInput struct {
 	PolicyName                               string
 	HasDetachPolicyCommandsForExpectedPolicy bool
 	OperatorRoleName                         string
+	FileName                                 string
 }
 
 func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOperatorRolePolicyInput) []string {
@@ -74,7 +75,7 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 		createPolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreatePolicy).
 			AddParam(awscb.PolicyName, input.PolicyName).
-			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", input.CredRequest)).
+			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://%s", input.FileName)).
 			AddTags(iamTags).
 			AddParam(awscb.Path, input.OperatorPolicyPath).
 			Build()
@@ -95,7 +96,7 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 		createPolicyVersion := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreatePolicyVersion).
 			AddParam(awscb.PolicyArn, input.PolicyARN).
-			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", input.CredRequest)).
+			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://%s", input.FileName)).
 			AddParamNoValue(awscb.SetAsDefault).
 			Build()
 
