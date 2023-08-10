@@ -19,6 +19,7 @@ package ocm
 import (
 	"crypto/x509"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -953,10 +954,16 @@ func ParseDiskSizeToGigibyte(size string) (int, error) {
 
 	// If we can convert the string to a number, it means there is no suffix, thus the user passes
 	// bytes and forgot to include a suffix
-	if _, err := strconv.Atoi(diskSize); err == nil {
-		return 0, fmt.Errorf("missing unit suffix: %s. %s", diskSize, suffixErrorString)
+	if diskSizeInt, err := strconv.Atoi(diskSize); err == nil {
+		// If the conversion hit the maximum value of a 64 bit integer, it means the user passed a very
+		// large value which is ok, we can still proceed and the backend will return an error since
+		// the size is too large
+		if diskSizeInt != math.MaxInt64 {
+			return 0, fmt.Errorf("missing unit suffix: %s. %s", diskSize, suffixErrorString)
+		}
 	}
 
+	// If the suffix is too small, it means the user passed a very small value
 	if strings.HasSuffix(diskSize, "M") ||
 		strings.HasSuffix(diskSize, "Mi") ||
 		strings.HasSuffix(diskSize, "K") ||
