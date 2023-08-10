@@ -312,7 +312,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 				tags.OperatorName:      operator.Name(),
 			}
 
-			if args.forcePolicyCreation {
+			if args.forcePolicyCreation || (isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType) {
 				_, err := r.AWSClient.ForceEnsurePolicy(policyArn, policyDetails,
 					defaultPolicyVersion, operatorPolicyTags, path)
 				if err != nil {
@@ -399,17 +399,17 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 		} else {
 			policyARN = computePolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
 			name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
+			iamTags := map[string]string{
+				tags.OpenShiftVersion:  defaultPolicyVersion,
+				tags.RolePrefix:        prefix,
+				tags.OperatorNamespace: operator.Namespace(),
+				tags.OperatorName:      operator.Name(),
+				tags.RedHatManaged:     helper.True,
+			}
+			operatorPolicyKey := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
+			fileName := fmt.Sprintf("file://%s.json", operatorPolicyKey)
 			_, err = r.AWSClient.IsPolicyExists(policyARN)
 			if err != nil {
-				iamTags := map[string]string{
-					tags.OpenShiftVersion:  defaultPolicyVersion,
-					tags.RolePrefix:        prefix,
-					tags.OperatorNamespace: operator.Namespace(),
-					tags.OperatorName:      operator.Name(),
-					tags.RedHatManaged:     helper.True,
-				}
-				operatorPolicyKey := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
-				fileName := fmt.Sprintf("file://%s.json", operatorPolicyKey)
 				createPolicy := awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.CreatePolicy).
 					AddParam(awscb.PolicyName, name).
@@ -418,6 +418,14 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 					AddParam(awscb.Path, path).
 					Build()
 				commands = append(commands, createPolicy)
+			} else if isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType {
+				createPolicyVersion := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.CreatePolicyVersion).
+					AddParam(awscb.PolicyArn, policyARN).
+					AddParam(awscb.PolicyDocument, fileName).
+					AddParamNoValue(awscb.SetAsDefault).
+					Build()
+				commands = append(commands, createPolicyVersion)
 			}
 		}
 
