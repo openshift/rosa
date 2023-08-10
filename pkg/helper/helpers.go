@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -215,4 +216,8 @@ func LongestCommonPrefixBySorting(stringSlice []string) string {
 	}
 
 	return first[:i]
+}
+
+func GigybyteStringer(size int) string {
+	return fmt.Sprintf("%d GiB", size)
 }

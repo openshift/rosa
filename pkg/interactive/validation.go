@@ -168,3 +168,21 @@ func AvailabilityZonesCountValidator(multiAZ bool) Validator {
 		return fmt.Errorf("can only validate a slice of string, got %v", input)
 	}
 }
+
+func MachinePoolRootDiskSizeValidator(val interface{}) error {
+	// We expect GigiByte as the unit for the root volume size
+
+	// Validate the worker root volume size is an integer
+	machinePoolRootDiskSize, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("machine pool root disk size must be an string, got %T", machinePoolRootDiskSize)
+	}
+
+	// parse it to validate it is a valid unit
+	_, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSize)
+	if err != nil {
+		return fmt.Errorf("failed to parse machine pool root disk size: %v", err)
+	}
+
+	return nil
+}

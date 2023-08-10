@@ -52,6 +52,7 @@ var args struct {
 	version               string
 	autorepair            bool
 	tuningConfigs         string
+	rootDiskSize          string
 }
 
 var Cmd = &cobra.Command{
@@ -195,6 +196,12 @@ func init() {
 		"Name of the tuning configs to be applied to the machine pool. Format should be a comma-separated list. "+
 			"Tuning config must already exist. "+
 			"This list will overwrite any modifications made to node tuning configs on an ongoing basis.",
+	)
+
+	flags.StringVar(&args.rootDiskSize,
+		"disk-size",
+		"",
+		"Root disk size with a suffix like GiB or TiB",
 	)
 
 	interactive.AddFlag(flags)

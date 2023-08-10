@@ -13,6 +13,7 @@ import (
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
@@ -411,6 +412,52 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	// Create a single AZ machine pool for a BYOVPC cluster
 	if subnet != "" {
 		mpBuilder.Subnets(subnet)
+	}
+
+	_, _, _, _, defaultRootDiskSize, _ :=
+		r.OCMClient.GetDefaultClusterFlavors(cluster.Flavour().ID())
+
+	if args.rootDiskSize != "" || interactive.Enabled() {
+		var rootDiskSizeStr string
+		if args.rootDiskSize == "" {
+			// We don't need to parse the default since it's returned from the OCM API and AWS
+			// always defaults to GiB
+			rootDiskSizeStr = helper.GigybyteStringer(defaultRootDiskSize)
+		} else {
+			rootDiskSizeStr = args.rootDiskSize
+		}
+		if interactive.Enabled() {
+			// In order to avoid confusion, we want to display to the user what was passed as an
+			// argument
+			// Even if it was not valid, we want to display it to the user, then the CLI will show an
+			// error and the value can be corrected
+			// Also, if nothing is given, we want to display the default value fetched from the OCM API
+			rootDiskSizeStr, err = interactive.GetString(interactive.Input{
+				Question: "Root disk size (GiB or TiB)",
+				Help:     cmd.Flags().Lookup("disk-size").Usage,
+				Default:  rootDiskSizeStr,
+				Validators: []interactive.Validator{
+					interactive.MachinePoolRootDiskSizeValidator,
+				},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+				os.Exit(1)
+			}
+		}
+
+		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
+		rootDiskSize, err := ocm.ParseDiskSizeToGigibyte(rootDiskSizeStr)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			os.Exit(1)
+		}
+
+		// If the size given by the user is different than the default, we just let the OCM server
+		// handle the default root disk size
+		if rootDiskSize != defaultRootDiskSize {
+			mpBuilder.RootVolume(cmv1.NewRootVolume().AWS(cmv1.NewAWSVolume().Size(rootDiskSize)))
+		}
 	}
 
 	machinePool, err := mpBuilder.Build()
