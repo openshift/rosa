@@ -1,4 +1,4 @@
-package consts
+package constants
 
 const (
 	InstallerRoleArnFlag = "installer-role-arn"

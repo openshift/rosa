@@ -28,6 +28,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 )
 
@@ -51,17 +52,34 @@ func compose(validators []Validator) survey.Validator {
 
 // IsURL validates whether the given value is a valid URL
 func IsURL(val interface{}) error {
-	if val == nil {
-		return nil
-	}
-	if s, ok := val.(string); ok {
-		if s == "" {
-			return nil
-		}
-		_, err := url.ParseRequestURI(fmt.Sprintf("%v", val))
+	_, err := _isUrl(val)
+	return err
+}
+
+func IsURLHttps(val interface{}) error {
+	parsedUri, err := _isUrl(val)
+	if err != nil {
 		return err
 	}
-	return fmt.Errorf("can only validate strings, got %v", val)
+	if parsedUri.Scheme != helper.ProtocolHttps {
+		return fmt.Errorf("Expect URL '%s' to use an 'https://' scheme", val.(string))
+	}
+	return nil
+}
+
+func _isUrl(val interface{}) (*url.URL, error) {
+	if val == nil {
+		return nil, nil
+	}
+	s, ok := val.(string)
+	if !ok {
+		return nil, fmt.Errorf("can only validate strings, got %v", val)
+	}
+	if s == "" {
+		return nil, nil
+	}
+	parsedUri, err := url.ParseRequestURI(fmt.Sprintf("%v", val))
+	return parsedUri, err
 }
 
 // IsCert validates whether the given filepath is a valid cert file

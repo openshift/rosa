@@ -22,16 +22,13 @@ import (
 	//#nosec GSC-G505 -- Import blacklist: crypto/sha1
 
 	"fmt"
-	"net/url"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/briandowns/spinner"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/pkg/aws"
 	. "github.com/openshift/rosa/pkg/constants"
-	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/output"
@@ -154,31 +151,28 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if interactive.Enabled() && !cmd.Flags().Changed(IssuerUrlFlag) {
 		issuerUrl, err := interactive.GetString(interactive.Input{
-			Question: "Issuer URL (please include 'https://')",
-			Help:     cmd.Flags().Lookup(IssuerUrlFlag).Usage,
-			Required: true,
+			Question:   "Issuer URL (please include 'https://')",
+			Help:       cmd.Flags().Lookup(IssuerUrlFlag).Usage,
+			Required:   true,
+			Validators: []interactive.Validator{interactive.IsURLHttps},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a issuer URL: %s", err)
+			r.Reporter.Errorf("Expected an issuer URL: %s", err)
 			os.Exit(1)
 		}
 		args.issuerUrl = issuerUrl
 	}
-	parsedURI, err := url.ParseRequestURI(args.issuerUrl)
-	if err != nil {
-		r.Reporter.Errorf("Invalid issuer URL: %s", err)
-		os.Exit(1)
-	}
-	if parsedURI.Scheme != helper.ProtocolHttps {
-		r.Reporter.Errorf("Expected OIDC endpoint URL '%s' to use an https:// scheme", args.issuerUrl)
+	if err := interactive.IsURLHttps(args.issuerUrl); err != nil {
+		r.Reporter.Errorf("%v", err)
 		os.Exit(1)
 	}
 
 	if interactive.Enabled() && !cmd.Flags().Changed(SecretArnFlag) {
 		secretArn, err := interactive.GetString(interactive.Input{
-			Question: "Secret ARN",
-			Help:     cmd.Flags().Lookup(SecretArnFlag).Usage,
-			Required: true,
+			Question:   "Secret ARN",
+			Help:       cmd.Flags().Lookup(SecretArnFlag).Usage,
+			Required:   true,
+			Validators: []interactive.Validator{aws.SecretManagerArnValidator},
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a secret ARN: %s", err)
@@ -186,17 +180,8 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		args.secretArn = secretArn
 	}
-	if !arn.IsARN(args.secretArn) {
-		r.Reporter.Errorf("Secret ARN '%s' is not a valid ARN", args.secretArn)
-		os.Exit(1)
-	}
-	parsedSecretArn, err := arn.Parse(args.secretArn)
-	if err != nil {
-		r.Reporter.Errorf("Secret ARN '%s' is not a valid ARN", args.secretArn)
-		os.Exit(1)
-	}
-	if parsedSecretArn.Service != SecretsManagerService {
-		r.Reporter.Errorf("Secret ARN '%s' is not a valid secrets manager ARN", args.secretArn)
+	if err := aws.SecretManagerArnValidator(args.secretArn); err != nil {
+		r.Reporter.Errorf("%v", err)
 		os.Exit(1)
 	}
 
