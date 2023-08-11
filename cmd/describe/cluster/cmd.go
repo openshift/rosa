@@ -335,6 +335,15 @@ func run(cmd *cobra.Command, argv []string) {
 			"OIDC Endpoint URL:          %s (%s)\n", str,
 			cluster.AWS().STS().OIDCEndpointURL(), managementType)
 	}
+	if cluster.AWS().PrivateHostedZoneID() != "" {
+		str = fmt.Sprintf("%s"+"Private Hosted Zone:\n", str)
+		str = fmt.Sprintf("%s"+
+			" - ID:                      %s\n", str,
+			cluster.AWS().PrivateHostedZoneID())
+		str = fmt.Sprintf("%s"+
+			" - Role ARN:                %s\n", str,
+			cluster.AWS().PrivateHostedZoneRoleARN())
+	}
 	if !isHypershift {
 		if scheduledUpgrade != nil {
 			str = fmt.Sprintf("%s"+
