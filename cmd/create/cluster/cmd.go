@@ -1773,7 +1773,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if len(subnets) != len(initialSubnets) {
-			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into the Machine CIDR range")
+			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into chosen CIDR ranges")
+		}
+		if len(subnets) == 0 {
+			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
+			confirm.Prompt(false, "Continue with default? A new VPC will be created for your cluster")
 		}
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
