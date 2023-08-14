@@ -921,7 +921,7 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 // Check if it is one of the ROSA account roles
 func checkIfAccountRole(roleName *string) bool {
 	for _, prefix := range AccountRoles {
-		if strings.Contains(aws.StringValue(roleName), prefix.Name) {
+		if strings.Contains(aws.StringValue(roleName), GetRoleName("", prefix.Name)) {
 			return true
 		}
 	}
