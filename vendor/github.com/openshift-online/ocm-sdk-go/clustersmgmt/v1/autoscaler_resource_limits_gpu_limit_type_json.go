@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalGCPNetwork writes a value of the 'GCP_network' type to the given writer.
-func MarshalGCPNetwork(object *GCPNetwork, writer io.Writer) error {
+// MarshalAutoscalerResourceLimitsGPULimit writes a value of the 'autoscaler_resource_limits_GPU_limit' type to the given writer.
+func MarshalAutoscalerResourceLimitsGPULimit(object *AutoscalerResourceLimitsGPULimit, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeGCPNetwork(object, stream)
+	writeAutoscalerResourceLimitsGPULimit(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,18 +37,18 @@ func MarshalGCPNetwork(object *GCPNetwork, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeGCPNetwork writes a value of the 'GCP_network' type to the given stream.
-func writeGCPNetwork(object *GCPNetwork, stream *jsoniter.Stream) {
+// writeAutoscalerResourceLimitsGPULimit writes a value of the 'autoscaler_resource_limits_GPU_limit' type to the given stream.
+func writeAutoscalerResourceLimitsGPULimit(object *AutoscalerResourceLimitsGPULimit, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
-	present_ = object.bitmap_&1 != 0
+	present_ = object.bitmap_&1 != 0 && object.range_ != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("vpc_name")
-		stream.WriteString(object.vpcName)
+		stream.WriteObjectField("range")
+		writeResourceRange(object.range_, stream)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -56,67 +56,41 @@ func writeGCPNetwork(object *GCPNetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("vpc_project_id")
-		stream.WriteString(object.vpcProjectID)
-		count++
-	}
-	present_ = object.bitmap_&4 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("compute_subnet")
-		stream.WriteString(object.computeSubnet)
-		count++
-	}
-	present_ = object.bitmap_&8 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("control_plane_subnet")
-		stream.WriteString(object.controlPlaneSubnet)
+		stream.WriteObjectField("type")
+		stream.WriteString(object.type_)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalGCPNetwork reads a value of the 'GCP_network' type from the given
+// UnmarshalAutoscalerResourceLimitsGPULimit reads a value of the 'autoscaler_resource_limits_GPU_limit' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalGCPNetwork(source interface{}) (object *GCPNetwork, err error) {
+func UnmarshalAutoscalerResourceLimitsGPULimit(source interface{}) (object *AutoscalerResourceLimitsGPULimit, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readGCPNetwork(iterator)
+	object = readAutoscalerResourceLimitsGPULimit(iterator)
 	err = iterator.Error
 	return
 }
 
-// readGCPNetwork reads a value of the 'GCP_network' type from the given iterator.
-func readGCPNetwork(iterator *jsoniter.Iterator) *GCPNetwork {
-	object := &GCPNetwork{}
+// readAutoscalerResourceLimitsGPULimit reads a value of the 'autoscaler_resource_limits_GPU_limit' type from the given iterator.
+func readAutoscalerResourceLimitsGPULimit(iterator *jsoniter.Iterator) *AutoscalerResourceLimitsGPULimit {
+	object := &AutoscalerResourceLimitsGPULimit{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "vpc_name":
-			value := iterator.ReadString()
-			object.vpcName = value
+		case "range":
+			value := readResourceRange(iterator)
+			object.range_ = value
 			object.bitmap_ |= 1
-		case "vpc_project_id":
+		case "type":
 			value := iterator.ReadString()
-			object.vpcProjectID = value
+			object.type_ = value
 			object.bitmap_ |= 2
-		case "compute_subnet":
-			value := iterator.ReadString()
-			object.computeSubnet = value
-			object.bitmap_ |= 4
-		case "control_plane_subnet":
-			value := iterator.ReadString()
-			object.controlPlaneSubnet = value
-			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}
