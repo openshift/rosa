@@ -265,7 +265,7 @@ github.com/onsi/gomega/types
 # github.com/openshift-online/ocm-common v0.0.0-20230724120046-183b85503854
 ## explicit; go 1.19
 github.com/openshift-online/ocm-common/pkg/cluster/validations
-# github.com/openshift-online/ocm-sdk-go v0.1.360
+# github.com/openshift-online/ocm-sdk-go v0.1.362
 ## explicit; go 1.16
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accountsmgmt

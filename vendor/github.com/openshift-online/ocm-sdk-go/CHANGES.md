@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.362
+  - Redact aws access and secret access keys from debug logs
+
+## 0.1.361
+- Update model version v0.0.309
+  - Modify access review response to include `is_ocm_internal` field.
+  - Add the remainder of cluster-autoscaler parameters.
+
 ## 0.1.360
 - Update model version v0.0.307
   - Move `PrivateHostedZoneID` and `PrivateHostedZoneRoleARN` to `aws_type` resource
