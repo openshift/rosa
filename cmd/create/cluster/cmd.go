@@ -1777,7 +1777,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
-			confirm.Prompt(false, "Continue with default? A new VPC will be created for your cluster")
+			if ok := confirm.Prompt(false, "Continue with default? A new VPC will be created for your cluster"); !ok {
+				os.Exit(1)
+			}
+			useExistingVPC = false
+			subnetsProvided = false
 		}
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
@@ -1848,20 +1852,15 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		// Validate subnets in the case the user has provided them using the `args.subnets`
-		if !isHostedCP {
-			err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+		if useExistingVPC || subnetsProvided {
+			if !isHostedCP {
+				err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
+			} else {
+				// Hosted cluster should validate that
+				// - Public hosted clusters have at least one public subnet
+				// - Private hosted clusters have all subnets private
+				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs)
 			}
-		}
-
-		// In both cases (interactive and subnetsProvided) hosted clusters need to validate the private subnets
-		if isHostedCP {
-			// Hosted cluster should validate that
-			// - Public hosted clusters have at least one public subnet
-			// - Private hosted clusters have all subnets private
-			privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
