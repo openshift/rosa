@@ -143,6 +143,11 @@ type Spec struct {
 
 	// Machine pool's storage
 	MachinePoolRootDisk *Volume
+
+	// Shared VPC
+	PrivateHostedZoneID string
+	SharedVPCRoleArn    string
+	BaseDomain          string
 }
 
 // Volume represents a volume property for a disk
@@ -927,6 +932,15 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	// etcd encryption kms key arn
 	if config.EtcdEncryptionKMSArn != "" {
 		awsBuilder = awsBuilder.EtcdEncryption(cmv1.NewAwsEtcdEncryption().KMSKeyARN(config.EtcdEncryptionKMSArn))
+	}
+
+	// shared vpc
+	if config.PrivateHostedZoneID != "" {
+		awsBuilder = awsBuilder.PrivateHostedZoneID(config.PrivateHostedZoneID)
+		awsBuilder = awsBuilder.PrivateHostedZoneRoleARN(config.SharedVPCRoleArn)
+	}
+	if config.BaseDomain != "" {
+		clusterBuilder = clusterBuilder.DNS(v1.NewDNS().BaseDomain(config.BaseDomain))
 	}
 
 	clusterBuilder = clusterBuilder.AWS(awsBuilder)
