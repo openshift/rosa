@@ -184,6 +184,11 @@ var args struct {
 
 	// Storage
 	machinePoolRootDiskSize string
+
+	// Shared VPC
+	privateHostedZoneID string
+	sharedVPCRoleARN    string
+	baseDomain          string
 }
 
 var Cmd = &cobra.Command{
@@ -693,6 +698,27 @@ The password must
 			strings.Join(ingress.ValidNamespaceOwnershipPolicies, ","), ingress.DefaultNamespaceOwnershipPolicy),
 	)
 
+	flags.StringVar(
+		&args.privateHostedZoneID,
+		"private-hosted-zone-id",
+		"",
+		`ID of shared private hosted zone`,
+	)
+
+	flags.StringVar(
+		&args.sharedVPCRoleARN,
+		"shared-vpc-role-arn",
+		"",
+		`Role ARN for permissions in the shared private hosted zone`,
+	)
+
+	flags.StringVar(
+		&args.baseDomain,
+		"base-domain",
+		"",
+		`Base domain name for the shared private hosted zone`,
+	)
+
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
@@ -706,6 +732,23 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+
+	// validate flags for shared vpc
+	isSharedVPC := false
+	privateHostedZoneID := strings.Trim(args.privateHostedZoneID, " \t")
+	sharedVPCRoleARN := strings.Trim(args.sharedVPCRoleARN, " \t")
+	baseDomain := strings.Trim(args.baseDomain, " \t")
+	if privateHostedZoneID != "" ||
+		sharedVPCRoleARN != "" {
+		if privateHostedZoneID == "" ||
+			sharedVPCRoleARN == "" ||
+			baseDomain == "" {
+			r.Reporter.Errorf("To install a cluster into a shared VPC, " +
+				"private-hosted-zone-id, shared-vpc-role-arn and base-domain should be provided together")
+			os.Exit(1)
+		}
+		isSharedVPC = true
+	}
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
 	if err != nil {
@@ -1874,6 +1917,11 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	r.Reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
 
+	if len(subnetIDs) == 0 && isSharedVPC {
+		r.Reporter.Errorf("Installing a cluster into a shared VPC is only supported for BYO VPC clusters")
+		os.Exit(1)
+	}
+
 	// Select availability zones for a non-BYOVPC cluster
 	var selectAvailabilityZones bool
 	if !useExistingVPC && !subnetsProvided {
@@ -2645,6 +2693,11 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.ClusterAdminUser = clusterAdminUser
 		clusterConfig.ClusterAdminPassword = clusterAdminPassword
 	}
+	if isSharedVPC {
+		clusterConfig.PrivateHostedZoneID = privateHostedZoneID
+		clusterConfig.SharedVPCRoleArn = sharedVPCRoleARN
+		clusterConfig.BaseDomain = baseDomain
+	}
 
 	props := args.properties
 	if args.fakeCluster {
@@ -3067,6 +3120,11 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if len(spec.SubnetIds) > 0 {
 		command += fmt.Sprintf(" --subnet-ids %s", strings.Join(spec.SubnetIds, ","))
+	}
+	if spec.PrivateHostedZoneID != "" {
+		command += fmt.Sprintf(" --private-hosted-zone-id %s", spec.PrivateHostedZoneID)
+		command += fmt.Sprintf(" --shared-vpc-role-arn %s", spec.SharedVPCRoleArn)
+		command += fmt.Sprintf(" --base-domain %s", spec.BaseDomain)
 	}
 	if spec.FIPS {
 		command += " --fips"
