@@ -1,35 +1,31 @@
 reviewers:
 - ciaranRoche
-- igoihman
-- jharrington22
-- pvasant
-- tbrisker
-- vkareh
-- zgalor
-- oriAdler
 - gdbranco
+- igoihman
+- oriAdler
+- pvasant
 - renan-campos
+- tbrisker
+- zgalor
 approvers:
 - ciaranRoche
+- gdbranco
 - igoihman
-- jeremyeder
-- jharrington22
-- jhernand
+- oriAdler
 - pvasant
+- renan-campos
 - tbrisker
 - vkareh
 - zgalor
-- oriAdler
-- gdbranco
-- renan-campos
 maintainers:
 - ciaranRoche
+- gdbranco
 - igoihman
-- jharrington22
+- oriAdler
 - pvasant
+- renan-campos
 - tbrisker
 - vkareh
 - zgalor
-- oriAdler
-- gdbranco
-- renan-campos
+emeritus_approvers:
+- jharrington22
