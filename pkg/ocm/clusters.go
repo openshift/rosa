@@ -1031,7 +1031,33 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		clusterBuilder.Ingresses(cmv1.NewIngressList().Items(defaultIngress))
 	}
 
-	// TODO: add autoscaler configuration to clusterBuilder using the spec
+	if config.AutoscalerConfig != nil {
+		clusterBuilder.Autoscaler(cmv1.NewClusterAutoscaler().
+			BalanceSimilarNodeGroups(config.AutoscalerConfig.BalanceSimilarNodeGroups).
+			SkipNodesWithLocalStorage(config.AutoscalerConfig.SkipNodesWithLocalStorage).
+			LogVerbosity(config.AutoscalerConfig.LogVerbosity).
+			MaxPodGracePeriod(config.AutoscalerConfig.MaxPodGracePeriod).
+			PodPriorityThreshold(config.AutoscalerConfig.PodPriorityThreshold).
+			IgnoreDaemonsetsUtilization(config.AutoscalerConfig.IgnoreDaemonsetsUtilization).
+			MaxNodeProvisionTime(config.AutoscalerConfig.MaxNodeProvisionTime).
+			BalancingIgnoredLabels(config.AutoscalerConfig.BalancingIgnoredLabels...).
+			ResourceLimits(cmv1.NewAutoscalerResourceLimits().
+				MaxNodesTotal(config.AutoscalerConfig.ResourceLimits.MaxNodesTotal).
+				Cores(cmv1.NewResourceRange().
+					Min(config.AutoscalerConfig.ResourceLimits.Cores.Min).
+					Max(config.AutoscalerConfig.ResourceLimits.Cores.Max)).
+				Memory(cmv1.NewResourceRange().
+					Min(config.AutoscalerConfig.ResourceLimits.Memory.Min).
+					Max(config.AutoscalerConfig.ResourceLimits.Memory.Max))).
+			ScaleDown(cmv1.NewAutoscalerScaleDownConfig().
+				Enabled(config.AutoscalerConfig.ScaleDown.Enabled).
+				UnneededTime(config.AutoscalerConfig.ScaleDown.UnneededTime).
+				UtilizationThreshold(fmt.Sprintf("%f", config.AutoscalerConfig.ScaleDown.UtilizationThreshold)).
+				DelayAfterAdd(config.AutoscalerConfig.ScaleDown.DelayAfterAdd).
+				DelayAfterDelete(config.AutoscalerConfig.ScaleDown.DelayAfterDelete).
+				DelayAfterFailure(config.AutoscalerConfig.ScaleDown.DelayAfterFailure)),
+		)
+	}
 
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
