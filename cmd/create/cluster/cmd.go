@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -47,6 +48,7 @@ import (
 	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/interactive/consts"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
@@ -192,6 +194,9 @@ var args struct {
 	defaultIngressNamespaceOwnershipPolicy  string
 	defaultIngressClusterRoutesHostname     string
 	defaultIngressClusterRoutesTlsSecretRef string
+
+	// Storage
+	machinePoolRootDiskSize string
 }
 
 // type AutoscalerConfig struct {
@@ -834,6 +839,11 @@ func init() {
 		"Technology Preview: Enable the use of Hosted Control Planes",
 	)
 
+	flags.StringVar(&args.machinePoolRootDiskSize,
+		"worker-disk-size",
+		"",
+		"Machine pool root disk size with a **unit suffix** like GiB or TiB, e.g. 200GiB.")
+
 	flags.StringVar(
 		&args.billingAccount,
 		"billing-account",
@@ -916,7 +926,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
 	if err != nil {
-		r.Reporter.Errorf("Unable to retrieve supported regixns: %v", err)
+		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
 	}
 	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions, args.useLocalCredentials)
 	r.AWSClient = awsClient
@@ -945,7 +955,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Select a multi-AZ cluster implicitly by providing three availability zones
-	if len(args.availabilityZones) == ocm.MultiAZCount {
+	if len(args.availabilityZones) == clustervalidations.MultiAZCount {
 		args.multiAZ = true
 	}
 
@@ -1012,6 +1022,12 @@ func run(cmd *cobra.Command, _ []string) {
 	if isHostedCP && args.ec2MetadataHttpTokens != "" {
 		r.Reporter.Errorf("ec2-metadata-http-tokens can't be set with hosted-cp")
 		os.Exit(1)
+	}
+
+	// setting default for ec2MetadataHttpTokens in case cluster is not hosted
+	// or ec2MetadataHttpTokens was not set
+	if !isHostedCP && args.ec2MetadataHttpTokens == "" {
+		args.ec2MetadataHttpTokens = string(v1.Ec2MetadataHttpTokensOptional)
 	}
 
 	isClusterAdmin := false
@@ -1163,6 +1179,12 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
 	}
+	if err := r.OCMClient.IsVersionCloseToEol(ocm.CloseToEolDays, version, channelGroup); err != nil {
+		r.Reporter.Warnf("%v", err)
+		if !confirm.Confirm("continue with version '%s'", ocm.GetRawVersionId(version)) {
+			os.Exit(0)
+		}
+	}
 
 	httpTokens := args.ec2MetadataHttpTokens
 	if interactive.Enabled() && !isHostedCP {
@@ -1271,6 +1293,9 @@ func run(cmd *cobra.Command, _ []string) {
 			roleARN = roleARNs[0]
 		} else {
 			createAccountRolesCommand := "rosa create account-roles"
+			if isHostedCP {
+				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+			}
 			r.Reporter.Warnf(fmt.Sprintf("No account roles found. You will need to manually set them in the "+
 				"next steps or run '%s' to create them first.", createAccountRolesCommand))
 			interactive.Enable()
@@ -1278,13 +1303,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 		if roleARN != "" {
 			// check if role has hosted cp policy via AWS tag value
-			var hostedCPPolicies bool
-			if isHostedCP {
-				hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
-				if err != nil {
-					r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
-					os.Exit(1)
-				}
+			hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
+			if err != nil {
+				r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+				os.Exit(1)
 			}
 			hasRoles = true
 			for roleType, role := range aws.AccountRoles {
@@ -1325,6 +1347,9 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 				if selectedARN == "" {
 					createAccountRolesCommand := "rosa create account-roles"
+					if isHostedCP {
+						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+					}
 					r.Reporter.Warnf(fmt.Sprintf("No %s account roles found. You will need to manually set "+
 						"them in the next steps or run '%s' to create "+
 						"them first.", role.Name, createAccountRolesCommand))
@@ -1501,16 +1526,13 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
 		os.Exit(1)
 	}
-
 	// check if role has hosted cp policy via AWS tag value
-	var hostedCPPolicies bool
-	if isHostedCP {
-		hostedCPPolicies, err = awsClient.HasHostedCPPolicies(roleARN)
-		if err != nil {
-			r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
-			os.Exit(1)
-		}
+	hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
+	if err != nil {
+		r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
+		os.Exit(1)
 	}
+
 	if managedPolicies {
 		rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
@@ -1839,7 +1861,12 @@ func run(cmd *cobra.Command, _ []string) {
 		enableProxy = true
 	}
 
-	dMachinecidr, dPodcidr, dServicecidr, dhostPrefix, defaultComputeMachineType := r.OCMClient.
+	dMachinecidr,
+		dPodcidr,
+		dServicecidr,
+		dhostPrefix,
+		defaultMachinePoolRootDiskSize,
+		defaultComputeMachineType := r.OCMClient.
 		GetDefaultClusterFlavors(args.flavour)
 	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
 		r.Reporter.Errorf("Error retrieving default cluster flavors")
@@ -1963,7 +1990,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if len(subnets) != len(initialSubnets) {
-			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into the Machine CIDR range")
+			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into chosen CIDR ranges")
+		}
+		if len(subnets) == 0 {
+			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
+			confirm.Prompt(false, "Continue with default? A new VPC will be created for your cluster")
 		}
 		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
@@ -1986,19 +2017,28 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		for i, subnet := range subnets {
+		mapVpcToSubnet := map[string][]*ec2.Subnet{}
+
+		for _, subnet := range subnets {
+			mapVpcToSubnet[*subnet.VpcId] = append(mapVpcToSubnet[*subnet.VpcId], subnet)
 			subnetID := awssdk.StringValue(subnet.SubnetId)
 			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
-
-			// Create the options to prompt the user.
-			options[i] = aws.SetSubnetOption(subnetID, availabilityZone)
-			if subnetsProvided {
-				for _, subnetArg := range subnetIDs {
-					defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnetArg, availabilityZone))
-				}
-			}
 			mapSubnetToAZ[subnetID] = availabilityZone
 			mapAZCreated[availabilityZone] = false
+		}
+		// Create the options to prompt the user.
+		i := 0
+		vpcIds := helper.MapKeys(mapVpcToSubnet)
+		helper.SortStringRespectLength(vpcIds)
+		for _, vpcId := range vpcIds {
+			subnetList := mapVpcToSubnet[vpcId]
+			for _, subnet := range subnetList {
+				options[i] = aws.SetSubnetOption(subnet)
+				i++
+				if subnetsProvided && helper.Contains(subnetIDs, *subnet.SubnetId) {
+					defaultOptions = append(defaultOptions, aws.SetSubnetOption(subnet))
+				}
+			}
 		}
 		if isHostedCP && !subnetsProvided {
 			interactive.Enable()
@@ -2203,7 +2243,6 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
 			os.Exit(1)
 		}
-
 		if interactive.Enabled() || !isMinReplicasSet {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
@@ -2760,6 +2799,52 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	var machinePoolRootDisk *ocm.Volume
+	if args.machinePoolRootDiskSize != "" || interactive.Enabled() {
+		var machinePoolRootDiskSizeStr string
+		if args.machinePoolRootDiskSize == "" {
+			// We don't need to parse the default since it's returned from the OCM API and AWS
+			// always defaults to GiB
+			machinePoolRootDiskSizeStr = helper.GigybyteStringer(defaultMachinePoolRootDiskSize)
+		} else {
+			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
+		}
+		if interactive.Enabled() {
+			// In order to avoid confusion, we want to display to the user what was passed as an
+			// argument
+			// Even if it was not valid, we want to display it to the user, then the CLI will show an
+			// error and the value can be corrected
+			// Also, if nothing is given, we want to display the default value fetched from the OCM API
+			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
+				Question: "Machine pool root disk size (GiB or TiB)",
+				Help:     cmd.Flags().Lookup("worker-disk-size").Usage,
+				Default:  machinePoolRootDiskSizeStr,
+				Validators: []interactive.Validator{
+					interactive.MachinePoolRootDiskSizeValidator,
+				},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+				os.Exit(1)
+			}
+		}
+
+		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
+		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			os.Exit(1)
+		}
+
+		// If the size given by the user is different than the default, we just let the OCM server
+		// handle the default root disk size
+		if machinePoolRootDiskSize != defaultMachinePoolRootDiskSize {
+			machinePoolRootDisk = &ocm.Volume{
+				Size: machinePoolRootDiskSize,
+			}
+		}
+	}
+
 	fips := args.fips || fedramp.Enabled()
 	if interactive.Enabled() && !fedramp.Enabled() {
 		fips, err = interactive.GetBool(interactive.Input{
@@ -3063,10 +3148,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		excludedNamespaces = excludedNamespacesArg
 	}
-	sliceExcludedNamespaces := []string{}
-	if excludedNamespaces != "" {
-		sliceExcludedNamespaces = strings.Split(excludedNamespaces, ",")
-	}
+	sliceExcludedNamespaces := ingress.GetExcludedNamespaces(excludedNamespaces)
 
 	wildcardPolicy := ""
 	if cmd.Flags().Changed(defaultIngressWildcardPolicyFlag) {
@@ -3200,6 +3282,7 @@ func run(cmd *cobra.Command, _ []string) {
 			WildcardPolicy:           wildcardPolicy,
 			NamespaceOwnershipPolicy: namespaceOwnershipPolicy,
 		},
+		MachinePoolRootDisk: machinePoolRootDisk,
 	}
 
 	if httpTokens != "" {
@@ -3439,33 +3522,7 @@ func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int)
 			return err
 		}
 
-		if minReplicas < 0 {
-			return fmt.Errorf("min-replica must be greater than zero")
-		}
-		if isHostedCP {
-			// This value should be validated in a previous step when checking the subnets
-			if privateSubnetsCount < 1 {
-				return fmt.Errorf("Hosted clusters require at least a private subnet")
-			}
-
-			if minReplicas%privateSubnetsCount != 0 {
-				return fmt.Errorf("Hosted clusters require that the number of compute nodes be a multiple of "+
-					"the number of private subnets %d, instead received: %d", privateSubnetsCount, minReplicas)
-			}
-			return nil
-		}
-
-		if multiAZ {
-			if minReplicas < 3 {
-				return fmt.Errorf("Multi AZ cluster requires at least 3 compute nodes")
-			}
-			if minReplicas%3 != 0 {
-				return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-			}
-		} else if minReplicas < 2 {
-			return fmt.Errorf("Cluster requires at least 2 compute nodes")
-		}
-		return nil
+		return clustervalidations.MinReplicasValidator(minReplicas, multiAZ, isHostedCP, privateSubnetsCount)
 	}
 }
 
@@ -3476,22 +3533,7 @@ func maxReplicaValidator(multiAZ bool, minReplicas int, isHostedCP bool,
 		if err != nil {
 			return err
 		}
-		if minReplicas > maxReplicas {
-			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
-		}
-
-		if isHostedCP {
-			if maxReplicas%privateSubnetsCount != 0 {
-				return fmt.Errorf("Hosted clusters require that the number of compute nodes be a multiple of "+
-					"the number of private subnets %d, instead received: %d", privateSubnetsCount, maxReplicas)
-			}
-			return nil
-		}
-
-		if multiAZ && maxReplicas%3 != 0 {
-			return fmt.Errorf("Multi AZ clusters require that the number of compute nodes be a multiple of 3")
-		}
-		return nil
+		return clustervalidations.MaxReplicasValidator(minReplicas, maxReplicas, multiAZ, isHostedCP, privateSubnetsCount)
 	}
 }
 
@@ -3598,7 +3640,7 @@ func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilit
 }
 
 func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClient aws.Client) error {
-	err := ocm.ValidateAvailabilityZonesCount(multiAZ, len(availabilityZones))
+	err := clustervalidations.ValidateAvailabilityZonesCount(multiAZ, len(availabilityZones))
 	if err != nil {
 		return err
 	}
@@ -3672,10 +3714,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += " --disable-scp-checks"
 	}
 	if spec.Version != "" {
-		commandVersion := strings.TrimPrefix(spec.Version, "openshift-v")
+		commandVersion := ocm.GetRawVersionId(spec.Version)
 		if spec.ChannelGroup != ocm.DefaultChannelGroup {
 			command += fmt.Sprintf(" --channel-group %s", spec.ChannelGroup)
-			commandVersion = strings.TrimSuffix(commandVersion, fmt.Sprintf("-%s", spec.ChannelGroup))
 		}
 		command += fmt.Sprintf(" --version %s", commandVersion)
 	}
@@ -3768,6 +3809,12 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
 		command += fmt.Sprintf(" --audit-log-arn %s", *spec.AuditLogRoleARN)
 	}
+	if spec.MachinePoolRootDisk != nil {
+		machinePoolRootDiskSize := spec.MachinePoolRootDisk.Size
+		if machinePoolRootDiskSize != 0 {
+			command += fmt.Sprintf(" --worker-disk-size %dGiB", machinePoolRootDiskSize)
+		}
+	}
 
 	if !reflect.DeepEqual(spec.DefaultIngress, ocm.DefaultIngressSpec{}) {
 		if len(spec.DefaultIngress.RouteSelectors) != 0 {
@@ -3781,10 +3828,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 			command += fmt.Sprintf(" --%s %s", defaultIngressExcludedNamespacesFlag,
 				strings.Join(spec.DefaultIngress.ExcludedNamespaces, ","))
 		}
-		if !helper.Contains([]string{"", "none"}, spec.DefaultIngress.WildcardPolicy) {
+		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.WildcardPolicy) {
 			command += fmt.Sprintf(" --%s %s", defaultIngressWildcardPolicyFlag, spec.DefaultIngress.WildcardPolicy)
 		}
-		if !helper.Contains([]string{"", "none"}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
+		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
 			command += fmt.Sprintf(" --%s %s", defaultIngressNamespaceOwnershipPolicyFlag,
 				spec.DefaultIngress.NamespaceOwnershipPolicy)
 		}
@@ -3860,5 +3907,4 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	}
 
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
-
 }
