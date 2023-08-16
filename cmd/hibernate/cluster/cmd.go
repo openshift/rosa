@@ -56,8 +56,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if !confirm.Yes() && !confirm.Confirm("hibernate cluster %s", clusterKey) {
-		os.Exit(1)
+	if !confirm.Yes() {
+		r.Reporter.Infof(limitedSupportWarning)
+		if !confirm.Prompt(false, confirmationPrompt) {
+			os.Exit(1)
+		}
 	}
 
 	err := r.OCMClient.HibernateCluster(cluster.ID())
@@ -65,5 +68,6 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
 	}
+	r.Reporter.Infof(hibernationPeriodWarning)
 	r.Reporter.Infof("Cluster '%s' is hibernating.", clusterKey)
 }
