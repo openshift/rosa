@@ -119,14 +119,13 @@ var args struct {
 
 	// Autoscaler Configurations
 	balanceSimilarNodeGroups    bool
-	balancingIgnoredLabelsInput string
-	balancingIgnoredLabels      map[string]string
-	ignoreDaemonsetsUtilization bool
 	skipNodesWithLocalStorage   bool
 	logVerbosity                int
-	maxNodeProvisionTime        string
 	maxPodGracePeriod           int
 	podPriorityThreshold        int
+	ignoreDaemonsetsUtilization bool
+	maxNodeProvisionTime        string
+	balancingIgnoredLabels      []string
 	resourceLimits              ResourceLimits
 	scaleDown                   ScaleDownConfig
 
@@ -199,6 +198,7 @@ var args struct {
 	machinePoolRootDiskSize string
 }
 
+// TODO: decide if we want this struct or not
 // type AutoscalerConfig struct {
 // balanceSimilarNodeGroups    bool
 // balancingIgnoredLabelsInput string
@@ -217,18 +217,11 @@ type ResourceLimits struct {
 	MaxNodesTotal int
 	Cores         ResourceRange
 	Memory        ResourceRange
-	GPUS          GPULimit
 }
 
 type ResourceRange struct {
 	Min int
 	Max int
-}
-
-type GPULimit struct {
-	Type string
-	Min  int
-	Max  int
 }
 
 type ScaleDownConfig struct {
@@ -545,26 +538,11 @@ func init() {
 	)
 
 	// Cluster Autoscaler flags
-	// Ballancing Behaviour Flags
 	flags.BoolVar(
 		&args.balanceSimilarNodeGroups,
 		"balance-similar-node-groups",
 		false,
 		"Identify node groups with the same instance type and label set, and aim to balance respective sizes of those node groups.",
-	)
-
-	flags.StringVar(
-		&args.balancingIgnoredLabelsInput,
-		"balancing-ignored-labels",
-		"",
-		"Labels that cluster autoscaler should ignore when considering node group similarity. Format should be a comma-separated list of 'key=value'.",
-	)
-
-	flags.BoolVar(
-		&args.ignoreDaemonsetsUtilization,
-		"ignore-daemonsets-utilizaiton",
-		false,
-		"Should CA ignore DaemonSet pods when calculating resource utilization for scaling down",
 	)
 
 	flags.BoolVar(
@@ -581,13 +559,6 @@ func init() {
 		"Autoscaler log level.",
 	)
 
-	flags.StringVar(
-		&args.maxNodeProvisionTime,
-		"max-node-provision-time",
-		"",
-		"Maximum time CA waits for node to be provisioned. Expects string comprised of an integer and time unit (ns|us|µs|ms|s|m|h)), ex: 20m, 1h, etc.",
-	)
-
 	flags.IntVar(
 		&args.maxPodGracePeriod,
 		"max-pod-grace-period",
@@ -602,12 +573,34 @@ func init() {
 		"The priority that a pod must exceed to cause the cluster autoscaler to deploy additional nodes. Expects an integer, can be negative.",
 	)
 
+	flags.BoolVar(
+		&args.ignoreDaemonsetsUtilization,
+		"ignore-daemonsets-utilization",
+		false,
+		"Should cluster-autoscaler ignore DaemonSet pods when calculating resource utilization for scaling down",
+	)
+
+	flags.StringVar(
+		&args.maxNodeProvisionTime,
+		"max-node-provision-time",
+		"",
+		"Maximum time cluster-autoscaler waits for node to be provisioned. Expects string comprised of an integer and time unit (ns|us|µs|ms|s|m|h), examples: 20m, 1h",
+	)
+
+	// flags.StringVar(
+	flags.StringSliceVar(
+		&args.balancingIgnoredLabels,
+		"balancing-ignored-labels",
+		nil,
+		"A comma-separated list of label keys that cluster autoscaler should ignore when considering node group similarity.",
+	)
+
 	// Resource Limits
 	flags.IntVar(
 		&args.resourceLimits.MaxNodesTotal,
 		"max-nodes-total",
 		1000,
-		"Minimum number of total nodes (not just autoscaled ones).",
+		"Maximum amount of nodes in the cluster (not only autoscaled ones).",
 	)
 
 	flags.IntVar(
@@ -638,27 +631,7 @@ func init() {
 		"Maximum amount of memory, in GiB, in the cluster.",
 	)
 
-	flags.StringVar(
-		&args.resourceLimits.GPUS.Type,
-		"gpu-type",
-		"nvidia.com/gpu",
-		"The type of GPU node to deploy. "+
-			"Options: [nvidia.com/gpu, amd.com/gpu].",
-	)
-
-	flags.IntVar(
-		&args.resourceLimits.GPUS.Min,
-		"min-gpu",
-		0,
-		"Maximum number of GPUs to deploy in the cluster.",
-	)
-
-	flags.IntVar(
-		&args.resourceLimits.GPUS.Max,
-		"max-gpu",
-		0,
-		"Maximum number of GPUs to deploy in the cluster.",
-	)
+	// TODO: handle GPU limitations
 
 	// Scale down Configuration
 
@@ -2237,6 +2210,27 @@ func run(cmd *cobra.Command, _ []string) {
 		isHostedCP,
 		multiAZ)
 
+	var isClusterAutoscalerSet bool
+	balanceSimilarNodeGroups := args.balanceSimilarNodeGroups
+	skipNodesWithLocalStorage := args.skipNodesWithLocalStorage
+	logVerbosity := args.logVerbosity
+	maxPodGracePeriod := args.maxPodGracePeriod
+	podPriorityThreshold := args.podPriorityThreshold
+	ignoreDaemonsetsUtilization := args.ignoreDaemonsetsUtilization
+	maxNodeProvisionTime := args.maxNodeProvisionTime
+	balancingIgnoredLabels := args.balancingIgnoredLabels
+	maxNodesTotal := args.resourceLimits.MaxNodesTotal
+	minCores := args.resourceLimits.Cores.Min
+	maxCores := args.resourceLimits.Cores.Max
+	minMemory := args.resourceLimits.Memory.Min
+	maxMemory := args.resourceLimits.Memory.Max
+	scaleDownEnabled := args.scaleDown.Enabled
+	scaleDownUnneededTime := args.scaleDown.UnneededTime
+	scaleDownUtilizationThreshold := args.scaleDown.UtilizationThreshold
+	scaleDownDelayAfterAdd := args.scaleDown.DelayAfterAdd
+	scaleDownDelayAfterDelete := args.scaleDown.DelayAfterDelete
+	scaleDownDelayAfterFailure := args.scaleDown.DelayAfterFailure
+
 	if autoscaling {
 		// if the user set compute-nodes and enabled autoscaling
 		if isReplicasSet {
@@ -2284,415 +2278,382 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-	}
-	// Autoscaler configurations
-	// Balancing Cluster Options
-	balanceSimilarNodeGroups := args.balanceSimilarNodeGroups
-	isBalanceSimilarNodeGroupsSet := cmd.Flags().Changed("balance-similar-node-groups")
-	if interactive.Enabled() && !isBalanceSimilarNodeGroupsSet && !balanceSimilarNodeGroups {
-		balanceSimilarNodeGroups, err = interactive.GetBool(interactive.Input{
-			Question: "Balance similar node groups",
-			Help:     cmd.Flags().Lookup("balance-similar-node-groups").Usage,
+
+		// Autoscaler configurations
+		isClusterAutoscalerSet, err = interactive.GetBool(interactive.Input{
+			Question: "Configure cluster-autoscaler",
+			Help:     "Set cluster-wide autoscaling configurations",
 			Default:  false,
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid boolean value for balanceSimilarNodeGroups: %s", err)
+			r.Reporter.Errorf("Expected a valid value for configure-cluster-autoscaler: %s", err)
 			os.Exit(1)
 		}
-	}
 
-	balancingIgnoredLabelsInput := args.balancingIgnoredLabelsInput
-	isBalancingIgnoredLabelsSet := cmd.Flags().Changed("balancing-ignored-labels")
-	if interactive.Enabled() && !isBalancingIgnoredLabelsSet && balancingIgnoredLabelsInput == "" {
-		balancingIgnoredLabelsInput, err = interactive.GetString(interactive.Input{
-			Question: "Labels that cluster autoscaler should ignore when considering node group similarity.",
-			Help:     cmd.Flags().Lookup("balancing-ignored-labels").Usage,
-			Default:  balancingIgnoredLabelsInput,
-			Required: false,
-			Validators: []interactive.Validator{
-				mpHelpers.LabelValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid comma-separated labels for balancingIgnoredLabels: %s", err)
-			os.Exit(1)
-		}
-	}
-	balancingIgnoredLabels, err := mpHelpers.ParseLabels(balancingIgnoredLabelsInput)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+		if isClusterAutoscalerSet {
+			isBalanceSimilarNodeGroupsSet := cmd.Flags().Changed("balance-similar-node-groups")
+			if interactive.Enabled() && !isBalanceSimilarNodeGroupsSet {
+				balanceSimilarNodeGroups, err = interactive.GetBool(interactive.Input{
+					Question: "Balance similar node groups",
+					Help:     cmd.Flags().Lookup("balance-similar-node-groups").Usage,
+					Default:  false,
+					Required: false,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for balance-similar-node-groups: %s", err)
+					os.Exit(1)
+				}
+			}
 
-	ignoreDaemonsetsUtilization := args.ignoreDaemonsetsUtilization
-	isIgnoreDaemonsetsUtilizationSet := cmd.Flags().Changed("ignore-daemonsets-utilization")
-	if interactive.Enabled() && !isIgnoreDaemonsetsUtilizationSet && !ignoreDaemonsetsUtilization {
-		ignoreDaemonsetsUtilization, err = interactive.GetBool(interactive.Input{
-			Question: "Ignore Daemonset Utilization",
-			Help:     cmd.Flags().Lookup("ignore-daemonsets-utilizaiton").Usage,
-			Default:  false,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid boolean value for ignoreDaemonsetsUtilization: %s", err)
-			os.Exit(1)
-		}
-	}
+			isSkipNodesWithLocalStorageSet := cmd.Flags().Changed("skip-nodes-with-local-storage")
+			if interactive.Enabled() && !isSkipNodesWithLocalStorageSet {
+				skipNodesWithLocalStorage, err = interactive.GetBool(interactive.Input{
+					Question: "Skip nodes with local storage",
+					Help:     cmd.Flags().Lookup("skip-nodes-with-local-storage").Usage,
+					Default:  true,
+					Required: false,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for skip-nodes-with-local-storage: %s", err)
+					os.Exit(1)
+				}
+			}
 
-	skipNodesWithLocalStorage := args.skipNodesWithLocalStorage
-	isSkipNodesWithLocalStorageSet := cmd.Flags().Changed("skip-nodes-with-local-storage")
-	if interactive.Enabled() && !isSkipNodesWithLocalStorageSet && !skipNodesWithLocalStorage {
-		skipNodesWithLocalStorage, err = interactive.GetBool(interactive.Input{
-			Question: "Skip nodes with local storage",
-			Help:     cmd.Flags().Lookup("skip-nodes-with-local-storage").Usage,
-			Default:  true,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for skipNodesWithLocalStorage: %s", err)
-			os.Exit(1)
-		}
-	}
+			isLogVerbositySet := cmd.Flags().Changed("log-verbosity")
+			if interactive.Enabled() && !isLogVerbositySet {
+				logVerbosity, err = interactive.GetInt(interactive.Input{
+					Question: "Log verbosity",
+					Help:     cmd.Flags().Lookup("log-verbosity").Usage,
+					Default:  logVerbosity,
+					Required: false,
+					Validators: []interactive.Validator{
+						intValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid int value for logVerbosity: %s", err)
+					os.Exit(1)
+				}
+			}
+			err = intValidator(logVerbosity)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 
-	logVerbosity := args.logVerbosity
-	isLogVerbositySet := cmd.Flags().Changed("log-verbosity")
-	if interactive.Enabled() && !isLogVerbositySet {
-		logVerbosity, err = interactive.GetInt(interactive.Input{
-			Question: "Log verbosity",
-			Help:     cmd.Flags().Lookup("log-verbosity").Usage,
-			Default:  logVerbosity,
-			Required: false,
-			Validators: []interactive.Validator{
-				intValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid int value for logVerbosity: %s", err)
-			os.Exit(1)
-		}
-	}
-	err = intValidator(logVerbosity)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+			isBalancingIgnoredLabelsSet := cmd.Flags().Changed("balancing-ignored-labels")
+			if interactive.Enabled() && !isBalancingIgnoredLabelsSet {
+				balancingIgnoredLabelsInput, err := interactive.GetString(interactive.Input{
+					Question: "Labels that cluster autoscaler should ignore when considering node group similarity.",
+					Help:     cmd.Flags().Lookup("balancing-ignored-labels").Usage,
+					Default:  strings.Join(args.balancingIgnoredLabels, ","),
+					Required: false,
+					Validators: []interactive.Validator{
+						ocm.ValidateBalancingIgnoredLabels,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid set of labels for balancing-ignored-labels: %s", err)
+					os.Exit(1)
+				}
 
-	maxNodeProvisionTime := args.maxNodeProvisionTime
-	isMaxNodeProvisionTimeSet := cmd.Flags().Changed("max-node-provision-time")
-	if interactive.Enabled() && !isMaxNodeProvisionTimeSet {
-		maxNodeProvisionTime, err = interactive.GetString(interactive.Input{ // could opt to use getString like other duration variable
-			Question: "Max Node Provision Time",
-			Help:     cmd.Flags().Lookup("max-node-provision-time").Usage,
-			Required: false,
-			Default:  maxNodeProvisionTime,
-			Validators: []interactive.Validator{
-				timeStringValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for maxNodeProvisionTime: %s", err)
-			os.Exit(1)
-		}
-	}
-	err = timeStringValidator(maxNodeProvisionTime)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+				balancingIgnoredLabels = strings.Split(balancingIgnoredLabelsInput, ",")
+			}
 
-	maxPodGracePeriod := args.maxPodGracePeriod
-	isMaxPodGracePeriodSet := cmd.Flags().Changed("max-pod-grace-period")
-	if interactive.Enabled() && maxPodGracePeriod == 0 && !isMaxPodGracePeriodSet {
-		maxPodGracePeriod, err = interactive.GetInt(interactive.Input{
-			Question: "Max Node Provision Time",
-			Help:     cmd.Flags().Lookup("max-node-provision-time").Usage,
-			Required: false,
-			Default:  maxNodeProvisionTime,
-		})
-	}
+			isIgnoreDaemonsetsUtilizationSet := cmd.Flags().Changed("ignore-daemonsets-utilization")
+			if interactive.Enabled() && !isIgnoreDaemonsetsUtilizationSet && !ignoreDaemonsetsUtilization {
+				ignoreDaemonsetsUtilization, err = interactive.GetBool(interactive.Input{
+					Question: "Ignore Daemonsets Utilization",
+					Help:     cmd.Flags().Lookup("ignore-daemonsets-utilization").Usage,
+					Default:  false,
+					Required: false,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid boolean value for ignoreDaemonsetsUtilization: %s", err)
+					os.Exit(1)
+				}
+			}
 
-	podPriorityThreshold := args.podPriorityThreshold
-	isPodPriorityThreasholdSet := cmd.Flags().Changed("pod-priority-threshold")
-	if interactive.Enabled() && podPriorityThreshold == 0 && !isPodPriorityThreasholdSet {
-		podPriorityThreshold, err = interactive.GetInt(interactive.Input{
-			Question: "Pod Priotiry Threshold",
-			Help:     cmd.Flags().Lookup("pod-priority-threshold").Usage,
-			Required: false,
-			Default:  podPriorityThreshold,
-		})
-	}
+			isMaxNodeProvisionTimeSet := cmd.Flags().Changed("max-node-provision-time")
+			if interactive.Enabled() && !isMaxNodeProvisionTimeSet {
+				maxNodeProvisionTime, err = interactive.GetString(interactive.Input{ // could opt to use getString like other duration variable
+					Question: "Max Node Provision Time",
+					Help:     cmd.Flags().Lookup("max-node-provision-time").Usage,
+					Required: false,
+					Default:  maxNodeProvisionTime,
+					Validators: []interactive.Validator{
+						timeStringValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for maxNodeProvisionTime: %s", err)
+					os.Exit(1)
+				}
+			}
+			err = timeStringValidator(maxNodeProvisionTime)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 
-	maxNodesTotal := args.resourceLimits.MaxNodesTotal
-	isMaxNodesTotalSet := cmd.Flags().Changed("max-nodes-total")
-	if interactive.Enabled() && !isMaxNodesTotalSet {
-		maxNodesTotal, err = interactive.GetInt(interactive.Input{
-			Question: "Maximum number of nodes to deploy (includes all types).",
-			Help:     cmd.Flags().Lookup("max-nodes-total").Usage,
-			Default:  maxNodesTotal,
-			Validators: []interactive.Validator{
-				nonZeroIntValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid int32, non-zero value for maxNodesTotal: %s", err)
-			os.Exit(1)
-		}
-	}
-	err = nonZeroIntValidator(maxNodesTotal)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+			isMaxPodGracePeriodSet := cmd.Flags().Changed("max-pod-grace-period")
+			if interactive.Enabled() && maxPodGracePeriod == 0 && !isMaxPodGracePeriodSet {
+				maxPodGracePeriod, err = interactive.GetInt(interactive.Input{
+					Question: "Maximum pod grace period",
+					Help:     cmd.Flags().Lookup("max-pod-grace-period").Usage,
+					Required: false,
+					Default:  maxPodGracePeriod,
+				})
+				if err != nil {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
+			}
 
-	minCores := args.resourceLimits.Cores.Min
-	isMinCoresSet := cmd.Flags().Changed("min-cores")
-	if interactive.Enabled() && !isMinCoresSet {
-		minCores, err = interactive.GetInt(interactive.Input{
-			Question: "Minimum number of cores to deploy in cluster.",
-			Help:     cmd.Flags().Lookup("min-cores").Usage,
-			Default:  minCores,
-			Validators: []interactive.Validator{
-				intValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid int32 value for minCores: %s", err)
-			os.Exit(1)
-		}
-	}
-	err = intValidator(minCores)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+			isPodPriorityThresholdSet := cmd.Flags().Changed("pod-priority-threshold")
+			if interactive.Enabled() && podPriorityThreshold == 0 && !isPodPriorityThresholdSet {
+				podPriorityThreshold, err = interactive.GetInt(interactive.Input{
+					Question: "Pod priority threshold",
+					Help:     cmd.Flags().Lookup("pod-priority-threshold").Usage,
+					Required: false,
+					Default:  podPriorityThreshold,
+				})
+				if err != nil {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
+			}
 
-	maxCores := args.resourceLimits.Cores.Max
-	isMaxCoresSet := cmd.Flags().Changed("max-cores")
-	if interactive.Enabled() && !isMaxCoresSet {
-		maxCores, err = interactive.GetInt(interactive.Input{
-			Question: "Maximum number of cores to deploy in cluster.",
-			Help:     cmd.Flags().Lookup("max-cores").Usage,
-			Default:  maxCores,
-			Validators: []interactive.Validator{
-				nonZeroIntValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid, non-zero int32 value for maxCores: %s", err)
-			os.Exit(1)
-		}
-	}
-	err = nonZeroIntValidator(maxCores)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+			isMaxNodesTotalSet := cmd.Flags().Changed("max-nodes-total")
+			if interactive.Enabled() && !isMaxNodesTotalSet {
+				maxNodesTotal, err = interactive.GetInt(interactive.Input{
+					Question: "Maximum amount of nodes in the cluster",
+					Help:     cmd.Flags().Lookup("max-nodes-total").Usage,
+					Required: false,
+					Default:  maxNodesTotal,
+					Validators: []interactive.Validator{
+						nonNegativeIntValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for max-nodes-total: %s", err)
+					os.Exit(1)
+				}
+			}
+			err = nonNegativeIntValidator(maxNodesTotal)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 
-	minMemory := args.resourceLimits.Memory.Min
-	isMinMemeorySet := cmd.Flags().Changed("min-memory")
-	if interactive.Enabled() && !isMinMemeorySet {
-		minMemory, err = interactive.GetInt(interactive.Input{
-			Question: "Minimum amount of memory, in GiB, in the cluster.",
-			Help:     cmd.Flags().Lookup("min-memory").Usage,
-			Default:  maxCores,
-			Validators: []interactive.Validator{
-				intValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid int32 value for minMemory: %s", err)
-		}
-	}
-	err = intValidator(minMemory)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+			isMinCoresSet := cmd.Flags().Changed("min-cores")
+			if interactive.Enabled() && !isMinCoresSet {
+				minCores, err = interactive.GetInt(interactive.Input{
+					Question: "Minimum number of cores to deploy in cluster.",
+					Help:     cmd.Flags().Lookup("min-cores").Usage,
+					Required: false,
+					Default:  minCores,
+					Validators: []interactive.Validator{
+						nonNegativeIntValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for min-cores: %s", err)
+					os.Exit(1)
+				}
+			}
+			err = nonNegativeIntValidator(minCores)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 
-	maxMemory := args.resourceLimits.Memory.Max
-	isMaxMemeorySet := cmd.Flags().Changed("max-memory")
-	if interactive.Enabled() && !isMaxMemeorySet {
-		minMemory, err = interactive.GetInt(interactive.Input{
-			Question: "Maximum amount of memory, in GiB, in the cluster",
-			Help:     cmd.Flags().Lookup("max-memory").Usage,
-			Default:  maxMemory,
-			Validators: []interactive.Validator{
-				nonZeroIntValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid, non-zero int32 value for maxCores: %s", err)
-			os.Exit(1)
-		}
-	}
-	err = nonZeroIntValidator(maxMemory)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+			isMaxCoresSet := cmd.Flags().Changed("max-cores")
+			if interactive.Enabled() && !isMaxCoresSet {
+				maxCores, err = interactive.GetInt(interactive.Input{
+					Question: "Maximum number of cores to deploy in cluster.",
+					Help:     cmd.Flags().Lookup("max-cores").Usage,
+					Required: false,
+					Default:  maxCores,
+					Validators: []interactive.Validator{
+						nonNegativeIntValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for maxCores: %s", err)
+					os.Exit(1)
+				}
+			}
+			err = nonNegativeIntValidator(maxCores)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 
-	gpuType := args.resourceLimits.GPUS.Type
-	isGPUTypeSet := cmd.Flags().Changed("gpu-type")
-	if interactive.Enabled() && !isGPUTypeSet {
-		gpuType, err = interactive.GetOption(interactive.Input{
-			Question: "Skip nodes with local storage",
-			Help:     cmd.Flags().Lookup("skip-nodes-with-local-storage").Usage,
-			Default:  "nvidia.com/gpu",
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid option for gpuType: %s", err)
-			os.Exit(1)
-		}
-	}
+			isMinMemorySet := cmd.Flags().Changed("min-memory")
+			if interactive.Enabled() && !isMinMemorySet {
+				minMemory, err = interactive.GetInt(interactive.Input{
+					Question: "Minimum amount of memory, in GiB, in the cluster.",
+					Help:     cmd.Flags().Lookup("min-memory").Usage,
+					Required: false,
+					Default:  maxCores,
+					Validators: []interactive.Validator{
+						intValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid int32 value for minMemory: %s", err)
+				}
+			}
+			err = intValidator(minMemory)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 
-	minGPU := args.resourceLimits.GPUS.Min
-	isMinGPUSet := cmd.Flags().Changed("min-gpu")
-	if interactive.Enabled() && !isMinGPUSet {
-		minGPU, err = interactive.GetInt(interactive.Input{
-			Question: "Minimum amount of GPUS in the cluster.",
-			Help:     cmd.Flags().Lookup("min-gpu").Usage,
-			Default:  minGPU,
-			Validators: []interactive.Validator{
-				intValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid int value for minGPU: %s", err)
-		}
-	}
-	err = intValidator(minGPU)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
+			isMaxMemorySet := cmd.Flags().Changed("max-memory")
+			if interactive.Enabled() && !isMaxMemorySet {
+				minMemory, err = interactive.GetInt(interactive.Input{
+					Question: "Maximum amount of memory, in GiB, in the cluster",
+					Help:     cmd.Flags().Lookup("max-memory").Usage,
+					Required: false,
+					Default:  maxMemory,
+					Validators: []interactive.Validator{
+						nonNegativeIntValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid, non-zero int32 value for maxCores: %s", err)
+					os.Exit(1)
+				}
+			}
+			err = nonNegativeIntValidator(maxMemory)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 
-	maxGPU := args.resourceLimits.Memory.Max
-	isMaxGPUSet := cmd.Flags().Changed("max-gpu")
-	if interactive.Enabled() && !isMaxGPUSet {
-		minMemory, err = interactive.GetInt(interactive.Input{
-			Question: "Maximum amount of GPUs in the cluster",
-			Help:     cmd.Flags().Lookup("max-gpu").Usage,
-			Default:  maxGPU,
-			Validators: []interactive.Validator{
-				nonZeroIntValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid, non-zero int value for maxGPU: %s", err)
-			os.Exit(1)
-		}
-	}
-	err = nonZeroIntValidator(maxGPU)
+			// scale-down configs
 
-	// scaledown configs
+			isScaleDownEnabledSet := cmd.Flags().Changed("scale-down-enabled")
+			if interactive.Enabled() && !scaleDownEnabled && !isScaleDownEnabledSet {
+				scaleDownEnabled, err = interactive.GetBool(interactive.Input{
+					Question: "Maximum amount of GPUs in the cluster",
+					Help:     cmd.Flags().Lookup("scale-down-enabled").Usage,
+					Default:  scaleDownEnabled,
+					Required: false,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-enabled: %s", err)
+					os.Exit(1)
+				}
+			}
 
-	scaleDownEnabled := args.scaleDown.Enabled
-	isScaleDownEnabledSet := cmd.Flags().Changed("scale-down-enabled")
-	if interactive.Enabled() && !scaleDownEnabled && !isScaleDownEnabledSet {
-		scaleDownEnabled, err = interactive.GetBool(interactive.Input{
-			Question: "Maximum amount of GPUs in the cluster",
-			Help:     cmd.Flags().Lookup("scale-down-enabled").Usage,
-			Default:  scaleDownEnabled,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid boolean value for skipNodesWithLocalStorage: %s", err)
-			os.Exit(1)
-		}
-	}
+			isScaleDownUnneededTimeSet := cmd.Flags().Changed("scale-down-unneeded-time")
+			if interactive.Enabled() && !isScaleDownUnneededTimeSet && scaleDownUnneededTime == "" {
+				scaleDownUnneededTime, err = interactive.GetString(interactive.Input{
+					Question: "How long a node should be unneeded before it is eligible for scale down.",
+					Help:     cmd.Flags().Lookup("scale-down-unneeded-time").Usage,
+					Default:  scaleDownUnneededTime,
+					Required: false,
+					Validators: []interactive.Validator{
+						timeStringValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-unneeded-time: %s", err)
+					os.Exit(1)
+				}
 
-	scaleDownUnneededTime := args.scaleDown.UnneededTime
-	isScaleDownUnneededTime := cmd.Flags().Changed("scale-down-unneeded-time")
-	if interactive.Enabled() && !isScaleDownUnneededTime && scaleDownUnneededTime == "" {
-		scaleDownUnneededTime, err = interactive.GetString(interactive.Input{
-			Question: "How long a node should be unneeded before it is eligible for scale down.",
-			Help:     cmd.Flags().Lookup("scale-down-unneeded-time").Usage,
-			Default:  scaleDownUnneededTime,
-			Required: false,
-			Validators: []interactive.Validator{
-				timeStringValidator,
-			},
-		})
-		err = timeStringValidator(scaleDownUnneededTime)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for scaleDownUnneededTime: %s", err)
-			os.Exit(1)
-		}
-	}
+				if err := timeStringValidator(scaleDownUnneededTime); err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-unneeded-time: %s", err)
+					os.Exit(1)
+				}
+			}
 
-	scaleDownUtilizationThreshold := args.scaleDown.UtilizationThreshold
-	isScaleDownUtilizationThresholdSet := cmd.Flags().Changed("scale-down-utilization-threshold")
-	if interactive.Enabled() && !isScaleDownUtilizationThresholdSet && scaleDownUtilizationThreshold == 0 {
-		scaleDownUtilizationThreshold, err = interactive.GetFloat(interactive.Input{
-			Question: "Node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down.",
-			Help:     cmd.Flags().Lookup("scale-down-delay-after-add").Usage,
-			Default:  scaleDownUtilizationThreshold,
-			Required: false,
-			Validators: []interactive.Validator{
-				zeroToOneFloatValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn: %s", err)
-			os.Exit(1)
-		}
-	}
+			isScaleDownUtilizationThresholdSet := cmd.Flags().Changed("scale-down-utilization-threshold")
+			if interactive.Enabled() && !isScaleDownUtilizationThresholdSet && scaleDownUtilizationThreshold == 0 {
+				scaleDownUtilizationThreshold, err = interactive.GetFloat(interactive.Input{
+					Question: "Node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down.",
+					Help:     cmd.Flags().Lookup("scale-down-delay-after-add").Usage,
+					Default:  scaleDownUtilizationThreshold,
+					Required: false,
+					Validators: []interactive.Validator{
+						zeroToOneFloatValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-utilization-threshold: %s", err)
+					os.Exit(1)
+				}
+			}
 
-	scaleDownDelayAfterAdd := args.scaleDown.DelayAfterAdd
-	isScaleDownDelayAfterAddSet := cmd.Flags().Changed("scale-down-delay-after-add")
-	if interactive.Enabled() && !isScaleDownDelayAfterAddSet && scaleDownDelayAfterAdd == "" {
-		scaleDownDelayAfterAdd, err = interactive.GetString(interactive.Input{
-			Question: "How long after scale up should scale down evaluation resume.",
-			Help:     cmd.Flags().Lookup("scale-down-delay-after-add").Usage,
-			Default:  scaleDownDelayAfterAdd,
-			Required: false,
-			Validators: []interactive.Validator{
-				timeStringValidator,
-			},
-		})
-		err = timeStringValidator(scaleDownDelayAfterAdd)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn: %s", err)
-			os.Exit(1)
-		}
-	}
+			isScaleDownDelayAfterAddSet := cmd.Flags().Changed("scale-down-delay-after-add")
+			if interactive.Enabled() && !isScaleDownDelayAfterAddSet && scaleDownDelayAfterAdd == "" {
+				scaleDownDelayAfterAdd, err = interactive.GetString(interactive.Input{
+					Question: "How long after scale up should scale down evaluation resume.",
+					Help:     cmd.Flags().Lookup("scale-down-delay-after-add").Usage,
+					Default:  scaleDownDelayAfterAdd,
+					Required: false,
+					Validators: []interactive.Validator{
+						timeStringValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-delay-after-add: %s", err)
+					os.Exit(1)
+				}
+			}
 
-	scaleDownDelayAfterDelete := args.scaleDown.DelayAfterDelete
-	isScaleDownDelayAfterDeleteSet := cmd.Flags().Changed("scale-down-delay-after-delete")
-	if interactive.Enabled() && !isScaleDownDelayAfterDeleteSet && scaleDownDelayAfterDelete == "" {
-		scaleDownDelayAfterDelete, err = interactive.GetString(interactive.Input{
-			Question: "How long after node deletion should scale down evaluation resume.",
-			Help:     cmd.Flags().Lookup("scale-down-delay-after-delete").Usage,
-			Default:  scaleDownDelayAfterDelete,
-			Required: false,
-			Validators: []interactive.Validator{
-				timeStringValidator,
-			},
-		})
-		err = timeStringValidator(scaleDownDelayAfterDelete)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for scaleDownAfterDelete: %s", err)
-			os.Exit(1)
-		}
-	}
+			if err := timeStringValidator(scaleDownDelayAfterAdd); err != nil {
+				r.Reporter.Errorf("Expected a valid value for scale-down-delay-after-add: %s", err)
+				os.Exit(1)
+			}
 
-	scaleDownDelayAfterFailure := args.scaleDown.DelayAfterFailure
-	isScaleDownDelayAfterFailureSet := cmd.Flags().Changed("scale-down-delay-after-failure")
-	if interactive.Enabled() && !isScaleDownDelayAfterFailureSet && scaleDownDelayAfterFailure == "" {
-		scaleDownDelayAfterFailure, err = interactive.GetString(interactive.Input{
-			Question: "How long after node failure should scale down evaluation resume.",
-			Help:     cmd.Flags().Lookup("scale-down-delay-after-failure").Usage,
-			Default:  scaleDownDelayAfterFailure,
-			Required: false,
-			Validators: []interactive.Validator{
-				timeStringValidator,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for scaleDownAfterFailure: %s", err)
-			os.Exit(1)
+			isScaleDownDelayAfterDeleteSet := cmd.Flags().Changed("scale-down-delay-after-delete")
+			if interactive.Enabled() && !isScaleDownDelayAfterDeleteSet && scaleDownDelayAfterDelete == "" {
+				scaleDownDelayAfterDelete, err = interactive.GetString(interactive.Input{
+					Question: "How long after node deletion should scale down evaluation resume.",
+					Help:     cmd.Flags().Lookup("scale-down-delay-after-delete").Usage,
+					Default:  scaleDownDelayAfterDelete,
+					Required: false,
+					Validators: []interactive.Validator{
+						timeStringValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-delay-after-delete: %s", err)
+					os.Exit(1)
+				}
+
+				if err := timeStringValidator(scaleDownDelayAfterDelete); err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-delay-after-delete: %s", err)
+					os.Exit(1)
+				}
+			}
+
+			isScaleDownDelayAfterFailureSet := cmd.Flags().Changed("scale-down-delay-after-failure")
+			if interactive.Enabled() && !isScaleDownDelayAfterFailureSet && scaleDownDelayAfterFailure == "" {
+				scaleDownDelayAfterFailure, err = interactive.GetString(interactive.Input{
+					Question: "How long after node failure should scale down evaluation resume.",
+					Help:     cmd.Flags().Lookup("scale-down-delay-after-failure").Usage,
+					Default:  scaleDownDelayAfterFailure,
+					Required: false,
+					Validators: []interactive.Validator{
+						timeStringValidator,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-delay-after-failure: %s", err)
+					os.Exit(1)
+				}
+
+				if err := timeStringValidator(scaleDownDelayAfterDelete); err != nil {
+					r.Reporter.Errorf("Expected a valid value for scale-down-delay-after-failure: %s", err)
+					os.Exit(1)
+				}
+			}
 		}
 	}
 
@@ -3212,40 +3173,6 @@ func run(cmd *cobra.Command, _ []string) {
 		ComputeMachineType:    computeMachineType,
 		ComputeNodes:          computeNodes,
 		Autoscaling:           autoscaling,
-		AutoscalerConfig: ocm.AutoscalerConfig{
-			BalanceSimilarNodeGroups:    balanceSimilarNodeGroups,
-			BalancingIgnoredLabels:      balancingIgnoredLabels,
-			IgnoreDaemonsetsUtilization: ignoreDaemonsetsUtilization,
-			SkipNodesWithLocalStorage:   skipNodesWithLocalStorage,
-			LogVerbosity:                logVerbosity,
-			MaxNodeProvisionTime:        maxNodeProvisionTime,
-			MaxPodGracePeriod:           maxPodGracePeriod,
-			PodPriorityThreshold:        podPriorityThreshold,
-			ResourceLimits: ocm.ResourceLimits{
-				MaxNodesTotal: maxNodesTotal,
-				Cores: ocm.ResourceRange{
-					Min: minCores,
-					Max: maxCores,
-				},
-				Memory: ocm.ResourceRange{
-					Min: minMemory,
-					Max: maxMemory,
-				},
-				GPUS: ocm.GPULimit{
-					Type: gpuType,
-					Min:  minGPU,
-					Max:  maxGPU,
-				},
-			},
-			ScaleDown: ocm.ScaleDownConfig{
-				Enabled:              scaleDownEnabled,
-				UnneededTime:         scaleDownUnneededTime,
-				UtilizationThreshold: scaleDownUtilizationThreshold,
-				DelayAfterAdd:        scaleDownDelayAfterAdd,
-				DelayAfterDelete:     scaleDownDelayAfterDelete,
-				DelayAfterFailure:    scaleDownDelayAfterFailure,
-			},
-		},
 		MinReplicas:               minReplicas,
 		MaxReplicas:               maxReplicas,
 		ComputeLabels:             labelMap,
@@ -3309,6 +3236,37 @@ func run(cmd *cobra.Command, _ []string) {
 	if isClusterAdmin {
 		clusterConfig.ClusterAdminUser = clusterAdminUser
 		clusterConfig.ClusterAdminPassword = clusterAdminPassword
+	}
+	if isClusterAutoscalerSet {
+		clusterConfig.AutoscalerConfig = &ocm.AutoscalerConfig{
+			BalanceSimilarNodeGroups:    balanceSimilarNodeGroups,
+			SkipNodesWithLocalStorage:   skipNodesWithLocalStorage,
+			LogVerbosity:                logVerbosity,
+			MaxPodGracePeriod:           maxPodGracePeriod,
+			BalancingIgnoredLabels:      balancingIgnoredLabels,
+			IgnoreDaemonsetsUtilization: ignoreDaemonsetsUtilization,
+			MaxNodeProvisionTime:        maxNodeProvisionTime,
+			PodPriorityThreshold:        podPriorityThreshold,
+			ResourceLimits: ocm.ResourceLimits{
+				MaxNodesTotal: maxNodesTotal,
+				Cores: ocm.ResourceRange{
+					Min: minCores,
+					Max: maxCores,
+				},
+				Memory: ocm.ResourceRange{
+					Min: minMemory,
+					Max: maxMemory,
+				},
+			},
+			ScaleDown: ocm.ScaleDownConfig{
+				Enabled:              scaleDownEnabled,
+				UnneededTime:         scaleDownUnneededTime,
+				UtilizationThreshold: scaleDownUtilizationThreshold,
+				DelayAfterAdd:        scaleDownDelayAfterAdd,
+				DelayAfterDelete:     scaleDownDelayAfterDelete,
+				DelayAfterFailure:    scaleDownDelayAfterFailure,
+			},
+		}
 	}
 
 	props := args.properties
@@ -3501,18 +3459,22 @@ func timeStringValidator(val interface{}) error {
 
 }
 
-func nonZeroIntValidator(val interface{}) error {
-	if !(val.(int) > 0) {
-		return fmt.Errorf("Max Nodes must be an integer greater than 0 if set.")
+func nonNegativeIntValidator(val interface{}) error {
+	number, err := strconv.Atoi(fmt.Sprintf("%v", val))
+	if err != nil {
+		return fmt.Errorf("Failed parsing '%v' to an integer number.", val)
 	}
+
+	if number < 0 {
+		return fmt.Errorf("Number must be greater or equal to zero.")
+	}
+
 	return nil
 }
 
 func intValidator(val interface{}) error {
-	if !(val.(int) >= 0) {
-		return fmt.Errorf("Log verbosity must be a non-negative integer.")
-	}
-	return nil
+	_, err := strconv.Atoi(fmt.Sprintf("%v", val))
+	return err
 }
 
 func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int) interactive.Validator {
@@ -3574,10 +3536,9 @@ func getAccountRolePrefix(hostedCPPolicies bool, roleARN string, roleType string
 	return rolePrefix, nil
 }
 
-func evaluateDuration(duration time.Duration) (expirationTime time.Time) {
+func evaluateDuration(duration time.Duration) time.Time {
 	// round up to the nearest second
-	expirationTime = time.Now().Add(duration).Round(time.Second)
-	return
+	return time.Now().Add(duration).Round(time.Second)
 }
 
 func validateExpiration() (expiration time.Time, err error) {

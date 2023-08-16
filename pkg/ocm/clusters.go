@@ -55,13 +55,13 @@ func NewDefaultIngressSpec() DefaultIngressSpec {
 
 type AutoscalerConfig struct {
 	BalanceSimilarNodeGroups    bool
-	BalancingIgnoredLabels      map[string]string
-	IgnoreDaemonsetsUtilization bool
 	SkipNodesWithLocalStorage   bool
 	LogVerbosity                int
-	MaxNodeProvisionTime        string
 	MaxPodGracePeriod           int
 	PodPriorityThreshold        int
+	IgnoreDaemonsetsUtilization bool
+	MaxNodeProvisionTime        string
+	BalancingIgnoredLabels      []string
 	ResourceLimits              ResourceLimits
 	ScaleDown                   ScaleDownConfig
 }
@@ -70,18 +70,11 @@ type ResourceLimits struct {
 	MaxNodesTotal int
 	Cores         ResourceRange
 	Memory        ResourceRange
-	GPUS          GPULimit
 }
 
 type ResourceRange struct {
 	Min int
 	Max int
-}
-
-type GPULimit struct {
-	Type string
-	Min  int
-	Max  int
 }
 
 type ScaleDownConfig struct {
@@ -114,7 +107,7 @@ type Spec struct {
 	ComputeMachineType string
 	ComputeNodes       int
 	Autoscaling        bool
-	AutoscalerConfig   AutoscalerConfig
+	AutoscalerConfig   *AutoscalerConfig
 	MinReplicas        int
 	MaxReplicas        int
 	ComputeLabels      map[string]string
@@ -1037,6 +1030,8 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		}
 		clusterBuilder.Ingresses(cmv1.NewIngressList().Items(defaultIngress))
 	}
+
+	// TODO: add autoscaler configuration to clusterBuilder using the spec
 
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {

@@ -69,6 +69,8 @@ const (
 // safe and that it there is no risk of SQL injection:
 var clusterKeyRE = regexp.MustCompile(`^(\w|-)+$`)
 
+var kubernetesLabelRE = regexp.MustCompile(`^[a-z0-9A-Z]+[-_.a-z0-9A-Z]*$`)
+
 // Cluster names must be valid DNS-1035 labels, so they must consist of lower case alphanumeric
 // characters or '-', start with an alphabetic character, and end with an alphanumeric character
 var clusterNameRE = regexp.MustCompile(`^[a-z]([-a-z0-9]{0,13}[a-z0-9])?$`)
@@ -974,4 +976,32 @@ func ParseDiskSizeToGigibyte(size string) (int, error) {
 	// Return gibibytes since the AWS expects that format
 	// qty.Value() returns the value in bytes
 	return int(qty.Value() / 1024 / 1024 / 1024), nil
+}
+
+func ValidateBalancingIgnoredLabels(val interface{}) error {
+	labelsInput, ok := val.(string)
+
+	if !ok {
+		return fmt.Errorf("can only validate strings, got %v", val)
+	}
+
+	labels := strings.Split(labelsInput, ",")
+
+	for _, label := range labels {
+		if label == "" {
+			continue
+		}
+
+		if len(label) > 63 {
+			return fmt.Errorf("label key '%v' has has exceeded allowed label length of 63 characters", label)
+		}
+
+		if !kubernetesLabelRE.MatchString(label) {
+			return fmt.Errorf("label '%v' is not a valid Kubernetes label key. "+
+				"It must start with an alphanumeric character and may additionally contain only dashes, underscores and dots",
+				label)
+		}
+	}
+
+	return nil
 }
