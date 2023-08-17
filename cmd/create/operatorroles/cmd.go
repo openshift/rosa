@@ -44,6 +44,7 @@ var args struct {
 	forcePolicyCreation bool
 	oidcConfigId        string
 	sharedVpcRoleArn    string
+	channelGroup        string
 }
 
 var Cmd = &cobra.Command{
@@ -115,6 +116,14 @@ func init() {
 		"AWS IAM role ARN with a policy attached, granting permissions necessary to create and manage Route 53 DNS records "+
 			"in private Route 53 hosted zone associated with intended shared VPC.",
 	)
+
+	flags.StringVar(
+		&args.channelGroup,
+		"channel-group",
+		ocm.DefaultChannelGroup,
+		"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"fast\".",
+	)
+	flags.MarkHidden("channel-group")
 
 	aws.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
@@ -229,12 +238,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
-	if err != nil {
-		r.Reporter.Errorf("Error getting latest version: %s", err)
-		os.Exit(1)
-	}
-
 	if args.prefix != "" {
 		if args.oidcConfigId == "" {
 			r.Reporter.Errorf("%s is mandatory for %s param flow.", OidcConfigIdFlag, PrefixFlag)
@@ -245,8 +248,19 @@ func run(cmd *cobra.Command, argv []string) error {
 			r.Reporter.Errorf("%s is mandatory for %s param flow.", InstallerRoleArnFlag, PrefixFlag)
 			os.Exit(1)
 		}
+		channelGroup := args.channelGroup
+		latestPolicyVersion, err := r.OCMClient.GetLatestVersion(channelGroup)
+		if err != nil {
+			r.Reporter.Errorf("Error getting latest version: %s", err)
+			os.Exit(1)
+		}
 		return handleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
 			mode, policies, latestPolicyVersion)
+	}
+	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
+	if err != nil {
+		r.Reporter.Errorf("Error getting latest version: %s", err)
+		os.Exit(1)
 	}
 	return handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
 		mode, policies, latestPolicyVersion)

@@ -741,14 +741,18 @@ func (c *Client) CheckUpgradeClusterVersion(
 }
 
 func (c *Client) GetPolicyVersion(userRequestedVersion string, channelGroup string) (string, error) {
+	if userRequestedVersion == "" {
+		version, err := c.GetLatestVersion(channelGroup)
+		if err != nil {
+			return userRequestedVersion, err
+		}
+		return version, nil
+	}
+
 	versionList, err := c.GetVersionsList(channelGroup, false)
 	if err != nil {
 		err := fmt.Errorf("%v", err)
 		return userRequestedVersion, err
-	}
-
-	if userRequestedVersion == "" {
-		return versionList[0], nil
 	}
 
 	hasVersion := false
