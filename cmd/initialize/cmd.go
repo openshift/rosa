@@ -283,9 +283,10 @@ func simulateCluster(ocmClient *ocm.Client, region string) error {
 		region = aws.DefaultRegion
 	}
 	spec := ocm.Spec{
-		Name:   "rosa-init",
-		Region: region,
-		DryRun: &dryRun,
+		Name:           "rosa-init",
+		Region:         region,
+		DryRun:         &dryRun,
+		DefaultIngress: ocm.NewDefaultIngressSpec(),
 	}
 
 	_, err := ocmClient.CreateCluster(spec)
