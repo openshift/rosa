@@ -3882,7 +3882,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		}
 	}
 
-	if !reflect.DeepEqual(spec.DefaultIngress, ocm.DefaultIngressSpec{}) {
+	if !reflect.DeepEqual(spec.DefaultIngress, ocm.NewDefaultIngressSpec()) {
 		if len(spec.DefaultIngress.RouteSelectors) != 0 {
 			selectors := []string{}
 			for k, v := range spec.DefaultIngress.RouteSelectors {
