@@ -14,13 +14,8 @@ import (
 var machinePoolKeyRE = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])?$`)
 
 func deleteMachinePool(r *rosa.Runtime, machinePoolID string, clusterKey string, cluster *cmv1.Cluster) {
-	if machinePoolID != "Default" && !machinePoolKeyRE.MatchString(machinePoolID) {
+	if !machinePoolKeyRE.MatchString(machinePoolID) {
 		r.Reporter.Errorf("Expected a valid identifier for the machine pool")
-		os.Exit(1)
-	}
-
-	if machinePoolID == "Default" {
-		r.Reporter.Errorf("Machine pool '%s' cannot be deleted from cluster '%s'", machinePoolID, clusterKey)
 		os.Exit(1)
 	}
 
