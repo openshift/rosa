@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"time"
 
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -70,6 +71,27 @@ type ResourceLimits struct {
 	MaxNodesTotal int
 	Cores         ResourceRange
 	Memory        ResourceRange
+	GPULimits     []GPULimit
+}
+
+func StringifyGPULimits(gpuLimits []GPULimit) string {
+	gpuLimitsString := "["
+	for _, value := range gpuLimits {
+		gpuLimitString := "["
+		gpuLimitString += value.Type
+		gpuLimitString += strconv.Itoa(value.Min)
+		gpuLimitString += strconv.Itoa(value.Max)
+		gpuLimitString += "]"
+	}
+	gpuLimitsString += "]"
+
+	return gpuLimitsString
+}
+
+type GPULimit struct {
+	Type string
+	Min  int
+	Max  int
 }
 
 type ResourceRange struct {
