@@ -703,21 +703,24 @@ The password must
 		&args.privateHostedZoneID,
 		"private-hosted-zone-id",
 		"",
-		`ID of shared private hosted zone`,
+		"ID assigned by AWS to private Route 53 hosted zone associated with intended shared VPC, "+
+			"e.g., 'Z05646003S02O1ENCDCSN'.",
 	)
 
 	flags.StringVar(
 		&args.sharedVPCRoleARN,
 		"shared-vpc-role-arn",
 		"",
-		`Role ARN for permissions in the shared private hosted zone`,
+		"AWS IAM role ARN with a policy attached, granting permissions necessary to create and manage Route 53 DNS records "+
+			"in private Route 53 hosted zone associated with intended shared VPC.",
 	)
 
 	flags.StringVar(
 		&args.baseDomain,
 		"base-domain",
 		"",
-		`Base domain name for the shared private hosted zone`,
+		"Base DNS domain name previously reserved and matching the hosted zone name of the private Route 53 hosted zone "+
+			"associated with intended shared VPC, e.g., '1vo8.p1.openshiftapps.com'.",
 	)
 
 	aws.AddModeFlag(Cmd)
