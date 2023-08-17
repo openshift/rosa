@@ -284,30 +284,22 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Updating Load Balancer Type is not supported for Hosted Control Plane clusters")
 			os.Exit(1)
 		}
-		if ocm.IsSts(cluster) {
-			r.Reporter.Errorf("Updating Load Balancer Type is not supported for STS clusters")
+		lbType = &args.lbType
+	} else if interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster) {
+		if lbType == nil {
+			lbType = &validLbTypes[0]
+		}
+		lbTypeArg, err := interactive.GetOption(interactive.Input{
+			Question: "Type of Load Balancer",
+			Options:  validLbTypes,
+			Required: true,
+			Default:  lbType,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid Load Balancer type: %s", err)
 			os.Exit(1)
 		}
-		lbType = &args.lbType
-	} else {
-		if interactive.Enabled() {
-			if !ocm.IsSts(cluster) {
-				if lbType == nil {
-					lbType = &validLbTypes[0]
-				}
-				lbTypeArg, err := interactive.GetOption(interactive.Input{
-					Question: "Type of Load Balancer",
-					Options:  validLbTypes,
-					Required: true,
-					Default:  lbType,
-				})
-				if err != nil {
-					r.Reporter.Errorf("Expected a valid Load Balancer type: %s", err)
-					os.Exit(1)
-				}
-				lbType = &lbTypeArg
-			}
-		}
+		lbType = &lbTypeArg
 	}
 
 	var wildcardPolicy *string
