@@ -147,6 +147,23 @@ func RemoveStrFromSlice(s []string, str string) []string {
 	return s
 }
 
+func FindAllSubstringIndexes(input, substring string) []int {
+	var indexes []int
+	start := 0
+
+	for {
+		index := strings.Index(input[start:], substring)
+		if index == -1 {
+			break // Substring not found
+		}
+		actualIndex := start + index
+		indexes = append(indexes, actualIndex)
+		start = actualIndex + len(substring)
+	}
+
+	return indexes
+}
+
 func DisplaySpinnerWithDelay(reporter *reporter.Object, infoMessage string, delay time.Duration) {
 	if reporter.IsTerminal() {
 		spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
