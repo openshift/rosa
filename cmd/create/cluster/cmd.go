@@ -443,7 +443,8 @@ func init() {
 		&args.ec2MetadataHttpTokens,
 		"ec2-metadata-http-tokens",
 		"",
-		"Configure the use of IMDSv2 for ec2 instances, 'optional' or 'required'.",
+		"Should cluster nodes use both v1 and v2 endpoints or just v2 endpoint "+
+			"of EC2 Instance Metadata Service (IMDS)",
 	)
 
 	flags.StringSliceVar(
