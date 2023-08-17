@@ -15,19 +15,19 @@ Refer to the official ROSA documentation: https://access.redhat.com/products/red
 
 If you'd like to build this project from source use the following steps:
 
-1. Checkout the repostiory into your `$GOPATH`
+1. Clone the repository
 
 ```
-go get -u github.com/openshift/rosa
+git clone https://github.com/openshift/rosa.git
 ```
 
 2. `cd` to the checkout out source directory
 
 ```
-cd $GOPATH/src/github.com/openshift/rosa
+cd rosa
 ```
 
-3. Install the binary (This will install to `$GOPATH/bin`)
+3. Install the binary
 
 ```
 make install
