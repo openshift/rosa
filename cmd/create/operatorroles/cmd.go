@@ -112,7 +112,8 @@ func init() {
 		&args.sharedVpcRoleArn,
 		"shared-vpc-role-arn",
 		"",
-		"The ARN of the role in the shared VPC account, the role is used to modify the private hosted zone records",
+		"AWS IAM role ARN with a policy attached, granting permissions necessary to create and manage Route 53 DNS records "+
+			"in private Route 53 hosted zone associated with intended shared VPC.",
 	)
 
 	aws.AddModeFlag(Cmd)
