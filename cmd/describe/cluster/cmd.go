@@ -498,14 +498,7 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 				maxNodes += machinePool.Replicas()
 			}
 		}
-		// Add compute nodes as well
-		if cluster.Nodes().AutoscaleCompute() != nil {
-			minNodes += cluster.Nodes().AutoscaleCompute().MinReplicas()
-			maxNodes += cluster.Nodes().AutoscaleCompute().MaxReplicas()
-		} else {
-			minNodes += cluster.Nodes().Compute()
-			maxNodes += cluster.Nodes().Compute()
-		}
+
 		// Determine whether there is any auto-scaling in the cluster
 		if minNodes == maxNodes {
 			infraConfig = fmt.Sprintf(""+
