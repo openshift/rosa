@@ -72,13 +72,13 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	r.Reporter.Debugf("Deleting cluster '%s'", clusterKey)
-	cluster, err := r.OCMClient.DeleteCluster(clusterKey, r.Creator)
+	cluster := r.FetchCluster()
+
+	err := handleClusterDelete(r, cluster, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	r.Reporter.Infof("Cluster '%s' will start uninstalling now", clusterKey)
 
 	if cluster.AWS().STS().RoleARN() != "" {
 		interactive.Enable()
@@ -108,6 +108,27 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterKey,
 		)
 	}
+}
+
+func handleClusterDelete(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string) error {
+	clusterState, err := r.OCMClient.GetClusterState(cluster.ID())
+	if err != nil {
+		return err
+	}
+
+	if clusterState == cmv1.ClusterStateUninstalling {
+		r.Reporter.Infof("cluster '%s' is already uninstalling", clusterKey)
+		return nil
+	}
+
+	r.Reporter.Debugf("Deleting cluster '%s'", clusterKey)
+	_, err = r.OCMClient.DeleteCluster(clusterKey, r.Creator)
+	if err != nil {
+		return err
+	}
+
+	r.Reporter.Infof("Cluster '%s' will start uninstalling now", clusterKey)
+	return nil
 }
 
 func buildCommands(cluster *cmv1.Cluster) string {
