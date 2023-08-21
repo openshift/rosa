@@ -560,7 +560,7 @@ func init() {
 	flags.BoolVar(
 		&args.autoscalerSkipNodesWithLocalStorage,
 		autoscalerSkipNodesWithLocalStorageFlag,
-		true,
+		false,
 		"If true cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPat.",
 	)
 
@@ -651,7 +651,7 @@ func init() {
 	flags.BoolVar(
 		&args.autoscalerScaleDown.Enabled,
 		autoscalerScaleDownEnabledFlag,
-		true,
+		false,
 		"Should Cluster Autoscaler scale down the Cluster.",
 	)
 
@@ -2388,7 +2388,7 @@ func run(cmd *cobra.Command, _ []string) {
 				autoscalerBalanceSimilarNodeGroups, err = interactive.GetBool(interactive.Input{
 					Question: "Balance similar node groups",
 					Help:     cmd.Flags().Lookup(autoscalerBalanceSimilarNodeGroupsFlag).Usage,
-					Default:  false,
+					Default:  autoscalerBalanceSimilarNodeGroups,
 					Required: false,
 				})
 				if err != nil {
@@ -2401,7 +2401,7 @@ func run(cmd *cobra.Command, _ []string) {
 				autoscalerSkipNodesWithLocalStorage, err = interactive.GetBool(interactive.Input{
 					Question: "Skip nodes with local storage",
 					Help:     cmd.Flags().Lookup(autoscalerSkipNodesWithLocalStorageFlag).Usage,
-					Default:  true,
+					Default:  autoscalerSkipNodesWithLocalStorage,
 					Required: false,
 				})
 				if err != nil {
@@ -2453,7 +2453,7 @@ func run(cmd *cobra.Command, _ []string) {
 				autoscalerIgnoreDaemonsetsUtilization, err = interactive.GetBool(interactive.Input{
 					Question: "Ignore daemonsets utilization",
 					Help:     cmd.Flags().Lookup(autoscalerIgnoreDaemonsetsUtilizationFlag).Usage,
-					Default:  false,
+					Default:  autoscalerIgnoreDaemonsetsUtilization,
 					Required: false,
 				})
 				if err != nil {
