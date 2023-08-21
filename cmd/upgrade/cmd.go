@@ -17,14 +17,14 @@ limitations under the License.
 package upgrade
 
 import (
-	"github.com/spf13/cobra"
-
 	"github.com/openshift/rosa/cmd/upgrade/accountroles"
 	"github.com/openshift/rosa/cmd/upgrade/cluster"
+	"github.com/openshift/rosa/cmd/upgrade/machinepool"
 	"github.com/openshift/rosa/cmd/upgrade/operatorroles"
 	"github.com/openshift/rosa/cmd/upgrade/roles"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/spf13/cobra"
 )
 
 var Cmd = &cobra.Command{
@@ -35,6 +35,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(accountroles.Cmd)
 	Cmd.AddCommand(operatorroles.Cmd)
 	Cmd.AddCommand(roles.Cmd)

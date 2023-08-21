@@ -76,7 +76,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		}
 
 		// Filter the available list of versions for a hosted machine pool
-		filteredVersionList := versions.GetFilteredVersionList(versionList, minVersion, clusterVersion)
+		filteredVersionList := versions.GetFilteredVersionListForCreation(versionList, minVersion, clusterVersion)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)

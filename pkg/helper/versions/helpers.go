@@ -44,7 +44,15 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 	return
 }
 
-func GetFilteredVersionList(versionList []string, minVersion string, maxVersion string) []string {
+func GetFilteredVersionListForCreation(versionList []string, minVersion string, maxVersion string) []string {
+	return getFilteredVersionList(versionList, minVersion, maxVersion, false)
+}
+
+func GetFilteredVersionListForUpdate(versionList []string, minVersion string, maxVersion string) []string {
+	return getFilteredVersionList(versionList, minVersion, maxVersion, true)
+}
+
+func getFilteredVersionList(versionList []string, minVersion string, maxVersion string, excludeCurrent bool) []string {
 	var filteredVersionList []string
 
 	// Parse the versions for comparison
@@ -61,6 +69,10 @@ func GetFilteredVersionList(versionList []string, minVersion string, maxVersion 
 			continue
 		}
 		if ver.GreaterThanOrEqual(min) && ver.LessThanOrEqual(max) {
+			// For upgrades, we don't want to show the current version. For creation, it should be shown
+			if excludeCurrent && ver.Equal(min) {
+				continue
+			}
 			filteredVersionList = append(filteredVersionList, version)
 		}
 	}
