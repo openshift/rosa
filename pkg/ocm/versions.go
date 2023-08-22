@@ -382,7 +382,9 @@ func (c *Client) IsVersionCloseToEol(daysAwayToCheck int, version string, channe
 	}
 	ocmVersion := response.Items().Get(0)
 	now := time.Now().UTC()
-	if ocmVersion.EndOfLifeTimestamp().Compare(now.Add(time.Duration(daysAwayToCheck)*OneDayHourDuration*time.Hour)) <= 0 {
+	if !ocmVersion.EndOfLifeTimestamp().IsZero() &&
+		ocmVersion.EndOfLifeTimestamp().Compare(
+			now.Add(time.Duration(daysAwayToCheck)*OneDayHourDuration*time.Hour)) <= 0 {
 		return fmt.Errorf(
 			"The version of Red Hat OpenShift Service on AWS that you are installing will no longer be supported after '%s'."+
 				" Red Hat recommends selecting a newer version. For more information,"+
