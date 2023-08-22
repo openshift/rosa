@@ -2648,7 +2648,7 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 
-			if interactive.Enabled() && !isScaleDownUtilizationThresholdSet && scaleDownUtilizationThreshold == 0 {
+			if interactive.Enabled() && !isScaleDownUtilizationThresholdSet {
 				scaleDownUtilizationThreshold, err = interactive.GetFloat(interactive.Input{
 					Question: "Node utilization threshold",
 					Help:     cmd.Flags().Lookup(autoscalerScaleDownUtilizationThresholdFlag).Usage,
@@ -2664,7 +2664,7 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 
-			if interactive.Enabled() && !isScaleDownDelayAfterAddSet && scaleDownDelayAfterAdd == "" {
+			if interactive.Enabled() && !isScaleDownDelayAfterAddSet {
 				scaleDownDelayAfterAdd, err = interactive.GetString(interactive.Input{
 					Question: "How long after scale up should scale down evaluation resume",
 					Help:     cmd.Flags().Lookup(autoscalerScaleDownDelayAfterAddFlag).Usage,
@@ -2685,7 +2685,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 
-			if interactive.Enabled() && !isScaleDownDelayAfterDeleteSet && scaleDownDelayAfterDelete == "" {
+			if interactive.Enabled() && !isScaleDownDelayAfterDeleteSet {
 				scaleDownDelayAfterDelete, err = interactive.GetString(interactive.Input{
 					Question: "How long after node deletion should scale down evaluation resume",
 					Help:     cmd.Flags().Lookup(autoscalerScaleDownDelayAfterDeleteFlag).Usage,
@@ -2706,7 +2706,7 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 
-			if interactive.Enabled() && !isScaleDownDelayAfterFailureSet && scaleDownDelayAfterFailure == "" {
+			if interactive.Enabled() && !isScaleDownDelayAfterFailureSet {
 				scaleDownDelayAfterFailure, err = interactive.GetString(interactive.Input{
 					Question: "How long after node deletion failure should scale down evaluation resume.",
 					Help:     cmd.Flags().Lookup(autoscalerScaleDownDelayAfterFailureFlag).Usage,
@@ -3522,9 +3522,12 @@ func zeroToOneFloatValidator(val interface{}) error {
 	if val == "" {
 		return nil
 	}
-	input := val.(float64)
-	if input > 1 || input < 0 {
-		return fmt.Errorf("Expecting a float between the values of 0 and 1.")
+	number, err := strconv.ParseFloat(fmt.Sprintf("%v", val), 64)
+	if err != nil {
+		return fmt.Errorf("Failed parsing '%v' into a floating-point number.", val)
+	}
+	if number > 1 || number < 0 {
+		return fmt.Errorf("Expecting a floating-point number between 0 and 1.")
 	}
 	return nil
 }
