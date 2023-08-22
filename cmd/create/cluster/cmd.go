@@ -561,14 +561,14 @@ func init() {
 		&args.autoscalerSkipNodesWithLocalStorage,
 		autoscalerSkipNodesWithLocalStorageFlag,
 		false,
-		"If true cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPat.",
+		"If true cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPath.",
 	)
 
 	flags.IntVar(
 		&args.autoscalerLogVerbosity,
 		autoscalerLogVerbosityFlag,
 		1,
-		"Autoscaler log level.",
+		"Autoscaler log level. Default is 1, 4 is a good option when trying to debug the autoscaler.",
 	)
 
 	flags.IntVar(
@@ -613,35 +613,35 @@ func init() {
 		&args.autoscalerResourceLimits.MaxNodesTotal,
 		autoscalerMaxNodesTotalFlag,
 		1000,
-		"Maximum amount of nodes in the cluster (not only autoscaled ones).",
+		"Total amount of nodes that can exist in the cluster, including non-scaled nodes.",
 	)
 
 	flags.IntVar(
 		&args.autoscalerResourceLimits.Cores.Min,
 		autoscalerMinCoresFlag,
 		0,
-		"Minimum number of cores to deploy in the cluster.",
+		"Minimum limit for the amount of cores to deploy in the cluster.",
 	)
 
 	flags.IntVar(
 		&args.autoscalerResourceLimits.Cores.Max,
 		autoscalerMaxCoresFlag,
 		100,
-		"Maximum number of cores to deploy in the cluster.",
+		"Maximum limit for the amount of cores to deploy in the cluster.",
 	)
 
 	flags.IntVar(
 		&args.autoscalerResourceLimits.Memory.Min,
 		autoscalerMinMemoryFlag,
 		0,
-		"Minimum amount of memory, in GiB, in the cluster.",
+		"Minimum limit for the amount of memory, in GiB, in the cluster.",
 	)
 
 	flags.IntVar(
 		&args.autoscalerResourceLimits.Memory.Max,
 		autoscalerMaxMemoryFlag,
 		4096,
-		"Maximum amount of memory, in GiB, in the cluster.",
+		"Maximum limit for the amount of memory, in GiB, in the cluster.",
 	)
 
 	// TODO: handle GPU limitations
@@ -652,14 +652,15 @@ func init() {
 		&args.autoscalerScaleDown.Enabled,
 		autoscalerScaleDownEnabledFlag,
 		false,
-		"Should Cluster Autoscaler scale down the Cluster.",
+		"Should cluster-autoscaler be able to scale down the cluster.",
 	)
 
 	flags.StringVar(
 		&args.autoscalerScaleDown.UnneededTime,
 		autoscalerScaleDownUnneededTimeFlag,
 		"",
-		"How long a node should be unneeded before it is eligible for scale down.",
+		"Increasing value will make nodes stay up longer, waiting for pods to be scheduled "+
+			"while decreasing value will make nodes be deleted sooner.",
 	)
 
 	flags.Float64Var(
@@ -674,21 +675,21 @@ func init() {
 		&args.autoscalerScaleDown.DelayAfterAdd,
 		autoscalerScaleDownDelayAfterAddFlag,
 		"",
-		"How long after scale up that scale down evaluation resumes.",
+		"After a scale-up, consider scaling down only after this amount of time.",
 	)
 
 	flags.StringVar(
 		&args.autoscalerScaleDown.DelayAfterDelete,
 		autoscalerScaleDownDelayAfterDeleteFlag,
 		"",
-		"How long after node deletion that scale down evaluation resumes.",
+		"After a scale-down, consider scaling down again only after this amount of time.",
 	)
 
 	flags.StringVar(
 		&args.autoscalerScaleDown.DelayAfterFailure,
 		autoscalerScaleDownDelayAfterFailureFlag,
 		"",
-		"How long after scale down failure that scale down evaluation resumes",
+		"After a failing scale-down, consider scaling down again only after this amount of time.",
 	)
 
 	// End of cluster-wide autoscaling flags
@@ -2649,8 +2650,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 			if interactive.Enabled() && !isScaleDownUtilizationThresholdSet && scaleDownUtilizationThreshold == 0 {
 				scaleDownUtilizationThreshold, err = interactive.GetFloat(interactive.Input{
-					Question: "Node utilization level, defined as sum of requested resources divided by capacity, " +
-						"below which a node can be considered for scale down",
+					Question: "Node utilization threshold",
 					Help:     cmd.Flags().Lookup(autoscalerScaleDownUtilizationThresholdFlag).Usage,
 					Default:  scaleDownUtilizationThreshold,
 					Required: false,
@@ -2708,7 +2708,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 			if interactive.Enabled() && !isScaleDownDelayAfterFailureSet && scaleDownDelayAfterFailure == "" {
 				scaleDownDelayAfterFailure, err = interactive.GetString(interactive.Input{
-					Question: "How long after node failure should scale down evaluation resume.",
+					Question: "How long after node deletion failure should scale down evaluation resume.",
 					Help:     cmd.Flags().Lookup(autoscalerScaleDownDelayAfterFailureFlag).Usage,
 					Default:  scaleDownDelayAfterFailure,
 					Required: false,
