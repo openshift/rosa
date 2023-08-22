@@ -206,6 +206,7 @@ func ComputeNodePoolVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.C
 			Help:     cmd.Flags().Lookup("version").Usage,
 			Options:  filteredVersionList,
 			Default:  version,
+			Required: true,
 		})
 		if err != nil {
 			return "", fmt.Errorf("Expected a valid machine pool version from interactive prompt: %s", err)
