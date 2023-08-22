@@ -2523,8 +2523,7 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 			}
-			err = nonNegativeIntValidator(maxNodesTotal)
-			if err != nil {
+			if err := nonNegativeIntValidator(maxNodesTotal); err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
@@ -2544,8 +2543,7 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 			}
-			err = nonNegativeIntValidator(minCores)
-			if err != nil {
+			if err := nonNegativeIntValidator(minCores); err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
@@ -2558,6 +2556,7 @@ func run(cmd *cobra.Command, _ []string) {
 					Default:  maxCores,
 					Validators: []interactive.Validator{
 						nonNegativeIntValidator,
+						getValidMaxRangeValidator(minCores),
 					},
 				})
 				if err != nil {
@@ -2565,8 +2564,11 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 			}
-			err = nonNegativeIntValidator(maxCores)
-			if err != nil {
+			if err := nonNegativeIntValidator(maxCores); err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			if err := getValidMaxRangeValidator(minCores)(maxCores); err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
@@ -2578,15 +2580,14 @@ func run(cmd *cobra.Command, _ []string) {
 					Required: false,
 					Default:  minMemory,
 					Validators: []interactive.Validator{
-						intValidator,
+						nonNegativeIntValidator,
 					},
 				})
 				if err != nil {
 					r.Reporter.Errorf("Expected a valid value for %s: %s", autoscalerMinMemoryFlag, err)
 				}
 			}
-			err = intValidator(minMemory)
-			if err != nil {
+			if err := nonNegativeIntValidator(minMemory); err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
@@ -2599,6 +2600,7 @@ func run(cmd *cobra.Command, _ []string) {
 					Default:  maxMemory,
 					Validators: []interactive.Validator{
 						nonNegativeIntValidator,
+						getValidMaxRangeValidator(minMemory),
 					},
 				})
 				if err != nil {
@@ -2607,6 +2609,10 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 			if err := nonNegativeIntValidator(maxMemory); err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			if err := getValidMaxRangeValidator(minMemory)(maxMemory); err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
@@ -3567,6 +3573,27 @@ func nonNegativeIntValidator(val interface{}) error {
 	}
 
 	return nil
+}
+
+// getValidMaxRangeValidator returns a validator function that asserts a given
+// number is greater than or equal to a fixed minimal number.
+func getValidMaxRangeValidator(min int) func(interface{}) error {
+	return func(val interface{}) error {
+		if val == "" { // Allowing optional inputs
+			return nil
+		}
+
+		max, err := strconv.Atoi(fmt.Sprintf("%v", val))
+		if err != nil {
+			return fmt.Errorf("Failed parsing '%v' to an integer number.", val)
+		}
+
+		if max < min {
+			return fmt.Errorf("max value must be greater or equal than min value %d.", min)
+		}
+
+		return nil
+	}
 }
 
 func intValidator(val interface{}) error {
