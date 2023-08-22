@@ -115,6 +115,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 				Help:     cmd.Flags().Lookup("version").Usage,
 				Options:  filteredVersionList,
 				Default:  version,
+				Required: true,
 			})
 			if err != nil {
 				r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
