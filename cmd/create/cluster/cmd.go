@@ -935,6 +935,16 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	// validate flags for cluster admin
+	isHostedCP := args.hostedClusterEnabled
+	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
+	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
+	if (clusterAdminUser != "" || clusterAdminPassword != "") &&
+		isHostedCP {
+		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
+		os.Exit(1)
+	}
+
 	// validate flags for shared vpc
 	isSharedVPC := false
 	privateHostedZoneID := strings.Trim(args.privateHostedZoneID, " \t")
@@ -1026,7 +1036,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	isHostedCP := args.hostedClusterEnabled
 	if interactive.Enabled() {
 		isHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Deploy cluster with Hosted Control Plane",
@@ -1059,10 +1068,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	isClusterAdmin := false
-	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
-	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
 	if !isHostedCP {
 		if clusterAdminUser != "" {
+			r.Reporter.Warnf("cluster admin user is %s", clusterAdminUser)
 			err = idp.UsernameValidator(clusterAdminUser)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
@@ -1071,13 +1079,15 @@ func run(cmd *cobra.Command, _ []string) {
 			isClusterAdmin = true
 		}
 		if clusterAdminPassword != "" {
+			r.Reporter.Warnf("cluster admin password is %s", clusterAdminPassword)
 			err = idp.PasswordValidator(clusterAdminPassword)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
+			isClusterAdmin = true
 		}
-		if (clusterAdminUser == "" || clusterAdminPassword == "") && interactive.Enabled() {
+		if (clusterAdminUser == "" || clusterAdminPassword == "") && (interactive.Enabled() || isClusterAdmin) {
 			isClusterAdmin, err = interactive.GetBool(interactive.Input{
 				Question: "Create cluster admin user",
 				Default:  false,
