@@ -532,7 +532,7 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 		case tags.OpenShiftVersion:
 			isTagged = true
 
-			if roleHasTag(listRoleTagsOutput.Tags, tags.ManagedPolicies, tags.True) {
+			if tags.IamResourceHasTag(listRoleTagsOutput.Tags, tags.ManagedPolicies, tags.True) {
 				// Managed policies will be up-to-date no need to check version tags
 				break
 			}
@@ -632,16 +632,6 @@ func getTags(tagList map[string]string) []*iam.Tag {
 	return iamTags
 }
 
-func roleHasTag(roleTags []*iam.Tag, tagKey string, tagValue string) bool {
-	for _, tag := range roleTags {
-		if aws.StringValue(tag.Key) == tagKey && aws.StringValue(tag.Value) == tagValue {
-			return true
-		}
-	}
-
-	return false
-}
-
 func IsOCMRole(roleName *string) bool {
 	return strings.Contains(aws.StringValue(roleName), fmt.Sprintf("%s-Role", OCMRole))
 }
@@ -656,7 +646,7 @@ func (c *awsClient) IsUserRole(roleName *string) (bool, error) {
 			return false, err
 		}
 
-		return roleHasTag(roleTags.Tags, tags.RoleType, OCMUserRole), nil
+		return tags.IamResourceHasTag(roleTags.Tags, tags.RoleType, OCMUserRole), nil
 	}
 
 	return false, nil
@@ -706,12 +696,12 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 			if err != nil {
 				return nil, err
 			}
-			if roleHasTag(roleTags.Tags, tags.AdminRole, tags.True) {
+			if tags.IamResourceHasTag(roleTags.Tags, tags.AdminRole, tags.True) {
 				ocmRole.Admin = "Yes"
 			} else {
 				ocmRole.Admin = "No"
 			}
-			if roleHasTag(roleTags.Tags, tags.ManagedPolicies, tags.True) {
+			if tags.IamResourceHasTag(roleTags.Tags, tags.ManagedPolicies, tags.True) {
 				ocmRole.ManagedPolicy = true
 			}
 
@@ -1634,7 +1624,7 @@ func (c *awsClient) HasHostedCPPolicies(roleARN string) (bool, error) {
 		return false, err
 	}
 
-	return roleHasTag(role.Tags, tags.HypershiftPolicies, tags.True), nil
+	return tags.IamResourceHasTag(role.Tags, tags.HypershiftPolicies, tags.True), nil
 }
 
 func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
