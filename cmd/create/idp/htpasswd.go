@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -28,6 +27,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
+	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 )
 
 const ClusterAdminUsername = "cluster-admin"
@@ -40,10 +40,11 @@ func createHTPasswdIDP(cmd *cobra.Command,
 	var err error
 
 	validateUserArgs(r)
-
+	
+	
 	//get users
 	userList, isHashedPassword := getUserList(cmd, r)
-
+	
 	//build HTPasswdUserList
 	htpasswdUsers := []*cmv1.HTPasswdUserBuilder{}
 	for username, password := range userList {
@@ -198,7 +199,7 @@ func GetUserDetails(cmd *cobra.Command, r *rosa.Runtime,
 		Default:  defaultPassword,
 		Required: true,
 		Validators: []interactive.Validator{
-			PasswordValidator,
+			passwordValidator.PasswordValidator,
 		},
 	})
 	if err != nil {
@@ -245,28 +246,6 @@ func UsernameValidator(val interface{}) error {
 		if strings.ContainsAny(username, "/:%") {
 			return fmt.Errorf("invalid username '%s': "+
 				"username must not contain /, :, or %%", username)
-		}
-		return nil
-	}
-	return fmt.Errorf("can only validate strings, got '%v'", val)
-}
-
-func PasswordValidator(val interface{}) error {
-	if password, ok := val.(string); ok {
-		notAsciiOnly, _ := regexp.MatchString(`[^\x20-\x7E]`, password)
-		containsSpace := strings.Contains(password, " ")
-		tooShort := len(password) < 14
-		if notAsciiOnly || containsSpace || tooShort {
-			return fmt.Errorf(
-				"password must be at least 14 characters (ASCII-standard) without whitespaces")
-		}
-		hasUppercase, _ := regexp.MatchString(`[A-Z]`, password)
-		hasLowercase, _ := regexp.MatchString(`[a-z]`, password)
-		hasNumberOrSymbol, _ := regexp.MatchString(`[^a-zA-Z]`, password)
-		if !hasUppercase || !hasLowercase || !hasNumberOrSymbol {
-			return fmt.Errorf(
-				"password must include uppercase letters, lowercase letters, and numbers " +
-					"or symbols (ASCII-standard characters only)")
 		}
 		return nil
 	}
