@@ -111,6 +111,21 @@ func FormatClusterList(clusters []*v1.Cluster) string {
 	}`, len(clusters), len(clusters), clusterJson.String())
 }
 
+func FormatIngressList(ingresses []*v1.Ingress) string {
+	var ingressJson bytes.Buffer
+
+	v1.MarshalIngressList(ingresses, &ingressJson)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "IngressList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(ingresses), len(ingresses), ingressJson.String())
+}
+
 // TestingRuntime is a wrapper for the structure used for testing
 type TestingRuntime struct {
 	SsoServer   *ghttp.Server

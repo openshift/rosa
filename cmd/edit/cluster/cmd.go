@@ -231,7 +231,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	privateWarning := "You will not be able to access your cluster until you edit network settings " +
 		"in your cloud provider. To also change the privacy setting of the application router " +
-		"endpoints, use the 'rosa edit ingress' command."
+		"endpoints, use the 'rosa edit ingress' command. "
+	privateWarning, err = warnUserForOAuthHCPVisibility(r, clusterKey, cluster, privateWarning)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
 	if interactive.Enabled() {
 		privateValue, err = interactive.GetBool(interactive.Input{
 			Question: "Private cluster",
@@ -543,6 +548,39 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	r.Reporter.Infof("Updated cluster '%s'", clusterKey)
+}
+
+// warnUserForOAuthHCPVisibility is a method for HCP only that checks if the user has public ingress and warns them
+// about how changing cluster visibility may impact them
+func warnUserForOAuthHCPVisibility(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster,
+	privateWarning string) (string, error) {
+	if !cluster.Hypershift().Enabled() {
+		return privateWarning, nil
+	}
+	// if ingress visibility public, warning
+	r.Reporter.Debugf("Loading ingresses for cluster '%s'", clusterKey)
+	ingresses, err := r.OCMClient.GetIngresses(cluster.ID())
+	if err != nil {
+		return "", fmt.Errorf("failed to get ingresses for cluster '%s': %v", clusterKey, err)
+	}
+	publicIngresses := make([]string, 0)
+	for _, ingress := range ingresses {
+		if ingress.Listening() == cmv1.ListeningMethodExternal {
+			publicIngresses = append(publicIngresses, ingress.ID())
+		}
+	}
+	// No public ingresses, nothing to report back
+	if len(publicIngresses) == 0 {
+		return privateWarning, nil
+	}
+
+	privateWarning += fmt.Sprintf("OAuth visibility will be affected by cluster visibility change. "+
+		"Any application using OAuth behind a public ingress like the OpenShift Console will not be accessible "+
+		"anymore unless the user already has access to the private network. List of affected public ingresses: %s",
+		strings.Join(publicIngresses, ","))
+
+	return privateWarning, nil
+
 }
 
 func validateExpiration() (expiration time.Time, err error) {
