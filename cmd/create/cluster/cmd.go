@@ -2022,7 +2022,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
-			if ok := confirm.Prompt(false, "Continue with default? A new VPC will be created for your cluster"); !ok {
+			if ok := confirm.Prompt(false, "Continue with default? A new RH Managed VPC will be created for your cluster"); !ok {
 				os.Exit(1)
 			}
 			useExistingVPC = false
