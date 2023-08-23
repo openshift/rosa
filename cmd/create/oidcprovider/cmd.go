@@ -66,7 +66,7 @@ func init() {
 		&args.oidcConfigId,
 		OidcConfigIdFlag,
 		"",
-		"Registered OIDC configuration ID to retrieve it's issuer URL. "+
+		"Registered OIDC configuration ID to retrieve its issuer URL. "+
 			"Not to be used alongside --cluster flag.",
 	)
 

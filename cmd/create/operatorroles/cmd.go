@@ -76,7 +76,7 @@ func init() {
 		&args.oidcConfigId,
 		OidcConfigIdFlag,
 		"",
-		"Registered OIDC configuration ID to add it's issuer URL as the trusted relationship to the operator roles. "+
+		"Registered OIDC configuration ID to add its issuer URL as the trusted relationship to the operator roles. "+
 			"Not to be used alongside --cluster flag.",
 	)
 
