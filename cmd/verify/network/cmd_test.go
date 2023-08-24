@@ -55,24 +55,61 @@ var _ = Describe("verify network", func() {
 		}
 	}
 	`
-	var subnetASuccess = `
+	var subnetsComplete = `
+	{
+		"page": 1,
+		"size": 2,
+		"total": 2,
+		"items": [
+		  {
+			"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0b761d44d3d9a4663/",
+			"id": "subnet-0b761d44d3d9a4663",
+			"state": "passed"
+		  },
+		  {
+			"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0f87f640e56934cbc/",
+			"id": "subnet-0f87f640e56934cbc",
+			"state": "passed"
+		  }
+		],
+		"cloud_provider_data": {
+
+		}
+	}
+	`
+	var subnetPendingSuccess = `
 	{
 		"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0b761d44d3d9a4663/",
 		"id": "subnet-0b761d44d3d9a4663",
 		"state": "pending"
 	}
 	`
-	var subnetBSuccess = `
+	var subnetRunningSuccess = `
+	{
+		"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0b761d44d3d9a4663/",
+		"id": "subnet-0b761d44d3d9a4663",
+		"state": "running"
+	}
+	`
+	var subnetPassedSuccess = `
 	{
 		"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0f87f640e56934cbc/",
 		"id": "subnet-0f87f640e56934cbc",
 		"state": "passed"
 	}
-	`
+	` // #nosec G101
 	var successOutputPendingComplete = `INFO: subnet-0b761d44d3d9a4663: pending
 INFO: subnet-0f87f640e56934cbc: passed
 INFO: Run the following command to wait for verification to all subnets to complete:
 rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc
+`
+	var successOutputRunningComplete = `INFO: subnet-0b761d44d3d9a4663: running
+INFO: subnet-0f87f640e56934cbc: passed
+INFO: Run the following command to wait for verification to all subnets to complete:
+rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc
+`
+	var successOutputComplete = `INFO: subnet-0b761d44d3d9a4663: passed
+INFO: subnet-0f87f640e56934cbc: passed
 `
 	BeforeEach(func() {
 
@@ -167,14 +204,14 @@ rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet
 			apiServer.AppendHandlers(
 				RespondWithJSON(
 					http.StatusOK,
-					subnetASuccess,
+					subnetPendingSuccess,
 				),
 			)
 			// GET /api/clusters_mgmt/v1/network_verifications/subnetB
 			apiServer.AppendHandlers(
 				RespondWithJSON(
 					http.StatusOK,
-					subnetBSuccess,
+					subnetPassedSuccess,
 				),
 			)
 			stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
@@ -188,7 +225,7 @@ rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet
 		Entry("installing state", cmv1.ClusterStateInstalling, successOutputPendingComplete),
 		Entry("uninstalling state", cmv1.ClusterStateUninstalling, successOutputPendingComplete),
 	)
-	It("Succeeds if --cluster with --role-arn", func() {
+	It("Succeeds if --cluster with --role-arn, prints watch command", func() {
 		// GET /api/clusters_mgmt/v1/clusters
 		apiServer.AppendHandlers(
 			RespondWithJSON(
@@ -207,14 +244,14 @@ rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet
 		apiServer.AppendHandlers(
 			RespondWithJSON(
 				http.StatusOK,
-				subnetASuccess,
+				subnetPendingSuccess,
 			),
 		)
 		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
 		apiServer.AppendHandlers(
 			RespondWithJSON(
 				http.StatusOK,
-				subnetBSuccess,
+				subnetPassedSuccess,
 			),
 		)
 		cmd.Flags().Set(clusterFlag, "tomckay-vpc")
@@ -223,5 +260,77 @@ rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet
 		Expect(err).To(BeNil())
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal(successOutputPendingComplete))
+	})
+	It("Succeeds if --cluster with --role-arn, prints watch command", func() {
+		// GET /api/clusters_mgmt/v1/clusters
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				clustersSuccess,
+			),
+		)
+		// POST /api/clusters_mgmt/v1/network_verifications
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetsSuccess,
+			),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetA
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetRunningSuccess,
+			),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetPassedSuccess,
+			),
+		)
+		cmd.Flags().Set(clusterFlag, "tomckay-vpc")
+		cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(successOutputRunningComplete))
+	})
+	It("Succeeds if --cluster with --role-arn, no need to print watch command", func() {
+		// GET /api/clusters_mgmt/v1/clusters
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				clustersSuccess,
+			),
+		)
+		// POST /api/clusters_mgmt/v1/network_verifications
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetsComplete,
+			),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetPassedSuccess,
+			),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetPassedSuccess,
+			),
+		)
+		cmd.Flags().Set(clusterFlag, "tomckay-vpc")
+		cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(successOutputComplete))
 	})
 })
