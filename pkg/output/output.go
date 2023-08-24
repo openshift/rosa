@@ -127,7 +127,8 @@ func Print(resource interface{}) error {
 				}
 			}
 		}
-	case "object.Object", "map[string]interface {}", "[]map[string]interface {}":
+	// default to catch non concrete types
+	default:
 		{
 			reqBodyBytes := new(bytes.Buffer)
 			json.NewEncoder(reqBodyBytes).Encode(resource)
