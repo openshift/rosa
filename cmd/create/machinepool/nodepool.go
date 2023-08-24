@@ -155,7 +155,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				Default:  minReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					machinepools.MinNodePoolReplicaValidator(),
+					machinepools.MinNodePoolReplicaValidator(true),
 				},
 			})
 			if err != nil {
@@ -163,7 +163,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				os.Exit(1)
 			}
 		}
-		err = machinepools.MinNodePoolReplicaValidator()(minReplicas)
+		err = machinepools.MinNodePoolReplicaValidator(true)(minReplicas)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -202,7 +202,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				Default:  replicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					machinepools.MinNodePoolReplicaValidator(),
+					machinepools.MinNodePoolReplicaValidator(false),
 				},
 			})
 			if err != nil {
@@ -210,7 +210,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				os.Exit(1)
 			}
 		}
-		err = machinepools.MinNodePoolReplicaValidator()(replicas)
+		err = machinepools.MinNodePoolReplicaValidator(false)(replicas)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
