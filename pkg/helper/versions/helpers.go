@@ -2,7 +2,9 @@ package versions
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/hashicorp/go-version"
 	ver "github.com/hashicorp/go-version"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -104,4 +106,16 @@ func GetMinimalHostedMachinePoolVersion(controlPlaneVersion string) (string, err
 	}
 
 	return version, nil
+}
+
+func IsGreaterThanOrEqual(version1, version2 string) (bool, error) {
+	v1, err := version.NewVersion(strings.TrimPrefix(version1, ocm.VersionPrefix))
+	if err != nil {
+		return false, err
+	}
+	v2, err := version.NewVersion(strings.TrimPrefix(version2, ocm.VersionPrefix))
+	if err != nil {
+		return false, err
+	}
+	return v1.GreaterThanOrEqual(v2), nil
 }

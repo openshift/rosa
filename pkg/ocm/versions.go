@@ -36,6 +36,8 @@ const (
 	LowestHttpTokensRequiredSupport = "4.11.0"
 	LowestSTSMinor                  = "4.7"
 	LowestHostedCPSupport           = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
+	MinVersionForManagedIngressV2   = "4.14-0"
+	VersionPrefix                   = "openshift-v"
 )
 
 func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error) {
@@ -207,7 +209,7 @@ func CreateVersionID(version string, channelGroup string) string {
 }
 
 func GetRawVersionId(versionId string) string {
-	trimmedPrefix := strings.TrimPrefix(versionId, "openshift-v")
+	trimmedPrefix := strings.TrimPrefix(versionId, VersionPrefix)
 	channelSeparator := strings.LastIndex(trimmedPrefix, "-")
 	if channelSeparator > 0 {
 		return trimmedPrefix[:channelSeparator]

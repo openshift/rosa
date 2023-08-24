@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"time"
 
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -35,6 +36,10 @@ import (
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	errors "github.com/zgalor/weberr"
+)
+
+const (
+	legacyIngressSupportLabel = "ext-managed.openshift.io/legacy-ingress-support"
 )
 
 var NetworkTypes = []string{"OpenShiftSDN", "OVNKubernetes"}
@@ -1071,4 +1076,19 @@ func IsOidcConfigReusable(cluster *cmv1.Cluster) bool {
 
 func IsSts(cluster *cmv1.Cluster) bool {
 	return cluster != nil && cluster.AWS().STS().RoleARN() != ""
+}
+
+func (c *Client) HasLegacyIngressSupport(cluster *cmv1.Cluster) (bool, error) {
+	labelList, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(cluster.ID()).ExternalConfiguration().Labels().List().Send()
+	if err != nil {
+		return true, fmt.Errorf("Failed to retrieve external configuration label list: %v", err)
+	}
+
+	for _, label := range labelList.Items().Slice() {
+		if label.Key() == legacyIngressSupportLabel {
+			return strconv.ParseBool(label.Value())
+		}
+	}
+	return true, nil
 }
