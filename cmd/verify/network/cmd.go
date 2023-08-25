@@ -64,6 +64,7 @@ const (
 	watchFlag      = "watch"
 
 	NetworkVerifyPending NetworkVerifyState = "pending"
+	NetworkVerifyRunning NetworkVerifyState = "running"
 	NetworkVerifyPassed  NetworkVerifyState = "passed"
 	NetworkVerifyFailed  NetworkVerifyState = "failed"
 
@@ -193,7 +194,8 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			for i := 0; i < len(args.subnetIDs); i++ {
 				subnet := args.subnetIDs[i]
 				status, err := r.OCMClient.GetVerifyNetworkSubnet(subnet)
-				if err == nil && status.State() == string(NetworkVerifyPending) {
+				if err == nil && (status.State() == string(NetworkVerifyPending) ||
+					status.State() == string(NetworkVerifyRunning)) {
 					continue
 				}
 				printStatus(r.Reporter, spin, subnet, status, err)
@@ -217,7 +219,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			subnet := args.subnetIDs[i]
 			status, err := r.OCMClient.GetVerifyNetworkSubnet(subnet)
 			printStatus(r.Reporter, nil, subnet, status, err)
-			if status.State() == string(NetworkVerifyPending) {
+			if status.State() == string(NetworkVerifyPending) || status.State() == string(NetworkVerifyRunning) {
 				pending = true
 			}
 		}
