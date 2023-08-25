@@ -2,6 +2,7 @@ package machinepool
 
 import (
 	"net/http"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,6 +15,7 @@ const (
 	scheduleTime        = "10:00"
 	invalidScheduleDate = "25h December"
 	validScheduleDate   = "2023-12-25"
+	cronSchedule        = "* * * * *"
 	invalidVersionError = `Expected a valid machine pool version: A valid version number must be specified
 Valid versions: 4.12.26 4.12.25 4.12.24`
 )
@@ -215,52 +217,56 @@ var _ = Describe("Upgrade machine pool", func() {
 						  "tuning_configs": []
 						}`
 
-		// nolint:lll
-		const nodePoolUpgradePolicy = `{
-  "kind": "NodePoolUpgradePolicyList",
-  "page": 1,
-  "size": 1,
-  "total": 1,
-  "items": [
-    {
-      "kind": "NodePoolUpgradePolicy",
-      "id": "e2800d05-3534-11ee-b9bc-0a580a811709",
-      "href": "/api/clusters_mgmt/v1/clusters/25f96obptkqc5mh9vdc779jiqb3sihnn/node_pools/workers/upgrade_policies/e2800d05-3534-11ee-b9bc-0a580a811709",
-      "schedule_type": "manual",
-      "upgrade_type": "NodePool",
-      "version": "4.12.25",
-      "next_run": "2023-08-07T15:22:00Z",
-      "cluster_id": "25f96obptkqc5mh9vdc779jiqb3sihnn",
-      "node_pool_id": "workers",
-      "enable_minor_version_upgrades": true,
-      "creation_timestamp": "2023-08-07T15:12:54.967835Z",
-      "last_update_timestamp": "2023-08-07T15:12:54.967835Z",
-      "state": {
-        "value": "scheduled",
-        "description": "Upgrade scheduled."
-      }
-    }
-  ]
-}`
+		upgradePolicies := make([]*cmv1.NodePoolUpgradePolicy, 0)
+		upgradePolicies = append(upgradePolicies, buildNodePoolUpgradePolicy())
+		nodePoolUpgradePolicy := test.FormatNodePoolUpgradePolicyList(upgradePolicies)
 
-		const noNodePoolUpgradePolicy = `{
-  "kind": "NodePoolUpgradePolicyList",
-  "page": 1,
-  "size": 0,
-  "total": 0,
-  "items": []
-}`
+		noNodePoolUpgradePolicy := test.FormatNodePoolUpgradePolicyList([]*cmv1.NodePoolUpgradePolicy{})
 
 		BeforeEach(func() {
 			testRuntime.InitRuntime()
 		})
+		It("Fails if we are using minor version flag for manual upgrades", func() {
+			args.schedule = ""
+			args.allowMinorVersionUpdates = true
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("The '--allow-minor-version-upgrades' " +
+				"option needs to be used with --schedule"))
+		})
+		It("Fails if we are mixing scheduling type flags", func() {
+			args.schedule = cronSchedule
+			args.scheduleDate = "31 Jan"
+			args.allowMinorVersionUpdates = false
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("The '--schedule-date' and '--schedule-time' " +
+				"options are mutually exclusive with '--schedule'"))
+		})
+		It("Fails if we are mixing automatic scheduling and version flags", func() {
+			args.schedule = cronSchedule
+			args.scheduleDate = ""
+			args.version = "4.13.0"
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("The '--schedule' " +
+				"option is mutually exclusive with '--version'"))
+		})
 		It("Fails if cluster is not ready", func() {
+			args.schedule = ""
+			args.version = ""
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterNotReady))
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(ContainSubstring("Cluster 'cluster1' is not yet ready"))
 		})
 		It("Cluster is ready but node pool not found", func() {
+			args.scheduleTime = scheduleTime
+			args.scheduleDate = validScheduleDate
+			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
@@ -301,8 +307,7 @@ var _ = Describe("Upgrade machine pool", func() {
 				Cmd, &[]string{nodePoolName})
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(ContainSubstring(
-				"Failed to build schedule upgrade for machine pool nodepool85 in cluster 'cluster1': " +
-					"schedule date should use the format 'yyyy-mm-dd'"))
+				"schedule date should use the format 'yyyy-mm-dd'"))
 			Expect(stdout).To(BeEmpty())
 			Expect(stderr).To(BeEmpty())
 		})
@@ -357,5 +362,67 @@ var _ = Describe("Upgrade machine pool", func() {
 			Expect(stdout).To(ContainSubstring(
 				"Upgrade successfully scheduled for the machine pool 'nodepool85' on cluster 'cluster1"))
 		})
+		It("Cluster is ready and there is no scheduled upgraded but scheduling fails due to a BE error", func() {
+			args.scheduleTime = scheduleTime
+			args.scheduleDate = validScheduleDate
+			Cmd.Flags().Set("interactive", "false")
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusBadRequest, "an error"))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{nodePoolName})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("Failed to schedule upgrade for machine pool"))
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(BeEmpty())
+		})
+		It("Cluster is ready and with automatic scheduling but bad cron format", func() {
+			args.scheduleTime = ""
+			args.scheduleDate = ""
+			args.version = ""
+			// not a valid cron
+			args.schedule = "* a"
+			Cmd.Flags().Set("interactive", "false")
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
+			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{nodePoolName})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("Schedule '* a' is not a valid cron expression"))
+		})
+		It("Cluster is ready and with automatic scheduling and good cron format -> success", func() {
+			args.scheduleTime = ""
+			args.scheduleDate = ""
+			args.version = ""
+			// not a valid cron
+			args.schedule = cronSchedule
+			Cmd.Flags().Set("interactive", "false")
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
+			//testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{nodePoolName})
+			Expect(err).To(BeNil())
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(ContainSubstring(
+				"Upgrade successfully scheduled for the machine pool 'nodepool85' on cluster 'cluster1'"))
+		})
 	})
 })
+
+func buildNodePoolUpgradePolicy() *cmv1.NodePoolUpgradePolicy {
+	t, err := time.Parse(time.RFC3339, "2023-08-07T15:22:00Z")
+	Expect(err).To(BeNil())
+	state := cmv1.NewUpgradePolicyState().Value(cmv1.UpgradePolicyStateValueScheduled)
+	policy, err := cmv1.NewNodePoolUpgradePolicy().ScheduleType(cmv1.ScheduleTypeManual).
+		UpgradeType(cmv1.UpgradeTypeNodePool).Version("4.12.25").State(state).NextRun(t).Build()
+	Expect(err).To(BeNil())
+	return policy
+}

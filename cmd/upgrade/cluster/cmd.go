@@ -110,6 +110,8 @@ func init() {
 			"minor release, e.g. 4.12.20 -> 4.13.2. By default only z-stream updates will be scheduled. "+
 			"This is currently supported only for Hosted Control Planes. ",
 	)
+	// Hidden for now as not supported yet
+	flags.MarkHidden("allow-minor-version-updates")
 
 	flags.StringVar(
 		&args.nodeDrainGracePeriod,
@@ -214,9 +216,10 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		}
 	}
 
-	// Check mandatory parameters and enable interactive mode if needed
-	if currentUpgradeScheduling.ScheduleDate == "" && currentUpgradeScheduling.ScheduleTime == "" &&
-		currentUpgradeScheduling.Schedule == "" {
+	// Enable interactive mode if needed
+	// We need to specify either both date and time or nothing
+	if (currentUpgradeScheduling.ScheduleDate != "" && currentUpgradeScheduling.ScheduleTime == "") ||
+		currentUpgradeScheduling.ScheduleDate == "" && currentUpgradeScheduling.ScheduleTime != "" {
 		interactive.Enable()
 	}
 
@@ -265,7 +268,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 					Required: false,
 				})
 				if err != nil {
-					return fmt.Errorf("Expected an choice on the versions to target: %s", err)
+					return fmt.Errorf("Expected a choice on the versions to target: %s", err)
 				}
 			}
 		}

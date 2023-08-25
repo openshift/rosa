@@ -18,13 +18,15 @@ package ocm
 
 import (
 	"fmt"
-	"time"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 func (c *Client) ScheduleNodePoolUpgrade(clusterID string, nodePoolId string,
 	upgradePolicy *cmv1.NodePoolUpgradePolicy) error {
+	if upgradePolicy == nil {
+		return fmt.Errorf("upgrade policy is nil")
+	}
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).NodePools().NodePool(nodePoolId).
 		UpgradePolicies().
@@ -37,9 +39,14 @@ func (c *Client) ScheduleNodePoolUpgrade(clusterID string, nodePoolId string,
 }
 
 func (c *Client) BuildNodeUpgradePolicy(version string, machinePoolID string,
-	nextRun time.Time) (*cmv1.NodePoolUpgradePolicy, error) {
-	upgradePolicyBuilder := cmv1.NewNodePoolUpgradePolicy().ScheduleType(cmv1.ScheduleTypeManual).
-		UpgradeType(cmv1.UpgradeTypeNodePool).Version(version).NodePoolID(machinePoolID).NextRun(nextRun)
+	scheduling UpgradeScheduling) (*cmv1.NodePoolUpgradePolicy, error) {
+	upgradePolicyBuilder := cmv1.NewNodePoolUpgradePolicy().UpgradeType(cmv1.UpgradeTypeNodePool).NodePoolID(machinePoolID)
+	if scheduling.AutomaticUpgrades {
+		upgradePolicyBuilder.ScheduleType(cmv1.ScheduleTypeAutomatic).
+			EnableMinorVersionUpgrades(scheduling.AllowMinorVersionUpdates).Schedule(scheduling.Schedule)
+	} else {
+		upgradePolicyBuilder.ScheduleType(cmv1.ScheduleTypeManual).Version(version).NextRun(scheduling.NextRun)
+	}
 	return upgradePolicyBuilder.Build()
 }
 

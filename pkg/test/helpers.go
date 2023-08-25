@@ -126,6 +126,21 @@ func FormatIngressList(ingresses []*v1.Ingress) string {
 	}`, len(ingresses), len(ingresses), ingressJson.String())
 }
 
+func FormatNodePoolUpgradePolicyList(upgrades []*v1.NodePoolUpgradePolicy) string {
+	var outputJson bytes.Buffer
+
+	v1.MarshalNodePoolUpgradePolicyList(upgrades, &outputJson)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "NodePoolUpgradePolicyList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(upgrades), len(upgrades), outputJson.String())
+}
+
 // TestingRuntime is a wrapper for the structure used for testing
 type TestingRuntime struct {
 	SsoServer   *ghttp.Server
