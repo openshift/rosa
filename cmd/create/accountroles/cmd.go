@@ -369,7 +369,7 @@ func run(cmd *cobra.Command, argv []string) {
 		isHostedCPValueSet = true
 	}
 
-	rolesCreator, createRoles := initCreator(managedPolicies, createClassic, createHostedCP,
+	rolesCreator, createRoles := initCreator(r, managedPolicies, createClassic, createHostedCP,
 		isClassicValueSet, isHostedCPValueSet)
 	if !createRoles {
 		os.Exit(1)
