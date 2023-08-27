@@ -16,7 +16,7 @@ type creator interface {
 	printCommands(*rosa.Runtime, *accountRolesCreationInput) error
 }
 
-func initCreator(managedPolicies bool, classic bool, hostedCP bool, isClassicValueSet bool,
+func initCreator(r *rosa.Runtime, managedPolicies bool, classic bool, hostedCP bool, isClassicValueSet bool,
 	isHostedCPValueSet bool) (creator, bool) {
 	// Classic ROSA managed policies
 	if managedPolicies && !hostedCP {
@@ -25,6 +25,9 @@ func initCreator(managedPolicies bool, classic bool, hostedCP bool, isClassicVal
 
 	// If the user didn't select topologies (default flow creates both), or selected both topologies
 	if !isClassicValueSet && !isHostedCPValueSet || hostedCP && classic {
+		r.Reporter.Infof("By default, the create account-roles command creates two sets of account roles, " +
+			"one for classic ROSA clusters, and one for Hosted Control Plane clusters." +
+			"\nIn order to create a single set, please set one of the following flags: --classic or --hosted-cp")
 		return &doubleRolesCreator{}, true
 	}
 
