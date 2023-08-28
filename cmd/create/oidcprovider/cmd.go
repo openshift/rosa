@@ -165,32 +165,33 @@ func run(cmd *cobra.Command, argv []string) {
 		clusterId = cluster.ID()
 	}
 
+	oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
+	if err != nil {
+		if strings.Contains(err.Error(), "AccessDenied") {
+			r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
+		} else {
+			r.Reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
+			os.Exit(1)
+		}
+	}
+	if oidcProviderExists {
+		if cluster != nil &&
+			cluster.AWS().STS().OidcConfig() != nil && !cluster.AWS().STS().OidcConfig().Reusable() {
+			r.Reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
+				"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
+			os.Exit(1)
+		}
+		// Returns so that when called from create cluster does not interrupt flow
+		r.Reporter.Infof("OIDC provider already exists.")
+		return
+	}
+
 	switch mode {
 	case aws.ModeAuto:
 		if cluster != nil && cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
 			r.Reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
 				clusterKey, cluster.State())
 			os.Exit(0)
-		}
-		oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
-		if err != nil {
-			if strings.Contains(err.Error(), "AccessDenied") {
-				r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
-			} else {
-				r.Reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
-				os.Exit(1)
-			}
-		}
-		if oidcProviderExists {
-			if cluster != nil &&
-				cluster.AWS().STS().OidcConfig() != nil && !cluster.AWS().STS().OidcConfig().Reusable() {
-				r.Reporter.Warnf("Cluster '%s' already has OIDC provider but has not yet started installation. "+
-					"Verify that the cluster operator roles exist and are configured correctly.", clusterKey)
-				os.Exit(1)
-			}
-			// Returns so that when called from create cluster does not interrupt flow
-			r.Reporter.Infof("OIDC provider already exists.")
-			return
 		}
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating OIDC provider using '%s'", r.Creator.ARN)
