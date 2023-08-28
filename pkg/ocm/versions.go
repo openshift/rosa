@@ -381,13 +381,14 @@ func (c *Client) IsVersionCloseToEol(daysAwayToCheck int, version string, channe
 		return handleErr(response.Error(), err)
 	}
 	ocmVersion := response.Items().Get(0)
-	now := time.Now().UTC()
-	if ocmVersion.EndOfLifeTimestamp().Compare(now.Add(time.Duration(daysAwayToCheck)*OneDayHourDuration*time.Hour)) <= 0 {
+	expiryWindow := time.Now().UTC().Add(time.Duration(daysAwayToCheck) * OneDayHourDuration * time.Hour)
+	if ocmVersion.EndOfLifeTimestamp().Before(expiryWindow) ||
+		ocmVersion.EndOfLifeTimestamp().Equal(expiryWindow) {
 		return fmt.Errorf(
 			"The version of Red Hat OpenShift Service on AWS that you are installing will no longer be supported after '%s'."+
 				" Red Hat recommends selecting a newer version. For more information,"+
 				" see https://docs.openshift.com/rosa/rosa_policy/rosa-life-cycle.html",
-			ocmVersion.EndOfLifeTimestamp().Format(time.DateOnly))
+			ocmVersion.EndOfLifeTimestamp().Format("2006-01-02"))
 	}
 	return nil
 }
