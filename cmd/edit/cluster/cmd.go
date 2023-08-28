@@ -239,7 +239,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if interactive.Enabled() {
 		privateValue, err = interactive.GetBool(interactive.Input{
-			Question: "Private cluster",
+			Question: "Private cluster, check this command's help for possible impacts",
 			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateWarning),
 			Default:  privateValue,
 		})
