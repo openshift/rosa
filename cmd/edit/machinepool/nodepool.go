@@ -98,11 +98,16 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 			os.Exit(1)
 		}
 		if version == "" {
-			r.Reporter.Infof("No upgrade available for the machine pool '%s' on cluster '%s'", nodePoolID,
-				clusterKey)
-			os.Exit(0)
+			if !interactive.Enabled() {
+				// Not interactive mode, stop if user specifies a version but none is available
+				r.Reporter.Infof("No upgrade available for the machine pool '%s' on cluster '%s'. Exiting",
+					nodePoolID, clusterKey)
+				os.Exit(0)
+			}
+		} else {
+			// A version with ID empty is rejected by the backend, so we fill it only if not empty
+			npBuilder.Version(cmv1.NewVersion().ID(version))
 		}
-		npBuilder.Version(cmv1.NewVersion().ID(version))
 	}
 
 	if isAutorepairSet || interactive.Enabled() {
