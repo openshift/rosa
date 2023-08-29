@@ -28,6 +28,7 @@ import (
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
+	semver "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -91,6 +92,10 @@ const (
 
 	MinReplicasSingleAZ = 2
 	MinReplicaMultiAZ   = 3
+
+	machinePoolRootDiskSizeMin          = 128
+	machinePoolRootDiskSizeMaxBefore414 = 1024
+	machinePoolRootDiskSizeMaxAsOf414   = 16384
 )
 
 var args struct {
@@ -2882,6 +2887,23 @@ func run(cmd *cobra.Command, _ []string) {
 		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			os.Exit(1)
+		}
+
+		version414, _ := semver.NewVersion("4.14.0")
+		currentVersion, err := semver.NewVersion(strings.Replace(version, "openshift-v", "", 1))
+		if err != nil {
+			r.Reporter.Errorf("failed to parse version: %v", err)
+			os.Exit(1)
+		}
+		machinePoolRootDiskSizeMax := machinePoolRootDiskSizeMaxBefore414
+		if currentVersion.GreaterThanOrEqual(version414) {
+			machinePoolRootDiskSizeMax = machinePoolRootDiskSizeMaxAsOf414
+		}
+		if machinePoolRootDiskSize < machinePoolRootDiskSizeMin ||
+			machinePoolRootDiskSize > machinePoolRootDiskSizeMax {
+			r.Reporter.Infof("Invalid root disk size: %d GiB. Must be between %d GiB and %d GiB.",
+				machinePoolRootDiskSize, machinePoolRootDiskSizeMin, machinePoolRootDiskSizeMax)
 			os.Exit(1)
 		}
 
