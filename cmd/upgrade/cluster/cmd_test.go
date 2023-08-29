@@ -1,29 +1,22 @@
 package cluster
 
 import (
+	"bytes"
+	"fmt"
 	"net/http"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/ghttp"
-	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
-	"github.com/spf13/cobra"
 )
 
 var _ = Describe("Upgrade", Ordered, func() {
-	var ssoServer, apiServer *ghttp.Server
+	var testRuntime test.TestingRuntime
 
-	var cmd *cobra.Command
-	var r *rosa.Runtime
 	const cronSchedule = "* * * * *"
 	const timeSchedule = "10:00"
 	const dateSchedule = "2023-06-01"
@@ -36,14 +29,18 @@ var _ = Describe("Upgrade", Ordered, func() {
 	  "reason": "Cluster 'cluster1' not found",
 	  "operation_id": "8f4c6a3e-4d40-41fd-9288-60ee670ef846"
 	}`
-	var emptyClusterList = `
-	{
-		"kind": "ClusterList",
-		"page": 1,
-		"size": 1,
-		"total": 0,
-		"items": []
-	}`
+	var emptyClusterList = test.FormatClusterList([]*cmv1.Cluster{})
+	version4130 := cmv1.NewVersion().ID("openshift-v4.13.0").RawID("4.13.0").ReleaseImage("1").
+		HREF("/api/clusters_mgmt/v1/versions/openshift-v4.13.0").Enabled(true).ChannelGroup("stable").
+		ROSAEnabled(true).HostedControlPlaneEnabled(true)
+	version4130WithUpdate, err := version4130.AvailableUpgrades("4.13.1").Build()
+	Expect(err).To(BeNil())
+	version4130WithoutUpdate, err := version4130.AvailableUpgrades().Build()
+	Expect(err).To(BeNil())
+	version4131, err := cmv1.NewVersion().ID("openshift-v4.13.1").RawID("4.13.1").ReleaseImage("1").
+		HREF("/api/clusters_mgmt/v1/versions/openshift-v4.13.1").Enabled(true).ChannelGroup("stable").
+		ROSAEnabled(true).HostedControlPlaneEnabled(true).AvailableUpgrades("4.13.2").Build()
+	Expect(err).To(BeNil())
 
 	mockClusterError, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
 		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
@@ -73,80 +70,19 @@ var _ = Describe("Upgrade", Ordered, func() {
 	var classicCluster = test.FormatClusterList([]*cmv1.Cluster{mockClassicCluster})
 
 	BeforeEach(func() {
-		// Create the servers:
-		ssoServer = MakeTCPServer()
-		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
-		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
-
-		// Create the token:
-		accessToken := MakeTokenString("Bearer", 15*time.Minute)
-
-		// Prepare the server:
-		ssoServer.AppendHandlers(
-			RespondWithAccessToken(accessToken),
-		)
-		// Prepare the logger:
-		logger, err := logging.NewGoLoggerBuilder().
-			Debug(true).
-			Build()
-		Expect(err).To(BeNil())
-		// Set up the connection with the fake config
-		connection, err := sdk.NewConnectionBuilder().
-			Logger(logger).
-			Tokens(accessToken).
-			URL(apiServer.URL()).
-			Build()
-		// Initialize client object
-		Expect(err).To(BeNil())
-		ocmClient := ocm.NewClientWithConnection(connection)
-		cmd = &cobra.Command{
-			Use:   "cluster",
-			Short: "Upgrade cluster",
-			Long:  "Upgrade cluster to a new available version",
-			Example: `  # Interactively schedule an upgrade on the cluster named "mycluster"
-  rosa upgrade cluster --cluster=mycluster --interactive
-
-  # Schedule a cluster upgrade within the hour
-  rosa upgrade cluster -c mycluster --version 4.5.20`,
-			Run: run,
-		}
-		ocm.SetClusterKey("cluster1")
-		r = rosa.NewRuntime()
-		r.OCMClient = ocmClient
-		r.Creator = &aws.Creator{
-			ARN:       "fake",
-			AccountID: "123",
-			IsSTS:     false,
-		}
-		DeferCleanup(r.Cleanup)
-	})
-	AfterEach(func() {
-		// Close the servers:
-		ssoServer.Close()
-		apiServer.Close()
+		testRuntime.InitRuntime()
 	})
 	It("Fails if flag is missing", func() {
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterNotReady,
-			),
-		)
-		err := runWithRuntime(r, cmd)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterNotReady))
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring("The '--control-plane' option is currently mandatory for Hosted Control Plane"))
 	})
 	It("Fails if cluster is not hypershift and we are using hypershift specific flags", func() {
 		args.controlPlane = true
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				classicCluster,
-			),
-		)
-		err := runWithRuntime(r, cmd)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicCluster))
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring("The '--control-plane' option is only supported for Hosted Control Planes"))
@@ -155,13 +91,8 @@ var _ = Describe("Upgrade", Ordered, func() {
 	It("Fails if cluster is not hypershift and we are using hypershift specific flags", func() {
 		args.controlPlane = false
 		args.schedule = cronSchedule
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				classicCluster,
-			),
-		)
-		err := runWithRuntime(r, cmd)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicCluster))
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring("The '--schedule' option is only supported for Hosted Control Planes"))
@@ -170,13 +101,8 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.controlPlane = true
 		args.schedule = ""
 		args.allowMinorVersionUpdates = true
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
-		err := runWithRuntime(r, cmd)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("The '--allow-minor-version-upgrades' " +
 			"option needs to be used with --schedule"))
@@ -185,13 +111,8 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.controlPlane = true
 		args.schedule = cronSchedule
 		args.scheduleDate = "31 Jan"
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
-		err := runWithRuntime(r, cmd)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("The '--schedule-date' and '--schedule-time' " +
 			"options are mutually exclusive with '--schedule'"))
@@ -201,13 +122,8 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.schedule = cronSchedule
 		args.scheduleDate = ""
 		args.version = "4.13.0"
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
-		err := runWithRuntime(r, cmd)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("The '--schedule' " +
 			"option is mutually exclusive with '--version'"))
@@ -218,39 +134,24 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.schedule = ""
 		args.scheduleDate = ""
 		args.version = ""
-		apiServer.AppendHandlers(
+		testRuntime.ApiServer.AppendHandlers(
 			RespondWithJSON(
 				http.StatusOK,
 				hypershiftClusterNotReady,
 			),
 		)
-		err := runWithRuntime(r, cmd)
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("Cluster 'cluster1' is not yet ready"))
 	})
 	It("Cluster is ready but no upgrade type specified", func() {
 		args.controlPlane = true
 		args.schedule = cronSchedule
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// No existing policy upgrade
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-			"kind": "ControlPlaneUpgradePolicyList",
-				"page": 1,
-				"size": 0,
-				"total": 0,
-				"items": []
-		}`,
-			),
-		)
-		err := runWithRuntime(r, cmd)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		// Missing the upgrade type
 		Expect(err.Error()).To(ContainSubstring("Failed to find available upgrades"))
@@ -258,76 +159,34 @@ var _ = Describe("Upgrade", Ordered, func() {
 	It("Cluster is ready but existing upgrade scheduled", func() {
 		args.controlPlane = true
 		args.schedule = cronSchedule
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// An existing policy upgrade
-		// nolint:lll
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-						"kind": "ControlPlaneUpgradePolicyList",
-						"page": 1,
-						"size": 1,
-						"total": 1,
-						"items": [
-							{
-							"kind": "ControlPlaneUpgradePolicy",
-							"id": "a33c8cae-013f-11ee-a3b2-acde48001122",
-							"href": "/api/clusters_mgmt/v1/clusters/243nmgjr5v2q9rn5sf3456euj2lcq5tn/control_plane/upgrade_policies/a33c8cae-013f-11ee-a3b2-acde48001122",
-							"schedule": "30 12 * * *",
-							"schedule_type": "automatic",
-							"upgrade_type": "ControlPlane",
-							"version": "4.12.18",
-							"next_run": "2023-06-02T12:30:00Z",
-							"cluster_id": "243nmgjr5v2q9rn5sf3456euj2lcq5tn",
-							"enable_minor_version_upgrades": false,
-							"creation_timestamp": "2023-06-02T14:18:52.828589+02:00",
-							"last_update_timestamp": "2023-06-02T14:18:52.828589+02:00",
-							"state": {
-							"value": "pending",
-							"description": "Upgrade policy defined, pending scheduling."
-							}
-						}
-					]
-				}`,
-			),
-		)
-		err := runWithRuntime(r, cmd)
-		// No error, it will just exit
+		t, err := time.Parse(time.RFC3339, "2023-06-02T12:30:00Z")
 		Expect(err).To(BeNil())
+		upgradeState := cmv1.NewUpgradePolicyState().Value("pending")
+		cpUpgradePolicy, err := cmv1.NewControlPlaneUpgradePolicy().UpgradeType(cmv1.UpgradeTypeControlPlane).
+			NextRun(t).Version("4.12.18").State(upgradeState).ScheduleType(cmv1.ScheduleTypeAutomatic).
+			Schedule("30 12 * * *").Build()
+		Expect(err).To(BeNil())
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{cpUpgradePolicy})))
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).To(BeNil())
+		Expect(stdout).To(BeEmpty())
+		Expect(stderr).To(ContainSubstring(
+			"There is already a pending upgrade to version 4.12.18 on 2023-06-02 12:30 UTC"))
 	})
 	It("Cluster is ready and with automatic scheduling but bad cron format", func() {
 		args.controlPlane = true
 		// not a valid cron
 		args.schedule = "* a"
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// No existing policy upgrade
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-			"kind": "ControlPlaneUpgradePolicyList",
-				"page": 1,
-				"size": 0,
-				"total": 0,
-				"items": []
-		}`,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
 
-		err := runWithRuntime(r, cmd)
+		_, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
-		// Missing the upgrade type
 		Expect(err.Error()).To(ContainSubstring("Schedule '* a' is not a valid cron expression"))
 	})
 
@@ -337,27 +196,12 @@ var _ = Describe("Upgrade", Ordered, func() {
 		// Not a valid date format
 		args.scheduleDate = "Jan 23"
 		args.scheduleTime = timeSchedule
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// No existing policy upgrade
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-			"kind": "ControlPlaneUpgradePolicyList",
-				"page": 1,
-				"size": 0,
-				"total": 0,
-				"items": []
-		}`,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
 
-		err := runWithRuntime(r, cmd)
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		// Missing the upgrade type
 		Expect(err.Error()).To(ContainSubstring(
@@ -369,44 +213,41 @@ var _ = Describe("Upgrade", Ordered, func() {
 		// Not a valid date format
 		args.scheduleDate = dateSchedule
 		args.scheduleTime = timeSchedule
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// No existing policy upgrade
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-				"kind": "ControlPlaneUpgradePolicyList",
-				"page": 1,
-				"size": 0,
-				"total": 0,
-				"items": []
-				}`,
-			),
-		)
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-					  "kind": "Version",
-					  "id": "openshift-v4.13.0",
-					  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.13.0",
-					  "raw_id": "4.13.0",
-					  "enabled": true,
-					  "default": false,
-					  "channel_group": "stable",
-					  "rosa_enabled": true,
-					  "hosted_control_plane_enabled": true,
-					  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:5"
-					}`))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4130WithoutUpdate)))
 
-		err := runWithRuntime(r, cmd)
-		// No upgrades, just return
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 		Expect(err).To(BeNil())
+		Expect(stdout).To(BeEmpty())
+		Expect(stderr).To(ContainSubstring("There are no available upgrades"))
+	})
+	It("Cluster is ready and with automatic scheduling, no upgrades available -> still success", func() {
+		args.controlPlane = true
+		args.schedule = "20 5 * * *"
+		args.scheduleDate = ""
+		args.scheduleTime = ""
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+		// No existing policy upgrade
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4130WithoutUpdate)))
+		// POST -
+		// /api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8/control_plane/upgrade_policies?dryRun=true
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+		// POST - /api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8/control_plane/upgrade_policies
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, ""))
+		// GET - /api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+		// PATCH - /api/clusters_mgmt/v1/clusters
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).To(BeNil())
+		Expect(stdout).To(ContainSubstring("INFO: Upgrade successfully scheduled for cluster 'cluster1'"))
+		Expect(stderr).To(BeEmpty())
 	})
 	It("Cluster is ready and with manual scheduling and available upgrades but a wrong version in input", func() {
 		args.controlPlane = true
@@ -416,68 +257,19 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.scheduleTime = timeSchedule
 		// The version we want to update to
 		args.version = "4.13.4"
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// No existing policy upgrade
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-				"kind": "ControlPlaneUpgradePolicyList",
-				"page": 1,
-				"size": 0,
-				"total": 0,
-				"items": []
-				}`,
-			),
-		)
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-					  "kind": "Version",
-					  "id": "openshift-v4.13.0",
-					  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.13.0",
-					  "raw_id": "4.13.0",
-					  "enabled": true,
-					  "default": false,
-					  "channel_group": "stable",
-					  "available_upgrades": [
-						 "4.13.1"
-					  ],
-					  "rosa_enabled": true,
-					  "hosted_control_plane_enabled": true,
-					  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:4"
-					}`))
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-					  "kind": "Version",
-					  "id": "openshift-v4.13.1",
-					  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.13.1",
-					  "raw_id": "4.13.1",
-					  "enabled": true,
-					  "default": false,
-					  "channel_group": "stable",
-					  "available_upgrades": [
-						 "4.13.2"
-					  ],
-					  "rosa_enabled": true,
-					  "hosted_control_plane_enabled": true,
-					  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:3"
-					}`))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4130WithUpdate)))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4131)))
 
-		err := runWithRuntime(r, cmd)
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring("Expected a valid version to upgrade cluster to.\nValid versions: [4.13.1]"))
 	})
-	It("Cluster is ready and with manual scheduling and one available upgrade", func() {
+	It("Cluster is ready and with manual scheduling and one available upgrade but cluster not found", func() {
 		args.controlPlane = true
 		args.schedule = ""
 		// Not a valid date format
@@ -485,65 +277,14 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.scheduleTime = timeSchedule
 		// The version we want to update to
 		args.version = "4.13.1"
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				hypershiftClusterReady,
-			),
-		)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// No existing policy upgrade
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-				"kind": "ControlPlaneUpgradePolicyList",
-				"page": 1,
-				"size": 0,
-				"total": 0,
-				"items": []
-				}`,
-			),
-		)
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-					  "kind": "Version",
-					  "id": "openshift-v4.13.0",
-					  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.13.0",
-					  "raw_id": "4.13.0",
-					  "enabled": true,
-					  "default": false,
-					  "channel_group": "stable",
-					  "available_upgrades": [
-						 "4.13.1"
-					  ],
-					  "rosa_enabled": true,
-					  "hosted_control_plane_enabled": true,
-					  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:2"
-					}`))
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				`{
-					  "kind": "Version",
-					  "id": "openshift-v4.13.1",
-					  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.13.1",
-					  "raw_id": "4.13.1",
-					  "enabled": true,
-					  "default": false,
-					  "channel_group": "stable",
-					  "available_upgrades": [
-						 "4.13.2"
-					  ],
-					  "rosa_enabled": true,
-					  "hosted_control_plane_enabled": true,
-					  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:1"
-					}`))
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusNoContent, ""))
-		apiServer.AppendHandlers(
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4130WithUpdate)))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4131)))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+		testRuntime.ApiServer.AppendHandlers(
 			RespondWithJSON(
 				http.StatusCreated, `{
 					  "kind": "ControlPlaneUpgradePolicy",
@@ -552,14 +293,33 @@ var _ = Describe("Upgrade", Ordered, func() {
 					  "schedule_type": "automatic",
 					  "upgrade_type": "ControlPlane"
 					}`))
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusNotFound, clusterNotFound))
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK, emptyClusterList))
-		err := runWithRuntime(r, cmd)
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, clusterNotFound))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, emptyClusterList))
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("There is no cluster with identifier or name"))
 	})
 })
+
+func formatControlPlaneUpgradePolicyList(upgradePolicies []*cmv1.ControlPlaneUpgradePolicy) string {
+	var policiesJson bytes.Buffer
+
+	cmv1.MarshalControlPlaneUpgradePolicyList(upgradePolicies, &policiesJson)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "ControlPlaneUpgradePolicyList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(upgradePolicies), len(upgradePolicies), policiesJson.String())
+}
+
+func formatVersion(version *cmv1.Version) string {
+	var versionJson bytes.Buffer
+
+	cmv1.MarshalVersion(version, &versionJson)
+
+	return versionJson.String()
+}
