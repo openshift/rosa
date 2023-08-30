@@ -179,13 +179,13 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	workloadMonitoring, ok := cluster.GetDisableUserWorkloadMonitoring()
-	isWorkloadMonitoringEnabled := "Disabled"
+	workloadMonitoringDisabled, ok := cluster.GetDisableUserWorkloadMonitoring()
+	isWorkloadMonitoringEnabled := "Enabled"
 	if !ok {
 		isWorkloadMonitoringEnabled = "Unknown"
 	}
-	if workloadMonitoring {
-		isWorkloadMonitoringEnabled = "Enabled"
+	if workloadMonitoringDisabled {
+		isWorkloadMonitoringEnabled = "Disabled"
 	}
 
 	// Print short cluster description:
