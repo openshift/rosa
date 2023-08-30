@@ -18,6 +18,7 @@ package aws
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -1132,6 +1133,42 @@ func (c *awsClient) deletePolicies(policies []string) (*iam.DeletePolicyOutput, 
 		}
 	}
 	return output, nil
+}
+
+// GetDefaultPolicyDocument gets a policy ARN and return a JSON policy document of the default policy version.
+func (c *awsClient) GetDefaultPolicyDocument(policyArn string) (string, error) {
+	versionId, err := c.getDefaultPolicyVersionId(policyArn)
+	if err != nil {
+		return "", err
+	}
+
+	policyVersionOutput, err := c.iamClient.GetPolicyVersion(&iam.GetPolicyVersionInput{
+		VersionId: aws.String(versionId),
+		PolicyArn: aws.String(policyArn),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return url.QueryUnescape(aws.StringValue(policyVersionOutput.PolicyVersion.Document))
+}
+
+func (c *awsClient) getDefaultPolicyVersionId(policyArn string) (string, error) {
+	policyVersionsOutput, err := c.iamClient.ListPolicyVersions(&iam.ListPolicyVersionsInput{
+		PolicyArn: aws.String(policyArn),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	for _, version := range policyVersionsOutput.Versions {
+		if aws.BoolValue(version.IsDefaultVersion) {
+			return aws.StringValue(version.VersionId), nil
+		}
+	}
+
+	// Shouldn't get here, each policy must have a default version.
+	return "", errors.Errorf("Failed to find the default policy version for policy '%s'", policyArn)
 }
 
 func (c *awsClient) deletePolicyVersions(policyArn string) error {

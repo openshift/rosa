@@ -185,6 +185,7 @@ type Client interface {
 	DeleteSecretInSecretsManager(secretArn string) error
 	ValidateAccountRoleVersionCompatibility(
 		roleName string, roleType string, minVersion string) (bool, error)
+	GetDefaultPolicyDocument(policyArn string) (string, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
