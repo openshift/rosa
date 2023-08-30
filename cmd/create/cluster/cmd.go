@@ -935,6 +935,13 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	// Validate mode
+	mode, err := aws.GetMode()
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	// validate flags for cluster admin
 	isHostedCP := args.hostedClusterEnabled
 	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
@@ -1245,12 +1252,6 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
 		r.Reporter.Errorf(err.Error())
-		os.Exit(1)
-	}
-
-	mode, err := aws.GetMode()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
