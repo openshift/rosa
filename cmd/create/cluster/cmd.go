@@ -88,6 +88,7 @@ const (
 	autoscalerScaleDownDelayAfterAddFlag        = "autoscaler-scale-down-delay-after-add"
 	autoscalerScaleDownDelayAfterDeleteFlag     = "autoscaler-scale-down-delay-after-delete"
 	autoscalerScaleDownDelayAfterFailureFlag    = "autoscaler-scale-down-delay-after-failure"
+	autoscalerGPULimitsCountFlag                = "autoscaler-gpu-limits-count"
 	autoscalerGPULimitsFlag                     = "autoscaler-gpu-limits"
 
 	MinReplicasSingleAZ = 2
@@ -225,11 +226,11 @@ var args struct {
 }
 
 type ResourceLimits struct {
-	MaxNodesTotal  int
-	Cores          ResourceRange
-	Memory         ResourceRange
-	GPULimits      []GPULimit
-	GPULimitsInput string
+	MaxNodesTotal       int
+	Cores               ResourceRange
+	Memory              ResourceRange
+	GPULimits           []GPULimit
+	GPULimitsInputCount int
 }
 
 type GPULimit struct {
@@ -653,15 +654,11 @@ func init() {
 		"Maximum amount of memory, in GiB, in the cluster.",
 	)
 
-	flags.StringVar(
-		&args.autoscalerResourceLimits.GPULimitsInput,
-		autoscalerGPULimitsFlag,
-		"",
-		"The stringified GPULimits array. An array of GPULimits. Each GPULimit is an array comprised of 3 values: [<GPU type>, <min GPUs>, <max GPUs>]. "+
-			"gpuType: The type of GPU node to deploy, e.g.: nvidia.com/gpu, amd.com/gpu, etc. "+
-			"minGPU: an integer stating the minimum number of GPUs to deploy in the cluster. Must always be smaller than or equal to maxGPU. "+
-			"maxGPU: a non zero integer stating the maximum number of GPUs to deploy in the cluster. Must always be greater than or equal to minGPU. "+
-			"A valid example for the GPULimits array would be: [[nvidia.com/gpu, 0, 1], [amd.com/gpu, 4, 16]]",
+	flags.IntVar(
+		&args.autoscalerResourceLimits.GPULimitsInputCount,
+		autoscalerGPULimitsCountFlag,
+		0,
+		"The number of GPULimitations entries to set later.",
 	)
 
 	// Scale down Configuration
@@ -2301,7 +2298,7 @@ func run(cmd *cobra.Command, _ []string) {
 	minMemory := args.autoscalerResourceLimits.Memory.Min
 	maxMemory := args.autoscalerResourceLimits.Memory.Max
 	gpuLimits := args.autoscalerResourceLimits.GPULimits
-	gpuLimitsInput := args.autoscalerResourceLimits.GPULimitsInput
+	gpuLimitsInputCount := args.autoscalerResourceLimits.GPULimitsInputCount
 	scaleDownEnabled := args.autoscalerScaleDown.Enabled
 	scaleDownUnneededTime := args.autoscalerScaleDown.UnneededTime
 	scaleDownUtilizationThreshold := args.autoscalerScaleDown.UtilizationThreshold
@@ -2322,7 +2319,7 @@ func run(cmd *cobra.Command, _ []string) {
 	isMaxCoresSet := cmd.Flags().Changed(autoscalerMaxCoresFlag)
 	isMinMemorySet := cmd.Flags().Changed(autoscalerMinMemoryFlag)
 	isMaxMemorySet := cmd.Flags().Changed(autoscalerMaxMemoryFlag)
-	isGPULimitsInputSet := cmd.Flags().Changed(autoscalerGPULimitsFlag)
+	isGPUCountInputSet := cmd.Flags().Changed(autoscalerGPULimitsCountFlag)
 	isScaleDownEnabledSet := cmd.Flags().Changed(autoscalerScaleDownEnabledFlag)
 	isScaleDownUnneededTimeSet := cmd.Flags().Changed(autoscalerScaleDownUnneededTimeFlag)
 	isScaleDownUtilizationThresholdSet := cmd.Flags().Changed(autoscalerScaleDownUtilizationThresholdFlag)
@@ -2339,7 +2336,7 @@ func run(cmd *cobra.Command, _ []string) {
 		isMaxMemorySet || isScaleDownEnabledSet ||
 		isScaleDownUnneededTimeSet || isScaleDownUtilizationThresholdSet ||
 		isScaleDownDelayAfterAddSet || isScaleDownDelayAfterDeleteSet ||
-		isScaleDownDelayAfterFailureSet || isGPULimitsInputSet {
+		isScaleDownDelayAfterFailureSet || isGPUCountInputSet {
 		isClusterAutoscalerSet = true
 	}
 
@@ -2632,36 +2629,91 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 
-			if interactive.Enabled() && !isGPULimitsInputSet {
-				gpuLimitsInput, err = interactive.GetString(interactive.Input{
-					Question: "Enter a stringified version of the GPULimits array",
-					Help:     cmd.Flags().Lookup(autoscalerGPULimitsFlag).Usage,
-					Default:  gpuLimitsInput,
+			if interactive.Enabled() && !isGPUCountInputSet {
+				gpuLimitsInputCount, err = interactive.GetInt(interactive.Input{
+					Question: "Enter the number of GPULimitations you wish to set.",
+					Help:     cmd.Flags().Lookup(autoscalerGPULimitsCountFlag).Usage,
+					Default:  gpuLimitsInputCount,
 					Required: false,
 					Validators: []interactive.Validator{
-						gpuLimitsValidator,
+						nonNegativeIntValidator,
 					},
 				})
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid value for %s: %s", autoscalerGPULimitsFlag, err)
+					r.Reporter.Errorf("Expected a valid value for %s: %s", autoscalerGPULimitsCountFlag, err)
 					os.Exit(1)
 				}
-				gpuLimitsStringArray := [][]string{}
-				gpuLimitsStringArray, err = splitStringIntoGPULimitsArray(gpuLimitsInput)
-				if err != nil {
+				if err := intValidator(gpuLimitsInputCount); err != nil {
 					r.Reporter.Errorf("%s", err)
 					os.Exit(1)
 				}
-				gpuLimits, err = convertGPULimitsStringArrayToGPULimits(gpuLimitsStringArray)
-				if err != nil {
-					r.Reporter.Errorf("%s", err)
-					os.Exit(1)
-				}
-			}
 
-			if err := gpuLimitsValidator(gpuLimits); err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				GPULimitType := ""
+				GPULimits := []GPULimit{}
+				for GPULimitEntryIndex := 0; GPULimitEntryIndex < gpuLimitsInputCount && (GPULimitType != "" || GPULimitEntryIndex == 0); GPULimitEntryIndex++ {
+					GPULimitType = ""
+					GPULimitType, err = interactive.GetString(interactive.Input{
+						Question: "Enter the type of desired GPULimitation type. Ex: nvidia.com/gpu, amd.com/gpu",
+						// Help:     cmd.Flags().Lookup(autoscalerGPULimitsFlag).Usage, // customly define this
+						Default:  GPULimitType,
+						Required: false,
+						// Validators: []interactive.Validator{
+						// },
+					})
+					if GPULimitType == "" {
+						cancelEntryEarly := true
+						cancelEntryEarly, err = interactive.GetBool(interactive.Input{
+							Question: "Recieved empty GPULimit type. Stop adding GPU entries?",
+							Help: "Selecting yes will proceeded with only the GPULimits you have previously defined. " +
+								"Selecting no will allow you to continue adding GPULimits, up until the count you previously defined. ",
+							Default: cancelEntryEarly,
+						})
+						if err != nil {
+							r.Reporter.Errorf("%s", err)
+							os.Exit(1)
+						}
+						if cancelEntryEarly {
+							break
+						} else {
+							GPULimitEntryIndex = GPULimitEntryIndex - 1
+							continue
+						}
+					} else {
+						GPULimitMin := 0
+						GPULimitMin, err = interactive.GetInt(interactive.Input{
+							Question: fmt.Sprintf("Enter minimum number of GPUS of type %s to deploy in the cluster.", GPULimitType),
+							Help: "minGPU: an integer stating the minimum number of GPUs of a given GPUType to deploy in the cluster. " +
+								"Must always be smaller than or equal to maxGPU. ",
+							Default: GPULimitMin,
+							Validators: []interactive.Validator{
+								nonNegativeIntValidator,
+							},
+						})
+						if err != nil {
+							r.Reporter.Errorf("%s", err)
+							os.Exit(1)
+						}
+						GPULimitMax, err := interactive.GetInt(interactive.Input{
+							Question: fmt.Sprintf("Enter maximum number of GPUS of type %s to deploy in the cluster.", GPULimitType),
+							Help: "maxGPU: a non zero integer stating the maximum number of GPUs of a given GPUType to deploy in the cluster. " +
+								"Must always be smaller than or equal to maxGPU. ",
+							Default: GPULimitMin,
+							Validators: []interactive.Validator{
+								nonNegativeIntValidator,
+							},
+						})
+						if err != nil {
+							r.Reporter.Errorf("%s", err)
+							os.Exit(1)
+						}
+						GPULimit := GPULimit{GPULimitType, GPULimitMin, GPULimitMax}
+						GPULimits = append(GPULimits, GPULimit)
+					}
+				}
+				if err := intValidator(gpuLimitsInputCount); err != nil {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
 			}
 
 			// scale-down configs
@@ -3397,7 +3449,7 @@ func run(cmd *cobra.Command, _ []string) {
 				DelayAfterFailure:    scaleDownDelayAfterFailure,
 			},
 		}
-		if isGPULimitsInputSet {
+		if isGPUCountInputSet {
 			clusterConfig.AutoscalerConfig.ResourceLimits.GPULimits = castGPULimits(gpuLimits)
 		}
 	}
@@ -3609,94 +3661,6 @@ func durationStringValidator(val interface{}) error {
 
 }
 
-// ------------------------ GPULimit Processing Helpers ------------------------
-
-func convertGPULimitsStringArrayToGPULimits(input [][]string) ([]GPULimit, error) {
-	gpuLimits := []GPULimit{}
-
-	if len(input) == 0 {
-		return []GPULimit{}, nil
-	}
-
-	for index := 0; index < len(input); index++ {
-		tempGPULimit, err := convertArrayToGPULimit(input[index])
-		if err != nil {
-			return []GPULimit{}, fmt.Errorf("Failed to convert GPULimit %v from string to struct of type GPULimit, error: %s", index, err)
-		}
-		gpuLimits = append(gpuLimits, tempGPULimit)
-	}
-	return gpuLimits, nil
-}
-
-func convertArrayToGPULimit(input []string) (GPULimit, error) {
-	gpuMin, err := strconv.Atoi(fmt.Sprintf("%v", input[1]))
-	if err != nil {
-		return GPULimit{}, err
-	}
-	gpuMax, err := strconv.Atoi(fmt.Sprintf("%v", input[2]))
-	if err != nil {
-		return GPULimit{}, err
-	}
-	GPULimit := GPULimit{input[0], gpuMin, gpuMax}
-	return GPULimit, nil
-}
-
-func processGPULimits(sanatizedInput string, splitIndex []int) ([][]string, error) {
-	var gpuLimits [][]string
-	inputStr := sanatizedInput[:]
-	counter := 0
-	stopIndex := 0
-
-	for iteration := 0; iteration <= len(splitIndex); iteration++ {
-		if iteration == len(splitIndex) {
-			stopIndex = len(inputStr)
-		} else {
-			stopIndex = splitIndex[iteration]
-		}
-
-		tempGPULimit := strings.Split(inputStr[counter:stopIndex], ",")
-		if len(tempGPULimit) != 3 {
-			return [][]string{}, fmt.Errorf("each gpuLimit should have 3 values.")
-		}
-		gpuLimits = append(gpuLimits, tempGPULimit)
-		if iteration != len(splitIndex) {
-			counter = splitIndex[iteration] + 3
-		}
-	}
-	return gpuLimits, nil
-}
-
-func splitStringIntoGPULimitsArray(input string) ([][]string, error) {
-	input = strings.TrimSpace(input)
-	inputNoSpace := strings.ReplaceAll(input, " ", "")
-	inputNoDoubleQuotes := strings.ReplaceAll(inputNoSpace, "\"", "")
-	inputNoQuotes := strings.ReplaceAll(inputNoDoubleQuotes, "'", "")
-
-	if inputNoQuotes == "" {
-		return [][]string{}, nil
-	}
-	if len(inputNoQuotes) < 4 {
-		return [][]string{}, fmt.Errorf("Input was less than minimum character count after basic sanitization for stringified array of arrays: [[]]")
-	}
-	if inputNoQuotes[0:2] != "[[" || inputNoQuotes[len(inputNoQuotes)-2:] != "]]" {
-		return [][]string{}, fmt.Errorf("Input was not a stringified array of arrays. A valid example of input would be: [[nvidia.com/gpu, 0, 1], [amd.com/gpu, 4, 16]]")
-	}
-	sanatizedInput := inputNoQuotes[2 : len(inputNoQuotes)-3]
-	if sanatizedInput == "" {
-		return [][]string{}, nil
-	}
-
-	splitIndexes := helper.FindAllSubstringIndexes(sanatizedInput, "],[")
-
-	gpuLimits, err := processGPULimits(sanatizedInput, splitIndexes)
-	if err != nil {
-		return gpuLimits, fmt.Errorf("Error thrown from attempting to process GPU limits input: %s", err)
-	}
-	return gpuLimits, nil
-}
-
-// ---------------------- End GPULimit Processing Helpers ----------------------
-
 func castGPULimits(gpuLimits []GPULimit) []ocm.GPULimit {
 	ocmGPULimits := []ocm.GPULimit{}
 	for _, value := range gpuLimits {
@@ -3715,26 +3679,18 @@ func castGPULimitToOCM(gpuLimit GPULimit) ocm.GPULimit {
 	return tempOCMGPULimit
 }
 
-func gpuLimitsValidator(val interface{}) error {
-	input, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("Failed to cast input to GPULimit, attempted to cast value to string: %s", val)
-	}
-	fmt.Printf("input: %s \n type: %T", input, input)
-	gpuLimitsStringArray, err := splitStringIntoGPULimitsArray(input)
-	if err != nil {
-		return fmt.Errorf("Failed to parse GPULimit string as part of validation: %s. \ninput: %s \n type: %T", err, input, input)
-	}
-	gpuLimits, err := convertGPULimitsStringArrayToGPULimits(gpuLimitsStringArray)
-	if err != nil {
-		return fmt.Errorf("Failed to cast GPULimit string back to GPULimit as part of validation: %s", err)
-	}
-
+func gpuLimitsValidator(gpuLimits []GPULimit) error {
 	if len(gpuLimits) == 0 {
 		return nil
 	}
-	for _, value := range gpuLimits {
-		if value.Max < value.Min {
+	re := regexp.MustCompile("^[a-zA-Z0-9-]+.[a-zA-Z0-9-]+/gpu$") // maybe match to list if we know
+	for _, gpuLimit := range gpuLimits {
+		regexMatchType := re.MatchString(gpuLimit.Type)
+		if !regexMatchType {
+			return fmt.Errorf("Expecting valid GPUType definition, consisting of a domain, a top level domain, and a gpu path. " +
+				"valid examples: nvidia.com/gpu, amd.com/gpu ")
+		}
+		if gpuLimit.Max < gpuLimit.Min {
 			return fmt.Errorf("GPULimit Max must always be greater than or equal to GPULimit Min and vice versa.")
 		}
 	}
