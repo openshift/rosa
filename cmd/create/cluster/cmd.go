@@ -829,7 +829,8 @@ func init() {
 	flags.StringVar(&args.machinePoolRootDiskSize,
 		"worker-disk-size",
 		"",
-		"Machine pool root disk size with a **unit suffix** like GiB or TiB, e.g. 200GiB.")
+		"Default worker machine pool root disk size with a **unit suffix** like GiB or TiB, "+
+			"e.g. 200GiB.")
 
 	flags.StringVar(
 		&args.billingAccount,
