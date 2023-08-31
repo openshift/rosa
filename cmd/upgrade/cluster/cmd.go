@@ -291,11 +291,11 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if len(availableUpgrades) == 0 {
-		r.Reporter.Warnf("There are no available upgrades")
-		return nil
-	}
 	if !currentUpgradeScheduling.AutomaticUpgrades {
+		if len(availableUpgrades) == 0 {
+			r.Reporter.Warnf("There are no available upgrades")
+			return nil
+		}
 		err = r.OCMClient.CheckUpgradeClusterVersion(availableUpgrades, version, cluster)
 		if err != nil {
 			return fmt.Errorf("%v", err)
