@@ -298,7 +298,12 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 				operator.Name(), path)
 			policyDetails := aws.GetPolicyDetails(policies, filename)
 
-			if isSharedVpc {
+			if isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType {
+				err = validateIngressOperatorPolicyOverride(r, policyArn, sharedVpcRoleArn, prefix)
+				if err != nil {
+					return err
+				}
+
 				policyDetails = aws.InterpolatePolicyDocument(policyDetails, map[string]string{
 					"shared_vpc_role_arn": sharedVpcRoleArn,
 				})
@@ -419,6 +424,11 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 					Build()
 				commands = append(commands, createPolicy)
 			} else if isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType {
+				err := validateIngressOperatorPolicyOverride(r, policyARN, sharedVpcRoleArn, prefix)
+				if err != nil {
+					return "", err
+				}
+
 				createPolicyVersion := awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.CreatePolicyVersion).
 					AddParam(awscb.PolicyArn, policyARN).
