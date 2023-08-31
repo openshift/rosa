@@ -493,7 +493,7 @@ func handleAccountRolePolicyARN(
 	}
 
 	promptString := fmt.Sprintf("More than one policy attached to account role '%s'.\n"+
-		"\tWould you like to dettach current policies and setup a new one ?", roleName)
+		"\tWould you like to detach current policies and setup a new one ?", roleName)
 	if !confirm.Prompt(true, promptString) {
 
 		attachedPoliciesArns := make([]string, len(attachedPoliciesDetail))
@@ -791,8 +791,10 @@ func upgradeOperatorRolePoliciesFromCluster(
 	}
 	for credrequest, operator := range credRequests {
 		policyARN := ""
+		operatorRoleName := ""
 		operatorPolicyPath := generalPath
 		operatorRoleARN := aws.FindOperatorRoleBySTSOperator(operatorRoles, operator)
+
 		if operatorRoleARN == "" {
 			policyARN = aws.GetOperatorPolicyARN(
 				accountID,
@@ -802,11 +804,10 @@ func upgradeOperatorRolePoliciesFromCluster(
 				operatorPolicyPath,
 			)
 		} else {
-			operatorRoleName, err := aws.GetResourceIdFromARN(operatorRoleARN)
+			operatorRoleName, err = aws.GetResourceIdFromARN(operatorRoleARN)
 			if err != nil {
 				return err
 			}
-
 			policyARN, _, err = handleOperatorRolePolicyARN(
 				mode,
 				awsClient,
@@ -841,6 +842,18 @@ func upgradeOperatorRolePoliciesFromCluster(
 			}, operatorPolicyPath)
 		if err != nil {
 			return err
+		}
+
+		if operatorRoleName != "" {
+			err = awsClient.AttachRolePolicy(operatorRoleName, policyARN)
+			if err != nil {
+				return err
+			}
+			//Delete if present else continue
+			err = awsClient.DeleteInlineRolePolicies(operatorRoleName)
+			if err != nil {
+				reporter.Debugf("Error deleting inline role policy %s : %s", policyARN, err)
+			}
 		}
 		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, defaultPolicyVersion)
 	}
@@ -970,7 +983,7 @@ func handleOperatorRolePolicyARN(
 	}
 
 	promptString := fmt.Sprintf("More than one policy attached to operator role '%s'.\n"+
-		"\tWould you like to dettach current policies and setup a new one ?", operatorRoleName)
+		"\tWould you like to detach current policies and setup a new one ?", operatorRoleName)
 	if !confirm.Prompt(true, promptString) {
 		attachedPoliciesArns := make([]string, len(attachedPoliciesDetails))
 		for _, attachedPolicyDetail := range attachedPoliciesDetails {
