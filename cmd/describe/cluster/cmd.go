@@ -180,12 +180,13 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	workloadMonitoringDisabled, ok := cluster.GetDisableUserWorkloadMonitoring()
-	isWorkloadMonitoringEnabled := "Enabled"
-	if !ok {
-		isWorkloadMonitoringEnabled = "Unknown"
-	}
-	if workloadMonitoringDisabled {
-		isWorkloadMonitoringEnabled = "Disabled"
+	workloadMonitoringStr := ""
+	if ok {
+		isWorkloadMonitoringEnabled := "Enabled"
+		if workloadMonitoringDisabled {
+			isWorkloadMonitoringEnabled = "Disabled"
+		}
+		workloadMonitoringStr = fmt.Sprintf("Workload Monitoring:        %s\n", isWorkloadMonitoringEnabled)
 	}
 
 	// Print short cluster description:
@@ -210,7 +211,7 @@ func run(cmd *cobra.Command, argv []string) {
 		" - Machine CIDR:            %s\n"+
 		" - Pod CIDR:                %s\n"+
 		" - Host Prefix:             /%d\n"+
-		"Workload Monitoring:        %s\n",
+		"%s",
 		clusterName,
 		cluster.ID(),
 		cluster.ExternalID(),
@@ -230,7 +231,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Network().MachineCIDR(),
 		cluster.Network().PodCIDR(),
 		cluster.Network().HostPrefix(),
-		isWorkloadMonitoringEnabled,
+		workloadMonitoringStr,
 	)
 
 	if cluster.InfraID() != "" {
