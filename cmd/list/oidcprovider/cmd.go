@@ -68,6 +68,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	providers, err := r.AWSClient.ListOidcProviders(clusterId)
+
 	if spin != nil {
 		spin.Stop()
 	}
@@ -76,10 +77,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(providers) == 0 {
-		r.Reporter.Infof("No OIDC providers available")
-		os.Exit(0)
-	}
 	providersInUse := map[string]bool{}
 	for _, provider := range providers {
 		resourceName, err := aws.GetResourceIdFromOidcProviderARN(provider.Arn)
@@ -96,6 +93,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		providersInUse[provider.Arn] = has
 	}
+
 	if output.HasFlag() {
 		outList := []map[string]interface{}{}
 		for _, provider := range providers {
@@ -107,6 +105,11 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
+		os.Exit(0)
+	}
+
+	if len(providers) == 0 {
+		r.Reporter.Infof("No OIDC providers available")
 		os.Exit(0)
 	}
 

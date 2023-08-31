@@ -28,6 +28,7 @@ import (
 
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -43,6 +44,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	ocm.AddClusterFlag(Cmd)
+	output.AddFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -78,6 +80,19 @@ func run(_ *cobra.Command, _ []string) {
 	if err != nil {
 		r.Reporter.Errorf("Failed to get dedicated-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
+	}
+
+	if output.HasFlag() {
+		// Join the two lists of users and print the raw data. This may result in duplicate entries
+		// in the lists where a user has both roles
+		userList := append(clusterAdmins, dedicatedAdmins...)
+		err := output.Print(userList)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		os.Exit(0)
 	}
 
 	if len(clusterAdmins) == 0 && len(dedicatedAdmins) == 0 {

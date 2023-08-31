@@ -17,6 +17,7 @@ limitations under the License.
 package ocm
 
 import (
+	"bytes"
 	"fmt"
 
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -55,10 +56,24 @@ type AddOnResource struct {
 	Available bool
 }
 
+// We customize here the marshalling of AddOnResource to JSON as the embedded AddOn struct does not
+// export its member fields. We instead delegate to cmv1.MarshallAddOn for Marshalling the JSON of the
+// embedded AddOn struct and then build a string representation of the struct to be returned as JSON.
+func (ar *AddOnResource) MarshalJSON() ([]byte, error) {
+	var b bytes.Buffer
+	err := cmv1.MarshalAddOn(ar.AddOn, &b)
+	if err != nil {
+		return nil, err
+	}
+
+	json := fmt.Sprintf(`{"addon": %s, "az_type": "%s", "available":"%t"}`, b.String(), ar.AZType, ar.Available)
+	return []byte(json), nil
+}
+
 type ClusterAddOn struct {
-	ID    string
-	Name  string
-	State string
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	State string `json:"state"`
 }
 
 func (c *Client) InstallAddOn(clusterID, addOnID string, params []AddOnParam, billing AddOnBilling) error {

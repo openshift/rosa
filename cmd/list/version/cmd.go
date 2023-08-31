@@ -85,11 +85,6 @@ func run(cmd *cobra.Command, _ []string) {
 		availableVersions = append(availableVersions, version)
 	}
 
-	if len(availableVersions) == 0 {
-		r.Reporter.Warnf("There are no OpenShift versions available")
-		os.Exit(1)
-	}
-
 	if output.HasFlag() {
 		err = output.Print(availableVersions)
 		if err != nil {
@@ -97,6 +92,11 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		os.Exit(0)
+	}
+
+	if len(availableVersions) == 0 {
+		r.Reporter.Warnf("There are no OpenShift versions available")
+		os.Exit(1)
 	}
 
 	// Create the writer that will be used to print the tabulated results:

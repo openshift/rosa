@@ -40,6 +40,7 @@ var emptyBuffer = []byte{91, 10, 32, 32, 10, 93}
 
 func Print(resource interface{}) error {
 	var b bytes.Buffer
+
 	switch reflect.TypeOf(resource).String() {
 	case "[]*v1.ManagedService":
 		if managedServices, ok := resource.([]*msv1.ManagedService); ok {
@@ -85,13 +86,17 @@ func Print(resource interface{}) error {
 		if nodePool, ok := resource.(*cmv1.NodePool); ok {
 			cmv1.MarshalNodePool(nodePool, &b)
 		}
+	case "[]*v1.NodePool":
+		if nodePools, ok := resource.([]*cmv1.NodePool); ok {
+			cmv1.MarshalNodePoolList(nodePools, &b)
+		}
 	case "[]*v1.Version":
 		if versions, ok := resource.([]*cmv1.Version); ok {
 			cmv1.MarshalVersionList(versions, &b)
 		}
 	case "[]*v1.VersionGate":
-		if versionGate, ok := resource.(*cmv1.VersionGate); ok {
-			cmv1.MarshalVersionGate(versionGate, &b)
+		if versionGates, ok := resource.([]*cmv1.VersionGate); ok {
+			cmv1.MarshalVersionGateList(versionGates, &b)
 		}
 	case "[]*v1.OidcConfig":
 		if oidcConfigs, ok := resource.([]*cmv1.OidcConfig); ok {
@@ -109,13 +114,15 @@ func Print(resource interface{}) error {
 		if tuningConfig, ok := resource.(*cmv1.TuningConfig); ok {
 			cmv1.MarshalTuningConfig(tuningConfig, &b)
 		}
-	case "[]aws.Role":
+	case "[]*v1.User":
+		if users, ok := resource.([]*cmv1.User); ok {
+			cmv1.MarshalUserList(users, &b)
+		}
+	case "[]aws.Role", "[]aws.OidcProviderOutput":
 		{
-			if roles, ok := resource.([]aws.Role); ok {
-				err := aws.MarshalRoles(roles, &b)
-				if err != nil {
-					return err
-				}
+			err := defaultEncode(resource, &b)
+			if err != nil {
+				return err
 			}
 		}
 	case "map[string][]aws.Role":
@@ -130,9 +137,7 @@ func Print(resource interface{}) error {
 	// default to catch non concrete types
 	default:
 		{
-			reqBodyBytes := new(bytes.Buffer)
-			json.NewEncoder(reqBodyBytes).Encode(resource)
-			err := json.Indent(&b, reqBodyBytes.Bytes(), "", "  ")
+			err := defaultEncode(resource, &b)
 			if err != nil {
 				return err
 			}
@@ -148,6 +153,22 @@ func Print(resource interface{}) error {
 		return err
 	}
 	fmt.Print(str)
+	return nil
+}
+
+// Provides a default encoding to JSON for types not being marshalled via the cmv1 package
+func defaultEncode(resource interface{}, b *bytes.Buffer) error {
+	reqBodyBytes := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBytes).Encode(resource)
+	if err != nil {
+		return err
+	}
+
+	err = json.Indent(b, reqBodyBytes.Bytes(), "", "  ")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

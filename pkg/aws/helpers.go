@@ -1,8 +1,6 @@
 package aws
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -413,20 +411,6 @@ func GetTagValues(tagsValue []*iam.Tag) (roleType string, version string) {
 		}
 	}
 	return
-}
-
-func MarshalRoles(role []Role, b *bytes.Buffer) error {
-	reqBodyBytes := new(bytes.Buffer)
-	json.NewEncoder(reqBodyBytes).Encode(role)
-	return prettyPrint(reqBodyBytes, b)
-}
-
-func prettyPrint(reqBodyBytes *bytes.Buffer, b *bytes.Buffer) error {
-	err := json.Indent(b, reqBodyBytes.Bytes(), "", "  ")
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func GetRoleName(prefix string, role string) string {

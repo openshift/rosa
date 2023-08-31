@@ -93,16 +93,17 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(accountRoles) == 0 {
-		r.Reporter.Infof("No account roles available")
-		os.Exit(0)
-	}
 	if output.HasFlag() {
 		err = output.Print(accountRoles)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
+		os.Exit(0)
+	}
+
+	if len(accountRoles) == 0 {
+		r.Reporter.Infof("No account roles available")
 		os.Exit(0)
 	}
 
