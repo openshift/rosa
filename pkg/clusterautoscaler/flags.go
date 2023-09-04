@@ -47,6 +47,29 @@ type AutoscalerArgs struct {
 	ScaleDown                   ScaleDownConfig
 }
 
+func IsAutoscalerSetViaCLI(cmd *pflag.FlagSet) bool {
+	return cmd.Changed(balanceSimilarNodeGroupsFlag) ||
+		cmd.Changed(skipNodesWithLocalStorageFlag) ||
+		cmd.Changed(logVerbosityFlag) ||
+		cmd.Changed(balancingIgnoredLabelsFlag) ||
+		cmd.Changed(ignoreDaemonsetsUtilizationFlag) ||
+		cmd.Changed(maxPodGracePeriodFlag) ||
+		cmd.Changed(podPriorityThresholdFlag) ||
+		cmd.Changed(maxNodeProvisionTimeFlag) ||
+		cmd.Changed(maxNodesTotalFlag) ||
+		cmd.Changed(minCoresFlag) ||
+		cmd.Changed(maxCoresFlag) ||
+		cmd.Changed(minMemoryFlag) ||
+		cmd.Changed(maxMemoryFlag) ||
+		cmd.Changed(gpuLimitFlag) ||
+		cmd.Changed(scaleDownEnabledFlag) ||
+		cmd.Changed(scaleDownUnneededTimeFlag) ||
+		cmd.Changed(scaleDownUtilizationThresholdFlag) ||
+		cmd.Changed(scaleDownDelayAfterAddFlag) ||
+		cmd.Changed(scaleDownDelayAfterDeleteFlag) ||
+		cmd.Changed(scaleDownDelayAfterFailureFlag)
+}
+
 type ResourceLimits struct {
 	MaxNodesTotal int
 	Cores         ResourceRange
@@ -233,7 +256,6 @@ func GetAutoscalerOptions(
 	cmd *pflag.FlagSet, prefix string, confirmBeforeAllArgs bool, autoscalerArgs *AutoscalerArgs,
 ) (*AutoscalerArgs, error) {
 
-	var isClusterAutoscalerSet bool
 	var err error
 	result := &AutoscalerArgs{}
 
@@ -279,18 +301,7 @@ func GetAutoscalerOptions(
 	isScaleDownDelayAfterDeleteSet := cmd.Changed(scaleDownDelayAfterDeleteFlag)
 	isScaleDownDelayAfterFailureSet := cmd.Changed(scaleDownDelayAfterFailureFlag)
 
-	if isBalanceSimilarNodeGroupsSet || isAutoscalerSkipNodesWithLocalStorageSet ||
-		isAutoscalerLogVerbositySet || isAutoscalerBalancingIgnoredLabelsSet ||
-		isAutoscalerIgnoreDaemonsetsUtilizationSet || isAutoscalerMaxPodGracePeriodSet ||
-		isAutoscalerPodPriorityThresholdSet || isAutoscalerMaxNodeProvisionTimeSet ||
-		isMaxNodesTotalSet || isMinCoresSet ||
-		isMaxCoresSet || isMinMemorySet ||
-		isMaxMemorySet || isGPULimitsSet || isScaleDownEnabledSet ||
-		isScaleDownUnneededTimeSet || isScaleDownUtilizationThresholdSet ||
-		isScaleDownDelayAfterAddSet || isScaleDownDelayAfterDeleteSet ||
-		isScaleDownDelayAfterFailureSet {
-		isClusterAutoscalerSet = true
-	}
+	isClusterAutoscalerSet := IsAutoscalerSetViaCLI(cmd)
 
 	if confirmBeforeAllArgs && !isClusterAutoscalerSet && interactive.Enabled() {
 		isClusterAutoscalerSet, err = interactive.GetBool(interactive.Input{
@@ -767,6 +778,64 @@ func BuildAutoscalerOptions(spec *ocm.AutoscalerConfig, prefix string) string {
 	}
 
 	return command
+}
+
+func CreateAutoscalerConfig(args *AutoscalerArgs) (*ocm.AutoscalerConfig, error) {
+	gpuLimits := []ocm.GPULimit{}
+	for _, gpuLimit := range args.ResourceLimits.GPULimits {
+		parameters := strings.Split(gpuLimit, ",")
+		if len(parameters) != 3 {
+			return nil, fmt.Errorf("GPU limitation '%s' does not have 3 entries split by a comma", gpuLimit)
+		}
+		gpuLimitMin, err := strconv.Atoi(parameters[1])
+		if err != nil {
+			return nil, fmt.Errorf("Failed parsing '%s' into an integer: %s", parameters[1], err)
+		}
+		gpuLimitMax, err := strconv.Atoi(parameters[2])
+		if err != nil {
+			return nil, fmt.Errorf("Failed parsing '%s' into an integer: %s", parameters[2], err)
+		}
+
+		gpuLimits = append(gpuLimits,
+			ocm.GPULimit{
+				Type: parameters[0],
+				Range: ocm.ResourceRange{
+					Min: gpuLimitMin,
+					Max: gpuLimitMax,
+				},
+			})
+	}
+
+	return &ocm.AutoscalerConfig{
+		BalanceSimilarNodeGroups:    args.BalanceSimilarNodeGroups,
+		SkipNodesWithLocalStorage:   args.SkipNodesWithLocalStorage,
+		LogVerbosity:                args.LogVerbosity,
+		MaxPodGracePeriod:           args.MaxPodGracePeriod,
+		BalancingIgnoredLabels:      args.BalancingIgnoredLabels,
+		IgnoreDaemonsetsUtilization: args.IgnoreDaemonsetsUtilization,
+		MaxNodeProvisionTime:        args.MaxNodeProvisionTime,
+		PodPriorityThreshold:        args.PodPriorityThreshold,
+		ResourceLimits: ocm.ResourceLimits{
+			MaxNodesTotal: args.ResourceLimits.MaxNodesTotal,
+			Cores: ocm.ResourceRange{
+				Min: args.ResourceLimits.Cores.Min,
+				Max: args.ResourceLimits.Cores.Max,
+			},
+			Memory: ocm.ResourceRange{
+				Min: args.ResourceLimits.Memory.Min,
+				Max: args.ResourceLimits.Memory.Max,
+			},
+			GPULimits: gpuLimits,
+		},
+		ScaleDown: ocm.ScaleDownConfig{
+			Enabled:              args.ScaleDown.Enabled,
+			UnneededTime:         args.ScaleDown.UnneededTime,
+			UtilizationThreshold: args.ScaleDown.UtilizationThreshold,
+			DelayAfterAdd:        args.ScaleDown.DelayAfterAdd,
+			DelayAfterDelete:     args.ScaleDown.DelayAfterDelete,
+			DelayAfterFailure:    args.ScaleDown.DelayAfterFailure,
+		},
+	}, nil
 }
 
 // getValidMaxRangeValidator returns a validator function that asserts a given
