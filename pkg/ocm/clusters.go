@@ -53,39 +53,6 @@ func NewDefaultIngressSpec() DefaultIngressSpec {
 	return defaultIngressSpec
 }
 
-type AutoscalerConfig struct {
-	BalanceSimilarNodeGroups    bool
-	SkipNodesWithLocalStorage   bool
-	LogVerbosity                int
-	MaxPodGracePeriod           int
-	PodPriorityThreshold        int
-	IgnoreDaemonsetsUtilization bool
-	MaxNodeProvisionTime        string
-	BalancingIgnoredLabels      []string
-	ResourceLimits              ResourceLimits
-	ScaleDown                   ScaleDownConfig
-}
-
-type ResourceLimits struct {
-	MaxNodesTotal int
-	Cores         ResourceRange
-	Memory        ResourceRange
-}
-
-type ResourceRange struct {
-	Min int
-	Max int
-}
-
-type ScaleDownConfig struct {
-	Enabled              bool
-	UnneededTime         string
-	UtilizationThreshold float64
-	DelayAfterAdd        string
-	DelayAfterDelete     string
-	DelayAfterFailure    string
-}
-
 // Spec is the configuration for a cluster spec.
 type Spec struct {
 	// Basic configs
@@ -1046,31 +1013,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 
 	if config.AutoscalerConfig != nil {
-		clusterBuilder.Autoscaler(cmv1.NewClusterAutoscaler().
-			BalanceSimilarNodeGroups(config.AutoscalerConfig.BalanceSimilarNodeGroups).
-			SkipNodesWithLocalStorage(config.AutoscalerConfig.SkipNodesWithLocalStorage).
-			LogVerbosity(config.AutoscalerConfig.LogVerbosity).
-			MaxPodGracePeriod(config.AutoscalerConfig.MaxPodGracePeriod).
-			PodPriorityThreshold(config.AutoscalerConfig.PodPriorityThreshold).
-			IgnoreDaemonsetsUtilization(config.AutoscalerConfig.IgnoreDaemonsetsUtilization).
-			MaxNodeProvisionTime(config.AutoscalerConfig.MaxNodeProvisionTime).
-			BalancingIgnoredLabels(config.AutoscalerConfig.BalancingIgnoredLabels...).
-			ResourceLimits(cmv1.NewAutoscalerResourceLimits().
-				MaxNodesTotal(config.AutoscalerConfig.ResourceLimits.MaxNodesTotal).
-				Cores(cmv1.NewResourceRange().
-					Min(config.AutoscalerConfig.ResourceLimits.Cores.Min).
-					Max(config.AutoscalerConfig.ResourceLimits.Cores.Max)).
-				Memory(cmv1.NewResourceRange().
-					Min(config.AutoscalerConfig.ResourceLimits.Memory.Min).
-					Max(config.AutoscalerConfig.ResourceLimits.Memory.Max))).
-			ScaleDown(cmv1.NewAutoscalerScaleDownConfig().
-				Enabled(config.AutoscalerConfig.ScaleDown.Enabled).
-				UnneededTime(config.AutoscalerConfig.ScaleDown.UnneededTime).
-				UtilizationThreshold(fmt.Sprintf("%f", config.AutoscalerConfig.ScaleDown.UtilizationThreshold)).
-				DelayAfterAdd(config.AutoscalerConfig.ScaleDown.DelayAfterAdd).
-				DelayAfterDelete(config.AutoscalerConfig.ScaleDown.DelayAfterDelete).
-				DelayAfterFailure(config.AutoscalerConfig.ScaleDown.DelayAfterFailure)),
-		)
+		clusterBuilder.Autoscaler(BuildClusterAutoscaler(config.AutoscalerConfig))
 	}
 
 	clusterSpec, err := clusterBuilder.Build()

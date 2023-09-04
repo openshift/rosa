@@ -16,6 +16,76 @@ limitations under the License.
 
 package ocm
 
+import (
+	"fmt"
+
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+)
+
+type AutoscalerConfig struct {
+	BalanceSimilarNodeGroups    bool
+	SkipNodesWithLocalStorage   bool
+	LogVerbosity                int
+	MaxPodGracePeriod           int
+	PodPriorityThreshold        int
+	IgnoreDaemonsetsUtilization bool
+	MaxNodeProvisionTime        string
+	BalancingIgnoredLabels      []string
+	ResourceLimits              ResourceLimits
+	ScaleDown                   ScaleDownConfig
+}
+
+type ResourceLimits struct {
+	MaxNodesTotal int
+	Cores         ResourceRange
+	Memory        ResourceRange
+}
+
+type ResourceRange struct {
+	Min int
+	Max int
+}
+
+type ScaleDownConfig struct {
+	Enabled              bool
+	UnneededTime         string
+	UtilizationThreshold float64
+	DelayAfterAdd        string
+	DelayAfterDelete     string
+	DelayAfterFailure    string
+}
+
+func BuildClusterAutoscaler(config *AutoscalerConfig) *cmv1.ClusterAutoscalerBuilder {
+	if config == nil {
+		return nil
+	}
+
+	return cmv1.NewClusterAutoscaler().
+		BalanceSimilarNodeGroups(config.BalanceSimilarNodeGroups).
+		SkipNodesWithLocalStorage(config.SkipNodesWithLocalStorage).
+		LogVerbosity(config.LogVerbosity).
+		MaxPodGracePeriod(config.MaxPodGracePeriod).
+		PodPriorityThreshold(config.PodPriorityThreshold).
+		IgnoreDaemonsetsUtilization(config.IgnoreDaemonsetsUtilization).
+		MaxNodeProvisionTime(config.MaxNodeProvisionTime).
+		BalancingIgnoredLabels(config.BalancingIgnoredLabels...).
+		ResourceLimits(cmv1.NewAutoscalerResourceLimits().
+			MaxNodesTotal(config.ResourceLimits.MaxNodesTotal).
+			Cores(cmv1.NewResourceRange().
+				Min(config.ResourceLimits.Cores.Min).
+				Max(config.ResourceLimits.Cores.Max)).
+			Memory(cmv1.NewResourceRange().
+				Min(config.ResourceLimits.Memory.Min).
+				Max(config.ResourceLimits.Memory.Max))).
+		ScaleDown(cmv1.NewAutoscalerScaleDownConfig().
+			Enabled(config.ScaleDown.Enabled).
+			UnneededTime(config.ScaleDown.UnneededTime).
+			UtilizationThreshold(fmt.Sprintf("%f", config.ScaleDown.UtilizationThreshold)).
+			DelayAfterAdd(config.ScaleDown.DelayAfterAdd).
+			DelayAfterDelete(config.ScaleDown.DelayAfterDelete).
+			DelayAfterFailure(config.ScaleDown.DelayAfterFailure))
+}
+
 func (c *Client) DeleteClusterAutoscaler(clusterID string) error {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).
