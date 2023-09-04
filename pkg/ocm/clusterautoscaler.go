@@ -39,11 +39,17 @@ type ResourceLimits struct {
 	MaxNodesTotal int
 	Cores         ResourceRange
 	Memory        ResourceRange
+	GPULimits     []GPULimit
 }
 
 type ResourceRange struct {
 	Min int
 	Max int
+}
+
+type GPULimit struct {
+	Type  string
+	Range ResourceRange
 }
 
 type ScaleDownConfig struct {
@@ -58,6 +64,18 @@ type ScaleDownConfig struct {
 func BuildClusterAutoscaler(config *AutoscalerConfig) *cmv1.ClusterAutoscalerBuilder {
 	if config == nil {
 		return nil
+	}
+
+	gpuLimits := []*cmv1.AutoscalerResourceLimitsGPULimitBuilder{}
+	for _, gpuLimit := range config.ResourceLimits.GPULimits {
+		gpuLimits = append(
+			gpuLimits,
+			cmv1.NewAutoscalerResourceLimitsGPULimit().
+				Type(gpuLimit.Type).
+				Range(cmv1.NewResourceRange().
+					Min(gpuLimit.Range.Min).
+					Max(gpuLimit.Range.Max)),
+		)
 	}
 
 	return cmv1.NewClusterAutoscaler().
@@ -76,7 +94,8 @@ func BuildClusterAutoscaler(config *AutoscalerConfig) *cmv1.ClusterAutoscalerBui
 				Max(config.ResourceLimits.Cores.Max)).
 			Memory(cmv1.NewResourceRange().
 				Min(config.ResourceLimits.Memory.Min).
-				Max(config.ResourceLimits.Memory.Max))).
+				Max(config.ResourceLimits.Memory.Max)).
+			GPUS(gpuLimits...)).
 		ScaleDown(cmv1.NewAutoscalerScaleDownConfig().
 			Enabled(config.ScaleDown.Enabled).
 			UnneededTime(config.ScaleDown.UnneededTime).

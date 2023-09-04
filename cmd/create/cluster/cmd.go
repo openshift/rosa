@@ -2732,6 +2732,34 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.BaseDomain = baseDomain
 	}
 	if autoscalerArgs != nil {
+		gpuLimits := []ocm.GPULimit{}
+		for _, gpuLimit := range autoscalerArgs.ResourceLimits.GPULimits {
+			parameters := strings.Split(gpuLimit, ",")
+			if len(parameters) != 3 {
+				r.Reporter.Errorf("GPU limitation '%s' does not have 3 entries split by a comma", gpuLimit)
+				os.Exit(1)
+			}
+			gpuLimitMin, err := strconv.Atoi(parameters[1])
+			if err != nil {
+				r.Reporter.Errorf("Failed parsing '%s' into an integer: %s", parameters[1], err)
+				os.Exit(1)
+			}
+			gpuLimitMax, err := strconv.Atoi(parameters[2])
+			if err != nil {
+				r.Reporter.Errorf("Failed parsing '%s' into an integer: %s", parameters[2], err)
+				os.Exit(1)
+			}
+
+			gpuLimits = append(gpuLimits,
+				ocm.GPULimit{
+					Type: parameters[0],
+					Range: ocm.ResourceRange{
+						Min: gpuLimitMin,
+						Max: gpuLimitMax,
+					},
+				})
+		}
+
 		clusterConfig.AutoscalerConfig = &ocm.AutoscalerConfig{
 			BalanceSimilarNodeGroups:    autoscalerArgs.BalanceSimilarNodeGroups,
 			SkipNodesWithLocalStorage:   autoscalerArgs.SkipNodesWithLocalStorage,
@@ -2751,6 +2779,7 @@ func run(cmd *cobra.Command, _ []string) {
 					Min: autoscalerArgs.ResourceLimits.Memory.Min,
 					Max: autoscalerArgs.ResourceLimits.Memory.Max,
 				},
+				GPULimits: gpuLimits,
 			},
 			ScaleDown: ocm.ScaleDownConfig{
 				Enabled:              autoscalerArgs.ScaleDown.Enabled,

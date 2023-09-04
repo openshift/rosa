@@ -25,7 +25,7 @@ const (
 	maxCoresFlag                      = "max-cores"
 	minMemoryFlag                     = "min-memory"
 	maxMemoryFlag                     = "max-memory"
-	gpuLimitsFlag                     = "gpu-limits"
+	gpuLimitFlag                      = "gpu-limit"
 	scaleDownEnabledFlag              = "scale-down-enabled"
 	scaleDownUnneededTimeFlag         = "scale-down-unneeded-time"
 	scaleDownUtilizationThresholdFlag = "scale-down-utilization-threshold"
@@ -51,6 +51,7 @@ type ResourceLimits struct {
 	MaxNodesTotal int
 	Cores         ResourceRange
 	Memory        ResourceRange
+	GPULimits     []string
 }
 
 type ResourceRange struct {
@@ -166,7 +167,18 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 		"Maximum limit for the amount of memory, in GiB, in the cluster.",
 	)
 
-	// TODO: handle GPU limitations
+	flag := fmt.Sprintf("%s%s", prefix, gpuLimitFlag)
+	cmd.StringArrayVar(
+		&args.ResourceLimits.GPULimits,
+		flag,
+		[]string{},
+		fmt.Sprintf(
+			"Limit GPUs consumption. It should be comprised of 3 values separated "+
+				"with commas: the GPU hardware type, a minimal count for that type "+
+				"and a maximal count for that type. This option can be repeated multiple "+
+				"times in order to apply multiple restrictions for different GPU types. For example: "+
+				"--%[1]s nvidia.com/gpu,0,10 --%[1]s amd.com/gpu,1,5", flag),
+	)
 
 	// Scale down Configuration
 
@@ -238,6 +250,7 @@ func GetAutoscalerOptions(
 	result.ResourceLimits.Cores.Max = autoscalerArgs.ResourceLimits.Cores.Max
 	result.ResourceLimits.Memory.Min = autoscalerArgs.ResourceLimits.Memory.Min
 	result.ResourceLimits.Memory.Max = autoscalerArgs.ResourceLimits.Memory.Max
+	result.ResourceLimits.GPULimits = append(result.ResourceLimits.GPULimits, autoscalerArgs.ResourceLimits.GPULimits...)
 	result.ScaleDown.Enabled = autoscalerArgs.ScaleDown.Enabled
 	result.ScaleDown.UnneededTime = autoscalerArgs.ScaleDown.UnneededTime
 	result.ScaleDown.UtilizationThreshold = autoscalerArgs.ScaleDown.UtilizationThreshold
@@ -258,6 +271,7 @@ func GetAutoscalerOptions(
 	isMaxCoresSet := cmd.Changed(maxCoresFlag)
 	isMinMemorySet := cmd.Changed(minMemoryFlag)
 	isMaxMemorySet := cmd.Changed(maxMemoryFlag)
+	isGPULimitsSet := cmd.Changed(gpuLimitFlag)
 	isScaleDownEnabledSet := cmd.Changed(scaleDownEnabledFlag)
 	isScaleDownUnneededTimeSet := cmd.Changed(scaleDownUnneededTimeFlag)
 	isScaleDownUtilizationThresholdSet := cmd.Changed(scaleDownUtilizationThresholdFlag)
@@ -271,7 +285,7 @@ func GetAutoscalerOptions(
 		isAutoscalerPodPriorityThresholdSet || isAutoscalerMaxNodeProvisionTimeSet ||
 		isMaxNodesTotalSet || isMinCoresSet ||
 		isMaxCoresSet || isMinMemorySet ||
-		isMaxMemorySet || isScaleDownEnabledSet ||
+		isMaxMemorySet || isGPULimitsSet || isScaleDownEnabledSet ||
 		isScaleDownUnneededTimeSet || isScaleDownUtilizationThresholdSet ||
 		isScaleDownDelayAfterAddSet || isScaleDownDelayAfterDeleteSet ||
 		isScaleDownDelayAfterFailureSet {
@@ -508,6 +522,65 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
+	if interactive.Enabled() && !isGPULimitsSet {
+		gpuLimitsCount, err := interactive.GetInt(interactive.Input{
+			Question: "Enter the number of GPU limitations you wish to set",
+			Help: "This allows setting a limiting range of the count of GPU resources " +
+				"that will be used. Each limitation is per hardware type",
+			Default:  0,
+			Required: false,
+			Validators: []interactive.Validator{
+				ocm.NonNegativeIntValidator,
+			},
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		for i := 1; i <= gpuLimitsCount; i++ {
+			gpuLimitType, err := interactive.GetString(interactive.Input{
+				Question: fmt.Sprintf("%d. Enter the type of desired GPU limitation", i),
+				Help:     "E.g.: nvidia.com/gpu, amd.com/gpu",
+				Required: true,
+			})
+
+			if err != nil {
+				return nil, err
+			}
+
+			gpuLimitMin, err := interactive.GetInt(interactive.Input{
+				Question: fmt.Sprintf("%d. Enter minimum number of GPUS of type '%s' to deploy in the cluster.", i, gpuLimitType),
+				Help: "An integer stating the minimum number of GPUs of the given type to deploy in the cluster. " +
+					"Must always be smaller than or equal to the maximal value.",
+				Validators: []interactive.Validator{
+					ocm.NonNegativeIntValidator,
+				},
+			})
+
+			if err != nil {
+				return nil, err
+			}
+
+			gpuLimitMax, err := interactive.GetInt(interactive.Input{
+				Question: fmt.Sprintf("%d. Enter maximum number of GPUS of type '%s' to deploy in the cluster.", i, gpuLimitType),
+				Help: "An integer stating the maximum number of GPUs of the given type to deploy in the cluster. " +
+					"Must always be smaller than or equal to the maximal value.",
+				Validators: []interactive.Validator{
+					ocm.NonNegativeIntValidator,
+					getValidMaxRangeValidator(gpuLimitMin),
+				},
+			})
+
+			if err != nil {
+				return nil, err
+			}
+
+			result.ResourceLimits.GPULimits = append(result.ResourceLimits.GPULimits,
+				fmt.Sprintf("%s,%d,%d", gpuLimitType, gpuLimitMin, gpuLimitMax))
+		}
+	}
+
 	// scale-down configs
 
 	if interactive.Enabled() && !result.ScaleDown.Enabled && !isScaleDownEnabledSet {
@@ -660,6 +733,11 @@ func BuildAutoscalerOptions(spec *ocm.AutoscalerConfig, prefix string) string {
 
 	command += fmt.Sprintf(" --%s%s %d", prefix, minMemoryFlag, spec.ResourceLimits.Memory.Min)
 	command += fmt.Sprintf(" --%s%s %d", prefix, maxMemoryFlag, spec.ResourceLimits.Memory.Max)
+
+	for _, gpuLimit := range spec.ResourceLimits.GPULimits {
+		command += fmt.Sprintf(" --%s%s %s,%d,%d", prefix, gpuLimitFlag,
+			gpuLimit.Type, gpuLimit.Range.Min, gpuLimit.Range.Max)
+	}
 
 	if spec.ScaleDown.Enabled {
 		command += fmt.Sprintf(" --%s%s", prefix, scaleDownEnabledFlag)
