@@ -54,6 +54,8 @@ import (
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
+
+	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 )
 
 // nolint
@@ -897,7 +899,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if clusterAdminPassword != "" {
 			r.Reporter.Warnf("cluster admin password is %s", clusterAdminPassword)
-			err = idp.PasswordValidator(clusterAdminPassword)
+			err = passwordValidator.PasswordValidator(clusterAdminPassword)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
