@@ -366,7 +366,7 @@ func GetAutoscalerOptions(
 		balancingIgnoredLabels, err := interactive.GetString(interactive.Input{
 			Question: "Labels that cluster autoscaler should ignore when considering node group similarity",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag)).Usage,
-			Default:  result.BalancingIgnoredLabels,
+			Default:  strings.Join(result.BalancingIgnoredLabels, ","),
 			Required: false,
 			Validators: []interactive.Validator{
 				ocm.ValidateBalancingIgnoredLabels,
@@ -381,7 +381,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isAutoscalerIgnoreDaemonsetsUtilizationSet && !result.IgnoreDaemonsetsUtilization {
+	if interactive.Enabled() && !isAutoscalerIgnoreDaemonsetsUtilizationSet {
 		result.IgnoreDaemonsetsUtilization, err = interactive.GetBool(interactive.Input{
 			Question: "Ignore daemonsets utilization",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag)).Usage,
@@ -411,7 +411,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && result.MaxPodGracePeriod == 0 && !isAutoscalerMaxPodGracePeriodSet {
+	if interactive.Enabled() && !isAutoscalerMaxPodGracePeriodSet {
 		result.MaxPodGracePeriod, err = interactive.GetInt(interactive.Input{
 			Question: "Maximum pod grace period",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxPodGracePeriodFlag)).Usage,
@@ -426,7 +426,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && result.PodPriorityThreshold == 0 && !isAutoscalerPodPriorityThresholdSet {
+	if interactive.Enabled() && !isAutoscalerPodPriorityThresholdSet {
 		result.PodPriorityThreshold, err = interactive.GetInt(interactive.Input{
 			Question: "Pod priority threshold",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, podPriorityThresholdFlag)).Usage,
@@ -600,7 +600,7 @@ func GetAutoscalerOptions(
 
 	// scale-down configs
 
-	if interactive.Enabled() && !result.ScaleDown.Enabled && !isScaleDownEnabledSet {
+	if interactive.Enabled() && !isScaleDownEnabledSet {
 		result.ScaleDown.Enabled, err = interactive.GetBool(interactive.Input{
 			Question: "Should scale-down be enabled",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag)).Usage,
@@ -612,7 +612,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isScaleDownUnneededTimeSet && result.ScaleDown.UnneededTime == "" {
+	if interactive.Enabled() && !isScaleDownUnneededTimeSet {
 		result.ScaleDown.UnneededTime, err = interactive.GetString(interactive.Input{
 			Question: "How long a node should be unneeded before it is eligible for scale down",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag)).Usage,
