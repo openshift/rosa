@@ -492,7 +492,7 @@ func (c *Client) CheckRoleExists(orgID string, roleName string, awsAccountID str
 }
 
 func GetVersionMinor(ver string) string {
-	rawID := strings.Replace(ver, "openshift-v", "", 1)
+	rawID := strings.Replace(ver, VersionPrefix, "", 1)
 	version, err := semver.NewVersion(rawID)
 	if err != nil {
 		segments := strings.Split(rawID, ".")

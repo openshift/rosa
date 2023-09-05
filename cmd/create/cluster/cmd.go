@@ -2550,101 +2550,111 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	routeSelector := ""
-	if cmd.Flags().Changed(defaultIngressRouteSelectorFlag) {
-		if isHostedCP {
-			r.Reporter.Errorf("Updating route selectors is not supported for Hosted Control Plane clusters")
-			os.Exit(1)
-		}
-		routeSelector = args.defaultIngressRouteSelectors
-	} else if interactive.Enabled() && !isHostedCP {
-		routeSelectorArg, err := interactive.GetString(interactive.Input{
-			Question: "Route Selector for ingress",
-			Help:     cmd.Flags().Lookup(defaultIngressRouteSelectorFlag).Usage,
-			Default:  args.defaultIngressRouteSelectors,
-			Validators: []interactive.Validator{
-				func(routeSelector interface{}) error {
-					_, err := ingress.GetRouteSelector(routeSelector.(string))
-					return err
-				},
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-			os.Exit(1)
-		}
-		routeSelector = routeSelectorArg
-	}
-	routeSelectors, err := ingress.GetRouteSelector(routeSelector)
+	isVersionCompatibleManagedIngressV2, err := versions.IsGreaterThanOrEqual(
+		version, ocm.MinVersionForManagedIngressV2)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
 		os.Exit(1)
 	}
-
+	routeSelector := ""
+	routeSelectors := map[string]string{}
 	excludedNamespaces := ""
-	if cmd.Flags().Changed(defaultIngressExcludedNamespacesFlag) {
-		if isHostedCP {
-			r.Reporter.Errorf("Updating excluded namespace is not supported for Hosted Control Plane clusters")
-			os.Exit(1)
-		}
-		excludedNamespaces = args.defaultIngressExcludedNamespaces
-	} else if interactive.Enabled() && !isHostedCP {
-		excludedNamespacesArg, err := interactive.GetString(interactive.Input{
-			Question: "Excluded namespaces for ingress",
-			Help:     cmd.Flags().Lookup(defaultIngressExcludedNamespacesFlag).Usage,
-			Default:  args.defaultIngressExcludedNamespaces,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-			os.Exit(1)
-		}
-		excludedNamespaces = excludedNamespacesArg
-	}
-	sliceExcludedNamespaces := ingress.GetExcludedNamespaces(excludedNamespaces)
-
+	sliceExcludedNamespaces := []string{}
 	wildcardPolicy := ""
-	if cmd.Flags().Changed(defaultIngressWildcardPolicyFlag) {
-		if isHostedCP {
-			r.Reporter.Errorf("Updating Wildcard Policy is not supported for Hosted Control Plane clusters")
-			os.Exit(1)
-		}
-		wildcardPolicy = args.defaultIngressWildcardPolicy
-	} else {
-		if interactive.Enabled() && !isHostedCP {
-			wildcardPolicyArg, err := interactive.GetOption(interactive.Input{
-				Question: "Wildcard Policy",
-				Options:  ingress.ValidWildcardPolicies,
-				Help:     cmd.Flags().Lookup(defaultIngressWildcardPolicyFlag).Usage,
-				Default:  args.defaultIngressWildcardPolicy,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid Wildcard Policy: %s", err)
-				os.Exit(1)
-			}
-			wildcardPolicy = wildcardPolicyArg
-		}
-	}
-
 	namespaceOwnershipPolicy := ""
-	if cmd.Flags().Changed(defaultIngressNamespaceOwnershipPolicyFlag) {
-		if isHostedCP {
-			r.Reporter.Errorf("Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters")
-			os.Exit(1)
-		}
-		namespaceOwnershipPolicy = args.defaultIngressNamespaceOwnershipPolicy
-	} else {
-		if interactive.Enabled() && !isHostedCP {
-			namespaceOwnershipPolicyArg, err := interactive.GetOption(interactive.Input{
-				Question: "Namespace Ownership Policy",
-				Options:  ingress.ValidNamespaceOwnershipPolicies,
-				Help:     cmd.Flags().Lookup(defaultIngressNamespaceOwnershipPolicyFlag).Usage,
-				Default:  args.defaultIngressNamespaceOwnershipPolicy,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid Namespace Ownership Policy: %s", err)
+	if isVersionCompatibleManagedIngressV2 {
+		if cmd.Flags().Changed(defaultIngressRouteSelectorFlag) {
+			if isHostedCP {
+				r.Reporter.Errorf("Updating route selectors is not supported for Hosted Control Plane clusters")
 				os.Exit(1)
 			}
-			namespaceOwnershipPolicy = namespaceOwnershipPolicyArg
+			routeSelector = args.defaultIngressRouteSelectors
+		} else if interactive.Enabled() && !isHostedCP {
+			routeSelectorArg, err := interactive.GetString(interactive.Input{
+				Question: "Route Selector for ingress",
+				Help:     cmd.Flags().Lookup(defaultIngressRouteSelectorFlag).Usage,
+				Default:  args.defaultIngressRouteSelectors,
+				Validators: []interactive.Validator{
+					func(routeSelector interface{}) error {
+						_, err := ingress.GetRouteSelector(routeSelector.(string))
+						return err
+					},
+				},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+				os.Exit(1)
+			}
+			routeSelector = routeSelectorArg
+		}
+		routeSelectors, err = ingress.GetRouteSelector(routeSelector)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		if cmd.Flags().Changed(defaultIngressExcludedNamespacesFlag) {
+			if isHostedCP {
+				r.Reporter.Errorf("Updating excluded namespace is not supported for Hosted Control Plane clusters")
+				os.Exit(1)
+			}
+			excludedNamespaces = args.defaultIngressExcludedNamespaces
+		} else if interactive.Enabled() && !isHostedCP {
+			excludedNamespacesArg, err := interactive.GetString(interactive.Input{
+				Question: "Excluded namespaces for ingress",
+				Help:     cmd.Flags().Lookup(defaultIngressExcludedNamespacesFlag).Usage,
+				Default:  args.defaultIngressExcludedNamespaces,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
+				os.Exit(1)
+			}
+			excludedNamespaces = excludedNamespacesArg
+		}
+		sliceExcludedNamespaces = ingress.GetExcludedNamespaces(excludedNamespaces)
+
+		if cmd.Flags().Changed(defaultIngressWildcardPolicyFlag) {
+			if isHostedCP {
+				r.Reporter.Errorf("Updating Wildcard Policy is not supported for Hosted Control Plane clusters")
+				os.Exit(1)
+			}
+			wildcardPolicy = args.defaultIngressWildcardPolicy
+		} else {
+			if interactive.Enabled() && !isHostedCP {
+				wildcardPolicyArg, err := interactive.GetOption(interactive.Input{
+					Question: "Wildcard Policy",
+					Options:  ingress.ValidWildcardPolicies,
+					Help:     cmd.Flags().Lookup(defaultIngressWildcardPolicyFlag).Usage,
+					Default:  args.defaultIngressWildcardPolicy,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid Wildcard Policy: %s", err)
+					os.Exit(1)
+				}
+				wildcardPolicy = wildcardPolicyArg
+			}
+		}
+
+		if cmd.Flags().Changed(defaultIngressNamespaceOwnershipPolicyFlag) {
+			if isHostedCP {
+				r.Reporter.Errorf("Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters")
+				os.Exit(1)
+			}
+			namespaceOwnershipPolicy = args.defaultIngressNamespaceOwnershipPolicy
+		} else {
+			if interactive.Enabled() && !isHostedCP {
+				namespaceOwnershipPolicyArg, err := interactive.GetOption(interactive.Input{
+					Question: "Namespace Ownership Policy",
+					Options:  ingress.ValidNamespaceOwnershipPolicies,
+					Help:     cmd.Flags().Lookup(defaultIngressNamespaceOwnershipPolicyFlag).Usage,
+					Default:  args.defaultIngressNamespaceOwnershipPolicy,
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid Namespace Ownership Policy: %s", err)
+					os.Exit(1)
+				}
+				namespaceOwnershipPolicy = namespaceOwnershipPolicyArg
+			}
 		}
 	}
 
