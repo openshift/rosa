@@ -599,12 +599,11 @@ func checkGates(r *rosa.Runtime, cluster *cmv1.Cluster, gates []*cmv1.VersionGat
 				return fmt.Errorf("failed to get version gate '%s' for cluster '%s': %v",
 					gate.ID(), clusterKey, err)
 			}
-			if confirm.Yes() {
-				r.Reporter.Infof("You have acknowledged")
-			}
 			// for non sts gates we require user agreement
 			if !confirm.Prompt(true, "I acknowledge") {
 				os.Exit(0)
+			} else {
+				r.Reporter.Infof("%s acknowledged", gate.ID())
 			}
 		}
 		err := r.OCMClient.AckVersionGate(cluster.ID(), gate.ID())
