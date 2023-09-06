@@ -2,8 +2,8 @@ package ocm
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
+	"time"
 )
 
 func IntValidator(val interface{}) error {
@@ -40,14 +40,8 @@ func DurationStringValidator(val interface{}) error {
 		return fmt.Errorf("Can only validate strings, got %v", val)
 	}
 
-	re := regexp.MustCompile("^([0-9]+(.[0-9]+)?(ns|us|µs|ms|s|m|h))+$")
-	regexPass := re.MatchString(input)
-	if !regexPass {
-		return fmt.Errorf("Expecting an integer plus unit of time (without spaces). " +
-			"Options for time units include: ns, us, µs, ms, s, m, h. Examples: 2000000ns, 180s, 2m, etc.")
-	}
-	return nil
-
+	_, err := time.ParseDuration(input)
+	return err
 }
 
 func PercentageValidator(val interface{}) error {

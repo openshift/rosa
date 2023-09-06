@@ -340,7 +340,7 @@ func GetAutoscalerOptions(
 			Default:  result.LogVerbosity,
 			Required: false,
 			Validators: []interactive.Validator{
-				ocm.IntValidator,
+				ocm.NonNegativeIntValidator,
 			},
 		})
 		if err != nil {
@@ -406,6 +406,9 @@ func GetAutoscalerOptions(
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxPodGracePeriodFlag)).Usage,
 			Required: false,
 			Default:  result.MaxPodGracePeriod,
+			Validators: []interactive.Validator{
+				ocm.NonNegativeIntValidator,
+			},
 		})
 		if err != nil {
 			return nil, err
@@ -418,6 +421,9 @@ func GetAutoscalerOptions(
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, podPriorityThresholdFlag)).Usage,
 			Required: false,
 			Default:  result.PodPriorityThreshold,
+			Validators: []interactive.Validator{
+				ocm.IntValidator,
+			},
 		})
 		if err != nil {
 			return nil, err
