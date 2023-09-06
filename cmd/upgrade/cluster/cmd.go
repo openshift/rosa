@@ -603,7 +603,7 @@ func checkGates(r *rosa.Runtime, cluster *cmv1.Cluster, gates []*cmv1.VersionGat
 			if !confirm.Prompt(true, "I acknowledge") {
 				os.Exit(0)
 			} else {
-				r.Reporter.Infof("%s acknowledged", gate.ID())
+				r.Reporter.Infof("Gate %s acknowledged", gate.ID())
 			}
 		}
 		err := r.OCMClient.AckVersionGate(cluster.ID(), gate.ID())
