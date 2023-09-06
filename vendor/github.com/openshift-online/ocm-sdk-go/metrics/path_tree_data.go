@@ -32,6 +32,9 @@ var pathTreeData = `{
             }
           }
         },
+        "billing_models": {
+          "-": null
+        },
         "capabilities": null,
         "cloud_resources": {
           "-": null
@@ -122,6 +125,9 @@ var pathTreeData = `{
         "clusters": {
           "-": {
             "addon_inquiries": {
+              "-": null
+            },
+            "addons": {
               "-": null
             },
             "status": {
@@ -371,7 +377,8 @@ var pathTreeData = `{
         "clusters": {
           "-": {
             "cluster_logs": null
-          }
+          },
+          "cluster_logs": null
         }
       }
     },
