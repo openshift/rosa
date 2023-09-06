@@ -3127,6 +3127,18 @@ func parseRFC3339(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339, s)
 }
 
+func escapeSpecialChars(input string) string {
+	var builder strings.Builder
+	specialChars := "\"!'(),;><?|\\]{`}$#&*@"
+	for _, ch := range input {
+		if strings.ContainsRune(specialChars, ch) {
+			builder.WriteRune('\\')
+		}
+		builder.WriteRune(ch)
+	}
+	return builder.String()
+}
+
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	operatorRolePath string, userSelectedAvailabilityZones bool, labels string) string {
 	command := "rosa create cluster"
@@ -3139,7 +3151,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.ClusterAdminUser != "" {
 		command += fmt.Sprintf(" --cluster-admin-user %s", spec.ClusterAdminUser)
-		command += fmt.Sprintf(" --cluster-admin-password %s", spec.ClusterAdminPassword)
+		command += fmt.Sprintf(" --cluster-admin-password %s", escapeSpecialChars(spec.ClusterAdminPassword))
 	}
 	if spec.RoleARN != "" {
 		command += fmt.Sprintf(" --role-arn %s", spec.RoleARN)
