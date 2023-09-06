@@ -46,14 +46,14 @@ func Confirm(q string, v ...interface{}) bool {
 }
 
 func Prompt(dflt bool, q string, v ...interface{}) bool {
+	if yes {
+		return yes
+	}
 	prompt := &survey.Confirm{
 		Message: fmt.Sprintf(q, v...),
 		Default: dflt,
 	}
 	response := false
-	if yes {
-		return yes
-	}
 	survey.AskOne(prompt, &response, survey.WithValidator(survey.Required))
 	return response
 }
