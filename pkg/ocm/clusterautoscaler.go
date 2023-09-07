@@ -105,6 +105,20 @@ func BuildClusterAutoscaler(config *AutoscalerConfig) *cmv1.ClusterAutoscalerBui
 			DelayAfterFailure(config.ScaleDown.DelayAfterFailure))
 }
 
+func (c *Client) CreateClusterAutoscaler(clusterId string, config *AutoscalerConfig) (*cmv1.ClusterAutoscaler, error) {
+	object, err := BuildClusterAutoscaler(config).Build()
+
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterId).Autoscaler().Post().Request(object).Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
 func (c *Client) DeleteClusterAutoscaler(clusterID string) error {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).

@@ -21,6 +21,7 @@ import (
 
 	"github.com/openshift/rosa/cmd/create/accountroles"
 	"github.com/openshift/rosa/cmd/create/admin"
+	"github.com/openshift/rosa/cmd/create/autoscaler"
 	"github.com/openshift/rosa/cmd/create/cluster"
 	"github.com/openshift/rosa/cmd/create/dnsdomains"
 	"github.com/openshift/rosa/cmd/create/idp"
@@ -60,6 +61,7 @@ func init() {
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
+	Cmd.AddCommand(autoscaler.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

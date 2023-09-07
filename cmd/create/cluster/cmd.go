@@ -2744,64 +2744,13 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.BaseDomain = baseDomain
 	}
 	if autoscalerArgs != nil {
-		gpuLimits := []ocm.GPULimit{}
-		for _, gpuLimit := range autoscalerArgs.ResourceLimits.GPULimits {
-			parameters := strings.Split(gpuLimit, ",")
-			if len(parameters) != 3 {
-				r.Reporter.Errorf("GPU limitation '%s' does not have 3 entries split by a comma", gpuLimit)
-				os.Exit(1)
-			}
-			gpuLimitMin, err := strconv.Atoi(parameters[1])
-			if err != nil {
-				r.Reporter.Errorf("Failed parsing '%s' into an integer: %s", parameters[1], err)
-				os.Exit(1)
-			}
-			gpuLimitMax, err := strconv.Atoi(parameters[2])
-			if err != nil {
-				r.Reporter.Errorf("Failed parsing '%s' into an integer: %s", parameters[2], err)
-				os.Exit(1)
-			}
-
-			gpuLimits = append(gpuLimits,
-				ocm.GPULimit{
-					Type: parameters[0],
-					Range: ocm.ResourceRange{
-						Min: gpuLimitMin,
-						Max: gpuLimitMax,
-					},
-				})
+		autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(autoscalerArgs)
+		if err != nil {
+			r.Reporter.Errorf("Failed creating autoscaler configuration: %s", err)
+			os.Exit(1)
 		}
 
-		clusterConfig.AutoscalerConfig = &ocm.AutoscalerConfig{
-			BalanceSimilarNodeGroups:    autoscalerArgs.BalanceSimilarNodeGroups,
-			SkipNodesWithLocalStorage:   autoscalerArgs.SkipNodesWithLocalStorage,
-			LogVerbosity:                autoscalerArgs.LogVerbosity,
-			MaxPodGracePeriod:           autoscalerArgs.MaxPodGracePeriod,
-			BalancingIgnoredLabels:      autoscalerArgs.BalancingIgnoredLabels,
-			IgnoreDaemonsetsUtilization: autoscalerArgs.IgnoreDaemonsetsUtilization,
-			MaxNodeProvisionTime:        autoscalerArgs.MaxNodeProvisionTime,
-			PodPriorityThreshold:        autoscalerArgs.PodPriorityThreshold,
-			ResourceLimits: ocm.ResourceLimits{
-				MaxNodesTotal: autoscalerArgs.ResourceLimits.MaxNodesTotal,
-				Cores: ocm.ResourceRange{
-					Min: autoscalerArgs.ResourceLimits.Cores.Min,
-					Max: autoscalerArgs.ResourceLimits.Cores.Max,
-				},
-				Memory: ocm.ResourceRange{
-					Min: autoscalerArgs.ResourceLimits.Memory.Min,
-					Max: autoscalerArgs.ResourceLimits.Memory.Max,
-				},
-				GPULimits: gpuLimits,
-			},
-			ScaleDown: ocm.ScaleDownConfig{
-				Enabled:              autoscalerArgs.ScaleDown.Enabled,
-				UnneededTime:         autoscalerArgs.ScaleDown.UnneededTime,
-				UtilizationThreshold: autoscalerArgs.ScaleDown.UtilizationThreshold,
-				DelayAfterAdd:        autoscalerArgs.ScaleDown.DelayAfterAdd,
-				DelayAfterDelete:     autoscalerArgs.ScaleDown.DelayAfterDelete,
-				DelayAfterFailure:    autoscalerArgs.ScaleDown.DelayAfterFailure,
-			},
-		}
+		clusterConfig.AutoscalerConfig = autoscalerConfig
 	}
 
 	props := args.properties
