@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/edit/addon"
+	"github.com/openshift/rosa/cmd/edit/autoscaler"
 	"github.com/openshift/rosa/cmd/edit/cluster"
 	"github.com/openshift/rosa/cmd/edit/ingress"
 	"github.com/openshift/rosa/cmd/edit/machinepool"
@@ -43,6 +44,7 @@ func init() {
 	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
+	Cmd.AddCommand(autoscaler.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

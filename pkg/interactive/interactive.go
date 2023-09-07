@@ -73,7 +73,7 @@ func GetInt(input Input) (a int, err error) {
 		dflt = 0
 	}
 	dfltStr := fmt.Sprintf("%d", dflt)
-	if dfltStr == "0" {
+	if dfltStr == "0" && input.Required {
 		dfltStr = ""
 	}
 	question := input.Question
