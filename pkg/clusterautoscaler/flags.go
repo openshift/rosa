@@ -468,7 +468,7 @@ func GetAutoscalerOptions(
 			Default:  result.ResourceLimits.Cores.Max,
 			Validators: []interactive.Validator{
 				ocm.NonNegativeIntValidator,
-				getValidMaxRangeValidator(result.ResourceLimits.Cores.Max),
+				getValidMaxRangeValidator(result.ResourceLimits.Cores.Min),
 			},
 		})
 		if err != nil {
