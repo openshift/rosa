@@ -182,6 +182,8 @@ func run(cmd *cobra.Command, argv []string) {
 			"any supported ROSA version can be installed with managed policies")
 	}
 
+	r.WithAWS()
+
 	// Check whether or not AWS account is govcloud
 	callerIdentityOutput, err := r.AWSClient.GetCallerIdentity()
 	if err != nil {
@@ -203,7 +205,6 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
 	}
 
-	r.WithAWS()
 	// Validate AWS credentials for current user
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Validating AWS credentials...")
