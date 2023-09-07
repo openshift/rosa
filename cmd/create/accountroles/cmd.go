@@ -188,6 +188,7 @@ func run(cmd *cobra.Command, argv []string) {
 	callerIdentityOutput, err := r.AWSClient.GetCallerIdentity()
 	if err != nil {
 		r.Reporter.Warnf("Unable to get AWS Caller Identity.")
+		os.Exit(1)
 	}
 
 	callerIsGovcloud := false
