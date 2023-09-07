@@ -182,9 +182,25 @@ func run(cmd *cobra.Command, argv []string) {
 			"any supported ROSA version can be installed with managed policies")
 	}
 
+	// Check whether or not AWS account is govcloud
+	callerIdentityOutput, err := r.AWSClient.GetCallerIdentity()
+	if err != nil {
+		r.Reporter.Warnf("Unable to get AWS Caller Identity.")
+	}
+
+	callerIsGovcloud := false
+
+	if (*callerIdentityOutput.Arn)[:14] == "arn:aws-us-gov" {
+		callerIsGovcloud = true
+	}
+
 	// Hosted cluster roles always use managed policies
 	if cmd.Flags().Changed("hosted-cp") && cmd.Flags().Changed("managed-policies") && !args.managed {
 		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
+	}
+
+	if cmd.Flags().Changed("hosted-cp") && callerIsGovcloud {
+		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
 	}
 
 	r.WithAWS()
@@ -355,7 +371,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	createHostedCP := args.hostedCP
-	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
+	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") && !callerIsGovcloud {
 		createHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Create Hosted CP account roles",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
