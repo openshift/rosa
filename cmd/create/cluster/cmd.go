@@ -32,6 +32,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
+	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
+	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -54,8 +56,6 @@ import (
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
-
-	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 )
 
 // nolint
@@ -2285,6 +2285,12 @@ func run(cmd *cobra.Command, _ []string) {
 		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			os.Exit(1)
+		}
+
+		err = diskValidator.ValidateMachinePoolRootDiskSize(version, machinePoolRootDiskSize)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
 			os.Exit(1)
 		}
 

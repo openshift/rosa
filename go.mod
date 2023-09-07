@@ -14,11 +14,11 @@ require (
 	github.com/golang/glog v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/go-version v1.3.0
+	github.com/hashicorp/go-version v1.6.0
 	github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.8
-	github.com/openshift-online/ocm-common v0.0.0-20230904100430-560af399c7e5
+	github.com/openshift-online/ocm-common v0.0.0-20230906070711-f1f61c823c41
 	github.com/openshift-online/ocm-sdk-go v0.1.367
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
