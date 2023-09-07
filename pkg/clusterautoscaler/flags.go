@@ -135,7 +135,7 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 	cmd.IntVar(
 		&args.ResourceLimits.MaxNodesTotal,
 		fmt.Sprintf("%s%s", prefix, maxNodesTotalFlag),
-		1000,
+		180,
 		"Total amount of nodes that can exist in the cluster, including non-scaled nodes.",
 	)
 
