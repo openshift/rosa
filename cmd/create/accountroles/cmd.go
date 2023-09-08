@@ -140,6 +140,7 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime()
+	r.WithAWS()
 
 	mode, err := aws.GetMode()
 	if err != nil {
@@ -182,8 +183,6 @@ func run(cmd *cobra.Command, argv []string) {
 			"any supported ROSA version can be installed with managed policies")
 	}
 
-	r.WithAWS()
-
 	// Check whether or not AWS account is govcloud
 	callerIdentityOutput, err := r.AWSClient.GetCallerIdentity()
 	if err != nil {
@@ -193,7 +192,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	callerIsGovcloud := false
 
-	if (*callerIdentityOutput.Arn)[:14] == "arn:aws-us-gov" {
+	if r.AWSClient.StringValue(callerIdentityOutput.Arn)[:14] == "arn:aws-us-gov" {
 		callerIsGovcloud = true
 	}
 

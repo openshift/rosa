@@ -187,6 +187,7 @@ type Client interface {
 		roleName string, roleType string, minVersion string) (bool, error)
 	GetDefaultPolicyDocument(policyArn string) (string, error)
 	GetCallerIdentity() (*sts.GetCallerIdentityOutput, error)
+	StringValue(str *string) string
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -1137,6 +1138,10 @@ func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
 
 func (c *awsClient) GetCallerIdentity() (*sts.GetCallerIdentityOutput, error) {
 	return c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+}
+
+func (c *awsClient) StringValue(str *string) string {
+	return aws.StringValue(str)
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
