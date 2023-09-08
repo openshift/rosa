@@ -183,16 +183,9 @@ func run(cmd *cobra.Command, argv []string) {
 			"any supported ROSA version can be installed with managed policies")
 	}
 
-	// Check whether or not AWS account is govcloud
-	callerIdentityOutput, err := r.AWSClient.GetCallerIdentity()
-	if err != nil {
-		r.Reporter.Warnf("Unable to get AWS Caller Identity.")
-		os.Exit(1)
-	}
-
 	callerIsGovcloud := false
 
-	if r.AWSClient.StringValue(callerIdentityOutput.Arn)[:14] == "arn:aws-us-gov" {
+	if r.Creator.IsGovcloud {
 		callerIsGovcloud = true
 	}
 

@@ -186,8 +186,6 @@ type Client interface {
 	ValidateAccountRoleVersionCompatibility(
 		roleName string, roleType string, minVersion string) (bool, error)
 	GetDefaultPolicyDocument(policyArn string) (string, error)
-	GetCallerIdentity() (*sts.GetCallerIdentityOutput, error)
-	StringValue(str *string) string
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -581,9 +579,10 @@ func (c *awsClient) getSubnetIDs(describeSubnetsInput *ec2.DescribeSubnetsInput)
 }
 
 type Creator struct {
-	ARN       string
-	AccountID string
-	IsSTS     bool
+	ARN        string
+	AccountID  string
+	IsSTS      bool
+	IsGovcloud bool
 }
 
 func (c *awsClient) GetCreator() (*Creator, error) {
@@ -608,15 +607,21 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 			return nil, err
 		}
 
-		// resolveSTSRole esures a parsed valid ARN before
+		// resolveSTSRole ensures a parsed valid ARN before
 		// returning it so we don't need to parse it again
 		creatorARN = *stsRole
 	}
 
+	isGovcloud := false
+	if creatorParsedARN.Partition == "aws-us-gov" {
+		isGovcloud = true
+	}
+
 	return &Creator{
-		ARN:       creatorARN,
-		AccountID: creatorParsedARN.AccountID,
-		IsSTS:     isSTS(creatorParsedARN),
+		ARN:        creatorARN,
+		AccountID:  creatorParsedARN.AccountID,
+		IsSTS:      isSTS(creatorParsedARN),
+		IsGovcloud: isGovcloud,
 	}, nil
 }
 
@@ -1134,14 +1139,6 @@ func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
 		return err
 	}
 	return nil
-}
-
-func (c *awsClient) GetCallerIdentity() (*sts.GetCallerIdentityOutput, error) {
-	return c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-}
-
-func (c *awsClient) StringValue(str *string) string {
-	return aws.StringValue(str)
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
