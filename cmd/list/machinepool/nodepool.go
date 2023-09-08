@@ -8,6 +8,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -18,6 +19,15 @@ func listNodePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) {
 	if err != nil {
 		r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
+	}
+
+	if output.HasFlag() {
+		err = output.Print(nodePools)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 
 	// Create the writer that will be used to print the tabulated results:

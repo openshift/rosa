@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -58,6 +59,7 @@ func init() {
 	)
 
 	confirm.AddFlag(flags)
+	output.AddFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -117,6 +119,16 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 			r.Reporter.Infof("There are no available upgrades for cluster '%s'", clusterKey)
 			return nil
 		}
+	}
+
+	if output.HasFlag() {
+		err := output.Print(availableUpgrades)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		os.Exit(0)
 	}
 
 	latestRev := latestInCurrentMinor(ocm.GetVersionID(cluster), availableUpgrades)

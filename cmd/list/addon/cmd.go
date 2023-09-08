@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -52,50 +53,63 @@ func init() {
 		"",
 		"Name or ID of the cluster to list the add-ons of (required).",
 	)
+
+	output.AddFlag(Cmd)
 }
 
-func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
+// When no specific cluster id is provided by the user, this function lists all available AddOns
+func listAllAddOns(r *rosa.Runtime) {
+	r.Reporter.Debugf("Fetching all available add-ons")
+	addOnResources, err := r.OCMClient.GetAvailableAddOns()
+	if err != nil {
+		r.Reporter.Errorf("Failed to fetch add-ons: %v", err)
+		os.Exit(1)
+	}
+
+	if output.HasFlag() {
+		err = output.Print(addOnResources)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	if len(addOnResources) == 0 {
+		r.Reporter.Infof("There are no add-ons available")
+		os.Exit(0)
+	}
+
+	// Create the writer that will be used to print the tabulated results:
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(writer, "ID\t\tNAME\t\tAVAILABILITY\n")
+	for _, addOnResource := range addOnResources {
+		availability := "unavailable"
+		if addOnResource.Available {
+			availability = "available"
+		}
+		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", addOnResource.AddOn.ID(), addOnResource.AddOn.Name(), availability)
+	}
+	writer.Flush()
+
+	os.Exit(0)
+}
+
+// When the user specifies a clusterKey, this function lists the AddOns for that cluster
+func listClusterAddOns(clusterKey string, r *rosa.Runtime) {
 
 	// Check that the cluster key (name, identifier or external identifier) given by the user
 	// is reasonably safe so that there is no risk of SQL injection:
-	ocm.SetClusterKey(args.clusterKey)
-	clusterKey := r.GetClusterKey()
-	if clusterKey != "" && !ocm.IsValidClusterKey(clusterKey) {
+	ocm.SetClusterKey(clusterKey)
+	clusterKey = r.GetClusterKey()
+
+	if !ocm.IsValidClusterKey(clusterKey) {
 		r.Reporter.Errorf(
 			"Cluster name, identifier or external identifier '%s' isn't valid: it "+
 				"must contain only letters, digits, dashes and underscores",
 			clusterKey,
 		)
 		os.Exit(1)
-	}
-
-	if clusterKey == "" {
-		r.Reporter.Debugf("Fetching all available add-ons")
-		addOnResources, err := r.OCMClient.GetAvailableAddOns()
-		if err != nil {
-			r.Reporter.Errorf("Failed to fetch add-ons: %v", err)
-			os.Exit(1)
-		}
-		if len(addOnResources) == 0 {
-			r.Reporter.Infof("There are no add-ons available")
-			os.Exit(0)
-		}
-
-		// Create the writer that will be used to print the tabulated results:
-		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(writer, "ID\t\tNAME\t\tAVAILABILITY\n")
-		for _, addOnResource := range addOnResources {
-			availability := "unavailable"
-			if addOnResource.Available {
-				availability = "available"
-			}
-			fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", addOnResource.AddOn.ID(), addOnResource.AddOn.Name(), availability)
-		}
-		writer.Flush()
-
-		os.Exit(0)
 	}
 
 	cluster := r.FetchCluster()
@@ -112,6 +126,15 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if output.HasFlag() {
+		err = output.Print(clusterAddOns)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	if len(clusterAddOns) == 0 {
 		r.Reporter.Infof("There are no add-ons installed on cluster '%s'", clusterKey)
 		os.Exit(0)
@@ -124,4 +147,15 @@ func run(_ *cobra.Command, _ []string) {
 		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", clusterAddOn.ID, clusterAddOn.Name, clusterAddOn.State)
 	}
 	writer.Flush()
+}
+
+func run(_ *cobra.Command, _ []string) {
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
+
+	if args.clusterKey == "" {
+		listAllAddOns(r)
+	} else {
+		listClusterAddOns(args.clusterKey, r)
+	}
 }

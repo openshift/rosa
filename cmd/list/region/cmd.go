@@ -105,11 +105,6 @@ func run(cmd *cobra.Command, _ []string) {
 		availableRegions = append(availableRegions, region)
 	}
 
-	if len(availableRegions) == 0 {
-		r.Reporter.Warnf("There are no regions available for this AWS account")
-		os.Exit(1)
-	}
-
 	if output.HasFlag() {
 		err = output.Print(availableRegions)
 		if err != nil {
@@ -117,6 +112,11 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		os.Exit(0)
+	}
+
+	if len(availableRegions) == 0 {
+		r.Reporter.Warnf("There are no regions available for this AWS account")
+		os.Exit(1)
 	}
 
 	// Create the writer that will be used to print the tabulated results:

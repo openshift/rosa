@@ -54,11 +54,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(machineTypes.Items) == 0 {
-		r.Reporter.Warnf("There are no machine types supported for your account. Contact Red Hat support.")
-		os.Exit(1)
-	}
-
 	if output.HasFlag() {
 		var instanceTypes []*cmv1.MachineType
 		for _, machine := range machineTypes.Items {
@@ -70,6 +65,11 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		os.Exit(0)
+	}
+
+	if len(machineTypes.Items) == 0 {
+		r.Reporter.Warnf("There are no machine types supported for your account. Contact Red Hat support.")
+		os.Exit(1)
 	}
 
 	// Create the writer that will be used to print the tabulated results:

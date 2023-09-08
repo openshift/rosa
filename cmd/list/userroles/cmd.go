@@ -66,16 +66,17 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(userRoles) == 0 {
-		r.Reporter.Infof("No user roles available")
-		os.Exit(0)
-	}
 	if output.HasFlag() {
 		err = output.Print(userRoles)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
+		os.Exit(0)
+	}
+
+	if len(userRoles) == 0 {
+		r.Reporter.Infof("No user roles available")
 		os.Exit(0)
 	}
 
@@ -92,6 +93,11 @@ func listUserRoles(r *rosa.Runtime) ([]aws.Role, error) {
 	userRoles, err := r.AWSClient.ListUserRoles()
 	if err != nil {
 		return nil, err
+	}
+
+	// If no roles available, return empty slice to avoid further work
+	if len(userRoles) == 0 {
+		return []aws.Role{}, nil
 	}
 
 	// Check if roles are linked to account

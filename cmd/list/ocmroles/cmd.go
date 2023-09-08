@@ -69,16 +69,17 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if len(ocmRoles) == 0 {
-		r.Reporter.Infof("No ocm roles available")
-		os.Exit(0)
-	}
 	if output.HasFlag() {
 		err = output.Print(ocmRoles)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
+		os.Exit(0)
+	}
+
+	if len(ocmRoles) == 0 {
+		r.Reporter.Infof("No ocm roles available")
 		os.Exit(0)
 	}
 
@@ -100,8 +101,14 @@ func run(_ *cobra.Command, _ []string) {
 
 func listOCMRoles(r *rosa.Runtime) ([]aws.Role, error) {
 	ocmRoles, err := r.AWSClient.ListOCMRoles()
+
 	if err != nil {
 		return nil, err
+	}
+
+	// If there are no roles, return an empty slice to the caller and avoid additional work
+	if len(ocmRoles) == 0 {
+		return []aws.Role{}, nil
 	}
 
 	// Check if roles are linked to organization
