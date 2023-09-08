@@ -27,13 +27,16 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
 var args struct {
-	version      string
-	scheduleDate string
-	scheduleTime string
+	version                  string
+	scheduleDate             string
+	scheduleTime             string
+	schedule                 string
+	allowMinorVersionUpdates bool
 }
 
 var Cmd = &cobra.Command{
@@ -67,7 +70,7 @@ func init() {
 		&args.version,
 		"version",
 		"",
-		"Version of OpenShift that the cluster will be upgraded to",
+		"Version of OpenShift that the machine pool will be upgraded to",
 	)
 
 	flags.StringVar(
@@ -83,6 +86,25 @@ func init() {
 		"",
 		"Next UTC time that the upgrade should run on the specified date. Format should be 'HH:mm'",
 	)
+
+	flags.StringVar(
+		&args.schedule,
+		"schedule",
+		"",
+		"cron expression in UTC which will be the time when an upgrade to the latest release will be "+
+			"automatically scheduled and repeated at each occurrence. Mutually exclusive with --schedule-date and "+
+			"--schedule-time. ",
+	)
+
+	flags.BoolVar(
+		&args.allowMinorVersionUpdates,
+		"allow-minor-version-updates",
+		false,
+		"When using automatic scheduling with --schedule parameter, if true it will also update to latest "+
+			"minor release, e.g. 4.12.20 -> 4.13.2. By default only z-stream updates will be scheduled. ",
+	)
+	// Hidden for now as not supported yet
+	flags.MarkHidden("allow-minor-version-updates")
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -102,69 +124,195 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
 	machinePoolID := argv[0]
-	scheduleDate := args.scheduleDate
-	scheduleTime := args.scheduleTime
+	var err error
+	currentUpgradeScheduling := ocm.UpgradeScheduling{
+		Schedule:                 args.schedule,
+		ScheduleDate:             args.scheduleDate,
+		ScheduleTime:             args.scheduleTime,
+		AllowMinorVersionUpdates: args.allowMinorVersionUpdates,
+		AutomaticUpgrades:        args.schedule != "",
+	}
 	isVersionSet := cmd.Flags().Changed("version")
+
+	// Check parameters preconditions
+	if currentUpgradeScheduling.Schedule == "" && currentUpgradeScheduling.AllowMinorVersionUpdates {
+		return fmt.Errorf("The '--allow-minor-version-upgrades' option needs to be used with --schedule")
+	}
+
+	if (currentUpgradeScheduling.ScheduleDate != "" || currentUpgradeScheduling.ScheduleTime != "") &&
+		currentUpgradeScheduling.Schedule != "" {
+		return fmt.Errorf("The '--schedule-date' and '--schedule-time' options are mutually exclusive with" +
+			" '--schedule'")
+	}
+
+	if currentUpgradeScheduling.Schedule != "" && args.version != "" {
+		return fmt.Errorf("The '--schedule' option is mutually exclusive with '--version'")
+	}
 
 	// Validate cluster state
 	input.CheckIfHypershiftClusterOrExit(r, cluster)
 	if cluster.State() != cmv1.ClusterStateReady {
 		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
 	}
-	if scheduleDate == "" || scheduleTime == "" {
+
+	// Enable interactive mode if needed
+	// We need to specify either both date and time or nothing
+	if (currentUpgradeScheduling.ScheduleDate != "" && currentUpgradeScheduling.ScheduleTime == "") ||
+		currentUpgradeScheduling.ScheduleDate == "" && currentUpgradeScheduling.ScheduleTime != "" {
 		interactive.Enable()
 	}
 
-	// check existing upgrades
-	r.Reporter.Debugf("Checking existing upgrades for hosted cluster '%s'", clusterKey)
-	nodePool, exists, err := checkNodePoolExistingScheduledUpgrade(r, cluster, clusterKey, machinePoolID)
+	if interactive.Enabled() {
+		r.Reporter.Infof("Interactive mode enabled.\n" +
+			"Any optional fields can be left empty and a default will be selected.")
+	}
+
+	// Get upgrade type
+	if interactive.Enabled() {
+		currentUpgradeScheduling.AutomaticUpgrades, err = interactive.GetBool(interactive.Input{
+			Question: "Enable automatic upgrades",
+			Help: "Whether the upgrade is automatic or manual.\n" +
+				"With automatic upgrades, user defines the schedule of the upgrade with a cron expression.\n" +
+				"The target version will always be the latest available version at the moment of the schedule\n" +
+				"occurrence. In the manual upgrades, user defines the schedule and a target version",
+			Default:  currentUpgradeScheduling.AutomaticUpgrades,
+			Required: true,
+		})
+		if err != nil {
+			return fmt.Errorf("Expected an upgrade type: %s", err)
+		}
+
+		if currentUpgradeScheduling.AutomaticUpgrades {
+			currentUpgradeScheduling.AllowMinorVersionUpdates, err = interactive.GetBool(interactive.Input{
+				Question: "Allow minor upgrades",
+				Help:     cmd.Flags().Lookup("allow-minor-version-updates").Usage,
+				Default:  currentUpgradeScheduling.AllowMinorVersionUpdates,
+				Required: false,
+			})
+			if err != nil {
+				return fmt.Errorf("Expected an choice on the versions to target: %s", err)
+			}
+		}
+	}
+
+	// Check if any upgrade already exists
+	nodePool, exists, err := checkExistingUpgrades(r, clusterKey, cluster, machinePoolID)
 	if err != nil {
 		return err
 	}
 	if exists {
+		r.Reporter.Infof("An upgrade already exists for machine pool '%s' in cluster '%s'", machinePoolID, clusterKey)
 		return nil
 	}
 
-	// check version
-	version := args.version
-	if isVersionSet || interactive.Enabled() {
-		version, err = ComputeNodePoolVersion(r, cmd, cluster, nodePool, version)
-		if err != nil {
-			return err
-		}
-		if version == "" {
-			r.Reporter.Infof("No upgrade available for the machine pool '%s' on cluster '%s'", machinePoolID,
-				clusterKey)
-			return nil
-		}
-	}
-	version = ocm.GetRawVersionId(version)
-
-	// build the upgrade policy
-	r.Reporter.Debugf("Building and scheduling the upgrade policy")
+	// Build the upgrade policy if it is a manual or automatic upgrade
 	var upgradePolicy *cmv1.NodePoolUpgradePolicy
-	upgradePolicy, err = buildPolicy(r, cmd, version, machinePoolID, scheduleDate, scheduleTime)
-	if err != nil {
-		return fmt.Errorf("Failed to build schedule upgrade for machine pool %s in cluster '%s': %v",
-			machinePoolID, clusterKey, err)
+	if currentUpgradeScheduling.AutomaticUpgrades {
+		upgradePolicy, err = buildAutomaticUpgradePolicy(r, cmd, currentUpgradeScheduling, clusterKey, nodePool)
+	} else {
+		upgradePolicy, err = buildManualUpgradePolicy(r, cmd, currentUpgradeScheduling, clusterKey,
+			cluster, nodePool, isVersionSet, args.version)
 	}
-
-	// Ask for confirmation
-	if r.Reporter.IsTerminal() && !confirm.Confirm("upgrade machine pool '%s' to version '%s'", machinePoolID,
-		version) {
+	if err != nil {
+		return err
+	}
+	if upgradePolicy == nil {
+		// Nothing to do
 		return nil
 	}
 
-	// schedule the upgrade policy
+	// Schedule the built upgrade policy
+	r.Reporter.Debugf("Scheduling the upgrade policy")
 	err = r.OCMClient.ScheduleNodePoolUpgrade(cluster.ID(), machinePoolID, upgradePolicy)
 	if err != nil {
-		return fmt.Errorf("Failed to schedule upgrade for machine pool %s in cluster '%s': %v",
-			machinePoolID, clusterKey, err)
+		return errors.Wrapf(err, "Failed to schedule upgrade for machine pool '%s' in cluster '%s'",
+			machinePoolID, clusterKey)
 	}
 
 	r.Reporter.Infof("Upgrade successfully scheduled for the machine pool '%s' on cluster '%s'", machinePoolID,
 		clusterKey)
 	return nil
+}
+
+func buildManualUpgradePolicy(r *rosa.Runtime, cmd *cobra.Command, currentUpgradeScheduling ocm.UpgradeScheduling,
+	clusterKey string, cluster *cmv1.Cluster, nodePool *cmv1.NodePool, isVersionSet bool,
+	inputVersion string) (*cmv1.NodePoolUpgradePolicy, error) {
+	var err error
+	// Build schedule
+	r.Reporter.Debugf("Building the upgrade schedule")
+	nextRun, err := interactive.BuildManualUpgradeSchedule(cmd, currentUpgradeScheduling.ScheduleDate,
+		currentUpgradeScheduling.ScheduleTime)
+	if err != nil {
+		return nil, err
+	}
+	currentUpgradeScheduling.NextRun = nextRun
+
+	// check version
+	version := inputVersion
+	if isVersionSet || version == "" || interactive.Enabled() {
+		version, err = ComputeNodePoolVersion(r, cmd, cluster, nodePool, version)
+		if err != nil {
+			return nil, err
+		}
+		if version == "" {
+			r.Reporter.Infof("No available upgrade for the machine pool '%s' on cluster '%s'", nodePool.ID(),
+				clusterKey)
+			return nil, nil
+		}
+	}
+	version = ocm.GetRawVersionId(version)
+
+	// build the upgrade policy
+	r.Reporter.Debugf("Building the upgrade policy")
+	var upgradePolicy *cmv1.NodePoolUpgradePolicy
+	upgradePolicy, err = r.OCMClient.BuildNodeUpgradePolicy(version, nodePool.ID(), currentUpgradeScheduling)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to build manual schedule upgrade for machine pool '%s' in cluster '%s'",
+			nodePool.ID(), clusterKey)
+	}
+
+	// Ask for confirmation
+	if r.Reporter.IsTerminal() && !confirm.Confirm("upgrade machine pool '%s' to version '%s'", nodePool.ID(),
+		version) {
+		return nil, nil
+	}
+
+	return upgradePolicy, nil
+}
+
+func buildAutomaticUpgradePolicy(r *rosa.Runtime, cmd *cobra.Command, currentUpgradeScheduling ocm.UpgradeScheduling,
+	clusterKey string, nodePool *cmv1.NodePool) (*cmv1.NodePoolUpgradePolicy, error) {
+	var err error
+	// Build schedule
+	schedule, err := interactive.BuildAutomaticUpgradeSchedule(cmd, currentUpgradeScheduling.Schedule)
+	if err != nil {
+		return nil, err
+	}
+	currentUpgradeScheduling.Schedule = schedule
+
+	// build the upgrade policy
+	r.Reporter.Debugf("Building the upgrade policy")
+	var upgradePolicy *cmv1.NodePoolUpgradePolicy
+
+	upgradePolicy, err = r.OCMClient.BuildNodeUpgradePolicy("", nodePool.ID(), currentUpgradeScheduling)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to build automatic schedule upgrade for machine pool %s in cluster '%s'",
+			nodePool.ID(), clusterKey)
+	}
+
+	// Ask for confirmation
+	if r.Reporter.IsTerminal() && !confirm.Confirm("schedule automatic upgrades for machine pool '%s' at '%s'",
+		nodePool.ID(), currentUpgradeScheduling.Schedule) {
+		return nil, nil
+	}
+
+	return upgradePolicy, nil
+}
+
+func checkExistingUpgrades(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster,
+	machinePoolID string) (*cmv1.NodePool, bool, error) {
+	r.Reporter.Debugf("Checking existing upgrades for hosted cluster '%s'", clusterKey)
+	return checkNodePoolExistingScheduledUpgrade(r, cluster, clusterKey, machinePoolID)
 }
 
 func checkNodePoolExistingScheduledUpgrade(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
@@ -237,13 +385,4 @@ func GetAvailableVersion(r *rosa.Runtime, cluster *cmv1.Cluster, nodePool *cmv1.
 		return nil, err
 	}
 	return filteredVersionList, nil
-}
-
-func buildPolicy(r *rosa.Runtime, cmd *cobra.Command,
-	version string, machinePoolID string, scheduleDate string, scheduleTime string) (*cmv1.NodePoolUpgradePolicy, error) {
-	nextRun, err := interactive.BuildManualUpgradeSchedule(cmd, scheduleDate, scheduleTime)
-	if err != nil {
-		return nil, err
-	}
-	return r.OCMClient.BuildNodeUpgradePolicy(version, machinePoolID, nextRun)
 }
