@@ -139,7 +139,7 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	r := rosa.NewRuntime()
+	r := rosa.NewRuntime().WithAWS()
 
 	mode, err := aws.GetMode()
 	if err != nil {
@@ -187,7 +187,11 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
 	}
 
-	r.WithAWS()
+	if cmd.Flags().Changed("hosted-cp") && r.Creator.IsGovcloud {
+		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
+		os.Exit(1)
+	}
+
 	// Validate AWS credentials for current user
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Validating AWS credentials...")
@@ -355,7 +359,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	createHostedCP := args.hostedCP
-	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") {
+	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") && !r.Creator.IsGovcloud {
 		createHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Create Hosted CP account roles",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,

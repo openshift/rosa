@@ -71,6 +71,8 @@ const (
 	DefaultRegion = "us-east-1"
 	Inline        = "inline"
 	Attached      = "attached"
+
+	govPartition = "aws-us-gov"
 )
 
 // addROSAVersionToUserAgent is a named handler that will add ROSA CLI
@@ -579,9 +581,10 @@ func (c *awsClient) getSubnetIDs(describeSubnetsInput *ec2.DescribeSubnetsInput)
 }
 
 type Creator struct {
-	ARN       string
-	AccountID string
-	IsSTS     bool
+	ARN        string
+	AccountID  string
+	IsSTS      bool
+	IsGovcloud bool
 }
 
 func (c *awsClient) GetCreator() (*Creator, error) {
@@ -606,15 +609,18 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 			return nil, err
 		}
 
-		// resolveSTSRole esures a parsed valid ARN before
+		// resolveSTSRole ensures a parsed valid ARN before
 		// returning it so we don't need to parse it again
 		creatorARN = *stsRole
 	}
 
+	isGovcloud := creatorParsedARN.Partition == govPartition
+
 	return &Creator{
-		ARN:       creatorARN,
-		AccountID: creatorParsedARN.AccountID,
-		IsSTS:     isSTS(creatorParsedARN),
+		ARN:        creatorARN,
+		AccountID:  creatorParsedARN.AccountID,
+		IsSTS:      isSTS(creatorParsedARN),
+		IsGovcloud: isGovcloud,
 	}, nil
 }
 
