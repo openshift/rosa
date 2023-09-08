@@ -204,6 +204,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if cmd.Flags().Changed("hosted-cp") && callerIsGovcloud {
 		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
+		os.Exit(1)
 	}
 
 	// Validate AWS credentials for current user
