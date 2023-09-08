@@ -71,6 +71,8 @@ const (
 	DefaultRegion = "us-east-1"
 	Inline        = "inline"
 	Attached      = "attached"
+
+	govPartition = "aws-us-gov"
 )
 
 // addROSAVersionToUserAgent is a named handler that will add ROSA CLI
@@ -612,10 +614,7 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 		creatorARN = *stsRole
 	}
 
-	isGovcloud := false
-	if creatorParsedARN.Partition == "aws-us-gov" {
-		isGovcloud = true
-	}
+	isGovcloud := creatorParsedARN.Partition == govPartition
 
 	return &Creator{
 		ARN:        creatorARN,
