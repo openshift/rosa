@@ -139,8 +139,7 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	r := rosa.NewRuntime()
-	r.WithAWS()
+	r := rosa.NewRuntime().WithAWS()
 
 	mode, err := aws.GetMode()
 	if err != nil {
