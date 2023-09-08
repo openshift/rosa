@@ -14,14 +14,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-func MinNodePoolReplicaValidator() interactive.Validator {
+func MinNodePoolReplicaValidator(autoscaling bool) interactive.Validator {
 	return func(val interface{}) error {
 		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
 			return err
 		}
-		if minReplicas < 1 {
-			return fmt.Errorf("min-replicas must be greater than zero")
+		if autoscaling {
+			if minReplicas < 1 {
+				return fmt.Errorf("min-replicas must be greater than zero")
+			}
+		} else {
+			if minReplicas < 0 {
+				return fmt.Errorf("replicas must be a non-negative integer")
+			}
 		}
 		return nil
 	}

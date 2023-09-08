@@ -52,9 +52,13 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	autoscaling, replicas, minReplicas, maxReplicas := getNodePoolReplicas(cmd, r.Reporter, nodePoolID,
 		nodePool.Replicas(), nodePool.Autoscaling(), isAnyAdditionalParameterSet)
 
-	if !autoscaling && replicas < 1 ||
-		(autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1) {
-		r.Reporter.Errorf("The number of machine pool replicas needs to be greater than zero")
+	if !autoscaling && replicas < 0 {
+		r.Reporter.Errorf("The number of machine pool replicas needs to be a non-negative integer")
+		os.Exit(1)
+	}
+
+	if autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1 {
+		r.Reporter.Errorf("The number of machine pool min-replicas needs to be greater than zero")
 		os.Exit(1)
 	}
 
@@ -239,7 +243,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 				Default:  existingAutoscaling.MinReplica(),
 				Required: replicasRequired,
 				Validators: []interactive.Validator{
-					machinepools.MinNodePoolReplicaValidator(),
+					machinepools.MinNodePoolReplicaValidator(true),
 				},
 			})
 			if err != nil {
@@ -278,7 +282,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 			Default:  replicas,
 			Required: true,
 			Validators: []interactive.Validator{
-				machinepools.MinNodePoolReplicaValidator(),
+				machinepools.MinNodePoolReplicaValidator(false),
 			},
 		})
 		if err != nil {
