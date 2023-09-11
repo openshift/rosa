@@ -172,7 +172,7 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 	cmd.IntVar(
 		&args.ResourceLimits.Cores.Max,
 		fmt.Sprintf("%s%s", prefix, maxCoresFlag),
-		100,
+		180*64,
 		"Maximum limit for the amount of cores to deploy in the cluster.",
 	)
 
@@ -186,7 +186,7 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 	cmd.IntVar(
 		&args.ResourceLimits.Memory.Max,
 		fmt.Sprintf("%s%s", prefix, maxMemoryFlag),
-		4096,
+		180*64*20,
 		"Maximum limit for the amount of memory, in GiB, in the cluster.",
 	)
 
