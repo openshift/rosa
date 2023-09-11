@@ -38,15 +38,15 @@ var Cmd = &cobra.Command{
 	Example: `  # Interactively edit an autoscaler to a cluster named "mycluster"
   rosa edit autoscaler --cluster=mycluster --interactive
 
-  # Create a cluster-autoscaler where it should skip nodes with local storage
-  rosa create autoscaler --cluster=mycluster --skip-nodes-with-local-storage
+  # Edit a cluster-autoscaler to skip nodes with local storage
+  rosa edit autoscaler --cluster=mycluster --skip-nodes-with-local-storage
 
-  # Create a cluster-autoscaler with log verbosity of '3'
-  rosa create autoscaler --cluster=mycluster --log-verbosity 3
+  # Edit a cluster-autoscaler with log verbosity of '3'
+  rosa edit autoscaler --cluster=mycluster --log-verbosity 3
 
-  # Create a cluster-autoscaler with total CPU constraints
-  rosa create autoscaler --cluster=mycluster --min-cores 10 --max-cores 100`,
-	Run: run, // TODO: fix the examples
+  # Edit a cluster-autoscaler with total CPU constraints
+  rosa edit autoscaler --cluster=mycluster --min-cores 10 --max-cores 100`,
+	Run: run,
 }
 
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
