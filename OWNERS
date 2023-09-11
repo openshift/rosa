@@ -5,7 +5,6 @@ reviewers:
 - oriAdler
 - pvasant
 - renan-campos
-- tbrisker
 - zgalor
 approvers:
 - ciaranRoche
@@ -14,7 +13,6 @@ approvers:
 - oriAdler
 - pvasant
 - renan-campos
-- tbrisker
 - vkareh
 - zgalor
 maintainers:
@@ -24,8 +22,8 @@ maintainers:
 - oriAdler
 - pvasant
 - renan-campos
-- tbrisker
 - vkareh
 - zgalor
 emeritus_approvers:
 - jharrington22
+- tbrisker
