@@ -48,15 +48,19 @@ var _ = Describe("Input Validators", Ordered, func() {
 
 	Context("duration string validator", func() {
 		It("succeeds if got an empty string", func() {
-			Expect(DurationStringValidator("")).To(BeNil())
+			Expect(PositiveDurationStringValidator("")).To(BeNil())
 		})
 
 		It("raises an error if the format is wrong", func() {
-			Expect(DurationStringValidator("something")).ToNot(BeNil())
+			Expect(PositiveDurationStringValidator("something")).ToNot(BeNil())
+		})
+
+		It("raises an error if got a negative duration", func() {
+			Expect(PositiveDurationStringValidator("-1h")).ToNot(BeNil())
 		})
 
 		It("successfully parses a valid duration string", func() {
-			Expect(DurationStringValidator("200h")).To(BeNil())
+			Expect(PositiveDurationStringValidator("200h")).To(BeNil())
 		})
 	})
 

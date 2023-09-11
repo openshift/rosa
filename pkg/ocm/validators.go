@@ -30,7 +30,7 @@ func NonNegativeIntValidator(val interface{}) error {
 	return nil
 }
 
-func DurationStringValidator(val interface{}) error {
+func PositiveDurationStringValidator(val interface{}) error {
 	if val == "" {
 		return nil
 	}
@@ -40,8 +40,17 @@ func DurationStringValidator(val interface{}) error {
 		return fmt.Errorf("Can only validate strings, got %v", val)
 	}
 
-	_, err := time.ParseDuration(input)
-	return err
+	duration, err := time.ParseDuration(input)
+
+	if err != nil {
+		return err
+	}
+
+	if duration < 0 {
+		return fmt.Errorf("Only positive durations are allowed, got '%v'", val)
+	}
+
+	return nil
 }
 
 func PercentageValidator(val interface{}) error {

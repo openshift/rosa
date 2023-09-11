@@ -400,14 +400,14 @@ func GetAutoscalerOptions(
 			Required: false,
 			Default:  result.MaxNodeProvisionTime,
 			Validators: []interactive.Validator{
-				ocm.DurationStringValidator,
+				ocm.PositiveDurationStringValidator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err := ocm.DurationStringValidator(result.MaxNodeProvisionTime); err != nil {
+	if err := ocm.PositiveDurationStringValidator(result.MaxNodeProvisionTime); err != nil {
 		return nil, err
 	}
 
@@ -619,14 +619,14 @@ func GetAutoscalerOptions(
 			Default:  result.ScaleDown.UnneededTime,
 			Required: false,
 			Validators: []interactive.Validator{
-				ocm.DurationStringValidator,
+				ocm.PositiveDurationStringValidator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		if err := ocm.DurationStringValidator(result.ScaleDown.UnneededTime); err != nil {
+		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.UnneededTime); err != nil {
 			return nil, err
 		}
 	}
@@ -653,7 +653,7 @@ func GetAutoscalerOptions(
 			Default:  result.ScaleDown.DelayAfterAdd,
 			Required: false,
 			Validators: []interactive.Validator{
-				ocm.DurationStringValidator,
+				ocm.PositiveDurationStringValidator,
 			},
 		})
 		if err != nil {
@@ -661,7 +661,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if err := ocm.DurationStringValidator(result.ScaleDown.DelayAfterAdd); err != nil {
+	if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterAdd); err != nil {
 		return nil, err
 	}
 
@@ -672,14 +672,14 @@ func GetAutoscalerOptions(
 			Default:  result.ScaleDown.DelayAfterDelete,
 			Required: false,
 			Validators: []interactive.Validator{
-				ocm.DurationStringValidator,
+				ocm.PositiveDurationStringValidator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		if err := ocm.DurationStringValidator(result.ScaleDown.DelayAfterDelete); err != nil {
+		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterDelete); err != nil {
 			return nil, err
 		}
 	}
@@ -691,14 +691,14 @@ func GetAutoscalerOptions(
 			Default:  result.ScaleDown.DelayAfterFailure,
 			Required: false,
 			Validators: []interactive.Validator{
-				ocm.DurationStringValidator,
+				ocm.PositiveDurationStringValidator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		if err := ocm.DurationStringValidator(result.ScaleDown.DelayAfterFailure); err != nil {
+		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterFailure); err != nil {
 			return nil, err
 		}
 	}
