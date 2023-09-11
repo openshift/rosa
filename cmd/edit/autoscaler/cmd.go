@@ -29,6 +29,8 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const argsPrefix string = ""
+
 var Cmd = &cobra.Command{
 	Use:     "autoscaler",
 	Aliases: []string{"cluster-autoscaler"},
@@ -57,7 +59,7 @@ func init() {
 
 	ocm.AddClusterFlag(Cmd)
 	interactive.AddFlag(flags)
-	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(flags, "")
+	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(flags, argsPrefix)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -85,7 +87,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if !clusterautoscaler.IsAutoscalerSetViaCLI(cmd.Flags()) && !interactive.Enabled() {
+	if !clusterautoscaler.IsAutoscalerSetViaCLI(cmd.Flags(), argsPrefix) && !interactive.Enabled() {
 		interactive.Enable()
 		r.Reporter.Infof("Enabling interactive mode")
 	}

@@ -2092,7 +2092,10 @@ func run(cmd *cobra.Command, _ []string) {
 		isHostedCP,
 		multiAZ)
 
-	if autoscaling {
+	var clusterAutoscaler *clusterautoscaler.AutoscalerArgs
+	if !autoscaling {
+		clusterAutoscaler = nil
+	} else {
 		// if the user set compute-nodes and enabled autoscaling
 		if isReplicasSet {
 			r.Reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
@@ -2140,7 +2143,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		autoscalerArgs, err = clusterautoscaler.GetAutoscalerOptions(
+		clusterAutoscaler, err = clusterautoscaler.GetAutoscalerOptions(
 			cmd.Flags(), clusterAutoscalerFlagsPrefix, true, autoscalerArgs)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
@@ -2749,8 +2752,8 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.SharedVPCRoleArn = sharedVPCRoleARN
 		clusterConfig.BaseDomain = baseDomain
 	}
-	if autoscalerArgs != nil {
-		autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(autoscalerArgs)
+	if clusterAutoscaler != nil {
+		autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(clusterAutoscaler)
 		if err != nil {
 			r.Reporter.Errorf("Failed creating autoscaler configuration: %s", err)
 			os.Exit(1)

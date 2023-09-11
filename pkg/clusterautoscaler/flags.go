@@ -47,27 +47,19 @@ type AutoscalerArgs struct {
 	ScaleDown                   ScaleDownConfig
 }
 
-func IsAutoscalerSetViaCLI(cmd *pflag.FlagSet) bool {
-	return cmd.Changed(balanceSimilarNodeGroupsFlag) ||
-		cmd.Changed(skipNodesWithLocalStorageFlag) ||
-		cmd.Changed(logVerbosityFlag) ||
-		cmd.Changed(balancingIgnoredLabelsFlag) ||
-		cmd.Changed(ignoreDaemonsetsUtilizationFlag) ||
-		cmd.Changed(maxPodGracePeriodFlag) ||
-		cmd.Changed(podPriorityThresholdFlag) ||
-		cmd.Changed(maxNodeProvisionTimeFlag) ||
-		cmd.Changed(maxNodesTotalFlag) ||
-		cmd.Changed(minCoresFlag) ||
-		cmd.Changed(maxCoresFlag) ||
-		cmd.Changed(minMemoryFlag) ||
-		cmd.Changed(maxMemoryFlag) ||
-		cmd.Changed(gpuLimitFlag) ||
-		cmd.Changed(scaleDownEnabledFlag) ||
-		cmd.Changed(scaleDownUnneededTimeFlag) ||
-		cmd.Changed(scaleDownUtilizationThresholdFlag) ||
-		cmd.Changed(scaleDownDelayAfterAddFlag) ||
-		cmd.Changed(scaleDownDelayAfterDeleteFlag) ||
-		cmd.Changed(scaleDownDelayAfterFailureFlag)
+func IsAutoscalerSetViaCLI(cmd *pflag.FlagSet, prefix string) bool {
+	for _, parameter := range []string{balanceSimilarNodeGroupsFlag, skipNodesWithLocalStorageFlag, logVerbosityFlag,
+		balancingIgnoredLabelsFlag, ignoreDaemonsetsUtilizationFlag, maxPodGracePeriodFlag, podPriorityThresholdFlag,
+		maxNodeProvisionTimeFlag, maxNodesTotalFlag, minCoresFlag, maxCoresFlag, minMemoryFlag, maxMemoryFlag,
+		gpuLimitFlag, scaleDownEnabledFlag, scaleDownUnneededTimeFlag, scaleDownUtilizationThresholdFlag,
+		scaleDownDelayAfterAddFlag, scaleDownDelayAfterDeleteFlag, scaleDownDelayAfterFailureFlag} {
+
+		if cmd.Changed(fmt.Sprintf("%s%s", prefix, parameter)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 type ResourceLimits struct {
@@ -280,47 +272,29 @@ func GetAutoscalerOptions(
 	result.ScaleDown.DelayAfterDelete = autoscalerArgs.ScaleDown.DelayAfterDelete
 	result.ScaleDown.DelayAfterFailure = autoscalerArgs.ScaleDown.DelayAfterFailure
 
-	isBalanceSimilarNodeGroupsSet := cmd.Changed(balanceSimilarNodeGroupsFlag)
-	isAutoscalerSkipNodesWithLocalStorageSet := cmd.Changed(skipNodesWithLocalStorageFlag)
-	isAutoscalerLogVerbositySet := cmd.Changed(logVerbosityFlag)
-	isAutoscalerBalancingIgnoredLabelsSet := cmd.Changed(balancingIgnoredLabelsFlag)
-	isAutoscalerIgnoreDaemonsetsUtilizationSet := cmd.Changed(ignoreDaemonsetsUtilizationFlag)
-	isAutoscalerMaxPodGracePeriodSet := cmd.Changed(maxPodGracePeriodFlag)
-	isAutoscalerPodPriorityThresholdSet := cmd.Changed(podPriorityThresholdFlag)
-	isAutoscalerMaxNodeProvisionTimeSet := cmd.Changed(maxNodeProvisionTimeFlag)
-	isMaxNodesTotalSet := cmd.Changed(maxNodesTotalFlag)
-	isMinCoresSet := cmd.Changed(minCoresFlag)
-	isMaxCoresSet := cmd.Changed(maxCoresFlag)
-	isMinMemorySet := cmd.Changed(minMemoryFlag)
-	isMaxMemorySet := cmd.Changed(maxMemoryFlag)
-	isGPULimitsSet := cmd.Changed(gpuLimitFlag)
-	isScaleDownEnabledSet := cmd.Changed(scaleDownEnabledFlag)
-	isScaleDownUnneededTimeSet := cmd.Changed(scaleDownUnneededTimeFlag)
-	isScaleDownUtilizationThresholdSet := cmd.Changed(scaleDownUtilizationThresholdFlag)
-	isScaleDownDelayAfterAddSet := cmd.Changed(scaleDownDelayAfterAddFlag)
-	isScaleDownDelayAfterDeleteSet := cmd.Changed(scaleDownDelayAfterDeleteFlag)
-	isScaleDownDelayAfterFailureSet := cmd.Changed(scaleDownDelayAfterFailureFlag)
-
-	isClusterAutoscalerSet := IsAutoscalerSetViaCLI(cmd)
-
-	if confirmBeforeAllArgs && !isClusterAutoscalerSet && interactive.Enabled() {
-		isClusterAutoscalerSet, err = interactive.GetBool(interactive.Input{
-			Question: "Configure cluster-autoscaler",
-			Help:     "Set cluster-wide autoscaling configurations",
-			Default:  false,
-			Required: false,
-		})
-		if err != nil {
-			return nil, err
+	if !IsAutoscalerSetViaCLI(cmd, prefix) {
+		if !interactive.Enabled() {
+			return nil, nil
 		}
 
-		if !isClusterAutoscalerSet {
-			// User is not interested providing any cluster-autoscaler parameter
-			return nil, nil
+		if confirmBeforeAllArgs {
+			allowSettingClusterAutoscaler, err := interactive.GetBool(interactive.Input{
+				Question: "Configure cluster-autoscaler",
+				Help:     "Set cluster-wide autoscaling configurations",
+				Default:  false,
+				Required: false,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			if !allowSettingClusterAutoscaler {
+				return nil, nil
+			}
 		}
 	}
 
-	if interactive.Enabled() && !isBalanceSimilarNodeGroupsSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag)) {
 		result.BalanceSimilarNodeGroups, err = interactive.GetBool(interactive.Input{
 			Question: "Balance similar node groups",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag)).Usage,
@@ -332,7 +306,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isAutoscalerSkipNodesWithLocalStorageSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag)) {
 		result.SkipNodesWithLocalStorage, err = interactive.GetBool(interactive.Input{
 			Question: "Skip nodes with local storage",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag)).Usage,
@@ -344,7 +318,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isAutoscalerLogVerbositySet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, logVerbosityFlag)) {
 		result.LogVerbosity, err = interactive.GetInt(interactive.Input{
 			Question: "Log verbosity",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, logVerbosityFlag)).Usage,
@@ -362,7 +336,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && !isAutoscalerBalancingIgnoredLabelsSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag)) {
 		balancingIgnoredLabels, err := interactive.GetString(interactive.Input{
 			Question: "Labels that cluster autoscaler should ignore when considering node group similarity",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag)).Usage,
@@ -381,7 +355,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isAutoscalerIgnoreDaemonsetsUtilizationSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag)) {
 		result.IgnoreDaemonsetsUtilization, err = interactive.GetBool(interactive.Input{
 			Question: "Ignore daemonsets utilization",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag)).Usage,
@@ -393,7 +367,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isAutoscalerMaxNodeProvisionTimeSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxNodeProvisionTimeFlag)) {
 		result.MaxNodeProvisionTime, err = interactive.GetString(interactive.Input{
 			Question: "Maximum node provision time",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxNodeProvisionTimeFlag)).Usage,
@@ -411,7 +385,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && !isAutoscalerMaxPodGracePeriodSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxPodGracePeriodFlag)) {
 		result.MaxPodGracePeriod, err = interactive.GetInt(interactive.Input{
 			Question: "Maximum pod grace period",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxPodGracePeriodFlag)).Usage,
@@ -426,7 +400,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isAutoscalerPodPriorityThresholdSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, podPriorityThresholdFlag)) {
 		result.PodPriorityThreshold, err = interactive.GetInt(interactive.Input{
 			Question: "Pod priority threshold",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, podPriorityThresholdFlag)).Usage,
@@ -441,7 +415,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isMaxNodesTotalSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxNodesTotalFlag)) {
 		result.ResourceLimits.MaxNodesTotal, err = interactive.GetInt(interactive.Input{
 			Question: "Maximum amount of nodes in the cluster",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxNodesTotalFlag)).Usage,
@@ -459,7 +433,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && !isMinCoresSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, minCoresFlag)) {
 		result.ResourceLimits.Cores.Min, err = interactive.GetInt(interactive.Input{
 			Question: "Minimum number of cores to deploy in cluster",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, minCoresFlag)).Usage,
@@ -477,7 +451,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && !isMaxCoresSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxCoresFlag)) {
 		result.ResourceLimits.Cores.Max, err = interactive.GetInt(interactive.Input{
 			Question: "Maximum number of cores to deploy in cluster",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxCoresFlag)).Usage,
@@ -499,7 +473,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && !isMinMemorySet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, minMemoryFlag)) {
 		result.ResourceLimits.Memory.Min, err = interactive.GetInt(interactive.Input{
 			Question: "Minimum amount of memory, in GiB, in the cluster",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, minMemoryFlag)).Usage,
@@ -517,7 +491,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && !isMaxMemorySet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxMemoryFlag)) {
 		result.ResourceLimits.Memory.Max, err = interactive.GetInt(interactive.Input{
 			Question: "Maximum amount of memory, in GiB, in the cluster",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxMemoryFlag)).Usage,
@@ -539,7 +513,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && !isGPULimitsSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, gpuLimitFlag)) {
 		gpuLimitsCount, err := interactive.GetInt(interactive.Input{
 			Question: "Enter the number of GPU limitations you wish to set",
 			Help: "This allows setting a limiting range of the count of GPU resources " +
@@ -600,7 +574,7 @@ func GetAutoscalerOptions(
 
 	// scale-down configs
 
-	if interactive.Enabled() && !isScaleDownEnabledSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag)) {
 		result.ScaleDown.Enabled, err = interactive.GetBool(interactive.Input{
 			Question: "Should scale-down be enabled",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag)).Usage,
@@ -612,7 +586,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isScaleDownUnneededTimeSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag)) {
 		result.ScaleDown.UnneededTime, err = interactive.GetString(interactive.Input{
 			Question: "How long a node should be unneeded before it is eligible for scale down",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag)).Usage,
@@ -631,7 +605,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isScaleDownUtilizationThresholdSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag)) {
 		result.ScaleDown.UtilizationThreshold, err = interactive.GetFloat(interactive.Input{
 			Question: "Node utilization threshold",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag)).Usage,
@@ -646,7 +620,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isScaleDownDelayAfterAddSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag)) {
 		result.ScaleDown.DelayAfterAdd, err = interactive.GetString(interactive.Input{
 			Question: "How long after scale up should scale down evaluation resume",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag)).Usage,
@@ -665,7 +639,7 @@ func GetAutoscalerOptions(
 		return nil, err
 	}
 
-	if interactive.Enabled() && !isScaleDownDelayAfterDeleteSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag)) {
 		result.ScaleDown.DelayAfterDelete, err = interactive.GetString(interactive.Input{
 			Question: "How long after node deletion should scale down evaluation resume",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag)).Usage,
@@ -684,7 +658,7 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !isScaleDownDelayAfterFailureSet {
+	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag)) {
 		result.ScaleDown.DelayAfterFailure, err = interactive.GetString(interactive.Input{
 			Question: "How long after node deletion failure should scale down evaluation resume.",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag)).Usage,
