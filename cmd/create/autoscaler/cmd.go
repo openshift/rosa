@@ -71,6 +71,19 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	autoscaler, err := r.OCMClient.GetClusterAutoscaler(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Failed getting autoscaler configuration for cluster '%s': %s",
+			cluster.ID(), err)
+		os.Exit(1)
+	}
+
+	if autoscaler != nil {
+		r.Reporter.Errorf("Autoscaler for cluster '%s' already exists. "+
+			"You should edit it via 'rosa edit autoscaler'", clusterKey)
+		os.Exit(1)
+	}
+
 	if !clusterautoscaler.IsAutoscalerSetViaCLI(cmd.Flags()) && !interactive.Enabled() {
 		interactive.Enable()
 		r.Reporter.Infof("Enabling interactive mode")
