@@ -92,6 +92,15 @@ func Contains[T comparable](slice []T, element T) bool {
 	return false
 }
 
+func ContainsPrefix(slice []string, prefix string) bool {
+	for _, sliceElement := range slice {
+		if strings.HasPrefix(sliceElement, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func SliceToMap(s []string) map[string]bool {
 	m := make(map[string]bool)
 

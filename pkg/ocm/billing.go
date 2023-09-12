@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 
+	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper"
 )
 
@@ -12,7 +14,7 @@ var ROSAHypershiftQuota = "cluster|byoc|moa|marketplace"
 
 var awsAccountRegexp = regexp.MustCompile(`^[0-9]{12}$`)
 
-func (c *Client) GetBillingAccounts() ([]string, error) {
+func (c *Client) GetBillingAccounts() ([]*v1.CloudAccount, error) {
 	acctResponse, err := c.ocm.AccountsMgmt().V1().CurrentAccount().
 		Get().
 		Send()
@@ -34,20 +36,60 @@ func (c *Client) GetBillingAccounts() ([]string, error) {
 		return nil, handleErr(quotaCostResponse.Error(), err)
 	}
 
-	var billingAccounts []string
+	var billingAccounts []*v1.CloudAccount
 	for _, item := range quotaCostResponse.Items().Slice() {
-		for _, account := range item.CloudAccounts() {
-			if account.CloudProviderID() == "aws" && !helper.Contains(billingAccounts, account.CloudAccountID()) {
-				billingAccounts = append(billingAccounts, account.CloudAccountID())
-			}
-		}
+		billingAccounts = append(billingAccounts, item.CloudAccounts()...)
 	}
 
 	if len(billingAccounts) == 0 {
-		return billingAccounts, errors.New("no billing accounts found")
+		return billingAccounts, errors.New("No billing account associated. " +
+			"Go to https://docs.openshift.com/rosa/rosa_architecture/rosa-understanding.html" +
+			" to learn how to associate your billing account." +
+			" You must associate a billing account to continue.")
 	}
 
 	return billingAccounts, nil
+}
+
+func GenerateBillingAccountsList(cloudAccounts []*v1.CloudAccount) []string {
+	var billingAccounts []string
+	for _, account := range cloudAccounts {
+		if account.CloudProviderID() == "aws" && !helper.ContainsPrefix(billingAccounts, account.CloudAccountID()) {
+			var contractString string
+			if HasValidContracts(account) {
+				contractString = " [Contract enabled]"
+			}
+			billingAccounts = append(billingAccounts, account.CloudAccountID()+contractString)
+		}
+	}
+	return billingAccounts
+
+}
+
+func GetNumsOfVPCsAndClusters(dimensions []*v1.ContractDimension) (int, int) {
+	numOfVPCs := 0
+	numOfClusters := 0
+	for _, dimension := range dimensions {
+		if dimension.Name() == "four_vcpu_hours" {
+			numOfVPCs, _ = strconv.Atoi(dimension.Value())
+		} else if dimension.Name() == "control_plane" {
+			numOfClusters, _ = strconv.Atoi(dimension.Value())
+		}
+	}
+
+	return numOfVPCs, numOfClusters
+}
+
+func HasValidContracts(cloudAccount *v1.CloudAccount) bool {
+	//currently, an AWS account will have only one ROSA HCP active contract at a time
+	contract := cloudAccount.Contracts()[0]
+	numberOfVPCs, numberOfClusters := GetNumsOfVPCsAndClusters(contract.Dimensions())
+	if numberOfVPCs > 0 ||
+		numberOfClusters > 0 {
+		return true
+	}
+	return false
+
 }
 
 func IsValidAWSAccount(account string) bool {

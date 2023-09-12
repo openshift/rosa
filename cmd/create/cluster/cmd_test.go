@@ -3,9 +3,11 @@ package cluster
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 )
@@ -133,6 +135,41 @@ var _ = Describe("Validates OCP version", func() {
 			v, err := client.ValidateVersion("4.11.0", []string{"4.11.0"}, stable, true, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(v).To(Equal("openshift-v4.11.0"))
+		})
+	})
+})
+
+var _ = Describe("Validate cloud accounts", func() {
+
+	Context("build billing accounts", func() {
+		When("return the error or result", func() {
+			It("OK: Successfully gets contracts from cloudAccounts", func() {
+				mockCloudAccount := v1.NewCloudAccount().CloudAccountID("1234567").
+					Contracts(v1.NewContract().StartDate(time.Now()).EndDate(time.Now().Add(2)).
+						Dimensions(v1.NewContractDimension().Name("control_plane").Value("4")))
+				cloudAccount, err := mockCloudAccount.Build()
+				Expect(err).NotTo(HaveOccurred())
+				_, isContractEnabled := GetBillingAccountContracts([]*v1.CloudAccount{cloudAccount}, "1234567")
+				Expect(isContractEnabled).To(Equal(true))
+			})
+
+			It("OK: Successfully print contract details", func() {
+				mockContract, err := v1.NewContract().StartDate(time.Now()).EndDate(time.Now()).
+					Dimensions(v1.NewContractDimension().Name("control_plane").Value("4")).Build()
+				Expect(err).NotTo(HaveOccurred())
+
+				expected := "\n" +
+					"   +---------------------+----------------+ \n" +
+					"   | Start Date          |Oct 11, 2023    | \n" +
+					"   | End Date            |Oct 11, 2023    | \n" +
+					"   | Number of vCPUs:    |'0'             | \n" +
+					"   | Number of clusters: |'4'             | \n" +
+					"   +---------------------+----------------+ \n"
+
+				contractDisplay := GenerateContractDisplay(mockContract)
+
+				Expect(contractDisplay).To(Equal(expected))
+			})
 		})
 	})
 })
