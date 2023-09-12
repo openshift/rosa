@@ -69,6 +69,12 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
+
+	if cluster.Hypershift().Enabled() {
+		r.Reporter.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
+		os.Exit(1)
+	}
+
 	if cluster.State() != cmv1.ClusterStateReady {
 		r.Reporter.Errorf("Cluster '%s' is not yet ready. Current state is '%s'", clusterKey, cluster.State())
 		os.Exit(1)
