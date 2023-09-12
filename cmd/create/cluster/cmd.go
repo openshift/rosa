@@ -2143,11 +2143,18 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		clusterAutoscaler, err = clusterautoscaler.GetAutoscalerOptions(
-			cmd.Flags(), clusterAutoscalerFlagsPrefix, true, autoscalerArgs)
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+		if isHostedCP {
+			if clusterautoscaler.IsAutoscalerSetViaCLI(cmd.Flags(), clusterAutoscalerFlagsPrefix) {
+				r.Reporter.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
+				os.Exit(1)
+			}
+		} else {
+			clusterAutoscaler, err = clusterautoscaler.GetAutoscalerOptions(
+				cmd.Flags(), clusterAutoscalerFlagsPrefix, true, autoscalerArgs)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 		}
 	}
 
