@@ -829,21 +829,20 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		config.Autoscaling || len(config.ComputeLabels) > 0 {
 		clusterNodesBuilder := cmv1.NewClusterNodes()
 		if config.ComputeMachineType != "" {
-			if machinePoolRootDisk := config.MachinePoolRootDisk; machinePoolRootDisk != nil &&
-				machinePoolRootDisk.Size != 0 {
-				machineTypeRootVolumeBuilder := cmv1.NewRootVolume().
-					AWS(cmv1.NewAWSVolume().
-						Size(machinePoolRootDisk.Size))
-				clusterNodesBuilder = clusterNodesBuilder.ComputeRootVolume(
-					(machineTypeRootVolumeBuilder),
-				)
-			} else {
-				clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
-					cmv1.NewMachineType().ID(config.ComputeMachineType),
-				)
-			}
+			clusterNodesBuilder = clusterNodesBuilder.ComputeMachineType(
+				cmv1.NewMachineType().ID(config.ComputeMachineType),
+			)
 
 			reporter.Debugf("Using machine type '%s'", config.ComputeMachineType)
+		}
+		if machinePoolRootDisk := config.MachinePoolRootDisk; machinePoolRootDisk != nil &&
+			machinePoolRootDisk.Size != 0 {
+			machineTypeRootVolumeBuilder := cmv1.NewRootVolume().
+				AWS(cmv1.NewAWSVolume().
+					Size(machinePoolRootDisk.Size))
+			clusterNodesBuilder = clusterNodesBuilder.ComputeRootVolume(
+				(machineTypeRootVolumeBuilder),
+			)
 		}
 		if config.Autoscaling {
 			clusterNodesBuilder = clusterNodesBuilder.AutoscaleCompute(
