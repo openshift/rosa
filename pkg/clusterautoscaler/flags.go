@@ -111,14 +111,14 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 	cmd.IntVar(
 		&args.MaxPodGracePeriod,
 		fmt.Sprintf("%s%s", prefix, maxPodGracePeriodFlag),
-		0,
+		600,
 		"Gives pods graceful termination time before scaling down, measured in seconds.",
 	)
 
 	cmd.IntVar(
 		&args.PodPriorityThreshold,
 		fmt.Sprintf("%s%s", prefix, podPriorityThresholdFlag),
-		0,
+		-10,
 		"The priority that a pod must exceed to cause the cluster autoscaler to deploy additional nodes. "+
 			"Expects an integer, can be negative.",
 	)
