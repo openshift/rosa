@@ -46,6 +46,11 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
 
+	if cluster.Hypershift().Enabled() {
+		r.Reporter.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
+		os.Exit(1)
+	}
+
 	r.Reporter.Debugf("Deleting autoscaler for cluster '%s''", clusterKey)
 
 	err := r.OCMClient.DeleteClusterAutoscaler(cluster.ID())
