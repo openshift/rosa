@@ -17,6 +17,8 @@ limitations under the License.
 package ocm
 
 import (
+	"net/http"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -30,6 +32,22 @@ func (c *Client) GetMachinePools(clusterID string) ([]*cmv1.MachinePool, error) 
 		return nil, handleErr(response.Error(), err)
 	}
 	return response.Items().Slice(), nil
+}
+
+func (c *Client) GetMachinePool(clusterID string, machinePoolID string) (*cmv1.MachinePool, bool, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		MachinePools().
+		MachinePool(machinePoolID).
+		Get().
+		Send()
+	if response.Status() == http.StatusNotFound {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, handleErr(response.Error(), err)
+	}
+	return response.Body(), true, nil
 }
 
 func (c *Client) CreateMachinePool(clusterID string, machinePool *cmv1.MachinePool) (*cmv1.MachinePool, error) {
