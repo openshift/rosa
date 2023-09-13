@@ -14,6 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
+// To clear existing labels in interactive mode, the user enters "" as an empty list value
+const interactiveModeEmptyLabels = `""`
+
 func MinNodePoolReplicaValidator(autoscaling bool) interactive.Validator {
 	return func(val interface{}) error {
 		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
@@ -48,9 +51,10 @@ func MaxNodePoolReplicaValidator(minReplicas int) interactive.Validator {
 
 func ParseLabels(labels string) (map[string]string, error) {
 	labelMap := make(map[string]string)
-	if labels == "" {
+	if labels == "" || labels == interactiveModeEmptyLabels {
 		return labelMap, nil
 	}
+
 	for _, label := range strings.Split(labels, ",") {
 		if !strings.Contains(label, "=") {
 			return nil, fmt.Errorf("Expected key=value format for labels")

@@ -47,6 +47,40 @@ var _ = Describe("MachinePool", func() {
 			"key=node-role.kubernetes.io/infra:NoEffect",
 			"Invalid label value 'node-role.kubernetes.io/infra': at key: 'key'", 0),
 	)
+
+	DescribeTable("Parse Labels", func(userLabels, expectedError string, numberOfLabels int) {
+		labels, err := ParseLabels(userLabels)
+		if expectedError == "" {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(labels)).To(Equal(numberOfLabels))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(expectedError))
+		}
+	},
+		Entry("Empty Labels are parsed correctly",
+			"", "", 0,
+		),
+		Entry("Resetting labels in interactive mode is parsed correctly",
+			`""`, "", 0,
+		),
+		Entry("Single label is parsed correctly",
+			"com.example.foo=bar", "", 1,
+		),
+		Entry("Multiple labels are parsed correctly",
+			"com.example.foo=bar,com.example.baz=bob", "", 2,
+		),
+		Entry("Labels with no value are parsed correctly",
+			"com.example.foo=,com.example.baz=bob", "", 2,
+		),
+		Entry("Duplicate labels are not supported",
+			"com.example.foo=bar,com.example.foo=bob", "Duplicated label key 'com.example.foo' used", 0,
+		),
+		Entry("Malformed labels are not supported",
+			"com.example.foo,com.example.bar=bob", "Expected key=value format for labels", 0,
+		),
+	)
+
 })
 
 var _ = Describe("Machine pool for hosted clusters", func() {
