@@ -764,23 +764,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// validate flags for shared vpc
-	isSharedVPC := false
-	privateHostedZoneID := strings.Trim(args.privateHostedZoneID, " \t")
-	sharedVPCRoleARN := strings.Trim(args.sharedVPCRoleARN, " \t")
-	baseDomain := strings.Trim(args.baseDomain, " \t")
-	if privateHostedZoneID != "" ||
-		sharedVPCRoleARN != "" {
-		if privateHostedZoneID == "" ||
-			sharedVPCRoleARN == "" ||
-			baseDomain == "" {
-			r.Reporter.Errorf("To install a cluster into a shared VPC, " +
-				"private-hosted-zone-id, shared-vpc-role-arn and base-domain should be provided together")
-			os.Exit(1)
-		}
-		isSharedVPC = true
-	}
-
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
 	if err != nil {
 		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
@@ -1807,6 +1790,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	var availabilityZones []string
 	var subnets []*ec2.Subnet
+	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
 		initialSubnets, err := awsClient.GetSubnetIDs()
 		if err != nil {
@@ -1851,7 +1835,6 @@ func run(cmd *cobra.Command, _ []string) {
 			useExistingVPC = false
 			subnetsProvided = false
 		}
-		mapSubnetToAZ := make(map[string]string)
 		mapAZCreated := make(map[string]bool)
 		options := make([]string, len(subnets))
 		defaultOptions := make([]string, len(subnetIDs))
@@ -1878,7 +1861,10 @@ func run(cmd *cobra.Command, _ []string) {
 			mapVpcToSubnet[*subnet.VpcId] = append(mapVpcToSubnet[*subnet.VpcId], subnet)
 			subnetID := awssdk.StringValue(subnet.SubnetId)
 			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
-			mapSubnetToAZ[subnetID] = availabilityZone
+			mapSubnetIDToSubnet[subnetID] = aws.Subnet{
+				AvailabilityZone: availabilityZone,
+				OwnerID:          awssdk.StringValue(subnet.OwnerId),
+			}
 			mapAZCreated[availabilityZone] = false
 		}
 		// Create the options to prompt the user.
@@ -1936,7 +1922,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		for _, subnet := range subnetIDs {
-			az := mapSubnetToAZ[subnet]
+			az := mapSubnetIDToSubnet[subnet].AvailabilityZone
 			if !mapAZCreated[az] {
 				availabilityZones = append(availabilityZones, az)
 				mapAZCreated[az] = true
@@ -1945,9 +1931,46 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	r.Reporter.Debugf("Found the following availability zones for the subnets provided: %v", availabilityZones)
 
+	// validate flags for shared vpc
+	isSharedVPC := false
+	privateHostedZoneID := strings.Trim(args.privateHostedZoneID, " \t")
+	sharedVPCRoleARN := strings.Trim(args.sharedVPCRoleARN, " \t")
+	baseDomain := strings.Trim(args.baseDomain, " \t")
+	if privateHostedZoneID != "" ||
+		sharedVPCRoleARN != "" {
+		isSharedVPC = true
+	}
+
 	if len(subnetIDs) == 0 && isSharedVPC {
 		r.Reporter.Errorf("Installing a cluster into a shared VPC is only supported for BYO VPC clusters")
 		os.Exit(1)
+	}
+
+	if isSubnetBelongToSharedVpc(r, awsCreator.AccountID, subnetIDs, mapSubnetIDToSubnet) {
+		isSharedVPC = true
+		if privateHostedZoneID == "" || sharedVPCRoleARN == "" || baseDomain == "" {
+			if !interactive.Enabled() {
+				interactive.Enable()
+			}
+
+			privateHostedZoneID, err = getPrivateHostedZoneID(cmd, privateHostedZoneID)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			sharedVPCRoleARN, err = getSharedVpcRoleArn(cmd, sharedVPCRoleARN)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			baseDomain, err = getBaseDomain(r, cmd, baseDomain)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	// Select availability zones for a non-BYOVPC cluster
