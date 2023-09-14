@@ -58,7 +58,7 @@ func init() {
 
 	ocm.AddClusterFlag(Cmd)
 	interactive.AddFlag(flags)
-	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(flags, argsPrefix)
+	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(Cmd, argsPrefix)
 }
 
 func run(cmd *cobra.Command, _ []string) {

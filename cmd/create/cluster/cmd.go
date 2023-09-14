@@ -29,6 +29,7 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
@@ -511,7 +512,13 @@ func init() {
 		"Enable autoscaling of compute nodes.",
 	)
 
-	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(flags, clusterAutoscalerFlagsPrefix)
+	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(Cmd, clusterAutoscalerFlagsPrefix)
+
+	flags.VisitAll(func(f *pflag.Flag) {
+		if strings.HasPrefix(f.Name, clusterAutoscalerFlagsPrefix) {
+			Cmd.MarkFlagsRequiredTogether("enable-autoscaling", f.Name)
+		}
+	})
 
 	flags.IntVar(
 		&args.minReplicas,
