@@ -2282,7 +2282,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("worker-disk-size").Usage,
 				Default:  machinePoolRootDiskSizeStr,
 				Validators: []interactive.Validator{
-					interactive.MachinePoolRootDiskSizeValidator,
+					interactive.MachinePoolRootDiskSizeValidator(version),
 				},
 			})
 			if err != nil {

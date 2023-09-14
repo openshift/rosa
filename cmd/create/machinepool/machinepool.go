@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
@@ -437,7 +438,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 				Help:     cmd.Flags().Lookup("disk-size").Usage,
 				Default:  rootDiskSizeStr,
 				Validators: []interactive.Validator{
-					interactive.MachinePoolRootDiskSizeValidator,
+					interactive.MachinePoolRootDiskSizeValidator(cluster.Version().RawID()),
 				},
 			})
 			if err != nil {
@@ -450,6 +451,12 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		rootDiskSize, err := ocm.ParseDiskSizeToGigibyte(rootDiskSizeStr)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			os.Exit(1)
+		}
+
+		err = diskValidator.ValidateMachinePoolRootDiskSize(cluster.Version().RawID(), rootDiskSize)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
 			os.Exit(1)
 		}
 
