@@ -28,6 +28,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
+	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 )
@@ -187,20 +188,21 @@ func AvailabilityZonesCountValidator(multiAZ bool) Validator {
 	}
 }
 
-func MachinePoolRootDiskSizeValidator(val interface{}) error {
-	// We expect GigiByte as the unit for the root volume size
+func MachinePoolRootDiskSizeValidator(version string) Validator {
+	return func(val interface{}) error {
+		// We expect GigiByte as the unit for the root volume size
 
-	// Validate the worker root volume size is an integer
-	machinePoolRootDiskSize, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("machine pool root disk size must be an string, got %T", machinePoolRootDiskSize)
+		// Validate the worker root volume size is an integer
+		machinePoolRootDiskSize, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("machine pool root disk size must be an string, got %T", machinePoolRootDiskSize)
+		}
+
+		// parse it to validate it is a valid unit
+		size, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSize)
+		if err != nil {
+			return fmt.Errorf("failed to parse machine pool root disk size: %v", err)
+		}
+		return diskValidator.ValidateMachinePoolRootDiskSize(version, size)
 	}
-
-	// parse it to validate it is a valid unit
-	_, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSize)
-	if err != nil {
-		return fmt.Errorf("failed to parse machine pool root disk size: %v", err)
-	}
-
-	return nil
 }
