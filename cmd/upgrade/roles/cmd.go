@@ -52,9 +52,9 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "roles",
 	Aliases: []string{},
-	Short:   "Upgrade account-wide IAM roles to the latest version.",
-	Long:    "Upgrade account-wide IAM roles to the latest version before upgrading your cluster.",
-	Example: `  # Upgrade account/operator roles for ROSA STS clusters 
+	Short:   "Upgrade cluster-specific IAM roles to the latest version.",
+	Long:    "Upgrade cluster-specific IAM roles to the latest version before upgrading your cluster.",
+	Example: `  # Upgrade cluster roles for ROSA STS clusters 
 		rosa upgrade roles -c <cluster_key>`,
 	RunE: run,
 }
