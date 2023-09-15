@@ -94,7 +94,15 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 		npBuilder = npBuilder.Replicas(replicas)
 	}
 
-	if isVersionSet || interactive.Enabled() {
+	// Check if there is any scheduled upgrade and skip version part if it is the case
+	_, upgrade, err := r.OCMClient.GetHypershiftNodePoolUpgrade(cluster.ID(), clusterKey, nodePool.ID())
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
+	if upgrade != nil {
+		r.Reporter.Infof("Skipping version as there is already a scheduled upgrade.")
+	} else if isVersionSet || interactive.Enabled() {
 		// TODO flag marked as deprecated. To be removed
 		version, err := machinepool.ComputeNodePoolVersion(r, cmd, cluster, nodePool, args.version)
 		if err != nil {
