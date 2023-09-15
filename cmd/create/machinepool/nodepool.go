@@ -62,7 +62,9 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		// NodePool will take channel group from the cluster
 		channelGroup := cluster.Version().ChannelGroup()
 		clusterVersion := cluster.Version().RawID()
-		versionList, err := versions.GetVersionList(r, channelGroup, true, true, false)
+		// This is called in HyperShift, but we don't want to exclude version which are HCP disabled for node pools
+		// so we pass the relative parameter as false
+		versionList, err := versions.GetVersionList(r, channelGroup, true, false, false)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -98,7 +100,9 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 				os.Exit(1)
 			}
 		}
-		version, err = r.OCMClient.ValidateVersion(version, filteredVersionList, channelGroup, true, true)
+		// This is called in HyperShift, but we don't want to exclude version which are HCP disabled for node pools
+		// so we pass the relative parameter as false
+		version, err = r.OCMClient.ValidateVersion(version, filteredVersionList, channelGroup, true, false)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 			os.Exit(1)
