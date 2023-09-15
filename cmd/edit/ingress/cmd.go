@@ -76,19 +76,6 @@ func shouldEnableInteractive(flagSet *pflag.FlagSet, params []string) bool {
 	return unchanged
 }
 
-const (
-	privateFlag    = "private"
-	labelMatchFlag = "label-match"
-	lbTypeFlag     = "lb-type"
-
-	routeSelectorFlag             = "route-selector"
-	excludedNamespacesFlag        = "excluded-namespaces"
-	wildcardPolicyFlag            = "wildcard-policy"
-	namespaceOwnershipPolicyFlag  = "namespace-ownership-policy"
-	clusterRoutesHostnameFlag     = "cluster-routes-hostname"
-	clusterRoutesTlsSecretRefFlag = "cluster-routes-tls-secret-ref"
-)
-
 var args struct {
 	private       bool
 	routeSelector string
@@ -100,6 +87,10 @@ var args struct {
 	clusterRoutesHostname     string
 	clusterRoutesTlsSecretRef string
 }
+
+const (
+	ingressV2DocLink = "https://access.redhat.com/articles/7028653"
+)
 
 func init() {
 	flags := Cmd.Flags()
@@ -219,6 +210,13 @@ func run(cmd *cobra.Command, argv []string) {
 	hasLegacyIngressSupport, err := r.OCMClient.HasLegacyIngressSupport(cluster)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
+		os.Exit(1)
+	}
+
+	if hasLegacyIngressSupport && IsIngressV2SetViaCLI(cmd.Flags()) {
+		r.Reporter.Errorf("New ingress attributes %s can't be supplied for legacy supported clusters."+
+			" For more information on how to be supported please check: %s",
+			utils.SliceToSortedString(exclusivelyIngressV2Flags), ingressV2DocLink)
 		os.Exit(1)
 	}
 
