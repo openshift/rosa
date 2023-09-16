@@ -56,7 +56,7 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool, cl
 			r.Reporter.Errorf("Expected a valid AWS subnet: %s", err)
 			os.Exit(1)
 		}
-		subnet = aws.ParseSubnet(subnetOption)
+		subnet = aws.ParseOption(subnetOption)
 	}
 
 	return subnet

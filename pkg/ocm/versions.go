@@ -28,16 +28,17 @@ import (
 )
 
 const (
-	CloseToEolDays                  = 60
-	OneDayHourDuration              = 24
-	DefaultChannelGroup             = "stable"
-	NightlyChannelGroup             = "nightly"
-	LowestSTSSupport                = "4.7.11"
-	LowestHttpTokensRequiredSupport = "4.11.0"
-	LowestSTSMinor                  = "4.7"
-	LowestHostedCPSupport           = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
-	MinVersionForManagedIngressV2   = "4.14-0"
-	VersionPrefix                   = "openshift-v"
+	CloseToEolDays                                 = 60
+	OneDayHourDuration                             = 24
+	DefaultChannelGroup                            = "stable"
+	NightlyChannelGroup                            = "nightly"
+	LowestSTSSupport                               = "4.7.11"
+	LowestHttpTokensRequiredSupport                = "4.11.0"
+	LowestSTSMinor                                 = "4.7"
+	LowestHostedCPSupport                          = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
+	MinVersionForManagedIngressV2                  = "4.14-0"
+	MinVersionForAdditionalComputeSecurityGroupIds = "4.14-0"
+	VersionPrefix                                  = "openshift-v"
 )
 
 func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error) {

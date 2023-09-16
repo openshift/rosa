@@ -65,7 +65,16 @@ func writeAWSMachinePool(object *AWSMachinePool, stream *jsoniter.Stream) {
 		count++
 	}
 	var present_ bool
-	present_ = object.bitmap_&8 != 0 && object.spotMarketOptions != nil
+	present_ = object.bitmap_&8 != 0 && object.additionalComputeSecurityGroupIds != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("additional_compute_security_group_ids")
+		writeStringList(object.additionalComputeSecurityGroupIds, stream)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0 && object.spotMarketOptions != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -108,10 +117,14 @@ func readAWSMachinePool(iterator *jsoniter.Iterator) *AWSMachinePool {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
+		case "additional_compute_security_group_ids":
+			value := readStringList(iterator)
+			object.additionalComputeSecurityGroupIds = value
+			object.bitmap_ |= 8
 		case "spot_market_options":
 			value := readAWSSpotMarketOptions(iterator)
 			object.spotMarketOptions = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()
 		}

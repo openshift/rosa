@@ -221,3 +221,13 @@ func LongestCommonPrefixBySorting(stringSlice []string) string {
 func GigybyteStringer(size int) string {
 	return fmt.Sprintf("%d GiB", size)
 }
+
+func KeysByValue(m map[string]string, value string) []string {
+	var keys []string
+	for k, v := range m {
+		if value == v {
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}

@@ -129,7 +129,16 @@ func writeVersion(object *Version, stream *jsoniter.Stream) {
 		stream.WriteBool(object.hostedControlPlaneEnabled)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&1024 != 0 && object.imageOverrides != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("image_overrides")
+		writeImageOverrides(object.imageOverrides, stream)
+		count++
+	}
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -138,7 +147,7 @@ func writeVersion(object *Version, stream *jsoniter.Stream) {
 		stream.WriteString(object.rawID)
 		count++
 	}
-	present_ = object.bitmap_&2048 != 0
+	present_ = object.bitmap_&4096 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -213,14 +222,18 @@ func readVersion(iterator *jsoniter.Iterator) *Version {
 			value := iterator.ReadBool()
 			object.hostedControlPlaneEnabled = value
 			object.bitmap_ |= 512
+		case "image_overrides":
+			value := readImageOverrides(iterator)
+			object.imageOverrides = value
+			object.bitmap_ |= 1024
 		case "raw_id":
 			value := iterator.ReadString()
 			object.rawID = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		case "release_image":
 			value := iterator.ReadString()
 			object.releaseImage = value
-			object.bitmap_ |= 2048
+			object.bitmap_ |= 4096
 		default:
 			iterator.ReadAny()
 		}

@@ -19,43 +19,107 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
+// BillingModelItemKind is the name of the type used to represent objects
+// of type 'billing_model_item'.
+const BillingModelItemKind = "BillingModelItem"
+
+// BillingModelItemLinkKind is the name of the type used to represent links
+// to objects of type 'billing_model_item'.
+const BillingModelItemLinkKind = "BillingModelItemLink"
+
+// BillingModelItemNilKind is the name of the type used to nil references
+// to objects of type 'billing_model_item'.
+const BillingModelItemNilKind = "BillingModelItemNil"
+
 // BillingModelItem represents the values of the 'billing_model_item' type.
 //
-// BillingModelItem that represents a billing model (defined in pkg/api/billing_types.go). Using BillingModelItem to keep backwards compatibility as we already have a BillingModel enum defined.
+// BillingModelItem represents a billing model
 type BillingModelItem struct {
-	bitmap_     uint32
-	href        string
-	description string
-	displayName string
-	id          string
-	marketplace string
-	model       string
+	bitmap_          uint32
+	id               string
+	href             string
+	billingModelType string
+	description      string
+	displayName      string
+	marketplace      string
 }
 
-// Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *BillingModelItem) Empty() bool {
-	return o == nil || o.bitmap_ == 0
+// Kind returns the name of the type of the object.
+func (o *BillingModelItem) Kind() string {
+	if o == nil {
+		return BillingModelItemNilKind
+	}
+	if o.bitmap_&1 != 0 {
+		return BillingModelItemLinkKind
+	}
+	return BillingModelItemKind
 }
 
-// HREF returns the value of the 'HREF' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// HREF for the billing model
+// Link returns true iif this is a link.
+func (o *BillingModelItem) Link() bool {
+	return o != nil && o.bitmap_&1 != 0
+}
+
+// ID returns the identifier of the object.
+func (o *BillingModelItem) ID() string {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.id
+	}
+	return ""
+}
+
+// GetID returns the identifier of the object and a flag indicating if the
+// identifier has a value.
+func (o *BillingModelItem) GetID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.id
+	}
+	return
+}
+
+// HREF returns the link to the object.
 func (o *BillingModelItem) HREF() string {
-	if o != nil && o.bitmap_&1 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.href
 	}
 	return ""
 }
 
-// GetHREF returns the value of the 'HREF' attribute and
-// a flag indicating if the attribute has a value.
-//
-// HREF for the billing model
+// GetHREF returns the link of the object and a flag indicating if the
+// link has a value.
 func (o *BillingModelItem) GetHREF() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.href
+	}
+	return
+}
+
+// Empty returns true if the object is empty, i.e. no attribute has a value.
+func (o *BillingModelItem) Empty() bool {
+	return o == nil || o.bitmap_&^1 == 0
+}
+
+// BillingModelType returns the value of the 'billing_model_type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// BillingModelType is the type of the BillingModel. e.g. standard, marketplace.
+func (o *BillingModelItem) BillingModelType() string {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.billingModelType
+	}
+	return ""
+}
+
+// GetBillingModelType returns the value of the 'billing_model_type' attribute and
+// a flag indicating if the attribute has a value.
+//
+// BillingModelType is the type of the BillingModel. e.g. standard, marketplace.
+func (o *BillingModelItem) GetBillingModelType() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.billingModelType
 	}
 	return
 }
@@ -63,9 +127,9 @@ func (o *BillingModelItem) GetHREF() (value string, ok bool) {
 // Description returns the value of the 'description' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Single line description of the billing model for better understanding.
+// Single line description of the billing model.
 func (o *BillingModelItem) Description() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.description
 	}
 	return ""
@@ -74,9 +138,9 @@ func (o *BillingModelItem) Description() string {
 // GetDescription returns the value of the 'description' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Single line description of the billing model for better understanding.
+// Single line description of the billing model.
 func (o *BillingModelItem) GetDescription() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.description
 	}
@@ -88,7 +152,7 @@ func (o *BillingModelItem) GetDescription() (value string, ok bool) {
 //
 // User friendly display name of the billing model.
 func (o *BillingModelItem) DisplayName() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.displayName
 	}
 	return ""
@@ -99,32 +163,9 @@ func (o *BillingModelItem) DisplayName() string {
 //
 // User friendly display name of the billing model.
 func (o *BillingModelItem) GetDisplayName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.displayName
-	}
-	return
-}
-
-// Id returns the value of the 'id' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Id for the BillingModel.
-func (o *BillingModelItem) Id() string {
-	if o != nil && o.bitmap_&8 != 0 {
-		return o.id
-	}
-	return ""
-}
-
-// GetId returns the value of the 'id' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Id for the BillingModel.
-func (o *BillingModelItem) GetId() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
-	if ok {
-		value = o.id
 	}
 	return
 }
@@ -134,7 +175,7 @@ func (o *BillingModelItem) GetId() (value string, ok bool) {
 //
 // Indicates the marketplace of the billing model. e.g. gcp, aws, etc.
 func (o *BillingModelItem) Marketplace() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.marketplace
 	}
 	return ""
@@ -145,32 +186,9 @@ func (o *BillingModelItem) Marketplace() string {
 //
 // Indicates the marketplace of the billing model. e.g. gcp, aws, etc.
 func (o *BillingModelItem) GetMarketplace() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.marketplace
-	}
-	return
-}
-
-// Model returns the value of the 'model' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Model type of the BillingModel. e.g. standard, marketplace, marketplace-aws, etc.
-func (o *BillingModelItem) Model() string {
-	if o != nil && o.bitmap_&32 != 0 {
-		return o.model
-	}
-	return ""
-}
-
-// GetModel returns the value of the 'model' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Model type of the BillingModel. e.g. standard, marketplace, marketplace-aws, etc.
-func (o *BillingModelItem) GetModel() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
-	if ok {
-		value = o.model
 	}
 	return
 }
@@ -192,6 +210,40 @@ type BillingModelItemList struct {
 	href  string
 	link  bool
 	items []*BillingModelItem
+}
+
+// Kind returns the name of the type of the object.
+func (l *BillingModelItemList) Kind() string {
+	if l == nil {
+		return BillingModelItemListNilKind
+	}
+	if l.link {
+		return BillingModelItemListLinkKind
+	}
+	return BillingModelItemListKind
+}
+
+// Link returns true iif this is a link.
+func (l *BillingModelItemList) Link() bool {
+	return l != nil && l.link
+}
+
+// HREF returns the link to the list.
+func (l *BillingModelItemList) HREF() string {
+	if l != nil {
+		return l.href
+	}
+	return ""
+}
+
+// GetHREF returns the link of the list and a flag indicating if the
+// link has a value.
+func (l *BillingModelItemList) GetHREF() (value string, ok bool) {
+	ok = l != nil && l.href != ""
+	if ok {
+		value = l.href
+	}
+	return
 }
 
 // Len returns the length of the list.

@@ -23,10 +23,11 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Representation of aws machine pool specific parameters.
 type AWSMachinePoolBuilder struct {
-	bitmap_           uint32
-	id                string
-	href              string
-	spotMarketOptions *AWSSpotMarketOptionsBuilder
+	bitmap_                           uint32
+	id                                string
+	href                              string
+	additionalComputeSecurityGroupIds []string
+	spotMarketOptions                 *AWSSpotMarketOptionsBuilder
 }
 
 // NewAWSMachinePool creates a new builder of 'AWS_machine_pool' objects.
@@ -59,15 +60,23 @@ func (b *AWSMachinePoolBuilder) Empty() bool {
 	return b == nil || b.bitmap_&^1 == 0
 }
 
+// AdditionalComputeSecurityGroupIds sets the value of the 'additional_compute_security_group_ids' attribute to the given values.
+func (b *AWSMachinePoolBuilder) AdditionalComputeSecurityGroupIds(values ...string) *AWSMachinePoolBuilder {
+	b.additionalComputeSecurityGroupIds = make([]string, len(values))
+	copy(b.additionalComputeSecurityGroupIds, values)
+	b.bitmap_ |= 8
+	return b
+}
+
 // SpotMarketOptions sets the value of the 'spot_market_options' attribute to the given value.
 //
 // Spot market options for AWS machine pool.
 func (b *AWSMachinePoolBuilder) SpotMarketOptions(value *AWSSpotMarketOptionsBuilder) *AWSMachinePoolBuilder {
 	b.spotMarketOptions = value
 	if value != nil {
-		b.bitmap_ |= 8
+		b.bitmap_ |= 16
 	} else {
-		b.bitmap_ &^= 8
+		b.bitmap_ &^= 16
 	}
 	return b
 }
@@ -80,6 +89,12 @@ func (b *AWSMachinePoolBuilder) Copy(object *AWSMachinePool) *AWSMachinePoolBuil
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
+	if object.additionalComputeSecurityGroupIds != nil {
+		b.additionalComputeSecurityGroupIds = make([]string, len(object.additionalComputeSecurityGroupIds))
+		copy(b.additionalComputeSecurityGroupIds, object.additionalComputeSecurityGroupIds)
+	} else {
+		b.additionalComputeSecurityGroupIds = nil
+	}
 	if object.spotMarketOptions != nil {
 		b.spotMarketOptions = NewAWSSpotMarketOptions().Copy(object.spotMarketOptions)
 	} else {
@@ -94,6 +109,10 @@ func (b *AWSMachinePoolBuilder) Build() (object *AWSMachinePool, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
+	if b.additionalComputeSecurityGroupIds != nil {
+		object.additionalComputeSecurityGroupIds = make([]string, len(b.additionalComputeSecurityGroupIds))
+		copy(object.additionalComputeSecurityGroupIds, b.additionalComputeSecurityGroupIds)
+	}
 	if b.spotMarketOptions != nil {
 		object.spotMarketOptions, err = b.spotMarketOptions.Build()
 		if err != nil {

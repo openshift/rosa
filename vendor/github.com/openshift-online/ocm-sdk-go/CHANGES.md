@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.368
+- Update model version v0.0.318
+  - Add `ImageOverrides` to `Version` type
+
 ## 0.1.367
 - Windows: Update SSO CA
 - Update model version v0.0.315

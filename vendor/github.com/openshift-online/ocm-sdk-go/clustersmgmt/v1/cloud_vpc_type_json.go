@@ -56,11 +56,20 @@ func writeCloudVPC(object *CloudVPC, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("cidr_block")
+		stream.WriteString(object.cidrBlock)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("id")
 		stream.WriteString(object.id)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -69,7 +78,7 @@ func writeCloudVPC(object *CloudVPC, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0 && object.subnets != nil
+	present_ = object.bitmap_&16 != 0 && object.subnets != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -105,18 +114,22 @@ func readCloudVPC(iterator *jsoniter.Iterator) *CloudVPC {
 			value := readSubnetworkList(iterator)
 			object.awsSubnets = value
 			object.bitmap_ |= 1
+		case "cidr_block":
+			value := iterator.ReadString()
+			object.cidrBlock = value
+			object.bitmap_ |= 2
 		case "id":
 			value := iterator.ReadString()
 			object.id = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		case "subnets":
 			value := readStringList(iterator)
 			object.subnets = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()
 		}

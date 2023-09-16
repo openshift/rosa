@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 type CloudVPCBuilder struct {
 	bitmap_    uint32
 	awsSubnets []*SubnetworkBuilder
+	cidrBlock  string
 	id         string
 	name       string
 	subnets    []string
@@ -48,17 +49,24 @@ func (b *CloudVPCBuilder) AWSSubnets(values ...*SubnetworkBuilder) *CloudVPCBuil
 	return b
 }
 
+// CIDRBlock sets the value of the 'CIDR_block' attribute to the given value.
+func (b *CloudVPCBuilder) CIDRBlock(value string) *CloudVPCBuilder {
+	b.cidrBlock = value
+	b.bitmap_ |= 2
+	return b
+}
+
 // ID sets the value of the 'ID' attribute to the given value.
 func (b *CloudVPCBuilder) ID(value string) *CloudVPCBuilder {
 	b.id = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
 // Name sets the value of the 'name' attribute to the given value.
 func (b *CloudVPCBuilder) Name(value string) *CloudVPCBuilder {
 	b.name = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -66,7 +74,7 @@ func (b *CloudVPCBuilder) Name(value string) *CloudVPCBuilder {
 func (b *CloudVPCBuilder) Subnets(values ...string) *CloudVPCBuilder {
 	b.subnets = make([]string, len(values))
 	copy(b.subnets, values)
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -84,6 +92,7 @@ func (b *CloudVPCBuilder) Copy(object *CloudVPC) *CloudVPCBuilder {
 	} else {
 		b.awsSubnets = nil
 	}
+	b.cidrBlock = object.cidrBlock
 	b.id = object.id
 	b.name = object.name
 	if object.subnets != nil {
@@ -108,6 +117,7 @@ func (b *CloudVPCBuilder) Build() (object *CloudVPC, err error) {
 			}
 		}
 	}
+	object.cidrBlock = b.cidrBlock
 	object.id = b.id
 	object.name = b.name
 	if b.subnets != nil {

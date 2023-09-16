@@ -267,7 +267,7 @@ github.com/onsi/gomega/types
 github.com/openshift-online/ocm-common/pkg/cluster/validations
 github.com/openshift-online/ocm-common/pkg/idp/validations
 github.com/openshift-online/ocm-common/pkg/machinepool/validations
-# github.com/openshift-online/ocm-sdk-go v0.1.367
+# github.com/openshift-online/ocm-sdk-go v0.1.367 => /home/gbranco/go/src/ocm-sdk-go
 ## explicit; go 1.16
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accountsmgmt
@@ -457,3 +457,4 @@ k8s.io/apimachinery/pkg/util/validation/field
 k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 # github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
+# github.com/openshift-online/ocm-sdk-go => /home/gbranco/go/src/ocm-sdk-go

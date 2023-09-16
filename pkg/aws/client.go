@@ -188,8 +188,8 @@ type Client interface {
 	ValidateAccountRoleVersionCompatibility(
 		roleName string, roleType string, minVersion string) (bool, error)
 	GetDefaultPolicyDocument(policyArn string) (string, error)
-
 	GetAccountRoleByArn(roleArn string) (*Role, error)
+	GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -1140,6 +1140,27 @@ func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
 		return err
 	}
 	return nil
+}
+
+func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, error) {
+	describeSecurityGroupsInput := &ec2.DescribeSecurityGroupsInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("vpc-id"),
+				Values: aws.StringSlice([]string{vpcId}),
+			},
+		},
+	}
+	securityGroups := []*ec2.SecurityGroup{}
+	err := c.ec2Client.DescribeSecurityGroupsPages(describeSecurityGroupsInput,
+		func(page *ec2.DescribeSecurityGroupsOutput, lastPage bool) bool {
+			securityGroups = append(securityGroups, page.SecurityGroups...)
+			return page.NextToken != nil
+		})
+	if err != nil {
+		return []*ec2.SecurityGroup{}, err
+	}
+	return securityGroups, nil
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for

@@ -327,6 +327,9 @@ var pathTreeData = `{
         "provision_shards": {
           "-": null
         },
+        "trusted_ip_addresses": {
+          "-": null
+        },
         "version_gates": {
           "-": null
         },
