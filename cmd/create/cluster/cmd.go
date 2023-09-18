@@ -42,6 +42,7 @@ import (
 	installLogs "github.com/openshift/rosa/cmd/logs/install"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
@@ -55,6 +56,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -1519,13 +1521,13 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Custom tags for AWS resources
-	tags := args.tags
+	_tags := args.tags
 	tagsList := map[string]string{}
 	if interactive.Enabled() {
 		tagsInput, err := interactive.GetString(interactive.Input{
 			Question: "Tags",
 			Help:     cmd.Flags().Lookup("tags").Usage,
-			Default:  strings.Join(tags, ","),
+			Default:  strings.Join(_tags, ","),
 			Validators: []interactive.Validator{
 				aws.UserTagValidator,
 				aws.UserTagDuplicateValidator,
@@ -1536,16 +1538,16 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		if len(tagsInput) > 0 {
-			tags = strings.Split(tagsInput, ",")
+			_tags = strings.Split(tagsInput, ",")
 		}
 	}
-	if len(tags) > 0 {
-		if err := aws.UserTagValidator(tags); err != nil {
+	if len(_tags) > 0 {
+		if err := aws.UserTagValidator(_tags); err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		delim := aws.GetTagsDelimiter(tags)
-		for _, tag := range tags {
+		delim := aws.GetTagsDelimiter(_tags)
+		for _, tag := range _tags {
 			t := strings.Split(tag, delim)
 			tagsList[t[0]] = strings.TrimSpace(t[1])
 		}
@@ -1808,7 +1810,7 @@ func run(cmd *cobra.Command, _ []string) {
 	var availabilityZones []string
 	var subnets []*ec2.Subnet
 	if useExistingVPC || subnetsProvided {
-		initialSubnets, err := awsClient.GetSubnetIDs()
+		initialSubnets, err := getInitialValidSubnets(awsClient, r.Reporter)
 		if err != nil {
 			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
@@ -1826,6 +1828,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Unable to parse service CIDR")
 			os.Exit(1)
 		}
+		excludedSubnetsDueToCidr := []string{}
 		for _, subnet := range initialSubnets {
 			subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
 			if err != nil {
@@ -1837,11 +1840,14 @@ func run(cmd *cobra.Command, _ []string) {
 				!subnetNetwork.Contains(serviceNetwork.IP) &&
 				!serviceNetwork.Contains(subnetIP) {
 				subnets = append(subnets, subnet)
+			} else {
+				excludedSubnetsDueToCidr = append(excludedSubnetsDueToCidr, awssdk.StringValue(subnet.SubnetId))
 			}
 		}
 
 		if len(subnets) != len(initialSubnets) {
-			r.Reporter.Warnf("Some subnets have been excluded because they do not fit into chosen CIDR ranges")
+			r.Reporter.Warnf("The following subnets have been excluded"+
+				" because they do not fit into chosen CIDR ranges: %s", helper.SliceToSortedString(excludedSubnetsDueToCidr))
 		}
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
@@ -2923,7 +2929,9 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	}
 	if oidcConfigId == "" {
 		if !isHostedCP {
-			r.Reporter.Warnf("No OIDC Configuration found; will continue with the classic flow.")
+			if isOidcConfig {
+				r.Reporter.Warnf("No OIDC Configuration found; will continue with the classic flow.")
+			}
 			return nil
 		}
 		if args.classicOidcConfig {
@@ -3339,4 +3347,26 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	}
 
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
+}
+
+func getInitialValidSubnets(awsClient aws.Client, reporter *reporter.Object) ([]*ec2.Subnet, error) {
+	initialValidSubnets := []*ec2.Subnet{}
+	excludedSubnets := []string{}
+	allSubnets, err := awsClient.GetSubnetIDs()
+	if err != nil {
+		return initialValidSubnets, err
+	}
+	for _, subnet := range allSubnets {
+		hasRHManaged := tags.Ec2ResourceHasTag(subnet.Tags, tags.RedHatManaged, strconv.FormatBool(true))
+		if !hasRHManaged {
+			initialValidSubnets = append(initialValidSubnets, subnet)
+		} else {
+			excludedSubnets = append(excludedSubnets, awssdk.StringValue(subnet.SubnetId))
+		}
+	}
+	if len(allSubnets) != len(initialValidSubnets) {
+		reporter.Warnf("The following subnets were excluded because they belong"+
+			" to a VPC that is managed by Red Hat: %s", helper.SliceToSortedString(excludedSubnets))
+	}
+	return initialValidSubnets, nil
 }
