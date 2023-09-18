@@ -815,7 +815,12 @@ func UpgradeOperatorRolePolicies(
 	return nil
 }
 
-const subnetTemplate = "%s ('%s','%s','%s')"
+const subnetTemplate = "%s ('%s','%s','%s', Owner ID: '%s')"
+
+type Subnet struct {
+	AvailabilityZone string
+	OwnerID          string
+}
 
 // SetSubnetOption Creates a subnet options using a predefined template.
 func SetSubnetOption(subnet *ec2.Subnet) string {
@@ -830,7 +835,8 @@ func SetSubnetOption(subnet *ec2.Subnet) string {
 		}
 	}
 	return fmt.Sprintf(subnetTemplate, aws.StringValue(subnet.SubnetId),
-		subnetName, aws.StringValue(subnet.VpcId), aws.StringValue(subnet.AvailabilityZone))
+		subnetName, aws.StringValue(subnet.VpcId), aws.StringValue(subnet.AvailabilityZone),
+		aws.StringValue(subnet.OwnerId))
 }
 
 // ParseSubnet Parses the subnet from the option chosen by the user.
