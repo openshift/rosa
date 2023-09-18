@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/helper"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -34,9 +35,9 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 
 	fmt.Fprintf(writer,
 		"ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t"+
-			"\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\tDISK SIZE\t\n")
+			"\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\tDISK SIZE\tSG IDs\n")
 	for _, machinePool := range machinePools {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\t%s\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\t%s\t%s\n",
 			machinePool.ID(),
 			ocmOutput.PrintMachinePoolAutoscaling(machinePool.Autoscaling()),
 			ocmOutput.PrintMachinePoolReplicas(machinePool.Autoscaling(), machinePool.Replicas()),
@@ -47,6 +48,7 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 			ocmOutput.PrintStringSlice(machinePool.Subnets()),
 			ocmOutput.PrintMachinePoolSpot(machinePool),
 			ocmOutput.PrintMachinePoolDiskSize(machinePool),
+			helper.SliceToSortedString(machinePool.AWS().AdditionalComputeSecurityGroupIds()),
 		)
 	}
 	writer.Flush()
