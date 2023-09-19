@@ -2291,7 +2291,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	var machinePoolRootDisk *ocm.Volume
-	if args.machinePoolRootDiskSize != "" || interactive.Enabled() {
+	if !isHostedCP &&
+		(args.machinePoolRootDiskSize != "" || interactive.Enabled()) {
 		var machinePoolRootDiskSizeStr string
 		if args.machinePoolRootDiskSize == "" {
 			// We don't need to parse the default since it's returned from the OCM API and AWS
