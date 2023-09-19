@@ -53,6 +53,7 @@ var args struct {
 	autorepair            bool
 	tuningConfigs         string
 	rootDiskSize          string
+	securityGroupIds      []string
 }
 
 var Cmd = &cobra.Command{
@@ -202,6 +203,12 @@ func init() {
 		"disk-size",
 		"",
 		"Root disk size with a suffix like GiB or TiB",
+	)
+
+	flags.StringArrayVar(&args.securityGroupIds,
+		securityGroupIdsFlag,
+		nil,
+		"Security Group IDs to be added to the machine pool",
 	)
 
 	interactive.AddFlag(flags)

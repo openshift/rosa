@@ -7,17 +7,24 @@ import (
 	"strings"
 	"time"
 
+	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/briandowns/spinner"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
+	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
+)
+
+const (
+	securityGroupIdsFlag = "security-group-ids"
 )
 
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
@@ -37,8 +44,26 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	// Validate flags that are only allowed for BYOVPC cluster
 	isSubnetSet := cmd.Flags().Changed("subnet")
-	if !isBYOVPC(cluster) && isSubnetSet {
+	isByoVpc := isBYOVPC(cluster)
+	if !isByoVpc && isSubnetSet {
 		r.Reporter.Errorf("Setting the `subnet` flag is only allowed for BYOVPC clusters")
+		os.Exit(1)
+	}
+
+	isSecurityGroupIdsSet := cmd.Flags().Changed(securityGroupIdsFlag)
+	if !isByoVpc && isSecurityGroupIdsSet {
+		r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters", securityGroupIdsFlag)
+		os.Exit(1)
+	}
+	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
+		cluster.Version().RawID(), ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
+		os.Exit(1)
+	}
+	if !isVersionCompatibleComputeSgIds && isSecurityGroupIdsSet {
+		r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
+			securityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
 		os.Exit(1)
 	}
 
@@ -253,6 +278,46 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		}
 	}
 
+	securityGroupIds := args.securityGroupIds
+	if interactive.Enabled() && isVersionCompatibleComputeSgIds && isByoVpc {
+		availableSubnets, err := r.AWSClient.GetVPCSubnets(cluster.AWS().SubnetIDs()[0])
+		if err != nil {
+			r.Reporter.Errorf("Failed to retrieve available subnets: %v", err)
+			os.Exit(1)
+		}
+		firstSubnet := availableSubnets[0]
+		vpcId := awssdk.StringValue(firstSubnet.VpcId)
+		if vpcId == "" {
+			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
+			os.Exit(1)
+		}
+		possibleSgs, err := r.AWSClient.GetSecurityGroupIds(vpcId)
+		options := []string{}
+		for _, sg := range possibleSgs {
+			options = append(options, aws.SetSecurityGroupOption(sg))
+		}
+		if err != nil {
+			r.Reporter.Errorf("There was a problem retrieving security groups for VPC '%s': %v", vpcId, err)
+			os.Exit(1)
+		}
+		securityGroupIds, err = interactive.GetMultipleOptions(interactive.Input{
+			Question: "Additional Security Group IDs",
+			Help:     cmd.Flags().Lookup(securityGroupIdsFlag).Usage,
+			Required: false,
+			Options:  options,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected valid Security Group IDs: %s", err)
+			os.Exit(1)
+		}
+		for i, sg := range securityGroupIds {
+			securityGroupIds[i] = aws.ParseOption(sg)
+		}
+	}
+	for i, sg := range securityGroupIds {
+		securityGroupIds[i] = strings.TrimSpace(sg)
+	}
+
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() && !output.HasFlag() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -396,14 +461,18 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		mpBuilder = mpBuilder.Replicas(replicas)
 	}
 
+	awsMpBuilder := cmv1.NewAWSMachinePool()
 	if useSpotInstances {
 		spotBuilder := cmv1.NewAWSSpotMarketOptions()
 		if maxPrice != nil {
 			spotBuilder = spotBuilder.MaxPrice(*maxPrice)
 		}
-		mpBuilder = mpBuilder.AWS(cmv1.NewAWSMachinePool().
-			SpotMarketOptions(spotBuilder))
+		awsMpBuilder.SpotMarketOptions(spotBuilder)
 	}
+	if len(securityGroupIds) > 0 {
+		awsMpBuilder.AdditionalSecurityGroupIds(securityGroupIds...)
+	}
+	mpBuilder.AWS(awsMpBuilder)
 
 	// Create a single AZ machine pool for a multi-AZ cluster
 	if cluster.MultiAZ() && !multiAZMachinePool && availabilityZone != "" {
