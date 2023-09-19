@@ -821,7 +821,7 @@ type Subnet struct {
 }
 
 const (
-	subnetTemplate        = "%s ('%s','%s','%s')"
+	subnetTemplate        = "%s ('%s','%s','%s', Owner ID: '%s')"
 	securityGroupTemplate = "%s ('%s')"
 )
 
@@ -844,18 +844,8 @@ func SetSubnetOption(subnet *ec2.Subnet) string {
 
 // SetSecurityGroupOption Creates a security group option using a predefined template.
 func SetSecurityGroupOption(securityGroup *ec2.SecurityGroup) string {
-	securityGroupName := ""
-	for _, tag := range securityGroup.Tags {
-		switch *tag.Key {
-		case "Name":
-			securityGroupName = *tag.Value
-		}
-		if securityGroupName != "" {
-			break
-		}
-	}
 	return fmt.Sprintf(securityGroupTemplate,
-		aws.StringValue(securityGroup.GroupId), securityGroupName)
+		aws.StringValue(securityGroup.GroupId), aws.StringValue(securityGroup.GroupName))
 }
 
 // Parse option expects the actual option as the first token followed by a space

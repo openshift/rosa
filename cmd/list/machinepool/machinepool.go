@@ -48,7 +48,7 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 			ocmOutput.PrintStringSlice(machinePool.Subnets()),
 			ocmOutput.PrintMachinePoolSpot(machinePool),
 			ocmOutput.PrintMachinePoolDiskSize(machinePool),
-			helper.SliceToSortedString(machinePool.AWS().AdditionalComputeSecurityGroupIds()),
+			helper.SliceToSortedString(machinePool.AWS().AdditionalSecurityGroupIds()),
 		)
 	}
 	writer.Flush()

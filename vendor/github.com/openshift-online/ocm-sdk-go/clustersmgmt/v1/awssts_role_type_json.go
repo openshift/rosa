@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSubnetwork writes a value of the 'subnetwork' type to the given writer.
-func MarshalSubnetwork(object *Subnetwork, writer io.Writer) error {
+// MarshalAWSSTSRole writes a value of the 'AWSSTS_role' type to the given writer.
+func MarshalAWSSTSRole(object *AWSSTSRole, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSubnetwork(object, stream)
+	writeAWSSTSRole(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalSubnetwork(object *Subnetwork, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSubnetwork writes a value of the 'subnetwork' type to the given stream.
-func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
+// writeAWSSTSRole writes a value of the 'AWSSTS_role' type to the given stream.
+func writeAWSSTSRole(object *AWSSTSRole, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,8 +47,8 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cidr_block")
-		stream.WriteString(object.cidrBlock)
+		stream.WriteObjectField("hcpManagedPolicies")
+		stream.WriteBool(object.hcpManagedPolicies)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
@@ -56,8 +56,8 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("availability_zone")
-		stream.WriteString(object.availabilityZone)
+		stream.WriteObjectField("isAdmin")
+		stream.WriteBool(object.isAdmin)
 		count++
 	}
 	present_ = object.bitmap_&4 != 0
@@ -65,8 +65,8 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("name")
-		stream.WriteString(object.name)
+		stream.WriteObjectField("managedPolicies")
+		stream.WriteBool(object.managedPolicies)
 		count++
 	}
 	present_ = object.bitmap_&8 != 0
@@ -74,8 +74,8 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("public")
-		stream.WriteBool(object.public)
+		stream.WriteObjectField("arn")
+		stream.WriteString(object.roleARN)
 		count++
 	}
 	present_ = object.bitmap_&16 != 0
@@ -83,8 +83,8 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("red_hat_managed")
-		stream.WriteBool(object.redHatManaged)
+		stream.WriteObjectField("type")
+		stream.WriteString(object.roleType)
 		count++
 	}
 	present_ = object.bitmap_&32 != 0
@@ -92,56 +92,56 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("subnet_id")
-		stream.WriteString(object.subnetID)
+		stream.WriteObjectField("roleVersion")
+		stream.WriteString(object.roleVersion)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalSubnetwork reads a value of the 'subnetwork' type from the given
+// UnmarshalAWSSTSRole reads a value of the 'AWSSTS_role' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalSubnetwork(source interface{}) (object *Subnetwork, err error) {
+func UnmarshalAWSSTSRole(source interface{}) (object *AWSSTSRole, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readSubnetwork(iterator)
+	object = readAWSSTSRole(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSubnetwork reads a value of the 'subnetwork' type from the given iterator.
-func readSubnetwork(iterator *jsoniter.Iterator) *Subnetwork {
-	object := &Subnetwork{}
+// readAWSSTSRole reads a value of the 'AWSSTS_role' type from the given iterator.
+func readAWSSTSRole(iterator *jsoniter.Iterator) *AWSSTSRole {
+	object := &AWSSTSRole{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "cidr_block":
-			value := iterator.ReadString()
-			object.cidrBlock = value
+		case "hcpManagedPolicies":
+			value := iterator.ReadBool()
+			object.hcpManagedPolicies = value
 			object.bitmap_ |= 1
-		case "availability_zone":
-			value := iterator.ReadString()
-			object.availabilityZone = value
+		case "isAdmin":
+			value := iterator.ReadBool()
+			object.isAdmin = value
 			object.bitmap_ |= 2
-		case "name":
-			value := iterator.ReadString()
-			object.name = value
+		case "managedPolicies":
+			value := iterator.ReadBool()
+			object.managedPolicies = value
 			object.bitmap_ |= 4
-		case "public":
-			value := iterator.ReadBool()
-			object.public = value
-			object.bitmap_ |= 8
-		case "red_hat_managed":
-			value := iterator.ReadBool()
-			object.redHatManaged = value
-			object.bitmap_ |= 16
-		case "subnet_id":
+		case "arn":
 			value := iterator.ReadString()
-			object.subnetID = value
+			object.roleARN = value
+			object.bitmap_ |= 8
+		case "type":
+			value := iterator.ReadString()
+			object.roleType = value
+			object.bitmap_ |= 16
+		case "roleVersion":
+			value := iterator.ReadString()
+			object.roleVersion = value
 			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()

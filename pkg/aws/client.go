@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1154,7 +1155,15 @@ func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, err
 	securityGroups := []*ec2.SecurityGroup{}
 	err := c.ec2Client.DescribeSecurityGroupsPages(describeSecurityGroupsInput,
 		func(page *ec2.DescribeSecurityGroupsOutput, lastPage bool) bool {
-			securityGroups = append(securityGroups, page.SecurityGroups...)
+			for _, sg := range page.SecurityGroups {
+				if tags.Ec2ResourceHasTag(sg.Tags, tags.RedHatManaged, strconv.FormatBool(true)) {
+					continue
+				}
+				if aws.StringValue(sg.GroupName) == "default" {
+					continue
+				}
+				securityGroups = append(securityGroups, sg)
+			}
 			return page.NextToken != nil
 		})
 	if err != nil {

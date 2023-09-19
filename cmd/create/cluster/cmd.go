@@ -2254,7 +2254,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	isVersionCompatibleComputeSGIds, err := versions.IsGreaterThanOrEqual(
+	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
 		version, ocm.MinVersionForAdditionalComputeSecurityGroupIds)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
@@ -2269,12 +2269,12 @@ func run(cmd *cobra.Command, _ []string) {
 				additionalComputeSecurityGroupIdsFlag)
 			os.Exit(1)
 		}
-		if !isVersionCompatibleComputeSGIds {
+		if !isVersionCompatibleComputeSgIds {
 			r.Reporter.Errorf("Parameter '%s' is not support prior to version '%s'",
 				additionalComputeSecurityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIds)
 			os.Exit(1)
 		}
-	} else if interactive.Enabled() && isVersionCompatibleComputeSGIds && useExistingVPC {
+	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVPC {
 		var err error
 		vpcId := ""
 		for _, subnet := range subnets {

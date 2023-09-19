@@ -3,6 +3,16 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.370
+- Update model version to v0.0.322
+  - Add AdditionalComputeSecurityGroupIds to AWS type
+  - Add AdditionalSecurityGroupIds to AWS Machine Pool type
+  - Add AwsSecurityGroups to VPC type
+
+## 0.1.369
+- Update model version to v0.0.321
+  - Exposes `/api/clusters_mgmt/v1/aws_inquiries/sts_account_roles` in the SDK 
+
 ## 0.1.368
 - Update model version v0.0.318
   - Add `ImageOverrides` to `Version` type

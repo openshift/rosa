@@ -37,7 +37,7 @@ func describeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey stri
 		"Subnets:                    %s\n"+
 		"Spot instances:             %s\n"+
 		"Disk size:                  %s\n"+
-		"SG IDs:                     %s\n",
+		"Security Group IDs:         %s\n",
 		machinePool.ID(),
 		cluster.ID(),
 		ocmOutput.PrintMachinePoolAutoscaling(machinePool.Autoscaling()),
@@ -49,7 +49,7 @@ func describeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey stri
 		ocmOutput.PrintStringSlice(machinePool.Subnets()),
 		ocmOutput.PrintMachinePoolSpot(machinePool),
 		ocmOutput.PrintMachinePoolDiskSize(machinePool),
-		helper.SliceToSortedString(machinePool.AWS().AdditionalComputeSecurityGroupIds()),
+		helper.SliceToSortedString(machinePool.AWS().AdditionalSecurityGroupIds()),
 	)
 	fmt.Print(machinePoolOutput)
 

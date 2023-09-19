@@ -28,14 +28,15 @@ import (
 )
 
 const (
-	CloseToEolDays                                 = 60
-	OneDayHourDuration                             = 24
-	DefaultChannelGroup                            = "stable"
-	NightlyChannelGroup                            = "nightly"
-	LowestSTSSupport                               = "4.7.11"
-	LowestHttpTokensRequiredSupport                = "4.11.0"
-	LowestSTSMinor                                 = "4.7"
-	LowestHostedCPSupport                          = "4.12.0-0.a" //TODO: Remove the 0.a once stable 4.12 builds are available
+	CloseToEolDays                  = 60
+	OneDayHourDuration              = 24
+	DefaultChannelGroup             = "stable"
+	NightlyChannelGroup             = "nightly"
+	LowestSTSSupport                = "4.7.11"
+	LowestHttpTokensRequiredSupport = "4.11.0"
+	LowestSTSMinor                  = "4.7"
+	//TODO: Remove the 0.a once stable 4.12 builds are available
+	LowestHostedCpSupport                          = "4.12.0-0.a"
 	MinVersionForManagedIngressV2                  = "4.14-0"
 	MinVersionForAdditionalComputeSecurityGroupIds = "4.14-0"
 	VersionPrefix                                  = "openshift-v"
@@ -154,7 +155,7 @@ func HasHostedCPSupport(version *cmv1.Version) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version.RawID(), err)
 	}
-	b, err := ver.NewVersion(LowestHostedCPSupport)
+	b, err := ver.NewVersion(LowestHostedCpSupport)
 	if err != nil {
 		return false, fmt.Errorf("error while parsing OCP version '%s': %v", version.RawID(), err)
 	}

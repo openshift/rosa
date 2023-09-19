@@ -29,6 +29,7 @@ type SubnetworkBuilder struct {
 	name             string
 	subnetID         string
 	public           bool
+	redHatManaged    bool
 }
 
 // NewSubnetwork creates a new builder of 'subnetwork' objects.
@@ -69,10 +70,17 @@ func (b *SubnetworkBuilder) Public(value bool) *SubnetworkBuilder {
 	return b
 }
 
+// RedHatManaged sets the value of the 'red_hat_managed' attribute to the given value.
+func (b *SubnetworkBuilder) RedHatManaged(value bool) *SubnetworkBuilder {
+	b.redHatManaged = value
+	b.bitmap_ |= 16
+	return b
+}
+
 // SubnetID sets the value of the 'subnet_ID' attribute to the given value.
 func (b *SubnetworkBuilder) SubnetID(value string) *SubnetworkBuilder {
 	b.subnetID = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -86,6 +94,7 @@ func (b *SubnetworkBuilder) Copy(object *Subnetwork) *SubnetworkBuilder {
 	b.availabilityZone = object.availabilityZone
 	b.name = object.name
 	b.public = object.public
+	b.redHatManaged = object.redHatManaged
 	b.subnetID = object.subnetID
 	return b
 }
@@ -98,6 +107,7 @@ func (b *SubnetworkBuilder) Build() (object *Subnetwork, err error) {
 	object.availabilityZone = b.availabilityZone
 	object.name = b.name
 	object.public = b.public
+	object.redHatManaged = b.redHatManaged
 	object.subnetID = b.subnetID
 	return
 }

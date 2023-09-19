@@ -35,11 +35,11 @@ const AWSMachinePoolNilKind = "AWSMachinePoolNil"
 //
 // Representation of aws machine pool specific parameters.
 type AWSMachinePool struct {
-	bitmap_                           uint32
-	id                                string
-	href                              string
-	additionalComputeSecurityGroupIds []string
-	spotMarketOptions                 *AWSSpotMarketOptions
+	bitmap_                    uint32
+	id                         string
+	href                       string
+	additionalSecurityGroupIds []string
+	spotMarketOptions          *AWSSpotMarketOptions
 }
 
 // Kind returns the name of the type of the object.
@@ -99,25 +99,25 @@ func (o *AWSMachinePool) Empty() bool {
 	return o == nil || o.bitmap_&^1 == 0
 }
 
-// AdditionalComputeSecurityGroupIds returns the value of the 'additional_compute_security_group_ids' attribute, or
+// AdditionalSecurityGroupIds returns the value of the 'additional_security_group_ids' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Additional AWS Security Groups to be added to default worker (compute) machine pool.
-func (o *AWSMachinePool) AdditionalComputeSecurityGroupIds() []string {
+// Additional AWS Security Groups to be added machine pool. Note that machine pools can only be worker node at the time.
+func (o *AWSMachinePool) AdditionalSecurityGroupIds() []string {
 	if o != nil && o.bitmap_&8 != 0 {
-		return o.additionalComputeSecurityGroupIds
+		return o.additionalSecurityGroupIds
 	}
 	return nil
 }
 
-// GetAdditionalComputeSecurityGroupIds returns the value of the 'additional_compute_security_group_ids' attribute and
+// GetAdditionalSecurityGroupIds returns the value of the 'additional_security_group_ids' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Additional AWS Security Groups to be added to default worker (compute) machine pool.
-func (o *AWSMachinePool) GetAdditionalComputeSecurityGroupIds() (value []string, ok bool) {
+// Additional AWS Security Groups to be added machine pool. Note that machine pools can only be worker node at the time.
+func (o *AWSMachinePool) GetAdditionalSecurityGroupIds() (value []string, ok bool) {
 	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
-		value = o.additionalComputeSecurityGroupIds
+		value = o.additionalSecurityGroupIds
 	}
 	return
 }

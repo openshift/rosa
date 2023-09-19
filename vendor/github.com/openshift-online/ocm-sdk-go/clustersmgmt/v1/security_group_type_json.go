@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSubnetwork writes a value of the 'subnetwork' type to the given writer.
-func MarshalSubnetwork(object *Subnetwork, writer io.Writer) error {
+// MarshalSecurityGroup writes a value of the 'security_group' type to the given writer.
+func MarshalSecurityGroup(object *SecurityGroup, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSubnetwork(object, stream)
+	writeSecurityGroup(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalSubnetwork(object *Subnetwork, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeSubnetwork writes a value of the 'subnetwork' type to the given stream.
-func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
+// writeSecurityGroup writes a value of the 'security_group' type to the given stream.
+func writeSecurityGroup(object *SecurityGroup, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,20 +47,11 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cidr_block")
-		stream.WriteString(object.cidrBlock)
+		stream.WriteObjectField("id")
+		stream.WriteString(object.id)
 		count++
 	}
 	present_ = object.bitmap_&2 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("availability_zone")
-		stream.WriteString(object.availabilityZone)
-		count++
-	}
-	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -69,80 +60,50 @@ func writeSubnetwork(object *Subnetwork, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("public")
-		stream.WriteBool(object.public)
-		count++
-	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("red_hat_managed")
 		stream.WriteBool(object.redHatManaged)
-		count++
-	}
-	present_ = object.bitmap_&32 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("subnet_id")
-		stream.WriteString(object.subnetID)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalSubnetwork reads a value of the 'subnetwork' type from the given
+// UnmarshalSecurityGroup reads a value of the 'security_group' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalSubnetwork(source interface{}) (object *Subnetwork, err error) {
+func UnmarshalSecurityGroup(source interface{}) (object *SecurityGroup, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readSubnetwork(iterator)
+	object = readSecurityGroup(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSubnetwork reads a value of the 'subnetwork' type from the given iterator.
-func readSubnetwork(iterator *jsoniter.Iterator) *Subnetwork {
-	object := &Subnetwork{}
+// readSecurityGroup reads a value of the 'security_group' type from the given iterator.
+func readSecurityGroup(iterator *jsoniter.Iterator) *SecurityGroup {
+	object := &SecurityGroup{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "cidr_block":
+		case "id":
 			value := iterator.ReadString()
-			object.cidrBlock = value
+			object.id = value
 			object.bitmap_ |= 1
-		case "availability_zone":
-			value := iterator.ReadString()
-			object.availabilityZone = value
-			object.bitmap_ |= 2
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 4
-		case "public":
-			value := iterator.ReadBool()
-			object.public = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 2
 		case "red_hat_managed":
 			value := iterator.ReadBool()
 			object.redHatManaged = value
-			object.bitmap_ |= 16
-		case "subnet_id":
-			value := iterator.ReadString()
-			object.subnetID = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

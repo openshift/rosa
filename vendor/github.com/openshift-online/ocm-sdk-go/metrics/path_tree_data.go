@@ -166,6 +166,7 @@ var pathTreeData = `{
         "aws_inquiries": {
           "machine_types": null,
           "regions": null,
+          "sts_account_roles": null,
           "sts_credential_requests": null,
           "sts_policies": null,
           "vpcs": null

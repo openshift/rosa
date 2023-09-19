@@ -19,183 +19,183 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// Subnetwork represents the values of the 'subnetwork' type.
+// AWSSTSRole represents the values of the 'AWSSTS_role' type.
 //
-// AWS subnetwork object to be used while installing a cluster
-type Subnetwork struct {
-	bitmap_          uint32
-	cidrBlock        string
-	availabilityZone string
-	name             string
-	subnetID         string
-	public           bool
-	redHatManaged    bool
+// Representation of an sts role for a rosa cluster
+type AWSSTSRole struct {
+	bitmap_            uint32
+	roleARN            string
+	roleType           string
+	roleVersion        string
+	hcpManagedPolicies bool
+	isAdmin            bool
+	managedPolicies    bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *Subnetwork) Empty() bool {
+func (o *AWSSTSRole) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// CIDRBlock returns the value of the 'CIDR_block' attribute, or
+// HcpManagedPolicies returns the value of the 'hcp_managed_policies' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// The CIDR Block of the subnet.
-func (o *Subnetwork) CIDRBlock() string {
+// Does this Role have HCP Managed Policies?
+func (o *AWSSTSRole) HcpManagedPolicies() bool {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.cidrBlock
+		return o.hcpManagedPolicies
 	}
-	return ""
+	return false
 }
 
-// GetCIDRBlock returns the value of the 'CIDR_block' attribute and
+// GetHcpManagedPolicies returns the value of the 'hcp_managed_policies' attribute and
 // a flag indicating if the attribute has a value.
 //
-// The CIDR Block of the subnet.
-func (o *Subnetwork) GetCIDRBlock() (value string, ok bool) {
+// Does this Role have HCP Managed Policies?
+func (o *AWSSTSRole) GetHcpManagedPolicies() (value bool, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.cidrBlock
+		value = o.hcpManagedPolicies
 	}
 	return
 }
 
-// AvailabilityZone returns the value of the 'availability_zone' attribute, or
+// IsAdmin returns the value of the 'is_admin' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// The availability zone to which the subnet is related.
-func (o *Subnetwork) AvailabilityZone() string {
+// Does this role have Admin permission?
+func (o *AWSSTSRole) IsAdmin() bool {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.availabilityZone
+		return o.isAdmin
 	}
-	return ""
+	return false
 }
 
-// GetAvailabilityZone returns the value of the 'availability_zone' attribute and
+// GetIsAdmin returns the value of the 'is_admin' attribute and
 // a flag indicating if the attribute has a value.
 //
-// The availability zone to which the subnet is related.
-func (o *Subnetwork) GetAvailabilityZone() (value string, ok bool) {
+// Does this role have Admin permission?
+func (o *AWSSTSRole) GetIsAdmin() (value bool, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.availabilityZone
+		value = o.isAdmin
 	}
 	return
 }
 
-// Name returns the value of the 'name' attribute, or
+// ManagedPolicies returns the value of the 'managed_policies' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Name of the subnet according to its `Name` tag on AWS.
-func (o *Subnetwork) Name() string {
+// Does this Role have Managed Policies?
+func (o *AWSSTSRole) ManagedPolicies() bool {
 	if o != nil && o.bitmap_&4 != 0 {
-		return o.name
+		return o.managedPolicies
 	}
-	return ""
+	return false
 }
 
-// GetName returns the value of the 'name' attribute and
+// GetManagedPolicies returns the value of the 'managed_policies' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Name of the subnet according to its `Name` tag on AWS.
-func (o *Subnetwork) GetName() (value string, ok bool) {
+// Does this Role have Managed Policies?
+func (o *AWSSTSRole) GetManagedPolicies() (value bool, ok bool) {
 	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
-		value = o.name
+		value = o.managedPolicies
 	}
 	return
 }
 
-// Public returns the value of the 'public' attribute, or
+// RoleARN returns the value of the 'role_ARN' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Whether or not it is a public subnet.
-func (o *Subnetwork) Public() bool {
+// The AWS ARN for this Role
+func (o *AWSSTSRole) RoleARN() string {
 	if o != nil && o.bitmap_&8 != 0 {
-		return o.public
-	}
-	return false
-}
-
-// GetPublic returns the value of the 'public' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Whether or not it is a public subnet.
-func (o *Subnetwork) GetPublic() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
-	if ok {
-		value = o.public
-	}
-	return
-}
-
-// RedHatManaged returns the value of the 'red_hat_managed' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// If the resource is RH managed.
-func (o *Subnetwork) RedHatManaged() bool {
-	if o != nil && o.bitmap_&16 != 0 {
-		return o.redHatManaged
-	}
-	return false
-}
-
-// GetRedHatManaged returns the value of the 'red_hat_managed' attribute and
-// a flag indicating if the attribute has a value.
-//
-// If the resource is RH managed.
-func (o *Subnetwork) GetRedHatManaged() (value bool, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
-	if ok {
-		value = o.redHatManaged
-	}
-	return
-}
-
-// SubnetID returns the value of the 'subnet_ID' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// The subnet ID to be used while installing a cluster.
-func (o *Subnetwork) SubnetID() string {
-	if o != nil && o.bitmap_&32 != 0 {
-		return o.subnetID
+		return o.roleARN
 	}
 	return ""
 }
 
-// GetSubnetID returns the value of the 'subnet_ID' attribute and
+// GetRoleARN returns the value of the 'role_ARN' attribute and
 // a flag indicating if the attribute has a value.
 //
-// The subnet ID to be used while installing a cluster.
-func (o *Subnetwork) GetSubnetID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+// The AWS ARN for this Role
+func (o *AWSSTSRole) GetRoleARN() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
-		value = o.subnetID
+		value = o.roleARN
 	}
 	return
 }
 
-// SubnetworkListKind is the name of the type used to represent list of objects of
-// type 'subnetwork'.
-const SubnetworkListKind = "SubnetworkList"
+// RoleType returns the value of the 'role_type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The type of this Role
+func (o *AWSSTSRole) RoleType() string {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.roleType
+	}
+	return ""
+}
 
-// SubnetworkListLinkKind is the name of the type used to represent links to list
-// of objects of type 'subnetwork'.
-const SubnetworkListLinkKind = "SubnetworkListLink"
+// GetRoleType returns the value of the 'role_type' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The type of this Role
+func (o *AWSSTSRole) GetRoleType() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.roleType
+	}
+	return
+}
 
-// SubnetworkNilKind is the name of the type used to nil lists of objects of
-// type 'subnetwork'.
-const SubnetworkListNilKind = "SubnetworkListNil"
+// RoleVersion returns the value of the 'role_version' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The Openshift Version for this Role
+func (o *AWSSTSRole) RoleVersion() string {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.roleVersion
+	}
+	return ""
+}
 
-// SubnetworkList is a list of values of the 'subnetwork' type.
-type SubnetworkList struct {
+// GetRoleVersion returns the value of the 'role_version' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The Openshift Version for this Role
+func (o *AWSSTSRole) GetRoleVersion() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.roleVersion
+	}
+	return
+}
+
+// AWSSTSRoleListKind is the name of the type used to represent list of objects of
+// type 'AWSSTS_role'.
+const AWSSTSRoleListKind = "AWSSTSRoleList"
+
+// AWSSTSRoleListLinkKind is the name of the type used to represent links to list
+// of objects of type 'AWSSTS_role'.
+const AWSSTSRoleListLinkKind = "AWSSTSRoleListLink"
+
+// AWSSTSRoleNilKind is the name of the type used to nil lists of objects of
+// type 'AWSSTS_role'.
+const AWSSTSRoleListNilKind = "AWSSTSRoleListNil"
+
+// AWSSTSRoleList is a list of values of the 'AWSSTS_role' type.
+type AWSSTSRoleList struct {
 	href  string
 	link  bool
-	items []*Subnetwork
+	items []*AWSSTSRole
 }
 
 // Len returns the length of the list.
-func (l *SubnetworkList) Len() int {
+func (l *AWSSTSRoleList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -203,13 +203,13 @@ func (l *SubnetworkList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *SubnetworkList) Empty() bool {
+func (l *AWSSTSRoleList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *SubnetworkList) Get(i int) *Subnetwork {
+func (l *AWSSTSRoleList) Get(i int) *AWSSTSRole {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -222,12 +222,12 @@ func (l *SubnetworkList) Get(i int) *Subnetwork {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *SubnetworkList) Slice() []*Subnetwork {
-	var slice []*Subnetwork
+func (l *AWSSTSRoleList) Slice() []*AWSSTSRole {
+	var slice []*AWSSTSRole
 	if l == nil {
-		slice = make([]*Subnetwork, 0)
+		slice = make([]*AWSSTSRole, 0)
 	} else {
-		slice = make([]*Subnetwork, len(l.items))
+		slice = make([]*AWSSTSRole, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -236,7 +236,7 @@ func (l *SubnetworkList) Slice() []*Subnetwork {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *SubnetworkList) Each(f func(item *Subnetwork) bool) {
+func (l *AWSSTSRoleList) Each(f func(item *AWSSTSRole) bool) {
 	if l == nil {
 		return
 	}
@@ -250,7 +250,7 @@ func (l *SubnetworkList) Each(f func(item *Subnetwork) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *SubnetworkList) Range(f func(index int, item *Subnetwork) bool) {
+func (l *AWSSTSRoleList) Range(f func(index int, item *AWSSTSRole) bool) {
 	if l == nil {
 		return
 	}
