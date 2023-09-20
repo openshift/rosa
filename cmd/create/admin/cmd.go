@@ -221,33 +221,20 @@ func FindExistingClusterAdminIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (
 		os.Exit(1)
 	}
 
+	// Locates IDP with name "cluster-admin" that stores the admin user(s)
 	for _, item := range idps {
-		if ocm.IdentityProviderType(item) == ocm.HTPasswdIDPType {
-
+		idpName, idpNameExists := item.GetName()
+		if ocm.IdentityProviderType(item) == ocm.HTPasswdIDPType && idpNameExists && idpName == ClusterAdminIDPname {
 			itemUserList, err := r.OCMClient.GetHTPasswdUserList(cluster.ID(), item.ID())
 			r.Reporter.Debugf("user list %s: %v", item.Name(), itemUserList)
 			if err != nil {
 				r.Reporter.Errorf("Failed to get user list of the HTPasswd IDP of '%s: %s': %v", item.Name(), r.ClusterKey, err)
 				os.Exit(1)
 			}
-			if HasClusterAdmin(itemUserList) {
-				htpasswdIDP = item
-				userList = itemUserList
-				return
-			}
+			htpasswdIDP = item
+			userList = itemUserList
+			return
 		}
 	}
 	return
-}
-
-func HasClusterAdmin(userList *cmv1.HTPasswdUserList) bool {
-	hasAdmin := false
-	userList.Each(func(user *cmv1.HTPasswdUser) bool {
-		if user.Username() == ClusterAdminUsername {
-			hasAdmin = true
-			return false
-		}
-		return true
-	})
-	return hasAdmin
 }
