@@ -42,6 +42,7 @@ var Cmd = &cobra.Command{
 const (
 	DownloadLatestMirrorFolder = "https://mirror.openshift.com/pub/openshift-v4/clients/rosa/latest/"
 	baseReleasesFolder         = "https://mirror.openshift.com/pub/openshift-v4/clients/rosa/"
+	consoleLatestFolder        = "https://console.redhat.com/openshift/downloads#tool-rosa"
 )
 
 func run(_ *cobra.Command, _ []string) {
@@ -60,7 +61,7 @@ func run(_ *cobra.Command, _ []string) {
 	if currVersion.LessThan(latestVersionFromMirror) {
 		rprtr.Infof(
 			"There is a newer release version '%s', please consider updating: %s",
-			latestVersionFromMirror, DownloadLatestMirrorFolder,
+			latestVersionFromMirror, consoleLatestFolder,
 		)
 	} else if rprtr.IsTerminal() {
 		rprtr.Infof("Your ROSA CLI is up to date.")
