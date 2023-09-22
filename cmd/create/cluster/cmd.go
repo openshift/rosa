@@ -2560,7 +2560,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if interactive.Enabled() && isHostedCP {
 		requestAuditLogForwarding, err := interactive.GetBool(interactive.Input{
-			Question: "Enable audit log forwarding to AWS CloudWatch (optional)",
+			Question: "Enable audit log forwarding to AWS CloudWatch",
 			Default:  false,
 			Required: true,
 		})
