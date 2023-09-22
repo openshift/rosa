@@ -220,12 +220,8 @@ func GetBool(input Input) (a bool, err error) {
 	if !ok {
 		dflt = false
 	}
-	question := input.Question
-	if !input.Required && !dflt {
-		question = fmt.Sprintf("%s (optional)", question)
-	}
 	prompt := &survey.Confirm{
-		Message: fmt.Sprintf("%s:", question),
+		Message: fmt.Sprintf("%s:", input.Question),
 		Help:    input.Help,
 		Default: dflt,
 	}
