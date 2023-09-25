@@ -78,7 +78,8 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 	isNodePool := args.nodePool != ""
 	isHypershift := ocm.IsHyperShiftCluster(cluster)
 
-	if cluster.State() != cmv1.ClusterStateReady {
+	if cluster.State() != cmv1.ClusterStateReady &&
+		cluster.State() != cmv1.ClusterStateHibernating {
 		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
 	}
 
