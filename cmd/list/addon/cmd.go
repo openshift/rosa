@@ -113,7 +113,8 @@ func listClusterAddOns(clusterKey string, r *rosa.Runtime) {
 	}
 
 	cluster := r.FetchCluster()
-	if cluster.State() != cmv1.ClusterStateReady {
+	if cluster.State() != cmv1.ClusterStateReady &&
+		cluster.State() != cmv1.ClusterStateHibernating {
 		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		os.Exit(1)
 	}
