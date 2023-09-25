@@ -8,6 +8,10 @@ docs/
 /rosa-linux-amd64.sha256
 /rosa-windows-amd64.exe
 /rosa-windows-amd64.sha256
+/rosa-darwin-arm64
+/rosa-darwin-arm64.sha256
+/rosa-linux-arm64
+/rosa-linux-arm64.sha256
 /*policy.json
 .envrc
 .env
