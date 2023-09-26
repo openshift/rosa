@@ -248,13 +248,44 @@ func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 	return clusterObject, nil
 }
 
-// Pass 0 to get all clusters
-func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.Cluster, err error) {
+// Maps between the account role type and the field on the cluster struct that the role
+// will be present in so that we can send the correct query in the "search" parameter
+// in the GET to the /api/clusters_mgmt/v1/clusters endpoint
+var accountRoleTypeFieldMap = map[string]string{
+	aws.InstallerAccountRoleType:    "aws.sts.role_arn",
+	aws.ControlPlaneAccountRoleType: "aws.sts.instance_iam_roles.master_role_arn",
+	aws.SupportAccountRoleType:      "aws.sts.support_role_arn",
+	aws.WorkerAccountRoleType:       "aws.sts.instance_iam_roles.worker_role_arn",
+}
+
+func getAccountRoleClusterFilter(aws *aws.Creator, role *aws.Role) (string, error) {
+	query := getClusterFilter(aws)
+	accountRoleField := accountRoleTypeFieldMap[role.RoleType]
+	if accountRoleField == "" {
+		return "",
+			fmt.Errorf("unrecognised Role Type '%s' for Account Role with ARN '%s'", role.RoleType, role.RoleARN)
+	}
+
+	// Append to our normal query our search for the specific role arn based around the role type
+	return fmt.Sprintf("%s AND %s='%s'", query, accountRoleField, role.RoleARN), nil
+}
+
+func (c *Client) GetClustersUsingAccountRole(aws *aws.Creator, role *aws.Role, count int) ([]*cmv1.Cluster, error) {
+	query, err := getAccountRoleClusterFilter(aws, role)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.queryClusters(query, count)
+}
+
+func (c *Client) queryClusters(query string, count int) (clusters []*cmv1.Cluster, err error) {
+
 	if count < 0 {
 		err = errors.Errorf("Invalid Cluster count")
 		return
 	}
-	query := getClusterFilter(creator)
+
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1
 	for {
@@ -277,6 +308,11 @@ func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.
 		page++
 	}
 	return clusters, nil
+}
+
+// Pass 0 to get all clusters
+func (c *Client) GetClusters(creator *aws.Creator, count int) (clusters []*cmv1.Cluster, err error) {
+	return c.queryClusters(getClusterFilter(creator), count)
 }
 
 func (c *Client) GetAllClusters(creator *aws.Creator) (clusters []*cmv1.Cluster, err error) {

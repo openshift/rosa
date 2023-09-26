@@ -18,12 +18,13 @@ package cluster
 
 import (
 	"fmt"
-	"github.com/openshift/rosa/pkg/aws"
 	"os"
 	"text/tabwriter"
 
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -39,15 +40,31 @@ var Cmd = &cobra.Command{
 	Run:  run,
 }
 
-var listAll bool
+const clusterCount = 1000
+
+var args struct {
+	listAll        bool
+	accountRoleArn string
+}
 
 func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
 
 	output.AddFlag(Cmd)
-	flags.BoolVarP(&listAll, "all", "a", false, "List all clusters across different AWS "+
+	flags.BoolVarP(&args.listAll, "all", "a", false, "List all clusters across different AWS "+
 		"accounts under the same Red Hat organization")
+	flags.StringVar(&args.accountRoleArn, "account-role-arn", "", "List all clusters "+
+		"using the account role identified by the ARN")
+}
+
+func listClustersUsingAccountRole(creator *aws.Creator, runtime *rosa.Runtime) ([]*v1.Cluster, error) {
+	role, err := runtime.AWSClient.GetAccountRoleByArn(args.accountRoleArn)
+	if err != nil {
+		return []*v1.Cluster{}, err
+	}
+
+	return runtime.OCMClient.GetClustersUsingAccountRole(creator, role, clusterCount)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -56,12 +73,21 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Retrieve the list of clusters:
 	var creator *aws.Creator
-	if listAll {
+	if args.listAll {
 		creator = nil
 	} else {
 		creator = r.Creator
 	}
-	clusters, err := r.OCMClient.GetClusters(creator, 1000)
+
+	var clusters []*v1.Cluster
+	var err error
+
+	if args.accountRoleArn != "" {
+		clusters, err = listClustersUsingAccountRole(creator, r)
+	} else {
+		clusters, err = r.OCMClient.GetClusters(creator, clusterCount)
+	}
+
 	if err != nil {
 		r.Reporter.Errorf("Failed to get clusters: %v", err)
 		os.Exit(1)
