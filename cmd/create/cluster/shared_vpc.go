@@ -10,13 +10,16 @@ import (
 	errors "github.com/zgalor/weberr"
 )
 
+// nolint:lll
+const sharedVpcDocsLink = "https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa-shared-vpc-config.html"
+
 func isSubnetBelongToSharedVpc(r *rosa.Runtime, accountID string, subnetIDs []string,
 	mapSubnetIDToSubnet map[string]aws.Subnet) bool {
 	for _, subnetID := range subnetIDs {
 		ownerID := mapSubnetIDToSubnet[subnetID].OwnerID
 		if ownerID != "" && ownerID != accountID {
 			r.Reporter.Infof(fmt.Sprintf("Subnet with ID '%s' is shared by AWS account '%s', "+
-				"Defaulting to installing a cluster into a shared VPC.", subnetID, ownerID))
+				"the cluster will be installed into a shared VPC. For more details %s.", subnetID, ownerID, sharedVpcDocsLink))
 			return true
 		}
 	}
