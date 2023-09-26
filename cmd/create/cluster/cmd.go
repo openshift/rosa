@@ -2873,22 +2873,17 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
-		} else {
-			output := ""
-			if cluster.AWS().STS().OidcConfig().Reusable() {
-				output = "When using reusable OIDC Config and resources have been created " +
-					"prior to cluster specification, this step is not required."
-			}
+		} else if !cluster.AWS().STS().OidcConfig().Reusable() {
 			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
 			if permissionsBoundary != "" {
 				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
 			}
 			oidcCMD := "rosa create oidc-provider"
 			oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
-			output += "\nRun the following commands to continue the cluster creation:\n\n"
-			output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
-			output = fmt.Sprintf("%s\t%s\n", output, oidcCMD)
-			r.Reporter.Infof(output)
+			nextStepOutput := "\nRun the following commands to continue the cluster creation:\n\n"
+			nextStepOutput = fmt.Sprintf("%s\t%s\n", nextStepOutput, rolesCMD)
+			nextStepOutput = fmt.Sprintf("%s\t%s\n", nextStepOutput, oidcCMD)
+			r.Reporter.Infof(nextStepOutput)
 		}
 	}
 
