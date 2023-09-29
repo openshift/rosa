@@ -45,6 +45,7 @@ type Version struct {
 	availableUpgrades         []string
 	channelGroup              string
 	endOfLifeTimestamp        time.Time
+	imageOverrides            *ImageOverrides
 	rawID                     string
 	releaseImage              string
 	rosaEnabled               bool
@@ -279,12 +280,35 @@ func (o *Version) GetHostedControlPlaneEnabled() (value bool, ok bool) {
 	return
 }
 
+// ImageOverrides returns the value of the 'image_overrides' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// ImageOverrides contains the lists of images per cloud provider.
+func (o *Version) ImageOverrides() *ImageOverrides {
+	if o != nil && o.bitmap_&1024 != 0 {
+		return o.imageOverrides
+	}
+	return nil
+}
+
+// GetImageOverrides returns the value of the 'image_overrides' attribute and
+// a flag indicating if the attribute has a value.
+//
+// ImageOverrides contains the lists of images per cloud provider.
+func (o *Version) GetImageOverrides() (value *ImageOverrides, ok bool) {
+	ok = o != nil && o.bitmap_&1024 != 0
+	if ok {
+		value = o.imageOverrides
+	}
+	return
+}
+
 // RawID returns the value of the 'raw_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // RawID is the id of the version - without channel group and prefix.
 func (o *Version) RawID() string {
-	if o != nil && o.bitmap_&1024 != 0 {
+	if o != nil && o.bitmap_&2048 != 0 {
 		return o.rawID
 	}
 	return ""
@@ -295,7 +319,7 @@ func (o *Version) RawID() string {
 //
 // RawID is the id of the version - without channel group and prefix.
 func (o *Version) GetRawID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&1024 != 0
+	ok = o != nil && o.bitmap_&2048 != 0
 	if ok {
 		value = o.rawID
 	}
@@ -305,9 +329,9 @@ func (o *Version) GetRawID() (value string, ok bool) {
 // ReleaseImage returns the value of the 'release_image' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// ReleaseImage contains the URI of Openshift release image
+// ReleaseImage contains the URI of Openshift release image.
 func (o *Version) ReleaseImage() string {
-	if o != nil && o.bitmap_&2048 != 0 {
+	if o != nil && o.bitmap_&4096 != 0 {
 		return o.releaseImage
 	}
 	return ""
@@ -316,9 +340,9 @@ func (o *Version) ReleaseImage() string {
 // GetReleaseImage returns the value of the 'release_image' attribute and
 // a flag indicating if the attribute has a value.
 //
-// ReleaseImage contains the URI of Openshift release image
+// ReleaseImage contains the URI of Openshift release image.
 func (o *Version) GetReleaseImage() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2048 != 0
+	ok = o != nil && o.bitmap_&4096 != 0
 	if ok {
 		value = o.releaseImage
 	}

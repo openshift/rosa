@@ -23,22 +23,23 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // _Amazon Web Services_ specific settings of a cluster.
 type AWSBuilder struct {
-	bitmap_                  uint32
-	kmsKeyArn                string
-	sts                      *STSBuilder
-	accessKeyID              string
-	accountID                string
-	auditLog                 *AuditLogBuilder
-	billingAccountID         string
-	ec2MetadataHttpTokens    Ec2MetadataHttpTokens
-	etcdEncryption           *AwsEtcdEncryptionBuilder
-	privateHostedZoneID      string
-	privateHostedZoneRoleARN string
-	privateLinkConfiguration *PrivateLinkClusterConfigurationBuilder
-	secretAccessKey          string
-	subnetIDs                []string
-	tags                     map[string]string
-	privateLink              bool
+	bitmap_                           uint32
+	kmsKeyArn                         string
+	sts                               *STSBuilder
+	accessKeyID                       string
+	accountID                         string
+	additionalComputeSecurityGroupIds []string
+	auditLog                          *AuditLogBuilder
+	billingAccountID                  string
+	ec2MetadataHttpTokens             Ec2MetadataHttpTokens
+	etcdEncryption                    *AwsEtcdEncryptionBuilder
+	privateHostedZoneID               string
+	privateHostedZoneRoleARN          string
+	privateLinkConfiguration          *PrivateLinkClusterConfigurationBuilder
+	secretAccessKey                   string
+	subnetIDs                         []string
+	tags                              map[string]string
+	privateLink                       bool
 }
 
 // NewAWS creates a new builder of 'AWS' objects.
@@ -85,15 +86,23 @@ func (b *AWSBuilder) AccountID(value string) *AWSBuilder {
 	return b
 }
 
+// AdditionalComputeSecurityGroupIds sets the value of the 'additional_compute_security_group_ids' attribute to the given values.
+func (b *AWSBuilder) AdditionalComputeSecurityGroupIds(values ...string) *AWSBuilder {
+	b.additionalComputeSecurityGroupIds = make([]string, len(values))
+	copy(b.additionalComputeSecurityGroupIds, values)
+	b.bitmap_ |= 16
+	return b
+}
+
 // AuditLog sets the value of the 'audit_log' attribute to the given value.
 //
 // Contains the necessary attributes to support audit log forwarding
 func (b *AWSBuilder) AuditLog(value *AuditLogBuilder) *AWSBuilder {
 	b.auditLog = value
 	if value != nil {
-		b.bitmap_ |= 16
+		b.bitmap_ |= 32
 	} else {
-		b.bitmap_ &^= 16
+		b.bitmap_ &^= 32
 	}
 	return b
 }
@@ -101,7 +110,7 @@ func (b *AWSBuilder) AuditLog(value *AuditLogBuilder) *AWSBuilder {
 // BillingAccountID sets the value of the 'billing_account_ID' attribute to the given value.
 func (b *AWSBuilder) BillingAccountID(value string) *AWSBuilder {
 	b.billingAccountID = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -110,7 +119,7 @@ func (b *AWSBuilder) BillingAccountID(value string) *AWSBuilder {
 // Which Ec2MetadataHttpTokens to use for metadata service interaction options for EC2 instances
 func (b *AWSBuilder) Ec2MetadataHttpTokens(value Ec2MetadataHttpTokens) *AWSBuilder {
 	b.ec2MetadataHttpTokens = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -120,9 +129,9 @@ func (b *AWSBuilder) Ec2MetadataHttpTokens(value Ec2MetadataHttpTokens) *AWSBuil
 func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder {
 	b.etcdEncryption = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -130,21 +139,21 @@ func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder
 // PrivateHostedZoneID sets the value of the 'private_hosted_zone_ID' attribute to the given value.
 func (b *AWSBuilder) PrivateHostedZoneID(value string) *AWSBuilder {
 	b.privateHostedZoneID = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
 // PrivateHostedZoneRoleARN sets the value of the 'private_hosted_zone_role_ARN' attribute to the given value.
 func (b *AWSBuilder) PrivateHostedZoneRoleARN(value string) *AWSBuilder {
 	b.privateHostedZoneRoleARN = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
 // PrivateLink sets the value of the 'private_link' attribute to the given value.
 func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 	b.privateLink = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -154,9 +163,9 @@ func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigurationBuilder) *AWSBuilder {
 	b.privateLinkConfiguration = value
 	if value != nil {
-		b.bitmap_ |= 2048
+		b.bitmap_ |= 4096
 	} else {
-		b.bitmap_ &^= 2048
+		b.bitmap_ &^= 4096
 	}
 	return b
 }
@@ -164,7 +173,7 @@ func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigura
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	b.secretAccessKey = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -172,7 +181,7 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -180,9 +189,9 @@ func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	b.tags = value
 	if value != nil {
-		b.bitmap_ |= 16384
+		b.bitmap_ |= 32768
 	} else {
-		b.bitmap_ &^= 16384
+		b.bitmap_ &^= 32768
 	}
 	return b
 }
@@ -201,6 +210,12 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 	}
 	b.accessKeyID = object.accessKeyID
 	b.accountID = object.accountID
+	if object.additionalComputeSecurityGroupIds != nil {
+		b.additionalComputeSecurityGroupIds = make([]string, len(object.additionalComputeSecurityGroupIds))
+		copy(b.additionalComputeSecurityGroupIds, object.additionalComputeSecurityGroupIds)
+	} else {
+		b.additionalComputeSecurityGroupIds = nil
+	}
 	if object.auditLog != nil {
 		b.auditLog = NewAuditLog().Copy(object.auditLog)
 	} else {
@@ -252,6 +267,10 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 	}
 	object.accessKeyID = b.accessKeyID
 	object.accountID = b.accountID
+	if b.additionalComputeSecurityGroupIds != nil {
+		object.additionalComputeSecurityGroupIds = make([]string, len(b.additionalComputeSecurityGroupIds))
+		copy(object.additionalComputeSecurityGroupIds, b.additionalComputeSecurityGroupIds)
+	}
 	if b.auditLog != nil {
 		object.auditLog, err = b.auditLog.Build()
 		if err != nil {

@@ -41,9 +41,22 @@ func MarshalBillingModelItem(object *BillingModelItem, writer io.Writer) error {
 func writeBillingModelItem(object *BillingModelItem, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
-	var present_ bool
-	present_ = object.bitmap_&1 != 0
-	if present_ {
+	stream.WriteObjectField("kind")
+	if object.bitmap_&1 != 0 {
+		stream.WriteString(BillingModelItemLinkKind)
+	} else {
+		stream.WriteString(BillingModelItemKind)
+	}
+	count++
+	if object.bitmap_&2 != 0 {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("id")
+		stream.WriteString(object.id)
+		count++
+	}
+	if object.bitmap_&4 != 0 {
 		if count > 0 {
 			stream.WriteMore()
 		}
@@ -51,7 +64,17 @@ func writeBillingModelItem(object *BillingModelItem, stream *jsoniter.Stream) {
 		stream.WriteString(object.href)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	var present_ bool
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("billing_model_type")
+		stream.WriteString(object.billingModelType)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -60,7 +83,7 @@ func writeBillingModelItem(object *BillingModelItem, stream *jsoniter.Stream) {
 		stream.WriteString(object.description)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -69,31 +92,13 @@ func writeBillingModelItem(object *BillingModelItem, stream *jsoniter.Stream) {
 		stream.WriteString(object.displayName)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("id")
-		stream.WriteString(object.id)
-		count++
-	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("marketplace")
 		stream.WriteString(object.marketplace)
-		count++
-	}
-	present_ = object.bitmap_&32 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("model")
-		stream.WriteString(object.model)
 	}
 	stream.WriteObjectEnd()
 }
@@ -119,30 +124,33 @@ func readBillingModelItem(iterator *jsoniter.Iterator) *BillingModelItem {
 			break
 		}
 		switch field {
-		case "href":
+		case "kind":
 			value := iterator.ReadString()
-			object.href = value
-			object.bitmap_ |= 1
+			if value == BillingModelItemLinkKind {
+				object.bitmap_ |= 1
+			}
+		case "id":
+			object.id = iterator.ReadString()
+			object.bitmap_ |= 2
+		case "href":
+			object.href = iterator.ReadString()
+			object.bitmap_ |= 4
+		case "billing_model_type":
+			value := iterator.ReadString()
+			object.billingModelType = value
+			object.bitmap_ |= 8
 		case "description":
 			value := iterator.ReadString()
 			object.description = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 16
 		case "display_name":
 			value := iterator.ReadString()
 			object.displayName = value
-			object.bitmap_ |= 4
-		case "id":
-			value := iterator.ReadString()
-			object.id = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 32
 		case "marketplace":
 			value := iterator.ReadString()
 			object.marketplace = value
-			object.bitmap_ |= 16
-		case "model":
-			value := iterator.ReadString()
-			object.model = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

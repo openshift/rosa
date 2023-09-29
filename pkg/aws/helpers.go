@@ -815,14 +815,17 @@ func UpgradeOperatorRolePolicies(
 	return nil
 }
 
-const subnetTemplate = "%s ('%s','%s','%s', Owner ID: '%s')"
-
 type Subnet struct {
 	AvailabilityZone string
 	OwnerID          string
 }
 
-// SetSubnetOption Creates a subnet options using a predefined template.
+const (
+	subnetTemplate        = "%s ('%s','%s','%s', Owner ID: '%s')"
+	securityGroupTemplate = "%s ('%s')"
+)
+
+// SetSubnetOption Creates a subnet option using a predefined template.
 func SetSubnetOption(subnet *ec2.Subnet) string {
 	subnetName := ""
 	for _, tag := range subnet.Tags {
@@ -839,9 +842,15 @@ func SetSubnetOption(subnet *ec2.Subnet) string {
 		aws.StringValue(subnet.OwnerId))
 }
 
-// ParseSubnet Parses the subnet from the option chosen by the user.
-func ParseSubnet(subnetOption string) string {
-	return strings.Split(subnetOption, " ")[0]
+// SetSecurityGroupOption Creates a security group option using a predefined template.
+func SetSecurityGroupOption(securityGroup *ec2.SecurityGroup) string {
+	return fmt.Sprintf(securityGroupTemplate,
+		aws.StringValue(securityGroup.GroupId), aws.StringValue(securityGroup.GroupName))
+}
+
+// Parse option expects the actual option as the first token followed by a space
+func ParseOption(option string) string {
+	return strings.Split(option, " ")[0]
 }
 
 // GetResourceIdFromARN

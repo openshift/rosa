@@ -96,13 +96,13 @@ func GetMinimalHostedMachinePoolVersion(controlPlaneVersion string) (string, err
 		return "", errminver
 	}
 
-	lowestHostedCPSupport, errlow := ver.NewVersion(ocm.LowestHostedCPSupport)
+	lowestHostedCPSupport, errlow := ver.NewVersion(ocm.LowestHostedCpSupport)
 	if errlow != nil {
 		return "", errlow
 	}
 
 	if minimalVersion.LessThanOrEqual(lowestHostedCPSupport) {
-		return ocm.LowestHostedCPSupport, nil
+		return ocm.LowestHostedCpSupport, nil
 	}
 
 	return version, nil

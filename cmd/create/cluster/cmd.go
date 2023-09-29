@@ -73,6 +73,7 @@ const (
 	defaultIngressExcludedNamespacesFlag       = "default-ingress-excluded-namespaces"
 	defaultIngressWildcardPolicyFlag           = "default-ingress-wildcard-policy"
 	defaultIngressNamespaceOwnershipPolicyFlag = "default-ingress-namespace-ownership-policy"
+	additionalComputeSecurityGroupIdsFlag      = "additional-compute-security-group-ids"
 
 	clusterAutoscalerFlagsPrefix = "autoscaler-"
 
@@ -196,6 +197,9 @@ var args struct {
 	privateHostedZoneID string
 	sharedVPCRoleARN    string
 	baseDomain          string
+
+	// Worker machine pool attributes
+	additionalComputeSecurityGroupIds []string
 }
 
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
@@ -733,6 +737,13 @@ The password must
 		"",
 		"Base DNS domain name previously reserved and matching the hosted zone name of the private Route 53 hosted zone "+
 			"associated with intended shared VPC, e.g., '1vo8.p1.openshiftapps.com'.",
+	)
+
+	flags.StringSliceVar(
+		&args.additionalComputeSecurityGroupIds,
+		additionalComputeSecurityGroupIdsFlag,
+		nil,
+		"The additional security groups for default worker machine pool.",
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -1907,7 +1918,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 			for i, subnet := range subnetIDs {
-				subnetIDs[i] = aws.ParseSubnet(subnet)
+				subnetIDs[i] = aws.ParseOption(subnet)
 			}
 		}
 
@@ -2241,6 +2252,62 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
+	}
+
+	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
+		version, ocm.MinVersionForAdditionalComputeSecurityGroupIds)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
+		os.Exit(1)
+	}
+	additionalComputeSecurityGroupIds := args.additionalComputeSecurityGroupIds
+	hasChangedComputeSGIdsFlag := cmd.Flags().Changed(additionalComputeSecurityGroupIdsFlag)
+	if hasChangedComputeSGIdsFlag {
+		// HCP is still unsupported
+		if isHostedCP {
+			r.Reporter.Errorf("Parameter '%s' is not support for Hosted Control Plane clusters",
+				additionalComputeSecurityGroupIdsFlag)
+			os.Exit(1)
+		}
+		if !isVersionCompatibleComputeSgIds {
+			r.Reporter.Errorf("Parameter '%s' is not support prior to version '%s'",
+				additionalComputeSecurityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIds)
+			os.Exit(1)
+		}
+	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVPC {
+		var err error
+		vpcId := ""
+		for _, subnet := range subnets {
+			if awssdk.StringValue(subnet.SubnetId) == subnetIDs[0] {
+				vpcId = awssdk.StringValue(subnet.VpcId)
+			}
+		}
+		if vpcId == "" {
+			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
+			os.Exit(1)
+		}
+		possibleSgs, err := awsClient.GetSecurityGroupIds(vpcId)
+		options := []string{}
+		for _, sg := range possibleSgs {
+			options = append(options, aws.SetSecurityGroupOption(sg))
+		}
+		if err != nil {
+			r.Reporter.Errorf("There was a problem retrieving security groups for VPC '%s': %v", vpcId, err)
+			os.Exit(1)
+		}
+		additionalComputeSecurityGroupIds, err = interactive.GetMultipleOptions(interactive.Input{
+			Question: "Additional Compute Security Group IDs",
+			Help:     cmd.Flags().Lookup(additionalComputeSecurityGroupIdsFlag).Usage,
+			Required: false,
+			Options:  options,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected valid Security Group IDs: %s", err)
+			os.Exit(1)
+		}
+		for i, sg := range additionalComputeSecurityGroupIds {
+			additionalComputeSecurityGroupIds[i] = aws.ParseOption(sg)
+		}
 	}
 
 	// Validate all remaining flags:
@@ -2756,7 +2823,8 @@ func run(cmd *cobra.Command, _ []string) {
 			WildcardPolicy:           wildcardPolicy,
 			NamespaceOwnershipPolicy: namespaceOwnershipPolicy,
 		},
-		MachinePoolRootDisk: machinePoolRootDisk,
+		MachinePoolRootDisk:               machinePoolRootDisk,
+		AdditionalComputeSecurityGroupIds: additionalComputeSecurityGroupIds,
 	}
 
 	if httpTokens != "" {
@@ -3300,6 +3368,11 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	command += clusterautoscaler.BuildAutoscalerOptions(spec.AutoscalerConfig, clusterAutoscalerFlagsPrefix)
+
+	if len(spec.AdditionalComputeSecurityGroupIds) > 0 {
+		command += fmt.Sprintf(" --%s %s",
+			additionalComputeSecurityGroupIdsFlag, strings.Join(spec.AdditionalComputeSecurityGroupIds, ","))
+	}
 
 	return command
 }

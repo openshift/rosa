@@ -2,6 +2,7 @@ package ocm
 
 import (
 	"fmt"
+
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
@@ -15,7 +16,7 @@ var _ = Describe("Versions", Ordered, func() {
 		DescribeTable("Should correctly validate the minimum version with a given channel group",
 			validateVersion,
 			Entry("OK: When the minimum version is provided",
-				func() string { return LowestHostedCPSupport },
+				func() string { return LowestHostedCpSupport },
 				func() string { return DefaultChannelGroup },
 				true, true, nil),
 			Entry("KO: Nightly channel group but too old",

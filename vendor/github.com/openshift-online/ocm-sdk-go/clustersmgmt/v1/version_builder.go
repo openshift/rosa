@@ -33,6 +33,7 @@ type VersionBuilder struct {
 	availableUpgrades         []string
 	channelGroup              string
 	endOfLifeTimestamp        time.Time
+	imageOverrides            *ImageOverridesBuilder
 	rawID                     string
 	releaseImage              string
 	rosaEnabled               bool
@@ -121,17 +122,30 @@ func (b *VersionBuilder) HostedControlPlaneEnabled(value bool) *VersionBuilder {
 	return b
 }
 
+// ImageOverrides sets the value of the 'image_overrides' attribute to the given value.
+//
+// ImageOverrides holds the lists of available images per cloud provider.
+func (b *VersionBuilder) ImageOverrides(value *ImageOverridesBuilder) *VersionBuilder {
+	b.imageOverrides = value
+	if value != nil {
+		b.bitmap_ |= 1024
+	} else {
+		b.bitmap_ &^= 1024
+	}
+	return b
+}
+
 // RawID sets the value of the 'raw_ID' attribute to the given value.
 func (b *VersionBuilder) RawID(value string) *VersionBuilder {
 	b.rawID = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
 // ReleaseImage sets the value of the 'release_image' attribute to the given value.
 func (b *VersionBuilder) ReleaseImage(value string) *VersionBuilder {
 	b.releaseImage = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -155,6 +169,11 @@ func (b *VersionBuilder) Copy(object *Version) *VersionBuilder {
 	b.enabled = object.enabled
 	b.endOfLifeTimestamp = object.endOfLifeTimestamp
 	b.hostedControlPlaneEnabled = object.hostedControlPlaneEnabled
+	if object.imageOverrides != nil {
+		b.imageOverrides = NewImageOverrides().Copy(object.imageOverrides)
+	} else {
+		b.imageOverrides = nil
+	}
 	b.rawID = object.rawID
 	b.releaseImage = object.releaseImage
 	return b
@@ -176,6 +195,12 @@ func (b *VersionBuilder) Build() (object *Version, err error) {
 	object.enabled = b.enabled
 	object.endOfLifeTimestamp = b.endOfLifeTimestamp
 	object.hostedControlPlaneEnabled = b.hostedControlPlaneEnabled
+	if b.imageOverrides != nil {
+		object.imageOverrides, err = b.imageOverrides.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.rawID = b.rawID
 	object.releaseImage = b.releaseImage
 	return

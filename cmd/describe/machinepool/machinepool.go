@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/helper"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -35,7 +36,8 @@ func describeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey stri
 		"Availability zones:         %s\n"+
 		"Subnets:                    %s\n"+
 		"Spot instances:             %s\n"+
-		"Disk size:                  %s\n",
+		"Disk size:                  %s\n"+
+		"Security Group IDs:         %s\n",
 		machinePool.ID(),
 		cluster.ID(),
 		ocmOutput.PrintMachinePoolAutoscaling(machinePool.Autoscaling()),
@@ -47,6 +49,7 @@ func describeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey stri
 		ocmOutput.PrintStringSlice(machinePool.Subnets()),
 		ocmOutput.PrintMachinePoolSpot(machinePool),
 		ocmOutput.PrintMachinePoolDiskSize(machinePool),
+		helper.SliceToSortedString(machinePool.AWS().AdditionalSecurityGroupIds()),
 	)
 	fmt.Print(machinePoolOutput)
 

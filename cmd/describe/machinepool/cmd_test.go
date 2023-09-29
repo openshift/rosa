@@ -77,6 +77,7 @@ Availability zones:         us-east-1a, us-east-1b, us-east-1c
 Subnets:                    
 Spot instances:             Yes (max $5)
 Disk size:                  default
+Security Group IDs:         
 `
 	describeClassicYamlOutput = `availability_zones:
 - us-east-1a

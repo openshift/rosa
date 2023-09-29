@@ -154,6 +154,9 @@ type Spec struct {
 	PrivateHostedZoneID string
 	SharedVPCRoleArn    string
 	BaseDomain          string
+
+	// Worker Machine Pool attributes
+	AdditionalComputeSecurityGroupIds []string
 }
 
 // Volume represents a volume property for a disk
@@ -895,6 +898,10 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 
 	awsBuilder := cmv1.NewAWS().
 		AccountID(awsCreator.AccountID)
+
+	if config.AdditionalComputeSecurityGroupIds != nil {
+		awsBuilder = awsBuilder.AdditionalComputeSecurityGroupIds(config.AdditionalComputeSecurityGroupIds...)
+	}
 
 	if config.SubnetIds != nil {
 		awsBuilder = awsBuilder.SubnetIDs(config.SubnetIds...)
