@@ -25,3 +25,70 @@ var _ = Describe("New Operator Iam Role From Cmv1", func() {
 		Expect(ocmOperatorIamRole.Path).To(Equal(path))
 	})
 })
+
+var _ = Context("List Clusters", func() {
+	Describe("List Clusters using Account Role", func() {
+
+		creator := &aws.Creator{
+			AccountID: "12345678",
+		}
+		role := &aws.Role{}
+
+		It("Correctly builds the query for Installer Account Role", func() {
+
+			role.RoleType = aws.InstallerAccountRoleType
+			role.RoleARN = "arn:aws:iam::765374464689:role/test-Installer-Role"
+
+			query, err := getAccountRoleClusterFilter(creator, role)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("product.id = 'rosa' AND " +
+				"(properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND " +
+				"aws.sts.role_arn='arn:aws:iam::765374464689:role/test-Installer-Role'"))
+		})
+
+		It("Correctly builds the query for Support Account Role", func() {
+
+			role.RoleType = aws.SupportAccountRoleType
+			role.RoleARN = "arn:aws:iam::765374464689:role/test-Support-Role"
+
+			query, err := getAccountRoleClusterFilter(creator, role)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("product.id = 'rosa' AND " +
+				"(properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND " +
+				"aws.sts.support_role_arn='arn:aws:iam::765374464689:role/test-Support-Role'"))
+		})
+
+		It("Correctly builds the query for Control Plane Account Role", func() {
+
+			role.RoleType = aws.ControlPlaneAccountRoleType
+			role.RoleARN = "arn:aws:iam::765374464689:role/test-ControlPlane-Role"
+
+			query, err := getAccountRoleClusterFilter(creator, role)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("product.id = 'rosa' AND " +
+				"(properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND " +
+				"aws.sts.instance_iam_roles.master_role_arn='arn:aws:iam::765374464689:role/test-ControlPlane-Role'"))
+		})
+
+		It("Correctly builds the query for Worker Account Role", func() {
+
+			role.RoleType = aws.WorkerAccountRoleType
+			role.RoleARN = "arn:aws:iam::765374464689:role/test-Worker-Role"
+
+			query, err := getAccountRoleClusterFilter(creator, role)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("product.id = 'rosa' AND " +
+				"(properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND " +
+				"aws.sts.instance_iam_roles.worker_role_arn='arn:aws:iam::765374464689:role/test-Worker-Role'"))
+		})
+
+		It("Fails to build query for unknown Role Type", func() {
+			role.RoleType = "foo"
+			role.RoleARN = "arn:aws:iam::765374464689:role/test-Worker-Role"
+
+			_, err := getAccountRoleClusterFilter(creator, role)
+			Expect(err).To(HaveOccurred())
+		})
+
+	})
+})

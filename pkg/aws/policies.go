@@ -84,10 +84,19 @@ type Policy struct {
 }
 
 const (
-	InstallerAccountRole    = "installer"
-	ControlPlaneAccountRole = "instance_controlplane"
-	WorkerAccountRole       = "instance_worker"
-	SupportAccountRole      = "support"
+	InstallerAccountRole = "installer"
+
+	InstallerAccountRoleType = "Installer"
+	ControlPlaneAccountRole  = "instance_controlplane"
+
+	ControlPlaneAccountRoleType = "Control plane"
+	WorkerAccountRole           = "instance_worker"
+
+	WorkerAccountRoleType = "Worker"
+
+	SupportAccountRole = "support"
+
+	SupportAccountRoleType = "Support"
 
 	HCPInstallerRole = "installer"
 	HCPWorkerRole    = "instance_worker"
@@ -126,10 +135,10 @@ var OCMRolePolicyFile = "ocm"
 var OCMAdminRolePolicyFile = "ocm_admin"
 
 var roleTypeMap = map[string]string{
-	"installer":             "Installer",
-	"support":               "Support",
-	"instance_controlplane": "Control plane",
-	"instance_worker":       "Worker",
+	InstallerAccountRole:    InstallerAccountRoleType,
+	SupportAccountRole:      SupportAccountRoleType,
+	ControlPlaneAccountRole: ControlPlaneAccountRoleType,
+	WorkerAccountRole:       WorkerAccountRoleType,
 }
 
 func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
@@ -743,58 +752,93 @@ func (c *awsClient) listPolicies(role *iam.Role) ([]Policy, error) {
 	return policies, nil
 }
 
-func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
-	accountRoles := []Role{}
-	roles, err := c.ListRoles()
+func (c *awsClient) GetAccountRoleByArn(arn string) (*Role, error) {
+	role, err := c.GetRoleByARN(arn)
 	if err != nil {
-		return accountRoles, err
+		return nil, err
 	}
-	for _, role := range roles {
-		if !checkIfAccountRole(role.RoleName) {
-			continue
+
+	accountRole, err := c.mapToAccountRole("", role)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return accountRole, nil
+}
+
+func (c *awsClient) mapToAccountRole(version string, role *iam.Role) (*Role, error) {
+	if !checkIfAccountRole(role.RoleName) {
+		return nil, nil
+	}
+
+	accountRole := Role{}
+
+	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+		RoleName: role.RoleName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	isTagged := false
+	for _, tag := range listRoleTagsOutput.Tags {
+		switch aws.StringValue(tag.Key) {
+		case tags.RoleType:
+			isTagged = true
+			accountRole.RoleType = roleTypeMap[aws.StringValue(tag.Value)]
+		case tags.OpenShiftVersion:
+			tagValue := aws.StringValue(tag.Value)
+			if version != "" && tagValue != version {
+				return nil, nil
+			}
+			isTagged = true
+			accountRole.Version = tagValue
+		case tags.ManagedPolicies:
+			if aws.StringValue(tag.Value) == tags.True {
+				accountRole.ManagedPolicy = true
+			}
 		}
-		accountRole := Role{}
-		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
-			RoleName: role.RoleName,
-		})
+	}
+
+	accountRole.RoleName = aws.StringValue(role.RoleName)
+	accountRole.RoleARN = aws.StringValue(role.Arn)
+
+	if isTagged {
+		policies, err := c.listPolicies(role)
+		if err != nil {
+			return nil, err
+		}
+		accountRole.Policy = policies
+	}
+
+	return &accountRole, nil
+}
+
+func (c *awsClient) mapToAccountRoles(version string, roles []*iam.Role) ([]Role, error) {
+
+	accountRoles := []Role{}
+	for _, role := range roles {
+
+		accountRole, err := c.mapToAccountRole(version, role)
 		if err != nil {
 			return accountRoles, err
 		}
 
-		isTagged := false
-		skip := false
-		for _, tag := range listRoleTagsOutput.Tags {
-			switch aws.StringValue(tag.Key) {
-			case tags.RoleType:
-				isTagged = true
-				accountRole.RoleType = roleTypeMap[aws.StringValue(tag.Value)]
-			case tags.OpenShiftVersion:
-				tagValue := aws.StringValue(tag.Value)
-				if version != "" && tagValue != version {
-					skip = true
-					break
-				}
-				isTagged = true
-				accountRole.Version = tagValue
-			case tags.ManagedPolicies:
-				if aws.StringValue(tag.Value) == tags.True {
-					accountRole.ManagedPolicy = true
-				}
-			}
-		}
-		if isTagged && !skip {
-			accountRole.RoleName = aws.StringValue(role.RoleName)
-			accountRole.RoleARN = aws.StringValue(role.Arn)
-			policies, err := c.listPolicies(role)
-			if err != nil {
-				return nil, err
-			}
-			accountRole.Policy = policies
-
-			accountRoles = append(accountRoles, accountRole)
+		if accountRole != nil {
+			accountRoles = append(accountRoles, *accountRole)
 		}
 	}
+
 	return accountRoles, nil
+}
+
+func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
+	roles, err := c.ListRoles()
+	if err != nil {
+		return []Role{}, err
+	}
+	return c.mapToAccountRoles(version, roles)
 }
 
 func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (map[string][]OperatorRoleDetail, error) {

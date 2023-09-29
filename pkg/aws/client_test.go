@@ -1,6 +1,9 @@
 package aws_test
 
 import (
+	"fmt"
+
+	awsSdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
@@ -12,6 +15,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/mocks"
+	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
 )
 
 var _ = Describe("Client", func() {
@@ -194,6 +198,67 @@ var _ = Describe("Client", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 			})
+		})
+	})
+	Context("Get Account Role By ARN", func() {
+
+		var testArn = "arn:aws:iam::765374464689:role/test-Installer-Role"
+		var testName = "test-Installer-Role"
+		var tags = []*iam.Tag{
+			{Key: awsSdk.String(rosaTags.ManagedPolicies), Value: awsSdk.String(rosaTags.True)},
+			{Key: awsSdk.String(rosaTags.RoleType), Value: awsSdk.String(aws.InstallerAccountRole)},
+		}
+
+		It("Finds and Returns Account Role", func() {
+
+			mockIamAPI.EXPECT().GetRole(gomock.Any()).Return(&iam.GetRoleOutput{
+				Role: &iam.Role{
+					Arn:      &testArn,
+					RoleName: &testName,
+				},
+			}, nil)
+
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any()).Return(&iam.ListRoleTagsOutput{
+				Tags: tags,
+			}, nil)
+
+			mockIamAPI.EXPECT().ListRolePolicies(gomock.Any()).Return(&iam.ListRolePoliciesOutput{
+				PolicyNames: make([]*string, 0),
+			}, nil)
+
+			role, err := client.GetAccountRoleByArn(testArn)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(role).NotTo(BeNil())
+
+			Expect(role.RoleName).To(Equal(testName))
+			Expect(role.RoleARN).To(Equal(testArn))
+			Expect(role.RoleType).To(Equal(aws.InstallerAccountRoleType))
+		})
+
+		It("Returns nil when No Role with ARN exists", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any()).Return(nil, fmt.Errorf("role Doesn't Exist"))
+
+			role, err := client.GetAccountRoleByArn(testArn)
+
+			Expect(role).To(BeNil())
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("Returns nil when the Role exists, but it is not an Account Role", func() {
+
+			var roleName = "not-an-account-role"
+
+			mockIamAPI.EXPECT().GetRole(gomock.Any()).Return(&iam.GetRoleOutput{
+				Role: &iam.Role{
+					Arn:      &testArn,
+					RoleName: &roleName,
+				},
+			}, nil)
+
+			role, err := client.GetAccountRoleByArn(testArn)
+			Expect(role).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })
