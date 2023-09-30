@@ -899,7 +899,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	awsBuilder := cmv1.NewAWS().
 		AccountID(awsCreator.AccountID)
 
-	if config.AdditionalComputeSecurityGroupIds != nil {
+	if len(config.AdditionalComputeSecurityGroupIds) > 0 {
 		awsBuilder = awsBuilder.AdditionalComputeSecurityGroupIds(config.AdditionalComputeSecurityGroupIds...)
 	}
 

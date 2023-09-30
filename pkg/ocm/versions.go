@@ -36,10 +36,12 @@ const (
 	LowestHttpTokensRequiredSupport = "4.11.0"
 	LowestSTSMinor                  = "4.7"
 	//TODO: Remove the 0.a once stable 4.12 builds are available
-	LowestHostedCpSupport                          = "4.12.0-0.a"
-	MinVersionForManagedIngressV2                  = "4.14-0"
-	MinVersionForAdditionalComputeSecurityGroupIds = "4.14-0"
-	VersionPrefix                                  = "openshift-v"
+	LowestHostedCpSupport         = "4.12.0-0.a"
+	MinVersionForManagedIngressV2 = "4.14-0"
+	VersionPrefix                 = "openshift-v"
+
+	MinVersionForAdditionalComputeSecurityGroupIdsDay1 = "4.14-0"
+	MinVersionForAdditionalComputeSecurityGroupIdsDay2 = "4.11-0"
 )
 
 func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error) {

@@ -2255,7 +2255,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
-		version, ocm.MinVersionForAdditionalComputeSecurityGroupIds)
+		version, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
 		os.Exit(1)
@@ -2265,17 +2265,16 @@ func run(cmd *cobra.Command, _ []string) {
 	if hasChangedComputeSGIdsFlag {
 		// HCP is still unsupported
 		if isHostedCP {
-			r.Reporter.Errorf("Parameter '%s' is not support for Hosted Control Plane clusters",
+			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
 				additionalComputeSecurityGroupIdsFlag)
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
-			r.Reporter.Errorf("Parameter '%s' is not support prior to version '%s'",
-				additionalComputeSecurityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIds)
+			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
+				additionalComputeSecurityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
 			os.Exit(1)
 		}
 	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVPC {
-		var err error
 		vpcId := ""
 		for _, subnet := range subnets {
 			if awssdk.StringValue(subnet.SubnetId) == subnetIDs[0] {
@@ -2308,6 +2307,9 @@ func run(cmd *cobra.Command, _ []string) {
 		for i, sg := range additionalComputeSecurityGroupIds {
 			additionalComputeSecurityGroupIds[i] = aws.ParseOption(sg)
 		}
+	}
+	for i, sg := range additionalComputeSecurityGroupIds {
+		additionalComputeSecurityGroupIds[i] = strings.TrimSpace(sg)
 	}
 
 	// Validate all remaining flags:
