@@ -2286,26 +2286,28 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		possibleSgs, err := awsClient.GetSecurityGroupIds(vpcId)
-		options := []string{}
-		for _, sg := range possibleSgs {
-			options = append(options, aws.SetSecurityGroupOption(sg))
-		}
 		if err != nil {
 			r.Reporter.Errorf("There was a problem retrieving security groups for VPC '%s': %v", vpcId, err)
 			os.Exit(1)
 		}
-		additionalComputeSecurityGroupIds, err = interactive.GetMultipleOptions(interactive.Input{
-			Question: "Additional Compute Security Group IDs",
-			Help:     cmd.Flags().Lookup(additionalComputeSecurityGroupIdsFlag).Usage,
-			Required: false,
-			Options:  options,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected valid Security Group IDs: %s", err)
-			os.Exit(1)
-		}
-		for i, sg := range additionalComputeSecurityGroupIds {
-			additionalComputeSecurityGroupIds[i] = aws.ParseOption(sg)
+		if len(possibleSgs) > 0 {
+			options := []string{}
+			for _, sg := range possibleSgs {
+				options = append(options, aws.SetSecurityGroupOption(sg))
+			}
+			additionalComputeSecurityGroupIds, err = interactive.GetMultipleOptions(interactive.Input{
+				Question: "Additional Compute Security Group IDs",
+				Help:     cmd.Flags().Lookup(additionalComputeSecurityGroupIdsFlag).Usage,
+				Required: false,
+				Options:  options,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected valid Security Group IDs: %s", err)
+				os.Exit(1)
+			}
+			for i, sg := range additionalComputeSecurityGroupIds {
+				additionalComputeSecurityGroupIds[i] = aws.ParseOption(sg)
+			}
 		}
 	}
 	for i, sg := range additionalComputeSecurityGroupIds {
