@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
@@ -163,7 +164,7 @@ func run(cmd *cobra.Command, argv []string) {
 			oidcEndpointUrl = args.oidcEndpointUrl
 		} else {
 			if args.oidcConfigId == "" {
-				args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
+				args.oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd)
 			}
 			oidcConfig, err := r.OCMClient.GetOidcConfig(args.oidcConfigId)
 			if err != nil {

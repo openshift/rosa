@@ -16,6 +16,8 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
+	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
+	interactiveRoles "github.com/openshift/rosa/pkg/interactive/roles"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -40,7 +42,7 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 	args.prefix = operatorRolesPrefix
 
 	if args.oidcConfigId == "" {
-		args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
+		args.oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd)
 	}
 
 	isHostedCP := args.hostedCp
@@ -55,7 +57,7 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 		os.Exit(1)
 	}
 	args.hostedCp = isHostedCP
-	args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, "")
+	args.installerRoleArn = interactiveRoles.GetInstallerRoleArn(r, cmd, args.installerRoleArn, "")
 }
 
 func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,

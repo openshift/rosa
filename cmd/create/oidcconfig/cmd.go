@@ -39,6 +39,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper/oidc_config"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	interactiveRoles "github.com/openshift/rosa/pkg/interactive/roles"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
@@ -213,7 +214,8 @@ func run(cmd *cobra.Command, argv []string) {
 					"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
 			}
 			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
-				args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret)
+				args.installerRoleArn = interactiveRoles.
+					GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret)
 			}
 			if interactive.Enabled() {
 				prefix, err := interactive.GetString(interactive.Input{

@@ -31,6 +31,7 @@ import (
 	. "github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	interactiveRoles "github.com/openshift/rosa/pkg/interactive/roles"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
@@ -118,7 +119,8 @@ func run(cmd *cobra.Command, argv []string) {
 	checkInteractiveModeNeeded(cmd)
 
 	if !cmd.Flags().Changed(InstallerRoleArnFlag) && (interactive.Enabled() || confirm.Yes()) {
-		args.installerRoleArn = interactive.GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret)
+		args.installerRoleArn = interactiveRoles.
+			GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret)
 	}
 	roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
 	if !output.HasFlag() && r.Reporter.IsTerminal() {
