@@ -2,14 +2,13 @@ package operatorroles
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/rosa"
 	errors "github.com/zgalor/weberr"
 )
 
-const assumePolicyAction = "AssumeRole"
+const assumePolicyAction = "sts:AssumeRole"
 
 func computePolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
 	if prefix == "" {
@@ -38,15 +37,24 @@ func validateIngressOperatorPolicyOverride(r *rosa.Runtime, policyArn string, sh
 		return err
 	}
 
-	// The policy associated with the installer role. In the case it contains a different shared VPC role ARN,
-	// don't override it.
-	if strings.Contains(policyDocument, assumePolicyAction) && !strings.Contains(policyDocument, sharedVpcRoleArn) {
-		return errors.UserErrorf("Policy with ARN '%s' contains 'sts:AssumeRole' action with different shared VPC role ARN "+
-			"than '%s'."+
-			"\nThe policy is associated with the installer role with the prefix '%s'."+
-			"\nTo create operator roles with shared vpc role ARN '%s', "+
-			"please provide a different value for '--installer-role-arn'.",
-			policyArn, sharedVpcRoleArn, installerRolePrefix, sharedVpcRoleArn)
+	document, err := aws.ParsePolicyDocument(policyDocument)
+	if err != nil {
+		return err
+	}
+
+	for _, statement := range document.Statement {
+		if statement.Action == assumePolicyAction && statement.Effect == "Allow" {
+			// The policy associated with the installer role. In the case it contains a different shared VPC role ARN,
+			// don't override it.
+			if statement.Resource != sharedVpcRoleArn {
+				return errors.UserErrorf("Policy with ARN '%s' contains '%s' with an unexpected shared VPC role ARN "+
+					"[Expected: '%s', Provided '%s'].\n"+
+					"The policy is associated with the installer role with the prefix '%s'.\n"+
+					"To create operator roles with shared VPC role ARN '%s', please provide a different value for "+
+					"'--installer-role-arn'", policyArn, assumePolicyAction, statement.Resource, sharedVpcRoleArn,
+					installerRolePrefix, sharedVpcRoleArn)
+			}
+		}
 	}
 
 	return nil
