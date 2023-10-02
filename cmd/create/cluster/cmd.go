@@ -531,7 +531,7 @@ func init() {
 		&args.defaultMachinePoolLabels,
 		"default-mp-labels",
 		"",
-		"Labels for the default machine pool. Format should be a comma-separated list of 'key=value'. "+
+		"Labels for the worker machine pool. Format should be a comma-separated list of 'key=value'. "+
 			"This list will overwrite any modifications made to Node labels on an ongoing basis.",
 	)
 
@@ -935,7 +935,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if isHostedCP && cmd.Flags().Changed("default-mp-labels") {
-		r.Reporter.Errorf("Setting the default machine pool labels is not supported for hosted clusters")
+		r.Reporter.Errorf("Setting the worker machine pool labels is not supported for hosted clusters")
 		os.Exit(1)
 	}
 
@@ -2235,11 +2235,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// Default machine pool labels
+	// Worker machine pool labels
 	labels := args.defaultMachinePoolLabels
 	if interactive.Enabled() && !isHostedCP {
 		labels, err = interactive.GetString(interactive.Input{
-			Question: "Default machine pool labels",
+			Question: "Worker machine pool labels",
 			Help:     cmd.Flags().Lookup("default-mp-labels").Usage,
 			Default:  labels,
 			Validators: []interactive.Validator{
