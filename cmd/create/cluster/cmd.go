@@ -53,6 +53,8 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/consts"
+	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
+	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
@@ -1630,6 +1632,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to create awsClient: %s", err)
 		os.Exit(1)
 	}
+	r.AWSClient = awsClient
 
 	// Cluster privacy:
 	useExistingVPC := false
@@ -2285,30 +2288,8 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
 			os.Exit(1)
 		}
-		possibleSgs, err := awsClient.GetSecurityGroupIds(vpcId)
-		if err != nil {
-			r.Reporter.Errorf("There was a problem retrieving security groups for VPC '%s': %v", vpcId, err)
-			os.Exit(1)
-		}
-		if len(possibleSgs) > 0 {
-			options := []string{}
-			for _, sg := range possibleSgs {
-				options = append(options, aws.SetSecurityGroupOption(sg))
-			}
-			additionalComputeSecurityGroupIds, err = interactive.GetMultipleOptions(interactive.Input{
-				Question: "Additional Compute Security Group IDs",
-				Help:     cmd.Flags().Lookup(additionalComputeSecurityGroupIdsFlag).Usage,
-				Required: false,
-				Options:  options,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected valid Security Group IDs: %s", err)
-				os.Exit(1)
-			}
-			for i, sg := range additionalComputeSecurityGroupIds {
-				additionalComputeSecurityGroupIds[i] = aws.ParseOption(sg)
-			}
-		}
+		additionalComputeSecurityGroupIds = interactiveSgs.
+			GetSecurityGroupIds(r, cmd, vpcId, additionalComputeSecurityGroupIdsFlag)
 	}
 	for i, sg := range additionalComputeSecurityGroupIds {
 		additionalComputeSecurityGroupIds[i] = strings.TrimSpace(sg)
@@ -3020,7 +3001,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 			isOidcConfig = _isOidcConfig
 		}
 		if isOidcConfig {
-			oidcConfigId = interactive.GetOidcConfigID(r, cmd)
+			oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd)
 		}
 	}
 	if oidcConfigId == "" {

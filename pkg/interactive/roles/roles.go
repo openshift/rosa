@@ -1,46 +1,18 @@
-package interactive
+package roles
 
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/openshift/rosa/pkg/aws"
+	. "github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 )
-
-func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command) string {
-	oidcConfigs, err := r.OCMClient.ListOidcConfigs(r.Creator.AccountID)
-	if err != nil {
-		r.Reporter.Warnf("There was a problem retrieving OIDC Configurations "+
-			"for your organization: %v", err)
-		return ""
-	}
-	if len(oidcConfigs) == 0 {
-		return ""
-	}
-	oidcConfigsIds := []string{}
-	for _, oidcConfig := range oidcConfigs {
-		oidcConfigsIds = append(oidcConfigsIds, fmt.Sprintf("%s | %s", oidcConfig.ID(), oidcConfig.IssuerUrl()))
-	}
-	oidcConfigId, err := GetOption(Input{
-		Question: "OIDC Configuration ID",
-		Help:     cmd.Flags().Lookup("oidc-config-id").Usage,
-		Options:  oidcConfigsIds,
-		Default:  oidcConfigsIds[0],
-		Required: true,
-	})
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid OIDC Config ID: %s", err)
-		os.Exit(1)
-	}
-	return strings.TrimSpace(strings.Split(oidcConfigId, "|")[0])
-}
 
 func GetInstallerRoleArn(r *rosa.Runtime, cmd *cobra.Command,
 	defaultInstallerRoleArn string, minMinorVersion string) string {

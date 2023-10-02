@@ -33,6 +33,7 @@ import (
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -111,7 +112,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if (args.oidcConfigId == "" || interactive.Enabled()) && !cmd.Flags().Changed(OidcConfigIdFlag) {
-		args.oidcConfigId = interactive.GetOidcConfigID(r, cmd)
+		args.oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd)
 	}
 
 	oidcConfigInput := buildOidcConfigInput(r)
