@@ -2277,7 +2277,7 @@ func run(cmd *cobra.Command, _ []string) {
 				additionalComputeSecurityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
 			os.Exit(1)
 		}
-	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVPC {
+	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVPC && !isHostedCP {
 		vpcId := ""
 		for _, subnet := range subnets {
 			if awssdk.StringValue(subnet.SubnetId) == subnetIDs[0] {
