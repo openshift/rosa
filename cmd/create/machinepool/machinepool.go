@@ -51,20 +51,28 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	}
 
 	isSecurityGroupIdsSet := cmd.Flags().Changed(securityGroupIdsFlag)
-	if !isByoVpc && isSecurityGroupIdsSet {
-		r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters", securityGroupIdsFlag)
-		os.Exit(1)
-	}
 	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
 		cluster.Version().RawID(), ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
 		os.Exit(1)
 	}
-	if !isVersionCompatibleComputeSgIds && isSecurityGroupIdsSet {
-		r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
-			securityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
-		os.Exit(1)
+	isHcpCluster := ocm.IsHyperShiftCluster(cluster)
+	if isSecurityGroupIdsSet {
+		if !isByoVpc {
+			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters", securityGroupIdsFlag)
+			os.Exit(1)
+		}
+		if isHcpCluster {
+			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
+				securityGroupIdsFlag)
+			os.Exit(1)
+		}
+		if !isVersionCompatibleComputeSgIds {
+			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
+				securityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
+			os.Exit(1)
+		}
 	}
 
 	if isSubnetSet && isAvailabilityZoneSet {
@@ -279,7 +287,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	}
 
 	securityGroupIds := args.securityGroupIds
-	if interactive.Enabled() && isVersionCompatibleComputeSgIds && isByoVpc {
+	if interactive.Enabled() && isVersionCompatibleComputeSgIds && isByoVpc && !isHcpCluster {
 		availableSubnets, err := r.AWSClient.GetVPCSubnets(cluster.AWS().SubnetIDs()[0])
 		if err != nil {
 			r.Reporter.Errorf("Failed to retrieve available subnets: %v", err)
