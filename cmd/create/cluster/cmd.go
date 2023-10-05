@@ -1869,7 +1869,8 @@ func run(cmd *cobra.Command, _ []string) {
 					}
 				}
 				if !verifiedSubnet {
-					r.Reporter.Errorf("Could not find the following subnet provided: %s", subnetArg)
+					r.Reporter.Errorf("Could not find the following subnet provided in region '%s': %s",
+						r.AWSClient.GetRegion(), subnetArg)
 					os.Exit(1)
 				}
 			}
