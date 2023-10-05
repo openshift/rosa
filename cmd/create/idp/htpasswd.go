@@ -180,6 +180,12 @@ func getUserList(cmd *cobra.Command, r *rosa.Runtime) (userList map[string]strin
 
 func GetUserDetails(cmd *cobra.Command, r *rosa.Runtime,
 	usernameKey, passwordKey, defaultUsername, defaultPassword string) (string, string) {
+	return GetIdpUserNameFromPrompt(cmd, r, usernameKey, defaultUsername),
+		GetIdpPasswordFromPrompt(cmd, r, passwordKey, defaultPassword)
+}
+
+func GetIdpUserNameFromPrompt(cmd *cobra.Command, r *rosa.Runtime,
+	usernameKey, defaultUsername string) string {
 	username, err := interactive.GetString(interactive.Input{
 		Question: "Username",
 		Help:     cmd.Flags().Lookup(usernameKey).Usage,
@@ -192,6 +198,11 @@ func GetUserDetails(cmd *cobra.Command, r *rosa.Runtime,
 	if err != nil {
 		exitHTPasswdCreate("Expected a valid username: %s", r.ClusterKey, err, r)
 	}
+	return username
+}
+
+func GetIdpPasswordFromPrompt(cmd *cobra.Command, r *rosa.Runtime,
+	passwordKey, defaultPassword string) string {
 	password, err := interactive.GetPassword(interactive.Input{
 		Question: "Password",
 		Help:     cmd.Flags().Lookup(passwordKey).Usage,
@@ -204,7 +215,7 @@ func GetUserDetails(cmd *cobra.Command, r *rosa.Runtime,
 	if err != nil {
 		exitHTPasswdCreate("Expected a valid password: %s", r.ClusterKey, err, r)
 	}
-	return username, password
+	return password
 }
 
 func shouldAddAnotherUser(r *rosa.Runtime) bool {
