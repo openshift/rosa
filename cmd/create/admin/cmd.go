@@ -32,6 +32,8 @@ import (
 
 const ClusterAdminUsername = "cluster-admin"
 const ClusterAdminIDPname = "cluster-admin"
+const GeneratingRandomPasswordString = "Generating random password"
+const MaxPasswordLength = 23
 
 var Cmd = &cobra.Command{
 	Use:   "admin",
@@ -83,8 +85,8 @@ func run(cmd *cobra.Command, _ []string) {
 	var err error
 	passwordArg := args.passwordArg
 	if len(passwordArg) == 0 {
-		r.Reporter.Debugf("Generating random password")
-		password, err = generateRandomPassword(23)
+		r.Reporter.Debugf(GeneratingRandomPasswordString)
+		password, err = GenerateRandomPassword()
 		if err != nil {
 			r.Reporter.Errorf("Failed to generate a random password")
 			os.Exit(1)
@@ -171,7 +173,7 @@ func run(cmd *cobra.Command, _ []string) {
 	r.Reporter.Infof("It may take several minutes for this access to become active.")
 }
 
-func generateRandomPassword(length int) (string, error) {
+func GenerateRandomPassword() (string, error) {
 	const (
 		lowerLetters = "abcdefghijkmnopqrstuvwxyz"
 		upperLetters = "ABCDEFGHIJKLMNPQRSTUVWXYZ"
@@ -179,7 +181,7 @@ func generateRandomPassword(length int) (string, error) {
 		all          = lowerLetters + upperLetters + digits
 	)
 	var password string
-	for i := 0; i < length; i++ {
+	for i := 0; i < MaxPasswordLength; i++ {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(all))))
 		if err != nil {
 			return "", err
@@ -188,7 +190,7 @@ func generateRandomPassword(length int) (string, error) {
 		if password == "" {
 			password = newchar
 		}
-		if i < length-1 {
+		if i < MaxPasswordLength-1 {
 			n, err = rand.Int(rand.Reader, big.NewInt(int64(len(password)+1)))
 			if err != nil {
 				return "", err
