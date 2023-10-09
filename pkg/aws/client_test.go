@@ -2,6 +2,8 @@ package aws_test
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/openshift-online/ocm-sdk-go/helpers"
 
 	awsSdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -259,6 +261,61 @@ var _ = Describe("Client", func() {
 			role, err := client.GetAccountRoleByArn(testArn)
 			Expect(role).To(BeNil())
 			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("List Subnets", func() {
+
+		subnetOneId := "test-subnet-1"
+		subnetTwoId := "test-subnet-2"
+		subnet := ec2.Subnet{
+			SubnetId: helpers.NewString(subnetOneId),
+		}
+
+		subnet2 := ec2.Subnet{
+			SubnetId: helpers.NewString(subnetTwoId),
+		}
+
+		var subnets []*ec2.Subnet
+		subnets = append(subnets, &subnet, &subnet2)
+
+		It("Lists all", func() {
+
+			var request *ec2.DescribeSubnetsInput
+
+			mockEC2API.EXPECT().DescribeSubnets(gomock.Any()).DoAndReturn(
+				func(arg *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+					request = arg
+					return &ec2.DescribeSubnetsOutput{
+						Subnets: subnets,
+					}, nil
+				})
+
+			subs, err := client.ListSubnets()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(subs).To(HaveLen(2))
+			Expect(request.SubnetIds).To(BeEmpty())
+		})
+
+		It("Lists by subnet ids", func() {
+
+			var request *ec2.DescribeSubnetsInput
+
+			mockEC2API.EXPECT().DescribeSubnets(gomock.Any()).DoAndReturn(
+				func(arg *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+					request = arg
+					return &ec2.DescribeSubnetsOutput{
+						Subnets: subnets,
+					}, nil
+				})
+
+			subs, err := client.ListSubnets(subnetOneId, subnetTwoId)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(subs).To(HaveLen(2))
+			Expect(request.SubnetIds).To(ContainElements(&subnetOneId, &subnetTwoId))
+
 		})
 	})
 })
