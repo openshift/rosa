@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	securityGroupIdsFlag = "security-group-ids"
+	securityGroupIdsFlag = "additional-security-group-ids"
 )
 
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
