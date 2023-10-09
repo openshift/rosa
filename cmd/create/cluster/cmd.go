@@ -2274,6 +2274,11 @@ func run(cmd *cobra.Command, _ []string) {
 	additionalComputeSecurityGroupIds := args.additionalComputeSecurityGroupIds
 	hasChangedComputeSGIdsFlag := cmd.Flags().Changed(additionalComputeSecurityGroupIdsFlag)
 	if hasChangedComputeSGIdsFlag {
+		if !useExistingVPC {
+			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYO VPC clusters",
+				additionalComputeSecurityGroupIdsFlag)
+			os.Exit(1)
+		}
 		// HCP is still unsupported
 		if isHostedCP {
 			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
