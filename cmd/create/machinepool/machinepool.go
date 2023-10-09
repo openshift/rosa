@@ -46,7 +46,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	isSubnetSet := cmd.Flags().Changed("subnet")
 	isByoVpc := isBYOVPC(cluster)
 	if !isByoVpc && isSubnetSet {
-		r.Reporter.Errorf("Setting the `subnet` flag is only allowed for BYOVPC clusters")
+		r.Reporter.Errorf("Setting the `subnet` flag is only allowed for BYO VPC clusters")
 		os.Exit(1)
 	}
 
