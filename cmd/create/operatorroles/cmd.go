@@ -180,11 +180,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		cluster = r.FetchCluster()
 	}
 
-	if args.prefix == "" && args.sharedVpcRoleArn != "" {
-		r.Reporter.Errorf("Shared VPC role ARN is only supported when setting the 'prefix' flag")
-		os.Exit(1)
-	}
-
 	if args.forcePolicyCreation && mode != aws.ModeAuto {
 		r.Reporter.Warnf("Forcing creation of policies only works in auto mode")
 		os.Exit(1)
