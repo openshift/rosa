@@ -259,7 +259,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	var availabilityZones []string
 	if subnetsProvided {
-		subnets, err := r.AWSClient.GetSubnetIDs()
+		subnets, err := r.AWSClient.ListSubnets()
 		if err != nil {
 			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)

@@ -1869,7 +1869,7 @@ func run(cmd *cobra.Command, _ []string) {
 	var subnets []*ec2.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
-		initialSubnets, err := getInitialValidSubnets(awsClient, r.Reporter)
+		initialSubnets, err := getInitialValidSubnets(awsClient, args.subnetIDs, r.Reporter)
 		if err != nil {
 			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
@@ -3502,14 +3502,16 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
 }
 
-func getInitialValidSubnets(awsClient aws.Client, reporter *reporter.Object) ([]*ec2.Subnet, error) {
+func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([]*ec2.Subnet, error) {
 	initialValidSubnets := []*ec2.Subnet{}
 	excludedSubnets := []string{}
-	allSubnets, err := awsClient.GetSubnetIDs()
+
+	validSubnets, err := aws.ListSubnets(ids...)
+
 	if err != nil {
 		return initialValidSubnets, err
 	}
-	for _, subnet := range allSubnets {
+	for _, subnet := range validSubnets {
 		hasRHManaged := tags.Ec2ResourceHasTag(subnet.Tags, tags.RedHatManaged, strconv.FormatBool(true))
 		if !hasRHManaged {
 			initialValidSubnets = append(initialValidSubnets, subnet)
@@ -3517,8 +3519,8 @@ func getInitialValidSubnets(awsClient aws.Client, reporter *reporter.Object) ([]
 			excludedSubnets = append(excludedSubnets, awssdk.StringValue(subnet.SubnetId))
 		}
 	}
-	if len(allSubnets) != len(initialValidSubnets) {
-		reporter.Warnf("The following subnets were excluded because they belong"+
+	if len(validSubnets) != len(initialValidSubnets) {
+		r.Warnf("The following subnets were excluded because they belong"+
 			" to a VPC that is managed by Red Hat: %s", helper.SliceToSortedString(excludedSubnets))
 	}
 	return initialValidSubnets, nil
