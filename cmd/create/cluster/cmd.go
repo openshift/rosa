@@ -68,14 +68,9 @@ var kmsArnRE = regexp.MustCompile(
 )
 
 const (
-	OidcConfigIdFlag      = "oidc-config-id"
-	ClassicOidcConfigFlag = "classic-oidc-config"
-
-	defaultIngressRouteSelectorFlag            = "default-ingress-route-selector"
-	defaultIngressExcludedNamespacesFlag       = "default-ingress-excluded-namespaces"
-	defaultIngressWildcardPolicyFlag           = "default-ingress-wildcard-policy"
-	defaultIngressNamespaceOwnershipPolicyFlag = "default-ingress-namespace-ownership-policy"
-	additionalComputeSecurityGroupIdsFlag      = "additional-compute-security-group-ids"
+	OidcConfigIdFlag                      = "oidc-config-id"
+	ClassicOidcConfigFlag                 = "classic-oidc-config"
+	additionalComputeSecurityGroupIdsFlag = "additional-compute-security-group-ids"
 
 	clusterAutoscalerFlagsPrefix = "autoscaler-"
 
@@ -686,7 +681,7 @@ The password must
 
 	flags.StringVar(
 		&args.defaultIngressRouteSelectors,
-		defaultIngressRouteSelectorFlag,
+		ingress.DefaultIngressRouteSelectorFlag,
 		"",
 		"Route Selector for ingress. Format should be a comma-separated list of 'key=value'. "+
 			"If no label is specified, all routes will be exposed on both routers."+
@@ -695,7 +690,7 @@ The password must
 
 	flags.StringVar(
 		&args.defaultIngressExcludedNamespaces,
-		defaultIngressExcludedNamespacesFlag,
+		ingress.DefaultIngressExcludedNamespacesFlag,
 		"",
 		"Excluded namespaces for ingress. Format should be a comma-separated list 'value1, value2...'. "+
 			"If no values are specified, all namespaces will be exposed.",
@@ -703,7 +698,7 @@ The password must
 
 	flags.StringVar(
 		&args.defaultIngressWildcardPolicy,
-		defaultIngressWildcardPolicyFlag,
+		ingress.DefaultIngressWildcardPolicyFlag,
 		"",
 		fmt.Sprintf("Wildcard Policy for ingress. Options are %s. Default is '%s'.",
 			strings.Join(ingress.ValidWildcardPolicies, ","), ingress.DefaultWildcardPolicy),
@@ -711,7 +706,7 @@ The password must
 
 	flags.StringVar(
 		&args.defaultIngressNamespaceOwnershipPolicy,
-		defaultIngressNamespaceOwnershipPolicyFlag,
+		ingress.DefaultIngressNamespaceOwnershipPolicyFlag,
 		"",
 		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s. Default is '%s'.",
 			strings.Join(ingress.ValidNamespaceOwnershipPolicies, ","), ingress.DefaultNamespaceOwnershipPolicy),
@@ -2655,6 +2650,17 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
 		os.Exit(1)
 	}
+	if ingress.IsDefaultIngressSetViaCLI(cmd.Flags()) {
+		if isHostedCP {
+			r.Reporter.Errorf("Updating default ingress settings is not supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		if !isVersionCompatibleManagedIngressV2 {
+			r.Reporter.Errorf("Updating default ingress settings is not supported for versions prior to '%s'",
+				ocm.MinVersionForManagedIngressV2)
+			os.Exit(1)
+		}
+	}
 	routeSelector := ""
 	routeSelectors := map[string]string{}
 	excludedNamespaces := ""
@@ -2662,7 +2668,7 @@ func run(cmd *cobra.Command, _ []string) {
 	wildcardPolicy := ""
 	namespaceOwnershipPolicy := ""
 	if isVersionCompatibleManagedIngressV2 {
-		if cmd.Flags().Changed(defaultIngressRouteSelectorFlag) {
+		if cmd.Flags().Changed(ingress.DefaultIngressRouteSelectorFlag) {
 			if isHostedCP {
 				r.Reporter.Errorf("Updating route selectors is not supported for Hosted Control Plane clusters")
 				os.Exit(1)
@@ -2671,7 +2677,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else if interactive.Enabled() && !isHostedCP {
 			routeSelectorArg, err := interactive.GetString(interactive.Input{
 				Question: "Route Selector for ingress",
-				Help:     cmd.Flags().Lookup(defaultIngressRouteSelectorFlag).Usage,
+				Help:     cmd.Flags().Lookup(ingress.DefaultIngressRouteSelectorFlag).Usage,
 				Default:  args.defaultIngressRouteSelectors,
 				Validators: []interactive.Validator{
 					func(routeSelector interface{}) error {
@@ -2692,7 +2698,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		if cmd.Flags().Changed(defaultIngressExcludedNamespacesFlag) {
+		if cmd.Flags().Changed(ingress.DefaultIngressExcludedNamespacesFlag) {
 			if isHostedCP {
 				r.Reporter.Errorf("Updating excluded namespace is not supported for Hosted Control Plane clusters")
 				os.Exit(1)
@@ -2701,7 +2707,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else if interactive.Enabled() && !isHostedCP {
 			excludedNamespacesArg, err := interactive.GetString(interactive.Input{
 				Question: "Excluded namespaces for ingress",
-				Help:     cmd.Flags().Lookup(defaultIngressExcludedNamespacesFlag).Usage,
+				Help:     cmd.Flags().Lookup(ingress.DefaultIngressExcludedNamespacesFlag).Usage,
 				Default:  args.defaultIngressExcludedNamespaces,
 			})
 			if err != nil {
@@ -2712,7 +2718,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		sliceExcludedNamespaces = ingress.GetExcludedNamespaces(excludedNamespaces)
 
-		if cmd.Flags().Changed(defaultIngressWildcardPolicyFlag) {
+		if cmd.Flags().Changed(ingress.DefaultIngressWildcardPolicyFlag) {
 			if isHostedCP {
 				r.Reporter.Errorf("Updating Wildcard Policy is not supported for Hosted Control Plane clusters")
 				os.Exit(1)
@@ -2723,7 +2729,7 @@ func run(cmd *cobra.Command, _ []string) {
 				wildcardPolicyArg, err := interactive.GetOption(interactive.Input{
 					Question: "Wildcard Policy",
 					Options:  ingress.ValidWildcardPolicies,
-					Help:     cmd.Flags().Lookup(defaultIngressWildcardPolicyFlag).Usage,
+					Help:     cmd.Flags().Lookup(ingress.DefaultIngressWildcardPolicyFlag).Usage,
 					Default:  args.defaultIngressWildcardPolicy,
 				})
 				if err != nil {
@@ -2734,7 +2740,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		if cmd.Flags().Changed(defaultIngressNamespaceOwnershipPolicyFlag) {
+		if cmd.Flags().Changed(ingress.DefaultIngressNamespaceOwnershipPolicyFlag) {
 			if isHostedCP {
 				r.Reporter.Errorf("Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters")
 				os.Exit(1)
@@ -2745,7 +2751,7 @@ func run(cmd *cobra.Command, _ []string) {
 				namespaceOwnershipPolicyArg, err := interactive.GetOption(interactive.Input{
 					Question: "Namespace Ownership Policy",
 					Options:  ingress.ValidNamespaceOwnershipPolicies,
-					Help:     cmd.Flags().Lookup(defaultIngressNamespaceOwnershipPolicyFlag).Usage,
+					Help:     cmd.Flags().Lookup(ingress.DefaultIngressNamespaceOwnershipPolicyFlag).Usage,
 					Default:  args.defaultIngressNamespaceOwnershipPolicy,
 				})
 				if err != nil {
@@ -3338,17 +3344,17 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 			for k, v := range spec.DefaultIngress.RouteSelectors {
 				selectors = append(selectors, fmt.Sprintf("%s=%s", k, v))
 			}
-			command += fmt.Sprintf(" --%s %s", defaultIngressRouteSelectorFlag, strings.Join(selectors, ","))
+			command += fmt.Sprintf(" --%s %s", ingress.DefaultIngressRouteSelectorFlag, strings.Join(selectors, ","))
 		}
 		if len(spec.DefaultIngress.ExcludedNamespaces) != 0 {
-			command += fmt.Sprintf(" --%s %s", defaultIngressExcludedNamespacesFlag,
+			command += fmt.Sprintf(" --%s %s", ingress.DefaultIngressExcludedNamespacesFlag,
 				strings.Join(spec.DefaultIngress.ExcludedNamespaces, ","))
 		}
 		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.WildcardPolicy) {
-			command += fmt.Sprintf(" --%s %s", defaultIngressWildcardPolicyFlag, spec.DefaultIngress.WildcardPolicy)
+			command += fmt.Sprintf(" --%s %s", ingress.DefaultIngressWildcardPolicyFlag, spec.DefaultIngress.WildcardPolicy)
 		}
 		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
-			command += fmt.Sprintf(" --%s %s", defaultIngressNamespaceOwnershipPolicyFlag,
+			command += fmt.Sprintf(" --%s %s", ingress.DefaultIngressNamespaceOwnershipPolicyFlag,
 				spec.DefaultIngress.NamespaceOwnershipPolicy)
 		}
 	}
