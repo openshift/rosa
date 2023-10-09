@@ -205,7 +205,7 @@ func init() {
 		"Root disk size with a suffix like GiB or TiB",
 	)
 
-	flags.StringArrayVar(&args.securityGroupIds,
+	flags.StringSliceVar(&args.securityGroupIds,
 		securityGroupIdsFlag,
 		nil,
 		"Security Group IDs to be added to the machine pool",
