@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"github.com/openshift/rosa/pkg/interactive"
@@ -83,10 +84,10 @@ type ScaleDownConfig struct {
 	DelayAfterFailure    string
 }
 
-func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArgs {
+func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArgs {
 	args := &AutoscalerArgs{}
 
-	cmd.BoolVar(
+	cmd.Flags().BoolVar(
 		&args.BalanceSimilarNodeGroups,
 		fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag),
 		false,
@@ -94,28 +95,28 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 			"and aim to balance respective sizes of those node groups.",
 	)
 
-	cmd.BoolVar(
+	cmd.Flags().BoolVar(
 		&args.SkipNodesWithLocalStorage,
 		fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag),
 		false,
 		"If true cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPath.",
 	)
 
-	cmd.IntVar(
+	cmd.Flags().IntVar(
 		&args.LogVerbosity,
 		fmt.Sprintf("%s%s", prefix, logVerbosityFlag),
 		1,
 		"Autoscaler log level. Default is 1, 4 is a good option when trying to debug the autoscaler.",
 	)
 
-	cmd.IntVar(
+	cmd.Flags().IntVar(
 		&args.MaxPodGracePeriod,
 		fmt.Sprintf("%s%s", prefix, maxPodGracePeriodFlag),
 		600,
 		"Gives pods graceful termination time before scaling down, measured in seconds.",
 	)
 
-	cmd.IntVar(
+	cmd.Flags().IntVar(
 		&args.PodPriorityThreshold,
 		fmt.Sprintf("%s%s", prefix, podPriorityThresholdFlag),
 		-10,
@@ -123,14 +124,14 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 			"Expects an integer, can be negative.",
 	)
 
-	cmd.BoolVar(
+	cmd.Flags().BoolVar(
 		&args.IgnoreDaemonsetsUtilization,
 		fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag),
 		false,
 		"Should cluster-autoscaler ignore DaemonSet pods when calculating resource utilization for scaling down.",
 	)
 
-	cmd.StringVar(
+	cmd.Flags().StringVar(
 		&args.MaxNodeProvisionTime,
 		fmt.Sprintf("%s%s", prefix, maxNodeProvisionTimeFlag),
 		"",
@@ -138,7 +139,7 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 			"Expects string comprised of an integer and time unit (ns|us|µs|ms|s|m|h), examples: 20m, 1h.",
 	)
 
-	cmd.StringSliceVar(
+	cmd.Flags().StringSliceVar(
 		&args.BalancingIgnoredLabels,
 		fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag),
 		nil,
@@ -147,43 +148,53 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 
 	// Resource Limits
 
-	cmd.IntVar(
+	cmd.Flags().IntVar(
 		&args.ResourceLimits.MaxNodesTotal,
 		fmt.Sprintf("%s%s", prefix, maxNodesTotalFlag),
 		180,
 		"Total amount of nodes that can exist in the cluster, including non-scaled nodes.",
 	)
 
-	cmd.IntVar(
+	cmd.Flags().IntVar(
 		&args.ResourceLimits.Cores.Min,
 		fmt.Sprintf("%s%s", prefix, minCoresFlag),
 		0,
 		"Minimum limit for the amount of cores to deploy in the cluster.",
 	)
 
-	cmd.IntVar(
+	cmd.Flags().IntVar(
 		&args.ResourceLimits.Cores.Max,
 		fmt.Sprintf("%s%s", prefix, maxCoresFlag),
 		180*64,
 		"Maximum limit for the amount of cores to deploy in the cluster.",
 	)
 
-	cmd.IntVar(
+	cmd.MarkFlagsRequiredTogether(
+		fmt.Sprintf("%s%s", prefix, minCoresFlag),
+		fmt.Sprintf("%s%s", prefix, maxCoresFlag),
+	)
+
+	cmd.Flags().IntVar(
 		&args.ResourceLimits.Memory.Min,
 		fmt.Sprintf("%s%s", prefix, minMemoryFlag),
 		0,
 		"Minimum limit for the amount of memory, in GiB, in the cluster.",
 	)
 
-	cmd.IntVar(
+	cmd.Flags().IntVar(
 		&args.ResourceLimits.Memory.Max,
 		fmt.Sprintf("%s%s", prefix, maxMemoryFlag),
 		180*64*20,
 		"Maximum limit for the amount of memory, in GiB, in the cluster.",
 	)
 
+	cmd.MarkFlagsRequiredTogether(
+		fmt.Sprintf("%s%s", prefix, minMemoryFlag),
+		fmt.Sprintf("%s%s", prefix, maxMemoryFlag),
+	)
+
 	flag := fmt.Sprintf("%s%s", prefix, gpuLimitFlag)
-	cmd.StringArrayVar(
+	cmd.Flags().StringArrayVar(
 		&args.ResourceLimits.GPULimits,
 		flag,
 		[]string{},
@@ -197,14 +208,14 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 
 	// Scale down Configuration
 
-	cmd.BoolVar(
+	cmd.Flags().BoolVar(
 		&args.ScaleDown.Enabled,
 		fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag),
 		false,
 		"Should cluster-autoscaler be able to scale down the cluster.",
 	)
 
-	cmd.StringVar(
+	cmd.Flags().StringVar(
 		&args.ScaleDown.UnneededTime,
 		fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag),
 		"",
@@ -212,7 +223,7 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 			"while decreasing value will make nodes be deleted sooner.",
 	)
 
-	cmd.Float64Var(
+	cmd.Flags().Float64Var(
 		&args.ScaleDown.UtilizationThreshold,
 		fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag),
 		0.5,
@@ -220,21 +231,21 @@ func AddClusterAutoscalerFlags(cmd *pflag.FlagSet, prefix string) *AutoscalerArg
 			"below which a node can be considered for scale down. Value should be between 0 and 1.",
 	)
 
-	cmd.StringVar(
+	cmd.Flags().StringVar(
 		&args.ScaleDown.DelayAfterAdd,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag),
 		"",
 		"After a scale-up, consider scaling down only after this amount of time.",
 	)
 
-	cmd.StringVar(
+	cmd.Flags().StringVar(
 		&args.ScaleDown.DelayAfterDelete,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag),
 		"",
 		"After a scale-down, consider scaling down again only after this amount of time.",
 	)
 
-	cmd.StringVar(
+	cmd.Flags().StringVar(
 		&args.ScaleDown.DelayAfterFailure,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag),
 		"",
