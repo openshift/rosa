@@ -6,7 +6,6 @@ import (
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/helper"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -48,7 +47,7 @@ func listMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster)
 			ocmOutput.PrintStringSlice(machinePool.Subnets()),
 			ocmOutput.PrintMachinePoolSpot(machinePool),
 			ocmOutput.PrintMachinePoolDiskSize(machinePool),
-			helper.SliceToSortedString(machinePool.AWS().AdditionalSecurityGroupIds()),
+			ocmOutput.PrintStringSlice(machinePool.AWS().AdditionalSecurityGroupIds()),
 		)
 	}
 	writer.Flush()
