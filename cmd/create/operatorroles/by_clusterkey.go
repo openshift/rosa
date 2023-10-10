@@ -148,6 +148,9 @@ func createRoles(r *rosa.Runtime,
 	prefix string, permissionsBoundary string,
 	cluster *cmv1.Cluster, accountRoleVersion string, policies map[string]*cmv1.AWSSTSPolicy,
 	defaultVersion string, credRequests map[string]*cmv1.STSOperator, managedPolicies bool, hostedCPPolicies bool) error {
+	sharedVpcRoleArn := cluster.AWS().PrivateHostedZoneRoleARN()
+	isSharedVpc := sharedVpcRoleArn != ""
+
 	for credrequest, operator := range credRequests {
 		ver := cluster.Version()
 		if ver != nil && operator.MinVersion() != "" {
@@ -170,17 +173,28 @@ func createRoles(r *rosa.Runtime,
 			return err
 		}
 
-		var policyARN string
-		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, false)
+		var policyArn string
+		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
 		if managedPolicies {
-			policyARN, err = aws.GetManagedPolicyARN(policies, filename)
+			policyArn, err = aws.GetManagedPolicyARN(policies, filename)
 			if err != nil {
 				return err
 			}
 		} else {
-			policyARN = aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
+			policyArn = aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
 				operator.Name(), path)
 			policyDetails := aws.GetPolicyDetails(policies, filename)
+
+			if isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType {
+				err = validateIngressOperatorPolicyOverride(r, policyArn, sharedVpcRoleArn, prefix)
+				if err != nil {
+					return err
+				}
+
+				policyDetails = aws.InterpolatePolicyDocument(policyDetails, map[string]string{
+					"shared_vpc_role_arn": sharedVpcRoleArn,
+				})
+			}
 
 			operatorPolicyTags := map[string]string{
 				tags.OpenShiftVersion:  accountRoleVersion,
@@ -190,14 +204,14 @@ func createRoles(r *rosa.Runtime,
 				tags.OperatorName:      operator.Name(),
 			}
 
-			if args.forcePolicyCreation {
-				policyARN, err = r.AWSClient.ForceEnsurePolicy(policyARN, policyDetails,
+			if args.forcePolicyCreation || (isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType) {
+				policyArn, err = r.AWSClient.ForceEnsurePolicy(policyArn, policyDetails,
 					defaultVersion, operatorPolicyTags, path)
 				if err != nil {
 					return err
 				}
 			} else {
-				policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyDetails,
+				policyArn, err = r.AWSClient.EnsurePolicy(policyArn, policyDetails,
 					defaultVersion, operatorPolicyTags, path)
 				if err != nil {
 					return err
@@ -236,8 +250,8 @@ func createRoles(r *rosa.Runtime,
 			r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 		}
 
-		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
-		err = r.AWSClient.AttachRolePolicy(roleName, policyARN)
+		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyArn, roleName)
+		err = r.AWSClient.AttachRolePolicy(roleName, policyArn)
 		if err != nil {
 			return err
 		}
@@ -250,8 +264,11 @@ func buildCommands(r *rosa.Runtime, env string,
 	prefix string, permissionsBoundary string, defaultPolicyVersion string, cluster *cmv1.Cluster,
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
 	managedPolicies bool, hostedCPPolicies bool) (string, error) {
+	sharedVpcRoleArn := cluster.AWS().PrivateHostedZoneRoleARN()
+	isSharedVpc := sharedVpcRoleArn != ""
+
 	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-		true, policies, credRequests, managedPolicies, "")
+		true, policies, credRequests, managedPolicies, sharedVpcRoleArn)
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 		os.Exit(1)
@@ -280,30 +297,45 @@ func buildCommands(r *rosa.Runtime, env string,
 		var policyARN string
 		if managedPolicies {
 			policyARN, err = aws.GetManagedPolicyARN(policies, aws.GetOperatorPolicyKey(
-				credrequest, hostedCPPolicies, false))
+				credrequest, hostedCPPolicies, isSharedVpc))
 			if err != nil {
 				return "", err
 			}
 		} else {
 			policyARN = computePolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
 			name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
+			iamTags := map[string]string{
+				tags.OpenShiftVersion:  defaultPolicyVersion,
+				tags.RolePrefix:        prefix,
+				tags.OperatorNamespace: operator.Namespace(),
+				tags.OperatorName:      operator.Name(),
+				tags.RedHatManaged:     helper.True,
+			}
+			operatorPolicyKey := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
+			fileName := fmt.Sprintf("file://%s.json", operatorPolicyKey)
 			_, err = r.AWSClient.IsPolicyExists(policyARN)
 			if err != nil {
-				iamTags := map[string]string{
-					tags.OpenShiftVersion:  defaultPolicyVersion,
-					tags.RolePrefix:        prefix,
-					tags.OperatorNamespace: operator.Namespace(),
-					tags.OperatorName:      operator.Name(),
-					tags.RedHatManaged:     helper.True,
-				}
 				createPolicy := awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.CreatePolicy).
 					AddParam(awscb.PolicyName, name).
-					AddParam(awscb.PolicyDocument, fmt.Sprintf("file://openshift_%s_policy.json", credrequest)).
+					AddParam(awscb.PolicyDocument, fileName).
 					AddTags(iamTags).
 					AddParam(awscb.Path, path).
 					Build()
 				commands = append(commands, createPolicy)
+			} else if isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType {
+				err := validateIngressOperatorPolicyOverride(r, policyARN, sharedVpcRoleArn, prefix)
+				if err != nil {
+					return "", err
+				}
+
+				createPolicyVersion := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.CreatePolicyVersion).
+					AddParam(awscb.PolicyArn, policyARN).
+					AddParam(awscb.PolicyDocument, fileName).
+					AddParamNoValue(awscb.SetAsDefault).
+					Build()
+				commands = append(commands, createPolicyVersion)
 			}
 		}
 
