@@ -49,10 +49,8 @@ var _ = Describe("Describe upgrade", func() {
 		Schedule Type:                     
 		Next Run:                          %s
 		Upgrade State:                     scheduled
-
-                Schedule At:                       %s
-
-                Enable minor version upgrades:     true
+		Schedule At:                       %s
+        Enable minor version upgrades:     true
 
                 Version:                           4.12.19
 `, nowUTC.Format("2006-01-02 15:04 MST"), nowUTC.Format("2006-01-02 15:04 MST"))))

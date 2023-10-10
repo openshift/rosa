@@ -125,27 +125,59 @@ func describeHypershiftUpgrades(r *rosa.Runtime, clusterID string, nodePoolID st
 // formatHypershiftUpgrade is a generic printer for Hypershift Upgrades types
 func formatHypershiftUpgrade(upgrade ocm.HypershiftUpgrader) string {
 	builder := make([]string, 0)
-	builder = append(builder, fmt.Sprintf(`%19s%68s
+
+	// add conditions
+	scheduleFormat := ""
+	var scheduleContent []any
+	var versionContent []any
+	if upgrade.Schedule() != "" {
+		scheduleFormat = scheduleFormat + `
+		%-35s%s
+		%-35s%s
+		`
+		scheduleContent = []any{
+			"Schedule At:", upgrade.Schedule(),
+			"Enable minor version upgrades:", upgrade.EnableMinorVersionUpgrades(),
+		}
+	}
+
+	if upgrade.Version() != "" {
+		scheduleFormat = scheduleFormat + `
+		%-35s%s
+		`
+		versionContent = []any{
+			"Version:", upgrade.Version(),
+		}
+	}
+
+	builderFormat := `%19s%68s
 		%-35s%s
 		%-35s%s
 		%-35s%s
 		%-35s%s
-`,
+` + scheduleFormat
+	builderContent := []any{
 		"ID:", upgrade.ID(),
 		"Cluster ID:", upgrade.ClusterID(),
 		"Schedule Type:", upgrade.ScheduleType(),
 		"Next Run:", upgrade.NextRun().Format("2006-01-02 15:04 MST"),
-		"Upgrade State:", upgrade.State().Value()))
-	if upgrade.Schedule() != "" {
-		builder = append(builder, fmt.Sprintf(`                %-35s%s
-`, "Schedule At:", upgrade.Schedule()))
-		builder = append(builder, fmt.Sprintf(`                %-35s%t
-`, "Enable minor version upgrades:", upgrade.EnableMinorVersionUpgrades()))
+		"Upgrade State:", upgrade.State().Value(),
+		scheduleContent,
+		versionContent,
 	}
-	if upgrade.Version() != "" {
-		builder = append(builder, fmt.Sprintf(`                %-35s%s
-`, "Version:", upgrade.Version()))
-	}
+
+	builder = append(builder, fmt.Sprintf(builderFormat,
+		builderContent...))
+	// 	if upgrade.Schedule() != "" {
+	// 		builder = append(builder, fmt.Sprintf(`                %-35s%s
+	// `, "Schedule At:", upgrade.Schedule()))
+	// 		builder = append(builder, fmt.Sprintf(`                %-35s%t
+	// `, "Enable minor version upgrades:", upgrade.EnableMinorVersionUpgrades()))
+	// 	}
+	// 	if upgrade.Version() != "" {
+	// 		builder = append(builder, fmt.Sprintf(`                %-35s%s
+	// `, "Version:", upgrade.Version()))
+	// 	}
 	return strings.Join(builder, "\n")
 }
 
