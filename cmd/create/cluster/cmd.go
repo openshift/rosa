@@ -762,7 +762,8 @@ func init() {
 		&args.additionalComputeSecurityGroupIds,
 		additionalComputeSecurityGroupIdsFlag,
 		nil,
-		"The additional security groups for default worker machine pool.",
+		"The additional Security Group IDs to be added to the default worker machine pool. "+
+			"Format should be a comma-separated list.",
 	)
 
 	aws.AddModeFlag(Cmd)
