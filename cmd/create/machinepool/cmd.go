@@ -208,7 +208,8 @@ func init() {
 	flags.StringSliceVar(&args.securityGroupIds,
 		securityGroupIdsFlag,
 		nil,
-		"Security Group IDs to be added to the machine pool",
+		"The additional Security Group IDs to be added to the machine pool. "+
+			"Format should be a comma-separated list.",
 	)
 
 	interactive.AddFlag(flags)
