@@ -99,7 +99,7 @@ type Client interface {
 	GetLocalAWSAccessKeys() (*AccessKey, error)
 	GetCreator() (*Creator, error)
 	ValidateSCP(*string, map[string]*cmv1.AWSSTSPolicy) (bool, error)
-	GetSubnetIDs() ([]*ec2.Subnet, error)
+	ListSubnets(subnetIds ...string) ([]*ec2.Subnet, error)
 	GetSubnetAvailabilityZone(subnetID string) (string, error)
 	GetVPCSubnets(subnetID string) ([]*ec2.Subnet, error)
 	GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error)
@@ -431,10 +431,22 @@ func (c *awsClient) GetRegion() string {
 	return aws.StringValue(c.awsSession.Config.Region)
 }
 
-func (c *awsClient) GetSubnetIDs() ([]*ec2.Subnet, error) {
-	return c.getSubnetIDs(&ec2.DescribeSubnetsInput{})
-}
+func (c *awsClient) ListSubnets(subnetIds ...string) ([]*ec2.Subnet, error) {
 
+	if len(subnetIds) == 0 {
+		return c.getSubnetIDs(&ec2.DescribeSubnetsInput{})
+	}
+
+	var ids []*string
+
+	for i := range subnetIds {
+		ids = append(ids, &subnetIds[i])
+	}
+
+	return c.getSubnetIDs(&ec2.DescribeSubnetsInput{
+		SubnetIds: ids,
+	})
+}
 func (c *awsClient) GetSubnetAvailabilityZone(subnetID string) (string, error) {
 	res, err := c.ec2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{SubnetIds: []*string{aws.String(subnetID)}})
 	if err != nil {
