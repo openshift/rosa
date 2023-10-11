@@ -209,6 +209,7 @@ var args struct {
 }
 
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
+var userSpecifiedAutoscalerValues []*pflag.Flag
 
 var Cmd = &cobra.Command{
 	Use:   "cluster",
@@ -516,10 +517,10 @@ func init() {
 	)
 
 	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(Cmd, clusterAutoscalerFlagsPrefix)
-
+	// iterates through all autoscaling flags and stores them in slice to track user input
 	flags.VisitAll(func(f *pflag.Flag) {
 		if strings.HasPrefix(f.Name, clusterAutoscalerFlagsPrefix) {
-			Cmd.MarkFlagsRequiredTogether("enable-autoscaling", f.Name)
+			userSpecifiedAutoscalerValues = append(userSpecifiedAutoscalerValues, f)
 		}
 	})
 
@@ -783,6 +784,14 @@ func run(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
+	}
+
+	for _, val := range userSpecifiedAutoscalerValues {
+		if val.Changed && !args.autoscalingEnabled {
+			r.Reporter.Errorf("Using autoscaling flag '%s', requires flag '--enable-autoscaling'. "+
+				"Please try again with flag", val.Name)
+			os.Exit(1)
+		}
 	}
 
 	// validate flags for cluster admin
