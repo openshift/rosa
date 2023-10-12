@@ -28,6 +28,7 @@ import (
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	getRole "github.com/openshift-online/ocm-common/pkg/aws/validations"
 )
 
 func (c *awsClient) DeleteUserRole(roleName string) error {
@@ -77,9 +78,7 @@ func (c *awsClient) ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string)
 }
 
 func (c *awsClient) HasPermissionsBoundary(roleName string) (bool, error) {
-	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	output, err := getRole.GetRole(c.iamClient, roleName)
 	if err != nil {
 		return false, err
 	}
@@ -88,9 +87,7 @@ func (c *awsClient) HasPermissionsBoundary(roleName string) (bool, error) {
 }
 
 func (c *awsClient) deletePermissionsBoundary(roleName string) error {
-	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	output, err := getRole.GetRole(c.iamClient, roleName)
 	if err != nil {
 		return err
 	}

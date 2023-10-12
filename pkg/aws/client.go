@@ -60,6 +60,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
+	getRole "github.com/openshift-online/ocm-common/pkg/aws/validations"
 )
 
 // Name of the AWS user that will be used to create all the resources of the cluster:
@@ -873,9 +874,7 @@ func (c *awsClient) DeleteAccessKeys(username string) error {
 // CheckRoleExists checks to see if an IAM role with the same name
 // already exists
 func (c *awsClient) CheckRoleExists(roleName string) (bool, string, error) {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	role, err := getRole.GetRole(c.iamClient, roleName)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -909,9 +908,7 @@ func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
 	m := strings.LastIndex(resource, "/")
 	roleName := resource[m+1:]
 
-	roleOutput, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	roleOutput, err := getRole.GetRole(c.iamClient, roleName)
 	if err != nil {
 		return nil, err
 	}

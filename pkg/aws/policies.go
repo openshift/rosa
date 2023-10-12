@@ -31,6 +31,8 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+
+	getRole "github.com/openshift-online/ocm-common/pkg/aws/validations"
 )
 
 var DefaultPrefix = "ManagedOpenShift"
@@ -143,9 +145,7 @@ var roleTypeMap = map[string]string{
 
 func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
 	version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
-	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(name),
-	})
+	output, err := getRole.GetRole(c.iamClient, name)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -219,9 +219,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 }
 
 func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
-	_, err = c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(name),
-	})
+	_, err = getRole.GetRole(c.iamClient, name)
 	if err == nil {
 		// If we found an existing role with this name we want to error
 		return fmt.Errorf("A role named '%s' already exists. "+
@@ -1418,7 +1416,7 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error) {
 	role := Role{}
 	// This is done to ensure user did not provide invalid role before we check for installer role
-	accountRoleResponse, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
+	accountRoleResponse, err := getRole.GetRole(c.iamClient, roleName)
 	if err != nil {
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
@@ -1477,7 +1475,7 @@ func (c *awsClient) checkInstallerRoleExists(roleName string) (*iam.Role, error)
 		}
 	}
 	installerRole := fmt.Sprintf("%s%s-Role", rolePrefix, "Installer")
-	installerRoleResponse, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(installerRole)})
+	installerRoleResponse, err := getRole.GetRole(c.iamClient, installerRole)
 	//We try our best to determine the environment based on the trust policy in the installer
 	//If the installer role is deleted we can assume that there is no cluster using the role
 	if err != nil {
@@ -1616,9 +1614,7 @@ func (c *awsClient) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl st
 func (c *awsClient) GetRoleARNPath(prefix string) (string, error) {
 	for _, accountRole := range AccountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
-		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
-			RoleName: aws.String(roleName),
-		})
+		role, err := getRole.GetRole(c.iamClient, roleName)
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
@@ -1633,9 +1629,7 @@ func (c *awsClient) GetRoleARNPath(prefix string) (string, error) {
 func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, version string) (bool, error) {
 	for _, accountRole := range AccountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
-		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
-			RoleName: aws.String(roleName),
-		})
+		role, err := getRole.GetRole(c.iamClient, roleName)
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
@@ -1711,9 +1705,7 @@ func (c *awsClient) UpdateTag(roleName string, defaultPolicyVersion string) erro
 }
 
 func (c *awsClient) AddRoleTag(roleName string, key string, value string) error {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	role, err := getRole.GetRole(c.iamClient, roleName)
 	if err != nil {
 		return err
 	}
@@ -1762,9 +1754,7 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 		if err != nil {
 			return true, err
 		}
-		_, err = c.iamClient.GetRole(&iam.GetRoleInput{
-			RoleName: aws.String(roleName),
-		})
+		_, err = getRole.GetRole(c.iamClient, roleName)
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
@@ -1854,9 +1844,7 @@ func (c *awsClient) isRolePoliciesCompatibleForUpgrade(policyARN string, version
 }
 
 func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	role, err := getRole.GetRole(c.iamClient, roleName)
 	if err != nil {
 		return "", err
 	}
@@ -1865,9 +1853,7 @@ func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
 }
 
 func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	role, err := getRole.GetRole(c.iamClient, roleName)
 	if err != nil {
 		return false, err
 	}
@@ -1882,9 +1868,7 @@ func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
 }
 
 func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, error) {
-	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(GetRoleName(prefix, roleType)),
-	})
+	output, err := getRole.GetRole(c.iamClient, GetRoleName(prefix, roleType))
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
