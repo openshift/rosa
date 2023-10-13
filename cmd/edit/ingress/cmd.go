@@ -207,24 +207,28 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	hasLegacyIngressSupport, err := r.OCMClient.HasLegacyIngressSupport(cluster)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
-		os.Exit(1)
-	}
+	hasLegacyIngressSupport := false
+	if !ocm.IsHyperShiftCluster(cluster) {
+		var err error
+		hasLegacyIngressSupport, err = r.OCMClient.HasLegacyIngressSupport(cluster)
+		if err != nil {
+			r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
+			os.Exit(1)
+		}
 
-	if hasLegacyIngressSupport && IsIngressV2SetViaCLI(cmd.Flags()) {
-		r.Reporter.Errorf("New ingress attributes %s can't be supplied for legacy supported clusters."+
-			" For more information on how to be supported please check: %s",
-			utils.SliceToSortedString(exclusivelyIngressV2Flags), ingressV2DocLink)
-		os.Exit(1)
-	}
+		if hasLegacyIngressSupport && IsIngressV2SetViaCLI(cmd.Flags()) {
+			r.Reporter.Errorf("New ingress attributes %s can't be supplied for legacy supported clusters."+
+				" For more information on how to be supported please check: %s",
+				utils.SliceToSortedString(exclusivelyIngressV2Flags), ingressV2DocLink)
+			os.Exit(1)
+		}
 
-	if cluster.AWS().PrivateLink() && !ocm.IsHyperShiftCluster(cluster) && hasLegacyIngressSupport {
-		r.Reporter.Errorf(
-			"Classic cluster '%s' is PrivateLink on legacy ingress support and does not allow updating ingresses",
-			clusterKey)
-		os.Exit(1)
+		if cluster.AWS().PrivateLink() && hasLegacyIngressSupport {
+			r.Reporter.Errorf(
+				"Classic cluster '%s' is PrivateLink on legacy ingress support and does not allow updating ingresses",
+				clusterKey)
+			os.Exit(1)
+		}
 	}
 
 	var private *bool
