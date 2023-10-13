@@ -207,10 +207,14 @@ func run(cmd *cobra.Command, argv []string) {
 		interactive.Enable()
 	}
 
-	hasLegacyIngressSupport, err := r.OCMClient.HasLegacyIngressSupport(cluster)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
-		os.Exit(1)
+	hasLegacyIngressSupport := true
+	if !ocm.IsHyperShiftCluster(cluster) {
+		var err error
+		hasLegacyIngressSupport, err = r.OCMClient.HasLegacyIngressSupport(cluster)
+		if err != nil {
+			r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	if hasLegacyIngressSupport && IsIngressV2SetViaCLI(cmd.Flags()) {
