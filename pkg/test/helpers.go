@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -139,6 +140,39 @@ func FormatNodePoolUpgradePolicyList(upgrades []*v1.NodePoolUpgradePolicy) strin
 		"total": %d,
 		"items": %s
 	}`, len(upgrades), len(upgrades), outputJson.String())
+}
+
+// FormatResource wraps the SDK marshalling and returns a string starting from an object
+func FormatResource(resource interface{}) string {
+	var outputJson bytes.Buffer
+	var err error
+	switch reflect.TypeOf(resource).String() {
+	case "*v1.Version":
+		if res, ok := resource.(*v1.Version); ok {
+			err = v1.MarshalVersion(res, &outputJson)
+		}
+	case "*v1.NodePool":
+		if res, ok := resource.(*v1.NodePool); ok {
+			err = v1.MarshalNodePool(res, &outputJson)
+		}
+	case "*v1.MachinePool":
+		if res, ok := resource.(*v1.MachinePool); ok {
+			err = v1.MarshalMachinePool(res, &outputJson)
+		}
+	case "*v1.ControlPlaneUpgradePolicy":
+		if res, ok := resource.(*v1.ControlPlaneUpgradePolicy); ok {
+			err = v1.MarshalControlPlaneUpgradePolicy(res, &outputJson)
+		}
+	default:
+		{
+			return "NOTIMPLEMENTED"
+		}
+	}
+	if err != nil {
+		return err.Error()
+	}
+
+	return outputJson.String()
 }
 
 // TestingRuntime is a wrapper for the structure used for testing

@@ -1,7 +1,6 @@
 package machinepool
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"time"
@@ -260,12 +259,7 @@ func formatNodePool() string {
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
 		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").Build()
 	Expect(err).To(BeNil())
-	var npJson bytes.Buffer
-
-	err = cmv1.MarshalNodePool(np, &npJson)
-	Expect(err).To(BeNil())
-
-	return npJson.String()
+	return test.FormatResource(np)
 }
 
 // formatMachinePool simulates the output of APIs for a fake machine pool
@@ -274,12 +268,7 @@ func formatMachinePool() string {
 	mp, err := cmv1.NewMachinePool().ID(nodePoolName).AWS(awsMachinePoolPool).InstanceType("m5.xlarge").
 		AvailabilityZones("us-east-1a", "us-east-1b", "us-east-1c").Build()
 	Expect(err).To(BeNil())
-	var mpJson bytes.Buffer
-
-	err = cmv1.MarshalMachinePool(mp, &mpJson)
-	Expect(err).To(BeNil())
-
-	return mpJson.String()
+	return test.FormatResource(mp)
 }
 
 func buildNodePoolUpgradePolicy() *cmv1.NodePoolUpgradePolicy {

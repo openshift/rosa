@@ -91,180 +91,22 @@ var _ = Describe("List upgrade", func() {
 		Expect(err).To(BeNil())
 		var classicCluster = test.FormatClusterList([]*cmv1.Cluster{mockClassicCluster})
 
-		// nolint:lll
-		const versionListResponse = `{
-					  "kind": "VersionList",
-					  "page": 1,
-					  "size": 3,
-					  "total": 3,
-					  "items": [
-						{
-						  "kind": "Version",
-						  "id": "openshift-v4.12.26",
-						  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.26",
-						  "raw_id": "4.12.26",
-						  "enabled": true,
-						  "default": true,
-						  "channel_group": "stable",
-						  "rosa_enabled": true,
-						  "hosted_control_plane_enabled": true,
-						  "end_of_life_timestamp": "2024-05-17T00:00:00Z",
-						  "ami_overrides": [
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-2",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-2"
-							  },
-							  "ami": "ami-0e677f92eb4180cc0"
-							},
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-1",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-1"
-							  },
-							  "ami": "ami-00354720d36d019f9"
-							}
-						  ],
-						  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:8d72f29227418d2ae12ee52e25cce9edef7cd645bdaea02410a89fe8a0ec6a47"
-						},
-						{
-						  "kind": "Version",
-						  "id": "openshift-v4.12.25",
-						  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.25",
-						  "raw_id": "4.12.25",
-						  "enabled": true,
-						  "default": false,
-						  "channel_group": "stable",
-						  "available_upgrades": [
-							"4.12.26"
-						  ],
-						  "rosa_enabled": true,
-						  "hosted_control_plane_enabled": true,
-						  "end_of_life_timestamp": "2024-05-17T00:00:00Z",
-						  "ami_overrides": [
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-1",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-1"
-							  },
-							  "ami": "ami-00354720d36d019f9"
-							},
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-2",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-2"
-							  },
-							  "ami": "ami-0e677f92eb4180cc0"
-							}
-						  ],
-						  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:5a4fb052cda1d14d1e306ce87e6b0ded84edddaa76f1cf401bcded99cef2ad84"
-						},
-						{
-						  "kind": "Version",
-						  "id": "openshift-v4.12.24",
-						  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.24",
-						  "raw_id": "4.12.24",
-						  "enabled": true,
-						  "default": false,
-						  "channel_group": "stable",
-						  "available_upgrades": [
-							"4.12.25",
-							"4.12.26"
-						  ],
-						  "rosa_enabled": true,
-						  "hosted_control_plane_enabled": true,
-						  "end_of_life_timestamp": "2024-05-17T00:00:00Z",
-						  "ami_overrides": [
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-2",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-2"
-							  },
-							  "ami": "ami-0e677f92eb4180cc0"
-							},
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-1",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-1"
-							  },
-							  "ami": "ami-00354720d36d019f9"
-							}
-						  ],
-						  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:b0b11eedf91175459b5d7aefcf3936d0cabf00f01ced756677483f5f26227328"
-						}
-					  ]
-					}`
+		versionNoUpgrades := cmv1.NewVersion().ID("openshift-v4.12.24").RawID("4.12.24").ReleaseImage("1").
+			HREF("/api/clusters_mgmt/v1/versions/openshift-v4.12.24").Enabled(true).ChannelGroup("stable").
+			ROSAEnabled(true).HostedControlPlaneEnabled(true)
+		version41224 := cmv1.NewVersion().ID("openshift-v4.12.24").RawID("4.12.24").ReleaseImage("1").
+			HREF("/api/clusters_mgmt/v1/versions/openshift-v4.12.24").Enabled(true).ChannelGroup("stable").
+			ROSAEnabled(true).HostedControlPlaneEnabled(true).AvailableUpgrades("4.12.25", "4.12.26")
+		nodePool, err := cmv1.NewNodePool().ID("workers").Replicas(2).AutoRepair(true).Version(version41224).Build()
+		Expect(err).To(BeNil())
+		nodePoolNoUpgrades, err := cmv1.NewNodePool().ID("workers").Replicas(2).AutoRepair(true).
+			Version(versionNoUpgrades).Build()
+		Expect(err).To(BeNil())
+		emptyUpgradePolicies := make([]*cmv1.NodePoolUpgradePolicy, 0)
 
-		// nolint:lll
-		const nodePoolResponse = `{
-						  "kind": "NodePool",
-						  "href": "/api/clusters_mgmt/v1/clusters/243nmgjr5v2q9rn5sf3456euj2lcq5tn/node_pools/workers",
-						  "id": "workers",
-						  "replicas": 2,
-						  "auto_repair": true,
-						  "aws_node_pool": {
-							"instance_type": "m5.xlarge",
-							"instance_profile": "rosa-service-managed-integration-243nmgjr5v2q9rn5sf3456euj2lcq5tn-ad-int1-worker",
-							"tags": {
-							  "api.openshift.com/environment": "integration",
-							  "api.openshift.com/id": "243nmgjr5v2q9rn5sf3456euj2lcq5tn",
-							  "api.openshift.com/legal-entity-id": "1jIHnIbrnLH9kQD57W0BuPm78f1",
-							  "api.openshift.com/name": "ad-int1",
-							  "api.openshift.com/nodepool-hypershift": "ad-int1-workers",
-							  "api.openshift.com/nodepool-ocm": "workers",
-							  "red-hat-clustertype": "rosa",
-							  "red-hat-managed": "true"
-							}
-						  },
-						  "availability_zone": "us-west-2a",
-						  "subnet": "subnet-0e3a4046c1c2f1078",
-						  "status": {
-							"current_replicas": 0,
-							"message": "WaitingForAvailableMachines: NodeProvisioning"
-						  },
-						  "version": {
-							"kind": "VersionLink",
-							"id": "openshift-v4.12.%s",
-							"href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.%s"
-						  },
-						  "tuning_configs": []
-						}`
+		upgradePolicies := make([]*cmv1.NodePoolUpgradePolicy, 0)
+		upgradePolicies = append(upgradePolicies, buildNodePoolUpgradePolicy())
+
 		BeforeEach(func() {
 			testRuntime.InitRuntime()
 		})
@@ -288,23 +130,10 @@ var _ = Describe("List upgrade", func() {
 			args.nodePool = nodePoolName
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			// A node pool
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
-				fmt.Sprintf(nodePoolResponse, "26", "26")))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePoolNoUpgrades)))
 			// No existing policy upgrade
-			testRuntime.ApiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-						"kind": "NodePoolUpgradePolicyList",
-						"page": 1,
-						"size": 0,
-						"total": 0,
-						"items": []
-				}`,
-				),
-			)
-			// available versions
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatNodePoolUpgradePolicyList(emptyUpgradePolicies)))
 			stdout, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 			Expect(stdout).To(Equal(noUpgradeOutput))
 			Expect(err).To(BeNil())
@@ -315,23 +144,10 @@ var _ = Describe("List upgrade", func() {
 			args.nodePool = nodePoolName
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			// A node pool
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
-				fmt.Sprintf(nodePoolResponse, "24", "24")))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			// No existing policy upgrade
-			testRuntime.ApiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-						"kind": "NodePoolUpgradePolicyList",
-						"page": 1,
-						"size": 0,
-						"total": 0,
-						"items": []
-				}`,
-				),
-			)
-			// available versions
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatNodePoolUpgradePolicyList(emptyUpgradePolicies)))
 			stdout, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 			Expect(stdout).To(Equal(upgradeAvailableOutput))
 			Expect(err).To(BeNil())
@@ -342,45 +158,23 @@ var _ = Describe("List upgrade", func() {
 			args.nodePool = nodePoolName
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			// A node pool
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
-				fmt.Sprintf(nodePoolResponse, "24", "24")))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			// An existing policy upgrade
-			// nolint:lll
-			testRuntime.ApiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-						"kind": "NodePoolUpgradePolicyList",
-						"page": 1,
-						"size": 1,
-						"total": 1,
-						"items": [
-							{
-							"kind": "NodePoolUpgradePolicy",
-							"id": "a33c8cae-013f-11ee-a3b2-acde48001122",
-							"href": "/api/clusters_mgmt/v1/clusters/243nmgjr5v2q9rn5sf3456euj2lcq5tn/node_pools/upgrade_policies/a33c8cae-013f-11ee-a3b2-acde48001122",
-							"schedule_type": "manual",
-							"upgrade_type": "NodePool",
-							"version": "4.12.25",
-							"next_run": "2023-06-02T12:30:00Z",
-							"cluster_id": "243nmgjr5v2q9rn5sf3456euj2lcq5tn",
-							"enable_minor_version_upgrades": false,
-							"creation_timestamp": "2023-06-02T14:18:52.828589+02:00",
-							"last_update_timestamp": "2023-06-02T14:18:52.828589+02:00",
-							"state": {
-							"value": "pending",
-							"description": "Upgrade policy defined, pending scheduling."
-							}
-						}
-					]
-				}`,
-				),
-			)
-			// available versions
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatNodePoolUpgradePolicyList(upgradePolicies)))
 			stdout, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 			Expect(stdout).To(Equal(ongoingUpgradeOutput))
 			Expect(err).To(BeNil())
 		})
 	})
 })
+
+func buildNodePoolUpgradePolicy() *cmv1.NodePoolUpgradePolicy {
+	t, err := time.Parse(time.RFC3339, "2023-06-02T12:30:00Z")
+	Expect(err).To(BeNil())
+	state := cmv1.NewUpgradePolicyState().Value(cmv1.UpgradePolicyStateValuePending)
+	policy, err := cmv1.NewNodePoolUpgradePolicy().ScheduleType(cmv1.ScheduleTypeManual).
+		UpgradeType(cmv1.UpgradeTypeNodePool).Version("4.12.25").State(state).NextRun(t).Build()
+	Expect(err).To(BeNil())
+	return policy
+}

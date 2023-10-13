@@ -66,10 +66,14 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 	isHostedCp := args.hostedCp
+	var product string
+	if isHostedCp {
+		product = ocm.HcpProduct
+	}
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Fetching versions")
-	versions, err := r.OCMClient.GetVersions(args.channelGroup, false)
+	versions, err := r.OCMClient.GetVersionsWithProduct(product, args.channelGroup, false)
 	if err != nil {
 		r.Reporter.Errorf("Failed to fetch versions: %v", err)
 		os.Exit(1)
