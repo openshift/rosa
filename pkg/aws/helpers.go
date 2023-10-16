@@ -539,7 +539,7 @@ func GetPrefixFromInstallerAccountRole(cluster *cmv1.Cluster) (string, error) {
 	return GetPrefixFromAccountRole(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
-// Role names can be truncated if they are over 64 chars, so we need to make sure we aren't missing a truncated suffix
+// Role names can be truncated if they are over pkg.MaxByteSize chars, so we need to make sure we aren't missing a truncated suffix
 func TrimRoleSuffix(orig, sufix string) string {
 	for i := len(sufix); i >= 0; i-- {
 		if strings.HasSuffix(orig, sufix[:i]) {
