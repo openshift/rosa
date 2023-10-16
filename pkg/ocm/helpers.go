@@ -43,6 +43,8 @@ import (
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
 	"github.com/openshift/rosa/pkg/helper"
+
+	common "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 )
 
 const (
@@ -841,7 +843,7 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 			return errors.Errorf("Computed Operator Role '%s' does not match role ARN found in AWS '%s', "+
 				"please check if the correct parameters have been supplied.", operatorIAMRole.RoleARN, roleARN)
 		}
-		err = validateIssuerUrlMatchesAssumePolicyDocument(
+		err = common.ValidateIssuerUrlMatchesAssumePolicyDocument(
 			roleARN, parsedUrl, *roleObject.AssumeRolePolicyDocument)
 		if err != nil {
 			return err
@@ -896,23 +898,6 @@ func ValidateHttpTokensValue(val interface{}) error {
 	}
 
 	return fmt.Errorf("can only validate strings, got %v", val)
-}
-
-func validateIssuerUrlMatchesAssumePolicyDocument(
-	roleArn string, parsedUrl *url.URL, assumePolicyDocument string) error {
-	issuerUrl := parsedUrl.Host
-	if parsedUrl.Path != "" {
-		issuerUrl += parsedUrl.Path
-	}
-	decodedAssumePolicyDocument, err := url.QueryUnescape(assumePolicyDocument)
-	if err != nil {
-		return err
-	}
-	if !strings.Contains(decodedAssumePolicyDocument, issuerUrl) {
-		return errors.Errorf("Operator role '%s' does not have trusted relationship to '%s' issuer URL",
-			roleArn, issuerUrl)
-	}
-	return nil
 }
 
 func ParseDiskSizeToGigibyte(size string) (int, error) {

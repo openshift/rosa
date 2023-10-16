@@ -31,10 +31,6 @@ const ClusterID = prefix + "cluster_id"
 // ClusterID is the name of the tag that will contain the identifier of the cluster.
 const ClusterRegion = prefix + "region"
 
-// OpenShiftVersion is the name of the tag that will contain
-// the version of OpenShift that the resources are used for
-const OpenShiftVersion = prefix + "openshift_version"
-
 // RoleType is the name of the tag that will contain the purpose of the role (installer, support, etc.)
 const RoleType = prefix + "role_type"
 
@@ -49,8 +45,6 @@ const AdminRole = prefix + "admin_role"
 
 // RedHatManaged tags the role as red_hat_managed
 const RedHatManaged = "red-hat-managed"
-
-const ManagedPolicies = prefix + "managed_policies"
 
 const HypershiftPolicies = prefix + "hcp_policies"
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
@@ -197,11 +198,11 @@ func createRoles(r *rosa.Runtime,
 			}
 
 			operatorPolicyTags := map[string]string{
-				tags.OpenShiftVersion:  accountRoleVersion,
-				tags.RolePrefix:        prefix,
-				tags.RedHatManaged:     helper.True,
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
+				common.OpenShiftVersion: accountRoleVersion,
+				tags.RolePrefix:         prefix,
+				tags.RedHatManaged:      helper.True,
+				tags.OperatorNamespace:  operator.Namespace(),
+				tags.OperatorName:       operator.Name(),
 			}
 
 			if args.forcePolicyCreation || (isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType) {
@@ -235,7 +236,7 @@ func createRoles(r *rosa.Runtime,
 			tagsList[tags.ClusterID] = cluster.ID()
 		}
 		if managedPolicies {
-			tagsList[tags.ManagedPolicies] = helper.True
+			tagsList[common.ManagedPolicies] = helper.True
 		}
 		if hostedCPPolicies {
 			tagsList[tags.HypershiftPolicies] = helper.True
@@ -305,11 +306,11 @@ func buildCommands(r *rosa.Runtime, env string,
 			policyARN = computePolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
 			name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := map[string]string{
-				tags.OpenShiftVersion:  defaultPolicyVersion,
-				tags.RolePrefix:        prefix,
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
-				tags.RedHatManaged:     helper.True,
+				common.OpenShiftVersion: defaultPolicyVersion,
+				tags.RolePrefix:         prefix,
+				tags.OperatorNamespace:  operator.Namespace(),
+				tags.OperatorName:       operator.Name(),
+				tags.RedHatManaged:      helper.True,
 			}
 			operatorPolicyKey := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
 			fileName := fmt.Sprintf("file://%s.json", operatorPolicyKey)
@@ -361,7 +362,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			iamTags[tags.ClusterID] = cluster.ID()
 		}
 		if managedPolicies {
-			iamTags[tags.ManagedPolicies] = helper.True
+			iamTags[common.ManagedPolicies] = helper.True
 		}
 		if hostedCPPolicies {
 			iamTags[tags.HypershiftPolicies] = helper.True

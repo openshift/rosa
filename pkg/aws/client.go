@@ -127,7 +127,6 @@ type Client interface {
 	ListOperatorRoles(version string, clusterID string) (map[string][]OperatorRoleDetail, error)
 	ListOidcProviders(targetClusterId string) ([]OidcProviderOutput, error)
 	GetRoleByARN(roleARN string) (*iam.Role, error)
-	HasCompatibleVersionTags(iamTags []*iam.Tag, version string) (bool, error)
 	DeleteOperatorRole(roles string, managedPolicies bool) error
 	GetOperatorRolesFromAccountByClusterID(clusterID string, credRequests map[string]*cmv1.STSOperator) ([]string, error)
 	GetOperatorRolesFromAccountByPrefix(prefix string, credRequest map[string]*cmv1.STSOperator) ([]string, error)

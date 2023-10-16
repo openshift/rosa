@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
@@ -207,7 +208,7 @@ var _ = Describe("Client", func() {
 		var testArn = "arn:aws:iam::765374464689:role/test-Installer-Role"
 		var testName = "test-Installer-Role"
 		var tags = []*iam.Tag{
-			{Key: awsSdk.String(rosaTags.ManagedPolicies), Value: awsSdk.String(rosaTags.True)},
+			{Key: awsSdk.String(common.ManagedPolicies), Value: awsSdk.String(rosaTags.True)},
 			{Key: awsSdk.String(rosaTags.RoleType), Value: awsSdk.String(aws.InstallerAccountRole)},
 		}
 

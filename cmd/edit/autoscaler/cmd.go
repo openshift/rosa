@@ -23,6 +23,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift-online/ocm-common/pkg"
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -126,7 +127,7 @@ func run(cmd *cobra.Command, _ []string) {
 		autoscalerArgs.ScaleDown.DelayAfterDelete = autoscaler.ScaleDown().DelayAfterDelete()
 		autoscalerArgs.ScaleDown.DelayAfterFailure = autoscaler.ScaleDown().DelayAfterFailure()
 
-		utilizationThreshold, err := strconv.ParseFloat(autoscaler.ScaleDown().UtilizationThreshold(), 64)
+		utilizationThreshold, err := strconv.ParseFloat(autoscaler.ScaleDown().UtilizationThreshold(), pkg.MaxByteSize)
 		if err != nil {
 			r.Reporter.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)

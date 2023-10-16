@@ -8,6 +8,8 @@ import (
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/rosa"
+
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 )
 
 type creator interface {
@@ -73,7 +75,7 @@ func (mp *managedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRol
 	r.Reporter.Infof("Creating classic account roles using '%s'", r.Creator.ARN)
 
 	for file, role := range aws.AccountRoles {
-		accRoleName := aws.GetRoleName(input.prefix, role.Name)
+		accRoleName := common.GetRoleName(input.prefix, role.Name)
 		assumeRolePolicy := getAssumeRolePolicy(file, input)
 
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
@@ -117,7 +119,7 @@ func attachManagedPolicies(r *rosa.Runtime, input *accountRolesCreationInput, ro
 func (mp *managedPoliciesCreator) printCommands(r *rosa.Runtime, input *accountRolesCreationInput) error {
 	commands := []string{}
 	for file, role := range aws.AccountRoles {
-		accRoleName := aws.GetRoleName(input.prefix, role.Name)
+		accRoleName := common.GetRoleName(input.prefix, role.Name)
 		iamTags := mp.getRoleTags(file, input)
 
 		createRole := buildCreateRoleCommand(accRoleName, file, iamTags, input)
@@ -143,7 +145,7 @@ func (mp *managedPoliciesCreator) printCommands(r *rosa.Runtime, input *accountR
 
 func (mp *managedPoliciesCreator) getRoleTags(roleType string, input *accountRolesCreationInput) map[string]string {
 	tagsList := getBaseRoleTags(roleType, input)
-	tagsList[tags.ManagedPolicies] = tags.True
+	tagsList[common.ManagedPolicies] = tags.True
 
 	return tagsList
 }
@@ -154,7 +156,7 @@ func (up *unmanagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountR
 	r.Reporter.Infof("Creating classic account roles using '%s'", r.Creator.ARN)
 
 	for file, role := range aws.AccountRoles {
-		accRoleName := aws.GetRoleName(input.prefix, role.Name)
+		accRoleName := common.GetRoleName(input.prefix, role.Name)
 		assumeRolePolicy := getAssumeRolePolicy(file, input)
 		tagsList := up.getRoleTags(file, input)
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
@@ -171,7 +173,7 @@ func (up *unmanagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountR
 func (up *unmanagedPoliciesCreator) printCommands(r *rosa.Runtime, input *accountRolesCreationInput) error {
 	commands := []string{}
 	for file, role := range aws.AccountRoles {
-		accRoleName := aws.GetRoleName(input.prefix, role.Name)
+		accRoleName := common.GetRoleName(input.prefix, role.Name)
 		iamTags := up.getRoleTags(file, input)
 
 		createRole := buildCreateRoleCommand(accRoleName, file, iamTags, input)
@@ -277,7 +279,7 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 	r.Reporter.Infof("Creating hosted CP account roles using '%s'", r.Creator.ARN)
 
 	for file, role := range aws.HCPAccountRoles {
-		accRoleName := aws.GetRoleName(input.prefix, role.Name)
+		accRoleName := common.GetRoleName(input.prefix, role.Name)
 		assumeRolePolicy := getAssumeRolePolicy(file, input)
 
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
@@ -308,7 +310,7 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *accountRolesCreationInput) error {
 	commands := []string{}
 	for file, role := range aws.HCPAccountRoles {
-		accRoleName := aws.GetRoleName(input.prefix, role.Name)
+		accRoleName := common.GetRoleName(input.prefix, role.Name)
 		iamTags := hcp.getRoleTags(file, input)
 
 		createRole := buildCreateRoleCommand(accRoleName, file, iamTags, input)
@@ -331,7 +333,7 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 
 func (hcp *hcpManagedPoliciesCreator) getRoleTags(roleType string, input *accountRolesCreationInput) map[string]string {
 	tagsList := getBaseRoleTags(roleType, input)
-	tagsList[tags.ManagedPolicies] = tags.True
+	tagsList[common.ManagedPolicies] = tags.True
 	tagsList[tags.HypershiftPolicies] = tags.True
 
 	return tagsList
@@ -339,10 +341,10 @@ func (hcp *hcpManagedPoliciesCreator) getRoleTags(roleType string, input *accoun
 
 func getBaseRoleTags(roleType string, input *accountRolesCreationInput) map[string]string {
 	return map[string]string{
-		tags.OpenShiftVersion: input.defaultPolicyVersion,
-		tags.RolePrefix:       input.prefix,
-		tags.RoleType:         roleType,
-		tags.RedHatManaged:    tags.True,
+		common.OpenShiftVersion: input.defaultPolicyVersion,
+		tags.RolePrefix:         input.prefix,
+		tags.RoleType:           roleType,
+		tags.RedHatManaged:      tags.True,
 	}
 }
 
