@@ -21,7 +21,6 @@ import (
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -334,11 +333,9 @@ func checkNodePoolExistingScheduledUpgrade(r *rosa.Runtime, cluster *cmv1.Cluste
 
 func ComputeNodePoolVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster,
 	nodePool *cmv1.NodePool, version string) (string, error) {
+	var err error
 	channelGroup := cluster.Version().ChannelGroup()
-	filteredVersionList, err := GetAvailableVersion(r, cluster, nodePool)
-	if err != nil {
-		return "", err
-	}
+	filteredVersionList := ocm.GetNodePoolAvailableUpgrades(nodePool)
 	// No updates available
 	if len(filteredVersionList) == 0 {
 		return "", nil
@@ -367,22 +364,4 @@ func ComputeNodePoolVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.C
 		return "", fmt.Errorf("Expected a valid machine pool version: %s", err)
 	}
 	return version, nil
-}
-
-func GetAvailableVersion(r *rosa.Runtime, cluster *cmv1.Cluster, nodePool *cmv1.NodePool) ([]string, error) {
-	clusterVersion := cluster.Version().RawID()
-	nodePoolVersion := ocm.GetRawVersionId(nodePool.Version().ID())
-	// This is called in HyperShift, but we don't want to exclude version which are HCP disabled for node pools
-	// so we pass the relative parameter as false
-	versionList, err := versions.GetVersionList(r, cluster.Version().ChannelGroup(), true, false, false)
-	if err != nil {
-		return nil, err
-	}
-
-	// Filter the available list of versions for a hosted machine pool
-	filteredVersionList := versions.GetFilteredVersionListForUpdate(versionList, nodePoolVersion, clusterVersion)
-	if err != nil {
-		return nil, err
-	}
-	return filteredVersionList, nil
 }

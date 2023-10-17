@@ -17,7 +17,7 @@ const (
 	validScheduleDate   = "2023-12-25"
 	cronSchedule        = "* * * * *"
 	invalidVersionError = `Expected a valid machine pool version: A valid version number must be specified
-Valid versions: 4.12.26 4.12.25 4.12.24`
+Valid versions: 4.12.26 4.12.25`
 )
 
 var _ = Describe("Upgrade machine pool", func() {
@@ -42,180 +42,11 @@ var _ = Describe("Upgrade machine pool", func() {
 		Expect(err).To(BeNil())
 		hypershiftClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
 
-		// nolint:lll
-		const versionListResponse = `{
-					  "kind": "VersionList",
-					  "page": 1,
-					  "size": 3,
-					  "total": 3,
-					  "items": [
-						{
-						  "kind": "Version",
-						  "id": "openshift-v4.12.26",
-						  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.26",
-						  "raw_id": "4.12.26",
-						  "enabled": true,
-						  "default": true,
-						  "channel_group": "stable",
-						  "rosa_enabled": true,
-						  "hosted_control_plane_enabled": true,
-						  "end_of_life_timestamp": "2024-05-17T00:00:00Z",
-						  "ami_overrides": [
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-2",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-2"
-							  },
-							  "ami": "ami-0e677f92eb4180cc0"
-							},
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-1",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-1"
-							  },
-							  "ami": "ami-00354720d36d019f9"
-							}
-						  ],
-						  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:8d72f29227418d2ae12ee52e25cce9edef7cd645bdaea02410a89fe8a0ec6a47"
-						},
-						{
-						  "kind": "Version",
-						  "id": "openshift-v4.12.25",
-						  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.25",
-						  "raw_id": "4.12.25",
-						  "enabled": true,
-						  "default": false,
-						  "channel_group": "stable",
-						  "available_upgrades": [
-							"4.12.26"
-						  ],
-						  "rosa_enabled": true,
-						  "hosted_control_plane_enabled": true,
-						  "end_of_life_timestamp": "2024-05-17T00:00:00Z",
-						  "ami_overrides": [
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-1",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-1"
-							  },
-							  "ami": "ami-00354720d36d019f9"
-							},
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-2",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-2"
-							  },
-							  "ami": "ami-0e677f92eb4180cc0"
-							}
-						  ],
-						  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:5a4fb052cda1d14d1e306ce87e6b0ded84edddaa76f1cf401bcded99cef2ad84"
-						},
-						{
-						  "kind": "Version",
-						  "id": "openshift-v4.12.24",
-						  "href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.24",
-						  "raw_id": "4.12.24",
-						  "enabled": true,
-						  "default": false,
-						  "channel_group": "stable",
-						  "available_upgrades": [
-							"4.12.25",
-							"4.12.26"
-						  ],
-						  "rosa_enabled": true,
-						  "hosted_control_plane_enabled": true,
-						  "end_of_life_timestamp": "2024-05-17T00:00:00Z",
-						  "ami_overrides": [
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-2",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-2"
-							  },
-							  "ami": "ami-0e677f92eb4180cc0"
-							},
-							{
-							  "product": {
-								"kind": "ProductLink",
-								"id": "rosa",
-								"href": "/api/clusters_mgmt/v1/products/rosa"
-							  },
-							  "region": {
-								"kind": "CloudRegionLink",
-								"id": "us-east-1",
-								"href": "/api/clusters_mgmt/v1/cloud_providers/aws/regions/us-east-1"
-							  },
-							  "ami": "ami-00354720d36d019f9"
-							}
-						  ],
-						  "release_image": "quay.io/openshift-release-dev/ocp-release@sha256:b0b11eedf91175459b5d7aefcf3936d0cabf00f01ced756677483f5f26227328"
-						}
-					  ]
-					}`
-
-		// nolint:lll
-		const nodePoolResponse = `{
-						  "kind": "NodePool",
-						  "href": "/api/clusters_mgmt/v1/clusters/243nmgjr5v2q9rn5sf3456euj2lcq5tn/node_pools/workers",
-						  "id": "workers",
-						  "replicas": 2,
-						  "auto_repair": true,
-						  "aws_node_pool": {
-							"instance_type": "m5.xlarge",
-							"instance_profile": "rosa-service-managed-integration-243nmgjr5v2q9rn5sf3456euj2lcq5tn-ad-int1-worker",
-							"tags": {
-							  "api.openshift.com/environment": "integration",
-							  "api.openshift.com/id": "243nmgjr5v2q9rn5sf3456euj2lcq5tn",
-							  "api.openshift.com/legal-entity-id": "1jIHnIbrnLH9kQD57W0BuPm78f1",
-							  "api.openshift.com/name": "ad-int1",
-							  "api.openshift.com/nodepool-hypershift": "ad-int1-workers",
-							  "api.openshift.com/nodepool-ocm": "workers",
-							  "red-hat-clustertype": "rosa",
-							  "red-hat-managed": "true"
-							}
-						  },
-						  "availability_zone": "us-west-2a",
-						  "subnet": "subnet-0e3a4046c1c2f1078",
-						  "status": {
-							"current_replicas": 0,
-							"message": "WaitingForAvailableMachines: NodeProvisioning"
-						  },
-						  "version": {
-							"kind": "VersionLink",
-							"id": "openshift-v4.12.%s",
-							"href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.%s"
-						  },
-						  "tuning_configs": []
-						}`
+		version41224 := cmv1.NewVersion().ID("openshift-v4.12.24").RawID("4.12.24").ReleaseImage("1").
+			HREF("/api/clusters_mgmt/v1/versions/openshift-v4.12.24").Enabled(true).ChannelGroup("stable").
+			ROSAEnabled(true).HostedControlPlaneEnabled(true).AvailableUpgrades("4.12.25", "4.12.26")
+		nodePool, err := cmv1.NewNodePool().ID("workers").Replicas(2).AutoRepair(true).Version(version41224).Build()
+		Expect(err).To(BeNil())
 
 		upgradePolicies := make([]*cmv1.NodePoolUpgradePolicy, 0)
 		upgradePolicies = append(upgradePolicies, buildNodePoolUpgradePolicy())
@@ -277,7 +108,7 @@ var _ = Describe("Upgrade machine pool", func() {
 		})
 		It("Cluster is ready and there is a scheduled upgraded", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
 			_, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
@@ -285,9 +116,9 @@ var _ = Describe("Upgrade machine pool", func() {
 			Expect(stderr).To(ContainSubstring(
 				"WARN: There is already a scheduled upgrade to version 4.12.25 on 2023-08-07 15:22 UTC"))
 		})
-		It("Cluster is ready and there is a scheduled upgraded", func() {
+		It("Succeeds if cluster is ready and there is a scheduled upgraded", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
 			_, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
@@ -295,14 +126,13 @@ var _ = Describe("Upgrade machine pool", func() {
 			Expect(stderr).To(ContainSubstring(
 				"WARN: There is already a scheduled upgrade to version 4.12.25 on 2023-08-07 15:22 UTC"))
 		})
-		It("Cluster is ready and there is no scheduled upgraded but schedule date is invalid -> fail", func() {
+		It("Fails if cluster is ready and there is no scheduled upgraded but schedule date is invalid", func() {
 			args.scheduleTime = scheduleTime
 			args.scheduleDate = invalidScheduleDate
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
 			Expect(err).ToNot(BeNil())
@@ -311,17 +141,16 @@ var _ = Describe("Upgrade machine pool", func() {
 			Expect(stdout).To(BeEmpty())
 			Expect(stderr).To(BeEmpty())
 		})
-		It("Cluster is ready and there is no scheduled upgraded and an invalid version is specified -> fail",
+		It("Fails if cluster is ready and there is no scheduled upgraded but a version not "+
+			"in available upgrades is specified",
 			func() {
 				args.scheduleTime = scheduleTime
 				args.scheduleDate = validScheduleDate
 				Cmd.Flags().Set("version", "4.13.26")
 				Cmd.Flags().Set("interactive", "false")
 				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 					Cmd, &[]string{nodePoolName})
 				Expect(err).ToNot(BeNil())
@@ -329,15 +158,14 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(stderr).To(BeEmpty())
 				Expect(stdout).To(BeEmpty())
 			})
-		It("Cluster is ready and there is no scheduled upgraded and a version is specified -> success", func() {
+		It("Succeeds if cluster is ready and there is no scheduled upgraded and a version is specified", func() {
 			args.scheduleTime = scheduleTime
 			args.scheduleDate = validScheduleDate
 			Cmd.Flags().Set("version", "4.12.26")
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
@@ -346,14 +174,13 @@ var _ = Describe("Upgrade machine pool", func() {
 			Expect(stdout).To(ContainSubstring(
 				"Upgrade successfully scheduled for the machine pool 'nodepool85' on cluster 'cluster1"))
 		})
-		It("Cluster is ready and there is no scheduled upgraded -> success", func() {
+		It("Succeeds if cluster is ready and there is no scheduled upgraded", func() {
 			args.scheduleTime = scheduleTime
 			args.scheduleDate = validScheduleDate
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
@@ -367,9 +194,8 @@ var _ = Describe("Upgrade machine pool", func() {
 			args.scheduleDate = validScheduleDate
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusBadRequest, "an error"))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
@@ -386,9 +212,8 @@ var _ = Describe("Upgrade machine pool", func() {
 			args.schedule = "* a"
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
@@ -403,10 +228,9 @@ var _ = Describe("Upgrade machine pool", func() {
 			args.schedule = cronSchedule
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, versionListResponse))
-			//testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
 			Expect(err).To(BeNil())

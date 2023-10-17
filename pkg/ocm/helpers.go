@@ -63,6 +63,8 @@ const (
 	USERRoleLabel = "sts_user_role"
 
 	maxClusterNameLength = 15
+
+	HcpProduct = "hcp"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is

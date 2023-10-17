@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/go-version"
 	ver "github.com/hashicorp/go-version"
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -14,9 +15,15 @@ const (
 	MinorVersionsSupported = 2
 )
 
-func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool,
+func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool, filterHostedCP bool,
 	defaultFirst bool) (versionList []string, err error) {
-	vs, err := r.OCMClient.GetVersions(channelGroup, defaultFirst)
+	var vs []*v1.Version
+	var product string
+	if isHostedCP {
+		product = ocm.HcpProduct
+	}
+	// Product can be empty. In this case, no filter will be applied
+	vs, err = r.OCMClient.GetVersionsWithProduct(product, channelGroup, defaultFirst)
 	if err != nil {
 		err = fmt.Errorf("Failed to retrieve versions: %s", err)
 		return
@@ -26,7 +33,7 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
 			continue
 		}
-		if isHostedCP {
+		if filterHostedCP {
 			valid, err := ocm.HasHostedCPSupport(v)
 			if err != nil {
 				return versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
@@ -46,15 +53,7 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 	return
 }
 
-func GetFilteredVersionListForCreation(versionList []string, minVersion string, maxVersion string) []string {
-	return getFilteredVersionList(versionList, minVersion, maxVersion, false)
-}
-
-func GetFilteredVersionListForUpdate(versionList []string, minVersion string, maxVersion string) []string {
-	return getFilteredVersionList(versionList, minVersion, maxVersion, true)
-}
-
-func getFilteredVersionList(versionList []string, minVersion string, maxVersion string, excludeCurrent bool) []string {
+func GetFilteredVersionList(versionList []string, minVersion string, maxVersion string) []string {
 	var filteredVersionList []string
 
 	// Parse the versions for comparison
@@ -71,10 +70,6 @@ func getFilteredVersionList(versionList []string, minVersion string, maxVersion 
 			continue
 		}
 		if ver.GreaterThanOrEqual(min) && ver.LessThanOrEqual(max) {
-			// For upgrades, we don't want to show the current version. For creation, it should be shown
-			if excludeCurrent && ver.Equal(min) {
-				continue
-			}
 			filteredVersionList = append(filteredVersionList, version)
 		}
 	}

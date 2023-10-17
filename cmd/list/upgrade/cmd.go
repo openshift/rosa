@@ -24,7 +24,6 @@ import (
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/cmd/upgrade/machinepool"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/spf13/cobra"
 
@@ -104,16 +103,17 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 		}
 
 		// Get available node pool upgrades
-		availableUpgrades, err = machinepool.GetAvailableVersion(r, cluster, nodePool)
-		if err != nil {
-			return err
-		}
+		availableUpgrades = ocm.GetNodePoolAvailableUpgrades(nodePool)
 	} else {
 		// Control plane or cluster updates
 		r.Reporter.Debugf("Loading available upgrades for cluster '%s'", clusterKey)
-		availableUpgrades, err = r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
-		if err != nil {
-			return fmt.Errorf("Failed to get available upgrades for cluster '%s': %v", clusterKey, err)
+		if isHypershift {
+			availableUpgrades = ocm.GetAvailableUpgradesByCluster(cluster)
+		} else {
+			availableUpgrades, err = r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
+			if err != nil {
+				return fmt.Errorf("Failed to get available upgrades for cluster '%s': %v", clusterKey, err)
+			}
 		}
 
 		if len(availableUpgrades) == 0 {

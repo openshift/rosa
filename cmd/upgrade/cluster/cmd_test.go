@@ -33,14 +33,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 	version4130 := cmv1.NewVersion().ID("openshift-v4.13.0").RawID("4.13.0").ReleaseImage("1").
 		HREF("/api/clusters_mgmt/v1/versions/openshift-v4.13.0").Enabled(true).ChannelGroup("stable").
 		ROSAEnabled(true).HostedControlPlaneEnabled(true)
-	version4130WithUpdate, err := version4130.AvailableUpgrades("4.13.1").Build()
-	Expect(err).To(BeNil())
-	version4130WithoutUpdate, err := version4130.AvailableUpgrades().Build()
-	Expect(err).To(BeNil())
-	version4131, err := cmv1.NewVersion().ID("openshift-v4.13.1").RawID("4.13.1").ReleaseImage("1").
-		HREF("/api/clusters_mgmt/v1/versions/openshift-v4.13.1").Enabled(true).ChannelGroup("stable").
-		ROSAEnabled(true).HostedControlPlaneEnabled(true).AvailableUpgrades("4.13.2").Build()
-	Expect(err).To(BeNil())
 
 	mockClusterError, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
 		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
@@ -56,9 +48,23 @@ var _ = Describe("Upgrade", Ordered, func() {
 		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 		c.State(cmv1.ClusterStateReady)
 		c.Hypershift(cmv1.NewHypershift().Enabled(true))
+		c.Version(version4130)
 	})
 	Expect(err).To(BeNil())
+	// hypershiftClusterReady has no available upgrades
 	var hypershiftClusterReady = test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
+
+	version4130WithUpgrades := version4130.AvailableUpgrades("4.13.1")
+	mockClusterReadyWithUpgrades, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
+		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+		c.State(cmv1.ClusterStateReady)
+		c.Hypershift(cmv1.NewHypershift().Enabled(true))
+		c.Version(version4130WithUpgrades)
+	})
+	Expect(err).To(BeNil())
+	// hypershiftClusterReadyWithUpdates has one available upgrade
+	var hypershiftClusterReadyWithUpdates = test.FormatClusterList([]*cmv1.Cluster{mockClusterReadyWithUpgrades})
 
 	mockClassicCluster, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
 		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
@@ -144,18 +150,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("Cluster 'cluster1' is not yet ready"))
 	})
-	It("Cluster is ready but no upgrade type specified", func() {
-		args.controlPlane = true
-		args.schedule = cronSchedule
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-		// No existing policy upgrade
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
-			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
-		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		// Missing the upgrade type
-		Expect(err.Error()).To(ContainSubstring("Failed to find available upgrades"))
-	})
 	It("Cluster is ready but existing upgrade scheduled", func() {
 		args.controlPlane = true
 		args.schedule = cronSchedule
@@ -213,12 +207,12 @@ var _ = Describe("Upgrade", Ordered, func() {
 		// Not a valid date format
 		args.scheduleDate = dateSchedule
 		args.scheduleTime = timeSchedule
+		// The version we want to update to
+		args.version = "4.13.4"
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// No existing policy upgrade
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4130WithoutUpdate)))
-
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 		Expect(err).To(BeNil())
 		Expect(stdout).To(BeEmpty())
@@ -229,11 +223,11 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.schedule = "20 5 * * *"
 		args.scheduleDate = ""
 		args.scheduleTime = ""
+		args.version = ""
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// No existing policy upgrade
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4130WithoutUpdate)))
 		// POST -
 		// /api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8/control_plane/upgrade_policies?dryRun=true
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
@@ -257,12 +251,10 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.scheduleTime = timeSchedule
 		// The version we want to update to
 		args.version = "4.13.4"
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReadyWithUpdates))
 		// No existing policy upgrade
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4130WithUpdate)))
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4131)))
 
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
@@ -277,25 +269,20 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.scheduleTime = timeSchedule
 		// The version we want to update to
 		args.version = "4.13.1"
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReadyWithUpdates))
 		// No existing policy upgrade
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4130WithUpdate)))
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, formatVersion(version4131)))
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
-		testRuntime.ApiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusCreated, `{
-					  "kind": "ControlPlaneUpgradePolicy",
-					  "enable_minor_version_upgrades": false,
-					  "schedule": "35 12 * * *",
-					  "schedule_type": "automatic",
-					  "upgrade_type": "ControlPlane"
-					}`))
+
+		cpUpgradePolicy, err := cmv1.NewControlPlaneUpgradePolicy().UpgradeType(cmv1.UpgradeTypeControlPlane).
+			ScheduleType(cmv1.ScheduleTypeAutomatic).Schedule("30 12 * * *").
+			EnableMinorVersionUpgrades(false).Build()
+		Expect(err).To(BeNil())
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, test.FormatResource(cpUpgradePolicy)))
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, clusterNotFound))
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, emptyClusterList))
-		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
+		err = runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("There is no cluster with identifier or name"))
 	})
@@ -314,12 +301,4 @@ func formatControlPlaneUpgradePolicyList(upgradePolicies []*cmv1.ControlPlaneUpg
 		"total": %d,
 		"items": %s
 	}`, len(upgradePolicies), len(upgradePolicies), policiesJson.String())
-}
-
-func formatVersion(version *cmv1.Version) string {
-	var versionJson bytes.Buffer
-
-	cmv1.MarshalVersion(version, &versionJson)
-
-	return versionJson.String()
 }

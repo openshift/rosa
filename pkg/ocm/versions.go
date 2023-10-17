@@ -62,6 +62,11 @@ func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error
 }
 
 func (c *Client) GetVersions(channelGroup string, defaultFirst bool) (versions []*cmv1.Version, err error) {
+	return c.GetVersionsWithProduct("", channelGroup, defaultFirst)
+}
+
+func (c *Client) GetVersionsWithProduct(product string, channelGroup string,
+	defaultFirst bool) (versions []*cmv1.Version, err error) {
 	collection := c.ocm.ClustersMgmt().V1().Versions()
 	page := 1
 	size := 100
@@ -72,12 +77,15 @@ func (c *Client) GetVersions(channelGroup string, defaultFirst bool) (versions [
 	}
 	for {
 		var response *cmv1.VersionsListResponse
-		response, err = collection.List().
+		request := collection.List().
 			Search(filter).
 			Order(order).
 			Page(page).
-			Size(size).
-			Send()
+			Size(size)
+		if product != "" {
+			request.Parameter("product", product)
+		}
+		response, err = request.Send()
 		if err != nil {
 			return nil, handleErr(response.Error(), err)
 		}
@@ -202,6 +210,20 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 	}
 
 	return availableUpgrades, nil
+}
+
+func GetAvailableUpgradesByCluster(cluster *cmv1.Cluster) []string {
+	if cluster == nil {
+		return []string{}
+	}
+	return sortVersionsDesc(cluster.Version().AvailableUpgrades())
+}
+
+func GetNodePoolAvailableUpgrades(nodePool *cmv1.NodePool) []string {
+	if nodePool == nil {
+		return []string{}
+	}
+	return sortVersionsDesc(nodePool.Version().AvailableUpgrades())
 }
 
 func CreateVersionID(version string, channelGroup string) string {
@@ -438,6 +460,7 @@ func (c *Client) ValidateVersion(version string, versionList []string, channelGr
 			Search(filter).
 			Page(1).
 			Size(1).
+			Parameter("product", HcpProduct).
 			Send()
 		if err != nil {
 			return "", handleErr(response.Error(), err)
@@ -455,4 +478,17 @@ func (c *Client) ValidateVersion(version string, versionList []string, channelGr
 	}
 
 	return CreateVersionID(version, channelGroup), nil
+}
+
+// sortVersionsDesc sorts list in descending order
+func sortVersionsDesc(versions []string) []string {
+	sort.Slice(versions, func(i, j int) bool {
+		a, erra := ver.NewVersion(versions[i])
+		b, errb := ver.NewVersion(versions[j])
+		if erra != nil || errb != nil {
+			return false
+		}
+		return a.GreaterThan(b)
+	})
+	return versions
 }

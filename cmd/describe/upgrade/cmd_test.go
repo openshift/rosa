@@ -63,75 +63,23 @@ var _ = Describe("Describe upgrade", func() {
 		var clusterID = "cluster1"
 		var nodePoolID = "nodepool85"
 
-		const nodePoolResponse = `{
-						  "kind": "NodePool",
-						  "href": "/api/clusters_mgmt/v1/clusters/243nmgjr5v2q9rn5sf3456euj2lcq5tn/node_pools/workers",
-						  "id": "workers",
-						  "replicas": 2,
-						  "auto_repair": true,
-						  "aws_node_pool": {
-							"instance_type": "m5.xlarge",
-							"instance_profile": "rosa-service-managed-integration-243nmgjr5v2q9rn5sf3456euj2lcq5tn-ad-int1-worker",
-							"tags": {
-							  "api.openshift.com/environment": "integration",
-							  "api.openshift.com/id": "243nmgjr5v2q9rn5sf3456euj2lcq5tn",
-							  "api.openshift.com/legal-entity-id": "1jIHnIbrnLH9kQD57W0BuPm78f1",
-							  "api.openshift.com/name": "ad-int1",
-							  "api.openshift.com/nodepool-hypershift": "ad-int1-workers",
-							  "api.openshift.com/nodepool-ocm": "workers",
-							  "red-hat-clustertype": "rosa",
-							  "red-hat-managed": "true"
-							}
-						  },
-						  "availability_zone": "us-west-2a",
-						  "subnet": "subnet-0e3a4046c1c2f1078",
-						  "status": {
-							"current_replicas": 0,
-							"message": "WaitingForAvailableMachines: NodeProvisioning"
-						  },
-						  "version": {
-							"kind": "VersionLink",
-							"id": "openshift-v4.12.%s",
-							"href": "/api/clusters_mgmt/v1/versions/openshift-v4.12.%s"
-						  },
-						  "tuning_configs": []
-						}`
+		version41224 := cmv1.NewVersion().ID("openshift-v4.12.24").RawID("4.12.24").ReleaseImage("1").
+			HREF("/api/clusters_mgmt/v1/versions/openshift-v4.12.24").Enabled(true).ChannelGroup("stable").
+			ROSAEnabled(true).HostedControlPlaneEnabled(true).AvailableUpgrades("4.12.25", "4.12.26")
+		nodePool, err := cmv1.NewNodePool().ID("workers").Replicas(2).AutoRepair(true).Version(version41224).Build()
+		Expect(err).To(BeNil())
 
-		// nolint:lll
-		const nodePoolUpgradePolicy = `{
-  "kind": "NodePoolUpgradePolicyList",
-  "page": 1,
-  "size": 1,
-  "total": 1,
-  "items": [
-    {
-      "kind": "NodePoolUpgradePolicy",
-      "id": "e2800d05-3534-11ee-b9bc-0a580a811709",
-      "href": "/api/clusters_mgmt/v1/clusters/25f96obptkqc5mh9vdc779jiqb3sihnn/node_pools/workers/upgrade_policies/e2800d05-3534-11ee-b9bc-0a580a811709",
-      "schedule_type": "manual",
-      "upgrade_type": "NodePool",
-      "version": "4.12.25",
-      "next_run": "2023-08-07T15:22:00Z",
-      "cluster_id": "25f96obptkqc5mh9vdc779jiqb3sihnn",
-      "node_pool_id": "workers",
-      "enable_minor_version_upgrades": true,
-      "creation_timestamp": "2023-08-07T15:12:54.967835Z",
-      "last_update_timestamp": "2023-08-07T15:12:54.967835Z",
-      "state": {
-        "value": "scheduled",
-        "description": "Upgrade scheduled."
-      }
-    }
-  ]
-}`
+		upgradePolicies := make([]*cmv1.NodePoolUpgradePolicy, 0)
+		upgradePolicies = append(upgradePolicies, buildNodePoolUpgradePolicy())
 
 		BeforeEach(func() {
 			testRuntime.InitRuntime()
 		})
 		It("Upgrade policy found, no error", func() {
 			args.nodePool = nodePoolID
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatNodePoolUpgradePolicyList(upgradePolicies)))
 			err := describeHypershiftUpgrades(testRuntime.RosaRuntime, clusterID, nodePoolID)
 			Expect(err).To(BeNil())
 		})
@@ -143,3 +91,13 @@ var _ = Describe("Describe upgrade", func() {
 		})
 	})
 })
+
+func buildNodePoolUpgradePolicy() *cmv1.NodePoolUpgradePolicy {
+	t, err := time.Parse(time.RFC3339, "2023-06-02T12:30:00Z")
+	Expect(err).To(BeNil())
+	state := cmv1.NewUpgradePolicyState().Value(cmv1.UpgradePolicyStateValuePending)
+	policy, err := cmv1.NewNodePoolUpgradePolicy().ScheduleType(cmv1.ScheduleTypeManual).
+		UpgradeType(cmv1.UpgradeTypeNodePool).Version("4.12.25").State(state).NextRun(t).Build()
+	Expect(err).To(BeNil())
+	return policy
+}
