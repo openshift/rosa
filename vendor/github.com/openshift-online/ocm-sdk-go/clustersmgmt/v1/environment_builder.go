@@ -28,6 +28,7 @@ import (
 // Description of an environment
 type EnvironmentBuilder struct {
 	bitmap_                   uint32
+	backplaneURL              string
 	lastLimitedSupportCheck   time.Time
 	lastUpgradeAvailableCheck time.Time
 	name                      string
@@ -43,24 +44,31 @@ func (b *EnvironmentBuilder) Empty() bool {
 	return b == nil || b.bitmap_ == 0
 }
 
+// BackplaneURL sets the value of the 'backplane_URL' attribute to the given value.
+func (b *EnvironmentBuilder) BackplaneURL(value string) *EnvironmentBuilder {
+	b.backplaneURL = value
+	b.bitmap_ |= 1
+	return b
+}
+
 // LastLimitedSupportCheck sets the value of the 'last_limited_support_check' attribute to the given value.
 func (b *EnvironmentBuilder) LastLimitedSupportCheck(value time.Time) *EnvironmentBuilder {
 	b.lastLimitedSupportCheck = value
-	b.bitmap_ |= 1
+	b.bitmap_ |= 2
 	return b
 }
 
 // LastUpgradeAvailableCheck sets the value of the 'last_upgrade_available_check' attribute to the given value.
 func (b *EnvironmentBuilder) LastUpgradeAvailableCheck(value time.Time) *EnvironmentBuilder {
 	b.lastUpgradeAvailableCheck = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
 // Name sets the value of the 'name' attribute to the given value.
 func (b *EnvironmentBuilder) Name(value string) *EnvironmentBuilder {
 	b.name = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -70,6 +78,7 @@ func (b *EnvironmentBuilder) Copy(object *Environment) *EnvironmentBuilder {
 		return b
 	}
 	b.bitmap_ = object.bitmap_
+	b.backplaneURL = object.backplaneURL
 	b.lastLimitedSupportCheck = object.lastLimitedSupportCheck
 	b.lastUpgradeAvailableCheck = object.lastUpgradeAvailableCheck
 	b.name = object.name
@@ -80,6 +89,7 @@ func (b *EnvironmentBuilder) Copy(object *Environment) *EnvironmentBuilder {
 func (b *EnvironmentBuilder) Build() (object *Environment, err error) {
 	object = new(Environment)
 	object.bitmap_ = b.bitmap_
+	object.backplaneURL = b.backplaneURL
 	object.lastLimitedSupportCheck = b.lastLimitedSupportCheck
 	object.lastUpgradeAvailableCheck = b.lastUpgradeAvailableCheck
 	object.name = b.name

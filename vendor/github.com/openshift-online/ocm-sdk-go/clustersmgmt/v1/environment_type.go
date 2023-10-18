@@ -28,6 +28,7 @@ import (
 // Description of an environment
 type Environment struct {
 	bitmap_                   uint32
+	backplaneURL              string
 	lastLimitedSupportCheck   time.Time
 	lastUpgradeAvailableCheck time.Time
 	name                      string
@@ -38,12 +39,35 @@ func (o *Environment) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
+// BackplaneURL returns the value of the 'backplane_URL' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// the backplane url for the environment
+func (o *Environment) BackplaneURL() string {
+	if o != nil && o.bitmap_&1 != 0 {
+		return o.backplaneURL
+	}
+	return ""
+}
+
+// GetBackplaneURL returns the value of the 'backplane_URL' attribute and
+// a flag indicating if the attribute has a value.
+//
+// the backplane url for the environment
+func (o *Environment) GetBackplaneURL() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&1 != 0
+	if ok {
+		value = o.backplaneURL
+	}
+	return
+}
+
 // LastLimitedSupportCheck returns the value of the 'last_limited_support_check' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // last time that the worker checked for limited support clusters
 func (o *Environment) LastLimitedSupportCheck() time.Time {
-	if o != nil && o.bitmap_&1 != 0 {
+	if o != nil && o.bitmap_&2 != 0 {
 		return o.lastLimitedSupportCheck
 	}
 	return time.Time{}
@@ -54,7 +78,7 @@ func (o *Environment) LastLimitedSupportCheck() time.Time {
 //
 // last time that the worker checked for limited support clusters
 func (o *Environment) GetLastLimitedSupportCheck() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&1 != 0
+	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
 		value = o.lastLimitedSupportCheck
 	}
@@ -66,7 +90,7 @@ func (o *Environment) GetLastLimitedSupportCheck() (value time.Time, ok bool) {
 //
 // last time that the worker checked for available upgrades
 func (o *Environment) LastUpgradeAvailableCheck() time.Time {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.lastUpgradeAvailableCheck
 	}
 	return time.Time{}
@@ -77,7 +101,7 @@ func (o *Environment) LastUpgradeAvailableCheck() time.Time {
 //
 // last time that the worker checked for available upgrades
 func (o *Environment) GetLastUpgradeAvailableCheck() (value time.Time, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.lastUpgradeAvailableCheck
 	}
@@ -89,7 +113,7 @@ func (o *Environment) GetLastUpgradeAvailableCheck() (value time.Time, ok bool) 
 //
 // environment name
 func (o *Environment) Name() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.name
 	}
 	return ""
@@ -100,7 +124,7 @@ func (o *Environment) Name() string {
 //
 // environment name
 func (o *Environment) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.name
 	}

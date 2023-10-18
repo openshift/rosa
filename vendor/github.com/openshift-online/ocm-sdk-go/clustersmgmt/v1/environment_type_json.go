@@ -48,11 +48,20 @@ func writeEnvironment(object *Environment, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("backplane_url")
+		stream.WriteString(object.backplaneURL)
+		count++
+	}
+	present_ = object.bitmap_&2 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("last_limited_support_check")
 		stream.WriteString((object.lastLimitedSupportCheck).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&4 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -61,7 +70,7 @@ func writeEnvironment(object *Environment, stream *jsoniter.Stream) {
 		stream.WriteString((object.lastUpgradeAvailableCheck).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -93,6 +102,10 @@ func readEnvironment(iterator *jsoniter.Iterator) *Environment {
 			break
 		}
 		switch field {
+		case "backplane_url":
+			value := iterator.ReadString()
+			object.backplaneURL = value
+			object.bitmap_ |= 1
 		case "last_limited_support_check":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -100,7 +113,7 @@ func readEnvironment(iterator *jsoniter.Iterator) *Environment {
 				iterator.ReportError("", err.Error())
 			}
 			object.lastLimitedSupportCheck = value
-			object.bitmap_ |= 1
+			object.bitmap_ |= 2
 		case "last_upgrade_available_check":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -108,11 +121,11 @@ func readEnvironment(iterator *jsoniter.Iterator) *Environment {
 				iterator.ReportError("", err.Error())
 			}
 			object.lastUpgradeAvailableCheck = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
 		default:
 			iterator.ReadAny()
 		}

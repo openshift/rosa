@@ -696,7 +696,8 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 	return nil
 }
 
-func (c *Client) DeleteCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
+func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
+	creator *aws.Creator) (*cmv1.Cluster, error) {
 	cluster, err := c.GetCluster(clusterKey, creator)
 	if err != nil {
 		return nil, err
@@ -705,6 +706,7 @@ func (c *Client) DeleteCluster(clusterKey string, creator *aws.Creator) (*cmv1.C
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Cluster(cluster.ID()).
 		Delete().
+		BestEffort(bestEffort).
 		Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)

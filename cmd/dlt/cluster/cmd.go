@@ -35,8 +35,9 @@ import (
 
 var args struct {
 	// Watch logs during cluster uninstallation
-	watch bool
-	mode  string
+	watch      bool
+	bestEffort bool
+	mode       string
 }
 
 var Cmd = &cobra.Command{
@@ -50,8 +51,16 @@ var Cmd = &cobra.Command{
 
 func init() {
 	flags := Cmd.Flags()
+	flags.SortFlags = false
 
 	ocm.AddClusterFlag(Cmd)
+
+	flags.BoolVar(
+		&args.bestEffort,
+		"best-effort",
+		false,
+		"Delete cluster in best-effort mode.",
+	)
 
 	flags.BoolVarP(
 		&args.watch,
@@ -74,7 +83,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	cluster := r.FetchCluster()
 
-	err := handleClusterDelete(r, cluster, clusterKey)
+	err := handleClusterDelete(r, cluster, clusterKey, args.bestEffort)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -110,7 +119,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func handleClusterDelete(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string) error {
+func handleClusterDelete(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, bestEffort bool) error {
 	clusterState, err := r.OCMClient.GetClusterState(cluster.ID())
 	if err != nil {
 		return err
@@ -122,7 +131,7 @@ func handleClusterDelete(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey stri
 	}
 
 	r.Reporter.Debugf("Deleting cluster '%s'", clusterKey)
-	_, err = r.OCMClient.DeleteCluster(clusterKey, r.Creator)
+	_, err = r.OCMClient.DeleteCluster(clusterKey, bestEffort, r.Creator)
 	if err != nil {
 		return err
 	}
