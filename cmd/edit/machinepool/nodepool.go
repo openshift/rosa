@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/cmd/upgrade/machinepool"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -27,8 +26,15 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	isAutorepairSet := cmd.Flags().Changed("autorepair")
 	isTuningsConfigSet := cmd.Flags().Changed("tuning-configs")
 
+	// we don't support anymore the version parameter
+	if isVersionSet {
+		r.Reporter.Errorf("Editing versions is not supported, for upgrades please use " +
+			"'rosa upgrade machinepool'")
+		os.Exit(1)
+	}
+
 	// isAnyAdditionalParameterSet is true if at least one parameter not related to replicas and autoscaling is set
-	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isVersionSet || isAutorepairSet || isTuningsConfigSet
+	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet
 	isAnyParameterSet := isMinReplicasSet || isMaxReplicasSet || isReplicasSet ||
 		isAutoscalingSet || isAnyAdditionalParameterSet
 
@@ -92,34 +98,6 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 		npBuilder = npBuilder.Autoscaling(asBuilder)
 	} else {
 		npBuilder = npBuilder.Replicas(replicas)
-	}
-
-	// Check if there is any scheduled upgrade and skip version part if it is the case
-	_, upgrade, err := r.OCMClient.GetHypershiftNodePoolUpgrade(cluster.ID(), clusterKey, nodePool.ID())
-	if err != nil {
-		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
-	}
-	if upgrade != nil {
-		r.Reporter.Infof("Skipping version as there is already a scheduled upgrade.")
-	} else if isVersionSet || interactive.Enabled() {
-		// TODO flag marked as deprecated. To be removed
-		version, err := machinepool.ComputeNodePoolVersion(r, cmd, cluster, nodePool, args.version)
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
-		if version == "" {
-			if !interactive.Enabled() {
-				// Not interactive mode, stop if user specifies a version but none is available
-				r.Reporter.Infof("No upgrade available for the machine pool '%s' on cluster '%s'. Exiting",
-					nodePoolID, clusterKey)
-				os.Exit(0)
-			}
-		} else {
-			// A version with ID empty is rejected by the backend, so we fill it only if not empty
-			npBuilder.Version(cmv1.NewVersion().ID(version))
-		}
 	}
 
 	if isAutorepairSet || interactive.Enabled() {

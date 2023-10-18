@@ -130,7 +130,7 @@ func init() {
 			"This list will overwrite any modifications made to node tuning configs on an ongoing basis.",
 	)
 
-	flags.MarkDeprecated("version", "for upgrades, please use 'rosa upgrade machinepool' instead")
+	flags.MarkHidden("version")
 }
 
 func run(cmd *cobra.Command, argv []string) {
