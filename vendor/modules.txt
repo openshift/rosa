@@ -9,10 +9,11 @@ github.com/PuerkitoBio/goquery
 # github.com/andybalholm/cascadia v1.3.1
 ## explicit; go 1.16
 github.com/andybalholm/cascadia
-# github.com/aws/aws-sdk-go v1.39.3
+# github.com/aws/aws-sdk-go v1.45.26
 ## explicit; go 1.11
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/arn
+github.com/aws/aws-sdk-go/aws/auth/bearer
 github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/awsutil
 github.com/aws/aws-sdk-go/aws/client
@@ -72,6 +73,7 @@ github.com/aws/aws-sdk-go/service/servicequotas
 github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface
 github.com/aws/aws-sdk-go/service/sso
 github.com/aws/aws-sdk-go/service/sso/ssoiface
+github.com/aws/aws-sdk-go/service/ssooidc
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/aymerick/douceur v0.2.0
@@ -262,7 +264,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-online/ocm-common v0.0.0-20230906070711-f1f61c823c41
+# github.com/openshift-online/ocm-common v0.0.0-20231018131954-d0be7f2dc287
 ## explicit; go 1.19
 github.com/openshift-online/ocm-common/pkg/cluster/validations
 github.com/openshift-online/ocm-common/pkg/idp/validations
