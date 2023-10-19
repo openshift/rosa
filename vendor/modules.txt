@@ -266,9 +266,12 @@ github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
 # github.com/openshift-online/ocm-common v0.0.0-20231018131954-d0be7f2dc287
 ## explicit; go 1.19
+github.com/openshift-online/ocm-common/pkg
+github.com/openshift-online/ocm-common/pkg/aws/validations
 github.com/openshift-online/ocm-common/pkg/cluster/validations
 github.com/openshift-online/ocm-common/pkg/idp/validations
 github.com/openshift-online/ocm-common/pkg/machinepool/validations
+github.com/openshift-online/ocm-common/pkg/ocm/validations
 # github.com/openshift-online/ocm-sdk-go v0.1.370
 ## explicit; go 1.16
 github.com/openshift-online/ocm-sdk-go
