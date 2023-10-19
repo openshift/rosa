@@ -516,6 +516,7 @@ type ClusterDeleteRequest struct {
 	path        string
 	query       url.Values
 	header      http.Header
+	bestEffort  *bool
 	deprovision *bool
 	dryRun      *bool
 }
@@ -536,6 +537,14 @@ func (r *ClusterDeleteRequest) Header(name string, value interface{}) *ClusterDe
 // Note: Services that do not support this feature may silently ignore this call.
 func (r *ClusterDeleteRequest) Impersonate(user string) *ClusterDeleteRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
+// BestEffort sets the value of the 'best_effort' parameter.
+//
+// BestEffort flag is used to check if the cluster deletion should be best-effort mode or not.
+func (r *ClusterDeleteRequest) BestEffort(value bool) *ClusterDeleteRequest {
+	r.bestEffort = &value
 	return r
 }
 
@@ -567,6 +576,9 @@ func (r *ClusterDeleteRequest) Send() (result *ClusterDeleteResponse, err error)
 // SendContext sends this request, waits for the response, and returns it.
 func (r *ClusterDeleteRequest) SendContext(ctx context.Context) (result *ClusterDeleteResponse, err error) {
 	query := helpers.CopyQuery(r.query)
+	if r.bestEffort != nil {
+		helpers.AddValue(&query, "best_effort", *r.bestEffort)
+	}
 	if r.deprovision != nil {
 		helpers.AddValue(&query, "deprovision", *r.deprovision)
 	}

@@ -3,6 +3,27 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.375
+- Update model version v0.0.327
+  - Add `BestEffort` to method `Delete` in `Cluster`
+
+## 0.1.374
+- Update model version v0.0.326
+  - Add `BackplaneURL` to `Environment` type
+
+## 0.1.373
+- Update model version to v0.0.325
+  - Add `OrganizationId` to `FeatureReviewRequest` type
+
+## 0.1.372
+- Update model version to v0.0.324
+  - Add `CreatedAt` to `LogEntry` type
+  - Add `CreatedBy` to `LogEntry` type
+
+## 0.1.371
+- Update model version to v0.0.323
+  - Add `GCPMarketplaceEnabled` to `version` type
+
 ## 0.1.370
 - Update model version to v0.0.322
   - Add AdditionalComputeSecurityGroupIds to AWS type

@@ -36,6 +36,7 @@ type VersionBuilder struct {
 	imageOverrides            *ImageOverridesBuilder
 	rawID                     string
 	releaseImage              string
+	gcpMarketplaceEnabled     bool
 	rosaEnabled               bool
 	default_                  bool
 	enabled                   bool
@@ -72,10 +73,17 @@ func (b *VersionBuilder) Empty() bool {
 	return b == nil || b.bitmap_&^1 == 0
 }
 
+// GCPMarketplaceEnabled sets the value of the 'GCP_marketplace_enabled' attribute to the given value.
+func (b *VersionBuilder) GCPMarketplaceEnabled(value bool) *VersionBuilder {
+	b.gcpMarketplaceEnabled = value
+	b.bitmap_ |= 8
+	return b
+}
+
 // ROSAEnabled sets the value of the 'ROSA_enabled' attribute to the given value.
 func (b *VersionBuilder) ROSAEnabled(value bool) *VersionBuilder {
 	b.rosaEnabled = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -83,42 +91,42 @@ func (b *VersionBuilder) ROSAEnabled(value bool) *VersionBuilder {
 func (b *VersionBuilder) AvailableUpgrades(values ...string) *VersionBuilder {
 	b.availableUpgrades = make([]string, len(values))
 	copy(b.availableUpgrades, values)
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
 // ChannelGroup sets the value of the 'channel_group' attribute to the given value.
 func (b *VersionBuilder) ChannelGroup(value string) *VersionBuilder {
 	b.channelGroup = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
 // Default sets the value of the 'default' attribute to the given value.
 func (b *VersionBuilder) Default(value bool) *VersionBuilder {
 	b.default_ = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
 // Enabled sets the value of the 'enabled' attribute to the given value.
 func (b *VersionBuilder) Enabled(value bool) *VersionBuilder {
 	b.enabled = value
-	b.bitmap_ |= 128
+	b.bitmap_ |= 256
 	return b
 }
 
 // EndOfLifeTimestamp sets the value of the 'end_of_life_timestamp' attribute to the given value.
 func (b *VersionBuilder) EndOfLifeTimestamp(value time.Time) *VersionBuilder {
 	b.endOfLifeTimestamp = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 512
 	return b
 }
 
 // HostedControlPlaneEnabled sets the value of the 'hosted_control_plane_enabled' attribute to the given value.
 func (b *VersionBuilder) HostedControlPlaneEnabled(value bool) *VersionBuilder {
 	b.hostedControlPlaneEnabled = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -128,9 +136,9 @@ func (b *VersionBuilder) HostedControlPlaneEnabled(value bool) *VersionBuilder {
 func (b *VersionBuilder) ImageOverrides(value *ImageOverridesBuilder) *VersionBuilder {
 	b.imageOverrides = value
 	if value != nil {
-		b.bitmap_ |= 1024
+		b.bitmap_ |= 2048
 	} else {
-		b.bitmap_ &^= 1024
+		b.bitmap_ &^= 2048
 	}
 	return b
 }
@@ -138,14 +146,14 @@ func (b *VersionBuilder) ImageOverrides(value *ImageOverridesBuilder) *VersionBu
 // RawID sets the value of the 'raw_ID' attribute to the given value.
 func (b *VersionBuilder) RawID(value string) *VersionBuilder {
 	b.rawID = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
 // ReleaseImage sets the value of the 'release_image' attribute to the given value.
 func (b *VersionBuilder) ReleaseImage(value string) *VersionBuilder {
 	b.releaseImage = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -157,6 +165,7 @@ func (b *VersionBuilder) Copy(object *Version) *VersionBuilder {
 	b.bitmap_ = object.bitmap_
 	b.id = object.id
 	b.href = object.href
+	b.gcpMarketplaceEnabled = object.gcpMarketplaceEnabled
 	b.rosaEnabled = object.rosaEnabled
 	if object.availableUpgrades != nil {
 		b.availableUpgrades = make([]string, len(object.availableUpgrades))
@@ -185,6 +194,7 @@ func (b *VersionBuilder) Build() (object *Version, err error) {
 	object.id = b.id
 	object.href = b.href
 	object.bitmap_ = b.bitmap_
+	object.gcpMarketplaceEnabled = b.gcpMarketplaceEnabled
 	object.rosaEnabled = b.rosaEnabled
 	if b.availableUpgrades != nil {
 		object.availableUpgrades = make([]string, len(b.availableUpgrades))
