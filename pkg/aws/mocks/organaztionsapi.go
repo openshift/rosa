@@ -186,6 +186,56 @@ func (mr *MockOrganizationsAPIMockRecorder) CancelHandshakeWithContext(arg0, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelHandshakeWithContext", reflect.TypeOf((*MockOrganizationsAPI)(nil).CancelHandshakeWithContext), varargs...)
 }
 
+// CloseAccount mocks base method.
+func (m *MockOrganizationsAPI) CloseAccount(arg0 *organizations.CloseAccountInput) (*organizations.CloseAccountOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CloseAccount", arg0)
+	ret0, _ := ret[0].(*organizations.CloseAccountOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CloseAccount indicates an expected call of CloseAccount.
+func (mr *MockOrganizationsAPIMockRecorder) CloseAccount(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseAccount", reflect.TypeOf((*MockOrganizationsAPI)(nil).CloseAccount), arg0)
+}
+
+// CloseAccountRequest mocks base method.
+func (m *MockOrganizationsAPI) CloseAccountRequest(arg0 *organizations.CloseAccountInput) (*request.Request, *organizations.CloseAccountOutput) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CloseAccountRequest", arg0)
+	ret0, _ := ret[0].(*request.Request)
+	ret1, _ := ret[1].(*organizations.CloseAccountOutput)
+	return ret0, ret1
+}
+
+// CloseAccountRequest indicates an expected call of CloseAccountRequest.
+func (mr *MockOrganizationsAPIMockRecorder) CloseAccountRequest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseAccountRequest", reflect.TypeOf((*MockOrganizationsAPI)(nil).CloseAccountRequest), arg0)
+}
+
+// CloseAccountWithContext mocks base method.
+func (m *MockOrganizationsAPI) CloseAccountWithContext(arg0 context.Context, arg1 *organizations.CloseAccountInput, arg2 ...request.Option) (*organizations.CloseAccountOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CloseAccountWithContext", varargs...)
+	ret0, _ := ret[0].(*organizations.CloseAccountOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CloseAccountWithContext indicates an expected call of CloseAccountWithContext.
+func (mr *MockOrganizationsAPIMockRecorder) CloseAccountWithContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseAccountWithContext", reflect.TypeOf((*MockOrganizationsAPI)(nil).CloseAccountWithContext), varargs...)
+}
+
 // CreateAccount mocks base method.
 func (m *MockOrganizationsAPI) CreateAccount(arg0 *organizations.CreateAccountInput) (*organizations.CreateAccountOutput, error) {
 	m.ctrl.T.Helper()
@@ -636,6 +686,56 @@ func (mr *MockOrganizationsAPIMockRecorder) DeletePolicyWithContext(arg0, arg1 i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePolicyWithContext", reflect.TypeOf((*MockOrganizationsAPI)(nil).DeletePolicyWithContext), varargs...)
 }
 
+// DeleteResourcePolicy mocks base method.
+func (m *MockOrganizationsAPI) DeleteResourcePolicy(arg0 *organizations.DeleteResourcePolicyInput) (*organizations.DeleteResourcePolicyOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteResourcePolicy", arg0)
+	ret0, _ := ret[0].(*organizations.DeleteResourcePolicyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteResourcePolicy indicates an expected call of DeleteResourcePolicy.
+func (mr *MockOrganizationsAPIMockRecorder) DeleteResourcePolicy(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourcePolicy", reflect.TypeOf((*MockOrganizationsAPI)(nil).DeleteResourcePolicy), arg0)
+}
+
+// DeleteResourcePolicyRequest mocks base method.
+func (m *MockOrganizationsAPI) DeleteResourcePolicyRequest(arg0 *organizations.DeleteResourcePolicyInput) (*request.Request, *organizations.DeleteResourcePolicyOutput) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteResourcePolicyRequest", arg0)
+	ret0, _ := ret[0].(*request.Request)
+	ret1, _ := ret[1].(*organizations.DeleteResourcePolicyOutput)
+	return ret0, ret1
+}
+
+// DeleteResourcePolicyRequest indicates an expected call of DeleteResourcePolicyRequest.
+func (mr *MockOrganizationsAPIMockRecorder) DeleteResourcePolicyRequest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourcePolicyRequest", reflect.TypeOf((*MockOrganizationsAPI)(nil).DeleteResourcePolicyRequest), arg0)
+}
+
+// DeleteResourcePolicyWithContext mocks base method.
+func (m *MockOrganizationsAPI) DeleteResourcePolicyWithContext(arg0 context.Context, arg1 *organizations.DeleteResourcePolicyInput, arg2 ...request.Option) (*organizations.DeleteResourcePolicyOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteResourcePolicyWithContext", varargs...)
+	ret0, _ := ret[0].(*organizations.DeleteResourcePolicyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteResourcePolicyWithContext indicates an expected call of DeleteResourcePolicyWithContext.
+func (mr *MockOrganizationsAPIMockRecorder) DeleteResourcePolicyWithContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourcePolicyWithContext", reflect.TypeOf((*MockOrganizationsAPI)(nil).DeleteResourcePolicyWithContext), varargs...)
+}
+
 // DeregisterDelegatedAdministrator mocks base method.
 func (m *MockOrganizationsAPI) DeregisterDelegatedAdministrator(arg0 *organizations.DeregisterDelegatedAdministratorInput) (*organizations.DeregisterDelegatedAdministratorOutput, error) {
 	m.ctrl.T.Helper()
@@ -1034,6 +1134,56 @@ func (mr *MockOrganizationsAPIMockRecorder) DescribePolicyWithContext(arg0, arg1
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribePolicyWithContext", reflect.TypeOf((*MockOrganizationsAPI)(nil).DescribePolicyWithContext), varargs...)
+}
+
+// DescribeResourcePolicy mocks base method.
+func (m *MockOrganizationsAPI) DescribeResourcePolicy(arg0 *organizations.DescribeResourcePolicyInput) (*organizations.DescribeResourcePolicyOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DescribeResourcePolicy", arg0)
+	ret0, _ := ret[0].(*organizations.DescribeResourcePolicyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeResourcePolicy indicates an expected call of DescribeResourcePolicy.
+func (mr *MockOrganizationsAPIMockRecorder) DescribeResourcePolicy(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeResourcePolicy", reflect.TypeOf((*MockOrganizationsAPI)(nil).DescribeResourcePolicy), arg0)
+}
+
+// DescribeResourcePolicyRequest mocks base method.
+func (m *MockOrganizationsAPI) DescribeResourcePolicyRequest(arg0 *organizations.DescribeResourcePolicyInput) (*request.Request, *organizations.DescribeResourcePolicyOutput) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DescribeResourcePolicyRequest", arg0)
+	ret0, _ := ret[0].(*request.Request)
+	ret1, _ := ret[1].(*organizations.DescribeResourcePolicyOutput)
+	return ret0, ret1
+}
+
+// DescribeResourcePolicyRequest indicates an expected call of DescribeResourcePolicyRequest.
+func (mr *MockOrganizationsAPIMockRecorder) DescribeResourcePolicyRequest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeResourcePolicyRequest", reflect.TypeOf((*MockOrganizationsAPI)(nil).DescribeResourcePolicyRequest), arg0)
+}
+
+// DescribeResourcePolicyWithContext mocks base method.
+func (m *MockOrganizationsAPI) DescribeResourcePolicyWithContext(arg0 context.Context, arg1 *organizations.DescribeResourcePolicyInput, arg2 ...request.Option) (*organizations.DescribeResourcePolicyOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DescribeResourcePolicyWithContext", varargs...)
+	ret0, _ := ret[0].(*organizations.DescribeResourcePolicyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeResourcePolicyWithContext indicates an expected call of DescribeResourcePolicyWithContext.
+func (mr *MockOrganizationsAPIMockRecorder) DescribeResourcePolicyWithContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeResourcePolicyWithContext", reflect.TypeOf((*MockOrganizationsAPI)(nil).DescribeResourcePolicyWithContext), varargs...)
 }
 
 // DetachPolicy mocks base method.
@@ -2812,6 +2962,56 @@ func (mr *MockOrganizationsAPIMockRecorder) MoveAccountWithContext(arg0, arg1 in
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoveAccountWithContext", reflect.TypeOf((*MockOrganizationsAPI)(nil).MoveAccountWithContext), varargs...)
+}
+
+// PutResourcePolicy mocks base method.
+func (m *MockOrganizationsAPI) PutResourcePolicy(arg0 *organizations.PutResourcePolicyInput) (*organizations.PutResourcePolicyOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PutResourcePolicy", arg0)
+	ret0, _ := ret[0].(*organizations.PutResourcePolicyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutResourcePolicy indicates an expected call of PutResourcePolicy.
+func (mr *MockOrganizationsAPIMockRecorder) PutResourcePolicy(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutResourcePolicy", reflect.TypeOf((*MockOrganizationsAPI)(nil).PutResourcePolicy), arg0)
+}
+
+// PutResourcePolicyRequest mocks base method.
+func (m *MockOrganizationsAPI) PutResourcePolicyRequest(arg0 *organizations.PutResourcePolicyInput) (*request.Request, *organizations.PutResourcePolicyOutput) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PutResourcePolicyRequest", arg0)
+	ret0, _ := ret[0].(*request.Request)
+	ret1, _ := ret[1].(*organizations.PutResourcePolicyOutput)
+	return ret0, ret1
+}
+
+// PutResourcePolicyRequest indicates an expected call of PutResourcePolicyRequest.
+func (mr *MockOrganizationsAPIMockRecorder) PutResourcePolicyRequest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutResourcePolicyRequest", reflect.TypeOf((*MockOrganizationsAPI)(nil).PutResourcePolicyRequest), arg0)
+}
+
+// PutResourcePolicyWithContext mocks base method.
+func (m *MockOrganizationsAPI) PutResourcePolicyWithContext(arg0 context.Context, arg1 *organizations.PutResourcePolicyInput, arg2 ...request.Option) (*organizations.PutResourcePolicyOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PutResourcePolicyWithContext", varargs...)
+	ret0, _ := ret[0].(*organizations.PutResourcePolicyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutResourcePolicyWithContext indicates an expected call of PutResourcePolicyWithContext.
+func (mr *MockOrganizationsAPIMockRecorder) PutResourcePolicyWithContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutResourcePolicyWithContext", reflect.TypeOf((*MockOrganizationsAPI)(nil).PutResourcePolicyWithContext), varargs...)
 }
 
 // RegisterDelegatedAdministrator mocks base method.
