@@ -11,6 +11,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -312,11 +313,11 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			}
 
 			operatorPolicyTags := map[string]string{
-				tags.OpenShiftVersion:  defaultPolicyVersion,
-				tags.RolePrefix:        prefix,
-				tags.RedHatManaged:     helper.True,
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
+				common.OpenShiftVersion: defaultPolicyVersion,
+				tags.RolePrefix:         prefix,
+				tags.RedHatManaged:      helper.True,
+				tags.OperatorNamespace:  operator.Namespace(),
+				tags.OperatorName:       operator.Name(),
 			}
 
 			if args.forcePolicyCreation || (isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType) {
@@ -348,7 +349,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			tags.RedHatManaged:     helper.True,
 		}
 		if managedPolicies {
-			tagsList[tags.ManagedPolicies] = helper.True
+			tagsList[common.ManagedPolicies] = helper.True
 		}
 		if hostedCPPolicies {
 			tagsList[tags.HypershiftPolicies] = helper.True
@@ -407,11 +408,11 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 			policyARN = computePolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
 			name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := map[string]string{
-				tags.OpenShiftVersion:  defaultPolicyVersion,
-				tags.RolePrefix:        prefix,
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
-				tags.RedHatManaged:     helper.True,
+				common.OpenShiftVersion: defaultPolicyVersion,
+				tags.RolePrefix:         prefix,
+				tags.OperatorNamespace:  operator.Namespace(),
+				tags.OperatorName:       operator.Name(),
+				tags.RedHatManaged:      helper.True,
 			}
 			operatorPolicyKey := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
 			fileName := fmt.Sprintf("file://%s.json", operatorPolicyKey)
@@ -461,7 +462,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 			tags.RedHatManaged:     helper.True,
 		}
 		if managedPolicies {
-			iamTags[tags.ManagedPolicies] = helper.True
+			iamTags[common.ManagedPolicies] = helper.True
 		}
 		if hostedCPPolicies {
 			iamTags[tags.HypershiftPolicies] = helper.True

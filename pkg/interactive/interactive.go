@@ -26,6 +26,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
 
+	"github.com/openshift-online/ocm-common/pkg"
 	"github.com/openshift/rosa/pkg/color"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive/consts"
@@ -140,7 +141,7 @@ func GetFloat(input Input) (a float64, err error) {
 }
 
 func parseFloat(str string) (num float64, err error) {
-	return strconv.ParseFloat(str, 64)
+	return strconv.ParseFloat(str, pkg.MaxByteSize)
 }
 
 // Asks for multiple options selection

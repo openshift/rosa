@@ -3,6 +3,7 @@ package roles
 import (
 	"fmt"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -29,7 +30,7 @@ func ManualCommandsForMissingOperatorRole(input ManualCommandsForMissingOperator
 		tags.RedHatManaged:     "true",
 	}
 	if input.ManagedPolicies {
-		iamTags[tags.ManagedPolicies] = "true"
+		iamTags[common.ManagedPolicies] = "true"
 	}
 
 	createRole := awscb.NewIAMCommandBuilder().
@@ -66,11 +67,11 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 	commands := make([]string, 0)
 	if !input.HasPolicy {
 		iamTags := map[string]string{
-			tags.OpenShiftVersion:  input.DefaultPolicyVersion,
-			tags.RolePrefix:        input.OperatorRolePolicyPrefix,
-			tags.OperatorNamespace: input.Operator.Namespace(),
-			tags.OperatorName:      input.Operator.Name(),
-			tags.RedHatManaged:     "true",
+			common.OpenShiftVersion: input.DefaultPolicyVersion,
+			tags.RolePrefix:         input.OperatorRolePolicyPrefix,
+			tags.OperatorNamespace:  input.Operator.Namespace(),
+			tags.OperatorName:       input.Operator.Name(),
+			tags.RedHatManaged:      "true",
 		}
 		createPolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreatePolicy).
@@ -90,7 +91,7 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 			commands = append(commands, attachRolePolicy)
 		}
 		policyTags := map[string]string{
-			tags.OpenShiftVersion: input.DefaultPolicyVersion,
+			common.OpenShiftVersion: input.DefaultPolicyVersion,
 		}
 
 		createPolicyVersion := awscb.NewIAMCommandBuilder().
@@ -126,7 +127,7 @@ type ManualCommandsForUpgradeAccountRolePolicyInput struct {
 func ManualCommandsForUpgradeAccountRolePolicy(input ManualCommandsForUpgradeAccountRolePolicyInput) []string {
 	commands := make([]string, 0)
 	iamRoleTags := map[string]string{
-		tags.OpenShiftVersion: input.DefaultPolicyVersion,
+		common.OpenShiftVersion: input.DefaultPolicyVersion,
 	}
 
 	tagRole := awscb.NewIAMCommandBuilder().
@@ -142,10 +143,10 @@ func ManualCommandsForUpgradeAccountRolePolicy(input ManualCommandsForUpgradeAcc
 		Build()
 	if !input.HasPolicy {
 		iamTags := map[string]string{
-			tags.OpenShiftVersion: input.DefaultPolicyVersion,
-			tags.RolePrefix:       input.Prefix,
-			tags.RoleType:         input.File,
-			tags.RedHatManaged:    "true",
+			common.OpenShiftVersion: input.DefaultPolicyVersion,
+			tags.RolePrefix:         input.Prefix,
+			tags.RoleType:           input.File,
+			tags.RedHatManaged:      "true",
 		}
 		createPolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreatePolicy).

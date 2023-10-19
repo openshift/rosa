@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
+	"github.com/openshift-online/ocm-common/pkg"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -358,8 +359,8 @@ func buildCommand(
 
 func generateRoleName(cr *cmv1.CredentialRequest, prefix string) string {
 	roleName := fmt.Sprintf("%s-%s-%s", prefix, cr.Namespace(), cr.Name())
-	if len(roleName) > 64 {
-		roleName = roleName[0:64]
+	if len(roleName) > pkg.MaxByteSize {
+		roleName = roleName[0:pkg.MaxByteSize]
 	}
 	return roleName
 }

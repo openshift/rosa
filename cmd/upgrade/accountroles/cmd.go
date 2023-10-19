@@ -36,6 +36,8 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
+
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 )
 
 var args struct {
@@ -285,7 +287,7 @@ func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, er
 func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
 	policies map[string]*cmv1.AWSSTSPolicy, policyVersion string, policyPath string, isVersionChosen bool) error {
 	for file, role := range aws.AccountRoles {
-		roleName := aws.GetRoleName(prefix, role.Name)
+		roleName := common.GetRoleName(prefix, role.Name)
 		promptString := fmt.Sprintf("Upgrade the '%s' role policy latest version ?", roleName)
 		if isVersionChosen {
 			promptString = fmt.Sprintf("Upgrade the '%s' role policy to version '%s' ?", roleName, policyVersion)
@@ -299,10 +301,10 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 		policyDetails := aws.GetPolicyDetails(policies, filename)
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			policyVersion, map[string]string{
-				tags.OpenShiftVersion: policyVersion,
-				tags.RolePrefix:       prefix,
-				tags.RoleType:         file,
-				tags.RedHatManaged:    "true",
+				common.OpenShiftVersion: policyVersion,
+				tags.RolePrefix:         prefix,
+				tags.RoleType:           file,
+				tags.RedHatManaged:      "true",
 			}, policyPath)
 		if err != nil {
 			return err
@@ -335,7 +337,7 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
-			accRoleName := aws.GetRoleName(prefix, role.Name)
+			accRoleName := common.GetRoleName(prefix, role.Name)
 			policyARN := aws.GetPolicyARN(accountID, accRoleName, policyPath)
 			_, err := awsClient.IsPolicyExists(policyARN)
 			hasPolicy := err == nil
@@ -363,7 +365,7 @@ func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRoleP
 
 func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
 	for _, accountRole := range aws.AccountRoles {
-		accRoleName := aws.GetRoleName(prefix, accountRole.Name)
+		accRoleName := common.GetRoleName(prefix, accountRole.Name)
 		rolePolicies, err := awsClient.GetAttachedPolicy(&accRoleName)
 		if err != nil {
 			return "", err

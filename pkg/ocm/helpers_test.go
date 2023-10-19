@@ -23,6 +23,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg"
+	common "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -57,7 +59,7 @@ var _ = Describe("Validate Issuer Url Matches Assume Policy Document", func() {
 		//nolint
 		fakeAssumePolicyDocument := `%7B%22Version%22%3A%222012-10-17%22%2C%22Statement%22%3A%5B%7B%22Effect%22%3A%22Allow%22%2C%22Principal%22%3A%7B%22Federated%22%3A%22arn%3Aaws%3Aiam%3A%3A765374464689%3Aoidc-provider%2Ffake-oidc.s3.us-east-1.amazonaws.com%22%7D%2C%22Action%22%3A%22sts%3AAssumeRoleWithWebIdentity%22%2C%22Condition%22%3A%7B%22StringEquals%22%3A%7B%22fake.s3.us-east-1.amazonaws.com%3Asub%22%3A%5B%22system%3Aserviceaccount%3Aopenshift-image-registry%3Acluster-image-registry-operator%22%2C%22system%3Aserviceaccount%3Aopenshift-image-registry%3Aregistry%22%5D%7D%7D%7D%5D%7D`
 		parsedUrl, _ := url.Parse("https://fake-oidc.s3.us-east-1.amazonaws.com")
-		err := validateIssuerUrlMatchesAssumePolicyDocument(
+		err := common.ValidateIssuerUrlMatchesAssumePolicyDocument(
 			fakeOperatorRoleArn, parsedUrl, fakeAssumePolicyDocument)
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -65,7 +67,7 @@ var _ = Describe("Validate Issuer Url Matches Assume Policy Document", func() {
 		//nolint
 		fakeAssumePolicyDocument := `%7B%22Version%22%3A%222012-10-17%22%2C%22Statement%22%3A%5B%7B%22Effect%22%3A%22Allow%22%2C%22Principal%22%3A%7B%22Federated%22%3A%22arn%3Aaws%3Aiam%3A%3A765374464689%3Aoidc-provider%2Ffake-oidc.s3.us-east-1.amazonaws.com%2F23g84jr4cdfpej0ghlr4teqiog8747gt%22%7D%2C%22Action%22%3A%22sts%3AAssumeRoleWithWebIdentity%22%2C%22Condition%22%3A%7B%22StringEquals%22%3A%7B%22fake.s3.us-east-1.amazonaws.com%2F23g84jr4cdfpej0ghlr4teqiog8747gt%3Asub%22%3A%5B%22system%3Aserviceaccount%3Aopenshift-image-registry%3Acluster-image-registry-operator%22%2C%22system%3Aserviceaccount%3Aopenshift-image-registry%3Aregistry%22%5D%7D%7D%7D%5D%7D`
 		parsedUrl, _ := url.Parse("https://fake-oidc.s3.us-east-1.amazonaws.com/23g84jr4cdfpej0ghlr4teqiog8747gt")
-		err := validateIssuerUrlMatchesAssumePolicyDocument(
+		err := common.ValidateIssuerUrlMatchesAssumePolicyDocument(
 			fakeOperatorRoleArn, parsedUrl, fakeAssumePolicyDocument)
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -74,7 +76,7 @@ var _ = Describe("Validate Issuer Url Matches Assume Policy Document", func() {
 		fakeAssumePolicyDocument := `%7B%22Version%22%3A%222012-10-17%22%2C%22Statement%22%3A%5B%7B%22Effect%22%3A%22Allow%22%2C%22Principal%22%3A%7B%22Federated%22%3A%22arn%3Aaws%3Aiam%3A%3A765374464689%3Aoidc-provider%2Ffake-oidc.s3.us-east-1.amazonaws.com%22%7D%2C%22Action%22%3A%22sts%3AAssumeRoleWithWebIdentity%22%2C%22Condition%22%3A%7B%22StringEquals%22%3A%7B%22fake.s3.us-east-1.amazonaws.com%3Asub%22%3A%5B%22system%3Aserviceaccount%3Aopenshift-image-registry%3Acluster-image-registry-operator%22%2C%22system%3Aserviceaccount%3Aopenshift-image-registry%3Aregistry%22%5D%7D%7D%7D%5D%7D`
 		fakeIssuerUrl := "https://fake-oidc-2.s3.us-east-1.amazonaws.com"
 		parsedUrl, _ := url.Parse(fakeIssuerUrl)
-		err := validateIssuerUrlMatchesAssumePolicyDocument(
+		err := common.ValidateIssuerUrlMatchesAssumePolicyDocument(
 			fakeOperatorRoleArn, parsedUrl, fakeAssumePolicyDocument)
 		Expect(err).To(HaveOccurred())
 		//nolint
@@ -85,7 +87,7 @@ var _ = Describe("Validate Issuer Url Matches Assume Policy Document", func() {
 		fakeAssumePolicyDocument := `%7B%22Version%22%3A%222012-10-17%22%2C%22Statement%22%3A%5B%7B%22Effect%22%3A%22Allow%22%2C%22Principal%22%3A%7B%22Federated%22%3A%22arn%3Aaws%3Aiam%3A%3A765374464689%3Aoidc-provider%2Ffake-oidc.s3.us-east-1.amazonaws.com%2F23g84jr4cdfpej0ghlr4teqiog8747gt%22%7D%2C%22Action%22%3A%22sts%3AAssumeRoleWithWebIdentity%22%2C%22Condition%22%3A%7B%22StringEquals%22%3A%7B%22fake.s3.us-east-1.amazonaws.com%2F23g84jr4cdfpej0ghlr4teqiog8747gt%3Asub%22%3A%5B%22system%3Aserviceaccount%3Aopenshift-image-registry%3Acluster-image-registry-operator%22%2C%22system%3Aserviceaccount%3Aopenshift-image-registry%3Aregistry%22%5D%7D%7D%7D%5D%7D`
 		fakeIssuerUrl := "https://fake-oidc-2.s3.us-east-1.amazonaws.com/23g84jr4cdfpej0ghlr4teqiog8747g"
 		parsedUrl, _ := url.Parse(fakeIssuerUrl)
-		err := validateIssuerUrlMatchesAssumePolicyDocument(
+		err := common.ValidateIssuerUrlMatchesAssumePolicyDocument(
 			fakeOperatorRoleArn, parsedUrl, fakeAssumePolicyDocument)
 		Expect(err).To(HaveOccurred())
 		//nolint
@@ -272,7 +274,7 @@ var _ = Describe("ValidateBalancingIgnoredLabels", func() {
 	})
 
 	It("returns an error for a label that exceeds 63 characters", func() {
-		var val interface{} = strings.Repeat("a", 64)
+		var val interface{} = strings.Repeat("a", pkg.MaxByteSize)
 		err := ValidateBalancingIgnoredLabels(val)
 		Expect(err).To(HaveOccurred())
 	})

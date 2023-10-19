@@ -32,6 +32,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -343,7 +344,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 		tags.RedHatManaged: tags.True,
 	}
 	if managedPolicies {
-		iamTags[tags.ManagedPolicies] = tags.True
+		iamTags[common.ManagedPolicies] = tags.True
 	}
 
 	adminTags := map[string]string{
@@ -478,7 +479,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		tags.RedHatManaged: tags.True,
 	}
 	if managedPolicies {
-		iamTags[tags.ManagedPolicies] = tags.True
+		iamTags[common.ManagedPolicies] = tags.True
 	}
 
 	if !exists {

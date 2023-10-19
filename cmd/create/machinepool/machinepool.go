@@ -9,6 +9,7 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/briandowns/spinner"
+	"github.com/openshift-online/ocm-common/pkg"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/helper"
@@ -429,7 +430,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 	if spotMaxPrice != "on-demand" {
-		price, _ := strconv.ParseFloat(spotMaxPrice, 64)
+		price, _ := strconv.ParseFloat(spotMaxPrice, pkg.MaxByteSize)
 		maxPrice = &price
 	}
 
@@ -609,7 +610,7 @@ func spotMaxPriceValidator(val interface{}) error {
 	if spotMaxPrice == "on-demand" {
 		return nil
 	}
-	price, err := strconv.ParseFloat(spotMaxPrice, 64)
+	price, err := strconv.ParseFloat(spotMaxPrice, pkg.MaxByteSize)
 	if err != nil {
 		return fmt.Errorf("Expected a numeric value for spot max price")
 	}

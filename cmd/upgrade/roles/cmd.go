@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
@@ -588,10 +589,10 @@ func upgradeAccountRolePoliciesFromCluster(
 		policyDetails := aws.GetPolicyDetails(policies, filename)
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetails,
 			policyVersion, map[string]string{
-				tags.OpenShiftVersion: policyVersion,
-				tags.RolePrefix:       prefix,
-				tags.RoleType:         file,
-				tags.RedHatManaged:    "true",
+				common.OpenShiftVersion: policyVersion,
+				tags.RolePrefix:         prefix,
+				tags.RoleType:           file,
+				tags.RedHatManaged:      "true",
 			}, accountPolicyPath)
 		if err != nil {
 			return err
@@ -835,10 +836,10 @@ func upgradeOperatorRolePoliciesFromCluster(
 		}
 		policyARN, err = awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
-				tags.OpenShiftVersion:  defaultPolicyVersion,
-				tags.RolePrefix:        operatorRolePolicyPrefix,
-				tags.OperatorNamespace: operator.Namespace(),
-				tags.OperatorName:      operator.Name(),
+				common.OpenShiftVersion: defaultPolicyVersion,
+				tags.RolePrefix:         operatorRolePolicyPrefix,
+				tags.OperatorNamespace:  operator.Namespace(),
+				tags.OperatorName:       operator.Name(),
 			}, operatorPolicyPath)
 		if err != nil {
 			return err
