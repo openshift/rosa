@@ -2186,10 +2186,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	err = kmsArnRegexpValidator.ValidateKMSKeyARN(&kmsKeyARN)
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
-		os.Exit(1)
+	if kmsKeyARN != "" {
+		err = kmsArnRegexpValidator.ValidateKMSKeyARN(&kmsKeyARN)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	// Compute node instance type:
@@ -2577,10 +2579,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	err = kmsArnRegexpValidator.ValidateKMSKeyARN(&etcdEncryptionKmsARN)
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn matching %s", kmsArnRegexpValidator.KmsArnRE)
-		os.Exit(1)
+	if etcdEncryptionKmsARN != "" {
+		err = kmsArnRegexpValidator.ValidateKMSKeyARN(&etcdEncryptionKmsARN)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn matching %s", kmsArnRegexpValidator.KmsArnRE)
+			os.Exit(1)
+		}
 	}
 
 	disableWorkloadMonitoring := args.disableWorkloadMonitoring
