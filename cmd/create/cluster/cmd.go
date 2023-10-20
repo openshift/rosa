@@ -22,7 +22,6 @@ import (
 	"net"
 	"os"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +34,7 @@ import (
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
+	kmsArnRegexpValidator "github.com/openshift-online/ocm-common/pkg/resource/validations"
 	accountsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/cmd/create/admin"
@@ -63,11 +63,6 @@ import (
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
-)
-
-// nolint
-var kmsArnRE = regexp.MustCompile(
-	`^arn:aws[\w-]*:kms:[\w-]+:\d{12}:key\/mrk-[0-9a-f]{32}$|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
 )
 
 const (
@@ -2182,7 +2177,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  kmsKeyARN,
 			Required: enableCustomerManagedKey,
 			Validators: []interactive.Validator{
-				interactive.RegExp(kmsArnRE.String()),
+				interactive.RegExp(kmsArnRegexpValidator.KmsArnRE.String()),
 			},
 		})
 		if err != nil {
@@ -2191,8 +2186,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if kmsKeyARN != "" && !kmsArnRE.MatchString(kmsKeyARN) {
-		r.Reporter.Errorf("Expected a valid value for kms-key-arn matching %s", kmsArnRE)
+	err = kmsArnRegexpValidator.ValidateKMSKeyARN(&kmsKeyARN)
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
 		os.Exit(1)
 	}
 
@@ -2572,7 +2568,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Default:  etcdEncryptionKmsARN,
 			Required: true,
 			Validators: []interactive.Validator{
-				interactive.RegExp(kmsArnRE.String()),
+				interactive.RegExp(kmsArnRegexpValidator.KmsArnRE.String()),
 			},
 		})
 		if err != nil {
@@ -2581,8 +2577,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if etcdEncryptionKmsARN != "" && !kmsArnRE.MatchString(etcdEncryptionKmsARN) {
-		r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn matching %s", kmsArnRE)
+	err = kmsArnRegexpValidator.ValidateKMSKeyARN(&etcdEncryptionKmsARN)
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn matching %s", kmsArnRegexpValidator.KmsArnRE)
 		os.Exit(1)
 	}
 
