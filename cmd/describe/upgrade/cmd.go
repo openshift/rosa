@@ -125,7 +125,8 @@ func describeHypershiftUpgrades(r *rosa.Runtime, clusterID string, nodePoolID st
 // formatHypershiftUpgrade is a generic printer for Hypershift Upgrades types
 func formatHypershiftUpgrade(upgrade ocm.HypershiftUpgrader) string {
 	builder := make([]string, 0)
-	builder = append(builder, fmt.Sprintf(`%19s%68s
+	builder = append(builder, fmt.Sprintf(`
+		%-35s%s
 		%-35s%s
 		%-35s%s
 		%-35s%s
@@ -137,16 +138,19 @@ func formatHypershiftUpgrade(upgrade ocm.HypershiftUpgrader) string {
 		"Next Run:", upgrade.NextRun().Format("2006-01-02 15:04 MST"),
 		"Upgrade State:", upgrade.State().Value()))
 	if upgrade.Schedule() != "" {
-		builder = append(builder, fmt.Sprintf(`                %-35s%s
+		builder = append(builder, fmt.Sprintf(`
+		%-35s%s
 `, "Schedule At:", upgrade.Schedule()))
-		builder = append(builder, fmt.Sprintf(`                %-35s%t
+		builder = append(builder, fmt.Sprintf(`
+		%-35s%t
 `, "Enable minor version upgrades:", upgrade.EnableMinorVersionUpgrades()))
 	}
 	if upgrade.Version() != "" {
-		builder = append(builder, fmt.Sprintf(`                %-35s%s
+		builder = append(builder, fmt.Sprintf(`
+		%-35s%s
 `, "Version:", upgrade.Version()))
 	}
-	return strings.Join(builder, "\n")
+	return strings.Join(builder, "")
 }
 
 func describeClassicUpgrades(r *rosa.Runtime, clusterID string) error {

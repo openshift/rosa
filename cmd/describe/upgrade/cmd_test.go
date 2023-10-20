@@ -24,13 +24,14 @@ var _ = Describe("Describe upgrade", func() {
 			result := formatHypershiftUpgrade(npUpgradePolicy)
 			Expect(result).To(Equal(
 				fmt.Sprintf(
-					`                ID:                                                                 id1
+					`
+		ID:                                id1
 		Cluster ID:                        
 		Schedule Type:                     
 		Next Run:                          %s
 		Upgrade State:                     scheduled
 
-                Version:                           4.12.19
+		Version:                           4.12.19
 `, nowUTC.Format("2006-01-02 15:04 MST"))))
 		})
 		It("Node pool upgrade is scheduled with a date", func() {
@@ -44,17 +45,18 @@ var _ = Describe("Describe upgrade", func() {
 			result := formatHypershiftUpgrade(npUpgradePolicy)
 			Expect(result).To(Equal(
 				fmt.Sprintf(
-					`                ID:                                                                 id1
+					`
+		ID:                                id1
 		Cluster ID:                        
 		Schedule Type:                     
 		Next Run:                          %s
 		Upgrade State:                     scheduled
 
-                Schedule At:                       %s
+		Schedule At:                       %s
 
-                Enable minor version upgrades:     true
+		Enable minor version upgrades:     true
 
-                Version:                           4.12.19
+		Version:                           4.12.19
 `, nowUTC.Format("2006-01-02 15:04 MST"), nowUTC.Format("2006-01-02 15:04 MST"))))
 		})
 	})
