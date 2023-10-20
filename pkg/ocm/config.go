@@ -31,12 +31,14 @@ const Production = "production"
 
 // URLAliases allows the value of the `--env` option to map to the various API URLs.
 var URLAliases = map[string]string{
-	"production":  "https://api.openshift.com",
-	"staging":     "https://api.stage.openshift.com",
-	"integration": "https://api.integration.openshift.com",
-	"local":       "http://localhost:8000",
-	"local-proxy": "http://localhost:9000",
-	"crc":         "https://clusters-service.apps-crc.testing",
+	"production":      "https://api.openshift.com",
+	"staging":         "https://api.stage.openshift.com",
+	"integration":     "https://api.integration.openshift.com",
+	"xcm-integration": "https://api.aws.xcm.integration.openshift.com",
+	"xcm-stage":       "https://api.aws.xcm.stage.openshift.com",
+	"local":           "http://localhost:8000",
+	"local-proxy":     "http://localhost:9000",
+	"crc":             "https://clusters-service.apps-crc.testing",
 }
 
 func GetEnv() (string, error) {
