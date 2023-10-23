@@ -11,7 +11,7 @@ var KmsArnRE = regexp.MustCompile(
 
 func ValidateKMSKeyARN(kmsKeyARN *string) error {
 	if kmsKeyARN == nil || *kmsKeyARN == "" {
-		return fmt.Errorf("expected a non empty value for kms-key-arn")
+		return nil
 	}
 
 	if !KmsArnRE.MatchString(*kmsKeyARN) {
