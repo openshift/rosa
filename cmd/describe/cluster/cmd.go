@@ -413,10 +413,104 @@ func run(cmd *cobra.Command, argv []string) {
 			" - Details:                 %s\n",
 			str, reason.Summary(), reason.Details())
 	}
+
+	inflightChecks, err := r.OCMClient.GetInflightChecks(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get inflight checks for cluster '%s': %v", cluster.ID(), err)
+		os.Exit(1)
+	}
+	if len(inflightChecks) > 0 {
+		summaries := []string{}
+		for _, inflight := range inflightChecks {
+			if inflight.State() != "failed" {
+				continue
+			}
+			if inflight.Name() != "egress" {
+				continue
+			}
+			summary := fmt.Sprintf("\t"+
+				"ID:                 %s\n"+
+				"\tLast run:           %s\n",
+				inflight.ID(), inflight.EndedAt().Format("Jan _2 2006 15:04:05 MST"))
+			details, err := parseInflightCheckDetails(inflight)
+			if err != nil {
+				r.Logger.Errorf("Unexpected error parsing inflight details '%s: %v", inflight.ID(), err)
+				continue
+			}
+			summary += details
+			summaries = append(summaries, summary)
+		}
+		if len(summaries) > 0 {
+			str += fmt.Sprintf("Failed Inflight Checks:\n%s\n", strings.Join(summaries, "\n"))
+			str += fmt.Sprintf("\tPlease run `rosa verify network -c %s` after adjusting"+
+				" the cluster's network configuration to remove the warning", cluster.ID())
+		}
+	}
+
 	str = fmt.Sprintf("%s\n", str)
 
 	// Print short cluster description:
 	fmt.Print(str)
+}
+
+var mapInflightErrorTypeToTitle = map[string]string{
+	"egress_url_errors": "Egress URL access issues",
+	"tag_violation":     "Tag violation",
+}
+
+func parseInflightCheckDetails(inflight *cmv1.InflightCheck) (string, error) {
+	var inflightDetails map[string]interface{}
+	out, err := json.Marshal(inflight.Details())
+	if err != nil {
+		return "", err
+	}
+	err = json.Unmarshal(out, &inflightDetails)
+	if err != nil {
+		return "", err
+	}
+	details := ""
+	for inflightKey, inflightValue := range inflightDetails {
+		// send non egress error details to service log
+		if inflightKey == "error" {
+			details += fmt.Sprintf("\tAn inflight error '%s' has occurred: %s", inflightKey, inflightValue.(string))
+			continue
+		}
+		if !strings.Contains(inflightKey, "subnet") {
+			continue
+		}
+		subnetDetails := inflightValue.(map[string]interface{})
+		mapTypeToErrors := map[string][]string{}
+		for key := range mapInflightErrorTypeToTitle {
+			mapTypeToErrors[key] = []string{}
+		}
+		for subnetKey, subnetValue := range subnetDetails {
+			// Remove index from error type key
+			lastIndex := strings.LastIndex(subnetKey, "-")
+			adjustedKey := subnetKey
+			if lastIndex != -1 {
+				adjustedKey = subnetKey[:lastIndex]
+			}
+			if adjustedKey != "egress_url_errors" {
+				continue
+			}
+			// Keep only the url in the reason
+			firstIndex := strings.Index(subnetValue.(string), ":")
+			errorDescription := subnetValue.(string)[firstIndex+1:]
+
+			mapTypeToErrors[adjustedKey] = append(mapTypeToErrors[subnetKey], strings.TrimSpace(errorDescription))
+		}
+		for key, errors := range mapTypeToErrors {
+			if len(errors) > 0 {
+				details += fmt.Sprintf("\tInvalid configurations on subnet '%s' have been identified: \n", inflightKey)
+				errorDetails := fmt.Sprintf("\t\tDetails for '%s':\n", mapInflightErrorTypeToTitle[key])
+				for _, errReason := range errors {
+					errorDetails += fmt.Sprintf("\t\t\t- %s\n", errReason)
+				}
+				details += errorDetails
+			}
+		}
+	}
+	return details, nil
 }
 
 func controlPlaneConfig(cluster *cmv1.Cluster) string {
