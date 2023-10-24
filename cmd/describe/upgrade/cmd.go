@@ -126,11 +126,11 @@ func describeHypershiftUpgrades(r *rosa.Runtime, clusterID string, nodePoolID st
 func formatHypershiftUpgrade(upgrade ocm.HypershiftUpgrader) string {
 	builder := make([]string, 0)
 	builder = append(builder, fmt.Sprintf(`
-		%-35s%s
-		%-35s%s
-		%-35s%s
-		%-35s%s
-		%-35s%s
+%-35s%s
+%-35s%s
+%-35s%s
+%-35s%s
+%-35s%s
 `,
 		"ID:", upgrade.ID(),
 		"Cluster ID:", upgrade.ClusterID(),
@@ -139,15 +139,41 @@ func formatHypershiftUpgrade(upgrade ocm.HypershiftUpgrader) string {
 		"Upgrade State:", upgrade.State().Value()))
 	if upgrade.Schedule() != "" {
 		builder = append(builder, fmt.Sprintf(`
-		%-35s%s
+%-35s%s
 `, "Schedule At:", upgrade.Schedule()))
 		builder = append(builder, fmt.Sprintf(`
-		%-35s%t
+%-35s%t
 `, "Enable minor version upgrades:", upgrade.EnableMinorVersionUpgrades()))
 	}
 	if upgrade.Version() != "" {
 		builder = append(builder, fmt.Sprintf(`
-		%-35s%s
+%-35s%s
+`, "Version:", upgrade.Version()))
+	}
+	return strings.Join(builder, "")
+}
+
+// formatClassicUpgrade is a generic printer for classic Upgrades types
+func formatClassicUpgrade(upgrade *cmv1.UpgradePolicy, upgradeState *cmv1.UpgradePolicyState) string {
+	builder := make([]string, 0)
+	builder = append(builder, fmt.Sprintf(`
+%-35s%s
+%-35s%s
+%-35s%s
+%-35s%s
+`,
+		"ID:", upgrade.ID(),
+		"Cluster ID:", upgrade.ClusterID(),
+		"Next Run:", upgrade.NextRun().Format("2006-01-02 15:04 MST"),
+		"Upgrade State:", upgradeState.Value()))
+	if upgrade.Schedule() != "" {
+		builder = append(builder, fmt.Sprintf(`
+%-35s%s
+`, "Schedule At:", upgrade.Schedule()))
+	}
+	if upgrade.Version() != "" {
+		builder = append(builder, fmt.Sprintf(`
+%-35s%s
 `, "Version:", upgrade.Version()))
 	}
 	return strings.Join(builder, "")
@@ -168,23 +194,7 @@ func describeClassicUpgrades(r *rosa.Runtime, clusterID string) error {
 	}
 
 	for _, upgrade := range upgrades {
-		fmt.Printf(`%19s%61s
-		%-28s%s
-		%-28s%s
-		%-28s%s
-`,
-			"ID:", upgrade.ID(),
-			"Cluster ID:", upgrade.ClusterID(),
-			"Next Run:", upgrade.NextRun().Format("2006-01-02 15:04 MST"),
-			"Upgrade State:", upgradeState.Value())
-		if upgrade.Schedule() != "" {
-			fmt.Printf(`                %-28s%s
-`, "Schedule At:", upgrade.Schedule())
-		}
-		if upgrade.Version() != "" {
-			fmt.Printf(`                %-28s%s
-`, "Version:", upgrade.Version())
-		}
+		fmt.Print(formatClassicUpgrade(upgrade, upgradeState))
 	}
 	return nil
 }
