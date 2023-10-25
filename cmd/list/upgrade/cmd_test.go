@@ -13,8 +13,7 @@ import (
 	"github.com/openshift/rosa/pkg/test"
 )
 
-const noUpgradeOutput = `VERSION  NOTES
-`
+const noUpgradeOutput = "There are no available upgrades for machine pool 'nodepool85'"
 const ongoingUpgradeOutput = `VERSION  NOTES
 4.12.26  recommended
 4.12.25  pending for 2023-06-02 12:30 UTC
@@ -135,7 +134,7 @@ var _ = Describe("List upgrade", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 				test.FormatNodePoolUpgradePolicyList(emptyUpgradePolicies)))
 			stdout, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
-			Expect(stdout).To(Equal(noUpgradeOutput))
+			Expect(stdout).To(ContainSubstring(noUpgradeOutput))
 			Expect(err).To(BeNil())
 		})
 
