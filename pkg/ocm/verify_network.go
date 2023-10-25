@@ -44,3 +44,15 @@ func (c *Client) VerifyNetworkSubnets(awsAccountId string, region string,
 
 	return response.Body().Items(), nil
 }
+
+func (c *Client) VerifyNetworkSubnetsByCluster(clusterId string) ([]*cmv1.SubnetNetworkVerification, error) {
+	body, _ := cmv1.NewNetworkVerification().ClusterId(clusterId).Build()
+	response, err := c.ocm.ClustersMgmt().V1().NetworkVerifications().Add().
+		Body(body).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	return response.Body().Items(), nil
+}

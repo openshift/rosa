@@ -175,9 +175,19 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	if !cmd.Flags().Changed(statusOnlyFlag) {
-		_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs)
-		if err != nil {
-			return fmt.Errorf("Error verifying subnets: %s", err)
+		if cmd.Flags().Changed(clusterFlag) {
+			if cluster == nil {
+				cluster = r.FetchCluster()
+			}
+			_, err := r.OCMClient.VerifyNetworkSubnetsByCluster(cluster.ID())
+			if err != nil {
+				return fmt.Errorf("Error verifying subnets by cluster: %s", err)
+			}
+		} else {
+			_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs)
+			if err != nil {
+				return fmt.Errorf("Error verifying subnets: %s", err)
+			}
 		}
 	}
 

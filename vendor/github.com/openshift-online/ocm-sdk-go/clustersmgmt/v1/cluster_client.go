@@ -393,6 +393,16 @@ func (c *ClusterClient) UpgradePolicies() *UpgradePoliciesClient {
 	)
 }
 
+// Vpc returns the target 'vpc' resource.
+//
+// Reference to the resource that manages the vpc resource.
+func (c *ClusterClient) Vpc() *VpcClient {
+	return NewVpcClient(
+		c.transport,
+		path.Join(c.path, "vpc"),
+	)
+}
+
 // ClusterPollRequest is the request for the Poll method.
 type ClusterPollRequest struct {
 	request    *ClusterGetRequest
