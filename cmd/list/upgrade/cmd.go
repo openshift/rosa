@@ -104,6 +104,10 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 
 		// Get available node pool upgrades
 		availableUpgrades = ocm.GetNodePoolAvailableUpgrades(nodePool)
+		if len(availableUpgrades) == 0 {
+			r.Reporter.Infof("There are no available upgrades for machine pool '%s'", args.nodePool)
+			return nil
+		}
 	} else {
 		// Control plane or cluster updates
 		r.Reporter.Debugf("Loading available upgrades for cluster '%s'", clusterKey)
