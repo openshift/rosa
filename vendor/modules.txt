@@ -264,7 +264,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-online/ocm-common v0.0.0-20231023083349-1e92673a80a5
+# github.com/openshift-online/ocm-common v0.0.0-20231026143539-5ff0909b6fae
 ## explicit; go 1.19
 github.com/openshift-online/ocm-common/pkg
 github.com/openshift-online/ocm-common/pkg/aws/validations
