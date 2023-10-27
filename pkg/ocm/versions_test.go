@@ -57,6 +57,18 @@ var _ = Describe("Versions", Ordered, func() {
 			),
 		)
 	})
+
+	Context("when upgrading a hosted control plane", func() {
+		DescribeTable("Should validate the requested version with the available upgrades",
+			func(userRequestedVersion string, supportedVersion string, clusterVersion string, expected bool) {
+				isValid, err := IsValidVersion(userRequestedVersion, supportedVersion, clusterVersion)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(isValid).To(Equal(expected))
+			},
+			Entry("From 4.14.0-rc.4 to 4.14.0", "4.14.0", "4.14.0", "4.14.0-rc.4", true),
+			Entry("From 4.14.0-rc.4 to 4.14.0", "4.14.1", "4.14.0", "4.14.0-rc.4", false),
+		)
+	})
 })
 
 var _ = Describe("Minimal http tokens required version", Ordered, func() {
