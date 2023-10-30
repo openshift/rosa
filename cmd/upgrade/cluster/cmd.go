@@ -317,7 +317,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	// Validate version
 	if !currentUpgradeScheduling.AutomaticUpgrades {
-		version, err = ocm.CheckAndParseVersion(availableUpgrades, version)
+		version, err = ocm.CheckAndParseVersion(availableUpgrades, version, cluster)
 		if err != nil {
 			return fmt.Errorf("Error parsing version to upgrade to")
 		}
