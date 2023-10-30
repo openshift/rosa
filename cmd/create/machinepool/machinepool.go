@@ -70,8 +70,13 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
+			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
+			if err != nil {
+				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
+				os.Exit(1)
+			}
 			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
-				securityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
+				securityGroupIdsFlag, formattedVersion)
 			os.Exit(1)
 		}
 	}
