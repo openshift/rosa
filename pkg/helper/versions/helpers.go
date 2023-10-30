@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	MinorVersionsSupported = 2
+	MinorVersionsSupported              = 2
+	MajorMinorPatchFormattedErrorOutput = "An error occurred formatting the version for output: %v"
 )
 
 func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool, filterHostedCP bool,
@@ -113,4 +114,24 @@ func IsGreaterThanOrEqual(version1, version2 string) (bool, error) {
 		return false, err
 	}
 	return v1.GreaterThanOrEqual(v2), nil
+}
+
+func FormatMajorMinorPatch(version string) (string, error) {
+	major, minor, patch, err := getVersionSegments(version)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%d.%d.%d", major, minor, patch), nil
+}
+
+func getVersionSegments(rawVersionID string) (major, minor, patch int, err error) {
+	version, err := ver.NewVersion(rawVersionID)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	segments := version.Segments()
+	major = segments[0]
+	minor = segments[1]
+	patch = segments[2]
+	return major, minor, patch, nil
 }

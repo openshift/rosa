@@ -2394,8 +2394,13 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
+			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
+			if err != nil {
+				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
+				os.Exit(1)
+			}
 			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
-				additionalComputeSecurityGroupIdsFlag, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
+				additionalComputeSecurityGroupIdsFlag, formattedVersion)
 			os.Exit(1)
 		}
 	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVPC && !isHostedCP {
@@ -2782,8 +2787,12 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		if !isVersionCompatibleManagedIngressV2 {
-			r.Reporter.Errorf("Updating default ingress settings is not supported for versions prior to '%s'",
-				ocm.MinVersionForManagedIngressV2)
+			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForManagedIngressV2)
+			if err != nil {
+				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
+				os.Exit(1)
+			}
+			r.Reporter.Errorf("Updating default ingress settings is not supported for versions prior to '%s'", formattedVersion)
 			os.Exit(1)
 		}
 	}

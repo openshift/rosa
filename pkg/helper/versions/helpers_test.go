@@ -8,7 +8,6 @@ import (
 )
 
 var _ = Describe("Version Helpers", Ordered, func() {
-
 	Context("when creating a hosted machine pool ", func() {
 		DescribeTable("Filtered versions",
 			func(versionList []string, minVersion string, maxVersion string, expectedVersionList []string) {
@@ -72,7 +71,18 @@ var _ = Describe("Version Helpers", Ordered, func() {
 				"4.12.0-0.a",
 			),
 		)
-
 	})
+})
 
+var _ = Describe("Validates Format Major Minor Patch", func() {
+	DescribeTable("Validates entries",
+		func(val string, expected string) {
+			formatted, err := FormatMajorMinorPatch(val)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(formatted).To(Equal(expected))
+		},
+		Entry("Nightly", "4.14.0-0.nightly-2023-10-24-225235", "4.14.0"),
+		Entry("General Availability", "4.14.1", "4.14.1"),
+		Entry("Candidate", "4.14.0-rc.4-candidate", "4.14.0"),
+	)
 })
