@@ -56,7 +56,7 @@ func run(_ *cobra.Command, _ []string) {
 		rprtr.Errorf("There was a problem retrieving current version: %s", err)
 		os.Exit(1)
 	}
-	latestVersionFromMirror, err := retrieveLatestVersionFromMirror()
+	latestVersionFromMirror, err := RetrieveLatestVersionFromMirror()
 	if err != nil {
 		rprtr.Errorf("There was a problem retrieving latest version from mirror: %s", err)
 		os.Exit(1)
@@ -113,7 +113,7 @@ func retrievePossibleVersionsFromMirror() ([]string, error) {
 	return possibleVersions, nil
 }
 
-func retrieveLatestVersionFromMirror() (*version.Version, error) {
+func RetrieveLatestVersionFromMirror() (*version.Version, error) {
 	possibleVersions, err := retrievePossibleVersionsFromMirror()
 	if err != nil {
 		return nil, weberr.Wrapf(err, "There was a problem retrieving possible versions from mirror.")

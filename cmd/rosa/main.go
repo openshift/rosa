@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	versionUtil "github.com/openshift/rosa/pkg/version"
 	"os"
 	"strings"
 
@@ -36,6 +37,7 @@ import (
 	"github.com/openshift/rosa/cmd/install"
 	"github.com/openshift/rosa/cmd/link"
 	"github.com/openshift/rosa/cmd/list"
+	"github.com/openshift/rosa/cmd/list/version"
 	"github.com/openshift/rosa/cmd/login"
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/cmd/logs"
@@ -46,7 +48,6 @@ import (
 	"github.com/openshift/rosa/cmd/unlink"
 	"github.com/openshift/rosa/cmd/upgrade"
 	"github.com/openshift/rosa/cmd/verify"
-	"github.com/openshift/rosa/cmd/version"
 	"github.com/openshift/rosa/cmd/whoami"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/color"
@@ -58,6 +59,11 @@ var root = &cobra.Command{
 	Long: "Command line tool for Red Hat OpenShift Service on AWS.\n" +
 		"For further documentation visit " +
 		"https://access.redhat.com/documentation/en-us/red_hat_openshift_service_on_aws\n",
+	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+		if versionUtil.ShouldRunCheck(cmd.Use) {
+			versionUtil.Check()
+		}
+	},
 }
 
 func init() {
