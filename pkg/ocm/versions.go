@@ -390,14 +390,28 @@ func checkClusterVersion(clusterVersion string, userRequestedParsedVersion *ver.
 	return true, nil
 }
 
-func CheckAndParseVersion(availableUpgrades []string, version string) (string, error) {
+func CheckAndParseVersion(availableUpgrades []string, version string, cluster *cmv1.Cluster) (string, error) {
+	clusterVersion := cluster.OpenshiftVersion()
+	if clusterVersion == "" {
+		clusterVersion = cluster.Version().RawID()
+	}
 	a, err := ver.NewVersion(version)
 	if err != nil {
 		return "", err
 	}
 	isPreRelease := a.Prerelease() != ""
 	versionSplit := a.Segments64()
-	if len(versionSplit) > 2 && versionSplit[2] > 0 || (versionSplit[2] == 0 && isPreRelease) {
+
+	c, err := ver.NewVersion(clusterVersion)
+	if err != nil {
+		return "", err
+	}
+
+	// User wants to upgrade from a prerelease version
+	// i.e. from 4.14.0-rc.4 to 4.10.0
+	fromPreRelease := c.Prerelease() != ""
+
+	if len(versionSplit) > 2 && versionSplit[2] > 0 || (versionSplit[2] == 0 && isPreRelease) || fromPreRelease {
 		return version, nil
 	}
 	return availableUpgrades[0], nil
