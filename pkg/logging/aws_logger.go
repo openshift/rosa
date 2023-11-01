@@ -21,7 +21,6 @@ package logging
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,9 +36,6 @@ type AWSLoggerBuilder struct {
 type AWSLogger struct {
 	logger *logrus.Logger
 }
-
-// Make sure that we implement the OCM logger interface.
-var _ aws.Logger = &AWSLogger{}
 
 // NewAWSLogger creates new builder that can then be used to configure and build an OCM logger that
 // uses the logging framework of the project.

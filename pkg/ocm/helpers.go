@@ -28,9 +28,7 @@ import (
 	"strconv"
 	"strings"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	semver "github.com/hashicorp/go-version"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/output"
@@ -685,23 +683,13 @@ func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetID
 		return 0, vpcSubnetsErr
 	}
 
-	var subnets []*ec2.Subnet
-	for _, subnet := range vpcSubnets {
-		for _, subnetId := range subnetIDs {
-			if awssdk.StringValue(subnet.SubnetId) == subnetId {
-				subnets = append(subnets, subnet)
-				break
-			}
-		}
-	}
-
-	privateSubnets, privateSubnetsErr := awsClient.FilterVPCsPrivateSubnets(subnets)
+	privateSubnets, privateSubnetsErr := awsClient.FilterVPCsPrivateSubnets(vpcSubnets)
 	if privateSubnetsErr != nil {
 		return 0, privateSubnetsErr
 	}
 
 	privateSubnetCount := len(privateSubnets)
-	publicSubnetsCount := len(subnets) - privateSubnetCount
+	publicSubnetsCount := len(vpcSubnets) - privateSubnetCount
 
 	if isPrivate {
 		if publicSubnetsCount > 0 {
