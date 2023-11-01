@@ -1,11 +1,14 @@
 package aws
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/servicequotas"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
+	servicequotastypes "github.com/aws/aws-sdk-go-v2/service/servicequotas/types"
 )
 
 type quota struct {
@@ -119,26 +122,37 @@ func (c *awsClient) ValidateQuota() (bool, error) {
 }
 
 // ListServiceQuotas list available quotas for service
-func ListServiceQuotas(client *awsClient, serviceCode string) ([]*servicequotas.ServiceQuota, error) {
-	var serviceQuotas []*servicequotas.ServiceQuota
+func ListServiceQuotas(client *awsClient, serviceCode string) ([]*servicequotastypes.ServiceQuota, error) {
+	var serviceQuotas []*servicequotastypes.ServiceQuota
+
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("Error loading AWS config: %v", err)
+	}
+
+	quotasClient := servicequotas.NewFromConfig(cfg)
 
 	// Paginate through quota results
 	listServiceQuotasInput := &servicequotas.ListServiceQuotasInput{ServiceCode: &serviceCode}
-	err := client.servicequotasClient.ListServiceQuotasPages(listServiceQuotasInput,
-		func(page *servicequotas.ListServiceQuotasOutput, lastPage bool) bool {
-			serviceQuotas = append(serviceQuotas, page.Quotas...)
-			return page.NextToken != nil
-		})
-	if err != nil {
-		return nil, err
+	paginator := servicequotas.NewListServiceQuotasPaginator(quotasClient, listServiceQuotasInput)
+	for paginator.HasMorePages() {
+		output, err := paginator.NextPage(context.TODO())
+		if err != nil {
+			return nil, err
+		}
+
+		for _, quota := range output.Quotas {
+			q := quota
+			serviceQuotas = append(serviceQuotas, &q)
+		}
 	}
 
-	return serviceQuotas, err
+	return serviceQuotas, nil
 }
 
 // GetServiceQuota extract service quota for the list of service quotas
-func GetServiceQuota(serviceQuotas []*servicequotas.ServiceQuota,
-	quotaCode string) (*servicequotas.ServiceQuota, error) {
+func GetServiceQuota(serviceQuotas []*servicequotastypes.ServiceQuota,
+	quotaCode string) (*servicequotastypes.ServiceQuota, error) {
 	for _, serviceQuota := range serviceQuotas {
 		if *serviceQuota.QuotaCode == quotaCode {
 			return serviceQuota, nil

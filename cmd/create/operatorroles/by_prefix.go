@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/iam"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -151,17 +149,9 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	}
 	err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, r.AWSClient,
 		operatorRolesList, oidcConfig.IssuerUrl(), "4.0", path, managedPolicies)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				// If ErrCodeNoSuchEntityException we want to create so we may continue
-				break
-			default:
-				r.Reporter.Errorf("%v", err)
-				os.Exit(1)
-			}
-		}
+	if err != nil && !aws.IsNoSuchEntityException(err) {
+		r.Reporter.Errorf("%v", err)
+		os.Exit(1)
 	}
 
 	switch mode {
@@ -303,7 +293,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 				return err
 			}
 		} else {
-			policyArn = aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
+			policyArn = aws.GetOperatorPolicyARN(r.Creator.Partition, r.Creator.AccountID, prefix, operator.Namespace(),
 				operator.Name(), path)
 			policyDetails := aws.GetPolicyDetails(policies, filename)
 
@@ -313,7 +303,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 					return err
 				}
 
-				policyDetails = aws.InterpolatePolicyDocument(policyDetails, map[string]string{
+				policyDetails = aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
 					"shared_vpc_role_arn": sharedVpcRoleArn,
 				})
 			}
@@ -342,7 +332,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 		}
 
 		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(oidcEndpointUrl,
+		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(r.Creator.Partition, oidcEndpointUrl,
 			r.Creator.AccountID, operator, policyDetails)
 		if err != nil {
 			return err
@@ -386,7 +376,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 	managedPolicies bool, path string,
 	operatorIAMRoleList []*cmv1.OperatorIAMRole,
 	oidcEndpointUrl string, hostedCPPolicies bool, sharedVpcRoleArn string) (string, error) {
-	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
+	err := aws.GeneratePolicyFiles(r.Creator.Partition, r.Reporter, env, false,
 		true, policies, credRequests, managedPolicies, sharedVpcRoleArn)
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
@@ -411,7 +401,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 				return "", err
 			}
 		} else {
-			policyARN = computePolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
+			policyARN = computePolicyARN(*r.Creator, prefix, operator.Namespace(), operator.Name(), path)
 			name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := map[string]string{
 				common.OpenShiftVersion: defaultPolicyVersion,
@@ -449,7 +439,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 		}
 
 		policyDetail := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(oidcEndpointUrl,
+		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(r.Creator.Partition, oidcEndpointUrl,
 			r.Creator.AccountID, operator, policyDetail)
 		if err != nil {
 			return "", err
