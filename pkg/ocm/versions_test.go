@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -54,6 +55,51 @@ var _ = Describe("Versions", Ordered, func() {
 			Entry("nightly channel",
 				"openshift-v4.7.0-0.nightly-2021-05-21-224816-nightly",
 				"4.7.0-0.nightly-2021-05-21-224816",
+			),
+		)
+	})
+
+	Context("when upgrading a hosted control plane", func() {
+		DescribeTable("Should validate the requested version with the available upgrades",
+			func(userRequestedVersion string, supportedVersion string, clusterVersion string, expected bool) {
+				isValid, err := IsValidVersion(userRequestedVersion, supportedVersion, clusterVersion)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(isValid).To(Equal(expected))
+			},
+			Entry("From 4.14.0-rc.4 to 4.14.0", "4.14.0", "4.14.0", "4.14.0-rc.4", true),
+			Entry("From 4.14.0-rc.4 to 4.14.0", "4.14.1", "4.14.0", "4.14.0-rc.4", false),
+		)
+
+		DescribeTable("Should check and parse the requested version with the available upgrades",
+			func(availableUpgrades []string, version string, clusterVersion string, expected string) {
+				mockCluster, err := cmv1.NewCluster().
+					ID("test-id").
+					Name("test-name").
+					OpenshiftVersion("").
+					Version(cmv1.NewVersion().RawID(clusterVersion)).Build()
+
+				Expect(err).ToNot(HaveOccurred())
+				parsedVersion, parsedErr := CheckAndParseVersion(availableUpgrades, version, mockCluster)
+				Expect(parsedErr).ToNot(HaveOccurred())
+				Expect(parsedVersion).To(Equal(expected))
+			},
+			Entry("From 4.14.0-rc.4 to 4.14.0",
+				[]string{"4.14.1", "4.14.0"},
+				"4.14.0",
+				"4.14.0-rc.4",
+				"4.14.0",
+			),
+			Entry("From 4.14.0-rc.4 to 4.14.1",
+				[]string{"4.14.1", "4.14.0"},
+				"4.14.1",
+				"4.14.0-rc.4",
+				"4.14.1",
+			),
+			Entry("From 4.14.0 to 4.14.1",
+				[]string{"4.14.1"},
+				"4.14.1",
+				"4.14.0",
+				"4.14.1",
 			),
 		)
 	})
