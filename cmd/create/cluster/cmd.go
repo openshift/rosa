@@ -1214,7 +1214,12 @@ func run(cmd *cobra.Command, _ []string) {
 		role := aws.AccountRoles[aws.InstallerAccountRole]
 
 		// Find all installer roles in the current account using AWS resource tags
-		roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+		var roleARNs []string
+		if isHostedCP {
+			roleARNs, err = awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+		} else {
+			roleARNs, err = awsClient.FindRoleARNsClassic(aws.InstallerAccountRole, minor)
+		}
 		if err != nil {
 			r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 			os.Exit(1)
@@ -1281,7 +1286,11 @@ func run(cmd *cobra.Command, _ []string) {
 					// Not needed for Hypershift clusters
 					continue
 				}
-				roleARNs, err := awsClient.FindRoleARNs(roleType, minor)
+				if isHostedCP {
+					roleARNs, err = awsClient.FindRoleARNs(roleType, minor)
+				} else {
+					roleARNs, err = awsClient.FindRoleARNsClassic(roleType, minor)
+				}
 				if err != nil {
 					r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 					os.Exit(1)
