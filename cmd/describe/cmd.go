@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/rosa/cmd/describe/admin"
 	"github.com/openshift/rosa/cmd/describe/cluster"
 	"github.com/openshift/rosa/cmd/describe/installation"
+	"github.com/openshift/rosa/cmd/describe/kubeletconfig"
 	"github.com/openshift/rosa/cmd/describe/machinepool"
 	"github.com/openshift/rosa/cmd/describe/service"
 	"github.com/openshift/rosa/cmd/describe/tuningconfigs"
@@ -45,6 +46,7 @@ func init() {
 	Cmd.AddCommand(upgrade.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
+	Cmd.AddCommand(kubeletconfig.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

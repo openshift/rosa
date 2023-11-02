@@ -275,6 +275,14 @@ func (c *ClusterClient) Ingresses() *IngressesClient {
 	)
 }
 
+// KubeletConfig returns the target 'kubelet_config' resource.
+func (c *ClusterClient) KubeletConfig() *KubeletConfigClient {
+	return NewKubeletConfigClient(
+		c.transport,
+		path.Join(c.path, "kubelet_config"),
+	)
+}
+
 // LimitedSupportReasons returns the target 'limited_support_reasons' resource.
 //
 // Reference to cluster limited support reasons.
