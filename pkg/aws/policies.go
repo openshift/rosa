@@ -486,18 +486,71 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 	return roleARNs, nil
 }
 
+func (c *awsClient) FindRoleARNsClassic(roleType string, version string) ([]string, error) {
+	roleARNs := []string{}
+	roles, err := c.ListRoles()
+	if err != nil {
+		return roleARNs, err
+	}
+	for _, role := range roles {
+		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
+			continue
+		}
+		isValid, err := c.validateAccountRoleVersionCompatibilityClassic(*role.RoleName, roleType, version)
+		if err != nil {
+			return roleARNs, err
+		}
+		if !isValid {
+			continue
+		}
+		roleARNs = append(roleARNs, aws.StringValue(role.Arn))
+	}
+	return roleARNs, nil
+}
+
 // FIXME: refactor similar calls to use this instead
-func (c *awsClient) ValidateAccountRoleVersionCompatibility(
-	roleName string, roleType string, minVersion string) (bool, error) {
+func (c *awsClient) ValidateAccountRoleVersionCompatibility(roleName string, roleType string,
+	minVersion string) (bool, error) {
 	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
 		return false, err
 	}
+
+	return isAccountRoleVersionCompatible(listRoleTagsOutput.Tags, roleType, minVersion)
+}
+
+func (c *awsClient) validateAccountRoleVersionCompatibilityClassic(roleName string, roleType string,
+	minVersion string) (bool, error) {
+	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	isCompatible, err := isAccountRoleVersionCompatible(listRoleTagsOutput.Tags, roleType, minVersion)
+	if err != nil {
+		return false, err
+	}
+	if !isCompatible {
+		return false, nil
+	}
+
+	// Account roles with HCP policies are not compatible with classic clusters
+	if common.IamResourceHasTag(listRoleTagsOutput.Tags, tags.HypershiftPolicies, tags.True) {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func isAccountRoleVersionCompatible(tagsList []*iam.Tag, roleType string,
+	minVersion string) (bool, error) {
 	skip := false
 	isTagged := false
-	for _, tag := range listRoleTagsOutput.Tags {
+	for _, tag := range tagsList {
 		tagValue := aws.StringValue(tag.Value)
 		switch aws.StringValue(tag.Key) {
 		case tags.RoleType:
@@ -509,7 +562,7 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 		case common.OpenShiftVersion:
 			isTagged = true
 
-			if common.IamResourceHasTag(listRoleTagsOutput.Tags, common.ManagedPolicies, tags.True) {
+			if common.IamResourceHasTag(tagsList, common.ManagedPolicies, tags.True) {
 				// Managed policies will be up-to-date no need to check version tags
 				break
 			}
@@ -536,6 +589,7 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 	if !isTagged || skip {
 		return false, nil
 	}
+
 	return true, nil
 }
 
