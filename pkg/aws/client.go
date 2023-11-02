@@ -120,6 +120,7 @@ type Client interface {
 	DeleteOpenIDConnectProvider(providerURL string) error
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
+	FindRoleARNsClassic(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListUserRoles() ([]Role, error)
 	ListOCMRoles() ([]Role, error)
@@ -185,8 +186,7 @@ type Client interface {
 	PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error
 	CreateSecretInSecretsManager(name string, secret string) (string, error)
 	DeleteSecretInSecretsManager(secretArn string) error
-	ValidateAccountRoleVersionCompatibility(
-		roleName string, roleType string, minVersion string) (bool, error)
+	ValidateAccountRoleVersionCompatibility(roleName string, roleType string, minVersion string) (bool, error)
 	GetDefaultPolicyDocument(policyArn string) (string, error)
 	GetAccountRoleByArn(roleArn string) (*Role, error)
 	GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, error)
