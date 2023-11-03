@@ -24,11 +24,13 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
+
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 )
@@ -120,6 +122,25 @@ func IsCIDR(val interface{}) error {
 		return nil
 	}
 	return fmt.Errorf("can only validate strings, got %v", val)
+}
+
+func Min(min int) Validator {
+	return func(ans interface{}) error {
+		if i, ok := ans.(string); ok {
+			val, err := strconv.Atoi(i)
+			if err != nil {
+				return fmt.Errorf("please enter an integer value, you entered '%s'", i)
+			}
+			if val < min {
+				return fmt.Errorf(
+					"'%d' is less than the permitted minimum of '%d'", val, min)
+			}
+
+			return nil
+		}
+
+		return fmt.Errorf("can only validate strings, got %v", ans)
+	}
 }
 
 func RegExp(restr string) Validator {

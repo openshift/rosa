@@ -121,6 +121,35 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		Expect(err).NotTo(BeNil())
 	})
 
+	It("Creates KubeletConfig", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusCreated,
+				body,
+			),
+		)
+
+		args := KubeletConfigArgs{podPidsLimit}
+		kubeletConfig, err := ocmClient.CreateKubeletConfig(clusterId, args)
+
+		Expect(kubeletConfig).NotTo(BeNil())
+		Expect(err).NotTo(HaveOccurred())
+
+	})
+
+	It("Fails to create KubeletConfig if one exists", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusBadRequest,
+				body,
+			),
+		)
+
+		args := KubeletConfigArgs{podPidsLimit}
+		_, err := ocmClient.CreateKubeletConfig(clusterId, args)
+		Expect(err).To(HaveOccurred())
+	})
+
 })
 
 func createKubeletConfig() (string, error) {
