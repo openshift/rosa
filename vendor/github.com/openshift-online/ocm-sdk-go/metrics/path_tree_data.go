@@ -290,7 +290,8 @@ var pathTreeData = `{
               "-": {
                 "state": null
               }
-            }
+            },
+            "vpc": null
           }
         },
         "dns_domains": {
