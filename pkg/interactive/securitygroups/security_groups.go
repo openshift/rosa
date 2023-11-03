@@ -1,6 +1,7 @@
 package securitygroups
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -9,8 +10,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	additionalComputeSecurityGroupIdsFlag      = "additional-compute-security-group-ids"
+	additionalInfraSecurityGroupIdsFlag        = "additional-infra-security-group-ids"
+	additionalControlPlaneSecurityGroupIdsFlag = "additional-control-plane-security-group-ids"
+)
+
+var SgKindFlagMap = map[string]string{
+	"Compute":       additionalComputeSecurityGroupIdsFlag,
+	"Infra":         additionalInfraSecurityGroupIdsFlag,
+	"Control Plane": additionalControlPlaneSecurityGroupIdsFlag,
+}
+
 func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
-	targetVpcId string, securityGroupFlag string) []string {
+	targetVpcId string, kind string) []string {
 	possibleSgs, err := r.AWSClient.GetSecurityGroupIds(targetVpcId)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem retrieving security groups for VPC '%s': %v", targetVpcId, err)
@@ -23,8 +36,8 @@ func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
 			options = append(options, aws.SetSecurityGroupOption(sg))
 		}
 		securityGroupIds, err = GetMultipleOptions(Input{
-			Question: "Additional Security Group IDs",
-			Help:     cmd.Flags().Lookup(securityGroupFlag).Usage,
+			Question: fmt.Sprintf("Additional '%s' Security Group IDs", kind),
+			Help:     cmd.Flags().Lookup(SgKindFlagMap[kind]).Usage,
 			Required: false,
 			Options:  options,
 		})

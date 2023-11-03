@@ -57,6 +57,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/consts"
 	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
+	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -66,14 +67,15 @@ import (
 )
 
 const (
-	OidcConfigIdFlag                      = "oidc-config-id"
-	ClassicOidcConfigFlag                 = "classic-oidc-config"
-	additionalComputeSecurityGroupIdsFlag = "additional-compute-security-group-ids"
+	OidcConfigIdFlag      = "oidc-config-id"
+	ClassicOidcConfigFlag = "classic-oidc-config"
 
 	clusterAutoscalerFlagsPrefix = "autoscaler-"
 
 	MinReplicasSingleAZ = 2
 	MinReplicaMultiAZ   = 3
+
+	listInputMessage = "Format should be a comma-separated list."
 )
 
 var args struct {
@@ -197,6 +199,12 @@ var args struct {
 
 	// Worker machine pool attributes
 	additionalComputeSecurityGroupIds []string
+
+	// Infra machine pool attributes
+	additionalInfraSecurityGroupIds []string
+
+	// Control Plane machine pool attributes
+	additionalControlPlaneSecurityGroupIds []string
 }
 
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
@@ -750,10 +758,26 @@ func init() {
 
 	flags.StringSliceVar(
 		&args.additionalComputeSecurityGroupIds,
-		additionalComputeSecurityGroupIdsFlag,
+		securitygroups.SgKindFlagMap["Compute"],
 		nil,
 		"The additional Security Group IDs to be added to the default worker machine pool. "+
-			"Format should be a comma-separated list.",
+			listInputMessage,
+	)
+
+	flags.StringSliceVar(
+		&args.additionalInfraSecurityGroupIds,
+		securitygroups.SgKindFlagMap["Infra"],
+		nil,
+		"The additional Security Group IDs to be added to the default infra machine pool. "+
+			listInputMessage,
+	)
+
+	flags.StringSliceVar(
+		&args.additionalControlPlaneSecurityGroupIds,
+		securitygroups.SgKindFlagMap["Control Plane"],
+		nil,
+		"The additional Security Group IDs to be added to the default control plane machine pool. "+
+			listInputMessage,
 	)
 
 	aws.AddModeFlag(Cmd)
@@ -2389,46 +2413,16 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	additionalComputeSecurityGroupIds := args.additionalComputeSecurityGroupIds
-	hasChangedComputeSGIdsFlag := cmd.Flags().Changed(additionalComputeSecurityGroupIdsFlag)
-	if hasChangedComputeSGIdsFlag {
-		if !useExistingVPC {
-			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYO VPC clusters",
-				additionalComputeSecurityGroupIdsFlag)
-			os.Exit(1)
-		}
-		// HCP is still unsupported
-		if isHostedCP {
-			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
-				additionalComputeSecurityGroupIdsFlag)
-			os.Exit(1)
-		}
-		if !isVersionCompatibleComputeSgIds {
-			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
-			if err != nil {
-				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
-				os.Exit(1)
-			}
-			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
-				additionalComputeSecurityGroupIdsFlag, formattedVersion)
-			os.Exit(1)
-		}
-	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVPC && !isHostedCP {
-		vpcId := ""
-		for _, subnet := range subnets {
-			if awssdk.StringValue(subnet.SubnetId) == subnetIDs[0] {
-				vpcId = awssdk.StringValue(subnet.VpcId)
-			}
-		}
-		if vpcId == "" {
-			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
-			os.Exit(1)
-		}
-		additionalComputeSecurityGroupIds = interactiveSgs.
-			GetSecurityGroupIds(r, cmd, vpcId, additionalComputeSecurityGroupIdsFlag)
-	}
-	for i, sg := range additionalComputeSecurityGroupIds {
-		additionalComputeSecurityGroupIds[i] = strings.TrimSpace(sg)
-	}
+	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
+		"Compute", useExistingVPC, isHostedCP, subnets, subnetIDs[0], &additionalComputeSecurityGroupIds)
+
+	additionalInfraSecurityGroupIds := args.additionalInfraSecurityGroupIds
+	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
+		"Infra", useExistingVPC, isHostedCP, subnets, subnetIDs[0], &additionalInfraSecurityGroupIds)
+
+	additionalControlPlaneSecurityGroupIds := args.additionalControlPlaneSecurityGroupIds
+	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
+		"Control Plane", useExistingVPC, isHostedCP, subnets, subnetIDs[0], &additionalControlPlaneSecurityGroupIds)
 
 	// Validate all remaining flags:
 	expiration, err := validateExpiration()
@@ -2959,8 +2953,10 @@ func run(cmd *cobra.Command, _ []string) {
 			WildcardPolicy:           wildcardPolicy,
 			NamespaceOwnershipPolicy: namespaceOwnershipPolicy,
 		},
-		MachinePoolRootDisk:               machinePoolRootDisk,
-		AdditionalComputeSecurityGroupIds: additionalComputeSecurityGroupIds,
+		MachinePoolRootDisk:                    machinePoolRootDisk,
+		AdditionalComputeSecurityGroupIds:      additionalComputeSecurityGroupIds,
+		AdditionalInfraSecurityGroupIds:        additionalInfraSecurityGroupIds,
+		AdditionalControlPlaneSecurityGroupIds: additionalControlPlaneSecurityGroupIds,
 	}
 
 	if httpTokens != "" {
@@ -3545,7 +3541,17 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 	if len(spec.AdditionalComputeSecurityGroupIds) > 0 {
 		command += fmt.Sprintf(" --%s %s",
-			additionalComputeSecurityGroupIdsFlag, strings.Join(spec.AdditionalComputeSecurityGroupIds, ","))
+			securitygroups.SgKindFlagMap["Compute"], strings.Join(spec.AdditionalComputeSecurityGroupIds, ","))
+	}
+
+	if len(spec.AdditionalInfraSecurityGroupIds) > 0 {
+		command += fmt.Sprintf(" --%s %s",
+			securitygroups.SgKindFlagMap["Infra"], strings.Join(spec.AdditionalInfraSecurityGroupIds, ","))
+	}
+
+	if len(spec.AdditionalControlPlaneSecurityGroupIds) > 0 {
+		command += fmt.Sprintf(" --%s %s",
+			securitygroups.SgKindFlagMap["Control Plane"], strings.Join(spec.AdditionalControlPlaneSecurityGroupIds, ","))
 	}
 
 	return command
@@ -3648,5 +3654,50 @@ func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdmin
 	if isClusterAdmin {
 		r.Reporter.Infof("cluster admin user is %s", admin.ClusterAdminUsername)
 		r.Reporter.Infof("cluster admin password is %s", createAdminPassword)
+	}
+}
+
+func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
+	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []*ec2.Subnet, firstChosenSubnet string,
+	additionalSgIds *[]string) {
+	hasChangedSgIdsFlag := cmd.Flags().Changed(securitygroups.SgKindFlagMap[kind])
+	if hasChangedSgIdsFlag {
+		if !useExistingVpc {
+			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYO VPC clusters",
+				securitygroups.SgKindFlagMap[kind])
+			os.Exit(1)
+		}
+		// HCP is still unsupported
+		if isHostedCp {
+			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
+				securitygroups.SgKindFlagMap[kind])
+			os.Exit(1)
+		}
+		if !isVersionCompatibleComputeSgIds {
+			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
+			if err != nil {
+				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
+				os.Exit(1)
+			}
+			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
+				securitygroups.SgKindFlagMap[kind], formattedVersion)
+			os.Exit(1)
+		}
+	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVpc && !isHostedCp {
+		vpcId := ""
+		for _, subnet := range currentSubnets {
+			if awssdk.StringValue(subnet.SubnetId) == firstChosenSubnet {
+				vpcId = awssdk.StringValue(subnet.VpcId)
+			}
+		}
+		if vpcId == "" {
+			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
+			os.Exit(1)
+		}
+		*additionalSgIds = interactiveSgs.
+			GetSecurityGroupIds(r, cmd, vpcId, kind)
+	}
+	for i, sg := range *additionalSgIds {
+		(*additionalSgIds)[i] = strings.TrimSpace(sg)
 	}
 }

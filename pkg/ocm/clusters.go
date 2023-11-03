@@ -157,6 +157,12 @@ type Spec struct {
 
 	// Worker Machine Pool attributes
 	AdditionalComputeSecurityGroupIds []string
+
+	// Infra Machine Pool attributes
+	AdditionalInfraSecurityGroupIds []string
+
+	// Control Plane Machine Pool attributes
+	AdditionalControlPlaneSecurityGroupIds []string
 }
 
 // Volume represents a volume property for a disk
@@ -903,6 +909,14 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 
 	if len(config.AdditionalComputeSecurityGroupIds) > 0 {
 		awsBuilder = awsBuilder.AdditionalComputeSecurityGroupIds(config.AdditionalComputeSecurityGroupIds...)
+	}
+
+	if len(config.AdditionalInfraSecurityGroupIds) > 0 {
+		awsBuilder = awsBuilder.AdditionalInfraSecurityGroupIds(config.AdditionalInfraSecurityGroupIds...)
+	}
+
+	if len(config.AdditionalControlPlaneSecurityGroupIds) > 0 {
+		awsBuilder = awsBuilder.AdditionalControlPlaneSecurityGroupIds(config.AdditionalControlPlaneSecurityGroupIds...)
 	}
 
 	if config.SubnetIds != nil {
