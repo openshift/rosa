@@ -40,9 +40,14 @@ func Yes() bool {
 	return yes
 }
 
+// Asks the user to confirm the operation, using the specified string as the message
+func ConfirmRaw(q string) bool {
+	return Prompt(false, q)
+}
+
 func Confirm(q string, v ...interface{}) bool {
 	msg := fmt.Sprintf("Are you sure you want to %s?", fmt.Sprintf(q, v...))
-	return Prompt(false, msg)
+	return ConfirmRaw(msg)
 }
 
 func Prompt(dflt bool, q string, v ...interface{}) bool {

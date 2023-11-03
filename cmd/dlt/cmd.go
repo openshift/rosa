@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/dnsdomains"
 	"github.com/openshift/rosa/cmd/dlt/idp"
 	"github.com/openshift/rosa/cmd/dlt/ingress"
+	"github.com/openshift/rosa/cmd/dlt/kubeletconfig"
 	"github.com/openshift/rosa/cmd/dlt/machinepool"
 	"github.com/openshift/rosa/cmd/dlt/ocmrole"
 	"github.com/openshift/rosa/cmd/dlt/oidcconfig"
@@ -63,6 +64,7 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
+	Cmd.AddCommand(kubeletconfig.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
