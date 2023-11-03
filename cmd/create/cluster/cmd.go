@@ -2414,15 +2414,15 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	additionalComputeSecurityGroupIds := args.additionalComputeSecurityGroupIds
 	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		"Compute", useExistingVPC, isHostedCP, subnets, subnetIDs[0], &additionalComputeSecurityGroupIds)
+		"Compute", useExistingVPC, isHostedCP, subnets, subnetIDs, &additionalComputeSecurityGroupIds)
 
 	additionalInfraSecurityGroupIds := args.additionalInfraSecurityGroupIds
 	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		"Infra", useExistingVPC, isHostedCP, subnets, subnetIDs[0], &additionalInfraSecurityGroupIds)
+		"Infra", useExistingVPC, isHostedCP, subnets, subnetIDs, &additionalInfraSecurityGroupIds)
 
 	additionalControlPlaneSecurityGroupIds := args.additionalControlPlaneSecurityGroupIds
 	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		"Control Plane", useExistingVPC, isHostedCP, subnets, subnetIDs[0], &additionalControlPlaneSecurityGroupIds)
+		"Control Plane", useExistingVPC, isHostedCP, subnets, subnetIDs, &additionalControlPlaneSecurityGroupIds)
 
 	// Validate all remaining flags:
 	expiration, err := validateExpiration()
@@ -3658,7 +3658,7 @@ func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdmin
 }
 
 func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
-	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []*ec2.Subnet, firstChosenSubnet string,
+	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []*ec2.Subnet, subnetIds []string,
 	additionalSgIds *[]string) {
 	hasChangedSgIdsFlag := cmd.Flags().Changed(securitygroups.SgKindFlagMap[kind])
 	if hasChangedSgIdsFlag {
@@ -3686,7 +3686,7 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVpc && !isHostedCp {
 		vpcId := ""
 		for _, subnet := range currentSubnets {
-			if awssdk.StringValue(subnet.SubnetId) == firstChosenSubnet {
+			if awssdk.StringValue(subnet.SubnetId) == subnetIds[0] {
 				vpcId = awssdk.StringValue(subnet.VpcId)
 			}
 		}
