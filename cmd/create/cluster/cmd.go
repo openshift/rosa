@@ -1288,8 +1288,9 @@ func run(cmd *cobra.Command, _ []string) {
 			if isHostedCP {
 				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
 			}
-			r.Reporter.Warnf(fmt.Sprintf("No account roles found. You will need to manually set them in the "+
-				"next steps or run '%s' to create them first.", createAccountRolesCommand))
+			r.Reporter.Warnf(fmt.Sprintf("No compatible account roles with version '%s' found. "+
+				"You will need to manually set them in the next steps or run '%s' to create them first.",
+				minor, createAccountRolesCommand))
 			interactive.Enable()
 		}
 
@@ -1346,9 +1347,9 @@ func run(cmd *cobra.Command, _ []string) {
 					if isHostedCP {
 						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
 					}
-					r.Reporter.Warnf(fmt.Sprintf("No %s account roles found. You will need to manually set "+
-						"them in the next steps or run '%s' to create "+
-						"them first.", role.Name, createAccountRolesCommand))
+					r.Reporter.Warnf(fmt.Sprintf("No compatible '%s' account roles with version '%s' found. "+
+						"You will need to manually set them in the next steps or run '%s' to create them first.",
+						role.Name, minor, createAccountRolesCommand))
 					interactive.Enable()
 					hasRoles = false
 					break
