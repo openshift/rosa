@@ -32,16 +32,41 @@ func (c *Client) DeleteKubeletConfig(clusterID string) error {
 	return nil
 }
 
-func (c *Client) CreateKubeletConfig(clusterID string, args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
-
+func toOCMKubeletConfig(args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
 	builder := &cmv1.KubeletConfigBuilder{}
 	kubeletConfig, err := builder.PodPidsLimit(args.PodPidsLimit).Build()
 	if err != nil {
 		return nil, err
 	}
 
+	return kubeletConfig, nil
+}
+
+func (c *Client) CreateKubeletConfig(clusterID string, args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
+
+	kubeletConfig, err := toOCMKubeletConfig(args)
+	if err != nil {
+		return nil, err
+	}
+
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
 		KubeletConfig().Post().Request(kubeletConfig).Send()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Body(), nil
+}
+
+func (c *Client) UpdateKubeletConfig(clusterID string, args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
+	kubeletConfig, err := toOCMKubeletConfig(args)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		KubeletConfig().Update().Body(kubeletConfig).Send()
 
 	if err != nil {
 		return nil, err
