@@ -1240,7 +1240,7 @@ func run(cmd *cobra.Command, _ []string) {
 		// Find all installer roles in the current account using AWS resource tags
 		var roleARNs []string
 		if isHostedCP {
-			roleARNs, err = awsClient.FindRoleARNs(aws.InstallerAccountRole, minor)
+			roleARNs, err = awsClient.FindRoleARNsHostedCp(aws.InstallerAccountRole, minor)
 		} else {
 			roleARNs, err = awsClient.FindRoleARNsClassic(aws.InstallerAccountRole, minor)
 		}
@@ -1312,7 +1312,7 @@ func run(cmd *cobra.Command, _ []string) {
 					continue
 				}
 				if isHostedCP {
-					roleARNs, err = awsClient.FindRoleARNs(roleType, minor)
+					roleARNs, err = awsClient.FindRoleARNsHostedCp(roleType, minor)
 				} else {
 					roleARNs, err = awsClient.FindRoleARNsClassic(roleType, minor)
 				}
