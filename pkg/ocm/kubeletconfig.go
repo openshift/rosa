@@ -19,3 +19,11 @@ func (c *Client) GetClusterKubeletConfig(clusterID string) (*cmv1.KubeletConfig,
 
 	return response.Body(), nil
 }
+
+func (c *Client) DeleteKubeletConfig(clusterID string) error {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).KubeletConfig().Delete().Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}

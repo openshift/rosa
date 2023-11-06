@@ -98,6 +98,29 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		Expect(err).To(BeNil())
 		Expect(kubeletConfig).To(BeNil())
 	})
+
+	It("Deletes KubeletConfig", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusNoContent, ""),
+		)
+
+		err := ocmClient.DeleteKubeletConfig(clusterId)
+		Expect(err).To(BeNil())
+	})
+
+	It("Fails to Delete KubeletConfig if none exists", func() {
+
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusNotFound,
+				body,
+			),
+		)
+
+		err := ocmClient.DeleteKubeletConfig(clusterId)
+		Expect(err).NotTo(BeNil())
+	})
+
 })
 
 func createKubeletConfig() (string, error) {
