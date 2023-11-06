@@ -185,6 +185,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Hosted cluster roles always use managed policies
 	if cmd.Flags().Changed("hosted-cp") && cmd.Flags().Changed("managed-policies") && !args.managed {
 		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
+		os.Exit(1)
 	}
 
 	if cmd.Flags().Changed("hosted-cp") && r.Creator.IsGovcloud {
