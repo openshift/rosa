@@ -276,6 +276,7 @@ github.com/lib/pq v1.1.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.2.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.10.2/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/lib/pq v1.10.5 h1:J+gdV2cUmX7ZqL2B0lFcW0m+egaHC2V3lpO8nWxyYiQ=
+github.com/lib/pq v1.10.5/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
 github.com/mattn/go-colorable v0.1.2/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
 github.com/mattn/go-colorable v0.1.6/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
@@ -315,6 +316,8 @@ github.com/openshift-online/ocm-common v0.0.0-20231026143539-5ff0909b6fae h1:qEQ
 github.com/openshift-online/ocm-common v0.0.0-20231026143539-5ff0909b6fae/go.mod h1:kyxt0qXcHlgBSmb0QzYqKBY5mot6mdKHzFBeTCEol2c=
 github.com/openshift-online/ocm-sdk-go v0.1.380 h1:rYjSSh+h61OPvUN9gClz6w0xfQqwg1g8hiOBpyz+jd0=
 github.com/openshift-online/ocm-sdk-go v0.1.380/go.mod h1:/+VFIw1iW2H0jEkFH4GnbL/liWareyzsL0w7mDIudB4=
+github.com/openshift-online/ocm-sdk-go v0.1.381 h1:MRmMyqs4jSWUrDwSzslq22GjB2Ly/9pz1B1+v72npCs=
+github.com/openshift-online/ocm-sdk-go v0.1.381/go.mod h1:/+VFIw1iW2H0jEkFH4GnbL/liWareyzsL0w7mDIudB4=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

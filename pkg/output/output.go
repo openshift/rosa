@@ -114,6 +114,10 @@ func Print(resource interface{}) error {
 		if tuningConfig, ok := resource.(*cmv1.TuningConfig); ok {
 			cmv1.MarshalTuningConfig(tuningConfig, &b)
 		}
+	case "*v1.KubeletConfig":
+		if kubeletConfig, ok := resource.(*cmv1.KubeletConfig); ok {
+			cmv1.MarshalKubeletConfig(kubeletConfig, &b)
+		}
 	case "[]*v1.User":
 		if users, ok := resource.([]*cmv1.User); ok {
 			cmv1.MarshalUserList(users, &b)

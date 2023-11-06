@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.381
+- Update model version to v0.0.333
+  - Add `/api/clusters_mgmt/v1/clusters/{id}/kubelet_config` endpoint
+  - Add `KubeletConfig` struct
+  - Update `Cluster` struct to be able to optionally embed the `KubeletConfig` struct
+
 ## 0.1.380
 - Update model version v0.0.332
   - Add `AdditionalInfraSecurityGroupIds` to `AWS` type

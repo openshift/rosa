@@ -248,6 +248,7 @@ var pathTreeData = `{
             "ingresses": {
               "-": null
             },
+            "kubelet_config": null,
             "limited_support_reasons": {
               "-": null
             },
