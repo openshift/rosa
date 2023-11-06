@@ -2,7 +2,7 @@ package ocm
 
 import (
 	"net/http"
-	
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
