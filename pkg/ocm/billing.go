@@ -42,10 +42,10 @@ func (c *Client) GetBillingAccounts() ([]*v1.CloudAccount, error) {
 	}
 
 	if len(billingAccounts) == 0 {
-		return billingAccounts, errors.New("No billing account associated. " +
-			"Go to https://docs.openshift.com/rosa/rosa_architecture/rosa-understanding.html" +
-			" to learn how to associate your billing account." +
-			" You must associate a billing account to continue.")
+		return billingAccounts, errors.New("No valid billing account associated." +
+			" Go to https://console.aws.amazon.com/rosa/home#/get-started" +
+			" to enable ROSA with HCP for your intended billing account." +
+			" You must have a valid billing account associated to continue.")
 	}
 
 	return billingAccounts, nil
