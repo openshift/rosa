@@ -157,9 +157,6 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			if cluster == nil {
 				cluster = r.FetchCluster()
 			}
-			if args.roleArn = cluster.AWS().STS().RoleARN(); args.roleArn == "" {
-				return fmt.Errorf("Network verification is only available for STS clusters")
-			}
 		} else {
 			return fmt.Errorf("%s is required", roleArnFlag)
 		}
