@@ -112,7 +112,7 @@ func GetTaints(cmd *cobra.Command, r *rosa.Runtime, existingTaints []*cmv1.Taint
 
 func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 	taintBuilders := []*cmv1.TaintBuilder{}
-	if taints == "" {
+	if taints == "" || taints == interactiveModeEmptyLabels {
 		return taintBuilders, nil
 	}
 	var errs []error
