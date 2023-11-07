@@ -121,6 +121,7 @@ type Client interface {
 	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindRoleARNsClassic(roleType string, version string) ([]string, error)
+	FindRoleARNsHostedCp(roleType string, version string) ([]string, error)
 	FindPolicyARN(operator Operator, version string) (string, error)
 	ListUserRoles() ([]Role, error)
 	ListOCMRoles() ([]Role, error)

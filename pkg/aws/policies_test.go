@@ -58,4 +58,44 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 			Expect(isCompatible).To(Equal(true))
 		})
 	})
+	When("Role has HCP managed policies when trying to create classic cluster", func() {
+		It("Should return incompatible", func() {
+			tagsList := []*iam.Tag{
+				{
+					Key:   aws.String("rosa_openshift_version"),
+					Value: aws.String("4.12"),
+				},
+				{
+					Key:   aws.String("rosa_managed_policies"),
+					Value: aws.String("true"),
+				},
+				{
+					Key:   aws.String("rosa_hcp_policies"),
+					Value: aws.String("true"),
+				},
+			}
+			isCompatible, err := validateAccountRoleVersionCompatibilityClassic(InstallerAccountRole, "4.12",
+				tagsList)
+			Expect(err).To(BeNil())
+			Expect(isCompatible).To(Equal(false))
+		})
+	})
+	When("Role has classic policies when trying to create an HCP cluster", func() {
+		It("Should return incompatible", func() {
+			tagsList := []*iam.Tag{
+				{
+					Key:   aws.String("rosa_openshift_version"),
+					Value: aws.String("4.12"),
+				},
+				{
+					Key:   aws.String("rosa_managed_policies"),
+					Value: aws.String("true"),
+				},
+			}
+			isCompatible, err := validateAccountRoleVersionCompatibilityHostedCp(InstallerAccountRole, "4.12",
+				tagsList)
+			Expect(err).To(BeNil())
+			Expect(isCompatible).To(Equal(false))
+		})
+	})
 })

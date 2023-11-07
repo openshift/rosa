@@ -496,7 +496,41 @@ func (c *awsClient) FindRoleARNsClassic(roleType string, version string) ([]stri
 		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
 			continue
 		}
-		isValid, err := c.validateAccountRoleVersionCompatibilityClassic(*role.RoleName, roleType, version)
+		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return roleARNs, err
+		}
+		isValid, err := validateAccountRoleVersionCompatibilityClassic(roleType, version, listRoleTagsOutput.Tags)
+		if err != nil {
+			return roleARNs, err
+		}
+		if !isValid {
+			continue
+		}
+		roleARNs = append(roleARNs, aws.StringValue(role.Arn))
+	}
+	return roleARNs, nil
+}
+
+func (c *awsClient) FindRoleARNsHostedCp(roleType string, version string) ([]string, error) {
+	roleARNs := []string{}
+	roles, err := c.ListRoles()
+	if err != nil {
+		return roleARNs, err
+	}
+	for _, role := range roles {
+		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
+			continue
+		}
+		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			RoleName: role.RoleName,
+		})
+		if err != nil {
+			return roleARNs, err
+		}
+		isValid, err := validateAccountRoleVersionCompatibilityHostedCp(roleType, version, listRoleTagsOutput.Tags)
 		if err != nil {
 			return roleARNs, err
 		}
@@ -521,16 +555,9 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(roleName string, rol
 	return isAccountRoleVersionCompatible(listRoleTagsOutput.Tags, roleType, minVersion)
 }
 
-func (c *awsClient) validateAccountRoleVersionCompatibilityClassic(roleName string, roleType string,
-	minVersion string) (bool, error) {
-	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
-		RoleName: aws.String(roleName),
-	})
-	if err != nil {
-		return false, err
-	}
-
-	isCompatible, err := isAccountRoleVersionCompatible(listRoleTagsOutput.Tags, roleType, minVersion)
+func validateAccountRoleVersionCompatibilityClassic(roleType string, minVersion string,
+	tagList []*iam.Tag) (bool, error) {
+	isCompatible, err := isAccountRoleVersionCompatible(tagList, roleType, minVersion)
 	if err != nil {
 		return false, err
 	}
@@ -539,11 +566,25 @@ func (c *awsClient) validateAccountRoleVersionCompatibilityClassic(roleName stri
 	}
 
 	// Account roles with HCP policies are not compatible with classic clusters
-	if common.IamResourceHasTag(listRoleTagsOutput.Tags, tags.HypershiftPolicies, tags.True) {
+	if common.IamResourceHasTag(tagList, tags.HypershiftPolicies, tags.True) {
 		return false, nil
 	}
 
 	return true, nil
+}
+
+func validateAccountRoleVersionCompatibilityHostedCp(roleType string, minVersion string,
+	tagsList []*iam.Tag) (bool, error) {
+	isCompatible, err := isAccountRoleVersionCompatible(tagsList, roleType, minVersion)
+	if err != nil {
+		return false, err
+	}
+	if !isCompatible {
+		return false, nil
+	}
+
+	// Only account roles with HCP managed policies are compatible with HCP clusters
+	return common.IamResourceHasTag(tagsList, tags.HypershiftPolicies, tags.True), nil
 }
 
 func isAccountRoleVersionCompatible(tagsList []*iam.Tag, roleType string,
