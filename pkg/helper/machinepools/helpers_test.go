@@ -17,6 +17,12 @@ var _ = Describe("MachinePool", func() {
 				Expect(err.Error()).To(ContainSubstring(expectedError))
 			}
 		},
+		Entry("Empty taints are parsed correctly",
+			"", "", 0,
+		),
+		Entry("Resetting taints in interactive mode is parsed correctly",
+			`""`, "", 0,
+		),
 		Entry(
 			"Well formed taint",
 			"node-role.kubernetes.io/infra=val:NoSchedule", "", 1),
