@@ -33,10 +33,10 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "kubeletconfig",
 	Aliases: []string{"kubelet-config"},
-	Short:   "Create a custom kubeletconfig for a cluster",
-	Long:    "Create a custom kubeletconfig for a cluster",
-	Example: `  # Create a custom kubeletconfig with a pod-pids-limit of 5000
-  rosa create kubeletconfig --cluster=mycluster --pod-pids-limit=5000
+	Short:   "Edit the custom kubeletconfig for a cluster",
+	Long:    "Edit the custom kubeletconfig for a cluster.",
+	Example: `  # Edit a custom kubeletconfig to have a pod-pids-limit of 10000
+  rosa edit kubeletconfig --cluster=mycluster --pod-pids-limit=10000
   `,
 	Run: run,
 }
@@ -48,14 +48,16 @@ var args struct {
 func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
+
+	ocm.AddClusterFlag(Cmd)
+	interactive.AddFlag(flags)
+
 	flags.IntVar(
 		&args.podPidsLimit,
 		PodPidsLimitOption,
 		PodPidsLimitOptionDefaultValue,
 		PodPidsLimitOptionUsage)
 
-	ocm.AddClusterFlag(Cmd)
-	interactive.AddFlag(flags)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -66,7 +68,7 @@ func run(_ *cobra.Command, _ []string) {
 	cluster := r.FetchCluster()
 
 	if cluster.Hypershift().Enabled() {
-		r.Reporter.Errorf("Hosted Control Plane clusters do not support custom KubeletConfig configuration.")
+		r.Reporter.Errorf("Hosted Control Plane clusters do not support KubeletConfig configuration")
 		os.Exit(1)
 	}
 
@@ -75,18 +77,20 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	kubeletConfig, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
+	kubeletconfig, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
 	if err != nil {
-		r.Reporter.Errorf("Failed getting KubeletConfig for cluster '%s': %s",
+		r.Reporter.Errorf("Failed to fetch existing KubeletConfig configuration for cluster '%s': %s",
 			cluster.ID(), err)
 		os.Exit(1)
 	}
 
-	if kubeletConfig != nil {
-		r.Reporter.Errorf("A custom KubeletConfig for cluster '%s' already exists. "+
-			"You should edit it via 'rosa edit kubeletconfig'", clusterKey)
+	if kubeletconfig == nil {
+		r.Reporter.Errorf("No KubeletConfig for cluster '%s' has been found. "+
+			"You should first create it via 'rosa create kubeletconfig'", clusterKey)
 		os.Exit(1)
 	}
+
+	r.Reporter.Debugf("Updating KubeletConfig for cluster '%s'", clusterKey)
 
 	if args.podPidsLimit == PodPidsLimitOptionDefaultValue && !interactive.Enabled() {
 		interactive.Enable()
@@ -98,7 +102,7 @@ func run(_ *cobra.Command, _ []string) {
 			Question: InteractivePodPidsLimitPrompt,
 			Help:     InteractivePodPidsLimitHelp,
 			Options:  nil,
-			Default:  nil,
+			Default:  kubeletconfig.PodPidsLimit(),
 			Required: true,
 			Validators: []interactive.Validator{
 				// We only validate the minimum as some customers have capability to exceed maximum
@@ -108,11 +112,10 @@ func run(_ *cobra.Command, _ []string) {
 		})
 
 		if err != nil {
-			r.Reporter.Errorf("Failed creating KubeletConfig for cluster '%s': '%s'",
+			r.Reporter.Errorf("Failed updating KubeletConfig for cluster '%s': '%s'",
 				cluster.ID(), err)
 			os.Exit(1)
 		}
-
 	}
 
 	if args.podPidsLimit < MinPodPidsLimit {
@@ -121,24 +124,21 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	prompt := fmt.Sprintf("Creating the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
+	prompt := fmt.Sprintf("Updating the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
 		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", cluster.ID())
 
 	if confirm.ConfirmRaw(prompt) {
-
-		r.Reporter.Debugf("Creating KubeletConfig for cluster '%s'", clusterKey)
-		kubeletConfigArgs := ocm.KubeletConfigArgs{PodPidsLimit: args.podPidsLimit}
-
-		_, err = r.OCMClient.CreateKubeletConfig(cluster.ID(), kubeletConfigArgs)
+		r.Reporter.Debugf("Updating KubeletConfig for cluster '%s'", clusterKey)
+		_, err = r.OCMClient.UpdateKubeletConfig(cluster.ID(), ocm.KubeletConfigArgs{PodPidsLimit: args.podPidsLimit})
 		if err != nil {
-			r.Reporter.Errorf("Failed creating custom KubeletConfig for cluster '%s': '%s'",
+			r.Reporter.Errorf("Failed creating custom KubeletConfig for cluster '%s': %s",
 				cluster.ID(), err)
 			os.Exit(1)
 		}
 
-		r.Reporter.Infof("Successfully created custom KubeletConfig for cluster '%s'", cluster.ID())
+		r.Reporter.Infof("Successfully updated custom KubeletConfig for cluster '%s'", cluster.ID())
 		os.Exit(0)
 	}
 
-	r.Reporter.Infof("Creation of custom KubeletConfig for cluster '%s' aborted.", cluster.ID())
+	r.Reporter.Infof("Update of custom KubeletConfig for cluster '%s' aborted.", cluster.ID())
 }

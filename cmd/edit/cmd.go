@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/rosa/cmd/edit/autoscaler"
 	"github.com/openshift/rosa/cmd/edit/cluster"
 	"github.com/openshift/rosa/cmd/edit/ingress"
+	"github.com/openshift/rosa/cmd/edit/kubeletconfig"
 	"github.com/openshift/rosa/cmd/edit/machinepool"
 	"github.com/openshift/rosa/cmd/edit/service"
 	"github.com/openshift/rosa/cmd/edit/tuningconfigs"
@@ -45,6 +46,7 @@ func init() {
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
+	Cmd.AddCommand(kubeletconfig.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
