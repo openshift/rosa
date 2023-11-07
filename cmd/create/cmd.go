@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/dnsdomains"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/ingress"
+	"github.com/openshift/rosa/cmd/create/kubeletconfig"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/openshift/rosa/cmd/create/ocmrole"
 	"github.com/openshift/rosa/cmd/create/oidcconfig"
@@ -34,7 +35,6 @@ import (
 	"github.com/openshift/rosa/cmd/create/service"
 	"github.com/openshift/rosa/cmd/create/tuningconfigs"
 	"github.com/openshift/rosa/cmd/create/userrole"
-
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
@@ -62,6 +62,7 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
+	Cmd.AddCommand(kubeletconfig.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

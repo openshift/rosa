@@ -6,6 +6,10 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
+type KubeletConfigArgs struct {
+	PodPidsLimit int
+}
+
 func (c *Client) GetClusterKubeletConfig(clusterID string) (*cmv1.KubeletConfig, error) {
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).KubeletConfig().Get().Send()
 
@@ -26,4 +30,22 @@ func (c *Client) DeleteKubeletConfig(clusterID string) error {
 		return handleErr(response.Error(), err)
 	}
 	return nil
+}
+
+func (c *Client) CreateKubeletConfig(clusterID string, args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
+
+	builder := &cmv1.KubeletConfigBuilder{}
+	kubeletConfig, err := builder.PodPidsLimit(args.PodPidsLimit).Build()
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
+		KubeletConfig().Post().Request(kubeletConfig).Send()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Body(), nil
 }
