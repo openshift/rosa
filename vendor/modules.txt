@@ -273,7 +273,7 @@ github.com/openshift-online/ocm-common/pkg/idp/validations
 github.com/openshift-online/ocm-common/pkg/machinepool/validations
 github.com/openshift-online/ocm-common/pkg/ocm/validations
 github.com/openshift-online/ocm-common/pkg/resource/validations
-# github.com/openshift-online/ocm-sdk-go v0.1.381
+# github.com/openshift-online/ocm-sdk-go v0.1.385
 ## explicit; go 1.21
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accountsmgmt

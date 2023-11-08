@@ -19,7 +19,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.8
 	github.com/openshift-online/ocm-common v0.0.0-20231026143539-5ff0909b6fae
-	github.com/openshift-online/ocm-sdk-go v0.1.381
+	github.com/openshift-online/ocm-sdk-go v0.1.385
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3

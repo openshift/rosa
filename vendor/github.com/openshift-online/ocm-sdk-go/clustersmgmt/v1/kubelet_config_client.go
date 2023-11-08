@@ -450,7 +450,7 @@ type KubeletConfigPostRequest struct {
 	path      string
 	query     url.Values
 	header    http.Header
-	request   *KubeletConfig
+	body      *KubeletConfig
 }
 
 // Parameter adds a query parameter.
@@ -472,9 +472,9 @@ func (r *KubeletConfigPostRequest) Impersonate(user string) *KubeletConfigPostRe
 	return r
 }
 
-// Request sets the value of the 'request' parameter.
-func (r *KubeletConfigPostRequest) Request(value *KubeletConfig) *KubeletConfigPostRequest {
-	r.request = value
+// Body sets the value of the 'body' parameter.
+func (r *KubeletConfigPostRequest) Body(value *KubeletConfig) *KubeletConfigPostRequest {
+	r.body = value
 	return r
 }
 

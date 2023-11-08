@@ -36,7 +36,7 @@ func readKubeletConfigGetResponse(response *KubeletConfigGetResponse, reader io.
 	return err
 }
 func writeKubeletConfigPostRequest(request *KubeletConfigPostRequest, writer io.Writer) error {
-	return MarshalKubeletConfig(request.request, writer)
+	return MarshalKubeletConfig(request.body, writer)
 }
 func readKubeletConfigPostResponse(response *KubeletConfigPostResponse, reader io.Reader) error {
 	var err error
