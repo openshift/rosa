@@ -3027,7 +3027,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
 			command := buildCommand(clusterConfig, operatorRolesPrefix, expectedOperatorRolePath,
-				isAvailabilityZonesSet || selectAvailabilityZones, labels)
+				isAvailabilityZonesSet || selectAvailabilityZones, labels, args.properties)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
@@ -3360,7 +3360,8 @@ func parseRFC3339(s string) (time.Time, error) {
 }
 
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
-	operatorRolePath string, userSelectedAvailabilityZones bool, labels string) string {
+	operatorRolePath string, userSelectedAvailabilityZones bool, labels string,
+	properties []string) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.IsSTS {
@@ -3555,6 +3556,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 			securitygroups.SgKindFlagMap["Control Plane"], strings.Join(spec.AdditionalControlPlaneSecurityGroupIds, ","))
 	}
 
+	for _, p := range properties {
+		command += fmt.Sprintf(" --properties \"%s\"", p)
+	}
 	return command
 }
 
