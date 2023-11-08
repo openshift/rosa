@@ -273,7 +273,14 @@ var pathTreeData = `{
                 }
               }
             },
-            "product": null,
+            "product": {
+              "minimal_versions": {
+                "-": null
+              },
+              "technology_previews": {
+                "-": null
+              }
+            },
             "provision_shard": null,
             "resources": {
               "live": null
@@ -325,7 +332,14 @@ var pathTreeData = `{
           "-": null
         },
         "products": {
-          "-": null
+          "-": {
+            "minimal_versions": {
+              "-": null
+            },
+            "technology_previews": {
+              "-": null
+            }
+          }
         },
         "provision_shards": {
           "-": null

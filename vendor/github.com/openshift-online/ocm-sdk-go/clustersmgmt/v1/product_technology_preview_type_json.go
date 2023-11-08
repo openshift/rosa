@@ -21,16 +21,16 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
-	"sort"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalSubnetNetworkVerification writes a value of the 'subnet_network_verification' type to the given writer.
-func MarshalSubnetNetworkVerification(object *SubnetNetworkVerification, writer io.Writer) error {
+// MarshalProductTechnologyPreview writes a value of the 'product_technology_preview' type to the given writer.
+func MarshalProductTechnologyPreview(object *ProductTechnologyPreview, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeSubnetNetworkVerification(object, stream)
+	writeProductTechnologyPreview(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,15 +38,15 @@ func MarshalSubnetNetworkVerification(object *SubnetNetworkVerification, writer 
 	return stream.Error
 }
 
-// writeSubnetNetworkVerification writes a value of the 'subnet_network_verification' type to the given stream.
-func writeSubnetNetworkVerification(object *SubnetNetworkVerification, stream *jsoniter.Stream) {
+// writeProductTechnologyPreview writes a value of the 'product_technology_preview' type to the given stream.
+func writeProductTechnologyPreview(object *ProductTechnologyPreview, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	if object.bitmap_&1 != 0 {
-		stream.WriteString(SubnetNetworkVerificationLinkKind)
+		stream.WriteString(ProductTechnologyPreviewLinkKind)
 	} else {
-		stream.WriteString(SubnetNetworkVerificationKind)
+		stream.WriteString(ProductTechnologyPreviewKind)
 	}
 	count++
 	if object.bitmap_&2 != 0 {
@@ -66,13 +66,13 @@ func writeSubnetNetworkVerification(object *SubnetNetworkVerification, stream *j
 		count++
 	}
 	var present_ bool
-	present_ = object.bitmap_&8 != 0 && object.details != nil
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("details")
-		writeStringList(object.details, stream)
+		stream.WriteObjectField("additional_text")
+		stream.WriteString(object.additionalText)
 		count++
 	}
 	present_ = object.bitmap_&16 != 0
@@ -80,56 +80,36 @@ func writeSubnetNetworkVerification(object *SubnetNetworkVerification, stream *j
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("state")
-		stream.WriteString(object.state)
+		stream.WriteObjectField("end_date")
+		stream.WriteString((object.endDate).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&32 != 0 && object.tags != nil
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("tags")
-		if object.tags != nil {
-			stream.WriteObjectStart()
-			keys := make([]string, len(object.tags))
-			i := 0
-			for key := range object.tags {
-				keys[i] = key
-				i++
-			}
-			sort.Strings(keys)
-			for i, key := range keys {
-				if i > 0 {
-					stream.WriteMore()
-				}
-				item := object.tags[key]
-				stream.WriteObjectField(key)
-				stream.WriteString(item)
-			}
-			stream.WriteObjectEnd()
-		} else {
-			stream.WriteNil()
-		}
+		stream.WriteObjectField("start_date")
+		stream.WriteString((object.startDate).Format(time.RFC3339))
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalSubnetNetworkVerification reads a value of the 'subnet_network_verification' type from the given
+// UnmarshalProductTechnologyPreview reads a value of the 'product_technology_preview' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalSubnetNetworkVerification(source interface{}) (object *SubnetNetworkVerification, err error) {
+func UnmarshalProductTechnologyPreview(source interface{}) (object *ProductTechnologyPreview, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readSubnetNetworkVerification(iterator)
+	object = readProductTechnologyPreview(iterator)
 	err = iterator.Error
 	return
 }
 
-// readSubnetNetworkVerification reads a value of the 'subnet_network_verification' type from the given iterator.
-func readSubnetNetworkVerification(iterator *jsoniter.Iterator) *SubnetNetworkVerification {
-	object := &SubnetNetworkVerification{}
+// readProductTechnologyPreview reads a value of the 'product_technology_preview' type from the given iterator.
+func readProductTechnologyPreview(iterator *jsoniter.Iterator) *ProductTechnologyPreview {
+	object := &ProductTechnologyPreview{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
@@ -138,7 +118,7 @@ func readSubnetNetworkVerification(iterator *jsoniter.Iterator) *SubnetNetworkVe
 		switch field {
 		case "kind":
 			value := iterator.ReadString()
-			if value == SubnetNetworkVerificationLinkKind {
+			if value == ProductTechnologyPreviewLinkKind {
 				object.bitmap_ |= 1
 			}
 		case "id":
@@ -147,25 +127,25 @@ func readSubnetNetworkVerification(iterator *jsoniter.Iterator) *SubnetNetworkVe
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
-		case "details":
-			value := readStringList(iterator)
-			object.details = value
-			object.bitmap_ |= 8
-		case "state":
+		case "additional_text":
 			value := iterator.ReadString()
-			object.state = value
-			object.bitmap_ |= 16
-		case "tags":
-			value := map[string]string{}
-			for {
-				key := iterator.ReadObject()
-				if key == "" {
-					break
-				}
-				item := iterator.ReadString()
-				value[key] = item
+			object.additionalText = value
+			object.bitmap_ |= 8
+		case "end_date":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
 			}
-			object.tags = value
+			object.endDate = value
+			object.bitmap_ |= 16
+		case "start_date":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.startDate = value
 			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()

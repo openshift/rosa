@@ -50,7 +50,7 @@ func (c *Client) CreateKubeletConfig(clusterID string, args KubeletConfigArgs) (
 	}
 
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
-		KubeletConfig().Post().Request(kubeletConfig).Send()
+		KubeletConfig().Post().Body(kubeletConfig).Send()
 
 	if err != nil {
 		return nil, err
