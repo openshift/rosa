@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/cmd/edit/tuningconfigs"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
 
 var Cmd = &cobra.Command{
@@ -52,4 +53,5 @@ func init() {
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
 	interactive.AddFlag(flags)
+	confirm.AddFlag(flags)
 }
