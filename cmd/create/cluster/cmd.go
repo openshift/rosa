@@ -652,7 +652,7 @@ func init() {
 		&args.hostedClusterEnabled,
 		"hosted-cp",
 		false,
-		"Technology Preview: Enable the use of Hosted Control Planes",
+		"Enable the use of Hosted Control Planes",
 	)
 
 	flags.StringVar(&args.machinePoolRootDiskSize,
@@ -912,11 +912,15 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// FIXME: Remove before GA
 	if isHostedCP && r.Reporter.IsTerminal() {
-		//nolint
-		r.Reporter.Infof("NOTE: Hosted control planes are currently in Technology Preview (https://access.redhat.com/support/offerings/techpreview)." +
-			" Any Technology Preview clusters will need to be destroyed and recreated prior to general availability.")
+		techPreviewMsg, err := r.OCMClient.GetTechnologyPreviewMessage(ocm.HcpProduct, time.Now())
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		if techPreviewMsg != "" {
+			r.Reporter.Infof(techPreviewMsg)
+		}
 	}
 
 	if isHostedCP && args.ec2MetadataHttpTokens != "" {
