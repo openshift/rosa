@@ -13,6 +13,44 @@ import (
 )
 
 var _ = Describe("Validate build command", func() {
+
+	var clusterConfig ocm.Spec
+	var operatorRolesPrefix string
+	var expectedOperatorRolePath string
+	var userSelectedAvailabilityZones bool
+	var defaultMachinePoolLabels string
+	var argsDotProperties []string
+
+	BeforeEach(func() {
+		clusterConfig = ocm.Spec{
+			Name: "cluster-name",
+		}
+		operatorRolesPrefix = "prefix"
+		expectedOperatorRolePath = "operator-role-path"
+		userSelectedAvailabilityZones = false
+		defaultMachinePoolLabels = "machine-pool-label"
+	})
+	Context("build command", func() {
+		When("--properties is not present", func() {
+			It("should not include --properties", func() {
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				// nolint:lll
+				Expect(command).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix"))
+			})
+		})
+		When("--properties is present", func() {
+			It("should include --properties", func() {
+				argsDotProperties = []string{"prop1", "prop2"}
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				// nolint:lll
+				Expect(command).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix --properties \"prop1\" --properties \"prop2\""))
+			})
+		})
+	})
 	Context("build tags command", func() {
 		When("tag key or values DO contain a colon", func() {
 			It("should build tags command with a space as a delimiter", func() {
