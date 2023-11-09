@@ -122,7 +122,7 @@ func init() {
 		&args.hostedCP,
 		"hosted-cp",
 		false,
-		"Technology Preview: Enable the use of Hosted Control Planes",
+		"Enable the use of Hosted Control Planes",
 	)
 
 	flags.BoolVar(
