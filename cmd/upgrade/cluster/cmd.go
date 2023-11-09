@@ -121,7 +121,7 @@ func init() {
 		fmt.Sprintf("You may set a grace period for how long Pod Disruption Budget-protected workloads will be "+
 			"respected during upgrades.\nAfter this grace period, any workloads protected by Pod Disruption "+
 			"Budgets that have not been successfully drained from a node will be forcibly evicted.\nValid "+
-			"options are ['%s']", strings.Join(nodeDrainOptions, "','")),
+			"options are ['%s']\nThis flag is not supported for Hosted Control Planes.", strings.Join(nodeDrainOptions, "','")),
 	)
 
 	flags.BoolVar(
@@ -313,7 +313,15 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	// Compute drain grace period config
-	clusterSpec := buildNodeDrainGracePeriod(r, cmd, cluster)
+	var clusterSpec ocm.Spec
+	if isHypershift {
+		if cmd.Flags().Changed("node-drain-grace-period") {
+			return fmt.Errorf("%s flag is not supported to hosted clusters", "node-drain-grace-period")
+		}
+		clusterSpec = ocm.Spec{}
+	} else {
+		clusterSpec = buildNodeDrainGracePeriod(r, cmd, cluster)
+	}
 
 	// Validate version
 	if !currentUpgradeScheduling.AutomaticUpgrades {

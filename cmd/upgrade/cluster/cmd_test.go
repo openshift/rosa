@@ -286,6 +286,22 @@ var _ = Describe("Upgrade", Ordered, func() {
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("There is no cluster with identifier or name"))
 	})
+	It("Fails if node-drain-grace-period flag is specified for hypershift clusters", func() {
+		args.controlPlane = true
+		args.schedule = "20 5 * * *"
+		args.scheduleDate = ""
+		args.scheduleTime = ""
+		args.version = ""
+		Cmd.Flags().Set("node-drain-grace-period", "45 minutes")
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReadyWithUpdates))
+		// No existing policy upgrade
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+		err = runWithRuntime(testRuntime.RosaRuntime, Cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(
+			ContainSubstring("node-drain-grace-period flag is not supported to hosted clusters"))
+	})
 })
 
 func formatControlPlaneUpgradePolicyList(upgradePolicies []*cmv1.ControlPlaneUpgradePolicy) string {
