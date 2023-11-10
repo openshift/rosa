@@ -52,19 +52,19 @@ func run(_ *cobra.Command, _ []string) {
 	r.Reporter.Debugf("Deleting KubeletConfig for cluster '%s'", clusterKey)
 
 	prompt := fmt.Sprintf("Deleting the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
-		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", cluster.ID())
+		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", clusterKey)
 
 	if confirm.ConfirmRaw(prompt) {
 
 		err := r.OCMClient.DeleteKubeletConfig(cluster.ID())
 		if err != nil {
 			r.Reporter.Errorf("Failed to delete custom KubeletConfig for cluster '%s': '%s'",
-				cluster.ID(), err)
+				clusterKey, err)
 			os.Exit(1)
 		}
-		r.Reporter.Infof("Successfully deleted custom KubeletConfig for cluster '%s'", cluster.ID())
+		r.Reporter.Infof("Successfully deleted custom KubeletConfig for cluster '%s'", clusterKey)
 		os.Exit(0)
 	}
 
-	r.Reporter.Infof("Delete of custom KubeletConfig for cluster '%s' aborted.", cluster.ID())
+	r.Reporter.Infof("Delete of custom KubeletConfig for cluster '%s' aborted.", clusterKey)
 }

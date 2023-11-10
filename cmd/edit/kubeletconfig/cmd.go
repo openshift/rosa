@@ -80,7 +80,7 @@ func run(_ *cobra.Command, _ []string) {
 	kubeletconfig, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
 	if err != nil {
 		r.Reporter.Errorf("Failed to fetch existing KubeletConfig configuration for cluster '%s': %s",
-			cluster.ID(), err)
+			clusterKey, err)
 		os.Exit(1)
 	}
 
@@ -113,7 +113,7 @@ func run(_ *cobra.Command, _ []string) {
 
 		if err != nil {
 			r.Reporter.Errorf("Failed updating KubeletConfig for cluster '%s': '%s'",
-				cluster.ID(), err)
+				clusterKey, err)
 			os.Exit(1)
 		}
 	}
@@ -125,7 +125,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	prompt := fmt.Sprintf("Updating the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
-		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", cluster.ID())
+		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", clusterKey)
 
 	if confirm.ConfirmRaw(prompt) {
 		r.Reporter.Debugf("Updating KubeletConfig for cluster '%s'", clusterKey)
@@ -136,9 +136,9 @@ func run(_ *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		r.Reporter.Infof("Successfully updated custom KubeletConfig for cluster '%s'", cluster.ID())
+		r.Reporter.Infof("Successfully updated custom KubeletConfig for cluster '%s'", clusterKey)
 		os.Exit(0)
 	}
 
-	r.Reporter.Infof("Update of custom KubeletConfig for cluster '%s' aborted.", cluster.ID())
+	r.Reporter.Infof("Update of custom KubeletConfig for cluster '%s' aborted.", clusterKey)
 }
