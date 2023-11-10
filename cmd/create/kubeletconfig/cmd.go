@@ -109,7 +109,7 @@ func run(_ *cobra.Command, _ []string) {
 
 		if err != nil {
 			r.Reporter.Errorf("Failed creating KubeletConfig for cluster '%s': '%s'",
-				cluster.ID(), err)
+				clusterKey, err)
 			os.Exit(1)
 		}
 
@@ -122,7 +122,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	prompt := fmt.Sprintf("Creating the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
-		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", cluster.ID())
+		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", clusterKey)
 
 	if confirm.ConfirmRaw(prompt) {
 
@@ -132,13 +132,13 @@ func run(_ *cobra.Command, _ []string) {
 		_, err = r.OCMClient.CreateKubeletConfig(cluster.ID(), kubeletConfigArgs)
 		if err != nil {
 			r.Reporter.Errorf("Failed creating custom KubeletConfig for cluster '%s': '%s'",
-				cluster.ID(), err)
+				clusterKey, err)
 			os.Exit(1)
 		}
 
-		r.Reporter.Infof("Successfully created custom KubeletConfig for cluster '%s'", cluster.ID())
+		r.Reporter.Infof("Successfully created custom KubeletConfig for cluster '%s'", clusterKey)
 		os.Exit(0)
 	}
 
-	r.Reporter.Infof("Creation of custom KubeletConfig for cluster '%s' aborted.", cluster.ID())
+	r.Reporter.Infof("Creation of custom KubeletConfig for cluster '%s' aborted.", clusterKey)
 }
