@@ -92,35 +92,8 @@ func run(_ *cobra.Command, _ []string) {
 
 	r.Reporter.Debugf("Updating KubeletConfig for cluster '%s'", clusterKey)
 
-	if args.podPidsLimit == PodPidsLimitOptionDefaultValue && !interactive.Enabled() {
-		interactive.Enable()
-		r.Reporter.Infof("Enabling interactive mode")
-	}
-
-	if interactive.Enabled() {
-		args.podPidsLimit, err = interactive.GetInt(interactive.Input{
-			Question: InteractivePodPidsLimitPrompt,
-			Help:     InteractivePodPidsLimitHelp,
-			Options:  nil,
-			Default:  kubeletconfig.PodPidsLimit(),
-			Required: true,
-			Validators: []interactive.Validator{
-				// We only validate the minimum as some customers have capability to exceed maximum
-				// We rely on backend validation for that
-				interactive.Min(MinPodPidsLimit),
-			},
-		})
-
-		if err != nil {
-			r.Reporter.Errorf("Failed updating KubeletConfig for cluster '%s': '%s'",
-				clusterKey, err)
-			os.Exit(1)
-		}
-	}
-
-	if args.podPidsLimit < MinPodPidsLimit {
-		r.Reporter.Errorf("The minimum value for --pod-pids-limit is '%d'. You have supplied '%d'",
-			MinPodPidsLimit, args.podPidsLimit)
+	requestedPids, err := ValidateOrPromptForRequestedPidsLimit(args.podPidsLimit, clusterKey, kubeletconfig, r)
+	if err != nil {
 		os.Exit(1)
 	}
 
@@ -129,7 +102,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	if confirm.ConfirmRaw(prompt) {
 		r.Reporter.Debugf("Updating KubeletConfig for cluster '%s'", clusterKey)
-		_, err = r.OCMClient.UpdateKubeletConfig(cluster.ID(), ocm.KubeletConfigArgs{PodPidsLimit: args.podPidsLimit})
+		_, err = r.OCMClient.UpdateKubeletConfig(cluster.ID(), ocm.KubeletConfigArgs{PodPidsLimit: requestedPids})
 		if err != nil {
 			r.Reporter.Errorf("Failed creating custom KubeletConfig for cluster '%s': %s",
 				cluster.ID(), err)

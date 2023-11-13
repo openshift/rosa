@@ -6,9 +6,9 @@ import (
 )
 
 var _ = Describe("Validation", func() {
-	Context("Min", func() {
+	Context("MinValue", func() {
 		It("Fails validation if the answer is less than the minimum", func() {
-			validator := Min(50)
+			validator := MinValue(50)
 			err := validator("25")
 
 			Expect(err).To(HaveOccurred())
@@ -16,29 +16,66 @@ var _ = Describe("Validation", func() {
 		})
 
 		It("Fails validation if the answer is not an integer", func() {
-			validator := Min(50)
+			validator := MinValue(50)
 			err := validator("hello")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("please enter an integer value, you entered 'hello'"))
 		})
 
 		It("Fails validation if the answer is not a string", func() {
-			validator := Min(50)
+			validator := MinValue(50)
 			err := validator(45)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("can only validate strings, got int"))
 		})
 
 		It("Passes validation if the answer is greater than the min", func() {
-			validator := Min(50)
+			validator := MinValue(50)
 			err := validator("55")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Passes validation if the answer is equal to the min", func() {
-			validator := Min(50)
+			validator := MinValue(50)
 			err := validator("50")
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+
+	Context("MaxValue", func() {
+		It("Fails validation if the answer is greater than the maximum", func() {
+			validator := MaxValue(50)
+			err := validator("52")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("'52' is greater than the permitted maximum of '50'"))
+		})
+
+		It("Fails validation if the answer is not an integer", func() {
+			validator := MaxValue(50)
+			err := validator("hello")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("please enter an integer value, you entered 'hello'"))
+		})
+
+		It("Fails validation if the answer is not a string", func() {
+			validator := MaxValue(50)
+			err := validator(45)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("can only validate strings, got int"))
+		})
+
+		It("Passes validation if the answer is less than the max", func() {
+			validator := MaxValue(50)
+			err := validator("49")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Passes validation if the answer is equal to the max", func() {
+			validator := MaxValue(50)
+			err := validator("50")
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
 })

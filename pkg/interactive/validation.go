@@ -124,12 +124,33 @@ func IsCIDR(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
-func Min(min int) Validator {
+// MaxValue returns a Validator that validates the entered number is less than or equal to max
+func MaxValue(max int) Validator {
 	return func(ans interface{}) error {
-		if i, ok := ans.(string); ok {
-			val, err := strconv.Atoi(i)
+		if str, ok := ans.(string); ok {
+			val, err := strconv.Atoi(str)
 			if err != nil {
-				return fmt.Errorf("please enter an integer value, you entered '%s'", i)
+				return fmt.Errorf("please enter an integer value, you entered '%s'", str)
+			}
+			if val > max {
+				return fmt.Errorf(
+					"'%d' is greater than the permitted maximum of '%d'", val, max)
+			}
+
+			return nil
+		}
+
+		return fmt.Errorf("can only validate strings, got %v", ans)
+	}
+}
+
+// MinValue returns a validator that validates the entered number is greater than or equal to min
+func MinValue(min int) Validator {
+	return func(ans interface{}) error {
+		if str, ok := ans.(string); ok {
+			val, err := strconv.Atoi(str)
+			if err != nil {
+				return fmt.Errorf("please enter an integer value, you entered '%s'", str)
 			}
 			if val < min {
 				return fmt.Errorf(
