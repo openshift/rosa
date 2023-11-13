@@ -66,7 +66,8 @@ const (
 
 	maxClusterNameLength = 15
 
-	HcpProduct = "hcp"
+	HcpProduct        = "hcp"
+	HcpBillingAccount = "hcp-billing"
 )
 
 // Regular expression to used to make sure that the identifier or name given by the user is

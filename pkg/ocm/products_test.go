@@ -21,6 +21,14 @@ const hcpTechnologyPreviewBody = `{
 	"additional_text": "Tech preview message"
 }`
 
+const hcpBillingTechnologyPreviewBody = `{
+	"kind": "ProductTechnologyPreview",
+ 	"href": "/api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-billing",
+	"start_date": "2022-12-01T00:01:00Z",
+	"end_date": "2023-12-05T00:01:00Z",
+	"additional_text": "Tech preview message"
+}`
+
 var _ = Describe("Technology preview features", func() {
 	var ssoServer, apiServer *ghttp.Server
 	var ocmClient *Client
@@ -126,6 +134,72 @@ var _ = Describe("Technology preview features", func() {
 		message, err := ocmClient.GetTechnologyPreviewMessage("bad-product", beforeRelease)
 		Expect(err).To(HaveOccurred())
 		Expect(message).To(BeEmpty())
+	})
+
+	It("Expects true for hcp-billing in tech preview", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				hcpBillingTechnologyPreviewBody,
+			),
+		)
+
+		beforeRelease, err := time.Parse(time.RFC3339, "2023-12-03T00:01:00Z")
+		Expect(err).ToNot(HaveOccurred())
+
+		isTechPreview, err := ocmClient.IsTechnologyPreview("hcp-billing", beforeRelease)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(isTechPreview).To(BeTrue())
+	})
+
+	It("Expects false for hcp-billing in GA", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				hcpBillingTechnologyPreviewBody,
+			),
+		)
+
+		afterRelease, err := time.Parse(time.RFC3339, "2023-12-06T00:01:00Z")
+		Expect(err).ToNot(HaveOccurred())
+
+		isTechPreview, err := ocmClient.IsTechnologyPreview("hcp-billing", afterRelease)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(isTechPreview).To(BeFalse())
+	})
+
+	It("Expects false if no hcp-billing technology preview", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusNotFound,
+				"",
+			),
+		)
+
+		beforeRelease, err := time.Parse(time.RFC3339, "2023-12-03T00:01:00Z")
+		Expect(err).ToNot(HaveOccurred())
+
+		isTechPreview, err := ocmClient.IsTechnologyPreview("hcp-billing", beforeRelease)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(isTechPreview).To(BeFalse())
+	})
+
+	It("Expects an error if bad product", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusBadRequest,
+				"Product 'bad-product' doesn't exist",
+			),
+		)
+
+		beforeRelease, err := time.Parse(time.RFC3339, "2023-12-03T00:01:00Z")
+		Expect(err).ToNot(HaveOccurred())
+
+		isTechPreview, err := ocmClient.IsTechnologyPreview("bad-product", beforeRelease)
+		Expect(err).To(HaveOccurred())
+		Expect(isTechPreview).To(BeFalse())
 	})
 
 })

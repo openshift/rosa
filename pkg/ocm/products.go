@@ -23,12 +23,22 @@ func (c *Client) GetTechnologyPreview(id string) (*cmv1.ProductTechnologyPreview
 	return response.Body(), true, nil
 }
 
+func (c *Client) IsTechnologyPreview(id string, forTime time.Time) (bool, error) {
+	techPreview, exists, err := c.GetTechnologyPreview(id)
+	if err != nil {
+		return false, err
+	}
+	if exists && techPreview.EndDate().After(forTime) {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (c *Client) GetTechnologyPreviewMessage(id string, forTime time.Time) (string, error) {
 	techPreview, exists, err := c.GetTechnologyPreview(id)
 	if err != nil {
 		return "", err
 	}
-	// It assumes that the technology_preview endpoint will be available in CS before the ROSA CLI 1.2.30 is out
 	// If no technology preview found, a feature should be considered GA
 	// If there is a technology preview for HCP and it's active we'll show the message
 	if exists && techPreview.EndDate().After(forTime) {
