@@ -65,7 +65,7 @@ var _ = Describe("KubeletConfig Config", func() {
 			Expect(input.Question).To(Equal(InteractivePodPidsLimitPrompt))
 			Expect(input.Help).To(Equal(GetInteractiveMaxPidsLimitHelp(5000)))
 			Expect(len(input.Validators)).To(Equal(2))
-			Expect(input.Default).To(Equal(PodPidsLimitOptionDefaultValue))
+			Expect(input.Default).To(Equal(MinPodPidsLimit))
 		})
 	})
 })
