@@ -207,7 +207,7 @@ func init() {
 	)
 
 	flags.StringSliceVar(&args.securityGroupIds,
-		securitygroups.SgKindFlagMap["Machine Pool"],
+		securitygroups.MachinePoolSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the machine pool. "+
 			"Format should be a comma-separated list.",

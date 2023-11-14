@@ -48,7 +48,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
-	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.SgKindFlagMap["Machine Pool"])
+	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
 	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
 		cluster.Version().RawID(), ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
 	if err != nil {
@@ -58,12 +58,13 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	isHcpCluster := ocm.IsHyperShiftCluster(cluster)
 	if isSecurityGroupIdsSet {
 		if !isByoVpc {
-			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters", securitygroups.SgKindFlagMap["Machine Pool"])
+			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters",
+				securitygroups.MachinePoolSecurityGroupFlag)
 			os.Exit(1)
 		}
 		if isHcpCluster {
 			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
-				securitygroups.SgKindFlagMap["Machine Pool"])
+				securitygroups.MachinePoolSecurityGroupFlag)
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
@@ -73,7 +74,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 				os.Exit(1)
 			}
 			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
-				securitygroups.SgKindFlagMap["Machine Pool"], formattedVersion)
+				securitygroups.MachinePoolSecurityGroupFlag, formattedVersion)
 			os.Exit(1)
 		}
 	}
@@ -302,7 +303,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
 			os.Exit(1)
 		}
-		securityGroupIds = interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, "Machine Pool")
+		securityGroupIds = interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, interactiveSgs.MachinePoolKind)
 	}
 	for i, sg := range securityGroupIds {
 		securityGroupIds[i] = strings.TrimSpace(sg)
