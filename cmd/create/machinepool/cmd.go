@@ -22,6 +22,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -206,7 +207,7 @@ func init() {
 	)
 
 	flags.StringSliceVar(&args.securityGroupIds,
-		securityGroupIdsFlag,
+		securitygroups.MachinePoolSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the machine pool. "+
 			"Format should be a comma-separated list.",
