@@ -758,7 +758,7 @@ func init() {
 
 	flags.StringSliceVar(
 		&args.additionalComputeSecurityGroupIds,
-		securitygroups.SgKindFlagMap["Compute"],
+		securitygroups.ComputeSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the default worker machine pool. "+
 			listInputMessage,
@@ -766,7 +766,7 @@ func init() {
 
 	flags.StringSliceVar(
 		&args.additionalInfraSecurityGroupIds,
-		securitygroups.SgKindFlagMap["Infra"],
+		securitygroups.InfraSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the default infra machine pool. "+
 			listInputMessage,
@@ -774,7 +774,7 @@ func init() {
 
 	flags.StringSliceVar(
 		&args.additionalControlPlaneSecurityGroupIds,
-		securitygroups.SgKindFlagMap["Control Plane"],
+		securitygroups.ControlPlaneSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the default control plane machine pool. "+
 			listInputMessage,
@@ -2429,15 +2429,18 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	additionalComputeSecurityGroupIds := args.additionalComputeSecurityGroupIds
 	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		"Compute", useExistingVPC, isHostedCP, subnets, subnetIDs, &additionalComputeSecurityGroupIds)
+		securitygroups.ComputeKind, useExistingVPC, isHostedCP, subnets,
+		subnetIDs, &additionalComputeSecurityGroupIds)
 
 	additionalInfraSecurityGroupIds := args.additionalInfraSecurityGroupIds
 	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		"Infra", useExistingVPC, isHostedCP, subnets, subnetIDs, &additionalInfraSecurityGroupIds)
+		securitygroups.InfraKind, useExistingVPC, isHostedCP, subnets,
+		subnetIDs, &additionalInfraSecurityGroupIds)
 
 	additionalControlPlaneSecurityGroupIds := args.additionalControlPlaneSecurityGroupIds
 	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		"Control Plane", useExistingVPC, isHostedCP, subnets, subnetIDs, &additionalControlPlaneSecurityGroupIds)
+		securitygroups.ControlPlaneKind, useExistingVPC, isHostedCP, subnets,
+		subnetIDs, &additionalControlPlaneSecurityGroupIds)
 
 	// Validate all remaining flags:
 	expiration, err := validateExpiration()
@@ -3557,17 +3560,20 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 	if len(spec.AdditionalComputeSecurityGroupIds) > 0 {
 		command += fmt.Sprintf(" --%s %s",
-			securitygroups.SgKindFlagMap["Compute"], strings.Join(spec.AdditionalComputeSecurityGroupIds, ","))
+			securitygroups.ComputeSecurityGroupFlag,
+			strings.Join(spec.AdditionalComputeSecurityGroupIds, ","))
 	}
 
 	if len(spec.AdditionalInfraSecurityGroupIds) > 0 {
 		command += fmt.Sprintf(" --%s %s",
-			securitygroups.SgKindFlagMap["Infra"], strings.Join(spec.AdditionalInfraSecurityGroupIds, ","))
+			securitygroups.InfraSecurityGroupFlag,
+			strings.Join(spec.AdditionalInfraSecurityGroupIds, ","))
 	}
 
 	if len(spec.AdditionalControlPlaneSecurityGroupIds) > 0 {
 		command += fmt.Sprintf(" --%s %s",
-			securitygroups.SgKindFlagMap["Control Plane"], strings.Join(spec.AdditionalControlPlaneSecurityGroupIds, ","))
+			securitygroups.ControlPlaneSecurityGroupFlag,
+			strings.Join(spec.AdditionalControlPlaneSecurityGroupIds, ","))
 	}
 
 	for _, p := range properties {

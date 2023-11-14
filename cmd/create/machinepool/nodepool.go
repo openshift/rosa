@@ -30,10 +30,10 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		os.Exit(1)
 	}
 
-	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.SgKindFlagMap["Machine Pool"])
+	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
 	if isSecurityGroupIdsSet {
 		r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
-			securitygroups.SgKindFlagMap["Machine Pool"])
+			securitygroups.MachinePoolSecurityGroupFlag)
 		os.Exit(1)
 	}
 

@@ -15,14 +15,25 @@ const (
 	additionalInfraSecurityGroupIdsFlag        = "additional-infra-security-group-ids"
 	additionalControlPlaneSecurityGroupIdsFlag = "additional-control-plane-security-group-ids"
 	securityGroupIdsFlag                       = "additional-security-group-ids"
+
+	ComputeKind      = "Compute"
+	InfraKind        = "Infra"
+	ControlPlaneKind = "Control Plane"
+	MachinePoolKind  = "Machine Pool"
 )
 
-var SgKindFlagMap = map[string]string{
-	"Compute":       additionalComputeSecurityGroupIdsFlag,
-	"Infra":         additionalInfraSecurityGroupIdsFlag,
-	"Control Plane": additionalControlPlaneSecurityGroupIdsFlag,
-	"Machine Pool":  securityGroupIdsFlag,
-}
+var (
+	SgKindFlagMap = map[string]string{
+		ComputeKind:      additionalComputeSecurityGroupIdsFlag,
+		InfraKind:        additionalInfraSecurityGroupIdsFlag,
+		ControlPlaneKind: additionalControlPlaneSecurityGroupIdsFlag,
+		MachinePoolKind:  securityGroupIdsFlag,
+	}
+	ComputeSecurityGroupFlag      = SgKindFlagMap[ComputeKind]
+	InfraSecurityGroupFlag        = SgKindFlagMap[InfraKind]
+	ControlPlaneSecurityGroupFlag = SgKindFlagMap[ControlPlaneKind]
+	MachinePoolSecurityGroupFlag  = SgKindFlagMap[MachinePoolKind]
+)
 
 func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
 	targetVpcId string, kind string) []string {
