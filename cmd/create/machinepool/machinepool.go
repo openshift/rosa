@@ -17,15 +17,12 @@ import (
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
-)
-
-const (
-	securityGroupIdsFlag = "additional-security-group-ids"
 )
 
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
@@ -51,7 +48,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
-	isSecurityGroupIdsSet := cmd.Flags().Changed(securityGroupIdsFlag)
+	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.SgKindFlagMap["Machine Pool"])
 	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
 		cluster.Version().RawID(), ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
 	if err != nil {
@@ -61,12 +58,12 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	isHcpCluster := ocm.IsHyperShiftCluster(cluster)
 	if isSecurityGroupIdsSet {
 		if !isByoVpc {
-			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters", securityGroupIdsFlag)
+			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters", securitygroups.SgKindFlagMap["Machine Pool"])
 			os.Exit(1)
 		}
 		if isHcpCluster {
 			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
-				securityGroupIdsFlag)
+				securitygroups.SgKindFlagMap["Machine Pool"])
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
@@ -76,7 +73,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 				os.Exit(1)
 			}
 			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
-				securityGroupIdsFlag, formattedVersion)
+				securitygroups.SgKindFlagMap["Machine Pool"], formattedVersion)
 			os.Exit(1)
 		}
 	}
@@ -305,7 +302,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
 			os.Exit(1)
 		}
-		securityGroupIds = interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, securityGroupIdsFlag)
+		securityGroupIds = interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, "Machine Pool")
 	}
 	for i, sg := range securityGroupIds {
 		securityGroupIds[i] = strings.TrimSpace(sg)
