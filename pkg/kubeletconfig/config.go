@@ -34,7 +34,7 @@ func GetInteractiveMaxPidsLimitHelp(maxPidsLimit int) string {
 
 func GetInteractiveInput(maxPidsLimit int, kubeletConfig *v1.KubeletConfig) interactive.Input {
 
-	var defaultLimit = PodPidsLimitOptionDefaultValue
+	var defaultLimit = MinPodPidsLimit
 	if kubeletConfig != nil {
 		defaultLimit = kubeletConfig.PodPidsLimit()
 	}
