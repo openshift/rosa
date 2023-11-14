@@ -14,6 +14,7 @@ import (
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -29,10 +30,10 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		os.Exit(1)
 	}
 
-	isSecurityGroupIdsSet := cmd.Flags().Changed(securityGroupIdsFlag)
+	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
 	if isSecurityGroupIdsSet {
 		r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
-			securityGroupIdsFlag)
+			securitygroups.MachinePoolSecurityGroupFlag)
 		os.Exit(1)
 	}
 
