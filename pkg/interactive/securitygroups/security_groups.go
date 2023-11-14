@@ -14,12 +14,14 @@ const (
 	additionalComputeSecurityGroupIdsFlag      = "additional-compute-security-group-ids"
 	additionalInfraSecurityGroupIdsFlag        = "additional-infra-security-group-ids"
 	additionalControlPlaneSecurityGroupIdsFlag = "additional-control-plane-security-group-ids"
+	securityGroupIdsFlag                       = "additional-security-group-ids"
 )
 
 var SgKindFlagMap = map[string]string{
 	"Compute":       additionalComputeSecurityGroupIdsFlag,
 	"Infra":         additionalInfraSecurityGroupIdsFlag,
 	"Control Plane": additionalControlPlaneSecurityGroupIdsFlag,
+	"Machine Pool":  securityGroupIdsFlag,
 }
 
 func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
