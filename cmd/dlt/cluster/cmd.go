@@ -59,7 +59,9 @@ func init() {
 		&args.bestEffort,
 		"best-effort",
 		false,
-		"Delete cluster in best-effort mode.",
+		"Deleting a cluster with \"best effort\" means that certain resources "+
+			"may be left behind in the cloud account and will need manual cleanup. "+
+			"This option should be used with care.",
 	)
 
 	flags.BoolVarP(
