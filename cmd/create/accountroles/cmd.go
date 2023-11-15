@@ -401,10 +401,6 @@ func run(cmd *cobra.Command, argv []string) {
 			})
 			os.Exit(1)
 		}
-		if r.Reporter.IsTerminal() {
-			r.Reporter.Infof("To create an OIDC Config, run the following command:\n" +
-				"\trosa create oidc-config")
-		}
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 			ocm.Version:  policyVersion,
