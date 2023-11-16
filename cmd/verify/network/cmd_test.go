@@ -333,4 +333,45 @@ INFO: subnet-0f87f640e56934cbc: passed
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal(successOutputComplete))
 	})
+	It("Succeeds if custom --tags are supplied", func() {
+		// POST /api/clusters_mgmt/v1/network_verifications
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetsComplete,
+			),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetPassedSuccess,
+			),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetPassedSuccess,
+			),
+		)
+		cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")
+		cmd.Flags().Set("tags", "test val1, test2 val2")
+		cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")
+		cmd.Flags().Set("region", "us-east-1")
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(successOutputComplete))
+	})
+	It("Fails if --tags are formatted incorrectly", func() {
+		cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")
+		cmd.Flags().Set("tags", "test val1 test2 val2")
+		cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")
+		cmd.Flags().Set("region", "us-east-1")
+		err := runWithRuntime(r, cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(
+			ContainSubstring("invalid tag format"))
+	})
 })
