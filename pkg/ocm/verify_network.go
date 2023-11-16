@@ -28,10 +28,10 @@ func (c *Client) GetVerifyNetworkSubnet(id string) (*cmv1.SubnetNetworkVerificat
 }
 
 func (c *Client) VerifyNetworkSubnets(awsAccountId string, region string,
-	subnets []string) ([]*cmv1.SubnetNetworkVerification, error) {
+	subnets []string, tags map[string]string) ([]*cmv1.SubnetNetworkVerification, error) {
 
 	body, _ := cmv1.NewNetworkVerification().CloudProviderData(cmv1.NewCloudProviderData().
-		AWS(cmv1.NewAWS().STS(cmv1.NewSTS().RoleARN(awsAccountId))).
+		AWS(cmv1.NewAWS().STS(cmv1.NewSTS().RoleARN(awsAccountId)).Tags(tags)).
 		Subnets(subnets...).
 		Region(cmv1.NewCloudRegion().ID(region))).
 		Build()

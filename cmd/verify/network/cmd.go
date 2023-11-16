@@ -39,6 +39,7 @@ var args struct {
 	statusOnly bool
 	subnetIDs  []string
 	watch      bool
+	tags       []string
 }
 
 var Cmd = makeCmd()
@@ -95,6 +96,14 @@ func initFlags(cmd *cobra.Command) {
 		roleArnFlag,
 		"",
 		"STS Role ARN with get secrets permission.",
+	)
+
+	flags.StringSliceVar(
+		&args.tags,
+		"tags",
+		nil,
+		"Supply custom tags to the network verifier. Tags will default to cluster tags if a cluster is supplied. "+
+			"Tags are comma separated, for example: 'key value, foo bar'",
 	)
 
 	flags.BoolVarP(
@@ -171,6 +180,21 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		}
 	}
 
+	// Custom tags for network verifier
+	_tags := args.tags
+	tagsList := map[string]string{}
+
+	if len(_tags) > 0 {
+		if err := aws.UserTagValidator(_tags); err != nil {
+			return fmt.Errorf("%s", err)
+		}
+		delim := aws.GetTagsDelimiter(_tags)
+		for _, tag := range _tags {
+			t := strings.Split(tag, delim)
+			tagsList[t[0]] = strings.TrimSpace(t[1])
+		}
+	}
+
 	if !cmd.Flags().Changed(statusOnlyFlag) {
 		if cmd.Flags().Changed(clusterFlag) {
 			if cluster == nil {
@@ -181,7 +205,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 				return fmt.Errorf("Error verifying subnets by cluster: %s", err)
 			}
 		} else {
-			_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs)
+			_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs, tagsList)
 			if err != nil {
 				return fmt.Errorf("Error verifying subnets: %s", err)
 			}
