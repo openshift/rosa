@@ -28,6 +28,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/ocm"
+	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -545,7 +546,7 @@ func clusterMultiAZ(cluster *cmv1.Cluster, nodePools []*cmv1.NodePool) string {
 
 func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtime,
 	machinePools []*cmv1.MachinePool, nodePools []*cmv1.NodePool) string {
-	var infraConfig string
+	var nodeConfig string
 	if cluster.Hypershift().Enabled() {
 		minNodes := 0
 		maxNodes := 0
@@ -564,7 +565,7 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 			}
 		}
 		if minNodes != maxNodes {
-			infraConfig = fmt.Sprintf(""+
+			nodeConfig = fmt.Sprintf(""+
 				"Nodes:\n"+
 				" - Compute (Autoscaled):    %d-%d\n"+
 				" - Compute (current):       %d\n",
@@ -573,7 +574,7 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 				currentNodes,
 			)
 		} else {
-			infraConfig = fmt.Sprintf(""+
+			nodeConfig = fmt.Sprintf(""+
 				"Nodes:\n"+
 				" - Compute (desired):       %d\n"+
 				" - Compute (current):       %d\n",
@@ -596,30 +597,44 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 			}
 		}
 
+		nodeConfig = fmt.Sprintf(
+			"Nodes:\n"+
+				" - Control plane:           %d\n"+
+				" - Infra:                   %d\n",
+			cluster.Nodes().Master(),
+			cluster.Nodes().Infra())
+
 		// Determine whether there is any auto-scaling in the cluster
 		if minNodes == maxNodes {
-			infraConfig = fmt.Sprintf(""+
-				"Nodes:\n"+
-				" - Control plane:           %d\n"+
-				" - Infra:                   %d\n"+
+			nodeConfig += fmt.Sprintf(
 				" - Compute:                 %d\n",
-				cluster.Nodes().Master(),
-				cluster.Nodes().Infra(),
 				minNodes,
 			)
 		} else {
-			infraConfig = fmt.Sprintf(""+
-				"Nodes:\n"+
-				" - Control plane:           %d\n"+
-				" - Infra:                   %d\n"+
+			nodeConfig += fmt.Sprintf(
 				" - Compute (Autoscaled):    %d-%d\n",
-				cluster.Nodes().Master(),
-				cluster.Nodes().Infra(),
 				minNodes, maxNodes,
 			)
 		}
 	}
-	return infraConfig
+	hasSgsControlPlane := len(cluster.AWS().AdditionalControlPlaneSecurityGroupIds()) > 0
+	hasSgsInfra := len(cluster.AWS().AdditionalInfraSecurityGroupIds()) > 0
+	if hasSgsControlPlane || hasSgsInfra {
+		nodeConfig += " - Additional Security Group IDs:\n"
+		if hasSgsControlPlane {
+			nodeConfig += fmt.Sprintf(
+				"\t- Control Plane:           %s\n",
+				ocmOutput.PrintStringSlice(
+					cluster.AWS().AdditionalControlPlaneSecurityGroupIds()))
+		}
+		if hasSgsInfra {
+			nodeConfig += fmt.Sprintf(
+				"\t- Infra:                   %s\n",
+				ocmOutput.PrintStringSlice(
+					cluster.AWS().AdditionalInfraSecurityGroupIds()))
+		}
+	}
+	return nodeConfig
 }
 
 func getDetailsLink(environment string) string {
