@@ -768,7 +768,7 @@ func init() {
 		&args.additionalInfraSecurityGroupIds,
 		securitygroups.InfraSecurityGroupFlag,
 		nil,
-		"The additional Security Group IDs to be added to the default infra machine pool. "+
+		"The additional Security Group IDs to be added to the infra worker nodes. "+
 			listInputMessage,
 	)
 
@@ -776,7 +776,7 @@ func init() {
 		&args.additionalControlPlaneSecurityGroupIds,
 		securitygroups.ControlPlaneSecurityGroupFlag,
 		nil,
-		"The additional Security Group IDs to be added to the default control plane machine pool. "+
+		"The additional Security Group IDs to be added to the control plane nodes. "+
 			listInputMessage,
 	)
 
