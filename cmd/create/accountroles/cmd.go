@@ -406,7 +406,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Version:  policyVersion,
 		})
 	case aws.ModeManual:
-		err = aws.GeneratePolicyFiles(r.Reporter, env, true, false, policies, nil, managedPolicies, "")
+		err = aws.GeneratePolicyFiles(r.Reporter, env, true, false, policies, nil, rolesCreator.skipPermissionFiles(), "")
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{

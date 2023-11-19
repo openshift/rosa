@@ -16,6 +16,7 @@ type creator interface {
 	createRoles(*rosa.Runtime, *accountRolesCreationInput) error
 	getRoleTags(string, *accountRolesCreationInput) map[string]string
 	printCommands(*rosa.Runtime, *accountRolesCreationInput) error
+	skipPermissionFiles() bool
 }
 
 func initCreator(r *rosa.Runtime, managedPolicies bool, classic bool, hostedCP bool, isClassicValueSet bool,
@@ -155,6 +156,10 @@ func (mp *managedPoliciesCreator) getRoleTags(roleType string, input *accountRol
 	return tagsList
 }
 
+func (mp *managedPoliciesCreator) skipPermissionFiles() bool {
+	return true
+}
+
 type unmanagedPoliciesCreator struct{}
 
 func (up *unmanagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRolesCreationInput) error {
@@ -205,6 +210,10 @@ func (up *unmanagedPoliciesCreator) getRoleTags(roleType string, input *accountR
 	return getBaseRoleTags(roleType, input)
 }
 
+func (up *unmanagedPoliciesCreator) skipPermissionFiles() bool {
+	return false
+}
+
 type doubleRolesCreator struct{}
 
 func (db *doubleRolesCreator) createRoles(r *rosa.Runtime, input *accountRolesCreationInput) error {
@@ -236,6 +245,10 @@ func (db *doubleRolesCreator) printCommands(r *rosa.Runtime, input *accountRoles
 // getRoleTags is not needed, but here to satisfy the interface
 func (db *doubleRolesCreator) getRoleTags(roleType string, input *accountRolesCreationInput) map[string]string {
 	return nil
+}
+
+func (db *doubleRolesCreator) skipPermissionFiles() bool {
+	return false
 }
 
 func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput, accRoleName string,
@@ -342,6 +355,10 @@ func (hcp *hcpManagedPoliciesCreator) getRoleTags(roleType string, input *accoun
 	tagsList[tags.HypershiftPolicies] = tags.True
 
 	return tagsList
+}
+
+func (hcp *hcpManagedPoliciesCreator) skipPermissionFiles() bool {
+	return true
 }
 
 func getBaseRoleTags(roleType string, input *accountRolesCreationInput) map[string]string {
