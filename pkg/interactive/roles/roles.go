@@ -14,15 +14,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type findRoleARNs func(string, string) ([]string, error)
+
 func GetInstallerRoleArn(r *rosa.Runtime, cmd *cobra.Command,
-	defaultInstallerRoleArn string, minMinorVersion string) string {
+	defaultInstallerRoleArn string, minMinorVersion string, findRoleARNs findRoleARNs) string {
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Start()
-	awsClient := r.AWSClient
 	role := aws.AccountRoles[aws.InstallerAccountRole]
 	roleARN := defaultInstallerRoleArn
 	// Find all installer roles in the current account using AWS resource tags
-	roleARNs, err := awsClient.FindRoleARNs(aws.InstallerAccountRole, minMinorVersion)
+	roleARNs, err := findRoleARNs(aws.InstallerAccountRole, minMinorVersion)
 	if err != nil {
 		r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
 		os.Exit(1)
