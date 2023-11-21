@@ -637,7 +637,7 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 
 func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
 	generateOperatorRolePolicies bool, policies map[string]*cmv1.AWSSTSPolicy,
-	credRequests map[string]*cmv1.STSOperator, managedPolicies bool, sharedVpcRoleArn string) error {
+	credRequests map[string]*cmv1.STSOperator, skipPermissionFiles bool, sharedVpcRoleArn string) error {
 	if generateAccountRolePolicies {
 		for file := range AccountRoles {
 			//Get trust policy
@@ -655,7 +655,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			}
 
 			//Get the permission policy
-			if !managedPolicies {
+			if !skipPermissionFiles {
 				err = generatePermissionPolicyFile(reporter, file, policies)
 				if err != nil {
 					return err
@@ -663,7 +663,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			}
 		}
 	}
-	if generateOperatorRolePolicies {
+	if generateOperatorRolePolicies && !skipPermissionFiles {
 		isSharedVpc := sharedVpcRoleArn != ""
 		for credrequest := range credRequests {
 			filename := GetOperatorPolicyKey(credrequest, false, isSharedVpc)
