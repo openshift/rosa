@@ -819,7 +819,7 @@ const (
 )
 
 // SetSubnetOption Creates a subnet option using a predefined template.
-func SetSubnetOption(subnet *ec2types.Subnet) string {
+func SetSubnetOption(subnet ec2types.Subnet) string {
 	subnetName := ""
 	for _, tag := range subnet.Tags {
 		switch *tag.Key {

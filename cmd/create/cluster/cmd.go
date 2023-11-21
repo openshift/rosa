@@ -1967,7 +1967,7 @@ func run(cmd *cobra.Command, _ []string) {
 	privateSubnetsCount := 0
 
 	var availabilityZones []string
-	var subnets []*ec2types.Subnet
+	var subnets []ec2types.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
 		initialSubnets, err := getInitialValidSubnets(awsClient, args.subnetIDs, r.Reporter)
@@ -2038,7 +2038,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		mapVpcToSubnet := map[string][]*ec2types.Subnet{}
+		mapVpcToSubnet := map[string][]ec2types.Subnet{}
 
 		for _, subnet := range subnets {
 			mapVpcToSubnet[*subnet.VpcId] = append(mapVpcToSubnet[*subnet.VpcId], subnet)
@@ -3651,8 +3651,8 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
 }
 
-func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([]*ec2types.Subnet, error) {
-	initialValidSubnets := []*ec2types.Subnet{}
+func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([]ec2types.Subnet, error) {
+	initialValidSubnets := []ec2types.Subnet{}
 	excludedSubnets := []string{}
 
 	validSubnets, err := aws.ListSubnets(ids...)
@@ -3664,8 +3664,7 @@ func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([
 	for _, subnet := range validSubnets {
 		hasRHManaged := tags.Ec2ResourceHasTag(subnet.Tags, tags.RedHatManaged, strconv.FormatBool(true))
 		if !hasRHManaged {
-			s := subnet
-			initialValidSubnets = append(initialValidSubnets, &s)
+			initialValidSubnets = append(initialValidSubnets, subnet)
 		} else {
 			excludedSubnets = append(excludedSubnets, awssdk.ToString(subnet.SubnetId))
 		}
@@ -3685,7 +3684,7 @@ func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdmin
 }
 
 func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
-	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []*ec2types.Subnet, subnetIds []string,
+	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []ec2types.Subnet, subnetIds []string,
 	additionalSgIds *[]string) {
 	hasChangedSgIdsFlag := cmd.Flags().Changed(securitygroups.SgKindFlagMap[kind])
 	if hasChangedSgIdsFlag {
