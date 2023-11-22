@@ -273,7 +273,7 @@ func run(cmd *cobra.Command, argv []string) {
 	switch mode {
 	case aws.ModeAuto:
 		r.Reporter.Infof("Creating role using '%s'", r.Creator.ARN)
-		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary, r.Creator.AccountID,
+		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary,
 			orgID, env, isAdmin, policies, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the ocm role: %s", err)
@@ -314,7 +314,7 @@ func run(cmd *cobra.Command, argv []string) {
 			roleNameRequested,
 			path,
 			permissionsBoundary,
-			r.Creator.AccountID,
+			r.Creator,
 			env,
 			isAdmin,
 			managedPolicies,
@@ -333,7 +333,7 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func buildCommands(prefix string, roleName string, rolePath string, permissionsBoundary string,
-	accountID string, env string, isAdmin bool, managedPolicies bool,
+	creator *aws.Creator, env string, isAdmin bool, managedPolicies bool,
 	policies map[string]*cmv1.AWSSTSPolicy) (string, error) {
 	commands := []string{}
 	policyName := aws.GetPolicyName(roleName)
@@ -382,7 +382,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 			return "", err
 		}
 	} else {
-		policyARN = aws.GetPolicyARN(accountID, roleName, rolePath)
+		policyARN = aws.GetPolicyARN(creator.Partition, creator.AccountID, roleName, rolePath)
 	}
 	attachRolePolicy := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.AttachRolePolicy).
@@ -417,7 +417,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 				return "", err
 			}
 		} else {
-			policyARN = aws.GetAdminPolicyARN(accountID, roleName, rolePath)
+			policyARN = aws.GetAdminPolicyARN(creator.Partition, creator.AccountID, roleName, rolePath)
 		}
 		attachRoleAdminPolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.AttachRolePolicy).
@@ -433,14 +433,14 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 	}
 
 	linkRole := fmt.Sprintf("rosa link ocm-role --role-arn %s",
-		aws.GetRoleARN(accountID, roleName, rolePath))
+		aws.GetRoleARN(creator.AccountID, roleName, rolePath, creator.Partition))
 	commands = append(commands, linkRole)
 
 	return awscb.JoinCommands(commands), nil
 }
 
 func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath string,
-	permissionsBoundary string, accountID string, orgID string, env string, isAdmin bool,
+	permissionsBoundary string, orgID string, env string, isAdmin bool,
 	policies map[string]*cmv1.AWSSTSPolicy, managedPolicies bool) (string, error) {
 	var policyARN string
 	var err error
@@ -451,15 +451,15 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 			return "", err
 		}
 	} else {
-		policyARN = aws.GetPolicyARN(accountID, roleName, rolePath)
+		policyARN = aws.GetPolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
 	}
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
 	}
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 	policyDetail := aws.GetPolicyDetails(policies, filename)
-	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":           aws.GetPartition(),
+	policy := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetail, map[string]string{
+		"partition":           r.Creator.Partition,
 		"aws_account_id":      aws.GetJumpAccount(env),
 		"ocm_organization_id": orgID,
 	})
@@ -516,7 +516,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 				return "", err
 			}
 		} else {
-			policyARN = aws.GetAdminPolicyARN(accountID, roleName, "")
+			policyARN = aws.GetAdminPolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, "")
 		}
 		iamTags[tags.AdminRole] = tags.True
 		policyDetail = aws.GetPolicyDetails(policies, filename)
@@ -534,8 +534,8 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 
 	policyDetail := aws.GetPolicyDetails(policies, filename)
-	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":           aws.GetPartition(),
+	policy := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetail, map[string]string{
+		"partition":           r.Creator.Partition,
 		"aws_account_id":      aws.GetJumpAccount(env),
 		"ocm_organization_id": orgID,
 	})

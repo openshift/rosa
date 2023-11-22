@@ -229,7 +229,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	case aws.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateUserRoleModeManual", map[string]string{})
-		err = generateUserRolePolicyFiles(r.Reporter, env, currentAccount.ID(), policies)
+		err = generateUserRolePolicyFiles(r.Reporter, env, r.Creator.Partition, currentAccount.ID(), policies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -242,7 +242,7 @@ func run(cmd *cobra.Command, argv []string) {
 			prefix,
 			path,
 			currentAccount.Username(),
-			r.Creator.AccountID,
+			r.Creator,
 			env,
 			permissionsBoundary,
 		)
@@ -255,11 +255,11 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func buildCommands(prefix string, path string, userName string,
-	accountID string, env string, permissionsBoundary string) string {
+	creator *aws.Creator, env string, permissionsBoundary string) string {
 	commands := []string{}
 	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
 
-	roleARN := aws.GetRoleARN(accountID, roleName, path)
+	roleARN := aws.GetRoleARN(creator.AccountID, roleName, path, creator.Partition)
 	iamTags := map[string]string{
 		tags.RolePrefix:    prefix,
 		tags.RoleType:      aws.OCMUserRole,
@@ -290,8 +290,8 @@ func createRoles(r *rosa.Runtime,
 
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := aws.GetPolicyDetails(policies, filename)
-	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":      aws.GetPartition(),
+	policy := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetail, map[string]string{
+		"partition":      r.Creator.Partition,
 		"aws_account_id": aws.GetJumpAccount(env),
 		"ocm_account_id": accountID,
 	})
@@ -320,12 +320,12 @@ func createRoles(r *rosa.Runtime,
 	return roleARN, nil
 }
 
-func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID string,
+func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, partition string, accountID string,
 	policies map[string]*cmv1.AWSSTSPolicy) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := aws.GetPolicyDetails(policies, filename)
-	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":      aws.GetPartition(),
+	policy := aws.InterpolatePolicyDocument(partition, policyDetail, map[string]string{
+		"partition":      partition,
 		"aws_account_id": aws.GetJumpAccount(env),
 		"ocm_account_id": accountID,
 	})
