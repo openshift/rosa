@@ -23,6 +23,10 @@ type ServiceQuotasApiClient interface {
 	GetServiceQuota(ctx context.Context,
 		params *servicequotas.GetServiceQuotaInput, optFns ...func(*servicequotas.Options),
 	) (*servicequotas.GetServiceQuotaOutput, error)
+
+	ListServiceQuotas(ctx context.Context,
+		params *servicequotas.ListServiceQuotasInput, optFns ...func(*servicequotas.Options),
+	) (*servicequotas.ListServiceQuotasOutput, error)
 }
 
 var _ ServiceQuotasApiClient = (*servicequotas.Client)(nil)
