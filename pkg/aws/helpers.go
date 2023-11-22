@@ -1,29 +1,34 @@
 package aws
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
-	a "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 
 	"github.com/openshift-online/ocm-common/pkg"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/openshift/rosa/pkg/arguments"
+	f "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
@@ -55,6 +60,7 @@ var UserNoProxyRE = regexp.MustCompile(
 
 const (
 	SecretsManager = "secretsmanager"
+	awsDefaultId   = "aws"
 )
 
 func GetJumpAccount(env string) string {
@@ -131,15 +137,12 @@ func ARNPathValidator(input interface{}) error {
 // prompt for user input.
 func GetRegion(region string) (string, error) {
 	if region == "" {
-		defaultSession, err := session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		})
-
+		cfg, err := config.LoadDefaultConfig(context.TODO())
 		if err != nil {
-			return "", fmt.Errorf("Error creating default session for AWS client: %v", err)
+			return "", fmt.Errorf("Error loading default AWS configuration: %v", err)
 		}
 
-		region = *defaultSession.Config.Region
+		region = cfg.Region
 	}
 	return region, nil
 }
@@ -155,7 +158,7 @@ func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool,
 		return nil, rootUser, err
 	}
 
-	user, err := awsClient.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	user, err := awsClient.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, rootUser, err
 	}
@@ -405,11 +408,11 @@ func HasDuplicates(valSlice []string) (string, bool) {
 
 func GetTagValues(tagsValue []iamtypes.Tag) (roleType string, version string) {
 	for _, tag := range tagsValue {
-		switch a.ToString(tag.Key) {
+		switch aws.ToString(tag.Key) {
 		case tags.RoleType:
-			roleType = a.ToString(tag.Value)
+			roleType = aws.ToString(tag.Value)
 		case common.OpenShiftVersion:
-			version = a.ToString(tag.Value)
+			version = aws.ToString(tag.Value)
 		}
 	}
 	return
@@ -501,6 +504,15 @@ func GetRoleARN(accountID string, name string, path string, partition string) st
 
 func GetOIDCProviderARN(partition string, accountID string, providerURL string) string {
 	return fmt.Sprintf("arn:%s:iam::%s:oidc-provider/%s", partition, accountID, providerURL)
+}
+
+func GetPartition(c Client) string {
+	creator, err := c.GetCreator()
+	if err != nil {
+		log.Printf("failed to get creator, setting default partition: %v", err)
+		creator.Partition = awsDefaultId
+	}
+	return creator.Partition
 }
 
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
@@ -807,7 +819,7 @@ const (
 )
 
 // SetSubnetOption Creates a subnet option using a predefined template.
-func SetSubnetOption(subnet *ec2.Subnet) string {
+func SetSubnetOption(subnet ec2types.Subnet) string {
 	subnetName := ""
 	for _, tag := range subnet.Tags {
 		switch *tag.Key {
@@ -818,15 +830,15 @@ func SetSubnetOption(subnet *ec2.Subnet) string {
 			break
 		}
 	}
-	return fmt.Sprintf(subnetTemplate, aws.StringValue(subnet.SubnetId),
-		subnetName, aws.StringValue(subnet.VpcId), aws.StringValue(subnet.AvailabilityZone),
-		aws.StringValue(subnet.OwnerId))
+	return fmt.Sprintf(subnetTemplate, aws.ToString(subnet.SubnetId),
+		subnetName, aws.ToString(subnet.VpcId), aws.ToString(subnet.AvailabilityZone),
+		aws.ToString(subnet.OwnerId))
 }
 
 // SetSecurityGroupOption Creates a security group option using a predefined template.
-func SetSecurityGroupOption(securityGroup *ec2.SecurityGroup) string {
+func SetSecurityGroupOption(securityGroup *ec2types.SecurityGroup) string {
 	return fmt.Sprintf(securityGroupTemplate,
-		aws.StringValue(securityGroup.GroupId), aws.StringValue(securityGroup.GroupName))
+		aws.ToString(securityGroup.GroupId), aws.ToString(securityGroup.GroupName))
 }
 
 // Parse option expects the actual option as the first token followed by a space
@@ -994,4 +1006,45 @@ func ConvertToTagPointers(tags []iamtypes.Tag) []*iamtypes.Tag {
 		tagPointers[i] = &t
 	}
 	return tagPointers
+}
+
+func waitForStackOperationComplete(ctx context.Context, client f.CloudFormationApiClient, stackName string) error {
+	maxRetries := 120
+	retryCount := 0
+
+	for {
+		describeStacksInput := &cloudformation.DescribeStacksInput{
+			StackName: aws.String(stackName),
+		}
+
+		resp, err := client.DescribeStacks(ctx, describeStacksInput)
+		if err != nil {
+			return err
+		}
+
+		if len(resp.Stacks) == 0 {
+			return fmt.Errorf("stack not found")
+		}
+
+		stack := resp.Stacks[0]
+		switch stack.StackStatus {
+		case cloudformationtypes.StackStatusCreateComplete, cloudformationtypes.StackStatusUpdateComplete,
+			cloudformationtypes.StackStatusDeleteComplete, cloudformationtypes.StackStatusRollbackComplete:
+			return nil
+		case cloudformationtypes.StackStatusCreateFailed, cloudformationtypes.StackStatusRollbackFailed,
+			cloudformationtypes.StackStatusUpdateFailed, cloudformationtypes.StackStatusDeleteFailed:
+			return fmt.Errorf("stack operation failed with status: %s", string(stack.StackStatus))
+		case cloudformationtypes.StackStatusCreateInProgress, cloudformationtypes.StackStatusUpdateInProgress,
+			cloudformationtypes.StackStatusRollbackInProgress, cloudformationtypes.StackStatusDeleteInProgress,
+			cloudformationtypes.StackStatusUpdateCompleteCleanupInProgress:
+			retryCount++
+			if retryCount >= maxRetries {
+				return fmt.Errorf("max retry count reached")
+			}
+			// Stack operation is still in progress. Wait for 5 seconds before checking the status again.
+			time.Sleep(5 * time.Second)
+		default:
+			return fmt.Errorf("unexpected stack status: %s", string(stack.StackStatus))
+		}
+	}
 }

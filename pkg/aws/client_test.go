@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 
+	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	awsSdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -28,31 +29,31 @@ var _ = Describe("Client", func() {
 		client   aws.Client
 		mockCtrl *gomock.Controller
 
-		mockEC2API            *mocks.MockEC2API
-		mockCfAPI             *mocks.MockCloudFormationAPI
+		mockEC2API            *mocks.MockEc2ApiClient
+		mockCfAPI             *mocks.MockCloudFormationApiClient
 		mockIamAPI            *mocks.MockIamApiClient
-		mockS3API             *mocks.MockS3API
-		mockSecretsManagerAPI *mocks.MockSecretsManagerAPI
+		mockS3API             *mocks.MockS3ApiClient
+		mockSecretsManagerAPI *mocks.MockSecretsManagerApiClient
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
-		mockCfAPI = mocks.NewMockCloudFormationAPI(mockCtrl)
+		mockCfAPI = mocks.NewMockCloudFormationApiClient(mockCtrl)
 		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
-		mockEC2API = mocks.NewMockEC2API(mockCtrl)
-		mockS3API = mocks.NewMockS3API(mockCtrl)
-		mockSecretsManagerAPI = mocks.NewMockSecretsManagerAPI(mockCtrl)
+		mockEC2API = mocks.NewMockEc2ApiClient(mockCtrl)
+		mockS3API = mocks.NewMockS3ApiClient(mockCtrl)
+		mockSecretsManagerAPI = mocks.NewMockSecretsManagerApiClient(mockCtrl)
 		client = aws.New(
+			awsSdk.Config{},
 			logrus.New(),
 			mockIamAPI,
 			mockEC2API,
-			mocks.NewMockOrganizationsAPI(mockCtrl),
+			mocks.NewMockOrganizationsApiClient(mockCtrl),
 			mockS3API,
 			mockSecretsManagerAPI,
-			mocks.NewMockSTSAPI(mockCtrl),
+			mocks.NewMockStsApiClient(mockCtrl),
 			mockCfAPI,
-			mocks.NewMockServiceQuotasAPI(mockCtrl),
-			&session.Session{},
+			mocks.NewMockServiceQuotasApiClient(mockCtrl),
 			&aws.AccessKey{},
 			false,
 		)
@@ -74,26 +75,37 @@ var _ = Describe("Client", func() {
 		})
 		Context("When the cloudformation stack already exists", func() {
 			JustBeforeEach(func() {
-				mockCfAPI.EXPECT().ListStacks(gomock.Any()).Return(&cloudformation.ListStacksOutput{
-					StackSummaries: []*cloudformation.StackSummary{
-						{
-							StackName:   &stackName,
-							StackStatus: &stackStatus,
+				mockCfAPI.EXPECT().ListStacks(context.Background(),
+					&cloudformation.ListStacksInput{}).Return(
+					&cloudformation.ListStacksOutput{
+						StackSummaries: []cloudformationtypes.StackSummary{
+							{
+								StackName:   &stackName,
+								StackStatus: cloudformationtypes.StackStatus(stackStatus),
+							},
 						},
-					},
-				}, nil)
+					}, nil)
 			})
 
 			Context("When stack is in CREATE_COMPLETE state", func() {
 				BeforeEach(func() {
-					stackStatus = cloudformation.StackStatusCreateComplete
+					stackStatus = string(cloudformationtypes.StackStatusCreateComplete)
 					mockIamAPI.EXPECT().GetUser(context.Background(),
 						&iam.GetUserInput{UserName: &adminUserName}).Return(
 						&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 						&iamtypes.NoSuchEntityException{},
 					)
-					mockCfAPI.EXPECT().UpdateStack(gomock.Any()).Return(nil, nil)
-					mockCfAPI.EXPECT().WaitUntilStackUpdateComplete(gomock.Any()).Return(nil)
+					mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any()).AnyTimes().Return(
+						&cloudformation.DescribeStacksOutput{
+							Stacks: []cloudformationtypes.Stack{
+								{
+									StackName:   &stackName,
+									StackStatus: cloudformationtypes.StackStatus(stackStatus),
+								},
+							},
+						}, nil)
+					mockCfAPI.EXPECT().CreateChangeSet(gomock.Any(), gomock.Any()).Return(nil, nil)
+					mockCfAPI.EXPECT().UpdateStack(context.Background(), gomock.Any()).Return(nil, nil)
 				})
 				It("Returns without error", func() {
 					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
@@ -105,7 +117,7 @@ var _ = Describe("Client", func() {
 
 			Context("When stack is in DELETE_COMPLETE state", func() {
 				BeforeEach(func() {
-					stackStatus = cloudformation.StackStatusDeleteComplete
+					stackStatus = string(cloudformationtypes.StackStatusDeleteComplete)
 					mockIamAPI.EXPECT().ListUsers(context.Background(), gomock.Any()).Return(
 						&iam.ListUsersOutput{Users: []iamtypes.User{}}, nil)
 					mockIamAPI.EXPECT().TagUser(context.Background(), gomock.Any()).Return(&iam.TagUserOutput{}, nil)
@@ -113,8 +125,16 @@ var _ = Describe("Client", func() {
 						&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 						&iamtypes.NoSuchEntityException{},
 					)
-					mockCfAPI.EXPECT().CreateStack(gomock.Any()).Return(nil, nil)
-					mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
+					mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any()).AnyTimes().Return(
+						&cloudformation.DescribeStacksOutput{
+							Stacks: []cloudformationtypes.Stack{
+								{
+									StackName:   &stackName,
+									StackStatus: cloudformationtypes.StackStatus(stackStatus),
+								},
+							},
+						}, nil)
+					mockCfAPI.EXPECT().CreateStack(context.Background(), gomock.Any()).Return(nil, nil)
 				})
 				It("Creates a cloudformation stack", func() {
 					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
@@ -126,7 +146,7 @@ var _ = Describe("Client", func() {
 
 			Context("When stack is in ROLLBACK_COMPLETE state", func() {
 				BeforeEach(func() {
-					stackStatus = cloudformation.StackStatusRollbackComplete
+					stackStatus = string(cloudformationtypes.StackStatusRollbackComplete)
 					mockIamAPI.EXPECT().GetUser(context.Background(), gomock.Any()).Return(
 						&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 						&iamtypes.NoSuchEntityException{},
@@ -146,8 +166,8 @@ var _ = Describe("Client", func() {
 
 		Context("When the cloudformation stack does not exists", func() {
 			BeforeEach(func() {
-				mockCfAPI.EXPECT().ListStacks(gomock.Any()).Return(&cloudformation.ListStacksOutput{
-					StackSummaries: []*cloudformation.StackSummary{},
+				mockCfAPI.EXPECT().ListStacks(context.Background(), gomock.Any()).Return(&cloudformation.ListStacksOutput{
+					StackSummaries: []cloudformationtypes.StackSummary{},
 				}, nil)
 				mockIamAPI.EXPECT().ListUsers(context.Background(), gomock.Any()).Return(
 					&iam.ListUsersOutput{Users: []iamtypes.User{}}, nil)
@@ -156,8 +176,16 @@ var _ = Describe("Client", func() {
 					&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 					&iamtypes.NoSuchEntityException{},
 				)
-				mockCfAPI.EXPECT().CreateStack(gomock.Any()).Return(nil, nil)
-				mockCfAPI.EXPECT().WaitUntilStackCreateComplete(gomock.Any()).Return(nil)
+				mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any()).AnyTimes().Return(
+					&cloudformation.DescribeStacksOutput{
+						Stacks: []cloudformationtypes.Stack{
+							{
+								StackName:   &stackName,
+								StackStatus: cloudformationtypes.StackStatus(stackStatus),
+							},
+						},
+					}, nil)
+				mockCfAPI.EXPECT().CreateStack(context.Background(), gomock.Any()).Return(nil, nil)
 			})
 
 			It("Creates a cloudformation stack", func() {
@@ -274,24 +302,25 @@ var _ = Describe("Client", func() {
 
 		subnetOneId := "test-subnet-1"
 		subnetTwoId := "test-subnet-2"
-		subnet := ec2.Subnet{
+		subnet := ec2types.Subnet{
 			SubnetId: helpers.NewString(subnetOneId),
 		}
 
-		subnet2 := ec2.Subnet{
+		subnet2 := ec2types.Subnet{
 			SubnetId: helpers.NewString(subnetTwoId),
 		}
 
-		var subnets []*ec2.Subnet
-		subnets = append(subnets, &subnet, &subnet2)
+		var subnets []ec2types.Subnet
+		subnets = append(subnets, subnet, subnet2)
 
 		It("Lists all", func() {
 
 			var request *ec2.DescribeSubnetsInput
 
-			mockEC2API.EXPECT().DescribeSubnets(gomock.Any()).DoAndReturn(
-				func(arg *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
-					request = arg
+			mockEC2API.EXPECT().DescribeSubnets(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, params *ec2.DescribeSubnetsInput,
+					optFns ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error) {
+					request = params
 					return &ec2.DescribeSubnetsOutput{
 						Subnets: subnets,
 					}, nil
@@ -308,9 +337,10 @@ var _ = Describe("Client", func() {
 
 			var request *ec2.DescribeSubnetsInput
 
-			mockEC2API.EXPECT().DescribeSubnets(gomock.Any()).DoAndReturn(
-				func(arg *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
-					request = arg
+			mockEC2API.EXPECT().DescribeSubnets(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, params *ec2.DescribeSubnetsInput,
+					optFns ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error) {
+					request = params
 					return &ec2.DescribeSubnetsOutput{
 						Subnets: subnets,
 					}, nil
@@ -320,7 +350,7 @@ var _ = Describe("Client", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(subs).To(HaveLen(2))
-			Expect(request.SubnetIds).To(ContainElements(&subnetOneId, &subnetTwoId))
+			Expect(request.SubnetIds).To(ContainElements(subnetOneId, subnetTwoId))
 
 		})
 	})

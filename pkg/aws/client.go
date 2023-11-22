@@ -27,40 +27,33 @@ import (
 	"strings"
 	"time"
 
-	a "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/client"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
-	"github.com/aws/aws-sdk-go/service/organizations"
-	"github.com/aws/aws-sdk-go/service/organizations/organizationsiface"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
-	"github.com/aws/aws-sdk-go/service/secretsmanager/secretsmanageriface"
-	"github.com/aws/aws-sdk-go/service/servicequotas"
-	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
-	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
+
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/organizations"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 	f "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
@@ -74,7 +67,6 @@ const (
 	AdminUserName        = "osdCcsAdmin"
 	OsdCcsAdminStackName = "osdCcsAdminIAMUser"
 	rosaHeaderValue      = "rosa.ROSAVersionUserAgentHandler"
-	NumMaxRetries        = 12
 
 	// Since CloudFormation stacks are region-dependent, we hard-code OCM's default region and
 	// then use it to ensure that the user always gets the stack from the same region.
@@ -83,14 +75,9 @@ const (
 	Attached      = "attached"
 
 	govPartition = "aws-us-gov"
-)
 
-// addROSAVersionToUserAgent is a named handler that will add ROSA CLI
-// version information to requests made by the AWS SDK.
-var addROSAVersionToUserAgent = request.NamedHandler{
-	Name: "rosa.ROSAVersionUserAgentHandler",
-	Fn:   request.MakeAddToUserAgentHandler(info.UserAgent, info.Version),
-}
+	NumMaxRetries = 12
+)
 
 // Client defines a client interface
 type Client interface {
@@ -99,7 +86,7 @@ type Client interface {
 	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, stackStatus *string, err error)
 	CheckRoleExists(roleName string) (bool, string, error)
 	ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string) error
-	GetIAMCredentials() (a.Credentials, error)
+	GetIAMCredentials() (aws.Credentials, error)
 	GetRegion() string
 	ValidateCredentials() (isValid bool, err error)
 	EnsureOsdCcsAdminUser(stackName string, adminUserName string, awsRegion string) (bool, error)
@@ -108,11 +95,11 @@ type Client interface {
 	GetLocalAWSAccessKeys() (*AccessKey, error)
 	GetCreator() (*Creator, error)
 	ValidateSCP(*string, map[string]*cmv1.AWSSTSPolicy) (bool, error)
-	ListSubnets(subnetIds ...string) ([]*ec2.Subnet, error)
+	ListSubnets(subnetIds ...string) ([]ec2types.Subnet, error)
 	GetSubnetAvailabilityZone(subnetID string) (string, error)
-	GetVPCSubnets(subnetID string) ([]*ec2.Subnet, error)
-	GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error)
-	FilterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subnet, error)
+	GetVPCSubnets(subnetID string) ([]ec2types.Subnet, error)
+	GetVPCPrivateSubnets(subnetID string) ([]ec2types.Subnet, error)
+	FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2types.Subnet, error)
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
 	GetClusterRegionTagForUser(username string) (string, error)
@@ -201,7 +188,7 @@ type Client interface {
 	ValidateAccountRoleVersionCompatibility(roleName string, roleType string, minVersion string) (bool, error)
 	GetDefaultPolicyDocument(policyArn string) (string, error)
 	GetAccountRoleByArn(roleArn string) (*Role, error)
-	GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, error)
+	GetSecurityGroupIds(vpcId string) ([]*ec2types.SecurityGroup, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -213,16 +200,16 @@ type ClientBuilder struct {
 }
 
 type awsClient struct {
+	cfg                 aws.Config
 	logger              *logrus.Logger
 	iamClient           f.IamApiClient
-	ec2Client           ec2iface.EC2API
-	orgClient           organizationsiface.OrganizationsAPI
-	s3Client            s3iface.S3API
-	smClient            secretsmanageriface.SecretsManagerAPI
-	stsClient           stsiface.STSAPI
-	cfClient            cloudformationiface.CloudFormationAPI
-	servicequotasClient servicequotasiface.ServiceQuotasAPI
-	awsSession          *session.Session
+	ec2Client           f.Ec2ApiClient
+	orgClient           f.OrganizationsApiClient
+	s3Client            f.S3ApiClient
+	smClient            f.SecretsManagerApiClient
+	stsClient           f.StsApiClient
+	cfClient            f.CloudFormationApiClient
+	servicequotasClient f.ServiceQuotasApiClient
 	awsAccessKeys       *AccessKey
 	useLocalCredentials bool
 }
@@ -245,21 +232,22 @@ func NewClient() *ClientBuilder {
 }
 
 func New(
+	cfg aws.Config,
 	logger *logrus.Logger,
 	iamClient f.IamApiClient,
-	ec2Client ec2iface.EC2API,
-	orgClient organizationsiface.OrganizationsAPI,
-	s3Client s3iface.S3API,
-	smClient secretsmanageriface.SecretsManagerAPI,
-	stsClient stsiface.STSAPI,
-	cfClient cloudformationiface.CloudFormationAPI,
-	servicequotasClient servicequotasiface.ServiceQuotasAPI,
-	awsSession *session.Session,
+	ec2Client f.Ec2ApiClient,
+	orgClient f.OrganizationsApiClient,
+	s3Client f.S3ApiClient,
+	smClient f.SecretsManagerApiClient,
+	stsClient f.StsApiClient,
+	cfClient f.CloudFormationApiClient,
+	servicequotasClient f.ServiceQuotasApiClient,
 	awsAccessKeys *AccessKey,
 	useLocalCredentials bool,
 
 ) Client {
 	return &awsClient{
+		cfg,
 		logger,
 		iamClient,
 		ec2Client,
@@ -269,7 +257,6 @@ func New(
 		stsClient,
 		cfClient,
 		servicequotasClient,
-		awsSession,
 		awsAccessKeys,
 		useLocalCredentials,
 	}
@@ -298,7 +285,7 @@ func (b *ClientBuilder) UseLocalCredentials(value bool) *ClientBuilder {
 
 // Create AWS session with a specific set of credentials
 func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
-	logLevel a.ClientLogMode) (*a.Config, error) {
+	logLevel aws.ClientLogMode) (*aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(value.AccessKeyID,
 			value.SecretAccessKey, "")),
@@ -311,7 +298,7 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
 			smithyhttp.AddHeaderValue(rosaHeaderValue,
 				strings.Join([]string{info.UserAgent, info.Version}, ";")),
 		}),
-		config.WithRetryer(func() a.Retryer {
+		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
 			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
 			retryer = retry.AddWithErrorCodes(retryer, invalidClientTokenID)
@@ -325,7 +312,7 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
 	return &cfg, nil
 }
 
-func (b *ClientBuilder) BuildSessionWithOptions(logLevel a.ClientLogMode) (*a.Config, error) {
+func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (*aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithSharedConfigProfile(profile.Profile()),
 		config.WithRegion(*b.region),
@@ -337,7 +324,7 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel a.ClientLogMode) (*a.Co
 			smithyhttp.AddHeaderValue(rosaHeaderValue,
 				strings.Join([]string{info.UserAgent, info.Version}, ";")),
 		}),
-		config.WithRetryer(func() a.Retryer {
+		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
 			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
 			retryer = retry.AddWithErrorCodes(retryer, invalidClientTokenID)
@@ -351,11 +338,11 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel a.ClientLogMode) (*a.Co
 	return &cfg, nil
 }
 
-func (b *ClientBuilder) BuildSession() (*a.Config, error) {
-	var logLevel a.ClientLogMode
+func (b *ClientBuilder) BuildSession() (*aws.Config, error) {
+	var logLevel aws.ClientLogMode
 	logLevel = 0
 	if b.logger.Level == logrus.DebugLevel {
-		logLevel = a.LogRequestWithBody | a.LogResponseWithBody
+		logLevel = aws.LogRequestWithBody | aws.LogResponseWithBody
 	}
 
 	if b.credentials != nil {
@@ -371,16 +358,6 @@ func (b *ClientBuilder) Build() (Client, error) {
 	if b.logger == nil {
 		return nil, fmt.Errorf("Logger is mandatory")
 	}
-
-	// Create the AWS logger:
-	logger, err := logging.NewAWSLogger().
-		Logger(b.logger).
-		Build()
-	if err != nil {
-		return nil, err
-	}
-
-	var sess *session.Session
 
 	if b.region == nil || *b.region == "" {
 		region, err := GetRegion(regionflag.Region())
@@ -402,62 +379,26 @@ func (b *ClientBuilder) Build() (Client, error) {
 		return nil, err
 	}
 
-	// Add ROSACLI as user-agent
-	sess.Handlers.Build.PushFrontNamed(addROSAVersionToUserAgent)
+	if cfg.Region == "" {
+		return nil, fmt.Errorf("Region is not set. Use --region to set the region")
+	}
 
 	if profile.Profile() != "" {
 		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
 	}
 
-	// Check that the AWS credentials are available:
-	// TODO: No need to do this twice, we're essentially doing the
-	// same thing in getClientDetails()
-	// We should implement getClientDetails() here or a new validation func
-	_, err = sess.Config.Credentials.Get()
-	if err != nil {
-		b.logger.Debugf("Failed to find credentials: %v", err)
-		return nil, fmt.Errorf("Failed to find credentials. Check your AWS configuration and try again")
-	}
-
-	// Check that the region is set:
-	region := aws.StringValue(sess.Config.Region)
-	if region == "" {
-		return nil, fmt.Errorf("Region is not set. Use --region to set the region")
-	}
-
-	// Update session config
-	sess = sess.Copy(&aws.Config{
-		Retryer: buildCustomRetryer(),
-		Logger:  logger,
-		HTTPClient: &http.Client{
-			Transport: http.DefaultTransport,
-		},
-	})
-
-	if b.logger.IsLevelEnabled(logrus.DebugLevel) {
-		var dumper http.RoundTripper
-		dumper, err = logging.NewRoundTripper().
-			Logger(b.logger).
-			Next(sess.Config.HTTPClient.Transport).
-			Build()
-		if err != nil {
-			return nil, err
-		}
-		sess.Config.HTTPClient.Transport = dumper
-	}
-
 	// Create and populate the object:
 	c := &awsClient{
+		cfg:                 *cfg,
 		logger:              b.logger,
 		iamClient:           iam.NewFromConfig(*cfg),
-		ec2Client:           ec2.New(sess),
-		orgClient:           organizations.New(sess),
-		s3Client:            s3.New(sess),
-		smClient:            secretsmanager.New(sess),
-		stsClient:           sts.New(sess),
-		cfClient:            cloudformation.New(sess),
-		servicequotasClient: servicequotas.New(sess),
-		awsSession:          sess,
+		ec2Client:           ec2.NewFromConfig(*cfg),
+		orgClient:           organizations.NewFromConfig(*cfg),
+		s3Client:            s3.NewFromConfig(*cfg),
+		smClient:            secretsmanager.NewFromConfig(*cfg),
+		stsClient:           sts.NewFromConfig(*cfg),
+		cfClient:            cloudformation.NewFromConfig(*cfg),
+		servicequotasClient: servicequotas.NewFromConfig(*cfg),
 		useLocalCredentials: b.useLocalCredentials,
 	}
 
@@ -473,41 +414,40 @@ func (b *ClientBuilder) Build() (Client, error) {
 	return c, err
 }
 
-func (c *awsClient) GetIAMCredentials() (a.Credentials, error) {
+func (c *awsClient) GetIAMCredentials() (aws.Credentials, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		return a.Credentials{}, err
+		return aws.Credentials{}, err
 	}
 
 	creds, err := cfg.Credentials.Retrieve(context.TODO())
 	if err != nil {
-		return a.Credentials{}, err
+		return aws.Credentials{}, err
 	}
 	return creds, nil
 }
 
 func (c *awsClient) GetRegion() string {
-	return aws.StringValue(c.awsSession.Config.Region)
+	return c.cfg.Region
 }
 
-func (c *awsClient) ListSubnets(subnetIds ...string) ([]*ec2.Subnet, error) {
+func (c *awsClient) ListSubnets(subnetIds ...string) ([]ec2types.Subnet, error) {
 
 	if len(subnetIds) == 0 {
 		return c.getSubnetIDs(&ec2.DescribeSubnetsInput{})
 	}
 
-	var ids []*string
+	var ids []string
 
-	for i := range subnetIds {
-		ids = append(ids, &subnetIds[i])
-	}
+	ids = append(ids, subnetIds...)
 
 	return c.getSubnetIDs(&ec2.DescribeSubnetsInput{
 		SubnetIds: ids,
 	})
 }
+
 func (c *awsClient) GetSubnetAvailabilityZone(subnetID string) (string, error) {
-	res, err := c.ec2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{SubnetIds: []*string{aws.String(subnetID)}})
+	res, err := c.ec2Client.DescribeSubnets(context.Background(), &ec2.DescribeSubnetsInput{SubnetIds: []string{subnetID}})
 	if err != nil {
 		return "", err
 	}
@@ -518,7 +458,7 @@ func (c *awsClient) GetSubnetAvailabilityZone(subnetID string) (string, error) {
 	return *res.Subnets[0].AvailabilityZone, nil
 }
 
-func (c *awsClient) GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error) {
+func (c *awsClient) GetVPCPrivateSubnets(subnetID string) ([]ec2types.Subnet, error) {
 	subnets, err := c.GetVPCSubnets(subnetID)
 	if err != nil {
 		return nil, err
@@ -528,13 +468,13 @@ func (c *awsClient) GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error)
 }
 
 // getVPCSubnets gets a subnet ID and fetches all the subnets that belong to the same VPC as the provided subnet.
-func (c *awsClient) GetVPCSubnets(subnetID string) ([]*ec2.Subnet, error) {
+func (c *awsClient) GetVPCSubnets(subnetID string) ([]ec2types.Subnet, error) {
 	// Fetch the subnet details
 	subnets, err := c.getSubnetIDs(&ec2.DescribeSubnetsInput{
-		Filters: []*ec2.Filter{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("subnet-id"),
-				Values: []*string{aws.String(subnetID)},
+				Values: []string{subnetID},
 			},
 		},
 	})
@@ -548,10 +488,10 @@ func (c *awsClient) GetVPCSubnets(subnetID string) ([]*ec2.Subnet, error) {
 	// Fetch VPC's subnets
 	vpcID := subnets[0].VpcId
 	subnets, err = c.getSubnetIDs(&ec2.DescribeSubnetsInput{
-		Filters: []*ec2.Filter{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("vpc-id"),
-				Values: []*string{vpcID},
+				Values: []string{*vpcID},
 			},
 		},
 	})
@@ -567,14 +507,14 @@ func (c *awsClient) GetVPCSubnets(subnetID string) ([]*ec2.Subnet, error) {
 
 // FilterPrivateSubnets gets a slice of subnets that belongs to the same VPC and filters the private subnets.
 // Assumption: subnets - non-empty slice.
-func (c *awsClient) FilterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subnet, error) {
+func (c *awsClient) FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2types.Subnet, error) {
 	// Fetch VPC route tables
 	vpcID := subnets[0].VpcId
-	describeRouteTablesOutput, err := c.ec2Client.DescribeRouteTables(&ec2.DescribeRouteTablesInput{
-		Filters: []*ec2.Filter{
+	describeRouteTablesOutput, err := c.ec2Client.DescribeRouteTables(context.Background(), &ec2.DescribeRouteTablesInput{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("vpc-id"),
-				Values: []*string{vpcID},
+				Values: []string{*vpcID},
 			},
 		},
 	})
@@ -585,7 +525,7 @@ func (c *awsClient) FilterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subn
 		return nil, fmt.Errorf("Failed to find VPC '%s' route table", *vpcID)
 	}
 
-	var privateSubnets []*ec2.Subnet
+	var privateSubnets []ec2types.Subnet
 	for _, subnet := range subnets {
 		isPublic, err := c.isPublicSubnet(subnet.SubnetId, describeRouteTablesOutput.RouteTables)
 		if err != nil {
@@ -605,14 +545,14 @@ func (c *awsClient) FilterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subn
 
 // isPublicSubnet a public subnet is a subnet that's associated with a route table that has a route to an
 // internet gateway
-func (c *awsClient) isPublicSubnet(subnetID *string, routeTables []*ec2.RouteTable) (bool, error) {
+func (c *awsClient) isPublicSubnet(subnetID *string, routeTables []ec2types.RouteTable) (bool, error) {
 	subnetRouteTable, err := c.getSubnetRouteTable(subnetID, routeTables)
 	if err != nil {
 		return false, err
 	}
 
 	for _, route := range subnetRouteTable.Routes {
-		if strings.Contains(aws.StringValue(route.GatewayId), "igw") {
+		if strings.Contains(aws.ToString(route.GatewayId), "igw") {
 			return true, nil
 		}
 	}
@@ -620,12 +560,13 @@ func (c *awsClient) isPublicSubnet(subnetID *string, routeTables []*ec2.RouteTab
 	return false, nil
 }
 
-func (c *awsClient) getSubnetRouteTable(subnetID *string, routeTables []*ec2.RouteTable) (*ec2.RouteTable, error) {
+func (c *awsClient) getSubnetRouteTable(subnetID *string,
+	routeTables []ec2types.RouteTable) (*ec2types.RouteTable, error) {
 	// Subnet route table — A route table that's associated with a subnet
 	for _, routeTable := range routeTables {
 		for _, association := range routeTable.Associations {
-			if aws.StringValue(association.SubnetId) == aws.StringValue(subnetID) {
-				return routeTable, nil
+			if aws.ToString(association.SubnetId) == aws.ToString(subnetID) {
+				return &routeTable, nil
 			}
 		}
 	}
@@ -634,8 +575,8 @@ func (c *awsClient) getSubnetRouteTable(subnetID *string, routeTables []*ec2.Rou
 	// main route table.
 	for _, routeTable := range routeTables {
 		for _, association := range routeTable.Associations {
-			if aws.BoolValue(association.Main) {
-				return routeTable, nil
+			if aws.ToBool(association.Main) {
+				return &routeTable, nil
 			}
 		}
 	}
@@ -646,11 +587,12 @@ func (c *awsClient) getSubnetRouteTable(subnetID *string, routeTables []*ec2.Rou
 
 // getSubnetIDs will return the list of subnetsIDs supported for the region picked.
 // It is possible to pass non-empty `describeSubnetsInput` to filter results.
-func (c *awsClient) getSubnetIDs(describeSubnetsInput *ec2.DescribeSubnetsInput) ([]*ec2.Subnet, error) {
-	res, err := c.ec2Client.DescribeSubnets(describeSubnetsInput)
+func (c *awsClient) getSubnetIDs(describeSubnetsInput *ec2.DescribeSubnetsInput) ([]ec2types.Subnet, error) {
+	res, err := c.ec2Client.DescribeSubnets(context.Background(), describeSubnetsInput)
 	if err != nil {
 		return nil, err
 	}
+
 	return res.Subnets, nil
 }
 
@@ -663,12 +605,12 @@ type Creator struct {
 }
 
 func (c *awsClient) GetCreator() (*Creator, error) {
-	getCallerIdentityOutput, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	getCallerIdentityOutput, err := c.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, err
 	}
 
-	creatorARN := aws.StringValue(getCallerIdentityOutput.Arn)
+	creatorARN := aws.ToString(getCallerIdentityOutput.Arn)
 
 	// Extract the account identifier from the ARN of the user:
 	creatorParsedARN, err := arn.Parse(creatorARN)
@@ -706,7 +648,7 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 	// This will fail if the AWS access key and secret key are invalid. This
 	// will also work for STS credentials with access key, secret key and session
 	// token
-	_, err := c.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	_, err := c.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return false, err
 	}
@@ -802,7 +744,11 @@ func (c *awsClient) GetAWSAccessKeys() (*AccessKey, error) {
 }
 
 func (c *awsClient) GetLocalAWSAccessKeys() (*AccessKey, error) {
-	creds, err := c.awsSession.Config.Credentials.Get()
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	creds, err := cfg.Credentials.Retrieve(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -833,24 +779,20 @@ func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
 
 		if err != nil {
 			logger.Debug(fmt.Sprintf("%+v\n", err))
-			switch typed := err.(type) {
-			case awserr.Error:
-				// Waiter reached maximum attempts waiting for the resource to be ready
-				if typed.Code() == "InvalidClientTokenId" {
-					wait := time.Duration((i * 200)) * time.Millisecond
-					waited := time.Since(start)
-					logger.Debug(fmt.Sprintf("InvalidClientTokenId, waited %.2f\n", waited.Seconds()))
-					time.Sleep(wait)
-				}
-				if typed.Code() == "AccessDenied" {
-					wait := time.Duration((i * 200)) * time.Millisecond
-					waited := time.Since(start)
-					logger.Debug(fmt.Printf("AccessDenied, waited %.2f\n", waited.Seconds()))
-					time.Sleep(wait)
-				}
+			if IsInvalidTokenException(err) {
+				wait := time.Duration((i * 200)) * time.Millisecond
+				waited := time.Since(start)
+				logger.Debug(fmt.Printf("InvalidClientTokenId, waited %.2f\n", waited.Seconds()))
+				time.Sleep(wait)
 			}
 
-			// If we've still got an error on the last attempt return it
+			if IsAccessDeniedException(err) {
+				wait := time.Duration((i * 200)) * time.Millisecond
+				waited := time.Since(start)
+				logger.Debug(fmt.Printf("AccessDenied, waited %.2f\n", waited.Seconds()))
+				time.Sleep(wait)
+			}
+
 			if i == maxAttempts {
 				logger.Error("Error waiting for IAM credentials to become ready")
 				return err
@@ -945,7 +887,7 @@ func (c *awsClient) CheckRoleExists(roleName string) (bool, string, error) {
 		return false, "", err
 	}
 
-	return true, a.ToString(role.Role.Arn), nil
+	return true, aws.ToString(role.Role.Arn), nil
 }
 
 func (c *awsClient) GetRoleByARN(roleARN string) (*iamtypes.Role, error) {
@@ -979,14 +921,15 @@ func (c *awsClient) GetRoleByARN(roleARN string) (*iamtypes.Role, error) {
 
 // DescribeAvailabilityZones fetches the region's availability zones with type `availability-zone`
 func (c *awsClient) DescribeAvailabilityZones() ([]string, error) {
-	describeAvailabilityZonesOutput, err := c.ec2Client.DescribeAvailabilityZones(&ec2.DescribeAvailabilityZonesInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("zone-type"),
-				Values: []*string{aws.String("availability-zone")},
+	describeAvailabilityZonesOutput, err := c.ec2Client.DescribeAvailabilityZones(context.Background(),
+		&ec2.DescribeAvailabilityZonesInput{
+			Filters: []ec2types.Filter{
+				{
+					Name:   aws.String("zone-type"),
+					Values: []string{"availability-zone"},
+				},
 			},
-		},
-	})
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -1000,8 +943,8 @@ func (c *awsClient) DescribeAvailabilityZones() ([]string, error) {
 }
 
 func (c *awsClient) IsLocalAvailabilityZone(availabilityZoneName string) (bool, error) {
-	availabilityZones, err := c.ec2Client.DescribeAvailabilityZones(
-		&ec2.DescribeAvailabilityZonesInput{ZoneNames: []*string{aws.String(availabilityZoneName)}})
+	availabilityZones, err := c.ec2Client.DescribeAvailabilityZones(context.Background(),
+		&ec2.DescribeAvailabilityZonesInput{ZoneNames: []string{availabilityZoneName}})
 	if err != nil {
 		return false, err
 	}
@@ -1009,7 +952,7 @@ func (c *awsClient) IsLocalAvailabilityZone(availabilityZoneName string) (bool, 
 		return false, fmt.Errorf("Failed to find availability zone '%s'", availabilityZoneName)
 	}
 
-	return aws.StringValue(availabilityZones.AvailabilityZones[0].ZoneType) == "local-zone", nil
+	return aws.ToString(availabilityZones.AvailabilityZones[0].ZoneType) == "local-zone", nil
 }
 
 func (c *awsClient) DetachRolePolicies(roleName string) error {
@@ -1065,28 +1008,29 @@ const ReadOnlyAnonUserPolicyTemplate = `{
 }`
 
 func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
-	_, err := c.s3Client.HeadBucket(&s3.HeadBucketInput{
+	_, err := c.s3Client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
 		Bucket: aws.String(bucketName),
 	})
 	if err == nil {
 		return weberr.Errorf("Bucket '%s' already exists.", bucketName)
 	}
+
 	bucketInput := &s3.CreateBucketInput{
 		Bucket: aws.String(bucketName),
 	}
 	if region != DefaultRegion {
-		bucketInput.SetCreateBucketConfiguration(&s3.CreateBucketConfiguration{
-			LocationConstraint: &region,
-		})
+		bucketInput.CreateBucketConfiguration = &s3types.CreateBucketConfiguration{
+			LocationConstraint: s3types.BucketLocationConstraint(region),
+		}
 	}
-	_, err = c.s3Client.CreateBucket(bucketInput)
+	_, err = c.s3Client.CreateBucket(context.TODO(), bucketInput)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.s3Client.PutPublicAccessBlock(&s3.PutPublicAccessBlockInput{
+	_, err = c.s3Client.PutPublicAccessBlock(context.TODO(), &s3.PutPublicAccessBlockInput{
 		Bucket: aws.String(bucketName),
-		PublicAccessBlockConfiguration: &s3.PublicAccessBlockConfiguration{
+		PublicAccessBlockConfiguration: &s3types.PublicAccessBlockConfiguration{
 			BlockPublicAcls:       aws.Bool(true),
 			IgnorePublicAcls:      aws.Bool(true),
 			BlockPublicPolicy:     aws.Bool(false),
@@ -1097,7 +1041,7 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 		return err
 	}
 
-	_, err = c.s3Client.PutBucketPolicy(&s3.PutBucketPolicyInput{
+	_, err = c.s3Client.PutBucketPolicy(context.TODO(), &s3.PutBucketPolicyInput{
 		Bucket: aws.String(bucketName),
 		Policy: aws.String(fmt.Sprintf(ReadOnlyAnonUserPolicyTemplate, bucketName)),
 	})
@@ -1105,10 +1049,10 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 		return err
 	}
 
-	_, err = c.s3Client.PutBucketTagging(&s3.PutBucketTaggingInput{
+	_, err = c.s3Client.PutBucketTagging(context.TODO(), &s3.PutBucketTaggingInput{
 		Bucket: aws.String(bucketName),
-		Tagging: &s3.Tagging{
-			TagSet: []*s3.Tag{
+		Tagging: &s3types.Tagging{
+			TagSet: []s3types.Tag{
 				{
 					Key:   aws.String(tags.RedHatManaged),
 					Value: aws.String(tags.True),
@@ -1119,15 +1063,18 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
 func (c *awsClient) DeleteS3Bucket(bucketName string) error {
-	_, err := c.s3Client.HeadBucket(&s3.HeadBucketInput{
-		Bucket: aws.String(bucketName),
-	})
+	_, err := c.s3Client.HeadBucket(context.Background(),
+		&s3.HeadBucketInput{
+			Bucket: aws.String(bucketName),
+		})
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NotFound" {
+		var notFound *s3types.NotFound
+		if errors.As(err, &notFound) {
 			return nil
 		}
 		return err
@@ -1136,9 +1083,10 @@ func (c *awsClient) DeleteS3Bucket(bucketName string) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.s3Client.DeleteBucket(&s3.DeleteBucketInput{
-		Bucket: aws.String(bucketName),
-	})
+	_, err = c.s3Client.DeleteBucket(context.Background(),
+		&s3.DeleteBucketInput{
+			Bucket: aws.String(bucketName),
+		})
 	if err != nil {
 		return err
 	}
@@ -1146,17 +1094,19 @@ func (c *awsClient) DeleteS3Bucket(bucketName string) error {
 }
 
 func (c *awsClient) emptyS3Bucket(bucketName string) error {
-	objects, err := c.s3Client.ListObjects(&s3.ListObjectsInput{
-		Bucket: aws.String(bucketName),
-	})
+	objects, err := c.s3Client.ListObjects(context.Background(),
+		&s3.ListObjectsInput{
+			Bucket: aws.String(bucketName),
+		})
 	if err != nil {
 		return err
 	}
 	for _, object := range (*objects).Contents {
-		_, err = c.s3Client.DeleteObject(&s3.DeleteObjectInput{
-			Bucket: aws.String(bucketName),
-			Key:    object.Key,
-		})
+		_, err = c.s3Client.DeleteObject(context.Background(),
+			&s3.DeleteObjectInput{
+				Bucket: aws.String(bucketName),
+				Key:    object.Key,
+			})
 		if err != nil {
 			return err
 		}
@@ -1165,12 +1115,13 @@ func (c *awsClient) emptyS3Bucket(bucketName string) error {
 }
 
 func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.ReadSeeker, key string) error {
-	_, err := c.s3Client.PutObject(&s3.PutObjectInput{
-		Body:    body,
-		Bucket:  aws.String(bucketName),
-		Key:     aws.String(key),
-		Tagging: aws.String(fmt.Sprintf("%s=%s", tags.RedHatManaged, tags.True)),
-	})
+	_, err := c.s3Client.PutObject(context.Background(),
+		&s3.PutObjectInput{
+			Body:    body,
+			Bucket:  aws.String(bucketName),
+			Key:     aws.String(key),
+			Tagging: aws.String(fmt.Sprintf("%s=%s", tags.RedHatManaged, tags.True)),
+		})
 	if err != nil {
 		return err
 	}
@@ -1178,12 +1129,12 @@ func (c *awsClient) PutPublicReadObjectInS3Bucket(bucketName string, body io.Rea
 }
 
 func (c *awsClient) CreateSecretInSecretsManager(name string, secret string) (string, error) {
-	createSecretResponse, err := c.smClient.CreateSecret(
+	createSecretResponse, err := c.smClient.CreateSecret(context.Background(),
 		&secretsmanager.CreateSecretInput{
 			Description:  aws.String(fmt.Sprintf("Secret for %s", name)),
 			Name:         aws.String(name),
 			SecretString: aws.String(secret),
-			Tags: []*secretsmanager.Tag{{
+			Tags: []secretsmanagertypes.Tag{{
 				Key:   aws.String(tags.RedHatManaged),
 				Value: aws.String("true"),
 			}},
@@ -1195,15 +1146,17 @@ func (c *awsClient) CreateSecretInSecretsManager(name string, secret string) (st
 }
 
 func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
-	_, err := c.smClient.DescribeSecret(&secretsmanager.DescribeSecretInput{
-		SecretId: aws.String(secretArn),
-	})
+	_, err := c.smClient.DescribeSecret(context.Background(),
+		&secretsmanager.DescribeSecretInput{
+			SecretId: aws.String(secretArn),
+		})
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == secretsmanager.ErrCodeResourceNotFoundException {
+		var resourceNotFound *secretsmanagertypes.ResourceNotFoundException
+		if errors.As(err, &resourceNotFound) {
 			return nil
 		}
 	}
-	_, err = c.smClient.DeleteSecret(
+	_, err = c.smClient.DeleteSecret(context.Background(),
 		&secretsmanager.DeleteSecretInput{
 			ForceDeleteWithoutRecovery: aws.Bool(true),
 			SecretId:                   aws.String(secretArn),
@@ -1214,62 +1167,40 @@ func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
 	return nil
 }
 
-func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, error) {
+func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]*ec2types.SecurityGroup, error) {
 	describeSecurityGroupsInput := &ec2.DescribeSecurityGroupsInput{
-		Filters: []*ec2.Filter{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("vpc-id"),
-				Values: aws.StringSlice([]string{vpcId}),
+				Values: []string{vpcId},
 			},
 		},
 	}
-	securityGroups := []*ec2.SecurityGroup{}
-	err := c.ec2Client.DescribeSecurityGroupsPages(describeSecurityGroupsInput,
-		func(page *ec2.DescribeSecurityGroupsOutput, lastPage bool) bool {
-			for _, sg := range page.SecurityGroups {
-				if tags.Ec2ResourceHasTag(sg.Tags, tags.RedHatManaged, strconv.FormatBool(true)) {
-					continue
-				}
-				if aws.StringValue(sg.GroupName) == "default" {
-					continue
-				}
-				securityGroups = append(securityGroups, sg)
-			}
-			return page.NextToken != nil
-		})
+	securityGroups := []*ec2types.SecurityGroup{}
+	resp, err := c.ec2Client.DescribeSecurityGroups(context.Background(), describeSecurityGroupsInput)
 	if err != nil {
-		return []*ec2.SecurityGroup{}, err
+		return []*ec2types.SecurityGroup{}, err
 	}
+
+	for _, secGroup := range resp.SecurityGroups {
+		if c.Ec2ResourceHasTag(secGroup.Tags, tags.RedHatManaged, strconv.FormatBool(true)) {
+			continue
+		}
+		if aws.ToString(secGroup.GroupName) == "default" {
+			continue
+		}
+		sg := secGroup
+		securityGroups = append(securityGroups, &sg)
+	}
+
 	return securityGroups, nil
 }
 
-// CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
-// additional custom features
-type CustomRetryer struct {
-	client.DefaultRetryer
-}
-
-// ShouldRetry overrides the SDK's built in DefaultRetryer adding customization
-// to not retry 5xx status codes.
-func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
-	if req.HTTPResponse.StatusCode >= 500 {
-		return false
+func (c *awsClient) Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue string) bool {
+	for _, tag := range tags {
+		if aws.ToString(tag.Key) == tagName && aws.ToString(tag.Value) == tagValue {
+			return true
+		}
 	}
-	logger := logging.NewLogger()
-	if strings.Contains(req.Error.Error(), "Throttling") {
-		logger.Warn("Throttling Rate limit exceeded. Retrying the request again")
-	}
-
-	return r.DefaultRetryer.ShouldRetry(req)
-}
-
-func buildCustomRetryer() CustomRetryer {
-	return CustomRetryer{
-		DefaultRetryer: client.DefaultRetryer{
-			NumMaxRetries:    12,
-			MinRetryDelay:    1 * time.Second,
-			MinThrottleDelay: 5 * time.Second,
-			MaxThrottleDelay: 5 * time.Second,
-		},
-	}
+	return false
 }
