@@ -82,7 +82,7 @@ func (mp *managedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRol
 
 	for file, role := range aws.AccountRoles {
 		accRoleName := common.GetRoleName(input.prefix, role.Name)
-		assumeRolePolicy := getAssumeRolePolicy(file, input)
+		assumeRolePolicy := getAssumeRolePolicy(r.Creator.Partition, file, input)
 
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
 		tagsList := mp.getRoleTags(file, input)
@@ -167,7 +167,7 @@ func (up *unmanagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountR
 
 	for file, role := range aws.AccountRoles {
 		accRoleName := common.GetRoleName(input.prefix, role.Name)
-		assumeRolePolicy := getAssumeRolePolicy(file, input)
+		assumeRolePolicy := getAssumeRolePolicy(r.Creator.Partition, file, input)
 		tagsList := up.getRoleTags(file, input)
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
 
@@ -193,7 +193,7 @@ func (up *unmanagedPoliciesCreator) printCommands(r *rosa.Runtime, input *accoun
 
 		createPolicy := buildCreatePolicyCommand(policyName, policyDocument, iamTags, input.path)
 
-		policyARN := aws.GetPolicyARN(input.accountID, accRoleName, input.path)
+		policyARN := aws.GetPolicyARN(r.Creator.Partition, input.accountID, accRoleName, input.path)
 
 		attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
 
@@ -263,7 +263,7 @@ func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput
 
 	policyPermissionDetail := aws.GetPolicyDetails(input.policies, filename)
 
-	policyARN := aws.GetPolicyARN(r.Creator.AccountID, accRoleName, input.path)
+	policyARN := aws.GetPolicyARN(r.Creator.Partition, r.Creator.AccountID, accRoleName, input.path)
 
 	r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
 	if args.forcePolicyCreation {
@@ -281,12 +281,11 @@ func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput
 	return r.AWSClient.AttachRolePolicy(accRoleName, policyARN)
 }
 
-func getAssumeRolePolicy(file string, input *accountRolesCreationInput) string {
+func getAssumeRolePolicy(partition string, file string, input *accountRolesCreationInput) string {
 	filename := fmt.Sprintf("sts_%s_trust_policy", file)
 	policyDetail := aws.GetPolicyDetails(input.policies, filename)
-
-	return aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":      aws.GetPartition(),
+	return aws.InterpolatePolicyDocument(partition, policyDetail, map[string]string{
+		"partition":      partition,
 		"aws_account_id": aws.GetJumpAccount(input.env),
 	})
 }
@@ -298,7 +297,7 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 
 	for file, role := range aws.HCPAccountRoles {
 		accRoleName := common.GetRoleName(input.prefix, role.Name)
-		assumeRolePolicy := getAssumeRolePolicy(file, input)
+		assumeRolePolicy := getAssumeRolePolicy(r.Creator.Partition, file, input)
 
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
 		tagsList := hcp.getRoleTags(file, input)

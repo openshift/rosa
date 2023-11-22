@@ -12,7 +12,8 @@ import (
 
 const assumePolicyAction = "sts:AssumeRole"
 
-func computePolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
+func computePolicyARN(creator aws.Creator,
+	prefix string, namespace string, name string, path string) string {
 	if prefix == "" {
 		prefix = aws.DefaultPrefix
 	}
@@ -21,9 +22,9 @@ func computePolicyARN(accountID string, prefix string, namespace string, name st
 		policy = policy[0:pkg.MaxByteSize]
 	}
 	if path != "" {
-		return fmt.Sprintf("arn:%s:iam::%s:policy%s%s", aws.GetPartition(), accountID, path, policy)
+		return fmt.Sprintf("arn:%s:iam::%s:policy%s%s", creator.Partition, creator.AccountID, path, policy)
 	}
-	return fmt.Sprintf("arn:%s:iam::%s:policy/%s", aws.GetPartition(), accountID, policy)
+	return fmt.Sprintf("arn:%s:iam::%s:policy/%s", creator.Partition, creator.AccountID, policy)
 }
 
 func validateIngressOperatorPolicyOverride(r *rosa.Runtime, policyArn string, sharedVpcRoleArn string,

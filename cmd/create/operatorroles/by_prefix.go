@@ -312,7 +312,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 				return err
 			}
 		} else {
-			policyArn = aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
+			policyArn = aws.GetOperatorPolicyARN(r.Creator.Partition, r.Creator.AccountID, prefix, operator.Namespace(),
 				operator.Name(), path)
 			policyDetails := aws.GetPolicyDetails(policies, filename)
 
@@ -322,7 +322,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 					return err
 				}
 
-				policyDetails = aws.InterpolatePolicyDocument(policyDetails, map[string]string{
+				policyDetails = aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
 					"shared_vpc_role_arn": sharedVpcRoleArn,
 				})
 			}
@@ -351,7 +351,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 		}
 
 		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(oidcEndpointUrl,
+		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(r.Creator.Partition, oidcEndpointUrl,
 			r.Creator.AccountID, operator, policyDetails)
 		if err != nil {
 			return err
@@ -421,7 +421,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 				return "", err
 			}
 		} else {
-			policyARN = computePolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
+			policyARN = computePolicyARN(*r.Creator, prefix, operator.Namespace(), operator.Name(), path)
 			name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := map[string]string{
 				common.OpenShiftVersion: defaultPolicyVersion,
@@ -459,7 +459,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 		}
 
 		policyDetail := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(oidcEndpointUrl,
+		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(r.Creator.Partition, oidcEndpointUrl,
 			r.Creator.AccountID, operator, policyDetail)
 		if err != nil {
 			return "", err
