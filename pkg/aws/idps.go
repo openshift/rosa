@@ -17,12 +17,14 @@ limitations under the License.
 package aws
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 
+	a "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
@@ -33,72 +35,64 @@ const (
 
 func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint string, clusterID string) (
 	string, error) {
-	iamTags := []*iam.Tag{
+	iamTags := []iamtypes.Tag{
 		{
 			Key:   aws.String(tags.RedHatManaged),
 			Value: aws.String(tags.True),
 		},
 	}
 	if clusterID != "" {
-		iamTags = append(iamTags, &iam.Tag{
+		iamTags = append(iamTags, iamtypes.Tag{
 			Key:   aws.String(tags.ClusterID),
 			Value: aws.String(clusterID),
 		})
 	}
-	output, err := c.iamClient.CreateOpenIDConnectProvider(&iam.CreateOpenIDConnectProviderInput{
-		ClientIDList: []*string{
-			aws.String(OIDCClientIDOpenShift),
-			aws.String(OIDCClientIDSTSAWS),
+	output, err := c.iamClient.CreateOpenIDConnectProvider(context.TODO(), &iam.CreateOpenIDConnectProviderInput{
+		ClientIDList: []string{
+			OIDCClientIDOpenShift,
+			OIDCClientIDSTSAWS,
 		},
-		ThumbprintList: []*string{aws.String(thumbprint)},
-		Url:            aws.String(providerURL),
+		ThumbprintList: []string{thumbprint},
+		Url:            &providerURL,
 		Tags:           iamTags,
 	})
 	if err != nil {
 		return "", err
 	}
 
-	return aws.StringValue(output.OpenIDConnectProviderArn), nil
+	return a.ToString(output.OpenIDConnectProviderArn), nil
 }
 
-func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error) {
+func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, partition string, accountID string) (bool, error) {
 	parsedIssuerURL, err := url.ParseRequestURI(issuerURL)
 	if err != nil {
 		return false, err
 	}
 	providerURL := fmt.Sprintf("%s%s", parsedIssuerURL.Host, parsedIssuerURL.Path)
 
-	oidcProviderARN := GetOIDCProviderARN(accountID, providerURL)
-	output, err := c.iamClient.GetOpenIDConnectProvider(&iam.GetOpenIDConnectProviderInput{
+	oidcProviderARN := GetOIDCProviderARN(partition, accountID, providerURL)
+	output, err := c.iamClient.GetOpenIDConnectProvider(context.TODO(), &iam.GetOpenIDConnectProviderInput{
 		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return false, nil
-			default:
-				return false, err
-			}
+		if IsNoSuchEntityException(err) {
+			return false, nil
 		}
+		return false, err
 	}
-	if aws.StringValue(output.Url) != providerURL {
+	if a.ToString(output.Url) != providerURL {
 		return false, fmt.Errorf("The OIDC provider exists but is misconfigured")
 	}
 	return true, nil
 }
 
 func (c *awsClient) DeleteOpenIDConnectProvider(oidcProviderARN string) error {
-	_, err := c.iamClient.DeleteOpenIDConnectProvider(&iam.DeleteOpenIDConnectProviderInput{
+	_, err := c.iamClient.DeleteOpenIDConnectProvider(context.TODO(), &iam.DeleteOpenIDConnectProviderInput{
 		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return fmt.Errorf("OIDC provider '%s' does not exists",
-					oidcProviderARN)
-			}
+		if IsNoSuchEntityException(err) {
+			return fmt.Errorf("The OIDC provider does not exist")
 		}
 		return err
 	}

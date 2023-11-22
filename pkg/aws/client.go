@@ -17,6 +17,7 @@ limitations under the License.
 package aws
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -26,19 +27,21 @@ import (
 	"strings"
 	"time"
 
+	a "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/client"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/organizations"
 	"github.com/aws/aws-sdk-go/service/organizations/organizationsiface"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -49,12 +52,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+	"github.com/aws/smithy-go/middleware"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
+	f "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -66,6 +73,8 @@ import (
 const (
 	AdminUserName        = "osdCcsAdmin"
 	OsdCcsAdminStackName = "osdCcsAdminIAMUser"
+	rosaHeaderValue      = "rosa.ROSAVersionUserAgentHandler"
+	NumMaxRetries        = 12
 
 	// Since CloudFormation stacks are region-dependent, we hard-code OCM's default region and
 	// then use it to ensure that the user always gets the stack from the same region.
@@ -90,7 +99,7 @@ type Client interface {
 	CheckStackReadyOrNotExisting(stackName string) (stackReady bool, stackStatus *string, err error)
 	CheckRoleExists(roleName string) (bool, string, error)
 	ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string) error
-	GetIAMCredentials() (credentials.Value, error)
+	GetIAMCredentials() (a.Credentials, error)
 	GetRegion() string
 	ValidateCredentials() (isValid bool, err error)
 	EnsureOsdCcsAdminUser(stackName string, adminUserName string, awsRegion string) (bool, error)
@@ -118,7 +127,7 @@ type Client interface {
 	AttachRolePolicy(roleName string, policyARN string) error
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string, clusterID string) (string, error)
 	DeleteOpenIDConnectProvider(providerURL string) error
-	HasOpenIDConnectProvider(issuerURL string, accountID string) (bool, error)
+	HasOpenIDConnectProvider(issuerURL string, partition string, accountID string) (bool, error)
 	FindRoleARNs(roleType string, version string) ([]string, error)
 	FindRoleARNsClassic(roleType string, version string) ([]string, error)
 	FindRoleARNsHostedCp(roleType string, version string) ([]string, error)
@@ -128,7 +137,7 @@ type Client interface {
 	ListAccountRoles(version string) ([]Role, error)
 	ListOperatorRoles(version string, clusterID string) (map[string][]OperatorRoleDetail, error)
 	ListOidcProviders(targetClusterId string) ([]OidcProviderOutput, error)
-	GetRoleByARN(roleARN string) (*iam.Role, error)
+	GetRoleByARN(roleARN string) (*iamtypes.Role, error)
 	DeleteOperatorRole(roles string, managedPolicies bool) error
 	GetOperatorRolesFromAccountByClusterID(clusterID string, credRequests map[string]*cmv1.STSOperator) ([]string, error)
 	GetOperatorRolesFromAccountByPrefix(prefix string, credRequest map[string]*cmv1.STSOperator) ([]string, error)
@@ -150,6 +159,7 @@ type Client interface {
 	IsUpgradedNeededForAccountRolePoliciesUsingCluster(clusterID *cmv1.Cluster, version string) (bool, error)
 	IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 		cluster *cmv1.Cluster,
+		partition string,
 		accountID string,
 		version string,
 		credRequests map[string]*cmv1.STSOperator,
@@ -157,6 +167,7 @@ type Client interface {
 	) (bool, error)
 	IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(
 		rolePrefix string,
+		partition string,
 		accountID string,
 		version string,
 		credRequests map[string]*cmv1.STSOperator,
@@ -203,7 +214,7 @@ type ClientBuilder struct {
 
 type awsClient struct {
 	logger              *logrus.Logger
-	iamClient           iamiface.IAMAPI
+	iamClient           f.IamApiClient
 	ec2Client           ec2iface.EC2API
 	orgClient           organizationsiface.OrganizationsAPI
 	s3Client            s3iface.S3API
@@ -235,7 +246,7 @@ func NewClient() *ClientBuilder {
 
 func New(
 	logger *logrus.Logger,
-	iamClient iamiface.IAMAPI,
+	iamClient f.IamApiClient,
 	ec2Client ec2iface.EC2API,
 	orgClient organizationsiface.OrganizationsAPI,
 	s3Client s3iface.S3API,
@@ -286,29 +297,72 @@ func (b *ClientBuilder) UseLocalCredentials(value bool) *ClientBuilder {
 }
 
 // Create AWS session with a specific set of credentials
-func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey) (*session.Session, error) {
-	return session.NewSessionWithOptions(session.Options{
-		Config: aws.Config{
-			CredentialsChainVerboseErrors: aws.Bool(true),
-			Region:                        b.region,
-			Credentials: credentials.NewStaticCredentials(
-				value.AccessKeyID,
-				value.SecretAccessKey,
-				"",
-			),
-		},
-	})
+func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
+	logLevel a.ClientLogMode) (*a.Config, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(value.AccessKeyID,
+			value.SecretAccessKey, "")),
+		config.WithRegion(*b.region),
+		config.WithHTTPClient(&http.Client{
+			Transport: http.DefaultTransport,
+		}),
+		config.WithClientLogMode(logLevel),
+		config.WithAPIOptions([]func(stack *middleware.Stack) error{
+			smithyhttp.AddHeaderValue(rosaHeaderValue,
+				strings.Join([]string{info.UserAgent, info.Version}, ";")),
+		}),
+		config.WithRetryer(func() a.Retryer {
+			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
+			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
+			retryer = retry.AddWithErrorCodes(retryer, invalidClientTokenID)
+			return retryer
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }
 
-func (b *ClientBuilder) BuildSessionWithOptions() (*session.Session, error) {
-	return session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-		Profile:           profile.Profile(),
-		Config: aws.Config{
-			CredentialsChainVerboseErrors: aws.Bool(true),
-			Region:                        b.region,
-		},
-	})
+func (b *ClientBuilder) BuildSessionWithOptions(logLevel a.ClientLogMode) (*a.Config, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithSharedConfigProfile(profile.Profile()),
+		config.WithRegion(*b.region),
+		config.WithHTTPClient(&http.Client{
+			Transport: http.DefaultTransport,
+		}),
+		config.WithClientLogMode(logLevel),
+		config.WithAPIOptions([]func(stack *middleware.Stack) error{
+			smithyhttp.AddHeaderValue(rosaHeaderValue,
+				strings.Join([]string{info.UserAgent, info.Version}, ";")),
+		}),
+		config.WithRetryer(func() a.Retryer {
+			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
+			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
+			retryer = retry.AddWithErrorCodes(retryer, invalidClientTokenID)
+			return retryer
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+func (b *ClientBuilder) BuildSession() (*a.Config, error) {
+	var logLevel a.ClientLogMode
+	logLevel = 0
+	if b.logger.Level == logrus.DebugLevel {
+		logLevel = a.LogRequestWithBody | a.LogResponseWithBody
+	}
+
+	if b.credentials != nil {
+		return b.BuildSessionWithOptionsCredentials(b.credentials, logLevel)
+	}
+
+	return b.BuildSessionWithOptions(logLevel)
 }
 
 // Build uses the information stored in the builder to build a new AWS client.
@@ -343,11 +397,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	}
 
 	// Create the AWS session:
-	if b.credentials != nil {
-		sess, err = b.BuildSessionWithOptionsCredentials(b.credentials)
-	} else {
-		sess, err = b.BuildSessionWithOptions()
-	}
+	cfg, err := b.BuildSession()
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +449,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	// Create and populate the object:
 	c := &awsClient{
 		logger:              b.logger,
-		iamClient:           iam.New(sess),
+		iamClient:           iam.NewFromConfig(*cfg),
 		ec2Client:           ec2.New(sess),
 		orgClient:           organizations.New(sess),
 		s3Client:            s3.New(sess),
@@ -423,8 +473,17 @@ func (b *ClientBuilder) Build() (Client, error) {
 	return c, err
 }
 
-func (c *awsClient) GetIAMCredentials() (credentials.Value, error) {
-	return c.awsSession.Config.Credentials.Get()
+func (c *awsClient) GetIAMCredentials() (a.Credentials, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return a.Credentials{}, err
+	}
+
+	creds, err := cfg.Credentials.Retrieve(context.TODO())
+	if err != nil {
+		return a.Credentials{}, err
+	}
+	return creds, nil
 }
 
 func (c *awsClient) GetRegion() string {
@@ -600,6 +659,7 @@ type Creator struct {
 	AccountID  string
 	IsSTS      bool
 	IsGovcloud bool
+	Partition  string
 }
 
 func (c *awsClient) GetCreator() (*Creator, error) {
@@ -636,6 +696,7 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 		AccountID:  creatorParsedARN.AccountID,
 		IsSTS:      isSTS(creatorParsedARN),
 		IsGovcloud: isGovcloud,
+		Partition:  creatorParsedARN.Partition,
 	}, nil
 }
 
@@ -654,7 +715,7 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 }
 
 func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
-	userList, err := c.iamClient.ListUsers(&iam.ListUsersInput{})
+	userList, err := c.iamClient.ListUsers(context.Background(), &iam.ListUsersInput{})
 	if err != nil {
 		return err
 	}
@@ -670,7 +731,7 @@ func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
 }
 
 func (c *awsClient) CheckAdminUserExists(userName string) (err error) {
-	_, err = c.iamClient.GetUser(&iam.GetUserInput{UserName: aws.String(userName)})
+	_, err = c.iamClient.GetUser(context.Background(), &iam.GetUserInput{UserName: aws.String(userName)})
 	if err != nil {
 		return err
 	}
@@ -678,7 +739,7 @@ func (c *awsClient) CheckAdminUserExists(userName string) (err error) {
 }
 
 func (c *awsClient) GetClusterRegionTagForUser(username string) (string, error) {
-	user, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: aws.String(username)})
+	user, err := c.iamClient.GetUser(context.Background(), &iam.GetUserInput{UserName: aws.String(username)})
 	if err != nil {
 		return "", err
 	}
@@ -691,9 +752,9 @@ func (c *awsClient) GetClusterRegionTagForUser(username string) (string, error) 
 }
 
 func (c *awsClient) TagUserRegion(username string, region string) error {
-	_, err := c.iamClient.TagUser(&iam.TagUserInput{
+	_, err := c.iamClient.TagUser(context.Background(), &iam.TagUserInput{
 		UserName: aws.String(username),
-		Tags: []*iam.Tag{
+		Tags: []iamtypes.Tag{
 			{
 				Key:   aws.String(tags.ClusterRegion),
 				Value: aws.String(region),
@@ -826,7 +887,7 @@ func (c *awsClient) UpsertAccessKey(username string) (*AccessKey, error) {
 // CreateAccessKey creates an IAM access key for `username`
 func (c *awsClient) CreateAccessKey(username string) (*iam.CreateAccessKeyOutput, error) {
 	// Create access key for IAM user
-	createIAMUserAccessKeyOutput, err := c.iamClient.CreateAccessKey(
+	createIAMUserAccessKeyOutput, err := c.iamClient.CreateAccessKey(context.Background(),
 		&iam.CreateAccessKeyInput{
 			UserName: aws.String(username),
 		},
@@ -843,7 +904,7 @@ func (c *awsClient) CreateAccessKey(username string) (*iam.CreateAccessKeyOutput
 func (c *awsClient) DeleteAccessKeys(username string) error {
 	// List all access keys for user. Result wont be truncated since IAM users
 	// can only have 2 access keys
-	listAccessKeysOutput, err := c.iamClient.ListAccessKeys(
+	listAccessKeysOutput, err := c.iamClient.ListAccessKeys(context.Background(),
 		&iam.ListAccessKeysInput{
 			UserName: aws.String(username),
 		},
@@ -855,7 +916,7 @@ func (c *awsClient) DeleteAccessKeys(username string) error {
 	// Delete all access keys. Moactl owns this user since the CloudFormation stack
 	// at this point is complete and the user is tagged by use on creation
 	for _, key := range listAccessKeysOutput.AccessKeyMetadata {
-		_, err = c.iamClient.DeleteAccessKey(
+		_, err = c.iamClient.DeleteAccessKey(context.Background(),
 			&iam.DeleteAccessKeyInput{
 				UserName:    aws.String(username),
 				AccessKeyId: key.AccessKeyId,
@@ -873,24 +934,21 @@ func (c *awsClient) DeleteAccessKeys(username string) error {
 // CheckRoleExists checks to see if an IAM role with the same name
 // already exists
 func (c *awsClient) CheckRoleExists(roleName string) (bool, string, error) {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	role, err := c.iamClient.GetRole(context.Background(),
+		&iam.GetRoleInput{
+			RoleName: aws.String(roleName),
+		})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return false, "", nil
-			default:
-				return false, "", err
-			}
+		if IsNoSuchEntityException(err) {
+			return false, "", nil
 		}
+		return false, "", err
 	}
 
-	return true, aws.StringValue(role.Role.Arn), nil
+	return true, a.ToString(role.Role.Arn), nil
 }
 
-func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
+func (c *awsClient) GetRoleByARN(roleARN string) (*iamtypes.Role, error) {
 	// validate arn
 	parsedARN, err := arn.Parse(roleARN)
 	if err != nil {
@@ -909,9 +967,10 @@ func (c *awsClient) GetRoleByARN(roleARN string) (*iam.Role, error) {
 	m := strings.LastIndex(resource, "/")
 	roleName := resource[m+1:]
 
-	roleOutput, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	roleOutput, err := c.iamClient.GetRole(context.Background(),
+		&iam.GetRoleInput{
+			RoleName: aws.String(roleName),
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -954,11 +1013,11 @@ func (c *awsClient) IsLocalAvailabilityZone(availabilityZoneName string) (bool, 
 }
 
 func (c *awsClient) DetachRolePolicies(roleName string) error {
-	attachedPolicies := make([]*iam.AttachedPolicy, 0)
+	attachedPolicies := make([]iamtypes.AttachedPolicy, 0)
 	isTruncated := true
 	var marker *string
 	for isTruncated {
-		resp, err := c.iamClient.ListAttachedRolePolicies(
+		resp, err := c.iamClient.ListAttachedRolePolicies(context.Background(),
 			&iam.ListAttachedRolePoliciesInput{
 				Marker:   marker,
 				RoleName: &roleName,
@@ -967,9 +1026,8 @@ func (c *awsClient) DetachRolePolicies(roleName string) error {
 		if err != nil {
 			return err
 		}
-		isTruncated = *resp.IsTruncated
+		isTruncated = resp.IsTruncated
 		marker = resp.Marker
-		attachedPolicies = append(attachedPolicies, resp.AttachedPolicies...)
 	}
 	for _, attachedPolicy := range attachedPolicies {
 		err := c.detachRolePolicy(*attachedPolicy.PolicyArn, roleName)
@@ -981,7 +1039,8 @@ func (c *awsClient) DetachRolePolicies(roleName string) error {
 }
 
 func (c *awsClient) detachRolePolicy(policyArn string, roleName string) error {
-	_, err := c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{PolicyArn: &policyArn, RoleName: &roleName})
+	_, err := c.iamClient.DetachRolePolicy(context.Background(),
+		&iam.DetachRolePolicyInput{PolicyArn: &policyArn, RoleName: &roleName})
 	if err != nil {
 		return err
 	}
