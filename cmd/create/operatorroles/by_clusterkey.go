@@ -182,7 +182,7 @@ func createRoles(r *rosa.Runtime,
 				return err
 			}
 		} else {
-			policyArn = aws.GetOperatorPolicyARN(r.Creator.AccountID, prefix, operator.Namespace(),
+			policyArn = aws.GetOperatorPolicyARN(r.Creator.Partition, r.Creator.AccountID, prefix, operator.Namespace(),
 				operator.Name(), path)
 			policyDetails := aws.GetPolicyDetails(policies, filename)
 
@@ -192,7 +192,7 @@ func createRoles(r *rosa.Runtime,
 					return err
 				}
 
-				policyDetails = aws.InterpolatePolicyDocument(policyDetails, map[string]string{
+				policyDetails = aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
 					"shared_vpc_role_arn": sharedVpcRoleArn,
 				})
 			}
@@ -221,7 +221,8 @@ func createRoles(r *rosa.Runtime,
 		}
 
 		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetails)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(r.Creator.Partition, cluster,
+			r.Creator.AccountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}
@@ -268,7 +269,7 @@ func buildCommands(r *rosa.Runtime, env string,
 	sharedVpcRoleArn := cluster.AWS().PrivateHostedZoneRoleARN()
 	isSharedVpc := sharedVpcRoleArn != ""
 
-	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
+	err := aws.GeneratePolicyFiles(r.Creator.Partition, r.Reporter, env, false,
 		true, policies, credRequests, managedPolicies, sharedVpcRoleArn)
 	if err != nil {
 		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
@@ -303,7 +304,7 @@ func buildCommands(r *rosa.Runtime, env string,
 				return "", err
 			}
 		} else {
-			policyARN = computePolicyARN(r.Creator.AccountID, prefix, operator.Namespace(), operator.Name(), path)
+			policyARN = computePolicyARN(*r.Creator, prefix, operator.Namespace(), operator.Name(), path)
 			name := aws.GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := map[string]string{
 				common.OpenShiftVersion: defaultPolicyVersion,
@@ -341,7 +342,8 @@ func buildCommands(r *rosa.Runtime, env string,
 		}
 
 		policyDetail := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, r.Creator.AccountID, operator, policyDetail)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(r.Creator.Partition, cluster,
+			r.Creator.AccountID, operator, policyDetail)
 		if err != nil {
 			return "", err
 		}

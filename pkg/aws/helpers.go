@@ -11,12 +11,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
+	a "github.com/aws/aws-sdk-go-v2/aws"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
@@ -403,13 +403,13 @@ func HasDuplicates(valSlice []string) (string, bool) {
 	return "", false
 }
 
-func GetTagValues(tagsValue []*iam.Tag) (roleType string, version string) {
+func GetTagValues(tagsValue []iamtypes.Tag) (roleType string, version string) {
 	for _, tag := range tagsValue {
-		switch aws.StringValue(tag.Key) {
+		switch a.ToString(tag.Key) {
 		case tags.RoleType:
-			roleType = aws.StringValue(tag.Value)
+			roleType = a.ToString(tag.Value)
 		case common.OpenShiftVersion:
-			version = aws.StringValue(tag.Value)
+			version = a.ToString(tag.Value)
 		}
 	}
 	return
@@ -447,20 +447,20 @@ func GetPolicyName(name string) string {
 	return fmt.Sprintf("%s-Policy", name)
 }
 
-func GetOperatorPolicyARN(accountID string, prefix string, namespace string, name string, path string) string {
-	return getPolicyARN(accountID, GetOperatorPolicyName(prefix, namespace, name), path)
+func GetOperatorPolicyARN(partition string, accountID string,
+	prefix string, namespace string, name string, path string) string {
+	return getPolicyARN(partition, accountID, GetOperatorPolicyName(prefix, namespace, name), path)
 }
 
-func GetAdminPolicyARN(accountID string, name string, path string) string {
-	return getPolicyARN(accountID, GetAdminPolicyName(name), path)
+func GetAdminPolicyARN(partition string, accountID string, name string, path string) string {
+	return getPolicyARN(partition, accountID, GetAdminPolicyName(name), path)
 }
 
-func GetPolicyARN(accountID string, name string, path string) string {
-	return getPolicyARN(accountID, GetPolicyName(name), path)
+func GetPolicyARN(partition string, accountID string, name string, path string) string {
+	return getPolicyARN(partition, accountID, GetPolicyName(name), path)
 }
 
-func getPolicyARN(accountID string, name string, path string) string {
-	partition := GetPartition()
+func getPolicyARN(partition string, accountID string, name string, path string) string {
 	str := fmt.Sprintf("arn:%s:iam::%s:policy", partition, accountID)
 	if path != "" {
 		str = fmt.Sprintf("%s%s", str, path)
@@ -492,29 +492,15 @@ func GetPathFromARN(arnStr string) (string, error) {
 	return path, nil
 }
 
-func GetRoleARN(accountID string, name string, path string) string {
+func GetRoleARN(accountID string, name string, path string, partition string) string {
 	if path == "" {
 		path = "/"
 	}
-	partition := GetPartition()
 	return fmt.Sprintf("arn:%s:iam::%s:role%s%s", partition, accountID, path, name)
 }
 
-func GetOIDCProviderARN(accountID string, providerURL string) string {
-	partition := GetPartition()
+func GetOIDCProviderARN(partition string, accountID string, providerURL string) string {
 	return fmt.Sprintf("arn:%s:iam::%s:oidc-provider/%s", partition, accountID, providerURL)
-}
-
-func GetPartition() string {
-	region, err := GetRegion(arguments.GetRegion())
-	if err != nil || region == "" {
-		return endpoints.AwsPartitionID
-	}
-	partition, ok := endpoints.PartitionForRegion(endpoints.DefaultPartitions(), region)
-	if !ok || partition.ID() == "" {
-		return endpoints.AwsPartitionID
-	}
-	return partition.ID()
 }
 
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
@@ -635,7 +621,7 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	return GetAccountRoleName(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
-func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
+func GeneratePolicyFiles(partition string, reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
 	generateOperatorRolePolicies bool, policies map[string]*cmv1.AWSSTSPolicy,
 	credRequests map[string]*cmv1.STSOperator, skipPermissionFiles bool, sharedVpcRoleArn string) error {
 	if generateAccountRolePolicies {
@@ -643,8 +629,8 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			//Get trust policy
 			filename := fmt.Sprintf("sts_%s_trust_policy", file)
 			policyDetail := GetPolicyDetails(policies, filename)
-			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
-				"partition":      GetPartition(),
+			policy := InterpolatePolicyDocument(partition, policyDetail, map[string]string{
+				"partition":      partition,
 				"aws_account_id": GetJumpAccount(env),
 			})
 			filename = GetFormattedFileName(filename)
@@ -669,7 +655,7 @@ func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRole
 			filename := GetOperatorPolicyKey(credrequest, false, isSharedVpc)
 			policyDetail := GetPolicyDetails(policies, filename)
 			if isSharedVpc {
-				policyDetail = InterpolatePolicyDocument(policyDetail, map[string]string{
+				policyDetail = InterpolatePolicyDocument(partition, policyDetail, map[string]string{
 					"shared_vpc_role_arn": sharedVpcRoleArn,
 				})
 			}
@@ -710,10 +696,10 @@ func GetFormattedFileName(filename string) string {
 	return filename
 }
 
-func BuildOperatorRolePolicies(prefix string, accountID string, awsClient Client, commands []string,
+func BuildOperatorRolePolicies(prefix string, accountID string, partition string, awsClient Client, commands []string,
 	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, path string) []string {
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
+		policyARN := GetOperatorPolicyARN(partition, accountID, prefix, operator.Namespace(), operator.Name(), path)
 		_, err := awsClient.IsPolicyExists(policyARN)
 		if err != nil {
 			name := GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
@@ -776,6 +762,7 @@ func FindFirstAttachedPolicy(policiesDetails []PolicyDetail) PolicyDetail {
 func UpgradeOperatorRolePolicies(
 	reporter *rprtr.Object,
 	awsClient Client,
+	partition string,
 	accountID string,
 	prefix string,
 	policies map[string]*cmv1.AWSSTSPolicy,
@@ -786,11 +773,11 @@ func UpgradeOperatorRolePolicies(
 ) error {
 	isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
+		policyARN := GetOperatorPolicyARN(partition, accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
 		policyDetails := GetPolicyDetails(policies, filename)
 		if isSharedVpc {
-			policyDetails = InterpolatePolicyDocument(policyDetails, map[string]string{
+			policyDetails = InterpolatePolicyDocument(partition, policyDetails, map[string]string{
 				"shared_vpc_role_arn": cluster.AWS().PrivateHostedZoneRoleARN(),
 			})
 		}
@@ -979,7 +966,7 @@ func ComputeOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *
 	if len(role) > pkg.MaxByteSize {
 		role = role[0:pkg.MaxByteSize]
 	}
-	str := fmt.Sprintf("arn:%s:iam::%s:role", GetPartition(), creator.AccountID)
+	str := fmt.Sprintf("arn:%s:iam::%s:role", creator.Partition, creator.AccountID)
 	if path != "" {
 		str = fmt.Sprintf("%s%s", str, path)
 		return fmt.Sprintf("%s%s", str, role)
@@ -998,4 +985,13 @@ func IsHostedCPManagedPolicies(cluster *cmv1.Cluster) bool {
 
 func IsHostedCP(cluster *cmv1.Cluster) bool {
 	return cluster.Hypershift().Enabled()
+}
+
+func ConvertToTagPointers(tags []iamtypes.Tag) []*iamtypes.Tag {
+	tagPointers := make([]*iamtypes.Tag, len(tags))
+	for i, tag := range tags {
+		t := tag
+		tagPointers[i] = &t
+	}
+	return tagPointers
 }
