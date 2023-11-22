@@ -215,7 +215,7 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
 				args.installerRoleArn = interactiveRoles.
-					GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret)
+					GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret, r.AWSClient.FindRoleARNs)
 			}
 			if interactive.Enabled() {
 				prefix, err := interactive.GetString(interactive.Input{

@@ -291,7 +291,8 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	}
 
 	securityGroupIds := args.securityGroupIds
-	if interactive.Enabled() && isVersionCompatibleComputeSgIds && isByoVpc && !isHcpCluster {
+	if interactive.Enabled() && isVersionCompatibleComputeSgIds &&
+		isByoVpc && !isHcpCluster && !isSecurityGroupIdsSet {
 		availableSubnets, err := r.AWSClient.GetVPCSubnets(cluster.AWS().SubnetIDs()[0])
 		if err != nil {
 			r.Reporter.Errorf("Failed to retrieve available subnets: %v", err)

@@ -120,7 +120,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if !cmd.Flags().Changed(InstallerRoleArnFlag) && (interactive.Enabled() || confirm.Yes()) {
 		args.installerRoleArn = interactiveRoles.
-			GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret)
+			GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret, r.AWSClient.FindRoleARNs)
 	}
 	roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
 	if !output.HasFlag() && r.Reporter.IsTerminal() {
