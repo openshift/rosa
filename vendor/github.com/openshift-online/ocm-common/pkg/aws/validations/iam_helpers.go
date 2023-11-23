@@ -42,7 +42,6 @@ func HasCompatibleVersionTags(iamTags []iamtypes.Tag, version string) (bool, err
 			if version == aws.ToString(tag.Value) {
 				return true, nil
 			}
-
 			currentVersion, err := semver.NewVersion(aws.ToString(tag.Value))
 			if err != nil {
 				return false, err

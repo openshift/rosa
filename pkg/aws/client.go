@@ -1268,3 +1268,13 @@ func (c *awsClient) Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue str
 	}
 	return false
 }
+
+func (c *awsClient) Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue string) bool {
+	for _, tag := range tags {
+		if aws.ToString(tag.Key) == tagName && aws.ToString(tag.Value) == tagValue {
+			return true
+		}
+	}
+	return false
+}
+

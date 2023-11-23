@@ -851,6 +851,58 @@ func (c *awsClient) mapToAccountRole(version string, role iamtypes.Role) (Role, 
 		return Role{}, err
 	}
 
+	var policies []Policy
+	for _, policyName := range policiesOutput.PolicyNames {
+		policyOutput, err := c.iamClient.GetRolePolicy(context.Background(), &iam.GetRolePolicyInput{
+			PolicyName: aws.String(policyName),
+			RoleName:   role.RoleName,
+		})
+		if err != nil {
+			return nil, err
+		}
+		policyDoc, err := getPolicyDocument(policyOutput.PolicyDocument)
+		if err != nil {
+			return nil, err
+		}
+		policy := Policy{
+			PolicyName:     aws.ToString(policyOutput.PolicyName),
+			PolicyDocument: *policyDoc,
+		}
+		policies = append(policies, policy)
+	}
+
+	return policies, nil
+}
+
+func (c *awsClient) GetAccountRoleByArn(arn string) (Role, error) {
+	role, err := c.GetRoleByARN(arn)
+	if err != nil {
+		return Role{}, err
+	}
+
+	accountRole, err := c.mapToAccountRole("", role)
+
+	if err != nil {
+		return Role{}, err
+	}
+
+	return accountRole, nil
+}
+
+func (c *awsClient) mapToAccountRole(version string, role iamtypes.Role) (Role, error) {
+	if !checkIfAccountRole(role.RoleName) {
+		return Role{}, nil
+	}
+
+	accountRole := Role{}
+
+	listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
+		RoleName: role.RoleName,
+	})
+	if err != nil {
+		return Role{}, err
+	}
+
 	for _, tag := range listRoleTagsOutput.Tags {
 		switch aws.ToString(tag.Key) {
 		case tags.RoleType:
