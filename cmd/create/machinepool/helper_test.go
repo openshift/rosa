@@ -1,7 +1,7 @@
 package machinepool
 
 import (
-	"github.com/aws/aws-sdk-go/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -27,7 +27,7 @@ var _ = Describe("Machine pool helper", func() {
 		})
 
 		It("Should return an error is subnet is missing the VPC ID", func() {
-			subnet := &ec2.Subnet{}
+			subnet := ec2types.Subnet{}
 
 			_, err := getVpcIdFromSubnet(subnet)
 			Expect(err).To(HaveOccurred())
@@ -37,7 +37,7 @@ var _ = Describe("Machine pool helper", func() {
 
 		It("Should return VPC ID from the subnet object", func() {
 			vpcId := "123"
-			subnet := &ec2.Subnet{
+			subnet := ec2types.Subnet{
 				VpcId: &vpcId,
 			}
 

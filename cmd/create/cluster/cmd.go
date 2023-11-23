@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
@@ -2099,7 +2099,7 @@ func run(cmd *cobra.Command, _ []string) {
 	privateSubnetsCount := 0
 
 	var availabilityZones []string
-	var subnets []*ec2.Subnet
+	var subnets []ec2types.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
 		initialSubnets, err := getInitialValidSubnets(awsClient, args.subnetIDs, r.Reporter)
@@ -2153,7 +2153,7 @@ func run(cmd *cobra.Command, _ []string) {
 			for _, subnetArg := range subnetIDs {
 				verifiedSubnet := false
 				for _, subnet := range subnets {
-					if awssdk.StringValue(subnet.SubnetId) == subnetArg {
+					if awssdk.ToString(subnet.SubnetId) == subnetArg {
 						verifiedSubnet = true
 					}
 				}
@@ -2165,15 +2165,15 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		mapVpcToSubnet := map[string][]*ec2.Subnet{}
+		mapVpcToSubnet := map[string][]ec2types.Subnet{}
 
 		for _, subnet := range subnets {
 			mapVpcToSubnet[*subnet.VpcId] = append(mapVpcToSubnet[*subnet.VpcId], subnet)
-			subnetID := awssdk.StringValue(subnet.SubnetId)
-			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
+			subnetID := awssdk.ToString(subnet.SubnetId)
+			availabilityZone := awssdk.ToString(subnet.AvailabilityZone)
 			mapSubnetIDToSubnet[subnetID] = aws.Subnet{
 				AvailabilityZone: availabilityZone,
-				OwnerID:          awssdk.StringValue(subnet.OwnerId),
+				OwnerID:          awssdk.ToString(subnet.OwnerId),
 			}
 			mapAZCreated[availabilityZone] = false
 		}
@@ -3246,7 +3246,8 @@ func run(cmd *cobra.Command, _ []string) {
 				output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			}
 			oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
-			oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
+			oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL,
+				r.Creator.Partition, r.Creator.AccountID)
 			if err != nil {
 				if strings.Contains(err.Error(), "AccessDenied") {
 					r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
@@ -3435,9 +3436,9 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	return oidcConfig
 }
 
-func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.Subnet {
+func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) []ec2types.Subnet {
 	excludedSubnetsDueToPublic := []string{}
-	filteredSubnets := []*ec2.Subnet{}
+	filteredSubnets := []ec2types.Subnet{}
 	publicSubnetMap, err := r.AWSClient.FetchPublicSubnetMap(initialSubnets)
 	if err != nil {
 		r.Reporter.Errorf("Unable to check if subnet have an IGW: %v", err)
@@ -3445,11 +3446,11 @@ func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.
 	}
 	for _, subnet := range initialSubnets {
 		skip := false
-		if isPublic, ok := publicSubnetMap[awssdk.StringValue(subnet.SubnetId)]; ok {
+		if isPublic, ok := publicSubnetMap[awssdk.ToString(subnet.SubnetId)]; ok {
 			if isPublic {
 				excludedSubnetsDueToPublic = append(
 					excludedSubnetsDueToPublic,
-					awssdk.StringValue(subnet.SubnetId),
+					awssdk.ToString(subnet.SubnetId),
 				)
 				skip = true
 			}
@@ -3469,13 +3470,13 @@ func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.
 // filterCidrRangeSubnets filters the initial set of subnets to those that are part of the machine network,
 // and not part of the service network
 func filterCidrRangeSubnets(
-	initialSubnets []*ec2.Subnet,
+	initialSubnets []ec2types.Subnet,
 	machineNetwork *net.IPNet,
 	serviceNetwork *net.IPNet,
 	r *rosa.Runtime,
-) ([]*ec2.Subnet, error) {
+) ([]ec2types.Subnet, error) {
 	excludedSubnetsDueToCidr := []string{}
-	filteredSubnets := []*ec2.Subnet{}
+	filteredSubnets := []ec2types.Subnet{}
 	for _, subnet := range initialSubnets {
 		skip := false
 		subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
@@ -3484,7 +3485,7 @@ func filterCidrRangeSubnets(
 		}
 
 		if !isValidCidrRange(subnetIP, subnetNetwork, machineNetwork, serviceNetwork) {
-			excludedSubnetsDueToCidr = append(excludedSubnetsDueToCidr, awssdk.StringValue(subnet.SubnetId))
+			excludedSubnetsDueToCidr = append(excludedSubnetsDueToCidr, awssdk.ToString(subnet.SubnetId))
 			skip = true
 		}
 
@@ -3975,8 +3976,8 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
 }
 
-func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Object) ([]*ec2.Subnet, error) {
-	initialValidSubnets := []*ec2.Subnet{}
+func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Object) ([]ec2types.Subnet, error) {
+	var initialValidSubnets []ec2types.Subnet
 	rhManagedSubnets := []string{}
 	localZoneSubnets := []string{}
 
@@ -3985,17 +3986,18 @@ func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Obje
 	if err != nil {
 		return initialValidSubnets, err
 	}
+
 	for _, subnet := range validSubnets {
 		hasRHManaged := tags.Ec2ResourceHasTag(subnet.Tags, tags.RedHatManaged, strconv.FormatBool(true))
 		if hasRHManaged {
-			rhManagedSubnets = append(rhManagedSubnets, awssdk.StringValue(subnet.SubnetId))
+			rhManagedSubnets = append(rhManagedSubnets, awssdk.ToString(subnet.SubnetId))
 		} else {
-			zoneType, err := awsClient.GetAvailabilityZoneType(awssdk.StringValue(subnet.AvailabilityZone))
+			zoneType, err := awsClient.GetAvailabilityZoneType(awssdk.ToString(subnet.AvailabilityZone))
 			if err != nil {
 				return initialValidSubnets, err
 			}
 			if zoneType == aws.LocalZone || zoneType == aws.WavelengthZone {
-				localZoneSubnets = append(localZoneSubnets, awssdk.StringValue(subnet.SubnetId))
+				localZoneSubnets = append(localZoneSubnets, awssdk.ToString(subnet.SubnetId))
 			} else {
 				initialValidSubnets = append(initialValidSubnets, subnet)
 			}
@@ -4020,7 +4022,7 @@ func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdmin
 }
 
 func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
-	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []*ec2.Subnet, subnetIds []string,
+	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []ec2types.Subnet, subnetIds []string,
 	additionalSgIds *[]string) {
 	hasChangedSgIdsFlag := cmd.Flags().Changed(securitygroups.SgKindFlagMap[kind])
 	if hasChangedSgIdsFlag {
@@ -4050,8 +4052,8 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVpc && !isHostedCp {
 		vpcId := ""
 		for _, subnet := range currentSubnets {
-			if awssdk.StringValue(subnet.SubnetId) == subnetIds[0] {
-				vpcId = awssdk.StringValue(subnet.VpcId)
+			if awssdk.ToString(subnet.SubnetId) == subnetIds[0] {
+				vpcId = awssdk.ToString(subnet.VpcId)
 			}
 		}
 		if vpcId == "" {

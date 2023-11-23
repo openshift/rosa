@@ -31,9 +31,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	semver "github.com/hashicorp/go-version"
 	common "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -718,10 +718,10 @@ func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetID
 		return 0, vpcSubnetsErr
 	}
 
-	var subnets []*ec2.Subnet
+	var subnets []ec2types.Subnet
 	for _, subnet := range vpcSubnets {
 		for _, subnetId := range subnetIDs {
-			if awssdk.StringValue(subnet.SubnetId) == subnetId {
+			if awssdk.ToString(subnet.SubnetId) == subnetId {
 				subnets = append(subnets, subnet)
 				break
 			}
@@ -734,7 +734,7 @@ func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetID
 	}
 
 	privateSubnetCount := len(privateSubnets)
-	publicSubnetsCount := len(subnets) - privateSubnetCount
+	publicSubnetsCount := len(vpcSubnets) - privateSubnetCount
 
 	if isPrivate {
 		if publicSubnetsCount > 0 {

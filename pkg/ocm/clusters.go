@@ -268,7 +268,7 @@ var accountRoleTypeFieldMap = map[string]string{
 	aws.WorkerAccountRoleType:       "aws.sts.instance_iam_roles.worker_role_arn",
 }
 
-func getAccountRoleClusterFilter(aws *aws.Creator, role *aws.Role) (string, error) {
+func getAccountRoleClusterFilter(aws *aws.Creator, role aws.Role) (string, error) {
 	query := getClusterFilter(aws)
 	accountRoleField := accountRoleTypeFieldMap[role.RoleType]
 	if accountRoleField == "" {
@@ -280,7 +280,7 @@ func getAccountRoleClusterFilter(aws *aws.Creator, role *aws.Role) (string, erro
 	return fmt.Sprintf("%s AND %s='%s'", query, accountRoleField, role.RoleARN), nil
 }
 
-func (c *Client) GetClustersUsingAccountRole(aws *aws.Creator, role *aws.Role, count int) ([]*cmv1.Cluster, error) {
+func (c *Client) GetClustersUsingAccountRole(aws *aws.Creator, role aws.Role, count int) ([]*cmv1.Cluster, error) {
 	query, err := getAccountRoleClusterFilter(aws, role)
 	if err != nil {
 		return nil, err
