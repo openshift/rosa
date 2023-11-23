@@ -288,6 +288,7 @@ func run(cmd *cobra.Command, argv []string) error {
 					reporter,
 					awsClient,
 					cluster,
+					creator.Partition,
 					creator.AccountID,
 					accountRolePolicies,
 					policyVersion,
@@ -305,7 +306,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		case aws.ModeManual:
 			if isUpgradeNeedForAccountRolePolicies {
 				err = aws.GenerateAccountRolePolicyFiles(reporter, env, accountRolePolicies, false,
-					aws.AccountRoles)
+					aws.AccountRoles, creator.Partition)
 				if err != nil {
 					reporter.Errorf("There was an error generating the policy files: %s", err)
 					os.Exit(1)
@@ -319,6 +320,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			commands, err := buildAccountRoleCommandsFromCluster(
 				mode,
 				cluster,
+				creator.Partition,
 				creator.AccountID,
 				isUpgradeNeedForAccountRolePolicies,
 				awsClient,
@@ -359,6 +361,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	isOperatorPolicyUpgradeNeeded := false
 	isOperatorPolicyUpgradeNeeded, err = r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 		cluster,
+		r.Creator.Partition,
 		r.Creator.AccountID,
 		policyVersion,
 		credRequests,
@@ -476,6 +479,7 @@ func handleAccountRolePolicyARN(
 	awsClient aws.Client,
 	roleName string,
 	rolePath string,
+	partition string,
 	accountID string,
 ) (string, []string, error) {
 	policiesDetails, err := awsClient.GetAttachedPolicy(&roleName)
@@ -485,7 +489,7 @@ func handleAccountRolePolicyARN(
 
 	attachedPoliciesDetail := aws.FindAllAttachedPolicyDetails(policiesDetails)
 
-	generatedPolicyARN := aws.GetPolicyARN(accountID, roleName, rolePath)
+	generatedPolicyARN := aws.GetPolicyARN(partition, accountID, roleName, rolePath)
 	if len(attachedPoliciesDetail) == 0 {
 		return generatedPolicyARN, nil, nil
 	}
@@ -544,6 +548,7 @@ func upgradeAccountRolePoliciesFromCluster(
 	reporter *rprtr.Object,
 	awsClient aws.Client,
 	cluster *v1.Cluster,
+	partition string,
 	accountID string,
 	policies map[string]*v1.AWSSTSPolicy,
 	policyVersion string,
@@ -578,7 +583,7 @@ func upgradeAccountRolePoliciesFromCluster(
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
 
-		policyARN, _, err := handleAccountRolePolicyARN(mode, awsClient, roleName, rolePath, accountID)
+		policyARN, _, err := handleAccountRolePolicyARN(mode, awsClient, roleName, rolePath, partition, accountID)
 		if err != nil {
 			return err
 		}
@@ -622,6 +627,7 @@ func upgradeAccountRolePoliciesFromCluster(
 func buildAccountRoleCommandsFromCluster(
 	mode string,
 	cluster *v1.Cluster,
+	partition string,
 	accountID string,
 	isUpgradeNeedForAccountRolePolicies bool,
 	awsClient aws.Client,
@@ -648,6 +654,7 @@ func buildAccountRoleCommandsFromCluster(
 				awsClient,
 				accRoleName,
 				rolePath,
+				partition,
 				accountID,
 			)
 			if err != nil {
@@ -721,6 +728,7 @@ func upgradeOperatorPolicies(
 			mode,
 			r.Reporter,
 			r.AWSClient,
+			r.Creator.Partition,
 			r.Creator.AccountID,
 			policies,
 			defaultPolicyVersion,
@@ -741,7 +749,7 @@ func upgradeOperatorPolicies(
 		return nil
 	case aws.ModeManual:
 		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests,
-			cluster.AWS().PrivateHostedZoneRoleARN())
+			cluster.AWS().PrivateHostedZoneRoleARN(), r.Creator.Partition)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -758,6 +766,7 @@ func upgradeOperatorPolicies(
 		commands, err := buildOperatorRoleCommandsFromCluster(
 			mode,
 			operatorRolePolicyPrefix,
+			r.Creator.Partition,
 			r.Creator.AccountID,
 			r.AWSClient,
 			defaultPolicyVersion,
@@ -779,6 +788,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 	mode string,
 	reporter *rprtr.Object,
 	awsClient aws.Client,
+	partition string,
 	accountID string,
 	policies map[string]*v1.AWSSTSPolicy,
 	defaultPolicyVersion string,
@@ -800,6 +810,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 
 		if operatorRoleARN == "" {
 			policyARN = aws.GetOperatorPolicyARN(
+				partition,
 				accountID,
 				operatorRolePolicyPrefix,
 				operator.Namespace(),
@@ -818,6 +829,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 				operatorRolePolicyPrefix,
 				operatorPolicyPath,
 				operator,
+				partition,
 				accountID,
 			)
 			if err != nil {
@@ -832,7 +844,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 		filename := aws.GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
 		policyDetails := aws.GetPolicyDetails(policies, filename)
 		if isSharedVpc {
-			policyDetails = aws.InterpolatePolicyDocument(policyDetails, map[string]string{
+			policyDetails = aws.InterpolatePolicyDocument(partition, policyDetails, map[string]string{
 				"shared_vpc_role_arn": cluster.AWS().PrivateHostedZoneRoleARN(),
 			})
 		}
@@ -866,6 +878,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 func buildOperatorRoleCommandsFromCluster(
 	mode string,
 	operatorRolePolicyPrefix string,
+	partition string,
 	accountID string,
 	awsClient aws.Client,
 	defaultPolicyVersion string,
@@ -886,6 +899,7 @@ func buildOperatorRoleCommandsFromCluster(
 		operatorRoleName := ""
 		if operatorRoleARN == "" {
 			policyARN = aws.GetOperatorPolicyARN(
+				partition,
 				accountID,
 				operatorRolePolicyPrefix,
 				operator.Namespace(),
@@ -904,6 +918,7 @@ func buildOperatorRoleCommandsFromCluster(
 				operatorRolePolicyPrefix,
 				operatorPolicyPath,
 				operator,
+				partition,
 				accountID,
 			)
 			if err != nil {
@@ -960,6 +975,7 @@ func handleOperatorRolePolicyARN(
 	operatorRolePolicyPrefix string,
 	operatorPolicyPath string,
 	operator *v1.STSOperator,
+	partition string,
 	accountID string,
 ) (string, []string, error) {
 	policiesDetails, err := awsClient.GetAttachedPolicy(&operatorRoleName)
@@ -968,6 +984,7 @@ func handleOperatorRolePolicyARN(
 	}
 
 	generatedPolicyARN := aws.GetOperatorPolicyARN(
+		partition,
 		accountID,
 		operatorRolePolicyPrefix,
 		operator.Namespace(),
@@ -1098,13 +1115,14 @@ func upgradeMissingOperatorRole(
 		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 
 		policyARN := aws.GetOperatorPolicyARN(
+			r.Creator.Partition,
 			accountID,
 			operatorRolePolicyPrefix,
 			operator.Namespace(),
 			operator.Name(),
 			unifiedPath,
 		)
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(r.Creator.Partition, cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}

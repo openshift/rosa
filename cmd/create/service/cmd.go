@@ -23,12 +23,12 @@ import (
 	"regexp"
 	"strings"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
-	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
@@ -273,7 +273,7 @@ func run(cmd *cobra.Command, argv []string) {
 		for _, subnetArg := range subnetIDs {
 			verifiedSubnet := false
 			for _, subnet := range subnets {
-				if awssdk.StringValue(subnet.SubnetId) == subnetArg {
+				if awssdk.ToString(subnet.SubnetId) == subnetArg {
 					verifiedSubnet = true
 				}
 			}
@@ -284,8 +284,8 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		for _, subnet := range subnets {
-			subnetID := awssdk.StringValue(subnet.SubnetId)
-			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
+			subnetID := awssdk.ToString(subnet.SubnetId)
+			availabilityZone := awssdk.ToString(subnet.AvailabilityZone)
 
 			mapSubnetToAZ[subnetID] = availabilityZone
 			mapAZCreated[availabilityZone] = false

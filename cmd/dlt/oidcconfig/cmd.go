@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"

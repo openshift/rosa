@@ -161,7 +161,8 @@ func run(cmd *cobra.Command, argv []string) {
 		clusterId = cluster.ID()
 	}
 
-	oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
+	oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL,
+		r.Creator.Partition, r.Creator.AccountID)
 	if err != nil {
 		if strings.Contains(err.Error(), "AccessDenied") {
 			r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
