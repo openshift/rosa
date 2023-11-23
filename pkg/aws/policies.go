@@ -779,6 +779,37 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 	return ocmRoles, nil
 }
 
+func (c *awsClient) listPolicies(role iamtypes.Role) ([]Policy, error) {
+	policiesOutput, err := c.iamClient.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{
+		RoleName: role.RoleName,
+	})
+	if err != nil {
+		return Role{}, err
+	}
+
+	var policies []Policy
+	for _, policyName := range policiesOutput.PolicyNames {
+		policyOutput, err := c.iamClient.GetRolePolicy(context.Background(), &iam.GetRolePolicyInput{
+			PolicyName: aws.String(policyName),
+			RoleName:   role.RoleName,
+		})
+		if err != nil {
+			return nil, err
+		}
+		policyDoc, err := getPolicyDocument(policyOutput.PolicyDocument)
+		if err != nil {
+			return nil, err
+		}
+		policy := Policy{
+			PolicyName:     aws.ToString(policyOutput.PolicyName),
+			PolicyDocument: *policyDoc,
+		}
+		policies = append(policies, policy)
+	}
+
+	return policies, nil
+}
+
 func (c *awsClient) GetAccountRoleByArn(arn string) (Role, error) {
 	role, err := c.GetRoleByARN(arn)
 	if err != nil {
@@ -845,7 +876,6 @@ func (c *awsClient) mapToAccountRoles(version string, roles []iamtypes.Role) ([]
 		accountRoles = append(accountRoles, accountRole)
 	}
 	
-
 	if len(accountRoles) == 0 {
 		return accountRoles, errors.Errorf("no account roles found")
 	}

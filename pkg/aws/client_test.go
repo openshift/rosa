@@ -304,6 +304,10 @@ var _ = Describe("Client", func() {
 				Tags: tags,
 			}, nil)
 
+			mockIamAPI.EXPECT().ListRolePolicies(context.Background(), gomock.Any()).Return(&iam.ListRolePoliciesOutput{
+				PolicyNames: make([]string, 0),
+			}, nil)
+
 			role, err := client.GetAccountRoleByArn(testArn)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -747,3 +751,12 @@ Describe("Creator", func() {
 		)
 	})
 })
+
+func readCloudFormationTemplate(path string) (string, error) {
+	cfTemplate, err := assets.Asset(path)
+	if err != nil {
+		return "", fmt.Errorf("Unable to read cloudformation template: %s", err)
+	}
+
+	return string(cfTemplate), nil
+}
