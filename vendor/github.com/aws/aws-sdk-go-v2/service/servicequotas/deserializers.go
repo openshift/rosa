@@ -7,6 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math"
+	"strings"
+
 	"github.com/aws/aws-sdk-go-v2/aws/protocol/restjson"
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas/types"
 	smithy "github.com/aws/smithy-go"
@@ -15,9 +19,6 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"io"
-	"math"
-	"strings"
 )
 
 type awsAwsjson11_deserializeOpAssociateServiceQuotaTemplate struct {

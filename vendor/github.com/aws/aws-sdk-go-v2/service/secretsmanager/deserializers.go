@@ -8,6 +8,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"strings"
+
 	"github.com/aws/aws-sdk-go-v2/aws/protocol/restjson"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	smithy "github.com/aws/smithy-go"
@@ -16,9 +20,6 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"io"
-	"io/ioutil"
-	"strings"
 )
 
 type awsAwsjson11_deserializeOpCancelRotateSecret struct {

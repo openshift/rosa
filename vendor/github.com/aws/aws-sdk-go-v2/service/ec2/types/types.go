@@ -3,8 +3,9 @@
 package types
 
 import (
-	smithydocument "github.com/aws/smithy-go/document"
 	"time"
+
+	smithydocument "github.com/aws/smithy-go/document"
 )
 
 // The minimum and maximum number of accelerators (GPUs, FPGAs, or Amazon Web

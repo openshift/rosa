@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+
 	"github.com/jackc/pgio"
 )
 

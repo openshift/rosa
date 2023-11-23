@@ -1,8 +1,9 @@
 package customizations
 
 import (
-	"github.com/aws/smithy-go/transport/http"
 	"strings"
+
+	"github.com/aws/smithy-go/transport/http"
 )
 
 func updateS3HostForS3AccessPoint(req *http.Request) {

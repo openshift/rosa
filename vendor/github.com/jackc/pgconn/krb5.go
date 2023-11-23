@@ -2,6 +2,7 @@ package pgconn
 
 import (
 	"errors"
+
 	"github.com/jackc/pgproto3/v2"
 )
 

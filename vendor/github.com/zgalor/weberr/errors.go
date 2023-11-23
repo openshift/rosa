@@ -152,7 +152,6 @@ func GetUserMessage(err error) string {
 	return ""
 }
 
-
 // errorDetailer identifies an error with details
 type errorDetailer interface {
 	Details() []interface{}

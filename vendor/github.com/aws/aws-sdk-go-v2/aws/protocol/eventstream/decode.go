@@ -6,10 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/aws/smithy-go/logging"
 	"hash"
 	"hash/crc32"
 	"io"
+
+	"github.com/aws/smithy-go/logging"
 )
 
 // DecoderOptions is the Decoder configuration options.
