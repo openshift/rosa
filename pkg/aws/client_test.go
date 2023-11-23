@@ -2,6 +2,7 @@ package aws
 
 import (
 	"errors"
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -298,6 +299,10 @@ var _ = Describe("Client", func() {
 
 			mockIamAPI.EXPECT().ListRoleTags(context.Background(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
 				Tags: tags,
+			}, nil)
+
+			mockIamAPI.EXPECT().ListRolePolicies(context.Background(), gomock.Any()).Return(&iam.ListRolePoliciesOutput{
+				PolicyNames: make([]string, 0),
 			}, nil)
 
 			role, err := client.GetAccountRoleByArn(testArn)
@@ -632,3 +637,12 @@ var _ = Describe("Client", func() {
 		)
 	})
 })
+
+func readCloudFormationTemplate(path string) (string, error) {
+	cfTemplate, err := assets.Asset(path)
+	if err != nil {
+		return "", fmt.Errorf("Unable to read cloudformation template: %s", err)
+	}
+
+	return string(cfTemplate), nil
+}

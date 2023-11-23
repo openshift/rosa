@@ -705,7 +705,7 @@ func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetID
 	}
 
 	privateSubnetCount := len(privateSubnets)
-	publicSubnetsCount := len(subnets) - privateSubnetCount
+	publicSubnetsCount := len(vpcSubnets) - privateSubnetCount
 
 	if isPrivate {
 		if publicSubnetsCount > 0 {
