@@ -431,7 +431,7 @@ func (ssv stringSliceVar) Set(s string) error {
 	return nil
 }
 
-//given a set of GinkgoFlags and bindings, generate flag arguments suitable to be passed to an application with that set of flags configured.
+// given a set of GinkgoFlags and bindings, generate flag arguments suitable to be passed to an application with that set of flags configured.
 func GenerateFlagArgs(flags GinkgoFlags, bindings interface{}) ([]string, error) {
 	result := []string{}
 	for _, flag := range flags {

@@ -144,7 +144,7 @@ func FinalizeProfilesAndReportsForSuites(suites TestSuites, cliConfig types.CLIC
 	return messages, nil
 }
 
-//loads each profile, combines them, deletes them, stores them in destination
+// loads each profile, combines them, deletes them, stores them in destination
 func MergeAndCleanupCoverProfiles(profiles []string, destination string) error {
 	combined := &bytes.Buffer{}
 	modeRegex := regexp.MustCompile(`^mode: .*\n`)

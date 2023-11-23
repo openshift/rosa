@@ -1,7 +1,7 @@
 /*
 Ginkgo isusually dot-imported via:
 
-    import . "github.com/onsi/ginkgo/v2"
+	import . "github.com/onsi/ginkgo/v2"
 
 however some parts of the DSL may conflict with existing symbols in the user's code.
 

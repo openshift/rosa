@@ -2,6 +2,7 @@ package pgproto3
 
 import (
 	"encoding/json"
+
 	"github.com/jackc/pgio"
 )
 

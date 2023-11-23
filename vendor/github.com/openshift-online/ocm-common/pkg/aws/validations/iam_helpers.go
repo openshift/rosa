@@ -3,8 +3,8 @@ package validations
 import (
 	"fmt"
 
-	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	semver "github.com/hashicorp/go-version"
 	"github.com/openshift-online/ocm-common/pkg"
 )
@@ -18,13 +18,13 @@ func GetRoleName(prefix string, role string) string {
 }
 
 func IsManagedRole(roleTags []*iamtypes.Tag) bool {
-    for _, tag := range roleTags {
-        if aws.ToString(tag.Key) == ManagedPolicies && aws.ToString(tag.Value) == "true" {
-            return true
-        }
-    }
+	for _, tag := range roleTags {
+		if aws.ToString(tag.Key) == ManagedPolicies && aws.ToString(tag.Value) == "true" {
+			return true
+		}
+	}
 
-    return false
+	return false
 }
 
 func HasCompatibleVersionTags(iamTags []*iamtypes.Tag, version string) (bool, error) {
@@ -36,13 +36,13 @@ func HasCompatibleVersionTags(iamTags []*iamtypes.Tag, version string) (bool, er
 	if err != nil {
 		return false, err
 	}
-	
+
 	for _, tag := range iamTags {
 		if aws.ToString(tag.Key) == OpenShiftVersion {
 			if version == aws.ToString(tag.Value) {
 				return true, nil
 			}
-			
+
 			currentVersion, err := semver.NewVersion(aws.ToString(tag.Value))
 			if err != nil {
 				return false, err
