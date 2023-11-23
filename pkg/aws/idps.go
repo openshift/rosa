@@ -21,10 +21,9 @@ import (
 	"fmt"
 	"net/url"
 
-	a "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
@@ -60,7 +59,7 @@ func (c *awsClient) CreateOpenIDConnectProvider(providerURL string, thumbprint s
 		return "", err
 	}
 
-	return a.ToString(output.OpenIDConnectProviderArn), nil
+	return aws.ToString(output.OpenIDConnectProviderArn), nil
 }
 
 func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, partition string, accountID string) (bool, error) {
@@ -80,7 +79,7 @@ func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, partition string,
 		}
 		return false, err
 	}
-	if a.ToString(output.Url) != providerURL {
+	if aws.ToString(output.Url) != providerURL {
 		return false, fmt.Errorf("The OIDC provider exists but is misconfigured")
 	}
 	return true, nil
