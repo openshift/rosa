@@ -97,8 +97,6 @@ github.com/aws/aws-sdk-go-v2/internal/endpoints
 github.com/aws/aws-sdk-go-v2/internal/endpoints/awsrulesfn
 github.com/aws/aws-sdk-go-v2/internal/rand
 github.com/aws/aws-sdk-go-v2/internal/sdk
-github.com/aws/aws-sdk-go-v2/internal/sdkio
-github.com/aws/aws-sdk-go-v2/internal/shareddefaults
 github.com/aws/aws-sdk-go-v2/internal/strings
 github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
 github.com/aws/aws-sdk-go-v2/internal/timeconv
@@ -108,20 +106,10 @@ github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream/eventstreamapi
 # github.com/aws/aws-sdk-go-v2/config v1.25.5
 ## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/config
 # github.com/aws/aws-sdk-go-v2/credentials v1.16.4
 ## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/credentials
-github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds
-github.com/aws/aws-sdk-go-v2/credentials/endpointcreds
-github.com/aws/aws-sdk-go-v2/credentials/endpointcreds/internal/client
-github.com/aws/aws-sdk-go-v2/credentials/processcreds
-github.com/aws/aws-sdk-go-v2/credentials/ssocreds
-github.com/aws/aws-sdk-go-v2/credentials/stscreds
 # github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.5
 ## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/feature/ec2/imds
-github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
 # github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.4
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/internal/configsources
@@ -130,7 +118,6 @@ github.com/aws/aws-sdk-go-v2/internal/configsources
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
 # github.com/aws/aws-sdk-go-v2/internal/ini v1.7.1
 ## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/internal/ini
 # github.com/aws/aws-sdk-go-v2/internal/v4a v1.2.4
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/internal/v4a
@@ -189,14 +176,8 @@ github.com/aws/aws-sdk-go-v2/service/servicequotas/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/servicequotas/types
 # github.com/aws/aws-sdk-go-v2/service/sso v1.17.3
 ## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/service/sso
-github.com/aws/aws-sdk-go-v2/service/sso/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/sso/types
 # github.com/aws/aws-sdk-go-v2/service/ssooidc v1.20.1
 ## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/service/ssooidc
-github.com/aws/aws-sdk-go-v2/service/ssooidc/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/ssooidc/types
 # github.com/aws/aws-sdk-go-v2/service/sts v1.25.4
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/service/sts
@@ -414,7 +395,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-online/ocm-common v0.0.0-20231026143539-5ff0909b6fae
+# github.com/openshift-online/ocm-common v0.0.0-20231114125052-9c5e842a1133
 ## explicit; go 1.19
 github.com/openshift-online/ocm-common/pkg
 github.com/openshift-online/ocm-common/pkg/aws/validations
