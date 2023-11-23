@@ -17,6 +17,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
+	awsCommonValidations "github.com/openshift-online/ocm-common/pkg/aws/validations"
 
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -26,8 +28,6 @@ import (
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 
 	"github.com/openshift-online/ocm-common/pkg"
-	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
-	awsCommonValidations "github.com/openshift-online/ocm-common/pkg/aws/validations"
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws/tags"
