@@ -187,7 +187,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	isOperatorPolicyUpgradeNeeded, err := r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
-		r.Creator.AccountID, latestPolicyVersion, credRequests, unifiedPath)
+		r.Creator.Partition, r.Creator.AccountID, latestPolicyVersion, credRequests, unifiedPath)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -247,8 +247,8 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 		if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", defaultPolicyVersion) {
 			return nil
 		}
-		err := aws.UpgradeOperatorRolePolicies(r.Reporter, r.AWSClient, r.Creator.AccountID, prefix, policies,
-			defaultPolicyVersion, credRequests, policyPath, cluster)
+		err := aws.UpgradeOperatorRolePolicies(r.Reporter, r.AWSClient, r.Creator.Partition,
+			r.Creator.AccountID, prefix, policies, defaultPolicyVersion, credRequests, policyPath, cluster)
 		if err != nil {
 			if strings.Contains(err.Error(), "Throttling") {
 				r.OCMClient.LogEvent("ROSAUpgradeOperatorRolesModeAuto", map[string]string{
@@ -262,7 +262,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 		return nil
 	case aws.ModeManual:
 		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests,
-			cluster.AWS().PrivateHostedZoneRoleARN())
+			cluster.AWS().PrivateHostedZoneRoleARN(), r.Creator.Partition)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -276,7 +276,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 					"Account Role policies upgrade has completed.\n")
 			}
 		}
-		commands := aws.BuildOperatorRoleCommands(prefix, r.Creator.AccountID, r.AWSClient,
+		commands := aws.BuildOperatorRoleCommands(prefix, r.Creator.Partition, r.Creator.AccountID, r.AWSClient,
 			defaultPolicyVersion, credRequests, policyPath, cluster)
 		fmt.Println(awscb.JoinCommands(commands))
 	default:
