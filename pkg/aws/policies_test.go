@@ -3,10 +3,8 @@ package aws
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/golang/mock/gomock"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -16,14 +14,14 @@ import (
 var _ = Describe("Is Account Role Version Compatible", func() {
 	When("Role isn't an account role", func() {
 		It("Should return not compatible", func() {
-			isCompatible, err := isAccountRoleVersionCompatible([]*iam.Tag{}, InstallerAccountRole, "4.14")
+			isCompatible, err := isAccountRoleVersionCompatible([]iamtypes.Tag{}, InstallerAccountRole, "4.14")
 			Expect(err).To(BeNil())
 			Expect(isCompatible).To(Equal(false))
 		})
 	})
 	When("Role OCP version isn't compatible", func() {
 		It("Should return not compatible", func() {
-			tagsList := []*iam.Tag{
+			tagsList := []iamtypes.Tag{
 				{
 					Key:   aws.String("rosa_openshift_version"),
 					Value: aws.String("4.13"),
@@ -36,7 +34,7 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 	})
 	When("Role version is compatible", func() {
 		It("Should return compatible", func() {
-			tagsList := []*iam.Tag{
+			tagsList := []iamtypes.Tag{
 				{
 					Key:   aws.String("rosa_openshift_version"),
 					Value: aws.String("4.14"),
@@ -49,7 +47,7 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 	})
 	When("Role has managed policies, ignores openshift version", func() {
 		It("Should return compatible", func() {
-			tagsList := []*iam.Tag{
+			tagsList := []iamtypes.Tag{
 				{
 					Key:   aws.String("rosa_openshift_version"),
 					Value: aws.String("4.12"),
@@ -66,7 +64,7 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 	})
 	When("Role has HCP managed policies when trying to create classic cluster", func() {
 		It("Should return incompatible", func() {
-			tagsList := []*iam.Tag{
+			tagsList := []iamtypes.Tag{
 				{
 					Key:   aws.String("rosa_openshift_version"),
 					Value: aws.String("4.12"),
@@ -88,7 +86,7 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 	})
 	When("Role has classic policies when trying to create an HCP cluster", func() {
 		It("Should return incompatible", func() {
-			tagsList := []*iam.Tag{
+			tagsList := []iamtypes.Tag{
 				{
 					Key:   aws.String("rosa_openshift_version"),
 					Value: aws.String("4.12"),

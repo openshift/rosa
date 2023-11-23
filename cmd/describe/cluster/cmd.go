@@ -23,10 +23,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
-	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
+	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"

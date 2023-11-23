@@ -22,14 +22,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/iam"
 	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -133,11 +132,10 @@ func run(cmd *cobra.Command, argv []string) {
 
 		for _, cr := range addOn.CredentialsRequests() {
 			roleName := generateRoleName(cr, prefix)
-			roleArn := aws.GetRoleARN(r.Creator.AccountID, roleName, "")
+			roleArn := aws.GetRoleARN(r.Creator.AccountID, roleName, "", r.Creator.Partition)
 			_, err = r.AWSClient.GetRoleByARN(roleArn)
 			if err != nil {
-				aerr, ok := err.(awserr.Error)
-				if ok && aerr.Code() == iam.ErrCodeNoSuchEntityException {
+				if awserr.IsNoSuchEntityException(err) {
 					err = createAddonRole(r, roleName, cr, cmd, cluster)
 					if err != nil {
 						r.Reporter.Errorf("%s", err)
@@ -309,7 +307,7 @@ func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialReques
 		return err
 	}
 	policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-	assumePolicy, err := aws.GenerateAddonPolicyDoc(cluster, r.Creator.AccountID, cr, policyDetails)
+	assumePolicy, err := aws.GenerateAddonPolicyDoc(r.Creator.Partition, cluster, r.Creator.AccountID, cr, policyDetails)
 	if err != nil {
 		return err
 	}
