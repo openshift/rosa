@@ -8,11 +8,10 @@ import (
 	"reflect"
 	"strings"
 
-	a "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -205,7 +204,7 @@ func (p PolicyDocument) String() string {
 }
 
 func updateAssumeRolePolicyPrincipals(policy string, role *iamtypes.Role) (string, bool, error) {
-	oldPolicy, err := url.QueryUnescape(a.ToString(role.AssumeRolePolicyDocument))
+	oldPolicy, err := url.QueryUnescape(aws.ToString(role.AssumeRolePolicyDocument))
 	if err != nil {
 		return policy, false, err
 	}
@@ -275,7 +274,7 @@ func InterpolatePolicyDocument(partition string, doc string, replacements map[st
 func getPolicyDocument(policyDocument *string) (*PolicyDocument, error) {
 	data := PolicyDocument{}
 	if policyDocument != nil {
-		val, err := url.QueryUnescape(aws.StringValue(policyDocument))
+		val, err := url.QueryUnescape(aws.ToString(policyDocument))
 		if err != nil {
 			return &data, err
 		}
