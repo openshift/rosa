@@ -3652,7 +3652,7 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 }
 
 func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([]ec2types.Subnet, error) {
-	initialValidSubnets := []ec2types.Subnet{}
+	var initialValidSubnets []ec2types.Subnet
 	excludedSubnets := []string{}
 
 	validSubnets, err := aws.ListSubnets(ids...)
