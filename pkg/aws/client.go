@@ -209,7 +209,7 @@ type awsClient struct {
 	smClient            f.SecretsManagerApiClient
 	stsClient           f.StsApiClient
 	cfClient            f.CloudFormationApiClient
-	servicequotasClient f.ServiceQuotasApiClient
+	serviceQuotasClient f.ServiceQuotasApiClient
 	awsAccessKeys       *AccessKey
 	useLocalCredentials bool
 }
@@ -241,7 +241,7 @@ func New(
 	smClient f.SecretsManagerApiClient,
 	stsClient f.StsApiClient,
 	cfClient f.CloudFormationApiClient,
-	servicequotasClient f.ServiceQuotasApiClient,
+	serviceQuotasClient f.ServiceQuotasApiClient,
 	awsAccessKeys *AccessKey,
 	useLocalCredentials bool,
 
@@ -256,7 +256,7 @@ func New(
 		smClient,
 		stsClient,
 		cfClient,
-		servicequotasClient,
+		serviceQuotasClient,
 		awsAccessKeys,
 		useLocalCredentials,
 	}
@@ -398,7 +398,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 		smClient:            secretsmanager.NewFromConfig(*cfg),
 		stsClient:           sts.NewFromConfig(*cfg),
 		cfClient:            cloudformation.NewFromConfig(*cfg),
-		servicequotasClient: servicequotas.NewFromConfig(*cfg),
+		serviceQuotasClient: servicequotas.NewFromConfig(*cfg),
 		useLocalCredentials: b.useLocalCredentials,
 	}
 
