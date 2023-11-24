@@ -2542,8 +2542,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	if cmd.Flags().Changed("fips") && isHostedCP {
+		r.Reporter.Errorf("FIPS support not available for Hosted Control Plane clusters")
+		os.Exit(1)
+	}
 	fips := args.fips || fedramp.Enabled()
-	if interactive.Enabled() && !fedramp.Enabled() {
+	if interactive.Enabled() && !fedramp.Enabled() && !isHostedCP {
 		fips, err = interactive.GetBool(interactive.Input{
 			Question: "Enable FIPS support",
 			Help:     cmd.Flags().Lookup("fips").Usage,
