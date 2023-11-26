@@ -17,10 +17,6 @@ limitations under the License.
 package oidcconfig
 
 import (
-	// nolint:gosec
-
-	//#nosec GSC-G505 -- Import blacklist: crypto/sha1
-
 	"bytes"
 	"fmt"
 	"os"
@@ -29,6 +25,9 @@ import (
 
 	"github.com/briandowns/spinner"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
+	"github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
@@ -42,8 +41,6 @@ import (
 	interactiveRoles "github.com/openshift/rosa/pkg/interactive/roles"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
-	"github.com/zgalor/weberr"
 )
 
 var args struct {

@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
-
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 

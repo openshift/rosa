@@ -21,15 +21,15 @@ import (
 	"regexp"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
-
-	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/ocm"
 )
 
 // Regular expression to used to make sure that the identifier given by the

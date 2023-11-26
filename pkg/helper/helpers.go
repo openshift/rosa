@@ -12,6 +12,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/google/uuid"
+
 	"github.com/openshift/rosa/pkg/reporter"
 )
 

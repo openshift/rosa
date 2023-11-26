@@ -22,10 +22,10 @@ import (
 	"os"
 	"strings"
 
+	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
 )

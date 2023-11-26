@@ -21,6 +21,9 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/helper"
@@ -29,8 +32,6 @@ import (
 	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
-	errors "github.com/zgalor/weberr"
 )
 
 var Cmd = &cobra.Command{

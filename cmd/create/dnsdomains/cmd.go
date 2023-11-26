@@ -20,8 +20,9 @@ import (
 	// nolint:gosec
 	"os"
 
-	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var Cmd = &cobra.Command{

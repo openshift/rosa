@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	linkocmrole "github.com/openshift/rosa/cmd/link/ocmrole"
@@ -31,9 +33,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-
-	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var args struct {

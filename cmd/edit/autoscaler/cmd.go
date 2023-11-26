@@ -20,10 +20,10 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/openshift-online/ocm-common/pkg"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift-online/ocm-common/pkg"
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"

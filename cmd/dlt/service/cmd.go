@@ -21,9 +21,9 @@ import (
 	"os"
 	"strings"
 
+	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 	"github.com/spf13/cobra"
 
-	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"

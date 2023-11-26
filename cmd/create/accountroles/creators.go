@@ -3,13 +3,13 @@ package accountroles
 import (
 	"fmt"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/rosa"
-
-	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 )
 
 type creator interface {

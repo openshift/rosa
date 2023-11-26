@@ -17,6 +17,8 @@ limitations under the License.
 package upgrade
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/rosa/cmd/upgrade/accountroles"
 	"github.com/openshift/rosa/cmd/upgrade/cluster"
 	"github.com/openshift/rosa/cmd/upgrade/machinepool"
@@ -24,7 +26,6 @@ import (
 	"github.com/openshift/rosa/cmd/upgrade/roles"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/spf13/cobra"
 )
 
 var Cmd = &cobra.Command{

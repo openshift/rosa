@@ -3,11 +3,12 @@ package cluster
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
-	errors "github.com/zgalor/weberr"
 )
 
 // nolint:lll

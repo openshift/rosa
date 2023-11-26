@@ -5,9 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	. "github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
 )
 
 func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command) string {

@@ -4,11 +4,12 @@ import (
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/sirupsen/logrus"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/reporter"
-	"github.com/sirupsen/logrus"
 )
 
 type Runtime struct {

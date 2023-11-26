@@ -8,9 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-	"github.com/zgalor/weberr"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -18,12 +15,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
-
 	"github.com/openshift-online/ocm-common/pkg"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/sirupsen/logrus"
+	"github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/pkg/arguments"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
