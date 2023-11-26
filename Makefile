@@ -40,9 +40,17 @@ coverage:
 install:
 	go install ./cmd/rosa
 
+.PHONY: gci-install
+gci-install:
+	go install github.com/daixiang0/gci@v0.10.1
+
 .PHONY: fmt
-fmt:
+fmt: fmt-imports
 	gofmt -s -l -w cmd pkg
+
+.PHONY: fmt-imports
+fmt-imports: gci-install
+	find . -name '*.go' -not -path './vendor/*' | xargs gci write -s standard -s default -s "prefix(k8s)" -s "prefix(sigs.k8s)" -s "prefix(github.com)" -s "prefix(gitlab)" -s "prefix(github.com/openshift/rosa)" --custom-order --skip-generated
 
 .PHONY: lint
 lint:
