@@ -22,9 +22,10 @@ import (
 	"text/tabwriter"
 
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
 )
 
 var Cmd = &cobra.Command{

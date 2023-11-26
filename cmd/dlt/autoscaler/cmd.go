@@ -19,10 +19,11 @@ package autoscaler
 import (
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
 )
 
 var Cmd = &cobra.Command{

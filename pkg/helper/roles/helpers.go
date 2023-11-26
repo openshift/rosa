@@ -8,6 +8,7 @@ import (
 	"github.com/openshift-online/ocm-common/pkg"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"

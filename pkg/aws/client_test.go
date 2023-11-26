@@ -2,20 +2,20 @@ package aws_test
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/openshift-online/ocm-sdk-go/helpers"
 
 	awsSdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	"github.com/openshift-online/ocm-sdk-go/helpers"
 	"github.com/sirupsen/logrus"
 
-	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"

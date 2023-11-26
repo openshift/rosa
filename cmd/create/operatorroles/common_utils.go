@@ -4,9 +4,10 @@ import (
 	"fmt"
 
 	"github.com/openshift-online/ocm-common/pkg"
+	errors "github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/rosa"
-	errors "github.com/zgalor/weberr"
 )
 
 const assumePolicyAction = "sts:AssumeRole"

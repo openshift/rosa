@@ -28,23 +28,22 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	semver "github.com/hashicorp/go-version"
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/output"
-	"github.com/openshift/rosa/pkg/reporter"
-	errors "github.com/zgalor/weberr"
-	"k8s.io/apimachinery/pkg/api/resource"
-
+	common "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
+	errors "github.com/zgalor/weberr"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
-
-	common "github.com/openshift-online/ocm-common/pkg/ocm/validations"
+	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
 const (

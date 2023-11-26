@@ -23,10 +23,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/hashicorp/go-version"
-	"github.com/openshift/rosa/pkg/info"
-	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
+
+	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
 var Cmd = &cobra.Command{

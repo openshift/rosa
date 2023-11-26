@@ -27,9 +27,6 @@ import (
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-
 	"github.com/aws/aws-sdk-go/service/ec2"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
@@ -37,6 +34,9 @@ import (
 	kmsArnRegexpValidator "github.com/openshift-online/ocm-common/pkg/resource/validations"
 	accountsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"

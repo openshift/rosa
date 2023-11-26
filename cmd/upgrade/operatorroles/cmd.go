@@ -22,15 +22,15 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/helper/roles"
-	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
+	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {

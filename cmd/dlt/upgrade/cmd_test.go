@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+
 	"github.com/openshift/rosa/pkg/test"
 )
 
