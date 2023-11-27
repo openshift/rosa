@@ -303,11 +303,12 @@ func run(cmd *cobra.Command, argv []string) error {
 				}
 			}
 		case aws.ModeManual:
-			err = aws.GeneratePolicyFiles(reporter, env, isUpgradeNeedForAccountRolePolicies,
-				false, accountRolePolicies, nil, false, "")
-			if err != nil {
-				reporter.Errorf("There was an error generating the policy files: %s", err)
-				os.Exit(1)
+			if isUpgradeNeedForAccountRolePolicies {
+				err = aws.GenerateAccountRolePolicyFiles(reporter, env, accountRolePolicies, false)
+				if err != nil {
+					reporter.Errorf("There was an error generating the policy files: %s", err)
+					os.Exit(1)
+				}
 			}
 			if reporter.IsTerminal() {
 				reporter.Infof("All policy files saved to the current directory")
@@ -738,8 +739,8 @@ func upgradeOperatorPolicies(
 		}
 		return nil
 	case aws.ModeManual:
-		err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-			true, policies, credRequests, false, cluster.AWS().PrivateHostedZoneRoleARN())
+		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests,
+			cluster.AWS().PrivateHostedZoneRoleARN())
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)

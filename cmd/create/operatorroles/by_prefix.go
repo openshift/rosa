@@ -390,11 +390,12 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 	managedPolicies bool, path string,
 	operatorIAMRoleList []*cmv1.OperatorIAMRole,
 	oidcEndpointUrl string, hostedCPPolicies bool, sharedVpcRoleArn string) (string, error) {
-	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-		true, policies, credRequests, managedPolicies, sharedVpcRoleArn)
-	if err != nil {
-		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
-		os.Exit(1)
+	if !managedPolicies {
+		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests, sharedVpcRoleArn)
+		if err != nil {
+			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	isSharedVpc := sharedVpcRoleArn != ""
