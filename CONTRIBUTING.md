@@ -8,6 +8,7 @@ To contribute bug fixes or features to ROSA:
 - Communicate your intent.
 - Make your changes.
 - Test your changes.
+- Run `make fmt` to align with the project formatting.
 - Open a Pull Request (PR).
 
 Communicate your intent in the form of a JIRA ticket on the [OCM](https://issues.redhat.com/projects/OCM) project.
