@@ -23,11 +23,11 @@ import (
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/ocm"
 )
 
 func buildGitlabIdp(cmd *cobra.Command,

@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/rosa/pkg/aws"
 	. "github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
 )
 
 type findRoleARNs func(string, string) ([]string, error)

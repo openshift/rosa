@@ -28,8 +28,10 @@ import (
 	"github.com/ghodss/yaml"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
-	"github.com/openshift/rosa/pkg/aws"
+
 	"gitlab.com/c0b/go-ordered-json"
+
+	"github.com/openshift/rosa/pkg/aws"
 )
 
 // When ocm-sdk-go encounters an empty resource list, it marshals it as a

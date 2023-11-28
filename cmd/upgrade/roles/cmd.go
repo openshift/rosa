@@ -24,11 +24,11 @@ import (
 
 	"github.com/briandowns/spinner"
 	semver "github.com/hashicorp/go-version"
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
 
-	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
-	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"

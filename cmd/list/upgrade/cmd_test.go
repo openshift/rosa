@@ -10,6 +10,7 @@ import (
 	"github.com/onsi/gomega/format"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+
 	"github.com/openshift/rosa/pkg/test"
 )
 

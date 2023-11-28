@@ -23,10 +23,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/verify/oc"
 	helper "github.com/openshift/rosa/pkg/helper/download"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
-
-	"github.com/openshift/rosa/cmd/verify/oc"
 )
 
 var Cmd = &cobra.Command{

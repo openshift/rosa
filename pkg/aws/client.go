@@ -50,16 +50,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/fedramp"
-	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
 // Name of the AWS user that will be used to create all the resources of the cluster:

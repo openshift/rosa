@@ -21,9 +21,10 @@ import (
 	"fmt"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/logging"
-	"github.com/zgalor/weberr"
 )
 
 // GetFilteredRegionsByVersion fetches a list of regions. The 'version' argument is optional for filtering.

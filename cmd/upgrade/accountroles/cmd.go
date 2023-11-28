@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -36,8 +37,6 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
-
-	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 )
 
 var args struct {

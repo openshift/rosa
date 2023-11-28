@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+
 	"gitlab.com/c0b/go-ordered-json"
 )
 

@@ -2,9 +2,10 @@ package ocm
 
 import (
 	"fmt"
-	"github.com/openshift-online/ocm-common/pkg"
 	"strconv"
 	"time"
+
+	"github.com/openshift-online/ocm-common/pkg"
 )
 
 func IntValidator(val interface{}) error {

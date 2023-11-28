@@ -27,7 +27,6 @@ import (
 	"github.com/openshift/rosa/cmd/verify/oc"
 	"github.com/openshift/rosa/cmd/verify/permissions"
 	"github.com/openshift/rosa/cmd/verify/quota"
-
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/region"

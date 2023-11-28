@@ -6,12 +6,14 @@ import (
 	"strconv"
 	"strings"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
+
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 // To clear existing labels in interactive mode, the user enters "" as an empty list value

@@ -21,8 +21,9 @@ package region
 import (
 	"os"
 
-	"github.com/openshift/rosa/pkg/helper"
 	"github.com/spf13/pflag"
+
+	"github.com/openshift/rosa/pkg/helper"
 )
 
 // AddFlag adds the debug flag to the given set of command line flags.

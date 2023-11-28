@@ -23,11 +23,10 @@ import (
 	"text/tabwriter"
 
 	semver "github.com/hashicorp/go-version"
-
+	"github.com/nathan-fiscaletti/consolesize-go"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/nathan-fiscaletti/consolesize-go"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
