@@ -635,56 +635,58 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	return GetAccountRoleName(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
-func GeneratePolicyFiles(reporter *rprtr.Object, env string, generateAccountRolePolicies bool,
-	generateOperatorRolePolicies bool, policies map[string]*cmv1.AWSSTSPolicy,
-	credRequests map[string]*cmv1.STSOperator, skipPermissionFiles bool, sharedVpcRoleArn string) error {
-	if generateAccountRolePolicies {
-		for file := range AccountRoles {
-			//Get trust policy
-			filename := fmt.Sprintf("sts_%s_trust_policy", file)
-			policyDetail := GetPolicyDetails(policies, filename)
-			policy := InterpolatePolicyDocument(policyDetail, map[string]string{
-				"partition":      GetPartition(),
-				"aws_account_id": GetJumpAccount(env),
+func GenerateOperatorRolePolicyFiles(reporter *rprtr.Object, policies map[string]*cmv1.AWSSTSPolicy,
+	credRequests map[string]*cmv1.STSOperator, sharedVpcRoleArn string) error {
+	isSharedVpc := sharedVpcRoleArn != ""
+	for credrequest := range credRequests {
+		filename := GetOperatorPolicyKey(credrequest, false, isSharedVpc)
+		policyDetail := GetPolicyDetails(policies, filename)
+		if isSharedVpc {
+			policyDetail = InterpolatePolicyDocument(policyDetail, map[string]string{
+				"shared_vpc_role_arn": sharedVpcRoleArn,
 			})
-			filename = GetFormattedFileName(filename)
-			reporter.Debugf("Saving '%s' to the current directory", filename)
-			err := helper.SaveDocument(policy, filename)
-			if err != nil {
-				return err
-			}
+		}
+		//In case any missing policy we don't want to block the user.This might not happen
+		if policyDetail == "" {
+			continue
+		}
+		reporter.Debugf("Saving '%s' to the current directory", filename)
+		filename = GetFormattedFileName(filename)
+		err := helper.SaveDocument(policyDetail, filename)
+		if err != nil {
+			return err
+		}
+	}
 
-			//Get the permission policy
-			if !skipPermissionFiles {
-				err = generatePermissionPolicyFile(reporter, file, policies)
-				if err != nil {
-					return err
-				}
-			}
+	return nil
+}
+
+func GenerateAccountRolePolicyFiles(reporter *rprtr.Object, env string, policies map[string]*cmv1.AWSSTSPolicy,
+	skipPermissionFiles bool) error {
+	for file := range AccountRoles {
+		//Get trust policy
+		filename := fmt.Sprintf("sts_%s_trust_policy", file)
+		policyDetail := GetPolicyDetails(policies, filename)
+		policy := InterpolatePolicyDocument(policyDetail, map[string]string{
+			"partition":      GetPartition(),
+			"aws_account_id": GetJumpAccount(env),
+		})
+		filename = GetFormattedFileName(filename)
+		reporter.Debugf("Saving '%s' to the current directory", filename)
+		err := helper.SaveDocument(policy, filename)
+		if err != nil {
+			return err
 		}
-	}
-	if generateOperatorRolePolicies && !skipPermissionFiles {
-		isSharedVpc := sharedVpcRoleArn != ""
-		for credrequest := range credRequests {
-			filename := GetOperatorPolicyKey(credrequest, false, isSharedVpc)
-			policyDetail := GetPolicyDetails(policies, filename)
-			if isSharedVpc {
-				policyDetail = InterpolatePolicyDocument(policyDetail, map[string]string{
-					"shared_vpc_role_arn": sharedVpcRoleArn,
-				})
-			}
-			//In case any missing policy we dont want to block the user.This might not happen
-			if policyDetail == "" {
-				continue
-			}
-			reporter.Debugf("Saving '%s' to the current directory", filename)
-			filename = GetFormattedFileName(filename)
-			err := helper.SaveDocument(policyDetail, filename)
+
+		//Get the permission policy
+		if !skipPermissionFiles {
+			err = generatePermissionPolicyFile(reporter, file, policies)
 			if err != nil {
 				return err
 			}
 		}
 	}
+
 	return nil
 }
 

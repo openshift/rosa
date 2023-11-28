@@ -268,11 +268,12 @@ func buildCommands(r *rosa.Runtime, env string,
 	sharedVpcRoleArn := cluster.AWS().PrivateHostedZoneRoleARN()
 	isSharedVpc := sharedVpcRoleArn != ""
 
-	err := aws.GeneratePolicyFiles(r.Reporter, env, false,
-		true, policies, credRequests, managedPolicies, sharedVpcRoleArn)
-	if err != nil {
-		r.Reporter.Errorf("There was an error generating the policy files: %s", err)
-		os.Exit(1)
+	if !managedPolicies {
+		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests, sharedVpcRoleArn)
+		if err != nil {
+			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
+			os.Exit(1)
+		}
 	}
 
 	commands := []string{}
