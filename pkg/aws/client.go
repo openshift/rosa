@@ -52,6 +52,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	f "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
@@ -60,7 +61,6 @@ import (
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/reporter"
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 // Name of the AWS user that will be used to create all the resources of the cluster:

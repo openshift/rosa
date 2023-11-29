@@ -27,10 +27,10 @@ import (
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 func (c *awsClient) DeleteUserRole(roleName string) error {

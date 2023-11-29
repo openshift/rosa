@@ -3,7 +3,6 @@ package aws
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -505,15 +504,6 @@ func GetRoleARN(accountID string, name string, path string, partition string) st
 
 func GetOIDCProviderARN(partition string, accountID string, providerURL string) string {
 	return fmt.Sprintf("arn:%s:iam::%s:oidc-provider/%s", partition, accountID, providerURL)
-}
-
-func GetPartition(c Client) string {
-	creator, err := c.GetCreator()
-	if err != nil {
-		log.Printf("failed to get creator, setting default partition: %v", err)
-		creator.Partition = awsDefaultId
-	}
-	return creator.Partition
 }
 
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {

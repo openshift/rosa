@@ -22,12 +22,13 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/openshift-online/ocm-common/pkg"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
-	"github.com/openshift-online/ocm-common/pkg"
 
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -36,7 +37,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 const (

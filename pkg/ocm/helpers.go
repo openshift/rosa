@@ -28,7 +28,6 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	semver "github.com/hashicorp/go-version"
 	common "github.com/openshift-online/ocm-common/pkg/ocm/validations"
@@ -36,6 +35,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 	errors "github.com/zgalor/weberr"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"

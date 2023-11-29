@@ -31,9 +31,9 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 var DefaultPrefix = "ManagedOpenShift"

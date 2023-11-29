@@ -6,10 +6,11 @@ import (
 	"os"
 	"strings"
 
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
-	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -20,7 +21,6 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {

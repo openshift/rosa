@@ -24,8 +24,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"github.com/openshift/rosa/pkg/aws/tags"
 	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
+	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
 const (

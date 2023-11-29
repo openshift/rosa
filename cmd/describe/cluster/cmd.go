@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
-	"github.com/spf13/cobra"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
