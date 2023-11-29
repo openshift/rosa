@@ -36,6 +36,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 const (
@@ -134,7 +135,7 @@ func run(cmd *cobra.Command, argv []string) {
 			roleArn := aws.GetRoleARN(r.Creator.AccountID, roleName, "", r.Creator.Partition)
 			_, err = r.AWSClient.GetRoleByARN(roleArn)
 			if err != nil {
-				if aws.IsNoSuchEntityException(err) {
+				if awserr.IsNoSuchEntityException(err) {
 					err = createAddonRole(r, roleName, cr, cmd, cluster)
 					if err != nil {
 						r.Reporter.Errorf("%s", err)

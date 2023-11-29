@@ -60,6 +60,7 @@ import (
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/reporter"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 // Name of the AWS user that will be used to create all the resources of the cluster:
@@ -301,7 +302,7 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
 			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
-			retryer = retry.AddWithErrorCodes(retryer, invalidClientTokenID)
+			retryer = retry.AddWithErrorCodes(retryer, awserr.InvalidClientTokenID)
 			return retryer
 		}),
 	)
@@ -327,7 +328,7 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (*aw
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
 			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
-			retryer = retry.AddWithErrorCodes(retryer, invalidClientTokenID)
+			retryer = retry.AddWithErrorCodes(retryer, awserr.InvalidClientTokenID)
 			return retryer
 		}),
 	)
@@ -779,14 +780,14 @@ func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
 
 		if err != nil {
 			logger.Debug(fmt.Sprintf("%+v\n", err))
-			if IsInvalidTokenException(err) {
+			if awserr.IsInvalidTokenException(err) {
 				wait := time.Duration((i * 200)) * time.Millisecond
 				waited := time.Since(start)
 				logger.Debug(fmt.Printf("InvalidClientTokenId, waited %.2f\n", waited.Seconds()))
 				time.Sleep(wait)
 			}
 
-			if IsAccessDeniedException(err) {
+			if awserr.IsAccessDeniedException(err) {
 				wait := time.Duration((i * 200)) * time.Millisecond
 				waited := time.Since(start)
 				logger.Debug(fmt.Printf("AccessDenied, waited %.2f\n", waited.Seconds()))
@@ -881,7 +882,7 @@ func (c *awsClient) CheckRoleExists(roleName string) (bool, string, error) {
 			RoleName: aws.String(roleName),
 		})
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return false, "", nil
 		}
 		return false, "", err

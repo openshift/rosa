@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
@@ -154,7 +155,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	}
 	err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, r.AWSClient,
 		operatorRolesList, oidcConfig.IssuerUrl(), "4.0", path, managedPolicies)
-	if err != nil && !aws.IsNoSuchEntityException(err) {
+	if err != nil && !awserr.IsNoSuchEntityException(err) {
 		r.Reporter.Errorf("%v", err)
 		os.Exit(1)
 	}

@@ -33,6 +33,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 var DefaultPrefix = "ManagedOpenShift"
@@ -149,7 +150,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 		RoleName: aws.String(name),
 	})
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return c.createRole(name, policy, permissionsBoundary, tagList, path)
 		}
 		return "", err
@@ -239,7 +240,7 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 			"of the chosen operator roles prefix.", name)
 	}
 
-	if IsNoSuchEntityException(err) {
+	if awserr.IsNoSuchEntityException(err) {
 		return nil
 	}
 	return fmt.Errorf("Error validating role name '%s': %v", name, err)
@@ -263,7 +264,7 @@ func (c *awsClient) createRole(name string, policy string, permissionsBoundary s
 	}
 	output, err := c.iamClient.CreateRole(context.Background(), createRoleInput)
 	if err != nil {
-		if IsEntityAlreadyExistsException(err) {
+		if awserr.IsEntityAlreadyExistsException(err) {
 			return "", nil
 		}
 		return "", err
@@ -313,10 +314,10 @@ func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
 	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
 		var policyArnLocal string
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			policyArnLocal, err = c.createPolicy(policyArn, document, tagList, path)
 			if err != nil {
-				if IsEntityAlreadyExistsException(err) {
+				if awserr.IsEntityAlreadyExistsException(err) {
 					return "", errors.Wrapf(err, "Failed to create a policy with ARN '%s'", policyArn)
 				}
 				return "", err
@@ -1058,11 +1059,11 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 	}
 	err = c.detachOperatorRolePolicies(role)
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			fmt.Printf("Entity does not exist: %s", err)
 			err = nil
 		}
-		if IsDeleteConfictException(err) {
+		if awserr.IsDeleteConfictException(err) {
 			fmt.Printf("Unable to detach operator role policy: %s", err)
 			err = nil
 		}
@@ -1085,7 +1086,7 @@ func (c *awsClient) DeleteRole(role string) error {
 		&iam.DeleteRoleInput{RoleName: aws.String(role)})
 	if err != nil {
 		if err != nil {
-			if IsNoSuchEntityException(err) {
+			if awserr.IsNoSuchEntityException(err) {
 				return fmt.Errorf("operator role '%s' does not exists.skipping",
 					role)
 			}
@@ -1102,7 +1103,7 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 			RoleName: aws.String(r),
 		})
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return instanceProfiles, nil
 		}
 		return nil, err
@@ -1128,11 +1129,11 @@ func (c *awsClient) DeleteAccountRole(roleName string, managedPolicies bool) err
 		return err
 	}
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			fmt.Printf("Entity does not exist: %s", err)
 			err = nil
 		}
-		if IsDeleteConfictException(err) {
+		if awserr.IsDeleteConfictException(err) {
 			fmt.Printf("Unable to detach account role policy: %s", err)
 			err = nil
 		}
@@ -1165,7 +1166,7 @@ func (c *awsClient) detachAttachedRolePolicies(role *string) error {
 				RoleName:  role,
 			})
 		if err != nil {
-			if IsNoSuchEntityException(err) {
+			if awserr.IsNoSuchEntityException(err) {
 				continue
 			}
 			return err
@@ -1189,7 +1190,7 @@ func (c *awsClient) DeleteInlineRolePolicies(role string) error {
 				RoleName:   aws.String(role),
 			})
 		if err != nil {
-			if IsNoSuchEntityException(err) {
+			if awserr.IsNoSuchEntityException(err) {
 				continue
 			}
 			return err
@@ -1309,7 +1310,7 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 		context.Background(),
 		&iam.ListAttachedRolePoliciesInput{RoleName: role},
 	)
-	if err != nil && !IsNoSuchEntityException(err) {
+	if err != nil && !awserr.IsNoSuchEntityException(err) {
 		return policies, err
 	}
 
@@ -1324,7 +1325,7 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 
 	rolePolicyOutput, err := c.iamClient.ListRolePolicies(context.Background(),
 		&iam.ListRolePoliciesInput{RoleName: role})
-	if err != nil && !IsNoSuchEntityException(err) {
+	if err != nil && !awserr.IsNoSuchEntityException(err) {
 		return policies, err
 	}
 	for _, policy := range rolePolicyOutput.PolicyNames {
@@ -1419,7 +1420,7 @@ func (c *awsClient) GetPolicies(roles []string) (map[string][]string, error) {
 			&iam.ListAttachedRolePoliciesInput{
 				RoleName: aws.String(role),
 			})
-		if err != nil && !IsNoSuchEntityException(err) {
+		if err != nil && !awserr.IsNoSuchEntityException(err) {
 			return roleMap, err
 		}
 		for _, policy := range policiesOutput.AttachedPolicies {
@@ -1477,7 +1478,7 @@ func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Ro
 	accountRoleResponse, err := c.iamClient.GetRole(context.Background(),
 		&iam.GetRoleInput{RoleName: aws.String(roleName)})
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return role, errors.NotFound.Errorf("Role '%s' not found", roleName)
 		}
 
@@ -1535,7 +1536,7 @@ func (c *awsClient) checkInstallerRoleExists(roleName string) (*iamtypes.Role, e
 	//We try our best to determine the environment based on the trust policy in the installer
 	//If the installer role is deleted we can assume that there is no cluster using the role
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return nil, nil
 		}
 		return nil, err
@@ -1572,7 +1573,7 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 
 		if prefix.Name != "Installer" {
 			_, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{RoleName: aws.String(roleName)})
-			if err != nil && !IsNoSuchEntityException(err) {
+			if err != nil && !awserr.IsNoSuchEntityException(err) {
 				return roles, err
 			}
 		}
@@ -1590,7 +1591,7 @@ func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyD
 	roleMap := make(map[string][]PolicyDetail)
 	for _, role := range roles {
 		policies, err := c.GetAttachedPolicy(aws.String(role))
-		if err != nil && !IsNoSuchEntityException(err) {
+		if err != nil && !awserr.IsNoSuchEntityException(err) {
 			return roleMap, err
 		}
 		roleMap[role] = policies
@@ -1663,7 +1664,7 @@ func (c *awsClient) GetRoleARNPath(prefix string) (string, error) {
 		role, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return "", errors.NotFound.Errorf("Roles with the prefix'%s' not found", prefix)
 		}
 		return GetPathFromARN(aws.ToString(role.Role.Arn))
@@ -1678,7 +1679,7 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
-			if IsNoSuchEntityException(err) {
+			if awserr.IsNoSuchEntityException(err) {
 				return false, errors.NotFound.Errorf("Roles with the prefix '%s' not found", prefix)
 			}
 			return false, err
@@ -1810,7 +1811,7 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
-			if IsNoSuchEntityException(err) {
+			if awserr.IsNoSuchEntityException(err) {
 				return false, errors.NotFound.Errorf("Operator Role '%s' does not exists for the "+
 					"cluster '%s'", roleName, cluster.ID())
 			}
@@ -1860,7 +1861,7 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix st
 func (c *awsClient) checkPolicyExistsAndUpToDate(policyARN string, policyVersion string) (bool, error) {
 	_, err := c.IsPolicyExists(policyARN)
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return false, nil
 		}
 		return false, err
@@ -1923,7 +1924,7 @@ func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, e
 		RoleName: aws.String(common.GetRoleName(prefix, roleType)),
 	})
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			errorMessage := "Role with the prefix '%s' not found amongst Classic cluster roles"
 			if strings.Contains(roleType, HCPSuffixPattern) {
 				errorMessage = "Role with the prefix '%s' not found amongst HCP cluster roles"
@@ -2024,7 +2025,7 @@ func (c *awsClient) listRoleAttachedPolicies(roleName string) ([]iamtypes.Attach
 		&iam.ListAttachedRolePoliciesInput{RoleName: aws.String(roleName)},
 	)
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return []iamtypes.AttachedPolicy{}, errors.NotFound.Errorf("Role with name '%s' not found", roleName)
 		}
 

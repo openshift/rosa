@@ -30,6 +30,7 @@ import (
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 func (c *awsClient) DeleteUserRole(roleName string) error {
@@ -129,7 +130,7 @@ func (c *awsClient) deleteOCMRolePolicies(roleName string, managedPolicies bool)
 		if !managedPolicies {
 			_, err = c.iamClient.DeletePolicy(context.Background(), &iam.DeletePolicyInput{PolicyArn: policy.PolicyArn})
 			if err != nil {
-				if IsDeleteConfictException(err) {
+				if awserr.IsDeleteConfictException(err) {
 					continue
 				}
 				return err

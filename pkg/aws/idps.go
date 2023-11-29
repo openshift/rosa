@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 )
 
 const (
@@ -74,7 +75,7 @@ func (c *awsClient) HasOpenIDConnectProvider(issuerURL string, partition string,
 		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
 	})
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return false, nil
 		}
 		return false, err
@@ -90,7 +91,7 @@ func (c *awsClient) DeleteOpenIDConnectProvider(oidcProviderARN string) error {
 		OpenIDConnectProviderArn: aws.String(oidcProviderARN),
 	})
 	if err != nil {
-		if IsNoSuchEntityException(err) {
+		if awserr.IsNoSuchEntityException(err) {
 			return fmt.Errorf("The OIDC provider does not exist")
 		}
 		return err
