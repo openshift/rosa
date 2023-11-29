@@ -25,7 +25,6 @@ import (
 	"github.com/openshift/rosa/cmd/create/cluster"
 	"github.com/openshift/rosa/cmd/create/dnsdomains"
 	"github.com/openshift/rosa/cmd/create/idp"
-	"github.com/openshift/rosa/cmd/create/ingress"
 	"github.com/openshift/rosa/cmd/create/kubeletconfig"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/openshift/rosa/cmd/create/ocmrole"
@@ -51,7 +50,6 @@ func init() {
 	Cmd.AddCommand(admin.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
-	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(oidcconfig.Cmd)
 	Cmd.AddCommand(oidcprovider.Cmd)

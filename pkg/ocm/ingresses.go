@@ -33,18 +33,6 @@ func (c *Client) GetIngresses(clusterID string) ([]*cmv1.Ingress, error) {
 	return response.Items().Slice(), nil
 }
 
-func (c *Client) CreateIngress(clusterID string, ingress *cmv1.Ingress) (*cmv1.Ingress, error) {
-	response, err := c.ocm.ClustersMgmt().V1().
-		Clusters().Cluster(clusterID).
-		Ingresses().
-		Add().Body(ingress).
-		Send()
-	if err != nil {
-		return nil, handleErr(response.Error(), err)
-	}
-	return response.Body(), nil
-}
-
 func (c *Client) UpdateIngress(clusterID string, ingress *cmv1.Ingress) (*cmv1.Ingress, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).
