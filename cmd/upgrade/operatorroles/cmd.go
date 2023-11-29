@@ -262,7 +262,7 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 		return nil
 	case aws.ModeManual:
 		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests,
-			cluster.AWS().PrivateHostedZoneRoleARN())
+			cluster.AWS().PrivateHostedZoneRoleARN(), r.Creator.Partition)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)

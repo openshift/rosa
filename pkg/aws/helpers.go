@@ -27,9 +27,6 @@ import (
 
 	"github.com/openshift-online/ocm-common/pkg"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/sirupsen/logrus"
-	"github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/arguments"
 	f "github.com/openshift/rosa/pkg/aws/api_interface"
@@ -638,13 +635,13 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 }
 
 func GenerateOperatorRolePolicyFiles(reporter *rprtr.Object, policies map[string]*cmv1.AWSSTSPolicy,
-	credRequests map[string]*cmv1.STSOperator, sharedVpcRoleArn string) error {
+	credRequests map[string]*cmv1.STSOperator, sharedVpcRoleArn string, partition string) error {
 	isSharedVpc := sharedVpcRoleArn != ""
 	for credrequest := range credRequests {
 		filename := GetOperatorPolicyKey(credrequest, false, isSharedVpc)
 		policyDetail := GetPolicyDetails(policies, filename)
 		if isSharedVpc {
-			policyDetail = InterpolatePolicyDocument(policyDetail, map[string]string{
+			policyDetail = InterpolatePolicyDocument(partition, policyDetail, map[string]string{
 				"shared_vpc_role_arn": sharedVpcRoleArn,
 			})
 		}
@@ -664,13 +661,13 @@ func GenerateOperatorRolePolicyFiles(reporter *rprtr.Object, policies map[string
 }
 
 func GenerateAccountRolePolicyFiles(reporter *rprtr.Object, env string, policies map[string]*cmv1.AWSSTSPolicy,
-	skipPermissionFiles bool) error {
+	skipPermissionFiles bool, partition string) error {
 	for file := range AccountRoles {
 		//Get trust policy
 		filename := fmt.Sprintf("sts_%s_trust_policy", file)
 		policyDetail := GetPolicyDetails(policies, filename)
-		policy := InterpolatePolicyDocument(policyDetail, map[string]string{
-			"partition":      GetPartition(),
+		policy := InterpolatePolicyDocument(partition, policyDetail, map[string]string{
+			"partition":      partition,
 			"aws_account_id": GetJumpAccount(env),
 		})
 		filename = GetFormattedFileName(filename)

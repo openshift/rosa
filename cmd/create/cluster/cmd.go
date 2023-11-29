@@ -27,8 +27,6 @@ import (
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
