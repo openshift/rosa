@@ -17,6 +17,7 @@ type creator interface {
 	getRoleTags(string, *accountRolesCreationInput) map[string]string
 	printCommands(*rosa.Runtime, *accountRolesCreationInput) error
 	skipPermissionFiles() bool
+	getAccountRolesMap() map[string]aws.AccountRole
 }
 
 func initCreator(r *rosa.Runtime, managedPolicies bool, classic bool, hostedCP bool, isClassicValueSet bool,
@@ -160,6 +161,10 @@ func (mp *managedPoliciesCreator) skipPermissionFiles() bool {
 	return true
 }
 
+func (mp *managedPoliciesCreator) getAccountRolesMap() map[string]aws.AccountRole {
+	return aws.AccountRoles
+}
+
 type unmanagedPoliciesCreator struct{}
 
 func (up *unmanagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRolesCreationInput) error {
@@ -214,6 +219,10 @@ func (up *unmanagedPoliciesCreator) skipPermissionFiles() bool {
 	return false
 }
 
+func (up *unmanagedPoliciesCreator) getAccountRolesMap() map[string]aws.AccountRole {
+	return aws.AccountRoles
+}
+
 type doubleRolesCreator struct{}
 
 func (db *doubleRolesCreator) createRoles(r *rosa.Runtime, input *accountRolesCreationInput) error {
@@ -249,6 +258,10 @@ func (db *doubleRolesCreator) getRoleTags(roleType string, input *accountRolesCr
 
 func (db *doubleRolesCreator) skipPermissionFiles() bool {
 	return false
+}
+
+func (db *doubleRolesCreator) getAccountRolesMap() map[string]aws.AccountRole {
+	return aws.AccountRoles
 }
 
 func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput, accRoleName string,
@@ -359,6 +372,10 @@ func (hcp *hcpManagedPoliciesCreator) getRoleTags(roleType string, input *accoun
 
 func (hcp *hcpManagedPoliciesCreator) skipPermissionFiles() bool {
 	return true
+}
+
+func (hcp *hcpManagedPoliciesCreator) getAccountRolesMap() map[string]aws.AccountRole {
+	return aws.HCPAccountRoles
 }
 
 func getBaseRoleTags(roleType string, input *accountRolesCreationInput) map[string]string {
