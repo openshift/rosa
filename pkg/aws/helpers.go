@@ -661,8 +661,8 @@ func GenerateOperatorRolePolicyFiles(reporter *rprtr.Object, policies map[string
 }
 
 func GenerateAccountRolePolicyFiles(reporter *rprtr.Object, env string, policies map[string]*cmv1.AWSSTSPolicy,
-	skipPermissionFiles bool) error {
-	for file := range AccountRoles {
+	skipPermissionFiles bool, accountRoles map[string]AccountRole) error {
+	for file := range accountRoles {
 		//Get trust policy
 		filename := fmt.Sprintf("sts_%s_trust_policy", file)
 		policyDetail := GetPolicyDetails(policies, filename)
