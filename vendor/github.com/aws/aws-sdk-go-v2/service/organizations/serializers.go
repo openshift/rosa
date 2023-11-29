@@ -6,15 +6,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"path"
-	"strings"
-
 	"github.com/aws/aws-sdk-go-v2/service/organizations/types"
 	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/encoding/httpbinding"
 	smithyjson "github.com/aws/smithy-go/encoding/json"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"path"
+	"strings"
 )
 
 type awsAwsjson11_serializeOpAcceptHandshake struct {

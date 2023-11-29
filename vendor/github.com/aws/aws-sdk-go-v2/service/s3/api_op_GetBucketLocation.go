@@ -7,10 +7,8 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
-	"io"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	s3cust "github.com/aws/aws-sdk-go-v2/service/s3/internal/customizations"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	smithy "github.com/aws/smithy-go"
@@ -18,6 +16,7 @@ import (
 	smithyio "github.com/aws/smithy-go/io"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"io"
 )
 
 // Returns the Region the bucket resides in. You set the bucket's Region using the

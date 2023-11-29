@@ -2,13 +2,12 @@ package http
 
 import (
 	"crypto/tls"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"net"
 	"net/http"
 	"reflect"
 	"sync"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 // Defaults for the HTTPTransportBuilder.

@@ -6,15 +6,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
-	"path"
-
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas/types"
 	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/encoding/httpbinding"
 	smithyjson "github.com/aws/smithy-go/encoding/json"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"math"
+	"path"
 )
 
 type awsAwsjson11_serializeOpAssociateServiceQuotaTemplate struct {

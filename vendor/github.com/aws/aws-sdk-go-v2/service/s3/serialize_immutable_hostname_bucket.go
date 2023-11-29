@@ -3,9 +3,8 @@ package s3
 import (
 	"context"
 	"fmt"
-	"path"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	"path"
 
 	"github.com/aws/aws-sdk-go-v2/internal/endpoints/awsrulesfn"
 	smithy "github.com/aws/smithy-go"

@@ -5,7 +5,6 @@ package s3
 import (
 	"context"
 	"fmt"
-
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"

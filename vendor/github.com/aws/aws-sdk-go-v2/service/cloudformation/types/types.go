@@ -3,9 +3,8 @@
 package types
 
 import (
-	"time"
-
 	smithydocument "github.com/aws/smithy-go/document"
+	"time"
 )
 
 // Structure that contains the results of the account gate function which

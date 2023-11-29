@@ -4,8 +4,6 @@ package sso
 
 import (
 	"context"
-	"net/http"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	internalauthsmithy "github.com/aws/aws-sdk-go-v2/internal/auth/smithy"
@@ -13,6 +11,7 @@ import (
 	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"net/http"
 )
 
 type HTTPClient interface {

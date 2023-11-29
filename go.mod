@@ -30,7 +30,7 @@ require (
 	github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.8
-	github.com/openshift-online/ocm-common v0.0.0-20231114125052-9c5e842a1133
+	github.com/openshift-online/ocm-common v0.0.0-20231129110443-489a03b11479
 	github.com/openshift-online/ocm-sdk-go v0.1.385
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1

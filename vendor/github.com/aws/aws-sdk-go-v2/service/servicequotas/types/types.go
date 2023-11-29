@@ -3,9 +3,8 @@
 package types
 
 import (
-	"time"
-
 	smithydocument "github.com/aws/smithy-go/document"
+	"time"
 )
 
 // An error that explains why an action did not succeed.

@@ -5,13 +5,12 @@ package ec2
 import (
 	"context"
 	"fmt"
-	"time"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"time"
 )
 
 // Discontinue Windows fast launch for a Windows AMI, and clean up existing

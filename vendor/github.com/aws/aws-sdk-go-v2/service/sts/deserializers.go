@@ -7,10 +7,6 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
-	"io"
-	"strconv"
-	"strings"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	awsxml "github.com/aws/aws-sdk-go-v2/aws/protocol/xml"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
@@ -21,6 +17,9 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"io"
+	"strconv"
+	"strings"
 )
 
 type awsAwsquery_deserializeOpAssumeRole struct {

@@ -5,14 +5,13 @@ package s3
 import (
 	"context"
 	"fmt"
-	"time"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	s3cust "github.com/aws/aws-sdk-go-v2/service/s3/internal/customizations"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"time"
 )
 
 // Retrieves all the metadata from an object without returning the object itself.

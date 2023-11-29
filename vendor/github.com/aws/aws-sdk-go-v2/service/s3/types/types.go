@@ -3,9 +3,8 @@
 package types
 
 import (
-	"time"
-
 	smithydocument "github.com/aws/smithy-go/document"
+	"time"
 )
 
 // Specifies the days since the initiation of an incomplete multipart upload that

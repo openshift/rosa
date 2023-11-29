@@ -5,12 +5,11 @@ package ec2
 import (
 	"context"
 	"fmt"
-	"time"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"time"
 )
 
 // Enables deprecation of the specified AMI at the specified date and time. For

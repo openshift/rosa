@@ -5,9 +5,9 @@ package gojq
 
 import __yyfmt__ "fmt"
 
-// Parse parses a query.
-//
 //line parser.go.y:2
+
+// Parse parses a query.
 func Parse(src string) (*Query, error) {
 	l := newLexer(src)
 	if yyParse(l) > 0 {

@@ -7,11 +7,6 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"strconv"
-	"strings"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	awsxml "github.com/aws/aws-sdk-go-v2/aws/protocol/xml"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
@@ -22,6 +17,10 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"io"
+	"io/ioutil"
+	"strconv"
+	"strings"
 )
 
 type awsAwsquery_deserializeOpActivateOrganizationsAccess struct {

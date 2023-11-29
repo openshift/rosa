@@ -3,9 +3,8 @@
 package types
 
 import (
-	"time"
-
 	smithydocument "github.com/aws/smithy-go/document"
+	"time"
 )
 
 // Allows you to add filters when you use the search function in Secrets Manager.

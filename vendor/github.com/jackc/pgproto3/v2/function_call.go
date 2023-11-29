@@ -2,7 +2,6 @@ package pgproto3
 
 import (
 	"encoding/binary"
-
 	"github.com/jackc/pgio"
 )
 

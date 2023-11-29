@@ -2,11 +2,10 @@ package http
 
 import (
 	"context"
-	"io"
-	"io/ioutil"
-
 	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
+	"io"
+	"io/ioutil"
 )
 
 // AddErrorCloseResponseBodyMiddleware adds the middleware to automatically

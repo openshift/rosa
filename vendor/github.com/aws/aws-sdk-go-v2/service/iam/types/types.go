@@ -3,9 +3,8 @@
 package types
 
 import (
-	"time"
-
 	smithydocument "github.com/aws/smithy-go/document"
+	"time"
 )
 
 // An object that contains details about when a principal in the reported

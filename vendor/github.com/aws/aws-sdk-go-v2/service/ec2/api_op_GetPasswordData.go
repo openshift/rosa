@@ -5,16 +5,15 @@ package ec2
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
 	"github.com/jmespath/go-jmespath"
+	"strconv"
+	"time"
 )
 
 // Retrieves the encrypted administrator password for a running Windows instance.

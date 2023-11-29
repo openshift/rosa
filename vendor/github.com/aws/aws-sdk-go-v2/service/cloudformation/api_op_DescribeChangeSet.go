@@ -6,10 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
@@ -17,6 +15,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
 	"github.com/jmespath/go-jmespath"
+	"time"
 )
 
 // Returns the inputs for the change set and a list of changes that CloudFormation

@@ -2,11 +2,10 @@ package s3
 
 import (
 	"fmt"
-	"net/url"
-	"strings"
-
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"net/url"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsarn "github.com/aws/aws-sdk-go/aws/arn"

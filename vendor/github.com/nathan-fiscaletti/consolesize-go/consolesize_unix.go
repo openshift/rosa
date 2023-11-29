@@ -1,5 +1,4 @@
-//go:build (unix && ignore) || !windows
-// +build unix,ignore !windows
+// +build unix, !windows
 
 package consolesize
 

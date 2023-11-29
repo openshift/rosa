@@ -243,6 +243,7 @@ in the documentation. For example:
 	}
 
 	survey.AskOne(prompt, &name)
+
 */
 func AskOne(p Prompt, response interface{}, opts ...AskOpt) error {
 	err := Ask([]*Question{{Prompt: p}}, response, opts...)

@@ -6,11 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"time"
-
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
@@ -18,6 +15,8 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
 	"github.com/jmespath/go-jmespath"
+	"strconv"
+	"time"
 )
 
 // Describes the specified instances or all instances. If you specify instance

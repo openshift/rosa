@@ -5,7 +5,6 @@ package ec2
 import (
 	"context"
 	"fmt"
-
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"

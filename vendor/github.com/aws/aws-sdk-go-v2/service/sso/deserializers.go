@@ -7,10 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"strings"
-
 	"github.com/aws/aws-sdk-go-v2/aws/protocol/restjson"
 	"github.com/aws/aws-sdk-go-v2/service/sso/types"
 	smithy "github.com/aws/smithy-go"
@@ -18,6 +14,9 @@ import (
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"io"
+	"io/ioutil"
+	"strings"
 )
 
 type awsRestjson1_deserializeOpGetRoleCredentials struct {
