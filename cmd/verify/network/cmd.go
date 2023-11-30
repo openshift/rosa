@@ -200,7 +200,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			if cluster == nil {
 				cluster = r.FetchCluster()
 			}
-			_, err := r.OCMClient.VerifyNetworkSubnetsByCluster(cluster.ID())
+			_, err := r.OCMClient.VerifyNetworkSubnetsByCluster(cluster.ID(), tagsList)
 			if err != nil {
 				return fmt.Errorf("Error verifying subnets by cluster: %s", err)
 			}
