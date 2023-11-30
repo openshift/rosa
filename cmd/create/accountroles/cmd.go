@@ -345,7 +345,9 @@ func run(cmd *cobra.Command, argv []string) {
 	isHostedCPValueSet := cmd.Flags().Changed("hosted-cp")
 
 	createClassic := args.classic
-	if interactive.Enabled() && !cmd.Flags().Changed("classic") {
+	if r.Creator.IsGovcloud {
+		createClassic = true
+	} else if interactive.Enabled() && !cmd.Flags().Changed("classic") {
 		createClassic, err = interactive.GetBool(interactive.Input{
 			Question: "Create Classic account roles",
 			Help:     cmd.Flags().Lookup("classic").Usage,

@@ -108,6 +108,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cmd.Flags().Changed("hosted-cp") && r.Creator.IsGovcloud {
+		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
+		os.Exit(1)
+	}
+
 	prefix := args.prefix
 	if interactive.Enabled() && prefix == "" {
 		prefix, err = interactive.GetString(interactive.Input{
@@ -156,7 +161,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") && !cmd.Flags().Changed("classic") {
+	if r.Creator.IsGovcloud {
+		deleteHostedCP = false
+	} else if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") && !cmd.Flags().Changed("classic") {
 		deleteHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Delete hosted CP account roles",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
