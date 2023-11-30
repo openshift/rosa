@@ -28,7 +28,7 @@ import (
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 
 	"github.com/openshift/rosa/pkg/arguments"
-	f "github.com/openshift/rosa/pkg/aws/api_interface"
+	client "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
@@ -1001,7 +1001,7 @@ func ConvertToTagPointers(tags []iamtypes.Tag) []*iamtypes.Tag {
 	return tagPointers
 }
 
-func waitForStackOperationComplete(ctx context.Context, client f.CloudFormationApiClient, stackName string) error {
+func waitForStackOperationComplete(ctx context.Context, client client.CloudFormationApiClient, stackName string) error {
 	maxRetries := 120
 	retryCount := 0
 

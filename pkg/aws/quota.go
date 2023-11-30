@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
 	servicequotastypes "github.com/aws/aws-sdk-go-v2/service/servicequotas/types"
 )
@@ -125,12 +124,7 @@ func (c *awsClient) ValidateQuota() (bool, error) {
 func ListServiceQuotas(client *awsClient, serviceCode string) ([]*servicequotastypes.ServiceQuota, error) {
 	var serviceQuotas []*servicequotastypes.ServiceQuota
 
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return nil, fmt.Errorf("Error loading AWS config: %v", err)
-	}
-
-	quotasClient := servicequotas.NewFromConfig(cfg)
+	quotasClient := servicequotas.NewFromConfig(client.cfg)
 
 	// Paginate through quota results
 	listServiceQuotasInput := &servicequotas.ListServiceQuotasInput{ServiceCode: &serviceCode}

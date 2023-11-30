@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -165,12 +164,7 @@ func (p *PolicyDocument) checkPermissionsUsingQueryClient(queryClient *awsClient
 		})
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return false, fmt.Errorf("Error loading AWS config: %v", err)
-	}
-
-	client := iam.NewFromConfig(cfg)
+	client := iam.NewFromConfig(queryClient.cfg)
 
 	// Collect all failed actions
 	var failedActions []string

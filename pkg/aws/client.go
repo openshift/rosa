@@ -53,7 +53,7 @@ import (
 	"github.com/zgalor/weberr"
 
 	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
-	f "github.com/openshift/rosa/pkg/aws/api_interface"
+	client "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -203,14 +203,14 @@ type ClientBuilder struct {
 type awsClient struct {
 	cfg                 aws.Config
 	logger              *logrus.Logger
-	iamClient           f.IamApiClient
-	ec2Client           f.Ec2ApiClient
-	orgClient           f.OrganizationsApiClient
-	s3Client            f.S3ApiClient
-	smClient            f.SecretsManagerApiClient
-	stsClient           f.StsApiClient
-	cfClient            f.CloudFormationApiClient
-	serviceQuotasClient f.ServiceQuotasApiClient
+	iamClient           client.IamApiClient
+	ec2Client           client.Ec2ApiClient
+	orgClient           client.OrganizationsApiClient
+	s3Client            client.S3ApiClient
+	smClient            client.SecretsManagerApiClient
+	stsClient           client.StsApiClient
+	cfClient            client.CloudFormationApiClient
+	serviceQuotasClient client.ServiceQuotasApiClient
 	awsAccessKeys       *AccessKey
 	useLocalCredentials bool
 }
@@ -235,14 +235,14 @@ func NewClient() *ClientBuilder {
 func New(
 	cfg aws.Config,
 	logger *logrus.Logger,
-	iamClient f.IamApiClient,
-	ec2Client f.Ec2ApiClient,
-	orgClient f.OrganizationsApiClient,
-	s3Client f.S3ApiClient,
-	smClient f.SecretsManagerApiClient,
-	stsClient f.StsApiClient,
-	cfClient f.CloudFormationApiClient,
-	serviceQuotasClient f.ServiceQuotasApiClient,
+	iamClient client.IamApiClient,
+	ec2Client client.Ec2ApiClient,
+	orgClient client.OrganizationsApiClient,
+	s3Client client.S3ApiClient,
+	smClient client.SecretsManagerApiClient,
+	stsClient client.StsApiClient,
+	cfClient client.CloudFormationApiClient,
+	serviceQuotasClient client.ServiceQuotasApiClient,
 	awsAccessKeys *AccessKey,
 	useLocalCredentials bool,
 
@@ -416,16 +416,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 }
 
 func (c *awsClient) GetIAMCredentials() (aws.Credentials, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return aws.Credentials{}, err
-	}
-
-	creds, err := cfg.Credentials.Retrieve(context.TODO())
-	if err != nil {
-		return aws.Credentials{}, err
-	}
-	return creds, nil
+	return c.cfg.Credentials.Retrieve(context.TODO())
 }
 
 func (c *awsClient) GetRegion() string {
@@ -745,11 +736,7 @@ func (c *awsClient) GetAWSAccessKeys() (*AccessKey, error) {
 }
 
 func (c *awsClient) GetLocalAWSAccessKeys() (*AccessKey, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-	creds, err := cfg.Credentials.Retrieve(context.TODO())
+	creds, err := c.cfg.Credentials.Retrieve(context.TODO())
 	if err != nil {
 		return nil, err
 	}
