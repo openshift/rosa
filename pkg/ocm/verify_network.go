@@ -45,8 +45,10 @@ func (c *Client) VerifyNetworkSubnets(awsAccountId string, region string,
 	return response.Body().Items(), nil
 }
 
-func (c *Client) VerifyNetworkSubnetsByCluster(clusterId string) ([]*cmv1.SubnetNetworkVerification, error) {
-	body, _ := cmv1.NewNetworkVerification().ClusterId(clusterId).Build()
+func (c *Client) VerifyNetworkSubnetsByCluster(clusterId string, tags map[string]string) (
+	[]*cmv1.SubnetNetworkVerification, error) {
+	body, _ := cmv1.NewNetworkVerification().ClusterId(clusterId).CloudProviderData(
+		cmv1.NewCloudProviderData().AWS(cmv1.NewAWS().Tags(tags))).Build()
 	response, err := c.ocm.ClustersMgmt().V1().NetworkVerifications().Add().
 		Body(body).
 		Send()
