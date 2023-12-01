@@ -375,4 +375,20 @@ INFO: subnet-0f87f640e56934cbc: passed
 		Expect(err.Error()).To(
 			ContainSubstring("invalid tag format"))
 	})
+	It("Fails if --cluster with --hosted-cp flag", func() {
+		// GET /api/clusters_mgmt/v1/clusters
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				clustersSuccess,
+			),
+		)
+		cmd.Flags().Set(clusterFlag, "dle-vpc")
+		cmd.Flags().Lookup(hostedCpFlag).Changed = true
+		err := runWithRuntime(r, cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(
+			ContainSubstring(
+				"'--hosted-cp' flag is not required when running the network verifier with cluster"))
+	})
 })

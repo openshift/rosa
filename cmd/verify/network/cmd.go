@@ -40,6 +40,7 @@ var args struct {
 	subnetIDs  []string
 	watch      bool
 	tags       []string
+	hostedCp   bool
 }
 
 var Cmd = makeCmd()
@@ -63,6 +64,7 @@ const (
 	statusOnlyFlag = "status-only"
 	subnetIDsFlag  = "subnet-ids"
 	watchFlag      = "watch"
+	hostedCpFlag   = "hosted-cp"
 
 	NetworkVerifyPending NetworkVerifyState = "pending"
 	NetworkVerifyRunning NetworkVerifyState = "running"
@@ -121,6 +123,13 @@ func initFlags(cmd *cobra.Command) {
 		false,
 		"Check status of previously submitted subnets.",
 	)
+
+	flags.BoolVar(
+		&args.hostedCp,
+		hostedCpFlag,
+		false,
+		"Run network verifier with hosted control plane platform configuration",
+	)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -136,6 +145,7 @@ func run(cmd *cobra.Command, _ []string) {
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	var cluster *cmv1.Cluster
 	var err error
+	var platform cmv1.Platform
 
 	if cmd.Flags().Changed(clusterFlag) {
 		cluster = r.FetchCluster()
@@ -197,6 +207,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	if !cmd.Flags().Changed(statusOnlyFlag) {
 		if cmd.Flags().Changed(clusterFlag) {
+			if cmd.Flags().Changed(hostedCpFlag) {
+				return fmt.Errorf("'--hosted-cp' flag is not required when running the network verifier with cluster")
+			}
 			if cluster == nil {
 				cluster = r.FetchCluster()
 			}
@@ -205,7 +218,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 				return fmt.Errorf("Error verifying subnets by cluster: %s", err)
 			}
 		} else {
-			_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs, tagsList)
+			// Default platform type set to 'aws'
+			platform = cmv1.PlatformAws
+			if args.hostedCp {
+				platform = cmv1.PlatformHostedCluster
+			}
+			_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs, tagsList, platform)
 			if err != nil {
 				return fmt.Errorf("Error verifying subnets: %s", err)
 			}
