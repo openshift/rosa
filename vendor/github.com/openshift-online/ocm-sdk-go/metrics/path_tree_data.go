@@ -313,6 +313,7 @@ var pathTreeData = `{
         "gcp_inquiries": {
           "encryption_keys": null,
           "key_rings": null,
+          "machine_types": null,
           "regions": null,
           "vpcs": null
         },

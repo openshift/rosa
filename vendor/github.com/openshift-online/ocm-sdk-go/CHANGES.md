@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.387
+- Update model version v0.0.340
+  - Add get `Platform` to `network_verification_type` resource
+
+## 0.1.386
+- Update model version to v0.0.339
+  - Add `MachineTypes` to `GCPInquiriesClient` endpoints
+
 ## 0.1.385
 - Update model version to v0.0.338
   - Add `ProductTechnologyPreviews` and `ProductMinimalVersions` endpoints
