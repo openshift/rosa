@@ -54,3 +54,23 @@ func (mr *MockServiceQuotasApiClientMockRecorder) GetServiceQuota(ctx, params in
 	varargs := append([]interface{}{ctx, params}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServiceQuota", reflect.TypeOf((*MockServiceQuotasApiClient)(nil).GetServiceQuota), varargs...)
 }
+
+// ListServiceQuotas mocks base method.
+func (m *MockServiceQuotasApiClient) ListServiceQuotas(ctx context.Context, params *servicequotas.ListServiceQuotasInput, optFns ...func(*servicequotas.Options)) (*servicequotas.ListServiceQuotasOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListServiceQuotas", varargs...)
+	ret0, _ := ret[0].(*servicequotas.ListServiceQuotasOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListServiceQuotas indicates an expected call of ListServiceQuotas.
+func (mr *MockServiceQuotasApiClientMockRecorder) ListServiceQuotas(ctx, params interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListServiceQuotas", reflect.TypeOf((*MockServiceQuotasApiClient)(nil).ListServiceQuotas), varargs...)
+}

@@ -36,6 +36,7 @@ import (
 	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -295,15 +296,15 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
 			Transport: http.DefaultTransport,
 		}),
 		config.WithClientLogMode(logLevel),
-		config.WithAPIOptions([]func(stack *middleware.Stack) error{
-			smithyhttp.AddHeaderValue(rosaHeaderValue,
-				strings.Join([]string{info.UserAgent, info.Version}, ";")),
-		}),
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
 			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
 			retryer = retry.AddWithErrorCodes(retryer, awserr.InvalidClientTokenID)
 			return retryer
+		}),
+		config.WithAPIOptions([]func(stack *middleware.Stack) error{
+			smithyhttp.AddHeaderValue("User-Agent",
+				strings.Join([]string{"ROSACLI", info.Version}, ";")),
 		}),
 	)
 	if err != nil {
@@ -321,15 +322,15 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (*aw
 			Transport: http.DefaultTransport,
 		}),
 		config.WithClientLogMode(logLevel),
-		config.WithAPIOptions([]func(stack *middleware.Stack) error{
-			smithyhttp.AddHeaderValue(rosaHeaderValue,
-				strings.Join([]string{info.UserAgent, info.Version}, ";")),
-		}),
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
 			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
 			retryer = retry.AddWithErrorCodes(retryer, awserr.InvalidClientTokenID)
 			return retryer
+		}),
+		config.WithAPIOptions([]func(stack *middleware.Stack) error{
+			smithyhttp.AddHeaderValue("User-Agent",
+				strings.Join([]string{"ROSACLI", info.Version}, ";")),
 		}),
 	)
 	if err != nil {

@@ -20,12 +20,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/smithy-go"
 
 	"github.com/openshift/rosa/assets"
 )
@@ -81,7 +82,7 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string
 	if stackStatus != nil {
 		if (*stackStatus == string(cloudformationtypes.StackStatusCreateComplete)) ||
 			(*stackStatus == string(cloudformationtypes.StackStatusUpdateComplete)) {
-			_, err = c.UpdateStack(cfTemplateBody, stackName)
+			err = c.UpdateStack(cfTemplateBody, stackName)
 			if err != nil {
 				return false, err
 			}
@@ -119,52 +120,41 @@ func (c *awsClient) CreateStack(cfTemplateBody, stackName string) (bool, error) 
 		return false, err
 	}
 
-	err = waitForStackOperationComplete(context.Background(), c.cfClient, stackName)
-	if err != nil {
-		return false, err
-	}
+	err = waitForStackCreateComplete(context.Background(), c.cfClient, stackName)
+    if err != nil {
+        return false, err
+    }
+
 
 	return true, nil
 }
 
-func (c *awsClient) UpdateStack(cfTemplateBody, stackName string) (bool, error) {
-	// Create a change set
-	changeSetName := "ChangeSet-" + time.Now().Format(time.RFC3339)
-	_, err := c.cfClient.CreateChangeSet(context.Background(), &cloudformation.CreateChangeSetInput{
-		StackName:     &stackName,
-		TemplateBody:  &cfTemplateBody,
-		ChangeSetName: &changeSetName,
-	})
-	if err != nil {
-		var opErr *cloudformationtypes.InvalidOperationException
-		if errors.As(err, &opErr) {
-			// No changes to execute
-			return true, nil
-		}
-		return false, err
-	}
+func (c *awsClient) UpdateStack(cfTemplateBody, stackName string) error {
+    _, err := c.cfClient.UpdateStack(context.TODO(), &cloudformation.UpdateStackInput{
+        StackName:    &stackName,
+        TemplateBody: &cfTemplateBody,
+		Capabilities: []cloudformationtypes.Capability{
+            cloudformationtypes.CapabilityCapabilityNamedIam,
+        },
+    })
+    if err != nil {
+        var apiErr smithy.APIError
+        if errors.As(err, &apiErr) {
+            if apiErr.ErrorCode() == "ValidationError" && strings.Contains(apiErr.ErrorMessage(), "No updates are to be performed") {
+                // No updates are to be performed
+                return nil
+            }
+        }
+        return err
+    }
 
-	// Execute the update
-	_, err = c.cfClient.UpdateStack(context.Background(), buildUpdateStackInput(cfTemplateBody, stackName))
-	if err != nil {
-		var stackSetNotEmptyErr *cloudformationtypes.StackSetNotEmptyException
-		var stackSetNotFoundErr *cloudformationtypes.StackSetNotFoundException
+    // Wait for CloudFormation update to complete
+    err = waitForStackUpdateComplete(context.TODO(), c.cfClient, stackName)
+    if err != nil {
+        return err
+    }
 
-		if errors.As(err, &stackSetNotEmptyErr) || errors.As(err, &stackSetNotFoundErr) {
-			// There is nothing to update in the stack
-			return true, nil
-		}
-
-		return false, err
-	}
-
-	// Wait for CloudFormation update to complete
-	err = waitForStackOperationComplete(context.Background(), c.cfClient, stackName)
-	if err != nil {
-		return false, err
-	}
-
-	return true, err
+    return nil
 }
 
 func (c *awsClient) CheckStackReadyOrNotExisting(stackName string) (stackReady bool, status *string, err error) {
@@ -209,7 +199,7 @@ func (c *awsClient) DeleteOsdCcsAdminUser(stackName string) error {
 	}
 
 	// Wait until cloudformation stack deletes
-	err = waitForStackOperationComplete(context.Background(), c.cfClient, stackName)
+	err = waitForStackDeleteComplete(context.Background(), c.cfClient, stackName)
 	if err != nil {
 		return err
 	}
@@ -244,3 +234,4 @@ func buildUpdateStackInput(cfTemplateBody, stackName string) *cloudformation.Upd
 		TemplateBody: aws.String(cfTemplateBody),
 	}
 }
+

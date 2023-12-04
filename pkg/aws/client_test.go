@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/smithy-go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 
 	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -19,6 +20,7 @@ import (
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/sirupsen/logrus"
 
+	"github.com/openshift/rosa/assets"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
@@ -90,22 +92,47 @@ var _ = Describe("Client", func() {
 			Context("When stack is in CREATE_COMPLETE state", func() {
 				BeforeEach(func() {
 					stackStatus = string(cloudformationtypes.StackStatusCreateComplete)
+					cfTemplatePath := "templates/cloudformation/iam_user_osdCcsAdmin.json"
+					cfTemplate, err := assets.Asset(cfTemplatePath)
+					Expect(err).ToNot(HaveOccurred())
+					cfTemplateBody := string(cfTemplate)
 					mockIamAPI.EXPECT().GetUser(context.Background(),
 						&iam.GetUserInput{UserName: &adminUserName}).Return(
 						&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 						&iamtypes.NoSuchEntityException{},
 					)
-					mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any()).AnyTimes().Return(
-						&cloudformation.DescribeStacksOutput{
-							Stacks: []cloudformationtypes.Stack{
-								{
-									StackName:   &stackName,
-									StackStatus: cloudformationtypes.StackStatus(stackStatus),
-								},
+					describeStacksOutput := &cloudformation.DescribeStacksOutput{
+						Stacks: []cloudformationtypes.Stack{
+							{
+								StackName:   &stackName,
+								StackStatus: cloudformationtypes.StackStatusCreateComplete,
 							},
-						}, nil)
-					mockCfAPI.EXPECT().CreateChangeSet(gomock.Any(), gomock.Any()).Return(nil, nil)
-					mockCfAPI.EXPECT().UpdateStack(context.Background(), gomock.Any()).Return(nil, nil)
+						},
+					}
+
+					mockCfAPI.EXPECT().
+						DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, _ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
+							return describeStacksOutput, nil
+						}).AnyTimes()
+					mockCfAPI.EXPECT().
+						UpdateStack(gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ context.Context, input *cloudformation.UpdateStackInput, _ ...func(*cloudformation.Options)) (*cloudformation.UpdateStackOutput, error) {
+							// Verify that the input parameters are as expected
+							if *input.StackName != stackName {
+								return nil, fmt.Errorf("unexpected stack name: got %s, want %s", *input.StackName, stackName)
+							}
+							if *input.TemplateBody == cfTemplateBody {
+								// Simulate the error returned by AWS when no updates are to be performed
+								return nil, &smithy.GenericAPIError{
+									Code:    "ValidationError",
+									Message: "No updates are to be performed.",
+								}
+							}
+							return &cloudformation.UpdateStackOutput{
+								StackId: &stackName,
+							}, nil
+						})
 				})
 				It("Returns without error", func() {
 					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
@@ -125,15 +152,19 @@ var _ = Describe("Client", func() {
 						&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 						&iamtypes.NoSuchEntityException{},
 					)
-					mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any()).AnyTimes().Return(
-						&cloudformation.DescribeStacksOutput{
-							Stacks: []cloudformationtypes.Stack{
-								{
-									StackName:   &stackName,
-									StackStatus: cloudformationtypes.StackStatus(stackStatus),
-								},
+					describeStacksOutput := &cloudformation.DescribeStacksOutput{
+						Stacks: []cloudformationtypes.Stack{
+							{
+								StackName:   &stackName,
+								StackStatus: cloudformationtypes.StackStatusCreateComplete,
 							},
-						}, nil)
+						},
+					}
+					mockCfAPI.EXPECT().
+						DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, _ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
+							return describeStacksOutput, nil
+						}).AnyTimes()
 					mockCfAPI.EXPECT().CreateStack(context.Background(), gomock.Any()).Return(nil, nil)
 				})
 				It("Creates a cloudformation stack", func() {
@@ -176,15 +207,19 @@ var _ = Describe("Client", func() {
 					&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 					&iamtypes.NoSuchEntityException{},
 				)
-				mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any()).AnyTimes().Return(
-					&cloudformation.DescribeStacksOutput{
+				describeStacksOutput := &cloudformation.DescribeStacksOutput{
 						Stacks: []cloudformationtypes.Stack{
 							{
 								StackName:   &stackName,
-								StackStatus: cloudformationtypes.StackStatus(stackStatus),
+								StackStatus: cloudformationtypes.StackStatusCreateComplete,
 							},
 						},
-					}, nil)
+					}
+					mockCfAPI.EXPECT().
+						DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, _ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
+							return describeStacksOutput, nil
+						}).AnyTimes()
 				mockCfAPI.EXPECT().CreateStack(context.Background(), gomock.Any()).Return(nil, nil)
 			})
 
@@ -355,3 +390,12 @@ var _ = Describe("Client", func() {
 		})
 	})
 })
+
+func readCloudFormationTemplate(path string) (string, error) {
+	cfTemplate, err := assets.Asset(path)
+	if err != nil {
+		return "", fmt.Errorf("Unable to read cloudformation template: %s", err)
+	}
+
+	return string(cfTemplate), nil
+}

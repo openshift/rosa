@@ -17,18 +17,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+
+	// cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	client "github.com/openshift/rosa/pkg/aws/api_interface"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 
 	"github.com/openshift-online/ocm-common/pkg"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 
 	"github.com/openshift/rosa/pkg/arguments"
-	client "github.com/openshift/rosa/pkg/aws/api_interface"
+	// client "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
@@ -1001,43 +1003,55 @@ func ConvertToTagPointers(tags []iamtypes.Tag) []*iamtypes.Tag {
 	return tagPointers
 }
 
-func waitForStackOperationComplete(ctx context.Context, client client.CloudFormationApiClient, stackName string) error {
-	maxRetries := 120
-	retryCount := 0
-
-	for {
-		describeStacksInput := &cloudformation.DescribeStacksInput{
-			StackName: aws.String(stackName),
-		}
-
-		resp, err := client.DescribeStacks(ctx, describeStacksInput)
-		if err != nil {
-			return err
-		}
-
-		if len(resp.Stacks) == 0 {
-			return fmt.Errorf("stack not found")
-		}
-
-		stack := resp.Stacks[0]
-		switch stack.StackStatus {
-		case cloudformationtypes.StackStatusCreateComplete, cloudformationtypes.StackStatusUpdateComplete,
-			cloudformationtypes.StackStatusDeleteComplete, cloudformationtypes.StackStatusRollbackComplete:
-			return nil
-		case cloudformationtypes.StackStatusCreateFailed, cloudformationtypes.StackStatusRollbackFailed,
-			cloudformationtypes.StackStatusUpdateFailed, cloudformationtypes.StackStatusDeleteFailed:
-			return fmt.Errorf("stack operation failed with status: %s", string(stack.StackStatus))
-		case cloudformationtypes.StackStatusCreateInProgress, cloudformationtypes.StackStatusUpdateInProgress,
-			cloudformationtypes.StackStatusRollbackInProgress, cloudformationtypes.StackStatusDeleteInProgress,
-			cloudformationtypes.StackStatusUpdateCompleteCleanupInProgress:
-			retryCount++
-			if retryCount >= maxRetries {
-				return fmt.Errorf("max retry count reached")
-			}
-			// Stack operation is still in progress. Wait for 5 seconds before checking the status again.
-			time.Sleep(5 * time.Second)
-		default:
-			return fmt.Errorf("unexpected stack status: %s", string(stack.StackStatus))
-		}
-	}
+func buildDescribeStacksInput(stackName string) *cloudformation.DescribeStacksInput {
+    return &cloudformation.DescribeStacksInput{
+        StackName: aws.String(stackName),
+    }
 }
+
+func waitForStackCreateComplete(ctx context.Context, cfClient client.CloudFormationApiClient, stackName string) error {
+    waiter := cloudformation.NewStackCreateCompleteWaiter(cfClient)
+
+    maxWaitDur := 5 * time.Minute // Max Wait time
+
+    params := buildDescribeStacksInput(stackName)
+
+    // You can also use WaitForOutput if you need the output
+    err := waiter.Wait(ctx, params, maxWaitDur, func(o *cloudformation.StackCreateCompleteWaiterOptions) {
+        // Optionally set MinDelay, MaxDelay, and other options here
+    })
+
+    return err
+}
+
+
+func waitForStackUpdateComplete(ctx context.Context, cfClient client.CloudFormationApiClient, stackName string) error {
+    waiter := cloudformation.NewStackUpdateCompleteWaiter(cfClient)
+
+    maxWaitDur := 5 * time.Minute // Max Wait time
+
+    params := buildDescribeStacksInput(stackName)
+
+    // You can also use WaitForOutput if you need the output
+    err := waiter.Wait(ctx, params, maxWaitDur, func(o *cloudformation.StackUpdateCompleteWaiterOptions) {
+        // Optionally set MinDelay, MaxDelay, and other options here
+    })
+
+    return err
+}
+
+func waitForStackDeleteComplete(ctx context.Context, cfClient client.CloudFormationApiClient, stackName string) error {
+    waiter := cloudformation.NewStackDeleteCompleteWaiter(cfClient)
+
+    maxWaitDur := 5 * time.Minute // Max Wait time
+
+    params := buildDescribeStacksInput(stackName)
+
+    // You can also use WaitForOutput if you need the output
+    err := waiter.Wait(ctx, params, maxWaitDur, func(o *cloudformation.StackDeleteCompleteWaiterOptions) {
+        // Optionally set MinDelay, MaxDelay, and other options here
+    })
+
+    return err
+}
+
