@@ -167,6 +167,12 @@ func run(cmd *cobra.Command, argv []string) {
 		)
 	}
 
+	subnetsStr := ""
+	if len(cluster.AWS().SubnetIDs()) > 0 {
+		subnetsStr = fmt.Sprintf(" - Subnets:                 %s\n",
+			ocmOutput.PrintStringSlice(cluster.AWS().SubnetIDs()))
+	}
+
 	var machinePools []*cmv1.MachinePool
 	var nodePools []*cmv1.NodePool
 
@@ -211,6 +217,7 @@ func run(cmd *cobra.Command, argv []string) {
 		" - Machine CIDR:            %s\n"+
 		" - Pod CIDR:                %s\n"+
 		" - Host Prefix:             /%d\n"+
+		"%s"+
 		"%s",
 		clusterName,
 		cluster.ID(),
@@ -231,6 +238,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Network().MachineCIDR(),
 		cluster.Network().PodCIDR(),
 		cluster.Network().HostPrefix(),
+		subnetsStr,
 		str,
 	)
 
