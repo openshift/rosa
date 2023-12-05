@@ -186,15 +186,6 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	workloadMonitoringDisabled, ok := cluster.GetDisableUserWorkloadMonitoring()
-	if ok {
-		isWorkloadMonitoringEnabled := "Enabled"
-		if workloadMonitoringDisabled {
-			isWorkloadMonitoringEnabled = "Disabled"
-		}
-		str = fmt.Sprintf("Workload Monitoring:        %s\n", isWorkloadMonitoringEnabled)
-	}
-
 	// Print short cluster description:
 	str = fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
@@ -329,12 +320,11 @@ func run(cmd *cobra.Command, argv []string) {
 		isPrivate,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
 
-	if cluster.DisableUserWorkloadMonitoring() {
-		str = fmt.Sprintf("%s"+
-			"User Workload Monitoring:   %s\n",
-			str,
-			getUseworkloadMonitoring(cluster.DisableUserWorkloadMonitoring()))
-	}
+	str = fmt.Sprintf("%s"+
+		"User Workload Monitoring:   %s\n",
+		str,
+		getUseworkloadMonitoring(cluster.DisableUserWorkloadMonitoring()))
+
 	if cluster.FIPS() {
 		str = fmt.Sprintf("%s"+
 			"FIPS mode:                  %s\n",
@@ -658,9 +648,9 @@ func getDetailsLink(environment string) string {
 
 func getUseworkloadMonitoring(disabled bool) string {
 	if disabled {
-		return "disabled"
+		return "Disabled"
 	}
-	return "enabled"
+	return "Enabled"
 }
 
 func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
@@ -725,9 +715,9 @@ func BillingAccount(cluster *cmv1.Cluster, isHostedControlPlane bool) string {
 }
 
 func getAuditLogForwardingStatus(cluster *cmv1.Cluster) string {
-	auditLogForwardingStatus := "disabled"
+	auditLogForwardingStatus := "Disabled"
 	if cluster.AWS().AuditLog().RoleArn() != "" {
-		auditLogForwardingStatus = "enabled"
+		auditLogForwardingStatus = "Enabled"
 	}
 	return auditLogForwardingStatus
 }
