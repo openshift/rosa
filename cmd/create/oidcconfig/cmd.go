@@ -53,7 +53,7 @@ var args struct {
 
 var Cmd = &cobra.Command{
 	Use:     "oidc-config",
-	Aliases: []string{"oidcconfig", "oidcconfig"},
+	Aliases: []string{"oidcconfig"},
 	Short:   "Create OIDC config compliant with OIDC protocol.",
 	Long: "Create OIDC config in a S3 bucket for the " +
 		"client AWS account and populates it to be compliant with OIDC protocol. " +

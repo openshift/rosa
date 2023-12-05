@@ -39,7 +39,7 @@ import (
 
 var Cmd = &cobra.Command{
 	Use:     "oidc-config",
-	Aliases: []string{"oidconfig, oidcconfig"},
+	Aliases: []string{"oidcconfig"},
 	Short:   "Delete OIDC Config",
 	Long:    "Cleans up OIDC config based on registered OIDC Config ID.",
 	Example: `  # Delete OIDC config based on registered OIDC Config ID that has been supplied
