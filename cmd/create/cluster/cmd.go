@@ -672,7 +672,7 @@ func init() {
 		&args.createAdminUser,
 		"create-admin-user",
 		false,
-		`Create cluster admin`,
+		`Create cluster admin named "cluster-admin"`,
 	)
 
 	flags.StringVar(
