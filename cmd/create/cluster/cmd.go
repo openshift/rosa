@@ -1565,6 +1565,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	operatorRolesPrefix := args.operatorRolesPrefix
+	operatorRoles := []string{}
 	expectedOperatorRolePath, _ := aws.GetPathFromARN(roleARN)
 	operatorIAMRoles := args.operatorIAMRoles
 	computedOperatorIamRoleList := []ocm.OperatorIAMRole{}
@@ -1599,6 +1600,27 @@ func run(cmd *cobra.Command, _ []string) {
 		if !aws.RoleNameRE.MatchString(operatorRolesPrefix) {
 			r.Reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
 			os.Exit(1)
+		}
+
+		credRequests, err := r.OCMClient.GetAllCredRequests()
+		if err != nil {
+			r.Reporter.Errorf("Error getting operator credential request from OCM %v", err)
+			os.Exit(1)
+		}
+		operatorRoles, err = r.AWSClient.GetOperatorRolesFromAccountByPrefix(operatorRolesPrefix, credRequests)
+		if err != nil {
+			r.Reporter.Errorf("There was a problem retrieving the Operator Roles from AWS: %v", err)
+			os.Exit(1)
+		}
+		if len(operatorRoles) != 0 {
+			r.Reporter.Infof("Operator roles found matching prefix '%s'.", operatorRolesPrefix)
+		} else {
+			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
+			if permissionsBoundary != "" {
+				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
+			}
+			r.Reporter.Infof("No operator roles found matching prefix '%s'. "+
+				"Run the follow command to create them:\n\t%s", operatorRolesPrefix, rolesCMD)
 		}
 	}
 
@@ -3097,20 +3119,33 @@ func run(cmd *cobra.Command, _ []string) {
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
 		} else {
 			output := ""
-			if cluster.AWS().STS().OidcConfig().Reusable() {
-				output = "When using reusable OIDC Config and resources have been created " +
-					"prior to cluster specification, this step is not required."
+			if len(operatorRoles) == 0 {
+				rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
+				if permissionsBoundary != "" {
+					rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
+				}
+				output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			}
-			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
-			if permissionsBoundary != "" {
-				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
+			oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
+			oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
+			if err != nil {
+				if strings.Contains(err.Error(), "AccessDenied") {
+					r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
+				} else {
+					r.Reporter.Errorf("Failed to verify if OIDC provider exists: %s", err)
+					os.Exit(1)
+				}
 			}
-			oidcCMD := "rosa create oidc-provider"
-			oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
-			output += "\nRun the following commands to continue the cluster creation:\n\n"
-			output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
-			output = fmt.Sprintf("%s\t%s\n", output, oidcCMD)
-			r.Reporter.Infof(output)
+			if !oidcProviderExists {
+				oidcCMD := "rosa create oidc-provider"
+				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
+				output = fmt.Sprintf("%s\t%s\n", output, oidcCMD)
+			}
+			if output != "" {
+				output = fmt.Sprintf("Run the following commands to continue the cluster creation:\n\n%s",
+					output)
+				r.Reporter.Infof(output)
+			}
 		}
 	}
 
