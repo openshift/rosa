@@ -58,7 +58,7 @@ var Cmd = &cobra.Command{
 	Short: "Edit cluster",
 	Long:  "Edit cluster.",
 	Example: `  # Edit a cluster named "mycluster" to make it private
-  rosa edit cluster mycluster --private
+  rosa edit cluster -c mycluster --private
 
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
