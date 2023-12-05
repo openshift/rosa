@@ -29,7 +29,7 @@ import (
 
 var Cmd = &cobra.Command{
 	Use:     "oidc-config",
-	Aliases: []string{"oidcconfig", "oidcconfig"},
+	Aliases: []string{"oidcconfig", "oidcconfigs"},
 	Short:   "List OIDC Configuration resources",
 	Long:    "List OIDC Configuration resources",
 	Example: `  # List all OIDC Configurations tied to your organization ID"
