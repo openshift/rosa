@@ -1036,7 +1036,9 @@ func run(cmd *cobra.Command, _ []string) {
 				if helper.ContainsPrefix(billingAccounts, awsCreator.AccountID) {
 					billingAccount = awsCreator.AccountID
 					r.Reporter.Infof("Using '%s' as billing account", billingAccount)
-					r.Reporter.Infof("To use a different billing account, add --billing-account xxxxxxxxxx to previous command")
+					r.Reporter.Infof(
+						"To use a different billing account, add --billing-account xxxxxxxxxx to previous command",
+					)
 				} else {
 					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters.")
 				}
@@ -1069,9 +1071,11 @@ func run(cmd *cobra.Command, _ []string) {
 				contracts, isContractEnabled := GetBillingAccountContracts(cloudAccounts, billingAccount)
 
 				if billingAccount != awsCreator.AccountID {
-					r.Reporter.Infof("The selected AWS billing account is a different account than your AWS infrastructure account." +
-						"The AWS billing account will be charged for subscription usage. " +
-						"The AWS infrastructure account will be used for managing the cluster.")
+					r.Reporter.Infof(
+						"The selected AWS billing account is a different account than your AWS infrastructure account." +
+							"The AWS billing account will be charged for subscription usage. " +
+							"The AWS infrastructure account will be used for managing the cluster.",
+					)
 				} else {
 					r.Reporter.Infof("Using '%s' as billing account.",
 						billingAccount)
@@ -1341,8 +1345,11 @@ func run(cmd *cobra.Command, _ []string) {
 					r.Reporter.Errorf("Failed to get the expected resource ID for role type: %s", roleType)
 					os.Exit(1)
 				}
-				r.Reporter.Debugf("Using '%s' as the role prefix to retrieve the expected resource ID for role type '%s'",
-					rolePrefix, roleType)
+				r.Reporter.Debugf(
+					"Using '%s' as the role prefix to retrieve the expected resource ID for role type '%s'",
+					rolePrefix,
+					roleType,
+				)
 
 				for _, rARN := range roleARNs {
 					resourceId, err := aws.GetResourceIdFromARN(rARN)
@@ -2000,26 +2007,9 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Unable to parse service CIDR")
 			os.Exit(1)
 		}
-		excludedSubnetsDueToCidr := []string{}
-		for _, subnet := range initialSubnets {
-			subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
-			if err != nil {
-				r.Reporter.Errorf("Unable to parse subnet CIDR")
-				os.Exit(1)
-			}
-
-			if machineNetwork.Contains(subnetIP) &&
-				!subnetNetwork.Contains(serviceNetwork.IP) &&
-				!serviceNetwork.Contains(subnetIP) {
-				subnets = append(subnets, subnet)
-			} else {
-				excludedSubnetsDueToCidr = append(excludedSubnetsDueToCidr, awssdk.StringValue(subnet.SubnetId))
-			}
-		}
-
-		if len(subnets) != len(initialSubnets) {
-			r.Reporter.Warnf("The following subnets have been excluded"+
-				" because they do not fit into chosen CIDR ranges: %s", helper.SliceToSortedString(excludedSubnetsDueToCidr))
+		subnets = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		if privateLink {
+			subnets = filterPrivateSubnets(subnets, r)
 		}
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
@@ -2621,7 +2611,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 	err = kmsArnRegexpValidator.ValidateKMSKeyARN(&etcdEncryptionKmsARN)
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn matching %s", kmsArnRegexpValidator.KmsArnRE)
+		r.Reporter.Errorf(
+			"Expected a valid value for etcd-encryption-kms-arn matching %s",
+			kmsArnRegexpValidator.KmsArnRE,
+		)
 		os.Exit(1)
 	}
 
@@ -2829,7 +2822,10 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
 				os.Exit(1)
 			}
-			r.Reporter.Errorf("Updating default ingress settings is not supported for versions prior to '%s'", formattedVersion)
+			r.Reporter.Errorf(
+				"Updating default ingress settings is not supported for versions prior to '%s'",
+				formattedVersion,
+			)
 			os.Exit(1)
 		}
 	}
@@ -2914,7 +2910,9 @@ func run(cmd *cobra.Command, _ []string) {
 
 		if cmd.Flags().Changed(ingress.DefaultIngressNamespaceOwnershipPolicyFlag) {
 			if isHostedCP {
-				r.Reporter.Errorf("Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters")
+				r.Reporter.Errorf(
+					"Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters",
+				)
 				os.Exit(1)
 			}
 			namespaceOwnershipPolicy = args.defaultIngressNamespaceOwnershipPolicy
@@ -3254,6 +3252,80 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	return oidcConfig
 }
 
+func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.Subnet {
+	excludedSubnetsDueToPublic := []string{}
+	filteredSubnets := []*ec2.Subnet{}
+	publicSubnetMap, err := r.AWSClient.FetchPublicSubnetMap(initialSubnets)
+	if err != nil {
+		r.Reporter.Errorf("Unable to check if subnet have an IGW: %v", err)
+		os.Exit(1)
+	}
+	for _, subnet := range initialSubnets {
+		skip := false
+		if isPublic, ok := publicSubnetMap[awssdk.StringValue(subnet.SubnetId)]; ok {
+			if isPublic {
+				excludedSubnetsDueToPublic = append(
+					excludedSubnetsDueToPublic,
+					awssdk.StringValue(subnet.SubnetId),
+				)
+				skip = true
+			}
+		}
+		if !skip {
+			filteredSubnets = append(filteredSubnets, subnet)
+		}
+	}
+	if len(excludedSubnetsDueToPublic) > 0 {
+		r.Reporter.Warnf("The following subnets have been excluded"+
+			" because they have an Internet Gateway Targetded Route and the Cluster choice is private: %s",
+			helper.SliceToSortedString(excludedSubnetsDueToPublic))
+	}
+	return filteredSubnets
+}
+
+func filterCidrRangeSubnets(
+	initialSubnets []*ec2.Subnet,
+	machineNetwork *net.IPNet,
+	serviceNetwork *net.IPNet,
+	r *rosa.Runtime,
+) []*ec2.Subnet {
+	excludedSubnetsDueToCidr := []string{}
+	filteredSubnets := []*ec2.Subnet{}
+	for _, subnet := range initialSubnets {
+		skip := false
+		subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
+		if err != nil {
+			r.Reporter.Errorf("Unable to parse subnet CIDR")
+			os.Exit(1)
+		}
+
+		if !isValidCidrRange(subnetIP, subnetNetwork, machineNetwork, serviceNetwork) {
+			excludedSubnetsDueToCidr = append(excludedSubnetsDueToCidr, awssdk.StringValue(subnet.SubnetId))
+			skip = true
+		}
+
+		if !skip {
+			filteredSubnets = append(filteredSubnets, subnet)
+		}
+	}
+	if len(excludedSubnetsDueToCidr) > 0 {
+		r.Reporter.Warnf("The following subnets have been excluded"+
+			" because they do not fit into chosen CIDR ranges: %s", helper.SliceToSortedString(excludedSubnetsDueToCidr))
+	}
+	return filteredSubnets
+}
+
+func isValidCidrRange(
+	subnetIP net.IP,
+	subnetNetwork *net.IPNet,
+	machineNetwork *net.IPNet,
+	serviceNetwork *net.IPNet,
+) bool {
+	return machineNetwork.Contains(subnetIP) &&
+		!subnetNetwork.Contains(serviceNetwork.IP) &&
+		!serviceNetwork.Contains(subnetIP)
+}
+
 func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int) interactive.Validator {
 	return func(val interface{}) error {
 		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
@@ -3272,7 +3344,13 @@ func maxReplicaValidator(multiAZ bool, minReplicas int, isHostedCP bool,
 		if err != nil {
 			return err
 		}
-		return clustervalidations.MaxReplicasValidator(minReplicas, maxReplicas, multiAZ, isHostedCP, privateSubnetsCount)
+		return clustervalidations.MaxReplicasValidator(
+			minReplicas,
+			maxReplicas,
+			multiAZ,
+			isHostedCP,
+			privateSubnetsCount,
+		)
 	}
 }
 
@@ -3577,7 +3655,11 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 				strings.Join(spec.DefaultIngress.ExcludedNamespaces, ","))
 		}
 		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.WildcardPolicy) {
-			command += fmt.Sprintf(" --%s %s", ingress.DefaultIngressWildcardPolicyFlag, spec.DefaultIngress.WildcardPolicy)
+			command += fmt.Sprintf(
+				" --%s %s",
+				ingress.DefaultIngressWildcardPolicyFlag,
+				spec.DefaultIngress.WildcardPolicy,
+			)
 		}
 		if !helper.Contains([]string{"", consts.SkipSelectionOption}, spec.DefaultIngress.NamespaceOwnershipPolicy) {
 			command += fmt.Sprintf(" --%s %s", ingress.DefaultIngressNamespaceOwnershipPolicyFlag,
@@ -3728,7 +3810,9 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
-			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
+			formattedVersion, err := versions.FormatMajorMinorPatch(
+				ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1,
+			)
 			if err != nil {
 				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
 				os.Exit(1)
