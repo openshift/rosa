@@ -261,10 +261,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if cluster.AWS().Ec2MetadataHttpTokens() != "" {
-		str = fmt.Sprintf("%s"+"Ec2 Metadata Http Tokens:   %s\n", str, cluster.AWS().Ec2MetadataHttpTokens())
+		str = fmt.Sprintf("%s"+"EC2 Metadata Http Tokens:   %s\n", str, cluster.AWS().Ec2MetadataHttpTokens())
 	} else {
 		// show default value for clusters that didn't set it.
-		str = fmt.Sprintf("%s"+"Ec2 Metadata Http Tokens:   %s\n", str, cmv1.Ec2MetadataHttpTokensOptional)
+		str = fmt.Sprintf("%s"+"EC2 Metadata Http Tokens:   %s\n", str, cmv1.Ec2MetadataHttpTokensOptional)
 	}
 
 	if cluster.AWS().STS().RoleARN() != "" {
