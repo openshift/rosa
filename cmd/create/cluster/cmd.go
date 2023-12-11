@@ -1612,16 +1612,6 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("There was a problem retrieving the Operator Roles from AWS: %v", err)
 			os.Exit(1)
 		}
-		if len(operatorRoles) != 0 {
-			r.Reporter.Infof("Operator roles found matching prefix '%s'.", operatorRolesPrefix)
-		} else {
-			rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
-			if permissionsBoundary != "" {
-				rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
-			}
-			r.Reporter.Infof("No operator roles found matching prefix '%s'. "+
-				"Run the follow command to create them:\n\t%s", operatorRolesPrefix, rolesCMD)
-		}
 	}
 
 	var oidcConfig *v1.OidcConfig
