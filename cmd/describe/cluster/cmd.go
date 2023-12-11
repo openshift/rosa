@@ -621,13 +621,13 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 		nodeConfig += " - Additional Security Group IDs:\n"
 		if hasSgsControlPlane {
 			nodeConfig += fmt.Sprintf(
-				"\t- Control Plane:	%s\n",
+				"   - Control Plane:	%s\n",
 				ocmOutput.PrintStringSlice(
 					cluster.AWS().AdditionalControlPlaneSecurityGroupIds()))
 		}
 		if hasSgsInfra {
 			nodeConfig += fmt.Sprintf(
-				"\t- Infra:		%s\n",
+				"   - Infra:		%s\n",
 				ocmOutput.PrintStringSlice(
 					cluster.AWS().AdditionalInfraSecurityGroupIds()))
 		}
