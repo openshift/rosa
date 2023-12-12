@@ -2836,15 +2836,19 @@ func run(cmd *cobra.Command, _ []string) {
 	wildcardPolicy := ""
 	namespaceOwnershipPolicy := ""
 	if isVersionCompatibleManagedIngressV2 {
+		shouldAskCustomIngress := false
+		if interactive.Enabled() && !confirm.Yes() && !isHostedCP {
+			shouldAskCustomIngress = confirm.Prompt(false, "Customize the default Ingress Controller?")
+		}
 		if cmd.Flags().Changed(ingress.DefaultIngressRouteSelectorFlag) {
 			if isHostedCP {
 				r.Reporter.Errorf("Updating route selectors is not supported for Hosted Control Plane clusters")
 				os.Exit(1)
 			}
 			routeSelector = args.defaultIngressRouteSelectors
-		} else if interactive.Enabled() && !isHostedCP {
+		} else if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
 			routeSelectorArg, err := interactive.GetString(interactive.Input{
-				Question: "Route Selector for ingress",
+				Question: "Route Selector for ingress (e.g. 'route=external')",
 				Help:     cmd.Flags().Lookup(ingress.DefaultIngressRouteSelectorFlag).Usage,
 				Default:  args.defaultIngressRouteSelectors,
 				Validators: []interactive.Validator{
@@ -2872,7 +2876,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 			excludedNamespaces = args.defaultIngressExcludedNamespaces
-		} else if interactive.Enabled() && !isHostedCP {
+		} else if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
 			excludedNamespacesArg, err := interactive.GetString(interactive.Input{
 				Question: "Excluded namespaces for ingress",
 				Help:     cmd.Flags().Lookup(ingress.DefaultIngressExcludedNamespacesFlag).Usage,
@@ -2893,12 +2897,16 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			wildcardPolicy = args.defaultIngressWildcardPolicy
 		} else {
-			if interactive.Enabled() && !isHostedCP {
+			if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
+				defaultIngressWildcardSelection := string(v1.WildcardPolicyWildcardsDisallowed)
+				if args.defaultIngressWildcardPolicy != "" {
+					defaultIngressWildcardSelection = args.defaultIngressWildcardPolicy
+				}
 				wildcardPolicyArg, err := interactive.GetOption(interactive.Input{
 					Question: "Wildcard Policy",
 					Options:  ingress.ValidWildcardPolicies,
 					Help:     cmd.Flags().Lookup(ingress.DefaultIngressWildcardPolicyFlag).Usage,
-					Default:  args.defaultIngressWildcardPolicy,
+					Default:  defaultIngressWildcardSelection,
 				})
 				if err != nil {
 					r.Reporter.Errorf("Expected a valid Wildcard Policy: %s", err)
@@ -2917,12 +2925,16 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			namespaceOwnershipPolicy = args.defaultIngressNamespaceOwnershipPolicy
 		} else {
-			if interactive.Enabled() && !isHostedCP {
+			if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
+				defaultIngressNamespaceOwnershipSelection := string(v1.NamespaceOwnershipPolicyStrict)
+				if args.defaultIngressNamespaceOwnershipPolicy != "" {
+					defaultIngressNamespaceOwnershipSelection = args.defaultIngressNamespaceOwnershipPolicy
+				}
 				namespaceOwnershipPolicyArg, err := interactive.GetOption(interactive.Input{
 					Question: "Namespace Ownership Policy",
 					Options:  ingress.ValidNamespaceOwnershipPolicies,
 					Help:     cmd.Flags().Lookup(ingress.DefaultIngressNamespaceOwnershipPolicyFlag).Usage,
-					Default:  args.defaultIngressNamespaceOwnershipPolicy,
+					Default:  defaultIngressNamespaceOwnershipSelection,
 				})
 				if err != nil {
 					r.Reporter.Errorf("Expected a valid Namespace Ownership Policy: %s", err)
