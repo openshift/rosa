@@ -77,7 +77,7 @@ const keycloakURL = "realms/redhat-external/protocol/openid-connect/token"
 
 // TokenURLs allows the value of the `--env` option to map to the various AWS Cognito token URLs.
 var TokenURLs = map[string]string{
-	"production":  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
+	"production":  fmt.Sprintf("https://sso.openshiftusgov.com/%s", keycloakURL),
 	"staging":     fmt.Sprintf("https://sso.stage.openshiftusgov.com/%s", keycloakURL),
 	"staging01":   fmt.Sprintf("https://sso01.stage.openshiftusgov.com/%s", keycloakURL),
 	"integration": fmt.Sprintf("https://sso.int.openshiftusgov.com/%s", keycloakURL),
@@ -93,7 +93,7 @@ var AdminTokenURLs = map[string]string{
 
 // ClientIDs allows the value of the `--env` option to map to the Keycloak clients.
 var ClientIDs = map[string]string{
-	"production":  "72ekjh5laouap6qcfis521jlgi",
+	"production":  "console-dot",
 	"staging":     "console-dot",
 	"staging01":   "console-dot",
 	"integration": "console-dot",
