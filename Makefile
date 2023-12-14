@@ -34,7 +34,7 @@ test:
 
 .PHONY: coverage
 coverage:
-	go test -coverprofile=cover.out  ./...
+	go test -coverprofile=cover.out -covermode=atomic -p 4 ./...
 
 .PHONY: install
 install:
@@ -63,6 +63,7 @@ commits/check:
 .PHONY: clean
 clean:
 	rm -rf \
+		./cover.out \
 		rosa \
 		*-darwin-amd64 \
 		*-linux-amd64 \
@@ -74,6 +75,10 @@ clean:
 generate:
 	which go-bindata || GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...
 	go-bindata -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
+
+.PHONY: codecov
+codecov: coverage
+	@./hack/codecov.sh
 
 mocks:
 	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/iamapi.go github.com/aws/aws-sdk-go/service/iam/iamiface IAMAPI
