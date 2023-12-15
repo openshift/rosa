@@ -319,4 +319,72 @@ var _ = Describe("Client", func() {
 
 		})
 	})
+
+	Context("FetchPublicSubnetMap", func() {
+
+		subnetOneId := "test-subnet-1"
+		subnetTwoId := "test-subnet-2"
+		subnet := ec2.Subnet{
+			SubnetId: helpers.NewString(subnetOneId),
+		}
+
+		subnet2 := ec2.Subnet{
+			SubnetId: helpers.NewString(subnetTwoId),
+		}
+
+		var subnets []*ec2.Subnet
+		subnets = append(subnets, &subnet, &subnet2)
+
+		It("Fetches", func() {
+			subnetIds := []*string{}
+			for _, subnet := range subnets {
+				subnetIds = append(subnetIds, subnet.SubnetId)
+			}
+			input := &ec2.DescribeRouteTablesInput{
+				Filters: []*ec2.Filter{
+					{
+						Name:   awsSdk.String("association.subnet-id"),
+						Values: subnetIds,
+					},
+				},
+			}
+			output := &ec2.DescribeRouteTablesOutput{
+				RouteTables: []*ec2.RouteTable{
+					{
+						Associations: []*ec2.RouteTableAssociation{
+							{
+								SubnetId: awsSdk.String(subnetOneId),
+							},
+						},
+						Routes: []*ec2.Route{
+							{
+								GatewayId: awsSdk.String("igw-test"),
+							},
+						},
+					},
+					{
+						Associations: []*ec2.RouteTableAssociation{
+							{
+								SubnetId: awsSdk.String(subnetTwoId),
+							},
+						},
+						Routes: []*ec2.Route{
+							{
+								GatewayId: awsSdk.String("test"),
+							},
+						},
+					},
+				},
+			}
+			mockEC2API.EXPECT().DescribeRouteTables(input).Return(output, nil)
+
+			publicSubnetMap, err := client.FetchPublicSubnetMap(subnets)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(publicSubnetMap).To(HaveLen(2))
+			mapStr := fmt.Sprintf("%v", publicSubnetMap)
+			Expect(mapStr).To(ContainSubstring("test-subnet-1:true"))
+			Expect(mapStr).To(ContainSubstring("test-subnet-2:false"))
+		})
+	})
 })
