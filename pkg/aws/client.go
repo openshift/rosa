@@ -75,6 +75,8 @@ const (
 	Attached      = "attached"
 
 	govPartition = "aws-us-gov"
+
+	awsMaxFilterLength = 200
 )
 
 // addROSAVersionToUserAgent is a named handler that will add ROSA CLI
@@ -195,7 +197,7 @@ type Client interface {
 	GetDefaultPolicyDocument(policyArn string) (string, error)
 	GetAccountRoleByArn(roleArn string) (*Role, error)
 	GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, error)
-	FetchPublicSubnetMap(subnet []*ec2.Subnet) (map[string]bool, error)
+	FetchPublicSubnetMap(subnets []*ec2.Subnet) (map[string]bool, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
@@ -441,42 +443,45 @@ func (c *awsClient) FetchPublicSubnetMap(subnets []*ec2.Subnet) (map[string]bool
 	if len(subnets) == 0 {
 		return mapSubnetIdToPublic, nil
 	}
-	subnetIds := []*string{}
-	for _, subnet := range subnets {
-		subnetIds = append(subnetIds, subnet.SubnetId)
-	}
-	routeTablesResp, err := c.ec2Client.DescribeRouteTables(&ec2.DescribeRouteTablesInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("association.subnet-id"),
-				Values: subnetIds,
+	// AWS has a limit of 200 filters per query so it needs to be broken up in chunks
+	chunks := helper.ChunkSlice(subnets, awsMaxFilterLength)
+
+	for _, curChunk := range chunks {
+		subnetIds := []*string{}
+		for _, subnet := range curChunk {
+			subnetIds = append(subnetIds, subnet.SubnetId)
+		}
+		routeTablesResp, err := c.ec2Client.DescribeRouteTables(&ec2.DescribeRouteTablesInput{
+			Filters: []*ec2.Filter{
+				{
+					Name:   aws.String("association.subnet-id"),
+					Values: subnetIds,
+				},
 			},
-		},
-	})
-	if err != nil {
-		return mapSubnetIdToPublic, err
-	}
-
-	if routeTablesResp == nil {
-		return mapSubnetIdToPublic, fmt.Errorf(
-			"No route table found for associated subnets '%s'",
-			helper.SliceToSortedString(aws.StringValueSlice(subnetIds)),
-		)
-	}
-
-	for _, routes := range routeTablesResp.RouteTables {
-		for _, association := range routes.Associations {
-			subnetAssociation := aws.StringValue(association.SubnetId)
-			mapSubnetIdToPublic[subnetAssociation] = false
-			for _, route := range routes.Routes {
-				if strings.HasPrefix(aws.StringValue(route.GatewayId), "igw") {
-					// There is no direct way in the AWS API to determine if a subnet is public or private.
-					// A public subnet is one which has an internet gateway route
-					// we look for the gatewayId and make sure it has the prefix of igw to differentiate
-					// from the default in-subnet route which is called "local"
-					// or other virtual gateway (starting with vgv)
-					// or vpc peering connections (starting with pcx).
-					mapSubnetIdToPublic[subnetAssociation] = true
+		})
+		if err != nil {
+			return mapSubnetIdToPublic, err
+		}
+		if routeTablesResp == nil {
+			return mapSubnetIdToPublic, fmt.Errorf(
+				"No route table found for associated subnets '%s'",
+				helper.SliceToSortedString(aws.StringValueSlice(subnetIds)),
+			)
+		}
+		for _, routes := range routeTablesResp.RouteTables {
+			for _, association := range routes.Associations {
+				subnetAssociation := aws.StringValue(association.SubnetId)
+				mapSubnetIdToPublic[subnetAssociation] = false
+				for _, route := range routes.Routes {
+					if strings.HasPrefix(aws.StringValue(route.GatewayId), "igw") {
+						// There is no direct way in the AWS API to determine if a subnet is public or private.
+						// A public subnet is one which has an internet gateway route
+						// we look for the gatewayId and make sure it has the prefix of igw to differentiate
+						// from the default in-subnet route which is called "local"
+						// or other virtual gateway (starting with vgv)
+						// or vpc peering connections (starting with pcx).
+						mapSubnetIdToPublic[subnetAssociation] = true
+					}
 				}
 			}
 		}
