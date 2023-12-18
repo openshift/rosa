@@ -3,6 +3,18 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.390
+- Update model version v0.0.343
+  -  Add `Platform`to `subnet_network_verification_type` resource
+
+## 0.1.389
+- Update model version v0.0.342
+  -  Add `Search` and `Order` methods to List `/api/clusters_mgmt/v1/clusters/{id}/node_pools`
+
+## 0.1.388
+- Update model version v0.0.341
+  -  Add DELETE /api/addons_mgmt/v1/clusters/{id}/addons endpoint
+
 ## 0.1.387
 - Update model version v0.0.340
   - Add get `Platform` to `network_verification_type` resource
