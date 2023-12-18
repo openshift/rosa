@@ -17,6 +17,7 @@ limitations under the License.
 package network
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -295,7 +296,15 @@ func printStatus(reporter *reporter.Object, spin *spinner.Spinner, subnet string
 	} else if status.State() == string(NetworkVerifyFailed) {
 		reporter.Infof("%s: %s Unable to verify egress to: %v", subnet, status.State(), status.Details())
 	} else {
-		reporter.Infof("%s: %s", subnet, status.State())
+		var tags string
+		if len(status.Tags()) > 0 {
+			tagsList, err := json.Marshal(status.Tags())
+			if err != nil {
+				reporter.Debugf("%s: unable to marshal tags - %s", subnet, err.Error())
+			}
+			tags = string(tagsList)
+		}
+		reporter.Infof("%s, platform: %s, tags: %v: %s", subnet, status.Platform(), tags, status.State())
 	}
 
 	if spin != nil {
