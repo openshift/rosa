@@ -26,6 +26,10 @@ const (
 	//
 	PlatformAws Platform = "aws"
 	//
+	PlatformAwsClassic Platform = "aws-classic"
+	//
+	PlatformAwsHostedCp Platform = "aws-hosted-cp"
+	//
 	PlatformGcp Platform = "gcp"
 	//
 	PlatformHostedCluster Platform = "hostedcluster"
