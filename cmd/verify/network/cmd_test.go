@@ -43,12 +43,16 @@ var _ = Describe("verify network", func() {
 		  {
 			"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0b761d44d3d9a4663/",
 			"id": "subnet-0b761d44d3d9a4663",
-			"state": "pending"
+			"state": "pending",
+			"platform": "aws",
+			"tags": {"t1":"v1"}
 		  },
 		  {
 			"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0f87f640e56934cbc/",
 			"id": "subnet-0f87f640e56934cbc",
-			"state": "passed"
+			"state": "passed",
+			"platform": "aws",
+			"tags": {"t1":"v1"}
 		  }
 		],
 		"cloud_provider_data": {
@@ -65,12 +69,16 @@ var _ = Describe("verify network", func() {
 		  {
 			"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0b761d44d3d9a4663/",
 			"id": "subnet-0b761d44d3d9a4663",
-			"state": "passed"
+			"state": "passed",
+			"platform": "aws",
+			"tags": {"t1":"v1"}
 		  },
 		  {
 			"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0f87f640e56934cbc/",
 			"id": "subnet-0f87f640e56934cbc",
-			"state": "passed"
+			"state": "passed",
+			"platform": "aws",
+			"tags": {"t1":"v1"}
 		  }
 		],
 		"cloud_provider_data": {
@@ -82,35 +90,41 @@ var _ = Describe("verify network", func() {
 	{
 		"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0b761d44d3d9a4663/",
 		"id": "subnet-0b761d44d3d9a4663",
-		"state": "pending"
+		"state": "pending",
+		"platform": "aws",
+		"tags": {"t1":"v1"}
 	}
 	`
 	var subnetRunningSuccess = `
 	{
 		"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0b761d44d3d9a4663/",
 		"id": "subnet-0b761d44d3d9a4663",
-		"state": "running"
+		"state": "running",
+		"platform": "aws",
+		"tags": {"t1":"v1"}
 	}
 	`
 	var subnetPassedSuccess = `
 	{
 		"href": "/api/clusters_mgmt/v1/network_verifications/subnet-0f87f640e56934cbc/",
 		"id": "subnet-0f87f640e56934cbc",
-		"state": "passed"
+		"state": "passed",
+		"platform": "aws",
+		"tags": {"t1":"v1"}
 	}
 	` // #nosec G101
-	var successOutputPendingComplete = `INFO: subnet-0b761d44d3d9a4663: pending
-INFO: subnet-0f87f640e56934cbc: passed
+	var successOutputPendingComplete = `INFO: subnet-0b761d44d3d9a4663, platform: aws, tags: {"t1":"v1"}: pending
+INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 INFO: Run the following command to wait for verification to all subnets to complete:
 rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc
 `
-	var successOutputRunningComplete = `INFO: subnet-0b761d44d3d9a4663: running
-INFO: subnet-0f87f640e56934cbc: passed
+	var successOutputRunningComplete = `INFO: subnet-0b761d44d3d9a4663, platform: aws, tags: {"t1":"v1"}: running
+INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 INFO: Run the following command to wait for verification to all subnets to complete:
 rosa verify network --watch --status-only --region us-east-1 --subnet-ids subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc
 `
-	var successOutputComplete = `INFO: subnet-0b761d44d3d9a4663: passed
-INFO: subnet-0f87f640e56934cbc: passed
+	var successOutputComplete = `INFO: subnet-0b761d44d3d9a4663, platform: aws, tags: {"t1":"v1"}: passed
+INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 `
 	BeforeEach(func() {
 
