@@ -1199,21 +1199,23 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	httpTokens := args.ec2MetadataHttpTokens
-	if interactive.Enabled() && !isHostedCP {
-		httpTokens, err = interactive.GetString(interactive.Input{
-			Question: fmt.Sprintf("Configure the use of IMDSv2 for ec2 instances %s/%s",
-				v1.Ec2MetadataHttpTokensOptional, v1.Ec2MetadataHttpTokensRequired),
-			Help:    cmd.Flags().Lookup("ec2-metadata-http-tokens").Usage,
-			Default: httpTokens,
-			Validators: []interactive.Validator{
-				ocm.ValidateHttpTokensValue,
-			},
-		})
-
-	} else {
-		err = ocm.ValidateHttpTokensValue(httpTokens)
+	if httpTokens == "" {
+		httpTokens = string(v1.Ec2MetadataHttpTokensOptional)
 	}
-	if err != nil {
+	if interactive.Enabled() && !isHostedCP {
+		httpTokens, err = interactive.GetOption(interactive.Input{
+			Question: "Configure the use of IMDSv2 for ec2 instances",
+			Options:  []string{string(v1.Ec2MetadataHttpTokensOptional), string(v1.Ec2MetadataHttpTokensRequired)},
+			Help:     cmd.Flags().Lookup("ec2-metadata-http-tokens").Usage,
+			Required: true,
+			Default:  httpTokens,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
+			os.Exit(1)
+		}
+	}
+	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
 		r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
 		os.Exit(1)
 	}
