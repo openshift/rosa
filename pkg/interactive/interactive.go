@@ -177,12 +177,28 @@ func GetOption(input Input) (a string, err error) {
 	if !ok {
 		dflt = ""
 	}
+	defaultMessage := ""
+	if dflt != "" {
+		defaultMessage = fmt.Sprintf("default = '%s'", dflt)
+	}
 	question := input.Question
-	if !input.Required && dflt == "" {
-		question = fmt.Sprintf("%s (optional, choose '%s' to skip selection. "+
-			"The default value will be supplied.)", question, consts.SkipSelectionOption)
+	optionalMessage := ""
+	if !input.Required {
+		optionalMessage = fmt.Sprintf("optional, choose '%s' to skip selection", consts.SkipSelectionOption)
 		input.Options = append([]string{consts.SkipSelectionOption}, input.Options...)
-		dflt = consts.SkipSelectionOption
+		if dflt == "" {
+			dflt = consts.SkipSelectionOption
+		} else {
+			optionalMessage += ". The default value will be provided"
+		}
+	}
+	if optionalMessage != "" || defaultMessage != "" {
+		question = fmt.Sprintf("(%s%s", question, optionalMessage)
+		separator := ""
+		if optionalMessage != "" {
+			separator = "; "
+		}
+		question = fmt.Sprintf("%s%s%s)", question, separator, defaultMessage)
 	}
 	// if default is empty or not in the options, default to the first available option
 	if (dflt == "" || !containsString(input.Options, dflt)) && len(input.Options) > 0 {
