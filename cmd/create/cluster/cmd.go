@@ -1179,6 +1179,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("version").Usage,
 			Options:  versionList,
 			Default:  version,
+			Required: true,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
@@ -2848,7 +2849,7 @@ func run(cmd *cobra.Command, _ []string) {
 			routeSelector = args.defaultIngressRouteSelectors
 		} else if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
 			routeSelectorArg, err := interactive.GetString(interactive.Input{
-				Question: "Route Selector for ingress (e.g. 'route=external')",
+				Question: "Router Ingress Sharding: Route Selector (e.g. 'route=external')",
 				Help:     cmd.Flags().Lookup(ingress.DefaultIngressRouteSelectorFlag).Usage,
 				Default:  args.defaultIngressRouteSelectors,
 				Validators: []interactive.Validator{
@@ -2878,7 +2879,7 @@ func run(cmd *cobra.Command, _ []string) {
 			excludedNamespaces = args.defaultIngressExcludedNamespaces
 		} else if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
 			excludedNamespacesArg, err := interactive.GetString(interactive.Input{
-				Question: "Excluded namespaces for ingress",
+				Question: "Router Ingress Sharding: Namespace exclusion",
 				Help:     cmd.Flags().Lookup(ingress.DefaultIngressExcludedNamespacesFlag).Usage,
 				Default:  args.defaultIngressExcludedNamespaces,
 			})
@@ -2903,10 +2904,11 @@ func run(cmd *cobra.Command, _ []string) {
 					defaultIngressWildcardSelection = args.defaultIngressWildcardPolicy
 				}
 				wildcardPolicyArg, err := interactive.GetOption(interactive.Input{
-					Question: "Wildcard Policy",
+					Question: "Route Admission: Wildcard Policy",
 					Options:  ingress.ValidWildcardPolicies,
 					Help:     cmd.Flags().Lookup(ingress.DefaultIngressWildcardPolicyFlag).Usage,
 					Default:  defaultIngressWildcardSelection,
+					Required: true,
 				})
 				if err != nil {
 					r.Reporter.Errorf("Expected a valid Wildcard Policy: %s", err)
@@ -2931,10 +2933,11 @@ func run(cmd *cobra.Command, _ []string) {
 					defaultIngressNamespaceOwnershipSelection = args.defaultIngressNamespaceOwnershipPolicy
 				}
 				namespaceOwnershipPolicyArg, err := interactive.GetOption(interactive.Input{
-					Question: "Namespace Ownership Policy",
+					Question: "Route Admission: Namespace Ownership Policy",
 					Options:  ingress.ValidNamespaceOwnershipPolicies,
 					Help:     cmd.Flags().Lookup(ingress.DefaultIngressNamespaceOwnershipPolicyFlag).Usage,
 					Default:  defaultIngressNamespaceOwnershipSelection,
+					Required: true,
 				})
 				if err != nil {
 					r.Reporter.Errorf("Expected a valid Namespace Ownership Policy: %s", err)
