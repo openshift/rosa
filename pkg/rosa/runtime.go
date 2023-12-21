@@ -4,6 +4,7 @@ import (
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	slv1 "github.com/openshift-online/ocm-sdk-go/servicelogs/v1"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -96,4 +97,21 @@ func (r *Runtime) FetchCluster() *cmv1.Cluster {
 	}
 	r.Cluster = cluster
 	return cluster
+}
+
+func (r *Runtime) DisplayClusterWarnings(clusterId string) error {
+	serviceLogs, err := r.OCMClient.ListServiceLogs(clusterId)
+	if err != nil {
+		return err
+	}
+	if serviceLogs.Items().Len() > 0 {
+		r.Reporter.Warnf("The following warnings were generated on creation of your cluster:\n")
+	}
+	serviceLogs.Items().Each(func(entry *slv1.LogEntry) bool {
+		if entry.Severity() == slv1.SeverityWarning {
+			r.Reporter.Warnf("- %s\n\t%s\n", entry.Summary(), entry.Description())
+		}
+		return true
+	})
+	return nil
 }

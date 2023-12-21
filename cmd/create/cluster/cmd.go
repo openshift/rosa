@@ -3112,6 +3112,9 @@ func run(cmd *cobra.Command, _ []string) {
 			"Once the cluster is installed you will need to add an Identity Provider " +
 				"before you can login into the cluster. See 'rosa create idp --help' " +
 				"for more information.")
+		if err := r.DisplayClusterWarnings(cluster.ID()); err != nil {
+			r.Reporter.Errorf("Failed to check cluster warnings: %v", err)
+		}
 	}
 
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{cluster.ID()})
