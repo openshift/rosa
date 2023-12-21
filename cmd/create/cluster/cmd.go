@@ -70,6 +70,8 @@ import (
 const (
 	OidcConfigIdFlag      = "oidc-config-id"
 	ClassicOidcConfigFlag = "classic-oidc-config"
+	// #nosec G101
+	Ec2MetadataHttpTokensFlag = "ec2-metadata-http-tokens"
 
 	clusterAutoscalerFlagsPrefix = "autoscaler-"
 
@@ -461,7 +463,7 @@ func init() {
 
 	flags.StringVar(
 		&args.ec2MetadataHttpTokens,
-		"ec2-metadata-http-tokens",
+		Ec2MetadataHttpTokensFlag,
 		"",
 		"Should cluster nodes use both v1 and v2 endpoints or just v2 endpoint "+
 			"of EC2 Instance Metadata Service (IMDS)",
@@ -924,15 +926,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if isHostedCP && args.ec2MetadataHttpTokens != "" {
-		r.Reporter.Errorf("ec2-metadata-http-tokens can't be set with hosted-cp")
+	if isHostedCP && cmd.Flags().Changed(Ec2MetadataHttpTokensFlag) {
+		r.Reporter.Errorf("'%s' is not available for Hosted Control Plane clusters", Ec2MetadataHttpTokensFlag)
 		os.Exit(1)
-	}
-
-	// setting default for ec2MetadataHttpTokens in case cluster is not hosted
-	// or ec2MetadataHttpTokens was not set
-	if !isHostedCP && args.ec2MetadataHttpTokens == "" {
-		args.ec2MetadataHttpTokens = string(v1.Ec2MetadataHttpTokensOptional)
 	}
 
 	// Errors when users elects for cluster admin via flags and elects for hosted control plane via interactive prompt"
@@ -1200,29 +1196,31 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	httpTokens := args.ec2MetadataHttpTokens
-	if httpTokens == "" {
-		httpTokens = string(v1.Ec2MetadataHttpTokensOptional)
-	}
-	if interactive.Enabled() && !isHostedCP {
-		httpTokens, err = interactive.GetOption(interactive.Input{
-			Question: "Configure the use of IMDSv2 for ec2 instances",
-			Options:  []string{string(v1.Ec2MetadataHttpTokensOptional), string(v1.Ec2MetadataHttpTokensRequired)},
-			Help:     cmd.Flags().Lookup("ec2-metadata-http-tokens").Usage,
-			Required: true,
-			Default:  httpTokens,
-		})
-		if err != nil {
+	if !isHostedCP {
+		if httpTokens == "" {
+			httpTokens = string(v1.Ec2MetadataHttpTokensOptional)
+		}
+		if interactive.Enabled() {
+			httpTokens, err = interactive.GetOption(interactive.Input{
+				Question: "Configure the use of IMDSv2 for ec2 instances",
+				Options:  []string{string(v1.Ec2MetadataHttpTokensOptional), string(v1.Ec2MetadataHttpTokensRequired)},
+				Help:     cmd.Flags().Lookup(Ec2MetadataHttpTokensFlag).Usage,
+				Required: true,
+				Default:  httpTokens,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
+				os.Exit(1)
+			}
+		}
+		if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
 			r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
 			os.Exit(1)
 		}
-	}
-	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
-		r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
-		os.Exit(1)
-	}
-	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
-		r.Reporter.Errorf(err.Error())
-		os.Exit(1)
+		if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
 	}
 
 	// warn if mode is used for non sts cluster
