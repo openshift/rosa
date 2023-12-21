@@ -3560,6 +3560,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --version %s", commandVersion)
 	}
 
+	if spec.Ec2MetadataHttpTokens != "" {
+		command += fmt.Sprintf(" --ec2-metadata-http-tokens %s", spec.Ec2MetadataHttpTokens)
+	}
+
 	// Only account for expiration duration, as a fixed date may be obsolete if command is re-run later
 	if args.expirationDuration != 0 {
 		command += fmt.Sprintf(" --expiration %s", args.expirationDuration)
