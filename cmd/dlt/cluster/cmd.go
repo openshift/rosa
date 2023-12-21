@@ -79,6 +79,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 	clusterKey := r.GetClusterKey()
 
+	if args.bestEffort {
+		r.Reporter.Warnf("Deleting cluster '%s' with 'best effort' means that certain resources may be left behind"+
+			" in AWS account '%s'. These resources will need to be deleted manually.", clusterKey, r.Creator.AccountID)
+	}
+
 	if !confirm.Confirm("delete cluster %s", clusterKey) {
 		os.Exit(0)
 	}
