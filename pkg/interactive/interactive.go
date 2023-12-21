@@ -193,7 +193,7 @@ func GetOption(input Input) (a string, err error) {
 		}
 	}
 	if optionalMessage != "" || defaultMessage != "" {
-		question = fmt.Sprintf("(%s%s", question, optionalMessage)
+		question = fmt.Sprintf("%s (%s", question, optionalMessage)
 		separator := ""
 		if optionalMessage != "" {
 			separator = "; "
