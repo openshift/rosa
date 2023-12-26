@@ -1276,8 +1276,18 @@ func run(cmd *cobra.Command, _ []string) {
 				if err != nil {
 					continue
 				}
-				if roleName == fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name) {
+				defaultRoleMatch := fmt.Sprintf("%s-%s-Role", aws.DefaultPrefix, role.Name)
+				if isHostedCP {
+					defaultRoleMatch = fmt.Sprintf(
+						"%s-%s-%s-Role",
+						aws.DefaultPrefix,
+						aws.HCPSuffixPattern,
+						role.Name,
+					)
+				}
+				if roleName == defaultRoleMatch {
 					defaultRoleARN = rARN
+					break
 				}
 			}
 			r.Reporter.Warnf("More than one %s role found", role.Name)
