@@ -3359,6 +3359,11 @@ func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int)
 			return err
 		}
 
+		if isHostedCP && minReplicas < 2 {
+			return fmt.Errorf("hosted Control Plane clusters require a minimum of 2 nodes, "+
+				"but %d was requested", minReplicas)
+		}
+
 		return clustervalidations.MinReplicasValidator(minReplicas, multiAZ, isHostedCP, privateSubnetsCount)
 	}
 }
