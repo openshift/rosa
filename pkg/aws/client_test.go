@@ -225,10 +225,6 @@ var _ = Describe("Client", func() {
 				Tags: tags,
 			}, nil)
 
-			mockIamAPI.EXPECT().ListRolePolicies(gomock.Any()).Return(&iam.ListRolePoliciesOutput{
-				PolicyNames: make([]*string, 0),
-			}, nil)
-
 			role, err := client.GetAccountRoleByArn(testArn)
 
 			Expect(err).NotTo(HaveOccurred())
