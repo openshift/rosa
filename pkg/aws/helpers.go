@@ -1,23 +1,27 @@
 package aws
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 
@@ -130,18 +134,15 @@ func ARNPathValidator(input interface{}) error {
 // If the region given is empty, it will first attempt to use the default, and, failing that, will
 // prompt for user input.
 func GetRegion(region string) (string, error) {
-	if region == "" {
-		defaultSession, err := session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		})
+    if region == "" {
+        cfg, err := config.LoadDefaultConfig(context.TODO())
+        if err != nil {
+            return "", fmt.Errorf("Error loading default AWS configuration: %v", err)
+        }
 
-		if err != nil {
-			return "", fmt.Errorf("Error creating default session for AWS client: %v", err)
-		}
-
-		region = *defaultSession.Config.Region
-	}
-	return region, nil
+        region = cfg.Region
+    }
+    return region, nil
 }
 
 // getClientDetails will return the *iam.User associated with the provided client's credentials,
@@ -155,7 +156,7 @@ func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool,
 		return nil, rootUser, err
 	}
 
-	user, err := awsClient.stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	user, err := awsClient.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, rootUser, err
 	}
@@ -403,13 +404,13 @@ func HasDuplicates(valSlice []string) (string, bool) {
 	return "", false
 }
 
-func GetTagValues(tagsValue []*iam.Tag) (roleType string, version string) {
+func GetTagValues(tagsValue []iamtypes.Tag) (roleType string, version string) {
 	for _, tag := range tagsValue {
-		switch aws.StringValue(tag.Key) {
+		switch aws.ToString(tag.Key) {
 		case tags.RoleType:
-			roleType = aws.StringValue(tag.Value)
+			roleType = aws.ToString(tag.Value)
 		case common.OpenShiftVersion:
-			version = aws.StringValue(tag.Value)
+			version = aws.ToString(tag.Value)
 		}
 	}
 	return
@@ -506,15 +507,19 @@ func GetOIDCProviderARN(accountID string, providerURL string) string {
 }
 
 func GetPartition() string {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return "aws"
+	}
 	region, err := GetRegion(arguments.GetRegion())
 	if err != nil || region == "" {
-		return endpoints.AwsPartitionID
+		return "aws"
 	}
-	partition, ok := endpoints.PartitionForRegion(endpoints.DefaultPartitions(), region)
-	if !ok || partition.ID() == "" {
-		return endpoints.AwsPartitionID
+	e, err := aws.EndpointResolverWithOptions.ResolveEndpoint("s3", region)
+	if err || e.PartitionID == "" {
+		return "aws"
 	}
-	return partition.ID()
+	return e.PartitionID
 }
 
 func GetPrefixFromAccountRole(cluster *cmv1.Cluster, roleNameSuffix string) (string, error) {
@@ -820,7 +825,7 @@ const (
 )
 
 // SetSubnetOption Creates a subnet option using a predefined template.
-func SetSubnetOption(subnet *ec2.Subnet) string {
+func SetSubnetOption(subnet *ec2types.Subnet) string {
 	subnetName := ""
 	for _, tag := range subnet.Tags {
 		switch *tag.Key {
@@ -831,15 +836,15 @@ func SetSubnetOption(subnet *ec2.Subnet) string {
 			break
 		}
 	}
-	return fmt.Sprintf(subnetTemplate, aws.StringValue(subnet.SubnetId),
-		subnetName, aws.StringValue(subnet.VpcId), aws.StringValue(subnet.AvailabilityZone),
-		aws.StringValue(subnet.OwnerId))
+	return fmt.Sprintf(subnetTemplate, aws.ToString(subnet.SubnetId),
+		subnetName, aws.ToString(subnet.VpcId), aws.ToString(subnet.AvailabilityZone),
+		aws.ToString(subnet.OwnerId))
 }
 
 // SetSecurityGroupOption Creates a security group option using a predefined template.
-func SetSecurityGroupOption(securityGroup *ec2.SecurityGroup) string {
+func SetSecurityGroupOption(securityGroup *ec2types.SecurityGroup) string {
 	return fmt.Sprintf(securityGroupTemplate,
-		aws.StringValue(securityGroup.GroupId), aws.StringValue(securityGroup.GroupName))
+		aws.ToString(securityGroup.GroupId), aws.ToString(securityGroup.GroupName))
 }
 
 // Parse option expects the actual option as the first token followed by a space
@@ -999,3 +1004,40 @@ func IsHostedCPManagedPolicies(cluster *cmv1.Cluster) bool {
 func IsHostedCP(cluster *cmv1.Cluster) bool {
 	return cluster.Hypershift().Enabled()
 }
+
+func IsStackOperationComplete(stackName string, cfAPI CloudFormationApiClient, operation cloudformationtypes.StackStatus) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 120 * time.Second)
+	defer cancel()
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("timeout waiting for stack operation to complete")
+
+		case <-ticker.C:
+			resp, err := cfAPI.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+				StackName: aws.String(stackName),
+			})
+			if err != nil {
+				return err
+			}
+
+			stack := resp.Stacks[0]
+			if stack.StackStatus == operation {
+				return nil
+			}
+		}
+	}
+}
+
+func ConvertToTagPointers(tags []iamtypes.Tag) []*iamtypes.Tag {
+    tagPointers := make([]*iamtypes.Tag, len(tags))
+    for i, tag := range tags {
+        tagPointers[i] = &tag
+    }
+    return tagPointers
+}
+

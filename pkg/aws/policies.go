@@ -17,14 +17,15 @@ limitations under the License.
 package aws
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	semver "github.com/hashicorp/go-version"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
@@ -144,25 +145,30 @@ var roleTypeMap = map[string]string{
 
 func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
 	version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
-	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
+	output, err := c.iamClient.GetRole(context.Background() ,&iam.GetRoleInput{
 		RoleName: aws.String(name),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
+		if IsNoSuchEntityException(err) {
 				return c.createRole(name, policy, permissionsBoundary, tagList, path)
-			default:
-				return "", err
-			}
 		}
+		return "", err
 	}
 
-	if managedPolicies && !common.IsManagedRole(output.Role.Tags) {
+	 // Convert output.Role.Tags to the correct type
+    var tags []*iamtypes.Tag
+    for _, tag := range output.Role.Tags {
+        tags = append(tags, &iamtypes.Tag{
+            Key:   tag.Key,
+            Value: tag.Value,
+        })
+    }
+
+	if managedPolicies && !common.IsManagedRole(tags) {
 		return "", fmt.Errorf("Role '%s' with unmanaged policies already exists", *output.Role.Arn)
 	}
 
-	outputPath, err := GetPathFromARN(aws.StringValue(output.Role.Arn))
+	outputPath, err := GetPathFromARN(aws.ToString(output.Role.Arn))
 	if err != nil {
 		return "", err
 	}
@@ -172,12 +178,12 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 	}
 
 	if permissionsBoundary != "" {
-		_, err = c.iamClient.PutRolePermissionsBoundary(&iam.PutRolePermissionsBoundaryInput{
+		_, err = c.iamClient.PutRolePermissionsBoundary(context.Background(), &iam.PutRolePermissionsBoundaryInput{
 			RoleName:            aws.String(name),
 			PermissionsBoundary: aws.String(permissionsBoundary),
 		})
 	} else if output.Role.PermissionsBoundary != nil {
-		_, err = c.iamClient.DeleteRolePermissionsBoundary(&iam.DeleteRolePermissionsBoundaryInput{
+		_, err = c.iamClient.DeleteRolePermissionsBoundary(context.Background(), &iam.DeleteRolePermissionsBoundaryInput{
 			RoleName: aws.String(name),
 		})
 	}
@@ -186,7 +192,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 	}
 
 	role := output.Role
-	roleArn := aws.StringValue(role.Arn)
+	roleArn := aws.ToString(role.Arn)
 
 	isCompatible, err := c.isRoleCompatible(name, version)
 	if err != nil {
@@ -199,7 +205,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 	}
 
 	if needsUpdate || !isCompatible {
-		_, err = c.iamClient.UpdateAssumeRolePolicy(&iam.UpdateAssumeRolePolicyInput{
+		_, err = c.iamClient.UpdateAssumeRolePolicy(context.Background() ,&iam.UpdateAssumeRolePolicyInput{
 			RoleName:       aws.String(name),
 			PolicyDocument: aws.String(policy),
 		})
@@ -207,7 +213,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 			return roleArn, err
 		}
 
-		_, err = c.iamClient.TagRole(&iam.TagRoleInput{
+		_, err = c.iamClient.TagRole(context.Background() ,&iam.TagRoleInput{
 			RoleName: aws.String(name),
 			Tags:     getTags(tagList),
 		})
@@ -220,7 +226,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 }
 
 func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
-	_, err = c.iamClient.GetRole(&iam.GetRoleInput{
+	_, err = c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(name),
 	})
 	if err == nil {
@@ -232,12 +238,8 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 			"of the chosen operator roles prefix.", name)
 	}
 
-	if aerr, ok := err.(awserr.Error); ok {
-		switch aerr.Code() {
-		case iam.ErrCodeNoSuchEntityException:
-			// This is what we want
-			return nil
-		}
+	if IsNoSuchEntityException(err) {
+		return nil
 	}
 	return fmt.Errorf("Error validating role name '%s': %v", name, err)
 }
@@ -258,17 +260,14 @@ func (c *awsClient) createRole(name string, policy string, permissionsBoundary s
 	if permissionsBoundary != "" {
 		createRoleInput.PermissionsBoundary = aws.String(permissionsBoundary)
 	}
-	output, err := c.iamClient.CreateRole(createRoleInput)
+	output, err := c.iamClient.CreateRole(context.Background(),createRoleInput)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeEntityAlreadyExistsException:
-				return "", nil
-			}
+		if IsEntityAlreadyExistsException(err){
+			return "", nil
 		}
 		return "", err
 	}
-	return aws.StringValue(output.Role.Arn), nil
+	return aws.ToString(output.Role.Arn), nil
 }
 
 func (c *awsClient) isRoleCompatible(name string, version string) (bool, error) {
@@ -276,7 +275,7 @@ func (c *awsClient) isRoleCompatible(name string, version string) (bool, error) 
 	if version == "" {
 		return true, nil
 	}
-	output, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+	output, err := c.iamClient.ListRoleTags(context.Background() ,&iam.ListRoleTagsInput{
 		RoleName: aws.String(name),
 	})
 	if err != nil {
@@ -287,7 +286,7 @@ func (c *awsClient) isRoleCompatible(name string, version string) (bool, error) 
 }
 
 func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy string) error {
-	_, err := c.iamClient.PutRolePolicy(&iam.PutRolePolicyInput{
+	_, err := c.iamClient.PutRolePolicy(context.Background(), &iam.PutRolePolicyInput{
 		RoleName:       aws.String(roleName),
 		PolicyName:     aws.String(policyName),
 		PolicyDocument: aws.String(policy),
@@ -312,28 +311,21 @@ func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
 	version string, tagList map[string]string, path string, force bool) (string, error) {
 	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
-		var policyArnLocal string
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				policyArnLocal, err = c.createPolicy(policyArn, document, tagList, path)
-				if err != nil {
-					if aerr, ok := err.(awserr.Error); ok {
-						if aerr.Code() == iam.ErrCodeEntityAlreadyExistsException {
-							return "", errors.Wrapf(err,
-								fmt.Sprintf("Failed to create a policy with ARN '%s'", policyArn))
-						}
-					}
-					return "", err
-				}
-				return policyArnLocal, nil
-			default:
-				return "", err
-			}
-		}
-	}
+        var policyArnLocal string
+        if IsNoSuchEntityException(err) {
+            policyArnLocal, err = c.createPolicy(policyArn, document, tagList, path)
+            if err != nil {
+                if IsEntityAlreadyExistsException(err) {
+                    return "", errors.Wrapf(err, "Failed to create a policy with ARN '%s'", policyArn)
+                }
+                return "", err
+            }
+            return policyArnLocal, nil
+        } 
+        return "", err
+    }
 
-	policyArn = aws.StringValue(output.Policy.Arn)
+	policyArn = aws.ToString(output.Policy.Arn)
 
 	isCompatible := false
 	if !force {
@@ -351,16 +343,16 @@ func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
 			return policyArn, err
 		}
 
-		_, err = c.iamClient.CreatePolicyVersion(&iam.CreatePolicyVersionInput{
+		_, err = c.iamClient.CreatePolicyVersion(context.Background(), &iam.CreatePolicyVersionInput{
 			PolicyArn:      aws.String(policyArn),
 			PolicyDocument: aws.String(document),
-			SetAsDefault:   aws.Bool(true),
+			SetAsDefault:   true,
 		})
 		if err != nil {
 			return policyArn, err
 		}
 
-		_, err = c.iamClient.TagPolicy(&iam.TagPolicyInput{
+		_, err = c.iamClient.TagPolicy(context.Background(), &iam.TagPolicyInput{
 			PolicyArn: aws.String(policyArn),
 			Tags:      getTags(tagList),
 		})
@@ -373,14 +365,15 @@ func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
 }
 
 func (c *awsClient) IsPolicyExists(policyArn string) (*iam.GetPolicyOutput, error) {
-	output, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{
+	output, err := c.iamClient.GetPolicy(context.Background(), 
+	&iam.GetPolicyInput{
 		PolicyArn: aws.String(policyArn),
 	})
 	return output, err
 }
 
 func (c *awsClient) IsRolePolicyExists(roleName string, policyName string) (*iam.GetRolePolicyOutput, error) {
-	output, err := c.iamClient.GetRolePolicy(&iam.GetRolePolicyInput{
+	output, err := c.iamClient.GetRolePolicy(context.Background(), &iam.GetRolePolicyInput{
 		PolicyName: aws.String(policyName),
 		RoleName:   aws.String(roleName),
 	})
@@ -402,59 +395,64 @@ func (c *awsClient) createPolicy(policyArn string, document string, tagList map[
 		createPolicyInput.Path = aws.String(path)
 	}
 
-	output, err := c.iamClient.CreatePolicy(createPolicyInput)
+	output, err := c.iamClient.CreatePolicy(context.Background(), createPolicyInput)
 
 	if err != nil {
 		return "", err
 	}
-	return aws.StringValue(output.Policy.Arn), nil
+	return aws.ToString(output.Policy.Arn), nil
 }
 
 func (c *awsClient) IsPolicyCompatible(policyArn string, version string) (bool, error) {
-	output, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
+	output, err := c.iamClient.ListPolicyTags(context.Background(), &iam.ListPolicyTagsInput{
 		PolicyArn: aws.String(policyArn),
 	})
 	if err != nil {
 		return false, err
 	}
 
-	return common.HasCompatibleVersionTags(output.Tags, version)
+	tags := make([]*iamtypes.Tag, len(output.Tags))
+    for i, tag := range output.Tags { 				
+        tags[i] = &tag
+    }
+
+	return common.HasCompatibleVersionTags(tags, version)
 }
 
-func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []*iam.Tag, version string) (bool, error) {
-	if len(iamTags) == 0 {
-		return false, nil
-	}
-	for _, tag := range iamTags {
-		if aws.StringValue(tag.Key) == common.OpenShiftVersion {
-			if version == aws.StringValue(tag.Value) {
-				return true, nil
-			}
+func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []iamtypes.Tag, version string) (bool, error) {
+    if len(iamTags) == 0 {
+        return false, nil
+    }
+    for _, tag := range iamTags {
+        if aws.ToString(tag.Key) == common.OpenShiftVersion {
+            if version == aws.ToString(tag.Value) {
+                return true, nil
+            }
 
-			upgradeVersion, err := semver.NewVersion(version)
-			if err != nil {
-				return false, err
-			}
+            upgradeVersion, err := semver.NewVersion(version)
+            if err != nil {
+                return false, err
+            }
 
-			currentVersion, err := semver.NewVersion(aws.StringValue(tag.Value))
-			if err != nil {
-				return false, err
-			}
+            currentVersion, err := semver.NewVersion(aws.ToString(tag.Value))
+            if err != nil {
+                return false, err
+            }
 
-			upgradeVersionSegments := upgradeVersion.Segments64()
-			c, err := semver.NewConstraint(fmt.Sprintf(">= %d.%d",
-				upgradeVersionSegments[0], upgradeVersionSegments[1]))
-			if err != nil {
-				return false, err
-			}
-			return c.Check(currentVersion), nil
-		}
-	}
-	return false, nil
+            upgradeVersionSegments := upgradeVersion.Segments64()
+            c, err := semver.NewConstraint(fmt.Sprintf(">= %d.%d",
+                upgradeVersionSegments[0], upgradeVersionSegments[1]))
+            if err != nil {
+                return false, err
+            }
+            return c.Check(currentVersion), nil
+        }
+    }
+    return false, nil
 }
 
 func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
-	_, err := c.iamClient.AttachRolePolicy(&iam.AttachRolePolicyInput{
+	_, err := c.iamClient.AttachRolePolicy(context.Background(), &iam.AttachRolePolicyInput{
 		RoleName:  aws.String(roleName),
 		PolicyArn: aws.String(policyARN),
 	})
@@ -471,7 +469,7 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 		return roleARNs, err
 	}
 	for _, role := range roles {
-		if !strings.Contains(aws.StringValue(role.RoleName), AccountRoles[roleType].Name) {
+		if !strings.Contains(aws.ToString(role.RoleName), AccountRoles[roleType].Name) {
 			continue
 		}
 		isValid, err := c.ValidateAccountRoleVersionCompatibility(*role.RoleName, roleType, version)
@@ -481,7 +479,7 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 		if !isValid {
 			continue
 		}
-		roleARNs = append(roleARNs, aws.StringValue(role.Arn))
+		roleARNs = append(roleARNs, aws.ToString(role.Arn))
 	}
 	return roleARNs, nil
 }
@@ -489,7 +487,7 @@ func (c *awsClient) FindRoleARNs(roleType string, version string) ([]string, err
 // FIXME: refactor similar calls to use this instead
 func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 	roleName string, roleType string, minVersion string) (bool, error) {
-	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+	listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
@@ -498,8 +496,8 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 	skip := false
 	isTagged := false
 	for _, tag := range listRoleTagsOutput.Tags {
-		tagValue := aws.StringValue(tag.Value)
-		switch aws.StringValue(tag.Key) {
+		tagValue := aws.ToString(tag.Value)
+		switch aws.ToString(tag.Key) {
 		case tags.RoleType:
 			isTagged = true
 			if tagValue != roleType {
@@ -508,8 +506,9 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 			}
 		case common.OpenShiftVersion:
 			isTagged = true
+			tagsSlice := ConvertToTagPointers(listRoleTagsOutput.Tags)
 
-			if common.IamResourceHasTag(listRoleTagsOutput.Tags, common.ManagedPolicies, tags.True) {
+			if common.IamResourceHasTag(tagsSlice, common.ManagedPolicies, tags.True) {
 				// Managed policies will be up-to-date no need to check version tags
 				break
 			}
@@ -539,91 +538,98 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 	return true, nil
 }
 
-func (c *awsClient) ListRoles() ([]*iam.Role, error) {
-	roles := []*iam.Role{}
-	err := c.iamClient.ListRolesPages(&iam.ListRolesInput{}, func(page *iam.ListRolesOutput, lastPage bool) bool {
-		roles = append(roles, page.Roles...)
-		return aws.BoolValue(page.IsTruncated)
-	})
-	return roles, err
+func (c *awsClient) ListRoles() ([]*iamtypes.Role, error) {
+    roles := []*iamtypes.Role{}
+    paginator := iam.NewListRolesPaginator(c.iamClient, &iam.ListRolesInput{})
+    for paginator.HasMorePages() {
+        output, err := paginator.NextPage(context.TODO())
+        if err != nil {
+            return nil, err
+        }
+        for _, role := range output.Roles {
+            roles = append(roles, &role)
+        }
+    }
+    return roles, nil
 }
 
 func (c *awsClient) FindPolicyARN(operator Operator, version string) (string, error) {
-	policies := []*iam.Policy{}
-	err := c.iamClient.ListPoliciesPages(&iam.ListPoliciesInput{
-		Scope: aws.String(iam.PolicyScopeTypeLocal),
-	}, func(page *iam.ListPoliciesOutput, lastPage bool) bool {
-		policies = append(policies, page.Policies...)
-		return aws.BoolValue(page.IsTruncated)
-	})
-	if err != nil {
-		return "", err
-	}
-	for _, policy := range policies {
-		listPolicyTagsOutput, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
-			PolicyArn: policy.Arn,
-		})
-		if err != nil {
-			return "", err
-		}
-		skip := false
-		isTagged := false
-		for _, tag := range listPolicyTagsOutput.Tags {
-			tagValue := aws.StringValue(tag.Value)
-			switch aws.StringValue(tag.Key) {
-			case tags.OperatorNamespace:
-				isTagged = true
-				if tagValue != operator.Namespace {
-					skip = true
-					break
-				}
-			case tags.OperatorName:
-				isTagged = true
-				if tagValue != operator.Name {
-					skip = true
-					break
-				}
-			case common.OpenShiftVersion:
-				isTagged = true
-				if tagValue != version {
-					skip = true
-					break
-				}
-			}
-		}
-		if isTagged && !skip {
-			return aws.StringValue(policy.Arn), nil
-		}
-	}
-	return "", nil
+    paginator := iam.NewListPoliciesPaginator(c.iamClient, &iam.ListPoliciesInput{
+        Scope: iamtypes.PolicyScopeTypeLocal,
+    })
+    for paginator.HasMorePages() {
+        output, err := paginator.NextPage(context.TODO())
+        if err != nil {
+            return "", err
+        }
+        for _, policy := range output.Policies {
+            listPolicyTagsOutput, err := c.iamClient.ListPolicyTags(context.TODO(), &iam.ListPolicyTagsInput{
+                PolicyArn: policy.Arn,
+            })
+            if err != nil {
+                return "", err
+            }
+            skip := false
+            isTagged := false
+            for _, tag := range listPolicyTagsOutput.Tags {
+                tagValue := aws.ToString(tag.Value)
+                switch aws.ToString(tag.Key) {
+                case tags.OperatorNamespace:
+                    isTagged = true
+                    if tagValue != operator.Namespace {
+                        skip = true
+                        break
+                    }
+                case tags.OperatorName:
+                    isTagged = true
+                    if tagValue != operator.Name {
+                        skip = true
+                        break
+                    }
+                case common.OpenShiftVersion:
+                    isTagged = true
+                    if tagValue != version {
+                        skip = true
+                        break
+                    }
+                }
+            }
+            if isTagged && !skip {
+                return aws.ToString(policy.Arn), nil
+            }
+        }
+    }
+    return "", nil
 }
 
-func getTags(tagList map[string]string) []*iam.Tag {
-	iamTags := []*iam.Tag{}
-	for k, v := range tagList {
-		iamTags = append(iamTags, &iam.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		})
-	}
-	return iamTags
+func getTags(tagList map[string]string) []iamtypes.Tag {
+    iamTags := []iamtypes.Tag{}
+    for k, v := range tagList {
+        iamTags = append(iamTags, iamtypes.Tag{
+            Key:   aws.String(k),
+            Value: aws.String(v),
+        })
+    }
+    return iamTags
 }
 
 func IsOCMRole(roleName *string) bool {
-	return strings.Contains(aws.StringValue(roleName), fmt.Sprintf("%s-Role", OCMRole))
+	return strings.Contains(aws.ToString(roleName), fmt.Sprintf("%s-Role", OCMRole))
 }
 
 // IsUserRole checks the role tags in addition to the role name, because the word 'user' is common
 func (c *awsClient) IsUserRole(roleName *string) (bool, error) {
-	if strings.Contains(aws.StringValue(roleName), OCMUserRole) {
-		roleTags, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+	if strings.Contains(aws.ToString(roleName), OCMUserRole) {
+		roleTags, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
 			RoleName: roleName,
 		})
 		if err != nil {
 			return false, err
 		}
 
-		return common.IamResourceHasTag(roleTags.Tags, tags.RoleType, OCMUserRole), nil
+		tagsSlice := ConvertToTagPointers(roleTags.Tags)
+
+		return common.IamResourceHasTag(tagsSlice, tags.RoleType, OCMUserRole), nil
 	}
 
 	return false, nil
@@ -644,8 +650,8 @@ func (c *awsClient) ListUserRoles() ([]Role, error) {
 
 		if isUserRole {
 			var userRole Role
-			userRole.RoleName = aws.StringValue(role.RoleName)
-			userRole.RoleARN = aws.StringValue(role.Arn)
+			userRole.RoleName = aws.ToString(role.RoleName)
+			userRole.RoleARN = aws.ToString(role.Arn)
 
 			userRoles = append(userRoles, userRole)
 		}
@@ -664,21 +670,22 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 	for _, role := range roles {
 		if IsOCMRole(role.RoleName) {
 			var ocmRole Role
-			ocmRole.RoleName = aws.StringValue(role.RoleName)
-			ocmRole.RoleARN = aws.StringValue(role.Arn)
+			ocmRole.RoleName = aws.ToString(role.RoleName)
+			ocmRole.RoleARN = aws.ToString(role.Arn)
 
-			roleTags, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+			roleTags, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
 				RoleName: role.RoleName,
 			})
+			tagsSlice := ConvertToTagPointers(roleTags.Tags)
 			if err != nil {
 				return nil, err
 			}
-			if common.IamResourceHasTag(roleTags.Tags, tags.AdminRole, tags.True) {
+			if common.IamResourceHasTag(tagsSlice, tags.AdminRole, tags.True) {
 				ocmRole.Admin = "Yes"
 			} else {
 				ocmRole.Admin = "No"
 			}
-			if common.IamResourceHasTag(roleTags.Tags, common.ManagedPolicies, tags.True) {
+			if common.IamResourceHasTag(tagsSlice, common.ManagedPolicies, tags.True) {
 				ocmRole.ManagedPolicy = true
 			}
 
@@ -689,8 +696,8 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 	return ocmRoles, nil
 }
 
-func (c *awsClient) listPolicies(role *iam.Role) ([]Policy, error) {
-	policiesOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{
+func (c *awsClient) listPolicies(role *iamtypes.Role) ([]Policy, error) {
+	policiesOutput, err := c.iamClient.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{
 		RoleName: role.RoleName,
 	})
 	if err != nil {
@@ -699,8 +706,8 @@ func (c *awsClient) listPolicies(role *iam.Role) ([]Policy, error) {
 
 	var policies []Policy
 	for _, policyName := range policiesOutput.PolicyNames {
-		policyOutput, err := c.iamClient.GetRolePolicy(&iam.GetRolePolicyInput{
-			PolicyName: policyName,
+		policyOutput, err := c.iamClient.GetRolePolicy(context.Background(), &iam.GetRolePolicyInput{
+			PolicyName: &policyName,
 			RoleName:   role.RoleName,
 		})
 		if err != nil {
@@ -711,7 +718,7 @@ func (c *awsClient) listPolicies(role *iam.Role) ([]Policy, error) {
 			return nil, err
 		}
 		policy := Policy{
-			PolicyName:     aws.StringValue(policyOutput.PolicyName),
+			PolicyName:     aws.ToString(policyOutput.PolicyName),
 			PolicyDocument: *policyDoc,
 		}
 		policies = append(policies, policy)
@@ -735,14 +742,14 @@ func (c *awsClient) GetAccountRoleByArn(arn string) (*Role, error) {
 	return accountRole, nil
 }
 
-func (c *awsClient) mapToAccountRole(version string, role *iam.Role) (*Role, error) {
+func (c *awsClient) mapToAccountRole(version string, role *iamtypes.Role) (*Role, error) {
 	if !checkIfAccountRole(role.RoleName) {
 		return nil, nil
 	}
 
 	accountRole := Role{}
 
-	listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+	listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
 		RoleName: role.RoleName,
 	})
 	if err != nil {
@@ -751,26 +758,26 @@ func (c *awsClient) mapToAccountRole(version string, role *iam.Role) (*Role, err
 
 	isTagged := false
 	for _, tag := range listRoleTagsOutput.Tags {
-		switch aws.StringValue(tag.Key) {
+		switch aws.ToString(tag.Key) {
 		case tags.RoleType:
 			isTagged = true
-			accountRole.RoleType = roleTypeMap[aws.StringValue(tag.Value)]
+			accountRole.RoleType = roleTypeMap[aws.ToString(tag.Value)]
 		case common.OpenShiftVersion:
-			tagValue := aws.StringValue(tag.Value)
+			tagValue := aws.ToString(tag.Value)
 			if version != "" && tagValue != version {
 				return nil, nil
 			}
 			isTagged = true
 			accountRole.Version = tagValue
 		case common.ManagedPolicies:
-			if aws.StringValue(tag.Value) == tags.True {
+			if aws.ToString(tag.Value) == tags.True {
 				accountRole.ManagedPolicy = true
 			}
 		}
 	}
 
-	accountRole.RoleName = aws.StringValue(role.RoleName)
-	accountRole.RoleARN = aws.StringValue(role.Arn)
+	accountRole.RoleName = aws.ToString(role.RoleName)
+	accountRole.RoleARN = aws.ToString(role.Arn)
 
 	if isTagged {
 		policies, err := c.listPolicies(role)
@@ -783,7 +790,7 @@ func (c *awsClient) mapToAccountRole(version string, role *iam.Role) (*Role, err
 	return &accountRole, nil
 }
 
-func (c *awsClient) mapToAccountRoles(version string, roles []*iam.Role) ([]Role, error) {
+func (c *awsClient) mapToAccountRoles(version string, roles []*iamtypes.Role) ([]Role, error) {
 
 	accountRoles := []Role{}
 	for _, role := range roles {
@@ -827,7 +834,7 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 		if _, mapOk := operatorMap[foundPrefix]; !mapOk {
 			operatorMap[foundPrefix] = []OperatorRoleDetail{}
 		}
-		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+		listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
 			RoleName: role.RoleName,
 		})
 		if err != nil {
@@ -835,13 +842,13 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 		}
 		skip := false
 		for _, tag := range listRoleTagsOutput.Tags {
-			switch aws.StringValue(tag.Key) {
+			switch aws.ToString(tag.Key) {
 			case common.ManagedPolicies:
-				if aws.StringValue(tag.Value) == tags.True {
+				if aws.ToString(tag.Value) == tags.True {
 					operatorRole.ManagedPolicy = true
 				}
 			case tags.ClusterID:
-				tagValue := aws.StringValue(tag.Value)
+				tagValue := aws.ToString(tag.Value)
 				if targetClusterId != "" && tagValue != targetClusterId {
 					skip = true
 				}
@@ -854,7 +861,7 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 			}
 		}
 
-		attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+		attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
 			RoleName: role.RoleName,
 		})
 		if err != nil {
@@ -864,7 +871,7 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 		attachedPolicies := []string{}
 
 		for _, policy := range attachedPoliciesOutput.AttachedPolicies {
-			attachedPolicies = append(attachedPolicies, (aws.StringValue(policy.PolicyName)))
+			attachedPolicies = append(attachedPolicies, (aws.ToString(policy.PolicyName)))
 		}
 		operatorRole.AttachedPolicies = attachedPolicies
 
@@ -873,14 +880,14 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 		}
 
 		if operatorRole.ManagedPolicy || len(attachedPoliciesOutput.AttachedPolicies) == 0 {
-			operatorRole.RoleName = aws.StringValue(role.RoleName)
-			operatorRole.RoleARN = aws.StringValue(role.Arn)
+			operatorRole.RoleName = aws.ToString(role.RoleName)
+			operatorRole.RoleARN = aws.ToString(role.Arn)
 			operatorMap[foundPrefix] = append(operatorMap[foundPrefix], operatorRole)
 			continue
 		}
 
 		for _, policy := range attachedPoliciesOutput.AttachedPolicies {
-			listPolicyTagsOutput, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
+			listPolicyTagsOutput, err := c.iamClient.ListPolicyTags(context.Background(), &iam.ListPolicyTagsInput{
 				PolicyArn: policy.PolicyArn,
 			})
 			if err != nil {
@@ -889,9 +896,9 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 			isTagged := false
 			skip := false
 			for _, tag := range listPolicyTagsOutput.Tags {
-				switch aws.StringValue(tag.Key) {
+				switch aws.ToString(tag.Key) {
 				case common.OpenShiftVersion:
-					tagValue := aws.StringValue(tag.Value)
+					tagValue := aws.ToString(tag.Value)
 					if version != "" && tagValue != version {
 						skip = true
 						break
@@ -901,8 +908,8 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 				}
 			}
 			if isTagged && !skip {
-				operatorRole.RoleName = aws.StringValue(role.RoleName)
-				operatorRole.RoleARN = aws.StringValue(role.Arn)
+				operatorRole.RoleName = aws.ToString(role.RoleName)
+				operatorRole.RoleARN = aws.ToString(role.Arn)
 				operatorMap[foundPrefix] = append(operatorMap[foundPrefix], operatorRole)
 			}
 		}
@@ -924,7 +931,7 @@ func (c *awsClient) ListOperatorRoles(version string, targetClusterId string) (m
 // Check if it is one of the ROSA account roles
 func checkIfAccountRole(roleName *string) bool {
 	for _, prefix := range AccountRoles {
-		if strings.Contains(aws.StringValue(roleName), common.GetRoleName("", prefix.Name)) {
+		if strings.Contains(aws.ToString(roleName), common.GetRoleName("", prefix.Name)) {
 			return true
 		}
 	}
@@ -934,7 +941,7 @@ func checkIfAccountRole(roleName *string) bool {
 // Check if it is one of the ROSA account roles
 func checkIfROSAOperatorRole(roleName *string, credRequest map[string]*cmv1.STSOperator) bool {
 	for _, operatorRole := range credRequest {
-		if strings.Contains(aws.StringValue(roleName), operatorRole.Namespace()) {
+		if strings.Contains(aws.ToString(roleName), operatorRole.Namespace()) {
 			return true
 		}
 	}
@@ -949,15 +956,13 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 	}
 	err = c.detachOperatorRolePolicies(role)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				fmt.Printf("Entity does not exist: %s", aerr)
-				err = nil
-			case iam.ErrCodeDeleteConflictException:
-				fmt.Printf("Unable to detach operator role policy: %s", aerr)
-				err = nil
-			}
+		if IsNoSuchEntityException(err) {
+			fmt.Printf("Entity does not exist: %s", err)
+			err = nil
+		}
+		if IsDeleteConfictException(err) {
+			fmt.Printf("Unable to detach operator role policy: %s", err)
+			err = nil
 		}
 		if err != nil {
 			return err
@@ -974,15 +979,12 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 }
 
 func (c *awsClient) DeleteRole(role string) error {
-	_, err := c.iamClient.DeleteRole(&iam.DeleteRoleInput{RoleName: aws.String(role)})
+	_, err := c.iamClient.DeleteRole(context.Background(), &iam.DeleteRoleInput{RoleName: aws.String(role)})
 	if err != nil {
 		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					return fmt.Errorf("operator role '%s' does not exists.skipping",
+			if IsNoSuchEntityException(err) {
+				return fmt.Errorf("operator role '%s' does not exists.skipping",
 						role)
-				}
 			}
 			return err
 		}
@@ -992,27 +994,24 @@ func (c *awsClient) DeleteRole(role string) error {
 
 func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 	instanceProfiles := []string{}
-	profiles, err := c.iamClient.ListInstanceProfilesForRole(&iam.ListInstanceProfilesForRoleInput{
+	profiles, err := c.iamClient.ListInstanceProfilesForRole(context.Background(), &iam.ListInstanceProfilesForRoleInput{
 		RoleName: aws.String(r),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return instanceProfiles, nil
-			}
+		if IsNoSuchEntityException(err) {
+			return instanceProfiles, nil
 		}
 		return nil, err
 	}
 	for _, profile := range profiles.InstanceProfiles {
-		instanceProfiles = append(instanceProfiles, aws.StringValue(profile.InstanceProfileName))
+		instanceProfiles = append(instanceProfiles, aws.ToString(profile.InstanceProfileName))
 	}
 	return instanceProfiles, nil
 }
 
 func (c *awsClient) DeleteAccountRole(roleName string, managedPolicies bool) error {
 	role := aws.String(roleName)
-	err := c.DeleteInlineRolePolicies(aws.StringValue(role))
+	err := c.DeleteInlineRolePolicies(aws.ToString(role))
 	if err != nil {
 		return err
 	}
@@ -1025,15 +1024,13 @@ func (c *awsClient) DeleteAccountRole(roleName string, managedPolicies bool) err
 		return err
 	}
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				fmt.Printf("Entity does not exist: %s", aerr)
-				err = nil
-			case iam.ErrCodeDeleteConflictException:
-				fmt.Printf("Unable to detach account role policy: %s", aerr)
-				err = nil
-			}
+		if IsNoSuchEntityException(err) {
+			fmt.Printf("Entity does not exist: %s", err)
+			err = nil
+		}
+		if IsDeleteConfictException(err) {
+			fmt.Printf("Unable to detach account role policy: %s", err)
+			err = nil
 		}
 		if err != nil {
 			return err
@@ -1050,23 +1047,20 @@ func (c *awsClient) DeleteAccountRole(roleName string, managedPolicies bool) err
 }
 
 func (c *awsClient) detachAttachedRolePolicies(role *string) error {
-	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
 		RoleName: role,
 	})
 	if err != nil {
 		return err
 	}
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
-		_, err = c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
+		_, err = c.iamClient.DetachRolePolicy(context.Background(), &iam.DetachRolePolicyInput{
 			PolicyArn: policy.PolicyArn,
 			RoleName:  role,
 		})
 		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					continue
-				}
+			if IsNoSuchEntityException(err) {
+				continue
 			}
 			return err
 		}
@@ -1076,21 +1070,18 @@ func (c *awsClient) detachAttachedRolePolicies(role *string) error {
 }
 
 func (c *awsClient) DeleteInlineRolePolicies(role string) error {
-	listRolePolicyOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{RoleName: aws.String(role)})
+	listRolePolicyOutput, err := c.iamClient.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{RoleName: aws.String(role)})
 	if err != nil {
 		return err
 	}
 	for _, policyName := range listRolePolicyOutput.PolicyNames {
-		_, err = c.iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
-			PolicyName: policyName,
+		_, err = c.iamClient.DeleteRolePolicy(context.Background(), &iam.DeleteRolePolicyInput{
+			PolicyName: &policyName,
 			RoleName:   aws.String(role),
 		})
 		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					continue
-				}
+			if IsNoSuchEntityException(err) {
+				continue
 			}
 			return err
 		}
@@ -1100,7 +1091,7 @@ func (c *awsClient) DeleteInlineRolePolicies(role string) error {
 }
 
 func (c *awsClient) isPolicyAttachedToEntity(policyArn string) (bool, error) {
-	policyOutput, err := c.iamClient.GetPolicy(&iam.GetPolicyInput{PolicyArn: aws.String(policyArn)})
+	policyOutput, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{PolicyArn: aws.String(policyArn)})
 	if err != nil {
 		return false, err
 	}
@@ -1129,7 +1120,7 @@ func (c *awsClient) deletePolicies(policies []string) (*iam.DeletePolicyOutput, 
 			return output, err
 		}
 
-		output, err = c.iamClient.DeletePolicy(&iam.DeletePolicyInput{PolicyArn: &policies[i]})
+		output, err = c.iamClient.DeletePolicy(context.Background(), &iam.DeletePolicyInput{PolicyArn: &policies[i]})
 		if err != nil {
 			return output, err
 		}
@@ -1144,7 +1135,7 @@ func (c *awsClient) GetDefaultPolicyDocument(policyArn string) (string, error) {
 		return "", err
 	}
 
-	policyVersionOutput, err := c.iamClient.GetPolicyVersion(&iam.GetPolicyVersionInput{
+	policyVersionOutput, err := c.iamClient.GetPolicyVersion(context.Background(), &iam.GetPolicyVersionInput{
 		VersionId: aws.String(versionId),
 		PolicyArn: aws.String(policyArn),
 	})
@@ -1152,11 +1143,11 @@ func (c *awsClient) GetDefaultPolicyDocument(policyArn string) (string, error) {
 		return "", err
 	}
 
-	return url.QueryUnescape(aws.StringValue(policyVersionOutput.PolicyVersion.Document))
+	return url.QueryUnescape(aws.ToString(policyVersionOutput.PolicyVersion.Document))
 }
 
 func (c *awsClient) getDefaultPolicyVersionId(policyArn string) (string, error) {
-	policyVersionsOutput, err := c.iamClient.ListPolicyVersions(&iam.ListPolicyVersionsInput{
+	policyVersionsOutput, err := c.iamClient.ListPolicyVersions(context.Background(), &iam.ListPolicyVersionsInput{
 		PolicyArn: aws.String(policyArn),
 	})
 	if err != nil {
@@ -1164,8 +1155,8 @@ func (c *awsClient) getDefaultPolicyVersionId(policyArn string) (string, error) 
 	}
 
 	for _, version := range policyVersionsOutput.Versions {
-		if aws.BoolValue(version.IsDefaultVersion) {
-			return aws.StringValue(version.VersionId), nil
+		if version.IsDefaultVersion {
+			return aws.ToString(version.VersionId), nil
 		}
 	}
 
@@ -1174,7 +1165,7 @@ func (c *awsClient) getDefaultPolicyVersionId(policyArn string) (string, error) 
 }
 
 func (c *awsClient) deletePolicyVersions(policyArn string) error {
-	policyVersionsOutput, err := c.iamClient.ListPolicyVersions(&iam.ListPolicyVersionsInput{
+	policyVersionsOutput, err := c.iamClient.ListPolicyVersions(context.Background(), &iam.ListPolicyVersionsInput{
 		PolicyArn: aws.String(policyArn),
 	})
 	if err != nil {
@@ -1182,10 +1173,10 @@ func (c *awsClient) deletePolicyVersions(policyArn string) error {
 	}
 
 	for _, version := range policyVersionsOutput.Versions {
-		if aws.BoolValue(version.IsDefaultVersion) {
+		if version.IsDefaultVersion {
 			continue
 		}
-		_, err := c.iamClient.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
+		_, err := c.iamClient.DeletePolicyVersion(context.Background(), &iam.DeletePolicyVersionInput{
 			PolicyArn: aws.String(policyArn),
 			VersionId: version.VersionId,
 		})
@@ -1200,46 +1191,29 @@ func (c *awsClient) deletePolicyVersions(policyArn string) error {
 func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	policies := []PolicyDetail{}
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(
+		context.Background(),
 		&iam.ListAttachedRolePoliciesInput{RoleName: role},
 	)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				break
-			default:
-				return policies, err
-			}
-		} else {
-			return policies, err
-		}
+	if err != nil && !IsNoSuchEntityException(err) {
+		return policies, err
 	}
 
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
 		policyDetail := PolicyDetail{
-			PolicyName: aws.StringValue(policy.PolicyName),
-			PolicyArn:  aws.StringValue(policy.PolicyArn),
+			PolicyName: aws.ToString(policy.PolicyName),
+			PolicyArn:  aws.ToString(policy.PolicyArn),
 			PolicyType: Attached,
 		}
 		policies = append(policies, policyDetail)
 	}
 
-	rolePolicyOutput, err := c.iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{RoleName: role})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				break
-			default:
-				return policies, err
-			}
-		} else {
-			return policies, err
-		}
+	rolePolicyOutput, err := c.iamClient.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{RoleName: role})
+	if err != nil && !IsNoSuchEntityException(err) {
+		return policies, err
 	}
 	for _, policy := range rolePolicyOutput.PolicyNames {
 		policyDetail := PolicyDetail{
-			PolicyName: aws.StringValue(policy),
+			PolicyName: policy,
 			PolicyType: Inline,
 		}
 		policies = append(policies, policyDetail)
@@ -1250,14 +1224,14 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 
 func (c *awsClient) detachOperatorRolePolicies(role *string) error {
 	// get attached role policies as operator roles have managed policies
-	policiesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+	policiesOutput, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
 		RoleName: role,
 	})
 	if err != nil {
 		return err
 	}
 	for _, policy := range policiesOutput.AttachedPolicies {
-		_, err := c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{PolicyArn: policy.PolicyArn, RoleName: role})
+		_, err := c.iamClient.DetachRolePolicy(context.Background(), &iam.DetachRolePolicyInput{PolicyArn: policy.PolicyArn, RoleName: role})
 		if err != nil {
 			return err
 		}
@@ -1276,7 +1250,7 @@ func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 		if !checkIfROSAOperatorRole(role.RoleName, credRequest) {
 			continue
 		}
-		listRoleTagsOutput, err := c.iamClient.ListRoleTags(&iam.ListRoleTagsInput{
+		listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
 			RoleName: role.RoleName,
 		})
 		if err != nil {
@@ -1284,16 +1258,16 @@ func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 		}
 		isTagged := false
 		for _, tag := range listRoleTagsOutput.Tags {
-			switch aws.StringValue(tag.Key) {
+			switch aws.ToString(tag.Key) {
 			case tags.ClusterID:
-				if aws.StringValue(tag.Value) == clusterID {
+				if aws.ToString(tag.Value) == clusterID {
 					isTagged = true
 					break
 				}
 			}
 		}
 		if isTagged {
-			roleList = append(roleList, aws.StringValue(role.RoleName))
+			roleList = append(roleList, aws.ToString(role.RoleName))
 		}
 	}
 	return roleList, nil
@@ -1312,7 +1286,7 @@ func (c *awsClient) GetOperatorRolesFromAccountByPrefix(prefix string,
 			continue
 		}
 		if prefixOperatorRoleRE.MatchString(*role.RoleName) {
-			roleList = append(roleList, aws.StringValue(role.RoleName))
+			roleList = append(roleList, aws.ToString(role.RoleName))
 		}
 	}
 	return roleList, nil
@@ -1322,20 +1296,14 @@ func (c *awsClient) GetPolicies(roles []string) (map[string][]string, error) {
 	roleMap := make(map[string][]string)
 	for _, role := range roles {
 		policyArr := []string{}
-		policiesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+		policiesOutput, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
 			RoleName: aws.String(role),
 		})
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					continue
-				}
-			}
+		if err != nil && !IsNoSuchEntityException(err) {
 			return roleMap, err
 		}
 		for _, policy := range policiesOutput.AttachedPolicies {
-			policyArr = append(policyArr, aws.StringValue(policy.PolicyArn))
+			policyArr = append(policyArr, aws.ToString(policy.PolicyArn))
 		}
 		roleMap[role] = policyArr
 	}
@@ -1352,7 +1320,7 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 		if role.RoleName == nil {
 			continue
 		}
-		if !strings.Contains(aws.StringValue(role.RoleName), ("Installer-Role")) {
+		if !strings.Contains(aws.ToString(role.RoleName), ("Installer-Role")) {
 			continue
 		}
 		policyDoc, err := getPolicyDocument(role.AssumeRolePolicyDocument)
@@ -1369,7 +1337,7 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 				str := strings.Split(a, ":")
 				if len(str) > 4 {
 					if str[4] == GetJumpAccount(env) {
-						roles, err := c.buildRoles(aws.StringValue(role.RoleName), accountID)
+						roles, err := c.buildRoles(aws.ToString(role.RoleName), accountID)
 						if err != nil {
 							return roleList, err
 						}
@@ -1386,16 +1354,12 @@ func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) (
 func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error) {
 	role := Role{}
 	// This is done to ensure user did not provide invalid role before we check for installer role
-	accountRoleResponse, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
+	accountRoleResponse, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{RoleName: aws.String(roleName)})
 	if err != nil {
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					return role, errors.NotFound.Errorf("Role '%s' not found", roleName)
-				}
-			}
+		if IsNoSuchEntityException(err) {
+			return role, errors.NotFound.Errorf("Role '%s' not found", roleName)
 		}
+		
 		return role, err
 	}
 
@@ -1407,7 +1371,7 @@ func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Ro
 		}
 		if installerRoleResponse == nil {
 			return Role{
-				RoleARN:  aws.StringValue(accountRoleResponse.Role.Arn),
+				RoleARN:  aws.ToString(accountRoleResponse.Role.Arn),
 				RoleName: roleName,
 			}, nil
 		}
@@ -1425,7 +1389,7 @@ func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Ro
 			if len(str) > 4 {
 				if str[4] == GetJumpAccount(env) {
 					r := Role{
-						RoleARN:  aws.StringValue(accountRoleResponse.Role.Arn),
+						RoleARN:  aws.ToString(accountRoleResponse.Role.Arn),
 						RoleName: roleName,
 					}
 					return r, nil
@@ -1436,7 +1400,7 @@ func (c *awsClient) GetAccountRoleForCurrentEnv(env string, roleName string) (Ro
 	return role, nil
 }
 
-func (c *awsClient) checkInstallerRoleExists(roleName string) (*iam.Role, error) {
+func (c *awsClient) checkInstallerRoleExists(roleName string) (*iamtypes.Role, error) {
 	rolePrefix := ""
 	for _, prefix := range AccountRoles {
 		p := fmt.Sprintf("%s-Role", prefix.Name)
@@ -1445,17 +1409,12 @@ func (c *awsClient) checkInstallerRoleExists(roleName string) (*iam.Role, error)
 		}
 	}
 	installerRole := fmt.Sprintf("%s%s-Role", rolePrefix, "Installer")
-	installerRoleResponse, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(installerRole)})
+	installerRoleResponse, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{RoleName: aws.String(installerRole)})
 	//We try our best to determine the environment based on the trust policy in the installer
 	//If the installer role is deleted we can assume that there is no cluster using the role
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return nil, nil
-			default:
-				return nil, err
-			}
+		if IsNoSuchEntityException(err) {
+			return nil, nil
 		}
 		return nil, err
 	}
@@ -1486,14 +1445,8 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 		roleARN := GetRoleARN(accountID, roleName, "")
 
 		if prefix.Name != "Installer" {
-			_, err := c.iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
-			if err != nil {
-				if aerr, ok := err.(awserr.Error); ok {
-					switch aerr.Code() {
-					case iam.ErrCodeNoSuchEntityException:
-						continue
-					}
-				}
+			_, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{RoleName: aws.String(roleName)})
+			if err != nil && !IsNoSuchEntityException(err) {
 				return roles, err
 			}
 		}
@@ -1511,13 +1464,7 @@ func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyD
 	roleMap := make(map[string][]PolicyDetail)
 	for _, role := range roles {
 		policies, err := c.GetAttachedPolicy(aws.String(role))
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					continue
-				}
-			}
+		if err != nil && !IsNoSuchEntityException(err) {
 			return roleMap, err
 		}
 		roleMap[role] = policies
@@ -1526,13 +1473,13 @@ func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyD
 }
 
 func (c *awsClient) GetOpenIDConnectProviderByClusterIdTag(clusterID string) (string, error) {
-	providers, err := c.iamClient.ListOpenIDConnectProviders(&iam.ListOpenIDConnectProvidersInput{})
+	providers, err := c.iamClient.ListOpenIDConnectProviders(context.Background(), &iam.ListOpenIDConnectProvidersInput{})
 	if err != nil {
 		return "", err
 	}
 	for _, provider := range providers.OpenIDConnectProviderList {
-		providerValue := aws.StringValue(provider.Arn)
-		connectProvider, err := c.iamClient.GetOpenIDConnectProvider(&iam.GetOpenIDConnectProviderInput{
+		providerValue := aws.ToString(provider.Arn)
+		connectProvider, err := c.iamClient.GetOpenIDConnectProvider(context.Background(), &iam.GetOpenIDConnectProviderInput{
 			OpenIDConnectProviderArn: provider.Arn,
 		})
 		if err != nil {
@@ -1540,9 +1487,9 @@ func (c *awsClient) GetOpenIDConnectProviderByClusterIdTag(clusterID string) (st
 		}
 		isTagged := false
 		for _, providerTag := range connectProvider.Tags {
-			switch aws.StringValue(providerTag.Key) {
+			switch aws.ToString(providerTag.Key) {
 			case tags.ClusterID:
-				if aws.StringValue(providerTag.Value) == clusterID {
+				if aws.ToString(providerTag.Value) == clusterID {
 					isTagged = true
 					break
 				}
@@ -1559,13 +1506,13 @@ func (c *awsClient) GetOpenIDConnectProviderByClusterIdTag(clusterID string) (st
 }
 
 func (c *awsClient) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl string) (string, error) {
-	providers, err := c.iamClient.ListOpenIDConnectProviders(&iam.ListOpenIDConnectProvidersInput{})
+	providers, err := c.iamClient.ListOpenIDConnectProviders(context.Background(), &iam.ListOpenIDConnectProvidersInput{})
 	if err != nil {
 		return "", err
 	}
 	oidcEndpointUrl = strings.TrimPrefix(oidcEndpointUrl, fmt.Sprintf("%s://", helper.ProtocolHttps))
 	for _, provider := range providers.OpenIDConnectProviderList {
-		providerValue := aws.StringValue(provider.Arn)
+		providerValue := aws.ToString(provider.Arn)
 		if err != nil {
 			return "", err
 		}
@@ -1584,16 +1531,13 @@ func (c *awsClient) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl st
 func (c *awsClient) GetRoleARNPath(prefix string) (string, error) {
 	for _, accountRole := range AccountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
-		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		role, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return "", errors.NotFound.Errorf("Roles with the prefix'%s' not found", prefix)
-			}
+		if IsNoSuchEntityException(err) {
+			return "", errors.NotFound.Errorf("Roles with the prefix'%s' not found", prefix)
 		}
-		return GetPathFromARN(aws.StringValue(role.Role.Arn))
+		return GetPathFromARN(aws.ToString(role.Role.Arn))
 	}
 	return "", nil
 }
@@ -1601,19 +1545,16 @@ func (c *awsClient) GetRoleARNPath(prefix string) (string, error) {
 func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, version string) (bool, error) {
 	for _, accountRole := range AccountRoles {
 		roleName := fmt.Sprintf("%s-%s-Role", prefix, accountRole.Name)
-		role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+		role, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					return false, errors.NotFound.Errorf("Roles with the prefix '%s' not found", prefix)
-				}
+			if IsNoSuchEntityException(err) {
+				return false, errors.NotFound.Errorf("Roles with the prefix '%s' not found", prefix)
 			}
 			return false, err
 		}
-		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.StringValue(role.Role.RoleName),
+		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.ToString(role.Role.RoleName),
 			version)
 
 		if err != nil {
@@ -1636,7 +1577,9 @@ func (c *awsClient) HasHostedCPPolicies(roleARN string) (bool, error) {
 		return false, err
 	}
 
-	return common.IamResourceHasTag(role.Tags, tags.HypershiftPolicies, tags.True), nil
+	tagsSlice := ConvertToTagPointers(role.Tags)
+
+	return common.IamResourceHasTag(tagsSlice, tags.HypershiftPolicies, tags.True), nil
 }
 
 func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
@@ -1649,7 +1592,9 @@ func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
 		return false, err
 	}
 
-	return common.IsManagedRole(role.Tags), nil
+	tagsSlice := ConvertToTagPointers(role.Tags)
+
+	return common.IsManagedRole(tagsSlice), nil
 }
 
 func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesUsingCluster(
@@ -1662,7 +1607,7 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesUsingCluster(
 		if roleName == "" {
 			continue
 		}
-		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.StringValue(&roleName), version)
+		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.ToString(&roleName), version)
 
 		if err != nil {
 			return false, err
@@ -1679,15 +1624,15 @@ func (c *awsClient) UpdateTag(roleName string, defaultPolicyVersion string) erro
 }
 
 func (c *awsClient) AddRoleTag(roleName string, key string, value string) error {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+	role, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
 		return err
 	}
-	_, err = c.iamClient.TagRole(&iam.TagRoleInput{
+	_, err = c.iamClient.TagRole(context.Background(), &iam.TagRoleInput{
 		RoleName: role.Role.RoleName,
-		Tags: []*iam.Tag{
+		Tags: []iamtypes.Tag{
 			{
 				Key:   aws.String(key),
 				Value: aws.String(value),
@@ -1730,16 +1675,13 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 		if err != nil {
 			return true, err
 		}
-		_, err = c.iamClient.GetRole(&iam.GetRoleInput{
+		_, err = c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					return false, errors.NotFound.Errorf("Operator Role '%s' does not exists for the "+
-						"cluster '%s'", roleName, cluster.ID())
-				}
+			if IsNoSuchEntityException(err) {
+				return false, errors.NotFound.Errorf("Operator Role '%s' does not exists for the "+
+					"cluster '%s'", roleName, cluster.ID())
 			}
 			return true, err
 		}
@@ -1787,14 +1729,10 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix st
 func (c *awsClient) checkPolicyExistsAndUpToDate(policyARN string, policyVersion string) (bool, error) {
 	_, err := c.IsPolicyExists(policyARN)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				return false, nil
-			default:
-				return false, err
-			}
+		if IsNoSuchEntityException(err) {
+			return false, nil
 		}
+		return false, err
 	}
 	isRoleUpToDate, err := c.isRolePolicyUpToDate(policyARN, policyVersion)
 	return isRoleUpToDate, err
@@ -1812,7 +1750,7 @@ func (c *awsClient) isRolePolicyUpToDate(policyARN string, policyVersion string)
 }
 
 func (c *awsClient) isRolePoliciesCompatibleForUpgrade(policyARN string, version string) (bool, error) {
-	policyTagOutput, err := c.iamClient.ListPolicyTags(&iam.ListPolicyTagsInput{
+	policyTagOutput, err := c.iamClient.ListPolicyTags(context.Background(), &iam.ListPolicyTagsInput{
 		PolicyArn: aws.String(policyARN),
 	})
 	if err != nil {
@@ -1822,7 +1760,7 @@ func (c *awsClient) isRolePoliciesCompatibleForUpgrade(policyARN string, version
 }
 
 func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+	role, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
@@ -1833,7 +1771,7 @@ func (c *awsClient) GetAccountRoleVersion(roleName string) (string, error) {
 }
 
 func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
+	role, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
@@ -1841,7 +1779,7 @@ func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
 	}
 
 	for _, tag := range role.Role.Tags {
-		if aws.StringValue(tag.Key) == tags.AdminRole && aws.StringValue(tag.Value) == "true" {
+		if aws.ToString(tag.Key) == tags.AdminRole && aws.ToString(tag.Value) == "true" {
 			return true, nil
 		}
 	}
@@ -1850,24 +1788,22 @@ func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
 }
 
 func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, error) {
-	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
+	output, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(common.GetRoleName(prefix, roleType)),
 	})
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
-				errorMessage := "Role with the prefix '%s' not found amongst Classic cluster roles"
-				if strings.Contains(roleType, HCPSuffixPattern) {
-					errorMessage = "Role with the prefix '%s' not found amongst HCP cluster roles"
-				}
-				return "", errors.NotFound.Errorf(errorMessage, prefix)
+		if IsNoSuchEntityException(err) {
+			errorMessage := "Role with the prefix '%s' not found amongst Classic cluster roles"
+			if strings.Contains(roleType, HCPSuffixPattern) {
+				errorMessage = "Role with the prefix '%s' not found amongst HCP cluster roles"
 			}
+			return "", errors.NotFound.Errorf(errorMessage, prefix)
 		}
 
 		return "", err
 	}
 
-	return aws.StringValue(output.Role.Arn), nil
+	return aws.ToString(output.Role.Arn), nil
 }
 
 func (c *awsClient) ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster,
@@ -1941,7 +1877,7 @@ func (c *awsClient) isManagedPolicyAttached(roleName string, managedPolicyARN st
 	}
 
 	for _, policy := range policies {
-		if aws.StringValue(policy.PolicyArn) == managedPolicyARN {
+		if aws.ToString(policy.PolicyArn) == managedPolicyARN {
 			return true, nil
 		}
 	}
@@ -1949,18 +1885,17 @@ func (c *awsClient) isManagedPolicyAttached(roleName string, managedPolicyARN st
 	return false, nil
 }
 
-func (c *awsClient) listRoleAttachedPolicies(roleName string) ([]*iam.AttachedPolicy, error) {
+func (c *awsClient) listRoleAttachedPolicies(roleName string) ([]iamtypes.AttachedPolicy, error) {
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(
+		context.Background(),
 		&iam.ListAttachedRolePoliciesInput{RoleName: aws.String(roleName)},
 	)
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
-				return []*iam.AttachedPolicy{}, errors.NotFound.Errorf("Role with name '%s' not found", roleName)
-			}
+		if IsNoSuchEntityException(err) {
+			return []iamtypes.AttachedPolicy{}, errors.NotFound.Errorf("Role with name '%s' not found", roleName)
 		}
 
-		return []*iam.AttachedPolicy{}, err
+		return []iamtypes.AttachedPolicy{}, err
 	}
 
 	return attachedPoliciesOutput.AttachedPolicies, nil

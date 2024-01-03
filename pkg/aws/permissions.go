@@ -1,10 +1,12 @@
 package aws
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -15,11 +17,16 @@ type SimulateParams struct {
 }
 
 // ValidateSCP attempts to validate SCP policies by ensuring we have the correct permissions
-func (c *awsClient) ValidateSCP(target *string, policies map[string]*cmv1.AWSSTSPolicy) (bool, error) {
+func (c *awsClient) ValidateSCP(target *string, policies map[string]*cmv1.AWSSTSPolicy) (bool, error) {	
 	policyDetails := GetPolicyDetails(policies, "osd_scp_policy")
 
+	region, err := c.GetRegion()
+	if err != nil {
+		return false, err
+	}
+
 	sParams := &SimulateParams{
-		Region: *c.awsSession.Config.Region,
+		Region: region,
 	}
 	// Read installer permissions and OSD SCP Policy permissions
 	osdPolicyDocument, err := ParsePolicyDocument(policyDetails)
@@ -56,7 +63,7 @@ func (c *awsClient) ValidateSCP(target *string, policies map[string]*cmv1.AWSSTS
 			}
 		}
 	} else {
-		targetIAMOutput, err := c.iamClient.GetUser(&iam.GetUserInput{UserName: target})
+		targetIAMOutput, err := c.iamClient.GetUser(context.Background(), &iam.GetUserInput{UserName: target})
 		if err != nil {
 			return false, fmt.Errorf("iamClient.GetUser: %v\n"+
 				"To reset the '%s' account, run 'rosa init --delete-stack' and try again", *target, err)
