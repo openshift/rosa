@@ -119,7 +119,8 @@ var _ = Describe("Client", func() {
 
 					mockCfAPI.EXPECT().
 						DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, _ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
+						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, 
+							_ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
 							return describeStacksOutput, nil
 						}).AnyTimes()
 					mockCfAPI.EXPECT().
@@ -169,7 +170,8 @@ var _ = Describe("Client", func() {
 					}
 					mockCfAPI.EXPECT().
 						DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, _ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
+						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput,
+							_ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
 							return describeStacksOutput, nil
 						}).AnyTimes()
 					mockCfAPI.EXPECT().CreateStack(context.Background(), gomock.Any()).Return(nil, nil)
@@ -224,7 +226,8 @@ var _ = Describe("Client", func() {
 				}
 				mockCfAPI.EXPECT().
 					DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, _ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
+					DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, 
+						_ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
 						return describeStacksOutput, nil
 					}).AnyTimes()
 				mockCfAPI.EXPECT().CreateStack(context.Background(), gomock.Any()).Return(nil, nil)
@@ -683,11 +686,3 @@ var _ = Describe("Client", func() {
 	})
 })
 
-func readCloudFormationTemplate(path string) (string, error) {
-	cfTemplate, err := assets.Asset(path)
-	if err != nil {
-		return "", fmt.Errorf("Unable to read cloudformation template: %s", err)
-	}
-
-	return string(cfTemplate), nil
-}

@@ -3247,7 +3247,8 @@ func run(cmd *cobra.Command, _ []string) {
 				output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			}
 			oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
-			oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.Partition, r.Creator.AccountID)
+			oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, 
+				r.Creator.Partition, r.Creator.AccountID)
 			if err != nil {
 				if strings.Contains(err.Error(), "AccessDenied") {
 					r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
