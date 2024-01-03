@@ -17,7 +17,7 @@ func GetRoleName(prefix string, role string) string {
 	return name
 }
 
-func IsManagedRole(roleTags []*iamtypes.Tag) bool {
+func IsManagedRole(roleTags []iamtypes.Tag) bool {
     for _, tag := range roleTags {
         if aws.ToString(tag.Key) == ManagedPolicies && aws.ToString(tag.Value) == "true" {
             return true
@@ -27,7 +27,7 @@ func IsManagedRole(roleTags []*iamtypes.Tag) bool {
     return false
 }
 
-func HasCompatibleVersionTags(iamTags []*iamtypes.Tag, version string) (bool, error) {
+func HasCompatibleVersionTags(iamTags []iamtypes.Tag, version string) (bool, error) {
 	if len(iamTags) == 0 {
 		return false, nil
 	}
@@ -53,7 +53,7 @@ func HasCompatibleVersionTags(iamTags []*iamtypes.Tag, version string) (bool, er
 	return false, nil
 }
 
-func IamResourceHasTag(iamTags []*iamtypes.Tag, tagKey string, tagValue string) bool {
+func IamResourceHasTag(iamTags []iamtypes.Tag, tagKey string, tagValue string) bool {
 	for _, tag := range iamTags {
 		if aws.ToString(tag.Key) == tagKey && aws.ToString(tag.Value) == tagValue {
 			return true
