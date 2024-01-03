@@ -129,13 +129,7 @@ func (c *awsClient) CreateStack(cfTemplateBody, stackName string) (bool, error) 
 }
 
 func (c *awsClient) UpdateStack(cfTemplateBody, stackName string) error {
-	_, err := c.cfClient.UpdateStack(context.TODO(), &cloudformation.UpdateStackInput{
-		StackName:    &stackName,
-		TemplateBody: &cfTemplateBody,
-		Capabilities: []cloudformationtypes.Capability{
-			cloudformationtypes.CapabilityCapabilityNamedIam,
-		},
-	})
+	_, err := c.cfClient.UpdateStack(context.TODO(), buildUpdateStackInput(cfTemplateBody, stackName))
 	if err != nil {
 		var apiErr smithy.APIError
 		if errors.As(err, &apiErr) {
