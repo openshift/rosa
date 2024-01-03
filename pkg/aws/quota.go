@@ -135,9 +135,8 @@ func ListServiceQuotas(client *awsClient, serviceCode string) ([]servicequotasty
 		if err != nil {
 			return nil, err
 		}
-		for _, quota := range page.Quotas {
-			serviceQuotas = append(serviceQuotas, quota)
-		}
+		
+		serviceQuotas = append(serviceQuotas, page.Quotas...)
 	}
 
 	return serviceQuotas, nil
