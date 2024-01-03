@@ -126,16 +126,16 @@ func ListServiceQuotas(client *awsClient, serviceCode string) ([]servicequotasty
 	var serviceQuotas []servicequotastypes.ServiceQuota
 
 	// Paginate through quota results
-	paginator := servicequotas.NewListServiceQuotasPaginator(client.serviceQuotasClient, &servicequotas.ListServiceQuotasInput{
-		ServiceCode: &serviceCode,
-	})
+	paginator := servicequotas.NewListServiceQuotasPaginator(
+		client.serviceQuotasClient, &servicequotas.ListServiceQuotasInput{
+			ServiceCode: &serviceCode,
+		})
 
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(context.Background())
 		if err != nil {
 			return nil, err
 		}
-		
 		serviceQuotas = append(serviceQuotas, page.Quotas...)
 	}
 
