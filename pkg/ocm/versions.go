@@ -298,7 +298,7 @@ func (c *Client) getFirstVersion(channelGroup string, defaultFirst bool) (versio
 		}
 
 	}
-	return "", fmt.Errorf("There are no openShift versions available")
+	return "", fmt.Errorf("There are no OpenShift versions available")
 }
 
 func IsValidVersion(userRequestedVersion string, supportedVersion string, clusterVersion string) (bool, error) {
