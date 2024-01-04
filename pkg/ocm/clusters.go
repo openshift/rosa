@@ -395,6 +395,21 @@ func (c *Client) getSubscriptionByExternalID(externalID string) (*amv1.Subscript
 	return response.Items().Slice()[0], true, nil
 }
 
+func (c *Client) GetSubscriptionBySubscriptionID(id string) (*amv1.Subscription, bool, error) {
+	response, err := c.ocm.AccountsMgmt().V1().Subscriptions().Subscription(id).
+		Get().
+		Send()
+
+	if err != nil {
+		return nil, false, err
+	}
+	if response.Body() == nil {
+		return &amv1.Subscription{}, false, nil
+	}
+
+	return response.Body(), true, nil
+}
+
 // GetCluster gets a cluster key that can be either 'id', 'name' or 'external_id'
 func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
 	if len(clusterKey) > maxClusterNameLength {
