@@ -133,7 +133,8 @@ func (c *awsClient) UpdateStack(cfTemplateBody, stackName string) error {
 	if err != nil {
 		var apiErr smithy.APIError
 		if errors.As(err, &apiErr) {
-			if apiErr.ErrorCode() == "ValidationError" && strings.Contains(apiErr.ErrorMessage(), "No updates are to be performed") {
+			if apiErr.ErrorCode() == "ValidationError" &&
+				strings.Contains(apiErr.ErrorMessage(), "No updates are to be performed") {
 				// No updates are to be performed
 				return nil
 			}

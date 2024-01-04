@@ -112,13 +112,14 @@ var _ = Describe("Client", func() {
 
 					mockCfAPI.EXPECT().
 						DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, 
+						DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput,
 							_ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
 							return describeStacksOutput, nil
 						}).AnyTimes()
 					mockCfAPI.EXPECT().
 						UpdateStack(gomock.Any(), gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, input *cloudformation.UpdateStackInput, _ ...func(*cloudformation.Options)) (*cloudformation.UpdateStackOutput, error) {
+						DoAndReturn(func(_ context.Context, input *cloudformation.UpdateStackInput,
+							_ ...func(*cloudformation.Options)) (*cloudformation.UpdateStackOutput, error) {
 							// Verify that the input parameters are as expected
 							if *input.StackName != stackName {
 								return nil, fmt.Errorf("unexpected stack name: got %s, want %s", *input.StackName, stackName)
@@ -219,7 +220,7 @@ var _ = Describe("Client", func() {
 				}
 				mockCfAPI.EXPECT().
 					DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput, 
+					DoAndReturn(func(_ context.Context, _ *cloudformation.DescribeStacksInput,
 						_ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
 						return describeStacksOutput, nil
 					}).AnyTimes()
@@ -294,10 +295,6 @@ var _ = Describe("Client", func() {
 
 			mockIamAPI.EXPECT().ListRoleTags(context.Background(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
 				Tags: tags,
-			}, nil)
-
-			mockIamAPI.EXPECT().ListRolePolicies(context.Background(), gomock.Any()).Return(&iam.ListRolePoliciesOutput{
-				PolicyNames: make([]string, 0),
 			}, nil)
 
 			role, err := client.GetAccountRoleByArn(testArn)
@@ -461,4 +458,3 @@ var _ = Describe("Client", func() {
 		})
 	})
 })
-
