@@ -70,6 +70,15 @@ func run(cmd *cobra.Command, argv []string) {
 	cluster := r.FetchCluster()
 	isHypershift := cluster.Hypershift().Enabled()
 
+	displayName := ""
+	subscription, subscriptionExists, err := r.OCMClient.GetSubscriptionBySubscriptionID(cluster.Subscription().ID())
+	if err != nil {
+		r.Reporter.Debugf("Failed to get subscription by ID: %s", err)
+	}
+	if subscriptionExists {
+		displayName = subscription.DisplayName()
+	}
+
 	var scheduledUpgrade *cmv1.UpgradePolicy
 	var upgradeState *cmv1.UpgradePolicyState
 	var controlPlaneScheduledUpgrade *cmv1.ControlPlaneUpgradePolicy
@@ -82,7 +91,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		if output.HasFlag() {
-			f, err := formatCluster(cluster, scheduledUpgrade, upgradeState)
+			f, err := formatCluster(cluster, scheduledUpgrade, upgradeState, displayName)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -102,7 +111,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		if output.HasFlag() {
-			f, err := formatClusterHypershift(cluster, controlPlaneScheduledUpgrade)
+			f, err := formatClusterHypershift(cluster, controlPlaneScheduledUpgrade, displayName)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -189,6 +198,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Print short cluster description:
 	str = fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
+		"Display Name:               %s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
 		"Control Plane:              %s\n"+
@@ -211,6 +221,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"%s"+
 		"%s",
 		clusterName,
+		displayName,
 		cluster.ID(),
 		cluster.ExternalID(),
 		controlPlaneConfig(cluster),
@@ -654,7 +665,7 @@ func getUseworkloadMonitoring(disabled bool) string {
 }
 
 func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
-	upgradeState *cmv1.UpgradePolicyState) (map[string]interface{}, error) {
+	upgradeState *cmv1.UpgradePolicyState, displayName string) (map[string]interface{}, error) {
 
 	var b bytes.Buffer
 	err := cmv1.MarshalCluster(cluster, &b)
@@ -676,12 +687,14 @@ func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
 		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
 		ret["scheduledUpgrade"] = upgrade
 	}
+	ret["displayName"] = displayName
 
 	return ret, nil
 }
 
 func formatClusterHypershift(cluster *cmv1.Cluster,
-	scheduledUpgrade *cmv1.ControlPlaneUpgradePolicy) (map[string]interface{}, error) {
+	scheduledUpgrade *cmv1.ControlPlaneUpgradePolicy,
+	displayName string) (map[string]interface{}, error) {
 
 	var b bytes.Buffer
 	err := cmv1.MarshalCluster(cluster, &b)
@@ -703,6 +716,7 @@ func formatClusterHypershift(cluster *cmv1.Cluster,
 		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
 		ret["scheduledUpgrade"] = upgrade
 	}
+	ret["display_name"] = displayName
 
 	return ret, nil
 }

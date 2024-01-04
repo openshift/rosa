@@ -18,15 +18,15 @@ const (
 
 var (
 	now                             = time.Now()
-	expectEmptyCuster               = []byte(`{"kind":"Cluster"}`)
+	expectEmptyCuster               = []byte(`{"displayName":"displayname","kind":"Cluster"}`)
 	expectClusterWithNameAndIDValue = []byte(
-		`{"id":"bar","kind":"Cluster","name":"foo"}`)
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","name":"foo"}`)
 	expectClusterWithNameAndValueAndUpgradeInformation = []byte(
-		`{"id":"bar","kind":"Cluster","name":"foo","scheduledUpgrade":{"nextRun":"` +
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","name":"foo","scheduledUpgrade":{"nextRun":"` +
 			now.Format("2006-01-02 15:04 MST") + `","state":"` + state + `","version":"` +
 			version + `"}}`)
 	expectEmptyClusterWithNameAndValueAndUpgradeInformation = []byte(
-		`{"kind":"Cluster","scheduledUpgrade":{"nextRun":"` +
+		`{"displayName":"displayname","kind":"Cluster","scheduledUpgrade":{"nextRun":"` +
 			now.Format("2006-01-02 15:04 MST") + `","state":"` +
 			state + `","version":"` +
 			version + `"}}`)
@@ -107,7 +107,7 @@ func printJson(cluster func() *cmv1.Cluster,
 	state func() *cmv1.UpgradePolicyState,
 	expected []byte,
 	err error) {
-	f, er := formatCluster(cluster(), upgrade(), state())
+	f, er := formatCluster(cluster(), upgrade(), state(), "displayname")
 	if err != nil {
 		Expect(er).To(Equal(err))
 	}
