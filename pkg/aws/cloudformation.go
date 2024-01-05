@@ -45,7 +45,7 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string
 	userExists := true
 	regionForInit, err := c.GetClusterRegionTagForUser(adminUserName)
 	if err != nil {
-		//If user doesnt exists proceed normally
+		//If user doesn't exists proceed normally
 		//If users exists and tag is not present then add the tag
 		//if user exists and tag is present then proceed normally
 		var noEntityErr *iamtypes.NoSuchEntityException
