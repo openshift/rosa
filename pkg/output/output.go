@@ -124,6 +124,10 @@ func Print(resource interface{}) error {
 		if users, ok := resource.([]*cmv1.User); ok {
 			cmv1.MarshalUserList(users, &b)
 		}
+	case "*v1.SubnetNetworkVerification":
+		if subnetNetworkVerification, ok := resource.(*cmv1.SubnetNetworkVerification); ok {
+			cmv1.MarshalSubnetNetworkVerification(subnetNetworkVerification, &b)
+		}
 	case "[]aws.Role", "[]aws.OidcProviderOutput":
 		{
 			err := defaultEncode(resource, &b)
