@@ -55,7 +55,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{},
 	Short:   "Upgrade cluster-specific IAM roles to the latest version.",
 	Long:    "Upgrade cluster-specific IAM roles to the latest version before upgrading your cluster.",
-	Example: `  # Upgrade cluster roles for ROSA STS clusters 
+	Example: `  # Upgrade cluster roles for ROSA STS clusters
 		rosa upgrade roles -c <cluster_key>`,
 	RunE: run,
 }
@@ -346,7 +346,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	operatorRoles, hasOperatorRoles := cluster.AWS().STS().GetOperatorIAMRoles()
 	if !hasOperatorRoles || len(operatorRoles) == 0 {
-		r.Reporter.Errorf("Cluster '%s' doesnt have any operator roles associated with it",
+		r.Reporter.Errorf("Cluster '%s' doesn't have any operator roles associated with it",
 			r.ClusterKey)
 		os.Exit(1)
 	}

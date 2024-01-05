@@ -76,7 +76,7 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	}
 	if args.organizationID != "" && orgID != args.organizationID {
 		r.Reporter.Errorf("Invalid organization ID '%s'. "+
-			"It doesnt match with the user session '%s'.", args.organizationID, orgID)
+			"It doesn't match with the user session '%s'.", args.organizationID, orgID)
 		os.Exit(1)
 	}
 
