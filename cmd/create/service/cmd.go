@@ -23,6 +23,8 @@ import (
 	"regexp"
 	"strings"
 
+	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
