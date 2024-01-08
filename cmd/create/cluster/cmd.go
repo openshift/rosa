@@ -79,6 +79,9 @@ const (
 	MinReplicaMultiAZ   = 3
 
 	listInputMessage = "Format should be a comma-separated list."
+
+	// nolint:lll
+	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
 )
 
 var args struct {
@@ -2025,6 +2028,13 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
+			if isHostedCP {
+				r.Reporter.Errorf(
+					"All Hosted Control Plane clusters need a pre-configured VPC. Please check: %s",
+					createVpcForHcpDoc,
+				)
+				os.Exit(1)
+			}
 			if ok := confirm.Prompt(false, "Continue with default? A new RH Managed VPC will be created for your cluster"); !ok {
 				os.Exit(1)
 			}
