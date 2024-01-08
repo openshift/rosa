@@ -24,13 +24,13 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
-	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -117,7 +117,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	var str string
-	creatorARN, err := arn.Parse(cluster.Properties()[properties.CreatorARN])
+	creatorARN, err := arn.Parse(cluster.Properties()[ocmConsts.CreatorArn])
 	if err != nil {
 		r.Reporter.Errorf("Failed to parse creator ARN for cluster '%s'", clusterKey)
 		os.Exit(1)

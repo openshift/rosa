@@ -399,9 +399,12 @@ github.com/openshift-online/ocm-common/pkg/aws/validations
 github.com/openshift-online/ocm-common/pkg/cluster/validations
 github.com/openshift-online/ocm-common/pkg/idp/validations
 github.com/openshift-online/ocm-common/pkg/machinepool/validations
+github.com/openshift-online/ocm-common/pkg/ocm/consts
 github.com/openshift-online/ocm-common/pkg/ocm/validations
 github.com/openshift-online/ocm-common/pkg/resource/validations
-# github.com/openshift-online/ocm-sdk-go v0.1.390
+github.com/openshift-online/ocm-common/pkg/rosa/oidcconfigs
+github.com/openshift-online/ocm-common/pkg/utils
+# github.com/openshift-online/ocm-sdk-go v0.1.391
 ## explicit; go 1.21
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accountsmgmt

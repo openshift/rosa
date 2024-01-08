@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"time"
 
+	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -201,7 +202,7 @@ func getClusterFilter(creator *aws.Creator) string {
 	if creator != nil {
 		filter = fmt.Sprintf("%s AND (properties.%s LIKE '%%:%s:%%' OR aws.sts.role_arn LIKE '%%:%s:%%')",
 			filter,
-			properties.CreatorARN,
+			ocmConsts.CreatorArn,
 			creator.AccountID,
 			creator.AccountID)
 	}
@@ -477,7 +478,7 @@ func (c *Client) GetClusterUsingSubscription(clusterKey string, creator *aws.Cre
 func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cluster, err error) {
 	query := fmt.Sprintf(
 		"state = 'pending' AND product.id = 'rosa' AND aws.sts.role_arn = '' AND properties.%s LIKE '%%:%s:%%'",
-		properties.CreatorARN,
+		ocmConsts.CreatorArn,
 		creator.AccountID,
 	)
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
@@ -551,7 +552,7 @@ func (c *Client) IsSTSClusterExists(creator *aws.Creator, count int, roleARN str
 			"aws.sts.support_role_arn = '%s' OR "+
 			"aws.sts.instance_iam_roles.master_role_arn = '%s' OR "+
 			"aws.sts.instance_iam_roles.worker_role_arn = '%s')",
-		properties.CreatorARN,
+		ocmConsts.CreatorArn,
 		creator.AccountID,
 		roleARN,
 		roleARN,
@@ -785,15 +786,21 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 
 	// Make sure we don't have a custom properties collision
-	if _, present := clusterProperties[properties.CreatorARN]; present {
-		return nil, fmt.Errorf("Custom properties key %s collides with a property needed by rosa", properties.CreatorARN)
+	if _, present := clusterProperties[ocmConsts.CreatorArn]; present {
+		return nil, fmt.Errorf(
+			"Custom properties key %s collides with a property needed by rosa",
+			ocmConsts.CreatorArn,
+		)
 	}
 
 	if _, present := clusterProperties[properties.CLIVersion]; present {
-		return nil, fmt.Errorf("Custom properties key %s collides with a property needed by rosa", properties.CLIVersion)
+		return nil, fmt.Errorf(
+			"Custom properties key %s collides with a property needed by rosa",
+			properties.CLIVersion,
+		)
 	}
 
-	clusterProperties[properties.CreatorARN] = awsCreator.ARN
+	clusterProperties[ocmConsts.CreatorArn] = awsCreator.ARN
 	clusterProperties[properties.CLIVersion] = info.Version
 
 	// Create the cluster:

@@ -412,7 +412,7 @@ func GetTagValues(tagsValue []iamtypes.Tag) (roleType string, version string) {
 		switch aws.ToString(tag.Key) {
 		case tags.RoleType:
 			roleType = aws.ToString(tag.Value)
-		case common.OpenShiftVersion:
+		case awsCommonValidations.OpenShiftVersion:
 			version = aws.ToString(tag.Value)
 		}
 	}
@@ -421,26 +421,17 @@ func GetTagValues(tagsValue []iamtypes.Tag) (roleType string, version string) {
 
 func GetOCMRoleName(prefix string, role string, postfix string) string {
 	name := fmt.Sprintf("%s-%s-Role-%s", prefix, role, postfix)
-	if len(name) > pkg.MaxByteSize {
-		name = name[0:pkg.MaxByteSize]
-	}
-	return name
+	return awsCommonUtils.TruncateRoleName(name)
 }
 
 func GetUserRoleName(prefix string, role string, userName string) string {
 	name := fmt.Sprintf("%s-%s-%s-Role", prefix, role, userName)
-	if len(name) > pkg.MaxByteSize {
-		name = name[0:pkg.MaxByteSize]
-	}
-	return name
+	return awsCommonUtils.TruncateRoleName(name)
 }
 
 func GetOperatorPolicyName(prefix string, namespace string, name string) string {
 	policy := fmt.Sprintf("%s-%s-%s", prefix, namespace, name)
-	if len(policy) > pkg.MaxByteSize {
-		policy = policy[0:pkg.MaxByteSize]
-	}
-	return policy
+	return awsCommonUtils.TruncateRoleName(policy)
 }
 
 func GetAdminPolicyName(name string) string {
@@ -710,11 +701,11 @@ func BuildOperatorRolePolicies(prefix string, accountID string, partition string
 		if err != nil {
 			name := GetOperatorPolicyName(prefix, operator.Namespace(), operator.Name())
 			iamTags := map[string]string{
-				common.OpenShiftVersion: defaultPolicyVersion,
-				tags.RolePrefix:         prefix,
-				tags.OperatorNamespace:  operator.Namespace(),
-				tags.OperatorName:       operator.Name(),
-				tags.RedHatManaged:      "true",
+				awsCommonValidations.OpenShiftVersion: defaultPolicyVersion,
+				tags.RolePrefix:                       prefix,
+				tags.OperatorNamespace:                operator.Namespace(),
+				tags.OperatorName:                     operator.Name(),
+				tags.RedHatManaged:                    "true",
 			}
 			createPolicy := awscb.NewIAMCommandBuilder().
 				SetCommand(awscb.CreatePolicy).
@@ -725,7 +716,7 @@ func BuildOperatorRolePolicies(prefix string, accountID string, partition string
 			commands = append(commands, createPolicy)
 		} else {
 			policyTags := map[string]string{
-				common.OpenShiftVersion: defaultPolicyVersion,
+				awsCommonValidations.OpenShiftVersion: defaultPolicyVersion,
 			}
 
 			createPolicy := awscb.NewIAMCommandBuilder().
@@ -789,10 +780,10 @@ func UpgradeOperatorRolePolicies(
 		}
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
 			defaultPolicyVersion, map[string]string{
-				common.OpenShiftVersion: defaultPolicyVersion,
-				tags.RolePrefix:         prefix,
-				tags.OperatorNamespace:  operator.Namespace(),
-				tags.OperatorName:       operator.Name(),
+				awsCommonValidations.OpenShiftVersion: defaultPolicyVersion,
+				tags.RolePrefix:                       prefix,
+				tags.OperatorNamespace:                operator.Namespace(),
+				tags.OperatorName:                     operator.Name(),
 			}, path)
 		if err != nil {
 			return err
@@ -969,9 +960,7 @@ func GetAccountRolePolicyKeys(roleType string) []string {
 
 func ComputeOperatorRoleArn(prefix string, operator *cmv1.STSOperator, creator *Creator, path string) string {
 	role := fmt.Sprintf("%s-%s-%s", prefix, operator.Namespace(), operator.Name())
-	if len(role) > pkg.MaxByteSize {
-		role = role[0:pkg.MaxByteSize]
-	}
+	role = awsCommonUtils.TruncateRoleName(role)
 	str := fmt.Sprintf("arn:%s:iam::%s:role", creator.Partition, creator.AccountID)
 	if path != "" {
 		str = fmt.Sprintf("%s%s", str, path)

@@ -155,7 +155,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 		return "", err
 	}
 
-	if managedPolicies && !common.IsManagedRole(output.Role.Tags) {
+	if managedPolicies && !common.IsManagedRole(FromV1TagToV2Tag(output.Role.Tags)) {
 		return "", fmt.Errorf("Role '%s' with unmanaged policies already exists", *output.Role.Arn)
 	}
 
@@ -403,7 +403,7 @@ func (c *awsClient) IsPolicyCompatible(policyArn string, version string) (bool, 
 		return false, err
 	}
 
-	return common.HasCompatibleVersionTags(output.Tags, version)
+	return common.HasCompatibleVersionTags(FromV1TagToV2Tag(output.Tags), version)
 }
 
 func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []iamtypes.Tag, version string) (bool, error) {
@@ -553,11 +553,23 @@ func validateAccountRoleVersionCompatibilityClassic(roleType string, minVersion 
 	}
 
 	// Account roles with HCP policies are not compatible with classic clusters
-	if common.IamResourceHasTag(tagList, tags.HypershiftPolicies, tags.True) {
+	if common.IamResourceHasTag(FromV1TagToV2Tag(tagList), tags.HypershiftPolicies, tags.True) {
 		return false, nil
 	}
 
 	return true, nil
+}
+
+// FIXME: Remove when moving ROSA CLI to aws v2
+func FromV1TagToV2Tag(tags []*iam.Tag) []iamtypes.Tag {
+	v2TagList := []iamtypes.Tag{}
+	for _, tag := range tags {
+		v2TagList = append(v2TagList, iamtypes.Tag{
+			Key:   tag.Key,
+			Value: tag.Value,
+		})
+	}
+	return v2TagList
 }
 
 func validateAccountRoleVersionCompatibilityHostedCp(roleType string, minVersion string,
@@ -571,7 +583,7 @@ func validateAccountRoleVersionCompatibilityHostedCp(roleType string, minVersion
 	}
 
 	// Only account roles with HCP managed policies are compatible with HCP clusters
-	return common.IamResourceHasTag(tagsList, tags.HypershiftPolicies, tags.True), nil
+	return common.IamResourceHasTag(FromV1TagToV2Tag(tagsList), tags.HypershiftPolicies, tags.True), nil
 }
 
 func isAccountRoleVersionCompatible(tagsList []iamtypes.Tag, roleType string,
@@ -591,7 +603,7 @@ func isAccountRoleVersionCompatible(tagsList []iamtypes.Tag, roleType string,
 		case common.OpenShiftVersion:
 			isTagged = true
 
-			if common.IamResourceHasTag(tagsList, common.ManagedPolicies, tags.True) {
+			if common.IamResourceHasTag(FromV1TagToV2Tag(tagsList), common.ManagedPolicies, tags.True) {
 				// Managed policies will be up-to-date no need to check version tags
 				break
 			}
@@ -712,7 +724,7 @@ func (c *awsClient) IsUserRole(roleName *string) (bool, error) {
 			return false, err
 		}
 
-		return common.IamResourceHasTag(roleTags.Tags, tags.RoleType, OCMUserRole), nil
+		return common.IamResourceHasTag(FromV1TagToV2Tag(roleTags.Tags), tags.RoleType, OCMUserRole), nil
 	}
 
 	return false, nil
@@ -762,12 +774,13 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 			if err != nil {
 				return nil, err
 			}
-			if common.IamResourceHasTag(roleTags.Tags, tags.AdminRole, tags.True) {
+			v2Tags := FromV1TagToV2Tag(roleTags.Tags)
+			if common.IamResourceHasTag(v2Tags, tags.AdminRole, tags.True) {
 				ocmRole.Admin = "Yes"
 			} else {
 				ocmRole.Admin = "No"
 			}
-			if common.IamResourceHasTag(roleTags.Tags, common.ManagedPolicies, tags.True) {
+			if common.IamResourceHasTag(v2Tags, common.ManagedPolicies, tags.True) {
 				ocmRole.ManagedPolicy = true
 			}
 
@@ -1650,7 +1663,7 @@ func (c *awsClient) HasHostedCPPolicies(roleARN string) (bool, error) {
 		return false, err
 	}
 
-	return common.IamResourceHasTag(role.Tags, tags.HypershiftPolicies, tags.True), nil
+	return common.IamResourceHasTag(FromV1TagToV2Tag(role.Tags), tags.HypershiftPolicies, tags.True), nil
 }
 
 func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
@@ -1663,7 +1676,7 @@ func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
 		return false, err
 	}
 
-	return common.IsManagedRole(role.Tags), nil
+	return common.IsManagedRole(FromV1TagToV2Tag(role.Tags)), nil
 }
 
 func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesUsingCluster(
