@@ -248,8 +248,24 @@ var _ = Describe("ParseDiskSizeToGigibyte", func() {
 		// Hitting the max int64 value
 		size := "200000000000000 Ti"
 		got, err := ParseDiskSizeToGigibyte(size)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(got).To(Equal(8589934591))
+		Expect(err).To(HaveOccurred())
+		Expect(got).To(Equal(0))
+	})
+
+	It("returns the correct value for valid unit: 200000000000000000000Ti", func() {
+		// Hitting the max int64 value
+		size := "200000000000000000000Ti"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).To(HaveOccurred())
+		Expect(got).To(Equal(0))
+	})
+
+	It("returns the correct value for valid unit: -200000000000000000000Ti", func() {
+		// Hitting the max int64 value
+		size := "-200000000000000000000Ti"
+		got, err := ParseDiskSizeToGigibyte(size)
+		Expect(err).To(HaveOccurred())
+		Expect(got).To(Equal(0))
 	})
 
 })
