@@ -20,7 +20,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/openshift-online/ocm-common/pkg"
+	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -127,7 +127,10 @@ func run(cmd *cobra.Command, _ []string) {
 		autoscalerArgs.ScaleDown.DelayAfterDelete = autoscaler.ScaleDown().DelayAfterDelete()
 		autoscalerArgs.ScaleDown.DelayAfterFailure = autoscaler.ScaleDown().DelayAfterFailure()
 
-		utilizationThreshold, err := strconv.ParseFloat(autoscaler.ScaleDown().UtilizationThreshold(), pkg.MaxByteSize)
+		utilizationThreshold, err := strconv.ParseFloat(
+			autoscaler.ScaleDown().UtilizationThreshold(),
+			commonUtils.MaxByteSize,
+		)
 		if err != nil {
 			r.Reporter.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)

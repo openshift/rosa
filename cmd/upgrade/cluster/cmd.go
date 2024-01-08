@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openshift-online/ocm-common/pkg"
+	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -558,7 +558,7 @@ func buildNodeDrainGracePeriod(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv
 		os.Exit(1)
 	}
 	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
-	nodeDrainValue, err := strconv.ParseFloat(nodeDrainParsed[0], pkg.MaxByteSize)
+	nodeDrainValue, err := strconv.ParseFloat(nodeDrainParsed[0], commonUtils.MaxByteSize)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid node drain grace period: %s", err)
 		os.Exit(1)

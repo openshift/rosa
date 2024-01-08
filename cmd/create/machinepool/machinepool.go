@@ -9,8 +9,8 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/briandowns/spinner"
-	"github.com/openshift-online/ocm-common/pkg"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
+	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -69,7 +69,9 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
-			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
+			formattedVersion, err := versions.FormatMajorMinorPatch(
+				ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2,
+			)
 			if err != nil {
 				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
 				os.Exit(1)
@@ -330,8 +332,12 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	// Machine pool instance type:
 	instanceType := args.instanceType
-	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(), availabilityZonesFilter,
-		cluster.AWS().STS().RoleARN(), r.AWSClient)
+	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(
+		cluster.Region().ID(),
+		availabilityZonesFilter,
+		cluster.AWS().STS().RoleARN(),
+		r.AWSClient,
+	)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -435,7 +441,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 	if spotMaxPrice != "on-demand" {
-		price, _ := strconv.ParseFloat(spotMaxPrice, pkg.MaxByteSize)
+		price, _ := strconv.ParseFloat(spotMaxPrice, commonUtils.MaxByteSize)
 		maxPrice = &price
 	}
 
@@ -615,7 +621,7 @@ func spotMaxPriceValidator(val interface{}) error {
 	if spotMaxPrice == "on-demand" {
 		return nil
 	}
-	price, err := strconv.ParseFloat(spotMaxPrice, pkg.MaxByteSize)
+	price, err := strconv.ParseFloat(spotMaxPrice, commonUtils.MaxByteSize)
 	if err != nil {
 		return fmt.Errorf("Expected a numeric value for spot max price")
 	}

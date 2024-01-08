@@ -1,4 +1,4 @@
-package oidc_config
+package oidcconfigs
 
 import (
 	"crypto"
@@ -14,9 +14,7 @@ import (
 
 	"gopkg.in/square/go-jose.v2"
 
-	"github.com/pkg/errors"
-
-	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift-online/ocm-common/pkg/utils"
 )
 
 const (
@@ -66,7 +64,7 @@ func BuildOidcConfigInput(userPrefix, region string) (OidcConfigInput, error) {
 }
 
 func GenerateBucketName(userPrefix string) (string, error) {
-	randomLabel := helper.RandomLabel(defaultLengthRandomLabel)
+	randomLabel := utils.RandomLabel(defaultLengthRandomLabel)
 	bucketName := fmt.Sprintf("%s-%s", defaultPrefixForConfiguration, randomLabel)
 	if userPrefix != "" {
 		bucketName = fmt.Sprintf("%s-%s", userPrefix, bucketName)
@@ -106,7 +104,7 @@ func CreateKeyPair() ([]byte, []byte, error) {
 	// Generate RSA keypair
 	privateKey, err := rsa.GenerateKey(rand.Reader, bitSize)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to generate private key")
+		return nil, nil, fmt.Errorf("Failed to generate private key: %v", err)
 	}
 	encodedPrivateKey := pem.EncodeToMemory(&pem.Block{
 		Type:    "RSA PRIVATE KEY",
@@ -117,7 +115,7 @@ func CreateKeyPair() ([]byte, []byte, error) {
 	// Generate public key from private keypair
 	pubKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to generate public key from private")
+		return nil, nil, fmt.Errorf("Failed to generate public key from private: %v", err)
 	}
 	encodedPublicKey := pem.EncodeToMemory(&pem.Block{
 		Type:    "PUBLIC KEY",
@@ -147,7 +145,6 @@ const (
 		"sub",
 		"iat",
 		"iss",
-		"sub"
 	]
 }`
 )
@@ -164,12 +161,12 @@ type JSONWebKeySet struct {
 func BuildJSONWebKeySet(publicKeyContent []byte) ([]byte, error) {
 	block, _ := pem.Decode(publicKeyContent)
 	if block == nil {
-		return nil, errors.Errorf("Failed to decode PEM file")
+		return nil, fmt.Errorf("Failed to decode PEM file")
 	}
 
 	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to parse key content")
+		return nil, fmt.Errorf("Failed to parse key content: %v", err)
 	}
 
 	var alg jose.SignatureAlgorithm
@@ -177,12 +174,12 @@ func BuildJSONWebKeySet(publicKeyContent []byte) ([]byte, error) {
 	case *rsa.PublicKey:
 		alg = jose.RS256
 	default:
-		return nil, errors.Errorf("Public key is not of type RSA")
+		return nil, fmt.Errorf("Public key is not of type RSA")
 	}
 
 	kid, err := keyIDFromPublicKey(publicKey)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to fetch key ID from public key")
+		return nil, fmt.Errorf("Failed to fetch key ID from public key: %v", err)
 	}
 
 	var keys []jose.JSONWebKey
@@ -195,7 +192,7 @@ func BuildJSONWebKeySet(publicKeyContent []byte) ([]byte, error) {
 
 	keySet, err := json.MarshalIndent(JSONWebKeySet{Keys: keys}, "", "    ")
 	if err != nil {
-		return nil, errors.Wrapf(err, "JSON encoding of web key set failed")
+		return nil, fmt.Errorf("JSON encoding of web key set failed: %v", err)
 	}
 
 	return keySet, nil
@@ -206,7 +203,7 @@ func BuildJSONWebKeySet(publicKeyContent []byte) ([]byte, error) {
 func keyIDFromPublicKey(publicKey interface{}) (string, error) {
 	publicKeyDERBytes, err := x509.MarshalPKIXPublicKey(publicKey)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to serialize public key to DER format")
+		return "", fmt.Errorf("Failed to serialize public key to DER format: %v", err)
 	}
 
 	hasher := crypto.SHA256.New()

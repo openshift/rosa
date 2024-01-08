@@ -3,7 +3,7 @@ package operatorroles
 import (
 	"fmt"
 
-	"github.com/openshift-online/ocm-common/pkg"
+	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -17,9 +17,7 @@ func computePolicyARN(accountID string, prefix string, namespace string, name st
 		prefix = aws.DefaultPrefix
 	}
 	policy := fmt.Sprintf("%s-%s-%s", prefix, namespace, name)
-	if len(policy) > pkg.MaxByteSize {
-		policy = policy[0:pkg.MaxByteSize]
-	}
+	policy = awsCommonUtils.TruncateRoleName(policy)
 	if path != "" {
 		return fmt.Sprintf("arn:%s:iam::%s:policy%s%s", aws.GetPartition(), accountID, path, policy)
 	}

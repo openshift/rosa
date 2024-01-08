@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/openshift-online/ocm-common/pkg"
-	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
+	awsCommonValidations "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -26,10 +26,7 @@ const (
 func GetOperatorRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperator) string {
 	rolePrefix := cluster.AWS().STS().OperatorRolePrefix()
 	role := fmt.Sprintf("%s-%s-%s", rolePrefix, missingOperator.Namespace(), missingOperator.Name())
-	if len(role) > pkg.MaxByteSize {
-		role = role[0:pkg.MaxByteSize]
-	}
-	return role
+	return awsCommonUtils.TruncateRoleName(role)
 }
 
 func BuildMissingOperatorRoleCommand(
@@ -117,7 +114,10 @@ func ValidateUnmanagedAccountRoles(roleARNs []string, awsClient aws.Client, vers
 			return fmt.Errorf("Could not get Role '%s' : %v", ARN, err)
 		}
 
-		validVersion, err := common.HasCompatibleVersionTags(role.Tags, ocm.GetVersionMinor(version))
+		validVersion, err := awsCommonValidations.HasCompatibleVersionTags(
+			aws.FromV1TagToV2Tag(role.Tags),
+			ocm.GetVersionMinor(version),
+		)
 		if err != nil {
 			return fmt.Errorf("Could not validate Role '%s' : %v", ARN, err)
 		}
@@ -151,8 +151,16 @@ func ValidateOperatorRolesManagedPolicies(r *rosa.Runtime, cluster *cmv1.Cluster
 	return r.AWSClient.ValidateOperatorRolesManagedPolicies(cluster, operatorRoles, policies, hostedCPPolicies)
 }
 
-func CreateMissingRoles(r *rosa.Runtime, missingRolesInCS map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
-	mode string, prefix string, policies map[string]*cmv1.AWSSTSPolicy, unifiedPath string, managedPolicies bool) error {
+func CreateMissingRoles(
+	r *rosa.Runtime,
+	missingRolesInCS map[string]*cmv1.STSOperator,
+	cluster *cmv1.Cluster,
+	mode string,
+	prefix string,
+	policies map[string]*cmv1.AWSSTSPolicy,
+	unifiedPath string,
+	managedPolicies bool,
+) error {
 	createdMissingRoles := 0
 	for _, operator := range missingRolesInCS {
 		roleName := GetOperatorRoleName(cluster, operator)
@@ -239,7 +247,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 			tags.RedHatManaged:     "true",
 		}
 		if managedPolicies {
-			tagsList[common.ManagedPolicies] = "true"
+			tagsList[awsCommonValidations.ManagedPolicies] = "true"
 		}
 		r.Reporter.Debugf("Creating role '%s'", roleName)
 		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, "", "",
