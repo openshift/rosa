@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/openshift-online/ocm-common/pkg/rosa/oidcconfigs"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
@@ -35,7 +36,6 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	. "github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/helper/oidc_config"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	interactiveRoles "github.com/openshift/rosa/pkg/interactive/roles"
@@ -123,7 +123,8 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 		return
 	}
 	modeIsAuto := cmd.Flag("mode").Value.String() == aws.ModeAuto
-	installerRoleArnNotSet := (!cmd.Flags().Changed(InstallerRoleArnFlag) || args.installerRoleArn == "") && !confirm.Yes()
+	installerRoleArnNotSet := (!cmd.Flags().Changed(InstallerRoleArnFlag) || args.installerRoleArn == "") &&
+		!confirm.Yes()
 	if !args.managed && (modeNotChanged || (modeIsAuto && installerRoleArnNotSet)) {
 		interactive.Enable()
 		return
@@ -212,7 +213,13 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
 				args.installerRoleArn = interactiveRoles.
-					GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret, r.AWSClient.FindRoleARNs)
+					GetInstallerRoleArn(
+						r,
+						cmd,
+						args.installerRoleArn,
+						MinorVersionForGetSecret,
+						r.AWSClient.FindRoleARNs,
+					)
 			}
 			if interactive.Enabled() {
 				prefix, err := interactive.GetString(interactive.Input{
@@ -239,7 +246,11 @@ func run(cmd *cobra.Command, argv []string) {
 				}
 				roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
 				if err != nil {
-					r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", args.installerRoleArn, err)
+					r.Reporter.Errorf(
+						"There was a problem checking if role '%s' exists: %v",
+						args.installerRoleArn,
+						err,
+					)
 					os.Exit(1)
 				}
 				if !roleExists {
@@ -253,7 +264,11 @@ func run(cmd *cobra.Command, argv []string) {
 					os.Exit(1)
 				}
 				if !isValid {
-					r.Reporter.Errorf("Role '%s' is not of minimum version '%s'", args.installerRoleArn, MinorVersionForGetSecret)
+					r.Reporter.Errorf(
+						"Role '%s' is not of minimum version '%s'",
+						args.installerRoleArn,
+						MinorVersionForGetSecret,
+					)
 					os.Exit(1)
 				}
 			}
@@ -268,9 +283,9 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	oidcConfigInput := oidc_config.OidcConfigInput{}
+	oidcConfigInput := oidcconfigs.OidcConfigInput{}
 	if !args.managed {
-		oidcConfigInput, err = oidc_config.BuildOidcConfigInput(args.userPrefix, args.region)
+		oidcConfigInput, err = oidcconfigs.BuildOidcConfigInput(args.userPrefix, args.region)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -293,7 +308,7 @@ type CreateOidcConfigStrategy interface {
 }
 
 type CreateUnmanagedOidcConfigRawStrategy struct {
-	oidcConfig *oidc_config.OidcConfigInput
+	oidcConfig *oidcconfigs.OidcConfigInput
 }
 
 func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
@@ -320,12 +335,14 @@ func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
 		os.Exit(1)
 	}
 	if !output.HasFlag() && r.Reporter.IsTerminal() {
-		r.Reporter.Infof("Please refer to documentation to use generated files to create an OIDC compliant configuration.")
+		r.Reporter.Infof(
+			"Please refer to documentation to use generated files to create an OIDC compliant configuration.",
+		)
 	}
 }
 
 type CreateUnmanagedOidcConfigAutoStrategy struct {
-	oidcConfig *oidc_config.OidcConfigInput
+	oidcConfig *oidcconfigs.OidcConfigInput
 }
 
 const (
@@ -412,7 +429,7 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 }
 
 type CreateUnmanagedOidcConfigManualStrategy struct {
-	oidcConfig *oidc_config.OidcConfigInput
+	oidcConfig *oidcconfigs.OidcConfigInput
 }
 
 func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
@@ -521,7 +538,7 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 }
 
 type CreateManagedOidcConfigAutoStrategy struct {
-	oidcConfigInput *oidc_config.OidcConfigInput
+	oidcConfigInput *oidcconfigs.OidcConfigInput
 }
 
 func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
@@ -564,7 +581,7 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	}
 }
 
-func getOidcConfigStrategy(mode string, input *oidc_config.OidcConfigInput) (CreateOidcConfigStrategy, error) {
+func getOidcConfigStrategy(mode string, input *oidcconfigs.OidcConfigInput) (CreateOidcConfigStrategy, error) {
 	if args.rawFiles {
 		return &CreateUnmanagedOidcConfigRawStrategy{oidcConfig: input}, nil
 	}

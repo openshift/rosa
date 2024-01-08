@@ -22,10 +22,6 @@ package properties
 // Prefix used by all the property names:
 const prefix = "rosa_"
 
-// CreatorARN is the name of the label that will contain the ARN of the user that created the
-// cluster:
-const CreatorARN = prefix + "creator_arn"
-
 const CLIVersion = prefix + "cli_version"
 
 const FakeCluster = "fake_cluster"
