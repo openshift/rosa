@@ -337,6 +337,8 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
+	// Machine pool instance type:
+	instanceType := args.instanceType
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(
 		cluster.Region().ID(),
 		availabilityZonesFilter,
