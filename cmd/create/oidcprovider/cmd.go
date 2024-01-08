@@ -190,11 +190,6 @@ func run(cmd *cobra.Command, argv []string) {
 
 	switch mode {
 	case aws.ModeAuto:
-		if cluster != nil && cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
-			r.Reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
-				clusterKey, cluster.State())
-			os.Exit(0)
-		}
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating OIDC provider using '%s'", r.Creator.ARN)
 		}
