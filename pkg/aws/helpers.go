@@ -412,9 +412,9 @@ func GetTagValues(tagsValue []iamtypes.Tag) (roleType string, version string) {
 	for _, tag := range tagsValue {
 		switch aws.ToString(tag.Key) {
 		case tags.RoleType:
-			roleType = aws.StringValue(tag.Value)
+			roleType = aws.ToString(tag.Value)
 		case awsCommonValidations.OpenShiftVersion:
-			version = aws.StringValue(tag.Value)
+			version = aws.ToString(tag.Value)
 		}
 	}
 	return
