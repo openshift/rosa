@@ -43,7 +43,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	// Validate flags that are only allowed for BYOVPC cluster
 	isSubnetSet := cmd.Flags().Changed("subnet")
-	isByoVpc := isBYOVPC(cluster)
+	isByoVpc := helper.IsBYOVPC(cluster)
 	if !isByoVpc && isSubnetSet {
 		r.Reporter.Errorf("Setting the `subnet` flag is only allowed for BYO VPC clusters")
 		os.Exit(1)
@@ -129,7 +129,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	// Allow the user to select subnet for a single AZ BYOVPC cluster
 	var subnet string
-	if !cluster.MultiAZ() && isBYOVPC(cluster) {
+	if !cluster.MultiAZ() && isByoVpc {
 		subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster)
 	}
 
@@ -160,7 +160,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 		if !multiAZMachinePool {
 			// Allow to create a single AZ machine pool providing the subnet
-			if isBYOVPC(cluster) && args.availabilityZone == "" {
+			if isByoVpc && args.availabilityZone == "" {
 				subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster)
 			}
 
@@ -624,8 +624,4 @@ func spotMaxPriceValidator(val interface{}) error {
 		return fmt.Errorf("Spot max price must be positive")
 	}
 	return nil
-}
-
-func isBYOVPC(cluster *cmv1.Cluster) bool {
-	return len(cluster.AWS().SubnetIDs()) > 0
 }
