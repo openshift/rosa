@@ -220,10 +220,10 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 				return fmt.Errorf("Error verifying subnets by cluster: %s", err)
 			}
 		} else {
-			// Default platform type set to 'aws'
-			platform = cmv1.PlatformAws
+			// Default platform type set to 'aws-classic'
+			platform = cmv1.PlatformAwsClassic
 			if args.hostedCp {
-				platform = cmv1.PlatformHostedCluster
+				platform = cmv1.PlatformAwsHostedCp
 			}
 			_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs, tagsList, platform)
 			if err != nil {
