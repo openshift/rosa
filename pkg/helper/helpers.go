@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/openshift/rosa/pkg/reporter"
+
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var r *rand.Rand
@@ -252,4 +254,8 @@ func ChunkSlice[T any](slice []T, chunkSize int) [][]T {
 	}
 
 	return chunks
+}
+
+func IsBYOVPC(cluster *cmv1.Cluster) bool {
+	return len(cluster.AWS().SubnetIDs()) > 0
 }
