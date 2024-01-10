@@ -208,7 +208,8 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	hasLegacyIngressSupport := true
-	if !ocm.IsHyperShiftCluster(cluster) {
+	isHypershift := ocm.IsHyperShiftCluster(cluster)
+	if !isHypershift {
 		var err error
 		hasLegacyIngressSupport, err = r.OCMClient.HasLegacyIngressSupport(cluster)
 		if err != nil {
@@ -217,11 +218,19 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if hasLegacyIngressSupport && IsIngressV2SetViaCLI(cmd.Flags()) {
-		r.Reporter.Errorf("New ingress attributes %s can't be supplied for legacy supported clusters."+
-			" For more information on how to be supported please check: %s",
-			utils.SliceToSortedString(exclusivelyIngressV2Flags), ingressV2DocLink)
-		os.Exit(1)
+	if IsIngressV2SetViaCLI(cmd.Flags()) {
+		if isHypershift {
+			r.Reporter.Errorf(
+				"New ingress attributes %s can't be supplied for Hosted Control Plane clusters",
+				utils.SliceToSortedString(exclusivelyIngressV2Flags),
+			)
+			os.Exit(1)
+		} else if hasLegacyIngressSupport {
+			r.Reporter.Errorf("New ingress attributes %s can't be supplied for legacy supported clusters."+
+				" For more information on how to be supported please check: %s",
+				utils.SliceToSortedString(exclusivelyIngressV2Flags), ingressV2DocLink)
+			os.Exit(1)
+		}
 	}
 
 	if cluster.AWS().PrivateLink() && !ocm.IsHyperShiftCluster(cluster) && hasLegacyIngressSupport {
@@ -393,7 +402,9 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		if cmd.Flags().Changed(namespaceOwnershipPolicyFlag) {
 			if ocm.IsHyperShiftCluster(cluster) {
-				r.Reporter.Errorf("Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters")
+				r.Reporter.Errorf(
+					"Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters",
+				)
 				os.Exit(1)
 			}
 			namespaceOwnershipPolicy = &args.namespaceOwnershipPolicy
