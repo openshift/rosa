@@ -29,6 +29,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -155,10 +156,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	if !cmd.Flags().Changed(subnetIDsFlag) {
 		if cluster != nil {
-			args.subnetIDs = cluster.AWS().SubnetIDs()
-			if len(args.subnetIDs) == 0 {
-				return fmt.Errorf("No subnets on cluster '%s'", cluster.ID())
+			if !helper.IsBYOVPC(cluster) {
+				return fmt.Errorf(
+					"Running the network verifier is only supported for BYO VPC clusters")
 			}
+
+			args.subnetIDs = cluster.AWS().SubnetIDs()
 		} else {
 			return fmt.Errorf("At least one subnet IDs is required")
 		}

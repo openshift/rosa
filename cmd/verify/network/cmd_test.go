@@ -405,4 +405,30 @@ INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 			ContainSubstring(
 				"'--hosted-cp' flag is not required when running the network verifier with cluster"))
 	})
+	It("Fails if --cluster is not BYO VPC", func() {
+		cmd.Flags().Lookup(statusOnlyFlag).Changed = true
+		cmd.Flags().Set(clusterFlag, "tomckay-vpc")
+
+		mockCluster, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+			c.AWS(cmv1.NewAWS().SubnetIDs())
+			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+			c.State("ready state")
+		})
+		Expect(err).To(BeNil())
+		clusterList := test.FormatClusterList([]*cmv1.Cluster{mockCluster})
+
+		// GET /api/clusters_mgmt/v1/clusters
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				clusterList,
+			),
+		)
+
+		err = runWithRuntime(r, cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(
+			ContainSubstring(
+				"Running the network verifier is only supported for BYO VPC clusters"))
+	})
 })
