@@ -3731,6 +3731,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 			strings.Join(spec.AdditionalControlPlaneSecurityGroupIds, ","))
 	}
 
+	if spec.BillingAccount != "" {
+		command += fmt.Sprintf(" --billing-account %s", spec.BillingAccount)
+	}
+
 	for _, p := range properties {
 		command += fmt.Sprintf(" --properties \"%s\"", p)
 	}
