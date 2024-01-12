@@ -3,10 +3,10 @@
 github.com/AlecAivazis/survey/v2
 github.com/AlecAivazis/survey/v2/core
 github.com/AlecAivazis/survey/v2/terminal
-# github.com/PuerkitoBio/goquery v1.8.0
+# github.com/PuerkitoBio/goquery v1.8.1
 ## explicit; go 1.13
 github.com/PuerkitoBio/goquery
-# github.com/andybalholm/cascadia v1.3.1
+# github.com/andybalholm/cascadia v1.3.2
 ## explicit; go 1.16
 github.com/andybalholm/cascadia
 # github.com/aws/aws-sdk-go v1.45.26
@@ -237,8 +237,8 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 ## explicit
 github.com/mgutz/ansi
-# github.com/microcosm-cc/bluemonday v1.0.23
-## explicit; go 1.19
+# github.com/microcosm-cc/bluemonday v1.0.26
+## explicit; go 1.21
 github.com/microcosm-cc/bluemonday
 github.com/microcosm-cc/bluemonday/css
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
@@ -288,12 +288,13 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-online/ocm-common v0.0.0-20240108132244-eacef64b4590
+# github.com/openshift-online/ocm-common v0.0.0-20240112142331-3390b684d313
 ## explicit; go 1.19
 github.com/openshift-online/ocm-common/pkg/aws/consts
 github.com/openshift-online/ocm-common/pkg/aws/utils
 github.com/openshift-online/ocm-common/pkg/aws/validations
 github.com/openshift-online/ocm-common/pkg/cluster/validations
+github.com/openshift-online/ocm-common/pkg/idp/utils
 github.com/openshift-online/ocm-common/pkg/idp/validations
 github.com/openshift-online/ocm-common/pkg/machinepool/validations
 github.com/openshift-online/ocm-common/pkg/ocm/consts
@@ -376,11 +377,13 @@ github.com/zgalor/weberr
 # gitlab.com/c0b/go-ordered-json v0.0.0-20171130231205-49bbdab258c2
 ## explicit
 gitlab.com/c0b/go-ordered-json
-# golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
+# golang.org/x/crypto v0.14.0
 ## explicit; go 1.17
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/pbkdf2
-# golang.org/x/net v0.10.0
+# golang.org/x/net v0.17.0
 ## explicit; go 1.17
 golang.org/x/net/context
 golang.org/x/net/html
@@ -391,16 +394,15 @@ golang.org/x/net/http2
 golang.org/x/net/http2/h2c
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
-# golang.org/x/sys v0.9.0
+# golang.org/x/sys v0.13.0
 ## explicit; go 1.17
-golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.8.0
+# golang.org/x/term v0.13.0
 ## explicit; go 1.17
 golang.org/x/term
-# golang.org/x/text v0.9.0
+# golang.org/x/text v0.13.0
 ## explicit; go 1.17
 golang.org/x/text/cases
 golang.org/x/text/encoding

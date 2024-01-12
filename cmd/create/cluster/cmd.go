@@ -29,6 +29,7 @@ import (
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
+	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	kmsArnRegexpValidator "github.com/openshift-online/ocm-common/pkg/resource/validations"
@@ -947,7 +948,7 @@ func run(cmd *cobra.Command, _ []string) {
 			// user supplies create-admin-user flag without cluster-admin-password will generate random password
 			if clusterAdminPassword == "" {
 				r.Reporter.Debugf(admin.GeneratingRandomPasswordString)
-				clusterAdminPassword, err = admin.GenerateRandomPassword()
+				clusterAdminPassword, err = idputils.GenerateRandomPassword()
 				if err != nil {
 					r.Reporter.Errorf("Failed to generate a random password")
 					os.Exit(1)
@@ -986,7 +987,7 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 				if !isCustomAdminPassword {
-					clusterAdminPassword, err = admin.GenerateRandomPassword()
+					clusterAdminPassword, err = idputils.GenerateRandomPassword()
 					if err != nil {
 						r.Reporter.Errorf("Failed to generate a random password")
 						os.Exit(1)
