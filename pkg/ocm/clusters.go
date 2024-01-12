@@ -135,6 +135,7 @@ type Spec struct {
 	// HyperShift options:
 	Hypershift     Hypershift
 	BillingAccount string
+	NoCni          bool
 
 	// Audit Log Forwarding
 	AuditLogRoleARN *string
@@ -881,7 +882,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}
 
-	if config.NetworkType != "" ||
+	if config.NetworkType != "" || config.NoCni ||
 		!IsEmptyCIDR(config.MachineCIDR) ||
 		!IsEmptyCIDR(config.ServiceCIDR) ||
 		!IsEmptyCIDR(config.PodCIDR) ||
@@ -889,6 +890,9 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		networkBuilder := cmv1.NewNetwork()
 		if config.NetworkType != "" {
 			networkBuilder = networkBuilder.Type(config.NetworkType)
+		}
+		if config.NoCni {
+			networkBuilder = networkBuilder.Type("Other")
 		}
 		if !IsEmptyCIDR(config.MachineCIDR) {
 			networkBuilder = networkBuilder.MachineCIDR(config.MachineCIDR.String())
