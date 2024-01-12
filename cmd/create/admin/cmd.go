@@ -17,10 +17,9 @@ limitations under the License.
 package admin
 
 import (
-	"crypto/rand"
-	"math/big"
 	"os"
 
+	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -86,7 +85,7 @@ func run(cmd *cobra.Command, _ []string) {
 	passwordArg := args.passwordArg
 	if len(passwordArg) == 0 {
 		r.Reporter.Debugf(GeneratingRandomPasswordString)
-		password, err = GenerateRandomPassword()
+		password, err = idputils.GenerateRandomPassword()
 		if err != nil {
 			r.Reporter.Errorf("Failed to generate a random password")
 			os.Exit(1)
@@ -171,41 +170,6 @@ func run(cmd *cobra.Command, _ []string) {
 		"   oc login %s --username %s --password %s\n",
 		outputObject["api_url"], outputObject["username"], outputObject["password"])
 	r.Reporter.Infof("It may take several minutes for this access to become active.")
-}
-
-func GenerateRandomPassword() (string, error) {
-	const (
-		lowerLetters = "abcdefghijkmnopqrstuvwxyz"
-		upperLetters = "ABCDEFGHIJKLMNPQRSTUVWXYZ"
-		digits       = "23456789"
-		all          = lowerLetters + upperLetters + digits
-	)
-	var password string
-	for i := 0; i < MaxPasswordLength; i++ {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(all))))
-		if err != nil {
-			return "", err
-		}
-		newchar := string(all[n.Int64()])
-		if password == "" {
-			password = newchar
-		}
-		if i < MaxPasswordLength-1 {
-			n, err = rand.Int(rand.Reader, big.NewInt(int64(len(password)+1)))
-			if err != nil {
-				return "", err
-			}
-			j := n.Int64()
-			password = password[0:j] + newchar + password[j:]
-		}
-	}
-
-	pw := []rune(password)
-	for _, replace := range []int{5, 11, 17} {
-		pw[replace] = '-'
-	}
-
-	return string(pw), nil
 }
 
 func FindExistingClusterAdminIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (
