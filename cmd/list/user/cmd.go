@@ -26,7 +26,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -68,12 +67,6 @@ func run(_ *cobra.Command, _ []string) {
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
-	}
-	// Remove cluster-admin user
-	for i, user := range clusterAdmins {
-		if user.ID() == idp.ClusterAdminUsername {
-			clusterAdmins = append(clusterAdmins[:i], clusterAdmins[i+1:]...)
-		}
 	}
 
 	// Load dedicated-admins for this cluster
