@@ -178,6 +178,7 @@ var args struct {
 	// Hypershift options:
 	hostedClusterEnabled bool
 	billingAccount       string
+	noCni                bool
 
 	// Cluster Admin
 	createAdminUser      bool
@@ -680,6 +681,13 @@ func init() {
 		"create-admin-user",
 		false,
 		`Create cluster admin named "cluster-admin"`,
+	)
+
+	flags.BoolVar(
+		&args.noCni,
+		"no-cni",
+		false,
+		"Disable CNI creation to let users bring their own CNI.",
 	)
 
 	flags.StringVar(
@@ -2475,7 +2483,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Network Type:
-	networkType := args.networkType
+	networkType := validateNetworkType(r)
 	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
 		networkType, err = interactive.GetOption(interactive.Input{
 			Question: "Network Type",
@@ -2564,6 +2572,28 @@ func run(cmd *cobra.Command, _ []string) {
 			machinePoolRootDisk = &ocm.Volume{
 				Size: machinePoolRootDiskSize,
 			}
+		}
+	}
+
+	// No CNI
+	if cmd.Flags().Changed("no-cni") && !isHostedCP {
+		r.Reporter.Errorf("Disabling CNI is supported only for Hosted Control Planes")
+		os.Exit(1)
+	}
+	if cmd.Flags().Changed("no-cni") && cmd.Flags().Changed("network-type") {
+		r.Reporter.Errorf("--no-cni and --network-type are mutually exclusive parameters")
+		os.Exit(1)
+	}
+	noCni := args.noCni
+	if cmd.Flags().Changed("no-cni") && interactive.Enabled() {
+		noCni, err = interactive.GetBool(interactive.Input{
+			Question: "Disable CNI",
+			Help:     cmd.Flags().Lookup("no-cni").Usage,
+			Default:  noCni,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for no CNI: %s", err)
+			os.Exit(1)
 		}
 	}
 
@@ -3015,6 +3045,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Enabled: isHostedCP,
 		},
 		BillingAccount:  billingAccount,
+		NoCni:           noCni,
 		AuditLogRoleARN: &auditLogRoleARN,
 		DefaultIngress: ocm.DefaultIngressSpec{
 			RouteSelectors:           routeSelectors,
@@ -3187,6 +3218,25 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+}
+
+// validateNetworkType ensure user passes a valid network type parameter at creation
+func validateNetworkType(r *rosa.Runtime) string {
+	var networkType string
+	if args.networkType == "" {
+		// Parameter not specified, nothing to do
+		return networkType
+	}
+	for _, validType := range ocm.NetworkTypes {
+		if args.networkType == validType {
+			networkType = args.networkType
+		}
+	}
+	if networkType == "" {
+		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
+		os.Exit(1)
+	}
+	return networkType
 }
 
 func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
@@ -3736,6 +3786,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 	if spec.BillingAccount != "" {
 		command += fmt.Sprintf(" --billing-account %s", spec.BillingAccount)
+	}
+
+	if spec.NoCni {
+		command += " --no-cni"
 	}
 
 	for _, p := range properties {
