@@ -50,6 +50,12 @@ github.com/andybalholm/cascadia v1.3.1 h1:nhxRkql1kdYCc8Snf7D5/D3spOX+dBgjA6u8x0
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/aws/aws-sdk-go v1.45.26 h1:PJ2NJNY5N/yeobLYe1Y+xLdavBi67ZI8gvph6ftwVCg=
 github.com/aws/aws-sdk-go v1.45.26/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
+github.com/aws/aws-sdk-go-v2 v1.24.1 h1:xAojnj+ktS95YZlDf0zxWBkbFtymPeDP+rvUQIH3uAU=
+github.com/aws/aws-sdk-go-v2 v1.24.1/go.mod h1:LNh45Br1YAkEKaAqvmE1m8FUx6a5b/V0oAKV7of29b4=
+github.com/aws/aws-sdk-go-v2/service/iam v1.27.1 h1:rPkEOnwPOVop34lpAlA4Dv6x67Ys3moXkPDvBfjgSSo=
+github.com/aws/aws-sdk-go-v2/service/iam v1.27.1/go.mod h1:qdQ8NUrhmXE80S54w+LrtHUY+1Fp7cQSRZbJUZKrAcU=
+github.com/aws/smithy-go v1.19.0 h1:KWFKQV80DpP3vJrrA9sVAHQ5gc2z8i4EzrLhLlWXcBM=
+github.com/aws/smithy-go v1.19.0/go.mod h1:NukqUGpCZIILqqiV0NIjeFh24kd/FAa4beRb6nbIUPE=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
@@ -311,10 +317,10 @@ github.com/onsi/ginkgo/v2 v2.11.0 h1:WgqUCUt/lT6yXoQ8Wef0fsNn5cAuMK7+KT9UFRz2tcU
 github.com/onsi/ginkgo/v2 v2.11.0/go.mod h1:ZhrRA5XmEE3x3rhlzamx/JJvujdZoJ2uvgI7kR0iZvM=
 github.com/onsi/gomega v1.27.8 h1:gegWiwZjBsf2DgiSbf5hpokZ98JVDMcWkUiigk6/KXc=
 github.com/onsi/gomega v1.27.8/go.mod h1:2J8vzI/s+2shY9XHRApDkdgPo1TKT7P2u6fXeJKFnNQ=
-github.com/openshift-online/ocm-common v0.0.0-20231026143539-5ff0909b6fae h1:qEQiHbz8rZzlK/h3KQ40dYuWvYwpwBGoVS0Zfakuh1A=
-github.com/openshift-online/ocm-common v0.0.0-20231026143539-5ff0909b6fae/go.mod h1:kyxt0qXcHlgBSmb0QzYqKBY5mot6mdKHzFBeTCEol2c=
-github.com/openshift-online/ocm-sdk-go v0.1.390 h1:J6mqjOFiid1OQ9Gshr4hjCeJiX2UnvFIDlB1mwQxFmI=
-github.com/openshift-online/ocm-sdk-go v0.1.390/go.mod h1:/+VFIw1iW2H0jEkFH4GnbL/liWareyzsL0w7mDIudB4=
+github.com/openshift-online/ocm-common v0.0.0-20240108132244-eacef64b4590 h1:SxUiGGWUMn5UrTj1fjdqAzX17q/VeCUHlDLE53vb5B8=
+github.com/openshift-online/ocm-common v0.0.0-20240108132244-eacef64b4590/go.mod h1:zPaIyv9h8oYt8FPmplznPkW7xHDX3TEoctmAq104ZbI=
+github.com/openshift-online/ocm-sdk-go v0.1.391 h1:BCC/sM1gVooxCL76MiPux2kng8MUbwM1IQr62hMPXeU=
+github.com/openshift-online/ocm-sdk-go v0.1.391/go.mod h1:/+VFIw1iW2H0jEkFH4GnbL/liWareyzsL0w7mDIudB4=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

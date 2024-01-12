@@ -24,7 +24,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/openshift-online/ocm-common/pkg"
+	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -359,8 +359,5 @@ func buildCommand(
 
 func generateRoleName(cr *cmv1.CredentialRequest, prefix string) string {
 	roleName := fmt.Sprintf("%s-%s-%s", prefix, cr.Namespace(), cr.Name())
-	if len(roleName) > pkg.MaxByteSize {
-		roleName = roleName[0:pkg.MaxByteSize]
-	}
-	return roleName
+	return awsCommonUtils.TruncateRoleName(roleName)
 }
