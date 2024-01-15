@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"time"
 
+	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -1061,9 +1062,14 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 
 	if config.ClusterAdminUser != "" {
+		hashedPwd, err := idputils.GenerateHTPasswdCompatibleHash(config.ClusterAdminPassword)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get access keys for user '%s': %v",
+				aws.AdminUserName, err)
+		}
 		htpasswdUsers := []*v1.HTPasswdUserBuilder{}
 		htpasswdUsers = append(htpasswdUsers, v1.NewHTPasswdUser().
-			Username(config.ClusterAdminUser).Password(config.ClusterAdminPassword))
+			Username(config.ClusterAdminUser).HashedPassword(hashedPwd))
 		htpassUserList := v1.NewHTPasswdUserList().Items(htpasswdUsers...)
 		htPasswdIDP := v1.NewHTPasswdIdentityProvider().Users(htpassUserList)
 		clusterBuilder = clusterBuilder.Htpasswd(htPasswdIDP)
