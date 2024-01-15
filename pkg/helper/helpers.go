@@ -12,10 +12,9 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/google/uuid"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/reporter"
-
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var r *rand.Rand

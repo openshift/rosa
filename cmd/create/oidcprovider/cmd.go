@@ -183,7 +183,7 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		// Returns so that when called from create cluster does not interrupt flow
-		r.Reporter.Infof("OIDC provider already exists.")
+		r.Reporter.Infof("OIDC provider already exists")
 		return
 	}
 
