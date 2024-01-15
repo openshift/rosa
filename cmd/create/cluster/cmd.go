@@ -3224,10 +3224,8 @@ func validateNetworkType(r *rosa.Runtime) string {
 		// Parameter not specified, nothing to do
 		return networkType
 	}
-	for _, validType := range ocm.NetworkTypes {
-		if args.networkType == validType {
-			networkType = args.networkType
-		}
+	if helper.Contains(ocm.NetworkTypes, args.networkType) {
+		networkType = args.networkType
 	}
 	if networkType == "" {
 		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
