@@ -38,23 +38,18 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		}
 	}
 
-	if ocm.IsOidcConfigReusable(cluster) && len(missingRoles) == 0 {
-		err := validateOperatorRolesMatchOidcProvider(r, cluster)
-		if err != nil {
-			return err
+	if len(missingRoles) == 0 {
+		if ocm.IsOidcConfigReusable(cluster) {
+			err := validateOperatorRolesMatchOidcProvider(r, cluster)
+			if err != nil {
+				return err
+			}
 		}
+
 		if !args.forcePolicyCreation {
-			r.Reporter.Infof("Cluster '%s' is using reusable OIDC Config and operator roles already exist.", clusterKey)
+			r.Reporter.Infof("Operator Roles already exists")
 			return nil
 		}
-	}
-
-	if len(missingRoles) == 0 &&
-		cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending &&
-		!args.forcePolicyCreation {
-		r.Reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
-			clusterKey, cluster.State())
-		os.Exit(0)
 	}
 	roleName, err := aws.GetInstallerAccountRoleName(cluster)
 	if err != nil {
@@ -146,10 +141,18 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 	return nil
 }
 
-func createRoles(r *rosa.Runtime,
-	prefix string, permissionsBoundary string,
-	cluster *cmv1.Cluster, accountRoleVersion string, policies map[string]*cmv1.AWSSTSPolicy,
-	defaultVersion string, credRequests map[string]*cmv1.STSOperator, managedPolicies bool, hostedCPPolicies bool) error {
+func createRoles(
+	r *rosa.Runtime,
+	prefix string,
+	permissionsBoundary string,
+	cluster *cmv1.Cluster,
+	accountRoleVersion string,
+	policies map[string]*cmv1.AWSSTSPolicy,
+	defaultVersion string,
+	credRequests map[string]*cmv1.STSOperator,
+	managedPolicies bool,
+	hostedCPPolicies bool,
+) error {
 	sharedVpcRoleArn := cluster.AWS().PrivateHostedZoneRoleARN()
 	isSharedVpc := sharedVpcRoleArn != ""
 
