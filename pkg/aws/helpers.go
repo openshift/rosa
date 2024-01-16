@@ -19,11 +19,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	awsCommonValidations "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	client "github.com/openshift/rosa/pkg/aws/api_interface"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 
