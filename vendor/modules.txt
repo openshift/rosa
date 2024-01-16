@@ -128,83 +128,6 @@ github.com/aws/aws-sdk-go-v2/service/ec2/types
 github.com/aws/aws-sdk-go-v2/service/iam
 github.com/aws/aws-sdk-go-v2/service/iam/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/iam/types
-# github.com/aws/smithy-go v1.19.0
-# github.com/aws/aws-sdk-go-v2 v1.23.2
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/aws
-github.com/aws/aws-sdk-go-v2/aws/arn
-github.com/aws/aws-sdk-go-v2/aws/defaults
-github.com/aws/aws-sdk-go-v2/aws/middleware
-github.com/aws/aws-sdk-go-v2/aws/middleware/private/metrics
-github.com/aws/aws-sdk-go-v2/aws/protocol/ec2query
-github.com/aws/aws-sdk-go-v2/aws/protocol/query
-github.com/aws/aws-sdk-go-v2/aws/protocol/restjson
-github.com/aws/aws-sdk-go-v2/aws/protocol/xml
-github.com/aws/aws-sdk-go-v2/aws/ratelimit
-github.com/aws/aws-sdk-go-v2/aws/retry
-github.com/aws/aws-sdk-go-v2/aws/signer/internal/v4
-github.com/aws/aws-sdk-go-v2/aws/signer/v4
-github.com/aws/aws-sdk-go-v2/aws/transport/http
-github.com/aws/aws-sdk-go-v2/internal/auth
-github.com/aws/aws-sdk-go-v2/internal/auth/smithy
-github.com/aws/aws-sdk-go-v2/internal/endpoints
-github.com/aws/aws-sdk-go-v2/internal/endpoints/awsrulesfn
-github.com/aws/aws-sdk-go-v2/internal/rand
-github.com/aws/aws-sdk-go-v2/internal/sdk
-github.com/aws/aws-sdk-go-v2/internal/sdkio
-github.com/aws/aws-sdk-go-v2/internal/shareddefaults
-github.com/aws/aws-sdk-go-v2/internal/strings
-github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
-github.com/aws/aws-sdk-go-v2/internal/timeconv
-# github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.5.1
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream
-github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream/eventstreamapi
-# github.com/aws/aws-sdk-go-v2/config v1.25.5
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/config
-# github.com/aws/aws-sdk-go-v2/credentials v1.16.4
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/credentials
-github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds
-github.com/aws/aws-sdk-go-v2/credentials/endpointcreds
-github.com/aws/aws-sdk-go-v2/credentials/endpointcreds/internal/client
-github.com/aws/aws-sdk-go-v2/credentials/processcreds
-github.com/aws/aws-sdk-go-v2/credentials/ssocreds
-github.com/aws/aws-sdk-go-v2/credentials/stscreds
-# github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.5
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/feature/ec2/imds
-github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
-# github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.4
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/internal/configsources
-# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.4
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
-# github.com/aws/aws-sdk-go-v2/internal/ini v1.7.1
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/internal/ini
-# github.com/aws/aws-sdk-go-v2/internal/v4a v1.2.4
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/internal/v4a
-github.com/aws/aws-sdk-go-v2/internal/v4a/internal/crypto
-github.com/aws/aws-sdk-go-v2/internal/v4a/internal/v4
-# github.com/aws/aws-sdk-go-v2/service/cloudformation v1.40.1
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/service/cloudformation
-github.com/aws/aws-sdk-go-v2/service/cloudformation/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/cloudformation/types
-# github.com/aws/aws-sdk-go-v2/service/ec2 v1.137.1
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/service/ec2
-github.com/aws/aws-sdk-go-v2/service/ec2/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/ec2/types
-# github.com/aws/aws-sdk-go-v2/service/iam v1.27.3
-## explicit; go 1.19
-github.com/aws/aws-sdk-go-v2/service/iam
-github.com/aws/aws-sdk-go-v2/service/iam/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/iam/types
 # github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.1
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding
@@ -263,22 +186,6 @@ github.com/aws/smithy-go/auth
 github.com/aws/smithy-go/auth/bearer
 github.com/aws/smithy-go/context
 github.com/aws/smithy-go/document
-github.com/aws/smithy-go/encoding
-github.com/aws/smithy-go/encoding/httpbinding
-github.com/aws/smithy-go/encoding/json
-github.com/aws/smithy-go/encoding/xml
-github.com/aws/smithy-go/endpoints
-github.com/aws/smithy-go/endpoints/private/rulesfn
-github.com/aws/smithy-go/internal/sync/singleflight
-github.com/aws/smithy-go/io
-github.com/aws/smithy-go/logging
-github.com/aws/smithy-go/middleware
-github.com/aws/smithy-go/ptr
-github.com/aws/smithy-go/rand
-github.com/aws/smithy-go/sync
-github.com/aws/smithy-go/time
-github.com/aws/smithy-go/transport/http
-github.com/aws/smithy-go/transport/http/internal/io
 github.com/aws/smithy-go/encoding
 github.com/aws/smithy-go/encoding/httpbinding
 github.com/aws/smithy-go/encoding/json
@@ -481,11 +388,8 @@ github.com/onsi/gomega/types
 # github.com/openshift-online/ocm-common v0.0.0-20231220121044-50125cc79fd2
 ## explicit; go 1.19
 github.com/openshift-online/ocm-common/pkg/aws/consts
-github.com/openshift-online/ocm-common/pkg/aws/utils
-# github.com/openshift-online/ocm-common v0.0.0-20231220121044-50125cc79fd2
-## explicit; go 1.19
-github.com/openshift-online/ocm-common/pkg
 github.com/openshift-online/ocm-common/pkg/aws/errors
+github.com/openshift-online/ocm-common/pkg/aws/utils
 github.com/openshift-online/ocm-common/pkg/aws/validations
 github.com/openshift-online/ocm-common/pkg/cluster/validations
 github.com/openshift-online/ocm-common/pkg/idp/utils
