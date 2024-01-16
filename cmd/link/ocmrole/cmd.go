@@ -34,9 +34,9 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "ocm-role",
 	Aliases: []string{"ocmrole"},
-	Short:   "link ocm role to specific OCM organization account.",
-	Long:    "link ocm role to specific OCM organization account before you create your cluster.",
-	Example: ` # Link ocm role
+	Short:   "Link OCM role to specific OCM organization.",
+	Long:    "Link OCM role to specific OCM organization before you create your cluster.",
+	Example: ` # Link OCM role
   rosa link ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
 	RunE: run,
 }
