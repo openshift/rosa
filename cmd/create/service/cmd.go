@@ -23,11 +23,12 @@ import (
 	"regexp"
 	"strings"
 
+	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
@@ -170,7 +171,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	args.AwsAccountID = r.Creator.AccountID
 	args.Properties = map[string]string{
-		properties.CreatorARN: r.Creator.ARN,
+		ocmConsts.CreatorArn:  r.Creator.ARN,
 		properties.CLIVersion: info.Version,
 	}
 

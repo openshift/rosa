@@ -113,14 +113,16 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	operatorRoles, hasOperatorRoles := cluster.AWS().STS().GetOperatorIAMRoles()
 	if !hasOperatorRoles || len(operatorRoles) == 0 {
-		r.Reporter.Errorf("Cluster '%s' doesnt have any operator roles associated with it",
+		r.Reporter.Errorf("Cluster '%s' doesn't have any operator roles associated with it",
 			clusterKey)
+		os.Exit(1)
 	}
 
 	prefix, err := aws.GetPrefixFromInstallerAccountRole(cluster)
 	if err != nil {
 		r.Reporter.Errorf("Error getting account role prefix for the cluster '%s'",
 			clusterKey)
+		os.Exit(1)
 	}
 	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
 	if err != nil {

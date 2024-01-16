@@ -184,17 +184,12 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		// Returns so that when called from create cluster does not interrupt flow
-		r.Reporter.Infof("OIDC provider already exists.")
+		r.Reporter.Infof("OIDC provider already exists")
 		return
 	}
 
 	switch mode {
 	case aws.ModeAuto:
-		if cluster != nil && cluster.State() != cmv1.ClusterStateWaiting && cluster.State() != cmv1.ClusterStatePending {
-			r.Reporter.Infof("Cluster '%s' is %s and does not need additional configuration.",
-				clusterKey, cluster.State())
-			os.Exit(0)
-		}
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating OIDC provider using '%s'", r.Creator.ARN)
 		}

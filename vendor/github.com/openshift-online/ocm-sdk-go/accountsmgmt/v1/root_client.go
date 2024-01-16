@@ -182,6 +182,16 @@ func (c *Client) Notify() *NotifyClient {
 	)
 }
 
+// NotifyDetails returns the target 'notify_details' resource.
+//
+// Reference to the resource that manages the notifications details.
+func (c *Client) NotifyDetails() *NotifyDetailsClient {
+	return NewNotifyDetailsClient(
+		c.transport,
+		path.Join(c.path, "notify_details"),
+	)
+}
+
 // Organizations returns the target 'organizations' resource.
 //
 // Reference to the resource that manages the collection of

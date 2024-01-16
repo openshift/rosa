@@ -30,6 +30,7 @@ import (
 
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
+	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	kmsArnRegexpValidator "github.com/openshift-online/ocm-common/pkg/resource/validations"
@@ -79,6 +80,9 @@ const (
 	MinReplicaMultiAZ   = 3
 
 	listInputMessage = "Format should be a comma-separated list."
+
+	// nolint:lll
+	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
 )
 
 var args struct {
@@ -174,6 +178,7 @@ var args struct {
 	// Hypershift options:
 	hostedClusterEnabled bool
 	billingAccount       string
+	noCni                bool
 
 	// Cluster Admin
 	createAdminUser      bool
@@ -678,6 +683,13 @@ func init() {
 		`Create cluster admin named "cluster-admin"`,
 	)
 
+	flags.BoolVar(
+		&args.noCni,
+		"no-cni",
+		false,
+		"Disable CNI creation to let users bring their own CNI.",
+	)
+
 	flags.StringVar(
 		&args.clusterAdminUser,
 		"cluster-admin-user",
@@ -945,7 +957,7 @@ func run(cmd *cobra.Command, _ []string) {
 			// user supplies create-admin-user flag without cluster-admin-password will generate random password
 			if clusterAdminPassword == "" {
 				r.Reporter.Debugf(admin.GeneratingRandomPasswordString)
-				clusterAdminPassword, err = admin.GenerateRandomPassword()
+				clusterAdminPassword, err = idputils.GenerateRandomPassword()
 				if err != nil {
 					r.Reporter.Errorf("Failed to generate a random password")
 					os.Exit(1)
@@ -984,7 +996,7 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 				if !isCustomAdminPassword {
-					clusterAdminPassword, err = admin.GenerateRandomPassword()
+					clusterAdminPassword, err = idputils.GenerateRandomPassword()
 					if err != nil {
 						r.Reporter.Errorf("Failed to generate a random password")
 						os.Exit(1)
@@ -2025,6 +2037,13 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
+			if isHostedCP {
+				r.Reporter.Errorf(
+					"All Hosted Control Plane clusters need a pre-configured VPC. Please check: %s",
+					createVpcForHcpDoc,
+				)
+				os.Exit(1)
+			}
 			if ok := confirm.Prompt(false, "Continue with default? A new RH Managed VPC will be created for your cluster"); !ok {
 				os.Exit(1)
 			}
@@ -2464,7 +2483,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Network Type:
-	networkType := args.networkType
+	networkType := validateNetworkType(r)
 	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
 		networkType, err = interactive.GetOption(interactive.Input{
 			Question: "Network Type",
@@ -2553,6 +2572,28 @@ func run(cmd *cobra.Command, _ []string) {
 			machinePoolRootDisk = &ocm.Volume{
 				Size: machinePoolRootDiskSize,
 			}
+		}
+	}
+
+	// No CNI
+	if cmd.Flags().Changed("no-cni") && !isHostedCP {
+		r.Reporter.Errorf("Disabling CNI is supported only for Hosted Control Planes")
+		os.Exit(1)
+	}
+	if cmd.Flags().Changed("no-cni") && cmd.Flags().Changed("network-type") {
+		r.Reporter.Errorf("--no-cni and --network-type are mutually exclusive parameters")
+		os.Exit(1)
+	}
+	noCni := args.noCni
+	if cmd.Flags().Changed("no-cni") && interactive.Enabled() {
+		noCni, err = interactive.GetBool(interactive.Input{
+			Question: "Disable CNI",
+			Help:     cmd.Flags().Lookup("no-cni").Usage,
+			Default:  noCni,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for no CNI: %s", err)
+			os.Exit(1)
 		}
 	}
 
@@ -3004,6 +3045,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Enabled: isHostedCP,
 		},
 		BillingAccount:  billingAccount,
+		NoCni:           noCni,
 		AuditLogRoleARN: &auditLogRoleARN,
 		DefaultIngress: ocm.DefaultIngressSpec{
 			RouteSelectors:           routeSelectors,
@@ -3176,6 +3218,23 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+}
+
+// validateNetworkType ensure user passes a valid network type parameter at creation
+func validateNetworkType(r *rosa.Runtime) string {
+	var networkType string
+	if args.networkType == "" {
+		// Parameter not specified, nothing to do
+		return networkType
+	}
+	if helper.Contains(ocm.NetworkTypes, args.networkType) {
+		networkType = args.networkType
+	}
+	if networkType == "" {
+		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
+		os.Exit(1)
+	}
+	return networkType
 }
 
 func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
@@ -3721,6 +3780,14 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --%s %s",
 			securitygroups.ControlPlaneSecurityGroupFlag,
 			strings.Join(spec.AdditionalControlPlaneSecurityGroupIds, ","))
+	}
+
+	if spec.BillingAccount != "" {
+		command += fmt.Sprintf(" --billing-account %s", spec.BillingAccount)
+	}
+
+	if spec.NoCni {
+		command += " --no-cni"
 	}
 
 	for _, p := range properties {

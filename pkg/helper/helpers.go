@@ -12,6 +12,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/google/uuid"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/reporter"
 )
@@ -252,4 +253,8 @@ func ChunkSlice[T any](slice []T, chunkSize int) [][]T {
 	}
 
 	return chunks
+}
+
+func IsBYOVPC(cluster *cmv1.Cluster) bool {
+	return len(cluster.AWS().SubnetIDs()) > 0
 }

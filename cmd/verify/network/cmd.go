@@ -29,8 +29,9 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -77,6 +78,7 @@ const (
 
 func init() {
 	initFlags(Cmd)
+	output.AddFlag(Cmd)
 }
 
 func initFlags(cmd *cobra.Command) {
@@ -154,10 +156,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	if !cmd.Flags().Changed(subnetIDsFlag) {
 		if cluster != nil {
-			args.subnetIDs = cluster.AWS().SubnetIDs()
-			if len(args.subnetIDs) == 0 {
-				return fmt.Errorf("No subnets on cluster '%s'", cluster.ID())
+			if !helper.IsBYOVPC(cluster) {
+				return fmt.Errorf(
+					"Running the network verifier is only supported for BYO VPC clusters")
 			}
+
+			args.subnetIDs = cluster.AWS().SubnetIDs()
 		} else {
 			return fmt.Errorf("At least one subnet IDs is required")
 		}
@@ -219,10 +223,10 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 				return fmt.Errorf("Error verifying subnets by cluster: %s", err)
 			}
 		} else {
-			// Default platform type set to 'aws'
-			platform = cmv1.PlatformAws
+			// Default platform type set to 'aws-classic'
+			platform = cmv1.PlatformAwsClassic
 			if args.hostedCp {
-				platform = cmv1.PlatformHostedCluster
+				platform = cmv1.PlatformAwsHostedCp
 			}
 			_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs, tagsList, platform)
 			if err != nil {
@@ -248,7 +252,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 					status.State() == string(NetworkVerifyRunning)) {
 					continue
 				}
-				printStatus(r.Reporter, spin, subnet, status, err)
+				printStatus(r, spin, subnet, status, err)
 
 				// Remove completed subnets, no need to check these again
 				args.subnetIDs[i] = args.subnetIDs[len(args.subnetIDs)-1]
@@ -268,43 +272,51 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		for i := 0; i < len(args.subnetIDs); i++ {
 			subnet := args.subnetIDs[i]
 			status, err := r.OCMClient.GetVerifyNetworkSubnet(subnet)
-			printStatus(r.Reporter, nil, subnet, status, err)
+			printStatus(r, nil, subnet, status, err)
 			if status.State() == string(NetworkVerifyPending) || status.State() == string(NetworkVerifyRunning) {
 				pending = true
 			}
 		}
 
 		if pending {
-			output := fmt.Sprintf("Run the following command to wait for verification to all subnets to complete:\n"+
+			watchCommandOutput := fmt.Sprintf("Run the following command to wait for verification to all subnets to complete:\n"+
 				"rosa verify network --watch --status-only --region %s --subnet-ids %s",
 				args.region, strings.Join(args.subnetIDs, ","))
-			r.Reporter.Infof(output)
+			if output.HasFlag() {
+				watchCommandOutput += fmt.Sprintf(" --output %s", output.Output())
+			}
+			r.Reporter.Infof(watchCommandOutput)
 		}
 	}
 
 	return nil
 }
 
-func printStatus(reporter *reporter.Object, spin *spinner.Spinner, subnet string,
+func printStatus(r *rosa.Runtime, spin *spinner.Spinner, subnet string,
 	status *cmv1.SubnetNetworkVerification, err error) {
 	if spin != nil {
 		spin.Stop()
 	}
 
 	if err != nil {
-		reporter.Infof("%s: %s", subnet, err.Error())
+		r.Reporter.Infof("%s: %s", subnet, err.Error())
 	} else if status.State() == string(NetworkVerifyFailed) {
-		reporter.Infof("%s: %s Unable to verify egress to: %v", subnet, status.State(), status.Details())
+		r.Reporter.Infof("%s: %s Unable to verify egress to: %v", subnet, status.State(), status.Details())
+	} else if output.HasFlag() {
+		err := output.Print(status)
+		if err != nil {
+			r.Reporter.Debugf("%s: unable to output in %s format - %s", subnet, output.Output(), err.Error())
+		}
 	} else {
 		var tags string
 		if len(status.Tags()) > 0 {
 			tagsList, err := json.Marshal(status.Tags())
 			if err != nil {
-				reporter.Debugf("%s: unable to marshal tags - %s", subnet, err.Error())
+				r.Reporter.Debugf("%s: unable to marshal tags - %s", subnet, err.Error())
 			}
 			tags = string(tagsList)
 		}
-		reporter.Infof("%s, platform: %s, tags: %v: %s", subnet, status.Platform(), tags, status.State())
+		r.Reporter.Infof("%s, platform: %s, tags: %v: %s", subnet, status.Platform(), tags, status.State())
 	}
 
 	if spin != nil {

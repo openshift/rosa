@@ -9,8 +9,8 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/briandowns/spinner"
-	"github.com/openshift-online/ocm-common/pkg"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
+	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -43,7 +43,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	// Validate flags that are only allowed for BYOVPC cluster
 	isSubnetSet := cmd.Flags().Changed("subnet")
-	isByoVpc := isBYOVPC(cluster)
+	isByoVpc := helper.IsBYOVPC(cluster)
 	if !isByoVpc && isSubnetSet {
 		r.Reporter.Errorf("Setting the `subnet` flag is only allowed for BYO VPC clusters")
 		os.Exit(1)
@@ -69,7 +69,9 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
-			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
+			formattedVersion, err := versions.FormatMajorMinorPatch(
+				ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2,
+			)
 			if err != nil {
 				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
 				os.Exit(1)
@@ -129,7 +131,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	// Allow the user to select subnet for a single AZ BYOVPC cluster
 	var subnet string
-	if !cluster.MultiAZ() && isBYOVPC(cluster) {
+	if !cluster.MultiAZ() && isByoVpc {
 		subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster)
 	}
 
@@ -160,7 +162,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 		if !multiAZMachinePool {
 			// Allow to create a single AZ machine pool providing the subnet
-			if isBYOVPC(cluster) && args.availabilityZone == "" {
+			if isByoVpc && args.availabilityZone == "" {
 				subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster)
 			}
 
@@ -330,8 +332,12 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	// Machine pool instance type:
 	instanceType := args.instanceType
-	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(), availabilityZonesFilter,
-		cluster.AWS().STS().RoleARN(), r.AWSClient)
+	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(
+		cluster.Region().ID(),
+		availabilityZonesFilter,
+		cluster.AWS().STS().RoleARN(),
+		r.AWSClient,
+	)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -435,7 +441,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 	if spotMaxPrice != "on-demand" {
-		price, _ := strconv.ParseFloat(spotMaxPrice, pkg.MaxByteSize)
+		price, _ := strconv.ParseFloat(spotMaxPrice, commonUtils.MaxByteSize)
 		maxPrice = &price
 	}
 
@@ -548,6 +554,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		}
 	} else {
 		r.Reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
+		r.Reporter.Infof("To view the machine pool details, run 'rosa describe machinepool --machinepool %s'", name)
 		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
 	}
 }
@@ -615,7 +622,7 @@ func spotMaxPriceValidator(val interface{}) error {
 	if spotMaxPrice == "on-demand" {
 		return nil
 	}
-	price, err := strconv.ParseFloat(spotMaxPrice, pkg.MaxByteSize)
+	price, err := strconv.ParseFloat(spotMaxPrice, commonUtils.MaxByteSize)
 	if err != nil {
 		return fmt.Errorf("Expected a numeric value for spot max price")
 	}
@@ -624,8 +631,4 @@ func spotMaxPriceValidator(val interface{}) error {
 		return fmt.Errorf("Spot max price must be positive")
 	}
 	return nil
-}
-
-func isBYOVPC(cluster *cmv1.Cluster) bool {
-	return len(cluster.AWS().SubnetIDs()) > 0
 }

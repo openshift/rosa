@@ -762,12 +762,13 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 			if err != nil {
 				return nil, err
 			}
-			if common.IamResourceHasTag(roleTags.Tags, tags.AdminRole, tags.True) {
+			v2Tags := roleTags.Tags
+			if common.IamResourceHasTag(v2Tags, tags.AdminRole, tags.True) {
 				ocmRole.Admin = "Yes"
 			} else {
 				ocmRole.Admin = "No"
 			}
-			if common.IamResourceHasTag(roleTags.Tags, common.ManagedPolicies, tags.True) {
+			if common.IamResourceHasTag(v2Tags, common.ManagedPolicies, tags.True) {
 				ocmRole.ManagedPolicy = true
 			}
 
