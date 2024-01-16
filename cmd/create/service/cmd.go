@@ -28,7 +28,6 @@ import (
 
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"

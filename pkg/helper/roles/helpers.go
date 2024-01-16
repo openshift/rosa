@@ -116,7 +116,7 @@ func ValidateUnmanagedAccountRoles(roleARNs []string, awsClient aws.Client, vers
 		}
 
 		validVersion, err := awsCommonValidations.HasCompatibleVersionTags(
-			aws.FromV1TagToV2Tag(role.Tags),
+			role.Tags,
 			ocm.GetVersionMinor(version),
 		)
 		if err != nil {
