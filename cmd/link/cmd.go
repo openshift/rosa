@@ -28,8 +28,8 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "link",
 	Aliases: []string{"associate"},
-	Short:   "Link a ocm/user role from stdin",
-	Long:    "Link a ocm/user role from stdin",
+	Short:   "Link OCM role to specific OCM organization",
+	Long:    "Link OCM role to specific OCM organization",
 	Hidden:  false,
 }
 
