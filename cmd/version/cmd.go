@@ -26,6 +26,10 @@ import (
 	"github.com/openshift/rosa/pkg/info"
 )
 
+var args struct {
+	clientOnly bool
+}
+
 var Cmd = &cobra.Command{
 	Use:   "version",
 	Short: "Prints the version of the tool",
@@ -33,7 +37,20 @@ var Cmd = &cobra.Command{
 	Run:   run,
 }
 
+func init() {
+	flags := Cmd.Flags()
+
+	flags.BoolVar(
+		&args.clientOnly,
+		"client",
+		false,
+		"Client version only (no remote version check)",
+	)
+}
+
 func run(cmd *cobra.Command, argv []string) {
 	fmt.Fprintf(os.Stdout, "%s\n", info.Version)
-	rosa.Cmd.Run(rosa.Cmd, []string{})
+	if !args.clientOnly {
+		rosa.Cmd.Run(rosa.Cmd, []string{})
+	}
 }
