@@ -39,6 +39,9 @@ const (
 	ProductionURL = "https://console.redhat.com/openshift/details/s/"
 	StageEnv      = "https://api.stage.openshift.com"
 	ProductionEnv = "https://api.openshift.com"
+
+	EnabledOutput  = "Enabled"
+	DisabledOutput = "Disabled"
 )
 
 var Cmd = &cobra.Command{
@@ -340,7 +343,7 @@ func run(cmd *cobra.Command, argv []string) {
 		str = fmt.Sprintf("%s"+
 			"FIPS mode:                  %s\n",
 			str,
-			"enabled")
+			EnabledOutput)
 	}
 	if detailsPage != "" {
 		str = fmt.Sprintf("%s"+
@@ -659,9 +662,9 @@ func getDetailsLink(environment string) string {
 
 func getUseworkloadMonitoring(disabled bool) string {
 	if disabled {
-		return "Disabled"
+		return DisabledOutput
 	}
-	return "Enabled"
+	return EnabledOutput
 }
 
 func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
@@ -729,9 +732,9 @@ func BillingAccount(cluster *cmv1.Cluster, isHostedControlPlane bool) string {
 }
 
 func getAuditLogForwardingStatus(cluster *cmv1.Cluster) string {
-	auditLogForwardingStatus := "Disabled"
+	auditLogForwardingStatus := DisabledOutput
 	if cluster.AWS().AuditLog().RoleArn() != "" {
-		auditLogForwardingStatus = "Enabled"
+		auditLogForwardingStatus = EnabledOutput
 	}
 	return auditLogForwardingStatus
 }
