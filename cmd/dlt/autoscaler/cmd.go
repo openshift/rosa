@@ -52,6 +52,10 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if !confirm.Confirm("delete cluster autoscaler?") {
+		os.Exit(0)
+	}
+
 	r.Reporter.Debugf("Deleting autoscaler for cluster '%s''", clusterKey)
 
 	err := r.OCMClient.DeleteClusterAutoscaler(cluster.ID())
