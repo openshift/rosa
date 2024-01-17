@@ -145,6 +145,7 @@ const (
 		"sub",
 		"iat",
 		"iss",
+		"sub"
 	]
 }`
 )
