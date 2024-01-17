@@ -17,8 +17,6 @@ limitations under the License.
 package oidcprovider
 
 import (
-	// nolint:gosec
-	"bytes"
 	"crypto/sha1" //#nosec GSC-G505 -- Import blacklist: crypto/sha1
 	"encoding/hex"
 	"fmt"
@@ -289,24 +287,14 @@ func getThumbprint(oidcEndpointURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	response, err := http.Get(fmt.Sprintf("https://%s:443", connect.Host))
 	if err != nil {
 		return "", err
 	}
-
 	certChain := response.TLS.PeerCertificates
-
-	// Grab the CA in the chain
-	for _, cert := range certChain {
-		if cert.IsCA {
-			if bytes.Equal(cert.RawIssuer, cert.RawSubject) {
-				return sha1Hash(cert.Raw), nil
-			}
-		}
-	}
-
-	// Fall back to using the last certficiate in the chain
+	// https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html
+	// If you see more than one certificate, find the last certificate displayed (at the end of the command output).
+	// This contains the certificate of the top intermediate CA in the certificate authority chain.
 	cert := certChain[len(certChain)-1]
 	return sha1Hash(cert.Raw), nil
 }
