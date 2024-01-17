@@ -113,8 +113,12 @@ func run(cmd *cobra.Command, _ []string) {
 	// No ClusterAdmin IDP exists, create an Htpasswd IDP
 	// named 'ClusterAdmin' specifically for cluster-admin user
 	r.Reporter.Debugf("Adding '%s' idp to cluster '%s'", ClusterAdminIDPname, clusterKey)
+	hashedPwd, err := idputils.GenerateHTPasswdCompatibleHash(password)
+	if err != nil {
+		r.Reporter.Errorf("Failed to hash the password: %s", err)
+	}
 	htpasswdIDP := cmv1.NewHTPasswdIdentityProvider().Users(cmv1.NewHTPasswdUserList().Items(
-		cmv1.NewHTPasswdUser().Username(ClusterAdminUsername).Password(password),
+		cmv1.NewHTPasswdUser().Username(ClusterAdminUsername).HashedPassword(hashedPwd),
 	))
 	clusterAdminIDP, err := cmv1.NewIdentityProvider().
 		Type(cmv1.IdentityProviderTypeHtpasswd).

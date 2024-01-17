@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"strings"
 
+	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/helper"
@@ -75,7 +76,11 @@ func (c *Client) GetHTPasswdUserList(clusterID, htpasswdIDPId string) (*cmv1.HTP
 }
 
 func (c *Client) AddHTPasswdUser(username, password, clusterID, idpID string) error {
-	htpasswdUser, _ := cmv1.NewHTPasswdUser().Username(username).Password(password).Build()
+	hashedPwd, err := idputils.GenerateHTPasswdCompatibleHash(password)
+	if err != nil {
+		return fmt.Errorf("Failed to hash the password: %s", err)
+	}
+	htpasswdUser, _ := cmv1.NewHTPasswdUser().Username(username).HashedPassword(hashedPwd).Build()
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).
 		IdentityProviders().IdentityProvider(idpID).HtpasswdUsers().Add().Body(htpasswdUser).Send()
 	if err != nil {
