@@ -103,7 +103,13 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterId := ""
 	if cmd.Flags().Changed("cluster") {
 		clusterKey := r.GetClusterKey()
-		clusterId = clusterKey
+
+		cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
+		if err != nil {
+			r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+			os.Exit(1)
+		}
+		clusterId = cluster.ID()
 	}
 
 	operatorsMap, err := r.AWSClient.ListOperatorRoles(args.version, clusterId)
