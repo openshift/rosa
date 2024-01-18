@@ -42,14 +42,16 @@ var Cmd = &cobra.Command{
 	Run:                run,
 	DisableFlagParsing: true,
 	Args: func(cmd *cobra.Command, argv []string) error {
-		err := arguments.ParseUnknownFlags(cmd, argv)
-		if err != nil {
-			return err
-		}
 
 		if len(cmd.Flags().Args()) != 1 {
 			return fmt.Errorf("Expected exactly one command line parameter containing the id of the add-on")
 		}
+
+		err := arguments.ParseUnknownFlags(cmd, argv)
+		if err != nil {
+			return err
+		}
+		
 		return nil
 	},
 }
