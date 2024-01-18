@@ -833,16 +833,18 @@ func (c *awsClient) mapToAccountRole(version string, role iamtypes.Role) (Role, 
 
 func (c *awsClient) mapToAccountRoles(version string, roles []iamtypes.Role) ([]Role, error) {
 
-	accountRoles := []Role{}
+	var accountRoles []Role
 	for _, role := range roles {
-
+		if !checkIfAccountRole(role.RoleName) {
+			continue
+		}
 		accountRole, err := c.mapToAccountRole(version, role)
 		if err != nil {
 			return accountRoles, err
 		}
-
 		accountRoles = append(accountRoles, accountRole)
 	}
+	
 
 	if len(accountRoles) == 0 {
 		return accountRoles, errors.Errorf("no account roles found")
