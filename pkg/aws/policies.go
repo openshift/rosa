@@ -841,6 +841,10 @@ func (c *awsClient) mapToAccountRoles(version string, roles []iamtypes.Role) ([]
 			return accountRoles, err
 		}
 
+		if !checkIfAccountRole(role.RoleName) {
+			return []Role{}, nil
+		}
+
 		accountRoles = append(accountRoles, accountRole)
 	}
 
