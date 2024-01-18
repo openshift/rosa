@@ -313,12 +313,19 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		securityGroupIds[i] = strings.TrimSpace(sg)
 	}
 
+	// Machine pool instance type:
+	instanceType := args.instanceType
+	if instanceType == "" && !interactive.Enabled() {
+		r.Reporter.Errorf("You must supply a valid instance type")
+		os.Exit(1)
+	}
+
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() && !output.HasFlag() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		r.Reporter.Infof("Fetching instance types")
+		r.Reporter.Infof("Checking available instance types for machine pool '%s'", args.name)
 		spin.Start()
 	}
 
@@ -330,8 +337,6 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
-	// Machine pool instance type:
-	instanceType := args.instanceType
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(
 		cluster.Region().ID(),
 		availabilityZonesFilter,
@@ -359,17 +364,14 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine type: %s", err)
+			r.Reporter.Errorf("Expected a valid instance type: %s", err)
 			os.Exit(1)
 		}
 	}
-	if instanceType == "" {
-		r.Reporter.Errorf("Expected a valid machine type")
-		os.Exit(1)
-	}
+
 	err = instanceTypeList.ValidateMachineType(instanceType, cluster.MultiAZ())
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid machine type: %s", err)
+		r.Reporter.Errorf("Expected a valid instance type: %s", err)
 		os.Exit(1)
 	}
 
