@@ -67,10 +67,13 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 			"This ARN path will be used for subsequent created operator roles and policies.",
 			path, cluster.AWS().STS().RoleARN())
 	}
-	accountRoleVersion, err := r.AWSClient.GetAccountRoleVersion(roleName)
-	if err != nil {
-		r.Reporter.Errorf("Error getting account role version %s", err)
-		os.Exit(1)
+	var accountRoleVersion string
+	if mode == aws.ModeAuto {
+		accountRoleVersion, err = r.AWSClient.GetAccountRoleVersion(roleName)
+		if err != nil {
+			r.Reporter.Errorf("Error getting account role version %s", err)
+			os.Exit(1)
+		}
 	}
 	managedPolicies := cluster.AWS().STS().ManagedPolicies()
 	if args.forcePolicyCreation && managedPolicies {
