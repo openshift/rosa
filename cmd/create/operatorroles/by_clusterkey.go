@@ -68,13 +68,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 			path, cluster.AWS().STS().RoleARN())
 	}
 	var accountRoleVersion string
-	if mode == aws.ModeAuto {
-		accountRoleVersion, err = r.AWSClient.GetAccountRoleVersion(roleName)
-		if err != nil {
-			r.Reporter.Errorf("Error getting account role version %s", err)
-			os.Exit(1)
-		}
-	}
+
 	managedPolicies := cluster.AWS().STS().ManagedPolicies()
 	if args.forcePolicyCreation && managedPolicies {
 		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
@@ -97,6 +91,11 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 	case aws.ModeAuto:
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
+		}
+		accountRoleVersion, err = r.AWSClient.GetAccountRoleVersion(roleName)
+		if err != nil {
+			r.Reporter.Errorf("Error getting account role version %s", err)
+			os.Exit(1)
 		}
 		err = createRoles(r, operatorRolePolicyPrefix, permissionsBoundary, cluster,
 			accountRoleVersion, policies, defaultPolicyVersion, credRequests, managedPolicies, hostedCPPolicies)
