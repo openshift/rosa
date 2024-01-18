@@ -556,8 +556,9 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		}
 	} else {
 		r.Reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
-		r.Reporter.Infof("To view the machine pool details, run 'rosa describe machinepool --machinepool %s'", name)
-		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
+		r.Reporter.Infof("To view the machine pool details, run 'rosa describe machinepool --cluster %s --machinepool %s'",
+			clusterKey, name)
+		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools --cluster %s'", clusterKey)
 	}
 }
 
