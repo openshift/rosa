@@ -39,9 +39,9 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "ocm-role",
 	Aliases: []string{"ocmrole"},
-	Short:   "Delete ocm role",
-	Long:    "Delete ocm role from the current AWS account",
-	Example: ` # Delete ocm role
+	Short:   "Delete OCM role",
+	Long:    "Delete OCM role from the current AWS organization",
+	Example: ` # Delete OCM role
 rosa delete ocm-role --role-arn arn:aws:iam::123456789012:role/xxx-OCM-Role-1223456778`,
 	RunE: run,
 }
