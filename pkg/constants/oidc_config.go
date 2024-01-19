@@ -1,7 +1,7 @@
 package constants
 
 const (
-	InstallerRoleArnFlag = "installer-role-arn"
+	InstallerRoleArnFlag = "role-arn"
 	IssuerUrlFlag        = "issuer-url"
 	SecretArnFlag        = "secret-arn"
 
