@@ -390,6 +390,39 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Context("when DescribeSecurityGroups is successful", func() {
+		var (
+			vpcId         string
+			securityGroup ec2types.SecurityGroup
+		)
+		BeforeEach(func() {
+			vpcId = "vpc-123456"
+			securityGroup = ec2types.SecurityGroup{
+				GroupId:   awsSdk.String("sg-123456"),
+				GroupName: awsSdk.String("test-group"),
+				Tags: []ec2types.Tag{
+					{
+						Key:   awsSdk.String("Name"),
+						Value: awsSdk.String("test-value"),
+					},
+				},
+			}
+		})
+		It("should return a list of security group IDs", func() {
+			mockEC2API.EXPECT().DescribeSecurityGroups(gomock.Any(), gomock.Any()).Return(
+				&ec2.DescribeSecurityGroupsOutput{
+					SecurityGroups: []ec2types.SecurityGroup{securityGroup},
+					NextToken:      nil,
+				}, nil,
+			)
+
+			securityGroups, err := client.GetSecurityGroups(vpcId)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(securityGroups).To(HaveLen(1))
+			Expect(securityGroups[0].GroupId).To(Equal(awsSdk.String("sg-123456")))
+		})
+	})
+
 	Context("FetchPublicSubnetMap", func() {
 
 		subnetOneId := "test-subnet-1"
