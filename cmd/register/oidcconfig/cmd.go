@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	. "github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -53,6 +54,8 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
+	// normalizing installer role argument to support deprecated flag
+	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
 		&args.installerRoleArn,
 		InstallerRoleArnFlag,
