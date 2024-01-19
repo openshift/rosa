@@ -157,7 +157,7 @@ type NotifyDetailsPostResponse struct {
 	status   int
 	header   http.Header
 	err      *errors.Error
-	response *NotificationDetailsResponse
+	response *GenericNotifyDetailsResponse
 }
 
 // Status returns the response status code.
@@ -185,7 +185,7 @@ func (r *NotifyDetailsPostResponse) Error() *errors.Error {
 }
 
 // Response returns the value of the 'response' parameter.
-func (r *NotifyDetailsPostResponse) Response() *NotificationDetailsResponse {
+func (r *NotifyDetailsPostResponse) Response() *GenericNotifyDetailsResponse {
 	if r == nil {
 		return nil
 	}
@@ -194,7 +194,7 @@ func (r *NotifyDetailsPostResponse) Response() *NotificationDetailsResponse {
 
 // GetResponse returns the value of the 'response' parameter and
 // a flag indicating if the parameter has a value.
-func (r *NotifyDetailsPostResponse) GetResponse() (value *NotificationDetailsResponse, ok bool) {
+func (r *NotifyDetailsPostResponse) GetResponse() (value *GenericNotifyDetailsResponse, ok bool) {
 	ok = r != nil && r.response != nil
 	if ok {
 		value = r.response
