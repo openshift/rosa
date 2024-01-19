@@ -96,6 +96,8 @@ func init() {
 		"Indicates whether it is a Red Hat managed or unmanaged (Customer hosted) OIDC Configuration.",
 	)
 
+	// normalizing installer role argument to support deprecated flag
+	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
 		&args.installerRoleArn,
 		InstallerRoleArnFlag,
@@ -407,7 +409,7 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		}
 		r.Reporter.Errorf("There was a problem building your unmanaged OIDC Configuration %v.\n"+
 			"Please refer to documentation and try again through:\n"+
-			"\trosa register oidc-config --issuer-url %s --secret-arn %s --installer-role-arn %s",
+			"\trosa register oidc-config --issuer-url %s --secret-arn %s --role-arn %s",
 			err, bucketUrl, secretARN, installerRoleArn)
 		os.Exit(1)
 	}
