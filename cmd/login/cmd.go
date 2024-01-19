@@ -19,6 +19,7 @@ package login
 import (
 	"fmt"
 	"net/url"
+	"github.com/openshift-online/ocm-sdk-go/authentication"
 	"os"
 	"strings"
 	"time"
