@@ -129,7 +129,9 @@ func init() {
 		&args.useAuthCode,
 		"use-auth-code",
 		false,
-		"Enables login using OAuth2, Redirects user to Red Hat SSO.",
+		"Enables OAuth Authorization Code login using PKCE. If this option is provided, "+
+			"the user will be taken to Red Hat SSO for authentication. In order to use a different account"+
+			"log out from sso.redhat.com after using the 'ocm logout' command.",
 	)
 	flags.MarkHidden("use-auth-code")
 	arguments.AddRegionFlag(flags)
@@ -150,7 +152,7 @@ func run(cmd *cobra.Command, argv []string) {
 		fmt.Println("You will now be redirected to Red Hat SSO login")
 		token, err := authentication.VerifyLogin(oauthClientId)
 		if err != nil {
-			r.Reporter.Errorf(err.Error())
+			r.Reporter.Errorf("An error occurred while retrieving the token : %v", err)
 			os.Exit(1)
 		}
 		args.token = token
