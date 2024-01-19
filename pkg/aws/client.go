@@ -202,7 +202,7 @@ type Client interface {
 	ValidateAccountRoleVersionCompatibility(roleName string, roleType string, minVersion string) (bool, error)
 	GetDefaultPolicyDocument(policyArn string) (string, error)
 	GetAccountRoleByArn(roleArn string) (Role, error)
-	GetSecurityGroupIds(vpcId string) ([]ec2types.SecurityGroup, error)
+	GetSecurityGroups(vpcId string) ([]ec2types.SecurityGroup, error)
 	FetchPublicSubnetMap(subnets []ec2types.Subnet) (map[string]bool, error)
 }
 
@@ -1251,28 +1251,40 @@ func (c *awsClient) DeleteSecretInSecretsManager(secretArn string) error {
 	return nil
 }
 
-func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]ec2types.SecurityGroup, error) {
-	describeSecurityGroupsInput := &ec2.DescribeSecurityGroupsInput{
-		Filters: []ec2types.Filter{
-			{
-				Name:   aws.String("vpc-id"),
-				Values: []string{vpcId},
-			},
-		},
-	}
-	securityGroups := []ec2types.SecurityGroup{}
-	resp, err := c.ec2Client.DescribeSecurityGroups(context.Background(), describeSecurityGroupsInput)
-	if err != nil {
-		return []ec2types.SecurityGroup{}, err
-	}
+func (c *awsClient) GetSecurityGroups(vpcId string) ([]ec2types.SecurityGroup, error) {
+	var securityGroups []ec2types.SecurityGroup
+	var nextToken *string
 
-	for _, secGroup := range resp.SecurityGroups {
-		if c.Ec2ResourceHasTag(secGroup.Tags, tags.RedHatManaged, strconv.FormatBool(true)) {
-			continue
+	for {
+		describeSecurityGroupsInput := &ec2.DescribeSecurityGroupsInput{
+			Filters: []ec2types.Filter{
+				{
+					Name:   aws.String("vpc-id"),
+					Values: []string{vpcId},
+				},
+			},
+			NextToken: nextToken,
 		}
-		if aws.ToString(secGroup.GroupName) == "default" {
-			continue
+
+		resp, err := c.ec2Client.DescribeSecurityGroups(context.Background(), describeSecurityGroupsInput)
+		if err != nil {
+			return nil, err
 		}
+
+		for _, secGroup := range resp.SecurityGroups {
+			if c.Ec2ResourceHasTag(secGroup.Tags, tags.RedHatManaged, strconv.FormatBool(true)) {
+				continue
+			}
+			if aws.ToString(secGroup.GroupName) == "default" {
+				continue
+			}
+			securityGroups = append(securityGroups, secGroup)
+		}
+
+		if resp.NextToken == nil {
+			break // No more pages
+		}
+		nextToken = resp.NextToken
 	}
 
 	return securityGroups, nil
