@@ -245,7 +245,8 @@ func exitHTPasswdCreate(format, clusterKey string, err error, r *rosa.Runtime) {
 func UsernameValidator(val interface{}) error {
 	if username, ok := val.(string); ok {
 		if username == ClusterAdminUsername {
-			return fmt.Errorf("username '%s' is not allowed", username)
+			return fmt.Errorf("username '%s' is not allowed. It is preserved for cluster admin creation. "+
+				"Run `rosa create admin -c <cluster_id>` to create user '%s'", username, username)
 		}
 		if strings.ContainsAny(username, "/:%") {
 			return fmt.Errorf("invalid username '%s': "+
