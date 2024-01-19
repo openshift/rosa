@@ -19,87 +19,128 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
+// NotificationDetailsResponseKind is the name of the type used to represent objects
+// of type 'notification_details_response'.
+const NotificationDetailsResponseKind = "NotificationDetailsResponse"
+
+// NotificationDetailsResponseLinkKind is the name of the type used to represent links
+// to objects of type 'notification_details_response'.
+const NotificationDetailsResponseLinkKind = "NotificationDetailsResponseLink"
+
+// NotificationDetailsResponseNilKind is the name of the type used to nil references
+// to objects of type 'notification_details_response'.
+const NotificationDetailsResponseNilKind = "NotificationDetailsResponseNil"
+
 // NotificationDetailsResponse represents the values of the 'notification_details_response' type.
 //
-// This struct is a request to get a templated email to a user related to this.
-// subscription/cluster.
+// This class is a single response item for the notify details list.
 type NotificationDetailsResponse struct {
-	bitmap_       uint32
-	associates    []string
-	externalOrgID string
-	recipients    []string
+	bitmap_ uint32
+	id      string
+	href    string
+	key     string
+	value   string
 }
 
-// Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *NotificationDetailsResponse) Empty() bool {
-	return o == nil || o.bitmap_ == 0
-}
-
-// Associates returns the value of the 'associates' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Indicates a list of associates email address.
-func (o *NotificationDetailsResponse) Associates() []string {
-	if o != nil && o.bitmap_&1 != 0 {
-		return o.associates
+// Kind returns the name of the type of the object.
+func (o *NotificationDetailsResponse) Kind() string {
+	if o == nil {
+		return NotificationDetailsResponseNilKind
 	}
-	return nil
-}
-
-// GetAssociates returns the value of the 'associates' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Indicates a list of associates email address.
-func (o *NotificationDetailsResponse) GetAssociates() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&1 != 0
-	if ok {
-		value = o.associates
+	if o.bitmap_&1 != 0 {
+		return NotificationDetailsResponseLinkKind
 	}
-	return
+	return NotificationDetailsResponseKind
 }
 
-// ExternalOrgID returns the value of the 'external_org_ID' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Indicates the external organization id of the subscription.
-func (o *NotificationDetailsResponse) ExternalOrgID() string {
+// Link returns true iif this is a link.
+func (o *NotificationDetailsResponse) Link() bool {
+	return o != nil && o.bitmap_&1 != 0
+}
+
+// ID returns the identifier of the object.
+func (o *NotificationDetailsResponse) ID() string {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.externalOrgID
+		return o.id
 	}
 	return ""
 }
 
-// GetExternalOrgID returns the value of the 'external_org_ID' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Indicates the external organization id of the subscription.
-func (o *NotificationDetailsResponse) GetExternalOrgID() (value string, ok bool) {
+// GetID returns the identifier of the object and a flag indicating if the
+// identifier has a value.
+func (o *NotificationDetailsResponse) GetID() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.externalOrgID
+		value = o.id
 	}
 	return
 }
 
-// Recipients returns the value of the 'recipients' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Indicates a list of recipients username.
-func (o *NotificationDetailsResponse) Recipients() []string {
+// HREF returns the link to the object.
+func (o *NotificationDetailsResponse) HREF() string {
 	if o != nil && o.bitmap_&4 != 0 {
-		return o.recipients
+		return o.href
 	}
-	return nil
+	return ""
 }
 
-// GetRecipients returns the value of the 'recipients' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Indicates a list of recipients username.
-func (o *NotificationDetailsResponse) GetRecipients() (value []string, ok bool) {
+// GetHREF returns the link of the object and a flag indicating if the
+// link has a value.
+func (o *NotificationDetailsResponse) GetHREF() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
-		value = o.recipients
+		value = o.href
+	}
+	return
+}
+
+// Empty returns true if the object is empty, i.e. no attribute has a value.
+func (o *NotificationDetailsResponse) Empty() bool {
+	return o == nil || o.bitmap_&^1 == 0
+}
+
+// Key returns the value of the 'key' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Indicates the key of the response parameter.
+func (o *NotificationDetailsResponse) Key() string {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.key
+	}
+	return ""
+}
+
+// GetKey returns the value of the 'key' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Indicates the key of the response parameter.
+func (o *NotificationDetailsResponse) GetKey() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.key
+	}
+	return
+}
+
+// Value returns the value of the 'value' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Indicates the value of the response parameter.
+func (o *NotificationDetailsResponse) Value() string {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.value
+	}
+	return ""
+}
+
+// GetValue returns the value of the 'value' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Indicates the value of the response parameter.
+func (o *NotificationDetailsResponse) GetValue() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.value
 	}
 	return
 }
@@ -121,6 +162,40 @@ type NotificationDetailsResponseList struct {
 	href  string
 	link  bool
 	items []*NotificationDetailsResponse
+}
+
+// Kind returns the name of the type of the object.
+func (l *NotificationDetailsResponseList) Kind() string {
+	if l == nil {
+		return NotificationDetailsResponseListNilKind
+	}
+	if l.link {
+		return NotificationDetailsResponseListLinkKind
+	}
+	return NotificationDetailsResponseListKind
+}
+
+// Link returns true iif this is a link.
+func (l *NotificationDetailsResponseList) Link() bool {
+	return l != nil && l.link
+}
+
+// HREF returns the link to the list.
+func (l *NotificationDetailsResponseList) HREF() string {
+	if l != nil {
+		return l.href
+	}
+	return ""
+}
+
+// GetHREF returns the link of the list and a flag indicating if the
+// link has a value.
+func (l *NotificationDetailsResponseList) GetHREF() (value string, ok bool) {
+	ok = l != nil && l.href != ""
+	if ok {
+		value = l.href
+	}
+	return
 }
 
 // Len returns the length of the list.

@@ -41,32 +41,46 @@ func MarshalNotificationDetailsResponse(object *NotificationDetailsResponse, wri
 func writeNotificationDetailsResponse(object *NotificationDetailsResponse, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
+	stream.WriteObjectField("kind")
+	if object.bitmap_&1 != 0 {
+		stream.WriteString(NotificationDetailsResponseLinkKind)
+	} else {
+		stream.WriteString(NotificationDetailsResponseKind)
+	}
+	count++
+	if object.bitmap_&2 != 0 {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("id")
+		stream.WriteString(object.id)
+		count++
+	}
+	if object.bitmap_&4 != 0 {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("href")
+		stream.WriteString(object.href)
+		count++
+	}
 	var present_ bool
-	present_ = object.bitmap_&1 != 0 && object.associates != nil
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("associates")
-		writeStringList(object.associates, stream)
+		stream.WriteObjectField("key")
+		stream.WriteString(object.key)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("external_org_id")
-		stream.WriteString(object.externalOrgID)
-		count++
-	}
-	present_ = object.bitmap_&4 != 0 && object.recipients != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("recipients")
-		writeStringList(object.recipients, stream)
+		stream.WriteObjectField("value")
+		stream.WriteString(object.value)
 	}
 	stream.WriteObjectEnd()
 }
@@ -92,18 +106,25 @@ func readNotificationDetailsResponse(iterator *jsoniter.Iterator) *NotificationD
 			break
 		}
 		switch field {
-		case "associates":
-			value := readStringList(iterator)
-			object.associates = value
-			object.bitmap_ |= 1
-		case "external_org_id":
+		case "kind":
 			value := iterator.ReadString()
-			object.externalOrgID = value
+			if value == NotificationDetailsResponseLinkKind {
+				object.bitmap_ |= 1
+			}
+		case "id":
+			object.id = iterator.ReadString()
 			object.bitmap_ |= 2
-		case "recipients":
-			value := readStringList(iterator)
-			object.recipients = value
+		case "href":
+			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
+		case "key":
+			value := iterator.ReadString()
+			object.key = value
+			object.bitmap_ |= 8
+		case "value":
+			value := iterator.ReadString()
+			object.value = value
+			object.bitmap_ |= 16
 		default:
 			iterator.ReadAny()
 		}

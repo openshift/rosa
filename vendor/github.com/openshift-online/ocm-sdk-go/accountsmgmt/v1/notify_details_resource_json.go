@@ -26,6 +26,6 @@ func writeNotifyDetailsPostRequest(request *NotifyDetailsPostRequest, writer io.
 }
 func readNotifyDetailsPostResponse(response *NotifyDetailsPostResponse, reader io.Reader) error {
 	var err error
-	response.response, err = UnmarshalNotificationDetailsResponse(reader)
+	response.response, err = UnmarshalGenericNotifyDetailsResponse(reader)
 	return err
 }
