@@ -182,13 +182,16 @@ func run(cmd *cobra.Command, argv []string) {
 			"any supported ROSA version can be installed with managed policies")
 	}
 
+	isClassicValueSet := cmd.Flags().Changed("classic")
+	isHostedCPValueSet := cmd.Flags().Changed("hosted-cp")
+
 	// Hosted cluster roles always use managed policies
-	if cmd.Flags().Changed("hosted-cp") && cmd.Flags().Changed("managed-policies") && !args.managed {
+	if isHostedCPValueSet && cmd.Flags().Changed("managed-policies") && !args.managed {
 		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
 		os.Exit(1)
 	}
 
-	if cmd.Flags().Changed("hosted-cp") && r.Creator.IsGovcloud {
+	if isHostedCPValueSet && r.Creator.IsGovcloud {
 		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
 		os.Exit(1)
 	}
@@ -341,13 +344,10 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	isClassicValueSet := cmd.Flags().Changed("classic")
-	isHostedCPValueSet := cmd.Flags().Changed("hosted-cp")
-
 	createClassic := args.classic
 	if r.Creator.IsGovcloud {
 		createClassic = true
-	} else if interactive.Enabled() && !cmd.Flags().Changed("classic") {
+	} else if interactive.Enabled() && !isClassicValueSet && !isHostedCPValueSet {
 		createClassic, err = interactive.GetBool(interactive.Input{
 			Question: "Create Classic account roles",
 			Help:     cmd.Flags().Lookup("classic").Usage,
