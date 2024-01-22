@@ -1,12 +1,12 @@
 module github.com/openshift/rosa
 
-go 1.21
+go 1.20
 
 toolchain go1.21.3
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
-	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/aws/aws-sdk-go v1.45.26
 	github.com/aws/aws-sdk-go-v2 v1.23.2
 	github.com/aws/aws-sdk-go-v2/config v1.25.5
@@ -33,7 +33,7 @@ require (
 	github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.8
-	github.com/openshift-online/ocm-common v0.0.0-20240108132244-eacef64b4590
+	github.com/openshift-online/ocm-common v0.0.0-20240117125843-51555c93fbd5
 	github.com/openshift-online/ocm-sdk-go v0.1.393
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
@@ -90,7 +90,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
-	github.com/microcosm-cc/bluemonday v1.0.23 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.26 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect
