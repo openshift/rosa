@@ -544,9 +544,10 @@ func init() {
 		"Maximum number of compute nodes.",
 	)
 
+	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
 		&args.defaultMachinePoolLabels,
-		"default-mp-labels",
+		arguments.NewDefaultMPLabelsFlag,
 		"",
 		"Labels for the worker machine pool. Format should be a comma-separated list of 'key=value'. "+
 			"This list will overwrite any modifications made to Node labels on an ongoing basis.",
@@ -1010,7 +1011,7 @@ func run(cmd *cobra.Command, _ []string) {
 		outputClusterAdminDetails(r, isClusterAdmin, clusterAdminPassword)
 	}
 
-	if isHostedCP && cmd.Flags().Changed("default-mp-labels") {
+	if isHostedCP && cmd.Flags().Changed(arguments.NewDefaultMPLabelsFlag) {
 		r.Reporter.Errorf("Setting the worker machine pool labels is not supported for hosted clusters")
 		os.Exit(1)
 	}
@@ -2436,7 +2437,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if interactive.Enabled() && !isHostedCP {
 		labels, err = interactive.GetString(interactive.Input{
 			Question: "Worker machine pool labels",
-			Help:     cmd.Flags().Lookup("default-mp-labels").Usage,
+			Help:     cmd.Flags().Lookup(arguments.NewDefaultMPLabelsFlag).Usage,
 			Default:  labels,
 			Validators: []interactive.Validator{
 				mpHelpers.LabelValidator,
@@ -3658,7 +3659,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	if len(spec.ComputeLabels) != 0 {
-		command += fmt.Sprintf(" --default-mp-labels \"%s\"", labels)
+		command += fmt.Sprintf(" --%s \"%s\"", arguments.NewDefaultMPLabelsFlag, labels)
 	}
 
 	if spec.NetworkType != "" {
