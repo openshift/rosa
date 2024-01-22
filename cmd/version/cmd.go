@@ -18,6 +18,7 @@ package version
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -26,16 +27,20 @@ import (
 	"github.com/openshift/rosa/pkg/info"
 )
 
-var args struct {
-	clientOnly bool
-}
+var (
+	writer io.Writer = os.Stdout
+	args   struct {
+		clientOnly bool
+	}
 
-var Cmd = &cobra.Command{
-	Use:   "version",
-	Short: "Prints the version of the tool",
-	Long:  "Prints the version number of the tool.",
-	Run:   run,
-}
+	Cmd = &cobra.Command{
+		Use:   "version",
+		Short: "Prints the version of the tool",
+		Long:  "Prints the version number of the tool.",
+		Run:   run,
+	}
+	delegateCommand = rosa.Cmd.Run
+)
 
 func init() {
 	flags := Cmd.Flags()
@@ -48,9 +53,9 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, argv []string) {
-	fmt.Fprintf(os.Stdout, "%s\n", info.Version)
+func run(_ *cobra.Command, _ []string) {
+	fmt.Fprintf(writer, "%s (Build: %s)\n", info.Version, info.Build)
 	if !args.clientOnly {
-		rosa.Cmd.Run(rosa.Cmd, []string{})
+		delegateCommand(rosa.Cmd, []string{})
 	}
 }

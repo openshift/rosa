@@ -26,7 +26,7 @@ unexport GOFLAGS
 
 .PHONY: rosa
 rosa:
-	go build ./cmd/rosa
+	go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD)" ./cmd/rosa
 
 .PHONY: test
 test:
