@@ -87,7 +87,9 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if username == idp.ClusterAdminUsername {
-		r.Reporter.Errorf("Username '%s' is not allowed", idp.ClusterAdminUsername)
+		r.Reporter.Errorf("Username '%s' is not allowed. It's must in '%s' group. "+
+			"Run `rosa create admin -c %s` to create user '%s'",
+			idp.ClusterAdminUsername, validRoles[0], clusterKey, idp.ClusterAdminUsername)
 		os.Exit(1)
 	}
 
