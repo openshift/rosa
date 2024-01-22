@@ -18,6 +18,7 @@ package addon
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"os"
 	"regexp"
 	"strings"
@@ -28,7 +29,6 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
