@@ -3693,6 +3693,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += " --fips"
 	} else if spec.EtcdEncryption {
 		command += " --etcd-encryption"
+		if spec.EtcdEncryptionKMSArn != "" {
+			command += fmt.Sprintf(" --etcd-encryption-kms-arn %s", spec.EtcdEncryptionKMSArn)
+		}
 	}
 
 	if spec.EnableProxy {
@@ -3720,9 +3723,6 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.Hypershift.Enabled {
 		command += " --hosted-cp"
-	}
-	if spec.EtcdEncryptionKMSArn != "" {
-		command += fmt.Sprintf(" --etcd-encryption-kms-arn %s", spec.EtcdEncryptionKMSArn)
 	}
 
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
