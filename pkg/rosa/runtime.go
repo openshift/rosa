@@ -2,7 +2,9 @@ package rosa
 
 import (
 	"os"
+	"time"
 
+	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
 
@@ -20,12 +22,14 @@ type Runtime struct {
 	Creator    *aws.Creator
 	ClusterKey string
 	Cluster    *cmv1.Cluster
+	Spinner    *spinner.Spinner
 }
 
 func NewRuntime() *Runtime {
 	reporter := reporter.CreateReporterOrExit()
 	logger := logging.NewLogger()
-	return &Runtime{Reporter: reporter, Logger: logger}
+	spinner := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	return &Runtime{Reporter: reporter, Logger: logger, Spinner: spinner}
 }
 
 // Adds an OCM client to the runtime. Requires a deferred call to `.Cleanup()` to close connections.
@@ -96,4 +100,14 @@ func (r *Runtime) FetchCluster() *cmv1.Cluster {
 	}
 	r.Cluster = cluster
 	return cluster
+}
+
+func (r *Runtime) WithSpinner(fn func() error) error {
+	if r.Reporter.IsTerminal() {
+		r.Spinner.Start()
+		err := fn()      // arbitrary function
+		r.Spinner.Stop() // stops spinner after the function completes
+		return err
+	}
+	return fn()
 }
