@@ -255,12 +255,19 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	// Machine pool instance type:
 	// NodePools don't support MultiAZ yet, so the availabilityZonesFilters is calculated from the cluster
 
+	// Machine pool instance type:
+	instanceType := args.instanceType
+	if instanceType == "" && !interactive.Enabled() {
+		r.Reporter.Errorf("You must supply a valid instance type")
+		os.Exit(1)
+	}
+
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() && !output.HasFlag() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		r.Reporter.Infof("Fetching instance types")
+		r.Reporter.Infof("Checking available instance types for machine pool '%s'", name)
 		spin.Start()
 	}
 
@@ -277,7 +284,6 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		availabilityZonesFilter = []string{availabilityZone}
 	}
 
-	instanceType := args.instanceType
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
 		availabilityZonesFilter, cluster.AWS().STS().RoleARN(), r.AWSClient)
 	if err != nil {
@@ -301,17 +307,14 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine type: %s", err)
+			r.Reporter.Errorf("Expected a valid instance type: %s", err)
 			os.Exit(1)
 		}
 	}
-	if instanceType == "" {
-		r.Reporter.Errorf("Expected a valid machine type")
-		os.Exit(1)
-	}
+
 	err = instanceTypeList.ValidateMachineType(instanceType, cluster.MultiAZ())
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid machine type: %s", err)
+		r.Reporter.Errorf("Expected a valid instance type: %s", err)
 		os.Exit(1)
 	}
 
