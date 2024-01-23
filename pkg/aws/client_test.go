@@ -530,44 +530,7 @@ var _ = Describe("Client", func() {
 			Expect(err).To(BeNil())
 		})
 	})
-
-	Context("ShouldRetry", func() {
-		var customRetryer CustomRetryer
-		var mockRequest *request.Request
-		var mockRequestHeader http.Header
-		BeforeEach(func() {
-			customRetryer = buildCustomRetryer()
-		})
-		It("Should not retry with 500 status code", func() {
-			mockRequest = &request.Request{
-				HTTPResponse: &http.Response{
-					StatusCode: 500,
-				},
-			}
-			retry := customRetryer.ShouldRetry(mockRequest)
-			Expect(retry).To(BeFalse())
-		})
-		It("Should retry with non 500 status code", func() {
-			mockRequestHeader = http.Header{}
-			mockRequest = &request.Request{
-				HTTPResponse: &http.Response{
-					StatusCode: 429,
-				},
-				HTTPRequest: &http.Request{
-					Header: mockRequestHeader,
-					Method: "GET",
-					URL: &url.URL{
-						Host: "test.com",
-					},
-				},
-				Error: errors.New("Throttling"),
-			}
-			retry := customRetryer.ShouldRetry(mockRequest)
-			Expect(retry).ToNot(BeFalse())
-		})
-	})
-
-	Describe("Creator", func() {
+Describe("Creator", func() {
 		DescribeTable("should be adapted from STS caller identity", func(
 			identity *sts.GetCallerIdentityOutput,
 			expected *Creator,

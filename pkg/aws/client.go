@@ -718,13 +718,10 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 	_, err := c.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		if strings.Contains(fmt.Sprintf("%s", err), "InvalidClientTokenId") {
-			awsErr := awserr.New("InvalidClientTokenId",
-				"Invalid AWS Credentials. For help configuring your credentials, see "+
-					"https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/"+
-					"rosa-config-aws-account.html#rosa-configuring-aws-account_rosa-config-aws-account",
-				err)
-			return false, awsErr
-
+			return false, fmt.Errorf("InvalidClientTokenId",
+				"Invalid AWS Credentials. For help configuring your credentials, see " +
+					"https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/" +
+					"rosa-config-aws-account.html#rosa-configuring-aws-account_rosa-config-aws-account")
 		}
 		return false, err
 	}
