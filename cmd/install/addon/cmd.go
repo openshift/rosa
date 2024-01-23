@@ -18,7 +18,6 @@ package addon
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"os"
 	"regexp"
 	"strings"
