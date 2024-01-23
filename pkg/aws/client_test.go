@@ -490,4 +490,37 @@ var _ = Describe("Client", func() {
 			Expect(mapStr).To(ContainSubstring("test-subnet-2:false"))
 		})
 	})
+
+	Context("ValidateCredentials", func() {
+
+		It("Wraps InvalidClientTokenId to get user login information", func() {
+
+			err := fmt.Errorf("InvalidClientTokenId: bad credentials")
+			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, err)
+
+			valid, err := client.ValidateCredentials()
+			Expect(valid).To(BeFalse())
+			Expect(err.Error()).To(ContainSubstring(
+				"Invalid AWS Credentials. For help configuring your credentials, see"))
+		})
+
+		It("Does not wrap other errors and returns false", func() {
+			fakeError := "Fake AWS creds failure"
+
+			err := fmt.Errorf(fakeError)
+			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, err)
+
+			valid, err := client.ValidateCredentials()
+			Expect(valid).To(BeFalse())
+			Expect(err.Error()).To(ContainSubstring(fakeError))
+		})
+
+		It("Returns true if getCallerIdentity has no errors", func() {
+			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, nil)
+
+			valid, err := client.ValidateCredentials()
+			Expect(valid).To(BeTrue())
+			Expect(err).To(BeNil())
+		})
+	})
 })
