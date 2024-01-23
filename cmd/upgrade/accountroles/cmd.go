@@ -242,8 +242,10 @@ func run(cmd *cobra.Command, _ []string) {
 	case aws.ModeAuto:
 		if isUpgradeNeedForAccountRolePolicies {
 			reporter.Infof("Starting to upgrade the policies")
-			err = upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.Partition, creator.AccountID, policies,
-				policyVersion, policyPath, isVersionChosen)
+			err = r.WithSpinner(func() error {
+				return upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.Partition, creator.AccountID, policies,
+					policyVersion, policyPath, isVersionChosen)
+			})
 			if err != nil {
 				LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
 				reporter.Errorf("Error upgrading the role polices: %s", err)
