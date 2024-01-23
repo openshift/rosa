@@ -38,7 +38,7 @@ var (
 
 func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
 	targetVpcId string, kind string) []string {
-	possibleSgs, err := r.AWSClient.GetSecurityGroupIds(targetVpcId)
+	possibleSgs, err := r.AWSClient.GetSecurityGroups(targetVpcId)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem retrieving security groups for VPC '%s': %v", targetVpcId, err)
 		os.Exit(1)
