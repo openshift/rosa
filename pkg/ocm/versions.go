@@ -36,9 +36,10 @@ const (
 	LowestHttpTokensRequiredSupport = "4.11.0"
 	LowestSTSMinor                  = "4.7"
 	//TODO: Remove the 0.a once stable 4.12 builds are available
-	LowestHostedCpSupport         = "4.12.0-0.a"
-	MinVersionForManagedIngressV2 = "4.14.0-0.a"
-	VersionPrefix                 = "openshift-v"
+	LowestHostedCpSupport            = "4.12.0-0.a"
+	MinVersionForManagedIngressV2    = "4.14.0-0.a"
+	MinVersionForMachinePoolRootDisk = "4.10.0-0.a"
+	VersionPrefix                    = "openshift-v"
 
 	MinVersionForAdditionalComputeSecurityGroupIdsDay1 = "4.14.0-0.a"
 	MinVersionForAdditionalComputeSecurityGroupIdsDay2 = "4.11.0-0.a"
@@ -440,7 +441,8 @@ func (c *Client) IsVersionCloseToEol(daysAwayToCheck int, version string, channe
 			"The version of Red Hat OpenShift Service on AWS that you are installing will no longer be supported after '%s'."+
 				" Red Hat recommends selecting a newer version. For more information,"+
 				" see https://docs.openshift.com/rosa/rosa_policy/rosa-life-cycle.html",
-			ocmVersion.EndOfLifeTimestamp().Format(time.DateOnly))
+			ocmVersion.EndOfLifeTimestamp().Format(time.DateOnly),
+		)
 	}
 	return nil
 }

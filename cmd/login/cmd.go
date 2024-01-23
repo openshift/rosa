@@ -18,12 +18,12 @@ package login
 
 import (
 	"fmt"
-	"github.com/openshift-online/ocm-sdk-go/authentication"
 	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	"github.com/openshift-online/ocm-sdk-go/authentication"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/logout"
