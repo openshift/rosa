@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -231,6 +232,14 @@ func run(cmd *cobra.Command, _ []string) {
 
 	val, ok := cluster.Properties()[properties.UseLocalCredentials]
 	useLocalCredentials := ok && val == "true"
+
+	if cmd.Flags().Changed("labels") {
+		_, err := mpHelpers.ParseLabels(args.labels)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
 
 	// Initiate the AWS client with the cluster's region
 	var err error
