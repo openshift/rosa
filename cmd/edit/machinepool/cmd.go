@@ -18,9 +18,11 @@ package machinepool
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -140,6 +142,14 @@ func run(cmd *cobra.Command, argv []string) {
 	machinePoolID := argv[0]
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
+
+	if cmd.Flags().Changed("labels") {
+		_, err := mpHelpers.ParseLabels(args.labels)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
 
 	if cluster.Hypershift().Enabled() {
 		editNodePool(cmd, machinePoolID, clusterKey, cluster, r)
