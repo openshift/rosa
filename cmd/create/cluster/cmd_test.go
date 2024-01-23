@@ -32,6 +32,32 @@ var _ = Describe("Validate build command", func() {
 		defaultMachinePoolLabels = "machine-pool-label"
 	})
 	Context("build command", func() {
+
+		When("--etcd-encryption is true", func() {
+			It("prints --etcd-encryption-kms-arn", func() {
+				clusterConfig.EtcdEncryption = true
+				clusterConfig.EtcdEncryptionKMSArn = "my-test-arn"
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix" +
+						" --etcd-encryption --etcd-encryption-kms-arn my-test-arn"))
+			})
+		})
+
+		When("--etcd-encryption is false", func() {
+			It("Does not print --etc-encryption-kms-arn", func() {
+				clusterConfig.EtcdEncryption = false
+				clusterConfig.EtcdEncryptionKMSArn = "my-test-arn"
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix"))
+			})
+		})
+
 		When("--properties is not present", func() {
 			It("should not include --properties", func() {
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
