@@ -1256,7 +1256,8 @@ func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
 	}
 	logger := logging.NewLogger()
 	if strings.Contains(req.Error.Error(), "Throttling") {
-		logger.Warn("Throttling Rate limit exceeded. Retrying the request again")
+		logger.Warn(fmt.Sprintf("Throttling Rate limit exceeded. Retrying Attempt: '%v' of '%v'",
+			req.RetryCount+1, r.MaxRetries()))
 	}
 
 	return r.DefaultRetryer.ShouldRetry(req)
