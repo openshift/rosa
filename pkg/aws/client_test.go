@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,6 +32,7 @@ var _ = Describe("Client", func() {
 		mockIamAPI            *mocks.MockIAMAPI
 		mockS3API             *mocks.MockS3API
 		mockSecretsManagerAPI *mocks.MockSecretsManagerAPI
+		mockSTSApi            *mocks.MockSTSAPI
 	)
 
 	BeforeEach(func() {
@@ -40,6 +42,7 @@ var _ = Describe("Client", func() {
 		mockEC2API = mocks.NewMockEC2API(mockCtrl)
 		mockS3API = mocks.NewMockS3API(mockCtrl)
 		mockSecretsManagerAPI = mocks.NewMockSecretsManagerAPI(mockCtrl)
+		mockSTSApi = mocks.NewMockSTSAPI(mockCtrl)
 		client = aws.New(
 			logrus.New(),
 			mockIamAPI,
@@ -47,7 +50,7 @@ var _ = Describe("Client", func() {
 			mocks.NewMockOrganizationsAPI(mockCtrl),
 			mockS3API,
 			mockSecretsManagerAPI,
-			mocks.NewMockSTSAPI(mockCtrl),
+			mockSTSApi,
 			mockCfAPI,
 			mocks.NewMockServiceQuotasAPI(mockCtrl),
 			&session.Session{},
@@ -381,6 +384,39 @@ var _ = Describe("Client", func() {
 			mapStr := fmt.Sprintf("%v", publicSubnetMap)
 			Expect(mapStr).To(ContainSubstring("test-subnet-1:true"))
 			Expect(mapStr).To(ContainSubstring("test-subnet-2:false"))
+		})
+	})
+
+	Context("ValidateCredentials", func() {
+
+		It("Wraps InvalidClientTokenId to get user login information", func() {
+
+			err := fmt.Errorf("InvalidClientTokenId: bad credentials")
+			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, err)
+
+			valid, err := client.ValidateCredentials()
+			Expect(valid).To(BeFalse())
+			Expect(err.Error()).To(ContainSubstring(
+				"Invalid AWS Credentials. For help configuring your credentials, see"))
+		})
+
+		It("Does not wrap other errors and returns false", func() {
+			fakeError := "Fake AWS creds failure"
+
+			err := fmt.Errorf(fakeError)
+			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, err)
+
+			valid, err := client.ValidateCredentials()
+			Expect(valid).To(BeFalse())
+			Expect(err.Error()).To(ContainSubstring(fakeError))
+		})
+
+		It("Returns true if getCallerIdentity has no errors", func() {
+			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, nil)
+
+			valid, err := client.ValidateCredentials()
+			Expect(valid).To(BeTrue())
+			Expect(err).To(BeNil())
 		})
 	})
 })
