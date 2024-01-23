@@ -18,6 +18,7 @@ package login
 
 import (
 	"fmt"
+	"github.com/openshift-online/ocm-sdk-go/authentication"
 	"os"
 	"strings"
 
@@ -38,6 +39,8 @@ import (
 // #nosec G101
 var uiTokenPage string = "https://console.redhat.com/openshift/token/rosa"
 
+const oauthClientId = "ocm-cli"
+
 var reAttempt bool
 
 var args struct {
@@ -48,6 +51,7 @@ var args struct {
 	env          string
 	token        string
 	insecure     bool
+	useAuthCode  bool
 }
 
 var Cmd = &cobra.Command{
@@ -121,6 +125,15 @@ func init() {
 		"Enables insecure communication with the server. This disables verification of TLS "+
 			"certificates and host names.",
 	)
+	flags.BoolVar(
+		&args.useAuthCode,
+		"use-auth-code",
+		false,
+		"Enables OAuth Authorization Code login using PKCE. If this option is provided, "+
+			"the user will be taken to Red Hat SSO for authentication. In order to use a different account"+
+			"log out from sso.redhat.com after using the 'ocm logout' command.",
+	)
+	flags.MarkHidden("use-auth-code")
 	arguments.AddRegionFlag(flags)
 	fedramp.AddFlag(flags)
 }
@@ -133,6 +146,17 @@ func run(cmd *cobra.Command, argv []string) {
 	if env == "" {
 		r.Reporter.Errorf("Option '--env' is mandatory")
 		os.Exit(1)
+	}
+
+	if args.useAuthCode {
+		fmt.Println("You will now be redirected to Red Hat SSO login")
+		token, err := authentication.VerifyLogin(oauthClientId)
+		if err != nil {
+			r.Reporter.Errorf("An error occurred while retrieving the token : %v", err)
+			os.Exit(1)
+		}
+		args.token = token
+		fmt.Println("Token received successfully")
 	}
 
 	// Load the configuration file:

@@ -18,11 +18,11 @@ package addon
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
