@@ -71,6 +71,7 @@ import (
 const (
 	OidcConfigIdFlag      = "oidc-config-id"
 	ClassicOidcConfigFlag = "classic-oidc-config"
+	workerDiskSizeFlag    = "worker-disk-size"
 	// #nosec G101
 	Ec2MetadataHttpTokensFlag = "ec2-metadata-http-tokens"
 
@@ -665,7 +666,7 @@ func init() {
 	)
 
 	flags.StringVar(&args.machinePoolRootDiskSize,
-		"worker-disk-size",
+		workerDiskSizeFlag,
 		"",
 		"Default worker machine pool root disk size with a **unit suffix** like GiB or TiB, "+
 			"e.g. 200GiB.")
@@ -2523,8 +2524,26 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	isVersionCompatibleMachinePoolRootDisk, err := versions.IsGreaterThanOrEqual(
+		version, ocm.MinVersionForMachinePoolRootDisk)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
+		os.Exit(1)
+	}
+	if !isVersionCompatibleMachinePoolRootDisk && cmd.Flags().Changed(workerDiskSizeFlag) {
+		formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForMachinePoolRootDisk)
+		if err != nil {
+			r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
+			os.Exit(1)
+		}
+		r.Reporter.Errorf(
+			"Updating Worker disk size is not supported for versions prior to '%s'",
+			formattedVersion,
+		)
+		os.Exit(1)
+	}
 	var machinePoolRootDisk *ocm.Volume
-	if !isHostedCP &&
+	if isVersionCompatibleMachinePoolRootDisk && !isHostedCP &&
 		(args.machinePoolRootDiskSize != "" || interactive.Enabled()) {
 		var machinePoolRootDiskSizeStr string
 		if args.machinePoolRootDiskSize == "" {
@@ -2542,7 +2561,7 @@ func run(cmd *cobra.Command, _ []string) {
 			// Also, if nothing is given, we want to display the default value fetched from the OCM API
 			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
 				Question: "Machine pool root disk size (GiB or TiB)",
-				Help:     cmd.Flags().Lookup("worker-disk-size").Usage,
+				Help:     cmd.Flags().Lookup(workerDiskSizeFlag).Usage,
 				Default:  machinePoolRootDiskSizeStr,
 				Validators: []interactive.Validator{
 					interactive.MachinePoolRootDiskSizeValidator(version),
@@ -3734,7 +3753,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.MachinePoolRootDisk != nil {
 		machinePoolRootDiskSize := spec.MachinePoolRootDisk.Size
 		if machinePoolRootDiskSize != 0 {
-			command += fmt.Sprintf(" --worker-disk-size %dGiB", machinePoolRootDiskSize)
+			command += fmt.Sprintf(" --%s %dGiB", workerDiskSizeFlag, machinePoolRootDiskSize)
 		}
 	}
 
