@@ -362,7 +362,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	createHostedCP := args.hostedCP
-	if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") && !r.Creator.IsGovcloud {
+	if interactive.Enabled() && !isHostedCPValueSet && !cmd.Flags().Changed("classic") && !r.Creator.IsGovcloud {
 		createHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Create Hosted CP account roles",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
