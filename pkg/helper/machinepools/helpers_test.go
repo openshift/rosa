@@ -121,3 +121,46 @@ var _ = Describe("Machine pool for hosted clusters", func() {
 		),
 	)
 })
+
+var _ = Describe("Label validations", func() {
+	DescribeTable("Label validation",
+		func(key string, value string, hasError bool) {
+			err := ValidateLabelKeyValuePair(key, value)
+			if hasError {
+				Expect(err).To(HaveOccurred())
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Should not error with key of 'mykey', value 'myvalue'",
+			"mykey",
+			"myvalue",
+			false,
+		),
+		Entry("Should error with key of 'bad key', value 'myvalue'",
+			"bad key",
+			"myvalue",
+			true,
+		),
+		Entry("Should error with key of 'mykey', value 'bad value'",
+			"mykey",
+			"bad value",
+			true,
+		),
+		Entry("Should not error with key of 'xyz/mykey', value 'myvalue'",
+			"xyz/mykey",
+			"myvalue",
+			false,
+		),
+		Entry("Should error with key of '/mykey', value 'myvalue'",
+			"/mykey",
+			"myvalue",
+			true,
+		),
+		Entry("Should error with key of '/', value 'myvalue'",
+			"/",
+			"myvalue",
+			true,
+		),
+	)
+})
