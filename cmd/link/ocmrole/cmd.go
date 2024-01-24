@@ -14,6 +14,7 @@ limitations under the License.
 package ocmrole
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -133,9 +134,19 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	linked, err := r.OCMClient.LinkOrgToRole(orgAccount, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			r.Reporter.Errorf("Only organization admin can run this command. "+
+			var errMessage string
+			ocmAccount, localErr := r.OCMClient.GetCurrentAccount()
+			if localErr != nil {
+				r.Reporter.Warnf("Error getting Red Hat account: %v", localErr)
+			} else {
+				errMessage = fmt.Sprintf(
+					"Your Red Hat Account '%s' has no permission for this command.\n", ocmAccount.Username())
+			}
+
+			r.Reporter.Errorf("%s"+
+				"Only organization admin can run this command. "+
 				"Please ask someone with the organization admin role to run the following command \n\n"+
-				"\t rosa link ocm-role --role-arn %s --organization-id %s", roleArn, orgAccount)
+				"\t rosa link ocm-role --role-arn %s --organization-id %s", errMessage, roleArn, orgAccount)
 			return err
 		}
 		r.Reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",
