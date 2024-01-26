@@ -157,7 +157,7 @@ type Options struct {
 	clusterAdminUser string
 
 	// Audit Log Forwarding
-	AuditLogRoleARN string
+	auditLogRoleARN string
 
 	// Default Ingress Attributes
 	defaultIngressRouteSelectors            string
@@ -183,16 +183,28 @@ type Options struct {
 
 	// Control Plane machine pool attributes
 	additionalControlPlaneSecurityGroupIds []string
+
+	autoscalerArgs                *clusterautoscaler.AutoscalerArgs
+	userSpecifiedAutoscalerValues []*pflag.Flag
 }
 
 func NewOptions() *Options {
-	return &Options{}
+	return &Options{
+		channelGroup:   ocm.DefaultChannelGroup,
+		flavour:        "osd-4",
+		computeNodes:   2,
+		minReplicas:    2,
+		maxReplicas:    2,
+		autoscalerArgs: clusterautoscaler.NewAutoscalerArgs(),
+	}
 }
 
 func (o *Options) AddFlags(flags *pflag.FlagSet) {
+	o.autoscalerArgs.AddClusterAutoscalerFlags(flags, clusterAutoscalerFlagsPrefix)
+
 	// Basic options
 	flags.StringVarP(
-		&args.clusterName,
+		&o.clusterName,
 		"name",
 		"n",
 		"",
@@ -201,7 +213,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkDeprecated("name", "use --cluster-name instead")
 
 	flags.StringVarP(
-		&args.clusterName,
+		&o.clusterName,
 		"cluster-name",
 		"c",
 		"",
@@ -209,37 +221,37 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.BoolVar(
-		&args.sts,
+		&o.sts,
 		"sts",
 		false,
 		"Use AWS Security Token Service (STS) instead of IAM credentials to deploy your cluster.",
 	)
 	flags.BoolVar(
-		&args.nonSts,
+		&o.nonSts,
 		"non-sts",
 		false,
 		"Use legacy method of creating clusters (IAM mode).",
 	)
 	flags.BoolVar(
-		&args.nonSts,
+		&o.nonSts,
 		"mint-mode",
 		false,
 		"Use legacy method of creating clusters (IAM mode). This is an alias for --non-sts.",
 	)
 	flags.StringVar(
-		&args.roleARN,
+		&o.roleARN,
 		"role-arn",
 		"",
 		"The Amazon Resource Name of the role that OpenShift Cluster Manager will assume to create the cluster.",
 	)
 	flags.StringVar(
-		&args.externalID,
+		&o.externalID,
 		"external-id",
 		"",
 		"An optional unique identifier that might be required when you assume a role in another account.",
 	)
 	flags.StringVar(
-		&args.supportRoleARN,
+		&o.supportRoleARN,
 		"support-role-arn",
 		"",
 		"The Amazon Resource Name of the role used by Red Hat SREs to enable "+
@@ -247,14 +259,14 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.controlPlaneRoleARN,
+		&o.controlPlaneRoleARN,
 		"controlplane-iam-role",
 		"",
 		"The IAM role ARN that will be attached to control plane instances.",
 	)
 
 	flags.StringVar(
-		&args.controlPlaneRoleARN,
+		&o.controlPlaneRoleARN,
 		"master-iam-role",
 		"",
 		"The IAM role ARN that will be attached to master instances.",
@@ -262,14 +274,14 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkDeprecated("master-iam-role", "use --controlplane-iam-role instead")
 
 	flags.StringVar(
-		&args.workerRoleARN,
+		&o.workerRoleARN,
 		"worker-iam-role",
 		"",
 		"The IAM role ARN that will be attached to worker instances.",
 	)
 
 	flags.StringArrayVar(
-		&args.operatorIAMRoles,
+		&o.operatorIAMRoles,
 		"operator-iam-roles",
 		nil,
 		"List of OpenShift name and namespace, and role ARNs used to perform credential "+
@@ -277,7 +289,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 	flags.MarkDeprecated("operator-iam-roles", "use --operator-roles-prefix instead")
 	flags.StringVar(
-		&args.operatorRolesPrefix,
+		&o.operatorRolesPrefix,
 		"operator-roles-prefix",
 		"",
 		"Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. "+
@@ -285,14 +297,14 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.oidcConfigId,
+		&o.oidcConfigId,
 		OidcConfigIdFlag,
 		"",
 		"Registered OIDC Configuration ID to use for cluster creation",
 	)
 
 	flags.BoolVar(
-		&args.classicOidcConfig,
+		&o.classicOidcConfig,
 		ClassicOidcConfigFlag,
 		false,
 		"Use classic OIDC configuration without registering an ID.",
@@ -300,7 +312,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(ClassicOidcConfigFlag)
 
 	flags.StringSliceVar(
-		&args.tags,
+		&o.tags,
 		"tags",
 		nil,
 		"Apply user defined tags to all resources created by ROSA in AWS. "+
@@ -308,20 +320,20 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.BoolVar(
-		&args.multiAZ,
+		&o.multiAZ,
 		"multi-az",
 		false,
 		"Deploy to multiple data centers.",
 	)
 	arguments.AddRegionFlag(flags)
 	flags.StringVar(
-		&args.version,
+		&o.version,
 		"version",
 		"",
 		"Version of OpenShift that will be used to install the cluster, for example \"4.3.10\"",
 	)
 	flags.StringVar(
-		&args.channelGroup,
+		&o.channelGroup,
 		"channel-group",
 		ocm.DefaultChannelGroup,
 		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
@@ -329,7 +341,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden("channel-group")
 
 	flags.StringVar(
-		&args.flavour,
+		&o.flavour,
 		"flavour",
 		"osd-4",
 		"Set of predefined properties of a cluster",
@@ -337,35 +349,35 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden("flavour")
 
 	flags.BoolVar(
-		&args.etcdEncryption,
+		&o.etcdEncryption,
 		"etcd-encryption",
 		false,
 		"Add etcd encryption. By default etcd data is encrypted at rest. "+
 			"This option configures etcd encryption on top of existing storage encryption.",
 	)
 	flags.BoolVar(
-		&args.fips,
+		&o.fips,
 		"fips",
 		false,
 		"Create cluster that uses FIPS Validated / Modules in Process cryptographic libraries.",
 	)
 
 	flags.StringVar(
-		&args.httpProxy,
+		&o.httpProxy,
 		"http-proxy",
 		"",
 		"A proxy URL to use for creating HTTP connections outside the cluster. The URL scheme must be http.",
 	)
 
 	flags.StringVar(
-		&args.httpsProxy,
+		&o.httpsProxy,
 		"https-proxy",
 		"",
 		"A proxy URL to use for creating HTTPS connections outside the cluster.",
 	)
 
 	flags.StringSliceVar(
-		&args.noProxySlice,
+		&o.noProxySlice,
 		"no-proxy",
 		nil,
 		"A comma-separated list of destination domain names, domains, IP addresses or "+
@@ -373,25 +385,25 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.additionalTrustBundleFile,
+		&o.additionalTrustBundleFile,
 		"additional-trust-bundle-file",
 		"",
 		"A file contains a PEM-encoded X.509 certificate bundle that will be "+
 			"added to the nodes' trusted certificate store.")
 
-	flags.BoolVar(&args.enableCustomerManagedKey,
+	flags.BoolVar(&o.enableCustomerManagedKey,
 		"enable-customer-managed-key",
 		false,
 		"Enable to specify your KMS Key to encrypt EBS instance volumes. By default account’s default "+
 			"KMS key for that particular region is used.")
 
-	flags.StringVar(&args.kmsKeyARN,
+	flags.StringVar(&o.kmsKeyARN,
 		"kms-key-arn",
 		"",
 		"The key ARN is the Amazon Resource Name (ARN) of a CMK. It is a unique, "+
 			"fully qualified identifier for the CMK. A key ARN includes the AWS account, Region, and the key ID.")
 
-	flags.StringVar(&args.etcdEncryptionKmsARN,
+	flags.StringVar(&o.etcdEncryptionKmsARN,
 		"etcd-encryption-kms-arn",
 		"",
 		"The etcd encryption kms key ARN is the key used to encrypt etcd. "+
@@ -399,13 +411,13 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 			"fully qualified identifier for the CMK. A key ARN includes the AWS account, Region, and the key ID.")
 
 	flags.StringVar(
-		&args.expirationTime,
+		&o.expirationTime,
 		"expiration-time",
 		"",
 		"Specific time when cluster should expire (RFC3339). Only one of expiration-time / expiration may be used.",
 	)
 	flags.DurationVar(
-		&args.expirationDuration,
+		&o.expirationDuration,
 		"expiration",
 		0,
 		"Expire cluster after a relative duration like 2h, 8h, 72h. Only one of expiration-time / expiration may be used.",
@@ -415,7 +427,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden("expiration")
 
 	flags.BoolVar(
-		&args.privateLink,
+		&o.privateLink,
 		"private-link",
 		false,
 		"Provides private connectivity between VPCs, AWS services, and your on-premises networks, "+
@@ -423,7 +435,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.ec2MetadataHttpTokens,
+		&o.ec2MetadataHttpTokens,
 		Ec2MetadataHttpTokensFlag,
 		"",
 		"Should cluster nodes use both v1 and v2 endpoints or just v2 endpoint "+
@@ -431,7 +443,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringSliceVar(
-		&args.subnetIDs,
+		&o.subnetIDs,
 		"subnet-ids",
 		nil,
 		"The Subnet IDs to use when installing the cluster. "+
@@ -440,7 +452,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringSliceVar(
-		&args.availabilityZones,
+		&o.availabilityZones,
 		"availability-zones",
 		nil,
 		"The availability zones to use when installing a non-BYOVPC cluster. "+
@@ -449,14 +461,14 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 
 	// Scaling options
 	flags.StringVar(
-		&args.computeMachineType,
+		&o.computeMachineType,
 		"compute-machine-type",
 		"",
 		"Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.",
 	)
 
 	flags.IntVar(
-		&args.computeNodes,
+		&o.computeNodes,
 		"compute-nodes",
 		2,
 		"Number of worker nodes to provision. Single zone clusters need at least 2 nodes, "+
@@ -464,7 +476,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 	flags.MarkDeprecated("compute-nodes", "use --replicas instead")
 	flags.IntVar(
-		&args.computeNodes,
+		&o.computeNodes,
 		"replicas",
 		2,
 		"Number of worker nodes to provision. Single zone clusters need at least 2 nodes, "+
@@ -473,29 +485,28 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.BoolVar(
-		&args.autoscalingEnabled,
+		&o.autoscalingEnabled,
 		"enable-autoscaling",
 		false,
 		"Enable autoscaling of compute nodes.",
 	)
 
-	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(Cmd, clusterAutoscalerFlagsPrefix)
 	// iterates through all autoscaling flags and stores them in slice to track user input
 	flags.VisitAll(func(f *pflag.Flag) {
 		if strings.HasPrefix(f.Name, clusterAutoscalerFlagsPrefix) {
-			userSpecifiedAutoscalerValues = append(userSpecifiedAutoscalerValues, f)
+			o.userSpecifiedAutoscalerValues = append(o.userSpecifiedAutoscalerValues, f)
 		}
 	})
 
 	flags.IntVar(
-		&args.minReplicas,
+		&o.minReplicas,
 		"min-replicas",
 		2,
 		"Minimum number of compute nodes.",
 	)
 
 	flags.IntVar(
-		&args.maxReplicas,
+		&o.maxReplicas,
 		"max-replicas",
 		2,
 		"Maximum number of compute nodes.",
@@ -503,7 +514,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 
 	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
-		&args.defaultMachinePoolLabels,
+		&o.defaultMachinePoolLabels,
 		arguments.NewDefaultMPLabelsFlag,
 		"",
 		"Labels for the worker machine pool. Format should be a comma-separated list of 'key=value'. "+
@@ -511,54 +522,53 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.networkType,
+		&o.networkType,
 		"network-type",
 		"",
 		"The main controller responsible for rendering the core networking components.",
 	)
 	flags.MarkHidden("network-type")
-	Cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
 
 	flags.IPNetVar(
-		&args.machineCIDR,
+		&o.machineCIDR,
 		"machine-cidr",
 		net.IPNet{},
 		"Block of IP addresses used by OpenShift while installing the cluster, for example \"10.0.0.0/16\".",
 	)
 	flags.IPNetVar(
-		&args.serviceCIDR,
+		&o.serviceCIDR,
 		"service-cidr",
 		net.IPNet{},
 		"Block of IP addresses for services, for example \"172.30.0.0/16\".",
 	)
 	flags.IPNetVar(
-		&args.podCIDR,
+		&o.podCIDR,
 		"pod-cidr",
 		net.IPNet{},
 		"Block of IP addresses from which Pod IP addresses are allocated, for example \"10.128.0.0/14\".",
 	)
 	flags.IntVar(
-		&args.hostPrefix,
+		&o.hostPrefix,
 		"host-prefix",
 		0,
 		"Subnet prefix length to assign to each individual node. For example, if host prefix is set "+
 			"to \"23\", then each node is assigned a /23 subnet out of the given CIDR.",
 	)
 	flags.BoolVar(
-		&args.private,
+		&o.private,
 		"private",
 		false,
 		"Restrict master API endpoint and application routes to direct, private connectivity.",
 	)
 
 	flags.BoolVar(
-		&args.disableSCPChecks,
+		&o.disableSCPChecks,
 		"disable-scp-checks",
 		false,
 		"Indicates if cloud permission checks are disabled when attempting installation of the cluster.",
 	)
 	flags.BoolVar(
-		&args.disableWorkloadMonitoring,
+		&o.disableWorkloadMonitoring,
 		"disable-workload-monitoring",
 		false,
 		"Enables you to monitor your own projects in isolation from Red Hat Site Reliability Engineer (SRE) "+
@@ -566,7 +576,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.BoolVarP(
-		&args.watch,
+		&o.watch,
 		"watch",
 		"w",
 		false,
@@ -574,14 +584,14 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.BoolVar(
-		&args.dryRun,
+		&o.dryRun,
 		"dry-run",
 		false,
 		"Simulate creating the cluster.",
 	)
 
 	flags.BoolVar(
-		&args.fakeCluster,
+		&o.fakeCluster,
 		"fake-cluster",
 		false,
 		"Create a fake cluster that uses no AWS resources.",
@@ -589,7 +599,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden("fake-cluster")
 
 	flags.StringArrayVar(
-		&args.properties,
+		&o.properties,
 		"properties",
 		nil,
 		"User defined properties for tagging and querying.",
@@ -597,7 +607,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden("properties")
 
 	flags.BoolVar(
-		&args.useLocalCredentials,
+		&o.useLocalCredentials,
 		"use-local-credentials",
 		false,
 		"Use local AWS credentials instead of the 'osdCcsAdmin' user. This is not supported.",
@@ -605,7 +615,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden("use-local-credentials")
 
 	flags.StringVar(
-		&args.operatorRolesPermissionsBoundary,
+		&o.operatorRolesPermissionsBoundary,
 		"permissions-boundary",
 		"",
 		"The ARN of the policy that is used to set the permissions boundary for the operator "+
@@ -614,47 +624,47 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 
 	// Options related to HyperShift:
 	flags.BoolVar(
-		&args.hostedClusterEnabled,
+		&o.hostedClusterEnabled,
 		"hosted-cp",
 		false,
 		"Enable the use of Hosted Control Planes",
 	)
 
-	flags.StringVar(&args.machinePoolRootDiskSize,
+	flags.StringVar(&o.machinePoolRootDiskSize,
 		workerDiskSizeFlag,
 		"",
 		"Default worker machine pool root disk size with a **unit suffix** like GiB or TiB, "+
 			"e.g. 200GiB.")
 
 	flags.StringVar(
-		&args.billingAccount,
+		&o.billingAccount,
 		"billing-account",
 		"",
 		"Account used for billing subscriptions purchased via the AWS marketplace",
 	)
 
 	flags.BoolVar(
-		&args.createAdminUser,
+		&o.createAdminUser,
 		"create-admin-user",
 		false,
 		`Create cluster admin named "cluster-admin"`,
 	)
 
 	flags.BoolVar(
-		&args.noCni,
+		&o.noCni,
 		"no-cni",
 		false,
 		"Disable CNI creation to let users bring their own CNI.",
 	)
 
 	flags.StringVar(
-		&args.clusterAdminUser,
+		&o.clusterAdminUser,
 		"cluster-admin-user",
 		"",
 		`Deprecated cluster admin flag. Please use --create-admin-user.`,
 	)
 	flags.StringVar(
-		&args.clusterAdminPassword,
+		&o.clusterAdminPassword,
 		"cluster-admin-password",
 		"",
 		`The password must
@@ -665,14 +675,14 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden("cluster-admin-user")
 
 	flags.StringVar(
-		&args.AuditLogRoleARN,
+		&o.auditLogRoleARN,
 		"audit-log-arn",
 		"",
 		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
 	)
 
 	flags.StringVar(
-		&args.defaultIngressRouteSelectors,
+		&o.defaultIngressRouteSelectors,
 		ingress.DefaultIngressRouteSelectorFlag,
 		"",
 		"Route Selector for ingress. Format should be a comma-separated list of 'key=value'. "+
@@ -681,7 +691,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.defaultIngressExcludedNamespaces,
+		&o.defaultIngressExcludedNamespaces,
 		ingress.DefaultIngressExcludedNamespacesFlag,
 		"",
 		"Excluded namespaces for ingress. Format should be a comma-separated list 'value1, value2...'. "+
@@ -689,7 +699,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.defaultIngressWildcardPolicy,
+		&o.defaultIngressWildcardPolicy,
 		ingress.DefaultIngressWildcardPolicyFlag,
 		"",
 		fmt.Sprintf("Wildcard Policy for ingress. Options are %s. Default is '%s'.",
@@ -697,7 +707,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.defaultIngressNamespaceOwnershipPolicy,
+		&o.defaultIngressNamespaceOwnershipPolicy,
 		ingress.DefaultIngressNamespaceOwnershipPolicyFlag,
 		"",
 		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s. Default is '%s'.",
@@ -705,7 +715,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.privateHostedZoneID,
+		&o.privateHostedZoneID,
 		"private-hosted-zone-id",
 		"",
 		"ID assigned by AWS to private Route 53 hosted zone associated with intended shared VPC, "+
@@ -713,7 +723,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.sharedVPCRoleARN,
+		&o.sharedVPCRoleARN,
 		"shared-vpc-role-arn",
 		"",
 		"AWS IAM role ARN with a policy attached, granting permissions necessary to create and manage Route 53 DNS records "+
@@ -721,7 +731,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.baseDomain,
+		&o.baseDomain,
 		"base-domain",
 		"",
 		"Base DNS domain name previously reserved and matching the hosted zone name of the private Route 53 hosted zone "+
@@ -729,7 +739,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringSliceVar(
-		&args.additionalComputeSecurityGroupIds,
+		&o.additionalComputeSecurityGroupIds,
 		securitygroups.ComputeSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the default worker machine pool. "+
@@ -737,7 +747,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringSliceVar(
-		&args.additionalInfraSecurityGroupIds,
+		&o.additionalInfraSecurityGroupIds,
 		securitygroups.InfraSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the infra worker nodes. "+
@@ -745,7 +755,7 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringSliceVar(
-		&args.additionalControlPlaneSecurityGroupIds,
+		&o.additionalControlPlaneSecurityGroupIds,
 		securitygroups.ControlPlaneSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the control plane nodes. "+
