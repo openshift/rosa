@@ -50,6 +50,7 @@ func init() {
 	flags := Cmd.Flags()
 	flags.SortFlags = false
 
+	Cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
 	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
@@ -61,38 +62,52 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	rawOpts := NewOptions()
+	rawOpts.AddFlags(cmd.Flags())
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	opts, err := rawOpts.Complete(cmd.Flags(), r)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if opts == nil {
+		os.Exit(0)
+	}
+
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
-		r.Reporter.Infof("Creating cluster '%s'", clusterName)
+		r.Reporter.Infof("Creating cluster '%s'", opts.ClusterName)
 		if interactive.Enabled() {
-			command := buildCommand(clusterConfig, operatorRolesPrefix, expectedOperatorRolePath,
-				isAvailabilityZonesSet || selectAvailabilityZones, labels, args.properties)
+			command := buildCommand(opts.Spec, opts.OperatorRolesPrefix, opts.ExpectedOperatorRolePath,
+				opts.IsAvailabilityZonesSet || opts.SelectAvailabilityZones, opts.Labels, opts.Properties,
+				opts.ClusterAdminPassword, opts.ClassicOidcConfig, opts.ExpirationDuration)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 	}
 
-	cluster, err := r.OCMClient.CreateCluster(clusterConfig)
+	cluster, err := r.OCMClient.CreateCluster(opts.Spec)
 	if err != nil {
-		if args.dryRun {
-			r.Reporter.Errorf("Creating cluster '%s' should fail: %s", clusterName, err)
+		if opts.DryRun {
+			r.Reporter.Errorf("Creating cluster '%s' should fail: %s", opts.ClusterName, err)
 		} else {
 			r.Reporter.Errorf("Failed to create cluster: %s", err)
 		}
 		os.Exit(1)
 	}
 
-	if args.dryRun {
+	if opts.DryRun {
 		r.Reporter.Infof(
 			"Creating cluster '%s' should succeed. Run without the '--dry-run' flag to create the cluster.",
-			clusterName)
+			opts.ClusterName)
 		os.Exit(0)
 	}
 
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
-		r.Reporter.Infof("Cluster '%s' has been created.", clusterName)
+		r.Reporter.Infof("Cluster '%s' has been created.", opts.ClusterName)
 		r.Reporter.Infof(
 			"Once the cluster is installed you will need to add an Identity Provider " +
 				"before you can login into the cluster. See 'rosa create idp --help' " +
@@ -101,12 +116,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{cluster.ID()})
 
-	if isSTS {
-		if mode != "" {
+	if opts.IsSTS {
+		if opts.AWSMode != "" {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create operator roles.")
 			}
-			err := operatorroles.Cmd.RunE(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
+			err := operatorroles.Cmd.RunE(operatorroles.Cmd, []string{opts.ClusterName, opts.AWSMode, opts.PermissionsBoundary})
 			if err != nil {
 				r.Reporter.Errorf("There was a problem creating operator roles: %v", err)
 				os.Exit(1)
@@ -114,13 +129,13 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
-			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
+			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{opts.ClusterName, opts.AWSMode, ""})
 		} else {
 			output := ""
-			if len(operatorRoles) == 0 {
-				rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", clusterName)
-				if permissionsBoundary != "" {
-					rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
+			if len(opts.OperatorRoles) == 0 {
+				rolesCMD := fmt.Sprintf("rosa create operator-roles --cluster %s", opts.ClusterName)
+				if opts.PermissionsBoundary != "" {
+					rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, opts.PermissionsBoundary)
 				}
 				output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			}
@@ -136,7 +151,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			if !oidcProviderExists {
 				oidcCMD := "rosa create oidc-provider"
-				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, clusterName)
+				oidcCMD = fmt.Sprintf("%s --cluster %s", oidcCMD, opts.ClusterName)
 				output = fmt.Sprintf("%s\t%s\n", output, oidcCMD)
 			}
 			if output != "" {
@@ -147,16 +162,16 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if args.watch {
-		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
+	if opts.Watch {
+		installLogs.Cmd.Run(installLogs.Cmd, []string{opts.ClusterName})
 	} else if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof(
 			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
-			clusterName,
+			opts.ClusterName,
 		)
 		r.Reporter.Infof(
 			"To watch your cluster installation logs, run 'rosa logs install -c %s --watch'.",
-			clusterName,
+			opts.ClusterName,
 		)
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -31,24 +30,23 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // validateNetworkType ensure user passes a valid network type parameter at creation
-func validateNetworkType(r *rosa.Runtime) string {
+func validateNetworkType(r *rosa.Runtime, input string) (string, error) {
 	var networkType string
-	if args.networkType == "" {
+	if input == "" {
 		// Parameter not specified, nothing to do
-		return networkType
+		return networkType, nil
 	}
-	if helper.Contains(ocm.NetworkTypes, args.networkType) {
-		networkType = args.networkType
+	if helper.Contains(ocm.NetworkTypes, input) {
+		networkType = input
 	}
 	if networkType == "" {
-		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
-		os.Exit(1)
+		return "", fmt.Errorf("expected a valid network type; valid values: %v, got %s", ocm.NetworkTypes, input)
 	}
-	return networkType
+	return networkType, nil
 }
 
 func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
@@ -101,13 +99,13 @@ func validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient aws.Client,
 	return nil
 }
 
-func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, isHostedCP bool) *v1.OidcConfig {
+func (o *Options) handleOidcConfigOptions(r *rosa.Runtime, flags *pflag.FlagSet, isSTS bool, isHostedCP bool) (*v1.OidcConfig, error) {
 	if !isSTS {
-		return nil
+		return nil, nil
 	}
-	oidcConfigId := args.oidcConfigId
+	oidcConfigId := o.oidcConfigId
 	isOidcConfig := false
-	if isHostedCP && !args.classicOidcConfig {
+	if isHostedCP && !o.classicOidcConfig {
 		isOidcConfig = true
 		if oidcConfigId == "" {
 			interactive.Enable()
@@ -121,13 +119,12 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 				Required: true,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid value: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid value: %w", err)
 			}
 			isOidcConfig = _isOidcConfig
 		}
 		if isOidcConfig {
-			oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd)
+			oidcConfigId = interactiveOidc.GetOidcConfigID(r, flags)
 		}
 	}
 	if oidcConfigId == "" {
@@ -135,30 +132,27 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 			if isOidcConfig {
 				r.Reporter.Warnf("No OIDC Configuration found; will continue with the classic flow.")
 			}
-			return nil
+			return nil, nil
 		}
-		if args.classicOidcConfig {
-			return nil
+		if o.classicOidcConfig {
+			return nil, nil
 		}
-		r.Reporter.Errorf("Hosted Control Plane requires an OIDC Configuration ID\n" +
+		return nil, fmt.Errorf("hosted Control Plane requires an OIDC Configuration ID\n" +
 			"Please run `rosa create oidc-config -h` and create one.")
-		os.Exit(1)
 	}
 	oidcConfig, err := r.OCMClient.GetOidcConfig(oidcConfigId)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem retrieving OIDC Config '%s': %v", oidcConfigId, err)
-		os.Exit(1)
+		return nil, fmt.Errorf("there was a problem retrieving OIDC Config '%s': %w", oidcConfigId, err)
 	}
-	return oidcConfig
+	return oidcConfig, nil
 }
 
-func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.Subnet {
+func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) ([]*ec2.Subnet, error) {
 	excludedSubnetsDueToPublic := []string{}
 	filteredSubnets := []*ec2.Subnet{}
 	publicSubnetMap, err := r.AWSClient.FetchPublicSubnetMap(initialSubnets)
 	if err != nil {
-		r.Reporter.Errorf("Unable to check if subnet have an IGW: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("unable to check if subnet have an IGW: %w", err)
 	}
 	for _, subnet := range initialSubnets {
 		skip := false
@@ -180,7 +174,7 @@ func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.
 			" because they have an Internet Gateway Targetded Route and the Cluster choice is private: %s",
 			helper.SliceToSortedString(excludedSubnetsDueToPublic))
 	}
-	return filteredSubnets
+	return filteredSubnets, nil
 }
 
 func filterCidrRangeSubnets(
@@ -188,15 +182,14 @@ func filterCidrRangeSubnets(
 	machineNetwork *net.IPNet,
 	serviceNetwork *net.IPNet,
 	r *rosa.Runtime,
-) []*ec2.Subnet {
+) ([]*ec2.Subnet, error) {
 	excludedSubnetsDueToCidr := []string{}
 	filteredSubnets := []*ec2.Subnet{}
 	for _, subnet := range initialSubnets {
 		skip := false
 		subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse subnet CIDR")
-			os.Exit(1)
+			return nil, fmt.Errorf("unable to parse subnet CIDR")
 		}
 
 		if !isValidCidrRange(subnetIP, subnetNetwork, machineNetwork, serviceNetwork) {
@@ -212,7 +205,7 @@ func filterCidrRangeSubnets(
 		r.Reporter.Warnf("The following subnets have been excluded"+
 			" because they do not fit into chosen CIDR ranges: %s", helper.SliceToSortedString(excludedSubnetsDueToCidr))
 	}
-	return filteredSubnets
+	return filteredSubnets, nil
 }
 
 func isValidCidrRange(
@@ -301,31 +294,31 @@ func evaluateDuration(duration time.Duration) time.Time {
 	return time.Now().Add(duration).Round(time.Second)
 }
 
-func validateExpiration() (expiration time.Time, err error) {
+func validateExpiration(expirationTime string, expirationDuration time.Duration) (expiration time.Time, err error) {
 	// Validate options
-	if len(args.expirationTime) > 0 && args.expirationDuration != 0 {
+	if len(expirationTime) > 0 && expirationDuration != 0 {
 		err = errors.New("At most one of 'expiration-time' or 'expiration' may be specified")
 		return
 	}
 
 	// Parse the expiration options
-	if len(args.expirationTime) > 0 {
-		t, err := parseRFC3339(args.expirationTime)
+	if len(expirationTime) > 0 {
+		t, err := parseRFC3339(expirationTime)
 		if err != nil {
-			err = fmt.Errorf("Failed to parse expiration-time: %s", err)
+			err = fmt.Errorf("failed to parse expiration-time: %w", err)
 			return expiration, err
 		}
 
 		expiration = t
 	}
-	if args.expirationDuration != 0 {
-		expiration = evaluateDuration(args.expirationDuration)
+	if expirationDuration != 0 {
+		expiration = evaluateDuration(expirationDuration)
 	}
 
 	return
 }
 
-func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilityZones []string,
+func selectAvailabilityZonesInteractively(flags *pflag.FlagSet, optionsAvailabilityZones []string,
 	multiAZ bool) ([]string, error) {
 	var availabilityZones []string
 	var err error
@@ -333,7 +326,7 @@ func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilit
 	if multiAZ {
 		availabilityZones, err = interactive.GetMultipleOptions(interactive.Input{
 			Question: "Availability zones",
-			Help:     cmd.Flags().Lookup("availability-zones").Usage,
+			Help:     flags.Lookup("availability-zones").Usage,
 			Required: true,
 			Options:  optionsAvailabilityZones,
 			Validators: []interactive.Validator{
@@ -341,18 +334,18 @@ func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilit
 			},
 		})
 		if err != nil {
-			return availabilityZones, fmt.Errorf("Expected valid availability zones: %s", err)
+			return availabilityZones, fmt.Errorf("expected valid availability zones: %w", err)
 		}
 	} else {
 		var availabilityZone string
 		availabilityZone, err = interactive.GetOption(interactive.Input{
 			Question: "Availability zone",
-			Help:     cmd.Flags().Lookup("availability-zones").Usage,
+			Help:     flags.Lookup("availability-zones").Usage,
 			Required: true,
 			Options:  optionsAvailabilityZones,
 		})
 		if err != nil {
-			return availabilityZones, fmt.Errorf("Expected valid availability zone: %s", err)
+			return availabilityZones, fmt.Errorf("expected valid availability zone: %w", err)
 		}
 		availabilityZones = append(availabilityZones, availabilityZone)
 	}
@@ -368,11 +361,11 @@ func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClie
 
 	regionAvailabilityZones, err := awsClient.DescribeAvailabilityZones()
 	if err != nil {
-		return fmt.Errorf("Failed to get the list of the availability zone: %s", err)
+		return fmt.Errorf("failed to get the list of the availability zone: %w", err)
 	}
 	for _, az := range availabilityZones {
 		if !helper.Contains(regionAvailabilityZones, az) {
-			return fmt.Errorf("Expected a valid availability zone, "+
+			return fmt.Errorf("expected a valid availability zone, "+
 				"'%s' doesn't belong to region '%s' availability zones", az, awsClient.GetRegion())
 		}
 	}
@@ -390,7 +383,7 @@ func parseRFC3339(s string) (time.Time, error) {
 
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	operatorRolePath string, userSelectedAvailabilityZones bool, labels string,
-	properties []string) string {
+	properties []string, clusterAdminPassword string, classicOidcConfig bool, expirationDuration time.Duration) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.IsSTS {
@@ -401,7 +394,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.ClusterAdminUser != "" {
 		// Checks if admin password is from user (both flag and interactive)
-		if args.clusterAdminPassword != "" && spec.ClusterAdminPassword != "" {
+		if clusterAdminPassword != "" && spec.ClusterAdminPassword != "" {
 			command += fmt.Sprintf(" --cluster-admin-password %s", spec.ClusterAdminPassword)
 		} else {
 			command += " --create-admin-user"
@@ -424,7 +417,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.OidcConfigId != "" {
 		command += fmt.Sprintf(" --%s %s", OidcConfigIdFlag, spec.OidcConfigId)
 	}
-	if args.classicOidcConfig {
+	if classicOidcConfig {
 		command += fmt.Sprintf(" --%s", ClassicOidcConfigFlag)
 	}
 	if len(spec.Tags) > 0 {
@@ -452,8 +445,8 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	// Only account for expiration duration, as a fixed date may be obsolete if command is re-run later
-	if args.expirationDuration != 0 {
-		command += fmt.Sprintf(" --expiration %s", args.expirationDuration)
+	if expirationDuration != 0 {
+		command += fmt.Sprintf(" --expiration %s", expirationDuration)
 	}
 
 	if spec.Autoscaling {
@@ -710,33 +703,29 @@ func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdmin
 	}
 }
 
-func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
+func getSecurityGroups(r *rosa.Runtime, flags *pflag.FlagSet, isVersionCompatibleComputeSgIds bool,
 	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []*ec2.Subnet, subnetIds []string,
-	additionalSgIds *[]string) {
-	hasChangedSgIdsFlag := cmd.Flags().Changed(securitygroups.SgKindFlagMap[kind])
+	additionalSgIds *[]string) error {
+	hasChangedSgIdsFlag := flags.Changed(securitygroups.SgKindFlagMap[kind])
 	if hasChangedSgIdsFlag {
 		if !useExistingVpc {
-			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYO VPC clusters",
+			return fmt.Errorf("setting the `%s` flag is only allowed for BYO VPC clusters",
 				securitygroups.SgKindFlagMap[kind])
-			os.Exit(1)
 		}
 		// HCP is still unsupported
 		if isHostedCp {
-			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
+			return fmt.Errorf("parameter '%s' is not supported for Hosted Control Plane clusters",
 				securitygroups.SgKindFlagMap[kind])
-			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
 			formattedVersion, err := versions.FormatMajorMinorPatch(
 				ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1,
 			)
 			if err != nil {
-				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
-				os.Exit(1)
+				return fmt.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
 			}
-			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
+			return fmt.Errorf("parameter '%s' is not supported prior to version '%s'",
 				securitygroups.SgKindFlagMap[kind], formattedVersion)
-			os.Exit(1)
 		}
 	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVpc && !isHostedCp {
 		vpcId := ""
@@ -747,12 +736,12 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 		}
 		if vpcId == "" {
 			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
-			os.Exit(1)
 		}
 		*additionalSgIds = interactiveSgs.
-			GetSecurityGroupIds(r, cmd, vpcId, kind)
+			GetSecurityGroupIds(r, flags, vpcId, kind)
 	}
 	for i, sg := range *additionalSgIds {
 		(*additionalSgIds)[i] = strings.TrimSpace(sg)
 	}
+	return nil
 }

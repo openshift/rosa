@@ -768,67 +768,62 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	// Validate mode
 	mode, err := aws.GetMode()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("%s", err)
 	}
 
-	for _, val := range userSpecifiedAutoscalerValues {
-		if val.Changed && !args.autoscalingEnabled {
-			r.Reporter.Errorf("Using autoscaling flag '%s', requires flag '--enable-autoscaling'. "+
+	for _, val := range o.userSpecifiedAutoscalerValues {
+		if val.Changed && !o.autoscalingEnabled {
+			return nil, fmt.Errorf("using autoscaling flag '%s', requires flag '--enable-autoscaling'. "+
 				"Please try again with flag", val.Name)
-			os.Exit(1)
 		}
 	}
 
 	// validate flags for cluster admin
-	isHostedCP := args.hostedClusterEnabled
-	createAdminUser := args.createAdminUser
-	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
+	isHostedCP := o.hostedClusterEnabled
+	createAdminUser := o.createAdminUser
+	clusterAdminPassword := strings.Trim(o.clusterAdminPassword, " \t")
 	if (createAdminUser || clusterAdminPassword != "") && isHostedCP {
-		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
-		os.Exit(1)
+		return nil, fmt.Errorf("setting Cluster Admin is only supported in classic ROSA clusters")
 	}
 	// error when using deprecated admin flags
-	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
+	clusterAdminUser := strings.Trim(o.clusterAdminUser, " \t")
 	if clusterAdminUser != "" {
-		r.Reporter.Errorf("'--cluster-admin-user' flag has been deprecated " +
+		return nil, fmt.Errorf("'--cluster-admin-user' flag has been deprecated " +
 			"and replaced with '--create-admin-user'")
-		os.Exit(1)
 	}
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
 	if err != nil {
-		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
+		return nil, fmt.Errorf("unable to retrieve supported regions: %v", err)
 	}
-	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions, args.useLocalCredentials)
+	awsClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions, o.useLocalCredentials)
 	r.AWSClient = awsClient
 
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
-		r.Reporter.Errorf("Unable to get IAM credentials: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("unable to get IAM credentials: %v", err)
 	}
 
 	shardPinningEnabled := false
-	for _, value := range args.properties {
+	for _, value := range o.properties {
 		if strings.HasPrefix(value, properties.ProvisionShardId) {
 			shardPinningEnabled = true
 			break
 		}
 	}
 
-	isBYOVPC := cmd.Flags().Changed("subnet-ids")
-	isAvailabilityZonesSet := cmd.Flags().Changed("availability-zones")
+	isBYOVPC := flags.Changed("subnet-ids")
+	isAvailabilityZonesSet := flags.Changed("availability-zones")
 	// Setting subnet IDs is choosing BYOVPC implicitly,
 	// and selecting availability zones is only allowed for non-BYOVPC clusters
 	if isBYOVPC && isAvailabilityZonesSet {
-		r.Reporter.Errorf("Setting availability zones is not supported for BYO VPC. " +
+		return nil, fmt.Errorf("setting availability zones is not supported for BYO VPC. " +
 			"ROSA autodetects availability zones from subnet IDs provided")
 	}
 
 	// Select a multi-AZ cluster implicitly by providing three availability zones
-	if len(args.availabilityZones) == clustervalidations.MultiAZCount {
-		args.multiAZ = true
+	if len(o.availabilityZones) == clustervalidations.MultiAZCount {
+		o.multiAZ = true
 	}
 
 	if interactive.Enabled() {
@@ -837,7 +832,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	}
 
 	// Get cluster name
-	clusterName := strings.Trim(args.clusterName, " \t")
+	clusterName := strings.Trim(o.clusterName, " \t")
 
 	if clusterName == "" && !interactive.Enabled() {
 		interactive.Enable()
@@ -847,7 +842,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if interactive.Enabled() {
 		clusterName, err = interactive.GetString(interactive.Input{
 			Question: "Cluster name",
-			Help:     cmd.Flags().Lookup("cluster-name").Usage,
+			Help:     flags.Lookup("cluster-name").Usage,
 			Default:  clusterName,
 			Required: true,
 			Validators: []interactive.Validator{
@@ -855,8 +850,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid cluster name: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid cluster name: %w", err)
 		}
 	}
 
@@ -864,45 +858,40 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	clusterName = strings.Trim(clusterName, " \t")
 
 	if !ocm.IsValidClusterName(clusterName) {
-		r.Reporter.Errorf("Cluster name must consist" +
+		return nil, fmt.Errorf("cluster name must consist" +
 			" of no more than 15 lowercase alphanumeric characters or '-', " +
-			"start with a letter, and end with an alphanumeric character.")
-		os.Exit(1)
+			"start with a letter, and end with an alphanumeric character")
 	}
 
 	if interactive.Enabled() {
 		isHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Deploy cluster with Hosted Control Plane",
-			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+			Help:     flags.Lookup("hosted-cp").Usage,
 			Default:  isHostedCP,
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid --hosted-cp value: %w", err)
 		}
 	}
 
 	if isHostedCP && r.Reporter.IsTerminal() {
 		techPreviewMsg, err := r.OCMClient.GetTechnologyPreviewMessage(ocm.HcpProduct, time.Now())
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("%s", err)
 		}
 		if techPreviewMsg != "" {
 			r.Reporter.Infof(techPreviewMsg)
 		}
 	}
 
-	if isHostedCP && cmd.Flags().Changed(Ec2MetadataHttpTokensFlag) {
-		r.Reporter.Errorf("'%s' is not available for Hosted Control Plane clusters", Ec2MetadataHttpTokensFlag)
-		os.Exit(1)
+	if isHostedCP && flags.Changed(Ec2MetadataHttpTokensFlag) {
+		return nil, fmt.Errorf("'%s' is not available for Hosted Control Plane clusters", Ec2MetadataHttpTokensFlag)
 	}
 
 	// Errors when users elects for cluster admin via flags and elects for hosted control plane via interactive prompt"
 	if isHostedCP && (createAdminUser || clusterAdminPassword != "") {
-		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
-		os.Exit(1)
+		return nil, fmt.Errorf("setting Cluster Admin is only supported in classic ROSA clusters")
 	}
 
 	// isClusterAdmin is a flag indicating if user wishes to create cluster admin
@@ -915,8 +904,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				r.Reporter.Debugf(admin.GeneratingRandomPasswordString)
 				clusterAdminPassword, err = idputils.GenerateRandomPassword()
 				if err != nil {
-					r.Reporter.Errorf("Failed to generate a random password")
-					os.Exit(1)
+					return nil, fmt.Errorf("failed to generate a random password")
 				}
 			}
 		}
@@ -924,8 +912,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		if clusterAdminPassword != "" {
 			err = passwordValidator.PasswordValidator(clusterAdminPassword)
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%s", err)
 			}
 			isClusterAdmin = true
 		}
@@ -938,8 +925,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				Required: true,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid value: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid value: %w", err)
 			}
 			if isClusterAdmin {
 				isCustomAdminPassword, err := interactive.GetBool(interactive.Input{
@@ -948,50 +934,44 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 					Required: true,
 				})
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid value: %s", err)
-					os.Exit(1)
+					return nil, fmt.Errorf("expected a valid value: %w", err)
 				}
 				if !isCustomAdminPassword {
 					clusterAdminPassword, err = idputils.GenerateRandomPassword()
 					if err != nil {
-						r.Reporter.Errorf("Failed to generate a random password")
-						os.Exit(1)
+						return nil, fmt.Errorf("failed to generate a random password")
 					}
 				} else {
-					clusterAdminPassword = idp.GetIdpPasswordFromPrompt(cmd, r,
+					clusterAdminPassword = idp.GetIdpPasswordFromPrompt(flags, r,
 						"cluster-admin-password", clusterAdminPassword)
-					args.clusterAdminPassword = clusterAdminPassword
+					o.clusterAdminPassword = clusterAdminPassword
 				}
 			}
 		}
 		outputClusterAdminDetails(r, isClusterAdmin, clusterAdminPassword)
 	}
 
-	if isHostedCP && cmd.Flags().Changed(arguments.NewDefaultMPLabelsFlag) {
-		r.Reporter.Errorf("Setting the worker machine pool labels is not supported for hosted clusters")
-		os.Exit(1)
+	if isHostedCP && flags.Changed(arguments.NewDefaultMPLabelsFlag) {
+		return nil, fmt.Errorf("setting the worker machine pool labels is not supported for hosted clusters")
 	}
 
 	// Billing Account
-	billingAccount := args.billingAccount
+	billingAccount := o.billingAccount
 	if isHostedCP {
 		isHcpBillingTechPreview, err := r.OCMClient.IsTechnologyPreview(ocm.HcpBillingAccount, time.Now())
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("%s", err)
 		}
 
 		if !isHcpBillingTechPreview {
 
 			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-				r.Reporter.Errorf("Billing account is invalid. Run the command again with a valid billing account.")
-				os.Exit(1)
+				return nil, fmt.Errorf("billing account is invalid. Run the command again with a valid billing account")
 			}
 
 			cloudAccounts, err := r.OCMClient.GetBillingAccounts()
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%s", err)
 			}
 
 			billingAccounts := ocm.GenerateBillingAccountsList(cloudAccounts)
@@ -1005,7 +985,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 						"To use a different billing account, add --billing-account xxxxxxxxxx to previous command",
 					)
 				} else {
-					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters.")
+					return nil, fmt.Errorf("a billing account is required for Hosted Control Plane clusters")
 				}
 			}
 
@@ -1013,23 +993,21 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				if len(billingAccounts) > 0 {
 					billingAccount, err = interactive.GetOption(interactive.Input{
 						Question: "Billing Account",
-						Help:     cmd.Flags().Lookup("billing-account").Usage,
+						Help:     flags.Lookup("billing-account").Usage,
 						Default:  billingAccount,
 						Required: true,
 						Options:  billingAccounts,
 					})
 
 					if err != nil {
-						r.Reporter.Errorf("Expected a valid billing account: '%s'", err)
-						os.Exit(1)
+						return nil, fmt.Errorf("expected a valid billing account: '%s'", err)
 					}
 
 					billingAccount = aws.ParseOption(billingAccount)
 				}
 
 				if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
-					r.Reporter.Errorf("Expected a valid billing account")
-					os.Exit(1)
+					return nil, fmt.Errorf("expected a valid billing account")
 				}
 
 				// Get contract info
@@ -1056,36 +1034,32 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	}
 
 	if !isHostedCP && billingAccount != "" {
-		r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
-		os.Exit(1)
+		return nil, fmt.Errorf("billing accounts are only supported for Hosted Control Plane clusters")
 	}
 
-	etcdEncryptionKmsARN := args.etcdEncryptionKmsARN
+	etcdEncryptionKmsARN := o.etcdEncryptionKmsARN
 
 	if etcdEncryptionKmsARN != "" && !isHostedCP {
-		r.Reporter.Errorf("etcd encryption kms arn is only allowed for hosted cp")
-		os.Exit(1)
+		return nil, fmt.Errorf("etcd encryption kms arn is only allowed for hosted cp")
 	}
 
 	// all hosted clusters are sts
-	isSTS := args.sts || args.roleARN != "" || fedramp.Enabled() || isHostedCP
-	isIAM := (cmd.Flags().Changed("sts") && !isSTS) || args.nonSts
+	isSTS := o.sts || o.roleARN != "" || fedramp.Enabled() || isHostedCP
+	isIAM := (flags.Changed("sts") && !isSTS) || o.nonSts
 
 	if isSTS && isIAM {
-		r.Reporter.Errorf("Can't use both STS and mint mode at the same time.")
-		os.Exit(1)
+		return nil, fmt.Errorf("can't use both STS and mint mode at the same time")
 	}
 
 	if interactive.Enabled() && (!isSTS && !isIAM) {
 		isSTS, err = interactive.GetBool(interactive.Input{
 			Question: "Deploy cluster using AWS STS",
-			Help:     cmd.Flags().Lookup("sts").Usage,
+			Help:     flags.Lookup("sts").Usage,
 			Default:  true,
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid --sts value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid --sts value: %w", err)
 		}
 		isIAM = !isSTS
 	}
@@ -1098,42 +1072,38 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary if you do not wish to use STS.")
 	}
 
-	permissionsBoundary := args.operatorRolesPermissionsBoundary
+	permissionsBoundary := o.operatorRolesPermissionsBoundary
 	if permissionsBoundary != "" {
 		err = aws.ARNValidator(permissionsBoundary)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid policy ARN for permissions boundary: %w", err)
 		}
 	}
 
 	if isIAM {
 		if awsCreator.IsSTS {
-			r.Reporter.Errorf("Since your AWS credentials are returning an STS ARN you can only " +
-				"create STS clusters. Otherwise, switch to IAM credentials.")
-			os.Exit(1)
+			return nil, fmt.Errorf("since your AWS credentials are returning an STS ARN you can only " +
+				"create STS clusters. Otherwise, switch to IAM credentials")
 		}
 		err := awsClient.CheckAdminUserExists(aws.AdminUserName)
 		if err != nil {
-			r.Reporter.Errorf("IAM user '%s' does not exist. Run `rosa init` first", aws.AdminUserName)
-			os.Exit(1)
+			return nil, fmt.Errorf("iAM user '%s' does not exist. Run `rosa init` first", aws.AdminUserName)
 		}
 		r.Reporter.Debugf("IAM user is valid!")
 	}
 
 	// AWS ARN Role
-	roleARN := args.roleARN
-	supportRoleARN := args.supportRoleARN
-	controlPlaneRoleARN := args.controlPlaneRoleARN
-	workerRoleARN := args.workerRoleARN
+	roleARN := o.roleARN
+	supportRoleARN := o.supportRoleARN
+	controlPlaneRoleARN := o.controlPlaneRoleARN
+	workerRoleARN := o.workerRoleARN
 
 	// OpenShift version:
-	version := args.version
-	channelGroup := args.channelGroup
+	version := o.version
+	channelGroup := o.channelGroup
 	versionList, err := versions.GetVersionList(r, channelGroup, isSTS, isHostedCP, isHostedCP, true)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("%s", err)
 	}
 	if version == "" {
 		version = versionList[0]
@@ -1141,29 +1111,27 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if interactive.Enabled() {
 		version, err = interactive.GetOption(interactive.Input{
 			Question: "OpenShift version",
-			Help:     cmd.Flags().Lookup("version").Usage,
+			Help:     flags.Lookup("version").Usage,
 			Options:  versionList,
 			Default:  version,
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid OpenShift version: %w", err)
 		}
 	}
 	version, err = r.OCMClient.ValidateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("expected a valid OpenShift version: %w", err)
 	}
 	if err := r.OCMClient.IsVersionCloseToEol(ocm.CloseToEolDays, version, channelGroup); err != nil {
 		r.Reporter.Warnf("%v", err)
 		if !confirm.Confirm("continue with version '%s'", ocm.GetRawVersionId(version)) {
-			os.Exit(0)
+			return nil, nil
 		}
 	}
 
-	httpTokens := args.ec2MetadataHttpTokens
+	httpTokens := o.ec2MetadataHttpTokens
 	if !isHostedCP {
 		if httpTokens == "" {
 			httpTokens = string(v1.Ec2MetadataHttpTokensOptional)
@@ -1172,22 +1140,19 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			httpTokens, err = interactive.GetOption(interactive.Input{
 				Question: "Configure the use of IMDSv2 for ec2 instances",
 				Options:  []string{string(v1.Ec2MetadataHttpTokensOptional), string(v1.Ec2MetadataHttpTokensRequired)},
-				Help:     cmd.Flags().Lookup(Ec2MetadataHttpTokensFlag).Usage,
+				Help:     flags.Lookup(Ec2MetadataHttpTokensFlag).Usage,
 				Required: true,
 				Default:  httpTokens,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid http tokens value : %v", err)
 			}
 		}
 		if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
-			r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid http tokens value : %v", err)
 		}
 		if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
-			r.Reporter.Errorf(err.Error())
-			os.Exit(1)
+			return nil, fmt.Errorf(err.Error())
 		}
 	}
 
@@ -1201,23 +1166,20 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if isSTS && mode != "" {
 		isValidMode := arguments.IsValidMode(aws.Modes, mode)
 		if !isValidMode {
-			r.Reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, aws.Modes)
-			os.Exit(1)
+			return nil, fmt.Errorf("invalid --mode '%s'. Allowed values are %s", mode, aws.Modes)
 		}
 	}
 
-	if args.watch && isSTS && mode == aws.ModeAuto && !confirm.Yes() {
-		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'auto' " +
+	if o.watch && isSTS && mode == aws.ModeAuto && !confirm.Yes() {
+		return nil, fmt.Errorf("cannot watch for STS cluster installation logs in mode 'auto' " +
 			"without also supplying '--yes' option." +
-			"To watch your cluster installation logs, run 'rosa logs install' instead after the cluster has began creating.")
-		os.Exit(1)
+			"To watch your cluster installation logs, run 'rosa logs install' instead after the cluster has began creating")
 	}
 
-	if args.watch && isSTS && mode == aws.ModeManual {
-		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'manual'." +
+	if o.watch && isSTS && mode == aws.ModeManual {
+		return nil, fmt.Errorf("cannot watch for STS cluster installation logs in mode 'manual'." +
 			"It requires manual commands to be performed as part of the process." +
-			"To watch your cluster installation logs, run 'rosa logs install' after the cluster has began creating.")
-		os.Exit(1)
+			"To watch your cluster installation logs, run 'rosa logs install' after the cluster has began creating")
 	}
 
 	hasRoles := false
@@ -1233,8 +1195,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			roleARNs, err = awsClient.FindRoleARNsClassic(aws.InstallerAccountRole, minor)
 		}
 		if err != nil {
-			r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to find %s role: %s", role.Name, err)
 		}
 
 		if len(roleARNs) > 1 {
@@ -1266,14 +1227,13 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			} else {
 				roleARN, err = interactive.GetOption(interactive.Input{
 					Question: fmt.Sprintf("%s role ARN", role.Name),
-					Help:     cmd.Flags().Lookup(role.Flag).Usage,
+					Help:     flags.Lookup(role.Flag).Usage,
 					Options:  roleARNs,
 					Default:  defaultRoleARN,
 					Required: true,
 				})
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid role ARN: %s", err)
-					os.Exit(1)
+					return nil, fmt.Errorf("expected a valid role ARN: %w", err)
 				}
 			}
 		} else if len(roleARNs) == 1 {
@@ -1296,8 +1256,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			// check if role has hosted cp policy via AWS tag value
 			hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
 			if err != nil {
-				r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("failed to determine if cluster has hosted CP policies: %v", err)
 			}
 			hasRoles = true
 			for roleType, role := range aws.AccountRoles {
@@ -1315,15 +1274,13 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 					roleARNs, err = awsClient.FindRoleARNsClassic(roleType, minor)
 				}
 				if err != nil {
-					r.Reporter.Errorf("Failed to find %s role: %s", role.Name, err)
-					os.Exit(1)
+					return nil, fmt.Errorf("failed to find %s role: %s", role.Name, err)
 				}
 				selectedARN := ""
 				expectedResourceIDForAccRole, rolePrefix, err := getExpectedResourceIDForAccRole(
 					hostedCPPolicies, roleARN, roleType)
 				if err != nil {
-					r.Reporter.Errorf("Failed to get the expected resource ID for role type: %s", roleType)
-					os.Exit(1)
+					return nil, fmt.Errorf("failed to get the expected resource ID for role type: %s", roleType)
 				}
 				r.Reporter.Debugf(
 					"Using '%s' as the role prefix to retrieve the expected resource ID for role type '%s'",
@@ -1334,8 +1291,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				for _, rARN := range roleARNs {
 					resourceId, err := aws.GetResourceIdFromARN(rARN)
 					if err != nil {
-						r.Reporter.Errorf("Failed to get resource ID from arn. %s", err)
-						os.Exit(1)
+						return nil, fmt.Errorf("failed to get resource ID from arn. %s", err)
 					}
 					lowerCaseResourceIdToCheck := strings.ToLower(resourceId)
 					if lowerCaseResourceIdToCheck == expectedResourceIDForAccRole {
@@ -1375,7 +1331,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if isSTS && !hasRoles && interactive.Enabled() {
 		roleARN, err = interactive.GetString(interactive.Input{
 			Question: "Role ARN",
-			Help:     cmd.Flags().Lookup("role-arn").Usage,
+			Help:     flags.Lookup("role-arn").Usage,
 			Default:  roleARN,
 			Required: isSTS,
 			Validators: []interactive.Validator{
@@ -1383,16 +1339,14 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid ARN: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid ARN: %w", err)
 		}
 	}
 
 	if roleARN != "" {
 		err = aws.ARNValidator(roleARN)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid Role ARN: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid Role ARN: %w", err)
 		}
 		isSTS = true
 	}
@@ -1401,19 +1355,18 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		r.Reporter.Warnf("--mode is only valid for STS clusters")
 	}
 
-	externalID := args.externalID
+	externalID := o.externalID
 	if isSTS && interactive.Enabled() {
 		externalID, err = interactive.GetString(interactive.Input{
 			Question: "External ID",
-			Help:     cmd.Flags().Lookup("external-id").Usage,
+			Help:     flags.Lookup("external-id").Usage,
 			Validators: []interactive.Validator{
 				interactive.RegExp(`^[\w+=,.@:\/-]*$`),
 				interactive.MaxLength(1224),
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid External ID: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid External ID: %w", err)
 		}
 	}
 
@@ -1424,7 +1377,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if isSTS && !hasRoles && interactive.Enabled() {
 		supportRoleARN, err = interactive.GetString(interactive.Input{
 			Question: "Support Role ARN",
-			Help:     cmd.Flags().Lookup("support-role-arn").Usage,
+			Help:     flags.Lookup("support-role-arn").Usage,
 			Default:  supportRoleARN,
 			Required: true,
 			Validators: []interactive.Validator{
@@ -1432,19 +1385,16 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid ARN: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid ARN: %w", err)
 		}
 	}
 	if supportRoleARN != "" {
 		err = aws.ARNValidator(supportRoleARN)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid Support Role ARN: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid Support Role ARN: %w", err)
 		}
 	} else if roleARN != "" {
-		r.Reporter.Errorf("Support Role ARN is required: %s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("support Role ARN is required: %w", err)
 	}
 
 	// Instance IAM Roles
@@ -1456,7 +1406,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		if isSTS && !hasRoles && interactive.Enabled() {
 			controlPlaneRoleARN, err = interactive.GetString(interactive.Input{
 				Question: "Control plane IAM Role ARN",
-				Help:     cmd.Flags().Lookup("controlplane-iam-role").Usage,
+				Help:     flags.Lookup("controlplane-iam-role").Usage,
 				Default:  controlPlaneRoleARN,
 				Required: true,
 				Validators: []interactive.Validator{
@@ -1464,19 +1414,16 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid control plane IAM role ARN: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid control plane IAM role ARN: %w", err)
 			}
 		}
 		if controlPlaneRoleARN != "" {
 			err = aws.ARNValidator(controlPlaneRoleARN)
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid control plane instance IAM role ARN: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid control plane instance IAM role ARN: %w", err)
 			}
 		} else if roleARN != "" {
-			r.Reporter.Errorf("Control plane instance IAM role ARN is required: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("control plane instance IAM role ARN is required: %w", err)
 		}
 	}
 
@@ -1488,7 +1435,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if isSTS && !hasRoles && interactive.Enabled() {
 		workerRoleARN, err = interactive.GetString(interactive.Input{
 			Question: "Worker IAM Role ARN",
-			Help:     cmd.Flags().Lookup("worker-iam-role").Usage,
+			Help:     flags.Lookup("worker-iam-role").Usage,
 			Default:  workerRoleARN,
 			Required: true,
 			Validators: []interactive.Validator{
@@ -1496,19 +1443,16 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid worker IAM role ARN: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid worker IAM role ARN: %w", err)
 		}
 	}
 	if workerRoleARN != "" {
 		err = aws.ARNValidator(workerRoleARN)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid worker instance IAM role ARN: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid worker instance IAM role ARN: %w", err)
 		}
 	} else if roleARN != "" {
-		r.Reporter.Errorf("Worker instance IAM role ARN is required: %s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("worker instance IAM role ARN is required: %w", err)
 	}
 
 	// combine role arns to list
@@ -1521,41 +1465,36 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 
 	managedPolicies, err := awsClient.HasManagedPolicies(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to determine if cluster has managed policies: %v", err)
 	}
 	// check if role has hosted cp policy via AWS tag value
 	hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine if cluster has hosted CP policies: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to determine if cluster has hosted CP policies: %v", err)
 	}
 
 	if managedPolicies {
 		rolePrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
-			r.Reporter.Errorf("Failed to find prefix from account role: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to find prefix from account role: %w", err)
 		}
 
 		err = roles.ValidateAccountRolesManagedPolicies(r, rolePrefix, hostedCPPolicies)
 		if err != nil {
-			r.Reporter.Errorf("Failed while validating account roles: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed while validating account roles: %w", err)
 		}
 	} else {
 		err = roles.ValidateUnmanagedAccountRoles(roleARNs, awsClient, version)
 		if err != nil {
-			r.Reporter.Errorf("Failed while validating account roles: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed while validating account roles: %w", err)
 		}
 	}
 
-	operatorRolesPrefix := args.operatorRolesPrefix
-	operatorRoles := []string{}
+	operatorRolesPrefix := o.operatorRolesPrefix
+	var operatorRoles []string
 	expectedOperatorRolePath, _ := aws.GetPathFromARN(roleARN)
-	operatorIAMRoles := args.operatorIAMRoles
-	computedOperatorIamRoleList := []ocm.OperatorIAMRole{}
+	operatorIAMRoles := o.operatorIAMRoles
+	var computedOperatorIamRoleList []ocm.OperatorIAMRole
 	if isSTS {
 		if operatorRolesPrefix == "" {
 			operatorRolesPrefix = getRolePrefix(clusterName)
@@ -1563,7 +1502,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		if interactive.Enabled() {
 			operatorRolesPrefix, err = interactive.GetString(interactive.Input{
 				Question: "Operator roles prefix",
-				Help:     cmd.Flags().Lookup("operator-roles-prefix").Usage,
+				Help:     flags.Lookup("operator-roles-prefix").Usage,
 				Required: true,
 				Default:  operatorRolesPrefix,
 				Validators: []interactive.Validator{
@@ -1572,32 +1511,26 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a prefix for the operator IAM roles: %w", err)
 			}
 		}
 		if len(operatorRolesPrefix) == 0 {
-			r.Reporter.Errorf("Expected a prefix for the operator IAM roles: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a prefix for the operator IAM roles: %w", err)
 		}
 		if len(operatorRolesPrefix) > 32 {
-			r.Reporter.Errorf("Expected a prefix with no more than 32 characters")
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a prefix with no more than 32 characters")
 		}
 		if !aws.RoleNameRE.MatchString(operatorRolesPrefix) {
-			r.Reporter.Errorf("Expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
-			os.Exit(1)
+			return nil, fmt.Errorf("expected valid operator roles prefix matching %s", aws.RoleNameRE.String())
 		}
 
 		credRequests, err := r.OCMClient.GetAllCredRequests()
 		if err != nil {
-			r.Reporter.Errorf("Error getting operator credential request from OCM %v", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("error getting operator credential request from OCM %v", err)
 		}
 		operatorRoles, err = r.AWSClient.GetOperatorRolesFromAccountByPrefix(operatorRolesPrefix, credRequests)
 		if err != nil {
-			r.Reporter.Errorf("There was a problem retrieving the Operator Roles from AWS: %v", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("there was a problem retrieving the Operator Roles from AWS: %v", err)
 		}
 	}
 
@@ -1605,13 +1538,11 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if isSTS {
 		credRequests, err := r.OCMClient.GetCredRequests(isHostedCP)
 		if err != nil {
-			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("error getting operator credential request from OCM %s", err)
 		}
 		accRolesPrefix, err := getAccountRolePrefix(hostedCPPolicies, roleARN, aws.InstallerAccountRole)
 		if err != nil {
-			r.Reporter.Errorf("Failed to find prefix from account role: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to find prefix from account role: %w", err)
 		}
 		if expectedOperatorRolePath != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
 			r.Reporter.Infof("ARN path '%s' detected. This ARN path will be used for subsequent"+
@@ -1623,8 +1554,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			if operator.MinVersion() != "" {
 				isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(version), operator.MinVersion())
 				if err != nil {
-					r.Reporter.Errorf("Error validating operator role '%s' version %s", operator.Name(), err)
-					os.Exit(1)
+					return nil, fmt.Errorf("error validating operator role '%s' version %s", operator.Name(), err)
 				}
 				if !isSupported {
 					continue
@@ -1639,19 +1569,17 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		}
 		// If user insists on using the deprecated --operator-iam-roles
 		// override the values to support the legacy documentation
-		if cmd.Flags().Changed("operator-iam-roles") {
+		if flags.Changed("operator-iam-roles") {
 			computedOperatorIamRoleList = []ocm.OperatorIAMRole{}
 			for _, role := range operatorIAMRoles {
 				if !strings.Contains(role, ",") {
-					r.Reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
+					return nil, fmt.Errorf("expected operator IAM roles to be a comma-separated " +
 						"list of name,namespace,role_arn")
-					os.Exit(1)
 				}
 				roleData := strings.Split(role, ",")
 				if len(roleData) != 3 {
-					r.Reporter.Errorf("Expected operator IAM roles to be a comma-separated " +
+					return nil, fmt.Errorf("expected operator IAM roles to be a comma-separated " +
 						"list of name,namespace,role_arn")
-					os.Exit(1)
 				}
 				computedOperatorIamRoleList = append(computedOperatorIamRoleList, ocm.OperatorIAMRole{
 					Name:      roleData[0],
@@ -1660,30 +1588,31 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				})
 			}
 		}
-		oidcConfig = handleOidcConfigOptions(r, cmd, isSTS, isHostedCP)
+		oidcConfig, err = o.handleOidcConfigOptions(r, flags, isSTS, isHostedCP)
+		if err != nil {
+			return nil, err
+		}
 		err = validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient, computedOperatorIamRoleList)
 		if err != nil {
 			if !oidcConfig.Reusable() {
-				r.Reporter.Errorf("%v", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%v", err)
 			} else {
 				err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, awsClient, computedOperatorIamRoleList,
 					oidcConfig.IssuerUrl(), ocm.GetVersionMinor(version), expectedOperatorRolePath, managedPolicies)
 				if err != nil {
-					r.Reporter.Errorf("%v", err)
-					os.Exit(1)
+					return nil, fmt.Errorf("%v", err)
 				}
 			}
 		}
 	}
 
 	// Custom tags for AWS resources
-	_tags := args.tags
+	_tags := o.tags
 	tagsList := map[string]string{}
 	if interactive.Enabled() {
 		tagsInput, err := interactive.GetString(interactive.Input{
 			Question: "Tags",
-			Help:     cmd.Flags().Lookup("tags").Usage,
+			Help:     flags.Lookup("tags").Usage,
 			Default:  strings.Join(_tags, ","),
 			Validators: []interactive.Validator{
 				aws.UserTagValidator,
@@ -1691,8 +1620,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid set of tags: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid set of tags: %w", err)
 		}
 		if len(tagsInput) > 0 {
 			_tags = strings.Split(tagsInput, ",")
@@ -1700,8 +1628,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	}
 	if len(_tags) > 0 {
 		if err := aws.UserTagValidator(_tags); err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("%s", err)
 		}
 		delim := aws.GetTagsDelimiter(_tags)
 		for _, tag := range _tags {
@@ -1711,23 +1638,22 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	}
 
 	// Multi-AZ:
-	multiAZ := args.multiAZ
+	multiAZ := o.multiAZ
 	if interactive.Enabled() && !isHostedCP {
 		multiAZ, err = interactive.GetBool(interactive.Input{
 			Question: "Multiple availability zones",
-			Help:     cmd.Flags().Lookup("multi-az").Usage,
+			Help:     flags.Lookup("multi-az").Usage,
 			Default:  multiAZ,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid multi-AZ value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid multi-AZ value: %w", err)
 		}
 	}
 
 	// Hosted clusters will be multiAZ by definition
 	if isHostedCP {
 		multiAZ = true
-		if cmd.Flags().Changed("multi-az") {
+		if flags.Changed("multi-az") {
 			r.Reporter.Warnf("Hosted clusters deprecate the --multi-az flag. " +
 				"The hosted control plane will be MultiAZ, machinepools will be created in the different private " +
 				"subnets provided under --subnet-ids flag.")
@@ -1737,8 +1663,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	// Get AWS region
 	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
-		r.Reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("error getting region: %v", err)
 	}
 	// Filter regions by OCP version for displaying in interactive mode
 	var versionFilter string
@@ -1750,12 +1675,10 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	regionList, regionAZ, err := r.OCMClient.GetRegionList(multiAZ, roleARN, externalID, versionFilter,
 		awsClient, isHostedCP, shardPinningEnabled)
 	if err != nil {
-		r.Reporter.Errorf(fmt.Sprintf("%s", err))
-		os.Exit(1)
+		return nil, fmt.Errorf(fmt.Sprintf("%s", err))
 	}
 	if region == "" {
-		r.Reporter.Errorf("Expected a valid AWS region")
-		os.Exit(1)
+		return nil, fmt.Errorf("expected a valid AWS region")
 	} else if found := helper.Contains(regionList, region); isHostedCP && !shardPinningEnabled && !found {
 		r.Reporter.Warnf("Region '%s' not currently available for Hosted Control Plane cluster.", region)
 		interactive.Enable()
@@ -1764,42 +1687,38 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if interactive.Enabled() {
 		region, err = interactive.GetOption(interactive.Input{
 			Question: "AWS region",
-			Help:     cmd.Flags().Lookup("region").Usage,
+			Help:     flags.Lookup("region").Usage,
 			Options:  regionList,
 			Default:  region,
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid AWS region: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid AWS region: %w", err)
 		}
 	}
 	if supportsMultiAZ, found := regionAZ[region]; found {
 		if !supportsMultiAZ && multiAZ {
-			r.Reporter.Errorf("Region '%s' does not support multiple availability zones", region)
-			os.Exit(1)
+			return nil, fmt.Errorf("region '%s' does not support multiple availability zones", region)
 		}
 	} else {
-		r.Reporter.Errorf("Region '%s' is not supported for this AWS account", region)
-		os.Exit(1)
+		return nil, fmt.Errorf("region '%s' is not supported for this AWS account", region)
 	}
 
 	awsClient, err = aws.NewClient().
 		Region(region).
 		Logger(r.Logger).
-		UseLocalCredentials(args.useLocalCredentials).
+		UseLocalCredentials(o.useLocalCredentials).
 		Build()
 	if err != nil {
-		r.Reporter.Errorf("Failed to create awsClient: %s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to create awsClient: %w", err)
 	}
 	r.AWSClient = awsClient
 
 	// Cluster privacy:
 	useExistingVPC := false
-	private := args.private
+	private := o.private
 	isPrivateHostedCP := isHostedCP && private // all private hosted clusters are private-link
-	privateLink := args.privateLink || fedramp.Enabled() || isPrivateHostedCP
+	privateLink := o.privateLink || fedramp.Enabled() || isPrivateHostedCP
 
 	privateLinkWarning := "Once the cluster is created, this option cannot be changed."
 	if isSTS {
@@ -1809,18 +1728,17 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if interactive.Enabled() && !fedramp.Enabled() && !isPrivateHostedCP {
 		privateLink, err = interactive.GetBool(interactive.Input{
 			Question: "PrivateLink cluster",
-			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
-			Default:  privateLink || (isSTS && args.private),
+			Help:     fmt.Sprintf("%s %s", flags.Lookup("private-link").Usage, privateLinkWarning),
+			Default:  privateLink || (isSTS && o.private),
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid private-link value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid private-link value: %w", err)
 		}
 	} else if (privateLink || (isSTS && private)) && !fedramp.Enabled() && !isPrivateHostedCP {
 		// do not prompt users for privatelink if it is private hosted cluster
 		r.Reporter.Warnf("You are choosing to use AWS PrivateLink for your cluster. %s", privateLinkWarning)
 		if !confirm.Confirm("use AWS PrivateLink for cluster '%s'", clusterName) {
-			os.Exit(0)
+			return nil, nil
 		}
 		privateLink = true
 	}
@@ -1828,32 +1746,29 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if privateLink {
 		private = true
 	} else if isSTS && private {
-		r.Reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
-		os.Exit(1)
+		return nil, fmt.Errorf("private STS clusters are only supported through AWS PrivateLink")
 	} else if !isSTS {
 		privateWarning := "You will not be able to access your cluster until " +
 			"you edit network settings in your cloud provider."
 		if interactive.Enabled() {
 			private, err = interactive.GetBool(interactive.Input{
 				Question: "Private cluster",
-				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateWarning),
+				Help:     fmt.Sprintf("%s %s", flags.Lookup("private").Usage, privateWarning),
 				Default:  private,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid private value: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid private value: %w", err)
 			}
 		} else if private {
 			r.Reporter.Warnf("You are choosing to make your cluster private. %s", privateWarning)
 			if !confirm.Confirm("set cluster '%s' as private", clusterName) {
-				os.Exit(0)
+				return nil, nil
 			}
 		}
 	}
 
 	if isSTS && private && !privateLink {
-		r.Reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
-		os.Exit(1)
+		return nil, fmt.Errorf("private STS clusters are only supported through AWS PrivateLink")
 	}
 
 	if privateLink || isHostedCP {
@@ -1863,10 +1778,10 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	// cluster-wide proxy values set here as we need to know whather to skip the "Install
 	// into an existing VPC" question
 	enableProxy := false
-	httpProxy := args.httpProxy
-	httpsProxy := args.httpsProxy
-	noProxySlice := args.noProxySlice
-	additionalTrustBundleFile := args.additionalTrustBundleFile
+	httpProxy := o.httpProxy
+	httpsProxy := o.httpsProxy
+	noProxySlice := o.noProxySlice
+	additionalTrustBundleFile := o.additionalTrustBundleFile
 	if httpProxy != "" || httpsProxy != "" || len(noProxySlice) > 0 || additionalTrustBundleFile != "" {
 		useExistingVPC = true
 		enableProxy = true
@@ -1878,66 +1793,62 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		dhostPrefix,
 		defaultMachinePoolRootDiskSize,
 		defaultComputeMachineType := r.OCMClient.
-		GetDefaultClusterFlavors(args.flavour)
+		GetDefaultClusterFlavors(o.flavour)
 	if dMachinecidr == nil || dPodcidr == nil || dServicecidr == nil {
-		r.Reporter.Errorf("Error retrieving default cluster flavors")
-		os.Exit(1)
+		return nil, fmt.Errorf("error retrieving default cluster flavors")
 	}
 
 	// Machine CIDR:
-	machineCIDR := args.machineCIDR
+	machineCIDR := o.machineCIDR
 	if ocm.IsEmptyCIDR(machineCIDR) {
 		machineCIDR = *dMachinecidr
 	}
 	if interactive.Enabled() {
 		machineCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Machine CIDR",
-			Help:     cmd.Flags().Lookup("machine-cidr").Usage,
+			Help:     flags.Lookup("machine-cidr").Usage,
 			Default:  machineCIDR,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid CIDR value: %w", err)
 		}
 	}
 
 	// Service CIDR:
-	serviceCIDR := args.serviceCIDR
+	serviceCIDR := o.serviceCIDR
 	if ocm.IsEmptyCIDR(serviceCIDR) {
 		serviceCIDR = *dServicecidr
 	}
 	if interactive.Enabled() {
 		serviceCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Service CIDR",
-			Help:     cmd.Flags().Lookup("service-cidr").Usage,
+			Help:     flags.Lookup("service-cidr").Usage,
 			Default:  serviceCIDR,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid CIDR value: %w", err)
 		}
 	}
 	// Pod CIDR:
-	podCIDR := args.podCIDR
+	podCIDR := o.podCIDR
 	if ocm.IsEmptyCIDR(podCIDR) {
 		podCIDR = *dPodcidr
 	}
 	if interactive.Enabled() {
 		podCIDR, err = interactive.GetIPNet(interactive.Input{
 			Question: "Pod CIDR",
-			Help:     cmd.Flags().Lookup("pod-cidr").Usage,
+			Help:     flags.Lookup("pod-cidr").Usage,
 			Default:  podCIDR,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid CIDR value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid CIDR value: %w", err)
 		}
 	}
 
 	// Subnet IDs
-	subnetIDs := args.subnetIDs
+	subnetIDs := o.subnetIDs
 	subnetsProvided := len(subnetIDs) > 0
-	r.Reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
+	r.Reporter.Debugf("Received the following subnetIDs: %v", o.subnetIDs)
 	// If the user has set the availability zones (allowed for non-BYOVPC clusters), don't prompt the BYOVPC message
 	if !useExistingVPC && !subnetsProvided && !isAvailabilityZonesSet && interactive.Enabled() {
 		existingVPCHelp := "To install into an existing VPC you need to ensure that your VPC is configured " +
@@ -1952,14 +1863,12 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			Default:  useExistingVPC,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid value: %w", err)
 		}
 	}
 
 	if isHostedCP && !subnetsProvided && !useExistingVPC {
-		r.Reporter.Errorf("All hosted clusters need a pre-configured VPC. Make sure to specify the subnet ids")
-		os.Exit(1)
+		return nil, fmt.Errorf("all hosted clusters need a pre-configured VPC. Make sure to specify the subnet ids")
 	}
 
 	// For hosted cluster we will need the number of the private subnets the users has selected
@@ -1969,39 +1878,40 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	var subnets []*ec2.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
-		initialSubnets, err := getInitialValidSubnets(awsClient, args.subnetIDs, r.Reporter)
+		initialSubnets, err := getInitialValidSubnets(awsClient, o.subnetIDs, r.Reporter)
 		if err != nil {
-			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to get the list of subnets: %w", err)
 		}
 		if subnetsProvided {
 			useExistingVPC = true
 		}
 		_, machineNetwork, err := net.ParseCIDR(machineCIDR.String())
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse machine CIDR")
-			os.Exit(1)
+			return nil, fmt.Errorf("unable to parse machine CIDR")
 		}
 		_, serviceNetwork, err := net.ParseCIDR(serviceCIDR.String())
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse service CIDR")
-			os.Exit(1)
+			return nil, fmt.Errorf("unable to parse service CIDR")
 		}
-		subnets = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		subnets, err = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		if err != nil {
+			return nil, err
+		}
 		if privateLink {
-			subnets = filterPrivateSubnets(subnets, r)
+			subnets, err = filterPrivateSubnets(subnets, r)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
 			if isHostedCP {
-				r.Reporter.Errorf(
-					"All Hosted Control Plane clusters need a pre-configured VPC. Please check: %s",
+				return nil, fmt.Errorf(
+					"all Hosted Control Plane clusters need a pre-configured VPC. Please check: %s",
 					createVpcForHcpDoc,
 				)
-				os.Exit(1)
 			}
 			if ok := confirm.Prompt(false, "Continue with default? A new RH Managed VPC will be created for your cluster"); !ok {
-				os.Exit(1)
 			}
 			useExistingVPC = false
 			subnetsProvided = false
@@ -2020,9 +1930,8 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 					}
 				}
 				if !verifiedSubnet {
-					r.Reporter.Errorf("Could not find the following subnet provided in region '%s': %s",
+					return nil, fmt.Errorf("could not find the following subnet provided in region '%s': %s",
 						r.AWSClient.GetRegion(), subnetArg)
-					os.Exit(1)
 				}
 			}
 		}
@@ -2060,7 +1969,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3) {
 			subnetIDs, err = interactive.GetMultipleOptions(interactive.Input{
 				Question: "Subnet IDs",
-				Help:     cmd.Flags().Lookup("subnet-ids").Usage,
+				Help:     flags.Lookup("subnet-ids").Usage,
 				Required: false,
 				Options:  options,
 				Default:  defaultOptions,
@@ -2069,15 +1978,14 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected valid subnet IDs: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected valid subnet IDs: %w", err)
 			}
 			for i, subnet := range subnetIDs {
 				subnetIDs[i] = aws.ParseOption(subnet)
 			}
 		}
 
-		// Validate subnets in the case the user has provided them using the `args.subnets`
+		// Validate subnets in the case the user has provided them using the `o.Subnets`
 		if useExistingVPC || subnetsProvided {
 			if !isHostedCP {
 				err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))
@@ -2088,8 +1996,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs)
 			}
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%s", err)
 			}
 		}
 
@@ -2105,17 +2012,16 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 
 	// validate flags for shared vpc
 	isSharedVPC := false
-	privateHostedZoneID := strings.Trim(args.privateHostedZoneID, " \t")
-	sharedVPCRoleARN := strings.Trim(args.sharedVPCRoleARN, " \t")
-	baseDomain := strings.Trim(args.baseDomain, " \t")
+	privateHostedZoneID := strings.Trim(o.privateHostedZoneID, " \t")
+	sharedVPCRoleARN := strings.Trim(o.sharedVPCRoleARN, " \t")
+	baseDomain := strings.Trim(o.baseDomain, " \t")
 	if privateHostedZoneID != "" ||
 		sharedVPCRoleARN != "" {
 		isSharedVPC = true
 	}
 
 	if len(subnetIDs) == 0 && isSharedVPC {
-		r.Reporter.Errorf("Installing a cluster into a shared VPC is only supported for BYO VPC clusters")
-		os.Exit(1)
+		return nil, fmt.Errorf("installing a cluster into a shared VPC is only supported for BYO VPC clusters")
 	}
 
 	if isSubnetBelongToSharedVpc(r, awsCreator.AccountID, subnetIDs, mapSubnetIDToSubnet) {
@@ -2125,22 +2031,19 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				interactive.Enable()
 			}
 
-			privateHostedZoneID, err = getPrivateHostedZoneID(cmd, privateHostedZoneID)
+			privateHostedZoneID, err = getPrivateHostedZoneID(flags, privateHostedZoneID)
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%s", err)
 			}
 
-			sharedVPCRoleARN, err = getSharedVpcRoleArn(cmd, sharedVPCRoleARN)
+			sharedVPCRoleARN, err = getSharedVpcRoleArn(flags, sharedVPCRoleARN)
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%s", err)
 			}
 
-			baseDomain, err = getBaseDomain(r, cmd, baseDomain)
+			baseDomain, err = getBaseDomain(r, flags, baseDomain)
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%s", err)
 			}
 		}
 	}
@@ -2149,32 +2052,29 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	var selectAvailabilityZones bool
 	if !useExistingVPC && !subnetsProvided {
 		if isAvailabilityZonesSet {
-			availabilityZones = args.availabilityZones
+			availabilityZones = o.availabilityZones
 		}
 
 		if !isAvailabilityZonesSet && interactive.Enabled() {
 			selectAvailabilityZones, err = interactive.GetBool(interactive.Input{
 				Question: "Select availability zones",
-				Help:     cmd.Flags().Lookup("availability-zones").Usage,
+				Help:     flags.Lookup("availability-zones").Usage,
 				Default:  false,
 				Required: false,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid value for select-availability-zones: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid value for select-availability-zones: %w", err)
 			}
 
 			if selectAvailabilityZones {
 				optionsAvailabilityZones, err := awsClient.DescribeAvailabilityZones()
 				if err != nil {
-					r.Reporter.Errorf("Failed to get the list of the availability zone: %s", err)
-					os.Exit(1)
+					return nil, fmt.Errorf("failed to get the list of the availability zone: %w", err)
 				}
 
-				availabilityZones, err = selectAvailabilityZonesInteractively(cmd, optionsAvailabilityZones, multiAZ)
+				availabilityZones, err = selectAvailabilityZonesInteractively(flags, optionsAvailabilityZones, multiAZ)
 				if err != nil {
-					r.Reporter.Errorf("%s", err)
-					os.Exit(1)
+					return nil, fmt.Errorf("%s", err)
 				}
 			}
 		}
@@ -2182,14 +2082,13 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		if isAvailabilityZonesSet || selectAvailabilityZones {
 			err = validateAvailabilityZones(multiAZ, availabilityZones, awsClient)
 			if err != nil {
-				r.Reporter.Errorf(fmt.Sprintf("%s", err))
-				os.Exit(1)
+				return nil, fmt.Errorf(fmt.Sprintf("%s", err))
 			}
 		}
 	}
 
-	enableCustomerManagedKey := args.enableCustomerManagedKey
-	kmsKeyARN := args.kmsKeyARN
+	enableCustomerManagedKey := o.enableCustomerManagedKey
+	kmsKeyARN := o.kmsKeyARN
 
 	if kmsKeyARN != "" {
 		enableCustomerManagedKey = true
@@ -2197,20 +2096,19 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if interactive.Enabled() && !enableCustomerManagedKey {
 		enableCustomerManagedKey, err = interactive.GetBool(interactive.Input{
 			Question: "Enable Customer Managed key",
-			Help:     cmd.Flags().Lookup("enable-customer-managed-key").Usage,
+			Help:     flags.Lookup("enable-customer-managed-key").Usage,
 			Default:  enableCustomerManagedKey,
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for enable-customer-managed-key: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid value for enable-customer-managed-key: %w", err)
 		}
 	}
 
 	if enableCustomerManagedKey && (kmsKeyARN == "" || interactive.Enabled()) {
 		kmsKeyARN, err = interactive.GetString(interactive.Input{
 			Question: "KMS Key ARN",
-			Help:     cmd.Flags().Lookup("kms-key-arn").Usage,
+			Help:     flags.Lookup("kms-key-arn").Usage,
 			Default:  kmsKeyARN,
 			Required: enableCustomerManagedKey,
 			Validators: []interactive.Validator{
@@ -2218,24 +2116,21 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid value for kms-key-arn: %w", err)
 		}
 	}
 
 	err = kmsArnRegexpValidator.ValidateKMSKeyARN(&kmsKeyARN)
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid value for kms-key-arn: %s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("expected a valid value for kms-key-arn: %w", err)
 	}
 
 	// Compute node instance type:
-	computeMachineType := args.computeMachineType
+	computeMachineType := o.computeMachineType
 	computeMachineTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(region, availabilityZones, roleARN,
 		awsClient)
 	if err != nil {
-		r.Reporter.Errorf(fmt.Sprintf("%s", err))
-		os.Exit(1)
+		return nil, fmt.Errorf(fmt.Sprintf("%s", err))
 	}
 	if computeMachineType == "" {
 		computeMachineType = defaultComputeMachineType
@@ -2243,47 +2138,44 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if interactive.Enabled() {
 		computeMachineType, err = interactive.GetOption(interactive.Input{
 			Question: "Compute nodes instance type",
-			Help:     cmd.Flags().Lookup("compute-machine-type").Usage,
+			Help:     flags.Lookup("compute-machine-type").Usage,
 			Options:  computeMachineTypeList.GetAvailableIDs(multiAZ),
 			Default:  computeMachineType,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine type: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid machine type: %w", err)
 		}
 	}
 	err = computeMachineTypeList.ValidateMachineType(computeMachineType, multiAZ)
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid machine type: %s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("expected a valid machine type: %w", err)
 	}
 
-	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
-	isReplicasSet := cmd.Flags().Changed("compute-nodes") || cmd.Flags().Changed("replicas")
+	isAutoscalingSet := flags.Changed("enable-autoscaling")
+	isReplicasSet := flags.Changed("compute-nodes") || flags.Changed("replicas")
 
 	// Autoscaling
-	autoscaling := args.autoscalingEnabled
+	autoscaling := o.autoscalingEnabled
 	if !isReplicasSet && !autoscaling && !isAutoscalingSet && interactive.Enabled() {
 		autoscaling, err = interactive.GetBool(interactive.Input{
 			Question: "Enable autoscaling",
-			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
+			Help:     flags.Lookup("enable-autoscaling").Usage,
 			Default:  autoscaling,
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for enable-autoscaling: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid value for enable-autoscaling: %w", err)
 		}
 	}
 
-	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
-	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
+	isMinReplicasSet := flags.Changed("min-replicas")
+	isMaxReplicasSet := flags.Changed("max-replicas")
 
 	minReplicas, maxReplicas := calculateReplicas(
 		isMinReplicasSet,
 		isMaxReplicasSet,
-		args.minReplicas,
-		args.maxReplicas,
+		o.minReplicas,
+		o.maxReplicas,
 		privateSubnetsCount,
 		isHostedCP,
 		multiAZ)
@@ -2294,13 +2186,12 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	} else {
 		// if the user set compute-nodes and enabled autoscaling
 		if isReplicasSet {
-			r.Reporter.Errorf("Compute-nodes can't be set when autoscaling is enabled")
-			os.Exit(1)
+			return nil, fmt.Errorf("compute-nodes can't be set when autoscaling is enabled")
 		}
 		if interactive.Enabled() || !isMinReplicasSet {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
-				Help:     cmd.Flags().Lookup("min-replicas").Usage,
+				Help:     flags.Lookup("min-replicas").Usage,
 				Default:  minReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
@@ -2308,20 +2199,18 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid number of min replicas: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid number of min replicas: %w", err)
 			}
 		}
 		err = minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount)(minReplicas)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("%s", err)
 		}
 
 		if interactive.Enabled() || !isMaxReplicasSet {
 			maxReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Max replicas",
-				Help:     cmd.Flags().Lookup("max-replicas").Usage,
+				Help:     flags.Lookup("max-replicas").Usage,
 				Default:  maxReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
@@ -2329,33 +2218,29 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid number of max replicas: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid number of max replicas: %w", err)
 			}
 		}
 		err = maxReplicaValidator(multiAZ, minReplicas, isHostedCP, privateSubnetsCount)(maxReplicas)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("%s", err)
 		}
 
 		if isHostedCP {
-			if clusterautoscaler.IsAutoscalerSetViaCLI(cmd.Flags(), clusterAutoscalerFlagsPrefix) {
-				r.Reporter.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
-				os.Exit(1)
+			if clusterautoscaler.IsAutoscalerSetViaCLI(flags, clusterAutoscalerFlagsPrefix) {
+				return nil, fmt.Errorf("hosted Control Plane clusters do not support cluster-autoscaler configuration")
 			}
 		} else {
 			clusterAutoscaler, err = clusterautoscaler.GetAutoscalerOptions(
-				cmd.Flags(), clusterAutoscalerFlagsPrefix, true, autoscalerArgs)
+				flags, clusterAutoscalerFlagsPrefix, true, o.autoscalerArgs)
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%s", err)
 			}
 		}
 	}
 
 	// Compute nodes:
-	computeNodes := args.computeNodes
+	computeNodes := o.computeNodes
 	// Compute node requirements for multi-AZ clusters are higher
 	if multiAZ && !autoscaling && !isReplicasSet {
 		computeNodes = minReplicas
@@ -2363,149 +2248,145 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if !autoscaling {
 		// if the user set min/max replicas and hasn't enabled autoscaling
 		if isMinReplicasSet || isMaxReplicasSet {
-			r.Reporter.Errorf("Autoscaling must be enabled in order to set min and max replicas")
-			os.Exit(1)
+			return nil, fmt.Errorf("autoscaling must be enabled in order to set min and max replicas")
 		}
 
 		if interactive.Enabled() {
 			computeNodes, err = interactive.GetInt(interactive.Input{
 				Question: "Compute nodes",
-				Help:     cmd.Flags().Lookup("compute-nodes").Usage,
+				Help:     flags.Lookup("compute-nodes").Usage,
 				Default:  computeNodes,
 				Validators: []interactive.Validator{
 					minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount),
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid number of compute nodes: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid number of compute nodes: %w", err)
 			}
 		}
 		err = minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount)(computeNodes)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("%s", err)
 		}
 	}
 
 	// Worker machine pool labels
-	labels := args.defaultMachinePoolLabels
+	labels := o.defaultMachinePoolLabels
 	if interactive.Enabled() && !isHostedCP {
 		labels, err = interactive.GetString(interactive.Input{
 			Question: "Worker machine pool labels",
-			Help:     cmd.Flags().Lookup(arguments.NewDefaultMPLabelsFlag).Usage,
+			Help:     flags.Lookup(arguments.NewDefaultMPLabelsFlag).Usage,
 			Default:  labels,
 			Validators: []interactive.Validator{
 				mpHelpers.LabelValidator,
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid comma-separated list of attributes: %w", err)
 		}
 	}
 	labelMap, err := mpHelpers.ParseLabels(labels)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("%s", err)
 	}
 
 	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
 		version, ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay1)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("there was a problem checking version compatibility: %v", err)
 	}
-	additionalComputeSecurityGroupIds := args.additionalComputeSecurityGroupIds
-	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
+	additionalComputeSecurityGroupIds := o.additionalComputeSecurityGroupIds
+	if err := getSecurityGroups(r, flags, isVersionCompatibleComputeSgIds,
 		securitygroups.ComputeKind, useExistingVPC, isHostedCP, subnets,
-		subnetIDs, &additionalComputeSecurityGroupIds)
+		subnetIDs, &additionalComputeSecurityGroupIds); err != nil {
+		return nil, fmt.Errorf("could not get security groups for %s: %w", securitygroups.ComputeKind, err)
+	}
 
-	additionalInfraSecurityGroupIds := args.additionalInfraSecurityGroupIds
-	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
+	additionalInfraSecurityGroupIds := o.additionalInfraSecurityGroupIds
+	if err := getSecurityGroups(r, flags, isVersionCompatibleComputeSgIds,
 		securitygroups.InfraKind, useExistingVPC, isHostedCP, subnets,
-		subnetIDs, &additionalInfraSecurityGroupIds)
+		subnetIDs, &additionalInfraSecurityGroupIds); err != nil {
+		return nil, fmt.Errorf("could not get security groups for %s: %w", securitygroups.InfraKind, err)
+	}
 
-	additionalControlPlaneSecurityGroupIds := args.additionalControlPlaneSecurityGroupIds
-	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
+	additionalControlPlaneSecurityGroupIds := o.additionalControlPlaneSecurityGroupIds
+	if err := getSecurityGroups(r, flags, isVersionCompatibleComputeSgIds,
 		securitygroups.ControlPlaneKind, useExistingVPC, isHostedCP, subnets,
-		subnetIDs, &additionalControlPlaneSecurityGroupIds)
+		subnetIDs, &additionalControlPlaneSecurityGroupIds); err != nil {
+		return nil, fmt.Errorf("could not get security groups for %s: %w", securitygroups.ControlPlaneKind, err)
+	}
 
 	// Validate all remaining flags:
-	expiration, err := validateExpiration()
+	expiration, err := validateExpiration(o.expirationTime, o.expirationDuration)
 	if err != nil {
-		r.Reporter.Errorf(fmt.Sprintf("%s", err))
-		os.Exit(1)
+		return nil, fmt.Errorf(fmt.Sprintf("%s", err))
 	}
 
 	// Network Type:
-	networkType := validateNetworkType(r)
-	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
+	networkType, err := validateNetworkType(r, o.networkType)
+	if err != nil {
+		return nil, err
+	}
+	if flags.Changed("network-type") && interactive.Enabled() {
 		networkType, err = interactive.GetOption(interactive.Input{
 			Question: "Network Type",
-			Help:     cmd.Flags().Lookup("network-type").Usage,
+			Help:     flags.Lookup("network-type").Usage,
 			Options:  ocm.NetworkTypes,
 			Default:  networkType,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid network type: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid network type: %w", err)
 		}
 	}
 
 	// Host prefix:
-	hostPrefix := args.hostPrefix
+	hostPrefix := o.hostPrefix
 	if interactive.Enabled() {
 		if hostPrefix == 0 {
 			hostPrefix = dhostPrefix
 		}
 		hostPrefix, err = interactive.GetInt(interactive.Input{
 			Question: "Host prefix",
-			Help:     cmd.Flags().Lookup("host-prefix").Usage,
+			Help:     flags.Lookup("host-prefix").Usage,
 			Default:  hostPrefix,
 			Validators: []interactive.Validator{
 				hostPrefixValidator,
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid host prefix value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid host prefix value: %w", err)
 		}
 	}
 	err = hostPrefixValidator(hostPrefix)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("%s", err)
 	}
 
 	isVersionCompatibleMachinePoolRootDisk, err := versions.IsGreaterThanOrEqual(
 		version, ocm.MinVersionForMachinePoolRootDisk)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("there was a problem checking version compatibility: %v", err)
 	}
-	if !isVersionCompatibleMachinePoolRootDisk && cmd.Flags().Changed(workerDiskSizeFlag) {
+	if !isVersionCompatibleMachinePoolRootDisk && flags.Changed(workerDiskSizeFlag) {
 		formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForMachinePoolRootDisk)
 		if err != nil {
-			r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
-			os.Exit(1)
+			return nil, fmt.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
 		}
-		r.Reporter.Errorf(
-			"Updating Worker disk size is not supported for versions prior to '%s'",
+		return nil, fmt.Errorf(
+			"updating Worker disk size is not supported for versions prior to '%s'",
 			formattedVersion,
 		)
-		os.Exit(1)
 	}
 	var machinePoolRootDisk *ocm.Volume
 	if isVersionCompatibleMachinePoolRootDisk && !isHostedCP &&
-		(args.machinePoolRootDiskSize != "" || interactive.Enabled()) {
+		(o.machinePoolRootDiskSize != "" || interactive.Enabled()) {
 		var machinePoolRootDiskSizeStr string
-		if args.machinePoolRootDiskSize == "" {
+		if o.machinePoolRootDiskSize == "" {
 			// We don't need to parse the default since it's returned from the OCM API and AWS
 			// always defaults to GiB
 			machinePoolRootDiskSizeStr = helper.GigybyteStringer(defaultMachinePoolRootDiskSize)
 		} else {
-			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
+			machinePoolRootDiskSizeStr = o.machinePoolRootDiskSize
 		}
 		if interactive.Enabled() {
 			// In order to avoid confusion, we want to display to the user what was passed as an
@@ -2515,29 +2396,26 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			// Also, if nothing is given, we want to display the default value fetched from the OCM API
 			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
 				Question: "Machine pool root disk size (GiB or TiB)",
-				Help:     cmd.Flags().Lookup(workerDiskSizeFlag).Usage,
+				Help:     flags.Lookup(workerDiskSizeFlag).Usage,
 				Default:  machinePoolRootDiskSizeStr,
 				Validators: []interactive.Validator{
 					interactive.MachinePoolRootDiskSizeValidator(version),
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid machine pool root disk size value: %v", err)
 			}
 		}
 
 		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
 		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid machine pool root disk size value: %v", err)
 		}
 
 		err = diskValidator.ValidateMachinePoolRootDiskSize(version, machinePoolRootDiskSize)
 		if err != nil {
-			r.Reporter.Errorf(err.Error())
-			os.Exit(1)
+			return nil, fmt.Errorf(err.Error())
 		}
 
 		// If the size given by the user is different than the default, we just let the OCM server
@@ -2550,51 +2428,45 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	}
 
 	// No CNI
-	if cmd.Flags().Changed("no-cni") && !isHostedCP {
-		r.Reporter.Errorf("Disabling CNI is supported only for Hosted Control Planes")
-		os.Exit(1)
+	if flags.Changed("no-cni") && !isHostedCP {
+		return nil, fmt.Errorf("disabling CNI is supported only for Hosted Control Planes")
 	}
-	if cmd.Flags().Changed("no-cni") && cmd.Flags().Changed("network-type") {
-		r.Reporter.Errorf("--no-cni and --network-type are mutually exclusive parameters")
-		os.Exit(1)
+	if flags.Changed("no-cni") && flags.Changed("network-type") {
+		return nil, fmt.Errorf("--no-cni and --network-type are mutually exclusive parameters")
 	}
-	noCni := args.noCni
-	if cmd.Flags().Changed("no-cni") && interactive.Enabled() {
+	noCni := o.noCni
+	if flags.Changed("no-cni") && interactive.Enabled() {
 		noCni, err = interactive.GetBool(interactive.Input{
 			Question: "Disable CNI",
-			Help:     cmd.Flags().Lookup("no-cni").Usage,
+			Help:     flags.Lookup("no-cni").Usage,
 			Default:  noCni,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for no CNI: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid value for no CNI: %w", err)
 		}
 	}
 
-	if cmd.Flags().Changed("fips") && isHostedCP {
-		r.Reporter.Errorf("FIPS support not available for Hosted Control Plane clusters")
-		os.Exit(1)
+	if flags.Changed("fips") && isHostedCP {
+		return nil, fmt.Errorf("fIPS support not available for Hosted Control Plane clusters")
 	}
-	fips := args.fips || fedramp.Enabled()
+	fips := o.fips || fedramp.Enabled()
 	if interactive.Enabled() && !fedramp.Enabled() && !isHostedCP {
 		fips, err = interactive.GetBool(interactive.Input{
 			Question: "Enable FIPS support",
-			Help:     cmd.Flags().Lookup("fips").Usage,
+			Help:     flags.Lookup("fips").Usage,
 			Default:  fips,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid FIPS value: %v", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid FIPS value: %v", err)
 		}
 	}
 
-	etcdEncryption := args.etcdEncryption
+	etcdEncryption := o.etcdEncryption
 
 	// validate and force etcd encryption
 	if etcdEncryptionKmsARN != "" {
-		if cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
-			r.Reporter.Errorf("etcd encryption cannot be disabled when encryption kms arn is provided")
-			os.Exit(1)
+		if flags.Changed("etcd-encryption") && !etcdEncryption {
+			return nil, fmt.Errorf("etcd encryption cannot be disabled when encryption kms arn is provided")
 		} else {
 			etcdEncryption = true
 		}
@@ -2603,18 +2475,16 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if interactive.Enabled() && !(fips || etcdEncryptionKmsARN != "") {
 		etcdEncryption, err = interactive.GetBool(interactive.Input{
 			Question: "Encrypt etcd data",
-			Help:     cmd.Flags().Lookup("etcd-encryption").Usage,
+			Help:     flags.Lookup("etcd-encryption").Usage,
 			Default:  etcdEncryption,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid etcd-encryption value: %v", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid etcd-encryption value: %v", err)
 		}
 	}
 	if fips {
-		if cmd.Flags().Changed("etcd-encryption") && !etcdEncryption {
-			r.Reporter.Errorf("etcd encryption cannot be disabled on clusters with FIPS mode")
-			os.Exit(1)
+		if flags.Changed("etcd-encryption") && !etcdEncryption {
+			return nil, fmt.Errorf("etcd encryption cannot be disabled on clusters with FIPS mode")
 		} else {
 			etcdEncryption = true
 		}
@@ -2623,7 +2493,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if etcdEncryption && isHostedCP && (etcdEncryptionKmsARN == "" || interactive.Enabled()) {
 		etcdEncryptionKmsARN, err = interactive.GetString(interactive.Input{
 			Question: "Etcd encryption KMS ARN",
-			Help:     cmd.Flags().Lookup("etcd-encryption-kms-arn").Usage,
+			Help:     flags.Lookup("etcd-encryption-kms-arn").Usage,
 			Default:  etcdEncryptionKmsARN,
 			Required: true,
 			Validators: []interactive.Validator{
@@ -2631,30 +2501,27 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for etcd-encryption-kms-arn: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid value for etcd-encryption-kms-arn: %w", err)
 		}
 	}
 
 	err = kmsArnRegexpValidator.ValidateKMSKeyARN(&etcdEncryptionKmsARN)
 	if err != nil {
-		r.Reporter.Errorf(
-			"Expected a valid value for etcd-encryption-kms-arn matching %s",
+		return nil, fmt.Errorf(
+			"expected a valid value for etcd-encryption-kms-arn matching %s",
 			kmsArnRegexpValidator.KmsArnRE,
 		)
-		os.Exit(1)
 	}
 
-	disableWorkloadMonitoring := args.disableWorkloadMonitoring
+	disableWorkloadMonitoring := o.disableWorkloadMonitoring
 	if interactive.Enabled() {
 		disableWorkloadMonitoring, err = interactive.GetBool(interactive.Input{
 			Question: "Disable Workload monitoring",
-			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
+			Help:     flags.Lookup("disable-workload-monitoring").Usage,
 			Default:  disableWorkloadMonitoring,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid disable-workload-monitoring value: %v", err)
 		}
 	}
 
@@ -2667,55 +2534,50 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			Default: enableProxy,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid proxy-enabled value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid proxy-enabled value: %w", err)
 		}
 	}
 
 	if enableProxy && interactive.Enabled() {
 		httpProxy, err = interactive.GetString(interactive.Input{
 			Question: "HTTP proxy",
-			Help:     cmd.Flags().Lookup("http-proxy").Usage,
+			Help:     flags.Lookup("http-proxy").Usage,
 			Default:  httpProxy,
 			Validators: []interactive.Validator{
 				ocm.ValidateHTTPProxy,
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid http proxy: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid http proxy: %w", err)
 		}
 	}
 	err = ocm.ValidateHTTPProxy(httpProxy)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("%s", err)
 	}
 
 	if enableProxy && interactive.Enabled() {
 		httpsProxy, err = interactive.GetString(interactive.Input{
 			Question: "HTTPS proxy",
-			Help:     cmd.Flags().Lookup("https-proxy").Usage,
+			Help:     flags.Lookup("https-proxy").Usage,
 			Default:  httpsProxy,
 			Validators: []interactive.Validator{
 				interactive.IsURL,
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid https proxy: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid https proxy: %w", err)
 		}
 	}
 	err = interactive.IsURL(httpsProxy)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("%s", err)
 	}
 
 	if enableProxy && interactive.Enabled() {
 		noProxyInput, err := interactive.GetString(interactive.Input{
 			Question: "No proxy",
-			Help:     cmd.Flags().Lookup("no-proxy").Usage,
+			Help:     flags.Lookup("no-proxy").Usage,
 			Default:  strings.Join(noProxySlice, ","),
 			Validators: []interactive.Validator{
 				aws.UserNoProxyValidator,
@@ -2723,8 +2585,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid set of no proxy domains/CIDR's: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid set of no proxy domains/CIDR's: %w", err)
 		}
 		noProxySlice = helper.HandleEmptyStringOnSlice(strings.Split(noProxyInput, ","))
 	}
@@ -2732,41 +2593,36 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if len(noProxySlice) > 0 {
 		duplicate, found := aws.HasDuplicates(noProxySlice)
 		if found {
-			r.Reporter.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
-			os.Exit(1)
+			return nil, fmt.Errorf("invalid no-proxy list, duplicate key '%s' found", duplicate)
 		}
 		for _, domain := range noProxySlice {
 			err := aws.UserNoProxyValidator(domain)
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("%s", err)
 			}
 		}
 	}
 
 	if httpProxy == "" && httpsProxy == "" && len(noProxySlice) > 0 {
-		r.Reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy")
-		os.Exit(1)
+		return nil, fmt.Errorf("expected at least one of the following: http-proxy, https-proxy")
 	}
 
 	if useExistingVPC && interactive.Enabled() {
 		additionalTrustBundleFile, err = interactive.GetCert(interactive.Input{
 			Question: "Additional trust bundle file path",
-			Help:     cmd.Flags().Lookup("additional-trust-bundle-file").Usage,
+			Help:     flags.Lookup("additional-trust-bundle-file").Usage,
 			Default:  additionalTrustBundleFile,
 			Validators: []interactive.Validator{
 				ocm.ValidateAdditionalTrustBundle,
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid additional trust bundle file name: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid additional trust bundle file name: %w", err)
 		}
 	}
 	err = ocm.ValidateAdditionalTrustBundle(additionalTrustBundleFile)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("%s", err)
 	}
 
 	// Get certificate contents
@@ -2774,24 +2630,21 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if additionalTrustBundleFile != "" {
 		cert, err := os.ReadFile(additionalTrustBundleFile)
 		if err != nil {
-			r.Reporter.Errorf("Failed to read additional trust bundle file: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to read additional trust bundle file: %w", err)
 		}
 		additionalTrustBundle = new(string)
 		*additionalTrustBundle = string(cert)
 	}
 
 	if enableProxy && httpProxy == "" && httpsProxy == "" && additionalTrustBundleFile == "" {
-		r.Reporter.Errorf("Expected at least one of the following: http-proxy, https-proxy, additional-trust-bundle")
-		os.Exit(1)
+		return nil, fmt.Errorf("expected at least one of the following: http-proxy, https-proxy, additional-trust-bundle")
 	}
 
 	// Audit Log Forwarding
-	auditLogRoleARN := args.AuditLogRoleARN
+	auditLogRoleARN := o.auditLogRoleARN
 
 	if auditLogRoleARN != "" && !isHostedCP {
-		r.Reporter.Errorf("Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters")
-		os.Exit(1)
+		return nil, fmt.Errorf("audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters")
 	}
 
 	if interactive.Enabled() && isHostedCP {
@@ -2801,8 +2654,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("expected a valid value: %w", err)
 		}
 		if requestAuditLogForwarding {
 
@@ -2811,7 +2663,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 
 			auditLogRoleARN, err = interactive.GetString(interactive.Input{
 				Question: "Audit log forwarding role ARN",
-				Help:     cmd.Flags().Lookup("audit-log-arn").Usage,
+				Help:     flags.Lookup("audit-log-arn").Usage,
 				Default:  auditLogRoleARN,
 				Required: true,
 				Validators: []interactive.Validator{
@@ -2819,8 +2671,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid value for audit-log-arn: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid value for audit-log-arn: %w", err)
 			}
 		} else {
 			auditLogRoleARN = ""
@@ -2828,38 +2679,33 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	}
 
 	if auditLogRoleARN != "" && !aws.RoleArnRE.MatchString(auditLogRoleARN) {
-		r.Reporter.Errorf("Expected a valid value for audit log arn matching %s", aws.RoleArnRE)
-		os.Exit(1)
+		return nil, fmt.Errorf("expected a valid value for audit log arn matching %s", aws.RoleArnRE)
 	}
 
 	isVersionCompatibleManagedIngressV2, err := versions.IsGreaterThanOrEqual(
 		version, ocm.MinVersionForManagedIngressV2)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("there was a problem checking version compatibility: %v", err)
 	}
-	if ingress.IsDefaultIngressSetViaCLI(cmd.Flags()) {
+	if ingress.IsDefaultIngressSetViaCLI(flags) {
 		if isHostedCP {
-			r.Reporter.Errorf("Updating default ingress settings is not supported for Hosted Control Plane clusters")
-			os.Exit(1)
+			return nil, fmt.Errorf("updating default ingress settings is not supported for Hosted Control Plane clusters")
 		}
 		if !isVersionCompatibleManagedIngressV2 {
 			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForManagedIngressV2)
 			if err != nil {
-				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
-				os.Exit(1)
+				return nil, fmt.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
 			}
-			r.Reporter.Errorf(
-				"Updating default ingress settings is not supported for versions prior to '%s'",
+			return nil, fmt.Errorf(
+				"updating default ingress settings is not supported for versions prior to '%s'",
 				formattedVersion,
 			)
-			os.Exit(1)
 		}
 	}
 	routeSelector := ""
 	routeSelectors := map[string]string{}
 	excludedNamespaces := ""
-	sliceExcludedNamespaces := []string{}
+	var sliceExcludedNamespaces []string
 	wildcardPolicy := ""
 	namespaceOwnershipPolicy := ""
 	if isVersionCompatibleManagedIngressV2 {
@@ -2867,17 +2713,16 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		if interactive.Enabled() && !confirm.Yes() && !isHostedCP {
 			shouldAskCustomIngress = confirm.Prompt(false, "Customize the default Ingress Controller?")
 		}
-		if cmd.Flags().Changed(ingress.DefaultIngressRouteSelectorFlag) {
+		if flags.Changed(ingress.DefaultIngressRouteSelectorFlag) {
 			if isHostedCP {
-				r.Reporter.Errorf("Updating route selectors is not supported for Hosted Control Plane clusters")
-				os.Exit(1)
+				return nil, fmt.Errorf("updating route selectors is not supported for Hosted Control Plane clusters")
 			}
-			routeSelector = args.defaultIngressRouteSelectors
+			routeSelector = o.defaultIngressRouteSelectors
 		} else if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
 			routeSelectorArg, err := interactive.GetString(interactive.Input{
 				Question: "Router Ingress Sharding: Route Selector (e.g. 'route=external')",
-				Help:     cmd.Flags().Lookup(ingress.DefaultIngressRouteSelectorFlag).Usage,
-				Default:  args.defaultIngressRouteSelectors,
+				Help:     flags.Lookup(ingress.DefaultIngressRouteSelectorFlag).Usage,
+				Default:  o.defaultIngressRouteSelectors,
 				Validators: []interactive.Validator{
 					func(routeSelector interface{}) error {
 						_, err := ingress.GetRouteSelector(routeSelector.(string))
@@ -2886,88 +2731,80 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid comma-separated list of attributes: %w", err)
 			}
 			routeSelector = routeSelectorArg
 		}
 		routeSelectors, err = ingress.GetRouteSelector(routeSelector)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("%s", err)
 		}
 
-		if cmd.Flags().Changed(ingress.DefaultIngressExcludedNamespacesFlag) {
+		if flags.Changed(ingress.DefaultIngressExcludedNamespacesFlag) {
 			if isHostedCP {
-				r.Reporter.Errorf("Updating excluded namespace is not supported for Hosted Control Plane clusters")
-				os.Exit(1)
+				return nil, fmt.Errorf("updating excluded namespace is not supported for Hosted Control Plane clusters")
 			}
-			excludedNamespaces = args.defaultIngressExcludedNamespaces
+			excludedNamespaces = o.defaultIngressExcludedNamespaces
 		} else if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
 			excludedNamespacesArg, err := interactive.GetString(interactive.Input{
 				Question: "Router Ingress Sharding: Namespace exclusion",
-				Help:     cmd.Flags().Lookup(ingress.DefaultIngressExcludedNamespacesFlag).Usage,
-				Default:  args.defaultIngressExcludedNamespaces,
+				Help:     flags.Lookup(ingress.DefaultIngressExcludedNamespacesFlag).Usage,
+				Default:  o.defaultIngressExcludedNamespaces,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-				os.Exit(1)
+				return nil, fmt.Errorf("expected a valid comma-separated list of attributes: %w", err)
 			}
 			excludedNamespaces = excludedNamespacesArg
 		}
 		sliceExcludedNamespaces = ingress.GetExcludedNamespaces(excludedNamespaces)
 
-		if cmd.Flags().Changed(ingress.DefaultIngressWildcardPolicyFlag) {
+		if flags.Changed(ingress.DefaultIngressWildcardPolicyFlag) {
 			if isHostedCP {
-				r.Reporter.Errorf("Updating Wildcard Policy is not supported for Hosted Control Plane clusters")
-				os.Exit(1)
+				return nil, fmt.Errorf("updating Wildcard Policy is not supported for Hosted Control Plane clusters")
 			}
-			wildcardPolicy = args.defaultIngressWildcardPolicy
+			wildcardPolicy = o.defaultIngressWildcardPolicy
 		} else {
 			if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
 				defaultIngressWildcardSelection := string(v1.WildcardPolicyWildcardsDisallowed)
-				if args.defaultIngressWildcardPolicy != "" {
-					defaultIngressWildcardSelection = args.defaultIngressWildcardPolicy
+				if o.defaultIngressWildcardPolicy != "" {
+					defaultIngressWildcardSelection = o.defaultIngressWildcardPolicy
 				}
 				wildcardPolicyArg, err := interactive.GetOption(interactive.Input{
 					Question: "Route Admission: Wildcard Policy",
 					Options:  ingress.ValidWildcardPolicies,
-					Help:     cmd.Flags().Lookup(ingress.DefaultIngressWildcardPolicyFlag).Usage,
+					Help:     flags.Lookup(ingress.DefaultIngressWildcardPolicyFlag).Usage,
 					Default:  defaultIngressWildcardSelection,
 					Required: true,
 				})
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid Wildcard Policy: %s", err)
-					os.Exit(1)
+					return nil, fmt.Errorf("expected a valid Wildcard Policy: %w", err)
 				}
 				wildcardPolicy = wildcardPolicyArg
 			}
 		}
 
-		if cmd.Flags().Changed(ingress.DefaultIngressNamespaceOwnershipPolicyFlag) {
+		if flags.Changed(ingress.DefaultIngressNamespaceOwnershipPolicyFlag) {
 			if isHostedCP {
-				r.Reporter.Errorf(
-					"Updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters",
+				return nil, fmt.Errorf(
+					"updating Namespace Ownership Policy is not supported for Hosted Control Plane clusters",
 				)
-				os.Exit(1)
 			}
-			namespaceOwnershipPolicy = args.defaultIngressNamespaceOwnershipPolicy
+			namespaceOwnershipPolicy = o.defaultIngressNamespaceOwnershipPolicy
 		} else {
 			if interactive.Enabled() && !isHostedCP && shouldAskCustomIngress {
 				defaultIngressNamespaceOwnershipSelection := string(v1.NamespaceOwnershipPolicyStrict)
-				if args.defaultIngressNamespaceOwnershipPolicy != "" {
-					defaultIngressNamespaceOwnershipSelection = args.defaultIngressNamespaceOwnershipPolicy
+				if o.defaultIngressNamespaceOwnershipPolicy != "" {
+					defaultIngressNamespaceOwnershipSelection = o.defaultIngressNamespaceOwnershipPolicy
 				}
 				namespaceOwnershipPolicyArg, err := interactive.GetOption(interactive.Input{
 					Question: "Route Admission: Namespace Ownership Policy",
 					Options:  ingress.ValidNamespaceOwnershipPolicies,
-					Help:     cmd.Flags().Lookup(ingress.DefaultIngressNamespaceOwnershipPolicyFlag).Usage,
+					Help:     flags.Lookup(ingress.DefaultIngressNamespaceOwnershipPolicyFlag).Usage,
 					Default:  defaultIngressNamespaceOwnershipSelection,
 					Required: true,
 				})
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid Namespace Ownership Policy: %s", err)
-					os.Exit(1)
+					return nil, fmt.Errorf("expected a valid Namespace Ownership Policy: %w", err)
 				}
 				namespaceOwnershipPolicy = namespaceOwnershipPolicyArg
 			}
@@ -2980,7 +2817,7 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		MultiAZ:                   multiAZ,
 		Version:                   version,
 		ChannelGroup:              channelGroup,
-		Flavour:                   args.flavour,
+		Flavour:                   o.flavour,
 		FIPS:                      fips,
 		EtcdEncryption:            etcdEncryption,
 		EtcdEncryptionKMSArn:      etcdEncryptionKmsARN,
@@ -2999,8 +2836,8 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 		PodCIDR:                   podCIDR,
 		HostPrefix:                hostPrefix,
 		Private:                   &private,
-		DryRun:                    &args.dryRun,
-		DisableSCPChecks:          &args.disableSCPChecks,
+		DryRun:                    &o.dryRun,
+		DisableSCPChecks:          &o.disableSCPChecks,
 		AvailabilityZones:         availabilityZones,
 		SubnetIds:                 subnetIDs,
 		PrivateLink:               &privateLink,
@@ -3066,21 +2903,19 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 	if clusterAutoscaler != nil {
 		autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(clusterAutoscaler)
 		if err != nil {
-			r.Reporter.Errorf("Failed creating autoscaler configuration: %s", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed creating autoscaler configuration: %w", err)
 		}
 
 		clusterConfig.AutoscalerConfig = autoscalerConfig
 	}
 
-	props := args.properties
-	if args.fakeCluster {
+	props := o.properties
+	if o.fakeCluster {
 		props = append(props, properties.FakeCluster)
 	}
-	if args.useLocalCredentials {
+	if o.useLocalCredentials {
 		if isSTS {
-			r.Reporter.Errorf("Local credentials are not supported for STS clusters")
-			os.Exit(1)
+			return nil, fmt.Errorf("local credentials are not supported for STS clusters")
 		}
 		props = append(props, properties.UseLocalCredentials)
 	}
@@ -3095,6 +2930,29 @@ func (o *Options) Complete(flags *pflag.FlagSet, r *rosa.Runtime) (*CompletedOpt
 			clusterConfig.CustomProperties[prop] = "true"
 		}
 	}
+
+	return &CompletedOptions{
+		completedOptions: &completedOptions{
+			OperatorRolesPrefix:      operatorRolesPrefix,
+			ExpectedOperatorRolePath: expectedOperatorRolePath,
+			IsAvailabilityZonesSet:   isAvailabilityZonesSet,
+			SelectAvailabilityZones:  selectAvailabilityZones,
+			Labels:                   labels,
+			Properties:               o.properties,
+			ClusterAdminPassword:     clusterAdminPassword,
+			ClassicOidcConfig:        o.classicOidcConfig,
+			ExpirationDuration:       o.expirationDuration,
+
+			OperatorRoles:       operatorRoles,
+			PermissionsBoundary: permissionsBoundary,
+			IsSTS:               isSTS,
+			DryRun:              o.dryRun,
+			Watch:               o.watch,
+			ClusterName:         clusterName,
+			AWSMode:             mode,
+			Spec:                clusterConfig,
+		},
+	}, nil
 }
 
 func (o *CompletedOptions) Validate() error {
@@ -3104,6 +2962,25 @@ func (o *CompletedOptions) Validate() error {
 }
 
 type completedOptions struct {
+	IsSTS                    bool
+	PermissionsBoundary      string
+	OperatorRoles            []string
+	OperatorRolesPrefix      string
+	ExpectedOperatorRolePath string
+	IsAvailabilityZonesSet   bool
+	SelectAvailabilityZones  bool
+	Labels                   string
+	Properties               []string
+	ClusterAdminPassword     string
+	ClassicOidcConfig        bool
+
+	AWSMode     string
+	ClusterName string
+	Spec        ocm.Spec
+
+	Watch              bool
+	DryRun             bool
+	ExpirationDuration time.Duration
 }
 
 type CompletedOptions struct {
