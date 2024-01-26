@@ -8,7 +8,93 @@ import (
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
+	"net/http"
+	"time"
+
+	"github.com/onsi/gomega/ghttp"
+	sdk "github.com/openshift-online/ocm-sdk-go"
+	"github.com/openshift-online/ocm-sdk-go/logging"
+	. "github.com/openshift-online/ocm-sdk-go/testing"
 )
+
+// nolint
+const VersionsListResponse = `{
+	"kind": "VersionList",
+	"href": "/api/clusters_mgmt/v1/versions?order=default+desc%2C+id+desc&page=1&search=enabled+%3D+%27true%27+AND+rosa_enabled+%3D+%27true%27+AND+channel_group+%3D+%27stable%27&size=100",
+	"page": 1,
+	"size": 2,
+	"total": 2,
+	"items": [{
+		"kind": "Version",
+		"href": "/api/clusters_mgmt/v1/versions/4.14.9",
+		"id": "4.14.9",
+		"name": "4.14.9",
+		"rawID": "4.14.9",
+		"releaseImage": "4.14.9",
+		"hostedControlPlaneDefault": true,
+		"channelGroup": "stable",
+		"rosaEnabled": true
+	}]
+}`
+
+var _ = Describe("Get version list", func() {
+	var ssoServer, apiServer *ghttp.Server
+	var ocmClient *Client
+
+	Context("Describe version list", func() {
+
+		BeforeEach(func() {
+			// Create the servers:
+			ssoServer = MakeTCPServer()
+			apiServer = MakeTCPServer()
+			apiServer.SetAllowUnhandledRequests(true)
+			apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
+
+			// Create the token:
+			accessToken := MakeTokenString("Bearer", 15*time.Minute)
+
+			// Prepare the server:
+			ssoServer.AppendHandlers(
+				RespondWithAccessToken(accessToken),
+			)
+			// Prepare the logger:
+			logger, err := logging.NewGoLoggerBuilder().
+				Debug(true).
+				Build()
+			Expect(err).To(BeNil())
+			// Set up the connection with the fake config
+			connection, err := sdk.NewConnectionBuilder().
+				Logger(logger).
+				Tokens(accessToken).
+				URL(apiServer.URL()).
+				Build()
+			// Initialize client object
+			Expect(err).To(BeNil())
+			ocmClient = &Client{ocm: connection}
+		})
+
+		AfterEach(func() {
+			// Close the servers:
+			ssoServer.Close()
+			apiServer.Close()
+			Expect(ocmClient.Close()).To(Succeed())
+		})
+
+		It("Expects a version list", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK,
+					VersionsListResponse,
+				),
+			)
+
+			vs, err := ocmClient.GetVersionsWithProduct("", DefaultChannelGroup, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(vs)).To(Equal(1))
+		})
+	})
+})
 
 var _ = Describe("Versions", Ordered, func() {
 
