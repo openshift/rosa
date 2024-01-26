@@ -3,7 +3,7 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -28,10 +28,10 @@ func isSubnetBelongToSharedVpc(r *rosa.Runtime, accountID string, subnetIDs []st
 	return false
 }
 
-func getPrivateHostedZoneID(cmd *cobra.Command, privateHostedZoneID string) (string, error) {
+func getPrivateHostedZoneID(flags *pflag.FlagSet, privateHostedZoneID string) (string, error) {
 	res, err := interactive.GetString(interactive.Input{
 		Question: "Private hosted zone ID",
-		Help:     cmd.Flags().Lookup("private-hosted-zone-id").Usage,
+		Help:     flags.Lookup("private-hosted-zone-id").Usage,
 		Default:  privateHostedZoneID,
 		Required: true,
 	})
@@ -42,10 +42,10 @@ func getPrivateHostedZoneID(cmd *cobra.Command, privateHostedZoneID string) (str
 	return res, nil
 }
 
-func getSharedVpcRoleArn(cmd *cobra.Command, sharedVpcRoleArn string) (string, error) {
+func getSharedVpcRoleArn(flags *pflag.FlagSet, sharedVpcRoleArn string) (string, error) {
 	res, err := interactive.GetString(interactive.Input{
 		Question: "Shared VPC role ARN",
-		Help:     cmd.Flags().Lookup("shared-vpc-role-arn").Usage,
+		Help:     flags.Lookup("shared-vpc-role-arn").Usage,
 		Default:  sharedVpcRoleArn,
 		Required: true,
 		Validators: []interactive.Validator{
@@ -59,7 +59,7 @@ func getSharedVpcRoleArn(cmd *cobra.Command, sharedVpcRoleArn string) (string, e
 	return res, nil
 }
 
-func getBaseDomain(r *rosa.Runtime, cmd *cobra.Command, baseDomain string) (string, error) {
+func getBaseDomain(r *rosa.Runtime, flags *pflag.FlagSet, baseDomain string) (string, error) {
 	dnsDomains, err := getAvailableBaseDomains(r)
 	if err != nil {
 		return "", err
@@ -67,7 +67,7 @@ func getBaseDomain(r *rosa.Runtime, cmd *cobra.Command, baseDomain string) (stri
 
 	res, err := interactive.GetOption(interactive.Input{
 		Question: "Base Domain",
-		Help:     cmd.Flags().Lookup("base-domain").Usage,
+		Help:     flags.Lookup("base-domain").Usage,
 		Default:  baseDomain,
 		Required: true,
 		Options:  dnsDomains,

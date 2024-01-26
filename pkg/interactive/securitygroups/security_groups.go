@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/openshift/rosa/pkg/aws"
 	. "github.com/openshift/rosa/pkg/interactive"
@@ -36,7 +36,7 @@ var (
 	MachinePoolSecurityGroupFlag  = SgKindFlagMap[MachinePoolKind]
 )
 
-func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
+func GetSecurityGroupIds(r *rosa.Runtime, flags *pflag.FlagSet,
 	targetVpcId string, kind string) []string {
 	possibleSgs, err := r.AWSClient.GetSecurityGroupIds(targetVpcId)
 	if err != nil {
@@ -51,7 +51,7 @@ func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
 		}
 		securityGroupIds, err = GetMultipleOptions(Input{
 			Question: fmt.Sprintf("Additional '%s' Security Group IDs", kind),
-			Help:     cmd.Flags().Lookup(SgKindFlagMap[kind]).Usage,
+			Help:     flags.Lookup(SgKindFlagMap[kind]).Usage,
 			Required: false,
 			Options:  options,
 		})

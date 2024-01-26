@@ -307,7 +307,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
 			os.Exit(1)
 		}
-		securityGroupIds = interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, interactiveSgs.MachinePoolKind)
+		securityGroupIds = interactiveSgs.GetSecurityGroupIds(r, cmd.Flags(), vpcId, interactiveSgs.MachinePoolKind)
 	}
 	for i, sg := range securityGroupIds {
 		securityGroupIds[i] = strings.TrimSpace(sg)

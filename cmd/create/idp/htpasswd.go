@@ -26,6 +26,7 @@ import (
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -186,7 +187,7 @@ func getUserList(cmd *cobra.Command, r *rosa.Runtime) (userList map[string]strin
 func GetUserDetails(cmd *cobra.Command, r *rosa.Runtime,
 	usernameKey, passwordKey, defaultUsername, defaultPassword string) (string, string) {
 	return GetIdpUserNameFromPrompt(cmd, r, usernameKey, defaultUsername),
-		GetIdpPasswordFromPrompt(cmd, r, passwordKey, defaultPassword)
+		GetIdpPasswordFromPrompt(cmd.Flags(), r, passwordKey, defaultPassword)
 }
 
 func GetIdpUserNameFromPrompt(cmd *cobra.Command, r *rosa.Runtime,
@@ -206,11 +207,11 @@ func GetIdpUserNameFromPrompt(cmd *cobra.Command, r *rosa.Runtime,
 	return username
 }
 
-func GetIdpPasswordFromPrompt(cmd *cobra.Command, r *rosa.Runtime,
+func GetIdpPasswordFromPrompt(flags *pflag.FlagSet, r *rosa.Runtime,
 	passwordKey, defaultPassword string) string {
 	password, err := interactive.GetPassword(interactive.Input{
 		Question: "Password",
-		Help:     cmd.Flags().Lookup(passwordKey).Usage,
+		Help:     flags.Lookup(passwordKey).Usage,
 		Default:  defaultPassword,
 		Required: true,
 		Validators: []interactive.Validator{

@@ -5,13 +5,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	. "github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command) string {
+func GetOidcConfigID(r *rosa.Runtime, flags *pflag.FlagSet) string {
 	oidcConfigs, err := r.OCMClient.ListOidcConfigs(r.Creator.AccountID)
 	if err != nil {
 		r.Reporter.Warnf("There was a problem retrieving OIDC Configurations "+
@@ -27,7 +27,7 @@ func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command) string {
 	}
 	oidcConfigId, err := GetOption(Input{
 		Question: "OIDC Configuration ID",
-		Help:     cmd.Flags().Lookup("oidc-config-id").Usage,
+		Help:     flags.Lookup("oidc-config-id").Usage,
 		Options:  oidcConfigsIds,
 		Default:  oidcConfigsIds[0],
 		Required: true,

@@ -43,7 +43,7 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 	args.prefix = operatorRolesPrefix
 
 	if args.oidcConfigId == "" {
-		args.oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd)
+		args.oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd.Flags())
 	}
 
 	if cmd.Flags().Changed("hosted-cp") && r.Creator.IsGovcloud {

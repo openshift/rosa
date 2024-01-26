@@ -165,7 +165,7 @@ func run(cmd *cobra.Command, argv []string) {
 			oidcEndpointUrl = args.oidcEndpointUrl
 		} else {
 			if args.oidcConfigId == "" {
-				args.oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd)
+				args.oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd.Flags())
 			}
 			oidcConfig, err := r.OCMClient.GetOidcConfig(args.oidcConfigId)
 			if err != nil {
