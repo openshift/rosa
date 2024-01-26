@@ -20,4 +20,7 @@ package info
 
 const Version = "1.2.34"
 
+// Build contains the short Git SHA of the CLI at the point it was build. Set via `-ldflags` at build time
+var Build = "local"
+
 const UserAgent = "ROSACLI"
