@@ -115,11 +115,16 @@ func run(cmd *cobra.Command, _ []string) {
 
 	for _, version := range availableVersions {
 		isDefault := "no"
-		if version.Default() {
-			isDefault = "yes"
-		}
 		availableUpgrades := ""
-		if !isHostedCp {
+		if isHostedCp {
+			if version.HostedControlPlaneDefault() {
+				isDefault = "yes"
+			}
+		} else {
+			// classic clusters
+			if version.Default() {
+				isDefault = "yes"
+			}
 			availableUpgrades = strings.Join(version.AvailableUpgrades(), ", ")
 		}
 		fmt.Fprintf(writer,

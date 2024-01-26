@@ -275,10 +275,6 @@ func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 	return
 }
 
-func (c *Client) GetDefaultVersion(channelGroup string) (version string, err error) {
-	return c.getFirstVersion(channelGroup, true)
-}
-
 func (c *Client) GetLatestVersion(channelGroup string) (version string, err error) {
 	return c.getFirstVersion(channelGroup, false)
 }
