@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.395
+- Add `SubnetOutposts` and `AvailabilityZoneTypes` to `aws_node_pool_type` and `aws_machine_pool_type` resources.
+
+## 0.1.394
+- Added Device Code flow to `authentication`
+- Update model version v0.0.347
+  - Add `HostedControlPlaneDefault` boolean to `Version` Type model.
+
 ## 0.1.393
 - Add authentication using OAuth2 and PCKE
 - Add secure token storage

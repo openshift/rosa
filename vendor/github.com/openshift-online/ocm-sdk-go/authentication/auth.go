@@ -4,14 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/skratchdot/open-golang/open"
-	"golang.org/x/oauth2"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/skratchdot/open-golang/open"
+	"golang.org/x/oauth2"
 )
 
 var (
@@ -34,14 +35,14 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	// Use the authorization code that is pushed to the redirect URL
 	code := queryParts["code"][0]
 
-	// Exchange will do the handshake to retrieve the initial access token.
+	// Exchange will do the handshake to retrieve the initial token.
 	tok, err := conf.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Get the access token and ask user to go back to CLI
-	authToken = tok.AccessToken
+	// Get the refresh token and ask user to go back to CLI
+	authToken = tok.RefreshToken
 	_, err = io.WriteString(w, "Login successful! Please close this window and return back to CLI")
 	if err != nil {
 		log.Fatal(err)
@@ -71,7 +72,7 @@ func shutdown(server *http.Server) {
 	}
 }
 
-func VerifyLogin(clientID string) (string, error) {
+func InitiateAuthCode(clientID string) (string, error) {
 	authToken = ""
 	ctx = context.Background()
 	// Create config for OAuth2, redirect to localhost for callback verification and retrieving tokens
