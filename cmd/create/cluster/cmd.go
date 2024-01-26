@@ -293,7 +293,7 @@ func init() {
 
 	flags.StringVar(
 		&args.controlPlaneRoleARN,
-		"controlplane-iam-role",
+		"controlplane-iam-role-arn",
 		"",
 		"The IAM role ARN that will be attached to control plane instances.",
 	)
@@ -304,11 +304,11 @@ func init() {
 		"",
 		"The IAM role ARN that will be attached to master instances.",
 	)
-	flags.MarkDeprecated("master-iam-role", "use --controlplane-iam-role instead")
+	flags.MarkDeprecated("master-iam-role", "use --controlplane-iam-role-arn instead")
 
 	flags.StringVar(
 		&args.workerRoleARN,
-		"worker-iam-role",
+		"worker-iam-role-arn",
 		"",
 		"The IAM role ARN that will be attached to worker instances.",
 	)

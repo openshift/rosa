@@ -283,7 +283,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if cluster.AWS().STS().RoleARN() != "" {
 		str = fmt.Sprintf("%s"+
-			"STS Role ARN:               %s\n", str,
+			"Role (STS) ARN:             %s\n", str,
 			cluster.AWS().STS().RoleARN())
 		if cluster.AWS().STS().ExternalID() != "" {
 			str = fmt.Sprintf("%s"+
