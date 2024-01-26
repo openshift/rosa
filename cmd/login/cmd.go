@@ -150,7 +150,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if args.useAuthCode {
 		fmt.Println("You will now be redirected to Red Hat SSO login")
-		token, err := authentication.VerifyLogin(oauthClientId)
+		token, err := authentication.InitiateAuthCode(oauthClientId)
 		if err != nil {
 			r.Reporter.Errorf("An error occurred while retrieving the token : %v", err)
 			os.Exit(1)
