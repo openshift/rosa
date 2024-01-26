@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var _ = Describe("Version Helpers", Ordered, func() {
@@ -84,5 +85,34 @@ var _ = Describe("Validates Format Major Minor Patch", func() {
 		Entry("Nightly", "4.14.0-0.nightly-2023-10-24-225235", "4.14.0"),
 		Entry("General Availability", "4.14.1", "4.14.1"),
 		Entry("Candidate", "4.14.0-rc.4-candidate", "4.14.0"),
+	)
+})
+
+var _ = Describe("Get default version", func() {
+	versionHostedDefault, err := v1.NewVersion().ROSAEnabled(true).
+		RawID("4.14.9").Enabled(true).ChannelGroup("stable").
+		HostedControlPlaneDefault(true).HostedControlPlaneEnabled(true).Build()
+	Expect(err).NotTo(HaveOccurred())
+
+	versionClassicDefault, err := v1.NewVersion().ROSAEnabled(true).
+		RawID("4.14.8").Enabled(true).ChannelGroup("stable").Default(true).Build()
+	Expect(err).NotTo(HaveOccurred())
+
+	notDefault, err := v1.NewVersion().ROSAEnabled(true).
+		RawID("4.14.0").Enabled(true).ChannelGroup("stable").Build()
+	Expect(err).NotTo(HaveOccurred())
+
+	DescribeTable("Validates entries",
+		func(val *v1.Version, expected string) {
+			isHostedCP := true
+			result := getDefaultVersion(val, isHostedCP)
+			Expect(result).To(Equal(expected))
+		},
+		Entry("Hosted default", versionHostedDefault,
+			"4.14.9"),
+		Entry("Classic default", versionClassicDefault,
+			"4.14.8"),
+		Entry("Not default", notDefault,
+			""),
 	)
 })

@@ -72,7 +72,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		clusterVersion := cluster.Version().RawID()
 		// This is called in HyperShift, but we don't want to exclude version which are HCP disabled for node pools
 		// so we pass the relative parameter as false
-		versionList, err := versions.GetVersionList(r, channelGroup, true, true, false, false)
+		_, versionList, err := versions.GetVersionList(r, channelGroup, true, true, false, false)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)

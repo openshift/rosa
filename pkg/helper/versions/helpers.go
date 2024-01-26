@@ -18,7 +18,7 @@ const (
 )
 
 func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool, filterHostedCP bool,
-	defaultFirst bool) (versionList []string, err error) {
+	defaultFirst bool) (defaultVersion string, versionList []string, err error) {
 	var vs []*v1.Version
 	var product string
 	if isHostedCP {
@@ -32,13 +32,14 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 	}
 
 	for _, v := range vs {
+		defaultVersion = getDefaultVersion(v, isHostedCP)
 		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
 			continue
 		}
 		if filterHostedCP {
 			valid, err := ocm.HasHostedCPSupport(v)
 			if err != nil {
-				return versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
+				return defaultVersion, versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
 			}
 			if !valid {
 				continue
@@ -53,6 +54,13 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 	}
 
 	return
+}
+
+func getDefaultVersion(version *v1.Version, isHostedCP bool) string {
+	if (isHostedCP && version.HostedControlPlaneDefault()) || version.Default() {
+		return version.RawID()
+	}
+	return ""
 }
 
 func GetFilteredVersionList(versionList []string, minVersion string, maxVersion string) []string {
