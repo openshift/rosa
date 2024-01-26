@@ -1,0 +1,108 @@
+Create cluster.
+
+Usage:
+  rosa create cluster [flags]
+
+Examples:
+  # Create a cluster named "mycluster"
+  rosa create cluster --cluster-name=mycluster
+
+  # Create a cluster in the us-east-2 region
+  rosa create cluster --cluster-name=mycluster --region=us-east-2
+
+Flags:
+  -c, --cluster-name string                                   Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.
+      --sts                                                   Use AWS Security Token Service (STS) instead of IAM credentials to deploy your cluster.
+      --non-sts                                               Use legacy method of creating clusters (IAM mode).
+      --mint-mode                                             Use legacy method of creating clusters (IAM mode). This is an alias for --non-sts.
+      --role-arn string                                       The Amazon Resource Name of the role that OpenShift Cluster Manager will assume to create the cluster.
+      --external-id string                                    An optional unique identifier that might be required when you assume a role in another account.
+      --support-role-arn string                               The Amazon Resource Name of the role used by Red Hat SREs to enable access to the cluster account in order to provide support.
+      --controlplane-iam-role string                          The IAM role ARN that will be attached to control plane instances.
+      --worker-iam-role string                                The IAM role ARN that will be attached to worker instances.
+      --operator-roles-prefix string                          Prefix to use for all IAM roles used by the operators needed in the OpenShift installer. Leave empty to use an auto-generated one.
+      --oidc-config-id string                                 Registered OIDC Configuration ID to use for cluster creation
+      --tags strings                                          Apply user defined tags to all resources created by ROSA in AWS. Tags are comma separated, for example: 'key value, foo bar'
+      --multi-az                                              Deploy to multiple data centers.
+      --region string                                         Use a specific AWS region, overriding the AWS_REGION environment variable.
+      --version string                                        Version of OpenShift that will be used to install the cluster, for example "4.3.10"
+      --etcd-encryption                                       Add etcd encryption. By default etcd data is encrypted at rest. This option configures etcd encryption on top of existing storage encryption.
+      --fips                                                  Create cluster that uses FIPS Validated / Modules in Process cryptographic libraries.
+      --http-proxy string                                     A proxy URL to use for creating HTTP connections outside the cluster. The URL scheme must be http.
+      --https-proxy string                                    A proxy URL to use for creating HTTPS connections outside the cluster.
+      --no-proxy strings                                      A comma-separated list of destination domain names, domains, IP addresses or other network CIDRs to exclude proxying.
+      --additional-trust-bundle-file string                   A file contains a PEM-encoded X.509 certificate bundle that will be added to the nodes' trusted certificate store.
+      --enable-customer-managed-key                           Enable to specify your KMS Key to encrypt EBS instance volumes. By default account’s default KMS key for that particular region is used.
+      --kms-key-arn string                                    The key ARN is the Amazon Resource Name (ARN) of a CMK. It is a unique, fully qualified identifier for the CMK. A key ARN includes the AWS account, Region, and the key ID.
+      --etcd-encryption-kms-arn string                        The etcd encryption kms key ARN is the key used to encrypt etcd. If set it will override etcd-encryption flag to true. It is a unique, fully qualified identifier for the CMK. A key ARN includes the AWS account, Region, and the key ID.
+      --private-link                                          Provides private connectivity between VPCs, AWS services, and your on-premises networks, without exposing your traffic to the public internet.
+      --ec2-metadata-http-tokens string                       Should cluster nodes use both v1 and v2 endpoints or just v2 endpoint of EC2 Instance Metadata Service (IMDS)
+      --subnet-ids strings                                    The Subnet IDs to use when installing the cluster. Format should be a comma-separated list. Leave empty for installer provisioned subnet IDs.
+      --availability-zones strings                            The availability zones to use when installing a non-BYOVPC cluster. Format should be a comma-separated list. Leave empty for the installer to pick availability zones
+      --compute-machine-type string                           Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.
+      --replicas int                                          Number of worker nodes to provision. Single zone clusters need at least 2 nodes, multizone clusters need at least 3 nodes. Hosted clusters require that the number of worker nodes be a multiple of the number of private subnets. (default 2)
+      --enable-autoscaling                                    Enable autoscaling of compute nodes.
+      --autoscaler-balance-similar-node-groups                Identify node groups with the same instance type and label set, and aim to balance respective sizes of those node groups.
+      --autoscaler-skip-nodes-with-local-storage              If true cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPath.
+      --autoscaler-log-verbosity int                          Autoscaler log level. Default is 1, 4 is a good option when trying to debug the autoscaler. (default 1)
+      --autoscaler-max-pod-grace-period int                   Gives pods graceful termination time before scaling down, measured in seconds. (default 600)
+      --autoscaler-pod-priority-threshold int                 The priority that a pod must exceed to cause the cluster autoscaler to deploy additional nodes. Expects an integer, can be negative. (default -10)
+      --autoscaler-ignore-daemonsets-utilization              Should cluster-autoscaler ignore DaemonSet pods when calculating resource utilization for scaling down.
+      --autoscaler-max-node-provision-time string             Maximum time cluster-autoscaler waits for node to be provisioned. Expects string comprised of an integer and time unit (ns|us|µs|ms|s|m|h), examples: 20m, 1h.
+      --autoscaler-balancing-ignored-labels strings           A comma-separated list of label keys that cluster autoscaler should ignore when considering node group similarity.
+      --autoscaler-max-nodes-total int                        Total amount of nodes that can exist in the cluster, including non-scaled nodes. (default 180)
+      --autoscaler-min-cores int                              Minimum limit for the amount of cores to deploy in the cluster.
+      --autoscaler-max-cores int                              Maximum limit for the amount of cores to deploy in the cluster. (default 11520)
+      --autoscaler-min-memory int                             Minimum limit for the amount of memory, in GiB, in the cluster.
+      --autoscaler-max-memory int                             Maximum limit for the amount of memory, in GiB, in the cluster. (default 230400)
+      --autoscaler-gpu-limit stringArray                      Limit GPUs consumption. It should be comprised of 3 values separated with commas: the GPU hardware type, a minimal count for that type and a maximal count for that type. This option can be repeated multiple times in order to apply multiple restrictions for different GPU types. For example: --autoscaler-gpu-limit nvidia.com/gpu,0,10 --autoscaler-gpu-limit amd.com/gpu,1,5
+      --autoscaler-scale-down-enabled                         Should cluster-autoscaler be able to scale down the cluster.
+      --autoscaler-scale-down-unneeded-time string            Increasing value will make nodes stay up longer, waiting for pods to be scheduled while decreasing value will make nodes be deleted sooner.
+      --autoscaler-scale-down-utilization-threshold float     Node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down. Value should be between 0 and 1. (default 0.5)
+      --autoscaler-scale-down-delay-after-add string          After a scale-up, consider scaling down only after this amount of time.
+      --autoscaler-scale-down-delay-after-delete string       After a scale-down, consider scaling down again only after this amount of time.
+      --autoscaler-scale-down-delay-after-failure string      After a failing scale-down, consider scaling down again only after this amount of time.
+      --min-replicas int                                      Minimum number of compute nodes. (default 2)
+      --max-replicas int                                      Maximum number of compute nodes. (default 2)
+      --default-mp-labels string                              Labels for the worker machine pool. Format should be a comma-separated list of 'key=value'. This list will overwrite any modifications made to Node labels on an ongoing basis.
+      --machine-cidr ipNet                                    Block of IP addresses used by OpenShift while installing the cluster, for example "10.0.0.0/16".
+      --service-cidr ipNet                                    Block of IP addresses for services, for example "172.30.0.0/16".
+      --pod-cidr ipNet                                        Block of IP addresses from which Pod IP addresses are allocated, for example "10.128.0.0/14".
+      --host-prefix int                                       Subnet prefix length to assign to each individual node. For example, if host prefix is set to "23", then each node is assigned a /23 subnet out of the given CIDR.
+      --private                                               Restrict master API endpoint and application routes to direct, private connectivity.
+      --disable-scp-checks                                    Indicates if cloud permission checks are disabled when attempting installation of the cluster.
+      --disable-workload-monitoring                           Enables you to monitor your own projects in isolation from Red Hat Site Reliability Engineer (SRE) platform metrics.
+  -w, --watch                                                 Watch cluster installation logs.
+      --dry-run                                               Simulate creating the cluster.
+      --permissions-boundary string                           The ARN of the policy that is used to set the permissions boundary for the operator roles in STS clusters.
+      --hosted-cp                                             Enable the use of Hosted Control Planes
+      --worker-disk-size string                               Default worker machine pool root disk size with a **unit suffix** like GiB or TiB, e.g. 200GiB.
+      --billing-account string                                Account used for billing subscriptions purchased via the AWS marketplace
+      --create-admin-user                                     Create cluster admin named "cluster-admin"
+      --cluster-admin-password string                         The password must
+                                                              		- Be at least 14 characters (ASCII-standard) without whitespaces
+                                                              		- Include uppercase letters, lowercase letters, and numbers or symbols (ASCII-standard characters only)
+      --audit-log-arn string                                  The ARN of the role that is used to forward audit logs to AWS CloudWatch.
+      --default-ingress-route-selector string                 Route Selector for ingress. Format should be a comma-separated list of 'key=value'. If no label is specified, all routes will be exposed on both routers. For legacy ingress support these are inclusion labels, otherwise they are treated as exclusion label.
+      --default-ingress-excluded-namespaces string            Excluded namespaces for ingress. Format should be a comma-separated list 'value1, value2...'. If no values are specified, all namespaces will be exposed.
+      --default-ingress-wildcard-policy string                Wildcard Policy for ingress. Options are WildcardsDisallowed,WildcardsAllowed. Default is 'WildcardsDisallowed'.
+      --default-ingress-namespace-ownership-policy string     Namespace Ownership Policy for ingress. Options are Strict,InterNamespaceAllowed. Default is 'Strict'.
+      --private-hosted-zone-id string                         ID assigned by AWS to private Route 53 hosted zone associated with intended shared VPC, e.g., 'Z05646003S02O1ENCDCSN'.
+      --shared-vpc-role-arn string                            AWS IAM role ARN with a policy attached, granting permissions necessary to create and manage Route 53 DNS records in private Route 53 hosted zone associated with intended shared VPC.
+      --base-domain string                                    Base DNS domain name previously reserved and matching the hosted zone name of the private Route 53 hosted zone associated with intended shared VPC, e.g., '1vo8.p1.openshiftapps.com'.
+      --additional-compute-security-group-ids strings         The additional Security Group IDs to be added to the default worker machine pool. Format should be a comma-separated list.
+      --additional-infra-security-group-ids strings           The additional Security Group IDs to be added to the infra worker nodes. Format should be a comma-separated list.
+      --additional-control-plane-security-group-ids strings   The additional Security Group IDs to be added to the control plane nodes. Format should be a comma-separated list.
+  -m, --mode string                                           How to perform the operation. Valid options are:
+                                                              auto: Resource changes will be automatic applied using the current AWS account
+                                                              
+                                                              manual: Commands necessary to modify AWS resources will be output to be run manually
+  -i, --interactive                                           Enable interactive mode.
+  -o, --output string                                         Output format. Allowed formats are [json yaml]
+  -y, --yes                                                   Automatically answer yes to confirm operation.
+  -h, --help                                                  help for cluster
+
+Global Flags:
+      --color string     Surround certain characters with escape sequences to display them in color on the terminal. Allowed options are [auto never always] (default "auto")
+      --debug            Enable debug mode.
+      --profile string   Use a specific AWS profile from your credential file.
