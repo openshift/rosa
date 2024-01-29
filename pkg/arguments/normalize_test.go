@@ -16,6 +16,9 @@ var _ = Describe("Normalize Argument Flags Tests", func() {
 			},
 			Entry("installer-role-arn to role-arn", deprecatedInstallerRoleArnFlag, newInstallerRoleArnFlag),
 			Entry("default-mp-labels to worker-mp-labels", DeprecatedDefaultMPLabelsFlag, NewDefaultMPLabelsFlag),
+			Entry("controlplane-iam-role to controlplane-iam-role-arn",
+				DeprecatedControlPlaneIAMRole, NewControlPlaneIAMRole),
+			Entry("worker-iam-role to worker-iam-role-arn", DeprecatedWorkerIAMRole, NewWorkerIAMRole),
 		)
 	})
 
