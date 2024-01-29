@@ -1,15 +1,16 @@
 package version
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
+	verify "github.com/openshift/rosa/cmd/verify/rosa"
 	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/test"
 )
 
 func TestVersionCommand(t *testing.T) {
@@ -18,38 +19,60 @@ func TestVersionCommand(t *testing.T) {
 }
 
 var _ = Describe("Run Command", func() {
+	var cmd *cobra.Command
+	var r *rosa.Runtime
 
 	var delegateInvokeCount int
-	var buf *bytes.Buffer
 
 	BeforeEach(func() {
-		buf = new(bytes.Buffer)
-		writer = buf
 		delegateInvokeCount = 0
 		delegateCommand = func(cmd *cobra.Command, args []string) {
 			delegateInvokeCount++
 		}
+
+		cmd = makeCmd()
+		initFlags(cmd)
+
+		r = rosa.NewRuntime()
+		DeferCleanup(r.Cleanup)
 	})
 
-	When("Run in client-only mode", func() {
-		It("It only prints version and build information", func() {
-			args.clientOnly = true
+	It("It only prints version and build information", func() {
+		args.clientOnly = true
 
-			Cmd.Execute()
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
 
-			Expect(buf.String()).To(Equal(fmt.Sprintf("%s (Build: %s)\n", info.Version, info.Build)))
-			Expect(delegateInvokeCount).To(Equal(0))
-		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stderr).To(BeEmpty())
+		Expect(stdout).To(ContainSubstring("%s (Build: %s)\n", info.Version, info.Build))
+		Expect(delegateInvokeCount).To(Equal(0))
 	})
 
-	When("Run without client-only", func() {
+	It("Prints version information and invokes delegate command", func() {
+		args.clientOnly = false
 
-		It("Prints version information and invokes delegate command", func() {
-			args.clientOnly = false
-			Cmd.Execute()
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
 
-			Expect(buf.String()).To(Equal(fmt.Sprintf("%s (Build: %s)\n", info.Version, info.Build)))
-			Expect(delegateInvokeCount).To(Equal(1))
-		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stderr).To(BeEmpty())
+		Expect(stdout).To(ContainSubstring("%s (Build: %s)\n", info.Version, info.Build))
+		Expect(delegateInvokeCount).To(Equal(1))
+	})
+
+	It("Prints verbose information and invokes delegate command", func() {
+		args.clientOnly = false
+		args.verbose = true
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stderr).To(BeEmpty())
+		Expect(stdout).To(ContainSubstring("%s (Build: %s)\n"+
+			"Information and download locations:\n\t%s\n\t%s\n",
+			info.Version, info.Build,
+			verify.ConsoleLatestFolder,
+			verify.DownloadLatestMirrorFolder,
+		))
+		Expect(delegateInvokeCount).To(Equal(1))
 	})
 })
