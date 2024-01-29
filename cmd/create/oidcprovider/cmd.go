@@ -17,14 +17,11 @@ limitations under the License.
 package oidcprovider
 
 import (
-	"crypto/sha1" //#nosec GSC-G505 -- Import blacklist: crypto/sha1
-	"encoding/hex"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"strings"
 
+	"github.com/openshift-online/ocm-common/pkg/rosa/oidcconfigs"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -235,7 +232,7 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) error {
-	thumbprint, err := getThumbprint(oidcEndpointUrl)
+	thumbprint, err := oidcconfigs.FetchThumbprint(oidcEndpointUrl)
 	if err != nil {
 		return err
 	}
@@ -255,7 +252,7 @@ func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) e
 func buildCommands(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) (string, error) {
 	commands := []string{}
 
-	thumbprint, err := getThumbprint(oidcEndpointUrl)
+	thumbprint, err := oidcconfigs.FetchThumbprint(oidcEndpointUrl)
 	if err != nil {
 		return "", err
 	}
@@ -280,30 +277,4 @@ func buildCommands(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) (s
 	commands = append(commands, createOpenIDConnectProvider)
 
 	return awscb.JoinCommands(commands), nil
-}
-
-func getThumbprint(oidcEndpointURL string) (string, error) {
-	connect, err := url.ParseRequestURI(oidcEndpointURL)
-	if err != nil {
-		return "", err
-	}
-	response, err := http.Get(fmt.Sprintf("https://%s:443", connect.Host))
-	if err != nil {
-		return "", err
-	}
-	certChain := response.TLS.PeerCertificates
-	// https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html
-	// If you see more than one certificate, find the last certificate displayed (at the end of the command output).
-	// This contains the certificate of the top intermediate CA in the certificate authority chain.
-	cert := certChain[len(certChain)-1]
-	return sha1Hash(cert.Raw), nil
-}
-
-// sha1Hash computes the SHA1 of the byte array and returns the hex encoding as a string.
-func sha1Hash(data []byte) string {
-	// nolint:gosec
-	hasher := sha1.New()
-	hasher.Write(data)
-	hashed := hasher.Sum(nil)
-	return hex.EncodeToString(hashed)
 }
