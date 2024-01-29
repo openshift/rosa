@@ -1,16 +1,16 @@
 reviewers:
 - ciaranRoche
+- davidleerh
+- den-rgb
 - gdbranco
-- robpblake
+- hunterkepley
+- marcolan018
 - oriAdler
 - pvasant
 - renan-campos
-- hunterkepley
+- robpblake
 - thomasmckay
-- den-rgb
-- marcolan018
 - willkutler
-- davidleerh
 approvers:
 - ciaranRoche
 - gdbranco
@@ -18,7 +18,7 @@ approvers:
 - pvasant
 - renan-campos
 emeritus_approvers:
-- jharrington22
 - igoihman
+- jharrington22
 - vkareh
 - zgalor
