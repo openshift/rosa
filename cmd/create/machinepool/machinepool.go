@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/briandowns/spinner"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
@@ -302,7 +302,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			os.Exit(1)
 		}
 		firstSubnet := availableSubnets[0]
-		vpcId := awssdk.StringValue(firstSubnet.VpcId)
+		vpcId := awssdk.ToString(firstSubnet.VpcId)
 		if vpcId == "" {
 			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
 			os.Exit(1)
