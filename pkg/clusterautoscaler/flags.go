@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -84,10 +84,10 @@ type ScaleDownConfig struct {
 	DelayAfterFailure    string
 }
 
-func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArgs {
+func AddClusterAutoscalerFlags(flags *pflag.FlagSet, prefix string) *AutoscalerArgs {
 	args := &AutoscalerArgs{}
 
-	cmd.Flags().BoolVar(
+	flags.BoolVar(
 		&args.BalanceSimilarNodeGroups,
 		fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag),
 		false,
@@ -95,28 +95,28 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 			"and aim to balance respective sizes of those node groups.",
 	)
 
-	cmd.Flags().BoolVar(
+	flags.BoolVar(
 		&args.SkipNodesWithLocalStorage,
 		fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag),
 		false,
 		"If true cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPath.",
 	)
 
-	cmd.Flags().IntVar(
+	flags.IntVar(
 		&args.LogVerbosity,
 		fmt.Sprintf("%s%s", prefix, logVerbosityFlag),
 		1,
 		"Autoscaler log level. Default is 1, 4 is a good option when trying to debug the autoscaler.",
 	)
 
-	cmd.Flags().IntVar(
+	flags.IntVar(
 		&args.MaxPodGracePeriod,
 		fmt.Sprintf("%s%s", prefix, maxPodGracePeriodFlag),
 		600,
 		"Gives pods graceful termination time before scaling down, measured in seconds.",
 	)
 
-	cmd.Flags().IntVar(
+	flags.IntVar(
 		&args.PodPriorityThreshold,
 		fmt.Sprintf("%s%s", prefix, podPriorityThresholdFlag),
 		-10,
@@ -124,14 +124,14 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 			"Expects an integer, can be negative.",
 	)
 
-	cmd.Flags().BoolVar(
+	flags.BoolVar(
 		&args.IgnoreDaemonsetsUtilization,
 		fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag),
 		false,
 		"Should cluster-autoscaler ignore DaemonSet pods when calculating resource utilization for scaling down.",
 	)
 
-	cmd.Flags().StringVar(
+	flags.StringVar(
 		&args.MaxNodeProvisionTime,
 		fmt.Sprintf("%s%s", prefix, maxNodeProvisionTimeFlag),
 		"",
@@ -139,7 +139,7 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 			"Expects string comprised of an integer and time unit (ns|us|µs|ms|s|m|h), examples: 20m, 1h.",
 	)
 
-	cmd.Flags().StringSliceVar(
+	flags.StringSliceVar(
 		&args.BalancingIgnoredLabels,
 		fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag),
 		nil,
@@ -148,53 +148,43 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 
 	// Resource Limits
 
-	cmd.Flags().IntVar(
+	flags.IntVar(
 		&args.ResourceLimits.MaxNodesTotal,
 		fmt.Sprintf("%s%s", prefix, maxNodesTotalFlag),
 		180,
 		"Total amount of nodes that can exist in the cluster, including non-scaled nodes.",
 	)
 
-	cmd.Flags().IntVar(
+	flags.IntVar(
 		&args.ResourceLimits.Cores.Min,
 		fmt.Sprintf("%s%s", prefix, minCoresFlag),
 		0,
 		"Minimum limit for the amount of cores to deploy in the cluster.",
 	)
 
-	cmd.Flags().IntVar(
+	flags.IntVar(
 		&args.ResourceLimits.Cores.Max,
 		fmt.Sprintf("%s%s", prefix, maxCoresFlag),
 		180*64,
 		"Maximum limit for the amount of cores to deploy in the cluster.",
 	)
 
-	cmd.MarkFlagsRequiredTogether(
-		fmt.Sprintf("%s%s", prefix, minCoresFlag),
-		fmt.Sprintf("%s%s", prefix, maxCoresFlag),
-	)
-
-	cmd.Flags().IntVar(
+	flags.IntVar(
 		&args.ResourceLimits.Memory.Min,
 		fmt.Sprintf("%s%s", prefix, minMemoryFlag),
 		0,
 		"Minimum limit for the amount of memory, in GiB, in the cluster.",
 	)
 
-	cmd.Flags().IntVar(
+	flags.IntVar(
 		&args.ResourceLimits.Memory.Max,
 		fmt.Sprintf("%s%s", prefix, maxMemoryFlag),
 		180*64*20,
 		"Maximum limit for the amount of memory, in GiB, in the cluster.",
 	)
 
-	cmd.MarkFlagsRequiredTogether(
-		fmt.Sprintf("%s%s", prefix, minMemoryFlag),
-		fmt.Sprintf("%s%s", prefix, maxMemoryFlag),
-	)
-
 	flag := fmt.Sprintf("%s%s", prefix, gpuLimitFlag)
-	cmd.Flags().StringArrayVar(
+	flags.StringArrayVar(
 		&args.ResourceLimits.GPULimits,
 		flag,
 		[]string{},
@@ -208,14 +198,14 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 
 	// Scale down Configuration
 
-	cmd.Flags().BoolVar(
+	flags.BoolVar(
 		&args.ScaleDown.Enabled,
 		fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag),
 		false,
 		"Should cluster-autoscaler be able to scale down the cluster.",
 	)
 
-	cmd.Flags().StringVar(
+	flags.StringVar(
 		&args.ScaleDown.UnneededTime,
 		fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag),
 		"",
@@ -223,7 +213,7 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 			"while decreasing value will make nodes be deleted sooner.",
 	)
 
-	cmd.Flags().Float64Var(
+	flags.Float64Var(
 		&args.ScaleDown.UtilizationThreshold,
 		fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag),
 		0.5,
@@ -231,21 +221,21 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 			"below which a node can be considered for scale down. Value should be between 0 and 1.",
 	)
 
-	cmd.Flags().StringVar(
+	flags.StringVar(
 		&args.ScaleDown.DelayAfterAdd,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag),
 		"",
 		"After a scale-up, consider scaling down only after this amount of time.",
 	)
 
-	cmd.Flags().StringVar(
+	flags.StringVar(
 		&args.ScaleDown.DelayAfterDelete,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag),
 		"",
 		"After a scale-down, consider scaling down again only after this amount of time.",
 	)
 
-	cmd.Flags().StringVar(
+	flags.StringVar(
 		&args.ScaleDown.DelayAfterFailure,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag),
 		"",
@@ -302,6 +292,35 @@ func GetAutoscalerOptions(
 			if !allowSettingClusterAutoscaler {
 				return nil, nil
 			}
+		}
+	}
+
+	// TODO: using the *cobra.Command validators for this unfortunately locks this logic in to being used only with
+	// that library. Any re-use of the options cannot bind flags and cannot be certain about the validity of the data.
+	// A more robust approach that allows the AutoscalerArgs struct to be used by downstream consumers without going
+	// through a flag parsing stage does not validate *flags*, but validates *values* in the *AutoscalerArgs, so the
+	// consumers of the *AutoscalerArgs can be certain about guarantees on that data.
+	for _, group := range []sets.Set[string]{
+		sets.New[string](
+			fmt.Sprintf("%s%s", prefix, minCoresFlag),
+			fmt.Sprintf("%s%s", prefix, maxCoresFlag),
+		),
+		sets.New[string](
+			fmt.Sprintf("%s%s", prefix, minMemoryFlag),
+			fmt.Sprintf("%s%s", prefix, maxMemoryFlag),
+		),
+	} {
+		set := sets.New[string]()
+		for _, flagName := range group.UnsortedList() {
+			if cmd.Changed(flagName) {
+				set.Insert(flagName)
+			}
+		}
+		if missing := group.Difference(set); missing.Len() != 0 {
+			return nil, fmt.Errorf(
+				"if any flags in the group [%v] are set they must all be set; missing [%v]",
+				group.UnsortedList(), missing.UnsortedList(),
+			)
 		}
 	}
 

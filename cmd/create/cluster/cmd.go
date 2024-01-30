@@ -85,7 +85,7 @@ const (
 	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
 )
 
-var args struct {
+type args struct {
 	// Watch logs during cluster installation
 	watch bool
 
@@ -213,27 +213,26 @@ var args struct {
 
 	// Control Plane machine pool attributes
 	additionalControlPlaneSecurityGroupIds []string
+
+	autoscalerArgs                *clusterautoscaler.AutoscalerArgs
+	userSpecifiedAutoscalerValues []*pflag.Flag
 }
 
-var autoscalerArgs *clusterautoscaler.AutoscalerArgs
-var userSpecifiedAutoscalerValues []*pflag.Flag
-
-var Cmd = &cobra.Command{
-	Use:   "cluster",
-	Short: "Create cluster",
-	Long:  "Create cluster.",
-	Example: `  # Create a cluster named "mycluster"
+func Cmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "cluster",
+		Short: "Create cluster",
+		Long:  "Create cluster.",
+		Example: `  # Create a cluster named "mycluster"
   rosa create cluster --cluster-name=mycluster
 
   # Create a cluster in the us-east-2 region
   rosa create cluster --cluster-name=mycluster --region=us-east-2`,
-	Run: run,
+		Run: run,
+	}
 }
 
-func init() {
-	flags := Cmd.Flags()
-	flags.SortFlags = false
-
+func (args *args) bind(flags *pflag.FlagSet) {
 	// Basic options
 	flags.StringVarP(
 		&args.clusterName,
@@ -523,11 +522,11 @@ func init() {
 		"Enable autoscaling of compute nodes.",
 	)
 
-	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(Cmd, clusterAutoscalerFlagsPrefix)
+	args.autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(flags, clusterAutoscalerFlagsPrefix)
 	// iterates through all autoscaling flags and stores them in slice to track user input
 	flags.VisitAll(func(f *pflag.Flag) {
 		if strings.HasPrefix(f.Name, clusterAutoscalerFlagsPrefix) {
-			userSpecifiedAutoscalerValues = append(userSpecifiedAutoscalerValues, f)
+			args.userSpecifiedAutoscalerValues = append(args.userSpecifiedAutoscalerValues, f)
 		}
 	})
 
@@ -561,7 +560,6 @@ func init() {
 		"The main controller responsible for rendering the core networking components.",
 	)
 	flags.MarkHidden("network-type")
-	Cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
 
 	flags.IPNetVar(
 		&args.machineCIDR,
@@ -796,9 +794,7 @@ func init() {
 			listInputMessage,
 	)
 
-	aws.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
-	output.AddFlag(Cmd)
 	confirm.AddFlag(flags)
 }
 
@@ -807,6 +803,15 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	args := &args{}
+	args.bind(flags)
+
+	cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
+	aws.AddModeFlag(cmd)
+	output.AddFlag(cmd)
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -817,7 +822,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	for _, val := range userSpecifiedAutoscalerValues {
+	for _, val := range args.userSpecifiedAutoscalerValues {
 		if val.Changed && !args.autoscalingEnabled {
 			r.Reporter.Errorf("Using autoscaling flag '%s', requires flag '--enable-autoscaling'. "+
 				"Please try again with flag", val.Name)
@@ -1705,7 +1710,7 @@ func run(cmd *cobra.Command, _ []string) {
 				})
 			}
 		}
-		oidcConfig = handleOidcConfigOptions(r, cmd, isSTS, isHostedCP)
+		oidcConfig = handleOidcConfigOptions(r, cmd, isSTS, isHostedCP, args.oidcConfigId, args.classicOidcConfig)
 		err = validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient, computedOperatorIamRoleList)
 		if err != nil {
 			if !oidcConfig.Reusable() {
@@ -2391,7 +2396,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		} else {
 			clusterAutoscaler, err = clusterautoscaler.GetAutoscalerOptions(
-				cmd.Flags(), clusterAutoscalerFlagsPrefix, true, autoscalerArgs)
+				cmd.Flags(), clusterAutoscalerFlagsPrefix, true, args.autoscalerArgs)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -2477,14 +2482,14 @@ func run(cmd *cobra.Command, _ []string) {
 		subnetIDs, &additionalControlPlaneSecurityGroupIds)
 
 	// Validate all remaining flags:
-	expiration, err := validateExpiration()
+	expiration, err := validateExpiration(args.expirationTime, args.expirationDuration)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
 
 	// Network Type:
-	networkType := validateNetworkType(r)
+	networkType := validateNetworkType(r, args.networkType)
 	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
 		networkType, err = interactive.GetOption(interactive.Input{
 			Question: "Network Type",
@@ -3145,7 +3150,8 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
 			command := buildCommand(clusterConfig, operatorRolesPrefix, expectedOperatorRolePath,
-				isAvailabilityZonesSet || selectAvailabilityZones, labels, args.properties)
+				isAvailabilityZonesSet || selectAvailabilityZones, labels, args.properties,
+				args.clusterAdminPassword, args.classicOidcConfig, args.expirationDuration)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
@@ -3239,14 +3245,14 @@ func run(cmd *cobra.Command, _ []string) {
 }
 
 // validateNetworkType ensure user passes a valid network type parameter at creation
-func validateNetworkType(r *rosa.Runtime) string {
+func validateNetworkType(r *rosa.Runtime, inputNetworkType string) string {
 	var networkType string
-	if args.networkType == "" {
+	if inputNetworkType == "" {
 		// Parameter not specified, nothing to do
 		return networkType
 	}
-	if helper.Contains(ocm.NetworkTypes, args.networkType) {
-		networkType = args.networkType
+	if helper.Contains(ocm.NetworkTypes, inputNetworkType) {
+		networkType = inputNetworkType
 	}
 	if networkType == "" {
 		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
@@ -3305,13 +3311,13 @@ func validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient aws.Client,
 	return nil
 }
 
-func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, isHostedCP bool) *v1.OidcConfig {
+func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command,
+	isSTS bool, isHostedCP bool, oidcConfigId string, classicOidcConfig bool) *v1.OidcConfig {
 	if !isSTS {
 		return nil
 	}
-	oidcConfigId := args.oidcConfigId
 	isOidcConfig := false
-	if isHostedCP && !args.classicOidcConfig {
+	if isHostedCP && !classicOidcConfig {
 		isOidcConfig = true
 		if oidcConfigId == "" {
 			interactive.Enable()
@@ -3341,7 +3347,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 			}
 			return nil
 		}
-		if args.classicOidcConfig {
+		if classicOidcConfig {
 			return nil
 		}
 		r.Reporter.Errorf("Hosted Control Plane requires an OIDC Configuration ID\n" +
@@ -3505,16 +3511,16 @@ func evaluateDuration(duration time.Duration) time.Time {
 	return time.Now().Add(duration).Round(time.Second)
 }
 
-func validateExpiration() (expiration time.Time, err error) {
+func validateExpiration(expirationTime string, expirationDuration time.Duration) (expiration time.Time, err error) {
 	// Validate options
-	if len(args.expirationTime) > 0 && args.expirationDuration != 0 {
+	if len(expirationTime) > 0 && expirationDuration != 0 {
 		err = errors.New("At most one of 'expiration-time' or 'expiration' may be specified")
 		return
 	}
 
 	// Parse the expiration options
-	if len(args.expirationTime) > 0 {
-		t, err := parseRFC3339(args.expirationTime)
+	if len(expirationTime) > 0 {
+		t, err := parseRFC3339(expirationTime)
 		if err != nil {
 			err = fmt.Errorf("Failed to parse expiration-time: %s", err)
 			return expiration, err
@@ -3522,8 +3528,8 @@ func validateExpiration() (expiration time.Time, err error) {
 
 		expiration = t
 	}
-	if args.expirationDuration != 0 {
-		expiration = evaluateDuration(args.expirationDuration)
+	if expirationDuration != 0 {
+		expiration = evaluateDuration(expirationDuration)
 	}
 
 	return
@@ -3594,7 +3600,8 @@ func parseRFC3339(s string) (time.Time, error) {
 
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	operatorRolePath string, userSelectedAvailabilityZones bool, labels string,
-	properties []string) string {
+	properties []string,
+	clusterAdminPassword string, classicOidcConfig bool, expirationDuration time.Duration) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
 	if spec.IsSTS {
@@ -3605,7 +3612,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.ClusterAdminUser != "" {
 		// Checks if admin password is from user (both flag and interactive)
-		if args.clusterAdminPassword != "" && spec.ClusterAdminPassword != "" {
+		if clusterAdminPassword != "" && spec.ClusterAdminPassword != "" {
 			command += fmt.Sprintf(" --cluster-admin-password %s", spec.ClusterAdminPassword)
 		} else {
 			command += " --create-admin-user"
@@ -3628,7 +3635,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.OidcConfigId != "" {
 		command += fmt.Sprintf(" --%s %s", OidcConfigIdFlag, spec.OidcConfigId)
 	}
-	if args.classicOidcConfig {
+	if classicOidcConfig {
 		command += fmt.Sprintf(" --%s", ClassicOidcConfigFlag)
 	}
 	if len(spec.Tags) > 0 {
@@ -3656,8 +3663,8 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	// Only account for expiration duration, as a fixed date may be obsolete if command is re-run later
-	if args.expirationDuration != 0 {
-		command += fmt.Sprintf(" --expiration %s", args.expirationDuration)
+	if expirationDuration != 0 {
+		command += fmt.Sprintf(" --expiration %s", expirationDuration)
 	}
 
 	if spec.Autoscaling {

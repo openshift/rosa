@@ -48,7 +48,7 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.AddCommand(accountroles.Cmd)
 	Cmd.AddCommand(admin.Cmd)
-	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(cluster.Cmd())
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(oidcconfig.Cmd)

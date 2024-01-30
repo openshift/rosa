@@ -21,6 +21,9 @@ var _ = Describe("Validate build command", func() {
 	var userSelectedAvailabilityZones bool
 	var defaultMachinePoolLabels string
 	var argsDotProperties []string
+	var clusterAdminPassword string
+	var classicOidcConfig bool
+	var expirationDuration time.Duration
 
 	BeforeEach(func() {
 		clusterConfig = ocm.Spec{
@@ -39,7 +42,8 @@ var _ = Describe("Validate build command", func() {
 				clusterConfig.EtcdEncryptionKMSArn = "my-test-arn"
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
 					expectedOperatorRolePath, userSelectedAvailabilityZones,
-					defaultMachinePoolLabels, argsDotProperties)
+					defaultMachinePoolLabels, argsDotProperties,
+					clusterAdminPassword, classicOidcConfig, expirationDuration)
 				Expect(command).To(Equal(
 					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix" +
 						" --etcd-encryption --etcd-encryption-kms-arn my-test-arn"))
@@ -52,7 +56,8 @@ var _ = Describe("Validate build command", func() {
 				clusterConfig.EtcdEncryptionKMSArn = "my-test-arn"
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
 					expectedOperatorRolePath, userSelectedAvailabilityZones,
-					defaultMachinePoolLabels, argsDotProperties)
+					defaultMachinePoolLabels, argsDotProperties,
+					clusterAdminPassword, classicOidcConfig, expirationDuration)
 				Expect(command).To(Equal(
 					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix"))
 			})
@@ -62,7 +67,8 @@ var _ = Describe("Validate build command", func() {
 			It("should not include --properties", func() {
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
 					expectedOperatorRolePath, userSelectedAvailabilityZones,
-					defaultMachinePoolLabels, argsDotProperties)
+					defaultMachinePoolLabels, argsDotProperties,
+					clusterAdminPassword, classicOidcConfig, expirationDuration)
 				// nolint:lll
 				Expect(command).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix"))
 			})
@@ -72,7 +78,8 @@ var _ = Describe("Validate build command", func() {
 				argsDotProperties = []string{"prop1", "prop2"}
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
 					expectedOperatorRolePath, userSelectedAvailabilityZones,
-					defaultMachinePoolLabels, argsDotProperties)
+					defaultMachinePoolLabels, argsDotProperties,
+					clusterAdminPassword, classicOidcConfig, expirationDuration)
 				// nolint:lll
 				Expect(command).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix --properties \"prop1\" --properties \"prop2\""))
 			})
