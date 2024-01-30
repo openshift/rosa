@@ -11,3 +11,5 @@ coverage:
           - "cmd"
           - "pkg"
         informational: true
+ignore:
+  - "pkg/aws/mock_client.go"
