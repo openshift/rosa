@@ -24,34 +24,77 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:     "instance-types",
-	Aliases: []string{"instancetypes"},
-	Short:   "List Instance types",
-	Long:    "List Instance types that are available for use with ROSA.",
-	Example: `  # List all instance types
-  rosa list instance-types`,
-	Run: run,
+var Cmd = makeCmd()
+
+func makeCmd() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "instance-types",
+		Aliases: []string{"instancetypes"},
+		Short:   "List Instance types",
+		Long:    "List Instance types that are available for use with ROSA.",
+		Example: `  # List all instance types
+	rosa list instance-types`,
+		Run: run,
+	}
+
+	return cmd
 }
 
 func init() {
-	output.AddFlag(Cmd)
+	initFlags(Cmd)
+}
+
+func initFlags(cmd *cobra.Command) {
+	flags := cmd.Flags()
+	arguments.AddRegionFlag(flags)
+	output.AddFlag(cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithOCM()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+}
 
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	r.Reporter.Debugf("Fetching instance types")
 
-	machineTypes, err := r.OCMClient.GetAvailableMachineTypes()
-	if err != nil {
-		r.Reporter.Errorf("Failed to fetch instance types: %v", err)
-		os.Exit(1)
+	var machineTypes ocm.MachineTypeList
+	if cmd.Flags().Changed("region") {
+		var availabilityZones []string
+		roleArn := ""
+		regionList, _, err := r.OCMClient.GetRegionList(false, "", "", "",
+			r.AWSClient, false, false)
+		if err != nil {
+			return err
+		}
+		if found := helper.Contains(regionList, arguments.GetRegion()); !found {
+			return fmt.Errorf("Region '%s' not found.", arguments.GetRegion())
+		}
+
+		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypesInRegion(arguments.GetRegion(),
+			availabilityZones, roleArn, r.AWSClient)
+		if err != nil {
+			return fmt.Errorf("Failed to fetch instance types: %v", err)
+		}
+		machineTypes = availableMachineTypes
+	} else {
+		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypes()
+		if err != nil {
+			return fmt.Errorf("Failed to fetch instance types: %v", err)
+		}
+		machineTypes = availableMachineTypes
 	}
 
 	if output.HasFlag() {
@@ -59,22 +102,21 @@ func run(cmd *cobra.Command, _ []string) {
 		for _, machine := range machineTypes.Items {
 			instanceTypes = append(instanceTypes, machine.MachineType)
 		}
-		err = output.Print(instanceTypes)
+		err := output.Print(instanceTypes)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
-		os.Exit(0)
+
+		return nil
 	}
 
 	if len(machineTypes.Items) == 0 {
-		r.Reporter.Warnf("There are no machine types supported for your account. Contact Red Hat support.")
-		os.Exit(1)
+		return fmt.Errorf("There are no machine types supported for your account. Contact Red Hat support.")
 	}
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\t\n")
+	fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\n")
 
 	for _, machine := range machineTypes.Items {
 		if !machine.Available {
@@ -89,6 +131,8 @@ func run(cmd *cobra.Command, _ []string) {
 		)
 	}
 	writer.Flush()
+
+	return nil
 }
 
 func ByteCountIEC(b int, uValue string) string {

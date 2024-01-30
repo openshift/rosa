@@ -65,6 +65,8 @@ import (
 )
 
 // Name of the AWS user that will be used to create all the resources of the cluster:
+//
+//go:generate mockgen -source=client.go -package=aws -destination=mock_client.go
 const (
 	AdminUserName        = "osdCcsAdmin"
 	OsdCcsAdminStackName = "osdCcsAdminIAMUser"
