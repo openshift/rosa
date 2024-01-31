@@ -1175,13 +1175,13 @@ func run(cmd *cobra.Command, _ []string) {
 	// OpenShift version:
 	version := args.version
 	channelGroup := args.channelGroup
-	versionList, err := versions.GetVersionList(r, channelGroup, isSTS, isHostedCP, isHostedCP, true)
+	defaultVersion, versionList, err := versions.GetVersionList(r, channelGroup, isSTS, isHostedCP, isHostedCP, true)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if version == "" {
-		version = versionList[0]
+		version = defaultVersion
 	}
 	if interactive.Enabled() {
 		version, err = interactive.GetOption(interactive.Input{
