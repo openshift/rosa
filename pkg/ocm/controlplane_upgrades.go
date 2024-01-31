@@ -70,14 +70,14 @@ func (c *Client) GetControlPlaneUpgradePolicies(clusterID string) (
 }
 
 func (c *Client) ScheduleHypershiftControlPlaneUpgrade(clusterID string,
-	upgradePolicy *cmv1.ControlPlaneUpgradePolicy) error {
+	upgradePolicy *cmv1.ControlPlaneUpgradePolicy) (*cmv1.ControlPlaneUpgradePolicy, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).ControlPlane().
 		UpgradePolicies().
 		Add().Body(upgradePolicy).
 		Send()
 	if err != nil {
-		return handleErr(response.Error(), err)
+		return nil, handleErr(response.Error(), err)
 	}
-	return nil
+	return response.Body(), nil
 }
