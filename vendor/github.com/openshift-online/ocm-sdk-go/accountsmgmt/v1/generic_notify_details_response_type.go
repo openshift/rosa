@@ -40,10 +40,7 @@ type GenericNotifyDetailsResponse struct {
 	href       string
 	associates []string
 	items      []*NotificationDetailsResponse
-	page       int
 	recipients []string
-	size       int
-	total      int
 }
 
 // Kind returns the name of the type of the object.
@@ -149,37 +146,12 @@ func (o *GenericNotifyDetailsResponse) GetItems() (value []*NotificationDetailsR
 	return
 }
 
-// Page returns the value of the 'page' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Index of the returned page, where one corresponds to the first page. As this
-// collection doesn't support paging the result will always be `1`.
-func (o *GenericNotifyDetailsResponse) Page() int {
-	if o != nil && o.bitmap_&32 != 0 {
-		return o.page
-	}
-	return 0
-}
-
-// GetPage returns the value of the 'page' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Index of the returned page, where one corresponds to the first page. As this
-// collection doesn't support paging the result will always be `1`.
-func (o *GenericNotifyDetailsResponse) GetPage() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
-	if ok {
-		value = o.page
-	}
-	return
-}
-
 // Recipients returns the value of the 'recipients' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Retrieved List of recipients username.
 func (o *GenericNotifyDetailsResponse) Recipients() []string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.recipients
 	}
 	return nil
@@ -190,63 +162,9 @@ func (o *GenericNotifyDetailsResponse) Recipients() []string {
 //
 // Retrieved List of recipients username.
 func (o *GenericNotifyDetailsResponse) GetRecipients() (value []string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.recipients
-	}
-	return
-}
-
-// Size returns the value of the 'size' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Number of items that will be contained in the returned page. As this collection
-// doesn't support paging or searching the result will always be the total number of
-// notify details.
-func (o *GenericNotifyDetailsResponse) Size() int {
-	if o != nil && o.bitmap_&128 != 0 {
-		return o.size
-	}
-	return 0
-}
-
-// GetSize returns the value of the 'size' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Number of items that will be contained in the returned page. As this collection
-// doesn't support paging or searching the result will always be the total number of
-// notify details.
-func (o *GenericNotifyDetailsResponse) GetSize() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&128 != 0
-	if ok {
-		value = o.size
-	}
-	return
-}
-
-// Total returns the value of the 'total' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-//
-// Total number of items of the collection that match the search criteria,
-// regardless of the size of the page. As this collection doesn't support paging or
-// searching the result will always be the total number of notify details.
-func (o *GenericNotifyDetailsResponse) Total() int {
-	if o != nil && o.bitmap_&256 != 0 {
-		return o.total
-	}
-	return 0
-}
-
-// GetTotal returns the value of the 'total' attribute and
-// a flag indicating if the attribute has a value.
-//
-// Total number of items of the collection that match the search criteria,
-// regardless of the size of the page. As this collection doesn't support paging or
-// searching the result will always be the total number of notify details.
-func (o *GenericNotifyDetailsResponse) GetTotal() (value int, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
-	if ok {
-		value = o.total
 	}
 	return
 }
