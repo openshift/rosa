@@ -3,6 +3,18 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.398
+- Add regions support from ocm shards
+- Don't error when response is 204 and no content-type
+
+## 0.1.397
+- Add `NewUnauthenticatedConnectionBuilder` function to allow creating a
+  `Connection` without client side authentication
+
+## 0.1.396
+- Remove redundant fields from /notify_details
+- Add `ExternalAuthConfig` to `Cluster` model.
+
 ## 0.1.395
 - Add `SubnetOutposts` and `AvailabilityZoneTypes` to `aws_node_pool_type` and `aws_machine_pool_type` resources.
 
