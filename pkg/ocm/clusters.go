@@ -739,6 +739,24 @@ func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
 	return cluster, nil
 }
 
+func (c *Client) DeleteClusterByID(clusterID string, bestEffort bool) (*cmv1.Cluster, error) {
+	cluster, err := c.GetClusterByID(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(cluster.ID()).
+		Delete().
+		BestEffort(bestEffort).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	return cluster, nil
+}
+
 func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
 	reporter, err := rprtr.New().
 		Build()
