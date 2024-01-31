@@ -444,9 +444,8 @@ func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Clus
 	return c.getCluster(clusterKey, creator)
 }
 
-func (c *Client) GetClusterByID(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
-	query := fmt.Sprintf("%s AND id = '%s'",
-		getClusterFilter(creator),
+func (c *Client) GetClusterByID(clusterKey string) (*cmv1.Cluster, error) {
+	query := fmt.Sprintf("id = '%s'",
 		clusterKey,
 	)
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().List().
