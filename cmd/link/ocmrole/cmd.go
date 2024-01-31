@@ -144,8 +144,8 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 			}
 
 			r.Reporter.Errorf("%s"+
-				"Only organization admin can run this command. "+
-				"Please ask someone with the organization admin role to run the following command \n\n"+
+				"Only organization member can run this command. "+
+				"Please ask someone with the organization member role to run the following command \n\n"+
 				"\t rosa link ocm-role --role-arn %s --organization-id %s", errMessage, roleArn, orgAccount)
 			return err
 		}
