@@ -36,7 +36,6 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/interactive/consts"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -113,6 +112,10 @@ type Spec struct {
 
 	// Disable SCP checks in the installer by setting credentials mode as mint
 	DisableSCPChecks *bool
+
+	// Non-STS
+	AWSAccessKey *aws.AccessKey
+	AWSCreator   *aws.Creator
 
 	// STS
 	IsSTS               bool
@@ -230,16 +233,7 @@ func (c *Client) HasClusters(creator *aws.Creator) (bool, error) {
 }
 
 func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
-	logger := logging.NewLogger()
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create AWS client: %v", err)
-	}
-
-	spec, err := c.createClusterSpec(config, awsClient)
+	spec, err := c.createClusterSpec(config)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create cluster spec: %v", err)
 	}
@@ -743,58 +737,50 @@ func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
 	return cluster, nil
 }
 
-func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
+// EnsureNoPendingClusters ensures that no clusters are pending in the account. For non-STS clusters,
+// the osdCcsAdmin user credentials are used to create the cluster, and it is required that these credentials
+// are rotated between cluster creation. If a user is creating a non-STS cluster, we need to therefore make sure
+// no other clusters are pending in the account in order to ensure no race condition occurs.
+func (c *Client) EnsureNoPendingClusters(awsCreator *aws.Creator) error {
 	reporter, err := rprtr.New().
 		Build()
+	if err != nil {
+		return fmt.Errorf("Error creating cluster reporter: %w", err)
+	}
 
+	/**
+	1) Poll the cluster with same arn from ocm
+	2) Check the status and if pending enter to a loop until it becomes installing
+	3) Do it only for ROSA clusters and before UpsertAccessKey
+	*/
+	deadline := time.Now().Add(5 * time.Minute)
+	for {
+		pendingCluster, err := c.GetPendingClusterForARN(awsCreator)
+		if err != nil {
+			reporter.Errorf("Error getting cluster using ARN '%s'", awsCreator.ARN)
+			os.Exit(1)
+		}
+		if time.Now().After(deadline) {
+			reporter.Errorf("Timeout waiting for the cluster '%s' installation. Try again in a few minutes",
+				pendingCluster.ID())
+			os.Exit(1)
+		}
+		if pendingCluster == nil {
+			break
+		} else {
+			reporter.Infof("Waiting for cluster '%s' with the same creator ARN to start installing",
+				pendingCluster.ID())
+			time.Sleep(30 * time.Second)
+		}
+	}
+	return nil
+}
+
+func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
+	reporter, err := rprtr.New().
+		Build()
 	if err != nil {
 		return nil, fmt.Errorf("Error creating cluster reporter: %v", err)
-	}
-
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get AWS creator: %v", err)
-	}
-
-	var awsAccessKey *aws.AccessKey
-	if config.CustomProperties != nil && config.CustomProperties[properties.UseLocalCredentials] == "true" {
-		reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
-		awsAccessKey, err = awsClient.GetLocalAWSAccessKeys()
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get local AWS credentials: %v", err)
-		}
-	} else if config.RoleARN == "" {
-		/**
-		1) Poll the cluster with same arn from ocm
-		2) Check the status and if pending enter to a loop until it becomes installing
-		3) Do it only for ROSA clusters and before UpsertAccessKey
-		*/
-		deadline := time.Now().Add(5 * time.Minute)
-		for {
-			pendingCluster, err := c.GetPendingClusterForARN(awsCreator)
-			if err != nil {
-				reporter.Errorf("Error getting cluster using ARN '%s'", awsCreator.ARN)
-				os.Exit(1)
-			}
-			if time.Now().After(deadline) {
-				reporter.Errorf("Timeout waiting for the cluster '%s' installation. Try again in a few minutes",
-					pendingCluster.ID())
-				os.Exit(1)
-			}
-			if pendingCluster == nil {
-				break
-			} else {
-				reporter.Infof("Waiting for cluster '%s' with the same creator ARN to start installing",
-					pendingCluster.ID())
-				time.Sleep(30 * time.Second)
-			}
-		}
-		// Create the access key for the AWS user:
-		awsAccessKey, err = awsClient.GetAWSAccessKeys()
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get access keys for user '%s': %v",
-				aws.AdminUserName, err)
-		}
 	}
 
 	clusterProperties := map[string]string{}
@@ -820,7 +806,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		)
 	}
 
-	clusterProperties[ocmConsts.CreatorArn] = awsCreator.ARN
+	if config.AWSCreator == nil {
+		return nil, fmt.Errorf("AWS creator metadata is required")
+	}
+
+	clusterProperties[ocmConsts.CreatorArn] = config.AWSCreator.ARN
 	clusterProperties[properties.CLIVersion] = info.Version
 
 	// Create the cluster:
@@ -941,7 +931,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 
 	awsBuilder := cmv1.NewAWS().
-		AccountID(awsCreator.AccountID)
+		AccountID(config.AWSCreator.AccountID)
 
 	if len(config.AdditionalComputeSecurityGroupIds) > 0 {
 		awsBuilder = awsBuilder.AdditionalComputeSecurityGroupIds(config.AdditionalComputeSecurityGroupIds...)
@@ -1013,9 +1003,12 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 
 		awsBuilder = awsBuilder.STS(stsBuilder)
 	} else {
+		if config.AWSAccessKey == nil {
+			return nil, fmt.Errorf("AWS access key metadata is required for non-STS clusters")
+		}
 		awsBuilder = awsBuilder.
-			AccessKeyID(awsAccessKey.AccessKeyID).
-			SecretAccessKey(awsAccessKey.SecretAccessKey)
+			AccessKeyID(config.AWSAccessKey.AccessKeyID).
+			SecretAccessKey(config.AWSAccessKey.SecretAccessKey)
 	}
 	if config.KMSKeyArn != "" {
 		awsBuilder = awsBuilder.KMSKeyArn(config.KMSKeyArn)

@@ -3014,6 +3014,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:         availabilityZones,
 		SubnetIds:                 subnetIDs,
 		PrivateLink:               &privateLink,
+		AWSCreator:                awsCreator,
 		IsSTS:                     isSTS,
 		RoleARN:                   roleARN,
 		ExternalID:                externalID,
@@ -3107,6 +3108,24 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	if clusterConfig.CustomProperties != nil && clusterConfig.CustomProperties[properties.UseLocalCredentials] ==
+		strconv.FormatBool(true) {
+		r.Reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
+		clusterConfig.AWSAccessKey, err = awsClient.GetLocalAWSAccessKeys()
+		if err != nil {
+			r.Reporter.Errorf("Failed to get local AWS credentials: %v", err)
+			os.Exit(1)
+		}
+	} else if clusterConfig.RoleARN == "" {
+		// Create the access key for the AWS user:
+		clusterConfig.AWSAccessKey, err = awsClient.GetAWSAccessKeys()
+		if err != nil {
+			r.Reporter.Errorf("Failed to get access keys for user '%s': %v",
+				aws.AdminUserName, err)
+			os.Exit(1)
+		}
+	}
+
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
@@ -3115,6 +3134,13 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
+	}
+
+	if !clusterConfig.IsSTS {
+		if err := r.OCMClient.EnsureNoPendingClusters(awsCreator); err != nil {
+			r.Reporter.Errorf("%v", err)
+			os.Exit(1)
+		}
 	}
 
 	cluster, err := r.OCMClient.CreateCluster(clusterConfig)
