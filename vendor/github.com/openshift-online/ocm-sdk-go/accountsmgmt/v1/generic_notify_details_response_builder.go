@@ -28,10 +28,7 @@ type GenericNotifyDetailsResponseBuilder struct {
 	href       string
 	associates []string
 	items      []*NotificationDetailsResponseBuilder
-	page       int
 	recipients []string
-	size       int
-	total      int
 }
 
 // NewGenericNotifyDetailsResponse creates a new builder of 'generic_notify_details_response' objects.
@@ -80,32 +77,11 @@ func (b *GenericNotifyDetailsResponseBuilder) Items(values ...*NotificationDetai
 	return b
 }
 
-// Page sets the value of the 'page' attribute to the given value.
-func (b *GenericNotifyDetailsResponseBuilder) Page(value int) *GenericNotifyDetailsResponseBuilder {
-	b.page = value
-	b.bitmap_ |= 32
-	return b
-}
-
 // Recipients sets the value of the 'recipients' attribute to the given values.
 func (b *GenericNotifyDetailsResponseBuilder) Recipients(values ...string) *GenericNotifyDetailsResponseBuilder {
 	b.recipients = make([]string, len(values))
 	copy(b.recipients, values)
-	b.bitmap_ |= 64
-	return b
-}
-
-// Size sets the value of the 'size' attribute to the given value.
-func (b *GenericNotifyDetailsResponseBuilder) Size(value int) *GenericNotifyDetailsResponseBuilder {
-	b.size = value
-	b.bitmap_ |= 128
-	return b
-}
-
-// Total sets the value of the 'total' attribute to the given value.
-func (b *GenericNotifyDetailsResponseBuilder) Total(value int) *GenericNotifyDetailsResponseBuilder {
-	b.total = value
-	b.bitmap_ |= 256
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -131,15 +107,12 @@ func (b *GenericNotifyDetailsResponseBuilder) Copy(object *GenericNotifyDetailsR
 	} else {
 		b.items = nil
 	}
-	b.page = object.page
 	if object.recipients != nil {
 		b.recipients = make([]string, len(object.recipients))
 		copy(b.recipients, object.recipients)
 	} else {
 		b.recipients = nil
 	}
-	b.size = object.size
-	b.total = object.total
 	return b
 }
 
@@ -162,12 +135,9 @@ func (b *GenericNotifyDetailsResponseBuilder) Build() (object *GenericNotifyDeta
 			}
 		}
 	}
-	object.page = b.page
 	if b.recipients != nil {
 		object.recipients = make([]string, len(b.recipients))
 		copy(object.recipients, b.recipients)
 	}
-	object.size = b.size
-	object.total = b.total
 	return
 }
