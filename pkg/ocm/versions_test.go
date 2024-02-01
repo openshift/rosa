@@ -2,18 +2,16 @@ package ocm
 
 import (
 	"fmt"
+	"net/http"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-
-	"net/http"
-	"time"
-
 	"github.com/onsi/gomega/ghttp"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 )

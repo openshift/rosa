@@ -1042,16 +1042,12 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 func (c *awsClient) DeleteRole(role string) error {
 	_, err := c.iamClient.DeleteRole(&iam.DeleteRoleInput{RoleName: aws.String(role)})
 	if err != nil {
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case iam.ErrCodeNoSuchEntityException:
-					return fmt.Errorf("operator role '%s' does not exists.skipping",
-						role)
-				}
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() == iam.ErrCodeNoSuchEntityException {
+				return fmt.Errorf("operator role '%s' does not exist. Skipping", role)
 			}
-			return err
 		}
+		return err
 	}
 	return nil
 }
