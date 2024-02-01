@@ -396,6 +396,8 @@ func run(cmd *cobra.Command, argv []string) {
 	if isHypershift {
 		str = fmt.Sprintf("%s"+
 			"Audit Log Forwarding:       %s\n", str, getAuditLogForwardingStatus(cluster))
+		str = fmt.Sprintf("%s"+
+			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
 		if cluster.AWS().AuditLog().RoleArn() != "" {
 			str = fmt.Sprintf("%s"+
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
@@ -737,4 +739,12 @@ func getAuditLogForwardingStatus(cluster *cmv1.Cluster) string {
 		auditLogForwardingStatus = EnabledOutput
 	}
 	return auditLogForwardingStatus
+}
+
+func getExternalAuthConfigStatus(cluster *cmv1.Cluster) string {
+	externalAuthConfigStatus := DisabledOutput
+	if cluster.ExternalAuthConfig().Enabled() {
+		externalAuthConfigStatus = EnabledOutput
+	}
+	return externalAuthConfigStatus
 }

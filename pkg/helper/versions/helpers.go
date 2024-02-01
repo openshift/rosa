@@ -31,8 +31,36 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 		return
 	}
 
+	defaultVersion, versionList, err = computeVersionListAndDefault(vs, isHostedCP, isSTS, filterHostedCP)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve versions: %s", err)
+		return
+	}
+
+	if len(versionList) == 0 {
+		err = fmt.Errorf("Could not find versions for the provided channel-group: '%s'", channelGroup)
+		return
+	}
+
+	if defaultVersion == "" {
+		// Normally this should not happen, as there is always a default version.
+		// In case the default is not specified, we choose the most recent version.
+		// Not having a default will break later.
+		r.Reporter.Debugf("No default version found. Fallback to latest")
+		defaultVersion = versionList[0]
+	}
+
+	return
+}
+
+func computeVersionListAndDefault(vs []*v1.Version, isHostedCP bool, isSTS bool,
+	filterHostedCP bool) (string, []string, error) {
+	var defaultVersion string
+	var versionList []string
 	for _, v := range vs {
-		defaultVersion = getDefaultVersion(v, isHostedCP)
+		if defaultVersion == "" && isDefaultVersion(v, isHostedCP) {
+			defaultVersion = v.RawID()
+		}
 		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
 			continue
 		}
@@ -47,20 +75,14 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 		}
 		versionList = append(versionList, v.RawID())
 	}
-
-	if len(versionList) == 0 {
-		err = fmt.Errorf("Could not find versions for the provided channel-group: '%s'", channelGroup)
-		return
-	}
-
-	return
+	return defaultVersion, versionList, nil
 }
 
-func getDefaultVersion(version *v1.Version, isHostedCP bool) string {
-	if (isHostedCP && version.HostedControlPlaneDefault()) || version.Default() {
-		return version.RawID()
+func isDefaultVersion(version *v1.Version, isHostedCP bool) bool {
+	if (isHostedCP && version.HostedControlPlaneDefault()) || (!isHostedCP && version.Default()) {
+		return true
 	}
-	return ""
+	return false
 }
 
 func GetFilteredVersionList(versionList []string, minVersion string, maxVersion string) []string {

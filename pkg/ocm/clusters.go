@@ -125,6 +125,9 @@ type Spec struct {
 	OidcConfigId        string
 	Mode                string
 
+	// External auth
+	ExternalAuthConfig cmv1.ExternalAuthConfig
+
 	NodeDrainGracePeriodInMinutes float64
 
 	EnableProxy               bool
@@ -867,6 +870,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	if config.Hypershift.Enabled {
 		hyperShiftBuilder := cmv1.NewHypershift().Enabled(true)
 		clusterBuilder.Hypershift(hyperShiftBuilder)
+	}
+
+	if config.ExternalAuthConfig.Enabled() {
+		externalAuthConfigBuilder := cmv1.NewExternalAuthConfig().Enabled(true)
+		clusterBuilder.ExternalAuthConfig(externalAuthConfigBuilder)
 	}
 
 	if config.ComputeMachineType != "" || config.ComputeNodes != 0 || len(config.AvailabilityZones) > 0 ||
