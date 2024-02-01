@@ -1037,8 +1037,8 @@ func (c *awsClient) DeleteRole(role string) error {
 				return fmt.Errorf("operator role '%s' does not exists, skipping",
 					role)
 			}
-			return err
 		}
+		return err
 	}
 	return nil
 }
