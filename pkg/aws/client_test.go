@@ -2,9 +2,11 @@ package aws_test
 
 import (
 	"fmt"
+	"net/http"
 
 	awsSdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -15,11 +17,11 @@ import (
 	. "github.com/onsi/gomega"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
-	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("Client", func() {
@@ -417,6 +419,24 @@ var _ = Describe("Client", func() {
 			valid, err := client.ValidateCredentials()
 			Expect(valid).To(BeTrue())
 			Expect(err).To(BeNil())
+		})
+	})
+
+	Context("ShouldRetry", func() {
+		var customRetryer *aws.CustomRetryer
+		var mockRequest *request.Request
+
+		BeforeEach(func() {
+			customRetryer = &aws.CustomRetryer{}
+		})
+		It("Should not retry with 500 status code", func() {
+			mockRequest = &request.Request{
+				HTTPResponse: &http.Response{
+					StatusCode: 500,
+				},
+			}
+			retry := customRetryer.ShouldRetry(mockRequest)
+			Expect(retry).To(BeFalse())
 		})
 	})
 })
