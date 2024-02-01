@@ -83,40 +83,13 @@ func writeGenericNotifyDetailsResponse(object *GenericNotifyDetailsResponse, str
 		writeNotificationDetailsResponseList(object.items, stream)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("page")
-		stream.WriteInt(object.page)
-		count++
-	}
-	present_ = object.bitmap_&64 != 0 && object.recipients != nil
+	present_ = object.bitmap_&32 != 0 && object.recipients != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("recipients")
 		writeStringList(object.recipients, stream)
-		count++
-	}
-	present_ = object.bitmap_&128 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("size")
-		stream.WriteInt(object.size)
-		count++
-	}
-	present_ = object.bitmap_&256 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("total")
-		stream.WriteInt(object.total)
 	}
 	stream.WriteObjectEnd()
 }
@@ -161,22 +134,10 @@ func readGenericNotifyDetailsResponse(iterator *jsoniter.Iterator) *GenericNotif
 			value := readNotificationDetailsResponseList(iterator)
 			object.items = value
 			object.bitmap_ |= 16
-		case "page":
-			value := iterator.ReadInt()
-			object.page = value
-			object.bitmap_ |= 32
 		case "recipients":
 			value := readStringList(iterator)
 			object.recipients = value
-			object.bitmap_ |= 64
-		case "size":
-			value := iterator.ReadInt()
-			object.size = value
-			object.bitmap_ |= 128
-		case "total":
-			value := iterator.ReadInt()
-			object.total = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()
 		}
