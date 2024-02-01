@@ -3,12 +3,13 @@ package version
 import (
 	"bytes"
 	"fmt"
-	"github.com/openshift/rosa/pkg/info"
-	"github.com/spf13/cobra"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/info"
 )
 
 func TestVersionCommand(t *testing.T) {

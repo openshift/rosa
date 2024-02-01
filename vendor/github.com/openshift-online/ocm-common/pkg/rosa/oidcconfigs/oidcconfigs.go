@@ -4,11 +4,15 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -214,4 +218,30 @@ func keyIDFromPublicKey(publicKey interface{}) (string, error) {
 	keyID := base64.RawURLEncoding.EncodeToString(publicKeyDERHash)
 
 	return keyID, nil
+}
+
+func FetchThumbprint(oidcEndpointURL string) (string, error) {
+	connect, err := url.ParseRequestURI(oidcEndpointURL)
+	if err != nil {
+		return "", err
+	}
+	response, err := http.Get(fmt.Sprintf("https://%s:443", connect.Host))
+	if err != nil {
+		return "", err
+	}
+	certChain := response.TLS.PeerCertificates
+	// https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html
+	// If you see more than one certificate, find the last certificate displayed (at the end of the command output).
+	// This contains the certificate of the top intermediate CA in the certificate authority chain.
+	cert := certChain[len(certChain)-1]
+	return sha1Hash(cert.Raw), nil
+}
+
+// sha1Hash computes the SHA1 of the byte array and returns the hex encoding as a string.
+func sha1Hash(data []byte) string {
+	// nolint:gosec
+	hasher := sha1.New()
+	hasher.Write(data)
+	hashed := hasher.Sum(nil)
+	return hex.EncodeToString(hashed)
 }
