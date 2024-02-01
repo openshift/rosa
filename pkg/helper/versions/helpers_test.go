@@ -103,16 +103,16 @@ var _ = Describe("Get default version", func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	DescribeTable("Validates entries",
-		func(val *v1.Version, expected string) {
+		func(val *v1.Version, expected bool) {
 			isHostedCP := true
-			result := getDefaultVersion(val, isHostedCP)
+			result := isDefaultVersion(val, isHostedCP)
 			Expect(result).To(Equal(expected))
 		},
 		Entry("Hosted default", versionHostedDefault,
-			"4.14.9"),
+			true),
 		Entry("Classic default", versionClassicDefault,
-			"4.14.8"),
+			true),
 		Entry("Not default", notDefault,
-			""),
+			false),
 	)
 })
