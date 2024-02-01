@@ -243,7 +243,7 @@ func MachinePoolRootDiskSizeValidator(version string) Validator {
 		// parse it to validate it is a valid unit
 		size, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSize)
 		if err != nil {
-			return fmt.Errorf("failed to parse machine pool root disk size: %v", err)
+			return fmt.Errorf("failed to parse machine pool root disk size '%s': %v", machinePoolRootDiskSize, err)
 		}
 		return diskValidator.ValidateMachinePoolRootDiskSize(version, size)
 	}
