@@ -8,9 +8,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var _ = Describe("Validate build command", func() {
@@ -240,5 +242,43 @@ var _ = Describe("Validate cloud accounts", func() {
 				Expect(contractDisplay).To(Equal(expected))
 			})
 		})
+	})
+})
+
+var _ = Describe("getMachinePoolRootDisk()", func() {
+
+	var r *rosa.Runtime
+	var cmd *cobra.Command
+
+	version := "4.10"
+	isHostedCP := false
+	defaultMachinePoolRootDiskSize := 12000
+
+	BeforeEach(func() {
+		r = rosa.NewRuntime()
+		cmd = makeCmd()
+		initFlags(cmd)
+
+		DeferCleanup(r.Cleanup)
+	})
+
+	It("OK: isHostedCP = true", func() {
+
+		machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd,
+			version, isHostedCP, defaultMachinePoolRootDiskSize)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(machinePoolRootDisk).To(BeNil())
+	})
+
+	It("OK: bad disk size argument", func() {
+		args.machinePoolRootDiskSize = "200000000000000000000TiB"
+
+		machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd,
+			version, isHostedCP, defaultMachinePoolRootDiskSize)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Expected a valid machine pool root disk size value" +
+			" '200000000000000000000TiB': invalid disk size: '200000000000000000000Ti'. " +
+			"maximum size exceeded"))
+		Expect(machinePoolRootDisk).To(BeNil())
 	})
 })

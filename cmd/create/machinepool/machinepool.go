@@ -520,7 +520,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
 		rootDiskSize, err := ocm.ParseDiskSizeToGigibyte(rootDiskSizeStr)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			r.Reporter.Errorf("Expected a valid machine pool root disk size value '%s': %v", rootDiskSizeStr, err)
 			os.Exit(1)
 		}
 
