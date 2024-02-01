@@ -31,23 +31,10 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 		return
 	}
 
-	for _, v := range vs {
-		if defaultVersion == "" && isDefaultVersion(v, isHostedCP) {
-			defaultVersion = v.RawID()
-		}
-		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
-			continue
-		}
-		if filterHostedCP {
-			valid, err := ocm.HasHostedCPSupport(v)
-			if err != nil {
-				return defaultVersion, versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
-			}
-			if !valid {
-				continue
-			}
-		}
-		versionList = append(versionList, v.RawID())
+	defaultVersion, versionList, err = computeVersionListAndDefault(vs, isHostedCP, isSTS, filterHostedCP)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve versions: %s", err)
+		return
 	}
 
 	if len(versionList) == 0 {
@@ -66,8 +53,33 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 	return
 }
 
+func computeVersionListAndDefault(vs []*v1.Version, isHostedCP bool, isSTS bool,
+	filterHostedCP bool) (string, []string, error) {
+	var defaultVersion string
+	var versionList []string
+	for _, v := range vs {
+		if defaultVersion == "" && isDefaultVersion(v, isHostedCP) {
+			defaultVersion = v.RawID()
+		}
+		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
+			continue
+		}
+		if filterHostedCP {
+			valid, err := ocm.HasHostedCPSupport(v)
+			if err != nil {
+				return defaultVersion, versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
+			}
+			if !valid {
+				continue
+			}
+		}
+		versionList = append(versionList, v.RawID())
+	}
+	return defaultVersion, versionList, nil
+}
+
 func isDefaultVersion(version *v1.Version, isHostedCP bool) bool {
-	if (isHostedCP && version.HostedControlPlaneDefault()) || version.Default() {
+	if (isHostedCP && version.HostedControlPlaneDefault()) || (!isHostedCP && version.Default()) {
 		return true
 	}
 	return false
