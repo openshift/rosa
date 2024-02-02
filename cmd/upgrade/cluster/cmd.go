@@ -382,7 +382,7 @@ func createUpgradePolicyHypershift(r *rosa.Runtime, clusterKey string,
 		return err
 	}
 
-	err = r.OCMClient.ScheduleHypershiftControlPlaneUpgrade(cluster.ID(), upgradePolicy)
+	_, err = r.OCMClient.ScheduleHypershiftControlPlaneUpgrade(cluster.ID(), upgradePolicy)
 	if err != nil {
 		return err
 	}
