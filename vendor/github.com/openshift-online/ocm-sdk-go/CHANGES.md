@@ -3,29 +3,6 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
-# 0.1.403
-- Update model version v0.0.356
-  - Reverting change to remove provision shard from cluster
-
-## 0.1.402
-- Update model version v0.0.355
-  - Removed undefined api calls from the model
-  - Add support to `securestore` that allows the caller to define a keyring target
-  - Additional `securestore` Error Standardization
-  - Add error handling to `securestore` for denied Keychain access due to permissions
-
-## 0.1.401
-- Update model version v0.0.353
-  - Added support for `PackageImage` for `clusters_mgmt`
-
-## 0.1.400
-- Update model version v0.0.352
-  - Remove `StatusBoard` `fullname` search parameter.
-  - Deprecate `Notify` resource.
-
-## 0.1.399
-- Additional error handling for `securestore`
-
 ## 0.1.398
 - Add regions support from ocm shards
 - Don't error when response is 204 and no content-type

@@ -14,7 +14,6 @@
 package expfmt
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"math"
@@ -22,8 +21,8 @@ import (
 	"net/http"
 
 	dto "github.com/prometheus/client_model/go"
-	"google.golang.org/protobuf/encoding/protodelim"
 
+	"github.com/matttproud/golang_protobuf_extensions/pbutil"
 	"github.com/prometheus/common/model"
 )
 
@@ -87,10 +86,8 @@ type protoDecoder struct {
 
 // Decode implements the Decoder interface.
 func (d *protoDecoder) Decode(v *dto.MetricFamily) error {
-	opts := protodelim.UnmarshalOptions{
-		MaxSize: -1,
-	}
-	if err := opts.UnmarshalFrom(bufio.NewReader(d.r), v); err != nil {
+	_, err := pbutil.ReadDelimited(d.r, v)
+	if err != nil {
 		return err
 	}
 	if !model.IsValidMetricName(model.LabelValue(v.GetName())) {
@@ -118,31 +115,32 @@ func (d *protoDecoder) Decode(v *dto.MetricFamily) error {
 // textDecoder implements the Decoder interface for the text protocol.
 type textDecoder struct {
 	r    io.Reader
-	fams map[string]*dto.MetricFamily
-	err  error
+	p    TextParser
+	fams []*dto.MetricFamily
 }
 
 // Decode implements the Decoder interface.
 func (d *textDecoder) Decode(v *dto.MetricFamily) error {
-	if d.err == nil {
-		// Read all metrics in one shot.
-		var p TextParser
-		d.fams, d.err = p.TextToMetricFamilies(d.r)
-		// If we don't get an error, store io.EOF for the end.
-		if d.err == nil {
-			d.err = io.EOF
+	// TODO(fabxc): Wrap this as a line reader to make streaming safer.
+	if len(d.fams) == 0 {
+		// No cached metric families, read everything and parse metrics.
+		fams, err := d.p.TextToMetricFamilies(d.r)
+		if err != nil {
+			return err
+		}
+		if len(fams) == 0 {
+			return io.EOF
+		}
+		d.fams = make([]*dto.MetricFamily, 0, len(fams))
+		for _, f := range fams {
+			d.fams = append(d.fams, f)
 		}
 	}
-	// Pick off one MetricFamily per Decode until there's nothing left.
-	for key, fam := range d.fams {
-		v.Name = fam.Name
-		v.Help = fam.Help
-		v.Type = fam.Type
-		v.Metric = fam.Metric
-		delete(d.fams, key)
-		return nil
-	}
-	return d.err
+
+	*v = *d.fams[0]
+	d.fams = d.fams[1:]
+
+	return nil
 }
 
 // SampleDecoder wraps a Decoder to extract samples from the metric families

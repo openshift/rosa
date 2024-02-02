@@ -28,31 +28,29 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
-	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
-	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
-
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/organizations"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-
+	"github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	client "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/profile"
 	regionflag "github.com/openshift/rosa/pkg/aws/region"
@@ -309,7 +307,7 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
 		}),
 		config.WithClientLogMode(logLevel),
 		config.WithRetryer(func() aws.Retryer {
-			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
+			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
 			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
 			retryer = retry.AddWithErrorCodes(retryer, awserr.InvalidClientTokenID)
 			return retryer
@@ -335,7 +333,7 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (aws
 		}),
 		config.WithClientLogMode(logLevel),
 		config.WithRetryer(func() aws.Retryer {
-			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), NumMaxRetries)
+			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
 			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
 			retryer = retry.AddWithErrorCodes(retryer, awserr.InvalidClientTokenID)
 			return retryer
@@ -712,11 +710,10 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 	_, err := c.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		if strings.Contains(fmt.Sprintf("%s", err), "InvalidClientTokenId") {
-			awsErr := fmt.Errorf("InvalidClientTokenId",
+			awsErr := fmt.Errorf("InvalidClientTokenId \n"+
 				"Invalid AWS Credentials. For help configuring your credentials, see "+
-					"https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/"+
-					"rosa-config-aws-account.html#rosa-configuring-aws-account_rosa-config-aws-account",
-				err)
+				"https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/"+
+				"rosa-config-aws-account.html#rosa-configuring-aws-account_rosa-config-aws-account: %w", err)
 			return false, awsErr
 
 		}
@@ -1268,13 +1265,3 @@ func (c *awsClient) Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue str
 	}
 	return false
 }
-
-func (c *awsClient) Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue string) bool {
-	for _, tag := range tags {
-		if aws.ToString(tag.Key) == tagName && aws.ToString(tag.Value) == tagValue {
-			return true
-		}
-	}
-	return false
-}
-

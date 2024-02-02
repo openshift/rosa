@@ -1,8 +1,6 @@
 package version
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
