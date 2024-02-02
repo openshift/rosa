@@ -15,12 +15,20 @@
 #
 
 run:
-  skip-dirs: (assets|docs|templates|vendor)
-  deadline: 5m
+  skip-dirs:
+  - assets
+  - docs
+  - templates
+  - vendor
   issues-exit-code: 1
   modules-download-mode: readonly
 issues:
   max-same-issues: 0
+  exclude-rules:
+    - path: '(.+)_test\.go'
+      linters:
+        - funlen
+        - goconst
 
 linters:
   disable-all: true
@@ -49,4 +57,3 @@ linters-settings:
       - prefix(gitlab)
       - prefix(github.com/openshift/rosa)
     custom-order: true
-

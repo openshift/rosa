@@ -1337,7 +1337,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			createAccountRolesCommand := "rosa create account-roles"
 			if isHostedCP {
-				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+				createAccountRolesCommand = createAccountRolesCommand + " " + hostedCPFlag
 			}
 			r.Reporter.Warnf(fmt.Sprintf("No compatible account roles with version '%s' found. "+
 				"You will need to manually set them in the next steps or run '%s' to create them first.",
@@ -1399,7 +1399,7 @@ func run(cmd *cobra.Command, _ []string) {
 				if selectedARN == "" {
 					createAccountRolesCommand := "rosa create account-roles"
 					if isHostedCP {
-						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+						createAccountRolesCommand = createAccountRolesCommand + " " + hostedCPFlag
 					}
 					r.Reporter.Warnf(fmt.Sprintf("No compatible '%s' account roles with version '%s' found. "+
 						"You will need to manually set them in the next steps or run '%s' to create them first.",
@@ -3218,16 +3218,20 @@ func GenerateContractDisplay(contract *accountsv1.Contract) string {
 	dimensions := contract.Dimensions()
 
 	numberOfVCPUs, numberOfClusters := ocm.GetNumsOfVCPUsAndClusters(dimensions)
-	prePurchaseInfo := fmt.Sprintf("   | Number of vCPUs:    |'%s'             | \n"+
-		"   | Number of clusters: |'%s'             | \n",
-		strconv.Itoa(numberOfVCPUs), strconv.Itoa(numberOfClusters))
 
-	contractDisplay := "\n" +
-		"   +---------------------+----------------+ \n" +
-		"   | Start Date          |" + contract.StartDate().Format(format) + "    | \n" +
-		"   | End Date            |" + contract.EndDate().Format(format) + "    | \n" +
-		prePurchaseInfo +
-		"   +---------------------+----------------+ \n"
+	contractDisplay := fmt.Sprintf(`
+   +---------------------+----------------+ 
+   | Start Date          |%s    | 
+   | End Date            |%s    | 
+   | Number of vCPUs:    |'%s'             | 
+   | Number of clusters: |'%s'             | 
+   +---------------------+----------------+ 
+`,
+		contract.StartDate().Format(format),
+		contract.EndDate().Format(format),
+		strconv.Itoa(numberOfVCPUs),
+		strconv.Itoa(numberOfClusters),
+	)
 
 	return contractDisplay
 
@@ -3536,6 +3540,8 @@ func parseRFC3339(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339, s)
 }
 
+const hostedCPFlag = "--hosted-cp"
+
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	operatorRolePath string, userSelectedAvailabilityZones bool, labels string,
 	properties []string) string {
@@ -3686,7 +3692,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --availability-zones %s", strings.Join(spec.AvailabilityZones, ","))
 	}
 	if spec.Hypershift.Enabled {
-		command += " --hosted-cp"
+		command += " " + hostedCPFlag
 	}
 
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
