@@ -1,6 +1,7 @@
 package aws_test
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -16,12 +17,14 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
+	logTest "github.com/sirupsen/logrus/hooks/test"
 )
 
 var _ = Describe("Client", func() {
@@ -46,7 +49,7 @@ var _ = Describe("Client", func() {
 		mockSecretsManagerAPI = mocks.NewMockSecretsManagerAPI(mockCtrl)
 		mockSTSApi = mocks.NewMockSTSAPI(mockCtrl)
 		client = aws.New(
-			logrus.New(),
+			log.New(),
 			mockIamAPI,
 			mockEC2API,
 			mocks.NewMockOrganizationsAPI(mockCtrl),
@@ -423,11 +426,12 @@ var _ = Describe("Client", func() {
 	})
 
 	Context("ShouldRetry", func() {
-		var customRetryer *aws.CustomRetryer
+		var customRetryer aws.CustomRetryer
 		var mockRequest *request.Request
 
 		BeforeEach(func() {
-			customRetryer = &aws.CustomRetryer{}
+
+			customRetryer = aws.BuildCustomRetryer()
 		})
 		It("Should not retry with 500 status code", func() {
 			mockRequest = &request.Request{
@@ -437,6 +441,21 @@ var _ = Describe("Client", func() {
 			}
 			retry := customRetryer.ShouldRetry(mockRequest)
 			Expect(retry).To(BeFalse())
+		})
+		It("Should not retry with 444 status code", func() {
+
+			hook := logTest.NewGlobal()
+			customRetryer.Logger.AddHook(hook)
+
+			mockRequest = &request.Request{
+				HTTPResponse: &http.Response{
+					StatusCode: 429,
+				},
+				Error: errors.New("Throttling"),
+			}
+			retry := customRetryer.ShouldRetry(mockRequest)
+			Expect(retry).ToNot(BeFalse())
+			Expect(hook.LastEntry().Message).To(Equal("Throttling Rate limit exceeded. Retrying the request again."))
 		})
 	})
 })

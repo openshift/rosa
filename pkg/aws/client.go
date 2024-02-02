@@ -384,7 +384,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 
 	// Update session config
 	sess = sess.Copy(&aws.Config{
-		Retryer: buildCustomRetryer(),
+		Retryer: BuildCustomRetryer(),
 		Logger:  logger,
 		HTTPClient: &http.Client{
 			Transport: http.DefaultTransport,
@@ -1251,7 +1251,8 @@ func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, err
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for
 // additional custom features
 type CustomRetryer struct {
-	client.DefaultRetryer
+	DefaultRetryer client.DefaultRetryer
+	Logger         *logrus.Logger
 }
 
 // ShouldRetry overrides the SDK's built in DefaultRetryer adding customization
@@ -1260,15 +1261,14 @@ func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
 	if req.HTTPResponse.StatusCode >= 500 {
 		return false
 	}
-	logger := logging.NewLogger()
 	if strings.Contains(req.Error.Error(), "Throttling") {
-		logger.Warn("Throttling Rate limit exceeded. Retrying the request again.")
+		r.Logger.Warn("Throttling Rate limit exceeded. Retrying the request again.")
 	}
 
 	return r.DefaultRetryer.ShouldRetry(req)
 }
 
-func buildCustomRetryer() CustomRetryer {
+func BuildCustomRetryer() CustomRetryer {
 	return CustomRetryer{
 		DefaultRetryer: client.DefaultRetryer{
 			NumMaxRetries:    12,
@@ -1276,5 +1276,6 @@ func buildCustomRetryer() CustomRetryer {
 			MinThrottleDelay: 5 * time.Second,
 			MaxThrottleDelay: 5 * time.Second,
 		},
+		Logger: logging.NewLogger(),
 	}
 }

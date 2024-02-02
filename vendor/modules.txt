@@ -119,6 +119,8 @@ github.com/cespare/xxhash/v2
 # github.com/cpuguy83/go-md2man/v2 v2.0.2
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
+# github.com/daviddengcn/go-colortext v1.0.0
+## explicit; go 1.14
 # github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
 ## explicit
 github.com/dchest/validator
@@ -227,6 +229,10 @@ github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.14
 ## explicit; go 1.12
 github.com/mattn/go-isatty
+# github.com/mattn/gom v0.0.0-20190726063113-0ebf2b5d812d
+## explicit
+# github.com/mattn/gover v0.0.0-20161108101310-3d388d8d9575
+## explicit
 # github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 ## explicit
 github.com/mgutz/ansi
@@ -357,6 +363,7 @@ github.com/russross/blackfriday/v2
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
+github.com/sirupsen/logrus/hooks/test
 # github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 ## explicit
 github.com/skratchdot/open-golang/open
