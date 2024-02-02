@@ -1,10 +1,13 @@
 package aws_test
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 
 	awsSdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -15,11 +18,12 @@ import (
 	. "github.com/onsi/gomega"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
-	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/sirupsen/logrus"
+	logrusTest "github.com/sirupsen/logrus/hooks/test"
 )
 
 var _ = Describe("Client", func() {
@@ -417,6 +421,52 @@ var _ = Describe("Client", func() {
 			valid, err := client.ValidateCredentials()
 			Expect(valid).To(BeTrue())
 			Expect(err).To(BeNil())
+		})
+	})
+
+	Context("ShouldRetry", func() {
+		var customRetryer aws.CustomRetryer
+		var mockRequest *request.Request
+		var mockRequestHeader http.Header
+		BeforeEach(func() {
+			customRetryer = aws.BuildCustomRetryer()
+		})
+		It("Should not retry with 500 status code", func() {
+			mockRequest = &request.Request{
+				HTTPResponse: &http.Response{
+					StatusCode: 500,
+				},
+			}
+			retry := customRetryer.ShouldRetry(mockRequest)
+			Expect(retry).To(BeFalse())
+		})
+		It("Should not retry with 444 status code", func() {
+
+			hook := logrusTest.NewGlobal()
+			customRetryer.Logger.AddHook(hook)
+
+			mockRequestHeader = http.Header{}
+			mockRequestHeader.Add("x-amzn-requestid", "1234")
+			mockRequest = &request.Request{
+				HTTPResponse: &http.Response{
+					StatusCode: 429,
+				},
+				HTTPRequest: &http.Request{
+					Header: mockRequestHeader,
+					Method: "GET",
+					Host:   "aws.com",
+				},
+				Error: errors.New("Throttling"),
+			}
+			retry := customRetryer.ShouldRetry(mockRequest)
+			Expect(retry).ToNot(BeFalse())
+			Expect(hook.LastEntry().Message).To(Equal(fmt.Sprintf(aws.ThrottlingMessage,
+				mockRequest.HTTPRequest.Header.Get("x-amzn-requestid"),
+				mockRequest.HTTPRequest.Method,
+				mockRequest.HTTPRequest.Host,
+				mockRequest.RetryCount+1,
+				customRetryer.DefaultRetryer.MaxRetries(),
+			)))
 		})
 	})
 })
