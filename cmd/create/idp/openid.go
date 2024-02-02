@@ -31,6 +31,9 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 )
 
+const instructionsURLBase = "https://docs.openshift.com/dedicated/identity_providers/" +
+	"config-identity-providers.html#"
+
 func buildOpenidIdp(cmd *cobra.Command,
 	cluster *cmv1.Cluster,
 	idpName string) (idpBuilder cmv1.IdentityProviderBuilder, err error) {
@@ -49,8 +52,7 @@ func buildOpenidIdp(cmd *cobra.Command,
 	}
 
 	if interactive.Enabled() {
-		instructionsURL := "https://docs.openshift.com/dedicated/identity_providers/" +
-			"config-identity-providers.html#config-openid-idp_config-identity-providers"
+		instructionsURL := instructionsURLBase + "config-openid-idp_config-identity-providers"
 		oauthURL, err := ocm.BuildOAuthURL(cluster, idpType)
 		if err != nil {
 			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
