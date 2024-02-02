@@ -218,20 +218,28 @@ var args struct {
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
 var userSpecifiedAutoscalerValues []*pflag.Flag
 
-var Cmd = &cobra.Command{
-	Use:   "cluster",
-	Short: "Create cluster",
-	Long:  "Create cluster.",
-	Example: `  # Create a cluster named "mycluster"
+var Cmd = makeCmd()
+
+func makeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "cluster",
+		Short: "Create cluster",
+		Long:  "Create cluster.",
+		Example: `  # Create a cluster named "mycluster"
   rosa create cluster --cluster-name=mycluster
 
   # Create a cluster in the us-east-2 region
   rosa create cluster --cluster-name=mycluster --region=us-east-2`,
-	Run: run,
+		Run: run,
+	}
 }
 
 func init() {
-	flags := Cmd.Flags()
+	initFlags(Cmd)
+}
+
+func initFlags(cmd *cobra.Command) {
+	flags := cmd.Flags()
 	flags.SortFlags = false
 
 	// Basic options
@@ -523,7 +531,7 @@ func init() {
 		"Enable autoscaling of compute nodes.",
 	)
 
-	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(Cmd, clusterAutoscalerFlagsPrefix)
+	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(cmd, clusterAutoscalerFlagsPrefix)
 	// iterates through all autoscaling flags and stores them in slice to track user input
 	flags.VisitAll(func(f *pflag.Flag) {
 		if strings.HasPrefix(f.Name, clusterAutoscalerFlagsPrefix) {
@@ -561,7 +569,7 @@ func init() {
 		"The main controller responsible for rendering the core networking components.",
 	)
 	flags.MarkHidden("network-type")
-	Cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
+	cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
 
 	flags.IPNetVar(
 		&args.machineCIDR,
@@ -796,9 +804,9 @@ func init() {
 			listInputMessage,
 	)
 
-	aws.AddModeFlag(Cmd)
+	aws.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
-	output.AddFlag(Cmd)
+	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
 }
 
@@ -2523,75 +2531,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	isVersionCompatibleMachinePoolRootDisk, err := versions.IsGreaterThanOrEqual(
-		version, ocm.MinVersionForMachinePoolRootDisk)
+	machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd, version,
+		isHostedCP, defaultMachinePoolRootDiskSize)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
+		r.Reporter.Errorf(err.Error())
 		os.Exit(1)
-	}
-	if !isVersionCompatibleMachinePoolRootDisk && cmd.Flags().Changed(workerDiskSizeFlag) {
-		formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForMachinePoolRootDisk)
-		if err != nil {
-			r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
-			os.Exit(1)
-		}
-		r.Reporter.Errorf(
-			"Updating Worker disk size is not supported for versions prior to '%s'",
-			formattedVersion,
-		)
-		os.Exit(1)
-	}
-	var machinePoolRootDisk *ocm.Volume
-	if isVersionCompatibleMachinePoolRootDisk && !isHostedCP &&
-		(args.machinePoolRootDiskSize != "" || interactive.Enabled()) {
-		var machinePoolRootDiskSizeStr string
-		if args.machinePoolRootDiskSize == "" {
-			// We don't need to parse the default since it's returned from the OCM API and AWS
-			// always defaults to GiB
-			machinePoolRootDiskSizeStr = helper.GigybyteStringer(defaultMachinePoolRootDiskSize)
-		} else {
-			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
-		}
-		if interactive.Enabled() {
-			// In order to avoid confusion, we want to display to the user what was passed as an
-			// argument
-			// Even if it was not valid, we want to display it to the user, then the CLI will show an
-			// error and the value can be corrected
-			// Also, if nothing is given, we want to display the default value fetched from the OCM API
-			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
-				Question: "Machine pool root disk size (GiB or TiB)",
-				Help:     cmd.Flags().Lookup(workerDiskSizeFlag).Usage,
-				Default:  machinePoolRootDiskSizeStr,
-				Validators: []interactive.Validator{
-					interactive.MachinePoolRootDiskSizeValidator(version),
-				},
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
-				os.Exit(1)
-			}
-		}
-
-		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
-		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
-			os.Exit(1)
-		}
-
-		err = diskValidator.ValidateMachinePoolRootDiskSize(version, machinePoolRootDiskSize)
-		if err != nil {
-			r.Reporter.Errorf(err.Error())
-			os.Exit(1)
-		}
-
-		// If the size given by the user is different than the default, we just let the OCM server
-		// handle the default root disk size
-		if machinePoolRootDiskSize != defaultMachinePoolRootDiskSize {
-			machinePoolRootDisk = &ocm.Volume{
-				Size: machinePoolRootDiskSize,
-			}
-		}
 	}
 
 	// No CNI
@@ -3959,4 +3903,77 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 	for i, sg := range *additionalSgIds {
 		(*additionalSgIds)[i] = strings.TrimSpace(sg)
 	}
+}
+
+func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
+	isHostedCP bool, defaultMachinePoolRootDiskSize int) (machinePoolRootDisk *ocm.Volume, err error) {
+
+	isVersionCompatibleMachinePoolRootDisk, err := versions.IsGreaterThanOrEqual(
+		version, ocm.MinVersionForMachinePoolRootDisk)
+	if err != nil {
+		return nil, fmt.Errorf("There was a problem checking version compatibility: %v", err)
+	}
+	if !isVersionCompatibleMachinePoolRootDisk && cmd.Flags().Changed(workerDiskSizeFlag) {
+		formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForMachinePoolRootDisk)
+		if err != nil {
+			r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
+			os.Exit(1)
+		}
+		return nil, fmt.Errorf(
+			"Updating Worker disk size is not supported for versions prior to '%s'",
+			formattedVersion,
+		)
+	}
+	if isVersionCompatibleMachinePoolRootDisk && !isHostedCP &&
+		(args.machinePoolRootDiskSize != "" || interactive.Enabled()) {
+		var machinePoolRootDiskSizeStr string
+		if args.machinePoolRootDiskSize == "" {
+			// We don't need to parse the default since it's returned from the OCM API and AWS
+			// always defaults to GiB
+			machinePoolRootDiskSizeStr = helper.GigybyteStringer(defaultMachinePoolRootDiskSize)
+		} else {
+			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
+		}
+		if interactive.Enabled() {
+			// In order to avoid confusion, we want to display to the user what was passed as an
+			// argument
+			// Even if it was not valid, we want to display it to the user, then the CLI will show an
+			// error and the value can be corrected
+			// Also, if nothing is given, we want to display the default value fetched from the OCM API
+			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
+				Question: "Machine pool root disk size (GiB or TiB)",
+				Help:     cmd.Flags().Lookup(workerDiskSizeFlag).Usage,
+				Default:  machinePoolRootDiskSizeStr,
+				Validators: []interactive.Validator{
+					interactive.MachinePoolRootDiskSizeValidator(version),
+				},
+			})
+			if err != nil {
+				return nil, fmt.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			}
+		}
+
+		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
+		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
+		if err != nil {
+			return nil, fmt.Errorf("Expected a valid machine pool root disk size value '%s': %v",
+				machinePoolRootDiskSizeStr, err)
+
+		}
+
+		err = diskValidator.ValidateMachinePoolRootDiskSize(version, machinePoolRootDiskSize)
+		if err != nil {
+			return nil, err
+		}
+
+		// If the size given by the user is different than the default, we just let the OCM server
+		// handle the default root disk size
+		if machinePoolRootDiskSize != defaultMachinePoolRootDiskSize {
+			machinePoolRootDisk = &ocm.Volume{
+				Size: machinePoolRootDiskSize,
+			}
+		}
+	}
+
+	return machinePoolRootDisk, nil
 }
