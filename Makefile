@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+include .bingo/Variables.mk
+
 # Ensure go modules are enabled:
 export GO111MODULE=on
 export GOPROXY=https://proxy.golang.org
@@ -73,9 +75,8 @@ clean:
 		$(NULL)
 
 .PHONY: generate
-generate:
-	which go-bindata || GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...
-	go-bindata -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
+generate: $(GO_BINDATA)
+	$(GO_BINDATA) -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 
 .PHONY: codecov
 codecov: coverage
