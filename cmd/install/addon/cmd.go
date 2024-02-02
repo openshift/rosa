@@ -22,13 +22,13 @@ import (
 	"regexp"
 	"strings"
 
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"

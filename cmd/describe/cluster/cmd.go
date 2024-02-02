@@ -29,7 +29,6 @@ import (
 	"github.com/spf13/cobra"
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 
-	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"

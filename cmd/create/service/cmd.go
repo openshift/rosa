@@ -23,13 +23,12 @@ import (
 	"regexp"
 	"strings"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
-	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper/roles"

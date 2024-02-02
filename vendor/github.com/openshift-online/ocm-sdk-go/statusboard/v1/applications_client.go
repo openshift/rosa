@@ -225,6 +225,7 @@ type ApplicationsListRequest struct {
 	path      string
 	query     url.Values
 	header    http.Header
+	fullname  *string
 	orderBy   *string
 	page      *int
 	search    *string
@@ -247,6 +248,12 @@ func (r *ApplicationsListRequest) Header(name string, value interface{}) *Applic
 // Note: Services that do not support this feature may silently ignore this call.
 func (r *ApplicationsListRequest) Impersonate(user string) *ApplicationsListRequest {
 	helpers.AddImpersonationHeader(&r.header, user)
+	return r
+}
+
+// Fullname sets the value of the 'fullname' parameter.
+func (r *ApplicationsListRequest) Fullname(value string) *ApplicationsListRequest {
+	r.fullname = &value
 	return r
 }
 
@@ -285,6 +292,9 @@ func (r *ApplicationsListRequest) Send() (result *ApplicationsListResponse, err 
 // SendContext sends this request, waits for the response, and returns it.
 func (r *ApplicationsListRequest) SendContext(ctx context.Context) (result *ApplicationsListResponse, err error) {
 	query := helpers.CopyQuery(r.query)
+	if r.fullname != nil {
+		helpers.AddValue(&query, "fullname", *r.fullname)
+	}
 	if r.orderBy != nil {
 		helpers.AddValue(&query, "order_by", *r.orderBy)
 	}

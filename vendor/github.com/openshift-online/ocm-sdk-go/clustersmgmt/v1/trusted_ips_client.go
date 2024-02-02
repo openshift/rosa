@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -56,6 +57,16 @@ func (c *TrustedIpsClient) List() *TrustedIpsListRequest {
 		transport: c.transport,
 		path:      c.path,
 	}
+}
+
+// TrustedIp returns the target 'trusted_ip' resource for the given identifier.
+//
+// Reference to the resource that manages a specific trusted Ip address.
+func (c *TrustedIpsClient) TrustedIp(id string) *TrustedIpClient {
+	return NewTrustedIpClient(
+		c.transport,
+		path.Join(c.path, id),
+	)
 }
 
 // TrustedIpsListRequest is the request for the 'list' method.

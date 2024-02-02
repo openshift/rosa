@@ -52,6 +52,7 @@ var pathTreeData = `{
           }
         },
         "labels": null,
+        "notify": null,
         "notify_details": null,
         "organizations": {
           "-": {
@@ -95,6 +96,7 @@ var pathTreeData = `{
             "labels": {
               "-": null
             },
+            "notify": null,
             "reserved_resources": {
               "-": null
             },
@@ -281,6 +283,14 @@ var pathTreeData = `{
                 }
               }
             },
+            "product": {
+              "minimal_versions": {
+                "-": null
+              },
+              "technology_previews": {
+                "-": null
+              }
+            },
             "provision_shard": null,
             "resources": {
               "live": null
@@ -345,7 +355,9 @@ var pathTreeData = `{
         "provision_shards": {
           "-": null
         },
-        "trusted_ip_addresses": null,
+        "trusted_ip_addresses": {
+          "-": null
+        },
         "version_gates": {
           "-": null
         },

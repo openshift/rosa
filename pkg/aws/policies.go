@@ -27,11 +27,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	semver "github.com/hashicorp/go-version"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 )
@@ -777,89 +777,6 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 	}
 
 	return ocmRoles, nil
-}
-
-func (c *awsClient) listPolicies(role iamtypes.Role) ([]Policy, error) {
-	policiesOutput, err := c.iamClient.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{
-		RoleName: role.RoleName,
-	})
-	if err != nil {
-		return Role{}, err
-	}
-
-	var policies []Policy
-	for _, policyName := range policiesOutput.PolicyNames {
-		policyOutput, err := c.iamClient.GetRolePolicy(context.Background(), &iam.GetRolePolicyInput{
-			PolicyName: aws.String(policyName),
-			RoleName:   role.RoleName,
-		})
-		if err != nil {
-			return nil, err
-		}
-		policyDoc, err := getPolicyDocument(policyOutput.PolicyDocument)
-		if err != nil {
-			return nil, err
-		}
-		policy := Policy{
-			PolicyName:     aws.ToString(policyOutput.PolicyName),
-			PolicyDocument: *policyDoc,
-		}
-		policies = append(policies, policy)
-	}
-
-	return policies, nil
-}
-
-func (c *awsClient) GetAccountRoleByArn(arn string) (Role, error) {
-	role, err := c.GetRoleByARN(arn)
-	if err != nil {
-		return Role{}, err
-	}
-
-	accountRole, err := c.mapToAccountRole("", role)
-
-	if err != nil {
-		return Role{}, err
-	}
-
-	return accountRole, nil
-}
-
-func (c *awsClient) mapToAccountRole(version string, role iamtypes.Role) (Role, error) {
-	if !checkIfAccountRole(role.RoleName) {
-		return Role{}, nil
-	}
-
-	accountRole := Role{}
-
-	listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
-		RoleName: role.RoleName,
-	})
-	if err != nil {
-		return Role{}, err
-	}
-
-	var policies []Policy
-	for _, policyName := range policiesOutput.PolicyNames {
-		policyOutput, err := c.iamClient.GetRolePolicy(context.Background(), &iam.GetRolePolicyInput{
-			PolicyName: aws.String(policyName),
-			RoleName:   role.RoleName,
-		})
-		if err != nil {
-			return nil, err
-		}
-		policyDoc, err := getPolicyDocument(policyOutput.PolicyDocument)
-		if err != nil {
-			return nil, err
-		}
-		policy := Policy{
-			PolicyName:     aws.ToString(policyOutput.PolicyName),
-			PolicyDocument: *policyDoc,
-		}
-		policies = append(policies, policy)
-	}
-
-	return policies, nil
 }
 
 func (c *awsClient) GetAccountRoleByArn(arn string) (Role, error) {

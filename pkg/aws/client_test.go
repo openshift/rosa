@@ -1,34 +1,29 @@
 package aws
 
 import (
-	"errors"
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
 
-	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/smithy-go"
-	"github.com/openshift-online/ocm-sdk-go/helpers"
+	gomock "go.uber.org/mock/gomock"
 
 	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"github.com/golang/mock/gomock"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	"github.com/openshift-online/ocm-sdk-go/helpers"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/assets"
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
-	"github.com/openshift/rosa/pkg/test/matchers"
 )
 
 var _ = Describe("Client", func() {
@@ -41,6 +36,7 @@ var _ = Describe("Client", func() {
 		mockIamAPI            *mocks.MockIamApiClient
 		mockS3API             *mocks.MockS3ApiClient
 		mockSecretsManagerAPI *mocks.MockSecretsManagerApiClient
+		mockSTSApi            *mocks.MockStsApiClient
 
 		mockedOidcProviderArns []string
 		mockedOidcConfigs      []*cmv1.OidcConfig
@@ -52,6 +48,7 @@ var _ = Describe("Client", func() {
 		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
 		mockEC2API = mocks.NewMockEc2ApiClient(mockCtrl)
 		mockS3API = mocks.NewMockS3ApiClient(mockCtrl)
+		mockSTSApi = mocks.NewMockStsApiClient(mockCtrl)
 		mockSecretsManagerAPI = mocks.NewMockSecretsManagerApiClient(mockCtrl)
 		client = New(
 			awsSdk.Config{},
@@ -61,7 +58,7 @@ var _ = Describe("Client", func() {
 			mocks.NewMockOrganizationsApiClient(mockCtrl),
 			mockS3API,
 			mockSecretsManagerAPI,
-			mocks.NewMockStsApiClient(mockCtrl),
+			mockSTSApi,
 			mockCfAPI,
 			mocks.NewMockServiceQuotasApiClient(mockCtrl),
 			&AccessKey{},
@@ -85,7 +82,7 @@ var _ = Describe("Client", func() {
 		})
 		Context("When the cloudformation stack already exists", func() {
 			JustBeforeEach(func() {
-				mockCfAPI.EXPECT().ListStacks(context.Background(),
+				mockCfAPI.EXPECT().ListStacks(gomock.Any(),
 					&cloudformation.ListStacksInput{}).Return(
 					&cloudformation.ListStacksOutput{
 						StackSummaries: []cloudformationtypes.StackSummary{
@@ -104,7 +101,7 @@ var _ = Describe("Client", func() {
 					cfTemplate, err := assets.Asset(cfTemplatePath)
 					Expect(err).ToNot(HaveOccurred())
 					cfTemplateBody := string(cfTemplate)
-					mockIamAPI.EXPECT().GetUser(context.Background(),
+					mockIamAPI.EXPECT().GetUser(gomock.Any(),
 						&iam.GetUserInput{UserName: &adminUserName}).Return(
 						&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 						&iamtypes.NoSuchEntityException{},
@@ -155,10 +152,10 @@ var _ = Describe("Client", func() {
 			Context("When stack is in DELETE_COMPLETE state", func() {
 				BeforeEach(func() {
 					stackStatus = string(cloudformationtypes.StackStatusDeleteComplete)
-					mockIamAPI.EXPECT().ListUsers(context.Background(), gomock.Any()).Return(
+					mockIamAPI.EXPECT().ListUsers(gomock.Any(), gomock.Any()).Return(
 						&iam.ListUsersOutput{Users: []iamtypes.User{}}, nil)
-					mockIamAPI.EXPECT().TagUser(context.Background(), gomock.Any()).Return(&iam.TagUserOutput{}, nil)
-					mockIamAPI.EXPECT().GetUser(context.Background(), &iam.GetUserInput{UserName: &adminUserName}).Return(
+					mockIamAPI.EXPECT().TagUser(gomock.Any(), gomock.Any()).Return(&iam.TagUserOutput{}, nil)
+					mockIamAPI.EXPECT().GetUser(gomock.Any(), &iam.GetUserInput{UserName: &adminUserName}).Return(
 						&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 						&iamtypes.NoSuchEntityException{},
 					)
@@ -176,7 +173,7 @@ var _ = Describe("Client", func() {
 							_ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
 							return describeStacksOutput, nil
 						}).AnyTimes()
-					mockCfAPI.EXPECT().CreateStack(context.Background(), gomock.Any()).Return(nil, nil)
+					mockCfAPI.EXPECT().CreateStack(gomock.Any(), gomock.Any()).Return(nil, nil)
 				})
 				It("Creates a cloudformation stack", func() {
 					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, DefaultRegion)
@@ -189,7 +186,7 @@ var _ = Describe("Client", func() {
 			Context("When stack is in ROLLBACK_COMPLETE state", func() {
 				BeforeEach(func() {
 					stackStatus = string(cloudformationtypes.StackStatusRollbackComplete)
-					mockIamAPI.EXPECT().GetUser(context.Background(), gomock.Any()).Return(
+					mockIamAPI.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(
 						&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 						&iamtypes.NoSuchEntityException{},
 					)
@@ -208,13 +205,13 @@ var _ = Describe("Client", func() {
 
 		Context("When the cloudformation stack does not exists", func() {
 			BeforeEach(func() {
-				mockCfAPI.EXPECT().ListStacks(context.Background(), gomock.Any()).Return(&cloudformation.ListStacksOutput{
+				mockCfAPI.EXPECT().ListStacks(gomock.Any(), gomock.Any()).Return(&cloudformation.ListStacksOutput{
 					StackSummaries: []cloudformationtypes.StackSummary{},
 				}, nil)
-				mockIamAPI.EXPECT().ListUsers(context.Background(), gomock.Any()).Return(
+				mockIamAPI.EXPECT().ListUsers(gomock.Any(), gomock.Any()).Return(
 					&iam.ListUsersOutput{Users: []iamtypes.User{}}, nil)
-				mockIamAPI.EXPECT().TagUser(context.Background(), gomock.Any()).Return(&iam.TagUserOutput{}, nil)
-				mockIamAPI.EXPECT().GetUser(context.Background(), gomock.Any()).Return(
+				mockIamAPI.EXPECT().TagUser(gomock.Any(), gomock.Any()).Return(&iam.TagUserOutput{}, nil)
+				mockIamAPI.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(
 					&iam.GetUserOutput{User: &iamtypes.User{UserName: &adminUserName}},
 					&iamtypes.NoSuchEntityException{},
 				)
@@ -242,10 +239,6 @@ var _ = Describe("Client", func() {
 				Expect(stackCreated).To(BeTrue())
 			})
 		})
-		//		Context("When the IAM user already exists"), func() {
-		//			BeforeEach(func() {
-
-		//			}
 	})
 	Context("CheckAdminUserNotExisting", func() {
 		var (
@@ -428,7 +421,7 @@ var _ = Describe("Client", func() {
 				}, nil,
 			)
 
-			securityGroups, err := client.GetSecurityGroups(vpcId)
+			securityGroups, err := client.GetSecurityGroupIds(vpcId)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(securityGroups).To(HaveLen(1))
 			Expect(securityGroups[0].GroupId).To(Equal(awsSdk.String("sg-123456")))
@@ -508,7 +501,7 @@ var _ = Describe("Client", func() {
 		It("Wraps InvalidClientTokenId to get user login information", func() {
 
 			err := fmt.Errorf("InvalidClientTokenId: bad credentials")
-			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, err)
+			mockSTSApi.EXPECT().GetCallerIdentity(gomock.Any(), &sts.GetCallerIdentityInput{}).Return(nil, err)
 
 			valid, err := client.ValidateCredentials()
 			Expect(valid).To(BeFalse())
@@ -520,7 +513,7 @@ var _ = Describe("Client", func() {
 			fakeError := "Fake AWS creds failure"
 
 			err := fmt.Errorf(fakeError)
-			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, err)
+			mockSTSApi.EXPECT().GetCallerIdentity(gomock.Any(), &sts.GetCallerIdentityInput{}).Return(nil, err)
 
 			valid, err := client.ValidateCredentials()
 			Expect(valid).To(BeFalse())
@@ -528,7 +521,7 @@ var _ = Describe("Client", func() {
 		})
 
 		It("Returns true if getCallerIdentity has no errors", func() {
-			mockSTSApi.EXPECT().GetCallerIdentity(&sts.GetCallerIdentityInput{}).Return(nil, nil)
+			mockSTSApi.EXPECT().GetCallerIdentity(gomock.Any(), &sts.GetCallerIdentityInput{}).Return(nil, nil)
 
 			valid, err := client.ValidateCredentials()
 			Expect(valid).To(BeTrue())
@@ -752,12 +745,3 @@ Describe("Creator", func() {
 		)
 	})
 })
-
-func readCloudFormationTemplate(path string) (string, error) {
-	cfTemplate, err := assets.Asset(path)
-	if err != nil {
-		return "", fmt.Errorf("Unable to read cloudformation template: %s", err)
-	}
-
-	return string(cfTemplate), nil
-}
