@@ -49,7 +49,7 @@ func buildOpenidIdp(cmd *cobra.Command,
 	}
 
 	if interactive.Enabled() {
-		instructionsURL := "https://docs.openshift.com/dedicated/identity_providers/" +
+		instructionsURL := baseIdpDocUrl +
 			"config-identity-providers.html#config-openid-idp_config-identity-providers"
 		oauthURL, err := ocm.BuildOAuthURL(cluster, idpType)
 		if err != nil {

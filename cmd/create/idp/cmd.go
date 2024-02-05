@@ -31,7 +31,10 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-const HTPasswdIDPName = "htpasswd"
+const (
+	HTPasswdIDPName = "htpasswd"
+	baseIdpDocUrl   = "https://docs.openshift.com/dedicated/identity_providers/"
+)
 
 type IdentityProvider interface {
 	Name() string
@@ -528,7 +531,7 @@ func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) 
 	if interactive.Enabled() {
 		usage := fmt.Sprintf("%s\n  For more information see the documentation:\n  %s",
 			cmd.Flags().Lookup("mapping-method").Usage,
-			"https://docs.openshift.com/dedicated/identity_providers/"+
+			baseIdpDocUrl+
 				"config-identity-providers.html#understanding-idp_config-identity-providers")
 		mappingMethod, err = interactive.GetOption(interactive.Input{
 			Question: "Mapping method",

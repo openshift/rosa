@@ -66,7 +66,9 @@ var _ = Describe("Validate build command", func() {
 					expectedOperatorRolePath, userSelectedAvailabilityZones,
 					defaultMachinePoolLabels, argsDotProperties)
 				// nolint:lll
-				Expect(command).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix"))
+				Expect(
+					command,
+				).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix"))
 			})
 		})
 		When("--properties is present", func() {
@@ -76,7 +78,9 @@ var _ = Describe("Validate build command", func() {
 					expectedOperatorRolePath, userSelectedAvailabilityZones,
 					defaultMachinePoolLabels, argsDotProperties)
 				// nolint:lll
-				Expect(command).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix --properties \"prop1\" --properties \"prop2\""))
+				Expect(
+					command,
+				).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix --properties \"prop1\" --properties \"prop2\""))
 			})
 		})
 	})
@@ -230,12 +234,12 @@ var _ = Describe("Validate cloud accounts", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				expected := "\n" +
-					"   +---------------------+----------------+ \n" +
+					blockMessageSeparator +
 					"   | Start Date          |Oct 12, 2023    | \n" +
 					"   | End Date            |Oct 12, 2023    | \n" +
 					"   | Number of vCPUs:    |'5'             | \n" +
 					"   | Number of clusters: |'4'             | \n" +
-					"   +---------------------+----------------+ \n"
+					blockMessageSeparator
 
 				contractDisplay := GenerateContractDisplay(mockContract)
 

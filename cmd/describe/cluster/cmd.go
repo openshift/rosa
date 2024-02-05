@@ -42,6 +42,8 @@ const (
 
 	EnabledOutput  = "Enabled"
 	DisabledOutput = "Disabled"
+
+	nodesMessage = "Nodes:\n"
 )
 
 var Cmd = &cobra.Command{
@@ -577,19 +579,18 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 			}
 		}
 		if minNodes != maxNodes {
-			nodeConfig = fmt.Sprintf(""+
-				"Nodes:\n"+
-				" - Compute (Autoscaled):    %d-%d\n"+
-				" - Compute (current):       %d\n",
+			nodeConfig = fmt.Sprintf(`%s
+				 - Compute (Autoscaled):    %d-%d
+				 - Compute (current):       %d`,
+				nodesMessage,
 				minNodes,
 				maxNodes,
-				currentNodes,
-			)
+				currentNodes)
 		} else {
-			nodeConfig = fmt.Sprintf(""+
-				"Nodes:\n"+
-				" - Compute (desired):       %d\n"+
-				" - Compute (current):       %d\n",
+			nodeConfig = fmt.Sprintf(`%s
+				 - Compute (desired):       %d
+				 - Compute (current):       %d`,
+				nodesMessage,
 				maxNodes,
 				currentNodes,
 			)
@@ -610,7 +611,7 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 		}
 
 		nodeConfig = fmt.Sprintf(
-			"Nodes:\n"+
+			nodesMessage+
 				" - Control plane:           %d\n"+
 				" - Infra:                   %d\n",
 			cluster.Nodes().Master(),

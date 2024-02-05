@@ -7,6 +7,11 @@ import (
 	. "github.com/openshift/rosa/pkg/aws/commandbuilder"
 )
 
+const (
+	awsIamCreateRole = "aws iam create-role \\\n"
+	testTag          = "test-tag"
+)
+
 var _ = Describe("Commandbuilder", func() {
 	var _ = Describe("Validates AWS Command Builder", func() {
 		var _ = Context("when building IAM commands", func() {
@@ -18,7 +23,7 @@ var _ = Describe("Commandbuilder", func() {
 
 			It("generates iam command without params", func() {
 				command := NewIAMCommandBuilder().SetCommand(CreateRole).Build()
-				Expect("aws iam create-role \\\n").To(Equal(command))
+				Expect(awsIamCreateRole).To(Equal(command))
 			})
 
 			It("generates iam command with params", func() {
@@ -28,7 +33,7 @@ var _ = Describe("Commandbuilder", func() {
 					AddParam(RoleName, "rosa-awscb-test-Installer-Role").
 					Build()
 				Expect(
-					"aws iam create-role \\\n" +
+					awsIamCreateRole +
 						"\t--policy-arn arn:aws:iam::765374464689:policy/rosa-awscb-test-Installer-Policy \\\n" +
 						"\t--role-name rosa-awscb-test-Installer-Role",
 				).To(Equal(command))
@@ -39,7 +44,7 @@ var _ = Describe("Commandbuilder", func() {
 					SetCommand(CreateRole).
 					AddParamNoValue(SetAsDefault).
 					Build()
-				Expect("aws iam create-role \\\n" +
+				Expect(awsIamCreateRole +
 					"\t--set-as-default").To(Equal(command))
 			})
 
@@ -47,12 +52,12 @@ var _ = Describe("Commandbuilder", func() {
 				command := NewIAMCommandBuilder().
 					SetCommand(CreateRole).
 					AddTags(map[string]string{
-						"managed":  "value",
-						"test-tag": "true",
+						"managed": "value",
+						testTag:   "true",
 					}).
 					Build()
 				Expect(
-					"aws iam create-role \\\n" +
+					awsIamCreateRole +
 						"\t--tags Key=managed,Value=value Key=test-tag,Value=true",
 				).To(Equal(command))
 			})
@@ -61,12 +66,12 @@ var _ = Describe("Commandbuilder", func() {
 				command := NewIAMCommandBuilder().
 					SetCommand(CreateRole).
 					AddTags(map[string]string{
-						"test-tag": "value",
-						"managed":  "true",
+						testTag:   "value",
+						"managed": "true",
 					}).
 					Build()
 				Expect(
-					"aws iam create-role \\\n" +
+					awsIamCreateRole +
 						"\t--tags Key=managed,Value=true Key=test-tag,Value=value",
 				).To(Equal(command))
 			})
@@ -78,12 +83,12 @@ var _ = Describe("Commandbuilder", func() {
 					AddParam(PolicyArn, "arn:aws:iam::765374464689:policy/rosa-awscb-test-Installer-Policy").
 					AddParamNoValue(SetAsDefault).
 					AddTags(map[string]string{
-						"test-tag": "value",
-						"managed":  "true",
+						testTag:   "value",
+						"managed": "true",
 					}).
 					Build()
 				Expect(
-					"aws iam create-role \\\n" +
+					awsIamCreateRole +
 						"\t--policy-arn arn:aws:iam::765374464689:policy/rosa-awscb-test-Installer-Policy \\\n" +
 						"\t--role-name rosa-awscb-test-Installer-Role \\\n" +
 						"\t--set-as-default \\\n" +

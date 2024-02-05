@@ -8,6 +8,11 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 )
 
+const (
+	//nolint:lll
+	filter = "product.id = 'rosa' AND (properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND "
+)
+
 var _ = Describe("New Operator Iam Role From Cmv1", func() {
 	const (
 		fakeOperatorRoleArn = "arn:aws:iam::765374464689:role/fake-arn-openshift-cluster-csi-drivers-ebs-cloud-credentials"
@@ -42,8 +47,7 @@ var _ = Context("List Clusters", func() {
 
 			query, err := getAccountRoleClusterFilter(creator, role)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(query).To(Equal("product.id = 'rosa' AND " +
-				"(properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND " +
+			Expect(query).To(Equal(filter +
 				"aws.sts.role_arn='arn:aws:iam::765374464689:role/test-Installer-Role'"))
 		})
 
@@ -54,8 +58,7 @@ var _ = Context("List Clusters", func() {
 
 			query, err := getAccountRoleClusterFilter(creator, role)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(query).To(Equal("product.id = 'rosa' AND " +
-				"(properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND " +
+			Expect(query).To(Equal(filter +
 				"aws.sts.support_role_arn='arn:aws:iam::765374464689:role/test-Support-Role'"))
 		})
 
@@ -66,8 +69,7 @@ var _ = Context("List Clusters", func() {
 
 			query, err := getAccountRoleClusterFilter(creator, role)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(query).To(Equal("product.id = 'rosa' AND " +
-				"(properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND " +
+			Expect(query).To(Equal(filter +
 				"aws.sts.instance_iam_roles.master_role_arn='arn:aws:iam::765374464689:role/test-ControlPlane-Role'"))
 		})
 
@@ -78,8 +80,7 @@ var _ = Context("List Clusters", func() {
 
 			query, err := getAccountRoleClusterFilter(creator, role)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(query).To(Equal("product.id = 'rosa' AND " +
-				"(properties.rosa_creator_arn LIKE '%:12345678:%' OR aws.sts.role_arn LIKE '%:12345678:%') AND " +
+			Expect(query).To(Equal(filter +
 				"aws.sts.instance_iam_roles.worker_role_arn='arn:aws:iam::765374464689:role/test-Worker-Role'"))
 		})
 

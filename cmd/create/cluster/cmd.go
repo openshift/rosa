@@ -71,6 +71,7 @@ const (
 	OidcConfigIdFlag      = "oidc-config-id"
 	ClassicOidcConfigFlag = "classic-oidc-config"
 	workerDiskSizeFlag    = "worker-disk-size"
+	hostedCpFlag          = "hosted-cp"
 	// #nosec G101
 	Ec2MetadataHttpTokensFlag = "ec2-metadata-http-tokens"
 
@@ -83,6 +84,8 @@ const (
 
 	// nolint:lll
 	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
+
+	blockMessageSeparator = "   +---------------------+----------------+ \n"
 )
 
 var args struct {
@@ -667,7 +670,7 @@ func initFlags(cmd *cobra.Command) {
 	// Options related to HyperShift:
 	flags.BoolVar(
 		&args.hostedClusterEnabled,
-		"hosted-cp",
+		hostedCpFlag,
 		false,
 		"Enable the use of Hosted Control Planes",
 	)
@@ -926,12 +929,12 @@ func run(cmd *cobra.Command, _ []string) {
 	if interactive.Enabled() {
 		isHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Deploy cluster with Hosted Control Plane",
-			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+			Help:     cmd.Flags().Lookup(hostedCpFlag).Usage,
 			Default:  isHostedCP,
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
+			r.Reporter.Errorf("Expected a valid --%s value: %s", hostedCpFlag, err)
 			os.Exit(1)
 		}
 	}
@@ -1337,7 +1340,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			createAccountRolesCommand := "rosa create account-roles"
 			if isHostedCP {
-				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+				createAccountRolesCommand = fmt.Sprintf("%s --%s", createAccountRolesCommand, hostedCpFlag)
 			}
 			r.Reporter.Warnf(fmt.Sprintf("No compatible account roles with version '%s' found. "+
 				"You will need to manually set them in the next steps or run '%s' to create them first.",
@@ -1399,7 +1402,7 @@ func run(cmd *cobra.Command, _ []string) {
 				if selectedARN == "" {
 					createAccountRolesCommand := "rosa create account-roles"
 					if isHostedCP {
-						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+						createAccountRolesCommand = fmt.Sprintf("%s --%s", createAccountRolesCommand, hostedCpFlag)
 					}
 					r.Reporter.Warnf(fmt.Sprintf("No compatible '%s' account roles with version '%s' found. "+
 						"You will need to manually set them in the next steps or run '%s' to create them first.",
@@ -3223,11 +3226,11 @@ func GenerateContractDisplay(contract *accountsv1.Contract) string {
 		strconv.Itoa(numberOfVCPUs), strconv.Itoa(numberOfClusters))
 
 	contractDisplay := "\n" +
-		"   +---------------------+----------------+ \n" +
+		blockMessageSeparator +
 		"   | Start Date          |" + contract.StartDate().Format(format) + "    | \n" +
 		"   | End Date            |" + contract.EndDate().Format(format) + "    | \n" +
 		prePurchaseInfo +
-		"   +---------------------+----------------+ \n"
+		blockMessageSeparator
 
 	return contractDisplay
 
@@ -3686,7 +3689,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --availability-zones %s", strings.Join(spec.AvailabilityZones, ","))
 	}
 	if spec.Hypershift.Enabled {
-		command += " --hosted-cp"
+		command += fmt.Sprintf(" --%s", hostedCpFlag)
 	}
 
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {

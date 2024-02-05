@@ -646,26 +646,28 @@ const (
 	BYOVPCMultiAZSubnetsCount       = 6
 	privateLinkSingleAZSubnetsCount = 1
 	privateLinkMultiAZSubnetsCount  = 3
+
+	insteadReceivedMessage = "instead received: %d"
 )
 
 func ValidateSubnetsCount(multiAZ bool, privateLink bool, subnetsInputCount int) error {
 	if privateLink {
 		if multiAZ && subnetsInputCount != privateLinkMultiAZSubnetsCount {
 			return fmt.Errorf("The number of subnets for a multi-AZ private link cluster should be %d, "+
-				"instead received: %d", privateLinkMultiAZSubnetsCount, subnetsInputCount)
+				insteadReceivedMessage, privateLinkMultiAZSubnetsCount, subnetsInputCount)
 		}
 		if !multiAZ && subnetsInputCount != privateLinkSingleAZSubnetsCount {
 			return fmt.Errorf("The number of subnets for a single AZ private link cluster should be %d, "+
-				"instead received: %d", privateLinkSingleAZSubnetsCount, subnetsInputCount)
+				insteadReceivedMessage, privateLinkSingleAZSubnetsCount, subnetsInputCount)
 		}
 	} else {
 		if multiAZ && subnetsInputCount != BYOVPCMultiAZSubnetsCount {
 			return fmt.Errorf("The number of subnets for a multi-AZ cluster should be %d, "+
-				"instead received: %d", BYOVPCMultiAZSubnetsCount, subnetsInputCount)
+				insteadReceivedMessage, BYOVPCMultiAZSubnetsCount, subnetsInputCount)
 		}
 		if !multiAZ && subnetsInputCount != BYOVPCSingleAZSubnetsCount {
 			return fmt.Errorf("The number of subnets for a single AZ cluster should be %d, "+
-				"instead received: %d", BYOVPCSingleAZSubnetsCount, subnetsInputCount)
+				insteadReceivedMessage, BYOVPCSingleAZSubnetsCount, subnetsInputCount)
 		}
 	}
 
@@ -873,7 +875,11 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 				return err
 			}
 			if !isCompatible {
-				return errors.Errorf("Operator role '%s' is not compatible with cluster version '%s'", roleARN, clusterVersion)
+				return errors.Errorf(
+					"Operator role '%s' is not compatible with cluster version '%s'",
+					roleARN,
+					clusterVersion,
+				)
 			}
 		}
 		if reporter.IsTerminal() && !output.HasFlag() {
