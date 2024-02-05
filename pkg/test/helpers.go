@@ -128,6 +128,21 @@ func FormatIngressList(ingresses []*v1.Ingress) string {
 	}`, len(ingresses), len(ingresses), ingressJson.String())
 }
 
+func FormatVersionList(versions []*v1.Version) string {
+	var versionJson bytes.Buffer
+
+	v1.MarshalVersionList(versions, &versionJson)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "VersionList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(versions), len(versions), versionJson.String())
+}
+
 func FormatNodePoolUpgradePolicyList(upgrades []*v1.NodePoolUpgradePolicy) string {
 	var outputJson bytes.Buffer
 
