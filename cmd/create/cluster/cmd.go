@@ -69,9 +69,10 @@ import (
 )
 
 const (
-	OidcConfigIdFlag      = "oidc-config-id"
-	ClassicOidcConfigFlag = "classic-oidc-config"
-	workerDiskSizeFlag    = "worker-disk-size"
+	OidcConfigIdFlag                 = "oidc-config-id"
+	ClassicOidcConfigFlag            = "classic-oidc-config"
+	ExternalAuthProvidersEnabledFlag = "external-auth-providers-enabled"
+	workerDiskSizeFlag               = "worker-disk-size"
 	// #nosec G101
 	Ec2MetadataHttpTokensFlag = "ec2-metadata-http-tokens"
 
@@ -164,8 +165,9 @@ var args struct {
 	operatorRolesPermissionsBoundary string
 
 	// Oidc Config
-	oidcConfigId      string
-	classicOidcConfig bool
+	oidcConfigId                 string
+	classicOidcConfig            bool
+	externalAuthProvidersEnabled bool
 
 	// Proxy
 	enableProxy               bool
@@ -351,6 +353,14 @@ func initFlags(cmd *cobra.Command) {
 		"Use classic OIDC configuration without registering an ID.",
 	)
 	flags.MarkHidden(ClassicOidcConfigFlag)
+
+	flags.BoolVar(
+		&args.externalAuthProvidersEnabled,
+		ExternalAuthProvidersEnabledFlag,
+		false,
+		"Enable external authentication configuration for a Hosted Control Plane cluster.",
+	)
+	flags.MarkHidden(ExternalAuthProvidersEnabledFlag)
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -1112,6 +1122,16 @@ func run(cmd *cobra.Command, _ []string) {
 	if !isHostedCP && billingAccount != "" {
 		r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
 		os.Exit(1)
+	}
+
+	var externalAuthConfig v1.ExternalAuthConfig
+	externalAuthProvidersEnabled := args.externalAuthProvidersEnabled
+	if externalAuthProvidersEnabled {
+		if !isHostedCP {
+			r.Reporter.Errorf("External authentication configuration is only supported for a Hosted Control Plane cluster.")
+			os.Exit(1)
+		}
+		externalAuthConfig = v1.ExternalAuthConfig(*v1.NewExternalAuthConfig().Enabled(externalAuthProvidersEnabled))
 	}
 
 	etcdEncryptionKmsARN := args.etcdEncryptionKmsARN
@@ -2997,6 +3017,7 @@ func run(cmd *cobra.Command, _ []string) {
 		IsSTS:                     isSTS,
 		RoleARN:                   roleARN,
 		ExternalID:                externalID,
+		ExternalAuthConfig:        externalAuthConfig,
 		SupportRoleARN:            supportRoleARN,
 		OperatorIAMRoles:          computedOperatorIamRoleList,
 		ControlPlaneRoleARN:       controlPlaneRoleARN,
@@ -3582,6 +3603,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if args.classicOidcConfig {
 		command += fmt.Sprintf(" --%s", ClassicOidcConfigFlag)
+	}
+	if args.externalAuthProvidersEnabled {
+		command += fmt.Sprintf(" --%s", ExternalAuthProvidersEnabledFlag)
 	}
 	if len(spec.Tags) > 0 {
 		command += fmt.Sprintf(" --tags \"%s\"", strings.Join(buildTagsCommand(spec.Tags), ","))
