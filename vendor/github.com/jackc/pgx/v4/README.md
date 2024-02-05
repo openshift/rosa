@@ -1,6 +1,11 @@
 [![](https://godoc.org/github.com/jackc/pgx?status.svg)](https://pkg.go.dev/github.com/jackc/pgx/v4)
 [![Build Status](https://travis-ci.org/jackc/pgx.svg)](https://travis-ci.org/jackc/pgx)
 
+---
+
+This is the previous stable `v4` release. `v5` been released.
+
+---
 # pgx - PostgreSQL Driver and Toolkit
 
 pgx is a pure Go driver and toolkit for PostgreSQL.
@@ -185,3 +190,7 @@ Library for scanning data from a database into Go structs and more.
 ### [https://github.com/otan/gopgkrb5](https://github.com/otan/gopgkrb5)
 
 Adds GSSAPI / Kerberos authentication support.
+
+### [https://github.com/vgarvardt/pgx-google-uuid](https://github.com/vgarvardt/pgx-google-uuid)
+
+Adds support for [`github.com/google/uuid`](https://github.com/google/uuid).

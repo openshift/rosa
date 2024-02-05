@@ -7,7 +7,7 @@ package kubeletconfig
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockCapabilityChecker is a mock of CapabilityChecker interface.

@@ -15,8 +15,8 @@
 #
 
 run:
-  skip-dirs: (assets|docs|templates|vendor)
-  deadline: 5m
+  skip-dirs: ["assets","docs","templates","vendor"]
+  timeout: 5m
   issues-exit-code: 1
   modules-download-mode: readonly
 issues:
@@ -38,7 +38,7 @@ linters:
     - unused
 linters-settings:
   staticcheck:
-    go: "1.20"
+    go: "1.21"
   gci:
     sections:
       - standard
