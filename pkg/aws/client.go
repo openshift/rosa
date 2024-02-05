@@ -97,8 +97,7 @@ type Client interface {
 	ValidateCredentials() (isValid bool, err error)
 	EnsureOsdCcsAdminUser(stackName string, adminUserName string, awsRegion string) (bool, error)
 	DeleteOsdCcsAdminUser(stackName string) error
-	GetAWSAccessKeys() (*AccessKey, error)
-	GetLocalAWSAccessKeys() (*AccessKey, error)
+	AccessKeyGetter
 	GetCreator() (*Creator, error)
 	ValidateSCP(*string, map[string]*cmv1.AWSSTSPolicy) (bool, error)
 	ListSubnets(subnetIds ...string) ([]ec2types.Subnet, error)
@@ -199,6 +198,11 @@ type Client interface {
 	GetAccountRoleByArn(roleArn string) (Role, error)
 	GetSecurityGroups(vpcId string) ([]ec2types.SecurityGroup, error)
 	FetchPublicSubnetMap(subnets []ec2types.Subnet) (map[string]bool, error)
+}
+
+type AccessKeyGetter interface {
+	GetAWSAccessKeys() (*AccessKey, error)
+	GetLocalAWSAccessKeys() (*AccessKey, error)
 }
 
 // ClientBuilder contains the information and logic needed to build a new AWS client.
