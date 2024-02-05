@@ -3107,22 +3107,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if clusterConfig.CustomProperties != nil && clusterConfig.CustomProperties[properties.UseLocalCredentials] ==
-		strconv.FormatBool(true) {
-		r.Reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
-		clusterConfig.AWSAccessKey, err = awsClient.GetLocalAWSAccessKeys()
-		if err != nil {
-			r.Reporter.Errorf("Failed to get local AWS credentials: %v", err)
-			os.Exit(1)
-		}
-	} else if clusterConfig.RoleARN == "" {
-		// Create the access key for the AWS user:
-		clusterConfig.AWSAccessKey, err = awsClient.GetAWSAccessKeys()
-		if err != nil {
-			r.Reporter.Errorf("Failed to get access keys for user '%s': %v",
-				aws.AdminUserName, err)
-			os.Exit(1)
-		}
+	clusterConfig, err = clusterConfigFor(r.Reporter, clusterConfig, awsCreator, awsClient)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
@@ -3227,6 +3215,34 @@ func run(cmd *cobra.Command, _ []string) {
 			clusterName,
 		)
 	}
+}
+
+// clusterConfigFor builds the cluster spec for the OCM API from our command-line options.
+// TODO: eventually, this method signature should be func(args) ocm.Spec.
+func clusterConfigFor(
+	reporter *reporter.Object,
+	clusterConfig ocm.Spec,
+	awsCreator *aws.Creator,
+	awsCredentialsGetter aws.AccessKeyGetter,
+) (ocm.Spec, error) {
+	if clusterConfig.CustomProperties != nil && clusterConfig.CustomProperties[properties.UseLocalCredentials] ==
+		strconv.FormatBool(true) {
+		reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
+		var err error
+		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetLocalAWSAccessKeys()
+		if err != nil {
+			return clusterConfig, fmt.Errorf("Failed to get local AWS credentials: %w", err)
+		}
+	} else if clusterConfig.RoleARN == "" {
+		// Create the access key for the AWS user:
+		var err error
+		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetAWSAccessKeys()
+		if err != nil {
+			return clusterConfig, fmt.Errorf("Failed to get access keys for user '%s': %w",
+				aws.AdminUserName, err)
+		}
+	}
+	return clusterConfig, nil
 }
 
 // validateNetworkType ensure user passes a valid network type parameter at creation
