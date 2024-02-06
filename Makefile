@@ -58,6 +58,10 @@ lint: $(GOLANGCI_LINT)
 commits/check:
 	@./hack/commit-msg-verify.sh
 
+.PHONY: diff
+diff:
+	git diff --exit-code
+
 .PHONY: verify
 verify: fmt
 	go mod tidy
