@@ -528,8 +528,7 @@ func getMappingMethod(cmd *cobra.Command, mappingMethod string) (string, error) 
 	if interactive.Enabled() {
 		usage := fmt.Sprintf("%s\n  For more information see the documentation:\n  %s",
 			cmd.Flags().Lookup("mapping-method").Usage,
-			"https://docs.openshift.com/dedicated/identity_providers/"+
-				"config-identity-providers.html#understanding-idp_config-identity-providers")
+			instructionsURLBase+"understanding-idp_config-identity-providers")
 		mappingMethod, err = interactive.GetOption(interactive.Input{
 			Question: "Mapping method",
 			Help:     usage,

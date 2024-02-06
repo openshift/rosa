@@ -577,19 +577,21 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 			}
 		}
 		if minNodes != maxNodes {
-			nodeConfig = fmt.Sprintf(""+
-				"Nodes:\n"+
-				" - Compute (Autoscaled):    %d-%d\n"+
-				" - Compute (current):       %d\n",
+			nodeConfig = fmt.Sprintf(`
+Nodes:
+ - Compute (Autoscaled):    %d-%d
+ - Compute (current):       %d
+`,
 				minNodes,
 				maxNodes,
 				currentNodes,
 			)
 		} else {
-			nodeConfig = fmt.Sprintf(""+
-				"Nodes:\n"+
-				" - Compute (desired):       %d\n"+
-				" - Compute (current):       %d\n",
+			nodeConfig = fmt.Sprintf(`
+Nodes:
+ - Compute (desired):       %d
+ - Compute (current):       %d
+`,
 				maxNodes,
 				currentNodes,
 			)
@@ -609,10 +611,11 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 			}
 		}
 
-		nodeConfig = fmt.Sprintf(
-			"Nodes:\n"+
-				" - Control plane:           %d\n"+
-				" - Infra:                   %d\n",
+		nodeConfig = fmt.Sprintf(`
+Nodes:
+ - Control plane:           %d
+ - Infra:                   %d
+`,
 			cluster.Nodes().Master(),
 			cluster.Nodes().Infra())
 
