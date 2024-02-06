@@ -61,6 +61,7 @@ commits/check:
 .PHONY: verify
 verify: fmt
 	go mod tidy
+	go mod vendor
 	$(MAKE) diff
 
 .PHONY: clean
