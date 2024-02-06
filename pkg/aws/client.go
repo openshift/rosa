@@ -78,7 +78,11 @@ const (
 	govPartition = "aws-us-gov"
 
 	awsMaxFilterLength = 200
-	NumMaxRetries      = 12
+
+	numMaxRetries    = 12
+	minRetryDelay    = 1 * time.Second
+	minThrottleDelay = 5 * time.Second
+	maxThrottleDelay = 5 * time.Second
 )
 
 // Client defines a client interface

@@ -1,8 +1,10 @@
-package aws_test
+package aws
 
 import (
-	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -28,7 +30,7 @@ import (
 
 var _ = Describe("Client", func() {
 	var (
-		client   aws.Client
+		client   Client
 		mockCtrl *gomock.Controller
 
 		mockEC2API            *mocks.MockEc2ApiClient
@@ -45,7 +47,7 @@ var _ = Describe("Client", func() {
 		mockEC2API = mocks.NewMockEc2ApiClient(mockCtrl)
 		mockS3API = mocks.NewMockS3ApiClient(mockCtrl)
 		mockSecretsManagerAPI = mocks.NewMockSecretsManagerApiClient(mockCtrl)
-		client = aws.New(
+		client = New(
 			awsSdk.Config{},
 			logrus.New(),
 			mockIamAPI,
@@ -56,7 +58,7 @@ var _ = Describe("Client", func() {
 			mocks.NewMockStsApiClient(mockCtrl),
 			mockCfAPI,
 			mocks.NewMockServiceQuotasApiClient(mockCtrl),
-			&aws.AccessKey{},
+			&AccessKey{},
 			false,
 		)
 	})
@@ -137,7 +139,7 @@ var _ = Describe("Client", func() {
 						})
 				})
 				It("Returns without error", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, DefaultRegion)
 
 					Expect(stackCreated).To(BeFalse())
 					Expect(err).NotTo(HaveOccurred())
@@ -171,7 +173,7 @@ var _ = Describe("Client", func() {
 					mockCfAPI.EXPECT().CreateStack(context.Background(), gomock.Any()).Return(nil, nil)
 				})
 				It("Creates a cloudformation stack", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, DefaultRegion)
 
 					Expect(stackCreated).To(BeTrue())
 					Expect(err).NotTo(HaveOccurred())
@@ -188,7 +190,7 @@ var _ = Describe("Client", func() {
 				})
 
 				It("Returns error telling the stack is in an invalid state", func() {
-					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
+					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, DefaultRegion)
 
 					Expect(stackCreated).To(BeFalse())
 					Expect(err).To(HaveOccurred())
@@ -228,7 +230,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("Creates a cloudformation stack", func() {
-				stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, aws.DefaultRegion)
+				stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, DefaultRegion)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(stackCreated).To(BeTrue())
@@ -281,7 +283,7 @@ var _ = Describe("Client", func() {
 		var testName = "test-Installer-Role"
 		var tags = []iamtypes.Tag{
 			{Key: awsSdk.String(common.ManagedPolicies), Value: awsSdk.String(rosaTags.True)},
-			{Key: awsSdk.String(rosaTags.RoleType), Value: awsSdk.String(aws.InstallerAccountRole)},
+			{Key: awsSdk.String(rosaTags.RoleType), Value: awsSdk.String(InstallerAccountRole)},
 		}
 
 		It("Finds and Returns Account Role", func() {
@@ -304,7 +306,7 @@ var _ = Describe("Client", func() {
 
 			Expect(role.RoleName).To(Equal(testName))
 			Expect(role.RoleARN).To(Equal(testArn))
-			Expect(role.RoleType).To(Equal(aws.InstallerAccountRoleType))
+			Expect(role.RoleType).To(Equal(InstallerAccountRoleType))
 		})
 
 		It("Returns empty when No Role with ARN exists", func() {
@@ -521,6 +523,42 @@ var _ = Describe("Client", func() {
 			valid, err := client.ValidateCredentials()
 			Expect(valid).To(BeTrue())
 			Expect(err).To(BeNil())
+		})
+	})
+
+	Context("ShouldRetry", func() {
+		var customRetryer CustomRetryer
+		var mockRequest *request.Request
+		var mockRequestHeader http.Header
+		BeforeEach(func() {
+			customRetryer = buildCustomRetryer()
+		})
+		It("Should not retry with 500 status code", func() {
+			mockRequest = &request.Request{
+				HTTPResponse: &http.Response{
+					StatusCode: 500,
+				},
+			}
+			retry := customRetryer.ShouldRetry(mockRequest)
+			Expect(retry).To(BeFalse())
+		})
+		It("Should retry with non 500 status code", func() {
+			mockRequestHeader = http.Header{}
+			mockRequest = &request.Request{
+				HTTPResponse: &http.Response{
+					StatusCode: 429,
+				},
+				HTTPRequest: &http.Request{
+					Header: mockRequestHeader,
+					Method: "GET",
+					URL: &url.URL{
+						Host: "test.com",
+					},
+				},
+				Error: errors.New("Throttling"),
+			}
+			retry := customRetryer.ShouldRetry(mockRequest)
+			Expect(retry).ToNot(BeFalse())
 		})
 	})
 })
