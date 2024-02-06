@@ -49,6 +49,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+	"github.com/google/uuid"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
@@ -77,6 +78,11 @@ const (
 	govPartition = "aws-us-gov"
 
 	awsMaxFilterLength = 200
+
+	numMaxRetries    = 12
+	minRetryDelay    = 1 * time.Second
+	minThrottleDelay = 5 * time.Second
+	maxThrottleDelay = 5 * time.Second
 )
 
 // addROSAVersionToUserAgent is a named handler that will add ROSA CLI
@@ -1264,9 +1270,19 @@ func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
 		return false
 	}
 	logger := logging.NewLogger()
+
+	if req.HTTPRequest.Header.Get("ROSA-Request-Id") == "" {
+		req.HTTPRequest.Header.Add("ROSA-Request-Id", uuid.New().String())
+	}
+
 	if strings.Contains(req.Error.Error(), "Throttling") {
-		logger.Warn(fmt.Sprintf("Throttling Rate limit exceeded. Retrying Attempt: '%v' of '%v'",
-			req.RetryCount+1, r.MaxRetries()))
+		logger.Warn(fmt.Sprintf(
+			"Throttling Rate limit exceeded. Retrying [ROSA-Request-Id: %s / %s %s]: %v/%v",
+			req.HTTPRequest.Header.Get("ROSA-Request-Id"),
+			req.HTTPRequest.Method,
+			req.HTTPRequest.URL.Host,
+			req.RetryCount+1,
+			r.MaxRetries()))
 	}
 
 	return r.DefaultRetryer.ShouldRetry(req)
@@ -1275,10 +1291,10 @@ func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
 func buildCustomRetryer() CustomRetryer {
 	return CustomRetryer{
 		DefaultRetryer: client.DefaultRetryer{
-			NumMaxRetries:    12,
-			MinRetryDelay:    1 * time.Second,
-			MinThrottleDelay: 5 * time.Second,
-			MaxThrottleDelay: 5 * time.Second,
+			NumMaxRetries:    numMaxRetries,
+			MinRetryDelay:    minRetryDelay,
+			MinThrottleDelay: minThrottleDelay,
+			MaxThrottleDelay: maxThrottleDelay,
 		},
 	}
 }
