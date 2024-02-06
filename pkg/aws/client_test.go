@@ -3,6 +3,7 @@ package aws
 import (
 	"errors"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
