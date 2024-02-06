@@ -52,7 +52,7 @@ var _ = Describe("Client", func() {
 		mockEC2API = mocks.NewMockEc2ApiClient(mockCtrl)
 		mockS3API = mocks.NewMockS3ApiClient(mockCtrl)
 		mockSecretsManagerAPI = mocks.NewMockSecretsManagerApiClient(mockCtrl)
-		client = aws.New(
+		client = New(
 			awsSdk.Config{},
 			logrus.New(),
 			mockIamAPI,
@@ -63,7 +63,7 @@ var _ = Describe("Client", func() {
 			mocks.NewMockStsApiClient(mockCtrl),
 			mockCfAPI,
 			mocks.NewMockServiceQuotasApiClient(mockCtrl),
-			&aws.AccessKey{},
+			&AccessKey{},
 			false,
 		)
 	})
