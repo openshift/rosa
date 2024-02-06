@@ -37,7 +37,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 
 	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
 	if err != nil {
-		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
+		r.Reporter.Errorf("Error getting operator credential request from OCM '%s'", err)
 		os.Exit(1)
 	}
 
@@ -53,9 +53,9 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		missingRoles, err := validateOperatorRoles(r, cluster)
 		if err != nil {
 			if strings.Contains(err.Error(), "AccessDenied") {
-				r.Reporter.Debugf("Failed to verify if operator roles exist: %s", err)
+				r.Reporter.Debugf("Failed to verify if operator roles exist: '%s'", err)
 			} else {
-				r.Reporter.Errorf("Failed to verify if operator roles exist: %s", err)
+				r.Reporter.Errorf("Failed to verify if operator roles exist: '%s'", err)
 				os.Exit(1)
 			}
 		}
@@ -75,13 +75,13 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		}
 		roleName, err := aws.GetInstallerAccountRoleName(cluster)
 		if err != nil {
-			r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
+			r.Reporter.Errorf("Expected parsing role account role '%s': '%v'", cluster.AWS().STS().RoleARN(), err)
 			os.Exit(1)
 		}
 
 		path, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
+			r.Reporter.Errorf("Expected a valid path for '%s': '%v'", cluster.AWS().STS().RoleARN(), err)
 			os.Exit(1)
 		}
 		if path != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
@@ -96,13 +96,13 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		}
 		accountRoleVersion, err = r.AWSClient.GetAccountRoleVersion(roleName)
 		if err != nil {
-			r.Reporter.Errorf("Error getting account role version %s", err)
+			r.Reporter.Errorf("Error getting account role version '%s'", err)
 			os.Exit(1)
 		}
 		err = createRoles(r, operatorRolePolicyPrefix, permissionsBoundary, cluster,
 			accountRoleVersion, policies, defaultPolicyVersion, credRequests, managedPolicies, hostedCPPolicies)
 		if err != nil {
-			r.Reporter.Errorf("There was an error creating the operator roles: %s", err)
+			r.Reporter.Errorf("There was an error creating the operator roles: '%s'", err)
 			isThrottle := "false"
 			if strings.Contains(err.Error(), "Throttling") {
 				isThrottle = helper.True
@@ -122,7 +122,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		commands, err := buildCommands(r, env, operatorRolePolicyPrefix, permissionsBoundary, defaultPolicyVersion,
 			cluster, policies, credRequests, managedPolicies, hostedCPPolicies)
 		if err != nil {
-			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
+			r.Reporter.Errorf("There was an error building the list of resources: '%s'", err)
 			os.Exit(1)
 			r.OCMClient.LogEvent("ROSACreateOperatorRolesModeManual", map[string]string{
 				ocm.ClusterID: clusterKey,
@@ -139,7 +139,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		fmt.Println(commands)
 
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are '%s'", aws.Modes)
 		os.Exit(1)
 	}
 	return nil
