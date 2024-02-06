@@ -27,68 +27,70 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
 		os.Exit(1)
 	}
-	// Check to see if IAM operator roles have already created
-	missingRoles, err := validateOperatorRoles(r, cluster)
-	if err != nil {
-		if strings.Contains(err.Error(), "AccessDenied") {
-			r.Reporter.Debugf("Failed to verify if operator roles exist: %s", err)
-		} else {
-			r.Reporter.Errorf("Failed to verify if operator roles exist: %s", err)
-			os.Exit(1)
-		}
-	}
 
-	if len(missingRoles) == 0 {
-		if ocm.IsOidcConfigReusable(cluster) {
-			err := validateOperatorRolesMatchOidcProvider(r, cluster)
-			if err != nil {
-				return err
-			}
-		}
-
-		if !args.forcePolicyCreation {
-			r.Reporter.Infof("Operator Roles already exists")
-			return nil
-		}
-	}
-	roleName, err := aws.GetInstallerAccountRoleName(cluster)
-	if err != nil {
-		r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
-		os.Exit(1)
-	}
-
-	path, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
-		os.Exit(1)
-	}
-	if path != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
-		r.Reporter.Infof("ARN path '%s' detected in installer role '%s'. "+
-			"This ARN path will be used for subsequent created operator roles and policies.",
-			path, cluster.AWS().STS().RoleARN())
-	}
-	var accountRoleVersion string
-
-	managedPolicies := cluster.AWS().STS().ManagedPolicies()
-	if args.forcePolicyCreation && managedPolicies {
-		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
-		os.Exit(1)
-	}
-	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
-	if err != nil {
-		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-		os.Exit(1)
-	}
+	hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
 
 	operatorRolePolicyPrefix, err := aws.GetOperatorRolePolicyPrefixFromCluster(cluster, r.AWSClient)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 	}
 
-	hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
+	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
+	if err != nil {
+		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
+		os.Exit(1)
+	}
+
+	managedPolicies := cluster.AWS().STS().ManagedPolicies()
+	if args.forcePolicyCreation && managedPolicies {
+		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
+		os.Exit(1)
+	}
 
 	switch mode {
 	case aws.ModeAuto:
+		// Check to see if IAM operator roles have already created
+		missingRoles, err := validateOperatorRoles(r, cluster)
+		if err != nil {
+			if strings.Contains(err.Error(), "AccessDenied") {
+				r.Reporter.Debugf("Failed to verify if operator roles exist: %s", err)
+			} else {
+				r.Reporter.Errorf("Failed to verify if operator roles exist: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		if len(missingRoles) == 0 {
+			if ocm.IsOidcConfigReusable(cluster) {
+				err := validateOperatorRolesMatchOidcProvider(r, cluster)
+				if err != nil {
+					return err
+				}
+			}
+
+			if !args.forcePolicyCreation {
+				r.Reporter.Infof("Operator Roles already exists")
+				return nil
+			}
+		}
+		roleName, err := aws.GetInstallerAccountRoleName(cluster)
+		if err != nil {
+			r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
+			os.Exit(1)
+		}
+
+		path, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
+			os.Exit(1)
+		}
+		if path != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
+			r.Reporter.Infof("ARN path '%s' detected in installer role '%s'. "+
+				"This ARN path will be used for subsequent created operator roles and policies.",
+				path, cluster.AWS().STS().RoleARN())
+		}
+		var accountRoleVersion string
+
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 		}
