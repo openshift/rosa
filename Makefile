@@ -16,6 +16,8 @@
 
 include .bingo/Variables.mk
 
+.DEFAULT_TARGET := rosa
+
 # Ensure go modules are enabled:
 export GO111MODULE=on
 export GOPROXY=https://proxy.golang.org
