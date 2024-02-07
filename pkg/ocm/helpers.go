@@ -651,10 +651,10 @@ func expectedSubnetsCount(multiAZ, privateLink bool) int {
 	return map[bool]map[bool]int{
 		true: {
 			true:  privateLinkMultiAZSubnetsCount,
-			false: privateLinkSingleAZSubnetsCount,
+			false: BYOVPCMultiAZSubnetsCount,
 		},
 		false: {
-			true:  BYOVPCMultiAZSubnetsCount,
+			true:  privateLinkSingleAZSubnetsCount,
 			false: BYOVPCSingleAZSubnetsCount,
 		},
 	}[multiAZ][privateLink]
@@ -663,12 +663,16 @@ func expectedSubnetsCount(multiAZ, privateLink bool) int {
 func ValidateSubnetsCount(multiAZ bool, privateLink bool, subnetsInputCount int) error {
 	expected := expectedSubnetsCount(multiAZ, privateLink)
 	if subnetsInputCount != expected {
-		prefix := "single "
-		if multiAZ {
-			prefix = "multi-"
+		clusterPrefix := "cluster"
+		if privateLink {
+			clusterPrefix = "private link cluster"
 		}
-		return fmt.Errorf("The number of subnets for a %sAZ cluster should be %d, "+
-			"instead received: %d", prefix, expected, subnetsInputCount)
+		azPrefix := "single AZ"
+		if multiAZ {
+			azPrefix = "multi-AZ"
+		}
+		return fmt.Errorf("The number of subnets for a '%s' '%s' should be '%d', "+
+			"instead received: '%d'", azPrefix, clusterPrefix, expected, subnetsInputCount)
 	}
 	return nil
 }

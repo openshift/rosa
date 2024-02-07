@@ -307,3 +307,91 @@ var _ = Describe("ValidateBalancingIgnoredLabels", func() {
 		Expect(err).To(HaveOccurred())
 	})
 })
+
+var _ = Describe("expectedSubnetsCount", func() {
+	When("multiAZ and privateLink are true", func() {
+		It("Should return privateLinkMultiAZSubnetsCount", func() {
+			Expect(expectedSubnetsCount(true, true)).To(Equal(privateLinkMultiAZSubnetsCount))
+		})
+	})
+
+	When("multiAZ is true and privateLink is false", func() {
+		It("Should return privateLinkSingleAZSubnetsCount", func() {
+			Expect(expectedSubnetsCount(true, false)).To(Equal(BYOVPCMultiAZSubnetsCount))
+		})
+	})
+
+	When("multiAZ is false and privateLink is true", func() {
+		It("Should return BYOVPCMultiAZSubnetsCount", func() {
+			Expect(expectedSubnetsCount(false, true)).To(Equal(privateLinkSingleAZSubnetsCount))
+		})
+	})
+
+	When("multiAZ and privateLink are false", func() {
+		It("Should return BYOVPCSingleAZSubnetsCount", func() {
+			Expect(expectedSubnetsCount(false, false)).To(Equal(BYOVPCSingleAZSubnetsCount))
+		})
+	})
+})
+
+var _ = Describe("ValidateSubnetsCount", func() {
+	When("When privateLink is true", func() {
+		When("multiAZ is true", func() {
+			It("should return an error if subnetsInputCount is not equal to privateLinkMultiAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(true, true, privateLinkMultiAZSubnetsCount+1)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'multi-AZ' 'private link cluster' should be"+
+					" '%d', instead received: '%d'", privateLinkMultiAZSubnetsCount, privateLinkMultiAZSubnetsCount+1)))
+			})
+
+			It("should not return an error if subnetsInputCount is equal to privateLinkMultiAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(true, true, privateLinkMultiAZSubnetsCount)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		When("multiAZ is false", func() {
+			It("should return an error if subnetsInputCount is not equal to privateLinkSingleAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(false, true, privateLinkSingleAZSubnetsCount+1)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'single AZ' 'private link cluster' should be"+
+					" '%d', instead received: '%d'", privateLinkSingleAZSubnetsCount, privateLinkSingleAZSubnetsCount+1)))
+			})
+
+			It("should not return an error if subnetsInputCount is equal to privateLinkSingleAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(false, true, privateLinkSingleAZSubnetsCount)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	When("privateLink is false", func() {
+		When("multiAZ is true", func() {
+			It("should return an error if subnetsInputCount is not equal to BYOVPCMultiAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(true, false, BYOVPCMultiAZSubnetsCount+1)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'multi-AZ' 'cluster' should be"+
+					" '%d', instead received: '%d'", BYOVPCMultiAZSubnetsCount, BYOVPCMultiAZSubnetsCount+1)))
+			})
+
+			It("should not return an error if subnetsInputCount is equal to BYOVPCMultiAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(true, false, BYOVPCMultiAZSubnetsCount)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		When("multiAZ is false", func() {
+			It("should return an error if subnetsInputCount is not equal to BYOVPCSingleAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(false, false, BYOVPCSingleAZSubnetsCount+1)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'single AZ' 'cluster' should"+
+					" be '%d', instead received: '%d'", BYOVPCSingleAZSubnetsCount, BYOVPCSingleAZSubnetsCount+1)))
+			})
+
+			It("should not return an error if subnetsInputCount is equal to BYOVPCSingleAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(false, false, BYOVPCSingleAZSubnetsCount)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+})
