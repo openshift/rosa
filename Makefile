@@ -16,7 +16,7 @@
 
 include .bingo/Variables.mk
 
-.DEFAULT_TARGET := rosa
+.DEFAULT_GOAL := rosa
 
 # Ensure go modules are enabled:
 export GO111MODULE=on
