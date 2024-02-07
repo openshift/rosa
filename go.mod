@@ -8,8 +8,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/aws/aws-sdk-go v1.45.26
-	github.com/aws/aws-sdk-go-v2/service/iam v1.27.1
-	github.com/aws/aws-sdk-go-v2 v1.23.2
+	github.com/aws/aws-sdk-go-v2 v1.24.1
 	github.com/aws/aws-sdk-go-v2/config v1.25.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.4
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.40.1
@@ -20,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.23.3
 	github.com/aws/aws-sdk-go-v2/service/servicequotas v1.18.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.25.4
-	github.com/aws/smithy-go v1.17.0
+	github.com/aws/smithy-go v1.19.0
 	github.com/briandowns/spinner v1.11.1
 	github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
 	github.com/dustin/go-humanize v1.0.0
@@ -35,8 +34,6 @@ require (
 	github.com/onsi/gomega v1.27.8
 	github.com/openshift-online/ocm-common v0.0.0-20240129111424-ff8c6c11d909
 	github.com/openshift-online/ocm-sdk-go v0.1.398
-	github.com/openshift-online/ocm-common v0.0.0-20231220121044-50125cc79fd2
-	github.com/openshift-online/ocm-sdk-go v0.1.390
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
@@ -49,9 +46,6 @@ require (
 
 require (
 	github.com/andybalholm/cascadia v1.3.2 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.24.1 // indirect
-	github.com/aws/smithy-go v1.19.0 // indirect
-	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.5.1 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.4 // indirect
