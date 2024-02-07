@@ -2,9 +2,12 @@ package cluster
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -13,6 +16,7 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/test"
 )
 
 var _ = Describe("Validate build command", func() {
@@ -282,3 +286,98 @@ var _ = Describe("getMachinePoolRootDisk()", func() {
 		Expect(machinePoolRootDisk).To(BeNil())
 	})
 })
+
+var _ = Describe("validateBillingAccount()", func() {
+
+	It("OK: valid billing account", func() {
+		validBillingAccount := "123456789012"
+		err := validateBillingAccount(validBillingAccount)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("KO: fails to validate a wrong billing account", func() {
+		wrongBillingAccount := "123"
+		err := validateBillingAccount(wrongBillingAccount)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Billing account is invalid. Run the command again with a valid billing account." +
+			" To see the list of billing account options, you can use interactive mode by passing '-i'"))
+	})
+})
+
+var _ = Describe("Validations", func() {
+	DescribeTable("should validate network type", func(
+		in string,
+		expected error,
+	) {
+		err := validateNetworkType(in)
+		if expected == nil {
+			Expect(err).To(BeNil())
+		} else {
+			Expect(err).To(MatchError(expected))
+		}
+	},
+		Entry("no network type passed", "", nil),
+		Entry("valid network type passed", "OpenShiftSDN", nil),
+		Entry("invalid network type passed", "wrong",
+			fmt.Errorf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes)),
+	)
+})
+
+var _ = Describe("Filtering", func() {
+	r := rosa.NewRuntime()
+	DescribeTable("should filter CIDR range requests", func(
+		initialSubnets []*ec2.Subnet,
+		machineNetwork *net.IPNet,
+		serviceNetwork *net.IPNet,
+		expected []*ec2.Subnet,
+		expectedError string,
+	) {
+		out, err := filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		if expectedError == "" {
+			Expect(err).To(BeNil())
+		} else {
+			Expect(err).To(MatchError(ContainSubstring(expectedError)))
+		}
+		Expect(out).To(test.MatchExpected(expected))
+	},
+		Entry(
+			"no input subnets to filter",
+			[]*ec2.Subnet{},               /* initialSubnets */
+			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
+			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
+			[]*ec2.Subnet{},               /* expected */
+			"",                            /* expectedError */
+		),
+		Entry(
+			"invalid input subnets filtered",
+			[]*ec2.Subnet{ /* initialSubnets */
+				{CidrBlock: aws.String("wrong"), SubnetId: aws.String("id")},
+			},
+			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
+			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
+			nil,                           /* expected */
+			"Unable to parse subnet CIDR: invalid CIDR address: wrong", /* expectedError */
+		),
+		Entry(
+			"input subnets filtered",
+			[]*ec2.Subnet{ /* initialSubnets */
+				{CidrBlock: aws.String("57.0.2.0/24"), SubnetId: aws.String("id")},
+				{CidrBlock: aws.String("123.244.128.0/24"), SubnetId: aws.String("id")},
+				{CidrBlock: aws.String("192.0.2.0/30"), SubnetId: aws.String("id")},
+				{CidrBlock: aws.String("142.6.12.0/28"), SubnetId: aws.String("id")},
+			},
+			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
+			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
+			[]*ec2.Subnet{ /* expected */
+				{CidrBlock: aws.String("192.0.2.0/30"), SubnetId: aws.String("id")},
+			},
+			"", /* expectedError */
+		),
+	)
+})
+
+func mustParseCIDR(s string) *net.IPNet {
+	_, ipnet, err := net.ParseCIDR(s)
+	Expect(err).To(BeNil())
+	return ipnet
+}

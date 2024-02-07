@@ -82,6 +82,8 @@ const (
 
 	listInputMessage = "Format should be a comma-separated list."
 
+	listBillingAccountMessage = " To see the list of billing account options, you can use interactive mode by passing '-i'"
+
 	// nolint:lll
 	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
 )
@@ -1045,9 +1047,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if !isHcpBillingTechPreview {
-
-			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-				r.Reporter.Errorf("Billing account is invalid. Run the command again with a valid billing account.")
+			err := validateBillingAccount(billingAccount)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
 
@@ -1068,7 +1070,8 @@ func run(cmd *cobra.Command, _ []string) {
 						"To use a different billing account, add --billing-account xxxxxxxxxx to previous command",
 					)
 				} else {
-					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters.")
+					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters." +
+						listBillingAccountMessage)
 				}
 			}
 
@@ -1090,8 +1093,9 @@ func run(cmd *cobra.Command, _ []string) {
 					billingAccount = aws.ParseOption(billingAccount)
 				}
 
-				if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
-					r.Reporter.Errorf("Expected a valid billing account")
+				err := validateBillingAccount(billingAccount)
+				if err != nil {
+					r.Reporter.Errorf("%s", err)
 					os.Exit(1)
 				}
 
@@ -2060,7 +2064,12 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Unable to parse service CIDR")
 			os.Exit(1)
 		}
-		subnets = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		var filterError error
+		subnets, filterError = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		if filterError != nil {
+			r.Reporter.Errorf("%s", filterError)
+			os.Exit(1)
+		}
 		if privateLink {
 			subnets = filterPrivateSubnets(subnets, r)
 		}
@@ -2512,13 +2521,16 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Network Type:
-	networkType := validateNetworkType(r)
+	if err := validateNetworkType(args.networkType); err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
-		networkType, err = interactive.GetOption(interactive.Input{
+		args.networkType, err = interactive.GetOption(interactive.Input{
 			Question: "Network Type",
 			Help:     cmd.Flags().Lookup("network-type").Usage,
 			Options:  ocm.NetworkTypes,
-			Default:  networkType,
+			Default:  args.networkType,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid network type: %s", err)
@@ -3002,7 +3014,7 @@ func run(cmd *cobra.Command, _ []string) {
 		MinReplicas:               minReplicas,
 		MaxReplicas:               maxReplicas,
 		ComputeLabels:             labelMap,
-		NetworkType:               networkType,
+		NetworkType:               args.networkType,
 		MachineCIDR:               machineCIDR,
 		ServiceCIDR:               serviceCIDR,
 		PodCIDR:                   podCIDR,
@@ -3013,6 +3025,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:         availabilityZones,
 		SubnetIds:                 subnetIDs,
 		PrivateLink:               &privateLink,
+		AWSCreator:                awsCreator,
 		IsSTS:                     isSTS,
 		RoleARN:                   roleARN,
 		ExternalID:                externalID,
@@ -3106,6 +3119,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	clusterConfig, err = clusterConfigFor(r.Reporter, clusterConfig, awsCreator, awsClient)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
@@ -3114,6 +3133,13 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
+	}
+
+	if !clusterConfig.IsSTS {
+		if err := r.OCMClient.EnsureNoPendingClusters(awsCreator); err != nil {
+			r.Reporter.Errorf("%v", err)
+			os.Exit(1)
+		}
 	}
 
 	cluster, err := r.OCMClient.CreateCluster(clusterConfig)
@@ -3203,21 +3229,44 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+// clusterConfigFor builds the cluster spec for the OCM API from our command-line options.
+// TODO: eventually, this method signature should be func(args) ocm.Spec.
+func clusterConfigFor(
+	reporter *reporter.Object,
+	clusterConfig ocm.Spec,
+	awsCreator *aws.Creator,
+	awsCredentialsGetter aws.AccessKeyGetter,
+) (ocm.Spec, error) {
+	if clusterConfig.CustomProperties != nil && clusterConfig.CustomProperties[properties.UseLocalCredentials] ==
+		strconv.FormatBool(true) {
+		reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
+		var err error
+		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetLocalAWSAccessKeys()
+		if err != nil {
+			return clusterConfig, fmt.Errorf("Failed to get local AWS credentials: %w", err)
+		}
+	} else if clusterConfig.RoleARN == "" {
+		// Create the access key for the AWS user:
+		var err error
+		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetAWSAccessKeys()
+		if err != nil {
+			return clusterConfig, fmt.Errorf("Failed to get access keys for user '%s': %w",
+				aws.AdminUserName, err)
+		}
+	}
+	return clusterConfig, nil
+}
+
 // validateNetworkType ensure user passes a valid network type parameter at creation
-func validateNetworkType(r *rosa.Runtime) string {
-	var networkType string
-	if args.networkType == "" {
-		// Parameter not specified, nothing to do
-		return networkType
-	}
-	if helper.Contains(ocm.NetworkTypes, args.networkType) {
-		networkType = args.networkType
-	}
+func validateNetworkType(networkType string) error {
 	if networkType == "" {
-		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
-		os.Exit(1)
+		// Parameter not specified, nothing to do
+		return nil
 	}
-	return networkType
+	if !helper.Contains(ocm.NetworkTypes, networkType) {
+		return fmt.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
+	}
+	return nil
 }
 
 func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
@@ -3232,6 +3281,14 @@ func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
 		}
 	}
 	return contracts, false
+}
+
+func validateBillingAccount(billingAccount string) error {
+	if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
+		return fmt.Errorf("Billing account is invalid. Run the command again with a valid billing account." +
+			listBillingAccountMessage)
+	}
+	return nil
 }
 
 func GenerateContractDisplay(contract *accountsv1.Contract) string {
@@ -3356,20 +3413,21 @@ func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.
 	return filteredSubnets
 }
 
+// filterCidrRangeSubnets filters the initial set of subnets to those that are part of the machine network,
+// and not part of the service network
 func filterCidrRangeSubnets(
 	initialSubnets []*ec2.Subnet,
 	machineNetwork *net.IPNet,
 	serviceNetwork *net.IPNet,
 	r *rosa.Runtime,
-) []*ec2.Subnet {
+) ([]*ec2.Subnet, error) {
 	excludedSubnetsDueToCidr := []string{}
 	filteredSubnets := []*ec2.Subnet{}
 	for _, subnet := range initialSubnets {
 		skip := false
 		subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse subnet CIDR")
-			os.Exit(1)
+			return nil, fmt.Errorf("Unable to parse subnet CIDR: %w", err)
 		}
 
 		if !isValidCidrRange(subnetIP, subnetNetwork, machineNetwork, serviceNetwork) {
@@ -3385,7 +3443,7 @@ func filterCidrRangeSubnets(
 		r.Reporter.Warnf("The following subnets have been excluded"+
 			" because they do not fit into chosen CIDR ranges: %s", helper.SliceToSortedString(excludedSubnetsDueToCidr))
 	}
-	return filteredSubnets
+	return filteredSubnets, nil
 }
 
 func isValidCidrRange(

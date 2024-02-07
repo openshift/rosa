@@ -325,7 +325,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		r.Reporter.Infof("Checking available instance types for machine pool '%s'", args.name)
+		r.Reporter.Infof("Checking available instance types for machine pool '%s'", name)
 		spin.Start()
 	}
 
