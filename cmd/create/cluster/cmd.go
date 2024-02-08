@@ -3475,7 +3475,7 @@ func filterCidrRangeSubnets(
 	machineNetwork *net.IPNet,
 	serviceNetwork *net.IPNet,
 	r *rosa.Runtime,
-) []ec2types.Subnet {
+) ([]ec2types.Subnet, error) {
 	excludedSubnetsDueToCidr := []string{}
 	filteredSubnets := []ec2types.Subnet{}
 	for _, subnet := range initialSubnets {
