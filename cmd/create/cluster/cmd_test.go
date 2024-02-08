@@ -282,3 +282,22 @@ var _ = Describe("getMachinePoolRootDisk()", func() {
 		Expect(machinePoolRootDisk).To(BeNil())
 	})
 })
+
+var _ = Describe("Validations", func() {
+	DescribeTable("should validate network type", func(
+		in string,
+		expected error,
+	) {
+		err := validateNetworkType(in)
+		if expected == nil {
+			Expect(err).To(BeNil())
+		} else {
+			Expect(err).To(MatchError(expected))
+		}
+	},
+		Entry("no network type passed", "", nil),
+		Entry("valid network type passed", "OpenShiftSDN", nil),
+		Entry("invalid network type passed", "wrong",
+			fmt.Errorf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes)),
+	)
+})
