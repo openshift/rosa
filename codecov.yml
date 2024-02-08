@@ -1,0 +1,15 @@
+coverage:
+  status:
+    project:
+      default:
+        paths:
+          - "cmd"
+          - "pkg"
+        only_pulls: true
+    patch:
+      default:
+        paths:
+          - "cmd"
+          - "pkg"
+        informational: true
+        only_pulls: true
