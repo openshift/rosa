@@ -80,7 +80,8 @@ const (
 	MinReplicasSingleAZ = 2
 	MinReplicaMultiAZ   = 3
 
-	listInputMessage = "Format should be a comma-separated list."
+	listInputMessage          = "Format should be a comma-separated list."
+	listBillingAccountMessage = "To see the list of billing account options, you can use interactive mode by passing '-i'."
 
 	// nolint:lll
 	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
@@ -1068,7 +1069,7 @@ func run(cmd *cobra.Command, _ []string) {
 						"To use a different billing account, add --billing-account xxxxxxxxxx to previous command",
 					)
 				} else {
-					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters.")
+					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters. %s", listBillingAccountMessage)
 				}
 			}
 
@@ -1090,8 +1091,9 @@ func run(cmd *cobra.Command, _ []string) {
 					billingAccount = aws.ParseOption(billingAccount)
 				}
 
-				if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
-					r.Reporter.Errorf("Expected a valid billing account")
+				err := validateBillingAccount(billingAccount)
+				if err != nil {
+					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
 				}
 
@@ -3251,6 +3253,14 @@ func clusterConfigFor(
 		}
 	}
 	return clusterConfig, nil
+}
+
+func validateBillingAccount(billingAccount string) error {
+	if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
+		return fmt.Errorf("Billing account is invalid. Run the command again with a valid billing account. %s",
+			listBillingAccountMessage)
+	}
+	return nil
 }
 
 // validateNetworkType ensure user passes a valid network type parameter at creation
