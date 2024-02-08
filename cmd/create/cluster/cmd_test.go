@@ -359,6 +359,32 @@ var _ = Describe("Filtering", func() {
 	)
 })
 
+var _ = Describe("validateBillingAccount()", func() {
+
+	It("OK: valid billing account", func() {
+		validBillingAccount := "123456789012"
+		err := validateBillingAccount(validBillingAccount)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("KO: fails to validate a wrong billing account", func() {
+		wrongBillingAccount := "123"
+		err := validateBillingAccount(wrongBillingAccount)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Billing account is invalid. Run the command again with a valid billing account." +
+			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
+	})
+
+	It("KO: fails to validate an empty billing account", func() {
+		wrongBillingAccount := ""
+		err := validateBillingAccount(wrongBillingAccount)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Billing account is invalid. Run the command again with a valid billing account." +
+			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
+	})
+
+})
+
 func mustParseCIDR(s string) *net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	Expect(err).To(BeNil())
