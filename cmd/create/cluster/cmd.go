@@ -2512,13 +2512,16 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Network Type:
-	networkType := validateNetworkType(r)
+	if err := validateNetworkType(args.networkType); err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
-		networkType, err = interactive.GetOption(interactive.Input{
+		args.networkType, err = interactive.GetOption(interactive.Input{
 			Question: "Network Type",
 			Help:     cmd.Flags().Lookup("network-type").Usage,
 			Options:  ocm.NetworkTypes,
-			Default:  networkType,
+			Default:  args.networkType,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid network type: %s", err)
@@ -3002,7 +3005,7 @@ func run(cmd *cobra.Command, _ []string) {
 		MinReplicas:               minReplicas,
 		MaxReplicas:               maxReplicas,
 		ComputeLabels:             labelMap,
-		NetworkType:               networkType,
+		NetworkType:               args.networkType,
 		MachineCIDR:               machineCIDR,
 		ServiceCIDR:               serviceCIDR,
 		PodCIDR:                   podCIDR,
@@ -3246,20 +3249,15 @@ func clusterConfigFor(
 }
 
 // validateNetworkType ensure user passes a valid network type parameter at creation
-func validateNetworkType(r *rosa.Runtime) string {
-	var networkType string
-	if args.networkType == "" {
-		// Parameter not specified, nothing to do
-		return networkType
-	}
-	if helper.Contains(ocm.NetworkTypes, args.networkType) {
-		networkType = args.networkType
-	}
+func validateNetworkType(networkType string) error {
 	if networkType == "" {
-		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
-		os.Exit(1)
+		// Parameter not specified, nothing to do
+		return nil
 	}
-	return networkType
+	if !helper.Contains(ocm.NetworkTypes, networkType) {
+		return fmt.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
+	}
+	return nil
 }
 
 func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
