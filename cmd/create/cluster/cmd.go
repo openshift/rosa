@@ -2060,7 +2060,12 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Unable to parse service CIDR")
 			os.Exit(1)
 		}
-		subnets = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		var filterError error
+		subnets, filterError = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		if filterError != nil {
+			r.Reporter.Errorf("%s", filterError)
+			os.Exit(1)
+		}
 		if privateLink {
 			subnets = filterPrivateSubnets(subnets, r)
 		}
@@ -3396,20 +3401,21 @@ func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.
 	return filteredSubnets
 }
 
+// filterCidrRangeSubnets filters the initial set of subnets to those that are part of the machine network,
+// and not part of the service network
 func filterCidrRangeSubnets(
 	initialSubnets []*ec2.Subnet,
 	machineNetwork *net.IPNet,
 	serviceNetwork *net.IPNet,
 	r *rosa.Runtime,
-) []*ec2.Subnet {
+) ([]*ec2.Subnet, error) {
 	excludedSubnetsDueToCidr := []string{}
 	filteredSubnets := []*ec2.Subnet{}
 	for _, subnet := range initialSubnets {
 		skip := false
 		subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse subnet CIDR")
-			os.Exit(1)
+			return nil, fmt.Errorf("Unable to parse subnet CIDR: %w", err)
 		}
 
 		if !isValidCidrRange(subnetIP, subnetNetwork, machineNetwork, serviceNetwork) {
@@ -3425,7 +3431,7 @@ func filterCidrRangeSubnets(
 		r.Reporter.Warnf("The following subnets have been excluded"+
 			" because they do not fit into chosen CIDR ranges: %s", helper.SliceToSortedString(excludedSubnetsDueToCidr))
 	}
-	return filteredSubnets
+	return filteredSubnets, nil
 }
 
 func isValidCidrRange(
