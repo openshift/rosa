@@ -28,6 +28,17 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		os.Exit(1)
 	}
 
+	// Check to see if IAM operator roles have already created
+	missingRoles, err := validateOperatorRoles(r, cluster)
+	if err != nil {
+		if strings.Contains(err.Error(), "AccessDenied") {
+			r.Reporter.Debugf("Failed to verify if operator roles exist: '%v'", err)
+		} else {
+			r.Reporter.Errorf("Failed to verify if operator roles exist: '%v'", err)
+			os.Exit(1)
+		}
+	}
+
 	hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
 
 	operatorRolePolicyPrefix, err := aws.GetOperatorRolePolicyPrefixFromCluster(cluster, r.AWSClient)
@@ -49,16 +60,6 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 
 	switch mode {
 	case aws.ModeAuto:
-		// Check to see if IAM operator roles have already created
-		missingRoles, err := validateOperatorRoles(r, cluster)
-		if err != nil {
-			if strings.Contains(err.Error(), "AccessDenied") {
-				r.Reporter.Debugf("Failed to verify if operator roles exist: '%v'", err)
-			} else {
-				r.Reporter.Errorf("Failed to verify if operator roles exist: '%v'", err)
-				os.Exit(1)
-			}
-		}
 
 		if len(missingRoles) == 0 {
 			if ocm.IsOidcConfigReusable(cluster) {
