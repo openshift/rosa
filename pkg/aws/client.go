@@ -232,14 +232,8 @@ type awsClient struct {
 	spinner             *spinner.Spinner
 }
 
-func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) Client {
-
-	clientBuild := NewClient().Logger(logger)
-	if reporter.IsTerminal() {
-		spinner := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-		clientBuild.Spinner(spinner)
-	}
-	awsClient, err := clientBuild.Build()
+func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object, spinner *spinner.Spinner) Client {
+	awsClient, err := NewClient().Logger(logger).Spinner(spinner).Build()
 	if err != nil {
 		reporter.Errorf("Failed to create AWS client: %v", err)
 		os.Exit(1)
@@ -436,6 +430,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 		servicequotasClient: servicequotas.New(sess),
 		awsSession:          sess,
 		useLocalCredentials: b.useLocalCredentials,
+		spinner:             b.spinner,
 	}
 
 	_, root, err := getClientDetails(c)
@@ -1275,7 +1270,7 @@ func (c *awsClient) WithSpinner(fn func() (interface{}, error)) (interface{}, er
 	if c.spinner != nil {
 		c.spinner.Start()
 		returnValue, err := fn() // arbitrary function
-		c.spinner.Stop()         // stops spinner after the function completes
+		c.spinner.Stop()
 		return returnValue, err
 	}
 	return fn()
