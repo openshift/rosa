@@ -454,9 +454,11 @@ func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []*iam.Tag, versi
 }
 
 func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
-	_, err := c.iamClient.AttachRolePolicy(&iam.AttachRolePolicyInput{
-		RoleName:  aws.String(roleName),
-		PolicyArn: aws.String(policyARN),
+	_, err := c.WithSpinner(func() (interface{}, error) {
+		return c.iamClient.AttachRolePolicy(&iam.AttachRolePolicyInput{
+			RoleName:  aws.String(roleName),
+			PolicyArn: aws.String(policyARN),
+		})
 	})
 	if err != nil {
 		return err
@@ -1123,9 +1125,11 @@ func (c *awsClient) detachAttachedRolePolicies(role *string) error {
 		return err
 	}
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
-		_, err = c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
-			PolicyArn: policy.PolicyArn,
-			RoleName:  role,
+		_, err = c.WithSpinner(func() (interface{}, error) {
+			return c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
+				PolicyArn: policy.PolicyArn,
+				RoleName:  role,
+			})
 		})
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
@@ -1147,9 +1151,11 @@ func (c *awsClient) DeleteInlineRolePolicies(role string) error {
 		return err
 	}
 	for _, policyName := range listRolePolicyOutput.PolicyNames {
-		_, err = c.iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
-			PolicyName: policyName,
-			RoleName:   aws.String(role),
+		_, err = c.WithSpinner(func() (interface{}, error) {
+			return c.iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
+				PolicyName: policyName,
+				RoleName:   aws.String(role),
+			})
 		})
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
@@ -1745,20 +1751,24 @@ func (c *awsClient) UpdateTag(roleName string, defaultPolicyVersion string) erro
 }
 
 func (c *awsClient) AddRoleTag(roleName string, key string, value string) error {
-	role, err := c.iamClient.GetRole(&iam.GetRoleInput{
-		RoleName: aws.String(roleName),
+	role, err := c.WithSpinner(func() (interface{}, error) {
+		return c.iamClient.GetRole(&iam.GetRoleInput{
+			RoleName: aws.String(roleName),
+		})
 	})
 	if err != nil {
 		return err
 	}
-	_, err = c.iamClient.TagRole(&iam.TagRoleInput{
-		RoleName: role.Role.RoleName,
-		Tags: []*iam.Tag{
-			{
-				Key:   aws.String(key),
-				Value: aws.String(value),
+	_, err = c.WithSpinner(func() (interface{}, error) {
+		return c.iamClient.TagRole(&iam.TagRoleInput{
+			RoleName: role.(*iam.GetRoleOutput).Role.RoleName,
+			Tags: []*iam.Tag{
+				{
+					Key:   aws.String(key),
+					Value: aws.String(value),
+				},
 			},
-		},
+		})
 	})
 	if err != nil {
 		return err

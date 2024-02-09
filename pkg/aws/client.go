@@ -49,6 +49,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+	"github.com/briandowns/spinner"
 	"github.com/google/uuid"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
@@ -212,6 +213,7 @@ type ClientBuilder struct {
 	region              *string
 	credentials         *AccessKey
 	useLocalCredentials bool
+	spinner             *spinner.Spinner
 }
 
 type awsClient struct {
@@ -227,12 +229,17 @@ type awsClient struct {
 	awsSession          *session.Session
 	awsAccessKeys       *AccessKey
 	useLocalCredentials bool
+	spinner             *spinner.Spinner
 }
 
 func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) Client {
-	awsClient, err := NewClient().
-		Logger(logger).
-		Build()
+
+	clientBuild := NewClient().Logger(logger)
+	if reporter.IsTerminal() {
+		spinner := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		clientBuild.Spinner(spinner)
+	}
+	awsClient, err := clientBuild.Build()
 	if err != nil {
 		reporter.Errorf("Failed to create AWS client: %v", err)
 		os.Exit(1)
@@ -259,6 +266,7 @@ func New(
 	awsSession *session.Session,
 	awsAccessKeys *AccessKey,
 	useLocalCredentials bool,
+	spinner *spinner.Spinner,
 
 ) Client {
 	return &awsClient{
@@ -274,6 +282,7 @@ func New(
 		awsSession,
 		awsAccessKeys,
 		useLocalCredentials,
+		spinner,
 	}
 }
 
@@ -295,6 +304,11 @@ func (b *ClientBuilder) AccessKeys(value *AccessKey) *ClientBuilder {
 
 func (b *ClientBuilder) UseLocalCredentials(value bool) *ClientBuilder {
 	b.useLocalCredentials = value
+	return b
+}
+
+func (b *ClientBuilder) Spinner(value *spinner.Spinner) *ClientBuilder {
+	b.spinner = value
 	return b
 }
 
@@ -1252,6 +1266,16 @@ func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]*ec2.SecurityGroup, err
 		return []*ec2.SecurityGroup{}, err
 	}
 	return securityGroups, nil
+}
+
+func (c *awsClient) WithSpinner(fn func() (interface{}, error)) (interface{}, error) {
+	if c.spinner != nil {
+		c.spinner.Start()
+		returnValue, err := fn() // arbitrary function
+		c.spinner.Stop()         // stops spinner after the function completes
+		return returnValue, err
+	}
+	return fn()
 }
 
 // CustomRetryer wraps the aws SDK's built in DefaultRetryer allowing for

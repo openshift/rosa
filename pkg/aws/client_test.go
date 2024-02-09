@@ -59,6 +59,7 @@ var _ = Describe("Client", func() {
 			&session.Session{},
 			&AccessKey{},
 			false,
+			nil,
 		)
 	})
 
