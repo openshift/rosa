@@ -1063,7 +1063,9 @@ func (c *awsClient) DetachRolePolicies(roleName string) error {
 }
 
 func (c *awsClient) detachRolePolicy(policyArn string, roleName string) error {
-	_, err := c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{PolicyArn: &policyArn, RoleName: &roleName})
+	_, err := c.WithSpinner(func() (interface{}, error) {
+		return c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{PolicyArn: &policyArn, RoleName: &roleName})
+	})
 	if err != nil {
 		return err
 	}
