@@ -1042,18 +1042,21 @@ func (c *awsClient) DetachRolePolicies(roleName string) error {
 	isTruncated := true
 	var marker *string
 	for isTruncated {
-		resp, err := c.iamClient.ListAttachedRolePolicies(
-			&iam.ListAttachedRolePoliciesInput{
-				Marker:   marker,
-				RoleName: &roleName,
-			},
-		)
+		resp, err := c.WithSpinner(func() (interface{}, error) {
+			return c.iamClient.ListAttachedRolePolicies(
+				&iam.ListAttachedRolePoliciesInput{
+					Marker:   marker,
+					RoleName: &roleName,
+				},
+			)
+		})
 		if err != nil {
 			return err
 		}
-		isTruncated = *resp.IsTruncated
-		marker = resp.Marker
-		attachedPolicies = append(attachedPolicies, resp.AttachedPolicies...)
+		listRolePoliciesResponse := resp.(*iam.ListAttachedRolePoliciesOutput)
+		isTruncated = *listRolePoliciesResponse.IsTruncated
+		marker = listRolePoliciesResponse.Marker
+		attachedPolicies = append(attachedPolicies, listRolePoliciesResponse.AttachedPolicies...)
 	}
 	for _, attachedPolicy := range attachedPolicies {
 		err := c.detachRolePolicy(*attachedPolicy.PolicyArn, roleName)
