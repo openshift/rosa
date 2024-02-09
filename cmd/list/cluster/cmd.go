@@ -71,13 +71,6 @@ func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	for i := 0; i < 1000; i++ {
-
-		r.AWSClient.DetachRolePolicies("dle-audit-test-role")
-
-		r.AWSClient.AttachRolePolicy("dle-audit-test-role", "arn:aws:iam::765374464689:policy/dle-audit-log-forwarding-policy")
-	}
-
 	// Retrieve the list of clusters:
 	var creator *aws.Creator
 	if args.listAll {
