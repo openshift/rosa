@@ -42,7 +42,7 @@ func (r *Runtime) WithOCM() *Runtime {
 func (r *Runtime) WithAWS() *Runtime {
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() {
-		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		spin = spinner.New(spinner.CharSets[9], 200*time.Millisecond)
 	}
 
 	if r.AWSClient == nil {
