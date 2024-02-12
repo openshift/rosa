@@ -39,7 +39,7 @@ var Cmd = &cobra.Command{
 	Long:    "Link OCM role to specific OCM organization before you create your cluster.",
 	Example: ` # Link OCM role
   rosa link ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
-	RunE: run,
+	Run: run,
 }
 
 func init() {
@@ -62,7 +62,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) (err error) {
+func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -73,13 +73,13 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	orgAccount, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
 		r.Reporter.Errorf("Error getting organization account: %v", err)
-		return err
+		os.Exit(1)
 	}
 
 	if args.organizationID != "" && orgAccount != args.organizationID {
 		r.Reporter.Errorf("Invalid organization ID '%s'. "+
 			"It doesn't match with the user session '%s'.", args.organizationID, orgAccount)
-		return err
+		os.Exit(1)
 	}
 
 	if r.Reporter.IsTerminal() {
@@ -147,16 +147,15 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 				"Only organization member can run this command. "+
 				"Please ask someone with the organization member role to run the following command \n\n"+
 				"\t rosa link ocm-role --role-arn %s --organization-id %s", errMessage, roleArn, orgAccount)
-			return err
+			os.Exit(1)
 		}
 		r.Reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",
 			roleArn, orgAccount, err)
-		return err
+		os.Exit(1)
 	}
 	if !linked {
 		r.Reporter.Infof("Role-arn '%s' is already linked with the organization account '%s'", roleArn, orgAccount)
 		os.Exit(0)
 	}
 	r.Reporter.Infof("Successfully linked role-arn '%s' with organization account '%s'", roleArn, orgAccount)
-	return nil
 }

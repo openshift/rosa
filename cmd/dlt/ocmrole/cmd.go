@@ -43,7 +43,7 @@ var Cmd = &cobra.Command{
 	Long:    "Delete OCM role from the current AWS organization",
 	Example: ` # Delete OCM role
 rosa delete ocm-role --role-arn arn:aws:iam::123456789012:role/xxx-OCM-Role-1223456778`,
-	RunE: run,
+	Run: run,
 }
 
 func init() {
@@ -61,7 +61,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -74,7 +74,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	orgID, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
 		r.Reporter.Errorf("Error getting organization account: %v", err)
-		return err
+		os.Exit(1)
 	}
 
 	if len(argv) > 0 {
@@ -216,8 +216,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
-
-	return nil
 }
 
 func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws.Client,

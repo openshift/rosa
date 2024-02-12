@@ -41,7 +41,7 @@ var Cmd = &cobra.Command{
 	Long:    "Link user role to specific OCM account before create your cluster.",
 	Example: ` # Link user roles
   rosa link user-role --role-arn arn:aws:iam::{accountid}:role/{prefix}-User-{username}-Role`,
-	RunE: run,
+	Run: run,
 }
 
 func init() {
@@ -64,7 +64,8 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) (err error) {
+func run(cmd *cobra.Command, argv []string) {
+	var err error
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -143,5 +144,4 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		os.Exit(1)
 	}
 	r.Reporter.Infof("Successfully linked role ARN '%s' with account '%s'", roleArn, accountID)
-	return nil
 }
