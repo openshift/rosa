@@ -74,6 +74,12 @@ configured in https://github.com/openshift/release repo.
 `.golangciversion` file is read by the `lint` job commands there:
 https://github.com/openshift/release/blob/master/ci-operator/config/openshift/rosa/openshift-rosa-master.yaml
 
+## Contributing and Error Handling in Cobra
+
+1. If you are contributing code, please ensure that you are handling errors
+   properly. Please use `Run: run` instead of `RunE: runE` when writing commands,
+   in order to stop the **usage info** being printed when an error is returned.
+
 ## GitHub Workflows
 
 This repository also uses GitHub actions which are configured at `./github/workflows`

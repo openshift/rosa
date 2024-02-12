@@ -53,7 +53,7 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade account-wide IAM roles to the latest version before upgrading your cluster.",
 	Example: `  # Upgrade account roles for ROSA STS clusters
   rosa upgrade account-roles`,
-	RunE: run,
+	Run: run,
 }
 
 func init() {
@@ -96,7 +96,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 	reporter := r.Reporter
@@ -172,7 +172,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 		r.Reporter.Infof("Account roles with the prefix '%s' have attached managed policies. "+
 			"An upgrade isn't needed", prefix)
-		return nil
+		os.Exit(0)
 	}
 
 	creator, err := awsClient.GetCreator()
@@ -272,7 +272,6 @@ func run(cmd *cobra.Command, argv []string) error {
 		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
 		os.Exit(1)
 	}
-	return err
 }
 
 func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter *rprtr.Object) {

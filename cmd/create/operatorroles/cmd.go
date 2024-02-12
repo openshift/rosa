@@ -58,7 +58,7 @@ var Cmd = &cobra.Command{
 
   # Create operator roles with a specific permissions boundary
   rosa create operator-roles -c mycluster --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	RunE: run,
+	Run: run,
 }
 
 func init() {
@@ -133,7 +133,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -252,16 +252,25 @@ func run(cmd *cobra.Command, argv []string) error {
 			r.Reporter.Errorf("Error getting latest version: %s", err)
 			os.Exit(1)
 		}
-		return handleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
+		err = handleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
 			mode, policies, latestPolicyVersion)
+		if err != nil {
+			r.Reporter.Errorf("Error creating operator roles: %s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)
 	}
-	return handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
+	err = handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
 		mode, policies, latestPolicyVersion)
+	if err != nil {
+		r.Reporter.Errorf("Error creating operator roles: %s", err)
+		os.Exit(1)
+	}
 }
 
 func convertV1OperatorIAMRoleIntoOcmOperatorIamRole(
