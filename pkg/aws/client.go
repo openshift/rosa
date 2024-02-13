@@ -666,7 +666,12 @@ func (c *awsClient) GetCreator() (*Creator, error) {
 		return nil, err
 	}
 
-	creatorARN := aws.ToString(getCallerIdentityOutput.Arn)
+	return CreatorForCallerIdentity(getCallerIdentityOutput)
+}
+
+// CreatorForCallerIdentity adapts an STS CallerIdentity to the ROSA *Creator
+func CreatorForCallerIdentity(identity *sts.GetCallerIdentityOutput) (*Creator, error) {
+	creatorARN := aws.ToString(identity.Arn)
 
 	// Extract the account identifier from the ARN of the user:
 	creatorParsedARN, err := arn.Parse(creatorARN)
