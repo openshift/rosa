@@ -16,7 +16,7 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/pkg/test/matchers"
 )
 
 var _ = Describe("Validate build command", func() {
@@ -321,7 +321,7 @@ var _ = Describe("Filtering", func() {
 		} else {
 			Expect(err).To(MatchError(ContainSubstring(expectedError)))
 		}
-		Expect(out).To(test.MatchExpected(expected))
+		Expect(out).To(matchers.MatchExpected(expected))
 	},
 		Entry(
 			"no input subnets to filter",

@@ -23,6 +23,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/test/matchers"
 )
 
 var _ = Describe("Client", func() {
@@ -457,5 +458,74 @@ var _ = Describe("Client", func() {
 			retry := customRetryer.ShouldRetry(mockRequest)
 			Expect(retry).ToNot(BeFalse())
 		})
+	})
+
+	Describe("Creator", func() {
+		DescribeTable("should be adapted from STS caller identity", func(
+			identity *sts.GetCallerIdentityOutput,
+			expected *Creator,
+			expectedError string,
+		) {
+			creator, err := CreatorForCallerIdentity(identity)
+			if expectedError == "" {
+				Expect(err).To(BeNil())
+			} else {
+				Expect(err).To(MatchError(ContainSubstring(expectedError)))
+			}
+			Expect(creator).To(matchers.MatchExpected(expected))
+		},
+			Entry(
+				"iam user",
+				&sts.GetCallerIdentityOutput{
+					Arn: awsSdk.String("arn:aws:iam::123456789012:user/David"),
+				},
+				&Creator{
+					ARN:        "arn:aws:iam::123456789012:user/David",
+					AccountID:  "123456789012",
+					IsSTS:      false,
+					IsGovcloud: false,
+				},
+				"",
+			),
+			Entry(
+				"sts identity",
+				&sts.GetCallerIdentityOutput{
+					Arn: awsSdk.String("arn:aws:sts::123456789123:assumed-role/OrganizationAccountAccessRole/UserAccess"),
+				},
+				&Creator{
+					ARN:        "arn:aws:iam::123456789123:role/OrganizationAccountAccessRole",
+					AccountID:  "123456789123",
+					IsSTS:      true,
+					IsGovcloud: false,
+				},
+				"",
+			),
+			Entry(
+				"gov cloud iam user",
+				&sts.GetCallerIdentityOutput{
+					Arn: awsSdk.String("arn:aws-us-gov:iam::123456789012:user/David"),
+				},
+				&Creator{
+					ARN:        "arn:aws-us-gov:iam::123456789012:user/David",
+					AccountID:  "123456789012",
+					IsSTS:      false,
+					IsGovcloud: true,
+				},
+				"",
+			),
+			Entry(
+				"gov cloud sts identity",
+				&sts.GetCallerIdentityOutput{
+					Arn: awsSdk.String("arn:aws-us-gov:sts::123456789123:assumed-role/OrganizationAccountAccessRole/UserAccess"),
+				},
+				&Creator{
+					ARN:        "arn:aws-us-gov:iam::123456789123:role/OrganizationAccountAccessRole",
+					AccountID:  "123456789123",
+					IsSTS:      true,
+					IsGovcloud: true,
+				},
+				"",
+			),
+		)
 	})
 })
