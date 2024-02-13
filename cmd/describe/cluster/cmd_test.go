@@ -104,7 +104,7 @@ var _ = Describe("Cluster description", Ordered, func() {
 				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
 				func() *cmv1.UpgradePolicyState { return nil }, expectClusterWithNameAndIDValue, nil),
 
-			Entry("Prints cluster information with external authentication config",
+			Entry("Prints cluster information with the external authentication provider",
 				func() *cmv1.Cluster { return clusterWithExternalAuthConfig },
 				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
 				func() *cmv1.UpgradePolicyState { return nil }, expectClusterWithExternalAuthConfig, nil),

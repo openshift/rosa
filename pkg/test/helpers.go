@@ -85,6 +85,18 @@ var (
 	MockClusterName = "cluster"
 )
 
+func BuildExternalAuth() *v1.ExternalAuth {
+	const externalAuthName = "microsoft-entra-id"
+	externalAuth, err := v1.NewExternalAuth().ID(externalAuthName).
+		Issuer(v1.NewTokenIssuer().URL("https://test.com").Audiences("abc")).
+		Claim(v1.NewExternalAuthClaim().Mappings(v1.NewTokenClaimMappings().
+			UserName(v1.NewUsernameClaim().Claim("username")).
+			Groups(v1.NewGroupsClaim().Claim("groups")))).
+		Build()
+	Expect(err).To(BeNil())
+	return externalAuth
+}
+
 func MockOCMCluster(modifyFn func(c *v1.ClusterBuilder)) (*v1.Cluster, error) {
 	mock := v1.NewCluster().
 		ID(MockClusterID).
@@ -171,6 +183,21 @@ func FormatHtpasswdUserList(htpasswdUsers []*v1.HTPasswdUser) string {
 		"total": %d,
 		"items": %s
 	}`, len(htpasswdUsers), len(htpasswdUsers), htpasswdUserJson.String())
+}
+
+func FormatExternalAuthList(externalAuths []*v1.ExternalAuth) string {
+	var outputJson bytes.Buffer
+
+	v1.MarshalExternalAuthList(externalAuths, &outputJson)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "ExternalAuthList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(externalAuths), len(externalAuths), outputJson.String())
 }
 
 func FormatNodePoolUpgradePolicyList(upgrades []*v1.NodePoolUpgradePolicy) string {

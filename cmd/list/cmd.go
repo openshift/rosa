@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/addon"
 	"github.com/openshift/rosa/cmd/list/cluster"
 	"github.com/openshift/rosa/cmd/list/dnsdomains"
+	"github.com/openshift/rosa/cmd/list/externalauthprovider"
 	"github.com/openshift/rosa/cmd/list/gates"
 	"github.com/openshift/rosa/cmd/list/idp"
 	"github.com/openshift/rosa/cmd/list/ingress"
@@ -70,6 +71,7 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(oidcprovider.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
+	Cmd.AddCommand(externalauthprovider.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)

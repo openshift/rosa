@@ -453,3 +453,21 @@ var _ = Describe("ClusterDomainPrefixValidator()", func() {
 		Entry("should error when domain prefix is longer than 15 chars", strings.Repeat("h", 16), true),
 		Entry("should not error when domain prefix valid", strings.Repeat("h", 15), false))
 })
+
+var _ = Describe("ValidateClaimValidationRules()", func() {
+	DescribeTable("ValidateClaimValidationRules() test case", func(input interface{}, shouldErr bool, errMsg string) {
+		err := ValidateClaimValidationRules(input)
+		if shouldErr {
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(errMsg))
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("should error when a non string arg is given", 5, true, "can only validate string types, got int"),
+		Entry("should not error when an empty claim validation rule is given", "", false, ""),
+		Entry("shoud error when claim validation rule is not a valid value", "9hjh9", true,
+			"invalid identifier '9hjh9' for 'claim validation rule. 'Should be in a <claim>:<required_value> format."),
+		Entry("should not error when claim validation rule with single pair is valid", "abc:efg", false, ""))
+	Entry("should not error when claim validation rule with multiple pairs is valid", "abc:efg,lala:wuwu", false, "")
+})
