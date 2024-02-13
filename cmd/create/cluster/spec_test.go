@@ -12,7 +12,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/pkg/test/matchers"
 )
 
 type fakeGetter struct {
@@ -50,7 +50,7 @@ var _ = Describe("Cluster Configuration Creation", func() {
 	) {
 		out, err := clusterConfigFor(r.Reporter, in, creator, aws)
 		Expect(err).To(BeNil())
-		Expect(out).To(test.MatchExpected(expected, cmpopts.IgnoreUnexported(cmv1.ExternalAuthConfig{})))
+		Expect(out).To(matchers.MatchExpected(expected, cmpopts.IgnoreUnexported(cmv1.ExternalAuthConfig{})))
 	},
 		Entry("no credentials required",
 			ocm.Spec{
