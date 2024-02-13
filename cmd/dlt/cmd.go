@@ -19,6 +19,7 @@ package dlt
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/externalauthproviders"
 	"github.com/openshift/rosa/cmd/dlt/accountroles"
 	"github.com/openshift/rosa/cmd/dlt/admin"
 	"github.com/openshift/rosa/cmd/dlt/autoscaler"
@@ -65,6 +66,7 @@ func init() {
 	Cmd.AddCommand(dnsdomains.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
 	Cmd.AddCommand(kubeletconfig.Cmd)
+	Cmd.AddCommand(externalauthproviders.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

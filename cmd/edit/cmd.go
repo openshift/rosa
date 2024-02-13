@@ -19,6 +19,7 @@ package edit
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/externalauthproviders"
 	"github.com/openshift/rosa/cmd/edit/addon"
 	"github.com/openshift/rosa/cmd/edit/autoscaler"
 	"github.com/openshift/rosa/cmd/edit/cluster"
@@ -48,6 +49,7 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
 	Cmd.AddCommand(kubeletconfig.Cmd)
+	Cmd.AddCommand(externalauthproviders.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
