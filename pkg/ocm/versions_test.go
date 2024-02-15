@@ -17,6 +17,27 @@ import (
 )
 
 // nolint
+const NonSupportedHypershiftVersionsListResponse = `{
+	"kind": "VersionList",
+	"href": "/api/clusters_mgmt/v1/versions?order=default+desc%2C+id+desc&page=1&search=enabled+%3D+%27true%27+AND+rosa_enabled+%3D+%27true%27+AND+channel_group+%3D+%27stable%27&size=100",
+	"page": 1,
+	"size": 2,
+	"total": 2,
+	"items": [{
+		"kind": "Version",
+		"href": "/api/clusters_mgmt/v1/versions/4.13.0",
+		"id": "4.13.0",
+		"name": "4.13.0",
+		"raw_id": "4.13.0",
+		"release_image": "4.14.9",
+		"hosted_control_plane_default": true,
+		"hosted_control_plane_enabled": false,
+		"channel_group": "stable",
+		"rosa_enabled": true
+	}]
+}`
+
+// nolint
 const VersionsListResponse = `{
 	"kind": "VersionList",
 	"href": "/api/clusters_mgmt/v1/versions?order=default+desc%2C+id+desc&page=1&search=enabled+%3D+%27true%27+AND+rosa_enabled+%3D+%27true%27+AND+channel_group+%3D+%27stable%27&size=100",
@@ -28,11 +49,12 @@ const VersionsListResponse = `{
 		"href": "/api/clusters_mgmt/v1/versions/4.14.9",
 		"id": "4.14.9",
 		"name": "4.14.9",
-		"rawID": "4.14.9",
-		"releaseImage": "4.14.9",
-		"hostedControlPlaneDefault": true,
-		"channelGroup": "stable",
-		"rosaEnabled": true
+		"raw_id": "4.14.9",
+		"release_image": "4.14.9",
+		"hosted_control_plane_default": true,
+		"hosted_control_plane_enabled": true,
+		"channel_group": "stable",
+		"rosa_enabled": true
 	}]
 }`
 
@@ -90,6 +112,32 @@ var _ = Describe("Get version list", func() {
 			vs, err := ocmClient.GetVersionsWithProduct("", DefaultChannelGroup, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(vs)).To(Equal(1))
+		})
+
+		It("Expects a valid Hypershift Version", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK,
+					VersionsListResponse,
+				),
+			)
+
+			vs, err := ocmClient.ValidateHypershiftVersion("4.14.9", DefaultChannelGroup)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(vs).To(BeTrue())
+		})
+
+		It("Expects a non supported Hypershift Version", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK,
+					NonSupportedHypershiftVersionsListResponse,
+				),
+			)
+
+			vs, err := ocmClient.ValidateHypershiftVersion("4.13.0", DefaultChannelGroup)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(vs).To(BeFalse())
 		})
 	})
 })

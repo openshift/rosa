@@ -200,6 +200,24 @@ var _ = Describe("Validates OCP version", func() {
 				fmt.Errorf("version 'foo.bar' was not found")))
 			Expect(v).To(BeEmpty())
 		})
+
+		It(`OK: Validates a supported Hypershift version successfully`, func() {
+			v, err := client.ValidateHypershiftVersion("4.14.5", stable)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(v).To(BeTrue())
+		})
+
+		It(`KO: Fails to validate Hypershift version when the version is less than the minimal supported version`, func() {
+			v, err := client.ValidateHypershiftVersion("4.13.0", stable)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(v).To(BeFalse())
+		})
+
+		It(`KO: Fails to validate Hypershift version when the version is invalid or malformed`, func() {
+			v, err := client.ValidateHypershiftVersion("foo.bar", stable)
+			Expect(err).To(BeEquivalentTo(fmt.Errorf("version foo.bar was not found")))
+			Expect(v).To(BeFalse())
+		})
 	})
 	var _ = Context("when creating a classic cluster", func() {
 		It("OK: Validates successfully a cluster with a supported version", func() {
