@@ -698,6 +698,7 @@ func initFlags(cmd *cobra.Command) {
 		false,
 		"Disable CNI creation to let users bring their own CNI.",
 	)
+	flags.MarkHidden("no-cni")
 
 	flags.StringVar(
 		&args.clusterAdminUser,
