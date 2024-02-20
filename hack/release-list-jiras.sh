@@ -8,7 +8,7 @@ fi
 
 # Check if the command-line argument is provided
 if [ -z "$1" ]; then
-  echo "Usage: $0 <release_version>"
+  echo "Usage: $0 <release_version_branch>"
   exit 1
 fi
 
