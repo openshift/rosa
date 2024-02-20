@@ -8,13 +8,13 @@ fi
 
 # Validate input parameters
 if [[ $# -ne 2 ]]; then
-  echo "Usage: $0 <release-label> <previous-release>"
+  echo "Usage: $0 <current-release> <previous-release>"
   exit 1
 fi
 
 # Assign input parameters to variables
-release_label="$1"
-previous_release="$2"
+current_release="rosa_cli_$1"
+previous_release="release_$2"
 
 # Create a temporary file for the awk code
 awk_script=$(mktemp)
@@ -63,7 +63,7 @@ function join(arr, delimiter,    result) {
 AWK_SCRIPT
 
 # Run the jira issue list command and store the output in a variable
-jira_output=$(jira issue list --jql "project in (\"Openshift Cluster Manager\", \"Service Development A\") AND labels = $release_label" --plain --columns TYPE,KEY,SUMMARY,STATUS,LABELS)
+jira_output=$(jira issue list --jql "project in (\"Openshift Cluster Manager\", \"Service Development A\") AND fixVersion = $current_release" --plain --columns TYPE,KEY,SUMMARY,STATUS,LABELS)
 
 # print awk output to help build the list of keys for errata
 awk -f "$awk_script" <<< "$jira_output"
@@ -74,10 +74,12 @@ commit_messages=$(git log "$previous_release"..HEAD --pretty=format:"%s" --no-me
 
 # Filter and print only the commit messages that contain a key from the list of keys
 while read -r line; do
+  # Remove "Signed-off-by" postfix if it exists
+  filtered_line=$(echo "$line" | sed 's/Signed-off-by:.*$//')
   for key in $keys; do
-    if echo "$line" | grep -q "$key"; then
+    if echo "$filtered_line" | grep -q "$key"; then
       # Remove Jira ticket ID and pipe character from the commit message
-      filtered_message=$(echo "$line" | sed -E 's/^[[:alnum:]]+-[0-9]+ \| //')
+      filtered_message=$(echo "$filtered_line" | sed -E 's/^[[:alnum:]]+-[0-9]+ \| //')
       echo "$filtered_message"
       break
     fi
