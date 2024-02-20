@@ -31,6 +31,8 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 )
 
+const boolType string = "bool"
+
 var hasUnknownFlags bool
 
 // ParseUnknownFlags parses all flags from the CLI, including
@@ -119,7 +121,7 @@ func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) erro
 			// Skip EOF and known flags
 			if flag := flags.Lookup(flagName); flag != nil {
 				validArgs = append(validArgs, arg)
-				if flag.Value.Type() != "bool" {
+				if flag.Value.Type() != boolType {
 					upcomingValue = true
 				}
 			} else if failOnUnknown {
@@ -139,7 +141,7 @@ func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) erro
 			flagName := arg[1:]
 			if flag := flags.Lookup(flagName); flag != nil {
 				validArgs = append(validArgs, arg)
-				if flag.Value.Type() != "bool" {
+				if flag.Value.Type() != boolType {
 					upcomingValue = true
 				}
 			} else if failOnUnknown {
@@ -180,6 +182,90 @@ func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) erro
 	}
 	if helpVal {
 		return pflag.ErrHelp
+	}
+
+	return nil
+}
+
+// PreprocessUnknownFlagsWithId Parses known and unknown flags will take the command line arguments and map the ones
+// that fit with known flags.
+func PreprocessUnknownFlagsWithId(cmd *cobra.Command, argv []string) error {
+	flags := cmd.Flags()
+
+	var validArgs []string
+	var upcomingValue bool
+
+	// If help is called, regardless of other flags, return we want help.
+	// Also say we need help if the command isn't runnable.
+	helpVal, err := cmd.Flags().GetBool("help")
+	if err != nil {
+		// should be impossible to get here as we always declare a help
+		// flag in InitDefaultHelpFlag()
+		panic(fmt.Errorf("\"help\" flag is incorrectly declared as non-bool. Please correct your code. Error: %w", err))
+	}
+	if helpVal {
+		return pflag.ErrHelp
+	}
+
+	foundId := false
+	for i, arg := range argv {
+		switch {
+		// Upcoming value from a space-separated value
+		case upcomingValue:
+			if strings.HasPrefix(arg, "-") {
+				return fmt.Errorf("No value given for flag '%s'", argv[i-1])
+			}
+			validArgs = append(validArgs, arg)
+			upcomingValue = false
+		// A long flag with a space separated value
+		case strings.HasPrefix(arg, "--") && !strings.Contains(arg, "="):
+			flagName := arg[2:]
+			// Skip EOF and known flags
+			if flag := flags.Lookup(flagName); flag != nil {
+				validArgs = append(validArgs, arg)
+				if flag.Value.Type() != boolType {
+					upcomingValue = true
+				}
+			} else {
+				upcomingValue = true
+			}
+		// A long flag with a value after an equal sign
+		case strings.HasPrefix(arg, "--") && strings.Contains(arg, "="):
+			flagName := strings.SplitN(arg[2:], "=", 2)[0]
+			if flags.Lookup(flagName) != nil {
+				validArgs = append(validArgs, arg)
+			}
+			upcomingValue = false
+		// A short flag with a space separated value
+		case strings.HasPrefix(arg, "-") && !strings.Contains(arg, "="):
+			flagName := arg[1:]
+			if flag := flags.Lookup(flagName); flag != nil {
+				validArgs = append(validArgs, arg)
+				if flag.Value.Type() != boolType {
+					upcomingValue = true
+				}
+			} else {
+				upcomingValue = true
+			}
+		// A short flag with with a value after an equal sign
+		case strings.HasPrefix(arg, "-") && strings.Contains(arg, "="):
+			flagName := strings.SplitN(arg[1:], "=", 2)[0]
+			if flags.Lookup(flagName) != nil {
+				validArgs = append(validArgs, arg)
+			}
+			upcomingValue = false
+		default:
+			foundId = true
+		}
+	}
+
+	err = flags.Parse(validArgs)
+	if err != nil {
+		return err
+	}
+
+	if !foundId {
+		return fmt.Errorf("ID argument not found in list of arguments passed to command")
 	}
 
 	return nil
