@@ -40,11 +40,11 @@ This script will generate a changelog that can be included in the release notes 
 
 Required parameters for this script are:
 
-* `release-label`: The release label in Jira for the version being released
+* `current-version`: The version of the current release used to fetch the fix version in JIRA
 * `previous-version`: The previous version of ROSA released
 
 Example usage:
 
 ```shell
-./hack/release-generate-changelog.sh release-1.2.35 v1.2.34
+./hack/release-generate-changelog.sh 1.2.35 1.2.34
 ```
