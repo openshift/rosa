@@ -42,6 +42,13 @@ func (r *Runtime) WithOCM() *Runtime {
 
 // Adds an AWS client to the runtime
 func (r *Runtime) WithAWS() *Runtime {
+	// dependency to ocm client to validate the region
+	r.WithOCM()
+	err := r.OCMClient.ValidateAwsClientRegion()
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		os.Exit(1)
+	}
 	if r.AWSClient == nil {
 		r.AWSClient = aws.CreateNewClientOrExit(r.Logger, r.Reporter)
 	}
