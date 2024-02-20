@@ -172,16 +172,6 @@ func (c *Client) Labels() *LabelsClient {
 	)
 }
 
-// Notify returns the target 'notify' resource.
-//
-// Reference to the resource that manages the notifications.
-func (c *Client) Notify() *NotifyClient {
-	return NewNotifyClient(
-		c.transport,
-		path.Join(c.path, "notify"),
-	)
-}
-
 // NotifyDetails returns the target 'notify_details' resource.
 //
 // Reference to the resource that manages the notifications details.
