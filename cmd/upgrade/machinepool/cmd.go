@@ -223,7 +223,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 
 	// Schedule the built upgrade policy
 	r.Reporter.Debugf("Scheduling the upgrade policy")
-	err = r.OCMClient.ScheduleNodePoolUpgrade(cluster.ID(), machinePoolID, upgradePolicy)
+	_, err = r.OCMClient.ScheduleNodePoolUpgrade(cluster.ID(), machinePoolID, upgradePolicy)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to schedule upgrade for machine pool '%s' in cluster '%s'",
 			machinePoolID, clusterKey)
