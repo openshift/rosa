@@ -23,9 +23,9 @@ import (
 )
 
 func (c *Client) ScheduleNodePoolUpgrade(clusterID string, nodePoolId string,
-	upgradePolicy *cmv1.NodePoolUpgradePolicy) error {
+	upgradePolicy *cmv1.NodePoolUpgradePolicy) (*cmv1.NodePoolUpgradePolicy, error) {
 	if upgradePolicy == nil {
-		return fmt.Errorf("upgrade policy is nil")
+		return nil, fmt.Errorf("upgrade policy is nil")
 	}
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).NodePools().NodePool(nodePoolId).
@@ -33,9 +33,9 @@ func (c *Client) ScheduleNodePoolUpgrade(clusterID string, nodePoolId string,
 		Add().Body(upgradePolicy).
 		Send()
 	if err != nil {
-		return handleErr(response.Error(), err)
+		return nil, handleErr(response.Error(), err)
 	}
-	return nil
+	return response.Body(), nil
 }
 
 func (c *Client) BuildNodeUpgradePolicy(version string, machinePoolID string,
