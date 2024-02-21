@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/briandowns/spinner"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
@@ -20,7 +19,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
-	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -56,15 +54,9 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
 		os.Exit(1)
 	}
-	isHcpCluster := ocm.IsHyperShiftCluster(cluster)
 	if isSecurityGroupIdsSet {
 		if !isByoVpc {
 			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters",
-				securitygroups.MachinePoolSecurityGroupFlag)
-			os.Exit(1)
-		}
-		if isHcpCluster {
-			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
 				securitygroups.MachinePoolSecurityGroupFlag)
 			os.Exit(1)
 		}
@@ -295,19 +287,12 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 
 	securityGroupIds := args.securityGroupIds
 	if interactive.Enabled() && isVersionCompatibleComputeSgIds &&
-		isByoVpc && !isHcpCluster && !isSecurityGroupIdsSet {
-		availableSubnets, err := r.AWSClient.GetVPCSubnets(cluster.AWS().SubnetIDs()[0])
+		isByoVpc && !isSecurityGroupIdsSet {
+		securityGroupIds, err = getSecurityGroupsOption(r, cmd, cluster)
 		if err != nil {
-			r.Reporter.Errorf("Failed to retrieve available subnets: %v", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		firstSubnet := availableSubnets[0]
-		vpcId := awssdk.StringValue(firstSubnet.VpcId)
-		if vpcId == "" {
-			r.Reporter.Warnf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
-			os.Exit(1)
-		}
-		securityGroupIds = interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, interactiveSgs.MachinePoolKind)
 	}
 	for i, sg := range securityGroupIds {
 		securityGroupIds[i] = strings.TrimSpace(sg)
