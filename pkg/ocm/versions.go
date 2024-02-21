@@ -228,7 +228,7 @@ func GetNodePoolAvailableUpgrades(nodePool *cmv1.NodePool) []string {
 }
 
 func CreateVersionID(version string, channelGroup string) string {
-	versionID := fmt.Sprintf("openshift-v%s", version)
+	versionID := fmt.Sprintf("%s%s", VersionPrefix, version)
 	if channelGroup != DefaultChannelGroup {
 		versionID = fmt.Sprintf("%s-%s", versionID, channelGroup)
 	}
