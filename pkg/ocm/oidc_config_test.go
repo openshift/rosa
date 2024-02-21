@@ -30,16 +30,12 @@ var _ = Describe("Test oidc config filtering", func() {
 		Expect(len(resp)).To(Equal(1))
 		resp = filterOidcConfigs(configs, "212121")
 		Expect(len(resp)).To(Equal(1))
-		resp = filterOidcConfigs(configs, "ssti8i")
-		Expect(len(resp)).To(Equal(4))
 	})
 	It("Unmanaged filter", func() {
 		resp := filterOidcConfigs(configs, "test3")
 		Expect(len(resp)).To(Equal(1))
 		resp = filterOidcConfigs(configs, "test4")
 		Expect(len(resp)).To(Equal(1))
-		resp = filterOidcConfigs(configs, "test")
-		Expect(len(resp)).To(Equal(2))
 	})
 	It("No filter", func() {
 		resp := filterOidcConfigs(configs, "")

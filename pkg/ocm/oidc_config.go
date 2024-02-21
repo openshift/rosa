@@ -53,6 +53,7 @@ func filterOidcConfigs(configs []*cmv1.OidcConfig, idFilter string) []*cmv1.Oidc
 		if (oidcConfig.Managed() && strings.Contains(oidcConfig.ID(), idFilter)) ||
 			(!oidcConfig.Managed() && strings.Contains(oidcConfig.IssuerUrl(), idFilter)) {
 			returnSlice = append(returnSlice, oidcConfig)
+			break
 		}
 	}
 	return returnSlice
