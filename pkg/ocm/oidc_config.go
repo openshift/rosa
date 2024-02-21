@@ -15,6 +15,7 @@ package ocm
 
 import (
 	"fmt"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
@@ -30,7 +31,7 @@ func (c *Client) GetOidcConfig(id string) (*cmv1.OidcConfig, error) {
 	return response.Body(), nil
 }
 
-func (c *Client) ListOidcConfigs(awsAccountId string) ([]*cmv1.OidcConfig, error) {
+func (c *Client) ListOidcConfigs(awsAccountId string, idFilter string) ([]*cmv1.OidcConfig, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		OidcConfigs().
 		List().Page(1).Size(-1).
@@ -40,7 +41,21 @@ func (c *Client) ListOidcConfigs(awsAccountId string) ([]*cmv1.OidcConfig, error
 		return nil, handleErr(response.Error(), err)
 	}
 
-	return response.Items().Slice(), nil
+	return filterOidcConfigs(response.Items().Slice(), idFilter), nil
+}
+
+func filterOidcConfigs(configs []*cmv1.OidcConfig, idFilter string) []*cmv1.OidcConfig {
+	var returnSlice []*cmv1.OidcConfig
+	if idFilter == "" {
+		return configs
+	}
+	for _, oidcConfig := range configs {
+		if (oidcConfig.Managed() && strings.Contains(oidcConfig.ID(), idFilter)) ||
+			(!oidcConfig.Managed() && strings.Contains(oidcConfig.IssuerUrl(), idFilter)) {
+			returnSlice = append(returnSlice, oidcConfig)
+		}
+	}
+	return returnSlice
 }
 
 func (c *Client) CreateOidcConfig(oidcConfig *cmv1.OidcConfig) (*cmv1.OidcConfig, error) {

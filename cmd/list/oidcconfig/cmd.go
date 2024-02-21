@@ -37,8 +37,20 @@ var Cmd = &cobra.Command{
 	Run: run,
 }
 
+var args struct {
+	oidcConfigId string
+}
+
 func init() {
 	output.AddFlag(Cmd)
+
+	Cmd.Flags().StringVarP(
+		&args.oidcConfigId,
+		"oidc-config-id",
+		"i",
+		"",
+		"Filter oidc configs by ID, or, if unmanaged, issuer URL.",
+	)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -47,7 +59,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Load any existing ingresses for this cluster
 	r.Reporter.Debugf("Loading oidc configs for current org id")
-	oidcConfigs, err := r.OCMClient.ListOidcConfigs(r.Creator.AccountID)
+	oidcConfigs, err := r.OCMClient.ListOidcConfigs(r.Creator.AccountID, args.oidcConfigId)
 	if err != nil {
 		r.Reporter.Errorf("Failed to list OIDC Configurations: %v", err)
 		os.Exit(1)
