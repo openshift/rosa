@@ -389,7 +389,7 @@ var _ = Describe("validateBillingAccount()", func() {
 		wrongBillingAccount := "123"
 		err := validateBillingAccount(wrongBillingAccount)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Billing account is invalid. Run the command again with a valid billing account." +
+		Expect(err.Error()).To(Equal("billing account is invalid. Run the command again with a valid billing account." +
 			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
 	})
 
@@ -397,7 +397,7 @@ var _ = Describe("validateBillingAccount()", func() {
 		wrongBillingAccount := ""
 		err := validateBillingAccount(wrongBillingAccount)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Billing account is invalid. Run the command again with a valid billing account." +
+		Expect(err.Error()).To(Equal("billing account is invalid. Run the command again with a valid billing account." +
 			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
 	})
 
