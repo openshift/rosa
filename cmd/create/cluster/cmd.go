@@ -1049,7 +1049,8 @@ func run(cmd *cobra.Command, _ []string) {
 		if !isHcpBillingTechPreview {
 
 			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-				r.Reporter.Errorf("Billing account is invalid. Run the command again with a valid billing account.")
+				r.Reporter.Errorf("Billing account is invalid. Run the command again with a valid billing account. %s",
+					listBillingAccountMessage)
 				os.Exit(1)
 			}
 
@@ -3258,7 +3259,7 @@ func clusterConfigFor(
 
 func validateBillingAccount(billingAccount string) error {
 	if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
-		return fmt.Errorf("Billing account is invalid. Run the command again with a valid billing account. %s",
+		return fmt.Errorf("billing account is invalid. Run the command again with a valid billing account. %s",
 			listBillingAccountMessage)
 	}
 	return nil
