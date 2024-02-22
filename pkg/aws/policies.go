@@ -844,7 +844,7 @@ func (c *awsClient) mapToAccountRoles(version string, roles []iamtypes.Role) ([]
 		}
 		accountRoles = append(accountRoles, accountRole)
 	}
-	
+
 	if len(accountRoles) == 0 {
 		return accountRoles, errors.Errorf("no account roles found")
 	}

@@ -259,7 +259,7 @@ var _ = Describe("Client", func() {
 				err := client.CheckAdminUserNotExisting(adminUserName)
 
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Error creating user: IAM user"))
+				Expect(err.Error()).To(ContainSubstring("error creating user: IAM user"))
 			})
 		})
 		Context("When admin user does not exist", func() {
@@ -296,10 +296,6 @@ var _ = Describe("Client", func() {
 
 			mockIamAPI.EXPECT().ListRoleTags(context.Background(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
 				Tags: tags,
-			}, nil)
-
-			mockIamAPI.EXPECT().ListRolePolicies(context.Background(), gomock.Any()).Return(&iam.ListRolePoliciesOutput{
-				PolicyNames: make([]string, 0),
 			}, nil)
 
 			role, err := client.GetAccountRoleByArn(testArn)

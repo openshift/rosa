@@ -8,6 +8,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -18,7 +20,6 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/openshift/rosa/pkg/test/matchers"
 )
 
 var _ = Describe("Validate build command", func() {
@@ -355,28 +356,28 @@ var _ = Describe("Filtering", func() {
 		initialSubnets []ec2types.Subnet,
 		machineNetwork *net.IPNet,
 		serviceNetwork *net.IPNet,
-		expected []*ec2types.Subnet,
+		expected []ec2types.Subnet,
 		expectedError string,
 	) {
 		out, err := filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
 		if expectedError == "" {
 			Expect(err).To(BeNil())
+			Expect(cmp.Equal(out, expected, cmpopts.IgnoreUnexported(ec2types.Subnet{}))).To(BeTrue())
 		} else {
 			Expect(err).To(MatchError(ContainSubstring(expectedError)))
 		}
-		Expect(out).To(matchers.MatchExpected(expected))
 	},
 		Entry(
 			"no input subnets to filter",
-			[]*ec2types.Subnet{},          /* initialSubnets */
+			[]ec2types.Subnet{},           /* initialSubnets */
 			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
 			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
-			[]*ec2types.Subnet{},          /* expected */
+			[]ec2types.Subnet{},           /* expected */
 			"",                            /* expectedError */
 		),
 		Entry(
 			"invalid input subnets filtered",
-			[]*ec2types.Subnet{ /* initialSubnets */
+			[]ec2types.Subnet{ /* initialSubnets */
 				{CidrBlock: aws.String("wrong"), SubnetId: aws.String("id")},
 			},
 			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
@@ -386,7 +387,7 @@ var _ = Describe("Filtering", func() {
 		),
 		Entry(
 			"input subnets filtered",
-			[]*ec2types.Subnet{ /* initialSubnets */
+			[]ec2types.Subnet{ /* initialSubnets */
 				{CidrBlock: aws.String("57.0.2.0/24"), SubnetId: aws.String("id")},
 				{CidrBlock: aws.String("123.244.128.0/24"), SubnetId: aws.String("id")},
 				{CidrBlock: aws.String("192.0.2.0/30"), SubnetId: aws.String("id")},
@@ -394,7 +395,7 @@ var _ = Describe("Filtering", func() {
 			},
 			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
 			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
-			[]*ec2types.Subnet{ /* expected */
+			[]ec2types.Subnet{ /* expected */
 				{CidrBlock: aws.String("192.0.2.0/30"), SubnetId: aws.String("id")},
 			},
 			"", /* expectedError */
