@@ -62,6 +62,11 @@ import (
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
+var (
+	allErrorCodes      []string
+	throttleErrorCodes []string
+)
+
 // Name of the AWS user that will be used to create all the resources of the cluster:
 const (
 	AdminUserName        = "osdCcsAdmin"
@@ -306,15 +311,19 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
 			Transport: http.DefaultTransport,
 		}),
 		config.WithClientLogMode(logLevel),
-		config.WithRetryer(func() aws.Retryer {
-			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
-			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
-			retryer = retry.AddWithErrorCodes(retryer, awserr.InvalidClientTokenID)
-			return retryer
-		}),
 		config.WithAPIOptions([]func(stack *middleware.Stack) error{
 			smithyhttp.AddHeaderValue("User-Agent",
 				strings.Join([]string{"ROSACLI", info.Version}, ";")),
+		}),
+		config.WithRetryer(func() aws.Retryer {
+			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
+			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
+
+			for _, code := range allErrorCodes {
+				retryer = retry.AddWithErrorCodes(retryer, code)
+			}
+
+			return retryer
 		}),
 	)
 	if err != nil {
@@ -332,15 +341,19 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (aws
 			Transport: http.DefaultTransport,
 		}),
 		config.WithClientLogMode(logLevel),
-		config.WithRetryer(func() aws.Retryer {
-			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
-			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
-			retryer = retry.AddWithErrorCodes(retryer, awserr.InvalidClientTokenID)
-			return retryer
-		}),
 		config.WithAPIOptions([]func(stack *middleware.Stack) error{
 			smithyhttp.AddHeaderValue("User-Agent",
 				strings.Join([]string{"ROSACLI", info.Version}, ";")),
+		}),
+		config.WithRetryer(func() aws.Retryer {
+			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
+			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
+
+			for _, code := range allErrorCodes {
+				retryer = retry.AddWithErrorCodes(retryer, code)
+			}
+
+			return retryer
 		}),
 	)
 	if err != nil {
@@ -356,6 +369,11 @@ func (b *ClientBuilder) BuildSession() (aws.Config, error) {
 	if b.logger.Level == logrus.DebugLevel {
 		logLevel = aws.LogRequestWithBody | aws.LogResponseWithBody
 	}
+	// Convert the map to a slice of strings.
+	for code := range retry.DefaultThrottleErrorCodes {
+		throttleErrorCodes = append(throttleErrorCodes, code)
+	}
+	allErrorCodes = append(throttleErrorCodes, awserr.InvalidClientTokenID)
 
 	if b.credentials != nil {
 		return b.BuildSessionWithOptionsCredentials(b.credentials, logLevel)
@@ -368,7 +386,7 @@ func (b *ClientBuilder) BuildSession() (aws.Config, error) {
 func (b *ClientBuilder) Build() (Client, error) {
 	// Check parameters:
 	if b.logger == nil {
-		return nil, fmt.Errorf("Logger is mandatory")
+		return nil, fmt.Errorf("logger is mandatory")
 	}
 
 	if b.region == nil || *b.region == "" {
@@ -382,7 +400,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	if fedramp.IsGovRegion(*b.region) {
 		fedramp.Enable()
 	} else if fedramp.Enabled() {
-		return nil, fmt.Errorf("Failed to connect to AWS. Use a GovCloud region in your profile")
+		return nil, fmt.Errorf("failed to connect to AWS. Use a GovCloud region in your profile")
 	}
 
 	// Create the AWS session:
@@ -392,7 +410,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	}
 
 	if cfg.Region == "" {
-		return nil, fmt.Errorf("Region is not set. Use --region to set the region")
+		return nil, fmt.Errorf("region is not set. Use --region to set the region")
 	}
 
 	if profile.Profile() != "" {
@@ -506,7 +524,7 @@ func (c *awsClient) GetSubnetAvailabilityZone(subnetID string) (string, error) {
 		return "", err
 	}
 	if len(res.Subnets) < 1 {
-		return "", fmt.Errorf("Failed to get subnet with ID '%s'", subnetID)
+		return "", fmt.Errorf("failed to get subnet with ID '%s'", subnetID)
 	}
 
 	return *res.Subnets[0].AvailabilityZone, nil
@@ -536,7 +554,7 @@ func (c *awsClient) GetVPCSubnets(subnetID string) ([]ec2types.Subnet, error) {
 		return nil, err
 	}
 	if len(subnets) < 1 {
-		return nil, fmt.Errorf("Failed to get subnet with ID '%s'", subnetID)
+		return nil, fmt.Errorf("failed to get subnet with ID '%s'", subnetID)
 	}
 
 	// Fetch VPC's subnets
@@ -553,7 +571,7 @@ func (c *awsClient) GetVPCSubnets(subnetID string) ([]ec2types.Subnet, error) {
 		return nil, err
 	}
 	if len(subnets) < 1 {
-		return nil, fmt.Errorf("Failed to get the subnets of VPC with ID '%s'", *vpcID)
+		return nil, fmt.Errorf("failed to get the subnets of VPC with ID '%s'", *vpcID)
 	}
 
 	return subnets, nil
@@ -576,7 +594,7 @@ func (c *awsClient) FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2ty
 		return nil, err
 	}
 	if len(describeRouteTablesOutput.RouteTables) < 1 {
-		return nil, fmt.Errorf("Failed to find VPC '%s' route table", *vpcID)
+		return nil, fmt.Errorf("failed to find VPC '%s' route table", *vpcID)
 	}
 
 	var privateSubnets []ec2types.Subnet
@@ -591,7 +609,7 @@ func (c *awsClient) FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2ty
 	}
 
 	if len(privateSubnets) < 1 {
-		return nil, fmt.Errorf("Failed to find private subnets associated with VPC '%s'", *subnets[0].VpcId)
+		return nil, fmt.Errorf("failed to find private subnets associated with VPC '%s'", *subnets[0].VpcId)
 	}
 
 	return privateSubnets, nil
@@ -636,7 +654,7 @@ func (c *awsClient) getSubnetRouteTable(subnetID *string,
 	}
 
 	// Each subnet in the VPC must be associated with a route table
-	return nil, fmt.Errorf("Failed to find subnet '%s' route table", *subnetID)
+	return nil, fmt.Errorf("failed to find subnet '%s' route table", *subnetID)
 }
 
 // getSubnetIDs will return the list of subnetsIDs supported for the region picked.
@@ -730,7 +748,7 @@ func (c *awsClient) CheckAdminUserNotExisting(userName string) (err error) {
 	}
 	for _, user := range userList.Users {
 		if *user.UserName == userName {
-			return fmt.Errorf("Error creating user: IAM user '%s' already exists.\n"+
+			return fmt.Errorf("error creating user: IAM user '%s' already exists.\n"+
 				"Ensure user '%s' IAM user does not exist, then retry with\n"+
 				"rosa init",
 				*user.UserName, *user.UserName)
@@ -1012,7 +1030,7 @@ func (c *awsClient) IsLocalAvailabilityZone(availabilityZoneName string) (bool, 
 		return false, err
 	}
 	if len(availabilityZones.AvailabilityZones) < 1 {
-		return false, fmt.Errorf("Failed to find availability zone '%s'", availabilityZoneName)
+		return false, fmt.Errorf("failed to find availability zone '%s'", availabilityZoneName)
 	}
 
 	return aws.ToString(availabilityZones.AvailabilityZones[0].ZoneType) == "local-zone", nil
@@ -1239,7 +1257,6 @@ func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]ec2types.SecurityGroup,
 			},
 		},
 	}
-	securityGroups := []ec2types.SecurityGroup{}
 	resp, err := c.ec2Client.DescribeSecurityGroups(context.Background(), describeSecurityGroupsInput)
 	if err != nil {
 		return []ec2types.SecurityGroup{}, err
@@ -1254,7 +1271,7 @@ func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]ec2types.SecurityGroup,
 		}
 	}
 
-	return securityGroups, nil
+	return resp.SecurityGroups, nil
 }
 
 func (c *awsClient) Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue string) bool {
