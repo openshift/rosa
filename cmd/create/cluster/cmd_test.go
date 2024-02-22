@@ -13,6 +13,7 @@ import (
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -401,6 +402,35 @@ var _ = Describe("validateBillingAccount()", func() {
 			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
 	})
 
+})
+
+var _ = Describe("Validate machine type for additional security groups based on topology", func() {
+	It("Allows setting security groups for compute kind", func() {
+		err := validateKindForHcp(securitygroups.ComputeKind, true)
+		Expect(err).ToNot(HaveOccurred())
+	})
+	It("Rejects updating kind for control plane kind", func() {
+		err := validateKindForHcp(securitygroups.ControlPlaneKind, true)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("is not supported for Hosted Control Plane clusters"))
+	})
+	It("Rejects updating kind for infra kind", func() {
+		err := validateKindForHcp(securitygroups.InfraKind, true)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("is not supported for Hosted Control Plane clusters"))
+	})
+	It("Allows setting kind for compute kind for classic", func() {
+		err := validateKindForHcp(securitygroups.ComputeKind, false)
+		Expect(err).ToNot(HaveOccurred())
+	})
+	It("Allows setting kind for infra kind for classic", func() {
+		err := validateKindForHcp(securitygroups.InfraKind, false)
+		Expect(err).ToNot(HaveOccurred())
+	})
+	It("Allows setting kind for control plane kind for classic", func() {
+		err := validateKindForHcp(securitygroups.ControlPlaneKind, false)
+		Expect(err).ToNot(HaveOccurred())
+	})
 })
 
 func mustParseCIDR(s string) *net.IPNet {

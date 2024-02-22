@@ -3945,6 +3945,20 @@ func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdmin
 	}
 }
 
+func validateKindForHcp(kind string, isHostedCp bool) error {
+	// All kinds are supported for classic
+	if !isHostedCp {
+		return nil
+	}
+
+	if kind != interactiveSgs.ComputeKind {
+		return fmt.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
+			securitygroups.SgKindFlagMap[kind])
+	}
+
+	return nil
+}
+
 func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
 	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []*ec2.Subnet, subnetIds []string,
 	additionalSgIds *[]string) {
@@ -3955,10 +3969,9 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 				securitygroups.SgKindFlagMap[kind])
 			os.Exit(1)
 		}
-		// HCP is still unsupported
-		if isHostedCp {
-			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
-				securitygroups.SgKindFlagMap[kind])
+		err := validateKindForHcp(kind, isHostedCp)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
