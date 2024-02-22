@@ -18,6 +18,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 	"github.com/sirupsen/logrus"
 
@@ -37,6 +38,9 @@ var _ = Describe("Client", func() {
 		mockS3API             *mocks.MockS3API
 		mockSecretsManagerAPI *mocks.MockSecretsManagerAPI
 		mockSTSApi            *mocks.MockSTSAPI
+
+		mockedOidcProviderArns []string
+		mockedOidcConfigs      []*cmv1.OidcConfig
 	)
 
 	BeforeEach(func() {
@@ -527,5 +531,60 @@ var _ = Describe("Client", func() {
 				"",
 			),
 		)
+	})
+
+	Describe("oidc-provider", func() {
+		Context("Filtering test", func() {
+			BeforeEach(func() {
+				mockedOidcProviderArns = []string{
+					"arn:aws:iam::765374464689:oidc-provider/oidc.test1/123123123123",
+					"arn:aws:iam::765374464689:oidc-provider/oidc.test2/234234234234",
+					"arn:aws:iam::765374464689:oidc-provider/oidc.test3/345345345345",
+					"arn:aws:iam::765374464689:oidc-provider/oidc.test123/456456456456",
+				}
+				config1, err := MockOidcConfig("config1", "http://oidc.test1/123123123123")
+				Expect(err).ToNot(HaveOccurred())
+				config2, err := MockOidcConfig("config2", "http://oidc.test2/234234234234")
+				Expect(err).ToNot(HaveOccurred())
+				config3, err := MockOidcConfig("config1", "http://oidc.test3/345345345345")
+				Expect(err).ToNot(HaveOccurred())
+				mockedOidcConfigs = []*cmv1.OidcConfig{config1, config2, config3}
+				mockIamAPI.EXPECT().ListOpenIDConnectProviders(gomock.Any()).Return(&iam.
+					ListOpenIDConnectProvidersOutput{OpenIDConnectProviderList: []*iam.OpenIDConnectProviderListEntry{
+					{Arn: awsSdk.String(mockedOidcProviderArns[0])},
+					{Arn: awsSdk.String(mockedOidcProviderArns[1])},
+					{Arn: awsSdk.String(mockedOidcProviderArns[2])},
+					{Arn: awsSdk.String(mockedOidcProviderArns[3])},
+				}}, nil)
+				mockIamAPI.EXPECT().ListOpenIDConnectProviderTags(gomock.Any()).Return(
+					&iam.ListOpenIDConnectProviderTagsOutput{IsTruncated: awsSdk.Bool(false),
+						Marker: awsSdk.String(""), Tags: []*iam.Tag{{Key: awsSdk.String(rosaTags.RedHatManaged),
+							Value: awsSdk.String("true")}, {Key: awsSdk.String(rosaTags.ClusterID),
+							Value: awsSdk.String("")}}}, nil).AnyTimes()
+			})
+			It("Filters config 1's ID (1 provider)", func() {
+				providers, err := client.ListOidcProviders("", mockedOidcConfigs[0])
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(providers)).To(Equal(1))
+				Expect(providers[0].Arn).To(Equal(mockedOidcProviderArns[0]))
+			})
+			It("Filters config 2'd ID (1 provider)", func() {
+				providers, err := client.ListOidcProviders("", mockedOidcConfigs[1])
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(providers)).To(Equal(1))
+				Expect(providers[0].Arn).To(Equal(mockedOidcProviderArns[1]))
+			})
+			It("Filters config 3's ID (1 provider)", func() {
+				providers, err := client.ListOidcProviders("", mockedOidcConfigs[2])
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(providers)).To(Equal(1))
+				Expect(providers[0].Arn).To(Equal(mockedOidcProviderArns[2]))
+			})
+			It("Filters nothing (all providers return)", func() {
+				providers, err := client.ListOidcProviders("", nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(providers)).To(Equal(4))
+			})
+		})
 	})
 })
