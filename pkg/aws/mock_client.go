@@ -1120,18 +1120,18 @@ func (mr *MockClientMockRecorder) ListOCMRoles() *gomock.Call {
 }
 
 // ListOidcProviders mocks base method.
-func (m *MockClient) ListOidcProviders(targetClusterId string) ([]OidcProviderOutput, error) {
+func (m *MockClient) ListOidcProviders(targetClusterId string, config *v1.OidcConfig) ([]OidcProviderOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListOidcProviders", targetClusterId)
+	ret := m.ctrl.Call(m, "ListOidcProviders", targetClusterId, config)
 	ret0, _ := ret[0].([]OidcProviderOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListOidcProviders indicates an expected call of ListOidcProviders.
-func (mr *MockClientMockRecorder) ListOidcProviders(targetClusterId interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) ListOidcProviders(targetClusterId, config interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOidcProviders", reflect.TypeOf((*MockClient)(nil).ListOidcProviders), targetClusterId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOidcProviders", reflect.TypeOf((*MockClient)(nil).ListOidcProviders), targetClusterId, config)
 }
 
 // ListOperatorRoles mocks base method.
