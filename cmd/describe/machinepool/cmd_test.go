@@ -11,6 +11,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
+	"github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -31,6 +32,7 @@ Version:                    4.12.24
 Autorepair:                 No
 Tuning configs:             
 Message:                    
+Security Group IDs:         
 `
 	describeStringWithUpgradeOutput = `
 ID:                         nodepool85
@@ -47,6 +49,7 @@ Version:                    4.12.24
 Autorepair:                 No
 Tuning configs:             
 Message:                    
+Security Group IDs:         
 Scheduled upgrade:          scheduled 4.12.25 on 2023-08-07 15:22 UTC
 `
 
@@ -237,6 +240,21 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(err).To(BeNil())
 				Expect(stdout).To(Equal(describeClassicStringOutput))
 				Expect(stderr).To(BeEmpty())
+			})
+			It("Format AWS additional security groups if exist", func() {
+				securityGroupsIds := []string{"123", "321"}
+				awsNodePool, err := cmv1.NewAWSNodePool().AdditionalSecurityGroupIds(securityGroupsIds...).Build()
+				Expect(err).ToNot(HaveOccurred())
+
+				securityGroupsOutput := output.PrintNodePoolAdditionalSecurityGroups(awsNodePool)
+				Expect(securityGroupsOutput).To(Equal("123, 321"))
+			})
+			It("Return an empty list for additional security groups if empty AWS node pool is passed", func() {
+				awsNodePool, err := cmv1.NewAWSNodePool().Build()
+				Expect(err).ToNot(HaveOccurred())
+
+				securityGroupsOutput := output.PrintNodePoolAdditionalSecurityGroups(awsNodePool)
+				Expect(securityGroupsOutput).To(Equal(""))
 			})
 			It("Pass a machine pool name through parameter and it is found. yaml output", func() {
 				args.machinePool = nodePoolName
