@@ -137,7 +137,7 @@ type Client interface {
 	ListOCMRoles() ([]Role, error)
 	ListAccountRoles(version string) ([]Role, error)
 	ListOperatorRoles(version string, clusterID string) (map[string][]OperatorRoleDetail, error)
-	ListOidcProviders(targetClusterId string) ([]OidcProviderOutput, error)
+	ListOidcProviders(targetClusterId string, config *cmv1.OidcConfig) ([]OidcProviderOutput, error)
 	GetRoleByARN(roleARN string) (*iam.Role, error)
 	DeleteOperatorRole(roles string, managedPolicies bool) error
 	GetOperatorRolesFromAccountByClusterID(
