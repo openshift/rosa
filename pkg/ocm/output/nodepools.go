@@ -48,6 +48,14 @@ func PrintNodePoolInstanceType(aws *cmv1.AWSNodePool) string {
 	return aws.InstanceType()
 }
 
+func PrintNodePoolAdditionalSecurityGroups(aws *cmv1.AWSNodePool) string {
+	if aws == nil {
+		return ""
+	}
+
+	return PrintStringSlice(aws.AdditionalSecurityGroupIds())
+}
+
 func PrintNodePoolCurrentReplicas(status *cmv1.NodePoolStatus) string {
 	if status != nil {
 		return fmt.Sprintf("%d", status.CurrentReplicas())
