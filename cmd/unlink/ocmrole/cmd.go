@@ -38,7 +38,7 @@ var Cmd = &cobra.Command{
 	Long:    "Unlink ocm role from a specific OCM organization",
 	Example: ` #Unlink ocm role
 rosa unlink ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
-	RunE: run,
+	Run: run,
 }
 
 func init() {
@@ -61,7 +61,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) (err error) {
+func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
@@ -130,6 +130,4 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		os.Exit(1)
 	}
 	r.Reporter.Infof("Successfully unlinked role-arn '%s' from organization account '%s'", roleArn, orgID)
-
-	return nil
 }

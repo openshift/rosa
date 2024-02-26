@@ -57,7 +57,7 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade cluster-specific IAM roles to the latest version before upgrading your cluster.",
 	Example: `  # Upgrade cluster roles for ROSA STS clusters
 		rosa upgrade roles -c <cluster_key>`,
-	RunE: run,
+	Run: run,
 }
 
 const (
@@ -101,7 +101,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 	reporter := r.Reporter
@@ -218,7 +218,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 		r.Reporter.Infof("Cluster '%s' operator roles have attached managed policies. "+
 			"An upgrade isn't needed", cluster.Name())
-		return nil
+		os.Exit(0)
 	}
 
 	policyVersion := args.policyUpgradeversion
@@ -296,7 +296,8 @@ func run(cmd *cobra.Command, argv []string) error {
 				if err != nil {
 					LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
 					if args.isInvokedFromClusterUpgrade {
-						return err
+						reporter.Errorf("%s", err)
+						os.Exit(1)
 					}
 					reporter.Errorf("Error upgrading the account role policies: %s", err)
 					os.Exit(1)
@@ -325,7 +326,8 @@ func run(cmd *cobra.Command, argv []string) error {
 				policyVersion,
 			)
 			if err != nil {
-				return err
+				reporter.Errorf("%s", err)
+				os.Exit(1)
 			}
 
 			fmt.Println(commands)
@@ -353,7 +355,8 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	operatorRolePolicyPrefix, err := aws.GetOperatorRolePolicyPrefixFromCluster(cluster, r.AWSClient)
 	if err != nil {
-		return err
+		r.Reporter.Errorf("Error getting operator role policy prefix: %s", err)
+		os.Exit(1)
 	}
 
 	isOperatorPolicyUpgradeNeeded := false
@@ -371,7 +374,8 @@ func run(cmd *cobra.Command, argv []string) error {
 
 	missingRolesInCS, err := ocmClient.FindMissingOperatorRolesForUpgrade(cluster, clusterUpgradeVersion)
 	if err != nil {
-		return err
+		r.Reporter.Errorf("Error finding operator roles for upgrade '%s'", err)
+		os.Exit(1)
 	}
 
 	if spin != nil {
@@ -383,9 +387,6 @@ func run(cmd *cobra.Command, argv []string) error {
 			"Operator roles/policies associated with the cluster '%s' are already up-to-date.",
 			cluster.ID(),
 		)
-		if args.isInvokedFromClusterUpgrade {
-			return nil
-		}
 		os.Exit(0)
 	}
 
@@ -419,7 +420,8 @@ func run(cmd *cobra.Command, argv []string) error {
 			roleName := roles.GetOperatorRoleName(cluster, operator)
 			exists, _, err := r.AWSClient.CheckRoleExists(roleName)
 			if err != nil {
-				return r.Reporter.Errorf("Error when detecting checking missing operator IAM roles %s", err)
+				r.Reporter.Errorf("Error when detecting checking missing operator IAM roles %s", err)
+				os.Exit(1)
 			}
 			if !exists {
 				err = createOperatorRole(
@@ -457,7 +459,6 @@ func run(cmd *cobra.Command, argv []string) error {
 			"\trosa upgrade cluster --cluster %s\n", cluster.ID())
 		os.Exit(0)
 	}
-	return nil
 }
 
 func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter *rprtr.Object) {
