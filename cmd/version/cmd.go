@@ -80,7 +80,7 @@ func run(cmd *cobra.Command, _ []string) {
 }
 
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
-	fmt.Fprintf(os.Stdout, "%s (Build: %s)\n", info.Version, info.Build)
+	fmt.Fprintf(os.Stdout, "%s\n", info.Version)
 	if args.verbose {
 		fmt.Fprintf(os.Stdout, "Information and download locations:\n\t%s\n\t%s\n",
 			verify.ConsoleLatestFolder,
