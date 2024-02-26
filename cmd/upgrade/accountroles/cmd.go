@@ -53,7 +53,8 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade account-wide IAM roles to the latest version before upgrading your cluster.",
 	Example: `  # Upgrade account roles for ROSA STS clusters
   rosa upgrade account-roles`,
-	Run: run,
+	Args: cobra.NoArgs,
+	Run:  run,
 }
 
 func init() {
@@ -96,7 +97,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 	reporter := r.Reporter

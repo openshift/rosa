@@ -44,7 +44,8 @@ var Cmd = &cobra.Command{
 	Long:    "Cleans up OIDC config based on registered OIDC Config ID.",
 	Example: `  # Delete OIDC config based on registered OIDC Config ID that has been supplied
 	rosa delete oidc-config --oidc-config-id <oidc_config_id>`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 const (
@@ -74,7 +75,7 @@ func init() {
 	confirm.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

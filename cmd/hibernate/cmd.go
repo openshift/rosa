@@ -29,6 +29,7 @@ func GenerateCommand() *cobra.Command {
 		Short:  "Hibernate cluster",
 		Long:   "Hibernate a ready cluster",
 		Hidden: true,
+		Args:   cobra.NoArgs,
 	}
 	Cmd.AddCommand(cluster.GenerateCommand())
 	flags := Cmd.PersistentFlags()

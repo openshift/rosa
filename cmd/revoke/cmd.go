@@ -28,6 +28,7 @@ var Cmd = &cobra.Command{
 	Use:   "revoke",
 	Short: "Revoke role from a specific resource",
 	Long:  "Revoke role from a specific resource",
+	Args:  cobra.NoArgs,
 }
 
 func init() {

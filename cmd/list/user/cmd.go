@@ -38,7 +38,8 @@ var Cmd = &cobra.Command{
 	Long:    "List administrative cluster users.",
 	Example: `  # List all users on a cluster named "mycluster"
   rosa list users --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

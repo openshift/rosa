@@ -38,7 +38,8 @@ var Cmd = &cobra.Command{
 	Long:    "Unlink user role from a specific OCM account",
 	Example: ` # Unlink user role
 rosa unlink user-role --role-arn arn:aws:iam::{accountid}:role/{prefix}-User-{username}-Role`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {

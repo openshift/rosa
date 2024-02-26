@@ -41,7 +41,8 @@ func makeCmd() *cobra.Command {
 		Long:    "List Instance types that are available for use with ROSA.",
 		Example: `  # List all instance types
 	rosa list instance-types`,
-		Run: run,
+		Run:  run,
+		Args: cobra.NoArgs,
 	}
 
 	return cmd

@@ -79,7 +79,8 @@ var Cmd = &cobra.Command{
   # Add a machine pool with spot instances to a cluster
   rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --use-spot-instances \
     --spot-max-price=0.5`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

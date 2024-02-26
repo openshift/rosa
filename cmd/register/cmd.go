@@ -29,6 +29,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"registers"},
 	Short:   "Registers a specific resource",
 	Long:    "Registers a specific resource",
+	Args:    cobra.NoArgs,
 }
 
 func init() {

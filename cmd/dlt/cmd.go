@@ -45,6 +45,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"remove"},
 	Short:   "Delete a specific resource",
 	Long:    "Delete a specific resource",
+	Args:    cobra.NoArgs,
 }
 
 func init() {

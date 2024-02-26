@@ -38,7 +38,8 @@ var Cmd = &cobra.Command{
 	Long:    "Unlink ocm role from a specific OCM organization",
 	Example: ` #Unlink ocm role
 rosa unlink ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
-	Run: run,
+	Args: cobra.MaximumNArgs(1),
+	Run:  run,
 }
 
 func init() {

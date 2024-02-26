@@ -42,7 +42,8 @@ var Cmd = &cobra.Command{
 	Long:    "List regions that are available for the current AWS account.",
 	Example: `  # List all available regions
   rosa list regions`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

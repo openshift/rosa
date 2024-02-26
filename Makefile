@@ -74,6 +74,7 @@ verify: fmt
 clean:
 	rm -rf \
 		./cover.out \
+		rosa \
 		rosa-darwin-amd64 \
 		rosa-darwin-arm64 \
 		rosa-linux-amd64 \

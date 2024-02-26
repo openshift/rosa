@@ -63,7 +63,8 @@ var Cmd = &cobra.Command{
 
   # Schedule a cluster upgrade within the hour
   rosa upgrade cluster -c mycluster --version 4.12.20`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

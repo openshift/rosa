@@ -29,6 +29,7 @@ var Cmd = &cobra.Command{
 	Use:   "install",
 	Short: "Installs a resource into a cluster",
 	Long:  "Installs a resource into a cluster",
+	Args:  cobra.NoArgs,
 }
 
 func init() {

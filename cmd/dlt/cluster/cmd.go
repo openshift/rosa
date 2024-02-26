@@ -46,7 +46,8 @@ var Cmd = &cobra.Command{
 	Long:  "Delete cluster.",
 	Example: `  # Delete a cluster named "mycluster"
   rosa delete cluster --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -73,7 +74,7 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

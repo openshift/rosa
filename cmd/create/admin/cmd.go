@@ -40,7 +40,8 @@ var Cmd = &cobra.Command{
 	Long:  "Creates a cluster-admin user with an auto-generated password to login to the cluster",
 	Example: `  # Create an admin user to login to the cluster
   rosa create admin -c mycluster -p MasterKey123`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 var args struct {
@@ -60,7 +61,7 @@ func init() {
 	output.AddFlag(Cmd)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

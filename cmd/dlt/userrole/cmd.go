@@ -42,7 +42,8 @@ var Cmd = &cobra.Command{
 	Long:    "Delete user role from the current AWS account",
 	Example: ` # Delete user role
 rosa delete user-role --role-arn {prefix}-User-{username}-Role`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {

@@ -28,6 +28,7 @@ var Cmd = &cobra.Command{
 	Short:   "UnLink a ocm/user role from stdin",
 	Long:    "UnLink a ocm/user role from stdin",
 	Hidden:  false,
+	Args:    cobra.NoArgs,
 }
 
 func init() {

@@ -35,7 +35,8 @@ var Cmd = &cobra.Command{
 	Long:    "Show details of a machine pool on a cluster.",
 	Example: `  # Show details of a machine pool named "mymachinepool"" on a cluster named "mycluster"
   rosa describe machinepool --cluster=mycluster --machinepool=mymachinepool`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 var args struct {

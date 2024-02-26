@@ -60,6 +60,7 @@ var root = &cobra.Command{
 	Long: "Command line tool for Red Hat OpenShift Service on AWS.\n" +
 		"For further documentation visit " +
 		"https://access.redhat.com/documentation/en-us/red_hat_openshift_service_on_aws\n",
+	Args: cobra.NoArgs,
 }
 
 func init() {

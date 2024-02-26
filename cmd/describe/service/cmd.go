@@ -37,6 +37,7 @@ var Cmd = &cobra.Command{
   rosa describe managed-service --id=aaabbbccc`,
 	Run:    run,
 	Hidden: true,
+	Args:   cobra.NoArgs,
 }
 
 func init() {
@@ -50,7 +51,7 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 

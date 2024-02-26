@@ -58,7 +58,8 @@ var Cmd = &cobra.Command{
 
   # Create operator roles with a specific permissions boundary
   rosa create operator-roles -c mycluster --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(3),
 }
 
 func init() {

@@ -35,10 +35,11 @@ var Cmd = &cobra.Command{
 	Long:    "Downloads to latest compatible version of the ROSA client tools.",
 	Example: `  # Download rosa client tools
   rosa download rosa`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 
 	platform := getPlatform()

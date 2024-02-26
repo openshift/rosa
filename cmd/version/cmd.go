@@ -43,6 +43,7 @@ func makeCmd() *cobra.Command {
 		Short: "Prints the version of the tool",
 		Long:  "Prints the version number of the tool.",
 		Run:   run,
+		Args:  cobra.NoArgs,
 	}
 }
 

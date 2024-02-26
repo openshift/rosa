@@ -32,10 +32,11 @@ var Cmd = &cobra.Command{
 	Long:    "Create DNS Domain.",
 	Example: `  # Create DNS Domain
 	rosa create dns-domain`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 

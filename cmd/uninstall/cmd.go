@@ -28,6 +28,7 @@ var Cmd = &cobra.Command{
 	Use:   "uninstall",
 	Short: "Uninstalls a resource from a cluster",
 	Long:  "Uninstalls a resource from a cluster",
+	Args:  cobra.NoArgs,
 }
 
 func init() {

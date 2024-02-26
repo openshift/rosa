@@ -62,7 +62,8 @@ var Cmd = &cobra.Command{
 
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

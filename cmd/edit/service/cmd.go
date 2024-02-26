@@ -39,6 +39,7 @@ var Cmd = &cobra.Command{
 	Run:                run,
 	Hidden:             true,
 	DisableFlagParsing: true,
+	Args:               cobra.ArbitraryArgs, // Args are checked by the arguments.ParseKnownFlags function
 }
 
 func init() {

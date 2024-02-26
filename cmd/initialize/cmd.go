@@ -55,7 +55,8 @@ var Cmd = &cobra.Command{
 
   # Configure a new AWS account using pre-existing OCM credentials
   rosa init --token=$OFFLINE_ACCESS_TOKEN`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

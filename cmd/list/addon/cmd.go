@@ -40,7 +40,8 @@ var Cmd = &cobra.Command{
 	Long:    "List add-ons installed on a cluster.",
 	Example: `  # List all add-on installations on a cluster named "mycluster"
   rosa list addons --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

@@ -27,6 +27,7 @@ var Cmd = &cobra.Command{
 	Use:   "grant",
 	Short: "Grant role to a specific resource",
 	Long:  "Grant role to a specific resource",
+	Args:  cobra.NoArgs,
 }
 
 func init() {

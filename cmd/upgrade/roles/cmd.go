@@ -57,7 +57,8 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade cluster-specific IAM roles to the latest version before upgrading your cluster.",
 	Example: `  # Upgrade cluster roles for ROSA STS clusters
 		rosa upgrade roles -c <cluster_key>`,
-	Run: run,
+	Args: cobra.MaximumNArgs(2),
+	Run:  run,
 }
 
 const (

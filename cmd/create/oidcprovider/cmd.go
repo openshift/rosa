@@ -43,7 +43,8 @@ var Cmd = &cobra.Command{
 	Long:    "Create OIDC provider for operators to authenticate against in an STS cluster.",
 	Example: `  # Create OIDC provider for cluster named "mycluster"
   rosa create oidc-provider --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(3),
 }
 
 const (
