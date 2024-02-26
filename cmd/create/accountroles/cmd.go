@@ -217,10 +217,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate AWS quota
 	// Call `verify quota` as part of init
-	err = quota.Cmd.RunE(cmd, argv)
-	if err != nil {
-		r.Reporter.Warnf("Insufficient AWS quotas. Cluster installation might fail.")
-	}
+	quota.Cmd.Run(cmd, argv)
 	// Verify version of `oc`
 	oc.Cmd.Run(cmd, argv)
 

@@ -221,11 +221,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Response: ocm.Success,
 		})
 
-		err = linkuser.Cmd.RunE(linkuser.Cmd, []string{roleARN})
-		if err != nil {
-			r.Reporter.Errorf("Unable to link role arn '%s' with the account id : '%s' : %v",
-				roleARN, currentAccount.ID(), err)
-		}
+		linkuser.Cmd.Run(linkuser.Cmd, []string{roleARN})
 	case aws.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateUserRoleModeManual", map[string]string{})
 		err = generateUserRolePolicyFiles(r.Reporter, env, currentAccount.ID(), policies)

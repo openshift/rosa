@@ -491,19 +491,7 @@ func checkSTSRolesCompatibility(r *rosa.Runtime, cluster *cmv1.Cluster, mode str
 	version string, clusterKey string) {
 	r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
 		" are compatible with upgrade.", cluster.ID())
-	err := roles.Cmd.RunE(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup()})
-	if err != nil {
-		rolesStr := fmt.Sprintf("rosa upgrade roles -c %s --cluster-version=%s --mode=%s", clusterKey, version, mode)
-		upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
-
-		if r.Reporter.IsTerminal() {
-			r.Reporter.Infof("Account/Operator Role policies are not valid with upgrade version %s. "+
-				"Run the following command(s) to upgrade the roles and run the upgrade command again:\n\n"+
-				"\t%s\n"+
-				"\t%s\n", version, rolesStr, upgradeClusterStr)
-		}
-		os.Exit(0)
-	}
+	roles.Cmd.Run(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup()})
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
 	}

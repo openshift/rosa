@@ -181,12 +181,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if isLinked {
 			r.Reporter.Warnf("Role ARN '%s' is linked to account '%s'",
 				roleARN, currentAccount.ID())
-			err = unlinkuserrole.Cmd.RunE(unlinkuserrole.Cmd, []string{roleARN})
-			if err != nil {
-				r.Reporter.Errorf("Unable to unlink role ARN '%s' from account : '%s' : '%v'",
-					roleARN, currentAccount.ID(), err)
-				os.Exit(1)
-			}
+			unlinkuserrole.Cmd.Run(unlinkuserrole.Cmd, []string{roleARN})
 		}
 		err := r.AWSClient.DeleteUserRole(roleName)
 		if err != nil {

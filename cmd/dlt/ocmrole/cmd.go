@@ -182,12 +182,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.OCMClient.LogEvent("ROSADeleteOCMRoleModeAuto", nil)
 		if isLinked {
 			r.Reporter.Warnf("Role ARN '%s' is linked to organization '%s'", roleARN, orgID)
-			err = unlinkocmrole.Cmd.RunE(unlinkocmrole.Cmd, []string{roleARN})
-			if err != nil {
-				r.Reporter.Errorf("Unable to unlink role ARN '%s' from organization : '%s' : %v",
-					roleARN, orgID, err)
-				os.Exit(1)
-			}
+			unlinkocmrole.Cmd.Run(unlinkocmrole.Cmd, []string{roleARN})
 		}
 		if roleExistOnAWS {
 			err := r.AWSClient.DeleteOCMRole(roleName, managedPolicies)

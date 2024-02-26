@@ -284,11 +284,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 		})
-		err = linkocmrole.Cmd.RunE(linkocmrole.Cmd, []string{roleARN})
-		if err != nil {
-			r.Reporter.Errorf("Unable to link role arn '%s' with the organization account id : '%s' : %v",
-				roleARN, orgID, err)
-		}
+		linkocmrole.Cmd.Run(linkocmrole.Cmd, []string{roleARN})
 	case aws.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{})
 		_, _, err = checkRoleExists(r, roleNameRequested, isAdmin, aws.ModeManual)
