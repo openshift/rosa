@@ -44,7 +44,7 @@ var _ = Describe("Run Command", func() {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(stderr).To(BeEmpty())
-		Expect(stdout).To(ContainSubstring("%s (Build: %s)\n", info.Version, info.Build))
+		Expect(stdout).To(ContainSubstring("%s\n", info.Version))
 		Expect(delegateInvokeCount).To(Equal(0))
 	})
 
@@ -55,7 +55,7 @@ var _ = Describe("Run Command", func() {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(stderr).To(BeEmpty())
-		Expect(stdout).To(ContainSubstring("%s (Build: %s)\n", info.Version, info.Build))
+		Expect(stdout).To(ContainSubstring("%s\n", info.Version))
 		Expect(delegateInvokeCount).To(Equal(1))
 	})
 
@@ -67,9 +67,9 @@ var _ = Describe("Run Command", func() {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(stderr).To(BeEmpty())
-		Expect(stdout).To(ContainSubstring("%s (Build: %s)\n"+
+		Expect(stdout).To(ContainSubstring("%s\n"+
 			"Information and download locations:\n\t%s\n\t%s\n",
-			info.Version, info.Build,
+			info.Version,
 			verify.ConsoleLatestFolder,
 			verify.DownloadLatestMirrorFolder,
 		))
