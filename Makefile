@@ -74,10 +74,11 @@ verify: fmt
 clean:
 	rm -rf \
 		./cover.out \
-		rosa \
-		*-darwin-amd64 \
-		*-linux-amd64 \
-		*-windows-amd64 \
+		rosa-darwin-amd64 \
+		rosa-darwin-arm64 \
+		rosa-linux-amd64 \
+		rosa-linux-arm64 \
+		rosa-windows-amd64.exe \
 		*.sha256 \
 		$(NULL)
 
