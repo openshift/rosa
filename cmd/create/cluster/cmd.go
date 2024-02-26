@@ -3914,26 +3914,39 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
 }
 
-func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([]*ec2.Subnet, error) {
+func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Object) ([]*ec2.Subnet, error) {
 	initialValidSubnets := []*ec2.Subnet{}
-	excludedSubnets := []string{}
+	rhManagedSubnets := []string{}
+	localZoneSubnets := []string{}
 
-	validSubnets, err := aws.ListSubnets(ids...)
+	validSubnets, err := awsClient.ListSubnets(ids...)
 
 	if err != nil {
 		return initialValidSubnets, err
 	}
 	for _, subnet := range validSubnets {
 		hasRHManaged := tags.Ec2ResourceHasTag(subnet.Tags, tags.RedHatManaged, strconv.FormatBool(true))
-		if !hasRHManaged {
-			initialValidSubnets = append(initialValidSubnets, subnet)
+		if hasRHManaged {
+			rhManagedSubnets = append(rhManagedSubnets, awssdk.StringValue(subnet.SubnetId))
 		} else {
-			excludedSubnets = append(excludedSubnets, awssdk.StringValue(subnet.SubnetId))
+			zoneType, err := awsClient.GetAvailabilityZoneType(awssdk.StringValue(subnet.AvailabilityZone))
+			if err != nil {
+				return initialValidSubnets, err
+			}
+			if zoneType == aws.LocalZone || zoneType == aws.WavelengthZone {
+				localZoneSubnets = append(localZoneSubnets, awssdk.StringValue(subnet.SubnetId))
+			} else {
+				initialValidSubnets = append(initialValidSubnets, subnet)
+			}
 		}
 	}
-	if len(validSubnets) != len(initialValidSubnets) {
+	if len(rhManagedSubnets) != 0 {
 		r.Warnf("The following subnets were excluded because they belong"+
-			" to a VPC that is managed by Red Hat: %s", helper.SliceToSortedString(excludedSubnets))
+			" to a VPC that is managed by Red Hat: %s", helper.SliceToSortedString(rhManagedSubnets))
+	}
+	if len(localZoneSubnets) != 0 {
+		r.Warnf("The following subnets were excluded because they are on local zone or wavelength zone: %s",
+			helper.SliceToSortedString(localZoneSubnets))
 	}
 	return initialValidSubnets, nil
 }
