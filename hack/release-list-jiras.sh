@@ -6,14 +6,17 @@ if ! [ -x "$(command -v jira)" ]; then
   exit 1
 fi
 
-# Check if the command-line argument is provided
-if [ -z "$1" ]; then
-  echo "Usage: $0 <release_version_branch>"
+# Validate input parameters
+if [[ $# -ne 2 ]]; then
+  echo "Usage: $0 <current-release> <previous-release>"
   exit 1
 fi
 
-release_version="$1"
-commit_output=$(git log "$release_version"..HEAD --oneline --no-merges --format="%s" --no-decorate --reverse | tr '[:upper:]' '[:lower:]')
+# Assign input parameters to variables
+current_release="rosa_cli_$1"
+previous_release="release_$2"
+
+commit_output=$(git log "$previous_release"..HEAD --oneline --no-merges --format="%s" --no-decorate --reverse | tr '[:upper:]' '[:lower:]')
 
 # Regular expression pattern to extract Jira ticket numbers and commit messages
 pattern="^([^|]+)\|(.+)$"
@@ -32,10 +35,11 @@ done <<< "$commit_output"
 jira_list=$(IFS=, ; echo "${jira_tickets[*]}")
 
 # Create the JQL query for the list of Jira tickets
-jql="project = \"Openshift Cluster Manager\" AND issue in ($jira_list)"
+jql="project = \"Openshift Cluster Manager\" AND issue in ($jira_list) AND labels not in (no-qe) AND (fixVersion is EMPTY OR fixVersion = $current_release)"
+
 
 # Create the jira issue list command
-jira_command="jira issue list --jql '$jql'"
+jira_command="jira issue list --jql '$jql' --columns key,assignee,status,summary"
 
 # Execute the Jira command
 eval "$jira_command"
