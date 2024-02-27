@@ -19,93 +19,85 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-// ExternalAuthConfig represents the values of the 'external_auth_config' type.
-//
-// ExternalAuthConfig configuration
-type ExternalAuthConfig struct {
-	bitmap_       uint32
-	externalAuths *ExternalAuthList
-	enabled       bool
+// GroupsClaim represents the values of the 'groups_claim' type.
+type GroupsClaim struct {
+	bitmap_ uint32
+	claim   string
+	prefix  string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *ExternalAuthConfig) Empty() bool {
+func (o *GroupsClaim) Empty() bool {
 	return o == nil || o.bitmap_ == 0
 }
 
-// Enabled returns the value of the 'enabled' attribute, or
+// Claim returns the value of the 'claim' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Boolean flag indicating if the cluster should use an external authentication configuration.
-//
-// By default this is false.
-//
-// To enable it the cluster needs to be ROSA HCP cluster and the organization of the user needs
-// to have the `external-authentication` feature toggle enabled.
-func (o *ExternalAuthConfig) Enabled() bool {
+// The claim used in the token.
+func (o *GroupsClaim) Claim() string {
 	if o != nil && o.bitmap_&1 != 0 {
-		return o.enabled
+		return o.claim
 	}
-	return false
+	return ""
 }
 
-// GetEnabled returns the value of the 'enabled' attribute and
+// GetClaim returns the value of the 'claim' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Boolean flag indicating if the cluster should use an external authentication configuration.
-//
-// By default this is false.
-//
-// To enable it the cluster needs to be ROSA HCP cluster and the organization of the user needs
-// to have the `external-authentication` feature toggle enabled.
-func (o *ExternalAuthConfig) GetEnabled() (value bool, ok bool) {
+// The claim used in the token.
+func (o *GroupsClaim) GetClaim() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&1 != 0
 	if ok {
-		value = o.enabled
+		value = o.claim
 	}
 	return
 }
 
-// ExternalAuths returns the value of the 'external_auths' attribute, or
+// Prefix returns the value of the 'prefix' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-func (o *ExternalAuthConfig) ExternalAuths() *ExternalAuthList {
+//
+// A prefix contatenated in the claim (Optional).
+func (o *GroupsClaim) Prefix() string {
 	if o != nil && o.bitmap_&2 != 0 {
-		return o.externalAuths
+		return o.prefix
 	}
-	return nil
+	return ""
 }
 
-// GetExternalAuths returns the value of the 'external_auths' attribute and
+// GetPrefix returns the value of the 'prefix' attribute and
 // a flag indicating if the attribute has a value.
-func (o *ExternalAuthConfig) GetExternalAuths() (value *ExternalAuthList, ok bool) {
+//
+// A prefix contatenated in the claim (Optional).
+func (o *GroupsClaim) GetPrefix() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&2 != 0
 	if ok {
-		value = o.externalAuths
+		value = o.prefix
 	}
 	return
 }
 
-// ExternalAuthConfigListKind is the name of the type used to represent list of objects of
-// type 'external_auth_config'.
-const ExternalAuthConfigListKind = "ExternalAuthConfigList"
+// GroupsClaimListKind is the name of the type used to represent list of objects of
+// type 'groups_claim'.
+const GroupsClaimListKind = "GroupsClaimList"
 
-// ExternalAuthConfigListLinkKind is the name of the type used to represent links to list
-// of objects of type 'external_auth_config'.
-const ExternalAuthConfigListLinkKind = "ExternalAuthConfigListLink"
+// GroupsClaimListLinkKind is the name of the type used to represent links to list
+// of objects of type 'groups_claim'.
+const GroupsClaimListLinkKind = "GroupsClaimListLink"
 
-// ExternalAuthConfigNilKind is the name of the type used to nil lists of objects of
-// type 'external_auth_config'.
-const ExternalAuthConfigListNilKind = "ExternalAuthConfigListNil"
+// GroupsClaimNilKind is the name of the type used to nil lists of objects of
+// type 'groups_claim'.
+const GroupsClaimListNilKind = "GroupsClaimListNil"
 
-// ExternalAuthConfigList is a list of values of the 'external_auth_config' type.
-type ExternalAuthConfigList struct {
+// GroupsClaimList is a list of values of the 'groups_claim' type.
+type GroupsClaimList struct {
 	href  string
 	link  bool
-	items []*ExternalAuthConfig
+	items []*GroupsClaim
 }
 
 // Len returns the length of the list.
-func (l *ExternalAuthConfigList) Len() int {
+func (l *GroupsClaimList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -113,13 +105,13 @@ func (l *ExternalAuthConfigList) Len() int {
 }
 
 // Empty returns true if the list is empty.
-func (l *ExternalAuthConfigList) Empty() bool {
+func (l *GroupsClaimList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *ExternalAuthConfigList) Get(i int) *ExternalAuthConfig {
+func (l *GroupsClaimList) Get(i int) *GroupsClaim {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -132,12 +124,12 @@ func (l *ExternalAuthConfigList) Get(i int) *ExternalAuthConfig {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *ExternalAuthConfigList) Slice() []*ExternalAuthConfig {
-	var slice []*ExternalAuthConfig
+func (l *GroupsClaimList) Slice() []*GroupsClaim {
+	var slice []*GroupsClaim
 	if l == nil {
-		slice = make([]*ExternalAuthConfig, 0)
+		slice = make([]*GroupsClaim, 0)
 	} else {
-		slice = make([]*ExternalAuthConfig, len(l.items))
+		slice = make([]*GroupsClaim, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -146,7 +138,7 @@ func (l *ExternalAuthConfigList) Slice() []*ExternalAuthConfig {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *ExternalAuthConfigList) Each(f func(item *ExternalAuthConfig) bool) {
+func (l *GroupsClaimList) Each(f func(item *GroupsClaim) bool) {
 	if l == nil {
 		return
 	}
@@ -160,7 +152,7 @@ func (l *ExternalAuthConfigList) Each(f func(item *ExternalAuthConfig) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *ExternalAuthConfigList) Range(f func(index int, item *ExternalAuthConfig) bool) {
+func (l *GroupsClaimList) Range(f func(index int, item *GroupsClaim) bool) {
 	if l == nil {
 		return
 	}
