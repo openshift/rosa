@@ -38,6 +38,15 @@ var _ = Describe("IDPs", func() {
 				Expect(url).To(Equal("https://oauth.example.com"))
 				Expect(err).To(BeNil())
 			})
+			It("Checks HyperShift cluster - External Auth Enabled", func() {
+				hypershift := cmv1.NewHypershift().Enabled(true)
+				apiURL := cmv1.NewClusterAPI().URL("https://api.example.com:443")
+				cluster, err := cmv1.NewCluster().Name("cluster1").
+					ID("id1").Hypershift(hypershift).API(apiURL).
+					ExternalAuthConfig(cmv1.NewExternalAuthConfig().Enabled(true)).Build()
+				Expect(err).To(BeNil())
+				Expect(cluster.ExternalAuthConfig().Enabled()).To(Equal(true))
+			})
 			It("Checks HyperShift cluster - Valid API URL and keep the port", func() {
 				hypershift := cmv1.NewHypershift().Enabled(true)
 				apiURL := cmv1.NewClusterAPI().URL("https://api.example.com:443")

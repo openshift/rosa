@@ -83,6 +83,18 @@ var _ = Describe("Validate build command", func() {
 				Expect(command).To(Equal("rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix --properties \"prop1\" --properties \"prop2\""))
 			})
 		})
+
+		When("--external-auth-providers-enabled is true", func() {
+			It("prints --external-auth-providers-enabled", func() {
+				args.externalAuthProvidersEnabled = true
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix" +
+						" --external-auth-providers-enabled --properties \"prop1\" --properties \"prop2\""))
+			})
+		})
 	})
 	Context("build tags command", func() {
 		When("tag key or values DO contain a colon", func() {
