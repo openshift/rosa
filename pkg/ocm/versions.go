@@ -43,6 +43,8 @@ const (
 
 	MinVersionForAdditionalComputeSecurityGroupIdsDay1 = "4.14.0-0.a"
 	MinVersionForAdditionalComputeSecurityGroupIdsDay2 = "4.11.0-0.a"
+
+	MinVersionForPreserveBootstrapIgnition = "4.14.0-0.a"
 )
 
 func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error) {

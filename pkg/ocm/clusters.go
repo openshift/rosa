@@ -173,6 +173,9 @@ type Spec struct {
 
 	// Control Plane Machine Pool attributes
 	AdditionalControlPlaneSecurityGroupIds []string
+
+	// Preserve S3 buckets used for cluster bootstrap and ignition
+	PreserveBootstrapIgnition bool
 }
 
 // Volume represents a volume property for a disk

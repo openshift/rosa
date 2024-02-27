@@ -217,6 +217,9 @@ var args struct {
 
 	// Control Plane machine pool attributes
 	additionalControlPlaneSecurityGroupIds []string
+
+	// Preserve S3 buckets used for cluster bootstrap and ignition
+	preserveBootstrapIgnition bool
 }
 
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
@@ -829,6 +832,15 @@ func initFlags(cmd *cobra.Command) {
 		nil,
 		"The additional Security Group IDs to be added to the control plane nodes. "+
 			listInputMessage,
+	)
+
+	flags.BoolVar(
+		&args.preserveBootstrapIgnition,
+		"preserve-bootstrap-ignition",
+		false,
+		"Prevents the S3 bucket from being deleted after completion of bootstrapping. "+
+			"The default value is false, which results in the S3 bucket being deleted. "+
+			"This option is only available for OCP 4.14 and higher.",
 	)
 
 	aws.AddModeFlag(cmd)
@@ -3049,6 +3061,28 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	isVersionCompatiblePreserveBootstrapIgnition, err := versions.IsGreaterThanOrEqual(
+		version, ocm.MinVersionForPreserveBootstrapIgnition)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
+		os.Exit(1)
+	}
+	if cmd.Flags().Changed("preserve-bootstrap-ignition") && !isVersionCompatiblePreserveBootstrapIgnition {
+		r.Reporter.Errorf("Preserve bootstrap ignition support not available for versions less than OCP 4.14")
+		os.Exit(1)
+	}
+	if interactive.Enabled() && isVersionCompatiblePreserveBootstrapIgnition {
+		fips, err = interactive.GetBool(interactive.Input{
+			Question: "Preserve bootstrap ignition S3",
+			Help:     cmd.Flags().Lookup("preserve-bootstrap-ignition").Usage,
+			Default:  args.preserveBootstrapIgnition,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	clusterConfig := ocm.Spec{
 		Name:                         clusterName,
 		DomainPrefix:                 domainPrefix,
@@ -3349,12 +3383,12 @@ func GenerateContractDisplay(contract *accountsv1.Contract) string {
 	numberOfVCPUs, numberOfClusters := ocm.GetNumsOfVCPUsAndClusters(dimensions)
 
 	contractDisplay := fmt.Sprintf(`
-   +---------------------+----------------+ 
-   | Start Date          |%s    | 
-   | End Date            |%s    | 
-   | Number of vCPUs:    |'%s'             | 
-   | Number of clusters: |'%s'             | 
-   +---------------------+----------------+ 
+   +---------------------+----------------+
+   | Start Date          |%s    |
+   | End Date            |%s    |
+   | Number of vCPUs:    |'%s'             |
+   | Number of clusters: |'%s'             |
+   +---------------------+----------------+
 `,
 		contract.StartDate().Format(format),
 		contract.EndDate().Format(format),
@@ -3803,6 +3837,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		if spec.EtcdEncryptionKMSArn != "" {
 			command += fmt.Sprintf(" --etcd-encryption-kms-arn %s", spec.EtcdEncryptionKMSArn)
 		}
+	}
+
+	if spec.PreserveBootstrapIgnition {
+		command += " --preserve-bootstrap-ignition"
 	}
 
 	if spec.EnableProxy {
