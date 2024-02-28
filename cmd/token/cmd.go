@@ -74,6 +74,15 @@ func NewTokenCommand() *cobra.Command {
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
+
+	err := CreateToken(r)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+}
+
+func CreateToken(r *rosa.Runtime) error {
 	var accessToken string
 	var refreshToken string
 	var err error
@@ -93,24 +102,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if count > 1 {
-		r.Reporter.Errorf("Options '--payload', '--header', '--signature', and '--generate' are mutually exclusive")
-		os.Exit(1)
+		return fmt.Errorf("Options '--payload', '--header', '--signature', and '--generate' are mutually exclusive")
 	}
 
-	if args.generate {
-		// Get new tokens:
-		accessToken, refreshToken, err = r.OCMClient.GetConnectionTokens(15 * time.Minute)
-		if err != nil {
-			r.Reporter.Errorf("Can't get new tokens: %v", err)
-			os.Exit(1)
-		}
-	} else {
-		// Get the tokens:
-		accessToken, refreshToken, err = r.OCMClient.GetConnectionTokens()
-		if err != nil {
-			r.Reporter.Errorf("Can't get token: %v", err)
-			os.Exit(1)
-		}
+	accessToken, refreshToken, err = getAccessTokens(r, args.generate)
+	if err != nil {
+		return fmt.Errorf("Can't get token: %v", err)
 	}
 
 	// Select the token according to the options:
@@ -121,27 +118,22 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Parse the token:
 	parser := new(jwt.Parser)
-	fmt.Println(refreshToken)
 	_, parts, err := parser.ParseUnverified(selectedToken, jwt.MapClaims{})
 	if err != nil {
-		r.Reporter.Errorf("Can't parse token: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Can't parse token: %v", err)
 	}
 	encoding := base64.RawURLEncoding
 	header, err := encoding.DecodeString(parts[0])
 	if err != nil {
-		r.Reporter.Errorf("Can't decode header: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Can't decode header: %v", err)
 	}
 	payload, err := encoding.DecodeString(parts[1])
 	if err != nil {
-		r.Reporter.Errorf("Can't decode payload: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Can't decode payload: %v", err)
 	}
 	signature, err := encoding.DecodeString(parts[2])
 	if err != nil {
-		r.Reporter.Errorf("Can't decode signature: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Can't decode signature: %v", err)
 	}
 
 	// Print the data:
@@ -158,16 +150,33 @@ func run(cmd *cobra.Command, argv []string) {
 	// Load the configuration file:
 	cfg, err := config.Load()
 	if err != nil {
-		r.Reporter.Errorf("Can't load config file: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Can't load config file: %v", err)
 	}
 
 	// Save the configuration:
 	cfg.AccessToken = accessToken
 	cfg.RefreshToken = refreshToken
-	err = config.Save(cfg)
-	if err != nil {
-		r.Reporter.Errorf("Can't save config file: %v", err)
-		os.Exit(1)
+	if err = config.Save(cfg); err != nil {
+		return fmt.Errorf("Can't save config file: %v", err)
 	}
+	return nil
+}
+
+func getAccessTokens(r *rosa.Runtime, generate bool) (string, string, error) {
+	var accessToken, refreshToken string
+	var err error
+	if generate {
+		// Get new tokens:
+		accessToken, refreshToken, err = r.OCMClient.GetConnectionTokens(15 * time.Minute)
+		if err != nil {
+			return "", "", fmt.Errorf("Can't get new tokens: %v", err)
+		}
+	} else {
+		// Get the tokens:
+		accessToken, refreshToken, err = r.OCMClient.GetConnectionTokens()
+		if err != nil {
+			return "", "", fmt.Errorf("Can't get token: %v", err)
+		}
+	}
+	return accessToken, refreshToken, nil
 }

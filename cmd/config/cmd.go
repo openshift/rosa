@@ -28,7 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/config"
 )
 
-func configVarDocs() (ret string) {
+func configVarDocs() string {
 	configType := reflect.ValueOf(config.Config{}).Type()
 	fieldHelps := make([]string, configType.NumField())
 	for i := 0; i < len(fieldHelps); i++ {
@@ -37,17 +37,16 @@ func configVarDocs() (ret string) {
 		doc := tag.Get("doc")
 		fieldHelps[i] = fmt.Sprintf("\t%-15s%s", name, doc)
 	}
-	ret = strings.Join(fieldHelps, "\n")
-	return
+	return strings.Join(fieldHelps, "\n")
 }
 
-func longHelp() (ret string) {
+func longHelp() string {
 	loc, err := config.Location()
 	if err != nil {
 		// I think this only happens if homedir.Dir() fails, which is unlikely.
 		loc = fmt.Sprintf("UNKNOWN (%s)", err)
 	}
-	ret = fmt.Sprintf(`Get or set variables from a configuration file.
+	return fmt.Sprintf(`Get or set variables from a configuration file.
 
 The location of the configuration file is gleaned from the 'OCM_CONFIG' environment variable,
 or ~/.ocm.json if that variable is unset. Currently using: %s
@@ -59,7 +58,6 @@ The following variables are supported:
 Note that "rosa config get access_token" gives whatever the file contains - may be missing or expired;
 you probably want "rosa token" command instead which will obtain a fresh token if needed.
 `, loc, configVarDocs())
-	return
 }
 
 func NewConfigCommand() *cobra.Command {

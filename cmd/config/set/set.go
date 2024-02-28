@@ -21,35 +21,22 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var args struct {
-	debug bool
-}
+var Cmd = NewConfigSetCommand()
 
-var Cmd = NewConfigCommand()
-
-func NewConfigCommand() *cobra.Command {
-	Cmd := &cobra.Command{
+func NewConfigSetCommand() *cobra.Command {
+	return &cobra.Command{
 		Use:   "set [flags] VARIABLE VALUE",
 		Short: "Sets the variable's value",
 		Long:  "Sets the value of a config variable. See 'rosa config --help' for supported config variables.",
 		Args:  cobra.ExactArgs(2),
 		Run:   run,
 	}
-	flags := Cmd.Flags()
-	flags.BoolVar(
-		&args.debug,
-		"debug",
-		false,
-		"Enable debug mode.",
-	)
-	return Cmd
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -66,8 +53,7 @@ func SaveConfig(arg, value string) error {
 	// Load the configuration:
 	cfg, err := config.Load()
 	if err != nil {
-		err := fmt.Errorf("Config file doesn't exist yet")
-		return err
+		return fmt.Errorf("Config file doesn't exist yet")
 	}
 
 	// Create an empty configuration if the configuration file doesn't exist:
@@ -86,14 +72,12 @@ func SaveConfig(arg, value string) error {
 	case "insecure":
 		cfg.Insecure, err = strconv.ParseBool(value)
 		if err != nil {
-			err := fmt.Errorf("Failed to set insecure: %v", value)
-			return err
+			return fmt.Errorf("Failed to set insecure: %v", value)
 		}
 	case "refresh_token":
 		cfg.RefreshToken = value
 	case "scopes":
-		err := errors.New("Setting scopes is unsupported")
-		return err
+		return fmt.Errorf("Setting scopes is unsupported")
 	case "token_url":
 		cfg.TokenURL = value
 	case "url":
@@ -101,19 +85,16 @@ func SaveConfig(arg, value string) error {
 	case "fedramp":
 		cfg.FedRAMP, err = strconv.ParseBool(value)
 		if err != nil {
-			err := fmt.Errorf("Failed to set fedramp: %v", value)
-			return err
+			return fmt.Errorf("Failed to set fedramp: %v", value)
 		}
 	default:
-		err := errors.New("Unknown setting")
-		return err
+		return fmt.Errorf("'%s' is not a supported setting", arg)
 	}
 
 	// Save the configuration:
 	err = config.Save(cfg)
 	if err != nil {
-		err := fmt.Errorf("Can't save config file: %v", err)
-		return err
+		return fmt.Errorf("Can't save config file: %v", err)
 	}
 
 	return nil
