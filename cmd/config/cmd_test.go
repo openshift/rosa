@@ -105,7 +105,7 @@ var _ = Describe("Run Command", Ordered, func() {
 		randomField := "random value"
 		err = set.SaveConfig("random_field", randomField)
 		Expect(err).NotTo(BeNil())
-		Expect(err.Error()).To(Equal("Unknown setting"))
+		Expect(err.Error()).To(Equal("'random_field' is not a supported setting"))
 	})
 
 	It("Prints config", func() {
@@ -149,6 +149,6 @@ var _ = Describe("Run Command", Ordered, func() {
 
 		err = get.PrintConfig("test")
 		Expect(err).NotTo(BeNil())
-		Expect(err.Error()).To(Equal("Unknown setting"))
+		Expect(err.Error()).To(Equal("'test' is not a supported setting"))
 	})
 })

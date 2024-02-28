@@ -29,29 +29,18 @@ import (
 
 var (
 	Writer io.Writer = os.Stdout
-	args   struct {
-		debug bool
-	}
 )
 
-var Cmd = NewConfigCommand()
+var Cmd = NewConfigGetCommand()
 
-func NewConfigCommand() *cobra.Command {
-	Cmd := &cobra.Command{
+func NewConfigGetCommand() *cobra.Command {
+	return &cobra.Command{
 		Use:   "get [flags] VARIABLE",
 		Short: "Prints the value of a config variable",
 		Long:  "Prints the value of a config variable. See 'rosa config --help' for supported config variables.",
 		Args:  cobra.ExactArgs(1),
 		Run:   run,
 	}
-	flags := Cmd.Flags()
-	flags.BoolVar(
-		&args.debug,
-		"debug",
-		false,
-		"Enable debug mode.",
-	)
-	return Cmd
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -68,15 +57,17 @@ func PrintConfig(arg string) error {
 	// Load the configuration file:
 	cfg, err := config.Load()
 	if err != nil {
-		err := fmt.Errorf("Can't load config file: %v", err)
-		return err
+		return fmt.Errorf("Failed to load config file: %v", err)
 	}
 
 	// If the configuration file doesn't exist yet assume that all the configuration settings
 	// are empty:
 	if cfg == nil {
-		err := fmt.Errorf("Config file doesn't exist yet")
-		return err
+		loc, err := config.Location()
+		if err != nil {
+			return fmt.Errorf("Failed to find config file location: %v", err)
+		}
+		return fmt.Errorf("Config file '%s' does not exist", loc)
 	}
 
 	// Print the value of the requested configuration setting:
@@ -100,8 +91,7 @@ func PrintConfig(arg string) error {
 	case "fedramp":
 		fmt.Fprintf(Writer, "%v\n", cfg.FedRAMP)
 	default:
-		err := fmt.Errorf("Unknown setting")
-		return err
+		return fmt.Errorf("'%s' is not a supported setting", arg)
 	}
 	return nil
 }
