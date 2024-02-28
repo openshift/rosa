@@ -55,7 +55,7 @@ func init() {
 	flags.StringVarP(
 		&args.oidcConfigId,
 		"oidc-config-id",
-		"i",
+		"",
 		"",
 		"Filter by OIDC Config ID, returns one provider linked to the config ID.",
 	)
