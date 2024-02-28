@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/completion"
+	"github.com/openshift/rosa/cmd/config"
 	"github.com/openshift/rosa/cmd/create"
 	"github.com/openshift/rosa/cmd/describe"
 	"github.com/openshift/rosa/cmd/dlt"
@@ -42,6 +43,7 @@ import (
 	"github.com/openshift/rosa/cmd/register"
 	"github.com/openshift/rosa/cmd/resume"
 	"github.com/openshift/rosa/cmd/revoke"
+	"github.com/openshift/rosa/cmd/token"
 	"github.com/openshift/rosa/cmd/uninstall"
 	"github.com/openshift/rosa/cmd/unlink"
 	"github.com/openshift/rosa/cmd/upgrade"
@@ -92,6 +94,8 @@ func init() {
 	root.AddCommand(resume.GenerateCommand())
 	root.AddCommand(link.Cmd)
 	root.AddCommand(unlink.Cmd)
+	root.AddCommand(token.Cmd)
+	root.AddCommand(config.Cmd)
 }
 
 func main() {
