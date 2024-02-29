@@ -2,8 +2,6 @@ module github.com/openshift/rosa
 
 go 1.21
 
-toolchain go1.21.3
-
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
 	github.com/PuerkitoBio/goquery v1.8.1
