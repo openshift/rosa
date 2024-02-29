@@ -1,13 +1,17 @@
 package machinepool
 
 import (
+	"fmt"
 	"os"
 
+	awssdk "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
+	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -78,4 +82,31 @@ func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) 
 	}
 
 	return subnetOptions, nil
+}
+
+func getSecurityGroupsOption(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster) ([]string, error) {
+	if len(cluster.AWS().SubnetIDs()) == 0 {
+		return []string{}, fmt.Errorf("Expected cluster's subnets to contain subnets IDs, but got an empty list")
+	}
+
+	availableSubnets, err := r.AWSClient.GetVPCSubnets(cluster.AWS().SubnetIDs()[0])
+	if err != nil {
+		return []string{}, fmt.Errorf("Failed to retrieve available subnets: %v", err)
+	}
+	firstSubnet := availableSubnets[0]
+	vpcId, err := getVpcIdFromSubnet(firstSubnet)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, interactiveSgs.MachinePoolKind), nil
+}
+
+func getVpcIdFromSubnet(subnet *ec2.Subnet) (string, error) {
+	vpcId := awssdk.StringValue(subnet.VpcId)
+	if vpcId == "" {
+		return "", fmt.Errorf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
+	}
+
+	return vpcId, nil
 }

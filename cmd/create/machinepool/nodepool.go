@@ -30,13 +30,6 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		os.Exit(1)
 	}
 
-	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
-	if isSecurityGroupIdsSet {
-		r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
-			securitygroups.MachinePoolSecurityGroupFlag)
-		os.Exit(1)
-	}
-
 	// Machine pool name:
 	name := strings.Trim(args.name, " \t")
 	if name == "" && !interactive.Enabled() {
@@ -235,6 +228,19 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	existingTaints := make([]*cmv1.Taint, 0)
 	taintBuilders := mpHelpers.GetTaints(cmd, r, existingTaints, args.taints)
 
+	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
+	securityGroupIds := args.securityGroupIds
+	if interactive.Enabled() && !isSecurityGroupIdsSet {
+		securityGroupIds, err = getSecurityGroupsOption(r, cmd, cluster)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+	for i, sg := range securityGroupIds {
+		securityGroupIds[i] = strings.TrimSpace(sg)
+	}
+
 	npBuilder := cmv1.NewNodePool()
 	npBuilder.ID(name).Labels(labelMap).
 		Taints(taintBuilders...)
@@ -372,7 +378,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
-	npBuilder.AWSNodePool(cmv1.NewAWSNodePool().InstanceType(instanceType))
+	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds))
 
 	if version != "" {
 		npBuilder.Version(cmv1.NewVersion().ID(version))
@@ -455,4 +461,14 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 	}
 
 	return "", fmt.Errorf("Failed to find a private subnet for '%s' availability zone", availabilityZone)
+}
+
+func createAwsNodePoolBuilder(instanceType string, securityGroupIds []string) *cmv1.AWSNodePoolBuilder {
+	awsNpBuilder := cmv1.NewAWSNodePool().InstanceType(instanceType)
+
+	if len(securityGroupIds) > 0 {
+		awsNpBuilder.AdditionalSecurityGroupIds(securityGroupIds...)
+	}
+
+	return awsNpBuilder
 }
