@@ -27,7 +27,6 @@ import (
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
-
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
@@ -69,8 +68,10 @@ import (
 )
 
 const (
-	OidcConfigIdFlag      = "oidc-config-id"
-	ClassicOidcConfigFlag = "classic-oidc-config"
+	OidcConfigIdFlag                 = "oidc-config-id"
+	ClassicOidcConfigFlag            = "classic-oidc-config"
+	ExternalAuthProvidersEnabledFlag = "external-auth-providers-enabled"
+	workerDiskSizeFlag               = "worker-disk-size"
 	// #nosec G101
 	Ec2MetadataHttpTokensFlag = "ec2-metadata-http-tokens"
 
@@ -79,7 +80,8 @@ const (
 	MinReplicasSingleAZ = 2
 	MinReplicaMultiAZ   = 3
 
-	listInputMessage = "Format should be a comma-separated list."
+	listInputMessage          = "Format should be a comma-separated list."
+	listBillingAccountMessage = "To see the list of billing account options, you can use interactive mode by passing '-i'."
 
 	// nolint:lll
 	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
@@ -163,8 +165,9 @@ var args struct {
 	operatorRolesPermissionsBoundary string
 
 	// Oidc Config
-	oidcConfigId      string
-	classicOidcConfig bool
+	oidcConfigId                 string
+	classicOidcConfig            bool
+	externalAuthProvidersEnabled bool
 
 	// Proxy
 	enableProxy               bool
@@ -218,20 +221,28 @@ var args struct {
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
 var userSpecifiedAutoscalerValues []*pflag.Flag
 
-var Cmd = &cobra.Command{
-	Use:   "cluster",
-	Short: "Create cluster",
-	Long:  "Create cluster.",
-	Example: `  # Create a cluster named "mycluster"
+var Cmd = makeCmd()
+
+func makeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "cluster",
+		Short: "Create cluster",
+		Long:  "Create cluster.",
+		Example: `  # Create a cluster named "mycluster"
   rosa create cluster --cluster-name=mycluster
 
   # Create a cluster in the us-east-2 region
   rosa create cluster --cluster-name=mycluster --region=us-east-2`,
-	Run: run,
+		Run: run,
+	}
 }
 
 func init() {
-	flags := Cmd.Flags()
+	initFlags(Cmd)
+}
+
+func initFlags(cmd *cobra.Command) {
+	flags := cmd.Flags()
 	flags.SortFlags = false
 
 	// Basic options
@@ -292,7 +303,7 @@ func init() {
 
 	flags.StringVar(
 		&args.controlPlaneRoleARN,
-		"controlplane-iam-role",
+		"controlplane-iam-role-arn",
 		"",
 		"The IAM role ARN that will be attached to control plane instances.",
 	)
@@ -303,11 +314,11 @@ func init() {
 		"",
 		"The IAM role ARN that will be attached to master instances.",
 	)
-	flags.MarkDeprecated("master-iam-role", "use --controlplane-iam-role instead")
+	flags.MarkDeprecated("master-iam-role", "use --controlplane-iam-role-arn instead")
 
 	flags.StringVar(
 		&args.workerRoleARN,
-		"worker-iam-role",
+		"worker-iam-role-arn",
 		"",
 		"The IAM role ARN that will be attached to worker instances.",
 	)
@@ -342,6 +353,14 @@ func init() {
 		"Use classic OIDC configuration without registering an ID.",
 	)
 	flags.MarkHidden(ClassicOidcConfigFlag)
+
+	flags.BoolVar(
+		&args.externalAuthProvidersEnabled,
+		ExternalAuthProvidersEnabledFlag,
+		false,
+		"Enable external authentication configuration for a Hosted Control Plane cluster.",
+	)
+	flags.MarkHidden(ExternalAuthProvidersEnabledFlag)
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -523,7 +542,7 @@ func init() {
 		"Enable autoscaling of compute nodes.",
 	)
 
-	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(Cmd, clusterAutoscalerFlagsPrefix)
+	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(cmd, clusterAutoscalerFlagsPrefix)
 	// iterates through all autoscaling flags and stores them in slice to track user input
 	flags.VisitAll(func(f *pflag.Flag) {
 		if strings.HasPrefix(f.Name, clusterAutoscalerFlagsPrefix) {
@@ -545,9 +564,10 @@ func init() {
 		"Maximum number of compute nodes.",
 	)
 
+	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
 		&args.defaultMachinePoolLabels,
-		"default-mp-labels",
+		arguments.NewDefaultMPLabelsFlag,
 		"",
 		"Labels for the worker machine pool. Format should be a comma-separated list of 'key=value'. "+
 			"This list will overwrite any modifications made to Node labels on an ongoing basis.",
@@ -560,7 +580,7 @@ func init() {
 		"The main controller responsible for rendering the core networking components.",
 	)
 	flags.MarkHidden("network-type")
-	Cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
+	cmd.RegisterFlagCompletionFunc("network-type", networkTypeCompletion)
 
 	flags.IPNetVar(
 		&args.machineCIDR,
@@ -664,7 +684,7 @@ func init() {
 	)
 
 	flags.StringVar(&args.machinePoolRootDiskSize,
-		"worker-disk-size",
+		workerDiskSizeFlag,
 		"",
 		"Default worker machine pool root disk size with a **unit suffix** like GiB or TiB, "+
 			"e.g. 200GiB.")
@@ -689,6 +709,7 @@ func init() {
 		false,
 		"Disable CNI creation to let users bring their own CNI.",
 	)
+	flags.MarkHidden("no-cni")
 
 	flags.StringVar(
 		&args.clusterAdminUser,
@@ -795,9 +816,9 @@ func init() {
 			listInputMessage,
 	)
 
-	aws.AddModeFlag(Cmd)
+	aws.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
-	output.AddFlag(Cmd)
+	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
 }
 
@@ -1011,7 +1032,7 @@ func run(cmd *cobra.Command, _ []string) {
 		outputClusterAdminDetails(r, isClusterAdmin, clusterAdminPassword)
 	}
 
-	if isHostedCP && cmd.Flags().Changed("default-mp-labels") {
+	if isHostedCP && cmd.Flags().Changed(arguments.NewDefaultMPLabelsFlag) {
 		r.Reporter.Errorf("Setting the worker machine pool labels is not supported for hosted clusters")
 		os.Exit(1)
 	}
@@ -1049,7 +1070,7 @@ func run(cmd *cobra.Command, _ []string) {
 						"To use a different billing account, add --billing-account xxxxxxxxxx to previous command",
 					)
 				} else {
-					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters.")
+					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters. %s", listBillingAccountMessage)
 				}
 			}
 
@@ -1071,8 +1092,9 @@ func run(cmd *cobra.Command, _ []string) {
 					billingAccount = aws.ParseOption(billingAccount)
 				}
 
-				if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
-					r.Reporter.Errorf("Expected a valid billing account")
+				err := validateBillingAccount(billingAccount)
+				if err != nil {
+					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
 				}
 
@@ -1102,6 +1124,16 @@ func run(cmd *cobra.Command, _ []string) {
 	if !isHostedCP && billingAccount != "" {
 		r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
 		os.Exit(1)
+	}
+
+	var externalAuthConfig v1.ExternalAuthConfig
+	externalAuthProvidersEnabled := args.externalAuthProvidersEnabled
+	if externalAuthProvidersEnabled {
+		if !isHostedCP {
+			r.Reporter.Errorf("External authentication configuration is only supported for a Hosted Control Plane cluster.")
+			os.Exit(1)
+		}
+		externalAuthConfig = v1.ExternalAuthConfig(*v1.NewExternalAuthConfig().Enabled(externalAuthProvidersEnabled))
 	}
 
 	etcdEncryptionKmsARN := args.etcdEncryptionKmsARN
@@ -1174,13 +1206,13 @@ func run(cmd *cobra.Command, _ []string) {
 	// OpenShift version:
 	version := args.version
 	channelGroup := args.channelGroup
-	versionList, err := versions.GetVersionList(r, channelGroup, isSTS, isHostedCP, isHostedCP, true)
+	defaultVersion, versionList, err := versions.GetVersionList(r, channelGroup, isSTS, isHostedCP, isHostedCP, true)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if version == "" {
-		version = versionList[0]
+		version = defaultVersion
 	}
 	if interactive.Enabled() {
 		version, err = interactive.GetOption(interactive.Input{
@@ -1328,7 +1360,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			createAccountRolesCommand := "rosa create account-roles"
 			if isHostedCP {
-				createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+				createAccountRolesCommand = createAccountRolesCommand + " " + hostedCPFlag
 			}
 			r.Reporter.Warnf(fmt.Sprintf("No compatible account roles with version '%s' found. "+
 				"You will need to manually set them in the next steps or run '%s' to create them first.",
@@ -1390,7 +1422,7 @@ func run(cmd *cobra.Command, _ []string) {
 				if selectedARN == "" {
 					createAccountRolesCommand := "rosa create account-roles"
 					if isHostedCP {
-						createAccountRolesCommand = createAccountRolesCommand + " --hosted-cp"
+						createAccountRolesCommand = createAccountRolesCommand + " " + hostedCPFlag
 					}
 					r.Reporter.Warnf(fmt.Sprintf("No compatible '%s' account roles with version '%s' found. "+
 						"You will need to manually set them in the next steps or run '%s' to create them first.",
@@ -2031,7 +2063,12 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Unable to parse service CIDR")
 			os.Exit(1)
 		}
-		subnets = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		var filterError error
+		subnets, filterError = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		if filterError != nil {
+			r.Reporter.Errorf("%s", filterError)
+			os.Exit(1)
+		}
 		if privateLink {
 			subnets = filterPrivateSubnets(subnets, r)
 		}
@@ -2437,7 +2474,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if interactive.Enabled() && !isHostedCP {
 		labels, err = interactive.GetString(interactive.Input{
 			Question: "Worker machine pool labels",
-			Help:     cmd.Flags().Lookup("default-mp-labels").Usage,
+			Help:     cmd.Flags().Lookup(arguments.NewDefaultMPLabelsFlag).Usage,
 			Default:  labels,
 			Validators: []interactive.Validator{
 				mpHelpers.LabelValidator,
@@ -2483,13 +2520,16 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Network Type:
-	networkType := validateNetworkType(r)
+	if err := validateNetworkType(args.networkType); err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
-		networkType, err = interactive.GetOption(interactive.Input{
+		args.networkType, err = interactive.GetOption(interactive.Input{
 			Question: "Network Type",
 			Help:     cmd.Flags().Lookup("network-type").Usage,
 			Options:  ocm.NetworkTypes,
-			Default:  networkType,
+			Default:  args.networkType,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid network type: %s", err)
@@ -2522,57 +2562,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	var machinePoolRootDisk *ocm.Volume
-	if !isHostedCP &&
-		(args.machinePoolRootDiskSize != "" || interactive.Enabled()) {
-		var machinePoolRootDiskSizeStr string
-		if args.machinePoolRootDiskSize == "" {
-			// We don't need to parse the default since it's returned from the OCM API and AWS
-			// always defaults to GiB
-			machinePoolRootDiskSizeStr = helper.GigybyteStringer(defaultMachinePoolRootDiskSize)
-		} else {
-			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
-		}
-		if interactive.Enabled() {
-			// In order to avoid confusion, we want to display to the user what was passed as an
-			// argument
-			// Even if it was not valid, we want to display it to the user, then the CLI will show an
-			// error and the value can be corrected
-			// Also, if nothing is given, we want to display the default value fetched from the OCM API
-			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
-				Question: "Machine pool root disk size (GiB or TiB)",
-				Help:     cmd.Flags().Lookup("worker-disk-size").Usage,
-				Default:  machinePoolRootDiskSizeStr,
-				Validators: []interactive.Validator{
-					interactive.MachinePoolRootDiskSizeValidator(version),
-				},
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
-				os.Exit(1)
-			}
-		}
-
-		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
-		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
-			os.Exit(1)
-		}
-
-		err = diskValidator.ValidateMachinePoolRootDiskSize(version, machinePoolRootDiskSize)
-		if err != nil {
-			r.Reporter.Errorf(err.Error())
-			os.Exit(1)
-		}
-
-		// If the size given by the user is different than the default, we just let the OCM server
-		// handle the default root disk size
-		if machinePoolRootDiskSize != defaultMachinePoolRootDiskSize {
-			machinePoolRootDisk = &ocm.Volume{
-				Size: machinePoolRootDiskSize,
-			}
-		}
+	machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd, version,
+		isHostedCP, defaultMachinePoolRootDiskSize)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
 	}
 
 	// No CNI
@@ -3019,7 +3013,7 @@ func run(cmd *cobra.Command, _ []string) {
 		MinReplicas:               minReplicas,
 		MaxReplicas:               maxReplicas,
 		ComputeLabels:             labelMap,
-		NetworkType:               networkType,
+		NetworkType:               args.networkType,
 		MachineCIDR:               machineCIDR,
 		ServiceCIDR:               serviceCIDR,
 		PodCIDR:                   podCIDR,
@@ -3030,9 +3024,11 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:         availabilityZones,
 		SubnetIds:                 subnetIDs,
 		PrivateLink:               &privateLink,
+		AWSCreator:                awsCreator,
 		IsSTS:                     isSTS,
 		RoleARN:                   roleARN,
 		ExternalID:                externalID,
+		ExternalAuthConfig:        externalAuthConfig,
 		SupportRoleARN:            supportRoleARN,
 		OperatorIAMRoles:          computedOperatorIamRoleList,
 		ControlPlaneRoleARN:       controlPlaneRoleARN,
@@ -3122,6 +3118,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	clusterConfig, err = clusterConfigFor(r.Reporter, clusterConfig, awsCreator, awsClient)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
@@ -3130,6 +3132,13 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
+	}
+
+	if !clusterConfig.IsSTS {
+		if err := r.OCMClient.EnsureNoPendingClusters(awsCreator); err != nil {
+			r.Reporter.Errorf("%v", err)
+			os.Exit(1)
+		}
 	}
 
 	cluster, err := r.OCMClient.CreateCluster(clusterConfig)
@@ -3220,21 +3229,52 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+// clusterConfigFor builds the cluster spec for the OCM API from our command-line options.
+// TODO: eventually, this method signature should be func(args) ocm.Spec.
+func clusterConfigFor(
+	reporter *reporter.Object,
+	clusterConfig ocm.Spec,
+	awsCreator *aws.Creator,
+	awsCredentialsGetter aws.AccessKeyGetter,
+) (ocm.Spec, error) {
+	if clusterConfig.CustomProperties != nil && clusterConfig.CustomProperties[properties.UseLocalCredentials] ==
+		strconv.FormatBool(true) {
+		reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
+		var err error
+		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetLocalAWSAccessKeys()
+		if err != nil {
+			return clusterConfig, fmt.Errorf("Failed to get local AWS credentials: %w", err)
+		}
+	} else if clusterConfig.RoleARN == "" {
+		// Create the access key for the AWS user:
+		var err error
+		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetAWSAccessKeys()
+		if err != nil {
+			return clusterConfig, fmt.Errorf("Failed to get access keys for user '%s': %w",
+				aws.AdminUserName, err)
+		}
+	}
+	return clusterConfig, nil
+}
+
+func validateBillingAccount(billingAccount string) error {
+	if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
+		return fmt.Errorf("Billing account is invalid. Run the command again with a valid billing account. %s",
+			listBillingAccountMessage)
+	}
+	return nil
+}
+
 // validateNetworkType ensure user passes a valid network type parameter at creation
-func validateNetworkType(r *rosa.Runtime) string {
-	var networkType string
-	if args.networkType == "" {
-		// Parameter not specified, nothing to do
-		return networkType
-	}
-	if helper.Contains(ocm.NetworkTypes, args.networkType) {
-		networkType = args.networkType
-	}
+func validateNetworkType(networkType string) error {
 	if networkType == "" {
-		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
-		os.Exit(1)
+		// Parameter not specified, nothing to do
+		return nil
 	}
-	return networkType
+	if !helper.Contains(ocm.NetworkTypes, networkType) {
+		return fmt.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
+	}
+	return nil
 }
 
 func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
@@ -3256,16 +3296,20 @@ func GenerateContractDisplay(contract *accountsv1.Contract) string {
 	dimensions := contract.Dimensions()
 
 	numberOfVCPUs, numberOfClusters := ocm.GetNumsOfVCPUsAndClusters(dimensions)
-	prePurchaseInfo := fmt.Sprintf("   | Number of vCPUs:    |'%s'             | \n"+
-		"   | Number of clusters: |'%s'             | \n",
-		strconv.Itoa(numberOfVCPUs), strconv.Itoa(numberOfClusters))
 
-	contractDisplay := "\n" +
-		"   +---------------------+----------------+ \n" +
-		"   | Start Date          |" + contract.StartDate().Format(format) + "    | \n" +
-		"   | End Date            |" + contract.EndDate().Format(format) + "    | \n" +
-		prePurchaseInfo +
-		"   +---------------------+----------------+ \n"
+	contractDisplay := fmt.Sprintf(`
+   +---------------------+----------------+ 
+   | Start Date          |%s    | 
+   | End Date            |%s    | 
+   | Number of vCPUs:    |'%s'             | 
+   | Number of clusters: |'%s'             | 
+   +---------------------+----------------+ 
+`,
+		contract.StartDate().Format(format),
+		contract.EndDate().Format(format),
+		strconv.Itoa(numberOfVCPUs),
+		strconv.Itoa(numberOfClusters),
+	)
 
 	return contractDisplay
 
@@ -3369,20 +3413,21 @@ func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) []e
 	return filteredSubnets
 }
 
+// filterCidrRangeSubnets filters the initial set of subnets to those that are part of the machine network,
+// and not part of the service network
 func filterCidrRangeSubnets(
 	initialSubnets []ec2types.Subnet,
 	machineNetwork *net.IPNet,
 	serviceNetwork *net.IPNet,
 	r *rosa.Runtime,
-) []ec2types.Subnet {
+) ([]ec2types.Subnet, error) {
 	excludedSubnetsDueToCidr := []string{}
 	filteredSubnets := []ec2types.Subnet{}
 	for _, subnet := range initialSubnets {
 		skip := false
 		subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse subnet CIDR")
-			os.Exit(1)
+			return nil, fmt.Errorf("Unable to parse subnet CIDR: %w", err)
 		}
 
 		if !isValidCidrRange(subnetIP, subnetNetwork, machineNetwork, serviceNetwork) {
@@ -3398,7 +3443,7 @@ func filterCidrRangeSubnets(
 		r.Reporter.Warnf("The following subnets have been excluded"+
 			" because they do not fit into chosen CIDR ranges: %s", helper.SliceToSortedString(excludedSubnetsDueToCidr))
 	}
-	return filteredSubnets
+	return filteredSubnets, nil
 }
 
 func isValidCidrRange(
@@ -3574,6 +3619,8 @@ func parseRFC3339(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339, s)
 }
 
+const hostedCPFlag = "--hosted-cp"
+
 func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	operatorRolePath string, userSelectedAvailabilityZones bool, labels string,
 	properties []string) string {
@@ -3612,6 +3659,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if args.classicOidcConfig {
 		command += fmt.Sprintf(" --%s", ClassicOidcConfigFlag)
+	}
+	if args.externalAuthProvidersEnabled {
+		command += fmt.Sprintf(" --%s", ExternalAuthProvidersEnabledFlag)
 	}
 	if len(spec.Tags) > 0 {
 		command += fmt.Sprintf(" --tags \"%s\"", strings.Join(buildTagsCommand(spec.Tags), ","))
@@ -3660,7 +3710,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	if len(spec.ComputeLabels) != 0 {
-		command += fmt.Sprintf(" --default-mp-labels \"%s\"", labels)
+		command += fmt.Sprintf(" --%s \"%s\"", arguments.NewDefaultMPLabelsFlag, labels)
 	}
 
 	if spec.NetworkType != "" {
@@ -3695,6 +3745,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += " --fips"
 	} else if spec.EtcdEncryption {
 		command += " --etcd-encryption"
+		if spec.EtcdEncryptionKMSArn != "" {
+			command += fmt.Sprintf(" --etcd-encryption-kms-arn %s", spec.EtcdEncryptionKMSArn)
+		}
 	}
 
 	if spec.EnableProxy {
@@ -3721,10 +3774,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --availability-zones %s", strings.Join(spec.AvailabilityZones, ","))
 	}
 	if spec.Hypershift.Enabled {
-		command += " --hosted-cp"
-	}
-	if spec.EtcdEncryptionKMSArn != "" {
-		command += fmt.Sprintf(" --etcd-encryption-kms-arn %s", spec.EtcdEncryptionKMSArn)
+		command += " " + hostedCPFlag
 	}
 
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
@@ -3733,7 +3783,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.MachinePoolRootDisk != nil {
 		machinePoolRootDiskSize := spec.MachinePoolRootDisk.Size
 		if machinePoolRootDiskSize != 0 {
-			command += fmt.Sprintf(" --worker-disk-size %dGiB", machinePoolRootDiskSize)
+			command += fmt.Sprintf(" --%s %dGiB", workerDiskSizeFlag, machinePoolRootDiskSize)
 		}
 	}
 
@@ -3942,4 +3992,77 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 	for i, sg := range *additionalSgIds {
 		(*additionalSgIds)[i] = strings.TrimSpace(sg)
 	}
+}
+
+func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
+	isHostedCP bool, defaultMachinePoolRootDiskSize int) (machinePoolRootDisk *ocm.Volume, err error) {
+
+	isVersionCompatibleMachinePoolRootDisk, err := versions.IsGreaterThanOrEqual(
+		version, ocm.MinVersionForMachinePoolRootDisk)
+	if err != nil {
+		return nil, fmt.Errorf("There was a problem checking version compatibility: %v", err)
+	}
+	if !isVersionCompatibleMachinePoolRootDisk && cmd.Flags().Changed(workerDiskSizeFlag) {
+		formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForMachinePoolRootDisk)
+		if err != nil {
+			r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
+			os.Exit(1)
+		}
+		return nil, fmt.Errorf(
+			"Updating Worker disk size is not supported for versions prior to '%s'",
+			formattedVersion,
+		)
+	}
+	if isVersionCompatibleMachinePoolRootDisk && !isHostedCP &&
+		(args.machinePoolRootDiskSize != "" || interactive.Enabled()) {
+		var machinePoolRootDiskSizeStr string
+		if args.machinePoolRootDiskSize == "" {
+			// We don't need to parse the default since it's returned from the OCM API and AWS
+			// always defaults to GiB
+			machinePoolRootDiskSizeStr = helper.GigybyteStringer(defaultMachinePoolRootDiskSize)
+		} else {
+			machinePoolRootDiskSizeStr = args.machinePoolRootDiskSize
+		}
+		if interactive.Enabled() {
+			// In order to avoid confusion, we want to display to the user what was passed as an
+			// argument
+			// Even if it was not valid, we want to display it to the user, then the CLI will show an
+			// error and the value can be corrected
+			// Also, if nothing is given, we want to display the default value fetched from the OCM API
+			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
+				Question: "Machine pool root disk size (GiB or TiB)",
+				Help:     cmd.Flags().Lookup(workerDiskSizeFlag).Usage,
+				Default:  machinePoolRootDiskSizeStr,
+				Validators: []interactive.Validator{
+					interactive.MachinePoolRootDiskSizeValidator(version),
+				},
+			})
+			if err != nil {
+				return nil, fmt.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			}
+		}
+
+		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
+		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
+		if err != nil {
+			return nil, fmt.Errorf("Expected a valid machine pool root disk size value '%s': %v",
+				machinePoolRootDiskSizeStr, err)
+
+		}
+
+		err = diskValidator.ValidateMachinePoolRootDiskSize(version, machinePoolRootDiskSize)
+		if err != nil {
+			return nil, err
+		}
+
+		// If the size given by the user is different than the default, we just let the OCM server
+		// handle the default root disk size
+		if machinePoolRootDiskSize != defaultMachinePoolRootDiskSize {
+			machinePoolRootDisk = &ocm.Volume{
+				Size: machinePoolRootDiskSize,
+			}
+		}
+	}
+
+	return machinePoolRootDisk, nil
 }

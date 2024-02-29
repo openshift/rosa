@@ -18,11 +18,15 @@ package login
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/golang-jwt/jwt/v4"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	"github.com/openshift-online/ocm-sdk-go/authentication"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/logout"
@@ -31,6 +35,7 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -38,16 +43,20 @@ import (
 // #nosec G101
 var uiTokenPage string = "https://console.redhat.com/openshift/token/rosa"
 
+const oauthClientId = "ocm-cli"
+
 var reAttempt bool
 
 var args struct {
-	tokenURL     string
-	clientID     string
-	clientSecret string
-	scopes       []string
-	env          string
-	token        string
-	insecure     bool
+	tokenURL      string
+	clientID      string
+	clientSecret  string
+	scopes        []string
+	env           string
+	token         string
+	insecure      bool
+	useAuthCode   bool
+	useDeviceCode bool
 }
 
 var Cmd = &cobra.Command{
@@ -121,18 +130,82 @@ func init() {
 		"Enables insecure communication with the server. This disables verification of TLS "+
 			"certificates and host names.",
 	)
+	flags.BoolVar(
+		&args.useAuthCode,
+		"use-auth-code",
+		false,
+		"Login using OAuth Authorization Code. This should be used for most cases where a "+
+			"browser is available.",
+	)
+	flags.MarkHidden("use-auth-code")
+	flags.BoolVar(
+		&args.useDeviceCode,
+		"use-device-code",
+		false,
+		"Login using OAuth Device Code. "+
+			"This should only be used for remote hosts and containers where browsers are "+
+			"not available. Use auth code for all other scenarios.",
+	)
+	flags.MarkHidden("use-device-code")
 	arguments.AddRegionFlag(flags)
 	fedramp.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, argv []string) {
+	ctx := cmd.Context()
 	r := rosa.NewRuntime()
+	var spin *spinner.Spinner
+	if r.Reporter.IsTerminal() && !output.HasFlag() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
 
 	// Check mandatory options:
 	env := args.env
 	if env == "" {
 		r.Reporter.Errorf("Option '--env' is mandatory")
 		os.Exit(1)
+	}
+
+	if args.useAuthCode {
+		r.Reporter.Infof("You will now be redirected to Red Hat SSO login")
+
+		if spin != nil {
+			spin.Start()
+		}
+		// Short wait for a less jarring experience
+		time.Sleep(2 * time.Second)
+		if spin != nil {
+			spin.Stop()
+		}
+		token, err := authentication.InitiateAuthCode(oauthClientId)
+		if err != nil {
+			r.Reporter.Errorf("An error occurred while retrieving the token: %v", err)
+			os.Exit(1)
+		}
+		args.token = token
+		args.clientID = oauthClientId
+		r.Reporter.Infof("Token received successfully")
+	} else if args.useDeviceCode {
+		deviceAuthConfig := &authentication.DeviceAuthConfig{
+			ClientID: oauthClientId,
+		}
+		_, err := deviceAuthConfig.InitiateDeviceAuth(ctx)
+		if err != nil {
+			r.Reporter.Errorf("An error occurred while initiating device auth: %v", err)
+			os.Exit(1)
+		}
+		deviceAuthResp := deviceAuthConfig.DeviceAuthResponse
+
+		r.Reporter.Infof("To login, navigate to %v on another device and enter code %v",
+			deviceAuthResp.VerificationURI, deviceAuthResp.UserCode)
+		r.Reporter.Infof("Checking status every %v seconds...", deviceAuthResp.Interval)
+		token, err := deviceAuthConfig.PollForTokenExchange(ctx)
+		if err != nil {
+			r.Reporter.Errorf("An error occurred while polling for token exchange: %v", err)
+			os.Exit(1)
+		}
+		args.token = token
+		args.clientID = oauthClientId
 	}
 
 	// Load the configuration file:
@@ -341,6 +414,18 @@ func run(cmd *cobra.Command, argv []string) {
 		ocm.Username: username,
 		ocm.URL:      cfg.URL,
 	})
+
+	if args.useAuthCode || args.useDeviceCode {
+		ssoURL, err := url.Parse(cfg.TokenURL)
+		if err != nil {
+			r.Reporter.Errorf("can't parse token url '%s': %v", args.tokenURL, err)
+			os.Exit(1)
+		}
+		ssoHost := ssoURL.Scheme + "://" + ssoURL.Hostname()
+
+		r.Reporter.Infof("To switch accounts, logout from %s and run `rosa logout` "+
+			"before attempting to login again", ssoHost)
+	}
 }
 
 func reattemptLogin(cmd *cobra.Command, argv []string) {

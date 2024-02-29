@@ -22,6 +22,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -33,7 +34,7 @@ const (
 	PrefixFlag           = "prefix"
 	HostedCpFlag         = "hosted-cp"
 	OidcConfigIdFlag     = "oidc-config-id"
-	InstallerRoleArnFlag = "installer-role-arn"
+	InstallerRoleArnFlag = "role-arn"
 )
 
 var args struct {
@@ -80,6 +81,8 @@ func init() {
 			"Not to be used alongside --cluster flag.",
 	)
 
+	// normalizing installer role argument to support deprecated flag
+	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
 		&args.installerRoleArn,
 		InstallerRoleArnFlag,

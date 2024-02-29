@@ -52,7 +52,7 @@ func validateIngressOperatorPolicyOverride(r *rosa.Runtime, policyArn string, sh
 					"[Expected: '%s', Provided '%s'].\n"+
 					"The policy is associated with the installer role with the prefix '%s'.\n"+
 					"To create operator roles with shared VPC role ARN '%s', please provide a different value for "+
-					"'--installer-role-arn'", policyArn, assumePolicyAction, statement.Resource, sharedVpcRoleArn,
+					"'--role-arn'", policyArn, assumePolicyAction, statement.Resource, sharedVpcRoleArn,
 					installerRolePrefix, sharedVpcRoleArn)
 			}
 		}

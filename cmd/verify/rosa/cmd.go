@@ -23,10 +23,12 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/hashicorp/go-version"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -43,7 +45,7 @@ var Cmd = &cobra.Command{
 const (
 	DownloadLatestMirrorFolder = "https://mirror.openshift.com/pub/openshift-v4/clients/rosa/latest/"
 	baseReleasesFolder         = "https://mirror.openshift.com/pub/openshift-v4/clients/rosa/"
-	consoleLatestFolder        = "https://console.redhat.com/openshift/downloads#tool-rosa"
+	ConsoleLatestFolder        = "https://console.redhat.com/openshift/downloads#tool-rosa"
 )
 
 func run(_ *cobra.Command, _ []string) {
@@ -62,7 +64,7 @@ func run(_ *cobra.Command, _ []string) {
 	if currVersion.LessThan(latestVersionFromMirror) {
 		rprtr.Infof(
 			"There is a newer release version '%s', please consider updating: %s",
-			latestVersionFromMirror, consoleLatestFolder,
+			latestVersionFromMirror, ConsoleLatestFolder,
 		)
 	} else if rprtr.IsTerminal() {
 		rprtr.Infof("Your ROSA CLI is up to date.")
@@ -71,7 +73,18 @@ func run(_ *cobra.Command, _ []string) {
 }
 
 func retrievePossibleVersionsFromMirror() ([]string, error) {
-	resp, err := http.Get(baseReleasesFolder)
+	logger := logging.NewLogger()
+	transport := http.DefaultTransport
+	if logger.IsLevelEnabled(logrus.DebugLevel) {
+		dumper, err := logging.NewRoundTripper().Logger(logger).Next(transport).Build()
+		if err != nil {
+			return nil, err
+		}
+		transport = dumper
+	}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Get(baseReleasesFolder)
 	if err != nil {
 		return []string{}, weberr.Wrapf(err, "Error setting up request for latest released rosa cli")
 	}
@@ -96,6 +109,7 @@ func retrievePossibleVersionsFromMirror() ([]string, error) {
 			}
 		})
 	})
+	logger.Debugf("Versions available for download: %v", possibleVersions)
 	return possibleVersions, nil
 }
 

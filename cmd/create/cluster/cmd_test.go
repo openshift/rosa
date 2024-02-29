@@ -2,15 +2,22 @@ package cluster
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var _ = Describe("Validate build command", func() {
@@ -32,6 +39,32 @@ var _ = Describe("Validate build command", func() {
 		defaultMachinePoolLabels = "machine-pool-label"
 	})
 	Context("build command", func() {
+
+		When("--etcd-encryption is true", func() {
+			It("prints --etcd-encryption-kms-arn", func() {
+				clusterConfig.EtcdEncryption = true
+				clusterConfig.EtcdEncryptionKMSArn = "my-test-arn"
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix" +
+						" --etcd-encryption --etcd-encryption-kms-arn my-test-arn"))
+			})
+		})
+
+		When("--etcd-encryption is false", func() {
+			It("Does not print --etc-encryption-kms-arn", func() {
+				clusterConfig.EtcdEncryption = false
+				clusterConfig.EtcdEncryptionKMSArn = "my-test-arn"
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix"))
+			})
+		})
+
 		When("--properties is not present", func() {
 			It("should not include --properties", func() {
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
@@ -168,6 +201,24 @@ var _ = Describe("Validates OCP version", func() {
 				fmt.Errorf("version 'foo.bar' was not found")))
 			Expect(v).To(BeEmpty())
 		})
+
+		It(`OK: Validates a supported Hypershift version successfully`, func() {
+			v, err := client.ValidateHypershiftVersion("4.14.5", stable)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(v).To(BeTrue())
+		})
+
+		It(`KO: Fails to validate Hypershift version when the version is less than the minimal supported version`, func() {
+			v, err := client.ValidateHypershiftVersion("4.13.0", stable)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(v).To(BeFalse())
+		})
+
+		It(`KO: Fails to validate Hypershift version when the version is invalid or malformed`, func() {
+			v, err := client.ValidateHypershiftVersion("foo.bar", stable)
+			Expect(err).To(BeEquivalentTo(fmt.Errorf("version foo.bar was not found")))
+			Expect(v).To(BeFalse())
+		})
 	})
 	var _ = Context("when creating a classic cluster", func() {
 		It("OK: Validates successfully a cluster with a supported version", func() {
@@ -216,3 +267,145 @@ var _ = Describe("Validate cloud accounts", func() {
 		})
 	})
 })
+
+var _ = Describe("getMachinePoolRootDisk()", func() {
+
+	var r *rosa.Runtime
+	var cmd *cobra.Command
+
+	version := "4.10"
+	isHostedCP := false
+	defaultMachinePoolRootDiskSize := 12000
+
+	BeforeEach(func() {
+		r = rosa.NewRuntime()
+		cmd = makeCmd()
+		initFlags(cmd)
+
+		DeferCleanup(r.Cleanup)
+	})
+
+	It("OK: isHostedCP = true", func() {
+
+		machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd,
+			version, isHostedCP, defaultMachinePoolRootDiskSize)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(machinePoolRootDisk).To(BeNil())
+	})
+
+	It("OK: bad disk size argument", func() {
+		args.machinePoolRootDiskSize = "200000000000000000000TiB"
+
+		machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd,
+			version, isHostedCP, defaultMachinePoolRootDiskSize)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Expected a valid machine pool root disk size value" +
+			" '200000000000000000000TiB': invalid disk size: '200000000000000000000Ti'. " +
+			"maximum size exceeded"))
+		Expect(machinePoolRootDisk).To(BeNil())
+	})
+})
+
+var _ = Describe("Validations", func() {
+	DescribeTable("should validate network type", func(
+		in string,
+		expected error,
+	) {
+		err := validateNetworkType(in)
+		if expected == nil {
+			Expect(err).To(BeNil())
+		} else {
+			Expect(err).To(MatchError(expected))
+		}
+	},
+		Entry("no network type passed", "", nil),
+		Entry("valid network type passed", "OpenShiftSDN", nil),
+		Entry("invalid network type passed", "wrong",
+			fmt.Errorf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes)),
+	)
+})
+
+var _ = Describe("Filtering", func() {
+	r := rosa.NewRuntime()
+	DescribeTable("should filter CIDR range requests", func(
+		initialSubnets []ec2types.Subnet,
+		machineNetwork *net.IPNet,
+		serviceNetwork *net.IPNet,
+		expected []ec2types.Subnet,
+		expectedError string,
+	) {
+		out, err := filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		if expectedError == "" {
+			Expect(err).To(BeNil())
+			Expect(cmp.Equal(out, expected, cmpopts.IgnoreUnexported(ec2types.Subnet{}))).To(BeTrue())
+		} else {
+			Expect(err).To(MatchError(ContainSubstring(expectedError)))
+		}
+	},
+		Entry(
+			"no input subnets to filter",
+			[]ec2types.Subnet{},           /* initialSubnets */
+			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
+			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
+			[]ec2types.Subnet{},           /* expected */
+			"",                            /* expectedError */
+		),
+		Entry(
+			"invalid input subnets filtered",
+			[]ec2types.Subnet{ /* initialSubnets */
+				{CidrBlock: aws.String("wrong"), SubnetId: aws.String("id")},
+			},
+			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
+			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
+			nil,                           /* expected */
+			"Unable to parse subnet CIDR: invalid CIDR address: wrong", /* expectedError */
+		),
+		Entry(
+			"input subnets filtered",
+			[]ec2types.Subnet{ /* initialSubnets */
+				{CidrBlock: aws.String("57.0.2.0/24"), SubnetId: aws.String("id")},
+				{CidrBlock: aws.String("123.244.128.0/24"), SubnetId: aws.String("id")},
+				{CidrBlock: aws.String("192.0.2.0/30"), SubnetId: aws.String("id")},
+				{CidrBlock: aws.String("142.6.12.0/28"), SubnetId: aws.String("id")},
+			},
+			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
+			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
+			[]ec2types.Subnet{ /* expected */
+				{CidrBlock: aws.String("192.0.2.0/30"), SubnetId: aws.String("id")},
+			},
+			"", /* expectedError */
+		),
+	)
+})
+
+var _ = Describe("validateBillingAccount()", func() {
+
+	It("OK: valid billing account", func() {
+		validBillingAccount := "123456789012"
+		err := validateBillingAccount(validBillingAccount)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("KO: fails to validate a wrong billing account", func() {
+		wrongBillingAccount := "123"
+		err := validateBillingAccount(wrongBillingAccount)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Billing account is invalid. Run the command again with a valid billing account." +
+			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
+	})
+
+	It("KO: fails to validate an empty billing account", func() {
+		wrongBillingAccount := ""
+		err := validateBillingAccount(wrongBillingAccount)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Billing account is invalid. Run the command again with a valid billing account." +
+			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
+	})
+
+})
+
+func mustParseCIDR(s string) *net.IPNet {
+	_, ipnet, err := net.ParseCIDR(s)
+	Expect(err).To(BeNil())
+	return ipnet
+}

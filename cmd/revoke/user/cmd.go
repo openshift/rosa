@@ -87,7 +87,9 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if username == idp.ClusterAdminUsername {
-		r.Reporter.Errorf("Username '%s' is not allowed", idp.ClusterAdminUsername)
+		r.Reporter.Errorf("Username '%s' is reserved for `rosa create/delete admin` command. "+
+			"Run `rosa delete admin -c %s` to delete user '%s'",
+			idp.ClusterAdminUsername, clusterKey, idp.ClusterAdminUsername)
 		os.Exit(1)
 	}
 

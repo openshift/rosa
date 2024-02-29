@@ -35,10 +35,11 @@ const (
 	LowestSTSSupport                = "4.7.11"
 	LowestHttpTokensRequiredSupport = "4.11.0"
 	LowestSTSMinor                  = "4.7"
-	//TODO: Remove the 0.a once stable 4.12 builds are available
-	LowestHostedCpSupport         = "4.12.0-0.a"
-	MinVersionForManagedIngressV2 = "4.14.0-0.a"
-	VersionPrefix                 = "openshift-v"
+
+	LowestHostedCpSupport            = "4.14.0"
+	MinVersionForManagedIngressV2    = "4.14.0-0.a"
+	MinVersionForMachinePoolRootDisk = "4.10.0-0.a"
+	VersionPrefix                    = "openshift-v"
 
 	MinVersionForAdditionalComputeSecurityGroupIdsDay1 = "4.14.0-0.a"
 	MinVersionForAdditionalComputeSecurityGroupIdsDay2 = "4.11.0-0.a"
@@ -227,7 +228,7 @@ func GetNodePoolAvailableUpgrades(nodePool *cmv1.NodePool) []string {
 }
 
 func CreateVersionID(version string, channelGroup string) string {
-	versionID := fmt.Sprintf("openshift-v%s", version)
+	versionID := fmt.Sprintf("%s%s", VersionPrefix, version)
 	if channelGroup != DefaultChannelGroup {
 		versionID = fmt.Sprintf("%s-%s", versionID, channelGroup)
 	}
@@ -272,10 +273,6 @@ func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 	}
 
 	return
-}
-
-func (c *Client) GetDefaultVersion(channelGroup string) (version string, err error) {
-	return c.getFirstVersion(channelGroup, true)
 }
 
 func (c *Client) GetLatestVersion(channelGroup string) (version string, err error) {
@@ -440,7 +437,8 @@ func (c *Client) IsVersionCloseToEol(daysAwayToCheck int, version string, channe
 			"The version of Red Hat OpenShift Service on AWS that you are installing will no longer be supported after '%s'."+
 				" Red Hat recommends selecting a newer version. For more information,"+
 				" see https://docs.openshift.com/rosa/rosa_policy/rosa-life-cycle.html",
-			ocmVersion.EndOfLifeTimestamp().Format(time.DateOnly))
+			ocmVersion.EndOfLifeTimestamp().Format(time.DateOnly),
+		)
 	}
 	return nil
 }
@@ -474,24 +472,7 @@ func (c *Client) ValidateVersion(version string, versionList []string, channelGr
 	}
 
 	if isHostedCP {
-		collection := c.ocm.ClustersMgmt().V1().Versions()
-		filter := fmt.Sprintf("raw_id='%s'", version)
-		if channelGroup != "" {
-			filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
-		}
-		response, err := collection.List().
-			Search(filter).
-			Page(1).
-			Size(1).
-			Parameter("product", HcpProduct).
-			Send()
-		if err != nil {
-			return "", handleErr(response.Error(), err)
-		}
-		if response.Total() == 0 {
-			return "", fmt.Errorf("version '%s' was not found", version)
-		}
-		valid, err := HasHostedCPSupport(response.Items().Get(0))
+		valid, err := c.ValidateHypershiftVersion(version, channelGroup)
 		if err != nil {
 			return "", fmt.Errorf("version '%s' is not supported for hosted clusters: %v", version, err)
 		}
@@ -501,6 +482,32 @@ func (c *Client) ValidateVersion(version string, versionList []string, channelGr
 	}
 
 	return CreateVersionID(version, channelGroup), nil
+}
+
+func (c *Client) ValidateHypershiftVersion(versionRawID, channelGroup string) (bool, error) {
+	collection := c.ocm.ClustersMgmt().V1().Versions()
+	filter := fmt.Sprintf("raw_id='%s'", versionRawID)
+	if channelGroup != "" {
+		filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
+	}
+	response, err := collection.List().
+		Search(filter).
+		Page(1).
+		Size(1).
+		Parameter("product", HcpProduct).
+		Send()
+	if err != nil {
+		return false, handleErr(response.Error(), err)
+	}
+	if response.Total() == 0 {
+		return false, fmt.Errorf("version '%s' was not found", versionRawID)
+	}
+
+	valid, err := HasHostedCPSupport(response.Items().Get(0))
+	if err != nil {
+		return false, err
+	}
+	return valid, nil
 }
 
 // sortVersionsDesc sorts list in descending order

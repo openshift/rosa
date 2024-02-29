@@ -14,6 +14,10 @@
 # limitations under the License.
 #
 
+include .bingo/Variables.mk
+
+.DEFAULT_GOAL := rosa
+
 # Ensure go modules are enabled:
 export GO111MODULE=on
 export GOPROXY=https://proxy.golang.org
@@ -26,7 +30,7 @@ unexport GOFLAGS
 
 .PHONY: rosa
 rosa:
-	go build ./cmd/rosa
+	go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD)" ./cmd/rosa
 
 .PHONY: test
 test:
@@ -40,25 +44,31 @@ coverage:
 install:
 	go install ./cmd/rosa
 
-.PHONY: gci-install
-gci-install:
-	go install github.com/daixiang0/gci@v0.10.1
-
 .PHONY: fmt
 fmt: fmt-imports
 	gofmt -s -l -w cmd pkg
 
 .PHONY: fmt-imports
-fmt-imports: gci-install
-	find . -name '*.go' -not -path './vendor/*' | xargs gci write -s standard -s default -s "prefix(k8s)" -s "prefix(sigs.k8s)" -s "prefix(github.com)" -s "prefix(gitlab)" -s "prefix(github.com/openshift/rosa)" --custom-order --skip-generated
+fmt-imports: $(GCI)
+	find . -name '*.go' -not -path './vendor/*' | xargs $(GCI) write -s standard -s default -s "prefix(k8s)" -s "prefix(sigs.k8s)" -s "prefix(github.com)" -s "prefix(gitlab)" -s "prefix(github.com/openshift/rosa)" --custom-order --skip-generated
 
 .PHONY: lint
-lint:
-	golangci-lint run --timeout 5m0s
+lint: $(GOLANGCI_LINT)
+	$(GOLANGCI_LINT) run --timeout 5m0s ./...
 
 .PHONY: commits/check
 commits/check:
 	@./hack/commit-msg-verify.sh
+
+.PHONY: diff
+diff:
+	git diff --exit-code
+
+.PHONY: verify
+verify: fmt
+	go mod tidy
+	go mod vendor
+	$(MAKE) diff
 
 .PHONY: clean
 clean:
@@ -72,31 +82,20 @@ clean:
 		$(NULL)
 
 .PHONY: generate
-generate:
-	which go-bindata || GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...
-	go-bindata -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
+generate: $(GO_BINDATA)
+	$(GO_BINDATA) -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 
 .PHONY: codecov
 codecov: coverage
 	@./hack/codecov.sh
 
-mocks:
-	mockgen --build_flags=--mod=mod -package mocks -destination=cmd/create/idp/mocks/identityprovider.go -source=cmd/create/idp/cmd.go IdentityProvider
-	mockgen -source=pkg/aws/api_interface/iam_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_iam_api_client.go
-	mockgen -source=pkg/aws/api_interface/organizations_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_organizations_api_client.go
-	mockgen -source=pkg/aws/api_interface/sts_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_sts_api_client.go
-	mockgen -source=pkg/aws/api_interface/cloudformation_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_cloudformation_api_client.go
-	mockgen -source=pkg/aws/api_interface/servicequotas_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_servicequotas_api_client.go
-	mockgen -source=pkg/aws/api_interface/ec2_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_ec2_api_client.go
-	mockgen -source=pkg/aws/api_interface/s3_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_s3_api_client.go
-	mockgen -source=pkg/aws/api_interface/secretsmanager_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_secretsmanager_api_client.go
-
-	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/iamapi.go github.com/aws/aws-sdk-go/service/iam/iamiface IAMAPI
-	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/organaztionsapi.go github.com/aws/aws-sdk-go/service/organizations/organizationsiface OrganizationsAPI
-	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/stsapi.go github.com/aws/aws-sdk-go/service/sts/stsiface STSAPI
-	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/cloudformationapi.go github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface CloudFormationAPI
-	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/ec2api.go github.com/aws/aws-sdk-go/service/ec2/ec2iface EC2API
-	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/servicequotasapi.go github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface ServiceQuotasAPI
-	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/s3api.go github.com/aws/aws-sdk-go/service/s3/s3iface S3API
-	mockgen --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/secretsmanagerapi.go github.com/aws/aws-sdk-go/service/secretsmanager/secretsmanageriface SecretsManagerAPI
-	
+mocks: $(MOCKGEN)
+	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=cmd/create/idp/mocks/identityprovider.go -source=cmd/create/idp/cmd.go IdentityProvider
+	$(MOCKGEN) -source=pkg/aws/api_interface/iam_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_iam_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/organizations_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_organizations_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/sts_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_sts_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/cloudformation_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_cloudformation_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/servicequotas_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_servicequotas_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/ec2_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_ec2_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/s3_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_s3_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/secretsmanager_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_secretsmanager_api_client.go

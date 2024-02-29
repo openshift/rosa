@@ -720,7 +720,7 @@ func upgradeOperatorPolicies(
 	case aws.ModeAuto:
 		if !confirm.Prompt(true, "Upgrade each operator role policy to latest version (%s)?", defaultPolicyVersion) {
 			if args.isInvokedFromClusterUpgrade {
-				return r.Reporter.Errorf("Operator roles need to be upgraded to proceed")
+				return fmt.Errorf("operator roles need to be upgraded to proceed")
 			}
 			return nil
 		}
@@ -744,15 +744,14 @@ func upgradeOperatorPolicies(
 					ocm.IsThrottle: "true",
 				})
 			}
-			return r.Reporter.Errorf("Error upgrading the operator policies: %s", err)
+			return fmt.Errorf("error upgrading the operator policies: %s", err)
 		}
 		return nil
 	case aws.ModeManual:
 		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests,
 			cluster.AWS().PrivateHostedZoneRoleARN(), r.Creator.Partition)
 		if err != nil {
-			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("there was an error generating the policy files: %s", err)
 		}
 
 		if r.Reporter.IsTerminal() {
@@ -774,12 +773,11 @@ func upgradeOperatorPolicies(
 			cluster,
 		)
 		if err != nil {
-			r.Reporter.Errorf("There was an error generating the commands: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("there was an error generating the commands: %s", err)
 		}
 		fmt.Println(commands)
 	default:
-		return r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		return fmt.Errorf("invalid mode. Allowed values are %s", aws.Modes)
 	}
 	return nil
 }

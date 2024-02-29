@@ -18,21 +18,23 @@ const (
 
 var (
 	now                             = time.Now()
-	expectEmptyCuster               = []byte(`{"kind":"Cluster"}`)
+	expectEmptyCuster               = []byte(`{"displayName":"displayname","kind":"Cluster"}`)
 	expectClusterWithNameAndIDValue = []byte(
-		`{"id":"bar","kind":"Cluster","name":"foo"}`)
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","name":"foo"}`)
+	expectClusterWithExternalAuthConfig = []byte(
+		`{"displayName":"displayname","external_auth_config":{"enabled":true},"kind":"Cluster"}`)
 	expectClusterWithNameAndValueAndUpgradeInformation = []byte(
-		`{"id":"bar","kind":"Cluster","name":"foo","scheduledUpgrade":{"nextRun":"` +
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","name":"foo","scheduledUpgrade":{"nextRun":"` +
 			now.Format("2006-01-02 15:04 MST") + `","state":"` + state + `","version":"` +
 			version + `"}}`)
 	expectEmptyClusterWithNameAndValueAndUpgradeInformation = []byte(
-		`{"kind":"Cluster","scheduledUpgrade":{"nextRun":"` +
+		`{"displayName":"displayname","kind":"Cluster","scheduledUpgrade":{"nextRun":"` +
 			now.Format("2006-01-02 15:04 MST") + `","state":"` +
 			state + `","version":"` +
 			version + `"}}`)
-	clusterWithNameAndID, emptyCluster                     *cmv1.Cluster
-	emptyUpgradePolicy, upgradePolicyWithVersionAndNextRun *cmv1.UpgradePolicy
-	emptyUpgradeState, upgradePolicyWithState              *cmv1.UpgradePolicyState
+	clusterWithNameAndID, emptyCluster, clusterWithExternalAuthConfig *cmv1.Cluster
+	emptyUpgradePolicy, upgradePolicyWithVersionAndNextRun            *cmv1.UpgradePolicy
+	emptyUpgradeState, upgradePolicyWithState                         *cmv1.UpgradePolicyState
 
 	berr error
 )
@@ -40,6 +42,9 @@ var _ = BeforeSuite(func() {
 	clusterWithNameAndID, berr = cmv1.NewCluster().Name("foo").ID("bar").Build()
 	Expect(berr).NotTo(HaveOccurred())
 	emptyCluster, berr = cmv1.NewCluster().Build()
+	Expect(berr).NotTo(HaveOccurred())
+	externalAuthConfig := cmv1.NewExternalAuthConfig().Enabled(true)
+	clusterWithExternalAuthConfig, berr = cmv1.NewCluster().ExternalAuthConfig(externalAuthConfig).Build()
 	Expect(berr).NotTo(HaveOccurred())
 	emptyUpgradePolicy, berr = cmv1.NewUpgradePolicy().Build()
 	Expect(berr).NotTo(HaveOccurred())
@@ -98,6 +103,11 @@ var _ = Describe("Cluster description", Ordered, func() {
 				func() *cmv1.Cluster { return clusterWithNameAndID },
 				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
 				func() *cmv1.UpgradePolicyState { return nil }, expectClusterWithNameAndIDValue, nil),
+
+			Entry("Prints cluster information with external authentication config",
+				func() *cmv1.Cluster { return clusterWithExternalAuthConfig },
+				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
+				func() *cmv1.UpgradePolicyState { return nil }, expectClusterWithExternalAuthConfig, nil),
 		)
 	})
 })
@@ -107,7 +117,7 @@ func printJson(cluster func() *cmv1.Cluster,
 	state func() *cmv1.UpgradePolicyState,
 	expected []byte,
 	err error) {
-	f, er := formatCluster(cluster(), upgrade(), state())
+	f, er := formatCluster(cluster(), upgrade(), state(), "displayname")
 	if err != nil {
 		Expect(er).To(Equal(err))
 	}

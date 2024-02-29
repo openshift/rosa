@@ -27,11 +27,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	semver "github.com/hashicorp/go-version"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
-	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 )
@@ -844,7 +844,6 @@ func (c *awsClient) mapToAccountRoles(version string, roles []iamtypes.Role) ([]
 		}
 		accountRoles = append(accountRoles, accountRole)
 	}
-	
 
 	if len(accountRoles) == 0 {
 		return accountRoles, errors.Errorf("no account roles found")
@@ -1037,8 +1036,8 @@ func (c *awsClient) DeleteRole(role string) error {
 				return fmt.Errorf("operator role '%s' does not exists, skipping",
 					role)
 			}
-			return err
 		}
+		return err
 	}
 	return nil
 }

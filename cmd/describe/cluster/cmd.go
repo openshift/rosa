@@ -39,6 +39,9 @@ const (
 	ProductionURL = "https://console.redhat.com/openshift/details/s/"
 	StageEnv      = "https://api.stage.openshift.com"
 	ProductionEnv = "https://api.openshift.com"
+
+	EnabledOutput  = "Enabled"
+	DisabledOutput = "Disabled"
 )
 
 var Cmd = &cobra.Command{
@@ -70,6 +73,15 @@ func run(cmd *cobra.Command, argv []string) {
 	cluster := r.FetchCluster()
 	isHypershift := cluster.Hypershift().Enabled()
 
+	displayName := ""
+	subscription, subscriptionExists, err := r.OCMClient.GetSubscriptionBySubscriptionID(cluster.Subscription().ID())
+	if err != nil {
+		r.Reporter.Debugf("Failed to get subscription by ID: %s", err)
+	}
+	if subscriptionExists {
+		displayName = subscription.DisplayName()
+	}
+
 	var scheduledUpgrade *cmv1.UpgradePolicy
 	var upgradeState *cmv1.UpgradePolicyState
 	var controlPlaneScheduledUpgrade *cmv1.ControlPlaneUpgradePolicy
@@ -82,7 +94,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		if output.HasFlag() {
-			f, err := formatCluster(cluster, scheduledUpgrade, upgradeState)
+			f, err := formatCluster(cluster, scheduledUpgrade, upgradeState, displayName)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -102,7 +114,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		if output.HasFlag() {
-			f, err := formatClusterHypershift(cluster, controlPlaneScheduledUpgrade)
+			f, err := formatClusterHypershift(cluster, controlPlaneScheduledUpgrade, displayName)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -189,6 +201,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Print short cluster description:
 	str = fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
+		"Display Name:               %s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
 		"Control Plane:              %s\n"+
@@ -211,6 +224,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"%s"+
 		"%s",
 		clusterName,
+		displayName,
 		cluster.ID(),
 		cluster.ExternalID(),
 		controlPlaneConfig(cluster),
@@ -269,7 +283,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if cluster.AWS().STS().RoleARN() != "" {
 		str = fmt.Sprintf("%s"+
-			"STS Role ARN:               %s\n", str,
+			"Role (STS) ARN:             %s\n", str,
 			cluster.AWS().STS().RoleARN())
 		if cluster.AWS().STS().ExternalID() != "" {
 			str = fmt.Sprintf("%s"+
@@ -329,7 +343,7 @@ func run(cmd *cobra.Command, argv []string) {
 		str = fmt.Sprintf("%s"+
 			"FIPS mode:                  %s\n",
 			str,
-			"enabled")
+			EnabledOutput)
 	}
 	if detailsPage != "" {
 		str = fmt.Sprintf("%s"+
@@ -382,6 +396,8 @@ func run(cmd *cobra.Command, argv []string) {
 	if isHypershift {
 		str = fmt.Sprintf("%s"+
 			"Audit Log Forwarding:       %s\n", str, getAuditLogForwardingStatus(cluster))
+		str = fmt.Sprintf("%s"+
+			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
 		if cluster.AWS().AuditLog().RoleArn() != "" {
 			str = fmt.Sprintf("%s"+
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
@@ -563,19 +579,21 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 			}
 		}
 		if minNodes != maxNodes {
-			nodeConfig = fmt.Sprintf(""+
-				"Nodes:\n"+
-				" - Compute (Autoscaled):    %d-%d\n"+
-				" - Compute (current):       %d\n",
+			nodeConfig = fmt.Sprintf(`
+Nodes:
+ - Compute (Autoscaled):    %d-%d
+ - Compute (current):       %d
+`,
 				minNodes,
 				maxNodes,
 				currentNodes,
 			)
 		} else {
-			nodeConfig = fmt.Sprintf(""+
-				"Nodes:\n"+
-				" - Compute (desired):       %d\n"+
-				" - Compute (current):       %d\n",
+			nodeConfig = fmt.Sprintf(`
+Nodes:
+ - Compute (desired):       %d
+ - Compute (current):       %d
+`,
 				maxNodes,
 				currentNodes,
 			)
@@ -595,10 +613,11 @@ func clusterInfraConfig(cluster *cmv1.Cluster, clusterKey string, r *rosa.Runtim
 			}
 		}
 
-		nodeConfig = fmt.Sprintf(
-			"Nodes:\n"+
-				" - Control plane:           %d\n"+
-				" - Infra:                   %d\n",
+		nodeConfig = fmt.Sprintf(`
+Nodes:
+ - Control plane:           %d
+ - Infra:                   %d
+`,
 			cluster.Nodes().Master(),
 			cluster.Nodes().Infra())
 
@@ -648,13 +667,13 @@ func getDetailsLink(environment string) string {
 
 func getUseworkloadMonitoring(disabled bool) string {
 	if disabled {
-		return "Disabled"
+		return DisabledOutput
 	}
-	return "Enabled"
+	return EnabledOutput
 }
 
 func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
-	upgradeState *cmv1.UpgradePolicyState) (map[string]interface{}, error) {
+	upgradeState *cmv1.UpgradePolicyState, displayName string) (map[string]interface{}, error) {
 
 	var b bytes.Buffer
 	err := cmv1.MarshalCluster(cluster, &b)
@@ -676,12 +695,14 @@ func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
 		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
 		ret["scheduledUpgrade"] = upgrade
 	}
+	ret["displayName"] = displayName
 
 	return ret, nil
 }
 
 func formatClusterHypershift(cluster *cmv1.Cluster,
-	scheduledUpgrade *cmv1.ControlPlaneUpgradePolicy) (map[string]interface{}, error) {
+	scheduledUpgrade *cmv1.ControlPlaneUpgradePolicy,
+	displayName string) (map[string]interface{}, error) {
 
 	var b bytes.Buffer
 	err := cmv1.MarshalCluster(cluster, &b)
@@ -703,6 +724,7 @@ func formatClusterHypershift(cluster *cmv1.Cluster,
 		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
 		ret["scheduledUpgrade"] = upgrade
 	}
+	ret["display_name"] = displayName
 
 	return ret, nil
 }
@@ -715,9 +737,17 @@ func BillingAccount(cluster *cmv1.Cluster, isHostedControlPlane bool) string {
 }
 
 func getAuditLogForwardingStatus(cluster *cmv1.Cluster) string {
-	auditLogForwardingStatus := "Disabled"
+	auditLogForwardingStatus := DisabledOutput
 	if cluster.AWS().AuditLog().RoleArn() != "" {
-		auditLogForwardingStatus = "Enabled"
+		auditLogForwardingStatus = EnabledOutput
 	}
 	return auditLogForwardingStatus
+}
+
+func getExternalAuthConfigStatus(cluster *cmv1.Cluster) string {
+	externalAuthConfigStatus := DisabledOutput
+	if cluster.ExternalAuthConfig().Enabled() {
+		externalAuthConfigStatus = EnabledOutput
+	}
+	return externalAuthConfigStatus
 }

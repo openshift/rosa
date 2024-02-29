@@ -21,13 +21,13 @@ package v1 // github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 
 // NotificationDetailsResponseBuilder contains the data and logic needed to build 'notification_details_response' objects.
 //
-// This struct is a request to get a templated email to a user related to this.
-// subscription/cluster.
+// This class is a single response item for the notify details list.
 type NotificationDetailsResponseBuilder struct {
-	bitmap_       uint32
-	associates    []string
-	externalOrgID string
-	recipients    []string
+	bitmap_ uint32
+	id      string
+	href    string
+	key     string
+	value   string
 }
 
 // NewNotificationDetailsResponse creates a new builder of 'notification_details_response' objects.
@@ -35,31 +35,42 @@ func NewNotificationDetailsResponse() *NotificationDetailsResponseBuilder {
 	return &NotificationDetailsResponseBuilder{}
 }
 
-// Empty returns true if the builder is empty, i.e. no attribute has a value.
-func (b *NotificationDetailsResponseBuilder) Empty() bool {
-	return b == nil || b.bitmap_ == 0
-}
-
-// Associates sets the value of the 'associates' attribute to the given values.
-func (b *NotificationDetailsResponseBuilder) Associates(values ...string) *NotificationDetailsResponseBuilder {
-	b.associates = make([]string, len(values))
-	copy(b.associates, values)
+// Link sets the flag that indicates if this is a link.
+func (b *NotificationDetailsResponseBuilder) Link(value bool) *NotificationDetailsResponseBuilder {
 	b.bitmap_ |= 1
 	return b
 }
 
-// ExternalOrgID sets the value of the 'external_org_ID' attribute to the given value.
-func (b *NotificationDetailsResponseBuilder) ExternalOrgID(value string) *NotificationDetailsResponseBuilder {
-	b.externalOrgID = value
+// ID sets the identifier of the object.
+func (b *NotificationDetailsResponseBuilder) ID(value string) *NotificationDetailsResponseBuilder {
+	b.id = value
 	b.bitmap_ |= 2
 	return b
 }
 
-// Recipients sets the value of the 'recipients' attribute to the given values.
-func (b *NotificationDetailsResponseBuilder) Recipients(values ...string) *NotificationDetailsResponseBuilder {
-	b.recipients = make([]string, len(values))
-	copy(b.recipients, values)
+// HREF sets the link to the object.
+func (b *NotificationDetailsResponseBuilder) HREF(value string) *NotificationDetailsResponseBuilder {
+	b.href = value
 	b.bitmap_ |= 4
+	return b
+}
+
+// Empty returns true if the builder is empty, i.e. no attribute has a value.
+func (b *NotificationDetailsResponseBuilder) Empty() bool {
+	return b == nil || b.bitmap_&^1 == 0
+}
+
+// Key sets the value of the 'key' attribute to the given value.
+func (b *NotificationDetailsResponseBuilder) Key(value string) *NotificationDetailsResponseBuilder {
+	b.key = value
+	b.bitmap_ |= 8
+	return b
+}
+
+// Value sets the value of the 'value' attribute to the given value.
+func (b *NotificationDetailsResponseBuilder) Value(value string) *NotificationDetailsResponseBuilder {
+	b.value = value
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -69,34 +80,20 @@ func (b *NotificationDetailsResponseBuilder) Copy(object *NotificationDetailsRes
 		return b
 	}
 	b.bitmap_ = object.bitmap_
-	if object.associates != nil {
-		b.associates = make([]string, len(object.associates))
-		copy(b.associates, object.associates)
-	} else {
-		b.associates = nil
-	}
-	b.externalOrgID = object.externalOrgID
-	if object.recipients != nil {
-		b.recipients = make([]string, len(object.recipients))
-		copy(b.recipients, object.recipients)
-	} else {
-		b.recipients = nil
-	}
+	b.id = object.id
+	b.href = object.href
+	b.key = object.key
+	b.value = object.value
 	return b
 }
 
 // Build creates a 'notification_details_response' object using the configuration stored in the builder.
 func (b *NotificationDetailsResponseBuilder) Build() (object *NotificationDetailsResponse, err error) {
 	object = new(NotificationDetailsResponse)
+	object.id = b.id
+	object.href = b.href
 	object.bitmap_ = b.bitmap_
-	if b.associates != nil {
-		object.associates = make([]string, len(b.associates))
-		copy(object.associates, b.associates)
-	}
-	object.externalOrgID = b.externalOrgID
-	if b.recipients != nil {
-		object.recipients = make([]string, len(b.recipients))
-		copy(object.recipients, b.recipients)
-	}
+	object.key = b.key
+	object.value = b.value
 	return
 }

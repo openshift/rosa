@@ -27,78 +27,83 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
 		os.Exit(1)
 	}
+
 	// Check to see if IAM operator roles have already created
 	missingRoles, err := validateOperatorRoles(r, cluster)
 	if err != nil {
 		if strings.Contains(err.Error(), "AccessDenied") {
-			r.Reporter.Debugf("Failed to verify if operator roles exist: %s", err)
+			r.Reporter.Debugf("Failed to verify if operator roles exist: '%v'", err)
 		} else {
-			r.Reporter.Errorf("Failed to verify if operator roles exist: %s", err)
+			r.Reporter.Errorf("Failed to verify if operator roles exist: '%v'", err)
 			os.Exit(1)
 		}
 	}
 
-	if len(missingRoles) == 0 {
-		if ocm.IsOidcConfigReusable(cluster) {
-			err := validateOperatorRolesMatchOidcProvider(r, cluster)
-			if err != nil {
-				return err
-			}
-		}
-
-		if !args.forcePolicyCreation {
-			r.Reporter.Infof("Operator Roles already exists")
-			return nil
-		}
-	}
-	roleName, err := aws.GetInstallerAccountRoleName(cluster)
-	if err != nil {
-		r.Reporter.Errorf("Expected parsing role account role '%s': %v", cluster.AWS().STS().RoleARN(), err)
-		os.Exit(1)
-	}
-
-	path, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
-		os.Exit(1)
-	}
-	if path != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
-		r.Reporter.Infof("ARN path '%s' detected in installer role '%s'. "+
-			"This ARN path will be used for subsequent created operator roles and policies.",
-			path, cluster.AWS().STS().RoleARN())
-	}
-	accountRoleVersion, err := r.AWSClient.GetAccountRoleVersion(roleName)
-	if err != nil {
-		r.Reporter.Errorf("Error getting account role version %s", err)
-		os.Exit(1)
-	}
-	managedPolicies := cluster.AWS().STS().ManagedPolicies()
-	if args.forcePolicyCreation && managedPolicies {
-		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
-		os.Exit(1)
-	}
-	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
-	if err != nil {
-		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-		os.Exit(1)
-	}
+	hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
 
 	operatorRolePolicyPrefix, err := aws.GetOperatorRolePolicyPrefixFromCluster(cluster, r.AWSClient)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 	}
 
-	hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
+	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
+	if err != nil {
+		r.Reporter.Errorf("Error getting operator credential request from OCM '%v'", err)
+		os.Exit(1)
+	}
+
+	managedPolicies := cluster.AWS().STS().ManagedPolicies()
+	if args.forcePolicyCreation && managedPolicies {
+		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
+		os.Exit(1)
+	}
 
 	switch mode {
 	case aws.ModeAuto:
+
+		if len(missingRoles) == 0 {
+			if ocm.IsOidcConfigReusable(cluster) {
+				err := validateOperatorRolesMatchOidcProvider(r, cluster)
+				if err != nil {
+					return err
+				}
+			}
+
+			if !args.forcePolicyCreation {
+				r.Reporter.Infof("Operator Roles already exists")
+				return nil
+			}
+		}
+		roleName, err := aws.GetInstallerAccountRoleName(cluster)
+		if err != nil {
+			r.Reporter.Errorf("Expected parsing role account role '%s': '%v'", cluster.AWS().STS().RoleARN(), err)
+			os.Exit(1)
+		}
+
+		path, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid path for '%s': '%v'", cluster.AWS().STS().RoleARN(), err)
+			os.Exit(1)
+		}
+		if path != "" && !output.HasFlag() && r.Reporter.IsTerminal() {
+			r.Reporter.Infof("ARN path '%s' detected in installer role '%s'. "+
+				"This ARN path will be used for subsequent created operator roles and policies.",
+				path, cluster.AWS().STS().RoleARN())
+		}
+		var accountRoleVersion string
+
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
+		}
+		accountRoleVersion, err = r.AWSClient.GetAccountRoleVersion(roleName)
+		if err != nil {
+			r.Reporter.Errorf("Error getting account role version '%v'", err)
+			os.Exit(1)
 		}
 		err = createRoles(r, operatorRolePolicyPrefix, permissionsBoundary, cluster,
 			accountRoleVersion, policies, defaultPolicyVersion, credRequests, managedPolicies, hostedCPPolicies)
 		if err != nil {
-			r.Reporter.Errorf("There was an error creating the operator roles: %s", err)
+			r.Reporter.Errorf("There was an error creating the operator roles: '%v'", err)
 			isThrottle := "false"
 			if strings.Contains(err.Error(), "Throttling") {
 				isThrottle = helper.True
@@ -118,7 +123,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		commands, err := buildCommands(r, env, operatorRolePolicyPrefix, permissionsBoundary, defaultPolicyVersion,
 			cluster, policies, credRequests, managedPolicies, hostedCPPolicies)
 		if err != nil {
-			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
+			r.Reporter.Errorf("There was an error building the list of resources: '%v'", err)
 			os.Exit(1)
 			r.OCMClient.LogEvent("ROSACreateOperatorRolesModeManual", map[string]string{
 				ocm.ClusterID: clusterKey,
@@ -135,7 +140,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		fmt.Println(commands)
 
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are '%s'", aws.Modes)
 		os.Exit(1)
 	}
 	return nil

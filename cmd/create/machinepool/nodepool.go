@@ -72,7 +72,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		clusterVersion := cluster.Version().RawID()
 		// This is called in HyperShift, but we don't want to exclude version which are HCP disabled for node pools
 		// so we pass the relative parameter as false
-		versionList, err := versions.GetVersionList(r, channelGroup, true, true, false, false)
+		_, versionList, err := versions.GetVersionList(r, channelGroup, true, true, false, false)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -255,12 +255,19 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	// Machine pool instance type:
 	// NodePools don't support MultiAZ yet, so the availabilityZonesFilters is calculated from the cluster
 
+	// Machine pool instance type:
+	instanceType := args.instanceType
+	if instanceType == "" && !interactive.Enabled() {
+		r.Reporter.Errorf("You must supply a valid instance type")
+		os.Exit(1)
+	}
+
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() && !output.HasFlag() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		r.Reporter.Infof("Fetching instance types")
+		r.Reporter.Infof("Checking available instance types for machine pool '%s'", name)
 		spin.Start()
 	}
 
@@ -277,7 +284,6 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		availabilityZonesFilter = []string{availabilityZone}
 	}
 
-	instanceType := args.instanceType
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
 		availabilityZonesFilter, cluster.AWS().STS().RoleARN(), r.AWSClient)
 	if err != nil {
@@ -301,17 +307,14 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine type: %s", err)
+			r.Reporter.Errorf("Expected a valid instance type: %s", err)
 			os.Exit(1)
 		}
 	}
-	if instanceType == "" {
-		r.Reporter.Errorf("Expected a valid machine type")
-		os.Exit(1)
-	}
+
 	err = instanceTypeList.ValidateMachineType(instanceType, cluster.MultiAZ())
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid machine type: %s", err)
+		r.Reporter.Errorf("Expected a valid instance type: %s", err)
 		os.Exit(1)
 	}
 
@@ -394,8 +397,9 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		}
 	} else {
 		r.Reporter.Infof("Machine pool '%s' created successfully on hosted cluster '%s'", createdNodePool.ID(), clusterKey)
-		r.Reporter.Infof("To view the machine pool details, run 'rosa describe machinepool --machinepool %s'", name)
-		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
+		r.Reporter.Infof("To view the machine pool details, run 'rosa describe machinepool --cluster %s --machinepool %s'",
+			clusterKey, name)
+		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools --cluster %s'", clusterKey)
 	}
 }
 

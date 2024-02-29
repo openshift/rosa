@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -52,7 +53,11 @@ func createHTPasswdIDP(cmd *cobra.Command,
 		if isHashedPassword {
 			userBuilder.HashedPassword(password)
 		} else {
-			userBuilder.Password(password)
+			hashedPwd, err := idputils.GenerateHTPasswdCompatibleHash(password)
+			if err != nil {
+				r.Reporter.Errorf("Failed to hash the password: %s", err)
+			}
+			userBuilder.HashedPassword(hashedPwd)
 		}
 		htpasswdUsers = append(htpasswdUsers, userBuilder)
 	}
@@ -230,17 +235,6 @@ func shouldAddAnotherUser(r *rosa.Runtime) bool {
 	return addAnother
 }
 
-func CreateHTPasswdUser(username, password string) *cmv1.HTPasswdUserBuilder {
-	builder := cmv1.NewHTPasswdUser()
-	if username != "" {
-		builder = builder.Username(username)
-	}
-	if password != "" {
-		builder = builder.Password(password)
-	}
-	return builder
-}
-
 func exitHTPasswdCreate(format, clusterKey string, err error, r *rosa.Runtime) {
 	r.Reporter.Errorf("Failed to create IDP for cluster '%s': %v",
 		clusterKey,
@@ -251,7 +245,8 @@ func exitHTPasswdCreate(format, clusterKey string, err error, r *rosa.Runtime) {
 func UsernameValidator(val interface{}) error {
 	if username, ok := val.(string); ok {
 		if username == ClusterAdminUsername {
-			return fmt.Errorf("username '%s' is not allowed", username)
+			return fmt.Errorf("username '%s' is not allowed. It is preserved for cluster admin creation. "+
+				"Run `rosa create admin -c <cluster_id>` to create user '%s'", username, username)
 		}
 		if strings.ContainsAny(username, "/:%") {
 			return fmt.Errorf("invalid username '%s': "+

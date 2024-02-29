@@ -18,7 +18,7 @@ const (
 )
 
 func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool, filterHostedCP bool,
-	defaultFirst bool) (versionList []string, err error) {
+	defaultFirst bool) (defaultVersion string, versionList []string, err error) {
 	var vs []*v1.Version
 	var product string
 	if isHostedCP {
@@ -31,20 +31,10 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 		return
 	}
 
-	for _, v := range vs {
-		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
-			continue
-		}
-		if filterHostedCP {
-			valid, err := ocm.HasHostedCPSupport(v)
-			if err != nil {
-				return versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
-			}
-			if !valid {
-				continue
-			}
-		}
-		versionList = append(versionList, v.RawID())
+	defaultVersion, versionList, err = computeVersionListAndDefault(vs, isHostedCP, isSTS, filterHostedCP)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrieve versions: %s", err)
+		return
 	}
 
 	if len(versionList) == 0 {
@@ -52,7 +42,47 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 		return
 	}
 
+	if defaultVersion == "" {
+		// Normally this should not happen, as there is always a default version.
+		// In case the default is not specified, we choose the most recent version.
+		// Not having a default will break later.
+		r.Reporter.Debugf("No default version found. Fallback to latest")
+		defaultVersion = versionList[0]
+	}
+
 	return
+}
+
+func computeVersionListAndDefault(vs []*v1.Version, isHostedCP bool, isSTS bool,
+	filterHostedCP bool) (string, []string, error) {
+	var defaultVersion string
+	var versionList []string
+	for _, v := range vs {
+		if defaultVersion == "" && isDefaultVersion(v, isHostedCP) {
+			defaultVersion = v.RawID()
+		}
+		if isSTS && !ocm.HasSTSSupport(v.RawID(), v.ChannelGroup()) {
+			continue
+		}
+		if filterHostedCP {
+			valid, err := ocm.HasHostedCPSupport(v)
+			if err != nil {
+				return defaultVersion, versionList, fmt.Errorf("failed to check HostedCP support: %v", err)
+			}
+			if !valid {
+				continue
+			}
+		}
+		versionList = append(versionList, v.RawID())
+	}
+	return defaultVersion, versionList, nil
+}
+
+func isDefaultVersion(version *v1.Version, isHostedCP bool) bool {
+	if (isHostedCP && version.HostedControlPlaneDefault()) || (!isHostedCP && version.Default()) {
+		return true
+	}
+	return false
 }
 
 func GetFilteredVersionList(versionList []string, minVersion string, maxVersion string) []string {

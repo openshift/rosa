@@ -1,0 +1,13 @@
+coverage:
+  status:
+    project:
+      default:
+        paths:
+          - "cmd"
+          - "pkg"
+    patch:
+      default:
+        paths:
+          - "cmd"
+          - "pkg"
+        informational: true

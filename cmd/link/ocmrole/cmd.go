@@ -14,6 +14,7 @@ limitations under the License.
 package ocmrole
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -34,9 +35,9 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "ocm-role",
 	Aliases: []string{"ocmrole"},
-	Short:   "link ocm role to specific OCM organization account.",
-	Long:    "link ocm role to specific OCM organization account before you create your cluster.",
-	Example: ` # Link ocm role
+	Short:   "Link OCM role to specific OCM organization.",
+	Long:    "Link OCM role to specific OCM organization before you create your cluster.",
+	Example: ` # Link OCM role
   rosa link ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
 	RunE: run,
 }
@@ -133,9 +134,19 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 	linked, err := r.OCMClient.LinkOrgToRole(orgAccount, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			r.Reporter.Errorf("Only organization admin can run this command. "+
-				"Please ask someone with the organization admin role to run the following command \n\n"+
-				"\t rosa link ocm-role --role-arn %s --organization-id %s", roleArn, orgAccount)
+			var errMessage string
+			ocmAccount, localErr := r.OCMClient.GetCurrentAccount()
+			if localErr != nil {
+				r.Reporter.Warnf("Error getting Red Hat account: %v", localErr)
+			} else {
+				errMessage = fmt.Sprintf(
+					"Your Red Hat Account '%s' has no permission for this command.\n", ocmAccount.Username())
+			}
+
+			r.Reporter.Errorf("%s"+
+				"Only organization member can run this command. "+
+				"Please ask someone with the organization member role to run the following command \n\n"+
+				"\t rosa link ocm-role --role-arn %s --organization-id %s", errMessage, roleArn, orgAccount)
 			return err
 		}
 		r.Reporter.Errorf("Unable to link role arn '%s' with the organization id : '%s' : %v",

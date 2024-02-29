@@ -313,12 +313,19 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		securityGroupIds[i] = strings.TrimSpace(sg)
 	}
 
+	// Machine pool instance type:
+	instanceType := args.instanceType
+	if instanceType == "" && !interactive.Enabled() {
+		r.Reporter.Errorf("You must supply a valid instance type")
+		os.Exit(1)
+	}
+
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() && !output.HasFlag() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 	if spin != nil {
-		r.Reporter.Infof("Fetching instance types")
+		r.Reporter.Infof("Checking available instance types for machine pool '%s'", name)
 		spin.Start()
 	}
 
@@ -330,8 +337,6 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		os.Exit(1)
 	}
 
-	// Machine pool instance type:
-	instanceType := args.instanceType
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(
 		cluster.Region().ID(),
 		availabilityZonesFilter,
@@ -359,17 +364,14 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine type: %s", err)
+			r.Reporter.Errorf("Expected a valid instance type: %s", err)
 			os.Exit(1)
 		}
 	}
-	if instanceType == "" {
-		r.Reporter.Errorf("Expected a valid machine type")
-		os.Exit(1)
-	}
+
 	err = instanceTypeList.ValidateMachineType(instanceType, cluster.MultiAZ())
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid machine type: %s", err)
+		r.Reporter.Errorf("Expected a valid instance type: %s", err)
 		os.Exit(1)
 	}
 
@@ -518,7 +520,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
 		rootDiskSize, err := ocm.ParseDiskSizeToGigibyte(rootDiskSizeStr)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid machine pool root disk size value: %v", err)
+			r.Reporter.Errorf("Expected a valid machine pool root disk size value '%s': %v", rootDiskSizeStr, err)
 			os.Exit(1)
 		}
 
@@ -554,8 +556,9 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		}
 	} else {
 		r.Reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
-		r.Reporter.Infof("To view the machine pool details, run 'rosa describe machinepool --machinepool %s'", name)
-		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools -c %s'", clusterKey)
+		r.Reporter.Infof("To view the machine pool details, run 'rosa describe machinepool --cluster %s --machinepool %s'",
+			clusterKey, name)
+		r.Reporter.Infof("To view all machine pools, run 'rosa list machinepools --cluster %s'", clusterKey)
 	}
 }
 

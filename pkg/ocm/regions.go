@@ -23,7 +23,9 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/zgalor/weberr"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/logging"
 )
 
@@ -184,4 +186,24 @@ func (c *Client) GetDatabaseRegionList() ([]string, error) {
 		return true
 	})
 	return supportedRegions, nil
+}
+
+func (c *Client) ValidateAwsClientRegion() error {
+	awsRegionInUserConfig, err := aws.GetRegion(arguments.GetRegion())
+	if err != nil {
+		return err
+	}
+	if awsRegionInUserConfig == "" {
+		return fmt.Errorf("AWS region not set")
+	}
+
+	supportedRegions, err := c.GetDatabaseRegionList()
+	if err != nil {
+		return err
+	}
+	if !helper.Contains(supportedRegions, awsRegionInUserConfig) {
+		return fmt.Errorf("Unsupported region '%s', available regions: %s",
+			awsRegionInUserConfig, helper.SliceToSortedString(supportedRegions))
+	}
+	return nil
 }

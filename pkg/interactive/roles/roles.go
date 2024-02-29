@@ -52,7 +52,7 @@ func GetInstallerRoleArn(r *rosa.Runtime, cmd *cobra.Command,
 			}
 			roleARN, err = GetOption(Input{
 				Question: fmt.Sprintf("%s role ARN", role.Name),
-				Help:     cmd.Flags().Lookup("installer-role-arn").Usage,
+				Help:     cmd.Flags().Lookup("role-arn").Usage,
 				Options:  roleARNs,
 				Default:  defaultRoleARN,
 				Required: true,

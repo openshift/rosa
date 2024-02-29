@@ -1,10 +1,18 @@
 package aws
 
 import (
+	"errors"
+	"fmt"
+
+	gomock "go.uber.org/mock/gomock"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/pkg/aws/mocks"
 )
 
 var _ = Describe("Is Account Role Version Compatible", func() {
@@ -96,6 +104,50 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 				tagsList)
 			Expect(err).To(BeNil())
 			Expect(isCompatible).To(Equal(false))
+		})
+	})
+})
+
+var _ = Describe("DeleteRole Validation", func() {
+
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{
+			iamClient: mockIamAPI,
+		}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+	When("Role doesn't exist", func() {
+		It("Should return NoSuchEntityException", func() {
+			role := "test"
+			expectedErrorMessage := fmt.Sprintf("operator role '%s' does not exist. Skipping", role)
+			mockIamAPI.EXPECT().DeleteRole(gomock.Any(), &iam.DeleteRoleInput{
+				RoleName: aws.String(role),
+			}).Return(nil, errors.New("operator role 'test' does not exist. Skipping"))
+
+			err := client.DeleteRole(role)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(expectedErrorMessage))
+		})
+	})
+	When("Role exists", func() {
+		It("Should delete the role successfully", func() {
+			role := "test"
+			mockIamAPI.EXPECT().DeleteRole(gomock.Any(), &iam.DeleteRoleInput{
+				RoleName: aws.String(role),
+			}).Return(&iam.DeleteRoleOutput{}, nil)
+			err := client.DeleteRole(role)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

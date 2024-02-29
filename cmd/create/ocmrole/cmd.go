@@ -317,6 +317,7 @@ func run(cmd *cobra.Command, argv []string) {
 			env,
 			isAdmin,
 			managedPolicies,
+			confirm.Yes(),
 			policies,
 		)
 		if err != nil {
@@ -332,7 +333,7 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func buildCommands(prefix string, roleName string, rolePath string, permissionsBoundary string,
-	creator *aws.Creator, env string, isAdmin bool, managedPolicies bool,
+	creator *aws.Creator, env string, isAdmin bool, managedPolicies bool, autoConfirmLink bool,
 	policies map[string]*cmv1.AWSSTSPolicy) (string, error) {
 	commands := []string{}
 	policyName := aws.GetPolicyName(roleName)
@@ -433,6 +434,9 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 
 	linkRole := fmt.Sprintf("rosa link ocm-role --role-arn %s",
 		aws.GetRoleARN(creator.AccountID, roleName, rolePath, creator.Partition))
+	if autoConfirmLink {
+		linkRole += " -y"
+	}
 	commands = append(commands, linkRole)
 
 	return awscb.JoinCommands(commands), nil

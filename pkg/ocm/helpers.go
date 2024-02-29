@@ -28,6 +28,8 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -37,7 +39,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 	errors "github.com/zgalor/weberr"
-	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
@@ -98,7 +99,7 @@ func ClusterNameValidator(name interface{}) error {
 		}
 		return nil
 	}
-	return fmt.Errorf("can only validate strings, got %v", name)
+	return fmt.Errorf("can only validate strings, got '%v'", name)
 }
 
 func ValidateHTTPProxy(val interface{}) error {
@@ -115,7 +116,7 @@ func ValidateHTTPProxy(val interface{}) error {
 		}
 		return nil
 	}
-	return fmt.Errorf("can only validate strings, got %v", val)
+	return fmt.Errorf("can only validate strings, got '%v'", val)
 }
 
 func ValidateAdditionalTrustBundle(val interface{}) error {
@@ -137,7 +138,7 @@ func ValidateAdditionalTrustBundle(val interface{}) error {
 		}
 		return nil
 	}
-	return fmt.Errorf("can only validate strings, got %v", val)
+	return fmt.Errorf("can only validate strings, got '%v'", val)
 }
 
 func IsValidUsername(username string) bool {
@@ -647,27 +648,33 @@ const (
 	privateLinkMultiAZSubnetsCount  = 3
 )
 
-func ValidateSubnetsCount(multiAZ bool, privateLink bool, subnetsInputCount int) error {
-	if privateLink {
-		if multiAZ && subnetsInputCount != privateLinkMultiAZSubnetsCount {
-			return fmt.Errorf("The number of subnets for a multi-AZ private link cluster should be %d, "+
-				"instead received: %d", privateLinkMultiAZSubnetsCount, subnetsInputCount)
-		}
-		if !multiAZ && subnetsInputCount != privateLinkSingleAZSubnetsCount {
-			return fmt.Errorf("The number of subnets for a single AZ private link cluster should be %d, "+
-				"instead received: %d", privateLinkSingleAZSubnetsCount, subnetsInputCount)
-		}
-	} else {
-		if multiAZ && subnetsInputCount != BYOVPCMultiAZSubnetsCount {
-			return fmt.Errorf("The number of subnets for a multi-AZ cluster should be %d, "+
-				"instead received: %d", BYOVPCMultiAZSubnetsCount, subnetsInputCount)
-		}
-		if !multiAZ && subnetsInputCount != BYOVPCSingleAZSubnetsCount {
-			return fmt.Errorf("The number of subnets for a single AZ cluster should be %d, "+
-				"instead received: %d", BYOVPCSingleAZSubnetsCount, subnetsInputCount)
-		}
-	}
+func expectedSubnetsCount(multiAZ, privateLink bool) int {
+	return map[bool]map[bool]int{
+		true: {
+			true:  privateLinkMultiAZSubnetsCount,
+			false: BYOVPCMultiAZSubnetsCount,
+		},
+		false: {
+			true:  privateLinkSingleAZSubnetsCount,
+			false: BYOVPCSingleAZSubnetsCount,
+		},
+	}[multiAZ][privateLink]
+}
 
+func ValidateSubnetsCount(multiAZ bool, privateLink bool, subnetsInputCount int) error {
+	expected := expectedSubnetsCount(multiAZ, privateLink)
+	if subnetsInputCount != expected {
+		clusterPrefix := "cluster"
+		if privateLink {
+			clusterPrefix = "private link cluster"
+		}
+		azPrefix := "single AZ"
+		if multiAZ {
+			azPrefix = "multi-AZ"
+		}
+		return fmt.Errorf("The number of subnets for a '%s' '%s' should be '%d', "+
+			"instead received: '%d'", azPrefix, clusterPrefix, expected, subnetsInputCount)
+	}
 	return nil
 }
 
@@ -699,7 +706,7 @@ func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetID
 	}
 
 	privateSubnetCount := len(privateSubnets)
-	publicSubnetsCount := len(subnets) - privateSubnetCount
+	publicSubnetsCount := len(vpcSubnets) - privateSubnetCount
 
 	if isPrivate {
 		if publicSubnetsCount > 0 {
@@ -896,7 +903,7 @@ func ValidateHttpTokensValue(val interface{}) error {
 		}
 	}
 
-	return fmt.Errorf("can only validate strings, got %v", val)
+	return fmt.Errorf("can only validate strings, got '%v'", val)
 }
 
 func ParseDiskSizeToGigibyte(size string) (int, error) {
@@ -931,14 +938,23 @@ func ParseDiskSizeToGigibyte(size string) (int, error) {
 	qty, err := resource.ParseQuantity(size)
 	if err != nil {
 		if err == resource.ErrFormatWrong {
-			return 0, fmt.Errorf("invalid disk size format: %s. %s", size, suffixErrorString)
+			return 0, fmt.Errorf("invalid disk size format: '%s'. %s", size, suffixErrorString)
 		}
-		return 0, fmt.Errorf("invalid disk size: %w", err)
+		return 0, fmt.Errorf("invalid disk size: '%s'. %w", size, err)
+	}
+
+	if qty.Value() < 0 {
+		return 0, fmt.Errorf("invalid disk size: '%s'. positive size required", size)
 	}
 
 	// If the value is 0, this could mean the user forgot to specify the unit suffix
 	if qty.IsZero() {
 		return 0, nil
+	}
+
+	// resource.ParseQuantity() will not error when a value exceeds the max int64
+	if qty.Value() == math.MaxInt64 {
+		return 0, fmt.Errorf("invalid disk size: '%s'. maximum size exceeded", size)
 	}
 
 	// Check the suffix is correct
@@ -951,7 +967,7 @@ func ParseDiskSizeToGigibyte(size string) (int, error) {
 		// large value which is ok, we can still proceed and the backend will return an error since
 		// the size is too large
 		if diskSizeInt != math.MaxInt64 {
-			return 0, fmt.Errorf("missing unit suffix: %s. %s", diskSize, suffixErrorString)
+			return 0, fmt.Errorf("missing unit suffix: '%s'. %s", diskSize, suffixErrorString)
 		}
 	}
 
@@ -960,7 +976,7 @@ func ParseDiskSizeToGigibyte(size string) (int, error) {
 		strings.HasSuffix(diskSize, "Mi") ||
 		strings.HasSuffix(diskSize, "K") ||
 		strings.HasSuffix(diskSize, "Ki") {
-		return 0, fmt.Errorf("invalid disk size format: %s. %s", diskSize, suffixErrorString)
+		return 0, fmt.Errorf("invalid disk size format: '%s'. %s", diskSize, suffixErrorString)
 	}
 
 	// Return gibibytes since the AWS expects that format
@@ -972,7 +988,7 @@ func ValidateBalancingIgnoredLabels(val interface{}) error {
 	labelsInput, ok := val.(string)
 
 	if !ok {
-		return fmt.Errorf("can only validate strings, got %v", val)
+		return fmt.Errorf("can only validate strings, got '%v'", val)
 	}
 
 	labels := strings.Split(labelsInput, ",")
