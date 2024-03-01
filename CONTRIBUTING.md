@@ -27,6 +27,15 @@ The commit message should follow this template:
 [optional FOOTER(s)]
 ```
 
+For example:
+```shell
+OCM-6141 | feat: Allow longer cluster names up to 54 chars 
+
+Also allow users to supply an optional domain-prefix to customize the DNS
+
+Signed-off-by: Foo Bar <foo.bar@baz.com>
+```
+
 The commit contains the following structural types, to communicate your intent:
 
 - `fix:` a commit of the type fix patches a bug in your codebase (this correlates with PATCH in Semantic Versioning).

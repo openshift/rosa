@@ -41,6 +41,17 @@ var _ = Describe("Validate build command", func() {
 		defaultMachinePoolLabels = "machine-pool-label"
 	})
 	Context("build command", func() {
+		When("domain prefix is present is true", func() {
+			It("prints --domain-prefix", func() {
+				clusterConfig.DomainPrefix = "dns-label"
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --domain-prefix dns-label" +
+						" --operator-roles-prefix prefix"))
+			})
+		})
 
 		When("--etcd-encryption is true", func() {
 			It("prints --etcd-encryption-kms-arn", func() {

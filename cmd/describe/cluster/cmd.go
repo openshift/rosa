@@ -157,9 +157,11 @@ func run(cmd *cobra.Command, argv []string) {
 		phase = fmt.Sprintf("(%s)", cluster.Status().Description())
 	}
 
+	domainPrefix := cluster.DomainPrefix()
+
 	clusterDNS := "Not ready"
 	if cluster.Status() != nil && cluster.Status().DNSReady() {
-		clusterDNS = strings.Join([]string{cluster.Name(), cluster.DNS().BaseDomain()}, ".")
+		clusterDNS = strings.Join([]string{domainPrefix, cluster.DNS().BaseDomain()}, ".")
 	}
 
 	clusterName := cluster.Name()
@@ -201,6 +203,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Print short cluster description:
 	str = fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
+		"Domain Prefix:              %s\n"+
 		"Display Name:               %s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
@@ -224,6 +227,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"%s"+
 		"%s",
 		clusterName,
+		domainPrefix,
 		displayName,
 		cluster.ID(),
 		cluster.ExternalID(),
