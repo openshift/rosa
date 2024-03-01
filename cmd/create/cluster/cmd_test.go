@@ -8,11 +8,14 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	"github.com/spf13/cobra"
 
+	mock "github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -413,6 +416,58 @@ var _ = Describe("validateBillingAccount()", func() {
 			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
 	})
 
+})
+
+var _ = Describe("getInitialValidSubnets()", func() {
+
+	var (
+		r          *rosa.Runtime
+		mockClient *mock.MockClient
+
+		ids     = []string{"subnet-mockid-1", "subnet-mockid-2", "subnet-mockid-3", "subnet-mockid-4"}
+		subnets = []*ec2.Subnet{
+			{
+				SubnetId:         aws.String("subnet-mockid-1"),
+				AvailabilityZone: aws.String("us-east-1"),
+				Tags: []*ec2.Tag{
+					{
+						Key:   aws.String(tags.RedHatManaged),
+						Value: aws.String("true"),
+					},
+				},
+			},
+			{
+				SubnetId:         aws.String("subnet-mockid-2"),
+				AvailabilityZone: aws.String("us-west-1"),
+			},
+			{
+				SubnetId:         aws.String("subnet-mockid-3"),
+				AvailabilityZone: aws.String("us-west-2"),
+			},
+			{
+				SubnetId:         aws.String("subnet-mockid-4"),
+				AvailabilityZone: aws.String("us-east-2"),
+			},
+		}
+	)
+
+	BeforeEach(func() {
+		r = rosa.NewRuntime()
+		mockCtrl := gomock.NewController(GinkgoT())
+		mockClient = mock.NewMockClient(mockCtrl)
+
+		mockClient.EXPECT().ListSubnets(ids).Return(subnets, nil)
+		mockClient.EXPECT().GetAvailabilityZoneType("us-east-2").Return("availability-zone", nil)
+		mockClient.EXPECT().GetAvailabilityZoneType("us-west-1").Return(mock.LocalZone, nil)
+		mockClient.EXPECT().GetAvailabilityZoneType("us-west-2").Return(mock.WavelengthZone, nil)
+	})
+
+	It("OK: get valid subnets", func() {
+		validSubnets, err := getInitialValidSubnets(mockClient, ids, r.Reporter)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(validSubnets)).To(Equal(1))
+		Expect(*validSubnets[0].SubnetId).To(Equal("subnet-mockid-4"))
+	})
 })
 
 func mustParseCIDR(s string) *net.IPNet {

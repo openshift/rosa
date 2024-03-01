@@ -587,4 +587,28 @@ var _ = Describe("Client", func() {
 			})
 		})
 	})
+
+	Context("AvailabilityZoneType", func() {
+
+		zoneName := "us-east-1a"
+
+		It("Fetches", func() {
+			input := &ec2.DescribeAvailabilityZonesInput{
+				ZoneNames: []*string{awsSdk.String(zoneName)},
+			}
+			output := &ec2.DescribeAvailabilityZonesOutput{
+				AvailabilityZones: []*ec2.AvailabilityZone{
+					{
+						ZoneType: awsSdk.String(LocalZone),
+					},
+				},
+			}
+
+			mockEC2API.EXPECT().DescribeAvailabilityZones(input).Return(output, nil)
+
+			zoneType, err := client.GetAvailabilityZoneType(zoneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(zoneType).To(Equal(LocalZone))
+		})
+	})
 })
