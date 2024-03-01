@@ -17,6 +17,7 @@ limitations under the License.
 package version
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -24,70 +25,96 @@ import (
 
 	verify "github.com/openshift/rosa/cmd/verify/rosa"
 	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var (
-	args struct {
-		clientOnly bool
-		verbose    bool
+var args struct {
+	clientOnly bool
+	verbose    bool
+}
+
+type RosaVersionOptions struct {
+	reporter   *reporter.Object
+	verifyRosa verify.VerifyRosa
+}
+
+func NewRosaVersionOptions() (*RosaVersionOptions, error) {
+	verifyRosa, err := verify.NewVerifyRosaOptions()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build rosa verify options : %v", err)
 	}
 
-	Cmd             = makeCmd()
-	delegateCommand = verify.Cmd.Run // used in testing
-)
+	rpt, err := reporter.CreateReporter()
+	if err != nil {
+		return nil, fmt.Errorf("these was a problem creating the reporter: %v", err)
+	}
 
-func makeCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Prints the version of the tool",
-		Long:  "Prints the version number of the tool.",
-		Run:   run,
+	return &RosaVersionOptions{
+		verifyRosa: verifyRosa,
+		reporter:   rpt,
+	}, nil
+}
+
+func RosaVersionVisitor() rosa.RuntimeVisitor {
+	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, args []string) error {
+		return nil
 	}
 }
 
-func init() {
-	initFlags(Cmd)
+func RosaVersionRun(o *RosaVersionOptions) rosa.CommandRun {
+	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, args []string) error {
+		if err := o.Version(); err != nil {
+			r.Reporter.Errorf("Failed to check ROSA version: %v", err)
+			os.Exit(1)
+		}
+		return nil
+	}
 }
 
-func initFlags(cmd *cobra.Command) {
-	flags := cmd.Flags()
+func NewRosaVersionCmd() (*cobra.Command, error) {
+	cmd := &cobra.Command{}
+	options, err := NewRosaVersionOptions()
+	if err != nil {
+		return cmd, err
+	}
 
-	flags.BoolVar(
+	cmd.Use = "version"
+	cmd.Short = "Prints the version of the tool"
+	cmd.Long = "Prints the version number of the tool."
+
+	cmd.Run = rosa.DefaultRosaCommandRun(RosaVersionVisitor(), RosaVersionRun(options))
+
+	cmd.Flags().SortFlags = false
+	cmd.Flags().BoolVar(
 		&args.clientOnly,
 		"client",
 		false,
 		"Client version only (no remote version check)",
 	)
-
-	flags.BoolVarP(
+	cmd.Flags().BoolVarP(
 		&args.verbose,
 		"verbose",
 		"v",
 		false,
 		"Display verbose version information, including download locations",
 	)
+	return cmd, nil
 }
 
-func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime()
-	defer r.Cleanup()
-	err := runWithRuntime(r, cmd)
-	if err != nil {
-		r.Reporter.Errorf(err.Error())
-		os.Exit(1)
-	}
-}
+func (o *RosaVersionOptions) Version() error {
+	o.reporter.Infof("%s (Build: %s)", info.Version, info.Build)
 
-func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
-	fmt.Fprintf(os.Stdout, "%s\n", info.Version)
 	if args.verbose {
-		fmt.Fprintf(os.Stdout, "Information and download locations:\n\t%s\n\t%s\n",
+		o.reporter.Infof("Information and download locations:\n\t%s\n\t%s\n",
 			verify.ConsoleLatestFolder,
 			verify.DownloadLatestMirrorFolder)
 	}
+
 	if !args.clientOnly {
-		delegateCommand(verify.Cmd, []string{})
+		if err := o.verifyRosa.Verify(); err != nil {
+			return fmt.Errorf("failed to verify rosa : %v", err)
+		}
 	}
 
 	return nil
