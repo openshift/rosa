@@ -88,7 +88,12 @@ func init() {
 	root.AddCommand(uninstall.Cmd)
 	root.AddCommand(upgrade.Cmd)
 	root.AddCommand(verify.Cmd)
-	root.AddCommand(version.Cmd)
+	versionCmd, err := version.NewRosaVersionCmd()
+	if err != nil {
+		root.PrintErrln(err)
+		os.Exit(1)
+	}
+	root.AddCommand(versionCmd)
 	root.AddCommand(whoami.Cmd)
 	root.AddCommand(hibernate.GenerateCommand())
 	root.AddCommand(resume.GenerateCommand())

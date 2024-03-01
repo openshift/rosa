@@ -17,30 +17,17 @@ limitations under the License.
 package rosa
 
 import (
-	"net/http"
+	context "context"
+	"fmt"
 	"os"
-	"strings"
 
-	"github.com/PuerkitoBio/goquery"
-	"github.com/hashicorp/go-version"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/info"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/version"
 )
-
-var Cmd = &cobra.Command{
-	Use:     "rosa-client",
-	Aliases: []string{"rosa"},
-	Short:   "Verify ROSA client tools",
-	Long:    "Verify that the ROSA client tools is installed and compatible.",
-	Example: `  # Verify rosa client tools
-  rosa verify rosa`,
-	Run: run,
-}
 
 const (
 	DownloadLatestMirrorFolder = "https://mirror.openshift.com/pub/openshift-v4/clients/rosa/latest/"
@@ -48,91 +35,84 @@ const (
 	ConsoleLatestFolder        = "https://console.redhat.com/openshift/downloads#tool-rosa"
 )
 
-func run(_ *cobra.Command, _ []string) {
-	rprtr := reporter.CreateReporterOrExit()
+//go:generate mockgen -source=cmd.go -package=rosa -destination=./cmd_mock.go
+type VerifyRosa interface {
+	Verify() error
+}
 
-	currVersion, err := version.NewVersion(info.Version)
+var _ VerifyRosa = &VerifyRosaOptions{}
+
+func VerifyRosaCmd() (*cobra.Command, error) {
+	cmd := &cobra.Command{}
+	options, err := NewVerifyRosaOptions()
 	if err != nil {
-		rprtr.Errorf("There was a problem retrieving current version: %s", err)
-		os.Exit(1)
+		return cmd, fmt.Errorf("failed to create rosa options: %v", err)
 	}
-	latestVersionFromMirror, err := retrieveLatestVersionFromMirror()
+	cmd.Use = "rosa-client"
+	cmd.Aliases = []string{"rosa"}
+	cmd.Short = "Verify ROSA client tools"
+	cmd.Long = "Verify that the ROSA client tools is installed and compatible."
+	cmd.Example = `  # Verify rosa client tools
+  rosa verify rosa`
+
+	cmd.Run = rosa.DefaultRosaCommandRun(VerifyRosaVisitor(), VerifyRosaRun(options))
+
+	return cmd, nil
+}
+
+func VerifyRosaVisitor() rosa.RuntimeVisitor {
+	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, args []string) error {
+		return nil
+	}
+}
+
+func VerifyRosaRun(o VerifyRosa) rosa.CommandRun {
+	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, args []string) error {
+		if err := o.Verify(); err != nil {
+			r.Reporter.Errorf("Failed to verify rosa : %v", err)
+			os.Exit(1)
+		}
+		return nil
+	}
+}
+
+func NewVerifyRosaOptions() (VerifyRosa, error) {
+	v, err := version.NewRosaVersion()
 	if err != nil {
-		rprtr.Errorf("There was a problem retrieving latest version from mirror: %s", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("there was a problem creating version: %v", err)
 	}
-	if currVersion.LessThan(latestVersionFromMirror) {
-		rprtr.Infof(
+
+	rpt, err := reporter.CreateReporter()
+	if err != nil {
+		return nil, fmt.Errorf("these was a problem creating the reporter: %v", err)
+	}
+
+	return &VerifyRosaOptions{
+		rosaVersion: v,
+		reporter:    rpt,
+	}, nil
+}
+
+type VerifyRosaOptions struct {
+	rosaVersion version.RosaVersion
+	reporter    *reporter.Object
+}
+
+func (o *VerifyRosaOptions) Verify() error {
+	latestVersion, isLatest, err := o.rosaVersion.IsLatest(info.Version)
+	if err != nil {
+		return fmt.Errorf("there was a problem verifying if version is latest: %v", err)
+	}
+
+	if !isLatest {
+		o.reporter.Infof(
 			"There is a newer release version '%s', please consider updating: %s",
-			latestVersionFromMirror, ConsoleLatestFolder,
-		)
-	} else if rprtr.IsTerminal() {
-		rprtr.Infof("Your ROSA CLI is up to date.")
+			latestVersion, version.ConsoleLatestFolder)
+		return nil
 	}
-	os.Exit(0)
-}
 
-func retrievePossibleVersionsFromMirror() ([]string, error) {
-	logger := logging.NewLogger()
-	transport := http.DefaultTransport
-	if logger.IsLevelEnabled(logrus.DebugLevel) {
-		dumper, err := logging.NewRoundTripper().Logger(logger).Next(transport).Build()
-		if err != nil {
-			return nil, err
-		}
-		transport = dumper
+	if o.reporter.IsTerminal() {
+		o.reporter.Infof("Your ROSA CLI is up to date.")
 	}
-	client := &http.Client{Transport: transport}
-
-	resp, err := client.Get(baseReleasesFolder)
-	if err != nil {
-		return []string{}, weberr.Wrapf(err, "Error setting up request for latest released rosa cli")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode > 299 {
-		return []string{},
-			weberr.Errorf("Error while requesting latest released rosa cli: %d %s", resp.StatusCode, resp.Status)
-	}
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return []string{}, weberr.Wrapf(err, "Error parsing response body")
-	}
-	possibleVersions := []string{}
-	doc.Find(".file").Each(func(i int, s *goquery.Selection) {
-		s.Find("a").Each(func(j int, ss *goquery.Selection) {
-			if version, ok := ss.Attr("href"); ok {
-				version = strings.TrimSpace(version)
-				version = strings.TrimRight(version, "/")
-				if version != "latest" {
-					possibleVersions = append(possibleVersions, version)
-				}
-			}
-		})
-	})
-	logger.Debugf("Versions available for download: %v", possibleVersions)
-	return possibleVersions, nil
-}
-
-func retrieveLatestVersionFromMirror() (*version.Version, error) {
-	possibleVersions, err := retrievePossibleVersionsFromMirror()
-	if err != nil {
-		return nil, weberr.Wrapf(err, "There was a problem retrieving possible versions from mirror.")
-	}
-	if len(possibleVersions) == 0 {
-		return nil, weberr.Errorf("No versions available in mirror %s", baseReleasesFolder)
-	}
-	latestVersion, err := version.NewVersion(possibleVersions[0])
-	if err != nil {
-		return nil, weberr.Wrapf(err, "There was a problem retrieving latest version.")
-	}
-	for _, ver := range possibleVersions[1:] {
-		curVersion, err := version.NewVersion(ver)
-		if err != nil {
-			continue
-		}
-		if curVersion.GreaterThan(latestVersion) {
-			latestVersion = curVersion
-		}
-	}
-	return latestVersion, nil
+	return nil
 }
