@@ -3,6 +3,11 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+# 0.1.405
+- Update model version v0.0.359
+  - Add `ExternalAuthConfig` resource to `Cluster` model.
+  - Add `DomainPrefix` to `Cluster` model.
+
 # 0.1.404
 - Update model version v0.0.357
   - Add `ExternalAuth` to `ExternalAuthConfig` model
