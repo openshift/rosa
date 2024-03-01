@@ -395,3 +395,61 @@ var _ = Describe("ValidateSubnetsCount", func() {
 		})
 	})
 })
+
+var _ = Describe("IsValidClusterName()", func() {
+	DescribeTable("IsValidClusterName() test cases", func(name string, expected bool) {
+		valid := IsValidClusterName(name)
+		Expect(expected).To(Equal(valid))
+	},
+		Entry("returns false when an empty name is given", "", false),
+		Entry("returns false when name is not a valid DNS label", "9hjh9", false),
+		Entry("returns false when name is not a valid DNS label", "hjh-", false),
+		Entry("returns false when name is longer than 54 chars", strings.Repeat("h", 55), false),
+		Entry("returns true when name valid", strings.Repeat("h", 25), true))
+})
+
+var _ = Describe("ClusterNameValidator()", func() {
+	DescribeTable("ClusterNameValidator() test cases", func(name interface{}, shouldErr bool) {
+		err := ClusterNameValidator(name)
+		if shouldErr {
+			Expect(err).To(HaveOccurred())
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("should error when a non string arg is given", 5, true),
+		Entry("should error when an empty name is given", "", true),
+		Entry("should error when name is not a valid DNS label", "9hjh9", true),
+		Entry("should error when name is not a valid DNS label", "hjh-", true),
+		Entry("should error when name is longer than 54 chars", strings.Repeat("h", 55), true),
+		Entry("should not error when name valid", strings.Repeat("h", 25), false))
+})
+
+var _ = Describe("IsValidClusterDomainPrefix()", func() {
+	DescribeTable("IsValidClusterDomainPrefix() test cases", func(domainPrefix string, expected bool) {
+		valid := IsValidClusterDomainPrefix(domainPrefix)
+		Expect(expected).To(Equal(valid))
+	},
+		Entry("returns false when an empty domain prefix is given", "", false),
+		Entry("returns false when domain prefix is not a valid DNS label", "9hjh9", false),
+		Entry("returns false when domain prefix is not a valid DNS label", "hjh-", false),
+		Entry("returns false when domain prefix is longer than 15 chars", strings.Repeat("h", 16), false),
+		Entry("returns true when domain prefix valid", strings.Repeat("h", 15), true))
+})
+
+var _ = Describe("ClusterDomainPrefixValidator()", func() {
+	DescribeTable("ClusterDomainPrefixValidator() test case", func(domainPrefix interface{}, shouldErr bool) {
+		err := ClusterDomainPrefixValidator(domainPrefix)
+		if shouldErr {
+			Expect(err).To(HaveOccurred())
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("should error when a non string arg is given", 5, true),
+		Entry("should not error when an empty domain prefix is given", "", false),
+		Entry("shoud error when domain prefix is not a valid DNS label", "9hjh9", true),
+		Entry("should error when domain prefix is not a valid DNS label", "hjh-", true),
+		Entry("should error when domain prefix is longer than 15 chars", strings.Repeat("h", 16), true),
+		Entry("should not error when domain prefix valid", strings.Repeat("h", 15), false))
+})

@@ -21,15 +21,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 	const cronSchedule = "* * * * *"
 	const timeSchedule = "10:00"
 	const dateSchedule = "2023-06-01"
-	var clusterNotFound = `
-	{
-	  "kind": "Error",
-	  "id": "404",
-	  "href": "/api/clusters_mgmt/v1/errors/404",
-	  "code": "CLUSTERS-MGMT-404",
-	  "reason": "Cluster 'cluster1' not found",
-	  "operation_id": "8f4c6a3e-4d40-41fd-9288-60ee670ef846"
-	}`
 	var emptyClusterList = test.FormatClusterList([]*cmv1.Cluster{})
 	version4130 := cmv1.NewVersion().ID("openshift-v4.13.0").RawID("4.13.0").ReleaseImage("1").
 		HREF("/api/clusters_mgmt/v1/versions/openshift-v4.13.0").Enabled(true).ChannelGroup("stable").
@@ -281,7 +272,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 			EnableMinorVersionUpgrades(false).Build()
 		Expect(err).To(BeNil())
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, test.FormatResource(cpUpgradePolicy)))
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, clusterNotFound))
+		// return an empty list to indicate that no cluster is found
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, emptyClusterList))
 		err = runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())

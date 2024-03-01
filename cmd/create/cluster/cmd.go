@@ -110,6 +110,7 @@ var args struct {
 	expirationDuration        time.Duration
 	expirationTime            string
 	clusterName               string
+	domainPrefix              string
 	region                    string
 	version                   string
 	channelGroup              string
@@ -251,7 +252,7 @@ func initFlags(cmd *cobra.Command) {
 		"name",
 		"n",
 		"",
-		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
+		"Name of the cluster.",
 	)
 	flags.MarkDeprecated("name", "use --cluster-name instead")
 
@@ -260,7 +261,20 @@ func initFlags(cmd *cobra.Command) {
 		"cluster-name",
 		"c",
 		"",
-		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
+		"The unique name of the cluster. The name can be used as the identifier of the cluster."+
+			" The maximum length is 54 characters."+
+			"Once set, the cluster name cannot be changed",
+	)
+
+	flags.StringVar(
+		&args.domainPrefix,
+		"domain-prefix",
+		"",
+		"An optional unique domain prefix of the cluster. This will be used when generating a "+
+			"sub-domain for your cluster on openshiftapps.com. It must be unique and consist of "+
+			"lowercase alphanumeric characters or '-', start with an alphabetic character, and end"+
+			"with an alphanumeric character. The maximum length is 15 characters. Once set, the "+
+			"cluster domain prefix cannot be changed",
 	)
 
 	flags.BoolVar(
@@ -929,9 +943,43 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterName = strings.Trim(clusterName, " \t")
 
 	if !ocm.IsValidClusterName(clusterName) {
-		r.Reporter.Errorf("Cluster name must consist" +
-			" of no more than 15 lowercase alphanumeric characters or '-', " +
-			"start with a letter, and end with an alphanumeric character.")
+		r.Reporter.Errorf("Cluster name must consist"+
+			" of no more than %d lowercase alphanumeric characters or '-', "+
+			"start with a letter, and end with an alphanumeric character.", ocm.MaxClusterNameLength)
+		os.Exit(1)
+	}
+
+	// Get cluster domain prefix
+	domainPrefix := strings.Trim(args.domainPrefix, " \t")
+
+	if domainPrefix == "" && !interactive.Enabled() {
+		interactive.Enable()
+		r.Reporter.Infof("Enabling interactive mode")
+	}
+
+	if interactive.Enabled() {
+		domainPrefix, err = interactive.GetString(interactive.Input{
+			Question: "Domain prefix",
+			Help:     cmd.Flags().Lookup("domain-prefix").Usage,
+			Default:  domainPrefix,
+			Required: false,
+			Validators: []interactive.Validator{
+				ocm.ClusterDomainPrefixValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid domain prefix: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Trim domain prefix to remove any leading/trailing invisible characters
+	domainPrefix = strings.Trim(domainPrefix, " \t")
+
+	if domainPrefix != "" && !ocm.IsValidClusterDomainPrefix(domainPrefix) {
+		r.Reporter.Errorf("Domain prefix must consist"+
+			" of no more than %d lowercase alphanumeric characters or '-', "+
+			"start with a letter, and end with an alphanumeric character.", ocm.MaxClusterDomainPrefixLength)
 		os.Exit(1)
 	}
 
@@ -2995,6 +3043,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	clusterConfig := ocm.Spec{
 		Name:                         clusterName,
+		DomainPrefix:                 domainPrefix,
 		Region:                       region,
 		MultiAZ:                      multiAZ,
 		Version:                      version,
@@ -3620,6 +3669,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	properties []string) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
+	if spec.DomainPrefix != "" {
+		command += fmt.Sprintf(" --domain-prefix %s", spec.DomainPrefix)
+	}
+
 	if spec.IsSTS {
 		command += " --sts"
 		if spec.Mode != "" {
