@@ -125,3 +125,7 @@ func CreateReporterOrExit() *Object {
 	}
 	return reporter
 }
+
+func CreateReporter() (*Object, error) {
+	return New().Build()
+}
