@@ -43,6 +43,11 @@ import (
 // #nosec G101
 var uiTokenPage string = "https://console.redhat.com/openshift/token/rosa"
 
+const offlineTokenDeprecationMessage = "Deprecation Notice: We're phasing out " +
+	"login using offline tokens to enhance security and streamline authentication. " +
+	"Transition to alternative login methods such as '--use-auth-code' or '--use-device-code' " +
+	"by running 'rosa login --help' for detailed instructions."
+
 const oauthClientId = "ocm-cli"
 
 var reAttempt bool
@@ -233,6 +238,10 @@ func run(cmd *cobra.Command, argv []string) {
 		} else {
 			uiTokenPage = fedramp.LoginURLs[env]
 		}
+		if args.useDeviceCode || args.useAuthCode {
+			r.Reporter.Errorf("This login method is currently not supported with FedRAMP")
+			os.Exit(1)
+		}
 	} else {
 		fedramp.Disable()
 	}
@@ -324,6 +333,10 @@ func run(cmd *cobra.Command, argv []string) {
 			if !ok {
 				clientID = args.clientID
 			}
+		}
+	} else {
+		if !args.useDeviceCode && !args.useDeviceCode {
+			r.Reporter.Warnf(offlineTokenDeprecationMessage)
 		}
 	}
 
