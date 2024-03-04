@@ -20,8 +20,21 @@ import (
 )
 
 const (
-	RosaUpgradeAccRolesModeAuto = "ROSAUpgradeAccountRolesModeAuto"
+	RosaUpgradeAccRolesModeAuto            = "ROSAUpgradeAccountRolesModeAuto"
+	maxClusterNameLengthToUseForRolePrefix = 27
 )
+
+// GeOperatorRolePrefixFromClusterName returns a valid operator role prefix from the cluster name
+// An operator role prefix is considered valid if it's length is less than or equal to 32 chars.
+// A random 4 characters label is attached to the cluster name to reduce chances of collision.
+// The cluster name and the random label are separate by '-'.
+// If the cluster name is longer than 27 characters, only the first 27 characters will be used.
+func GeOperatorRolePrefixFromClusterName(clusterName string) string {
+	if len(clusterName) > maxClusterNameLengthToUseForRolePrefix {
+		return fmt.Sprintf("%s-%s", clusterName[0:maxClusterNameLengthToUseForRolePrefix], helper.RandomLabel(4))
+	}
+	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
+}
 
 func GetOperatorRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperator) string {
 	rolePrefix := cluster.AWS().STS().OperatorRolePrefix()
