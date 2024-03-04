@@ -41,7 +41,7 @@ var _ = Describe("Validate build command", func() {
 		defaultMachinePoolLabels = "machine-pool-label"
 	})
 	Context("build command", func() {
-		When("domain prefix is present is true", func() {
+		When("domain prefix is present", func() {
 			It("prints --domain-prefix", func() {
 				clusterConfig.DomainPrefix = "dns-label"
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
@@ -479,6 +479,21 @@ var _ = Describe("getInitialValidSubnets()", func() {
 		Expect(len(validSubnets)).To(Equal(1))
 		Expect(*validSubnets[0].SubnetId).To(Equal("subnet-mockid-4"))
 	})
+})
+
+var _ = Describe("clusterHasLongNameWithoutDomainPrefix()", func() {
+	DescribeTable("clusterHasLongNameWithoutDomainPrefix test cases", func(clusterName, domainPrefix string,
+		expected bool) {
+		actual := clusterHasLongNameWithoutDomainPrefix(clusterName, domainPrefix)
+		Expect(expected).To(Equal(actual))
+	},
+		Entry("returns false when cluster domain prefix is given", "very-long-cluster-name-test-case",
+			"domain-prefix", false),
+		Entry("returns false when cluster name is shorter than 15 characters and domain prefix not given",
+			"short-name", "", false),
+		Entry("returns true when cluster name is longer than 15 characters and domain prefix isn't given",
+			"very-long-cluster-name-test-case", "", true),
+	)
 })
 
 func mustParseCIDR(s string) *net.IPNet {
