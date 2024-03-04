@@ -169,6 +169,21 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	// Load the configuration file:
+	cfg, err := config.Load()
+	if err != nil {
+		r.Reporter.Errorf("Failed to load config file: %v", err)
+		os.Exit(1)
+	}
+	if cfg == nil {
+		cfg = new(config.Config)
+	}
+
+	if (cfg.FedRAMP || fedramp.HasFlag(cmd) || fedramp.IsGovRegion(arguments.GetRegion())) && (args.useAuthCode || args.useDeviceCode) {
+		r.Reporter.Errorf("This login method is currently not supported with FedRAMP")
+		os.Exit(1)
+	}
+
 	if args.useAuthCode {
 		r.Reporter.Infof("You will now be redirected to Red Hat SSO login")
 
@@ -211,16 +226,6 @@ func run(cmd *cobra.Command, argv []string) {
 		args.clientID = oauthClientId
 	}
 
-	// Load the configuration file:
-	cfg, err := config.Load()
-	if err != nil {
-		r.Reporter.Errorf("Failed to load config file: %v", err)
-		os.Exit(1)
-	}
-	if cfg == nil {
-		cfg = new(config.Config)
-	}
-
 	token := args.token
 
 	// Determine if we should be using the FedRAMP environment:
@@ -237,10 +242,6 @@ func run(cmd *cobra.Command, argv []string) {
 			uiTokenPage = fedramp.AdminLoginURLs[env]
 		} else {
 			uiTokenPage = fedramp.LoginURLs[env]
-		}
-		if args.useDeviceCode || args.useAuthCode {
-			r.Reporter.Errorf("This login method is currently not supported with FedRAMP")
-			os.Exit(1)
 		}
 	} else {
 		fedramp.Disable()
