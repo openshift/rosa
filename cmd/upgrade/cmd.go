@@ -32,6 +32,7 @@ var Cmd = &cobra.Command{
 	Use:   "upgrade",
 	Short: "Upgrade a resource",
 	Long:  "Upgrade a resource",
+	Args:  cobra.NoArgs,
 }
 
 func init() {

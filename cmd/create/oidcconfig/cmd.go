@@ -60,7 +60,8 @@ var Cmd = &cobra.Command{
 		"It also creates a Secret in Secrets Manager containing the private key.",
 	Example: `  # Create OIDC config
 	rosa create oidc-config`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 const (
@@ -133,7 +134,7 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 	}
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

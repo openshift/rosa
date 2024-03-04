@@ -42,6 +42,7 @@ var Cmd = &cobra.Command{
 	Short:   "List available cluster upgrades",
 	Long:    "List available and scheduled cluster version upgrades",
 	Run:     run,
+	Args:    cobra.NoArgs,
 }
 
 func init() {

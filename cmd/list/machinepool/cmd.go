@@ -34,7 +34,8 @@ var Cmd = &cobra.Command{
 	Long:    "List machine pools configured on a cluster.",
 	Example: `  # List all machine pools on a cluster named "mycluster"
   rosa list machinepools --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

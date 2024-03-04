@@ -96,7 +96,8 @@ var Cmd = &cobra.Command{
 
   # Add an identity provider following interactive prompts
   rosa create idp --cluster=mycluster --interactive`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

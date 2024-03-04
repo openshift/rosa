@@ -39,7 +39,8 @@ var Cmd = &cobra.Command{
 	Long:    "Link OCM role to specific OCM organization before you create your cluster.",
 	Example: ` # Link OCM role
   rosa link ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {

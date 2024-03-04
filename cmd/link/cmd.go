@@ -31,6 +31,7 @@ var Cmd = &cobra.Command{
 	Short:   "Link OCM role to specific OCM organization",
 	Long:    "Link OCM role to specific OCM organization",
 	Hidden:  false,
+	Args:    cobra.NoArgs,
 }
 
 func init() {

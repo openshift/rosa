@@ -65,6 +65,7 @@ func NewConfigCommand() *cobra.Command {
 		Use:   "config COMMAND VARIABLE",
 		Short: "get or set configuration variables",
 		Long:  longHelp(),
+		Args:  cobra.NoArgs,
 	}
 	Cmd.AddCommand(get.Cmd)
 	Cmd.AddCommand(set.Cmd)

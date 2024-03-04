@@ -46,7 +46,8 @@ var Cmd = &cobra.Command{
 	Long:    "Cleans up account roles from the current AWS account.",
 	Example: `  # Delete Account roles"
   rosa delete account-roles -p prefix`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

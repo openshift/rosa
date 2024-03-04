@@ -45,7 +45,8 @@ var Cmd = &cobra.Command{
 
   # Show uninstall logs for a cluster using the --cluster flag
   rosa logs uninstall --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {

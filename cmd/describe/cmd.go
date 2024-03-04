@@ -35,6 +35,7 @@ var Cmd = &cobra.Command{
 	Use:   "describe",
 	Short: "Show details of a specific resource",
 	Long:  "Show details of a specific resource",
+	Args:  cobra.NoArgs,
 }
 
 func init() {

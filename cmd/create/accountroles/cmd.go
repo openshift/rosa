@@ -54,7 +54,8 @@ var Cmd = &cobra.Command{
 
   # Create account roles with a specific permissions boundary
   rosa create account-roles --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

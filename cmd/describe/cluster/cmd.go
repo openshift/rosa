@@ -50,7 +50,8 @@ var Cmd = &cobra.Command{
 	Long:  "Show details of a cluster",
 	Example: `  # Describe a cluster named "mycluster"
   rosa describe cluster --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {

@@ -37,6 +37,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"update"},
 	Short:   "Edit a specific resource",
 	Long:    "Edit a specific resource",
+	Args:    cobra.NoArgs,
 }
 
 func init() {

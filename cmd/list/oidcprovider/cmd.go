@@ -39,7 +39,8 @@ var Cmd = &cobra.Command{
 	Long:    "List OIDC providers for the current AWS account.",
 	Example: `  # List all oidc providers
   rosa list oidc-providers`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 var args struct {

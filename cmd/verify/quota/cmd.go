@@ -37,7 +37,8 @@ var Cmd = &cobra.Command{
 
   # Verify AWS quotas in a different region
   rosa verify quota --region=us-west-2`,
-	Run: run,
+	Args: cobra.NoArgs,
+	Run:  run,
 }
 
 func init() {
@@ -47,7 +48,7 @@ func init() {
 	arguments.AddProfileFlag(flags)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 

@@ -44,7 +44,8 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade cluster-specific operator IAM roles to latest version.",
 	Example: `  # Upgrade cluster-specific operator IAM roles
   rosa upgrade operators-roles`,
-	Run: run,
+	Args: cobra.NoArgs,
+	Run:  run,
 }
 
 func init() {
@@ -64,7 +65,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

@@ -36,7 +36,8 @@ var Cmd = &cobra.Command{
 	Long:    "List identity providers for a cluster.",
 	Example: `  # List all identity providers on a cluster named "mycluster"
   rosa list idps --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

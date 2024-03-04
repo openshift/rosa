@@ -72,7 +72,8 @@ var Cmd = &cobra.Command{
 		"\t5. Command-line prompt\n", uiTokenPage),
 	Example: fmt.Sprintf(`  # Login to the OpenShift API with an existing token generated from %s
   rosa login --token=$OFFLINE_ACCESS_TOKEN`, uiTokenPage),
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

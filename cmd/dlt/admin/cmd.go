@@ -89,14 +89,15 @@ var Cmd = &cobra.Command{
 	Long:  "Deletes the cluster-admin user used to login to the cluster",
 	Example: `  # Delete the admin user
   rosa delete admin --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
 	ocm.AddClusterFlag(Cmd)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

@@ -34,7 +34,8 @@ var Cmd = &cobra.Command{
 	Long:    "Delete the custom kubeletconfig for a cluster",
 	Example: `  # Delete the custom kubeletconfig for cluster 'foo'
   rosa delete kubeletconfig --cluster foo`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

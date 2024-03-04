@@ -39,7 +39,8 @@ var Cmd = &cobra.Command{
 	Long:    "Verify that the ROSA client tools is installed and compatible.",
 	Example: `  # Verify rosa client tools
   rosa verify rosa`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 const (

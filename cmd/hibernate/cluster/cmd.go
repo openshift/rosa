@@ -34,14 +34,15 @@ func GenerateCommand() *cobra.Command {
 		Long:  "Hibernate cluster.",
 		Example: `  # Hibernate the cluster
   rosa hibernate cluster -c mycluster`,
-		Run: run,
+		Run:  run,
+		Args: cobra.NoArgs,
 	}
 	ocm.AddClusterFlag(Cmd)
 	confirm.AddFlag(Cmd.Flags())
 	return Cmd
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

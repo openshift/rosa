@@ -48,7 +48,8 @@ var Cmd = &cobra.Command{
 	Long:    "Registers unmanaged OIDC config with Openshift Clusters Manager.",
 	Example: `  # Register OIDC config
 	rosa register oidc-config`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -93,7 +94,7 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 	}
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

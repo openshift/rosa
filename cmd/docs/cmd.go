@@ -18,10 +18,13 @@ package docs
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var args struct {
@@ -33,7 +36,8 @@ var Cmd = &cobra.Command{
 	Use:    "docs",
 	Short:  "Generates documentation files",
 	Hidden: true,
-	RunE:   run,
+	Run:    run,
+	Args:   cobra.NoArgs,
 }
 
 func init() {
@@ -56,8 +60,9 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, _ []string) (err error) {
+func run(cmd *cobra.Command, _ []string) {
 	cmd.Root().DisableAutoGenTag = true
+	var err error
 
 	switch args.format {
 	case "markdown":
@@ -74,11 +79,11 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 		err = doc.GenReSTTree(cmd.Root(), args.dir)
 	}
 
+	r := rosa.NewRuntime()
 	if err != nil {
-		return err
+		r.Reporter.Errorf("Failed to generate documents: %v", err)
+		os.Exit(1)
 	}
 
-	fmt.Println("Documents generated successfully on", args.dir)
-
-	return
+	r.Reporter.Infof("Documents generated successfully on '%s'", args.dir)
 }

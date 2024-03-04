@@ -36,7 +36,8 @@ var Cmd = &cobra.Command{
 	Long:    "List tuning configuration resources for a cluster.",
 	Example: `  # List all tuning configuration for a cluster named 'mycluster'"
   rosa list tuning-configs -c mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

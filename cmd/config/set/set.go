@@ -39,7 +39,7 @@ func NewConfigSetCommand() *cobra.Command {
 	}
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(_ *cobra.Command, argv []string) {
 	r := rosa.NewRuntime()
 
 	err := SaveConfig(argv[0], argv[1])

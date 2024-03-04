@@ -43,6 +43,7 @@ var Cmd = &cobra.Command{
   rosa delete managed-service --id=aabbcc`,
 	Run:    run,
 	Hidden: true,
+	Args:   cobra.NoArgs,
 }
 
 func init() {

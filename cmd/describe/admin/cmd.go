@@ -33,14 +33,15 @@ var Cmd = &cobra.Command{
 	Long:  "Show details of the cluster-admin user and a command to login to the cluster",
 	Example: `  # Describe cluster-admin user of a cluster named mycluster
   rosa describe admin -c mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
 	ocm.AddClusterFlag(Cmd)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

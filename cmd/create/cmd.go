@@ -43,6 +43,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"add"},
 	Short:   "Create a resource from stdin",
 	Long:    "Create a resource from stdin",
+	Args:    cobra.NoArgs,
 }
 
 func init() {

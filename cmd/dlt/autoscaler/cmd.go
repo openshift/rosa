@@ -32,7 +32,8 @@ var Cmd = &cobra.Command{
 	Long:  "Delete autoscaler configuration for a given cluster.",
 	Example: `  # Delete the autoscaler config for cluster named "mycluster"
   rosa delete autoscaler --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -40,7 +41,7 @@ func init() {
 	confirm.AddFlag(Cmd.Flags())
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

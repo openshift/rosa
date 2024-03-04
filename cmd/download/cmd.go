@@ -27,6 +27,7 @@ var Cmd = &cobra.Command{
 	Use:   "download",
 	Short: "Download necessary tools for using your cluster",
 	Long:  "Download necessary tools for using your cluster",
+	Args:  cobra.NoArgs,
 }
 
 func init() {

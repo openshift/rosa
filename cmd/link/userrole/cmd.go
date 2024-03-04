@@ -41,7 +41,8 @@ var Cmd = &cobra.Command{
 	Long:    "Link user role to specific OCM account before create your cluster.",
 	Example: ` # Link user roles
   rosa link user-role --role-arn arn:aws:iam::{accountid}:role/{prefix}-User-{username}-Role`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {

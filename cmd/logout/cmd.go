@@ -30,9 +30,10 @@ var Cmd = &cobra.Command{
 	Short: "Log out",
 	Long:  "Log out, removing the configuration file.",
 	Run:   run,
+	Args:  cobra.NoArgs,
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporterOrExit()
 	// Remove the configuration file:
 	err := config.Remove()

@@ -34,7 +34,8 @@ var Cmd = &cobra.Command{
 	Long:    "Show details of the custom kubeletconfig for a cluster.",
 	Example: `  # Describe the custom kubeletconfig for cluster 'foo'
   rosa describe kubeletconfig --cluster foo`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -42,7 +43,7 @@ func init() {
 	output.AddFlag(Cmd)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 

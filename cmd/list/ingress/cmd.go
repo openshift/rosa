@@ -38,7 +38,8 @@ var Cmd = &cobra.Command{
 	Long:    "List API and ingress endpoints for a cluster.",
 	Example: `  # List all routes on a cluster named "mycluster"
   rosa list ingresses --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

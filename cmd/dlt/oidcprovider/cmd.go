@@ -41,7 +41,8 @@ var Cmd = &cobra.Command{
 	Long:    "Cleans up OIDC provider of deleted STS cluster.",
 	Example: `  # Delete OIDC provider for cluster named "mycluster"
   rosa delete oidc-provider --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(3),
 }
 
 const (

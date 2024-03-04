@@ -38,6 +38,7 @@ var Cmd = &cobra.Command{
 	Short:   "Cancel cluster upgrade",
 	Long:    "Cancel scheduled cluster upgrade",
 	Run:     run,
+	Args:    cobra.NoArgs,
 }
 
 func init() {

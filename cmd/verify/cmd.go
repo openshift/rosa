@@ -30,6 +30,7 @@ var Cmd = &cobra.Command{
 	Use:   "verify",
 	Short: "Verify resources are configured correctly for cluster install",
 	Long:  "Verify resources are configured correctly for cluster install",
+	Args:  cobra.NoArgs,
 }
 
 func init() {

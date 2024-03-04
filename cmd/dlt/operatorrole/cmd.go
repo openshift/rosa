@@ -49,7 +49,8 @@ var Cmd = &cobra.Command{
 	Long:    "Cleans up operator roles of deleted STS cluster.",
 	Example: `  # Delete Operator roles for cluster named "mycluster"
   rosa delete operator-roles --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -71,7 +72,7 @@ const (
 	hypershiftSubscriptionPlanId = "MOA-HostedControlPlane"
 )
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

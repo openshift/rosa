@@ -34,7 +34,8 @@ var Cmd = &cobra.Command{
 	Long:    "List OIDC Configuration resources",
 	Example: `  # List all OIDC Configurations tied to your organization ID"
   rosa list oidc-config`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
