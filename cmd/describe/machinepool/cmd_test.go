@@ -18,38 +18,38 @@ import (
 const (
 	nodePoolName         = "nodepool85"
 	describeStringOutput = `
-ID:                         nodepool85
-Cluster ID:                 24vf9iitg3p6tlml88iml6j6mu095mh8
-Autoscaling:                No
-Desired replicas:           0
-Current replicas:           
-Instance type:              m5.xlarge
-Labels:                     
-Taints:                     
-Availability zone:          us-east-1a
-Subnet:                     
-Version:                    4.12.24
-Autorepair:                 No
-Tuning configs:             
-Message:                    
-Security Group IDs:         
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Desired replicas:                      0
+Current replicas:                      
+Instance type:                         m5.xlarge
+Labels:                                
+Taints:                                
+Availability zone:                     us-east-1a
+Subnet:                                
+Version:                               4.12.24
+Autorepair:                            No
+Tuning configs:                        
+Message:                               
+Additional security group IDs:         
 `
 	describeStringWithUpgradeOutput = `
-ID:                         nodepool85
-Cluster ID:                 24vf9iitg3p6tlml88iml6j6mu095mh8
-Autoscaling:                No
-Desired replicas:           0
-Current replicas:           
-Instance type:              m5.xlarge
-Labels:                     
-Taints:                     
-Availability zone:          us-east-1a
-Subnet:                     
-Version:                    4.12.24
-Autorepair:                 No
-Tuning configs:             
-Message:                    
-Security Group IDs:         
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Desired replicas:                      0
+Current replicas:                      
+Instance type:                         m5.xlarge
+Labels:                                
+Taints:                                
+Availability zone:                     us-east-1a
+Subnet:                                
+Version:                               4.12.24
+Autorepair:                            No
+Tuning configs:                        
+Message:                               
+Additional security group IDs:         
 Scheduled upgrade:          scheduled 4.12.25 on 2023-08-07 15:22 UTC
 `
 

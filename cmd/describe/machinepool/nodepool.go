@@ -38,21 +38,21 @@ func describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
 
 	// Prepare string
 	nodePoolOutput := fmt.Sprintf("\n"+
-		"ID:                         %s\n"+
-		"Cluster ID:                 %s\n"+
-		"Autoscaling:                %s\n"+
-		"Desired replicas:           %s\n"+
-		"Current replicas:           %s\n"+
-		"Instance type:              %s\n"+
-		"Labels:                     %s\n"+
-		"Taints:                     %s\n"+
-		"Availability zone:          %s\n"+
-		"Subnet:                     %s\n"+
-		"Version:                    %s\n"+
-		"Autorepair:                 %s\n"+
-		"Tuning configs:             %s\n"+
-		"Message:                    %s\n"+
-		"Security Group IDs:         %s\n",
+		"ID:                                    %s\n"+
+		"Cluster ID:                            %s\n"+
+		"Autoscaling:                           %s\n"+
+		"Desired replicas:                      %s\n"+
+		"Current replicas:                      %s\n"+
+		"Instance type:                         %s\n"+
+		"Labels:                                %s\n"+
+		"Taints:                                %s\n"+
+		"Availability zone:                     %s\n"+
+		"Subnet:                                %s\n"+
+		"Version:                               %s\n"+
+		"Autorepair:                            %s\n"+
+		"Tuning configs:                        %s\n"+
+		"Message:                               %s\n"+
+		"Additional security group IDs:         %s\n",
 		nodePool.ID(),
 		cluster.ID(),
 		ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
