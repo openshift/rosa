@@ -17,6 +17,9 @@ limitations under the License.
 package verify
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/verify/network"
@@ -37,5 +40,10 @@ func init() {
 	Cmd.AddCommand(oc.Cmd)
 	Cmd.AddCommand(permissions.Cmd)
 	Cmd.AddCommand(quota.Cmd)
-	Cmd.AddCommand(rosa.Cmd)
+	r, err := rosa.VerifyRosaCmd()
+	if err != nil {
+		Cmd.PrintErrln(fmt.Errorf("exiting : error creating verify rosa: %v", err))
+		os.Exit(1)
+	}
+	Cmd.AddCommand(r)
 }

@@ -1,7 +1,8 @@
 package kubeletconfig
 
 import (
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
+
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"

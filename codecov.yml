@@ -13,3 +13,4 @@ coverage:
         informational: true
 ignore:
   - "pkg/aws/mock_client.go"
+  - "**/*_mock.go"
