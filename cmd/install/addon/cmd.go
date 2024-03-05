@@ -240,20 +240,19 @@ func run(cmd *cobra.Command, argv []string) {
 	billingModelAccountID := args.billingModelAccountID
 
 	if !cmd.Flags().Changed(billingModelFlag) {
-		if !interactive.Enabled() {
-			interactive.Enable()
-			r.Reporter.Infof("Enabling interactive mode")
-		}
-		billingModel, err = interactive.GetOption(interactive.Input{
-			Question: "Billing Model",
-			Help:     cmd.Flags().Lookup(billingModelFlag).Usage,
-			Default:  string(amv1.BillingModelStandard),
-			Options:  ocm.BillingOptions,
-			Required: true,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid billing model: %s", err)
-			os.Exit(1)
+		billingModel = string(amv1.BillingModelStandard)
+		if interactive.Enabled() {
+			billingModel, err = interactive.GetOption(interactive.Input{
+				Question: "Billing Model",
+				Help:     cmd.Flags().Lookup(billingModelFlag).Usage,
+				Default:  string(amv1.BillingModelStandard),
+				Options:  ocm.BillingOptions,
+				Required: true,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid billing model: %s", err)
+				os.Exit(1)
+			}
 		}
 	}
 
