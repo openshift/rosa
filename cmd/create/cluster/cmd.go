@@ -1689,7 +1689,7 @@ func run(cmd *cobra.Command, _ []string) {
 	computedOperatorIamRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
 		if operatorRolesPrefix == "" {
-			operatorRolesPrefix = getRolePrefix(clusterName)
+			operatorRolesPrefix = roles.GeOperatorRolePrefixFromClusterName(clusterName)
 		}
 		if interactive.Enabled() {
 			operatorRolesPrefix, err = interactive.GetString(interactive.Input{
@@ -3917,10 +3917,6 @@ func buildTagsCommand(tags map[string]string) []string {
 		formattedTags = append(formattedTags, fmt.Sprintf("%s%s%s", k, delim, v))
 	}
 	return formattedTags
-}
-
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
 }
 
 func calculateReplicas(

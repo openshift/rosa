@@ -31,7 +31,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -401,7 +401,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// operator role logic.
-	operatorRolesPrefix := getRolePrefix(args.ClusterName)
+	operatorRolesPrefix := roles.GeOperatorRolePrefixFromClusterName(args.ClusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 
 	// Managed Services does not support Hypershift at this time.
@@ -474,8 +474,4 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 	}
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
-}
-
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
 }

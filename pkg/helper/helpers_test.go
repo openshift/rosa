@@ -3,11 +3,13 @@ package helper_test
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	. "github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/roles"
 )
 
 var _ = Describe("Helper", func() {
@@ -143,5 +145,17 @@ var _ = Describe("Helper", func() {
 			})
 		})
 
+		var _ = Context("GeOperatorRolePrefixFromClusterName()", func() {
+			DescribeTable("GeOperatorRolePrefixFromClusterName test casess",
+				func(clusterName, expectedClusterNamePrefix string) {
+					operatorRolePrefix := roles.GeOperatorRolePrefixFromClusterName(clusterName)
+					Expect(operatorRolePrefix).To(ContainSubstring(fmt.Sprintf("%s-", expectedClusterNamePrefix)))
+					Expect(len(operatorRolePrefix) <= 32).To(BeTrue())
+				},
+				Entry("Uses the cluster name as the in the operator role prefix when the name is <= 27 chars",
+					"cluster-name", "cluster-name"),
+				Entry("Uses the first 27 characters of the cluster name when the cluster name is > 27 chars",
+					strings.Repeat("a", 54), strings.Repeat("a", 27)))
+		})
 	})
 })
