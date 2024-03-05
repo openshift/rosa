@@ -38,7 +38,7 @@ var Cmd = &cobra.Command{
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
+	reporter := rprtr.CreateReporter()
 
 	// Verify whether `oc` is installed
 	if reporter.IsTerminal() {

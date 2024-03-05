@@ -50,7 +50,7 @@ const (
 )
 
 func run(_ *cobra.Command, _ []string) {
-	rprtr := reporter.CreateReporterOrExit()
+	rprtr := reporter.CreateReporter()
 
 	currVersion, err := version.NewVersion(info.Version)
 	if err != nil {

@@ -40,7 +40,7 @@ var Cmd = &cobra.Command{
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
+	reporter := rprtr.CreateReporter()
 
 	platform := getPlatform()
 	extension := helper.GetExtension()
