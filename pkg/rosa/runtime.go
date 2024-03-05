@@ -26,7 +26,7 @@ type Runtime struct {
 }
 
 func NewRuntime() *Runtime {
-	reporter := reporter.CreateReporterOrExit()
+	reporter := reporter.CreateReporter()
 	logger := logging.NewLogger()
 	spinner := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	return &Runtime{Reporter: reporter, Logger: logger, Spinner: spinner}

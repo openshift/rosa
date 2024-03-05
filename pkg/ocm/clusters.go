@@ -677,12 +677,7 @@ func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
 // are rotated between cluster creation. If a user is creating a non-STS cluster, we need to therefore make sure
 // no other clusters are pending in the account in order to ensure no race condition occurs.
 func (c *Client) EnsureNoPendingClusters(awsCreator *aws.Creator) error {
-	reporter, err := rprtr.New().
-		Build()
-	if err != nil {
-		return fmt.Errorf("Error creating cluster reporter: %w", err)
-	}
-
+	reporter := rprtr.CreateReporter()
 	/**
 	1) Poll the cluster with same arn from ocm
 	2) Check the status and if pending enter to a loop until it becomes installing
@@ -712,12 +707,7 @@ func (c *Client) EnsureNoPendingClusters(awsCreator *aws.Creator) error {
 }
 
 func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
-	reporter, err := rprtr.New().
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("Error creating cluster reporter: %v", err)
-	}
-
+	reporter := rprtr.CreateReporter()
 	clusterProperties := map[string]string{}
 
 	if config.CustomProperties != nil {

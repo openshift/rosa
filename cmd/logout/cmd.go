@@ -34,7 +34,7 @@ var Cmd = &cobra.Command{
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
+	reporter := rprtr.CreateReporter()
 	// Remove the configuration file:
 	err := config.Remove()
 	if err != nil {
