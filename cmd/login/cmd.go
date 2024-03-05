@@ -169,19 +169,21 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Load the configuration file:
-	cfg, err := config.Load()
-	if err != nil {
-		r.Reporter.Errorf("Failed to load config file: %v", err)
+	// Confirm that token is not passed with auth code flags
+	if (args.useAuthCode || args.useDeviceCode) && args.token != "" {
+		r.Reporter.Errorf("Token cannot be passed with '--use-auth-code' or '--use-device-code' commands")
 		os.Exit(1)
-	}
-	if cfg == nil {
-		cfg = new(config.Config)
 	}
 
-	if (cfg.FedRAMP || fedramp.HasFlag(cmd) || fedramp.IsGovRegion(arguments.GetRegion())) && (args.useAuthCode || args.useDeviceCode) {
+	// FedRAMP does not support oauth code flow login yet
+	if fedramp.HasFlag(cmd) && (args.useAuthCode || args.useDeviceCode) {
 		r.Reporter.Errorf("This login method is currently not supported with FedRAMP")
 		os.Exit(1)
+	}
+
+	// Show deprecation message if offline token is passed
+	if !fedramp.HasFlag(cmd) && args.token != "" {
+		r.Reporter.Warnf(offlineTokenDeprecationMessage)
 	}
 
 	if args.useAuthCode {
@@ -224,6 +226,16 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		args.token = token
 		args.clientID = oauthClientId
+	}
+
+	// Load the configuration file:
+	cfg, err := config.Load()
+	if err != nil {
+		r.Reporter.Errorf("Failed to load config file: %v", err)
+		os.Exit(1)
+	}
+	if cfg == nil {
+		cfg = new(config.Config)
 	}
 
 	token := args.token
@@ -334,10 +346,6 @@ func run(cmd *cobra.Command, argv []string) {
 			if !ok {
 				clientID = args.clientID
 			}
-		}
-	} else {
-		if !args.useDeviceCode && !args.useDeviceCode {
-			r.Reporter.Warnf(offlineTokenDeprecationMessage)
 		}
 	}
 
