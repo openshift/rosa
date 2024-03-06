@@ -77,6 +77,12 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	if cmd.Flags().Changed("region") {
+		r.Reporter.Errorf("The '--region' flag is not available when creating the OIDC provider. " +
+			"OIDC provider is a global AWS IAM entity.")
+		os.Exit(1)
+	}
+
 	// Allow the command to be called programmatically
 	isProgmaticallyCalled := false
 	shouldUseClusterKey := true
