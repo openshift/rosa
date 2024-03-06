@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/test/ci"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/rosa"
@@ -35,7 +36,7 @@ var _ = Describe("Machine pool helper", func() {
 				"Unexpected situation a VPC ID should have been selected based on chosen subnets"))
 		})
 
-		It("Should return VPC ID from the subnet object", func() {
+		It("Should return VPC ID from the subnet object", ci.High, func() {
 			vpcId := "123"
 			subnet := &ec2.Subnet{
 				VpcId: &vpcId,
@@ -48,7 +49,7 @@ var _ = Describe("Machine pool helper", func() {
 	})
 
 	Context("It create an AWS node pool builder successfully", func() {
-		It("Create AWS node pool with security group IDs when provided", func() {
+		It("Create AWS node pool with security group IDs when provided", ci.High, func() {
 			instanceType := "123"
 			securityGroupIds := []string{"123"}
 

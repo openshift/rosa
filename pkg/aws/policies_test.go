@@ -9,11 +9,12 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift/rosa/pkg/test/ci"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
 )
 
-var _ = Describe("Is Account Role Version Compatible", func() {
+var _ = Describe("Is Account Role Version Compatible", ci.Critical, func() {
 	When("Role isn't an account role", func() {
 		It("Should return not compatible", func() {
 			isCompatible, err := isAccountRoleVersionCompatible([]*iam.Tag{}, InstallerAccountRole, "4.14")
@@ -139,7 +140,7 @@ var _ = Describe("DeleteRole Validation", func() {
 		})
 	})
 	When("Role exists", func() {
-		It("Should delete the role successfully", func() {
+		It("Should delete the role successfully", ci.Critical, func() {
 			role := "test"
 			mockIamAPI.EXPECT().DeleteRole(&iam.DeleteRoleInput{
 				RoleName: aws.String(role),

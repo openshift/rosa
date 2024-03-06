@@ -13,6 +13,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+	"github.com/openshift/rosa/pkg/test/ci"
 )
 
 const (
@@ -69,7 +70,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		Expect(ocmClient.Close()).To(Succeed())
 	})
 
-	It("Gets KubeletConfig when it exists", func() {
+	It("Gets KubeletConfig when it exists", ci.High, func() {
 
 		apiServer.AppendHandlers(
 			RespondWithJSON(
@@ -86,7 +87,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		Expect(kubeletConfig.PodPidsLimit()).To(Equal(podPidsLimit))
 	})
 
-	It("Returns nil when KubeletConfig does not exist", func() {
+	It("Returns nil when KubeletConfig does not exist", ci.High, func() {
 		apiServer.AppendHandlers(
 			RespondWithJSON(
 				http.StatusNotFound,
@@ -107,7 +108,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		Expect(err).To(BeNil())
 	})
 
-	It("Fails to Delete KubeletConfig if none exists", func() {
+	It("Fails to Delete KubeletConfig if none exists", ci.High, func() {
 
 		apiServer.AppendHandlers(
 			RespondWithJSON(
@@ -136,7 +137,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 
 	})
 
-	It("Fails to create KubeletConfig if one exists", func() {
+	It("Fails to create KubeletConfig if one exists", ci.High, func() {
 		apiServer.AppendHandlers(
 			RespondWithJSON(
 				http.StatusBadRequest,

@@ -14,6 +14,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+	"github.com/openshift/rosa/pkg/test/ci"
 )
 
 // nolint
@@ -101,7 +102,7 @@ var _ = Describe("Get version list", func() {
 			Expect(ocmClient.Close()).To(Succeed())
 		})
 
-		It("Expects a version list", func() {
+		It("Expects a version list", ci.Critical, func() {
 			apiServer.AppendHandlers(
 				RespondWithJSON(
 					http.StatusOK,
@@ -114,7 +115,7 @@ var _ = Describe("Get version list", func() {
 			Expect(len(vs)).To(Equal(1))
 		})
 
-		It("Expects a valid Hypershift Version", func() {
+		It("Expects a valid Hypershift Version", ci.Critical, func() {
 			apiServer.AppendHandlers(
 				RespondWithJSON(
 					http.StatusOK,
@@ -144,7 +145,7 @@ var _ = Describe("Get version list", func() {
 
 var _ = Describe("Versions", Ordered, func() {
 
-	Context("when creating a HyperShift cluster", func() {
+	Context("when creating a HyperShift cluster", ci.Critical, func() {
 		DescribeTable("Should correctly validate the minimum version with a given channel group",
 			validateVersion,
 			Entry("OK: When the minimum version is provided",
@@ -190,7 +191,7 @@ var _ = Describe("Versions", Ordered, func() {
 		)
 	})
 
-	Context("when upgrading a hosted control plane", func() {
+	Context("when upgrading a hosted control plane", ci.Critical, func() {
 		DescribeTable("Should validate the requested version with the available upgrades",
 			func(userRequestedVersion string, supportedVersion string, clusterVersion string, expected bool) {
 				isValid, err := IsValidVersion(userRequestedVersion, supportedVersion, clusterVersion)
@@ -236,7 +237,7 @@ var _ = Describe("Versions", Ordered, func() {
 	})
 })
 
-var _ = Describe("Minimal http tokens required version", Ordered, func() {
+var _ = Describe("Minimal http tokens required version", ci.High, Ordered, func() {
 
 	Context("validate http tokens required version", func() {
 		DescribeTable("validate http tokens required version",

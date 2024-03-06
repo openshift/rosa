@@ -23,6 +23,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift/rosa/pkg/test/ci"
 )
 
 var _ = Describe("IDP Tests", func() {
@@ -42,7 +43,7 @@ var _ = Describe("IDP Tests", func() {
 			"MissingColon$apr1$hRY7OJWH$km1EYH.UIRjp6CzfZQz/g1" + "\n" +
 				"MissingPasswordAfterColon:"
 
-		DescribeTable("Htpasswd FileParser Tests",
+		DescribeTable("Htpasswd FileParser Tests", ci.High,
 			func(fileContent string, exceptedUserList map[string]string, errorExcepted bool) {
 
 				fileName := "DoesNotExistYet"

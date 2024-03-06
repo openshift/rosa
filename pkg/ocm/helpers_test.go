@@ -26,6 +26,7 @@ import (
 	ocmCommonValidations "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/rosa/pkg/test/ci"
 )
 
 var _ = Describe("Http tokens", func() {
@@ -396,7 +397,7 @@ var _ = Describe("ValidateSubnetsCount", func() {
 	})
 })
 
-var _ = Describe("IsValidClusterName()", func() {
+var _ = Describe("IsValidClusterName()", ci.Critical, func() {
 	DescribeTable("IsValidClusterName() test cases", func(name string, expected bool) {
 		valid := IsValidClusterName(name)
 		Expect(expected).To(Equal(valid))
@@ -408,7 +409,7 @@ var _ = Describe("IsValidClusterName()", func() {
 		Entry("returns true when name valid", strings.Repeat("h", 25), true))
 })
 
-var _ = Describe("ClusterNameValidator()", func() {
+var _ = Describe("ClusterNameValidator()", ci.Critical, func() {
 	DescribeTable("ClusterNameValidator() test cases", func(name interface{}, shouldErr bool) {
 		err := ClusterNameValidator(name)
 		if shouldErr {
@@ -425,7 +426,7 @@ var _ = Describe("ClusterNameValidator()", func() {
 		Entry("should not error when name valid", strings.Repeat("h", 25), false))
 })
 
-var _ = Describe("IsValidClusterDomainPrefix()", func() {
+var _ = Describe("IsValidClusterDomainPrefix()", ci.Critical, func() {
 	DescribeTable("IsValidClusterDomainPrefix() test cases", func(domainPrefix string, expected bool) {
 		valid := IsValidClusterDomainPrefix(domainPrefix)
 		Expect(expected).To(Equal(valid))
@@ -437,7 +438,7 @@ var _ = Describe("IsValidClusterDomainPrefix()", func() {
 		Entry("returns true when domain prefix valid", strings.Repeat("h", 15), true))
 })
 
-var _ = Describe("ClusterDomainPrefixValidator()", func() {
+var _ = Describe("ClusterDomainPrefixValidator()", ci.Critical, func() {
 	DescribeTable("ClusterDomainPrefixValidator() test case", func(domainPrefix interface{}, shouldErr bool) {
 		err := ClusterDomainPrefixValidator(domainPrefix)
 		if shouldErr {

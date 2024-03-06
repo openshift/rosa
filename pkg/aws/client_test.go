@@ -20,6 +20,7 @@ import (
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
+	"github.com/openshift/rosa/pkg/test/ci"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
@@ -533,7 +534,7 @@ var _ = Describe("Client", func() {
 		)
 	})
 
-	Describe("oidc-provider", func() {
+	Describe("oidc-provider", ci.Critical, func() {
 		Context("Filtering test", func() {
 			BeforeEach(func() {
 				mockedOidcProviderArns = []string{

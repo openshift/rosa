@@ -4,6 +4,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift/rosa/pkg/test/ci"
 
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/idp/mocks"
@@ -38,7 +39,7 @@ var _ = Describe("Cmd", func() {
 			})
 		})
 
-		Context("when an IDP with the name of the type already exists", func() {
+		Context("when an IDP with the name of the type already exists", ci.Critical, func() {
 			BeforeEach(func() {
 				mockIdp := mocks.NewMockIdentityProvider(mockCtrl)
 				mockIdp.EXPECT().Name().Return("github").AnyTimes()
@@ -50,7 +51,7 @@ var _ = Describe("Cmd", func() {
 			})
 		})
 
-		Context("when an IDP with a generated name already exists", func() {
+		Context("when an IDP with a generated name already exists", ci.Critical, func() {
 			BeforeEach(func() {
 				mockIdp := mocks.NewMockIdentityProvider(mockCtrl)
 				mockIdp.EXPECT().Name().Return(idp.GenerateIdpName(idpType, idps)).AnyTimes()

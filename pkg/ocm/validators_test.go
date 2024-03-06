@@ -3,9 +3,10 @@ package ocm
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift/rosa/pkg/test/ci"
 )
 
-var _ = Describe("Input Validators", Ordered, func() {
+var _ = Describe("Input Validators", Ordered, ci.Critical, func() {
 	Context("int validator", func() {
 		It("succeeds if got an empty string", func() {
 			Expect(IntValidator("")).To(BeNil())
@@ -24,7 +25,7 @@ var _ = Describe("Input Validators", Ordered, func() {
 		})
 	})
 
-	Context("non-negative int validator", func() {
+	Context("non-negative int validator", ci.High, func() {
 		It("succeeds if got an empty string", func() {
 			Expect(NonNegativeIntValidator("")).To(BeNil())
 		})
@@ -46,7 +47,7 @@ var _ = Describe("Input Validators", Ordered, func() {
 		})
 	})
 
-	Context("duration string validator", func() {
+	Context("duration string validator", ci.High, func() {
 		It("succeeds if got an empty string", func() {
 			Expect(PositiveDurationStringValidator("")).To(BeNil())
 		})
@@ -64,7 +65,7 @@ var _ = Describe("Input Validators", Ordered, func() {
 		})
 	})
 
-	Context("percentage validator", func() {
+	Context("percentage validator", ci.High, func() {
 		It("succeeds if got an empty string", func() {
 			Expect(PercentageValidator("")).To(BeNil())
 		})
