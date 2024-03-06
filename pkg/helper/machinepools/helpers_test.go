@@ -164,3 +164,48 @@ var _ = Describe("Label validations", func() {
 		),
 	)
 })
+
+var _ = Describe("Create node drain grace period builder validations", func() {
+	DescribeTable("Create node drain grace period builder validations",
+		func(period string, hasError bool) {
+			_, err := CreateNodeDrainGracePeriodBuilder(period)
+			if hasError {
+				Expect(err).To(HaveOccurred())
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Should not error with empty value",
+			"",
+			false,
+		),
+		Entry("Should not error with 0 value",
+			"0",
+			false,
+		),
+		Entry("Should not error with lower limit value",
+			"1 minute",
+			false,
+		),
+		Entry("Should not error with upper limit value",
+			"10080 minutes",
+			false,
+		),
+		Entry("Should not error with hour unit",
+			"1 hour",
+			false,
+		),
+		Entry("Should not error with hours unit",
+			"168 hours",
+			false,
+		),
+		Entry("Should error with invalid number of tokens",
+			"1 minute later",
+			true,
+		),
+		Entry("Should error with invalid unit",
+			"1 day",
+			true,
+		),
+	)
+})

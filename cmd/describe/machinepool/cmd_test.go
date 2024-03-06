@@ -31,8 +31,9 @@ Subnet:
 Version:                               4.12.24
 Autorepair:                            No
 Tuning configs:                        
-Message:                               
 Additional security group IDs:         
+Node drain grace period:               1 minute
+Message:                               
 `
 	describeStringWithUpgradeOutput = `
 ID:                                    nodepool85
@@ -48,8 +49,9 @@ Subnet:
 Version:                               4.12.24
 Autorepair:                            No
 Tuning configs:                        
-Message:                               
 Additional security group IDs:         
+Node drain grace period:               1 minute
+Message:                               
 Scheduled upgrade:          scheduled 4.12.25 on 2023-08-07 15:22 UTC
 `
 
@@ -59,6 +61,9 @@ aws_node_pool:
   kind: AWSNodePool
 id: nodepool85
 kind: NodePool
+node_drain_grace_period:
+  unit: minute
+  value: 1
 scheduledUpgrade:
   nextRun: 2023-08-07 15:22 UTC
   state: scheduled
@@ -275,8 +280,9 @@ var _ = Describe("Upgrade machine pool", func() {
 func formatNodePool() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
 	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge")
+	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
-		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").Build()
+		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).Build()
 	Expect(err).To(BeNil())
 	return test.FormatResource(np)
 }
