@@ -12,7 +12,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
-	"github.com/openshift/rosa/pkg/test/ci"
 	"github.com/spf13/cobra"
 
 	mock "github.com/openshift/rosa/pkg/aws"
@@ -20,6 +19,7 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/test/ci"
 	"github.com/openshift/rosa/pkg/test/matchers"
 )
 

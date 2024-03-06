@@ -26,6 +26,7 @@ import (
 	ocmCommonValidations "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
 	"github.com/openshift/rosa/pkg/test/ci"
 )
 

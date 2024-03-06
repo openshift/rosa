@@ -4,10 +4,10 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/openshift/rosa/pkg/test/ci"
 
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/idp/mocks"
+	"github.com/openshift/rosa/pkg/test/ci"
 )
 
 var _ = Describe("Cmd", func() {

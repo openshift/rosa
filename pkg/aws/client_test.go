@@ -20,11 +20,11 @@ import (
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
-	"github.com/openshift/rosa/pkg/test/ci"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/test/ci"
 	"github.com/openshift/rosa/pkg/test/matchers"
 )
 

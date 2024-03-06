@@ -9,9 +9,9 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/openshift/rosa/pkg/test/ci"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
+	"github.com/openshift/rosa/pkg/test/ci"
 )
 
 var _ = Describe("Is Account Role Version Compatible", ci.Critical, func() {
