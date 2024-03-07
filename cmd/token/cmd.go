@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/config"
-	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -67,7 +66,6 @@ func NewTokenCommand() *cobra.Command {
 		false,
 		"Generate a new token.",
 	)
-	output.AddFlag(Cmd)
 	return Cmd
 }
 
