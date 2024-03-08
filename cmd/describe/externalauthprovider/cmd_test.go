@@ -30,14 +30,13 @@ var _ = Describe("External authentication provider", func() {
 
 	Context("Describe external authentication provider command", func() {
 
-		mockClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(true))
 			c.ExternalAuthConfig(cmv1.NewExternalAuthConfig().Enabled(true))
 		})
-		Expect(err).To(BeNil())
 		hypershiftClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
 
 		externalAuths := make([]*cmv1.ExternalAuth, 0)
@@ -73,7 +72,6 @@ var _ = Describe("External authentication provider", func() {
 			args.name = externalAuthName
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatExternalAuthList(externalAuths)))
-			Expect(err).To(BeNil())
 			output := describeExternalAuthProviders(testRuntime.RosaRuntime,
 				mockClusterReady, test.MockClusterID, test.BuildExternalAuth())
 			Expect(output).To(Equal(describeStringOutput))

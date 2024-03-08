@@ -67,7 +67,6 @@ func run(cmd *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	clusterKey := r.GetClusterKey()
-
 	cluster := r.FetchCluster()
 
 	if cluster.Hypershift().Enabled() {

@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"time"
 
+	"go.uber.org/mock/gomock"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -97,7 +99,18 @@ func BuildExternalAuth() *v1.ExternalAuth {
 	return externalAuth
 }
 
-func MockOCMCluster(modifyFn func(c *v1.ClusterBuilder)) (*v1.Cluster, error) {
+func MockAutoscaler(modifyFn func(a *v1.ClusterAutoscalerBuilder)) *v1.ClusterAutoscaler {
+	build := &v1.ClusterAutoscalerBuilder{}
+	if modifyFn != nil {
+		modifyFn(build)
+	}
+
+	autoscaler, err := build.Build()
+	Expect(err).NotTo(HaveOccurred())
+	return autoscaler
+}
+
+func MockCluster(modifyFn func(c *v1.ClusterBuilder)) *v1.Cluster {
 	mock := v1.NewCluster().
 		ID(MockClusterID).
 		HREF(MockClusterHREF).
@@ -107,7 +120,9 @@ func MockOCMCluster(modifyFn func(c *v1.ClusterBuilder)) (*v1.Cluster, error) {
 		modifyFn(mock)
 	}
 
-	return mock.Build()
+	cluster, err := mock.Build()
+	Expect(err).NotTo(HaveOccurred())
+	return cluster
 }
 
 func FormatClusterList(clusters []*v1.Cluster) string {
@@ -232,6 +247,10 @@ func FormatResource(resource interface{}) string {
 		if res, ok := resource.(*v1.MachinePool); ok {
 			err = v1.MarshalMachinePool(res, &outputJson)
 		}
+	case "*v1.ClusterAutoscaler":
+		if res, ok := resource.(*v1.ClusterAutoscaler); ok {
+			err = v1.MarshalClusterAutoscaler(res, &outputJson)
+		}
 	case "*v1.ControlPlaneUpgradePolicy":
 		if res, ok := resource.(*v1.ControlPlaneUpgradePolicy); ok {
 			err = v1.MarshalControlPlaneUpgradePolicy(res, &outputJson)
@@ -246,6 +265,12 @@ func FormatResource(resource interface{}) string {
 	}
 
 	return outputJson.String()
+}
+
+func NewTestRuntime() *TestingRuntime {
+	t := &TestingRuntime{}
+	t.InitRuntime()
+	return t
 }
 
 // TestingRuntime is a wrapper for the structure used for testing
@@ -291,7 +316,23 @@ func (t *TestingRuntime) InitRuntime() {
 		AccountID: "123",
 		IsSTS:     false,
 	}
+
+	ctrl := gomock.NewController(GinkgoT())
+	aws := aws.NewMockClient(ctrl)
+	t.RosaRuntime.AWSClient = aws
+
 	DeferCleanup(t.RosaRuntime.Cleanup)
 	DeferCleanup(t.SsoServer.Close)
 	DeferCleanup(t.ApiServer.Close)
+	DeferCleanup(t.Close)
+}
+
+func (t *TestingRuntime) Close() {
+	ocm.SetClusterKey("")
+}
+
+func (t *TestingRuntime) SetCluster(clusterKey string, cluster *v1.Cluster) {
+	ocm.SetClusterKey(clusterKey)
+	t.RosaRuntime.Cluster = cluster
+	t.RosaRuntime.ClusterKey = clusterKey
 }

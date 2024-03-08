@@ -26,45 +26,44 @@ var _ = Describe("Upgrade", Ordered, func() {
 		HREF("/api/clusters_mgmt/v1/versions/openshift-v4.13.0").Enabled(true).ChannelGroup("stable").
 		ROSAEnabled(true).HostedControlPlaneEnabled(true)
 
-	mockClusterError, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+	mockClusterError := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 		c.State(cmv1.ClusterStateError)
 		c.Hypershift(cmv1.NewHypershift().Enabled(true))
 	})
-	Expect(err).To(BeNil())
 	var hypershiftClusterNotReady = test.FormatClusterList([]*cmv1.Cluster{mockClusterError})
 
-	mockClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+	mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 		c.State(cmv1.ClusterStateReady)
 		c.Hypershift(cmv1.NewHypershift().Enabled(true))
 		c.Version(version4130)
 	})
-	Expect(err).To(BeNil())
+
 	// hypershiftClusterReady has no available upgrades
 	var hypershiftClusterReady = test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
 
 	version4130WithUpgrades := version4130.AvailableUpgrades("4.13.1")
-	mockClusterReadyWithUpgrades, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+	mockClusterReadyWithUpgrades := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 		c.State(cmv1.ClusterStateReady)
 		c.Hypershift(cmv1.NewHypershift().Enabled(true))
 		c.Version(version4130WithUpgrades)
 	})
-	Expect(err).To(BeNil())
+
 	// hypershiftClusterReadyWithUpdates has one available upgrade
 	var hypershiftClusterReadyWithUpdates = test.FormatClusterList([]*cmv1.Cluster{mockClusterReadyWithUpgrades})
 
-	mockClassicCluster, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+	mockClassicCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 		c.State(cmv1.ClusterStateReady)
 		c.Hypershift(cmv1.NewHypershift().Enabled(false))
 	})
-	Expect(err).To(BeNil())
+
 	var classicCluster = test.FormatClusterList([]*cmv1.Cluster{mockClassicCluster})
 
 	BeforeEach(func() {
@@ -289,7 +288,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 		// No existing policy upgrade
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
-		err = runWithRuntime(testRuntime.RosaRuntime, Cmd)
+		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring("node-drain-grace-period flag is not supported to hosted clusters"))
