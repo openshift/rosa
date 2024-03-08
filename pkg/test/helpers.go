@@ -143,6 +143,36 @@ func FormatVersionList(versions []*v1.Version) string {
 	}`, len(versions), len(versions), versionJson.String())
 }
 
+func FormatIDPList(idps []*v1.IdentityProvider) string {
+	var idpJson bytes.Buffer
+
+	v1.MarshalIdentityProviderList(idps, &idpJson)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "IdentityProviderList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(idps), len(idps), idpJson.String())
+}
+
+func FormatHtpasswdUserList(htpasswdUsers []*v1.HTPasswdUser) string {
+	var htpasswdUserJson bytes.Buffer
+
+	v1.MarshalHTPasswdUserList(htpasswdUsers, &htpasswdUserJson)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "HTPasswdUserList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(htpasswdUsers), len(htpasswdUsers), htpasswdUserJson.String())
+}
+
 func FormatNodePoolUpgradePolicyList(upgrades []*v1.NodePoolUpgradePolicy) string {
 	var outputJson bytes.Buffer
 

@@ -186,8 +186,7 @@ var args struct {
 	// Cluster Admin
 	createAdminUser      bool
 	clusterAdminPassword string
-	// Deprecated Cluster Admin
-	clusterAdminUser string
+	clusterAdminUser     string
 
 	// Audit Log Forwarding
 	AuditLogRoleARN string
@@ -715,7 +714,7 @@ func initFlags(cmd *cobra.Command) {
 		&args.clusterAdminUser,
 		"cluster-admin-user",
 		"",
-		`Deprecated cluster admin flag. Please use --create-admin-user.`,
+		`Username of Cluster Admin. Username must not contain /, :, or %%`,
 	)
 	flags.StringVar(
 		&args.clusterAdminPassword,
@@ -725,8 +724,6 @@ func initFlags(cmd *cobra.Command) {
 		- Be at least 14 characters (ASCII-standard) without whitespaces
 		- Include uppercase letters, lowercase letters, and numbers or symbols (ASCII-standard characters only)`,
 	)
-	// cluster admin flags deprecated to be removed
-	flags.MarkHidden("cluster-admin-user")
 
 	flags.StringVar(
 		&args.AuditLogRoleARN,
@@ -848,16 +845,10 @@ func run(cmd *cobra.Command, _ []string) {
 	// validate flags for cluster admin
 	isHostedCP := args.hostedClusterEnabled
 	createAdminUser := args.createAdminUser
-	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
-	if (createAdminUser || clusterAdminPassword != "") && isHostedCP {
-		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
-		os.Exit(1)
-	}
-	// error when using deprecated admin flags
 	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
-	if clusterAdminUser != "" {
-		r.Reporter.Errorf("'--cluster-admin-user' flag has been deprecated " +
-			"and replaced with '--create-admin-user'")
+	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
+	if (createAdminUser || clusterAdminUser != "" || clusterAdminPassword != "") && isHostedCP {
+		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
 		os.Exit(1)
 	}
 
@@ -965,7 +956,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Errors when users elects for cluster admin via flags and elects for hosted control plane via interactive prompt"
-	if isHostedCP && (createAdminUser || clusterAdminPassword != "") {
+	if isHostedCP && (createAdminUser || clusterAdminPassword != "" || clusterAdminUser != "") {
 		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
 		os.Exit(1)
 	}
@@ -973,7 +964,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// isClusterAdmin is a flag indicating if user wishes to create cluster admin
 	isClusterAdmin := false
 	if !isHostedCP {
-		if createAdminUser {
+		if createAdminUser || clusterAdminPassword != "" || clusterAdminUser != "" {
 			isClusterAdmin = true
 			// user supplies create-admin-user flag without cluster-admin-password will generate random password
 			if clusterAdminPassword == "" {
@@ -984,15 +975,21 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 			}
-		}
-		// validates both user inputted custom password and randomly generated password
-		if clusterAdminPassword != "" {
+			// validates both user inputted custom password and randomly generated password
 			err = passwordValidator.PasswordValidator(clusterAdminPassword)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
-			isClusterAdmin = true
+			if clusterAdminUser != "" {
+				err = idp.UsernameValidator(clusterAdminUser)
+				if err != nil {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
+			} else {
+				clusterAdminUser = admin.ClusterAdminUsername
+			}
 		}
 
 		//check to remove first condition (interactive mode)
@@ -1007,6 +1004,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 			if isClusterAdmin {
+				clusterAdminUser = idp.GetIdpUserNameFromPrompt(cmd, r, "cluster-admin-user", clusterAdminUser)
 				isCustomAdminPassword, err := interactive.GetBool(interactive.Input{
 					Question: "Create custom password for cluster admin",
 					Default:  false,
@@ -1029,7 +1027,7 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 		}
-		outputClusterAdminDetails(r, isClusterAdmin, clusterAdminPassword)
+		outputClusterAdminDetails(r, isClusterAdmin, clusterAdminUser, clusterAdminPassword)
 	}
 
 	if isHostedCP && cmd.Flags().Changed(arguments.NewDefaultMPLabelsFlag) {
@@ -3076,7 +3074,7 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.AdditionalTrustBundle = additionalTrustBundle
 	}
 	if isClusterAdmin {
-		clusterConfig.ClusterAdminUser = admin.ClusterAdminUsername
+		clusterConfig.ClusterAdminUser = clusterAdminUser
 		clusterConfig.ClusterAdminPassword = clusterAdminPassword
 	}
 	if isSharedVPC {
@@ -3627,10 +3625,17 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		}
 	}
 	if spec.ClusterAdminUser != "" {
+		argAdded := false
 		// Checks if admin password is from user (both flag and interactive)
 		if args.clusterAdminPassword != "" && spec.ClusterAdminPassword != "" {
 			command += fmt.Sprintf(" --cluster-admin-password %s", spec.ClusterAdminPassword)
-		} else {
+			argAdded = true
+		}
+		if spec.ClusterAdminUser != admin.ClusterAdminUsername {
+			command += fmt.Sprintf(" --cluster-admin-user %s", spec.ClusterAdminUser)
+			argAdded = true
+		}
+		if !argAdded {
 			command += " --create-admin-user"
 		}
 	}
@@ -3933,9 +3938,9 @@ func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([
 	return initialValidSubnets, nil
 }
 
-func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdminPassword string) {
+func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdminUser, createAdminPassword string) {
 	if isClusterAdmin {
-		r.Reporter.Infof("cluster admin user is %s", admin.ClusterAdminUsername)
+		r.Reporter.Infof("cluster admin user is %s", createAdminUser)
 		r.Reporter.Infof("cluster admin password is %s", createAdminPassword)
 	}
 }
