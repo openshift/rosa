@@ -86,9 +86,9 @@ func run(_ *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 
 	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\tPRIVATE\tDEFAULT\tROUTE SELECTORS\tLB-TYPE"+
-		"\tEXCLUDED NAMESPACE\tWILDCARD POLICY\tNAMESPACE OWNERSHIP\tHOSTNAME\tTLS SECRET REF\n")
+		"\tEXCLUDED NAMESPACE\tWILDCARD POLICY\tNAMESPACE OWNERSHIP\n")
 	for _, ingress := range ingresses {
-		fmt.Fprintf(writer, "%s\thttps://%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(writer, "%s\thttps://%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			ingress.ID(),
 			ingress.DNSName(),
 			isPrivate(ingress.Listening()),
@@ -98,8 +98,6 @@ func run(_ *cobra.Command, _ []string) {
 			helper.SliceToSortedString(ingress.ExcludedNamespaces()),
 			ingress.RouteWildcardPolicy(),
 			ingress.RouteNamespaceOwnershipPolicy(),
-			ingress.ClusterRoutesHostname(),
-			ingress.ClusterRoutesTlsSecretRef(),
 		)
 	}
 	writer.Flush()
