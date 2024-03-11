@@ -165,6 +165,18 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	// Confirm that token is not passed with auth code flags
+	if (args.useAuthCode || args.useDeviceCode) && args.token != "" {
+		r.Reporter.Errorf("Token cannot be passed with '--use-auth-code' or '--use-device-code' commands")
+		os.Exit(1)
+	}
+
+	// FedRAMP does not support oauth code flow login yet
+	if fedramp.HasFlag(cmd) && (args.useAuthCode || args.useDeviceCode) {
+		r.Reporter.Errorf("This login method is currently not supported with FedRAMP")
+		os.Exit(1)
+	}
+
 	if args.useAuthCode {
 		r.Reporter.Infof("You will now be redirected to Red Hat SSO login")
 
