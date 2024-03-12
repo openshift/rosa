@@ -67,7 +67,7 @@ func PrintConfig(arg string) error {
 		if err != nil {
 			return fmt.Errorf("Failed to find config file location: %v", err)
 		}
-		return fmt.Errorf("Config file '%s' does not exist", loc)
+		return fmt.Errorf("Config file '%s' does not exist. Please run the 'rosa login' command and try again.", loc)
 	}
 
 	// Print the value of the requested configuration setting:
