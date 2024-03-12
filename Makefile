@@ -34,11 +34,11 @@ rosa:
 
 .PHONY: test
 test:
-	go test ./...
+	go test $(shell go list ./... | grep -v /tests/)
 
 .PHONY: coverage
 coverage:
-	go test -coverprofile=cover.out -covermode=atomic -p 4 ./...
+	go test -coverprofile=cover.out -covermode=atomic -p 4 $(shell go list ./... | grep -v /tests/)
 
 .PHONY: install
 install:
@@ -54,7 +54,7 @@ fmt-imports: $(GCI)
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --timeout 5m0s ./...
+	$(GOLANGCI_LINT) run --timeout 5m0s --skip-dirs tests ./...
 
 .PHONY: commits/check
 commits/check:
@@ -101,3 +101,13 @@ mocks: $(MOCKGEN)
 	$(MOCKGEN) -source=pkg/aws/api_interface/ec2_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_ec2_api_client.go
 	$(MOCKGEN) -source=pkg/aws/api_interface/s3_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_s3_api_client.go
 	$(MOCKGEN) -source=pkg/aws/api_interface/secretsmanager_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_secretsmanager_api_client.go
+
+
+.PHONY: e2e_test
+e2e_test: install
+	ginkgo run \
+        --label-filter $(LabelFilter)\
+        --timeout 5h \
+        -r \
+        --focus-file tests/e2e/.* \
+		$(NULL)
