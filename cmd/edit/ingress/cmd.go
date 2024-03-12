@@ -156,11 +156,11 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	ingressID := argv[0]
-	if !ingressKeyRE.MatchString(ingressID) {
+	ingressKey := argv[0]
+	if !ingressKeyRE.MatchString(ingressKey) {
 		r.Reporter.Errorf(
 			"Ingress  identifier '%s' isn't valid: it must contain only letters or digits",
-			ingressID,
+			ingressKey,
 		)
 		os.Exit(1)
 	}
@@ -223,7 +223,7 @@ func run(cmd *cobra.Command, argv []string) {
 		private = &privArg
 	}
 	// Edit API endpoint instead of ingresses
-	if ingressID == "api" {
+	if ingressKey == "api" {
 		clusterConfig := ocm.Spec{
 			Private: private,
 		}
@@ -233,32 +233,13 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Failed to update cluster API on cluster '%s': %v", clusterKey, err)
 			os.Exit(1)
 		}
-		r.Reporter.Infof("Updated ingress '%s' on cluster '%s'", ingressID, clusterKey)
+		r.Reporter.Infof("Updated ingress '%s' on cluster '%s'", ingressKey, clusterKey)
 		os.Exit(0)
 	}
 
-	// Try to find the ingress:
-	r.Reporter.Debugf("Loading ingresses for cluster '%s'", clusterKey)
-	ingresses, err := r.OCMClient.GetIngresses(cluster.ID())
+	ingress, err := r.OCMClient.GetIngress(cluster.ID(), ingressKey)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get ingresses for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
-	var ingress *cmv1.Ingress
-	for _, item := range ingresses {
-		if ingressID == "apps" && item.Default() {
-			ingress = item
-		}
-		if ingressID == "apps2" && !item.Default() {
-			ingress = item
-		}
-		if item.ID() == ingressID {
-			ingress = item
-		}
-	}
-	if ingress == nil {
-		r.Reporter.Errorf("Failed to get ingress '%s' for cluster '%s'", ingressID, clusterKey)
+		r.Reporter.Errorf("Failed to fetch ingress: %v", err)
 		os.Exit(1)
 	}
 
