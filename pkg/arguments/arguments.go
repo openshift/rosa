@@ -195,21 +195,13 @@ func PreprocessUnknownFlagsWithId(cmd *cobra.Command, argv []string) error {
 	var validArgs []string
 	var upcomingValue bool
 
-	// If help is called, regardless of other flags, return we want help.
-	// Also say we need help if the command isn't runnable.
-	helpVal, err := cmd.Flags().GetBool("help")
-	if err != nil {
-		// should be impossible to get here as we always declare a help
-		// flag in InitDefaultHelpFlag()
-		panic(fmt.Errorf("\"help\" flag is incorrectly declared as non-bool. Please correct your code. Error: %w", err))
-	}
-	if helpVal {
-		return pflag.ErrHelp
-	}
-
 	foundId := false
 	for i, arg := range argv {
 		switch {
+		// If help is called, regardless of other flags, return we want help.
+		// Also say we need help if the command isn't runnable.
+		case arg == "--help":
+			return pflag.ErrHelp
 		// Upcoming value from a space-separated value
 		case upcomingValue:
 			if strings.HasPrefix(arg, "-") {
@@ -259,7 +251,7 @@ func PreprocessUnknownFlagsWithId(cmd *cobra.Command, argv []string) error {
 		}
 	}
 
-	err = flags.Parse(validArgs)
+	err := flags.Parse(validArgs)
 	if err != nil {
 		return err
 	}
