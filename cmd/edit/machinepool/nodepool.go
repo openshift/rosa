@@ -1,6 +1,7 @@
 package machinepool
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/helper/machinepools"
-	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -26,6 +26,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	isVersionSet := cmd.Flags().Changed("version")
 	isAutorepairSet := cmd.Flags().Changed("autorepair")
 	isTuningsConfigSet := cmd.Flags().Changed("tuning-configs")
+	isNodeDrainGracePeriodSet := cmd.Flags().Changed("node-drain-grace-period")
 
 	// we don't support anymore the version parameter
 	if isVersionSet {
@@ -69,9 +70,9 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 		os.Exit(1)
 	}
 
-	labelMap := mpHelpers.GetLabelMap(cmd, r, nodePool.Labels(), args.labels)
+	labelMap := machinepools.GetLabelMap(cmd, r, nodePool.Labels(), args.labels)
 
-	taintBuilders := mpHelpers.GetTaints(cmd, r, nodePool.Taints(), args.taints)
+	taintBuilders := machinepools.GetTaints(cmd, r, nodePool.Taints(), args.taints)
 
 	npBuilder := cmv1.NewNodePool().
 		ID(nodePool.ID())
@@ -161,6 +162,36 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 		}
 
 		npBuilder.TuningConfigs(inputTuningConfig...)
+	}
+
+	if isNodeDrainGracePeriodSet || interactive.Enabled() {
+		nodeDrainGracePeriod := args.nodeDrainGracePeriod
+		if nodeDrainGracePeriod == "" && nodePool.NodeDrainGracePeriod() != nil &&
+			nodePool.NodeDrainGracePeriod().Value() != 0 {
+			nodeDrainGracePeriod = fmt.Sprintf("%d minutes", int(nodePool.NodeDrainGracePeriod().Value()))
+		}
+
+		if interactive.Enabled() {
+			nodeDrainGracePeriod, err = interactive.GetString(interactive.Input{
+				Question: "Node drain grace period",
+				Help:     cmd.Flags().Lookup("node-drain-grace-period").Usage,
+				Default:  nodeDrainGracePeriod,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for Node drain grace period: %s", err)
+				os.Exit(1)
+			}
+		}
+
+		if nodeDrainGracePeriod != "" {
+			nodeDrainBuilder, err := machinepools.CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod)
+			if err != nil {
+				r.Reporter.Errorf(err.Error())
+				os.Exit(1)
+			}
+			npBuilder.NodeDrainGracePeriod(nodeDrainBuilder)
+		}
 	}
 
 	nodePool, err = npBuilder.Build()

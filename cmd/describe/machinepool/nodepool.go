@@ -51,8 +51,9 @@ func describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
 		"Version:                               %s\n"+
 		"Autorepair:                            %s\n"+
 		"Tuning configs:                        %s\n"+
-		"Message:                               %s\n"+
-		"Additional security group IDs:         %s\n",
+		"Additional security group IDs:         %s\n"+
+		"Node drain grace period:               %s\n"+
+		"Message:                               %s\n",
 		nodePool.ID(),
 		cluster.ID(),
 		ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
@@ -66,8 +67,9 @@ func describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
 		ocmOutput.PrintNodePoolVersion(nodePool.Version()),
 		ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),
 		ocmOutput.PrintNodePoolTuningConfigs(nodePool.TuningConfigs()),
-		ocmOutput.PrintNodePoolMessage(nodePool.Status()),
 		ocmOutput.PrintNodePoolAdditionalSecurityGroups(nodePool.AWSNodePool()),
+		ocmOutput.PrintNodeDrainGracePeriod(nodePool.NodeDrainGracePeriod()),
+		ocmOutput.PrintNodePoolMessage(nodePool.Status()),
 	)
 
 	// Print scheduled upgrades if existing

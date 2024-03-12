@@ -56,6 +56,7 @@ var args struct {
 	tuningConfigs         string
 	rootDiskSize          string
 	securityGroupIds      []string
+	nodeDrainGracePeriod  string
 }
 
 var Cmd = &cobra.Command{
@@ -78,7 +79,10 @@ var Cmd = &cobra.Command{
 
   # Add a machine pool with spot instances to a cluster
   rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --use-spot-instances \
-    --spot-max-price=0.5`,
+    --spot-max-price=0.5
+
+  # Add a machine pool to a cluster and set the node drain grace period
+  rosa create machinepool -c mycluster --name=mp-1 --node-drain-grace-period="90 minutes"`,
 	Run:  run,
 	Args: cobra.NoArgs,
 }
@@ -213,6 +217,17 @@ func init() {
 		nil,
 		"The additional Security Group IDs to be added to the machine pool. "+
 			"Format should be a comma-separated list.",
+	)
+
+	flags.StringVar(&args.nodeDrainGracePeriod,
+		"node-drain-grace-period",
+		"",
+		"You may set a grace period for how long Pod Disruption Budget-protected workloads will be "+
+			"respected when the NodePool is being replaced or upgraded.\nAfter this grace period, all remaining workloads "+
+			"will be forcibly evicted.\n"+
+			"Valid value is from 0 to 1 week (10080 minutes), and the supported units are 'minute|minutes' or "+
+			"'hour|hours'. 0 or empty value means that the NodePool can be drained without any time limitations.\n"+
+			"This flag is only supported for Hosted Control Planes.",
 	)
 
 	interactive.AddFlag(flags)

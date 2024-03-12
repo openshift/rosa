@@ -91,3 +91,15 @@ func PrintNodePoolTuningConfigs(tuningConfigs []string) string {
 	}
 	return strings.Join(tuningConfigs, ",")
 }
+
+func PrintNodeDrainGracePeriod(period *cmv1.Value) string {
+	if period != nil && period.Value() != 0 {
+		unit := "minute"
+		if period.Value() > 1 {
+			unit += "s"
+		}
+		return fmt.Sprintf("%d %s", int(period.Value()), unit)
+	}
+
+	return ""
+}

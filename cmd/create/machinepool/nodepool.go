@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/helper/machinepools"
-	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
@@ -223,10 +222,10 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	}
 
 	existingLabels := make(map[string]string, 0)
-	labelMap := mpHelpers.GetLabelMap(cmd, r, existingLabels, args.labels)
+	labelMap := machinepools.GetLabelMap(cmd, r, existingLabels, args.labels)
 
 	existingTaints := make([]*cmv1.Taint, 0)
-	taintBuilders := mpHelpers.GetTaints(cmd, r, existingTaints, args.taints)
+	taintBuilders := machinepools.GetTaints(cmd, r, existingTaints, args.taints)
 
 	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
 	securityGroupIds := args.securityGroupIds
@@ -379,6 +378,28 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	}
 
 	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds))
+
+	nodeDrainGracePeriod := args.nodeDrainGracePeriod
+	if interactive.Enabled() {
+		nodeDrainGracePeriod, err = interactive.GetString(interactive.Input{
+			Question: "Node drain grace period",
+			Help:     cmd.Flags().Lookup("node-drain-grace-period").Usage,
+			Default:  nodeDrainGracePeriod,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for Node drain grace period: %s", err)
+			os.Exit(1)
+		}
+	}
+	if nodeDrainGracePeriod != "" {
+		nodeDrainBuilder, err := machinepools.CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
+		npBuilder.NodeDrainGracePeriod(nodeDrainBuilder)
+	}
 
 	if version != "" {
 		npBuilder.Version(cmv1.NewVersion().ID(version))

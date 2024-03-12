@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 
+	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -220,4 +221,35 @@ func HostedClusterOnlyFlag(r *rosa.Runtime, cmd *cobra.Command, flagName string)
 		r.Reporter.Errorf("Setting the `%s` flag is only supported for hosted clusters", flagName)
 		os.Exit(1)
 	}
+}
+
+func CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod string) (*cmv1.ValueBuilder, error) {
+	valueBuilder := cmv1.NewValue()
+	if nodeDrainGracePeriod == "" {
+		return valueBuilder, nil
+	}
+
+	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
+	if len(nodeDrainParsed) > 2 {
+		return nil, fmt.Errorf("Invalid value for node drain grace period. Expects only the duration and " +
+			"the unit (minute|minutes|hour|hours).")
+	}
+	nodeDrainValue, err := strconv.ParseFloat(nodeDrainParsed[0], commonUtils.MaxByteSize)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid time for the node drain grace period: %s", err)
+	}
+
+	// Default to minutes if no unit is specified
+	if len(nodeDrainParsed) > 1 {
+		if nodeDrainParsed[1] != "hours" && nodeDrainParsed[1] != "hour" &&
+			nodeDrainParsed[1] != "minutes" && nodeDrainParsed[1] != "minute" {
+			return nil, fmt.Errorf("Invalid unit for the node drain grace period. Valid value is `minute|minutes|hour|hours`")
+		}
+		if nodeDrainParsed[1] == "hours" || nodeDrainParsed[1] == "hour" {
+			nodeDrainValue = nodeDrainValue * 60
+		}
+	}
+
+	valueBuilder.Value(nodeDrainValue).Unit("minutes")
+	return valueBuilder, nil
 }
