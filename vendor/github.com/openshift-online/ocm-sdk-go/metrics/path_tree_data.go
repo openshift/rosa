@@ -203,6 +203,9 @@ var pathTreeData = `{
             "aws_infrastructure_access_role_grants": {
               "-": null
             },
+            "break_glass_credentials": {
+              "-": null
+            },
             "clusterdeployment": null,
             "control_plane": {
               "upgrade_policies": {
