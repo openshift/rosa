@@ -385,19 +385,34 @@ func (mr *MockClientMockRecorder) FetchPublicSubnetMap(subnets interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPublicSubnetMap", reflect.TypeOf((*MockClient)(nil).FetchPublicSubnetMap), subnets)
 }
 
-// FilterVPCsPrivateSubnets mocks base method.
-func (m *MockClient) FilterVPCsPrivateSubnets(subnets []*ec2.Subnet) ([]*ec2.Subnet, error) {
+// FilterSubnetsWithStandardAvailabilityZones mocks base method.
+func (m *MockClient) FilterSubnetsWithStandardAvailabilityZones(subnets []*ec2.Subnet) ([]*ec2.Subnet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FilterVPCsPrivateSubnets", subnets)
+	ret := m.ctrl.Call(m, "FilterSubnetsWithStandardAvailabilityZones", subnets)
+	ret0, _ := ret[0].([]*ec2.Subnet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FilterSubnetsWithStandardAvailabilityZones indicates an expected call of FilterSubnetsWithStandardAvailabilityZones.
+func (mr *MockClientMockRecorder) FilterSubnetsWithStandardAvailabilityZones(subnets interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterSubnetsWithStandardAvailabilityZones", reflect.TypeOf((*MockClient)(nil).FilterSubnetsWithStandardAvailabilityZones), subnets)
+}
+
+// FilterVPCsPrivateSubnets mocks base method.
+func (m *MockClient) FilterVPCsPrivateSubnets(isHostedCp bool, subnets []*ec2.Subnet) ([]*ec2.Subnet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FilterVPCsPrivateSubnets", isHostedCp, subnets)
 	ret0, _ := ret[0].([]*ec2.Subnet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FilterVPCsPrivateSubnets indicates an expected call of FilterVPCsPrivateSubnets.
-func (mr *MockClientMockRecorder) FilterVPCsPrivateSubnets(subnets interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) FilterVPCsPrivateSubnets(isHostedCp, subnets interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterVPCsPrivateSubnets", reflect.TypeOf((*MockClient)(nil).FilterVPCsPrivateSubnets), subnets)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterVPCsPrivateSubnets", reflect.TypeOf((*MockClient)(nil).FilterVPCsPrivateSubnets), isHostedCp, subnets)
 }
 
 // FindPolicyARN mocks base method.
@@ -865,18 +880,18 @@ func (mr *MockClientMockRecorder) GetSubnetAvailabilityZone(subnetID interface{}
 }
 
 // GetVPCPrivateSubnets mocks base method.
-func (m *MockClient) GetVPCPrivateSubnets(subnetID string) ([]*ec2.Subnet, error) {
+func (m *MockClient) GetVPCPrivateSubnets(isHostedCp bool, subnetID string) ([]*ec2.Subnet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVPCPrivateSubnets", subnetID)
+	ret := m.ctrl.Call(m, "GetVPCPrivateSubnets", isHostedCp, subnetID)
 	ret0, _ := ret[0].([]*ec2.Subnet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetVPCPrivateSubnets indicates an expected call of GetVPCPrivateSubnets.
-func (mr *MockClientMockRecorder) GetVPCPrivateSubnets(subnetID interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetVPCPrivateSubnets(isHostedCp, subnetID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVPCPrivateSubnets", reflect.TypeOf((*MockClient)(nil).GetVPCPrivateSubnets), subnetID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVPCPrivateSubnets", reflect.TypeOf((*MockClient)(nil).GetVPCPrivateSubnets), isHostedCp, subnetID)
 }
 
 // GetVPCSubnets mocks base method.

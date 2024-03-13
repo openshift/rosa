@@ -611,4 +611,102 @@ var _ = Describe("Client", func() {
 			Expect(zoneType).To(Equal(LocalZone))
 		})
 	})
+
+	Describe("Filters local-zone and wavelength-zone subnets for HCP node pool", func() {
+		mockSubnets := []*ec2.Subnet{
+			{
+				SubnetId:         awsSdk.String("subnet-mockid-1"),
+				AvailabilityZone: awsSdk.String("us-east-1a"),
+			},
+			// wavelength-zone
+			{
+				SubnetId:         awsSdk.String("subnet-mockid-2"),
+				AvailabilityZone: awsSdk.String("us-east-1-wl1-atl-wlz-1"),
+			},
+			// local-zone
+			{
+				SubnetId:         awsSdk.String("subnet-mockid-3"),
+				AvailabilityZone: awsSdk.String("us-east-1-bos-1a"),
+			},
+		}
+
+		mockDescribeAvailabilityZoneOutput := &ec2.DescribeAvailabilityZonesOutput{
+			AvailabilityZones: []*ec2.AvailabilityZone{
+				{
+					ZoneName: awsSdk.String("us-east-1a"),
+					ZoneType: awsSdk.String("availability-zone"),
+				},
+				{
+					ZoneName: awsSdk.String("us-east-1-wl1-atl-wlz-1"),
+					ZoneType: awsSdk.String("wavelength-zone"),
+				},
+				{
+					ZoneName: awsSdk.String("us-east-1-bos-1a"),
+					ZoneType: awsSdk.String("local-zone"),
+				},
+			},
+		}
+
+		mockDescribeRouteTablesOutput := &ec2.DescribeRouteTablesOutput{RouteTables: []*ec2.RouteTable{
+			{Routes: []*ec2.Route{{GatewayId: awsSdk.String("private-1")}},
+				Associations: []*ec2.RouteTableAssociation{
+					{SubnetId: awsSdk.String("subnet-mockid-1")},
+					{SubnetId: awsSdk.String("subnet-mockid-2")},
+					{SubnetId: awsSdk.String("subnet-mockid-3")},
+				},
+			},
+		},
+		}
+
+		Context("FilterSubnetsWithStandardAvailabilityZones", func() {
+			It("Filters out subnets with local-zone, wavelength-zone availability zones", func() {
+
+				mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any()).Return(
+					mockDescribeAvailabilityZoneOutput, nil)
+
+				filteredSubnets, err := client.FilterSubnetsWithStandardAvailabilityZones(mockSubnets)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(len(filteredSubnets)).To(Equal(1))
+				Expect(*filteredSubnets[0].AvailabilityZone).To(Equal("us-east-1a"))
+			})
+		})
+
+		Context("FilterVPCsPrivateSubnets", func() {
+			It("Removes subnets with local-zone az, wavelength-zone az for HCP private subnets filter", func() {
+
+				mockEC2API.EXPECT().DescribeRouteTables(gomock.Any()).Return(
+					mockDescribeRouteTablesOutput, nil)
+
+				mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any()).Return(
+					mockDescribeAvailabilityZoneOutput, nil)
+
+				// HCP flag set to true
+				filteredPrivateSubnets, err := client.FilterVPCsPrivateSubnets(true, mockSubnets)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(filteredPrivateSubnets)).To(Equal(1))
+				Expect(*filteredPrivateSubnets[0].AvailabilityZone).To(Equal("us-east-1a"))
+			})
+
+			It("Keeps subnets with local-zone az, wavelength-zone az for non-HCP private subnets filter", func() {
+
+				mockEC2API.EXPECT().DescribeRouteTables(gomock.Any()).Return(
+					mockDescribeRouteTablesOutput, nil)
+
+				// HCP flag set to false
+				filteredPrivateSubnets, err := client.FilterVPCsPrivateSubnets(false, mockSubnets)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(filteredPrivateSubnets)).To(Equal(3))
+
+				// temp map to verify subnet exists
+				mapToVerifySubnets := map[string]bool{}
+				for _, privateSubnet := range filteredPrivateSubnets {
+					mapToVerifySubnets[*privateSubnet.SubnetId] = true
+				}
+				for _, subnet := range mockSubnets {
+					Expect(mapToVerifySubnets[*subnet.SubnetId]).To(BeTrue())
+				}
+			})
+		})
+	})
 })

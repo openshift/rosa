@@ -727,7 +727,7 @@ func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetID
 		}
 	}
 
-	privateSubnets, privateSubnetsErr := awsClient.FilterVPCsPrivateSubnets(subnets)
+	privateSubnets, privateSubnetsErr := awsClient.FilterVPCsPrivateSubnets(true, subnets)
 	if privateSubnetsErr != nil {
 		return 0, privateSubnetsErr
 	}
