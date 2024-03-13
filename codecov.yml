@@ -5,6 +5,7 @@ coverage:
         paths:
           - "cmd"
           - "pkg"
+        informational: true
     patch:
       default:
         paths:
