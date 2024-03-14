@@ -155,7 +155,7 @@ var _ = Describe("Versions", Ordered, func() {
 				func() string { return "4.11.0-0.nightly-2022-10-17-040259-nightly" },
 				func() string { return NightlyChannelGroup }, false, false, nil),
 			Entry("OK: Nightly channel group and good version",
-				func() string { return "4.14.1-0.nightly-2022-11-25-185455-nightly" },
+				func() string { return "4.14.0-0.nightly-2024-03-13-015516" },
 				func() string { return NightlyChannelGroup }, true, true, nil),
 			Entry("OK: When a greater version than the minimum is provided",
 				func() string { return "4.15.0" },
