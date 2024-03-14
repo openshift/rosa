@@ -13,6 +13,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -187,6 +188,42 @@ func taintValidator(val interface{}) error {
 		return nil
 	}
 	return fmt.Errorf("can only validate strings, got %v", val)
+}
+
+func GetAwsTags(cmd *cobra.Command, r *rosa.Runtime, inputTags []string) map[string]string {
+	// Custom tags for AWS resources
+	tags := inputTags
+	tagsList := map[string]string{}
+	if interactive.Enabled() {
+		tagsInput, err := interactive.GetString(interactive.Input{
+			Question: "Tags",
+			Help:     cmd.Flags().Lookup("tags").Usage,
+			Default:  strings.Join(tags, ","),
+			Validators: []interactive.Validator{
+				aws.UserTagValidator,
+				aws.UserTagDuplicateValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid set of tags: %s", err)
+			os.Exit(1)
+		}
+		if len(tagsInput) > 0 {
+			tags = strings.Split(tagsInput, ",")
+		}
+	}
+	if len(tags) > 0 {
+		if err := aws.UserTagValidator(tags); err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		delim := aws.GetTagsDelimiter(tags)
+		for _, tag := range tags {
+			t := strings.Split(tag, delim)
+			tagsList[t[0]] = strings.TrimSpace(t[1])
+		}
+	}
+	return tagsList
 }
 
 func GetLabelMap(cmd *cobra.Command, r *rosa.Runtime, existingLabels map[string]string,
