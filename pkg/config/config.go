@@ -24,7 +24,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"time"
+
+	"slices"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/golang/glog"
@@ -44,6 +48,47 @@ type Config struct {
 	TokenURL     string   `json:"token_url,omitempty" doc:"OpenID token URL."`
 	URL          string   `json:"url,omitempty" doc:"URL of the API gateway."`
 	FedRAMP      bool     `json:"fedramp,omitempty" doc:"Indicates FedRAMP."`
+}
+
+var DisallowedSetConfigProperties = []string{"scopes"}
+
+func ConfigPropertiesNamesAndDocs() ([]string, []string) {
+	configType := reflect.ValueOf(Config{}).Type()
+	names := make([]string, configType.NumField())
+	docs := make([]string, configType.NumField())
+	for i := 0; i < configType.NumField(); i++ {
+		tag := configType.Field(i).Tag
+		propName := strings.Split(tag.Get("json"), ",")[0]
+		names[i] = propName
+		propDoc := tag.Get("doc")
+		docs[i] = propDoc
+	}
+	return names, docs
+}
+
+func ConfigVarDocs() []string {
+	names, docs := ConfigPropertiesNamesAndDocs()
+	fieldHelps := make([]string, len(names))
+	for i := 0; i < len(names); i++ {
+		fieldHelps[i] = fmt.Sprintf("\t%-15s%s", names[i], docs[i])
+	}
+	return fieldHelps
+}
+
+func GetAllConfigProperties() []string {
+	properties, _ := ConfigPropertiesNamesAndDocs()
+	return properties
+}
+
+func GetAllowedConfigProperties() []string {
+	allProperties, _ := ConfigPropertiesNamesAndDocs()
+	var allowedProperties []string
+	for _, prop := range allProperties {
+		if !slices.Contains(DisallowedSetConfigProperties, prop) {
+			allowedProperties = append(allowedProperties, prop)
+		}
+	}
+	return allowedProperties
 }
 
 // Load loads the configuration from the configuration file. If the configuration file doesn't exist

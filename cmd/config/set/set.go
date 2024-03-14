@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -33,9 +34,10 @@ func NewConfigSetCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "set [flags] VARIABLE VALUE",
 		Short: "Sets the variable's value",
-		Long:  "Sets the value of a config variable. See 'rosa config --help' for supported config variables.",
-		Args:  cobra.ExactArgs(2),
-		Run:   run,
+		Long: fmt.Sprintf("Sets the value of a config variable. Supported variables are:\n%s",
+			strings.Join(config.GetAllowedConfigProperties(), "\n")),
+		Args: cobra.ExactArgs(2),
+		Run:  run,
 	}
 }
 
