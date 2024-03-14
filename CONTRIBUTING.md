@@ -93,6 +93,12 @@ https://github.com/openshift/release/blob/master/ci-operator/config/openshift/ro
 
 This repository also uses GitHub actions which are configured at `./github/workflows`
 
+## Version-gating a feature
+
+In some cases new features have minimal OCP versions.
+To add validation for a minimal version, please add the minimal version
+const to `features.go` and use the `IsFeatureSupported` function.
+
 # Questions?
 
 If you have any questions about the code or how to contribute, don't hesitate to
