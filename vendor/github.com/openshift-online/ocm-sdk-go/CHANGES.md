@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.410
+- Update model version v0.0.364
+  - Add `BreakGlassCredentials` to the `Cluster` resource model.
+
 ## 0.1.409
 - Update model version v0.0.363
   - Add `NodeDrainGracePeriod` to the `NodePool` model.
