@@ -18,7 +18,6 @@ package config
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -27,18 +26,6 @@ import (
 	"github.com/openshift/rosa/cmd/config/set"
 	"github.com/openshift/rosa/pkg/config"
 )
-
-func configVarDocs() string {
-	configType := reflect.ValueOf(config.Config{}).Type()
-	fieldHelps := make([]string, configType.NumField())
-	for i := 0; i < len(fieldHelps); i++ {
-		tag := configType.Field(i).Tag
-		name := strings.Split(tag.Get("json"), ",")[0]
-		doc := tag.Get("doc")
-		fieldHelps[i] = fmt.Sprintf("\t%-15s%s", name, doc)
-	}
-	return strings.Join(fieldHelps, "\n")
-}
 
 func longHelp() string {
 	loc, err := config.Location()
@@ -57,7 +44,7 @@ The following variables are supported:
 
 Note that "rosa config get access_token" gives whatever the file contains - may be missing or expired;
 you probably want "rosa token" command instead which will obtain a fresh token if needed.
-`, loc, configVarDocs())
+`, loc, strings.Join(config.ConfigVarDocs(), "\n"))
 }
 
 func NewConfigCommand() *cobra.Command {

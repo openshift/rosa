@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -37,9 +38,10 @@ func NewConfigGetCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get [flags] VARIABLE",
 		Short: "Prints the value of a config variable",
-		Long:  "Prints the value of a config variable. See 'rosa config --help' for supported config variables.",
-		Args:  cobra.ExactArgs(1),
-		Run:   run,
+		Long: fmt.Sprintf("Prints the value of a config variable. Supported variables are:\n%s",
+			strings.Join(config.GetAllConfigProperties(), "\n")),
+		Args: cobra.ExactArgs(1),
+		Run:  run,
 	}
 }
 
