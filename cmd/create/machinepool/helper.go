@@ -70,7 +70,8 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool, cl
 // getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
 func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {
 	// Fetch VPC's subnets
-	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
+	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(
+		cluster.Hypershift().Enabled(), cluster.AWS().SubnetIDs()[0])
 	if err != nil {
 		return nil, err
 	}

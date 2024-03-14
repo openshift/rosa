@@ -3981,7 +3981,6 @@ func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Obje
 	localZoneSubnets := []string{}
 
 	validSubnets, err := awsClient.ListSubnets(ids...)
-
 	if err != nil {
 		return initialValidSubnets, err
 	}
@@ -4009,6 +4008,7 @@ func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Obje
 		r.Warnf("The following subnets were excluded because they are on local zone or wavelength zone: %s",
 			helper.SliceToSortedString(localZoneSubnets))
 	}
+
 	return initialValidSubnets, nil
 }
 
