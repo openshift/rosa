@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -1037,5 +1038,32 @@ func ValidateBalancingIgnoredLabels(val interface{}) error {
 		}
 	}
 
+	return nil
+}
+
+func ValidateClaimValidationRules(input interface{}) error {
+	var idRE = regexp.MustCompile(`^[0-9a-z]+([:][0-9a-z]+)`)
+	var inputRules []string
+	inputType := reflect.TypeOf(input).Kind()
+	switch inputType {
+	case reflect.String:
+		if input.(string) == "" {
+			return nil
+		}
+		inputRules = strings.Split(input.(string), ",")
+		for _, inputRule := range inputRules {
+			if !idRE.MatchString(inputRule) {
+				return fmt.Errorf("invalid identifier '%s' for 'claim validation rule. '"+
+					"Should be in a <claim>:<required_value> format.", inputRule)
+			}
+		}
+	case reflect.Slice:
+		if reflect.TypeOf(input).Elem().Kind() != reflect.String {
+			return fmt.Errorf("unable to verify claim validation rules, incompatible type, expected slice of string got: '%s'",
+				inputType.String())
+		}
+	default:
+		return fmt.Errorf("can only validate string types, got %v", inputType.String())
+	}
 	return nil
 }

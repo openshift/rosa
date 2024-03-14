@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/autoscaler"
 	"github.com/openshift/rosa/cmd/dlt/cluster"
 	"github.com/openshift/rosa/cmd/dlt/dnsdomains"
+	"github.com/openshift/rosa/cmd/dlt/externalauthprovider"
 	"github.com/openshift/rosa/cmd/dlt/idp"
 	"github.com/openshift/rosa/cmd/dlt/ingress"
 	"github.com/openshift/rosa/cmd/dlt/kubeletconfig"
@@ -66,6 +67,7 @@ func init() {
 	Cmd.AddCommand(dnsdomains.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
 	Cmd.AddCommand(kubeletconfig.Cmd)
+	Cmd.AddCommand(externalauthprovider.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
