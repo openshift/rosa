@@ -219,7 +219,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		r.Reporter.Infof("Cluster '%s' operator roles have attached managed policies. "+
 			"An upgrade isn't needed", cluster.Name())
-		os.Exit(0)
+		return
 	}
 
 	policyVersion := args.policyUpgradeversion
@@ -388,6 +388,9 @@ func run(cmd *cobra.Command, argv []string) {
 			"Operator roles/policies associated with the cluster '%s' are already up-to-date.",
 			cluster.ID(),
 		)
+		if args.isInvokedFromClusterUpgrade {
+			return
+		}
 		os.Exit(0)
 	}
 

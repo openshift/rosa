@@ -259,7 +259,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Error creating operator roles: %s", err)
 			os.Exit(1)
 		}
-		os.Exit(0)
+		return
 	}
 	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
 	if err != nil {
