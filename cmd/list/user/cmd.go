@@ -26,6 +26,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -64,7 +65,7 @@ func run(_ *cobra.Command, _ []string) {
 	var err error
 	r.Reporter.Debugf("Loading users for cluster '%s'", clusterKey)
 	// Load cluster-admins for this cluster
-	clusterAdmins, err = r.OCMClient.GetUsers(cluster.ID(), "cluster-admins")
+	clusterAdmins, err = r.OCMClient.GetUsers(cluster.ID(), admin.ClusterAdminGroupname)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -99,14 +100,14 @@ func run(_ *cobra.Command, _ []string) {
 	groups := make(map[string][]string)
 	for _, user := range clusterAdmins {
 		longestUserId = math.Max(longestUserId, float64(len(user.ID())))
-		groups[user.ID()] = []string{"cluster-admins"}
+		groups[user.ID()] = []string{admin.ClusterAdminGroupname}
 	}
 	for _, user := range dedicatedAdmins {
 		longestUserId = math.Max(longestUserId, float64(len(user.ID())))
 		if _, ok := groups[user.ID()]; ok {
-			groups[user.ID()] = []string{"cluster-admins", "dedicated-admins"}
+			groups[user.ID()] = []string{admin.ClusterAdminGroupname, admin.DedicatedAdminGroupname}
 		} else {
-			groups[user.ID()] = []string{"dedicated-admins"}
+			groups[user.ID()] = []string{admin.DedicatedAdminGroupname}
 		}
 	}
 

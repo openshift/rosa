@@ -55,14 +55,18 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Try to find an existing htpasswd identity provider and
 	// check if cluster-admin user already exists
-	existingClusterAdminIdp, _ := cadmin.FindExistingClusterAdminIDP(cluster, r)
-
+	existingClusterAdminIdp, _, err := cadmin.FindIDPWithAdmin(cluster, r)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
 	if existingClusterAdminIdp != nil {
-		r.Reporter.Infof("There is an admin on cluster '%s'. To login, run the following command:\n"+
-			"   oc login %s --username %s", clusterKey, cluster.API().URL(), cadmin.ClusterAdminUsername)
+		r.Reporter.Infof("There is '%s' user on cluster '%s'. To login, run the following command:\n"+
+			"   oc login %s --username %s",
+			cadmin.ClusterAdminUsername, clusterKey, cluster.API().URL(), cadmin.ClusterAdminUsername)
 	} else {
-		r.Reporter.Warnf("There is no admin on cluster '%s'. To create it run the following command:\n"+
-			"   rosa create admin -c %s", clusterKey, clusterKey)
+		r.Reporter.Warnf("There is no '%s' user on cluster '%s'. To create it run the following command:\n"+
+			"   rosa create admin -c %s", cadmin.ClusterAdminUsername, clusterKey, clusterKey)
 		os.Exit(0)
 	}
 }
