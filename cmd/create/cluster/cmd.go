@@ -271,10 +271,10 @@ func initFlags(cmd *cobra.Command) {
 		"domain-prefix",
 		"",
 		"An optional unique domain prefix of the cluster. This will be used when generating a "+
-			"sub-domain for your cluster on openshiftapps.com. It must be unique and consist of "+
-			"lowercase alphanumeric characters or '-', start with an alphabetic character, and end"+
-			"with an alphanumeric character. The maximum length is 15 characters. Once set, the "+
-			"cluster domain prefix cannot be changed",
+			"sub-domain for your cluster on openshiftapps.com. It must be unique per organization "+
+			"and consist of lowercase alphanumeric characters or '-', start with an alphabetic "+
+			"character, and end with an alphanumeric character. The maximum length is 15 characters. "+
+			"Once set, the cluster domain prefix cannot be changed",
 	)
 
 	flags.BoolVar(
