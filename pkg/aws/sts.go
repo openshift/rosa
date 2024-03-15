@@ -218,7 +218,7 @@ type OidcProviderOutput struct {
 }
 
 func (c *awsClient) ListOidcProviders(targetClusterId string, config *cmv1.OidcConfig) ([]OidcProviderOutput, error) {
-	providers := []OidcProviderOutput
+	providers := []OidcProviderOutput{}
 	output, err := c.iamClient.ListOpenIDConnectProviders(context.Background(), &iam.ListOpenIDConnectProvidersInput{})
 	if err != nil {
 		return providers, err

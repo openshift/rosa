@@ -734,10 +734,11 @@ func (c *awsClient) ValidateCredentials() (bool, error) {
 	_, err := c.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		if strings.Contains(fmt.Sprintf("%s", err), "InvalidClientTokenId") {
-			return false, fmt.Errorf("InvalidClientTokenId",
-				"Invalid AWS Credentials. For help configuring your credentials, see " +
-					"https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/" +
+			awsErr := fmt.Errorf("Invalid AWS Credentials: %s.\n For help configuring your credentials, see %s",
+				err,
+				"https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/"+
 					"rosa-config-aws-account.html#rosa-configuring-aws-account_rosa-config-aws-account")
+			return false, awsErr
 		}
 		return false, err
 	}
@@ -1041,8 +1042,8 @@ func (c *awsClient) IsLocalAvailabilityZone(availabilityZoneName string) (bool, 
 }
 
 func (c *awsClient) GetAvailabilityZoneType(availabilityZoneName string) (string, error) {
-	availabilityZones, err := c.ec2Client.DescribeAvailabilityZones(
-		&ec2.DescribeAvailabilityZonesInput{ZoneNames: []*string{aws.String(availabilityZoneName)}})
+	availabilityZones, err := c.ec2Client.DescribeAvailabilityZones(context.Background(),
+		&ec2.DescribeAvailabilityZonesInput{ZoneNames: []string{availabilityZoneName}})
 	if err != nil {
 		return "", err
 	}

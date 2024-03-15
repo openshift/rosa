@@ -18,12 +18,14 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/assets"
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/test/matchers"
 )
 
 var _ = Describe("Client", func() {
@@ -496,13 +498,13 @@ var _ = Describe("Client", func() {
 
 		It("Wraps InvalidClientTokenId to get user login information", func() {
 
-			err := fmt.Errorf("InvalidClientTokenId: bad credentials")
-			mockSTSApi.EXPECT().GetCallerIdentity(gomock.Any(), &sts.GetCallerIdentityInput{}).Return(nil, err)
+			errMsg := fmt.Errorf("InvalidClientTokenId: bad credentials")
+			mockSTSApi.EXPECT().GetCallerIdentity(gomock.Any(), &sts.GetCallerIdentityInput{}).Return(nil, errMsg)
 
 			valid, err := client.ValidateCredentials()
 			Expect(valid).To(BeFalse())
 			Expect(err.Error()).To(ContainSubstring(
-				"Invalid AWS Credentials. For help configuring your credentials, see"))
+				"Invalid AWS Credentials: %s.\n For help configuring your credentials, see", errMsg))
 		})
 
 		It("Does not wrap other errors and returns false", func() {
@@ -524,7 +526,7 @@ var _ = Describe("Client", func() {
 			Expect(err).To(BeNil())
 		})
 	})
-Describe("Creator", func() {
+	Describe("Creator", func() {
 		DescribeTable("should be adapted from STS caller identity", func(
 			identity *sts.GetCallerIdentityOutput,
 			expected *Creator,
@@ -548,6 +550,7 @@ Describe("Creator", func() {
 					AccountID:  "123456789012",
 					IsSTS:      false,
 					IsGovcloud: false,
+					Partition:  "aws",
 				},
 				"",
 			),
@@ -561,6 +564,7 @@ Describe("Creator", func() {
 					AccountID:  "123456789123",
 					IsSTS:      true,
 					IsGovcloud: false,
+					Partition:  "aws",
 				},
 				"",
 			),
@@ -574,6 +578,7 @@ Describe("Creator", func() {
 					AccountID:  "123456789012",
 					IsSTS:      false,
 					IsGovcloud: true,
+					Partition:  "aws-us-gov",
 				},
 				"",
 			),
@@ -587,6 +592,7 @@ Describe("Creator", func() {
 					AccountID:  "123456789123",
 					IsSTS:      true,
 					IsGovcloud: true,
+					Partition:  "aws-us-gov",
 				},
 				"",
 			),
@@ -609,16 +615,16 @@ Describe("Creator", func() {
 				config3, err := MockOidcConfig("config1", "http://oidc.test3/345345345345")
 				Expect(err).ToNot(HaveOccurred())
 				mockedOidcConfigs = []*cmv1.OidcConfig{config1, config2, config3}
-				mockIamAPI.EXPECT().ListOpenIDConnectProviders(gomock.Any()).Return(&iam.
-					ListOpenIDConnectProvidersOutput{OpenIDConnectProviderList: []*iam.OpenIDConnectProviderListEntry{
+				mockIamAPI.EXPECT().ListOpenIDConnectProviders(gomock.Any(), gomock.Any()).Return(&iam.
+					ListOpenIDConnectProvidersOutput{OpenIDConnectProviderList: []iamtypes.OpenIDConnectProviderListEntry{
 					{Arn: awsSdk.String(mockedOidcProviderArns[0])},
 					{Arn: awsSdk.String(mockedOidcProviderArns[1])},
 					{Arn: awsSdk.String(mockedOidcProviderArns[2])},
 					{Arn: awsSdk.String(mockedOidcProviderArns[3])},
 				}}, nil)
-				mockIamAPI.EXPECT().ListOpenIDConnectProviderTags(gomock.Any()).Return(
-					&iam.ListOpenIDConnectProviderTagsOutput{IsTruncated: awsSdk.Bool(false),
-						Marker: awsSdk.String(""), Tags: []*iam.Tag{{Key: awsSdk.String(rosaTags.RedHatManaged),
+				mockIamAPI.EXPECT().ListOpenIDConnectProviderTags(gomock.Any(), gomock.Any()).Return(
+					&iam.ListOpenIDConnectProviderTagsOutput{IsTruncated: *awsSdk.Bool(false),
+						Marker: awsSdk.String(""), Tags: []iamtypes.Tag{{Key: awsSdk.String(rosaTags.RedHatManaged),
 							Value: awsSdk.String("true")}, {Key: awsSdk.String(rosaTags.ClusterID),
 							Value: awsSdk.String("")}}}, nil).AnyTimes()
 			})
@@ -654,17 +660,17 @@ Describe("Creator", func() {
 
 		It("Fetches", func() {
 			input := &ec2.DescribeAvailabilityZonesInput{
-				ZoneNames: []*string{awsSdk.String(zoneName)},
+				ZoneNames: []string{zoneName},
 			}
 			output := &ec2.DescribeAvailabilityZonesOutput{
-				AvailabilityZones: []*ec2.AvailabilityZone{
+				AvailabilityZones: []ec2types.AvailabilityZone{
 					{
 						ZoneType: awsSdk.String(LocalZone),
 					},
 				},
 			}
 
-			mockEC2API.EXPECT().DescribeAvailabilityZones(input).Return(output, nil)
+			mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any(), input).Return(output, nil)
 
 			zoneType, err := client.GetAvailabilityZoneType(zoneName)
 			Expect(err).NotTo(HaveOccurred())
@@ -696,6 +702,7 @@ Describe("Creator", func() {
 					AccountID:  "123456789012",
 					IsSTS:      false,
 					IsGovcloud: false,
+					Partition:  "aws",
 				},
 				"",
 			),
@@ -709,6 +716,7 @@ Describe("Creator", func() {
 					AccountID:  "123456789123",
 					IsSTS:      true,
 					IsGovcloud: false,
+					Partition:  "aws",
 				},
 				"",
 			),
@@ -722,6 +730,7 @@ Describe("Creator", func() {
 					AccountID:  "123456789012",
 					IsSTS:      false,
 					IsGovcloud: true,
+					Partition:  "aws-us-gov",
 				},
 				"",
 			),
@@ -735,6 +744,7 @@ Describe("Creator", func() {
 					AccountID:  "123456789123",
 					IsSTS:      true,
 					IsGovcloud: true,
+					Partition:  "aws-us-gov",
 				},
 				"",
 			),

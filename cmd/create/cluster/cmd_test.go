@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/mock/gomock"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/google/go-cmp/cmp"
@@ -436,11 +438,11 @@ var _ = Describe("getInitialValidSubnets()", func() {
 		mockClient *mock.MockClient
 
 		ids     = []string{"subnet-mockid-1", "subnet-mockid-2", "subnet-mockid-3", "subnet-mockid-4"}
-		subnets = []*ec2.Subnet{
+		subnets = []ec2types.Subnet{
 			{
 				SubnetId:         aws.String("subnet-mockid-1"),
 				AvailabilityZone: aws.String("us-east-1"),
-				Tags: []*ec2.Tag{
+				Tags: []ec2types.Tag{
 					{
 						Key:   aws.String(tags.RedHatManaged),
 						Value: aws.String("true"),

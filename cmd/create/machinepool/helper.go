@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -102,8 +102,8 @@ func getSecurityGroupsOption(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.
 	return interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, interactiveSgs.MachinePoolKind), nil
 }
 
-func getVpcIdFromSubnet(subnet *ec2.Subnet) (string, error) {
-	vpcId := awssdk.StringValue(subnet.VpcId)
+func getVpcIdFromSubnet(subnet ec2types.Subnet) (string, error) {
+	vpcId := awssdk.ToString(subnet.VpcId)
 	if vpcId == "" {
 		return "", fmt.Errorf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
 	}

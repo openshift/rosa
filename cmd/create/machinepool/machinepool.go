@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/briandowns/spinner"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"

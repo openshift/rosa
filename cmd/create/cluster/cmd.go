@@ -3976,7 +3976,7 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
 }
 
-func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([]ec2types.Subnet, error) {
+func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Object) ([]ec2types.Subnet, error) {
 	var initialValidSubnets []ec2types.Subnet
 	rhManagedSubnets := []string{}
 	localZoneSubnets := []string{}
