@@ -6,9 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -19,7 +22,6 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/openshift/rosa/pkg/test/matchers"
 )
 
 var _ = Describe("Validate build command", func() {
@@ -353,31 +355,31 @@ var _ = Describe("Validations", func() {
 var _ = Describe("Filtering", func() {
 	r := rosa.NewRuntime()
 	DescribeTable("should filter CIDR range requests", func(
-		initialSubnets []*ec2.Subnet,
+		initialSubnets []ec2types.Subnet,
 		machineNetwork *net.IPNet,
 		serviceNetwork *net.IPNet,
-		expected []*ec2.Subnet,
+		expected []ec2types.Subnet,
 		expectedError string,
 	) {
 		out, err := filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
 		if expectedError == "" {
 			Expect(err).To(BeNil())
+			Expect(cmp.Equal(out, expected, cmpopts.IgnoreUnexported(ec2types.Subnet{}))).To(BeTrue())
 		} else {
 			Expect(err).To(MatchError(ContainSubstring(expectedError)))
 		}
-		Expect(out).To(matchers.MatchExpected(expected))
 	},
 		Entry(
 			"no input subnets to filter",
-			[]*ec2.Subnet{},               /* initialSubnets */
+			[]ec2types.Subnet{},           /* initialSubnets */
 			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
 			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
-			[]*ec2.Subnet{},               /* expected */
+			[]ec2types.Subnet{},           /* expected */
 			"",                            /* expectedError */
 		),
 		Entry(
 			"invalid input subnets filtered",
-			[]*ec2.Subnet{ /* initialSubnets */
+			[]ec2types.Subnet{ /* initialSubnets */
 				{CidrBlock: aws.String("wrong"), SubnetId: aws.String("id")},
 			},
 			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
@@ -387,7 +389,7 @@ var _ = Describe("Filtering", func() {
 		),
 		Entry(
 			"input subnets filtered",
-			[]*ec2.Subnet{ /* initialSubnets */
+			[]ec2types.Subnet{ /* initialSubnets */
 				{CidrBlock: aws.String("57.0.2.0/24"), SubnetId: aws.String("id")},
 				{CidrBlock: aws.String("123.244.128.0/24"), SubnetId: aws.String("id")},
 				{CidrBlock: aws.String("192.0.2.0/30"), SubnetId: aws.String("id")},
@@ -395,7 +397,7 @@ var _ = Describe("Filtering", func() {
 			},
 			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
 			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
-			[]*ec2.Subnet{ /* expected */
+			[]ec2types.Subnet{ /* expected */
 				{CidrBlock: aws.String("192.0.2.0/30"), SubnetId: aws.String("id")},
 			},
 			"", /* expectedError */
@@ -436,11 +438,11 @@ var _ = Describe("getInitialValidSubnets()", func() {
 		mockClient *mock.MockClient
 
 		ids     = []string{"subnet-mockid-1", "subnet-mockid-2", "subnet-mockid-3", "subnet-mockid-4"}
-		subnets = []*ec2.Subnet{
+		subnets = []ec2types.Subnet{
 			{
 				SubnetId:         aws.String("subnet-mockid-1"),
 				AvailabilityZone: aws.String("us-east-1"),
-				Tags: []*ec2.Tag{
+				Tags: []ec2types.Tag{
 					{
 						Key:   aws.String(tags.RedHatManaged),
 						Value: aws.String("true"),
