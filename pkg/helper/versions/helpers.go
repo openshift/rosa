@@ -110,26 +110,32 @@ func GetFilteredVersionList(versionList []string, minVersion string, maxVersion 
 
 // Used for hosted machinepool minimal version
 func GetMinimalHostedMachinePoolVersion(controlPlaneVersion string) (string, error) {
-	cpVersion, errcp := ver.NewVersion(controlPlaneVersion)
-	if errcp != nil {
-		return "", errcp
+	cpVersion, err := ver.NewVersion(controlPlaneVersion)
+	if err != nil {
+		return "", err
 	}
 	segments := cpVersion.Segments()
 	// Hosted machinepools can be created with a minimal of two minor versions from the control plane
 	minor := segments[1] - MinorVersionsSupported
 	version := fmt.Sprintf("%d.%d.%d", segments[0], minor, 0)
-	minimalVersion, errminver := ver.NewVersion(version)
-	if errminver != nil {
-		return "", errminver
+
+	minimalVersion, err := v1.NewVersion().ID(version).RawID(version).HostedControlPlaneEnabled(true).Build()
+	if err != nil {
+		return "", err
 	}
 
-	lowestHostedCPSupport, errlow := ver.NewVersion(ocm.LowestHostedCpSupport)
-	if errlow != nil {
-		return "", errlow
+	minimalVersionSupported, err := ocm.HasHostedCPSupport(minimalVersion)
+	if err != nil {
+		return "", err
 	}
 
-	if minimalVersion.LessThanOrEqual(lowestHostedCPSupport) {
-		return ocm.LowestHostedCpSupport, nil
+	if !minimalVersionSupported {
+		lowestVersionPermittedForHCP, err := ver.NewVersion(ocm.LowestHostedCpSupport)
+		if err != nil {
+			return "", err
+		}
+		segments := lowestVersionPermittedForHCP.Segments()
+		version = fmt.Sprintf("%d.%d.%d", segments[0], segments[1], segments[2])
 	}
 
 	return version, nil
