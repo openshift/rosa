@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/rosa/cmd/describe/addon"
 	"github.com/openshift/rosa/cmd/describe/admin"
 	"github.com/openshift/rosa/cmd/describe/autoscaler"
+	"github.com/openshift/rosa/cmd/describe/breakglasscredential"
 	"github.com/openshift/rosa/cmd/describe/cluster"
 	"github.com/openshift/rosa/cmd/describe/externalauthprovider"
 	"github.com/openshift/rosa/cmd/describe/installation"
@@ -52,6 +53,7 @@ func init() {
 	Cmd.AddCommand(kubeletconfig.Cmd)
 	Cmd.AddCommand(autoscaler.NewDescribeAutoscalerCommand())
 	Cmd.AddCommand(externalauthprovider.Cmd)
+	Cmd.AddCommand(breakglasscredential.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

@@ -116,6 +116,14 @@ func Print(resource interface{}) error {
 		if oidcConfig, ok := resource.(*cmv1.OidcConfig); ok {
 			cmv1.MarshalOidcConfig(oidcConfig, &b)
 		}
+	case "[]*v1.BreakGlassCredential":
+		if breakGlassCredentials, ok := resource.([]*cmv1.BreakGlassCredential); ok {
+			cmv1.MarshalBreakGlassCredentialList(breakGlassCredentials, &b)
+		}
+	case "*v1.BreakGlassCredential":
+		if breakGlassCredential, ok := resource.(*cmv1.BreakGlassCredential); ok {
+			cmv1.MarshalBreakGlassCredential(breakGlassCredential, &b)
+		}
 	case "[]*v1.TuningConfig":
 		if tuningConfigs, ok := resource.([]*cmv1.TuningConfig); ok {
 			cmv1.MarshalTuningConfigList(tuningConfigs, &b)

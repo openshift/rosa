@@ -86,6 +86,15 @@ var (
 	MockClusterName = "cluster"
 )
 
+func BuildBreakGlassCredential() *v1.BreakGlassCredential {
+	const breakGlassCredentialId = "test-id"
+	breakGlassCredential, err := v1.NewBreakGlassCredential().
+		ID(breakGlassCredentialId).Username("username").Status(v1.BreakGlassCredentialStatusIssued).
+		Build()
+	Expect(err).To(BeNil())
+	return breakGlassCredential
+}
+
 func BuildExternalAuth() *v1.ExternalAuth {
 	const externalAuthName = "microsoft-entra-id"
 	externalAuth, err := v1.NewExternalAuth().ID(externalAuthName).
@@ -197,6 +206,19 @@ func FormatHtpasswdUserList(htpasswdUsers []*v1.HTPasswdUser) string {
 		"total": %d,
 		"items": %s
 	}`, len(htpasswdUsers), len(htpasswdUsers), htpasswdUserJson.String())
+}
+
+func FormatBreakGlassCredentialList(credentials []*v1.BreakGlassCredential) string {
+	var outputJson bytes.Buffer
+	v1.MarshalBreakGlassCredentialList(credentials, &outputJson)
+	return fmt.Sprintf(`
+	{
+		"kind": "BreakGlassCredentialsList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(credentials), len(credentials), outputJson.String())
 }
 
 func FormatExternalAuthList(externalAuths []*v1.ExternalAuth) string {

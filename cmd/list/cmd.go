@@ -21,6 +21,7 @@ import (
 
 	"github.com/openshift/rosa/cmd/list/accountroles"
 	"github.com/openshift/rosa/cmd/list/addon"
+	"github.com/openshift/rosa/cmd/list/breakglasscredential"
 	"github.com/openshift/rosa/cmd/list/cluster"
 	"github.com/openshift/rosa/cmd/list/dnsdomains"
 	"github.com/openshift/rosa/cmd/list/externalauthprovider"
@@ -74,6 +75,7 @@ func init() {
 	Cmd.AddCommand(dnsdomains.Cmd)
 	Cmd.AddCommand(rhRegion.Cmd)
 	Cmd.AddCommand(externalauthprovider.Cmd)
+	Cmd.AddCommand(breakglasscredential.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
