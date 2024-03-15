@@ -36,7 +36,7 @@ const (
 	LowestHttpTokensRequiredSupport = "4.11.0"
 	LowestSTSMinor                  = "4.7"
 
-	LowestHostedCpSupport            = "4.14.0-0.a"
+	LowestHostedCpSupport            = "4.12.0-0.a"
 	MinVersionForManagedIngressV2    = "4.14.0-0.a"
 	MinVersionForMachinePoolRootDisk = "4.10.0-0.a"
 	VersionPrefix                    = "openshift-v"

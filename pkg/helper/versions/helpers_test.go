@@ -74,7 +74,7 @@ var _ = Describe("Version Helpers", Ordered, func() {
 			),
 			Entry("Current control plane",
 				"4.14.5",
-				"4.14.0",
+				"4.12.0",
 			),
 		)
 	})
