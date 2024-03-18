@@ -165,14 +165,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Determine if Classic ROSA managed policies are enabled
-	isManagedSet := cmd.Flags().Changed("managed-policies") || cmd.Flags().Changed("mp")
-	if isManagedSet && env == ocm.Production {
-		r.Reporter.Errorf("Classic ROSA managed policies are not supported in this environment")
-		os.Exit(1)
-	}
 	managedPolicies := args.managed
-
 	if args.forcePolicyCreation && managedPolicies {
 		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
 		os.Exit(1)
@@ -186,9 +179,24 @@ func run(cmd *cobra.Command, argv []string) {
 	isClassicValueSet := cmd.Flags().Changed("classic")
 	isHostedCPValueSet := cmd.Flags().Changed("hosted-cp")
 
+	// Determine if Classic ROSA managed policies are enabled
+	isManagedSet := cmd.Flags().Changed("managed-policies") || cmd.Flags().Changed("mp")
+
 	// Hosted cluster roles always use managed policies
-	if isHostedCPValueSet && cmd.Flags().Changed("managed-policies") && !args.managed {
-		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
+	if isHostedCPValueSet && args.hostedCP && isManagedSet {
+		if args.managed {
+			r.Reporter.Warnf("Setting `managed-policies` flag for hosted CP account roles has no effect. " +
+				"Hosted CP account roles are managed policies only")
+			isManagedSet = false
+			managedPolicies = false
+		} else {
+			r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
+			os.Exit(1)
+		}
+	}
+
+	if isManagedSet && env == ocm.Production {
+		r.Reporter.Errorf("Classic ROSA managed policies are not supported in this environment")
 		os.Exit(1)
 	}
 
