@@ -52,7 +52,7 @@ Tuning configs:
 Additional security group IDs:         
 Node drain grace period:               1 minute
 Message:                               
-Scheduled upgrade:          scheduled 4.12.25 on 2023-08-07 15:22 UTC
+Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
 `
 
 	describeYamlWithUpgradeOutput = `availability_zone: us-east-1a
