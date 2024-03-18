@@ -23,7 +23,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -1279,19 +1278,10 @@ func (c *awsClient) GetSecurityGroupIds(vpcId string) ([]ec2types.SecurityGroup,
 		return []ec2types.SecurityGroup{}, err
 	}
 
-	for _, secGroup := range resp.SecurityGroups {
-		if c.Ec2ResourceHasTag(secGroup.Tags, tags.RedHatManaged, strconv.FormatBool(true)) {
-			continue
-		}
-		if aws.ToString(secGroup.GroupName) == "default" {
-			continue
-		}
-	}
-
 	return resp.SecurityGroups, nil
 }
 
-func (c *awsClient) Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue string) bool {
+func Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue string) bool {
 	for _, tag := range tags {
 		if aws.ToString(tag.Key) == tagName && aws.ToString(tag.Value) == tagValue {
 			return true
