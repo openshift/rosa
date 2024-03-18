@@ -3,6 +3,9 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.411
+- Upgrade pgx version and other dependencies
+
 ## 0.1.410
 - Update model version v0.0.364
   - Add `BreakGlassCredentials` to the `Cluster` resource model.
