@@ -75,7 +75,7 @@ func describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
 	// Print scheduled upgrades if existing
 	if scheduledUpgrade != nil {
 		nodePoolOutput = fmt.Sprintf("%s"+
-			"Scheduled upgrade:          %s %s on %s\n",
+			"Scheduled upgrade:                     %s %s on %s\n",
 			nodePoolOutput,
 			scheduledUpgrade.State().Value(),
 			scheduledUpgrade.Version(),
