@@ -24,7 +24,6 @@ profiles:
     oidc_config: "managed"
     auditlog_forward: true
     admin_enabled: false
-    managed_policies: true
     disable_uwm: true
     autoscaler_enabled: true
   account-role:
@@ -81,6 +80,8 @@ profiles:
     imdsv2: ""
     ingress_customized: true
     auditlog_forward: false
+    name_length: 54
+    customize_domain_prefix: true
   account-role:
     path: ""
     permission_boundary: ""
@@ -139,7 +140,6 @@ profiles:
     shared_vpc: false
     auditlog_forward: true
     admin_enabled: false
-    managed_policies: true
     disable_uwm: true
     network_type: other
     external_auth_config: true

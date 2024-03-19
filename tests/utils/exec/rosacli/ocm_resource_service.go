@@ -16,6 +16,13 @@ var RoleTypeSuffixMap = map[string]string{
 	"Worker":        "Worker-Role",
 }
 
+type AccountRolesUnit struct {
+	InstallerRole    string `json:"Installer,omitempty"`
+	SupportRole      string `json:"Support,omitempty"`
+	WorkerRole       string `json:"Worker,omitempty"`
+	ControlPlaneRole string `json:"Control plane,omitempty"`
+}
+
 type OCMResourceService interface {
 	ResourcesCleaner
 
@@ -297,6 +304,27 @@ func (arl AccountRoleList) AccountRoles(prefix string) (accountRoles []*AccountR
 		}
 	}
 	return
+}
+
+// Get all specified account roles by prefix and classic
+func (arl AccountRoleList) DigAccountRoles(prefix string, hcp bool) *AccountRolesUnit {
+	var accRoles *AccountRolesUnit = new(AccountRolesUnit)
+	roleMap := map[string]interface{}{}
+	matchedAccountRoles := arl.AccountRoles(prefix)
+	for _, role := range matchedAccountRoles {
+		if hcp && strings.Contains(role.RoleName, "HCP") {
+			roleMap[role.RoleType] = role.RoleArn
+			continue
+		}
+
+		if !strings.Contains(role.RoleName, "HCP") {
+			roleMap[role.RoleType] = role.RoleArn
+			continue
+		}
+
+	}
+	MapStructure(roleMap, accRoles)
+	return accRoles
 }
 
 // Get specified account role by the arn

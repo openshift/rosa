@@ -19,9 +19,12 @@ type ClusterService interface {
 	ReflectClusterDescription(result bytes.Buffer) (*ClusterDescription, error)
 	DescribeClusterAndReflect(clusterID string) (*ClusterDescription, error)
 	List() (bytes.Buffer, error)
+	Create(clusterName string, flags ...string) (bytes.Buffer, error, string)
 	CreateDryRun(clusterName string, flags ...string) (bytes.Buffer, error)
 	EditCluster(clusterID string, flags ...string) (bytes.Buffer, error)
 	DeleteUpgrade(flags ...string) (bytes.Buffer, error)
+	InstallLog(clusterID string, flags ...string) (bytes.Buffer, error)
+	UnInstallLog(clusterID string, flags ...string) (bytes.Buffer, error)
 
 	IsHostedCPCluster(clusterID string) (bool, error)
 	IsSTSCluster(clusterID string) (bool, error)
@@ -144,6 +147,14 @@ func (c *clusterService) CreateDryRun(clusterName string, flags ...string) (byte
 		CmdFlags(combflags...)
 	return createDryRun.Run()
 }
+func (c *clusterService) Create(clusterName string, flags ...string) (bytes.Buffer, error, string) {
+	combflags := append([]string{"-c", clusterName}, flags...)
+	createCommand := c.client.Runner.
+		Cmd("create", "cluster").
+		CmdFlags(combflags...)
+	output, err := createCommand.Run()
+	return output, err, createCommand.CMDString()
+}
 
 func (c *clusterService) EditCluster(clusterID string, flags ...string) (bytes.Buffer, error) {
 	combflags := append([]string{"-c", clusterID}, flags...)
@@ -158,6 +169,18 @@ func (c *clusterService) DeleteUpgrade(flags ...string) (bytes.Buffer, error) {
 		Cmd("delete", "upgrade").
 		CmdFlags(flags...)
 	return DeleteUpgrade.Run()
+}
+func (c *clusterService) InstallLog(clusterID string, flags ...string) (bytes.Buffer, error) {
+	installLog := c.client.Runner.
+		Cmd("logs", "install", "-c", clusterID).
+		CmdFlags(flags...)
+	return installLog.Run()
+}
+func (c *clusterService) UnInstallLog(clusterID string, flags ...string) (bytes.Buffer, error) {
+	UnInstallLog := c.client.Runner.
+		Cmd("logs", "uninstall", "-c", clusterID).
+		CmdFlags(flags...)
+	return UnInstallLog.Run()
 }
 
 func (c *clusterService) CleanResources(clusterID string) (errors []error) {
@@ -210,7 +233,7 @@ func (c *clusterService) GetClusterVersion(clusterID string) (clusterVersion con
 	}
 
 	if clusterConfig.Version.RawID != "" {
-		clusterVersion = clusterConfig.Version
+		clusterVersion = *clusterConfig.Version
 	} else {
 		// Else retrieve from cluster description
 		var jsonData *jsonData
@@ -254,7 +277,7 @@ func RetrieveDesiredComputeNodes(clusterDescription *ClusterDescription) (nodesN
 		var isInt bool
 		nodesNb, isInt = clusterDescription.Nodes[0]["Compute (desired)"].(int)
 		if !isInt {
-			err = fmt.Errorf("'%v' is not an integer value")
+			err = fmt.Errorf("'%v' is not an integer value", isInt)
 		}
 	} else {
 		// Try autoscale one
