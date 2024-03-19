@@ -24,7 +24,6 @@ profiles:
     oidc_config: "managed"
     auditlog_forward: true
     admin_enabled: false
-    managed_policies: true
     disable_uwm: true
     autoscaler_enabled: true
   account-role:
@@ -139,7 +138,6 @@ profiles:
     shared_vpc: false
     auditlog_forward: true
     admin_enabled: false
-    managed_policies: true
     disable_uwm: true
     network_type: other
     external_auth_config: true
