@@ -21,11 +21,17 @@ import (
 	"net/url"
 	"strings"
 
+	"go.uber.org/mock/gomock"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	ocmCommonValidations "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
+	mock "github.com/openshift/rosa/pkg/aws"
 )
 
 var _ = Describe("Http tokens", func() {
@@ -393,6 +399,33 @@ var _ = Describe("ValidateSubnetsCount", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
+	})
+})
+
+var _ = Describe("ValidateHostedClusterSubnets for Private Cluster", func() {
+	var (
+		mockClient *mock.MockClient
+		ids        = []string{"subnet-public-1", "subnet-private-2"}
+		subnets    = []ec2types.Subnet{
+			{SubnetId: aws.String("subnet-public-1")},
+			{SubnetId: aws.String("subnet-private-2")},
+		}
+	)
+	BeforeEach(func() {
+		mockCtrl := gomock.NewController(GinkgoT())
+		mockClient = mock.NewMockClient(mockCtrl)
+		mockClient.EXPECT().GetVPCSubnets(gomock.Any()).Return(subnets, nil).AnyTimes()
+	})
+	It("should not return an error when only private subnets are present for a private cluster", func() {
+		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any()).Return([]ec2types.Subnet{subnets[1]}, nil)
+		_, err := ValidateHostedClusterSubnets(mockClient, true, []string{"subnet-private-2"})
+		Expect(err).NotTo(HaveOccurred())
+	})
+	It("should return an error when public subnets are present for a private cluster", func() {
+		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any()).Return([]ec2types.Subnet{}, nil)
+		_, err := ValidateHostedClusterSubnets(mockClient, true, ids)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("The number of public subnets for a private hosted cluster should be zero"))
 	})
 })
 
