@@ -5,6 +5,8 @@ import (
 	"net"
 
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
+
+	"github.com/openshift/rosa/pkg/fedramp"
 )
 
 type CreateManagedServiceArgs struct {
@@ -38,6 +40,10 @@ type CreateManagedServiceArgs struct {
 }
 
 func (c *Client) CreateManagedService(args CreateManagedServiceArgs) (*msv1.ManagedService, error) {
+	if fedramp.Enabled() {
+		return nil, fmt.Errorf("managed services are not supported for FedRAMP clusters")
+	}
+
 	operatorIamRoles := []*msv1.OperatorIAMRoleBuilder{}
 	for _, operatorIAMRole := range args.AwsOperatorIamRoleList {
 		operatorIamRoles = append(operatorIamRoles,
@@ -174,6 +180,10 @@ type UpdateManagedServiceArgs struct {
 }
 
 func (c *Client) UpdateManagedService(args UpdateManagedServiceArgs) error {
+	if fedramp.Enabled() {
+		return fmt.Errorf("managed services are not supported for FedRAMP clusters")
+	}
+
 	parameters := []*msv1.ServiceParameterBuilder{}
 	for id, val := range args.Parameters {
 		parameters = append(parameters,
