@@ -57,6 +57,7 @@ var args struct {
 	insecure      bool
 	useAuthCode   bool
 	useDeviceCode bool
+	rhRegion      string
 }
 
 var Cmd = &cobra.Command{
@@ -109,14 +110,15 @@ func init() {
 		"OpenID scope. If this option is used it will completely replace the default "+
 			"scopes. Can be repeated multiple times to specify multiple scopes.",
 	)
+	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
 		&args.env,
-		"env",
-		sdk.DefaultURL,
+		arguments.NewEnvFlag,
+		"",
 		"Environment of the API gateway. The value can be the complete URL or an alias. "+
 			"The valid aliases are 'production', 'staging' and 'integration'.",
 	)
-	flags.MarkHidden("env")
+	flags.MarkHidden(arguments.NewEnvFlag)
 	flags.StringVarP(
 		&args.token,
 		"token",
@@ -146,6 +148,15 @@ func init() {
 			"This should only be used for remote hosts and containers where browsers are "+
 			"not available. Use auth code for all other scenarios.",
 	)
+	flags.StringVar(
+		&args.rhRegion,
+		"rh-region",
+		"",
+		"OCM data sovereignty region identifier. --env will be used to initiate a service discovery "+
+			"request to find the region URL matching the provided identifier. Use `rosa list rh-regions` "+
+			"to see available regions.",
+	)
+	flags.MarkHidden("rh-region")
 	arguments.AddRegionFlag(flags)
 	fedramp.AddFlag(flags)
 }
@@ -160,10 +171,6 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Check mandatory options:
 	env := args.env
-	if env == "" {
-		r.Reporter.Errorf("Option '--env' is mandatory")
-		os.Exit(1)
-	}
 
 	// Confirm that token is not passed with auth code flags
 	if (args.useAuthCode || args.useDeviceCode) && args.token != "" {
@@ -238,8 +245,8 @@ func run(cmd *cobra.Command, argv []string) {
 		config.IsEncryptedToken(token) {
 		fedramp.Enable()
 		// Always default to prod
-		if env == sdk.DefaultURL {
-			env = "production"
+		if env == sdk.DefaultURL || env == "" {
+			env = ocm.Production
 		}
 		if fedramp.HasAdminFlag(cmd) {
 			uiTokenPage = fedramp.AdminLoginURLs[env]
@@ -296,11 +303,13 @@ func run(cmd *cobra.Command, argv []string) {
 		fedramp.Enable()
 	}
 
-	// Apply the default configuration details if not explicitly provided by the user:
-	gatewayURL, ok := ocm.URLAliases[env]
-	if !ok {
-		gatewayURL = env
+	gatewayURL, err := ocm.ResolveGatewayUrl(env, cfg)
+	if err != nil {
+		r.Reporter.Errorf("Failed to resolve gateway URL: %v", err)
+		os.Exit(1)
 	}
+
+	var ok bool
 	tokenURL := sdk.DefaultTokenURL
 	if args.tokenURL != "" {
 		tokenURL = args.tokenURL
@@ -338,6 +347,26 @@ func run(cmd *cobra.Command, argv []string) {
 				clientID = args.clientID
 			}
 		}
+	}
+
+	// If an --rh-region is provided, gatewayURL is resolved from ResolveGatewayUrl() and then used to initiate
+	// service discovery for the environment gatewayURL is a part of, but it (and
+	// ultimately the cfg.URL) is then updated to the URL of the matching --rh-region:
+	//   1. resolve the gatewayURL as above
+	//   2. fetch a well-known file from sdk.GetRhRegion
+	//   3. update the gatewayURL to the region URL matching args.rhRegion
+	//
+	// So `--env=https://api.stage.openshift.com --rh-region=ap-southeast-1` might result in
+	// gatewayURL/cfg.URL being mutated to "https://api.aws.ap-southeast-1.stage.openshift.com"
+	//
+	// See ocm-sdk-go/rh_region.go for full details on how service discovery works.
+	if args.rhRegion != "" {
+		regValue, err := sdk.GetRhRegion(gatewayURL, args.rhRegion)
+		if err != nil {
+			r.Reporter.Errorf("Can't find region: %v", err)
+			os.Exit(1)
+		}
+		gatewayURL = fmt.Sprintf("https://%s", regValue.URL)
 	}
 
 	// Update the configuration with the values given in the command line:
@@ -467,7 +496,7 @@ func tokenType(jwtToken *jwt.Token) (typ string, err error) {
 }
 
 func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
-	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", "env", "token", "insecure"}
+	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", arguments.NewEnvFlag, "token", "insecure"}
 	hasLoginFlags := false
 	// Check if the user set login flags
 	for _, loginFlag := range loginFlags {
