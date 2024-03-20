@@ -18,7 +18,17 @@ import (
 )
 
 // To clear existing labels in interactive mode, the user enters "" as an empty list value
-const interactiveModeEmptyLabels = `""`
+const (
+	interactiveModeEmptyLabels = `""`
+	nodeDrainUnitMinute        = "minute"
+	nodeDrainUnitMinutes       = "minutes"
+	nodeDrainUnitHour          = "hour"
+	nodeDrainUnitHours         = "hours"
+	nodeDrainUnits             = nodeDrainUnitMinute + "|" + nodeDrainUnitMinutes + "|" +
+		nodeDrainUnitHour + "|" + nodeDrainUnitHours
+	MaxNodeDrainTimeInMinutes = 10080
+	MaxNodeDrainTimeInHours   = 168
+)
 
 func MinNodePoolReplicaValidator(autoscaling bool) interactive.Validator {
 	return func(val interface{}) error {
@@ -230,10 +240,6 @@ func CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod string) (*cmv1.Value
 	}
 
 	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
-	if len(nodeDrainParsed) > 2 {
-		return nil, fmt.Errorf("Invalid value for node drain grace period. Expects only the duration and " +
-			"the unit (minute|minutes|hour|hours).")
-	}
 	nodeDrainValue, err := strconv.ParseFloat(nodeDrainParsed[0], commonUtils.MaxByteSize)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid time for the node drain grace period: %s", err)
@@ -241,15 +247,52 @@ func CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod string) (*cmv1.Value
 
 	// Default to minutes if no unit is specified
 	if len(nodeDrainParsed) > 1 {
-		if nodeDrainParsed[1] != "hours" && nodeDrainParsed[1] != "hour" &&
-			nodeDrainParsed[1] != "minutes" && nodeDrainParsed[1] != "minute" {
-			return nil, fmt.Errorf("Invalid unit for the node drain grace period. Valid value is `minute|minutes|hour|hours`")
-		}
-		if nodeDrainParsed[1] == "hours" || nodeDrainParsed[1] == "hour" {
+		if nodeDrainParsed[1] == nodeDrainUnitHours || nodeDrainParsed[1] == nodeDrainUnitHour {
 			nodeDrainValue = nodeDrainValue * 60
 		}
 	}
 
 	valueBuilder.Value(nodeDrainValue).Unit("minutes")
 	return valueBuilder, nil
+}
+
+func ValidateNodeDrainGracePeriod(val interface{}) error {
+	nodeDrainGracePeriod := val.(string)
+	if nodeDrainGracePeriod == "" {
+		return nil
+	}
+
+	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
+	if len(nodeDrainParsed) > 2 {
+		return fmt.Errorf("Expected format to include the duration and "+
+			"the unit (%s).", nodeDrainUnits)
+	}
+	nodeDrainValue, err := strconv.ParseInt(nodeDrainParsed[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Invalid value '%s', the duration must be an integer.",
+			nodeDrainParsed[0])
+	}
+
+	// Default to minutes if no unit is specified
+	if len(nodeDrainParsed) > 1 {
+		if nodeDrainParsed[1] != nodeDrainUnitHours && nodeDrainParsed[1] != nodeDrainUnitHour &&
+			nodeDrainParsed[1] != "minutes" && nodeDrainParsed[1] != "minute" {
+			return fmt.Errorf("Invalid unit '%s', value unit is '%s'", nodeDrainParsed[1], nodeDrainUnits)
+		}
+		if nodeDrainParsed[1] == nodeDrainUnitHours || nodeDrainParsed[1] == nodeDrainUnitHour {
+			if nodeDrainValue > MaxNodeDrainTimeInHours {
+				return fmt.Errorf("Value '%v' cannot exceed the maximum of %d hours "+
+					"(1 week)", nodeDrainValue, MaxNodeDrainTimeInHours)
+			}
+			nodeDrainValue = nodeDrainValue * 60
+		}
+	}
+	if nodeDrainValue < 0 {
+		return fmt.Errorf("Value '%v' cannot be negative", nodeDrainValue)
+	}
+	if nodeDrainValue > MaxNodeDrainTimeInMinutes {
+		return fmt.Errorf("Value '%v' cannot exceed the maximum of %d minutes "+
+			"(1 week)", nodeDrainValue, MaxNodeDrainTimeInMinutes)
+	}
+	return nil
 }

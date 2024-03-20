@@ -167,45 +167,96 @@ var _ = Describe("Label validations", func() {
 
 var _ = Describe("Create node drain grace period builder validations", func() {
 	DescribeTable("Create node drain grace period builder validations",
-		func(period string, hasError bool) {
+		func(period string, errMsg string) {
 			_, err := CreateNodeDrainGracePeriodBuilder(period)
-			if hasError {
+			if errMsg != "" {
 				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(errMsg))
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}
 		},
 		Entry("Should not error with empty value",
 			"",
-			false,
+			"",
 		),
 		Entry("Should not error with 0 value",
 			"0",
-			false,
+			"",
 		),
 		Entry("Should not error with lower limit value",
 			"1 minute",
-			false,
-		),
-		Entry("Should not error with upper limit value",
-			"10080 minutes",
-			false,
+			"",
 		),
 		Entry("Should not error with hour unit",
 			"1 hour",
-			false,
+			"",
+		),
+		Entry("Should error if the time is not a numeric value",
+			"hour",
+			"Invalid time for the node drain grace period",
+		),
+	)
+})
+
+var _ = Describe("Validate node drain grace period", func() {
+	DescribeTable("Validate node drain grace period",
+		func(period interface{}, errMsg string) {
+			err := ValidateNodeDrainGracePeriod(period)
+			if errMsg != "" {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(errMsg))
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Should not error with empty value",
+			"",
+			"",
+		),
+		Entry("Should not error with 0 value",
+			"0",
+			"",
+		),
+		Entry("Should not error with lower limit value",
+			"1 minute",
+			"",
+		),
+		Entry("Should not error with upper limit value",
+			"10080 minutes",
+			"",
+		),
+		Entry("Should not error with hour unit",
+			"1 hour",
+			"",
 		),
 		Entry("Should not error with hours unit",
 			"168 hours",
-			false,
+			"",
 		),
 		Entry("Should error with invalid number of tokens",
 			"1 minute later",
-			true,
+			"Expected format to include the duration",
 		),
 		Entry("Should error with invalid unit",
 			"1 day",
-			true,
+			"Invalid unit",
+		),
+		Entry("Should error with float value",
+			"1.1",
+			"duration must be an integer",
+		),
+		Entry("Should error with float value",
+			"-1 minute",
+			"cannot be negative",
+		),
+		Entry("Should error above upper limit minutes",
+			"10081 minutes",
+			"cannot exceed the maximum of 10080 minutes",
+		),
+		Entry("Should error above upper limit hours",
+			"169 hours",
+			"cannot exceed the maximum of 168 hours",
 		),
 	)
 })
