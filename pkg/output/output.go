@@ -64,6 +64,14 @@ func Print(resource interface{}) error {
 		if dnsdomains, ok := resource.([]*cmv1.DNSDomain); ok {
 			cmv1.MarshalDNSDomainList(dnsdomains, &b)
 		}
+	case "[]*v1.ExternalAuth":
+		if externalAuths, ok := resource.([]*cmv1.ExternalAuth); ok {
+			cmv1.MarshalExternalAuthList(externalAuths, &b)
+		}
+	case "*v1.ExternalAuth":
+		if externalAuth, ok := resource.(*cmv1.ExternalAuth); ok {
+			cmv1.MarshalExternalAuth(externalAuth, &b)
+		}
 	case "[]*v1.IdentityProvider":
 		if idps, ok := resource.([]*cmv1.IdentityProvider); ok {
 			cmv1.MarshalIdentityProviderList(idps, &b)
