@@ -7,6 +7,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/helper/features"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -67,6 +68,27 @@ var _ = Describe("Machine pool helper", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(awsNodePool.AdditionalSecurityGroupIds())).To(Equal(0))
 			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
+		})
+	})
+
+	Context("It validate version is compatible for security groups", func() {
+		It("Skips validation if the version isn't provided", func() {
+			version := ""
+			isCompatible, err := features.IsFeatureSupported(features.AdditionalDay2SecurityGroupsHcpFeature, version)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isCompatible).To(BeTrue())
+		})
+		It("Returns false for 4.14.0", func() {
+			version := "4.14.0"
+			isCompatible, err := features.IsFeatureSupported(features.AdditionalDay2SecurityGroupsHcpFeature, version)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isCompatible).To(BeFalse())
+		})
+		It("Returns true for 4.15.0", func() {
+			version := "4.15.0"
+			isCompatible, err := features.IsFeatureSupported(features.AdditionalDay2SecurityGroupsHcpFeature, version)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isCompatible).To(BeTrue())
 		})
 	})
 })

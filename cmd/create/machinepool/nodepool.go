@@ -10,6 +10,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/helper/features"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -229,7 +230,13 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 
 	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
 	securityGroupIds := args.securityGroupIds
-	if interactive.Enabled() && !isSecurityGroupIdsSet {
+	isVersionCompatibleSecurityGroupIds, err := features.IsFeatureSupported(
+		features.AdditionalDay2SecurityGroupsHcpFeature, version)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if interactive.Enabled() && !isSecurityGroupIdsSet && isVersionCompatibleSecurityGroupIds {
 		securityGroupIds, err = getSecurityGroupsOption(r, cmd, cluster)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
