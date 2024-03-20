@@ -99,6 +99,15 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("external authentication provider '%s' not found", externalAuthId)
 	}
 
+	if output.HasFlag() {
+		err = output.Print(externalAuthConfig)
+		if err != nil {
+			r.Reporter.Errorf("%v", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	externalAuthConfigList := describeExternalAuthProviders(r, cluster, clusterKey, externalAuthConfig)
 
 	fmt.Print(externalAuthConfigList)
