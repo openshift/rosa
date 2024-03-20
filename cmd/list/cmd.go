@@ -34,6 +34,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/oidcprovider"
 	"github.com/openshift/rosa/cmd/list/operatorroles"
 	"github.com/openshift/rosa/cmd/list/region"
+	"github.com/openshift/rosa/cmd/list/rhRegion"
 	"github.com/openshift/rosa/cmd/list/service"
 	"github.com/openshift/rosa/cmd/list/tuningconfigs"
 	"github.com/openshift/rosa/cmd/list/upgrade"
@@ -71,6 +72,7 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(oidcprovider.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
+	Cmd.AddCommand(rhRegion.Cmd)
 	Cmd.AddCommand(externalauthprovider.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

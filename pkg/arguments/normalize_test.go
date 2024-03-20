@@ -19,6 +19,7 @@ var _ = Describe("Normalize Argument Flags Tests", func() {
 			Entry("controlplane-iam-role to controlplane-iam-role-arn",
 				DeprecatedControlPlaneIAMRole, NewControlPlaneIAMRole),
 			Entry("worker-iam-role to worker-iam-role-arn", DeprecatedWorkerIAMRole, NewWorkerIAMRole),
+			Entry("env to url", DeprecatedEnvFlag, NewEnvFlag),
 		)
 	})
 
