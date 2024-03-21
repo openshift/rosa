@@ -105,6 +105,12 @@ func GetEnv() (string, error) {
 				}
 			}
 		}
+	} else { // Go back to exact URL check (in case of other URLs like local envs, etc.)
+		for env, api := range urlAliases {
+			if api == strings.TrimSuffix(cfg.URL, "/") {
+				return env, nil
+			}
+		}
 	}
 
 	// Special use case for Admin users in the GovCloud environment
