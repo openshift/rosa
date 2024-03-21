@@ -1064,7 +1064,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 			if isClusterAdmin {
-				clusterAdminUser = idp.GetIdpUserNameFromPrompt(cmd, r, "cluster-admin-user", clusterAdminUser)
+				clusterAdminUser = idp.GetIdpUserNameFromPrompt(cmd, r, "cluster-admin-user", clusterAdminUser, true)
 				isCustomAdminPassword, err := interactive.GetBool(interactive.Input{
 					Question: "Create custom password for cluster admin",
 					Default:  false,

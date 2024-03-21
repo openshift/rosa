@@ -85,6 +85,22 @@ var _ = Describe("IDP Tests", func() {
 		)
 	})
 
+	Describe("Username Validators Tests", func() {
+		It("username with `:` cannot pass clusterAdminValidator", func() {
+			username := "my:admin"
+			err := UsernameValidator(username)
+			Expect(err).To(HaveOccurred())
+			err = clusterAdminValidator(username)
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("username `cluster-admin` cannot pass clusterAdminValidator", func() {
+			username := "cluster-admin"
+			err := UsernameValidator(username)
+			Expect(err).NotTo(HaveOccurred())
+			err = clusterAdminValidator(username)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })
 
 func CreateTmpFile(content string) (*os.File, error) {
