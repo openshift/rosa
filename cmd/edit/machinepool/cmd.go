@@ -38,6 +38,7 @@ var args struct {
 	autorepair           bool
 	tuningConfigs        string
 	nodeDrainGracePeriod string
+	tags                 []string
 }
 
 var Cmd = &cobra.Command{
@@ -145,6 +146,15 @@ func init() {
 			"'hour|hours'. 0 or empty value means that the NodePool can be drained without any time limitations.\n"+
 			"This flag is only supported for Hosted Control Planes.",
 	)
+
+	flags.StringSliceVar(
+		&args.tags,
+		"tags",
+		nil,
+		"Apply user defined tags to all resources created by ROSA in AWS. "+
+			"Tags are comma separated, for example: 'key value, foo bar'",
+	)
+	flags.MarkHidden("tags")
 
 	flags.MarkHidden("version")
 }

@@ -27,10 +27,7 @@ import (
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
 
-	if cmd.Flags().Changed("tags") {
-		r.Reporter.Errorf("Setting the 'tags' flag is currently only allowed for Hosted Control Plane clusters")
-		os.Exit(1)
-	}
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tags")
 
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")

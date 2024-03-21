@@ -27,6 +27,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	isAutorepairSet := cmd.Flags().Changed("autorepair")
 	isTuningsConfigSet := cmd.Flags().Changed("tuning-configs")
 	isNodeDrainGracePeriodSet := cmd.Flags().Changed("node-drain-grace-period")
+	isTagsSet := cmd.Flags().Changed("tags")
 
 	// we don't support anymore the version parameter
 	if isVersionSet {
@@ -36,7 +37,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	}
 
 	// isAnyAdditionalParameterSet is true if at least one parameter not related to replicas and autoscaling is set
-	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet
+	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet || isTagsSet
 	isAnyParameterSet := isMinReplicasSet || isMaxReplicasSet || isReplicasSet ||
 		isAutoscalingSet || isAnyAdditionalParameterSet
 
@@ -74,6 +75,8 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 
 	taintBuilders := machinepools.GetTaints(cmd, r, nodePool.Taints(), args.taints)
 
+	awsTags := machinepools.GetAwsTags(cmd, r, map[string]string{}, args.tags)
+
 	npBuilder := cmv1.NewNodePool().
 		ID(nodePool.ID())
 
@@ -85,6 +88,14 @@ func editNodePool(cmd *cobra.Command, nodePoolID string, clusterKey string, clus
 	}
 	if isTaintsSet || interactive.Enabled() {
 		npBuilder = npBuilder.Taints(taintBuilders...)
+	}
+	var awsNodePoolBuilder *cmv1.AWSNodePoolBuilder
+	if isTagsSet || interactive.Enabled() {
+		awsNodePoolBuilder = cmv1.NewAWSNodePool().Tags(awsTags)
+	}
+
+	if awsNodePoolBuilder != nil {
+		npBuilder = npBuilder.AWSNodePool(awsNodePoolBuilder)
 	}
 
 	if autoscaling {

@@ -240,7 +240,8 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		securityGroupIds[i] = strings.TrimSpace(sg)
 	}
 
-	awsTags := machinepools.GetAwsTags(cmd, r, args.tags)
+	existingTags := make(map[string]string, 0)
+	awsTags := machinepools.GetAwsTags(cmd, r, existingTags, args.tags)
 
 	npBuilder := cmv1.NewNodePool()
 	npBuilder.ID(name).Labels(labelMap).

@@ -172,11 +172,22 @@ func taintValidator(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
-func GetAwsTags(cmd *cobra.Command, r *rosa.Runtime, inputTags []string) map[string]string {
+func GetAwsTags(
+	cmd *cobra.Command,
+	r *rosa.Runtime,
+	existingTags map[string]string,
+	inputTags []string,
+) map[string]string {
 	// Custom tags for AWS resources
 	tags := inputTags
+	delim := aws.GetTagsDelimiter(tags)
 	tagsList := map[string]string{}
 	if interactive.Enabled() {
+		if len(inputTags) == 0 {
+			for key, value := range existingTags {
+				tags = append(tags, fmt.Sprintf("%s%s%s", key, delim, value))
+			}
+		}
 		tagsInput, err := interactive.GetString(interactive.Input{
 			Question: "Tags",
 			Help:     cmd.Flags().Lookup("tags").Usage,
@@ -199,7 +210,6 @@ func GetAwsTags(cmd *cobra.Command, r *rosa.Runtime, inputTags []string) map[str
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		delim := aws.GetTagsDelimiter(tags)
 		for _, tag := range tags {
 			t := strings.Split(tag, delim)
 			tagsList[t[0]] = strings.TrimSpace(t[1])

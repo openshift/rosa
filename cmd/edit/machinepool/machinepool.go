@@ -25,6 +25,7 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 		os.Exit(1)
 	}
 
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tags")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "version")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
