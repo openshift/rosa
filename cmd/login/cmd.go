@@ -28,6 +28,7 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift-online/ocm-sdk-go/authentication"
 	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/pkg/arguments"
@@ -239,22 +240,10 @@ func run(cmd *cobra.Command, argv []string) {
 	token := args.token
 
 	// Determine if we should be using the FedRAMP environment:
-	if fedramp.HasFlag(cmd) ||
-		(cfg.FedRAMP && token == "") ||
-		fedramp.IsGovRegion(arguments.GetRegion()) ||
-		config.IsEncryptedToken(token) {
-		fedramp.Enable()
-		// Always default to prod
-		if env == sdk.DefaultURL || env == "" {
-			env = ocm.Production
-		}
-		if fedramp.HasAdminFlag(cmd) {
-			uiTokenPage = fedramp.AdminLoginURLs[env]
-		} else {
-			uiTokenPage = fedramp.LoginURLs[env]
-		}
-	} else {
-		fedramp.Disable()
+	err = CheckAndLogIntoFedramp(fedramp.HasFlag(cmd), fedramp.HasAdminFlag(cmd), cfg, token, env, r)
+	if err != nil {
+		r.Reporter.Errorf("%s", err.Error())
+		os.Exit(1)
 	}
 
 	haveReqs := token != ""
@@ -538,5 +527,33 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 	}
 
 	run(cmd, argv)
+	return nil
+}
+
+func CheckAndLogIntoFedramp(hasFlag, hasAdminFlag bool, cfg *config.Config, token string, env string,
+	runtime *rosa.Runtime) error {
+	if hasFlag ||
+		(cfg.FedRAMP && token == "") ||
+		fedramp.IsGovRegion(arguments.GetRegion()) ||
+		config.IsEncryptedToken(token) {
+		// Display error to user if they attempt to log into govcloud without a region specified (fixes OCM-5718)
+		if !fedramp.IsGovRegion(arguments.GetRegion()) {
+			return errors.Errorf("When logging into the FedRAMP environment, a recognized us-gov region needs " +
+				"to be specified. Example: --region us-gov-west-1")
+		}
+
+		fedramp.Enable()
+		// Always default to prod
+		if env == sdk.DefaultURL {
+			env = "production"
+		}
+		if hasAdminFlag {
+			uiTokenPage = fedramp.AdminLoginURLs[env]
+		} else {
+			uiTokenPage = fedramp.LoginURLs[env]
+		}
+	} else {
+		fedramp.Disable()
+	}
 	return nil
 }
