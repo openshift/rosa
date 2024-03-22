@@ -13,6 +13,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -171,6 +172,52 @@ func taintValidator(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
+func GetAwsTags(
+	cmd *cobra.Command,
+	r *rosa.Runtime,
+	existingTags map[string]string,
+	inputTags []string,
+) map[string]string {
+	// Custom tags for AWS resources
+	tags := inputTags
+	delim := aws.GetTagsDelimiter(tags)
+	tagsList := map[string]string{}
+	if interactive.Enabled() {
+		if len(inputTags) == 0 {
+			for key, value := range existingTags {
+				tags = append(tags, fmt.Sprintf("%s%s%s", key, delim, value))
+			}
+		}
+		tagsInput, err := interactive.GetString(interactive.Input{
+			Question: "Tags",
+			Help:     cmd.Flags().Lookup("tags").Usage,
+			Default:  strings.Join(tags, ","),
+			Validators: []interactive.Validator{
+				aws.UserTagValidator,
+				aws.UserTagDuplicateValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid set of tags: %s", err)
+			os.Exit(1)
+		}
+		if len(tagsInput) > 0 {
+			tags = strings.Split(tagsInput, ",")
+		}
+	}
+	if len(tags) > 0 {
+		if err := aws.UserTagValidator(tags); err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		for _, tag := range tags {
+			t := strings.Split(tag, delim)
+			tagsList[t[0]] = strings.TrimSpace(t[1])
+		}
+	}
+	return tagsList
+}
+
 func GetLabelMap(cmd *cobra.Command, r *rosa.Runtime, existingLabels map[string]string,
 	inputLabels string) map[string]string {
 	if interactive.Enabled() {
@@ -243,7 +290,9 @@ func CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod string) (*cmv1.Value
 	if len(nodeDrainParsed) > 1 {
 		if nodeDrainParsed[1] != "hours" && nodeDrainParsed[1] != "hour" &&
 			nodeDrainParsed[1] != "minutes" && nodeDrainParsed[1] != "minute" {
-			return nil, fmt.Errorf("Invalid unit for the node drain grace period. Valid value is `minute|minutes|hour|hours`")
+			return nil, fmt.Errorf(
+				"Invalid unit for the node drain grace period. Valid value is `minute|minutes|hour|hours`",
+			)
 		}
 		if nodeDrainParsed[1] == "hours" || nodeDrainParsed[1] == "hour" {
 			nodeDrainValue = nodeDrainValue * 60

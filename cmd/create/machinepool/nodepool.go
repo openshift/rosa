@@ -247,6 +247,9 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		securityGroupIds[i] = strings.TrimSpace(sg)
 	}
 
+	existingTags := make(map[string]string, 0)
+	awsTags := machinepools.GetAwsTags(cmd, r, existingTags, args.tags)
+
 	npBuilder := cmv1.NewNodePool()
 	npBuilder.ID(name).Labels(labelMap).
 		Taints(taintBuilders...)
@@ -384,7 +387,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
-	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds))
+	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds, awsTags))
 
 	nodeDrainGracePeriod := args.nodeDrainGracePeriod
 	if interactive.Enabled() {
@@ -491,11 +494,19 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 	return "", fmt.Errorf("Failed to find a private subnet for '%s' availability zone", availabilityZone)
 }
 
-func createAwsNodePoolBuilder(instanceType string, securityGroupIds []string) *cmv1.AWSNodePoolBuilder {
+func createAwsNodePoolBuilder(
+	instanceType string,
+	securityGroupIds []string,
+	awsTags map[string]string,
+) *cmv1.AWSNodePoolBuilder {
 	awsNpBuilder := cmv1.NewAWSNodePool().InstanceType(instanceType)
 
 	if len(securityGroupIds) > 0 {
 		awsNpBuilder.AdditionalSecurityGroupIds(securityGroupIds...)
+	}
+
+	if len(awsTags) > 0 {
+		awsNpBuilder.Tags(awsTags)
 	}
 
 	return awsNpBuilder

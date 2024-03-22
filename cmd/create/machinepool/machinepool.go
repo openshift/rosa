@@ -27,6 +27,8 @@ import (
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
 
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tags")
+
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
