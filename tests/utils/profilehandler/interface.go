@@ -5,6 +5,7 @@ type Profile struct {
 	Version           string             `yaml:"version,omitempty"`
 	ChannelGroup      string             `yaml:"channel_group,omitempty"`
 	Region            string             `yaml:"region,omitempty"`
+	NamePrefix        string             `yaml:"name_prefix,omitempty"`
 	ClusterConfig     *ClusterConfig     `yaml:"cluster,omitempty"`
 	AccountRoleConfig *AccountRoleConfig `yaml:"account-role,omitempty"`
 }
