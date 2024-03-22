@@ -57,6 +57,7 @@ var args struct {
 	rootDiskSize          string
 	securityGroupIds      []string
 	nodeDrainGracePeriod  string
+	tags                  []string
 }
 
 var Cmd = &cobra.Command{
@@ -228,6 +229,14 @@ func init() {
 			"Valid value is from 0 to 1 week (10080 minutes), and the supported units are 'minute|minutes' or "+
 			"'hour|hours'. 0 or empty value means that the NodePool can be drained without any time limitations.\n"+
 			"This flag is only supported for Hosted Control Planes.",
+	)
+
+	flags.StringSliceVar(
+		&args.tags,
+		"tags",
+		nil,
+		"Apply user defined tags to all resources created by ROSA in AWS. "+
+			"Tags are comma separated, for example: 'key value, foo bar'",
 	)
 
 	interactive.AddFlag(flags)

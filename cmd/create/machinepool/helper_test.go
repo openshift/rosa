@@ -49,25 +49,42 @@ var _ = Describe("Machine pool helper", func() {
 	})
 
 	Context("It create an AWS node pool builder successfully", func() {
-		It("Create AWS node pool with security group IDs when provided", func() {
+		It("Create AWS node pool with aws tags when provided", func() {
 			instanceType := "123"
 			securityGroupIds := []string{"123"}
+			awsTags := map[string]string{"label": "value"}
 
-			awsNpBuilder := createAwsNodePoolBuilder(instanceType, securityGroupIds)
+			awsNpBuilder := createAwsNodePoolBuilder(
+				instanceType,
+				securityGroupIds,
+				awsTags,
+			)
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(Equal(securityGroupIds))
 			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
+			Expect(awsNodePool.Tags()).To(Equal(awsTags))
 		})
+		It("Create AWS node pool with security group IDs when provided", func() {
+			instanceType := "123"
+			securityGroupIds := []string{"123"}
 
+			awsNpBuilder := createAwsNodePoolBuilder(instanceType, securityGroupIds, map[string]string{})
+			awsNodePool, err := awsNpBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(Equal(securityGroupIds))
+			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
+			Expect(awsNodePool.Tags()).To(HaveLen(0))
+		})
 		It("Create AWS node pool without security group IDs if not provided", func() {
 			instanceType := "123"
 
-			awsNpBuilder := createAwsNodePoolBuilder(instanceType, []string{})
+			awsNpBuilder := createAwsNodePoolBuilder(instanceType, []string{}, map[string]string{})
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(awsNodePool.AdditionalSecurityGroupIds())).To(Equal(0))
+			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(HaveLen(0))
 			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
+			Expect(awsNodePool.Tags()).To(HaveLen(0))
 		})
 	})
 
