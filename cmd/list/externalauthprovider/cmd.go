@@ -23,7 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/input"
+	"github.com/openshift/rosa/pkg/externalauthprovider"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -60,7 +60,11 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
 
-	input.CheckIfHypershiftClusterOrExit(r, cluster)
+	externalAuthService := externalauthprovider.NewExternalAuthService(r.OCMClient)
+	err := externalAuthService.IsExternalAuthProviderSupported(cluster, clusterKey)
+	if err != nil {
+		return err
+	}
 
 	// Load any existing external auth providers for this cluster
 	r.Reporter.Debugf("Loading external authentication providers for cluster '%s'", clusterKey)

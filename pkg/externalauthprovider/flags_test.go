@@ -40,7 +40,7 @@ var _ = Describe("External authentication provider", func() {
 		Expect(err).To(BeNil())
 		err = service.IsExternalAuthProviderSupported(mockClusterReady, clusterKey)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("external authentication configuration is not enabled for cluster 'test-cluster'\n" +
+		Expect(err.Error()).To(Equal("External authentication configuration is not enabled for cluster 'test-cluster'\n" +
 			"Create a hosted control plane with '--external-auth-providers-enabled' parameter to enabled the configuration"))
 	})
 

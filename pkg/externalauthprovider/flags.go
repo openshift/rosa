@@ -64,7 +64,7 @@ func (e *ExternalAuthServiceImpl) IsExternalAuthProviderSupported(cluster *cmv1.
 	}
 
 	if !cluster.ExternalAuthConfig().Enabled() {
-		return fmt.Errorf("external authentication configuration is not enabled for cluster '%s'\n"+
+		return fmt.Errorf("External authentication configuration is not enabled for cluster '%s'\n"+
 			"Create a hosted control plane with '--external-auth-providers-enabled' parameter to enabled the configuration",
 			clusterKey)
 	}

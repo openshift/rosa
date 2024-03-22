@@ -80,13 +80,11 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
-	if cluster.State() != cmv1.ClusterStateReady {
-		return r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
-	}
 
-	err := externalauthprovider.ValidateHCPCluster(cluster)
+	externalAuthService := externalauthprovider.NewExternalAuthService(r.OCMClient)
+	err := externalAuthService.IsExternalAuthProviderSupported(cluster, clusterKey)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return err
 	}
 
 	r.Reporter.Debugf("Fetching the external authentication provider '%s' for cluster '%s'", externalAuthId, clusterKey)
