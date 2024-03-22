@@ -146,7 +146,7 @@ var _ = Describe("Gateway URL Resolution", func() {
 		})
 
 		It("Returns a valid fedRAMP env", func() {
-			url := "https://api-admin.int.openshiftusgov.com"
+			url := "https://api.int.openshiftusgov.com"
 			cfg := &config.Config{}
 			cfg.URL = url
 			cfg.FedRAMP = true
