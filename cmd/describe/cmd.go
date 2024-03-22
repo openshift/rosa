@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/rosa/cmd/describe/admin"
 	"github.com/openshift/rosa/cmd/describe/cluster"
 	"github.com/openshift/rosa/cmd/describe/externalauthprovider"
+	"github.com/openshift/rosa/cmd/describe/ingress"
 	"github.com/openshift/rosa/cmd/describe/installation"
 	"github.com/openshift/rosa/cmd/describe/kubeletconfig"
 	"github.com/openshift/rosa/cmd/describe/machinepool"
@@ -40,18 +41,22 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	Cmd.AddCommand(addon.Cmd)
-	Cmd.AddCommand(admin.Cmd)
-	Cmd.AddCommand(cluster.Cmd)
-	Cmd.AddCommand(service.Cmd)
-	Cmd.AddCommand(installation.Cmd)
-	Cmd.AddCommand(upgrade.Cmd)
-	Cmd.AddCommand(tuningconfigs.Cmd)
-	Cmd.AddCommand(machinepool.Cmd)
-	Cmd.AddCommand(kubeletconfig.Cmd)
-	Cmd.AddCommand(externalauthprovider.Cmd)
+	cmds := []*cobra.Command{
+		addon.Cmd, admin.Cmd, cluster.Cmd, service.Cmd,
+		installation.Cmd, upgrade.Cmd, tuningconfigs.Cmd,
+		machinepool.Cmd, kubeletconfig.Cmd, ingress.Cmd,
+		externalauthprovider.Cmd,
+	}
+	for _, cmd := range cmds {
+		Cmd.AddCommand(cmd)
+	}
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
+
+	globallyAvailableCommands := []*cobra.Command{
+		ingress.Cmd,
+	}
+	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
 }
