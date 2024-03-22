@@ -56,20 +56,26 @@ func run(_ *cobra.Command, argv []string) {
 }
 
 func PrintConfig(arg string) error {
-	// Load the configuration file:
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("Failed to load config file: %v", err)
+	// The following variables are not stored in the configuration
+	// and can skip loading configuration:
+	skipConfigLoadMap := map[string]bool{
+		"keyrings": true,
 	}
 
-	// If the configuration file doesn't exist yet assume that all the configuration settings
-	// are empty:
-	if cfg == nil {
-		loc, err := config.Location()
+	cfg := &config.Config{}
+	var err error
+	if !skipConfigLoadMap[arg] {
+		// Load the configuration:
+		cfg, err = config.Load()
 		if err != nil {
-			return fmt.Errorf("Failed to find config file location: %v", err)
+			return fmt.Errorf("can't load config: %v", err)
 		}
-		return fmt.Errorf("Config file '%s' does not exist. Please run the 'rosa login' command and try again.", loc)
+		// If the configuration doesn't exist yet assume that all the configuration settings
+		// are empty:
+		if cfg == nil {
+			fmt.Fprintf(Writer, "\n")
+			return nil
+		}
 	}
 
 	// Print the value of the requested configuration setting:

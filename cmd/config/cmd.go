@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/rosa/cmd/config/get"
 	"github.com/openshift/rosa/cmd/config/set"
 	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/properties"
 )
 
 func longHelp() string {
@@ -44,7 +45,16 @@ The following variables are supported:
 
 Note that "rosa config get access_token" gives whatever the file contains - may be missing or expired;
 you probably want "rosa token" command instead which will obtain a fresh token if needed.
-`, loc, strings.Join(config.ConfigVarDocs(), "\n"))
+
+If '%s' is set, the configuration file is ignored and the keyring is used instead. The 
+following backends are supported for the keyring:
+
+- macOS: keychain, pass
+- Linux: secret-service, pass
+- Windows: wincred
+
+Available Keyrings on your OS: %s
+`, loc, strings.Join(config.ConfigVarDocs(), "\n"), properties.KeyringEnvKey, strings.Join(config.GetKeyrings(), ", "))
 }
 
 func NewConfigCommand() *cobra.Command {
