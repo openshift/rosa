@@ -107,8 +107,8 @@ func GetEnv() (string, error) {
 		}
 	}
 
-	// Special use case for Admin users in the GovCloud environment
-	for env, api := range fedramp.AdminURLAliases {
+	// URL check as a fallback mechanism (in case of other URLs like local envs, fedRAMP envs, etc.)
+	for env, api := range urlAliases {
 		if api == strings.TrimSuffix(cfg.URL, "/") {
 			return env, nil
 		}

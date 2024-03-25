@@ -130,6 +130,37 @@ var _ = Describe("Gateway URL Resolution", func() {
 			Expect(env).To(Equal("staging"))
 		})
 
+		It("Returns a valid local env", func() {
+			url := "http://localhost:8000"
+			cfg := &config.Config{}
+			cfg.URL = url
+			err := config.Save(cfg)
+			Expect(err).To(BeNil())
+			currentConfig, err := config.Load()
+			Expect(err).To(BeNil())
+			Expect(currentConfig.URL).To(Equal(url))
+
+			env, err := GetEnv()
+			Expect(err).To(BeNil())
+			Expect(env).To(Equal("local"))
+		})
+
+		It("Returns a valid fedRAMP env", func() {
+			url := "https://api.int.openshiftusgov.com"
+			cfg := &config.Config{}
+			cfg.URL = url
+			cfg.FedRAMP = true
+			err := config.Save(cfg)
+			Expect(err).To(BeNil())
+			currentConfig, err := config.Load()
+			Expect(err).To(BeNil())
+			Expect(currentConfig.URL).To(Equal(url))
+
+			env, err := GetEnv()
+			Expect(err).To(BeNil())
+			Expect(env).To(Equal("integration"))
+		})
+
 		It("Returns a valid regionalized env", func() {
 			url := "https://api.aws.ap-southeast-1.integration.openshift.com"
 			cfg := &config.Config{}
