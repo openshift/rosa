@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"time"
 
 	"go.uber.org/mock/gomock"
 
@@ -288,7 +287,10 @@ func (t *TestingRuntime) InitRuntime() {
 	t.ApiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 
 	// Create the token:
-	accessToken := MakeTokenString("Bearer", 15*time.Minute)
+	claims := MakeClaims()
+	claims["username"] = "foo"
+	accessTokenObj := MakeTokenObject(claims)
+	accessToken := accessTokenObj.Raw
 
 	// Prepare the server:
 	t.SsoServer.AppendHandlers(

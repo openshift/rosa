@@ -1,6 +1,8 @@
 package config
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
@@ -8,7 +10,34 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/pkg/properties"
 )
+
+type mockSpy struct {
+	calledUpsert bool
+	calledRemove bool
+	calledGet    bool
+	testCfg      []byte
+	upsertErr    error
+	removeErr    error
+	getErr       error
+}
+
+func (m *mockSpy) MockUpsertConfigToKeyring(keyring string, data []byte) error {
+	m.calledUpsert = true
+	return m.upsertErr
+}
+
+func (m *mockSpy) MockRemoveConfigFromKeyring(keyring string) error {
+	m.calledRemove = true
+	return m.removeErr
+}
+
+func (m *mockSpy) MockGetConfigFromKeyring(keyring string) ([]byte, error) {
+	m.calledGet = true
+	return m.testCfg, m.getErr
+}
 
 func TestConfig(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -94,3 +123,143 @@ var _ = Describe("Config", Ordered, func() {
 		})
 	})
 })
+var _ = Describe("Config Keyring", func() {
+	When("Load()", func() {
+		Context(properties.KeyringEnvKey+" is set", func() {
+			BeforeEach(func() {
+				os.Setenv(properties.KeyringEnvKey, "keyring")
+			})
+
+			AfterEach(func() {
+				os.Setenv(properties.KeyringEnvKey, "")
+			})
+
+			It("Returns a valid config", func() {
+				data := generateConfigBytes(Config{
+					AccessToken: "access_token",
+				})
+				mockSpy := &mockSpy{testCfg: data}
+				GetConfigFromKeyring = mockSpy.MockGetConfigFromKeyring
+
+				cfg, err := Load()
+				Expect(err).To(BeNil())
+				Expect(cfg).ToNot(BeNil())
+				Expect(cfg.AccessToken).To(Equal("access_token"))
+				Expect(mockSpy.calledGet).To(BeTrue())
+			})
+
+			It("Returns nil for no config content", func() {
+				mockSpy := &mockSpy{testCfg: nil}
+				GetConfigFromKeyring = mockSpy.MockGetConfigFromKeyring
+
+				cfg, err := Load()
+				Expect(err).To(BeNil())
+				Expect(cfg).To(BeNil())
+				Expect(mockSpy.calledGet).To(BeTrue())
+			})
+
+			It("Returns nil for invalid config content", func() {
+				data := generateInvalidConfigBytes()
+				mockSpy := &mockSpy{testCfg: data}
+				GetConfigFromKeyring = mockSpy.MockGetConfigFromKeyring
+
+				cfg, err := Load()
+				Expect(err).To(BeNil())
+				Expect(cfg).To(BeNil())
+				Expect(mockSpy.calledGet).To(BeTrue())
+			})
+
+			It("Handles Error", func() {
+				data := generateInvalidConfigBytes()
+				mockSpy := &mockSpy{testCfg: data}
+				mockSpy.getErr = fmt.Errorf("error")
+				GetConfigFromKeyring = mockSpy.MockGetConfigFromKeyring
+
+				cfg, err := Load()
+				Expect(err).NotTo(BeNil())
+				Expect(cfg).To(BeNil())
+				Expect(mockSpy.calledGet).To(BeTrue())
+			})
+		})
+	})
+
+	When("Save()", func() {
+		Context(properties.KeyringEnvKey+" is set", func() {
+			BeforeEach(func() {
+				os.Setenv(properties.KeyringEnvKey, "keyring")
+			})
+
+			AfterEach(func() {
+				os.Setenv(properties.KeyringEnvKey, "")
+			})
+
+			It("Saves a valid config", func() {
+				data := &Config{
+					AccessToken: "access_token",
+				}
+				mockSpy := &mockSpy{}
+				UpsertConfigToKeyring = mockSpy.MockUpsertConfigToKeyring
+
+				err := Save(data)
+				Expect(err).To(BeNil())
+				Expect(mockSpy.calledUpsert).To(BeTrue())
+			})
+
+			It("Handles Error", func() {
+				data := &Config{
+					AccessToken: "access_token",
+				}
+				mockSpy := &mockSpy{}
+				mockSpy.upsertErr = fmt.Errorf("error")
+				UpsertConfigToKeyring = mockSpy.MockUpsertConfigToKeyring
+
+				err := Save(data)
+				Expect(err).NotTo(BeNil())
+				Expect(mockSpy.calledUpsert).To(BeTrue())
+			})
+		})
+	})
+
+	When("Remove()", func() {
+		Context(properties.KeyringEnvKey+" is set", func() {
+			BeforeEach(func() {
+				os.Setenv(properties.KeyringEnvKey, "keyring")
+			})
+
+			AfterEach(func() {
+				os.Setenv(properties.KeyringEnvKey, "")
+			})
+
+			It("Removes a config", func() {
+				mockSpy := &mockSpy{}
+				RemoveConfigFromKeyring = mockSpy.MockRemoveConfigFromKeyring
+
+				err := Remove()
+				Expect(err).To(BeNil())
+				Expect(mockSpy.calledRemove).To(BeTrue())
+			})
+
+			It("Handles Error", func() {
+				mockSpy := &mockSpy{}
+				mockSpy.removeErr = fmt.Errorf("error")
+				RemoveConfigFromKeyring = mockSpy.MockRemoveConfigFromKeyring
+
+				err := Remove()
+				Expect(err).NotTo(BeNil())
+				Expect(mockSpy.calledRemove).To(BeTrue())
+			})
+		})
+	})
+})
+
+func generateInvalidConfigBytes() []byte {
+	return []byte("foo")
+}
+
+func generateConfigBytes(config Config) []byte {
+	data := &config
+	jsonData, err := json.Marshal(data)
+	Expect(err).To(BeNil())
+
+	return jsonData
+}

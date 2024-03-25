@@ -27,6 +27,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift-online/ocm-sdk-go/authentication"
+	"github.com/openshift-online/ocm-sdk-go/authentication/securestore"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
@@ -37,6 +38,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -64,14 +66,15 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in to your Red Hat account",
-	Long: fmt.Sprintf("Log in to your Red Hat account, saving the credentials to the configuration file.\n"+
+	Long: fmt.Sprintf("Log in to your Red Hat account, saving the credentials to the configuration file or OS Keyring.\n"+
 		"The supported mechanism is by using a token, which can be obtained at: %s\n\n"+
 		"The application looks for the token in the following order, stopping when it finds it:\n"+
-		"\t1. Command-line flags\n"+
-		"\t2. Environment variable (ROSA_TOKEN)\n"+
-		"\t3. Environment variable (OCM_TOKEN)\n"+
-		"\t4. Configuration file\n"+
-		"\t5. Command-line prompt\n", uiTokenPage),
+		fmt.Sprintf("\t1. OS Keyring via Environment variable (%s)\n", properties.KeyringEnvKey)+
+		"\t2. Command-line flags\n"+
+		"\t3. Environment variable (ROSA_TOKEN)\n"+
+		"\t4. Environment variable (OCM_TOKEN)\n"+
+		"\t5. Configuration file\n"+
+		"\t6. Command-line prompt\n", uiTokenPage),
 	Example: fmt.Sprintf(`  # Login to the OpenShift API with an existing token generated from %s
   rosa login --token=$OFFLINE_ACCESS_TOKEN`, uiTokenPage),
 	Run:  run,
@@ -139,7 +142,7 @@ func init() {
 		"use-auth-code",
 		false,
 		"Login using OAuth Authorization Code. This should be used for most cases where a "+
-			"browser is available.",
+			"browser is available. See --use-device-code for remote hosts and containers.",
 	)
 	flags.BoolVar(
 		&args.useDeviceCode,
@@ -147,7 +150,7 @@ func init() {
 		false,
 		"Login using OAuth Device Code. "+
 			"This should only be used for remote hosts and containers where browsers are "+
-			"not available. Use auth code for all other scenarios.",
+			"not available. See --use-auth-code for all other scenarios.",
 	)
 	flags.StringVar(
 		&args.rhRegion,
@@ -163,8 +166,17 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	ctx := cmd.Context()
 	r := rosa.NewRuntime()
+	defer r.Cleanup()
+	err := runWithRuntime(r, cmd, argv)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
+	ctx := cmd.Context()
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() && !output.HasFlag() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -172,6 +184,14 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Check mandatory options:
 	env := args.env
+
+	// Fail fast if config is keyring managed and invalid
+	if keyring, ok := config.IsKeyringManaged(); ok {
+		err := securestore.ValidateBackend(keyring)
+		if err != nil {
+			return fmt.Errorf("Error validating keyring: %v", err)
+		}
+	}
 
 	// Confirm that token is not passed with auth code flags
 	if (args.useAuthCode || args.useDeviceCode) && args.token != "" {
@@ -198,8 +218,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		token, err := authentication.InitiateAuthCode(oauthClientId)
 		if err != nil {
-			r.Reporter.Errorf("An error occurred while retrieving the token: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("An error occurred while retrieving the token: %v", err)
 		}
 		args.token = token
 		args.clientID = oauthClientId
@@ -210,8 +229,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		_, err := deviceAuthConfig.InitiateDeviceAuth(ctx)
 		if err != nil {
-			r.Reporter.Errorf("An error occurred while initiating device auth: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("An error occurred while initiating device auth: %v", err)
 		}
 		deviceAuthResp := deviceAuthConfig.DeviceAuthResponse
 
@@ -220,8 +238,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Infof("Checking status every %v seconds...", deviceAuthResp.Interval)
 		token, err := deviceAuthConfig.PollForTokenExchange(ctx)
 		if err != nil {
-			r.Reporter.Errorf("An error occurred while polling for token exchange: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("An error occurred while polling for token exchange: %v", err)
 		}
 		args.token = token
 		args.clientID = oauthClientId
@@ -230,8 +247,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Load the configuration file:
 	cfg, err := config.Load()
 	if err != nil {
-		r.Reporter.Errorf("Failed to load config file: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to load config file: %v", err)
 	}
 	if cfg == nil {
 		cfg = new(config.Config)
@@ -246,7 +262,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	haveReqs := token != ""
+	haveReqs := token != "" || (args.clientID != "" && args.clientSecret != "")
 
 	// Verify environment variables:
 	if !haveReqs && !reAttempt && !fedramp.Enabled() {
@@ -261,8 +277,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if !haveReqs {
 		armed, err := cfg.Armed()
 		if err != nil {
-			r.Reporter.Errorf("Failed to verify configuration: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to verify configuration: %v", err)
 		}
 		haveReqs = armed
 	}
@@ -275,15 +290,13 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Failed to parse token: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to parse token: %v", err)
 		}
 		haveReqs = token != ""
 	}
 
 	if !haveReqs {
-		r.Reporter.Errorf("Failed to login to OCM. See 'rosa login --help' for information.")
-		os.Exit(1)
+		return fmt.Errorf("Failed to login to OCM. See 'rosa login --help' for information.")
 	}
 
 	// Red Hat SSO does not issue encrypted refresh tokens, but AWS Cognito does. If the token
@@ -375,15 +388,13 @@ func run(cmd *cobra.Command, argv []string) {
 			// If a token has been provided parse it:
 			jwtToken, err := config.ParseToken(token)
 			if err != nil {
-				r.Reporter.Errorf("Failed to parse token: %v", err)
-				os.Exit(1)
+				return fmt.Errorf("Failed to parse token: %v", err)
 			}
 
 			// Put the token in the place of the configuration that corresponds to its type:
 			typ, err := tokenType(jwtToken)
 			if err != nil {
-				r.Reporter.Errorf("Failed to extract type from 'typ' claim of token: %v", err)
-				os.Exit(1)
+				return fmt.Errorf("Failed to extract type from 'typ' claim of token: %v", err)
 			}
 			switch typ {
 			case "Bearer", "":
@@ -393,8 +404,7 @@ func run(cmd *cobra.Command, argv []string) {
 				cfg.AccessToken = ""
 				cfg.RefreshToken = token
 			default:
-				r.Reporter.Errorf("Don't know how to handle token type '%s' in token", typ)
-				os.Exit(1)
+				return fmt.Errorf("Don't know how to handle token type '%s' in token", typ)
 			}
 		}
 	}
@@ -407,19 +417,17 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		if strings.Contains(err.Error(), "token needs to be updated") && !reAttempt {
 			reattemptLogin(cmd, argv)
-			return
+			return nil
 		} else {
-			r.Reporter.Errorf("Failed to create OCM connection: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to create OCM connection: %v", err)
 		}
 	}
-	defer r.Cleanup()
 
 	accessToken, refreshToken, err := r.OCMClient.GetConnectionTokens()
 	if err != nil {
-		r.Reporter.Errorf("Failed to get token. Your session might be expired: %v", err)
-		r.Reporter.Infof("Get a new offline access token at %s", uiTokenPage)
-		os.Exit(1)
+		return fmt.Errorf(
+			"Failed to get token. Your session might be expired: %v\nGet a new offline access token at %s",
+			err, uiTokenPage)
 	}
 	reAttempt = false
 	// Save the configuration:
@@ -427,14 +435,15 @@ func run(cmd *cobra.Command, argv []string) {
 	cfg.RefreshToken = refreshToken
 	err = config.Save(cfg)
 	if err != nil {
-		r.Reporter.Errorf("Failed to save config file: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to save config file: %v", err)
 	}
 
-	username, err := cfg.GetData("username")
+	username, err := cfg.GetData("preferred_username")
 	if err != nil {
-		r.Reporter.Errorf("Failed to get username: %v", err)
-		os.Exit(1)
+		username, err = cfg.GetData("username")
+		if err != nil {
+			return fmt.Errorf("Failed to get username: %v", err)
+		}
 	}
 
 	r.Reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
@@ -447,14 +456,15 @@ func run(cmd *cobra.Command, argv []string) {
 	if args.useAuthCode || args.useDeviceCode {
 		ssoURL, err := url.Parse(cfg.TokenURL)
 		if err != nil {
-			r.Reporter.Errorf("can't parse token url '%s': %v", args.tokenURL, err)
-			os.Exit(1)
+			return fmt.Errorf("can't parse token url '%s': %v", args.tokenURL, err)
 		}
 		ssoHost := ssoURL.Scheme + "://" + ssoURL.Hostname()
 
 		r.Reporter.Infof("To switch accounts, logout from %s and run `rosa logout` "+
 			"before attempting to login again", ssoHost)
 	}
+
+	return nil
 }
 
 func reattemptLogin(cmd *cobra.Command, argv []string) {
@@ -515,9 +525,12 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 	}
 
 	if isLoggedIn {
-		username, err := cfg.GetData("username")
+		username, err := cfg.GetData("preferred_username")
 		if err != nil {
-			return fmt.Errorf("Failed to get username: %v", err)
+			username, err = cfg.GetData("username")
+			if err != nil {
+				return fmt.Errorf("Failed to get username: %v", err)
+			}
 		}
 
 		if reporter.IsTerminal() {

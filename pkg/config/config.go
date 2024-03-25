@@ -33,8 +33,16 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/golang/glog"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	"github.com/openshift-online/ocm-sdk-go/authentication/securestore"
 
 	"github.com/openshift/rosa/pkg/debug"
+	"github.com/openshift/rosa/pkg/properties"
+)
+
+var (
+	UpsertConfigToKeyring   = securestore.UpsertConfigToKeyring
+	RemoveConfigFromKeyring = securestore.RemoveConfigFromKeyring
+	GetConfigFromKeyring    = securestore.GetConfigFromKeyring
 )
 
 // Config is the type used to store the configuration of the client.
@@ -91,9 +99,39 @@ func GetAllowedConfigProperties() []string {
 	return allowedProperties
 }
 
-// Load loads the configuration from the configuration file. If the configuration file doesn't exist
-// it will return an empty configuration object.
+// Loads the configuration from the OS keyring if requested, load from the configuration file if not
 func Load() (cfg *Config, err error) {
+	if keyring, ok := IsKeyringManaged(); ok {
+		return loadFromOS(keyring)
+	}
+
+	return loadFromFile()
+}
+
+// Loads the configuration from the OS keyring. If the configuration doesn't exist
+// it will return an empty configuration object.
+func loadFromOS(keyring string) (cfg *Config, err error) {
+	cfg = &Config{}
+
+	data, err := GetConfigFromKeyring(keyring)
+	if err != nil {
+		return nil, fmt.Errorf("can't load config from OS keyring [%s]: %v", keyring, err)
+	}
+	// No config found, return
+	if len(data) == 0 {
+		return nil, nil
+	}
+	err = json.Unmarshal(data, cfg)
+	if err != nil {
+		// Treat the config as empty if it can't be unmarshalled, it is invalid
+		return nil, nil
+	}
+	return cfg, nil
+}
+
+// Loads the configuration from the configuration file. If the configuration file doesn't exist
+// it will return an empty configuration object.
+func loadFromFile() (cfg *Config, err error) {
 	file, err := Location()
 	if err != nil {
 		return
@@ -129,14 +167,24 @@ func Save(cfg *Config) error {
 	if err != nil {
 		return err
 	}
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("can't marshal config: %v", err)
+	}
+
+	if keyring, ok := IsKeyringManaged(); ok {
+		err := UpsertConfigToKeyring(keyring, data)
+		if err != nil {
+			return fmt.Errorf("can't save config to OS keyring [%s]: %v", keyring, err)
+		}
+		return nil
+	}
+
 	dir := filepath.Dir(file)
 	err = os.MkdirAll(dir, os.FileMode(0755))
 	if err != nil {
 		return fmt.Errorf("Failed to create directory %s: %v", dir, err)
-	}
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return fmt.Errorf("Failed to marshal config: %v", err)
 	}
 	err = os.WriteFile(file, data, 0600)
 	if err != nil {
@@ -147,6 +195,14 @@ func Save(cfg *Config) error {
 
 // Remove removes the configuration file.
 func Remove() error {
+	if keyring, ok := IsKeyringManaged(); ok {
+		err := RemoveConfigFromKeyring(keyring)
+		if err != nil {
+			return fmt.Errorf("can't remove configuration from keyring [%s]: %w", keyring, err)
+		}
+		return nil
+	}
+
 	file, err := Location()
 	if err != nil {
 		return err
@@ -328,4 +384,19 @@ func (c *Config) Connection() (connection *sdk.Connection, err error) {
 	}
 
 	return
+}
+
+// IsKeyringManaged returns the keyring name and a boolean indicating if the config is managed by the keyring.
+func IsKeyringManaged() (keyring string, ok bool) {
+	keyring = os.Getenv(properties.KeyringEnvKey)
+	return keyring, keyring != ""
+}
+
+// Returns the available keyrings on the current host
+func GetKeyrings() []string {
+	backends := securestore.AvailableBackends()
+	if len(backends) == 0 {
+		return []string{"no available backends"}
+	}
+	return backends
 }

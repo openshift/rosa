@@ -65,6 +65,26 @@ $ cat ~/.docker/config.json | jq '.auths["registry.ci.openshift.org"]'
   "auth": "token"
 }
 ```
+## Secure Credentials Storage
+The `OCM_KEYRING` environment variable provides the ability to store the ROSA 
+configuration containing your authentication tokens in your OS keyring. This is provided
+as an alternative to storing the configuration in plain-text on your system. 
+`OCM_KEYRING` will override all other token or configuration related flags.
+
+`OCM_KEYRING` supports the following keyrings:
+
+* [Windows Credential Manager](https://support.microsoft.com/en-us/windows/accessing-credential-manager-1b5c916a-6a16-889f-8581-fc16e8165ac0) - `wincred`
+* [macOS Keychain](https://support.apple.com/en-us/guide/keychain-access/welcome/mac) - `keychain`
+* Secret Service ([Gnome Keyring](https://wiki.gnome.org/Projects/GnomeKeyring), [KWallet](https://apps.kde.org/kwalletmanager5/), etc.) - `secret-service`
+* [Pass](https://www.passwordstore.org/) - `pass`
+
+To ensure `OCM_KEYRING` is provided to all `rosa` commands, it is recommended to set it in your `~/.bashrc` file or equivalent.
+
+| | wincred | keychain | secret-service | pass |
+| ------------- | ------------- | ------------- | ------------- | ------------- |
+| Windows  | :heavy_check_mark: | :x:  | :x:  | :x:  |
+| macOS  | :x:  | :heavy_check_mark:  | :x:  | :heavy_check_mark:  |
+| Linux  | :x:  | :x:  | :heavy_check_mark: | :heavy_check_mark: |
 ## Have you got feedback?
 
 We want to hear it. [Open an issue](https://github.com/openshift/rosa/issues/new) against the repo and someone from the team will be in touch.

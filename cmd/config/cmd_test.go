@@ -156,15 +156,13 @@ var _ = Describe("Run Command", Ordered, func() {
 			os.Setenv("OCM_CONFIG", "")
 		})
 
-		It("Shows error when config is empty", func() {
+		It("Does not show error when config is empty", func() {
 			os.Setenv("OCM_CONFIG", "//invalid/path")
 			config.Save(nil)
 			_, err := config.Load()
 			Expect(err).To(BeNil())
 			err = get.PrintConfig("access_token")
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("Config file '//invalid/path' does not exist. " +
-				"Please run the 'rosa login' command and try again."))
+			Expect(err).To(BeNil())
 		})
 	})
 })
