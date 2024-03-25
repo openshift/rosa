@@ -87,8 +87,8 @@ func (d *DeleteUserAdminFromIDP) deleteAdmin(r *rosa.Runtime, identityProvider *
 var Cmd = &cobra.Command{
 	Use:   "admin",
 	Short: "Deletes the admin user",
-	Long:  "Deletes the cluster-admin user used to login to the cluster",
-	Example: `  # Delete the admin user
+	Long:  "Deletes the ’cluster-admin‘ user used to login to the cluster",
+	Example: `  # Delete the ’cluster-admin' user
   rosa delete admin --cluster=mycluster`,
 	Run:  run,
 	Args: cobra.NoArgs,

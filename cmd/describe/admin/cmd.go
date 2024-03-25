@@ -29,9 +29,9 @@ import (
 
 var Cmd = &cobra.Command{
 	Use:   "admin",
-	Short: "Show details of the cluster-admin user",
-	Long:  "Show details of the cluster-admin user and a command to login to the cluster",
-	Example: `  # Describe cluster-admin user of a cluster named mycluster
+	Short: "Show details of the 'cluster-admin' user",
+	Long:  "Show details of the 'cluster-admin' user and a command to login to the cluster",
+	Example: `  # Describe 'cluster-admin' user of a cluster named mycluster
   rosa describe admin -c mycluster`,
 	Run:  run,
 	Args: cobra.NoArgs,
