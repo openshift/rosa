@@ -27,7 +27,7 @@ var _ = Describe("verify network", func() {
 	var cmd *cobra.Command
 	var r *rosa.Runtime
 
-	mockCluster, _ := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+	mockCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 		c.State(cmv1.ClusterStateReady)
@@ -200,12 +200,11 @@ INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 			cmd.Flags().Lookup(statusOnlyFlag).Changed = true
 			cmd.Flags().Set(clusterFlag, "tomckay-vpc")
 
-			mockCluster, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+			mockCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 				c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 				c.State(state)
 			})
-			Expect(err).To(BeNil())
 			clusterList := test.FormatClusterList([]*cmv1.Cluster{mockCluster})
 
 			// GET /api/clusters_mgmt/v1/clusters
@@ -409,12 +408,11 @@ INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 		cmd.Flags().Lookup(statusOnlyFlag).Changed = true
 		cmd.Flags().Set(clusterFlag, "tomckay-vpc")
 
-		mockCluster, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs())
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State("ready state")
 		})
-		Expect(err).To(BeNil())
 		clusterList := test.FormatClusterList([]*cmv1.Cluster{mockCluster})
 
 		// GET /api/clusters_mgmt/v1/clusters
@@ -425,7 +423,7 @@ INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 			),
 		)
 
-		err = runWithRuntime(r, cmd)
+		err := runWithRuntime(r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring(

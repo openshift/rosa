@@ -108,22 +108,21 @@ var _ = Describe("Upgrade machine pool", func() {
 		format.TruncatedDiff = false
 		var testRuntime test.TestingRuntime
 
-		mockClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(true))
 		})
-		Expect(err).To(BeNil())
+
 		hypershiftClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
 
-		mockClassicClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClassicClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(false))
 		})
-		Expect(err).To(BeNil())
 		classicClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClassicClusterReady})
 
 		nodePoolResponse := formatNodePool()

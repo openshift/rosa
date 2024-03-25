@@ -108,13 +108,3 @@ func (r *Runtime) FetchCluster() *cmv1.Cluster {
 	r.Cluster = cluster
 	return cluster
 }
-
-func (r *Runtime) WithSpinner(fn func() error) error {
-	if r.Reporter.IsTerminal() {
-		r.Spinner.Start()
-		err := fn()      // arbitrary function
-		r.Spinner.Stop() // stops spinner after the function completes
-		return err
-	}
-	return fn()
-}

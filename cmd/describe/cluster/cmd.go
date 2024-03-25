@@ -29,7 +29,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
-	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -185,7 +184,7 @@ func run(cmd *cobra.Command, argv []string) {
 	subnetsStr := ""
 	if len(cluster.AWS().SubnetIDs()) > 0 {
 		subnetsStr = fmt.Sprintf(" - Subnets:                 %s\n",
-			ocmOutput.PrintStringSlice(cluster.AWS().SubnetIDs()))
+			output.PrintStringSlice(cluster.AWS().SubnetIDs()))
 	}
 
 	var machinePools []*cmv1.MachinePool
@@ -646,13 +645,13 @@ Nodes:
 		if hasSgsControlPlane {
 			nodeConfig += fmt.Sprintf(
 				"   - Control Plane:	%s\n",
-				ocmOutput.PrintStringSlice(
+				output.PrintStringSlice(
 					cluster.AWS().AdditionalControlPlaneSecurityGroupIds()))
 		}
 		if hasSgsInfra {
 			nodeConfig += fmt.Sprintf(
 				"   - Infra:		%s\n",
-				ocmOutput.PrintStringSlice(
+				output.PrintStringSlice(
 					cluster.AWS().AdditionalInfraSecurityGroupIds()))
 		}
 	}

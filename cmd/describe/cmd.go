@@ -21,6 +21,7 @@ import (
 
 	"github.com/openshift/rosa/cmd/describe/addon"
 	"github.com/openshift/rosa/cmd/describe/admin"
+	"github.com/openshift/rosa/cmd/describe/autoscaler"
 	"github.com/openshift/rosa/cmd/describe/cluster"
 	"github.com/openshift/rosa/cmd/describe/externalauthprovider"
 	"github.com/openshift/rosa/cmd/describe/installation"
@@ -49,6 +50,7 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(kubeletconfig.Cmd)
+	Cmd.AddCommand(autoscaler.NewDescribeAutoscalerCommand())
 	Cmd.AddCommand(externalauthprovider.Cmd)
 
 	flags := Cmd.PersistentFlags()

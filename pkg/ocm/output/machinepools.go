@@ -23,21 +23,10 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/helper"
-)
-
-const (
-	Yes = "Yes"
-	No  = "No"
+	"github.com/openshift/rosa/pkg/output"
 )
 
 // Methods shared between node pools and machine pools
-
-func PrintStringSlice(in []string) string {
-	if len(in) == 0 {
-		return ""
-	}
-	return strings.Join(in, ", ")
-}
 
 func PrintLabels(labels map[string]string) string {
 	if len(labels) == 0 {
@@ -67,9 +56,9 @@ func PrintTaints(taints []*cmv1.Taint) string {
 
 func PrintMachinePoolAutoscaling(autoscaling *cmv1.MachinePoolAutoscaling) string {
 	if autoscaling != nil {
-		return Yes
+		return output.Yes
 	}
-	return No
+	return output.No
 }
 
 func PrintMachinePoolReplicas(autoscaling *cmv1.MachinePoolAutoscaling, replicas int) string {
@@ -91,7 +80,7 @@ func PrintMachinePoolSpot(mp *cmv1.MachinePool) string {
 			return fmt.Sprintf("Yes (%s)", price)
 		}
 	}
-	return No
+	return output.No
 }
 
 func PrintMachinePoolDiskSize(mp *cmv1.MachinePool) string {

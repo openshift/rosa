@@ -45,11 +45,11 @@ func describeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey stri
 		machinePool.InstanceType(),
 		ocmOutput.PrintLabels(machinePool.Labels()),
 		ocmOutput.PrintTaints(machinePool.Taints()),
-		ocmOutput.PrintStringSlice(machinePool.AvailabilityZones()),
-		ocmOutput.PrintStringSlice(machinePool.Subnets()),
+		output.PrintStringSlice(machinePool.AvailabilityZones()),
+		output.PrintStringSlice(machinePool.Subnets()),
 		ocmOutput.PrintMachinePoolSpot(machinePool),
 		ocmOutput.PrintMachinePoolDiskSize(machinePool),
-		ocmOutput.PrintStringSlice(machinePool.AWS().AdditionalSecurityGroupIds()),
+		output.PrintStringSlice(machinePool.AWS().AdditionalSecurityGroupIds()),
 	)
 	fmt.Print(machinePoolOutput)
 

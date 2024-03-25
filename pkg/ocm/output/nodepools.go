@@ -23,13 +23,14 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 )
 
 func PrintNodePoolAutoscaling(autoscaling *cmv1.NodePoolAutoscaling) string {
 	if autoscaling != nil {
-		return Yes
+		return output.Yes
 	}
-	return No
+	return output.No
 }
 
 func PrintNodePoolReplicas(autoscaling *cmv1.NodePoolAutoscaling, replicas int) string {
@@ -53,7 +54,7 @@ func PrintNodePoolAdditionalSecurityGroups(aws *cmv1.AWSNodePool) string {
 		return ""
 	}
 
-	return PrintStringSlice(aws.AdditionalSecurityGroupIds())
+	return output.PrintStringSlice(aws.AdditionalSecurityGroupIds())
 }
 
 func PrintNodePoolCurrentReplicas(status *cmv1.NodePoolStatus) string {
@@ -80,9 +81,9 @@ func PrintNodePoolVersion(version *cmv1.Version) string {
 
 func PrintNodePoolAutorepair(autorepair bool) string {
 	if autorepair {
-		return Yes
+		return output.Yes
 	}
-	return No
+	return output.No
 }
 
 func PrintNodePoolTuningConfigs(tuningConfigs []string) string {
