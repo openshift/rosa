@@ -91,13 +91,6 @@ func GetEnv() (string, error) {
 	urlAliases := URLAliases
 	if cfg.FedRAMP {
 		urlAliases = fedramp.URLAliases
-		// Special use case for Admin users in the GovCloud environment
-		for env, api := range urlAliases {
-			fmt.Println(strings.TrimSuffix(cfg.URL, "/"))
-			if api == strings.TrimSuffix(cfg.URL, "/") {
-				return env, nil
-			}
-		}
 	}
 
 	// Check for OCM environments (including regionalized URLs)
@@ -114,7 +107,7 @@ func GetEnv() (string, error) {
 		}
 	}
 
-	// URL check as a fallback mechanism (in case of other URLs like local envs, etc.)
+	// URL check as a fallback mechanism (in case of other URLs like local envs, fedRAMP envs, etc.)
 	for env, api := range urlAliases {
 		if api == strings.TrimSuffix(cfg.URL, "/") {
 			return env, nil
