@@ -1,10 +1,13 @@
 package e2e
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	TC "github.com/openshift/rosa/tests/ci/config"
+	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
 	PH "github.com/openshift/rosa/tests/utils/profilehandler"
 )
@@ -26,6 +29,14 @@ var _ = Describe("ROSA CLI Test", func() {
 		})
 		It("TestENVSetup", func() {
 			log.Logger.Infof("Got dir of out: %v", TC.Test.OutputDir)
+		})
+		It("TestPrepareClusterByProfile", func() {
+			client := rosacli.NewClient()
+			profile := PH.LoadProfileYamlFileByENV()
+			profile.NamePrefix = "aaaaaa"
+			cluster, err := PH.CreateClusterByProfile(profile, client)
+			Expect(err).ToNot(HaveOccurred())
+			fmt.Println(cluster.ID)
 		})
 	})
 })

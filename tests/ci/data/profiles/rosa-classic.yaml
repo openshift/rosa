@@ -1,7 +1,7 @@
 profiles:
 - as: rosa-advanced
-  version: latest
-  channel_group: candidate
+  version: "latest"
+  channel_group: "candidate"
   region: "us-east-1"
   cluster:
     multi_az: true

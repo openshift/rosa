@@ -41,10 +41,6 @@ type Client struct {
 	TuningConfig       TuningConfigService
 	User               UserService
 	Version            VersionService
-	AccountRole        AccountRoleService
-	OCMRole            OCMRoleService
-	UserRole           UserRoleService
-	OperatorRole       OperatorRoleService
 }
 
 func NewClient() *Client {
@@ -57,10 +53,6 @@ func NewClient() *Client {
 	}
 
 	// Keep in alphabetical order
-	client.AccountRole = NewAccountRoleService(client)
-	client.OCMRole = NewOCMRoleService(client)
-	client.UserRole = NewUserRoleService(client)
-	client.OperatorRole = NewOperatorRoleService(client)
 	client.Cluster = NewClusterService(client)
 	client.IDP = NewIDPService(client)
 	client.Ingress = NewIngressService(client)

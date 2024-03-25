@@ -264,7 +264,7 @@ func (tab *tableData) Parse() *tableData {
 }
 
 func (jd *jsonData) Parse() *jsonData {
-	var object map[string]interface{}
+	var object interface{}
 	err := json.Unmarshal(jd.input.Bytes(), &object)
 	if err != nil {
 		Logger.Errorf(" error in Parse is %v", err)
