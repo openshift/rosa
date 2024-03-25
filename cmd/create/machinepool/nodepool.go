@@ -393,6 +393,9 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 			Help:     cmd.Flags().Lookup("node-drain-grace-period").Usage,
 			Default:  nodeDrainGracePeriod,
 			Required: false,
+			Validators: []interactive.Validator{
+				machinepools.ValidateNodeDrainGracePeriod,
+			},
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid value for Node drain grace period: %s", err)
