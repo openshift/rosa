@@ -119,7 +119,8 @@ func parseComponentRoutes(input string) (map[string]*cmv1.ComponentRouteBuilder,
 		parsedComponent := strings.Split(component, ":")
 		if len(parsedComponent) != expectedLengthOfParsedComponent {
 			return nil, fmt.Errorf(
-				"only the name of the component should be followed by ':'",
+				"only the name of the component should be followed by ':' " +
+					"or the component should always include it's parameters separated by ':'",
 			)
 		}
 		componentName := strings.TrimSpace(parsedComponent[0])
@@ -142,6 +143,12 @@ func parseComponentRoutes(input string) (map[string]*cmv1.ComponentRouteBuilder,
 		for _, values := range parsedParameter {
 			values = strings.TrimSpace(values)
 			parsedValues := strings.Split(values, "=")
+			if len(parsedValues) != expectedLengthOfParsedComponent {
+				return nil, fmt.Errorf(
+					"only the name of the parameter should be followed by '=' " +
+						"or the paremater should always include a value separated by '='",
+				)
+			}
 			parameterName := strings.TrimSpace(parsedValues[0])
 			if !helper.Contains(expectedParameters, parameterName) {
 				return nil, fmt.Errorf(
