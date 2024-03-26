@@ -82,7 +82,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		cmd.Flags(), "", false, externalAuthProvidersArgs)
 	if err != nil {
 		return fmt.Errorf("failed to create an external authentication provider for cluster '%s': %s",
-			cluster.ID(), err)
+			clusterKey, err)
 	}
 
 	err = externalAuthService.CreateExternalAuthProvider(cluster, clusterKey, externalAuthProvidersArgs, r)
