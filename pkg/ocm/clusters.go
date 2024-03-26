@@ -672,6 +672,19 @@ func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
 	return cluster, nil
 }
 
+func (c *Client) UpdateClusterDeletionProtection(clusterId string, deleteProtection *cmv1.DeleteProtection) error {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterId).
+		DeleteProtection().
+		Update().
+		Body(deleteProtection).
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
 // EnsureNoPendingClusters ensures that no clusters are pending in the account. For non-STS clusters,
 // the osdCcsAdmin user credentials are used to create the cluster, and it is required that these credentials
 // are rotated between cluster creation. If a user is creating a non-STS cluster, we need to therefore make sure
