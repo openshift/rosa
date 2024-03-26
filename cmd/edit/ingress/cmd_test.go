@@ -60,7 +60,7 @@ var _ = Describe("Parse component routes", func() {
 				err.Error(),
 			).To(Equal("the expected amount of component routes is 3, but 2 have been supplied"))
 		})
-		It("fails if it can split ':' in more than they key separation", func() {
+		It("fails if it can split ':' in more than one key separation", func() {
 			_, err := parseComponentRoutes(
 				//nolint:lll
 				"oauth: hostname=oauth:-host;tlsSecretRef=oauth-secret,downloads: hostname=downloads-host;tlsSecretRef=downloads-secret,",
@@ -68,7 +68,23 @@ var _ = Describe("Parse component routes", func() {
 			Expect(err).ToNot(BeNil())
 			Expect(
 				err.Error(),
-			).To(Equal("only the name of the component should be followed by ':'"))
+			).To(Equal(
+				//nolint:lll
+				"only the name of the component should be followed by ':' or the component should always include it's parameters separated by ':'",
+			))
+		})
+		It("fails if it can't split the component name and it's parameters", func() {
+			_, err := parseComponentRoutes(
+				//nolint:lll
+				"oauth tlsSecretRef=oauth-secret,downloads: hostname=downloads-host;tlsSecretRef=downloads-secret,",
+			)
+			Expect(err).ToNot(BeNil())
+			Expect(
+				err.Error(),
+			).To(Equal(
+				//nolint:lll
+				"only the name of the component should be followed by ':' or the component should always include it's parameters separated by ':'",
+			))
 		})
 		It("fails due to invalid parameter", func() {
 			_, err := parseComponentRoutes(
@@ -89,6 +105,32 @@ var _ = Describe("Parse component routes", func() {
 			Expect(
 				err.Error(),
 			).To(Equal("only 2 parameters are expected for each component"))
+		})
+		It("fails if it can't split the attribute name and it's value", func() {
+			_, err := parseComponentRoutes(
+				//nolint:lll
+				"oauth: hostname=oauth-host;tlsSecretRef=oauth-secret,downloads: hostname=downloads-host;tlsSecretRef=downloads-secret,console: hostname=console-host;tlsSecretRef",
+			)
+			Expect(err).ToNot(BeNil())
+			Expect(
+				err.Error(),
+			).To(Equal(
+				//nolint:lll
+				"only the name of the parameter should be followed by '=' or the paremater should always include a value separated by '='",
+			))
+		})
+		It("fails if it can split the attribute name and it's value into more than 2 parts", func() {
+			_, err := parseComponentRoutes(
+				//nolint:lll
+				"oauth: hostname=oauth-host;tlsSecretRef=oauth-secret,downloads: hostname=downloads-host;tlsSecretRef=downloads-secret,console: hostname=console-host;tlsSecretRef=console-secret=asd",
+			)
+			Expect(err).ToNot(BeNil())
+			Expect(
+				err.Error(),
+			).To(Equal(
+				//nolint:lll
+				"only the name of the parameter should be followed by '=' or the paremater should always include a value separated by '='",
+			))
 		})
 	})
 })
