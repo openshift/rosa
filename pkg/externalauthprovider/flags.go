@@ -79,14 +79,14 @@ func (e *ExternalAuthServiceImpl) CreateExternalAuthProvider(cluster *cmv1.Clust
 	externalAuthConfig, err := CreateExternalAuthConfig(args)
 	if err != nil {
 		return fmt.Errorf("failed to create an external authentication provider for cluster '%s': %s",
-			cluster.ID(), err)
+			clusterKey, err)
 	}
 
 	_, err = r.OCMClient.CreateExternalAuth(cluster.ID(), externalAuthConfig)
 
 	if err != nil {
 		return fmt.Errorf("failed to create an external authentication provider for cluster '%s': %s",
-			cluster.ID(), err)
+			clusterKey, err)
 	}
 	return nil
 
