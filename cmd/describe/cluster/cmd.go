@@ -41,6 +41,9 @@ const (
 
 	EnabledOutput  = "Enabled"
 	DisabledOutput = "Disabled"
+
+	YesOutput = "Yes"
+	NoOutput  = "No"
 )
 
 var Cmd = &cobra.Command{
@@ -166,9 +169,9 @@ func run(cmd *cobra.Command, argv []string) {
 
 	clusterName := cluster.Name()
 
-	isPrivate := "No"
+	isPrivate := NoOutput
 	if cluster.API().Listening() == cmv1.ListeningMethodInternal {
-		isPrivate = "Yes"
+		isPrivate = YesOutput
 	}
 
 	detailsPage := getDetailsLink(r.OCMClient.GetConnectionURL())
@@ -321,21 +324,28 @@ func run(cmd *cobra.Command, argv []string) {
 					operatorIAMRole.RoleARN())
 			}
 		}
-		var awsManaged string
+
+		awsManaged := NoOutput
 		if cluster.AWS().STS().ManagedPolicies() {
-			awsManaged = "Yes"
-		} else {
-			awsManaged = "No"
+			awsManaged = YesOutput
 		}
 		str = fmt.Sprintf("%sManaged Policies:           %s\n", str, awsManaged)
+	}
+
+	deleteProtection := YesOutput
+	if !cluster.DeleteProtection().Enabled() {
+		deleteProtection = NoOutput
 	}
 
 	str = fmt.Sprintf("%s"+
 		"State:                      %s %s\n"+
 		"Private:                    %s\n"+
-		"Created:                    %s\n", str,
+		"Delete Protection:          %s\n"+
+		"Created:                    %s\n",
+		str,
 		cluster.State(), phase,
 		isPrivate,
+		deleteProtection,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
 
 	str = fmt.Sprintf("%s"+
