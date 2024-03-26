@@ -1,12 +1,10 @@
 package profilehandler
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 
 	"github.com/openshift/rosa/tests/ci/config"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
 )
@@ -56,155 +54,6 @@ func LoadProfileYamlFileByENV() *Profile {
 
 	return profile
 }
-func PrepareVersionDummy(versionRequirement string) string {
-	return ""
-}
-
-func PrepareSubnetsDummy(vpcID string, region string, zones string) map[string][]string {
-	return map[string][]string{}
-}
-
-func PrepareProxysDummy(vpcID string, region string, zones string) map[string]string {
-	return map[string]string{
-		"https_proxy":  "",
-		"http_proxy":   "",
-		"no_proxy":     "",
-		"ca_file_path": "",
-	}
-}
-
-func PrepareKMSKeyDummy(region string) string {
-	return ""
-}
-
-func PrepareSecurityGroupsDummy(vpcID string, region string, securityGroupCount int) []string {
-	return []string{}
-}
-
-// PrepareAccountRoles will prepare account roles according to the parameters
-// openshiftVersion must follow 4.15.2-x format
-func PrepareAccountRoles(client *rosacli.Client, namePrefix string, hcp bool, openshiftVersion string, channelGroup string) (
-	accRoles *rosacli.AccountRolesUnit, err error) {
-	flags := []string{
-		"--prefix", namePrefix,
-		"--mode", "auto",
-		"-y",
-	}
-	if openshiftVersion != "" {
-		majorVersion := common.SplitMajorVersion(openshiftVersion)
-		flags = append(flags, "--version", majorVersion)
-	}
-	if channelGroup != "" {
-		flags = append(flags, "--channel-group", channelGroup)
-	}
-	if hcp {
-		flags = append(flags, "--hosted-cp")
-	} else {
-		flags = append(flags, "--classic")
-	}
-	_, err = client.OCMResource.CreateAccountRole(
-		flags...,
-	)
-	if err != nil {
-		return
-	}
-	accRoleList, _, err := client.OCMResource.ListAccountRole()
-	if err != nil {
-		return
-	}
-	roleDig := accRoleList.DigAccountRoles(namePrefix, hcp)
-
-	return roleDig, nil
-
-}
-
-// PrepareOperatorRolesByOIDCConfig will prepare operator roles with OIDC config ID
-// When sharedVPCRoleArn is not empty it will be set to the flag
-func PrepareOperatorRolesByOIDCConfig(client *rosacli.Client,
-	namePrefix string,
-	oidcConfigID string,
-	roleArn string,
-	sharedVPCRoleArn string,
-	hcp bool) error {
-	flags := []string{
-		"-y",
-		"--mode", "auto",
-		"--prefix", namePrefix,
-		"--role-arn", roleArn,
-	}
-	if hcp {
-		flags = append(flags, "--hosted-cp")
-	}
-	if sharedVPCRoleArn != "" {
-		flags = append(flags, "--shared-vpc-role-arn", sharedVPCRoleArn)
-	}
-	_, err := client.OCMResource.CreateOperatorRoles(
-		flags...,
-	)
-	return err
-}
-
-func PrepareOperatorRolesByCluster(client *rosacli.Client,
-	namePrefix string, cluster string) error {
-	flags := []string{
-		"-y",
-		"--mode", "auto",
-		"--cluster", cluster,
-	}
-	_, err := client.OCMResource.CreateOperatorRoles(
-		flags...,
-	)
-	return err
-}
-
-// PrepareOIDCConfig will prepare the oidc config for the cluster, if the oidcConfigType="managed", roleArn and prefix won't be set
-func PrepareOIDCConfig(client *rosacli.Client,
-	oidcConfigType string,
-	region string,
-	roleArn string,
-	prefix string) (string, error) {
-	var oidcConfigID string
-	var output bytes.Buffer
-	var err error
-	switch oidcConfigType {
-	case "managed":
-		output, err = client.OCMResource.CreateOIDCConfig(
-			"-o", "json",
-			"--mode", "auto",
-			"--region", region,
-			"--managed",
-			"-y",
-		)
-	case "unmanaged":
-		output, err = client.OCMResource.CreateOIDCConfig(
-			"-o", "json",
-			"--mode", "auto",
-			"--prefix", prefix,
-			"--region", region,
-			"--role-arn", roleArn,
-			"--managed=false",
-			"-y",
-		)
-
-	default:
-		return "", fmt.Errorf("only 'managed' or 'unmanaged' oidc config is allowed")
-	}
-	if err != nil {
-		return oidcConfigID, err
-	}
-	parser := rosacli.NewParser()
-	oidcConfigID = parser.JsonData.Input(output).Parse().DigString("id")
-	return oidcConfigID, nil
-}
-
-func PrepareOIDCProvider(client *rosacli.Client, oidcConfigID string) error {
-	_, err := client.OCMResource.CreateOIDCProvider(
-		"--mode", "auto",
-		"-y",
-		"--oidc-config-id", oidcConfigID,
-	)
-	return err
-}
 
 // GenerateClusterCreateFlags will generate flags
 func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) (flags []string, err error) {
@@ -212,8 +61,15 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) (flags
 		"--cluster-name", profile.NamePrefix,
 	}
 	if profile.Version != "" {
-		version := PrepareVersionDummy(profile.Version)
-		flags = append(flags, "--version", version)
+		version, err := PrepareVersion(client, profile.Version, profile.ChannelGroup, profile.ClusterConfig.HCP)
+		if err != nil {
+			return flags, err
+		}
+		profile.Version = version.Version
+		flags = append(flags, "--version", version.Version)
+	}
+	if profile.ChannelGroup != "" {
+		flags = append(flags, "--channel-group", profile.ChannelGroup)
 	}
 	if profile.Region != "" {
 		flags = append(flags, "--region", profile.Region)
@@ -224,7 +80,10 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) (flags
 			client, profile.NamePrefix,
 			profile.ClusterConfig.HCP,
 			profile.Version,
-			profile.ChannelGroup)
+			profile.ChannelGroup,
+			profile.AccountRoleConfig.Path,
+			profile.AccountRoleConfig.PermissionBoundary,
+		)
 		if err != nil {
 			return flags, err
 		}
@@ -249,9 +108,111 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) (flags
 			if err != nil {
 				return
 			}
+			err = PrepareOperatorRolesByOIDCConfig(client, profile.NamePrefix,
+				oidcConfigID, accRoles.InstallerRole, "", profile.ClusterConfig.HCP)
+			if err != nil {
+				return flags, err
+			}
 			flags = append(flags, "--oidc-config-id", oidcConfigID)
 		}
 		flags = append(flags, "--operator-roles-prefix", profile.NamePrefix)
+	}
+	if profile.ClusterConfig.AdditionalSGNumber != 0 {
+		PrepareSecurityGroupsDummy("", profile.Region, profile.ClusterConfig.AdditionalSGNumber)
+	}
+	if profile.ClusterConfig.AdminEnabled {
+		PrepareAdminUserDummy()
+	}
+	if profile.ClusterConfig.AuditLogForward {
+		PrepareAuditlogDummy()
+	}
+	if profile.ClusterConfig.Autoscale {
+		minReplicas := "3"
+		maxRelicas := "6"
+		flags = append(flags,
+			"--enable-autoscaling",
+			"--min-replicas", minReplicas,
+			"--max-replicas", maxRelicas,
+		)
+	}
+
+	if profile.ClusterConfig.AutoscalerEnabled {
+		PrepareAutoscalerDummy()
+	}
+	if profile.ClusterConfig.BYOVPC {
+		PrepareSubnetsDummy("", profile.Region, "")
+	}
+	if profile.ClusterConfig.BillingAccount != "" {
+		flags = append(flags, " --billing-account", profile.ClusterConfig.BillingAccount)
+	}
+	if profile.ClusterConfig.DisableSCPChecks {
+		flags = append(flags, "--disable-scp-checks")
+	}
+	if profile.ClusterConfig.DisableUserWorKloadMonitoring {
+		flags = append(flags, "--disable-workload-monitoring")
+	}
+	if profile.ClusterConfig.ETCDKMS {
+		PrepareKMSKeyDummy(profile.Region)
+	}
+	if profile.ClusterConfig.Ec2MetadataHttpTokens != "" {
+		flags = append(flags, "--ec2-metadata-http-tokens", profile.ClusterConfig.Ec2MetadataHttpTokens)
+	}
+	if profile.ClusterConfig.EtcdEncryption {
+		flags = append(flags, "--etcd-encryption")
+	}
+	if profile.ClusterConfig.ExternalAuthConfig {
+		PrepareExternalAuthConfigDummy()
+	}
+
+	if profile.ClusterConfig.FIPS {
+		flags = append(flags, "--fips")
+	}
+	if profile.ClusterConfig.HCP {
+		flags = append(flags, "--hosted-cp")
+	}
+	if profile.ClusterConfig.InstanceType != "" {
+		flags = append(flags, "--compute-machine-type", profile.ClusterConfig.InstanceType)
+	}
+	if profile.ClusterConfig.KMSKey {
+		PrepareKMSKeyDummy(profile.Region)
+	}
+	if profile.ClusterConfig.LabelEnabled {
+		flags = append(flags, "--worker-mp-labels", "test-label/openshift.io=,test-label=testvalue")
+	}
+	if profile.ClusterConfig.MultiAZ {
+		flags = append(flags, "--multi-az")
+	}
+	if profile.ClusterConfig.NetWorkingSet {
+		flags = append(flags,
+			"--machine-cidr", "$PLACEHOLDER_VPC_CIDR",
+			"--service-cidr", "172.31.0.0/24",
+			"--pod-cidr", "192.168.0.0/18",
+			"--host-prefix", "25",
+		)
+	}
+	if profile.ClusterConfig.Private {
+		flags = append(flags, "--private")
+	}
+	if profile.ClusterConfig.PrivateLink {
+		flags = append(flags, "--private-link")
+	}
+	if profile.ClusterConfig.ProvisionShard != "" {
+		flags = append(flags, "--properties", fmt.Sprintf("provision_shard_id:%s", profile.ClusterConfig.ProvisionShard))
+	}
+	if profile.ClusterConfig.ProxyEnabled {
+		PrepareProxysDummy("", profile.Region, "")
+	}
+	if profile.ClusterConfig.SharedVPC {
+		//Placeholder for shared vpc, need to research what to be set here
+	}
+	if profile.ClusterConfig.TagEnabled {
+		flags = append(flags, "--tags", "test-tag:tagvalue,qe-managed:true")
+	}
+	if profile.ClusterConfig.VolumeSize != 0 {
+		flags = append(flags, "--worker-disk-size", fmt.Sprintf("%dGiB", profile.ClusterConfig.VolumeSize))
+	}
+	if profile.ClusterConfig.Zones != "" && !profile.ClusterConfig.BYOVPC {
+		flags = append(flags, " --availability-zones", profile.ClusterConfig.Zones)
 	}
 
 	return flags, nil
@@ -271,5 +232,17 @@ func CreateClusterByProfile(profile *Profile, client *rosacli.Client) (*rosacli.
 		return nil, err
 	}
 	description, err := client.Cluster.ReflectClusterDescription(output)
+	// Need to do the post step when cluster has no oidcconfig enabled
+	if profile.ClusterConfig.OIDCConfig == "" {
+		err = PrepareOIDCProviderByCluster(client, description.ID)
+		if err != nil {
+			return description, err
+		}
+		err = PrepareOperatorRolesByCluster(client, description.ID)
+		if err != nil {
+			return description, err
+		}
+
+	}
 	return description, err
 }
