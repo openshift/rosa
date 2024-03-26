@@ -1,8 +1,6 @@
 package ocm
 
 import (
-	"fmt"
-
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/gomega"
 
@@ -26,15 +24,34 @@ var _ = Describe("ManagedService", func() {
 			service, err := client.CreateManagedService(CreateManagedServiceArgs{})
 			Expect(service).To(BeNil())
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(
-				fmt.Errorf("managed services are not supported for FedRAMP clusters").Error()))
+			Expect(err.Error()).To(Equal(fedrampError.Error()))
 		})
 		It("Can't update managedService", func() {
 			fedramp.Enable() // Simulate logging into fedramp
 			err := client.UpdateManagedService(UpdateManagedServiceArgs{})
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(
-				fmt.Errorf("managed services are not supported for FedRAMP clusters").Error()))
+			Expect(err.Error()).To(Equal(fedrampError.Error()))
+		})
+		It("Can't list managedService", func() {
+			fedramp.Enable() // Simulate logging into fedramp
+			output, err := client.ListManagedServices(1000)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fedrampError.Error()))
+			Expect(output).To(BeNil())
+		})
+		It("Can't get managedService", func() {
+			fedramp.Enable() // Simulate logging into fedramp
+			output, err := client.GetManagedService(DescribeManagedServiceArgs{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fedrampError.Error()))
+			Expect(output).To(BeNil())
+		})
+		It("Can't delete managedService", func() {
+			fedramp.Enable() // Simulate logging into fedramp
+			output, err := client.DeleteManagedService(DeleteManagedServiceArgs{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fedrampError.Error()))
+			Expect(output).To(BeNil())
 		})
 	})
 })
