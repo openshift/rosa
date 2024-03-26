@@ -22,6 +22,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/admin"
 	cadmin "github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -53,19 +54,20 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Try to find an existing htpasswd identity provider and
-	// check if cluster-admin user already exists
-	existingClusterAdminIdp, _, err := cadmin.FindIDPWithAdmin(cluster, r)
+	admins, err := r.OCMClient.GetUsers(cluster.ID(), admin.ClusterAdminGroupname)
 	if err != nil {
 		r.Reporter.Errorf(err.Error())
 		os.Exit(1)
 	}
-	if existingClusterAdminIdp != nil {
-		r.Reporter.Infof("There is '%s' user on cluster '%s'. To login, run the following command:\n"+
-			"   oc login %s --username %s",
-			cadmin.ClusterAdminUsername, clusterKey, cluster.API().URL(), cadmin.ClusterAdminUsername)
+
+	if len(admins) != 0 {
+		for _, admin := range admins {
+			r.Reporter.Infof("There is '%s' user on cluster '%s'. To login, run the following command:\n"+
+				"   oc login %s --username %s",
+				admin.ID(), clusterKey, cluster.API().URL(), admin.ID())
+		}
 	} else {
-		r.Reporter.Warnf("There is no '%s' user on cluster '%s'. To create it run the following command:\n"+
+		r.Reporter.Warnf("There is no %s user on cluster '%s'. To create it run the following command:\n"+
 			"   rosa create admin -c %s", cadmin.ClusterAdminUsername, clusterKey, clusterKey)
 		os.Exit(0)
 	}
