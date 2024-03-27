@@ -14,11 +14,13 @@ var Test *TestConfig
 // TestConfig contains platforms info for the rosacli testing
 type TestConfig struct {
 	// Env is the OpenShift Cluster Management environment used to provision clusters.
-	ENV             string `env:"OCM_LOGIN_ENV" default:""`
-	TestProfile     string `env:"TEST_PROFILE" default:""`
-	OutputDir       string `env:"OUTPUT_DIR" default:""`
-	YAMLProfilesDir string `env:"TEST_PROFILE_DIR" default:""`
-	RootDir         string `env:"WORKSPACE" default:""`
+	ENV               string `env:"OCM_LOGIN_ENV" default:""`
+	TestProfile       string `env:"TEST_PROFILE" default:""`
+	OutputDir         string `env:"OUTPUT_DIR" default:""`
+	YAMLProfilesDir   string `env:"TEST_PROFILE_DIR" default:""`
+	RootDir           string `env:"WORKSPACE" default:""`
+	ClusterConfigFile string
+	UserDataFile      string
 }
 
 func init() {
@@ -34,4 +36,6 @@ func init() {
 	if err != nil {
 		Logger.Errorf("Meet error %s when create output dirs", err.Error())
 	}
+	Test.ClusterConfigFile = path.Join(Test.OutputDir, "cluster-config")
+	Test.UserDataFile = path.Join(Test.OutputDir, "user-data")
 }

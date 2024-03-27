@@ -218,7 +218,7 @@ func (c *clusterService) GetClusterVersion(clusterID string) (clusterVersion con
 	}
 
 	if clusterConfig.Version.RawID != "" {
-		clusterVersion = clusterConfig.Version
+		clusterVersion = *clusterConfig.Version
 	} else {
 		// Else retrieve from cluster description
 		var jsonData *jsonData
