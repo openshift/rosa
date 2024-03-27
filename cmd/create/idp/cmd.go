@@ -334,6 +334,11 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf("Adding IDP is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	// Grab all the IDP information interactively if necessary
 	idpType := args.idpType
 	if idpType == "" {

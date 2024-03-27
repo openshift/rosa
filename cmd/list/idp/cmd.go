@@ -58,6 +58,11 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf("Listing identity providers is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	// Load any existing IDPs for this cluster
 	r.Reporter.Debugf("Loading identity providers for cluster '%s'", clusterKey)
 	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
