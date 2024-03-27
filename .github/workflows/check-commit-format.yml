@@ -1,0 +1,58 @@
+# following the contribution guide this check enforces the commit format
+# [JIRA-TICKET] | [TYPE]: <MESSAGE>
+name: 'Validate Commit Messages'
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  parse-commit-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+      - name: Validate Commit Message(s)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+
+        run: |
+          IFS=$'\n' commit_messages=($(git log --pretty=format:"%s" $BASE_SHA...$HEAD_SHA))          
+          
+          # Lists of GitHub users for whom the commit validation should be skipped:
+          # # This contains the bots used in the ROSA project
+          # * openshift-merge-bot[bot] - bot responsible for merigng MRs
+          # * openshift-ci[bot] - bot responsible for running tests / approvals
+          # * codecov[bot] - bot responsible for reporting code coverage
+          declare -a skip_pr_authors=(
+            "openshift-ci[bot]"
+            "openshift-merge-bot[bot]"
+            "codecov[bot]"
+          )
+          echo "The PR Author is \"${PR_AUTHOR}\""
+          for skip_pr_author in "${skip_pr_authors[@]}"
+          do
+            if [ "${PR_AUTHOR}" = "${skip_pr_author}" ]; then
+              echo "The commits created by this PR author (probably bot) should be skipped!!!"
+              exit 0
+            fi
+          done
+
+          for message in "${commit_messages[@]}"
+          do
+            echo "validating commit message:\"$message\""
+            if ! echo "$message" | grep -qE "^[A-Z]+-[0-9]+ \| (feat|fix|docs|style|refactor|test|chore|build|ci|perf): .*$"; then
+              echo "Invalid commit message format. Expected format: JIRA_TICKET | TYPE: MESSAGE"
+              echo "Where:"
+              echo "   JIRA_TICKET is jira ticket ID (for example OCM-xxx)"
+              echo "   TYPE must be one of the options (case sensitive):"
+              echo "        feat, fix, docs, style, refactor, test, chore, build, ci, perf"
+              exit 1
+            fi
+          done
