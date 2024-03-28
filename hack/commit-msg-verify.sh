@@ -23,6 +23,9 @@ do
     exit 0
   fi
 done
+
+pattern="^(Revert \")?[A-Z]+-[0-9]+ \| (feat|fix|docs|style|refactor|test|chore|build|ci|perf): .*$"
+
 commits=$(git rev-list --no-merges $PULL_BASE_SHA..$PULL_PULL_SHA)
 
 for sha in $commits; do
