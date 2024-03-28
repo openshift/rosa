@@ -108,6 +108,12 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf(
+			"Deleting the 'cluster-admin' user is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	// Try to find the htpasswd identity provider:
 	clusterID := cluster.ID()
 	clusterAdminIDP, _, err := cadmin.FindIDPWithAdmin(cluster, r)

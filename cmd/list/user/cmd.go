@@ -61,6 +61,11 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf("Listing cluster users is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	var clusterAdmins []*cmv1.User
 	var err error
 	r.Reporter.Debugf("Loading users for cluster '%s'", clusterKey)

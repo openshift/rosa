@@ -54,6 +54,12 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf(
+			"Describing the 'cluster-admin' user is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	admins, err := r.OCMClient.GetUsers(cluster.ID(), admin.ClusterAdminGroupname)
 	if err != nil {
 		r.Reporter.Errorf(err.Error())

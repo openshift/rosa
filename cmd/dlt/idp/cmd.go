@@ -60,6 +60,12 @@ func run(_ *cobra.Command, argv []string) {
 	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
+
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf("Deleting IDP is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	// Try to find the identity provider:
 	r.Reporter.Debugf("Loading identity provider '%s'", idpName)
 	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
