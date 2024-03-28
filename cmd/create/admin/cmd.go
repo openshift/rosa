@@ -39,9 +39,9 @@ const MaxPasswordLength = 23
 
 var Cmd = &cobra.Command{
 	Use:   "admin",
-	Short: "Creates the 'cluster-admin' user to login to the cluster",
-	Long:  "Creates the 'cluster-admin' user with an auto-generated password to login to the cluster",
-	Example: `  # Create the 'cluster-admin' user to login to the cluster
+	Short: "Creates an admin user to login to the cluster",
+	Long:  "Creates a cluster-admin user with an auto-generated password to login to the cluster",
+	Example: `  # Create an admin user to login to the cluster
   rosa create admin -c mycluster -p MasterKey123`,
 	Run:  run,
 	Args: cobra.NoArgs,
