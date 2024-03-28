@@ -34,12 +34,17 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-const doubleQuotesToRemove = "\"\""
+const (
+	doubleQuotesToRemove = "\"\""
+
+	enableDeleteProtectionFlagName = "enable-delete-protection"
+)
 
 var args struct {
 	// Basic options
-	expirationTime     string
-	expirationDuration time.Duration
+	expirationTime         string
+	expirationDuration     time.Duration
+	enableDeleteProtection bool
 
 	// Networking options
 	private                   bool
@@ -85,6 +90,12 @@ func init() {
 		"expiration",
 		0,
 		"Expire cluster after a relative duration like 2h, 8h, 72h. Only one of expiration-time / expiration may be used.",
+	)
+	flags.BoolVar(
+		&args.enableDeleteProtection,
+		enableDeleteProtectionFlagName,
+		false,
+		"Toggle cluster deletion protection against accidental cluster deletion.",
 	)
 	// Cluster expiration is not supported in production
 	flags.MarkHidden("expiration-time")
@@ -518,10 +529,12 @@ func run(cmd *cobra.Command, _ []string) {
 	if httpsProxy != nil {
 		clusterConfig.HTTPSProxy = httpsProxy
 	}
+
 	if noProxySlice != nil {
 		str := strings.Join(noProxySlice, ",")
 		clusterConfig.NoProxy = &str
 	}
+
 	if additionalTrustBundleFile != nil {
 		clusterConfig.AdditionalTrustBundle = new(string)
 		if *additionalTrustBundleFile == doubleQuotesToRemove {
@@ -538,13 +551,48 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	}
+
 	if auditLogRole != nil {
 		clusterConfig.AuditLogRoleARN = new(string)
 		*clusterConfig.AuditLogRoleARN = *auditLogRole
 	}
 
+	// Deletion Protection
+	var deleteProtection bool
+	if !cmd.Flags().Changed(enableDeleteProtectionFlagName) {
+		deleteProtection = cluster.DeleteProtection().Enabled()
+	} else if interactive.Enabled() {
+		deleteProtection = args.enableDeleteProtection
+	}
+
+	if interactive.Enabled() {
+		deleteProtection, err = interactive.GetBool(interactive.Input{
+			Question: "Enable cluster deletion protection",
+			Help:     cmd.Flags().Lookup(enableDeleteProtectionFlagName).Usage,
+			Default:  deleteProtection,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	if cluster.DeleteProtection().Enabled() != deleteProtection {
+		r.Reporter.Debugf("Updating cluster deletion protection to : %t", deleteProtection)
+		newDeleteProtection, err := cmv1.NewDeleteProtection().Enabled(deleteProtection).Build()
+		if err != nil {
+			r.Reporter.Errorf("Failed to build delete protection: %v", err)
+			os.Exit(1)
+		}
+
+		if err := r.OCMClient.UpdateClusterDeletionProtection(cluster.ID(), newDeleteProtection); err != nil {
+			r.Reporter.Errorf("Failed to update cluster delete protection: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)
-	err = r.OCMClient.UpdateCluster(clusterKey, r.Creator, clusterConfig)
+	err = r.OCMClient.UpdateCluster(cluster.ID(), r.Creator, clusterConfig)
 	if err != nil {
 		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
