@@ -160,14 +160,21 @@ func (rc *runnerConfig) GenerateCmdFlags() (flags []string) {
 	return
 }
 
-func (r *runner) Run() (bytes.Buffer, error) {
-	rosacmd := "rosa"
+func (r *runner) CmdElements() []string {
 	cmdElements := r.cmds
 	if len(r.cmdArgs) > 0 {
 		cmdElements = append(cmdElements, r.cmdArgs...)
 	}
 	cmdElements = append(cmdElements, r.runnerCfg.GenerateCmdFlags()...)
+	return cmdElements
+}
+func (r *runner) CMDString() string {
+	return fmt.Sprintf("rosa %s", strings.Join(r.CmdElements(), " "))
+}
 
+func (r *runner) Run() (bytes.Buffer, error) {
+	rosacmd := "rosa"
+	cmdElements := r.CmdElements()
 	var output bytes.Buffer
 	var err error
 	retry := 0

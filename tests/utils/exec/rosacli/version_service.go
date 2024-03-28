@@ -11,13 +11,14 @@ import (
 
 const VersionChannelGroupStable = "stable"
 const VersionChannelGroupNightly = "nightly"
+const VersionChannelGroupCandidate = "candidate"
 
 type VersionService interface {
 	ResourcesCleaner
 
-	ReflectVersions(result bytes.Buffer) (*OpenShiftVersionList, error)
+	ReflectVersions(result bytes.Buffer) (*OpenShiftVersionTableList, error)
 	ListVersions(channelGroup string, hostedCP bool, flags ...string) (bytes.Buffer, error)
-	ListAndReflectVersions(channelGroup string, hostedCP bool, flags ...string) (*OpenShiftVersionList, error)
+	ListAndReflectVersions(channelGroup string, hostedCP bool, flags ...string) (*OpenShiftVersionTableList, error)
 }
 
 type versionService struct {
@@ -32,27 +33,54 @@ func NewVersionService(client *Client) VersionService {
 	}
 }
 
-type OpenShiftVersion struct {
+type OpenShiftVersionTableOutput struct {
 	Version           string `json:"VERSION,omitempty"`
 	Default           string `json:"DEFAULT,omitempty"`
 	AvailableUpgrades string `json:"AVAILABLE UPGRADES,omitempty"`
 }
 
-type OpenShiftVersionList struct {
-	OpenShiftVersions []*OpenShiftVersion `json:"OpenShiftVersions,omitempty"`
+type OpenShiftVersionJsonOutput struct {
+	ID                string   `json:"VERSION,omitempty"`
+	RAWID             string   `json:"raw_id,omitempty"`
+	ChannelGroup      string   `json:"channel_group,omitempty"`
+	HCPDefault        bool     `json:"hosted_control_plane_default,omitempty"`
+	HCPEnabled        bool     `json:"hosted_control_plane_enabled,omitempty"`
+	Default           bool     `json:"default,omitempty"`
+	AvailableUpgrades []string `json:"available_upgrades,omitempty"`
+}
+
+type OpenShiftVersionTableList struct {
+	OpenShiftVersions []*OpenShiftVersionTableOutput `json:"OpenShiftVersions,omitempty"`
 }
 
 // Reflect versions
-func (v *versionService) ReflectVersions(result bytes.Buffer) (versionList *OpenShiftVersionList, err error) {
-	versionList = &OpenShiftVersionList{}
+func (v *versionService) ReflectVersions(result bytes.Buffer) (versionList *OpenShiftVersionTableList, err error) {
+	versionList = &OpenShiftVersionTableList{}
 	theMap := v.client.Parser.TableData.Input(result).Parse().Output()
 	for _, item := range theMap {
-		version := &OpenShiftVersion{}
+		version := &OpenShiftVersionTableOutput{}
 		err = MapStructure(item, version)
 		if err != nil {
 			return versionList, err
 		}
 		versionList.OpenShiftVersions = append(versionList.OpenShiftVersions, version)
+	}
+	return versionList, err
+}
+
+// Reflect versions json
+func (v *versionService) ReflectJsonVersions(result bytes.Buffer) (versionList []*OpenShiftVersionJsonOutput, err error) {
+	versionList = []*OpenShiftVersionJsonOutput{}
+	parser := v.client.Parser.JsonData.Input(result).Parse()
+	theMap := parser.Output().([]interface{})
+	for index, _ := range theMap {
+		version := &OpenShiftVersionJsonOutput{}
+		vDetail := parser.DigObject(index).(map[string]interface{})
+		err := MapStructure(vDetail, version)
+		if err != nil {
+			return versionList, err
+		}
+		versionList = append(versionList, version)
 	}
 	return versionList, err
 }
@@ -74,7 +102,17 @@ func (v *versionService) ListVersions(channelGroup string, hostedCP bool, flags 
 	return listVersion.Run()
 }
 
-func (v *versionService) ListAndReflectVersions(channelGroup string, hostedCP bool, flags ...string) (versionList *OpenShiftVersionList, err error) {
+func (v *versionService) ListAndReflectVersions(channelGroup string, hostedCP bool, flags ...string) (versionList *OpenShiftVersionTableList, err error) {
+	var output bytes.Buffer
+	output, err = v.ListVersions(channelGroup, hostedCP, flags...)
+	if err != nil {
+		return versionList, err
+	}
+
+	versionList, err = v.ReflectVersions(output)
+	return versionList, err
+}
+func (v *versionService) ListAndReflectJsonVersions(channelGroup string, hostedCP bool, flags ...string) (versionList *OpenShiftVersionTableList, err error) {
 	var output bytes.Buffer
 	output, err = v.ListVersions(channelGroup, hostedCP, flags...)
 	if err != nil {
@@ -92,7 +130,7 @@ func (v *versionService) CleanResources(clusterID string) (errors []error) {
 
 // This function will find the nearest lower OCP version which version is under `Major.{minor-sub}`.
 // `strict` will find only the `Major.{minor-sub}` ones
-func (vl *OpenShiftVersionList) FindNearestBackwardMinorVersion(version string, minorSub int64, strict bool) (vs *OpenShiftVersion, err error) {
+func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(version string, minorSub int64, strict bool) (vs *OpenShiftVersionTableOutput, err error) {
 	var baseVersionSemVer *semver.Version
 	baseVersionSemVer, err = semver.NewVersion(version)
 	if err != nil {
@@ -110,8 +148,8 @@ func (vl *OpenShiftVersionList) FindNearestBackwardMinorVersion(version string, 
 }
 
 // Sort sort the version list from lower to higher (or reverse)
-func (vl *OpenShiftVersionList) Sort(reverse bool) (nvl *OpenShiftVersionList, err error) {
-	versionListIndexMap := make(map[string]*OpenShiftVersion)
+func (vl *OpenShiftVersionTableList) Sort(reverse bool) (nvl *OpenShiftVersionTableList, err error) {
+	versionListIndexMap := make(map[string]*OpenShiftVersionTableOutput)
 	var semVerList []*semver.Version
 	var vSemVer *semver.Version
 	for _, version := range vl.OpenShiftVersions {
@@ -129,12 +167,12 @@ func (vl *OpenShiftVersionList) Sort(reverse bool) (nvl *OpenShiftVersionList, e
 		sort.Sort(semver.Collection(semVerList))
 	}
 
-	var sortedImageVersionList []*OpenShiftVersion
+	var sortedImageVersionList []*OpenShiftVersionTableOutput
 	for _, semverVersion := range semVerList {
 		sortedImageVersionList = append(sortedImageVersionList, versionListIndexMap[semverVersion.Original()])
 	}
 
-	nvl = &OpenShiftVersionList{
+	nvl = &OpenShiftVersionTableList{
 		OpenShiftVersions: sortedImageVersionList,
 	}
 
@@ -143,8 +181,8 @@ func (vl *OpenShiftVersionList) Sort(reverse bool) (nvl *OpenShiftVersionList, e
 
 // FilterVersionsByMajorMinor filter the version list for all major/minor corresponding and returns a new `OpenShiftVersionList` struct
 // `strict` will find only the `Major.minor` ones
-func (vl *OpenShiftVersionList) FilterVersionsSameMajorAndEqualOrLowerThanMinor(major int64, minor int64, strict bool) (nvl *OpenShiftVersionList, err error) {
-	var filteredVersions []*OpenShiftVersion
+func (vl *OpenShiftVersionTableList) FilterVersionsSameMajorAndEqualOrLowerThanMinor(major int64, minor int64, strict bool) (nvl *OpenShiftVersionTableList, err error) {
+	var filteredVersions []*OpenShiftVersionTableOutput
 	var semverVersion *semver.Version
 	for _, version := range vl.OpenShiftVersions {
 		if semverVersion, err = semver.NewVersion(version.Version); err != nil {
@@ -155,7 +193,7 @@ func (vl *OpenShiftVersionList) FilterVersionsSameMajorAndEqualOrLowerThanMinor(
 		}
 	}
 
-	nvl = &OpenShiftVersionList{
+	nvl = &OpenShiftVersionTableList{
 		OpenShiftVersions: filteredVersions,
 	}
 
@@ -163,11 +201,11 @@ func (vl *OpenShiftVersionList) FilterVersionsSameMajorAndEqualOrLowerThanMinor(
 }
 
 // FilterVersionsByMajorMinor filter the version list for all lower versions than the given one
-func (vl *OpenShiftVersionList) FilterVersionsLowerThan(version string) (nvl *OpenShiftVersionList, err error) {
+func (vl *OpenShiftVersionTableList) FilterVersionsLowerThan(version string) (nvl *OpenShiftVersionTableList, err error) {
 	var givenSemVer *semver.Version
 	givenSemVer, err = semver.NewVersion(version)
 
-	var filteredVersions []*OpenShiftVersion
+	var filteredVersions []*OpenShiftVersionTableOutput
 	var semverVersion *semver.Version
 	for _, version := range vl.OpenShiftVersions {
 		if semverVersion, err = semver.NewVersion(version.Version); err != nil {
@@ -177,13 +215,22 @@ func (vl *OpenShiftVersionList) FilterVersionsLowerThan(version string) (nvl *Op
 		}
 	}
 
-	nvl = &OpenShiftVersionList{
+	nvl = &OpenShiftVersionTableList{
 		OpenShiftVersions: filteredVersions,
 	}
 
 	return
 }
 
-func (vl *OpenShiftVersionList) Len() int {
+func (vl *OpenShiftVersionTableList) Len() int {
 	return len(vl.OpenShiftVersions)
+}
+
+func (vl *OpenShiftVersionTableList) Latest() (*OpenShiftVersionTableOutput, error) {
+	vl, err := vl.Sort(true)
+	if err != nil {
+		return nil, err
+	}
+	return vl.OpenShiftVersions[0], err
+
 }

@@ -44,3 +44,11 @@ func GenerateRandomString(n int) string {
 func GenerateRandomName(prefix string, n int) string {
 	return fmt.Sprintf("%s-%s", prefix, strings.ToLower(GenerateRandomString(n)))
 }
+
+func SplitMajorVersion(openshiftVersion string) string {
+	splited := strings.Split(openshiftVersion, ".")
+	if len(splited) < 2 {
+		return openshiftVersion
+	}
+	return strings.Join(splited[0:2], ".")
+}

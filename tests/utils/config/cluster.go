@@ -57,34 +57,73 @@ type Nodes struct {
 type Autoscaling struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
+type Autoscaler struct {
+	AutoscalerBalanceSimilarNodeGroups      bool   `json:"autoscaler_balance_similar_node_groups,omitempty"`
+	AutoscalerSkipNodesWithLocalStorage     bool   `json:"autoscaler_skip_nodes_with_local_storage,omitempty"`
+	AutoscalerLogVerbosity                  string `json:"autoscaler_log_verbosity,omitempty"`
+	AutoscalerMaxPodGracePeriod             string `json:"autoscaler_max_pod_grace_period,omitempty"`
+	AutoscalerPodPriorityThreshold          string `json:"autoscaler_pod_priority_threshold,omitempty"`
+	AutoscalerIgnoreDaemonsetsUtilization   bool   `json:"autoscaler_ignore_daemonsets_utilization,omitempty"`
+	AutoscalerMaxNodeProvisionTime          string `json:"autoscaler_max_node_provision_time,omitempty"`
+	AutoscalerBalancingIgnoredLabels        string `json:"autoscaler_balancing_ignored_labels,omitempty"`
+	AutoscalerMaxNodesTotal                 string `json:"autoscaler_max_nodes_total,omitempty"`
+	AutoscalerMinCores                      string `json:"autoscaler_min_cores,omitempty"`
+	AutoscalerMaxCores                      string `json:"autoscaler_max_cores,omitempty"`
+	AutoscalerMinMemory                     string `json:"autoscaler_min_memory,omitempty"`
+	AutoscalerMaxMemory                     string `json:"autoscaler_max_memory,omitempty"`
+	AutoscalerGpuLimit                      string `json:"autoscaler_gpu_limit,omitempty"`
+	AutoscalerScaleDownEnabled              bool   `json:"autoscaler_scale_down_enabled,omitempty"`
+	AutoscalerScaleDownUnneededTime         string `json:"autoscaler_scale_down_unneeded_time,omitempty"`
+	AutoscalerScaleDownUtilizationThreshold string `json:"autoscaler_scale_down_utilization_threshold,omitempty"`
+	AutoscalerScaleDownDelayAfterAdd        string `json:"autoscaler_scale_down_delay_after_add,omitempty"`
+	AutoscalerScaleDownDelayAfterDelete     string `json:"autoscaler_scale_down_delay_after_delete,omitempty"`
+	AutoscalerScaleDownDelayAfterFailure    string `json:"autoscaler_scale_down_delay_after_failure,omitempty"`
+}
+type IngressConfig struct {
+	DefaultIngressRouteSelector            string `json:"default_ingress_route_sector,omitempty"`
+	DefaultIngressExcludedNamespaces       string `json:"default_ingress_excluded_namespaces,omitempty"`
+	DefaultIngressWildcardPolicy           string `json:"default_ingress_wildcard_policy,omitempty"`
+	DefaultIngressNamespaceOwnershipPolicy string `json:"default_ingress_namespace_ownership_policy,omitempty"`
+}
+type Networking struct {
+	MachineCIDR string `json:"machine_cidr,omitempty"`
+	ServiceCIDR string `json:"service_cidr,omitempty"`
+	PodCIDR     string `json:"pod_cidr,omitempty"`
+	HostPrefix  string `json:"host_prefix,omitempty"`
+}
 
 type ClusterConfig struct {
-	DisableScpChecks          bool        `json:"disable_scp_checks,omitempty"`
-	DisableWorkloadMonitoring bool        `json:"disable_workload_monitoring,omitempty"`
-	EnableCustomerManagedKey  bool        `json:"enable_customer_managed_key,omitempty"`
-	EtcdEncryption            bool        `json:"etcd_encryption,omitempty"`
-	Fips                      bool        `json:"fips,omitempty"`
-	Hypershift                bool        `json:"hypershift,omitempty"`
-	MultiAZ                   bool        `json:"multi_az,omitempty"`
-	Private                   bool        `json:"private,omitempty"`
-	PrivateLink               bool        `json:"private_link,omitempty"`
-	Sts                       bool        `json:"sts,omitempty"`
-	AuditLogArn               string      `json:"audit_log_arn,omitempty"`
-	AvailabilityZones         string      `json:"availability_zones,omitempty"`
-	DefaultMpLabels           string      `json:"default_mp_labels,omitempty"`
-	Ec2MetadataHttpTokens     string      `json:"ec2_metadata_http_tokens,omitempty"`
-	Name                      string      `json:"name,omitempty"`
-	Region                    string      `json:"region,omitempty"`
-	Tags                      string      `json:"tags,omitempty"`
-	WorkerDiskSize            string      `json:"worker_disk_size,omitempty"`
-	Autoscaling               Autoscaling `json:"autoscaling,omitempty"`
-	Aws                       AWS         `json:"aws,omitempty"`
-	Encryption                Encryption  `json:"encryption,omitempty"`
-	Nodes                     Nodes       `json:"nodes,omitempty"`
-	Properties                Properties  `json:"properties,omitempty"`
-	Proxy                     Proxy       `json:"proxy,omitempty"`
-	Subnets                   Subnets     `json:"subnets,omitempty"`
-	Version                   Version     `json:"version,omitempty"`
+	DisableScpChecks          bool           `json:"disable_scp_checks,omitempty"`
+	DisableWorkloadMonitoring bool           `json:"disable_workload_monitoring,omitempty"`
+	EnableCustomerManagedKey  bool           `json:"enable_customer_managed_key,omitempty"`
+	EtcdEncryption            bool           `json:"etcd_encryption,omitempty"`
+	Fips                      bool           `json:"fips,omitempty"`
+	Hypershift                bool           `json:"hypershift,omitempty"`
+	MultiAZ                   bool           `json:"multi_az,omitempty"`
+	Private                   bool           `json:"private,omitempty"`
+	PrivateLink               bool           `json:"private_link,omitempty"`
+	Sts                       bool           `json:"sts,omitempty"`
+	AuditLogArn               string         `json:"audit_log_arn,omitempty"`
+	AvailabilityZones         string         `json:"availability_zones,omitempty"`
+	DefaultMpLabels           string         `json:"default_mp_labels,omitempty"`
+	Ec2MetadataHttpTokens     string         `json:"ec2_metadata_http_tokens,omitempty"`
+	Name                      string         `json:"name,omitempty"`
+	Region                    string         `json:"region,omitempty"`
+	Tags                      string         `json:"tags,omitempty"`
+	WorkerDiskSize            string         `json:"worker_disk_size,omitempty"`
+	DomainPrefix              string         `json:"domain_prefix,omitempty"`
+	BillingAccount            string         `json:"billing_account,omitempty"`
+	Autoscaling               *Autoscaling   `json:"autoscaling,omitempty"`
+	Aws                       *AWS           `json:"aws,omitempty"`
+	Encryption                *Encryption    `json:"encryption,omitempty"`
+	Nodes                     *Nodes         `json:"nodes,omitempty"`
+	Properties                *Properties    `json:"properties,omitempty"`
+	Proxy                     *Proxy         `json:"proxy,omitempty"`
+	Subnets                   *Subnets       `json:"subnets,omitempty"`
+	Version                   *Version       `json:"version,omitempty"`
+	Autoscaler                *Autoscaler    `json:"autoscaler,omitempty"`
+	IngressConfig             *IngressConfig `json:"ingress_config,omitempty"`
+	Networking                *Networking    `json:"networking,omitempty"`
 }
 
 func ParseClusterProfile() (*ClusterConfig, error) {
@@ -129,7 +168,7 @@ func GetClusterID() (clusterID string) {
 // Get the cluster config file, for jean chen
 func getClusterIDFile() string {
 	sharedDir := os.Getenv("SHARED_DIR")
-	return path.Join(sharedDir, "cluster-id")
+	return path.Join(sharedDir, "cluster_id")
 }
 
 // Get the clusterID env.
