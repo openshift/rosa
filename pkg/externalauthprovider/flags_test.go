@@ -66,4 +66,50 @@ var _ = Describe("External authentication provider", func() {
 		err := service.IsExternalAuthProviderSupported(mockClusterReady, clusterKey)
 		Expect(err).To(Not(HaveOccurred()))
 	})
+
+	It("KO: name is not specified", func() {
+		args := &ExternalAuthProvidersArgs{
+			issuerAudiences: []string{"abc"},
+			issuerUrl:       "https://test.com",
+		}
+		_, err := CreateExternalAuthConfig(args)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(
+			"'--name', '--issuer-url' and '--issuer-audiences' parameters " +
+				"are mandatory for creating an external authentication configuration"))
+	})
+
+	It("KO: issuer-audiences is not specified", func() {
+		args := &ExternalAuthProvidersArgs{
+			name:      "test",
+			issuerUrl: "https://test.com",
+		}
+		_, err := CreateExternalAuthConfig(args)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(
+			"'--name', '--issuer-url' and '--issuer-audiences' parameters are " +
+				"mandatory for creating an external authentication configuration"))
+	})
+
+	It("KO: issuer-url is not specified", func() {
+		args := &ExternalAuthProvidersArgs{
+			name:            "test",
+			issuerAudiences: []string{"abc"},
+		}
+		_, err := CreateExternalAuthConfig(args)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(
+			"'--name', '--issuer-url' and '--issuer-audiences' parameters are " +
+				"mandatory for creating an external authentication configuration"))
+	})
+
+	It("OK: mandatory fields are met", func() {
+		args := &ExternalAuthProvidersArgs{
+			name:            "test",
+			issuerAudiences: []string{"abc"},
+			issuerUrl:       "https://local.test",
+		}
+		_, err := CreateExternalAuthConfig(args)
+		Expect(err).To(Not(HaveOccurred()))
+	})
 })

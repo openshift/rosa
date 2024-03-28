@@ -324,34 +324,32 @@ func CreateExternalAuthConfig(args *ExternalAuthProvidersArgs) (*cmv1.ExternalAu
 	externalAuthBuilder := cmv1.NewExternalAuth().ID(args.name)
 	claimValidationRules := args.claimValidationRule
 
-	if args.issuerUrl != "" || args.issuerCaFile != "" || args.issuerAudiences != nil {
-		tokenIssuerBuilder := cmv1.NewTokenIssuer()
-
-		if args.issuerUrl != "" {
-			tokenIssuerBuilder.URL(args.issuerUrl)
-		}
-
-		if args.issuerCaFile != "" {
-			// Get certificate contents
-			ca := ""
-			if args.issuerCaFile != "" {
-				cert, err := os.ReadFile(args.issuerCaFile)
-				if err != nil {
-					return &cmv1.ExternalAuth{}, fmt.Errorf("expected a valid certificate bundle: %s", err)
-				}
-				ca = string(cert)
-			}
-			// Set the CA file, if any
-			if ca != "" {
-				tokenIssuerBuilder.CA(ca)
-			}
-		}
-
-		if args.issuerAudiences != nil {
-			tokenIssuerBuilder.Audiences(args.issuerAudiences...)
-		}
-		externalAuthBuilder.Issuer(tokenIssuerBuilder)
+	// check parameters
+	if args.name == "" || args.issuerUrl == "" || args.issuerAudiences == nil {
+		return &cmv1.ExternalAuth{}, fmt.Errorf(
+			"'--name', '--issuer-url' and '--issuer-audiences' parameters are mandatory " +
+				"for creating an external authentication configuration")
 	}
+
+	tokenIssuerBuilder := cmv1.NewTokenIssuer().
+		URL(args.issuerUrl).Audiences(args.issuerAudiences...)
+
+	if args.issuerCaFile != "" {
+		// Get certificate contents
+		ca := ""
+		if args.issuerCaFile != "" {
+			cert, err := os.ReadFile(args.issuerCaFile)
+			if err != nil {
+				return &cmv1.ExternalAuth{}, fmt.Errorf("expected a valid certificate bundle: %s", err)
+			}
+			ca = string(cert)
+		}
+		// Set the CA file, if any
+		if ca != "" {
+			tokenIssuerBuilder.CA(ca)
+		}
+	}
+	externalAuthBuilder.Issuer(tokenIssuerBuilder)
 
 	if args.claimMappingGroupsClaim != "" || args.claimMappingUsernameClaim != "" || claimValidationRules != nil {
 		groupClaimBuilder := cmv1.NewGroupsClaim().Claim(args.claimMappingGroupsClaim)
