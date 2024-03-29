@@ -739,6 +739,7 @@ func initFlags(cmd *cobra.Command) {
 		- Be at least 14 characters (ASCII-standard) without whitespaces
 		- Include uppercase letters, lowercase letters, and numbers or symbols (ASCII-standard characters only)`,
 	)
+	flags.MarkHidden("cluster-admin-user")
 
 	flags.StringVar(
 		&args.AuditLogRoleARN,
@@ -864,9 +865,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	createAdminUser := args.createAdminUser
-	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
+	clusterAdminUser := admin.ClusterAdminUsername //strings.Trim(args.clusterAdminUser, " \t")
 	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
-	if (createAdminUser || clusterAdminUser != "" || clusterAdminPassword != "") && isHostedCP {
+	if (createAdminUser || clusterAdminPassword != "") && isHostedCP {
 		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
 		os.Exit(1)
 	}
@@ -1016,7 +1017,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Errors when users elects for cluster admin via flags and elects for hosted control plane via interactive prompt"
-	if isHostedCP && (createAdminUser || clusterAdminPassword != "" || clusterAdminUser != "") {
+	if isHostedCP && (createAdminUser || clusterAdminPassword != "") {
 		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
 		os.Exit(1)
 	}
@@ -1024,7 +1025,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// isClusterAdmin is a flag indicating if user wishes to create cluster admin
 	isClusterAdmin := false
 	if !isHostedCP {
-		if createAdminUser || clusterAdminPassword != "" || clusterAdminUser != "" {
+		if createAdminUser || clusterAdminPassword != "" {
 			isClusterAdmin = true
 			// user supplies create-admin-user flag without cluster-admin-password will generate random password
 			if clusterAdminPassword == "" {
@@ -1064,7 +1065,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 			if isClusterAdmin {
-				clusterAdminUser = idp.GetIdpUserNameFromPrompt(cmd, r, "cluster-admin-user", clusterAdminUser)
+				//clusterAdminUser = idp.GetIdpUserNameFromPrompt(cmd, r, "cluster-admin-user", clusterAdminUser, true)
 				isCustomAdminPassword, err := interactive.GetBool(interactive.Input{
 					Question: "Create custom password for cluster admin",
 					Default:  false,
@@ -1188,7 +1189,9 @@ func run(cmd *cobra.Command, _ []string) {
 	externalAuthProvidersEnabled := args.externalAuthProvidersEnabled
 	if externalAuthProvidersEnabled {
 		if !isHostedCP {
-			r.Reporter.Errorf("External authentication configuration is only supported for a Hosted Control Plane cluster.")
+			r.Reporter.Errorf(
+				"External authentication configuration is only supported for a Hosted Control Plane cluster.",
+			)
 			os.Exit(1)
 		}
 	}
