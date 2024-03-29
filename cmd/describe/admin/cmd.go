@@ -72,8 +72,20 @@ func run(_ *cobra.Command, _ []string) {
 			"   oc login %s --username %s",
 			cadmin.ClusterAdminUsername, clusterKey, cluster.API().URL(), cadmin.ClusterAdminUsername)
 	} else {
-		r.Reporter.Warnf("There is no '%s' user on cluster '%s'. To create it run the following command:\n"+
-			"   rosa create admin -c %s", cadmin.ClusterAdminUsername, clusterKey, clusterKey)
-		os.Exit(0)
+		// Try to find the admin with custom username
+		admin, err := cadmin.FindCustomAdmin(cluster, r)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
+		if admin != nil {
+			r.Reporter.Infof("There is '%s' user on cluster '%s'. To login, run the following command:\n"+
+				"   oc login %s --username %s",
+				admin.Username(), clusterKey, cluster.API().URL(), admin.Username())
+		} else {
+			r.Reporter.Warnf("There is no admin user on cluster '%s'. To create it run the following command:\n"+
+				"   rosa create admin -c %s", clusterKey, clusterKey)
+			os.Exit(0)
+		}
 	}
 }

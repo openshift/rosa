@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 
+	"slices"
+
 	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -90,6 +92,15 @@ func run(_ *cobra.Command, _ []string) {
 	}
 	if adminUser != nil {
 		r.Reporter.Errorf("Cluster '%s' already has '%s' user", clusterKey, ClusterAdminUsername)
+		os.Exit(1)
+	}
+	customAdminUser, err := FindCustomAdmin(cluster, r)
+	if err != nil {
+		r.Reporter.Errorf("Failed to get admin user in 'cluster-admin' idp for cluster '%s'", clusterKey)
+		os.Exit(1)
+	}
+	if customAdminUser != nil {
+		r.Reporter.Errorf("Cluster '%s' already has cluster-admin user '%s'", clusterKey, customAdminUser.Username())
 		os.Exit(1)
 	}
 
@@ -260,4 +271,35 @@ func HasClusterAdmin(userList *cmv1.HTPasswdUserList) bool {
 		return true
 	})
 	return hasAdmin
+}
+
+// find the admin user in "cluster-admin" idp
+func FindCustomAdmin(cluster *cmv1.Cluster, r *rosa.Runtime) (*cmv1.HTPasswdUser, error) {
+	admins, err := r.OCMClient.GetUsers(cluster.ID(), ClusterAdminGroupname)
+	if err != nil {
+		return nil, err
+	}
+	adminNames := []string{}
+	for _, admin := range admins {
+		// if "cluster-admin" user exists, return nil
+		if admin.ID() == ClusterAdminUsername {
+			return nil, nil
+		}
+		adminNames = append(adminNames, admin.ID())
+	}
+
+	adminIdp, err := FindClusterAdminIDP(cluster, r)
+	if err != nil {
+		return nil, err
+	}
+	userList, err := r.OCMClient.GetHTPasswdUserList(cluster.ID(), adminIdp.ID())
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range userList.Slice() {
+		if slices.Contains(adminNames, user.Username()) {
+			return user, nil
+		}
+	}
+	return nil, nil
 }

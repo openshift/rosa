@@ -31,12 +31,12 @@ import (
 )
 
 type DeleteAdminUserStrategy interface {
-	deleteAdmin(r *rosa.Runtime, identityProvider *cmv1.IdentityProvider)
+	deleteAdmin(r *rosa.Runtime, identityProvider *cmv1.IdentityProvider, username string)
 }
 
 type DeleteAdminIDP struct{}
 
-func (d *DeleteAdminIDP) deleteAdmin(r *rosa.Runtime, identityProvider *cmv1.IdentityProvider) {
+func (d *DeleteAdminIDP) deleteAdmin(r *rosa.Runtime, identityProvider *cmv1.IdentityProvider, username string) {
 	err := r.OCMClient.DeleteIdentityProvider(r.Cluster.ID(), identityProvider.ID())
 	if err != nil {
 		r.Reporter.Errorf("Failed to delete htpasswd idp '%s' of cluster '%s': %s",
@@ -47,15 +47,16 @@ func (d *DeleteAdminIDP) deleteAdmin(r *rosa.Runtime, identityProvider *cmv1.Ide
 
 type DeleteUserAdminFromIDP struct{}
 
-func (d *DeleteUserAdminFromIDP) deleteAdmin(r *rosa.Runtime, identityProvider *cmv1.IdentityProvider) {
+func (d *DeleteUserAdminFromIDP) deleteAdmin(r *rosa.Runtime,
+	identityProvider *cmv1.IdentityProvider, username string) {
 	clusterID := r.Cluster.ID()
 
 	r.Reporter.Debugf("Deleting user '%s' from identity provider user list on cluster '%s'",
-		cadmin.ClusterAdminUsername, r.ClusterKey)
-	err := r.OCMClient.DeleteHTPasswdUser(cadmin.ClusterAdminUsername, clusterID, identityProvider)
+		username, r.ClusterKey)
+	err := r.OCMClient.DeleteHTPasswdUser(username, clusterID, identityProvider)
 	if err != nil {
 		r.Reporter.Errorf("Failed to delete '%s' user from htpasswd idp users list of cluster '%s': %s",
-			cadmin.ClusterAdminUsername, r.ClusterKey, err)
+			username, r.ClusterKey, err)
 		os.Exit(1)
 	}
 
@@ -122,25 +123,40 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	adminUsername := admin.ClusterAdminUsername
 	if clusterAdminIDP == nil {
-		r.Reporter.Errorf("Cluster '%s' does not have ‘%s’ user", r.ClusterKey, cadmin.ClusterAdminUsername)
-		os.Exit(1)
+		customAdmin, err := cadmin.FindCustomAdmin(cluster, r)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
+		if customAdmin == nil {
+			r.Reporter.Errorf("Cluster '%s' does not have admin user", r.ClusterKey)
+			os.Exit(1)
+		} else {
+			adminUsername = customAdmin.Username()
+			clusterAdminIDP, err = admin.FindClusterAdminIDP(cluster, r)
+			if err != nil {
+				r.Reporter.Errorf(err.Error())
+				os.Exit(1)
+			}
+		}
 	}
 
-	if confirm.Confirm("delete %s user on cluster %s", cadmin.ClusterAdminUsername, r.ClusterKey) {
+	if confirm.Confirm("delete %s user on cluster %s", adminUsername, r.ClusterKey) {
 		// delete `cluster-admin` user from the HTPasswd IDP
 		r.Reporter.Debugf("Deleting user '%s' from cluster-admins group on cluster '%s'",
-			cadmin.ClusterAdminUsername, r.ClusterKey)
-		err := r.OCMClient.DeleteUser(clusterID, admin.ClusterAdminGroupname, cadmin.ClusterAdminUsername)
+			adminUsername, r.ClusterKey)
+		err := r.OCMClient.DeleteUser(clusterID, admin.ClusterAdminGroupname, adminUsername)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
 		deletionStrategy := getAdminUserDeletionStrategy(r, clusterAdminIDP)
-		deletionStrategy.deleteAdmin(r, clusterAdminIDP)
+		deletionStrategy.deleteAdmin(r, clusterAdminIDP, adminUsername)
 
-		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", cadmin.ClusterAdminUsername, r.ClusterKey)
+		r.Reporter.Infof("Admin user '%s' has been deleted from cluster '%s'", adminUsername, r.ClusterKey)
 	}
 }
 
