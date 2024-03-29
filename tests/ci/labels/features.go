@@ -16,5 +16,3 @@ var FeatureOidcConfig = Label("feature-oidcconfig")
 var FeatureOidcProvider = Label("feature-oidcprovider")
 var FeatureRegion = Label("feature-region")
 var FeatureUser = Label("feature-user")
-
-var FeatureCLI = Label("feature-cli") // For tests related to command line directly
