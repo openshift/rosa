@@ -27,6 +27,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift-online/ocm-sdk-go/authentication"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/logout"
@@ -46,6 +47,8 @@ var uiTokenPage string = "https://console.redhat.com/openshift/token/rosa"
 const oauthClientId = "ocm-cli"
 
 var reAttempt bool
+
+var env string
 
 var args struct {
 	tokenURL      string
@@ -170,7 +173,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Check mandatory options:
-	env := args.env
+	env = args.env
 
 	// Confirm that token is not passed with auth code flags
 	if (args.useAuthCode || args.useDeviceCode) && args.token != "" {
@@ -239,22 +242,10 @@ func run(cmd *cobra.Command, argv []string) {
 	token := args.token
 
 	// Determine if we should be using the FedRAMP environment:
-	if fedramp.HasFlag(cmd) ||
-		(cfg.FedRAMP && token == "") ||
-		fedramp.IsGovRegion(arguments.GetRegion()) ||
-		config.IsEncryptedToken(token) {
-		fedramp.Enable()
-		// Always default to prod
-		if env == sdk.DefaultURL || env == "" {
-			env = ocm.Production
-		}
-		if fedramp.HasAdminFlag(cmd) {
-			uiTokenPage = fedramp.AdminLoginURLs[env]
-		} else {
-			uiTokenPage = fedramp.LoginURLs[env]
-		}
-	} else {
-		fedramp.Disable()
+	err = CheckAndLogIntoFedramp(fedramp.HasFlag(cmd), fedramp.HasAdminFlag(cmd), cfg, token, r)
+	if err != nil {
+		r.Reporter.Errorf("%s", err.Error())
+		os.Exit(1)
 	}
 
 	haveReqs := token != ""
@@ -496,7 +487,15 @@ func tokenType(jwtToken *jwt.Token) (typ string, err error) {
 }
 
 func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
-	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", arguments.NewEnvFlag, "token", "insecure"}
+	loginFlags := []string{
+		"token-url",
+		"client-id",
+		"client-secret",
+		"scope",
+		arguments.NewEnvFlag,
+		"token",
+		"insecure",
+	}
 	hasLoginFlags := false
 	// Check if the user set login flags
 	for _, loginFlag := range loginFlags {
@@ -538,5 +537,33 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 	}
 
 	run(cmd, argv)
+	return nil
+}
+
+func CheckAndLogIntoFedramp(hasFlag, hasAdminFlag bool, cfg *config.Config, token string,
+	runtime *rosa.Runtime) error {
+	if hasFlag ||
+		(cfg.FedRAMP && token == "") ||
+		fedramp.IsGovRegion(arguments.GetRegion()) ||
+		config.IsEncryptedToken(token) {
+		// Display error to user if they attempt to log into govcloud without a region specified (fixes OCM-5718)
+		if !fedramp.IsGovRegion(arguments.GetRegion()) {
+			return errors.Errorf("When logging into the FedRAMP environment, a recognized us-gov region needs " +
+				"to be specified. Example: --region us-gov-west-1")
+		}
+
+		fedramp.Enable()
+		// Always default to prod
+		if env == sdk.DefaultURL || env == "" {
+			env = "production"
+		}
+		if hasAdminFlag {
+			uiTokenPage = fedramp.AdminLoginURLs[env]
+		} else {
+			uiTokenPage = fedramp.LoginURLs[env]
+		}
+	} else {
+		fedramp.Disable()
+	}
 	return nil
 }
