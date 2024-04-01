@@ -45,6 +45,7 @@ var _ = Describe("Validate login command", func() {
 
 	Context("login command", func() {
 		When("logging into FedRAMP", func() {
+			env = "staging"
 			It("only 'region' is FedRAMP", func() {
 				os.Setenv("AWS_REGION", "us-gov-west-1")
 				// Load the configuration file:
@@ -53,7 +54,8 @@ var _ = Describe("Validate login command", func() {
 				if cfg == nil {
 					cfg = new(config.Config)
 				}
-				err = CheckAndLogIntoFedramp(false, false, cfg, "", "staging", rosa.NewRuntime())
+				env = "staging"
+				err = CheckAndLogIntoFedramp(false, false, cfg, "", rosa.NewRuntime())
 				Expect(err).ToNot(HaveOccurred())
 			})
 			It("only 'govcloud' flag is true", func() {
@@ -64,7 +66,7 @@ var _ = Describe("Validate login command", func() {
 				if cfg == nil {
 					cfg = new(config.Config)
 				}
-				err = CheckAndLogIntoFedramp(true, false, cfg, "", "staging", rosa.NewRuntime())
+				err = CheckAndLogIntoFedramp(true, false, cfg, "", rosa.NewRuntime())
 				Expect(err).To(HaveOccurred())
 			})
 			It("only 'cfg' has FedRAMP", func() {
@@ -76,7 +78,7 @@ var _ = Describe("Validate login command", func() {
 					cfg = new(config.Config)
 				}
 				cfg.FedRAMP = true
-				err = CheckAndLogIntoFedramp(false, false, cfg, "", "staging", rosa.NewRuntime())
+				err = CheckAndLogIntoFedramp(false, false, cfg, "", rosa.NewRuntime())
 				Expect(err).To(HaveOccurred())
 			})
 			It("'cfg' has FedRAMP and region is govcloud", func() {
@@ -88,8 +90,22 @@ var _ = Describe("Validate login command", func() {
 					cfg = new(config.Config)
 				}
 				cfg.FedRAMP = true
-				err = CheckAndLogIntoFedramp(false, false, cfg, "", "staging", rosa.NewRuntime())
+				err = CheckAndLogIntoFedramp(false, false, cfg, "", rosa.NewRuntime())
 				Expect(err).ToNot(HaveOccurred())
+			})
+			It("env is empty", func() {
+				os.Setenv("AWS_REGION", "us-gov-east-1")
+				// Load the configuration file:
+				cfg, err := config.Load()
+				Expect(err).ToNot(HaveOccurred())
+				if cfg == nil {
+					cfg = new(config.Config)
+				}
+				env = ""
+				cfg.FedRAMP = true
+				err = CheckAndLogIntoFedramp(false, false, cfg, "", rosa.NewRuntime())
+				Expect(err).ToNot(HaveOccurred())
+				Expect(env).To(Equal("production"))
 			})
 		})
 	})

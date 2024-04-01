@@ -50,6 +50,8 @@ const oauthClientId = "ocm-cli"
 
 var reAttempt bool
 
+var env string
+
 var args struct {
 	tokenURL      string
 	clientID      string
@@ -183,7 +185,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 
 	// Check mandatory options:
-	env := args.env
+	env = args.env
 
 	// Fail fast if config is keyring managed and invalid
 	if keyring, ok := config.IsKeyringManaged(); ok {
@@ -256,7 +258,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	token := args.token
 
 	// Determine if we should be using the FedRAMP environment:
-	err = CheckAndLogIntoFedramp(fedramp.HasFlag(cmd), fedramp.HasAdminFlag(cmd), cfg, token, env, r)
+	err = CheckAndLogIntoFedramp(fedramp.HasFlag(cmd), fedramp.HasAdminFlag(cmd), cfg, token, r)
 	if err != nil {
 		r.Reporter.Errorf("%s", err.Error())
 		os.Exit(1)
@@ -543,7 +545,7 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 	return nil
 }
 
-func CheckAndLogIntoFedramp(hasFlag, hasAdminFlag bool, cfg *config.Config, token string, env string,
+func CheckAndLogIntoFedramp(hasFlag, hasAdminFlag bool, cfg *config.Config, token string,
 	runtime *rosa.Runtime) error {
 	if hasFlag ||
 		(cfg.FedRAMP && token == "") ||
@@ -557,7 +559,7 @@ func CheckAndLogIntoFedramp(hasFlag, hasAdminFlag bool, cfg *config.Config, toke
 
 		fedramp.Enable()
 		// Always default to prod
-		if env == sdk.DefaultURL {
+		if env == sdk.DefaultURL || env == "" {
 			env = "production"
 		}
 		if hasAdminFlag {
