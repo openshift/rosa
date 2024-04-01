@@ -93,6 +93,20 @@ var _ = Describe("Validate login command", func() {
 				err = CheckAndLogIntoFedramp(false, false, cfg, "", rosa.NewRuntime())
 				Expect(err).ToNot(HaveOccurred())
 			})
+			It("env is empty", func() {
+				os.Setenv("AWS_REGION", "us-gov-east-1")
+				// Load the configuration file:
+				cfg, err := config.Load()
+				Expect(err).ToNot(HaveOccurred())
+				if cfg == nil {
+					cfg = new(config.Config)
+				}
+				env = ""
+				cfg.FedRAMP = true
+				err = CheckAndLogIntoFedramp(false, false, cfg, "", rosa.NewRuntime())
+				Expect(err).ToNot(HaveOccurred())
+				Expect(env).To(Equal("production"))
+			})
 		})
 	})
 })
