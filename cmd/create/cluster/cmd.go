@@ -1042,15 +1042,6 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
-			if clusterAdminUser != "" {
-				err = idp.UsernameValidator(clusterAdminUser)
-				if err != nil {
-					r.Reporter.Errorf("%s", err)
-					os.Exit(1)
-				}
-			} else {
-				clusterAdminUser = admin.ClusterAdminUsername
-			}
 		}
 
 		//check to remove first condition (interactive mode)
