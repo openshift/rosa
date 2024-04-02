@@ -57,8 +57,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		return err
 	}
 
-	if !breakglasscredential.IsBreakGlassCredentialSetViaCLI(cmd.Flags()) && !interactive.Enabled() {
-		interactive.Enable()
+	if interactive.Enabled() {
 		r.Reporter.Infof("Enabling interactive mode")
 	}
 	r.Reporter.Debugf("Creating a break glass credential for cluster '%s'", clusterKey)
