@@ -90,7 +90,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		return err
 	}
 
-	r.Reporter.Infof("Successfully created an external authentication provider for cluster '%s'", cluster.ID())
+	r.Reporter.Infof("Successfully created an external authentication provider for cluster '%s'. "+
+		"It can take a few minutes for the creation of an external authentication provider to become fully effective.",
+		clusterKey)
 
 	return nil
 }
