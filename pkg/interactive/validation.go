@@ -26,6 +26,9 @@ import (
 	"regexp"
 	"strconv"
 
+	"k8s.io/apimachinery/pkg/util/validation"
+	netutils "k8s.io/utils/net"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
@@ -57,6 +60,21 @@ func compose(validators []Validator) survey.Validator {
 func IsURL(val interface{}) error {
 	_, err := _isUrl(val)
 	return err
+}
+
+func IsValidHostname(val interface{}) error {
+	if !_isValidHostname(val.(string)) {
+		return fmt.Errorf(fmt.Sprintf("'%s' hostname must be a valid DNS subdomain or IP address", val.(string)))
+	}
+	return nil
+}
+
+// _isValidHostname is same validation as in the Open Shift GitHub IDP CRD
+// https://github.com/openshift/kubernetes/blob/91607f5d750ba4002f87d34a12ae1cfd45b45b81/openshift-kube-apiserver/admission/customresourcevalidation/oauth/helpers.go#L13
+//
+//nolint:lll
+func _isValidHostname(hostname string) bool {
+	return len(validation.IsDNS1123Subdomain(hostname)) == 0 || netutils.ParseIPSloppy(hostname) != nil
 }
 
 func IsURLHttps(val interface{}) error {

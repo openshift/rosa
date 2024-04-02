@@ -190,7 +190,7 @@ func buildGithubIdp(cmd *cobra.Command,
 			Help:     cmd.Flags().Lookup("hostname").Usage,
 			Default:  githubHostname,
 			Validators: []interactive.Validator{
-				interactive.IsURL,
+				interactive.IsValidHostname,
 			},
 		})
 		if err != nil {
@@ -201,9 +201,9 @@ func buildGithubIdp(cmd *cobra.Command,
 		return idpBuilder, fmt.Errorf("CA is not expected when not using a hosted instance of Github Enterprise")
 	}
 	if githubHostname != "" {
-		_, err = url.ParseRequestURI(githubHostname)
+		err := interactive.IsValidHostname(githubHostname)
 		if err != nil {
-			return idpBuilder, fmt.Errorf("Expected a valid Hostname: %s", err)
+			return idpBuilder, err
 		}
 		// Set the hostname, if any
 		githubIDP = githubIDP.Hostname(githubHostname)
