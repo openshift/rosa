@@ -45,6 +45,7 @@ require (
 	go.uber.org/mock v0.3.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.29.2
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 )
 
 require (
@@ -122,7 +123,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
 
 replace github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
