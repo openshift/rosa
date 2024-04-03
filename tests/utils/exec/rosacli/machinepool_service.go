@@ -98,21 +98,23 @@ type NodePoolList struct {
 }
 
 type NodePoolDescription struct {
-	ID               string `yaml:"ID,omitempty"`
-	ClusterID        string `yaml:"Cluster ID,omitempty"`
-	AutoScaling      string `yaml:"Autoscaling,omitempty"`
-	DesiredReplicas  string `yaml:"Desired replicas,omitempty"`
-	CurrentReplicas  string `yaml:"Current replicas,omitempty"`
-	InstanceType     string `yaml:"Instance type,omitempty"`
-	Labels           string `yaml:"Labels,omitempty"`
-	Taints           string `yaml:"Taints,omitempty"`
-	AvalaiblityZones string `yaml:"Availability zone,omitempty"`
-	Subnet           string `yaml:"Subnet,omitempty"`
-	Version          string `yaml:"Version,omitempty"`
-	AutoRepair       string `yaml:"Autorepair,omitempty"`
-	TuningConfigs    string `yaml:"Tuning configs,omitempty"`
-	Message          string `yaml:"Message,omitempty"`
-	ScheduledUpgrade string `yaml:"Scheduled upgrade,omitempty"`
+	ID                         string `yaml:"ID,omitempty"`
+	ClusterID                  string `yaml:"Cluster ID,omitempty"`
+	AutoScaling                string `yaml:"Autoscaling,omitempty"`
+	DesiredReplicas            string `yaml:"Desired replicas,omitempty"`
+	CurrentReplicas            string `yaml:"Current replicas,omitempty"`
+	InstanceType               string `yaml:"Instance type,omitempty"`
+	Labels                     string `yaml:"Labels,omitempty"`
+	Taints                     string `yaml:"Taints,omitempty"`
+	AvalaiblityZones           string `yaml:"Availability zone,omitempty"`
+	Subnet                     string `yaml:"Subnet,omitempty"`
+	Version                    string `yaml:"Version,omitempty"`
+	AutoRepair                 string `yaml:"Autorepair,omitempty"`
+	TuningConfigs              string `yaml:"Tuning configs,omitempty"`
+	Message                    string `yaml:"Message,omitempty"`
+	ScheduledUpgrade           string `yaml:"Scheduled upgrade,omitempty"`
+	AdditionalSecurityGroupIDs string `yaml:"Additional security group IDs,omitempty"`
+	NodeDrainGracePeriod       string `yaml:"Node drain grace period,omitempty"`
 }
 
 // Create MachinePool

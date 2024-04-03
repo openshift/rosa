@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -17,5 +18,6 @@ func TestROSACLIProvider(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	clusterID = os.Getenv("CLUSTER_ID")
 	ctx = context.Background()
 })
