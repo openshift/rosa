@@ -113,13 +113,15 @@ func CreateBreakGlass(cluster *cmv1.Cluster,
 func CreateBreakGlassConfig(args *BreakGlassCredentialArgs) (*cmv1.BreakGlassCredential, error) {
 	breakGlassBuilder := cmv1.NewBreakGlassCredential()
 
-	if args.username != "" {
-		breakGlassBuilder.Username(args.username)
-	}
+	if args != nil {
+		if args.username != "" {
+			breakGlassBuilder.Username(args.username)
+		}
 
-	if args.expirationDuration != 0 {
-		expirationTimeStamp := time.Now().Add(args.expirationDuration).Round(time.Second)
-		breakGlassBuilder.ExpirationTimestamp(expirationTimeStamp)
+		if args.expirationDuration != 0 {
+			expirationTimeStamp := time.Now().Add(args.expirationDuration).Round(time.Second)
+			breakGlassBuilder.ExpirationTimestamp(expirationTimeStamp)
+		}
 	}
 
 	return breakGlassBuilder.Build()
