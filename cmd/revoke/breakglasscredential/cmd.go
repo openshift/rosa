@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/externalauthprovider"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -58,6 +59,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
+
+	externalAuthService := externalauthprovider.NewExternalAuthService(r.OCMClient)
+	err := externalAuthService.IsExternalAuthProviderSupported(cluster, clusterKey)
+	if err != nil {
+		return err
+	}
 
 	if confirm.Confirm("revoke all the break glass credentials on cluster '%s'", clusterKey) {
 		r.Reporter.Debugf("Revoking break glass credentials on cluster '%s'", clusterKey)
