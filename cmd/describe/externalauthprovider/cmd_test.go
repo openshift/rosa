@@ -23,6 +23,28 @@ Issuer Url:                            https://test.com
 Claim mappings group:                  groups
 Claim mappings username:               username
 `
+
+	jsonOutput = `{
+  "kind": "ExternalAuth",
+  "id": "microsoft-entra-id",
+  "claim": {
+    "mappings": {
+      "groups": {
+        "claim": "groups"
+      },
+      "username": {
+        "claim": "username"
+      }
+    }
+  },
+  "issuer": {
+    "url": "https://test.com",
+    "audiences": [
+      "abc"
+    ]
+  }
+}
+`
 )
 
 var _ = Describe("External authentication provider", func() {
@@ -39,8 +61,7 @@ var _ = Describe("External authentication provider", func() {
 		})
 		hypershiftClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
 
-		externalAuths := make([]*cmv1.ExternalAuth, 0)
-		externalAuths = append(externalAuths, test.BuildExternalAuth())
+		externalAuth := test.BuildExternalAuth()
 
 		BeforeEach(func() {
 			testRuntime.InitRuntime()
@@ -68,13 +89,39 @@ var _ = Describe("External authentication provider", func() {
 			Expect(stderr).To(BeEmpty())
 		})
 
+		It("Pass an external auth provider name through parameter with -o json but it is not found", func() {
+			Cmd.Flags().Set("output", "json")
+			args.name = externalAuthName
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring(
+				fmt.Sprintf("external authentication provider '%s' not found", externalAuthName)))
+			Expect(stdout).To(BeEmpty())
+			Expect(stderr).To(BeEmpty())
+		})
+
 		It("Pass an external auth provider name through parameter and it is found.", func() {
 			args.name = externalAuthName
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatExternalAuthList(externalAuths)))
-			output := describeExternalAuthProviders(testRuntime.RosaRuntime,
-				mockClusterReady, test.MockClusterID, test.BuildExternalAuth())
-			Expect(output).To(Equal(describeStringOutput))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(externalAuth)))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
+			Expect(err).To(BeNil())
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(Equal(describeStringOutput))
+		})
+
+		It("Pass an external auth provider name through parameter with -o json and it is found.", func() {
+			Cmd.Flags().Set("output", "json")
+			args.name = externalAuthName
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(externalAuth)))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
+			Expect(err).To(BeNil())
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(Equal(jsonOutput))
 		})
 	})
 })

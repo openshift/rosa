@@ -76,10 +76,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	if output.HasFlag() {
 		err = output.Print(externalAuthProviders)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return fmt.Errorf("%s", err)
 		}
-		os.Exit(0)
+		return nil
 	}
 
 	if len(externalAuthProviders) == 0 {

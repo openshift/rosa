@@ -103,7 +103,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 			r.Reporter.Errorf("%v", err)
 			os.Exit(1)
 		}
-		os.Exit(0)
+		return nil
 	}
 
 	externalAuthConfigList := describeExternalAuthProviders(r, cluster, clusterKey, externalAuthConfig)

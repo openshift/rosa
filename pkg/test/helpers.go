@@ -276,6 +276,10 @@ func FormatResource(resource interface{}) string {
 		if res, ok := resource.(*v1.ControlPlaneUpgradePolicy); ok {
 			err = v1.MarshalControlPlaneUpgradePolicy(res, &outputJson)
 		}
+	case "*v1.ExternalAuth":
+		if res, ok := resource.(*v1.ExternalAuth); ok {
+			err = v1.MarshalExternalAuth(res, &outputJson)
+		}
 	default:
 		{
 			return "NOTIMPLEMENTED"

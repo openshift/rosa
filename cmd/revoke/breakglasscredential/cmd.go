@@ -66,7 +66,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 			return fmt.Errorf("failed to revoke break glass credentials on cluster '%s': %s",
 				clusterKey, err)
 		}
-		r.Reporter.Infof("Successfully revoked all break glass credentials from cluster '%s'",
+		r.Reporter.Infof("Successfully requested revocation for all break glass credentials from cluster '%s'",
 			clusterKey)
 	}
 	return nil

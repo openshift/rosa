@@ -11,6 +11,36 @@ import (
 	"github.com/openshift/rosa/pkg/test"
 )
 
+const (
+	listOutput = `NAME                ISSUER URL
+microsoft-entra-id  https://test.com
+`
+
+	jsonOutput = `[
+  {
+    "kind": "ExternalAuth",
+    "id": "microsoft-entra-id",
+    "claim": {
+      "mappings": {
+        "groups": {
+          "claim": "groups"
+        },
+        "username": {
+          "claim": "username"
+        }
+      }
+    },
+    "issuer": {
+      "url": "https://test.com",
+      "audiences": [
+        "abc"
+      ]
+    }
+  }
+]
+`
+)
+
 var _ = Describe("list external-auth-provider", func() {
 
 	var testRuntime test.TestingRuntime
@@ -49,10 +79,30 @@ var _ = Describe("list external-auth-provider", func() {
 		It("Succeeds", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatExternalAuthList(externalAuths)))
-			_, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+			stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 			Expect(err).To(BeNil())
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(Equal(listOutput))
 		})
 
-	})
+		It("Returns empty array with -o json if not found", func() {
+			Cmd.Flags().Set("output", "json")
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
+			stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+			Expect(err).To(BeNil())
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(Equal("[]\n"))
+		})
 
+		It("Returns array with json context with -o json if found", func() {
+			Cmd.Flags().Set("output", "json")
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatExternalAuthList(externalAuths)))
+			stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+			Expect(err).To(BeNil())
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(Equal(jsonOutput))
+		})
+	})
 })
