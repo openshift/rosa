@@ -122,7 +122,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 	args.isInvokedFromClusterUpgrade = isInvokedFromClusterUpgrade
 
-	r.GetClusterKey()
+	clusterKey := r.GetClusterKey()
 	cluster = r.FetchCluster()
 
 	mode, err := aws.GetMode()
@@ -299,6 +299,9 @@ func run(cmd *cobra.Command, argv []string) {
 					LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
 					if args.isInvokedFromClusterUpgrade {
 						reporter.Errorf("%s", err)
+						if reporter.IsTerminal() {
+							reporter.Infof(generateClusterUpgradeInfo(clusterKey, args.clusterUpgradeVersion, mode))
+						}
 						os.Exit(1)
 					}
 					reporter.Errorf("Error upgrading the account role policies: %s", err)
@@ -417,6 +420,9 @@ func run(cmd *cobra.Command, argv []string) {
 		)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
+			if args.isInvokedFromClusterUpgrade && reporter.IsTerminal() {
+				reporter.Infof(generateClusterUpgradeInfo(clusterKey, args.clusterUpgradeVersion, mode))
+			}
 			os.Exit(1)
 		}
 	}
@@ -443,6 +449,9 @@ func run(cmd *cobra.Command, argv []string) {
 				)
 				if err != nil {
 					r.Reporter.Errorf("%s", err)
+					if args.isInvokedFromClusterUpgrade && reporter.IsTerminal() {
+						reporter.Infof(generateClusterUpgradeInfo(clusterKey, args.clusterUpgradeVersion, mode))
+					}
 					os.Exit(1)
 				}
 				createdMissingRoles++
@@ -1172,4 +1181,15 @@ func checkPolicyAndClusterVersionCompatibility(policyVersion, clusterVersion str
 		)
 	}
 	return nil
+}
+
+func generateClusterUpgradeInfo(clusterKey, clusterUpgradeVersion, mode string) string {
+	rolesStr := fmt.Sprintf("rosa upgrade roles -c %s --cluster-version=%s --mode=%s",
+		clusterKey, clusterUpgradeVersion, mode)
+	upgradeClusterStr := fmt.Sprintf("rosa upgrade cluster -c %s", clusterKey)
+	return fmt.Sprintf("Account/Operator Role policies are not valid with upgrade version %s. "+
+		"Run the following command(s) to upgrade the roles:\n"+
+		"\t%s\n\n"+
+		", then run the upgrade command again:\n"+
+		"\t%s\n", clusterUpgradeVersion, rolesStr, upgradeClusterStr)
 }
