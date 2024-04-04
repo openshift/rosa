@@ -78,6 +78,13 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return fmt.Errorf("An error occurred while polling for kubeconfig: %v", err)
 	}
+
+	r.Reporter.Infof("Successfully created a break glass credential for cluster '%s'.",
+		clusterKey)
+	r.Reporter.Infof(
+		"To retrieve only the kubeconfig for this credential "+
+			"use: 'rosa describe break-glass-credential %s -c %s --kubeconfig'",
+		credentialResponse.ID(), clusterKey)
 	fmt.Print(kubeconfig)
 
 	return nil

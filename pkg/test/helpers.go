@@ -280,6 +280,10 @@ func FormatResource(resource interface{}) string {
 		if res, ok := resource.(*v1.ExternalAuth); ok {
 			err = v1.MarshalExternalAuth(res, &outputJson)
 		}
+	case "*v1.BreakGlassCredential":
+		if res, ok := resource.(*v1.BreakGlassCredential); ok {
+			err = v1.MarshalBreakGlassCredential(res, &outputJson)
+		}
 	default:
 		{
 			return "NOTIMPLEMENTED"
