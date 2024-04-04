@@ -59,3 +59,8 @@ func RuntimeWithAWS() RuntimeVisitor {
 		runtime.WithAWS()
 	}
 }
+
+type CommandInterface interface {
+	NewCommand() *cobra.Command
+	Runner() CommandRunner
+}

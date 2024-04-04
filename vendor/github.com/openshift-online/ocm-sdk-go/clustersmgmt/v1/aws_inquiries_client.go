@@ -82,6 +82,16 @@ func (c *AWSInquiriesClient) MachineTypes() *AWSRegionMachineTypesInquiryClient 
 	)
 }
 
+// OidcThumbprint returns the target 'aws_oidc_thumbprint' resource.
+//
+// Reference to the resource that gets OIDC thumbprint from AWS
+func (c *AWSInquiriesClient) OidcThumbprint() *AwsOidcThumbprintClient {
+	return NewAwsOidcThumbprintClient(
+		c.transport,
+		path.Join(c.path, "oidc_thumbprint"),
+	)
+}
+
 // Regions returns the target 'available_regions_inquiry' resource.
 //
 // Reference to the resource that manages a collection of regions.

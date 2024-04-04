@@ -82,9 +82,11 @@ func RunWithOutputCaptureAndArgv(runWithRuntime func(*rosa.Runtime, *cobra.Comma
 }
 
 var (
-	MockClusterID   = "24vf9iitg3p6tlml88iml6j6mu095mh8"
-	MockClusterHREF = "/api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8"
-	MockClusterName = "cluster"
+	MockClusterID      = "24vf9iitg3p6tlml88iml6j6mu095mh8"
+	MockClusterHREF    = "/api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8"
+	MockClusterName    = "cluster"
+	MockOidcConfigID   = "24vf9iitg3p6tlml88iml6j6mu095mh8"
+	MockOidcConfigHREF = "/api/clusters_mgmt/v1/oidc_configs/24vf9iitg3p6tlml88iml6j6mu095mh8"
 )
 
 func BuildBreakGlassCredential() *v1.BreakGlassCredential {
@@ -184,6 +186,20 @@ func FormatKubeletConfigList(configs []*v1.KubeletConfig) string {
 		"total": %d,
 		"items": %s
 	}`, len(configs), len(configs), json.String())
+}
+
+func MockOidcConfig(modifyFn func(c *v1.OidcConfigBuilder)) *v1.OidcConfig {
+	mock := v1.NewOidcConfig().
+		ID(MockClusterID).
+		HREF(MockClusterHREF)
+
+	if modifyFn != nil {
+		modifyFn(mock)
+	}
+
+	oidcConfig, err := mock.Build()
+	Expect(err).NotTo(HaveOccurred())
+	return oidcConfig
 }
 
 func FormatClusterList(clusters []*v1.Cluster) string {
@@ -331,6 +347,10 @@ func FormatResource(resource interface{}) string {
 	case "*v1.Account":
 		if res, ok := resource.(*amsv1.Account); ok {
 			err = amsv1.MarshalAccount(res, &outputJson)
+		}
+	case "*v1.AwsOidcThumbprint":
+		if res, ok := resource.(*v1.AwsOidcThumbprint); ok {
+			err = v1.MarshalAwsOidcThumbprint(res, &outputJson)
 		}
 	default:
 		{

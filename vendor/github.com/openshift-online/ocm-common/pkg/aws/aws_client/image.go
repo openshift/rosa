@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
@@ -22,28 +21,13 @@ func (client *AWSClient) CopyImage(sourceImageID string, sourceRegion string, na
 	return *output.ImageId, nil
 }
 
-func (client *AWSClient) DescribeImage(imageIDs []string, filters ...map[string][]string) (*ec2.DescribeImagesOutput, error) {
-	filterInput := []types.Filter{}
-	for _, filter := range filters {
-		for k, v := range filter {
-			awsFilter := types.Filter{
-				Name:   &k,
-				Values: v,
-			}
-			filterInput = append(filterInput, awsFilter)
-		}
-	}
-
+func (client *AWSClient) DescribeImage(imageID string) (*ec2.DescribeImagesOutput, error) {
 	describeImageInput := &ec2.DescribeImagesInput{
-		Filters: filterInput,
-	}
-
-	if len(imageIDs) != 0 {
-		describeImageInput.ImageIds = imageIDs
+		ImageIds: []string{imageID},
 	}
 	output, err := client.EC2().DescribeImages(context.TODO(), describeImageInput)
 	if err != nil {
-		log.LogError("Describe image %s meet error: %s", imageIDs, err)
+		log.LogError("Describe image %s meet error: %s", imageID, err)
 		return nil, err
 	}
 

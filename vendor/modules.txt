@@ -270,6 +270,9 @@ github.com/golang-jwt/jwt/v4
 # github.com/golang/glog v1.2.0 => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
 ## explicit
 github.com/golang/glog
+# github.com/golang/mock v1.6.0
+## explicit; go 1.11
+github.com/golang/mock/gomock
 # github.com/golang/protobuf v1.5.3
 ## explicit; go 1.9
 github.com/golang/protobuf/proto
@@ -405,7 +408,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-online/ocm-common v0.0.0-20240508111534-37822c515806
+# github.com/openshift-online/ocm-common v0.0.0-20240508111534-37822c515806 => ../../openshift-online/ocm-common
 ## explicit; go 1.21
 github.com/openshift-online/ocm-common/pkg/aws/aws_client
 github.com/openshift-online/ocm-common/pkg/aws/consts
@@ -425,7 +428,7 @@ github.com/openshift-online/ocm-common/pkg/rosa/oidcconfigs
 github.com/openshift-online/ocm-common/pkg/test/kms_key
 github.com/openshift-online/ocm-common/pkg/test/vpc_client
 github.com/openshift-online/ocm-common/pkg/utils
-# github.com/openshift-online/ocm-sdk-go v0.1.419
+# github.com/openshift-online/ocm-sdk-go v0.1.419 => ../../openshift-online/ocm-sdk-go
 ## explicit; go 1.21
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accountsmgmt
@@ -656,4 +659,6 @@ k8s.io/utils/clock
 k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/strings/slices
+# github.com/openshift-online/ocm-sdk-go => ../../openshift-online/ocm-sdk-go
+# github.com/openshift-online/ocm-common => ../../openshift-online/ocm-common
 # github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d

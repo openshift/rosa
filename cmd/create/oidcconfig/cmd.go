@@ -18,8 +18,8 @@ package oidcconfig
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -51,29 +51,25 @@ var args struct {
 	installerRoleArn string
 }
 
-var Cmd = &cobra.Command{
-	Use:     "oidc-config",
-	Aliases: []string{"oidcconfig"},
-	Short:   "Create OIDC config compliant with OIDC protocol.",
-	Long: "Create OIDC config in a S3 bucket for the " +
-		"client AWS account and populates it to be compliant with OIDC protocol. " +
-		"It also creates a Secret in Secrets Manager containing the private key.",
-	Example: `  # Create OIDC config
-	rosa create oidc-config`,
-	Run:  run,
-	Args: cobra.NoArgs,
+func SetCreateOidcProviderCommand(cmd rosa.CommandInterface) {
+	oidcprovider.CreateOidcProvider = cmd
 }
 
-const (
-	maxLengthUserPrefix = 15
+func NewCreateOidcConfigCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "oidc-config",
+		Aliases: []string{"oidcconfig"},
+		Short:   "Create OIDC config compliant with OIDC protocol.",
+		Long: "Create OIDC config in a S3 bucket for the " +
+			"client AWS account and populates it to be compliant with OIDC protocol. " +
+			"It also creates a Secret in Secrets Manager containing the private key.",
+		Example: `  # Create OIDC config
+		rosa create oidc-config`,
+		Run:  rosa.DefaultRunner(rosa.RuntimeWithOCM(), CreateOidcConfigRunner()),
+		Args: cobra.NoArgs,
+	}
 
-	rawFilesFlag   = "raw-files"
-	userPrefixFlag = "prefix"
-	managedFlag    = "managed"
-)
-
-func init() {
-	flags := Cmd.Flags()
+	flags := cmd.Flags()
 
 	flags.BoolVar(
 		&args.rawFiles,
@@ -106,13 +102,23 @@ func init() {
 		"STS Role ARN with get secrets permission.",
 	)
 
-	interactive.AddModeFlag(Cmd)
+	interactive.AddModeFlag(cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 	arguments.AddRegionFlag(flags)
-	output.AddFlag(Cmd)
+	output.AddFlag(cmd)
+
+	return cmd
 }
+
+const (
+	maxLengthUserPrefix = 15
+
+	rawFilesFlag   = "raw-files"
+	userPrefixFlag = "prefix"
+	managedFlag    = "managed"
+)
 
 func checkInteractiveModeNeeded(cmd *cobra.Command) {
 	modeNotChanged := !cmd.Flags().Changed("mode")
@@ -134,183 +140,174 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 	}
 }
 
-func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
-
-	mode, err := interactive.GetMode()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-
-	// Get AWS region
-	region, err := aws.GetRegion(arguments.GetRegion())
-	if err != nil {
-		r.Reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
-	}
-	args.region = region
-
-	checkInteractiveModeNeeded(cmd)
-
-	if interactive.Enabled() && !cmd.Flags().Changed(managedFlag) {
-		args.managed = confirm.Prompt(true, "Would you like to create a Managed (Red Hat hosted) OIDC Configuration")
-	}
-
-	if args.rawFiles && mode != "" {
-		r.Reporter.Warnf("--%s param is not supported alongside --mode param.", rawFilesFlag)
-		os.Exit(1)
-	}
-
-	if args.rawFiles && args.installerRoleArn != "" {
-		r.Reporter.Warnf("--%s param is not supported alongside --%s param", rawFilesFlag, InstallerRoleArnFlag)
-		os.Exit(1)
-	}
-
-	if args.rawFiles && args.managed {
-		r.Reporter.Warnf("--%s param is not supported alongside --%s param", rawFilesFlag, managedFlag)
-		os.Exit(1)
-	}
-
-	if !args.rawFiles && interactive.Enabled() && !cmd.Flags().Changed("mode") {
-		question := "OIDC Config creation mode"
-		if args.managed {
-			r.Reporter.Warnf("For a managed OIDC Config only auto mode is supported. " +
-				"However, you may choose the provider creation mode")
-			question = "OIDC Provider creation mode"
-		}
-		mode, err = interactive.GetOptionMode(cmd, mode, question)
+func CreateOidcConfigRunner() rosa.CommandRunner {
+	return func(_ context.Context, runtime *rosa.Runtime, cmd *cobra.Command, _ []string) error {
+		mode, err := interactive.GetMode()
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid %s: %s", question, err)
-			os.Exit(1)
-		}
-	}
-
-	if output.HasFlag() && mode != "" && mode != interactive.ModeAuto {
-		r.Reporter.Warnf("--output param is not supported outside auto mode.")
-		os.Exit(1)
-	}
-
-	if args.managed && args.userPrefix != "" {
-		r.Reporter.Warnf("--%s param is not supported for managed OIDC config", userPrefixFlag)
-		os.Exit(1)
-	}
-
-	if args.managed && args.installerRoleArn != "" {
-		r.Reporter.Warnf("--%s param is not supported for managed OIDC config", InstallerRoleArnFlag)
-		os.Exit(1)
-	}
-
-	if !args.managed {
-		if !args.rawFiles {
-			if !output.HasFlag() && r.Reporter.IsTerminal() {
-				r.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
-					"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
-			}
-			if mode == interactive.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
-				args.installerRoleArn = interactiveRoles.
-					GetInstallerRoleArn(
-						r,
-						cmd,
-						args.installerRoleArn,
-						MinorVersionForGetSecret,
-						r.AWSClient.FindRoleARNs,
-					)
-			}
-			if interactive.Enabled() {
-				prefix, err := interactive.GetString(interactive.Input{
-					Question:   "Prefix for OIDC",
-					Help:       cmd.Flags().Lookup(userPrefixFlag).Usage,
-					Default:    args.userPrefix,
-					Validators: []interactive.Validator{interactive.MaxLength(maxLengthUserPrefix)},
-				})
-				if err != nil {
-					r.Reporter.Errorf("Expected a valid prefix for the configuration: %s", err)
-					os.Exit(1)
-				}
-				args.userPrefix = prefix
-			}
-			roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
-			if roleName != "" {
-				if !output.HasFlag() && r.Reporter.IsTerminal() && mode == interactive.ModeAuto {
-					r.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
-				}
-				err := aws.ARNValidator(args.installerRoleArn)
-				if err != nil {
-					r.Reporter.Errorf("Expected a valid ARN: %s", err)
-					os.Exit(1)
-				}
-				roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
-				if err != nil {
-					r.Reporter.Errorf(
-						"There was a problem checking if role '%s' exists: %v",
-						args.installerRoleArn,
-						err,
-					)
-					os.Exit(1)
-				}
-				if !roleExists {
-					r.Reporter.Errorf("Role '%s' does not exist", args.installerRoleArn)
-					os.Exit(1)
-				}
-				isValid, err := r.AWSClient.ValidateAccountRoleVersionCompatibility(
-					roleName, aws.InstallerAccountRole, MinorVersionForGetSecret)
-				if err != nil {
-					r.Reporter.Errorf("There was a problem listing role tags: %v", err)
-					os.Exit(1)
-				}
-				if !isValid {
-					r.Reporter.Errorf(
-						"Role '%s' is not of minimum version '%s'",
-						args.installerRoleArn,
-						MinorVersionForGetSecret,
-					)
-					os.Exit(1)
-				}
-			}
+			return err
 		}
 
-		args.userPrefix = strings.Trim(args.userPrefix, " \t")
-
-		if len([]rune(args.userPrefix)) > maxLengthUserPrefix {
-			r.Reporter.Errorf("Expected a valid prefix for the configuration: "+
-				"length of prefix is limited to %d characters", maxLengthUserPrefix)
-			os.Exit(1)
-		}
-	}
-
-	oidcConfigInput := oidcconfigs.OidcConfigInput{}
-	if !args.managed {
-		oidcConfigInput, err = oidcconfigs.BuildOidcConfigInput(args.userPrefix, args.region)
+		// Get AWS region
+		region, err := aws.GetRegion(arguments.GetRegion())
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return fmt.Errorf("Error getting region: %v", err)
 		}
-	}
+		args.region = region
 
-	oidcConfigStrategy, err := getOidcConfigStrategy(mode, &oidcConfigInput)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	oidcConfigStrategy.execute(r)
-	if !args.rawFiles {
-		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
-		oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.IssuerUrl})
-		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
+		checkInteractiveModeNeeded(cmd)
+
+		if interactive.Enabled() && !cmd.Flags().Changed(managedFlag) {
+			args.managed = confirm.Prompt(true, "Would you like to create a Managed (Red Hat hosted) OIDC Configuration")
+		}
+
+		if args.rawFiles && mode != "" {
+			return fmt.Errorf("--%s param is not supported alongside --mode param.", rawFilesFlag)
+		}
+
+		if args.rawFiles && args.installerRoleArn != "" {
+			return fmt.Errorf("--%s param is not supported alongside --%s param", rawFilesFlag, InstallerRoleArnFlag)
+		}
+
+		if args.rawFiles && args.managed {
+			return fmt.Errorf("--%s param is not supported alongside --%s param", rawFilesFlag, managedFlag)
+		}
+
+		if !args.rawFiles && interactive.Enabled() && !cmd.Flags().Changed("mode") {
+			question := "OIDC Config creation mode"
+			if args.managed {
+				runtime.Reporter.Warnf("For a managed OIDC Config only auto mode is supported. " +
+					"However, you may choose the provider creation mode")
+				question = "OIDC Provider creation mode"
+			}
+			mode, err = interactive.GetOptionMode(cmd, mode, question)
+			if err != nil {
+				return fmt.Errorf("Expected a valid %s: %s", question, err)
+			}
+		}
+
+		if output.HasFlag() && mode != "" && mode != interactive.ModeAuto {
+			return fmt.Errorf("--output param is not supported outside auto mode.")
+		}
+
+		if args.managed && args.userPrefix != "" {
+			return fmt.Errorf("--%s param is not supported for managed OIDC config", userPrefixFlag)
+		}
+
+		if args.managed && args.installerRoleArn != "" {
+			return fmt.Errorf("--%s param is not supported for managed OIDC config", InstallerRoleArnFlag)
+		}
+
+		if !args.managed {
+			if !args.rawFiles {
+				if !output.HasFlag() && runtime.Reporter.IsTerminal() {
+					runtime.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
+						"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
+				}
+				if mode == interactive.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
+					args.installerRoleArn = interactiveRoles.
+						GetInstallerRoleArn(
+							runtime,
+							cmd,
+							args.installerRoleArn,
+							MinorVersionForGetSecret,
+							runtime.AWSClient.FindRoleARNs,
+						)
+				}
+				if interactive.Enabled() {
+					prefix, err := interactive.GetString(interactive.Input{
+						Question:   "Prefix for OIDC",
+						Help:       cmd.Flags().Lookup(userPrefixFlag).Usage,
+						Default:    args.userPrefix,
+						Validators: []interactive.Validator{interactive.MaxLength(maxLengthUserPrefix)},
+					})
+					if err != nil {
+						return fmt.Errorf("Expected a valid prefix for the configuration: %s", err)
+					}
+					args.userPrefix = prefix
+				}
+				roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
+				if roleName != "" {
+					if !output.HasFlag() && runtime.Reporter.IsTerminal() && mode == interactive.ModeAuto {
+						runtime.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
+					}
+					err := aws.ARNValidator(args.installerRoleArn)
+					if err != nil {
+						return fmt.Errorf("Expected a valid ARN: %s", err)
+					}
+					roleExists, _, err := runtime.AWSClient.CheckRoleExists(roleName)
+					if err != nil {
+						return fmt.Errorf(
+							"There was a problem checking if role '%s' exists: %v",
+							args.installerRoleArn,
+							err,
+						)
+					}
+					if !roleExists {
+						return fmt.Errorf("Role '%s' does not exist", args.installerRoleArn)
+					}
+					isValid, err := runtime.AWSClient.ValidateAccountRoleVersionCompatibility(
+						roleName, aws.InstallerAccountRole, MinorVersionForGetSecret)
+					if err != nil {
+						return fmt.Errorf("There was a problem listing role tags: %v", err)
+					}
+					if !isValid {
+						return fmt.Errorf(
+							"Role '%s' is not of minimum version '%s'",
+							args.installerRoleArn,
+							MinorVersionForGetSecret,
+						)
+					}
+				}
+			}
+
+			args.userPrefix = strings.Trim(args.userPrefix, " \t")
+
+			if len([]rune(args.userPrefix)) > maxLengthUserPrefix {
+				return fmt.Errorf("Expected a valid prefix for the configuration: "+
+					"length of prefix is limited to %d characters", maxLengthUserPrefix)
+			}
+		}
+
+		oidcConfigInput := oidcconfigs.OidcConfigInput{}
+		if !args.managed {
+			oidcConfigInput, err = oidcconfigs.BuildOidcConfigInput(args.userPrefix, args.region)
+			if err != nil {
+				return err
+			}
+		}
+
+		oidcConfigStrategy, err := getOidcConfigStrategy(mode, &oidcConfigInput)
+		if err != nil {
+			return err
+		}
+		oidcConfigId, err := oidcConfigStrategy.execute(runtime)
+		if err != nil {
+			return err
+		}
+		if !args.rawFiles && oidcConfigId != "" {
+			cmd := oidcprovider.CreateOidcProvider.NewCommand()
+			args := []string{"--oidc-config-id", oidcConfigId, "--mode", mode}
+			cmd.ParseFlags(args)
+			runner := oidcprovider.CreateOidcProvider.Runner()
+			err = runner(nil, runtime, cmd, args)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 }
 
 type CreateOidcConfigStrategy interface {
-	execute(r *rosa.Runtime)
+	execute(runtime *rosa.Runtime) (string, error)
 }
 
 type CreateUnmanagedOidcConfigRawStrategy struct {
 	oidcConfig *oidcconfigs.OidcConfigInput
 }
 
-func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
+func (s *CreateUnmanagedOidcConfigRawStrategy) execute(runtime *rosa.Runtime) (string, error) {
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
 	jwks := s.oidcConfig.Jwks
@@ -318,26 +315,25 @@ func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
 	privateKeyFilename := s.oidcConfig.PrivateKeyFilename
 	err := helper.SaveDocument(string(privateKey), privateKeyFilename)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem saving private key to a file: %s", err)
 	}
 	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
 	err = helper.SaveDocument(discoveryDocument, discoveryDocumentFilename)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem saving discovery document to a file: %s", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem saving discovery document to a file: %s", err)
 	}
 	jwksFilename := fmt.Sprintf("jwks-%s.json", bucketName)
 	err = helper.SaveDocument(string(jwks[:]), jwksFilename)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem saving JSON Web Key Set to a file: %s", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem saving JSON Web Key Set to a file: %s", err)
 	}
-	if !output.HasFlag() && r.Reporter.IsTerminal() {
-		r.Reporter.Infof(
+	if !output.HasFlag() && runtime.Reporter.IsTerminal() {
+		runtime.Reporter.Infof(
 			"Please refer to documentation to use generated files to create an OIDC compliant configuration.",
 		)
 	}
+
+	return "", nil
 }
 
 type CreateUnmanagedOidcConfigAutoStrategy struct {
@@ -349,7 +345,7 @@ const (
 	jwksKey              = "keys.json"
 )
 
-func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(runtime *rosa.Runtime) (string, error) {
 	bucketUrl := s.oidcConfig.IssuerUrl
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
@@ -358,38 +354,34 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
 	installerRoleArn := args.installerRoleArn
 	var spin *spinner.Spinner
-	if !output.HasFlag() && r.Reporter.IsTerminal() {
+	if !output.HasFlag() && runtime.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-		r.Reporter.Infof("Setting up unmanaged OIDC configuration '%s'", bucketName)
+		runtime.Reporter.Infof("Setting up unmanaged OIDC configuration '%s'", bucketName)
 	}
 	if spin != nil {
 		spin.Start()
 	}
-	err := r.AWSClient.CreateS3Bucket(bucketName, args.region)
+	err := runtime.AWSClient.CreateS3Bucket(bucketName, args.region)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem creating S3 bucket '%s': %s", bucketName, err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem creating S3 bucket '%s': %s", bucketName, err)
 	}
-	err = r.AWSClient.PutPublicReadObjectInS3Bucket(
+	err = runtime.AWSClient.PutPublicReadObjectInS3Bucket(
 		bucketName, strings.NewReader(discoveryDocument), discoveryDocumentKey)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem populating discovery "+
+		return "", fmt.Errorf("There was a problem populating discovery "+
 			"document to S3 bucket '%s': %s", bucketName, err)
-		os.Exit(1)
 	}
-	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, bytes.NewReader(jwks), jwksKey)
+	err = runtime.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, bytes.NewReader(jwks), jwksKey)
 	if err != nil {
 		if spin != nil {
 			spin.Stop()
 		}
-		r.Reporter.Errorf("There was a problem populating JWKS "+
+		return "", fmt.Errorf("There was a problem populating JWKS "+
 			"to S3 bucket '%s': %s", bucketName, err)
-		os.Exit(1)
 	}
-	secretARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
+	secretARN, err := runtime.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
 	if err != nil {
-		r.Reporter.Errorf("There was a problem saving private key to secrets manager: %s", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem saving private key to secrets manager: %s", err)
 	}
 	oidcConfig, err := v1.NewOidcConfig().
 		Managed(false).
@@ -398,40 +390,40 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		InstallerRoleArn(installerRoleArn).
 		Build()
 	if err == nil {
-		oidcConfig, err = r.OCMClient.CreateOidcConfig(oidcConfig)
+		oidcConfig, err = runtime.OCMClient.CreateOidcConfig(oidcConfig)
 	}
 	if err != nil {
 		if spin != nil {
 			spin.Stop()
 		}
-		r.Reporter.Errorf("There was a problem building your unmanaged OIDC Configuration %v.\n"+
+		return "", fmt.Errorf("There was a problem building your unmanaged OIDC Configuration %v.\n"+
 			"Please refer to documentation and try again through:\n"+
 			"\trosa register oidc-config --issuer-url %s --secret-arn %s --role-arn %s",
 			err, bucketUrl, secretARN, installerRoleArn)
-		os.Exit(1)
 	}
 	if output.HasFlag() {
 		err = output.Print(oidcConfig)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return "", err
 		}
-		os.Exit(0)
+		return "", nil
 	}
-	if r.Reporter.IsTerminal() {
+	if runtime.Reporter.IsTerminal() {
 		if spin != nil {
 			spin.Stop()
 		}
 		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
-		r.Reporter.Infof(output)
+		runtime.Reporter.Infof(output)
 	}
+
+	return oidcConfig.ID(), nil
 }
 
 type CreateUnmanagedOidcConfigManualStrategy struct {
 	oidcConfig *oidcconfigs.OidcConfigInput
 }
 
-func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
+func (s *CreateUnmanagedOidcConfigManualStrategy) execute(runtime *rosa.Runtime) (string, error) {
 	commands := []string{}
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
@@ -441,8 +433,7 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
 	err := helper.SaveDocument(string(privateKey), privateKeyFilename)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem saving private key to a file: %s", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem saving private key to a file: %s", err)
 	}
 	createBucketConfig := ""
 	if args.region != aws.DefaultRegion {
@@ -474,8 +465,7 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	readOnlyPolicyFilename := fmt.Sprintf("readOnlyPolicy-%s.json", bucketName)
 	err = helper.SaveDocument(fmt.Sprintf(aws.ReadOnlyAnonUserPolicyTemplate, bucketName), readOnlyPolicyFilename)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem saving bucket policy document to a file: %s", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem saving bucket policy document to a file: %s", err)
 	}
 	putBucketBucketPolicyCommand := awscb.NewS3ApiCommandBuilder().
 		SetCommand(awscb.PutBucketPolicy).
@@ -488,8 +478,7 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	discoveryDocumentFilename := fmt.Sprintf("discovery-document-%s.json", bucketName)
 	err = helper.SaveDocument(discoveryDocument, discoveryDocumentFilename)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem saving discovery document to a file: %s", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem saving discovery document to a file: %s", err)
 	}
 	putDiscoveryDocumentCommand := awscb.NewS3ApiCommandBuilder().
 		SetCommand(awscb.PutObject).
@@ -503,8 +492,7 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	jwksFilename := fmt.Sprintf("jwks-%s.json", bucketName)
 	err = helper.SaveDocument(string(jwks[:]), jwksFilename)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem saving JSON Web Key Set to a file: %s", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem saving JSON Web Key Set to a file: %s", err)
 	}
 	putJwksCommand := awscb.NewS3ApiCommandBuilder().
 		SetCommand(awscb.PutObject).
@@ -528,56 +516,57 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 	commands = append(commands, createSecretCommand)
 	commands = append(commands, fmt.Sprintf("rm %s", privateKeyFilename))
 	fmt.Println(awscb.JoinCommands(commands))
-	if r.Reporter.IsTerminal() {
-		r.Reporter.Infof("Please run commands above to generate OIDC compliant configuration in your AWS account. " +
+	if runtime.Reporter.IsTerminal() {
+		runtime.Reporter.Infof("Please run commands above to generate OIDC compliant configuration in your AWS account. " +
 			"To register this OIDC Configuration, please run the following command:\n" +
 			"rosa register oidc-config\n" +
 			"For more information please refer to the documentation")
 	}
+
+	return "", nil
 }
 
 type CreateManagedOidcConfigAutoStrategy struct {
 	oidcConfigInput *oidcconfigs.OidcConfigInput
 }
 
-func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *CreateManagedOidcConfigAutoStrategy) execute(runtime *rosa.Runtime) (string, error) {
 	var spin *spinner.Spinner
-	if !output.HasFlag() && r.Reporter.IsTerminal() {
+	if !output.HasFlag() && runtime.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-		r.Reporter.Infof("Setting up managed OIDC configuration")
+		runtime.Reporter.Infof("Setting up managed OIDC configuration")
 	}
 	if spin != nil {
 		spin.Start()
 	}
 	oidcConfig, err := v1.NewOidcConfig().Managed(true).Build()
 	if err != nil {
-		r.Reporter.Errorf("There was a problem building the managed OIDC Configuration: %v", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem building the managed OIDC Configuration: %v", err)
 	}
-	oidcConfig, err = r.OCMClient.CreateOidcConfig(oidcConfig)
+	oidcConfig, err = runtime.OCMClient.CreateOidcConfig(oidcConfig)
 	if err != nil {
 		if spin != nil {
 			spin.Stop()
 		}
-		r.Reporter.Errorf("There was a problem registering your managed OIDC Configuration: %v", err)
-		os.Exit(1)
+		return "", fmt.Errorf("There was a problem registering your managed OIDC Configuration: %v", err)
 	}
 	s.oidcConfigInput.IssuerUrl = oidcConfig.IssuerUrl()
 	if output.HasFlag() {
 		err = output.Print(oidcConfig)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return "", fmt.Errorf("%s", err)
 		}
-		os.Exit(0)
+		return "", nil
 	}
-	if r.Reporter.IsTerminal() {
+	if runtime.Reporter.IsTerminal() {
 		if spin != nil {
 			spin.Stop()
 		}
 		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
-		r.Reporter.Infof(output)
+		runtime.Reporter.Infof(output)
 	}
+
+	return oidcConfig.ID(), nil
 }
 
 func getOidcConfigStrategy(mode string, input *oidcconfigs.OidcConfigInput) (CreateOidcConfigStrategy, error) {

@@ -4,6 +4,10 @@ go 1.21
 
 toolchain go1.21.3
 
+replace github.com/openshift-online/ocm-sdk-go => ../../openshift-online/ocm-sdk-go
+
+replace github.com/openshift-online/ocm-common => ../../openshift-online/ocm-common
+
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
 	github.com/Masterminds/semver v1.5.0
@@ -26,6 +30,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/glog v1.2.0
+	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-version v1.6.0

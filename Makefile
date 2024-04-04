@@ -93,6 +93,7 @@ codecov: coverage
 
 mocks: $(MOCKGEN)
 	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=cmd/create/idp/mocks/identityprovider.go -source=cmd/create/idp/cmd.go IdentityProvider
+	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/rosa/mocks/mock_cmd.go -source=pkg/rosa/runner.go CommandInterface
 	$(MOCKGEN) -source=pkg/aws/api_interface/iam_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_iam_api_client.go
 	$(MOCKGEN) -source=pkg/aws/api_interface/organizations_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_organizations_api_client.go
 	$(MOCKGEN) -source=pkg/aws/api_interface/sts_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_sts_api_client.go

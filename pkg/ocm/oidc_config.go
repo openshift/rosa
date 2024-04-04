@@ -30,6 +30,18 @@ func (c *Client) GetOidcConfig(id string) (*cmv1.OidcConfig, error) {
 	return response.Body(), nil
 }
 
+func (c *Client) GetOidcConfigWithThumbprint(id string) (*cmv1.OidcConfig, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		OidcConfigs().OidcConfig(id).Get().
+		Parameter("fetchThumbprint", true).
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	return response.Body(), nil
+}
+
 func (c *Client) ListOidcConfigs(awsAccountId string) ([]*cmv1.OidcConfig, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		OidcConfigs().

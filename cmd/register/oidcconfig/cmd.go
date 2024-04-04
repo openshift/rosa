@@ -17,8 +17,8 @@ limitations under the License.
 package oidcconfig
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	"github.com/briandowns/spinner"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -41,19 +41,23 @@ var args struct {
 	secretArn        string
 }
 
-var Cmd = &cobra.Command{
-	Use:     "oidc-config",
-	Aliases: []string{"oidcconfig", "oidcconfig"},
-	Short:   "Registers unmanaged OIDC config with Openshift Clusters Manager.",
-	Long:    "Registers unmanaged OIDC config with Openshift Clusters Manager.",
-	Example: `  # Register OIDC config
-	rosa register oidc-config`,
-	Run:  run,
-	Args: cobra.NoArgs,
+func SetCreateOidcProviderCommand(cmd rosa.CommandInterface) {
+	oidcprovider.CreateOidcProvider = cmd
 }
 
-func init() {
-	flags := Cmd.Flags()
+func NewRegisterOidcConfigCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "oidc-config",
+		Aliases: []string{"oidcconfig", "oidcconfig"},
+		Short:   "Registers unmanaged OIDC config with Openshift Clusters Manager.",
+		Long:    "Registers unmanaged OIDC config with Openshift Clusters Manager.",
+		Example: `  # Register OIDC config
+		rosa register oidc-config`,
+		Run:  rosa.DefaultRunner(rosa.RuntimeWithOCM(), RegisterOidcConfigRunner()),
+		Args: cobra.NoArgs,
+	}
+
+	flags := cmd.Flags()
 
 	// normalizing installer role argument to support deprecated flag
 	flags.SetNormalizeFunc(arguments.NormalizeFlags)
@@ -78,10 +82,12 @@ func init() {
 		"Secrets Manager ARN with private key secret.",
 	)
 
-	interactive.AddModeFlag(Cmd)
+	interactive.AddModeFlag(cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
-	output.AddFlag(Cmd)
+	output.AddFlag(cmd)
+
+	return cmd
 }
 
 func checkInteractiveModeNeeded(cmd *cobra.Command) {
@@ -94,131 +100,126 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 	}
 }
 
-func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
-
-	mode, err := interactive.GetMode()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	if !cmd.Flags().Changed("mode") {
-		mode, err = interactive.GetOptionMode(cmd, mode, "OIDC Provider creation mode")
+func RegisterOidcConfigRunner() rosa.CommandRunner {
+	return func(_ context.Context, runtime *rosa.Runtime, cmd *cobra.Command, _ []string) error {
+		mode, err := interactive.GetMode()
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid OIDC Provider creation mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("%s", err)
 		}
-	}
+		if !cmd.Flags().Changed("mode") {
+			mode, err = interactive.GetOptionMode(cmd, mode, "OIDC Provider creation mode")
+			if err != nil {
+				return fmt.Errorf("Expected a valid OIDC Provider creation mode: %s", err)
+			}
+		}
 
-	checkInteractiveModeNeeded(cmd)
+		checkInteractiveModeNeeded(cmd)
 
-	if !cmd.Flags().Changed(InstallerRoleArnFlag) && (interactive.Enabled() || confirm.Yes()) {
-		args.installerRoleArn = interactiveRoles.
-			GetInstallerRoleArn(r, cmd, args.installerRoleArn, MinorVersionForGetSecret, r.AWSClient.FindRoleARNs)
-	}
-	roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
-	if !output.HasFlag() && r.Reporter.IsTerminal() {
-		r.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
-	}
-	err = aws.ARNValidator(args.installerRoleArn)
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid ARN: %s", err)
-		os.Exit(1)
-	}
-	roleExists, _, err := r.AWSClient.CheckRoleExists(roleName)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", args.installerRoleArn, err)
-		os.Exit(1)
-	}
-	if !roleExists {
-		r.Reporter.Errorf("Role '%s' does not exist", args.installerRoleArn)
-		os.Exit(1)
-	}
-	isValid, err := r.AWSClient.ValidateAccountRoleVersionCompatibility(
-		roleName, aws.InstallerAccountRole, MinorVersionForGetSecret)
-	if err != nil {
-		r.Reporter.Errorf("There was a problem listing role tags: %v", err)
-		os.Exit(1)
-	}
-	if !isValid {
-		r.Reporter.Errorf("Role '%s' is not of minimum version '%s'", args.installerRoleArn, MinorVersionForGetSecret)
-		os.Exit(1)
-	}
-
-	if interactive.Enabled() && !cmd.Flags().Changed(IssuerUrlFlag) {
-		issuerUrl, err := interactive.GetString(interactive.Input{
-			Question:   "Issuer URL (please include 'https://')",
-			Help:       cmd.Flags().Lookup(IssuerUrlFlag).Usage,
-			Required:   true,
-			Validators: []interactive.Validator{interactive.IsURLHttps},
-		})
+		if !cmd.Flags().Changed(InstallerRoleArnFlag) && (interactive.Enabled() || confirm.Yes()) {
+			args.installerRoleArn = interactiveRoles.
+				GetInstallerRoleArn(runtime, cmd, args.installerRoleArn, MinorVersionForGetSecret, runtime.AWSClient.FindRoleARNs)
+		}
+		roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
+		if !output.HasFlag() && runtime.Reporter.IsTerminal() {
+			runtime.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
+		}
+		err = aws.ARNValidator(args.installerRoleArn)
 		if err != nil {
-			r.Reporter.Errorf("Expected an issuer URL: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("Expected a valid ARN: %s", err)
 		}
-		args.issuerUrl = issuerUrl
-	}
-	if err := interactive.IsURLHttps(args.issuerUrl); err != nil {
-		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
-	}
-
-	if interactive.Enabled() && !cmd.Flags().Changed(SecretArnFlag) {
-		secretArn, err := interactive.GetString(interactive.Input{
-			Question:   "Secret ARN",
-			Help:       cmd.Flags().Lookup(SecretArnFlag).Usage,
-			Required:   true,
-			Validators: []interactive.Validator{aws.SecretManagerArnValidator},
-		})
+		roleExists, _, err := runtime.AWSClient.CheckRoleExists(roleName)
 		if err != nil {
-			r.Reporter.Errorf("Expected a secret ARN: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("There was a problem checking if role '%s' exists: %v", args.installerRoleArn, err)
 		}
-		args.secretArn = secretArn
-	}
-	if err := aws.SecretManagerArnValidator(args.secretArn); err != nil {
-		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
-	}
+		if !roleExists {
+			return fmt.Errorf("Role '%s' does not exist", args.installerRoleArn)
+		}
+		isValid, err := runtime.AWSClient.ValidateAccountRoleVersionCompatibility(
+			roleName, aws.InstallerAccountRole, MinorVersionForGetSecret)
+		if err != nil {
+			return fmt.Errorf("There was a problem listing role tags: %v", err)
+		}
+		if !isValid {
+			return fmt.Errorf("Role '%s' is not of minimum version '%s'", args.installerRoleArn, MinorVersionForGetSecret)
+		}
 
-	var spin *spinner.Spinner
-	if spin != nil {
-		spin.Start()
-	}
-	installerRoleArn := args.installerRoleArn
-	oidcConfig, err := v1.NewOidcConfig().
-		Managed(false).
-		SecretArn(args.secretArn).
-		IssuerUrl(args.issuerUrl).
-		InstallerRoleArn(installerRoleArn).
-		Build()
-	if err == nil {
-		oidcConfig, err = r.OCMClient.CreateOidcConfig(oidcConfig)
-	}
-	if err != nil {
+		if interactive.Enabled() && !cmd.Flags().Changed(IssuerUrlFlag) {
+			issuerUrl, err := interactive.GetString(interactive.Input{
+				Question:   "Issuer URL (please include 'https://')",
+				Help:       cmd.Flags().Lookup(IssuerUrlFlag).Usage,
+				Required:   true,
+				Validators: []interactive.Validator{interactive.IsURLHttps},
+			})
+			if err != nil {
+				return fmt.Errorf("Expected an issuer URL: %s", err)
+			}
+			args.issuerUrl = issuerUrl
+		}
+		if err := interactive.IsURLHttps(args.issuerUrl); err != nil {
+			return fmt.Errorf("%v", err)
+		}
+
+		if interactive.Enabled() && !cmd.Flags().Changed(SecretArnFlag) {
+			secretArn, err := interactive.GetString(interactive.Input{
+				Question:   "Secret ARN",
+				Help:       cmd.Flags().Lookup(SecretArnFlag).Usage,
+				Required:   true,
+				Validators: []interactive.Validator{aws.SecretManagerArnValidator},
+			})
+			if err != nil {
+				return fmt.Errorf("Expected a secret ARN: %s", err)
+			}
+			args.secretArn = secretArn
+		}
+		if err := aws.SecretManagerArnValidator(args.secretArn); err != nil {
+			return fmt.Errorf("%v", err)
+		}
+
+		var spin *spinner.Spinner
 		if spin != nil {
-			spin.Stop()
+			spin.Start()
 		}
-		r.Reporter.Errorf("There was a problem building your unmanaged OIDC Configuration: %v", err)
-		os.Exit(1)
-	}
-	if output.HasFlag() {
-		err = output.Print(oidcConfig)
+		installerRoleArn := args.installerRoleArn
+		oidcConfig, err := v1.NewOidcConfig().
+			Managed(false).
+			SecretArn(args.secretArn).
+			IssuerUrl(args.issuerUrl).
+			InstallerRoleArn(installerRoleArn).
+			Build()
+		if err == nil {
+			oidcConfig, err = runtime.OCMClient.CreateOidcConfig(oidcConfig)
+		}
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			if spin != nil {
+				spin.Stop()
+			}
+			return fmt.Errorf("There was a problem building your unmanaged OIDC Configuration: %v", err)
 		}
-		os.Exit(0)
-	}
-	if r.Reporter.IsTerminal() {
-		if spin != nil {
-			spin.Stop()
+		if output.HasFlag() {
+			err = output.Print(oidcConfig)
+			if err != nil {
+				return fmt.Errorf("%s", err)
+			}
+			return nil
 		}
-		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
-		r.Reporter.Infof(output)
+		if runtime.Reporter.IsTerminal() {
+			if spin != nil {
+				spin.Stop()
+			}
+			output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
+			runtime.Reporter.Infof(output)
+		}
+		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
+		cmd = oidcprovider.CreateOidcProvider.NewCommand()
+		args := []string{"", mode, args.issuerUrl}
+		cmd.ParseFlags(args)
+		runner := oidcprovider.CreateOidcProvider.Runner()
+		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
+		err = runner(nil, runtime, cmd, args)
+		if err != nil {
+			return fmt.Errorf("%s", err)
+		}
+
+		return nil
 	}
-	arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
-	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, args.issuerUrl})
-	arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 }

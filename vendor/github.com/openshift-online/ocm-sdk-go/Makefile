@@ -27,7 +27,7 @@ export PATH := $(LOCAL_BIN_PATH):$(PATH)
 export CGO_ENABLED=0
 
 # Details of the model to use:
-model_version:=v0.0.372
+model_version:=v0.0.366
 model_url:=https://github.com/openshift-online/ocm-api-model.git
 
 # Details of the metamodel to use:
@@ -40,12 +40,6 @@ goimports_version:=v0.4.0
 # machine: the leadership flag and retry tests.
 ginkgo_flags:=
 
-.DEFAULT_GOAL := examples
-
-GINKGO := $(LOCAL_BIN_PATH)/ginkgo
-ginkgo-install:
-	@GOBIN=$(LOCAL_BIN_PATH) go install github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 ;\
-
 .PHONY: examples
 examples:
 	cd examples && \
@@ -54,8 +48,8 @@ examples:
 	done
 
 .PHONY: test tests
-test tests: ginkgo-install
-	$(GINKGO) run -r $(ginkgo_flags)
+test tests:
+	ginkgo run -r $(ginkgo_flags)
 
 .PHONY: fmt
 fmt:

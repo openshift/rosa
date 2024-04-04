@@ -54,8 +54,9 @@ func init() {
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
-	Cmd.AddCommand(oidcconfig.Cmd)
-	Cmd.AddCommand(oidcprovider.Cmd)
+	Cmd.AddCommand(oidcconfig.NewCreateOidcConfigCommand())
+	createOidcProviderCmd := oidcprovider.CreateOidcProvider.NewCommand()
+	Cmd.AddCommand(createOidcProviderCmd)
 	Cmd.AddCommand(operatorroles.Cmd)
 	Cmd.AddCommand(userrole.Cmd)
 	Cmd.AddCommand(ocmrole.Cmd)
@@ -76,7 +77,7 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, operatorroles.Cmd,
 		userrole.Cmd, ocmrole.Cmd,
-		oidcprovider.Cmd, breakglasscredential.Cmd,
+		createOidcProviderCmd, breakglasscredential.Cmd,
 		admin.Cmd, autoscaler.Cmd, dnsdomains.Cmd,
 		externalauthprovider.Cmd, idp.Cmd, kubeletConfig, tuningconfigs.Cmd,
 	}

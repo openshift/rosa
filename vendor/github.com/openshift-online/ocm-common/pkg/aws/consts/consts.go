@@ -55,8 +55,10 @@ const (
 	BastionName           = "ocm-bastion"
 )
 
-var PublicImageName = "al2023-ami-2023.4.20240416.0-kernel-6.1-x86_64"
-
+var ProxyImageMap = map[string]string{
+	"us-west-2":      "ami-03b82d95dbe67072d",
+	"ap-northeast-1": "ami-0517f6ca1da98f337",
+}
 var BastionImageMap = map[string]string{
 	"us-east-1":      "ami-01c647eace872fc02",
 	"us-east-2":      "ami-00a9282ce3b5ddfb1",

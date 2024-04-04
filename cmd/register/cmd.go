@@ -33,13 +33,14 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	Cmd.AddCommand(oidcconfig.Cmd)
+	registerOidcConfigCmd := oidcconfig.NewRegisterOidcConfigCommand()
+	Cmd.AddCommand(registerOidcConfigCmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
 
-	globallyAvailableCommands := []*cobra.Command{oidcconfig.Cmd}
+	globallyAvailableCommands := []*cobra.Command{registerOidcConfigCmd}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

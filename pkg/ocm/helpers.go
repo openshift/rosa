@@ -38,6 +38,7 @@ import (
 	common "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 	errors "github.com/zgalor/weberr"
 
@@ -278,6 +279,26 @@ func (c *Client) GetCurrentOrganization() (id string, externalID string, err err
 	externalID = acctResponse.Organization().ExternalID()
 
 	return
+}
+
+func (c *Client) GetThumbprintByClusterId(clusterId string) (*v1.AwsOidcThumbprint, error) {
+	response, err := c.ocm.ClustersMgmt().V1().AWSInquiries().OidcThumbprint().
+		Get().ClusterId(clusterId).Send()
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Body(), nil
+}
+
+func (c *Client) GetThumbprintByOidcConfigId(oidcConfigId string) (*v1.AwsOidcThumbprint, error) {
+	response, err := c.ocm.ClustersMgmt().V1().AWSInquiries().OidcThumbprint().
+		Get().OidcConfigId(oidcConfigId).Send()
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Body(), nil
 }
 
 func (c *Client) IsCapabilityEnabled(capability string) (enabled bool, err error) {

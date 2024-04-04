@@ -220,12 +220,20 @@ func keyIDFromPublicKey(publicKey interface{}) (string, error) {
 	return keyID, nil
 }
 
+var (
+	Client utils.HTTPClient
+)
+
+func init() {
+	Client = &http.Client{}
+}
+
 func FetchThumbprint(oidcEndpointURL string) (string, error) {
 	connect, err := url.ParseRequestURI(oidcEndpointURL)
 	if err != nil {
 		return "", err
 	}
-	response, err := http.Get(fmt.Sprintf("https://%s:443", connect.Host))
+	response, err := Client.Get(fmt.Sprintf("https://%s:443", connect.Host))
 	if err != nil {
 		return "", err
 	}

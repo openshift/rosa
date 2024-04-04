@@ -3225,7 +3225,16 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
-			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
+
+			cmd := oidcprovider.CreateOidcProvider.NewCommand()
+			args := []string{clusterName, mode, ""}
+			cmd.ParseFlags(args)
+			runner := oidcprovider.CreateOidcProvider.Runner()
+			err = runner(nil, r, cmd, args)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
 		} else {
 			output := ""
 			if len(operatorRoles) == 0 {
@@ -3343,12 +3352,12 @@ func GenerateContractDisplay(contract *accountsv1.Contract) string {
 	numberOfVCPUs, numberOfClusters := ocm.GetNumsOfVCPUsAndClusters(dimensions)
 
 	contractDisplay := fmt.Sprintf(`
-   +---------------------+----------------+ 
-   | Start Date          |%s    | 
-   | End Date            |%s    | 
-   | Number of vCPUs:    |'%s'             | 
-   | Number of clusters: |'%s'             | 
-   +---------------------+----------------+ 
+   +---------------------+----------------+
+   | Start Date          |%s    |
+   | End Date            |%s    |
+   | Number of vCPUs:    |'%s'             |
+   | Number of clusters: |'%s'             |
+   +---------------------+----------------+
 `,
 		contract.StartDate().Format(format),
 		contract.EndDate().Format(format),
