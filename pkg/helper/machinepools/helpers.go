@@ -139,7 +139,7 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 		splitKeyValue := strings.Split(splitEffect[0], "=")
 		newTaintBuilder := cmv1.NewTaint().Key(splitKeyValue[0]).Value(splitKeyValue[1]).Effect(splitEffect[1])
 		newTaint, _ := newTaintBuilder.Build()
-		if err := ValidateLabelKeyValuePair(newTaint.Key(), newTaint.Value()); err != nil {
+		if err := ValidateTaintKeyValuePair(newTaint.Key(), newTaint.Value()); err != nil {
 			errs = append(errs, err)
 			continue
 		}
@@ -158,13 +158,21 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 	return taintBuilders, nil
 }
 
+func ValidateTaintKeyValuePair(key, value string) error {
+	return ValidateKeyValuePair(key, value, "taint")
+}
+
 func ValidateLabelKeyValuePair(key, value string) error {
+	return ValidateKeyValuePair(key, value, "label")
+}
+
+func ValidateKeyValuePair(key, value string, resourceName string) error {
 	if errs := validation.IsQualifiedName(key); len(errs) != 0 {
-		return fmt.Errorf("Invalid label key '%s': %s", key, strings.Join(errs, "; "))
+		return fmt.Errorf("Invalid %s key '%s': %s", resourceName, key, strings.Join(errs, "; "))
 	}
 
 	if errs := validation.IsValidLabelValue(value); len(errs) != 0 {
-		return fmt.Errorf("Invalid label value '%s': at key: '%s': %s",
+		return fmt.Errorf("Invalid %s value '%s': at key: '%s': %s", resourceName,
 			value, key, strings.Join(errs, "; "))
 	}
 	return nil
