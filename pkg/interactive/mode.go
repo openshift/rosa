@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package aws
+package interactive
 
 import (
 	"fmt"
@@ -27,6 +27,7 @@ import (
 var mode string
 
 const (
+	Mode       = "mode"
 	ModeAuto   = "auto"
 	ModeManual = "manual"
 )
@@ -62,4 +63,19 @@ func GetMode() (string, error) {
 
 func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return Modes, cobra.ShellCompDirectiveDefault
+}
+
+func GetOptionMode(cmd *cobra.Command, mode string, question string) (string, error) {
+	mode, err := GetOption(Input{
+		Question: question,
+		Help:     cmd.Flags().Lookup(Mode).Usage,
+		Default:  mode,
+		Options:  Modes,
+		Required: true,
+	})
+	if err != nil {
+		return mode, fmt.Errorf("invalid mode: %v", err)
+	}
+	SetModeKey(mode)
+	return mode, nil
 }

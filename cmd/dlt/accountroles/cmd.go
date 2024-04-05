@@ -75,7 +75,7 @@ func init() {
 		"Delete classic account roles",
 	)
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 }
 
@@ -88,7 +88,7 @@ func run(cmd *cobra.Command, _ []string) {
 		interactive.Enable()
 	}
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -141,13 +141,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if interactive.Enabled() {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Account role deletion mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Account role deletion mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid Account role deletion mode: %s", err)
 			os.Exit(1)
@@ -217,7 +211,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		r.Reporter.Infof(fmt.Sprintf("Deleting %saccount roles", roleTypeString))
 
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
@@ -233,7 +227,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 			}
 		}
 		r.Reporter.Infof(fmt.Sprintf("Successfully deleted the %saccount roles", roleTypeString))
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
 		policyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList)
 		if err != nil {
@@ -246,7 +240,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		}
 		fmt.Println(commands)
 	default:
-		return fmt.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		return fmt.Errorf("invalid mode. Allowed values are %s", interactive.Modes)
 	}
 
 	return nil

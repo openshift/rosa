@@ -26,7 +26,7 @@ var _ = Describe("Validation", func() {
 			validator := MinValue(50)
 			err := validator(45)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings, got int"))
+			Expect(err.Error()).To(ContainSubstring("can only validate strings, got 45"))
 		})
 
 		It("Passes validation if the answer is greater than the min", func() {
@@ -62,7 +62,7 @@ var _ = Describe("Validation", func() {
 			validator := MaxValue(50)
 			err := validator(45)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings, got int"))
+			Expect(err.Error()).To(ContainSubstring("can only validate strings, got 45"))
 		})
 
 		It("Passes validation if the answer is less than the max", func() {

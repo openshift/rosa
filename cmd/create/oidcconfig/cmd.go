@@ -106,7 +106,7 @@ func init() {
 		"STS Role ARN with get secrets permission.",
 	)
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -125,7 +125,7 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 		interactive.Enable()
 		return
 	}
-	modeIsAuto := cmd.Flag("mode").Value.String() == aws.ModeAuto
+	modeIsAuto := cmd.Flag("mode").Value.String() == interactive.ModeAuto
 	installerRoleArnNotSet := (!cmd.Flags().Changed(InstallerRoleArnFlag) || args.installerRoleArn == "") &&
 		!confirm.Yes()
 	if !args.managed && (modeNotChanged || (modeIsAuto && installerRoleArnNotSet)) {
@@ -138,7 +138,7 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -180,20 +180,14 @@ func run(cmd *cobra.Command, _ []string) {
 				"However, you may choose the provider creation mode")
 			question = "OIDC Provider creation mode"
 		}
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: question,
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, question)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid %s: %s", question, err)
 			os.Exit(1)
 		}
 	}
 
-	if output.HasFlag() && mode != "" && mode != aws.ModeAuto {
+	if output.HasFlag() && mode != "" && mode != interactive.ModeAuto {
 		r.Reporter.Warnf("--output param is not supported outside auto mode.")
 		os.Exit(1)
 	}
@@ -214,7 +208,7 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Infof("This command will create a S3 bucket populating it with documents " +
 					"to be compliant with OIDC protocol. It will also create a Secret in Secrets Manager containing the private key")
 			}
-			if mode == aws.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
+			if mode == interactive.ModeAuto && (interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "")) {
 				args.installerRoleArn = interactiveRoles.
 					GetInstallerRoleArn(
 						r,
@@ -239,7 +233,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			roleName, _ := aws.GetResourceIdFromARN(args.installerRoleArn)
 			if roleName != "" {
-				if !output.HasFlag() && r.Reporter.IsTerminal() && mode == aws.ModeAuto {
+				if !output.HasFlag() && r.Reporter.IsTerminal() && mode == interactive.ModeAuto {
 					r.Reporter.Infof("Using %s for the installer role", args.installerRoleArn)
 				}
 				err := aws.ARNValidator(args.installerRoleArn)
@@ -592,11 +586,11 @@ func getOidcConfigStrategy(mode string, input *oidcconfigs.OidcConfigInput) (Cre
 		return &CreateManagedOidcConfigAutoStrategy{oidcConfigInput: input}, nil
 	}
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		return &CreateUnmanagedOidcConfigAutoStrategy{oidcConfig: input}, nil
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		return &CreateUnmanagedOidcConfigManualStrategy{oidcConfig: input}, nil
 	default:
-		return nil, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		return nil, weberr.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 	}
 }

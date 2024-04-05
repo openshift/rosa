@@ -60,7 +60,7 @@ var Cmd = &cobra.Command{
 func init() {
 	flags := Cmd.Flags()
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	flags.StringVarP(
 		&args.prefix,
@@ -105,7 +105,7 @@ func run(cmd *cobra.Command, _ []string) {
 	ocmClient := r.OCMClient
 
 	skipInteractive := false
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -219,18 +219,12 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if interactive.Enabled() && !skipInteractive {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Account role upgrade mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Account role upgrade mode")
 		if err != nil {
 			reporter.Errorf("Expected a valid Account role upgrade mode: %s", err)
 			os.Exit(1)
 		}
-		aws.SetModeKey(mode)
+		interactive.SetModeKey(mode)
 	}
 	policies, err := ocmClient.GetPolicies("")
 	if err != nil {
@@ -239,7 +233,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		if isUpgradeNeedForAccountRolePolicies {
 			reporter.Infof("Starting to upgrade the policies")
 			err := upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.Partition, creator.AccountID, policies,
@@ -250,7 +244,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		if isUpgradeNeedForAccountRolePolicies {
 			err = aws.GenerateAccountRolePolicyFiles(reporter, env, policies, false, aws.AccountRoles, creator.Partition)
 			if err != nil {
@@ -268,7 +262,7 @@ func run(cmd *cobra.Command, _ []string) {
 		fmt.Println(commands)
 
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }

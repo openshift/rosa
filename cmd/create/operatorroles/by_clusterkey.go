@@ -12,6 +12,7 @@ import (
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -59,7 +60,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 
 		if len(missingRoles) == 0 {
 			if ocm.IsOidcConfigReusable(cluster) {
@@ -119,7 +120,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 			ocm.ClusterID: clusterKey,
 			ocm.Response:  ocm.Success,
 		})
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		commands, err := buildCommands(r, env, operatorRolePolicyPrefix, permissionsBoundary, defaultPolicyVersion,
 			cluster, policies, credRequests, managedPolicies, hostedCPPolicies)
 		if err != nil {
@@ -140,7 +141,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		fmt.Println(commands)
 
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are '%s'", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are '%s'", interactive.Modes)
 		os.Exit(1)
 	}
 	return nil

@@ -102,7 +102,7 @@ func init() {
 		"Attach Classic ROSA AWS managed policies to the account roles. This is an alias for --managed-policies")
 	flags.MarkHidden("mp")
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -112,7 +112,7 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -229,13 +229,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if interactive.Enabled() {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Role creation mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 			os.Exit(1)
@@ -271,7 +265,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		r.Reporter.Infof("Creating role using '%s'", r.Creator.ARN)
 		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary,
 			orgID, env, isAdmin, policies, managedPolicies)
@@ -286,9 +280,9 @@ func run(cmd *cobra.Command, _ []string) {
 			ocm.Response: ocm.Success,
 		})
 		linkocmrole.Cmd.Run(linkocmrole.Cmd, []string{roleARN})
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{})
-		_, _, err = checkRoleExists(r, roleNameRequested, isAdmin, aws.ModeManual)
+		_, _, err = checkRoleExists(r, roleNameRequested, isAdmin, interactive.ModeManual)
 		if err != nil {
 			r.Reporter.Warnf("Creating ocm role '%s' should fail: %s", roleNameRequested, err)
 		}
@@ -324,7 +318,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }
@@ -464,7 +458,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		"ocm_organization_id": orgID,
 	})
 
-	roleARN, exists, err := checkRoleExists(r, roleName, isAdmin, aws.ModeAuto)
+	roleARN, exists, err := checkRoleExists(r, roleName, isAdmin, interactive.ModeAuto)
 	if err != nil {
 		return "", err
 	}
@@ -614,7 +608,7 @@ func checkRoleExists(r *rosa.Runtime, roleName string, isAdmin bool,
 			return roleARN, true, nil
 		}
 
-		if mode == aws.ModeAuto && !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
+		if mode == interactive.ModeAuto && !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
 			return roleARN, true, nil
 		}
 	}

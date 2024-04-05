@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/upgrade/roles"
-	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -72,7 +71,7 @@ func init() {
 	flags.SortFlags = false
 
 	ocm.AddClusterFlag(Cmd)
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	flags.StringVar(
 		&args.version,
@@ -233,7 +232,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	// Start processing parameters
 	// Mode
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
@@ -242,7 +241,11 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		return fmt.Errorf("The 'mode' option is only supported for STS clusters")
 	}
 	if isSTS && mode == "" {
-		mode = setMode(r, cmd)
+		mode, err = interactive.GetOptionMode(cmd, mode, "IAM Roles/Policies upgrade mode")
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid role upgrade mode: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	// Upgrade type, manual or automatic
@@ -451,22 +454,6 @@ func buildVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster,
 		}
 	}
 	return availableUpgrades, version, nil
-}
-
-func setMode(r *rosa.Runtime, cmd *cobra.Command) string {
-	mode, err := interactive.GetOption(interactive.Input{
-		Question: "IAM Roles/Policies upgrade mode",
-		Help:     cmd.Flags().Lookup("mode").Usage,
-		Default:  aws.ModeAuto,
-		Options:  aws.Modes,
-		Required: true,
-	})
-	if err != nil {
-		r.Reporter.Errorf("Expected a valid role upgrade mode: %v", err)
-		os.Exit(1)
-	}
-	aws.SetModeKey(mode)
-	return mode
 }
 
 func checkExistingScheduledUpgrade(r *rosa.Runtime, cluster *cmv1.Cluster,
