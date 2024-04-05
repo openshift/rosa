@@ -165,7 +165,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating roles using '%s'", r.Creator.ARN)
 		}
@@ -204,7 +204,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 			ocm.OperatorRolesPrefix: operatorRolesPrefix,
 			ocm.Response:            ocm.Success,
 		})
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		commands, err := buildCommandsFromPrefix(r, env,
 			operatorRolePolicyPrefix, permissionsBoundary,
 			defaultPolicyVersion, policies,
@@ -228,7 +228,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 		})
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 	return nil

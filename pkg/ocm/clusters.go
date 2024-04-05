@@ -938,7 +938,7 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		stsBuilder = stsBuilder.InstanceIAMRoles(instanceIAMRolesBuilder)
 
 		mode := false
-		if config.Mode == aws.ModeAuto {
+		if config.Mode == "auto" {
 			mode = true
 		}
 		stsBuilder.AutoMode(mode)

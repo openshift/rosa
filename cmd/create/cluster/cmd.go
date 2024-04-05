@@ -829,7 +829,7 @@ func initFlags(cmd *cobra.Command) {
 			listInputMessage,
 	)
 
-	aws.AddModeFlag(cmd)
+	interactive.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
@@ -844,7 +844,7 @@ func run(cmd *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	// Validate mode
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -1333,21 +1333,21 @@ func run(cmd *cobra.Command, _ []string) {
 	// validate mode passed is allowed value
 
 	if isSTS && mode != "" {
-		isValidMode := arguments.IsValidMode(aws.Modes, mode)
+		isValidMode := arguments.IsValidMode(interactive.Modes, mode)
 		if !isValidMode {
-			r.Reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, aws.Modes)
+			r.Reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, interactive.Modes)
 			os.Exit(1)
 		}
 	}
 
-	if args.watch && isSTS && mode == aws.ModeAuto && !confirm.Yes() {
+	if args.watch && isSTS && mode == interactive.ModeAuto && !confirm.Yes() {
 		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'auto' " +
 			"without also supplying '--yes' option." +
 			"To watch your cluster installation logs, run 'rosa logs install' instead after the cluster has began creating.")
 		os.Exit(1)
 	}
 
-	if args.watch && isSTS && mode == aws.ModeManual {
+	if args.watch && isSTS && mode == interactive.ModeManual {
 		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'manual'." +
 			"It requires manual commands to be performed as part of the process." +
 			"To watch your cluster installation logs, run 'rosa logs install' after the cluster has began creating.")

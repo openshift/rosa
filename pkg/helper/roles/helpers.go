@@ -14,6 +14,7 @@ import (
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -205,14 +206,14 @@ func createOperatorRole(
 	policies map[string]*cmv1.AWSSTSPolicy, unifiedPath string, managedPolicies bool) error {
 	accountID := r.Creator.AccountID
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		err := upgradeMissingOperatorRole(missingRoles, cluster, accountID, prefix, r,
 			policies, unifiedPath, managedPolicies)
 		if err != nil {
 			return err
 		}
 		helper.DisplaySpinnerWithDelay(r.Reporter, "Waiting for operator roles to reconcile", 5*time.Second)
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		commands, err := BuildMissingOperatorRoleCommand(
 			missingRoles, cluster, accountID, r, policies, unifiedPath, prefix, managedPolicies)
 		if err != nil {
@@ -223,7 +224,7 @@ func createOperatorRole(
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 	return nil
