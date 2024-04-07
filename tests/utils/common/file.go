@@ -2,6 +2,7 @@ package common
 
 import (
 	"os"
+	"strings"
 
 	. "github.com/openshift/rosa/tests/utils/log"
 )
@@ -26,4 +27,15 @@ func CreateFileWithContent(fileAbsPath string, content string) (string, error) {
 		return "", err
 	}
 	return fileAbsPath, err
+}
+
+// Read file content to a string
+func ReadFileContent(fileAbsPath string) (string, error) {
+	output, err := os.ReadFile(fileAbsPath)
+	if err != nil {
+		Logger.Errorf("Failed to read file: %s", err)
+		return "", err
+	}
+	content := strings.TrimSuffix(string(output), "\n")
+	return content, err
 }
