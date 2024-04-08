@@ -34,8 +34,6 @@ var _ = Describe("Region",
 
 		It("can list regions - [id:55729]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 
 				By("List region")

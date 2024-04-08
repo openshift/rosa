@@ -72,8 +72,6 @@ var _ = Describe("Edit nodepool",
 
 		It("can create/edit/list/delete nodepool - [id:56782]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				nodePoolName := common.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"
@@ -181,8 +179,6 @@ var _ = Describe("Edit nodepool",
 
 		It("can create nodepool with defined subnets - [id:60202]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				var subnets []string
 				nodePoolName := common.GenerateRandomName("np-60202", 2)
@@ -303,8 +299,6 @@ var _ = Describe("Edit nodepool",
 
 		It("can create nodepool with tuning config - [id:63178]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := common.GenerateRandomName("np-63178", 2)
@@ -475,8 +469,6 @@ var _ = Describe("Edit nodepool",
 
 		It("can validate the version parameter on nodepool creation/editing - [id:61139]",
 			labels.Medium,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				testVersionFailFunc := func(flags ...string) {
 					Logger.Infof("Creating nodepool with flags %v", flags)
@@ -569,8 +561,6 @@ var _ = Describe("Edit nodepool",
 
 		It("can list/describe/delete nodepool upgrade policies - [id:67414]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				currentDateTimeUTC := time.Now().UTC()
 
