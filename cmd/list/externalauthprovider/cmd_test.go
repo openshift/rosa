@@ -76,6 +76,17 @@ var _ = Describe("list external-auth-provider", func() {
 			Expect(stdout).To(Equal(""))
 		})
 
+		It("Returns error if not found", func() {
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusInternalServerError, ""))
+			stdout, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal(
+				"failed to get external authentication providers for cluster 'cluster1': " +
+					"expected response content type 'application/json' but received '' and content ''"))
+			Expect(stdout).To(Equal(""))
+		})
+
 		It("Succeeds", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatExternalAuthList(externalAuths)))

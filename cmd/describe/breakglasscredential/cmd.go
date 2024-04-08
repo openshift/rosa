@@ -101,7 +101,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		r.Reporter.Infof(
 			"To retrieve only the kubeconfig for this credential "+
 				"use: 'rosa describe break-glass-credential %s -c %s --kubeconfig'",
-			breakGlassCredentialId, cluster.Name())
+			breakGlassCredentialId, clusterKey)
 	}
 
 	breakGlassCredentialConfig, err := r.OCMClient.GetBreakGlassCredential(cluster.ID(), breakGlassCredentialId)

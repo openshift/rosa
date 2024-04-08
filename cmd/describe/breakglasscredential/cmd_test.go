@@ -13,7 +13,9 @@ import (
 
 const (
 	breakGlassCredentialId = "test-id"
-	describeStringOutput   = `
+	//nolint:lll
+	describeStringOutput = `INFO: To retrieve only the kubeconfig for this credential use: 'rosa describe break-glass-credential test-id -c cluster1 --kubeconfig'
+
 ID:                                    test-id
 Username:                              username
 Expire at:                             Jan  1 0001 00:00:00 UTC
@@ -23,7 +25,6 @@ Status:                                issued
 
 var _ = Describe("Break glass credential", func() {
 	var testRuntime test.TestingRuntime
-	var err error
 
 	Context("Describe break glass credential command", func() {
 		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
@@ -35,8 +36,7 @@ var _ = Describe("Break glass credential", func() {
 		})
 		hypershiftClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
 
-		breakGlassCredentials := make([]*cmv1.BreakGlassCredential, 0)
-		breakGlassCredentials = append(breakGlassCredentials, test.BuildBreakGlassCredential())
+		credential := test.BuildBreakGlassCredential()
 
 		BeforeEach(func() {
 			testRuntime.InitRuntime()
@@ -55,13 +55,13 @@ var _ = Describe("Break glass credential", func() {
 		It("Pass a break glass credential id through parameter and it is found", func() {
 			args.id = breakGlassCredentialId
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound,
-				test.FormatBreakGlassCredentialList(breakGlassCredentials)))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatResource(credential)))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{})
 			Expect(err).To(BeNil())
-			output := describeBreakGlassCredential(testRuntime.RosaRuntime,
-				mockClusterReady, test.MockClusterID, test.BuildBreakGlassCredential())
-			Expect(output).To(Equal(describeStringOutput))
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(Equal(describeStringOutput))
 		})
-
 	})
 })

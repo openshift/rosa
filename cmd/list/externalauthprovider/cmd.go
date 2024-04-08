@@ -70,7 +70,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	r.Reporter.Debugf("Loading external authentication providers for cluster '%s'", clusterKey)
 	externalAuthProviders, err := r.OCMClient.GetExternalAuths(cluster.ID())
 	if err != nil {
-		return fmt.Errorf("failed to get external authentication providers for cluster '%s': %v", cluster.ID(), err)
+		return fmt.Errorf("failed to get external authentication providers for cluster '%s': %v", clusterKey, err)
 	}
 
 	if output.HasFlag() {
