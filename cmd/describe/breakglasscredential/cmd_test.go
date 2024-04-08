@@ -63,5 +63,21 @@ var _ = Describe("Break glass credential", func() {
 			Expect(stderr).To(BeEmpty())
 			Expect(stdout).To(Equal(describeStringOutput))
 		})
+
+		It("Pass a break glass credential id through parameter and it is found, but it has been revoked", func() {
+			args.id = breakGlassCredentialId
+			const breakGlassCredentialId = "test-id-1"
+			revokedCredential, err := cmv1.NewBreakGlassCredential().
+				ID(breakGlassCredentialId).Username("username").Status(cmv1.BreakGlassCredentialStatusRevoked).
+				Build()
+			Expect(err).To(BeNil())
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatResource(revokedCredential)))
+			_, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{})
+			Expect(err.Error()).To(Equal("Break glass credential 'test-id' for cluster 'cluster1' has been revoked."))
+			Expect(stderr).To(Equal(""))
+		})
 	})
 })
