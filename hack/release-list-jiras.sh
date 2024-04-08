@@ -19,17 +19,18 @@ previous_release="release_$2"
 commit_output=$(git log "$previous_release"..HEAD --oneline --no-merges --format="%s" --no-decorate --reverse | tr '[:upper:]' '[:lower:]')
 
 # Regular expression pattern to extract Jira ticket numbers and commit messages
-pattern="^([^|]+)\|(.+)$"
+pattern="^(revert\s*\")?([^|]+)\|(.+)$"
 
 # Array to store Jira ticket numbers
 jira_tickets=()
 
 while IFS= read -r line; do
-  if [[ $line =~ $pattern ]]; then
-    ticket="${BASH_REMATCH[1]}"
+  if [[ $line =~ $pattern && ! ${BASH_REMATCH[1]} ]]; then
+    ticket="${BASH_REMATCH[2]}"
     jira_tickets+=("$ticket")
   fi
 done <<< "$commit_output"
+
 
 # Create a comma-separated list of Jira tickets
 jira_list=$(IFS=, ; echo "${jira_tickets[*]}")
