@@ -28,10 +28,12 @@ import (
 	"github.com/openshift/rosa/pkg/aws/profile"
 	"github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/debug"
-	"github.com/openshift/rosa/pkg/helper"
 )
 
 const boolType string = "bool"
+
+const regionFlagName = "region"
+const regionDeprecationMessage = "Region flag will be removed from this command in future versions"
 
 var hasUnknownFlags bool
 
@@ -314,19 +316,18 @@ func IsValidMode(modes []string, mode string) bool {
 	return false
 }
 
-func markGlobalFlagsHidden(command *cobra.Command, hidden ...string) {
+func deprecateRegion(command *cobra.Command) {
 	command.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
-		name := flag.Name
-		if helper.Contains(hidden, name) {
-			flag.Hidden = true
+		if flag.Name == regionFlagName {
+			flag.Deprecated = regionDeprecationMessage
 		}
 	})
 }
 
-func MarkRegionHidden(parentCmd *cobra.Command, childrenCmds []*cobra.Command) {
+func MarkRegionDeprecated(parentCmd *cobra.Command, childrenCmds []*cobra.Command) {
+	deprecateRegion(parentCmd)
 	for _, cmd := range childrenCmds {
 		cmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
-			markGlobalFlagsHidden(parentCmd, "region")
 			command.Parent().HelpFunc()(command, strings)
 		})
 	}

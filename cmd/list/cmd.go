@@ -83,7 +83,13 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, userroles.Cmd,
 		ocmroles.Cmd, oidcconfig.Cmd,
-		oidcprovider.Cmd,
+		oidcprovider.Cmd, cluster.Cmd,
+		breakglasscredential.Cmd, addon.Cmd,
+		externalauthprovider.Cmd, dnsdomains.Cmd,
+		gates.Cmd, idp.Cmd, ingress.Cmd, machinepool.Cmd,
+		operatorroles.Cmd, region.Cmd, rhRegion.Cmd,
+		service.Cmd, tuningconfigs.Cmd, upgrade.Cmd,
+		user.Cmd, version.Cmd,
 	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

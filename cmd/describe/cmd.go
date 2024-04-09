@@ -58,4 +58,13 @@ func init() {
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
+
+	globallyAvailableCommands := []*cobra.Command{
+		tuningconfigs.Cmd, cluster.Cmd, service.Cmd,
+		machinepool.Cmd, addon.Cmd, upgrade.Cmd,
+		admin.Cmd, breakglasscredential.Cmd,
+		externalauthprovider.Cmd, installation.Cmd,
+		kubeletconfig.Cmd, machinepool.Cmd, upgrade.Cmd,
+	}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

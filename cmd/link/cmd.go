@@ -42,4 +42,6 @@ func init() {
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
+	globallyAvailableCommands := []*cobra.Command{userrole.Cmd, ocmrole.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

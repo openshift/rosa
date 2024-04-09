@@ -10,8 +10,37 @@ import (
 
 var _ = Describe("Client", func() {
 	var (
-		cmd *cobra.Command
+		cmd      *cobra.Command
+		childCmd *cobra.Command
 	)
+
+	Context("Region deprecation test", func() {
+		BeforeEach(func() {
+			cmd = &cobra.Command{
+				Use:   "test",
+				Short: "Test command used for testing deprecation",
+				Long: "This command is used for testing the deprecation of the 'region' flag in " +
+					"arguments.go - it is used for nothing else.",
+			}
+			childCmd = &cobra.Command{
+				Use:   "child",
+				Short: "Child command used for testing deprecation",
+				Long: "This child command is used for testing the deprecation of the 'region' flag in " +
+					"arguments.go - it is used for nothing else.",
+			}
+			cmd.AddCommand(childCmd)
+
+			AddRegionFlag(cmd.PersistentFlags())
+			AddDebugFlag(cmd.PersistentFlags())
+		})
+		It("Test deprecation of region flag", func() {
+			MarkRegionDeprecated(cmd, []*cobra.Command{childCmd})
+			regionFlag := cmd.PersistentFlags().Lookup("region")
+			debugFlag := cmd.PersistentFlags().Lookup("debug")
+			Expect(regionFlag.Deprecated).To(Equal(regionDeprecationMessage))
+			Expect(debugFlag.Deprecated).To(Equal(""))
+		})
+	})
 
 	Context("Test PreprocessUnknownFlagsWithId func", func() {
 		BeforeEach(func() {
