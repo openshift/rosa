@@ -341,9 +341,11 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	}
 	if profile.ClusterConfig.DisableSCPChecks {
 		flags = append(flags, "--disable-scp-checks")
+		clusterConfiguration.DisableScpChecks = true
 	}
 	if profile.ClusterConfig.DisableUserWorKloadMonitoring {
 		flags = append(flags, "--disable-workload-monitoring")
+		clusterConfiguration.DisableWorkloadMonitoring = true
 	}
 	if profile.ClusterConfig.ETCDKMS {
 		PrepareKMSKeyDummy(profile.Region)
