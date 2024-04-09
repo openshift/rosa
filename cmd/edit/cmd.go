@@ -55,4 +55,12 @@ func init() {
 	arguments.AddRegionFlag(flags)
 	interactive.AddFlag(flags)
 	confirm.AddFlag(flags)
+
+	globallyAvailableCommands := []*cobra.Command{
+		autoscaler.Cmd, addon.Cmd,
+		service.Cmd, cluster.Cmd,
+		ingress.Cmd, kubeletconfig.Cmd,
+		machinepool.Cmd, tuningconfigs.Cmd,
+	}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

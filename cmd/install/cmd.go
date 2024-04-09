@@ -40,4 +40,7 @@ func init() {
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
+
+	globallyAvailableCommands := []*cobra.Command{addon.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

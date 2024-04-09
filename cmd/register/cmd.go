@@ -40,8 +40,6 @@ func init() {
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
 
-	globallyAvailableCommands := []*cobra.Command{
-		oidcconfig.Cmd,
-	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	globallyAvailableCommands := []*cobra.Command{oidcconfig.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

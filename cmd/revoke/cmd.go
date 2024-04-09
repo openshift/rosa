@@ -40,4 +40,6 @@ func init() {
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
+	globallyAvailableCommands := []*cobra.Command{breakglasscredential.Cmd, user.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

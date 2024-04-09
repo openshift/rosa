@@ -75,7 +75,10 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, operatorroles.Cmd,
 		userrole.Cmd, ocmrole.Cmd,
-		oidcprovider.Cmd,
+		oidcprovider.Cmd, breakglasscredential.Cmd,
+		admin.Cmd, autoscaler.Cmd, dnsdomains.Cmd,
+		externalauthprovider.Cmd, idp.Cmd, kubeletconfig.Cmd,
+		ocmrole.Cmd, oidcprovider.Cmd, tuningconfigs.Cmd,
 	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

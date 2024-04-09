@@ -49,7 +49,7 @@ func init() {
 
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, operatorroles.Cmd,
-		roles.Cmd,
+		roles.Cmd, machinepool.Cmd, cluster.Cmd,
 	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }
