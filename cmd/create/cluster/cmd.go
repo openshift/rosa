@@ -864,13 +864,6 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Fedramp does not currently support Hosted Control Plane clusters. Please use classic")
 		os.Exit(1)
 	}
-	createAdminUser := args.createAdminUser
-	clusterAdminUser := admin.ClusterAdminUsername //strings.Trim(args.clusterAdminUser, " \t")
-	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
-	if (createAdminUser || clusterAdminPassword != "") && isHostedCP {
-		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
-		os.Exit(1)
-	}
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
 	if err != nil {
@@ -1016,47 +1009,55 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Errors when users elects for cluster admin via flags and elects for hosted control plane via interactive prompt"
-	if isHostedCP && (createAdminUser || clusterAdminPassword != "") {
-		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
-		os.Exit(1)
-	}
-
+	createAdminUser := args.createAdminUser
+	clusterAdminUser := admin.ClusterAdminUsername
+	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
 	// isClusterAdmin is a flag indicating if user wishes to create cluster admin
 	isClusterAdmin := false
-	if !isHostedCP {
-		if createAdminUser || clusterAdminPassword != "" {
-			isClusterAdmin = true
-			// user supplies create-admin-user flag without cluster-admin-password will generate random password
-			if clusterAdminPassword == "" {
-				r.Reporter.Debugf(admin.GeneratingRandomPasswordString)
-				clusterAdminPassword, err = idputils.GenerateRandomPassword()
-				if err != nil {
-					r.Reporter.Errorf("Failed to generate a random password")
-					os.Exit(1)
-				}
+
+	if createAdminUser || clusterAdminPassword != "" {
+		isClusterAdmin = true
+		// user supplies create-admin-user flag without cluster-admin-password will generate random password
+		if clusterAdminPassword == "" {
+			r.Reporter.Debugf(admin.GeneratingRandomPasswordString)
+			clusterAdminPassword, err = idputils.GenerateRandomPassword()
+			if err != nil {
+				r.Reporter.Errorf("Failed to generate a random password")
+				os.Exit(1)
 			}
-			// validates both user inputted custom password and randomly generated password
-			err = passwordValidator.PasswordValidator(clusterAdminPassword)
+		}
+		// validates both user inputted custom password and randomly generated password
+		err = passwordValidator.PasswordValidator(clusterAdminPassword)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		if clusterAdminUser != "" {
+			err = idp.UsernameValidator(clusterAdminUser)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
-			if clusterAdminUser != "" {
-				err = idp.UsernameValidator(clusterAdminUser)
-				if err != nil {
-					r.Reporter.Errorf("%s", err)
-					os.Exit(1)
-				}
-			} else {
-				clusterAdminUser = admin.ClusterAdminUsername
-			}
+		} else {
+			clusterAdminUser = admin.ClusterAdminUsername
 		}
+	}
 
-		//check to remove first condition (interactive mode)
-		if interactive.Enabled() && !isClusterAdmin {
-			isClusterAdmin, err = interactive.GetBool(interactive.Input{
-				Question: "Create cluster admin user",
+	//check to remove first condition (interactive mode)
+	if interactive.Enabled() && !isClusterAdmin {
+		isClusterAdmin, err = interactive.GetBool(interactive.Input{
+			Question: "Create cluster admin user",
+			Default:  false,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+		if isClusterAdmin {
+			//clusterAdminUser = idp.GetIdpUserNameFromPrompt(cmd, r, "cluster-admin-user", clusterAdminUser, true)
+			isCustomAdminPassword, err := interactive.GetBool(interactive.Input{
+				Question: "Create custom password for cluster admin",
 				Default:  false,
 				Required: true,
 			})
@@ -1064,32 +1065,20 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Errorf("Expected a valid value: %s", err)
 				os.Exit(1)
 			}
-			if isClusterAdmin {
-				//clusterAdminUser = idp.GetIdpUserNameFromPrompt(cmd, r, "cluster-admin-user", clusterAdminUser, true)
-				isCustomAdminPassword, err := interactive.GetBool(interactive.Input{
-					Question: "Create custom password for cluster admin",
-					Default:  false,
-					Required: true,
-				})
+			if !isCustomAdminPassword {
+				clusterAdminPassword, err = idputils.GenerateRandomPassword()
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid value: %s", err)
+					r.Reporter.Errorf("Failed to generate a random password")
 					os.Exit(1)
 				}
-				if !isCustomAdminPassword {
-					clusterAdminPassword, err = idputils.GenerateRandomPassword()
-					if err != nil {
-						r.Reporter.Errorf("Failed to generate a random password")
-						os.Exit(1)
-					}
-				} else {
-					clusterAdminPassword = idp.GetIdpPasswordFromPrompt(cmd, r,
-						"cluster-admin-password", clusterAdminPassword)
-					args.clusterAdminPassword = clusterAdminPassword
-				}
+			} else {
+				clusterAdminPassword = idp.GetIdpPasswordFromPrompt(cmd, r,
+					"cluster-admin-password", clusterAdminPassword)
+				args.clusterAdminPassword = clusterAdminPassword
 			}
 		}
-		outputClusterAdminDetails(r, isClusterAdmin, clusterAdminUser, clusterAdminPassword)
 	}
+	outputClusterAdminDetails(r, isClusterAdmin, clusterAdminUser, clusterAdminPassword)
 
 	if isHostedCP && cmd.Flags().Changed(arguments.NewDefaultMPLabelsFlag) {
 		r.Reporter.Errorf("Setting the worker machine pool labels is not supported for hosted clusters")
