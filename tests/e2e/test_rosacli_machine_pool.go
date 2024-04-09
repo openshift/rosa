@@ -49,8 +49,6 @@ var _ = Describe("Edit machinepool",
 
 		It("can create machinepool with volume size set - [id:66872]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				mpID := "mp-66359"
 				expectedDiskSize := "186 GiB" // it is 200GB

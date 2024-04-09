@@ -215,11 +215,9 @@ var _ = Describe("Edit cluster",
 
 		It("can validate for deletion of upgrade policy of rosa cluster - [id:38787]",
 			labels.Medium,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
-				output, err := clusterService.DeleteUpgrade("")
+				output, err := clusterService.DeleteUpgrade()
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring(`required flag(s) "cluster" not set`))

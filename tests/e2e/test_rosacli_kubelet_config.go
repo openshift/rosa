@@ -46,8 +46,6 @@ var _ = Describe("Edit kubeletconfig",
 
 		It("can create podPidLimit via rosacli will work well - [id:68828]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Run the command to create a kubeletconfig to the cluster")
 				output, _ := kubeletService.CreateKubeletConfig(clusterID,
@@ -87,8 +85,6 @@ var _ = Describe("Edit kubeletconfig",
 
 		It("can update podPidLimit via rosacli will work well - [id:68835]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Edit the kubeletconfig to the cluster before it is created")
 				output, _ := rosaClient.KubeletConfig.EditKubeletConfig(clusterID,
@@ -141,8 +137,6 @@ var _ = Describe("Edit kubeletconfig",
 
 		It("can delete podPidLimit via rosacli will work well - [id:68836]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Check if cluster is hosted control plane cluster")
 				if isHosted {
