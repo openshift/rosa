@@ -167,8 +167,6 @@ var _ = Describe("Edit cluster",
 		// OCM-5231 caused the description parser issue
 		It("can disable workload monitoring on/off - [id:45159]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Check the cluster UWM is in expected status")
 				output, err := clusterService.DescribeCluster(clusterID)
