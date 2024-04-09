@@ -41,7 +41,7 @@ var (
 )
 
 func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
-	targetVpcId string, kind string) []string {
+	targetVpcId string, kind string, id string) []string {
 	possibleSgs, err := r.AWSClient.GetSecurityGroupIds(targetVpcId)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem retrieving security groups for VPC '%s': %v", targetVpcId, err)
@@ -51,7 +51,7 @@ func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
 	if len(possibleSgs) > 0 {
 		options := []string{}
 		for _, sg := range possibleSgs {
-			if isValidSecurityGroup(sg) {
+			if isValidSecurityGroup(sg, id) {
 				options = append(options, aws.SetSecurityGroupOption(sg))
 			}
 		}
@@ -77,12 +77,17 @@ func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
 	return securityGroupIds
 }
 
-func isValidSecurityGroup(sg types.SecurityGroup) bool {
+func isValidSecurityGroup(sg types.SecurityGroup, id string) bool {
 	if aws.Ec2ResourceHasTag(sg.Tags, tags.RedHatManaged, strconv.FormatBool(true)) {
 		return false
 	}
 	if awsSdk.ToString(sg.GroupName) == "default" {
 		return false
+	}
+	if id != "" {
+		if aws.Ec2ResourceHasTag(sg.Tags, fmt.Sprintf("kubernetes.io/cluster/%s", id), "owned") {
+			return false
+		}
 	}
 
 	return true

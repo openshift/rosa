@@ -99,7 +99,14 @@ func getSecurityGroupsOption(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.
 		return []string{}, err
 	}
 
-	return interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, interactiveSgs.MachinePoolKind), nil
+	var id string
+	if cluster.Hypershift().Enabled() {
+		id = cluster.ID()
+	} else {
+		id = cluster.InfraID()
+	}
+
+	return interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, interactiveSgs.MachinePoolKind, id), nil
 }
 
 func getVpcIdFromSubnet(subnet ec2types.Subnet) (string, error) {
