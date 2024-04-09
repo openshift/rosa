@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -40,6 +41,7 @@ import (
 	"github.com/openshift/rosa/cmd/login"
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/cmd/logs"
+	pluginCmd "github.com/openshift/rosa/cmd/plugin"
 	"github.com/openshift/rosa/cmd/register"
 	"github.com/openshift/rosa/cmd/resume"
 	"github.com/openshift/rosa/cmd/revoke"
@@ -52,6 +54,7 @@ import (
 	"github.com/openshift/rosa/cmd/whoami"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/color"
+	"github.com/openshift/rosa/pkg/plugin"
 )
 
 var root = &cobra.Command{
@@ -60,7 +63,6 @@ var root = &cobra.Command{
 	Long: "Command line tool for Red Hat OpenShift Service on AWS.\n" +
 		"For further documentation visit " +
 		"https://access.redhat.com/documentation/en-us/red_hat_openshift_service_on_aws\n",
-	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -97,9 +99,32 @@ func init() {
 	root.AddCommand(unlink.Cmd)
 	root.AddCommand(token.Cmd)
 	root.AddCommand(config.Cmd)
+	root.AddCommand(pluginCmd.NewPluginCommand())
 }
 
 func main() {
+
+	// Handle plugins
+	pluginHandler := plugin.NewDefaultPluginHandler()
+	if len(os.Args) > 1 {
+		cmdPathPieces := os.Args[1:]
+
+		if _, _, err := root.Find(cmdPathPieces); err != nil {
+			found, err := pluginHandler.HandlePluginCommand(cmdPathPieces)
+			if err != nil {
+				err, ok := err.(*exec.ExitError)
+				if ok {
+					os.Exit(err.ExitCode())
+				}
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+				os.Exit(1)
+			}
+			if found {
+				os.Exit(0)
+			}
+		}
+	}
+
 	// Execute the root command:
 	root.SetArgs(os.Args[1:])
 	err := root.Execute()
