@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 
@@ -20,8 +21,22 @@ func CreateTempFileWithPrefixAndContent(prefix string, fileContent string) (stri
 }
 
 // Write string to a file
-func CreateFileWithContent(fileAbsPath string, content string) (string, error) {
-	err := os.WriteFile(fileAbsPath, []byte(content), 0644)
+func CreateFileWithContent(fileAbsPath string, content interface{}) (string, error) {
+	var err error
+	switch content := content.(type) {
+	case string:
+		err = os.WriteFile(fileAbsPath, []byte(content), 0644)
+	case []byte:
+		err = os.WriteFile(fileAbsPath, content, 0644)
+	case interface{}:
+		var marshedContent []byte
+		marshedContent, err = json.Marshal(content)
+		if err != nil {
+			return fileAbsPath, err
+		}
+		err = os.WriteFile(fileAbsPath, marshedContent, 0644)
+	}
+
 	if err != nil {
 		Logger.Errorf("Failed to write to file: %s", err)
 		return "", err
