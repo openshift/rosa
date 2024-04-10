@@ -25,6 +25,7 @@ Desired replicas:                      0
 Current replicas:                      
 Instance type:                         m5.xlarge
 Labels:                                
+Tags:                                  
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
@@ -43,6 +44,27 @@ Desired replicas:                      0
 Current replicas:                      
 Instance type:                         m5.xlarge
 Labels:                                
+Tags:                                  
+Taints:                                
+Availability zone:                     us-east-1a
+Subnet:                                
+Version:                               4.12.24
+Autorepair:                            No
+Tuning configs:                        
+Additional security group IDs:         
+Node drain grace period:               1 minute
+Message:                               
+Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
+`
+	describeStringWithTagsOutput = `
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Desired replicas:                      0
+Current replicas:                      
+Instance type:                         m5.xlarge
+Labels:                                
+Tags:                                  foo=bar
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
@@ -126,6 +148,7 @@ var _ = Describe("Upgrade machine pool", func() {
 		classicClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClassicClusterReady})
 
 		nodePoolResponse := formatNodePool()
+		npResponseAwsTags := formatNodePoolWithTags()
 		mpResponse := formatMachinePool()
 
 		upgradePolicies := make([]*cmv1.NodePoolUpgradePolicy, 0)
@@ -211,6 +234,20 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(stdout).To(Equal(describeYamlWithUpgradeOutput))
 				Expect(stderr).To(BeEmpty())
 			})
+			It("Pass a machine pool name through parameter and it is found. Has AWS tags", func() {
+				args.machinePool = nodePoolName
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				// First get
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseAwsTags))
+				// Second get for upgrades
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseAwsTags))
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
+				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+					Cmd, &[]string{})
+				Expect(err).To(BeNil())
+				Expect(stdout).To(Equal(describeStringWithTagsOutput))
+				Expect(stderr).To(BeEmpty())
+			})
 		})
 		Context("ROSA Classic", func() {
 			It("Pass a machine pool name through argv but it is not found", func() {
@@ -279,6 +316,17 @@ var _ = Describe("Upgrade machine pool", func() {
 func formatNodePool() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
 	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge")
+	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
+	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
+		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).Build()
+	Expect(err).To(BeNil())
+	return test.FormatResource(np)
+}
+
+// formatNodePool simulates the output of APIs for a fake node pool with AWS tags
+func formatNodePoolWithTags() string {
+	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
+	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").Tags(map[string]string{"foo": "bar"})
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
 		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).Build()
