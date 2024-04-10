@@ -1,10 +1,10 @@
 package kubeletconfig
 
 import (
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"go.uber.org/mock/gomock"
 )
 
 var _ = Describe("KubeletConfig Config", func() {
