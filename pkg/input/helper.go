@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 // UnmarshalInputFile is a generic unmarshaller from an input path
