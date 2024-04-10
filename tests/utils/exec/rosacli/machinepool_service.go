@@ -20,11 +20,13 @@ type MachinePoolService interface {
 
 	ReflectMachinePoolList(result bytes.Buffer) (mpl MachinePoolList, err error)
 	ReflectMachinePoolDescription(result bytes.Buffer) (*MachinePoolDescription, error)
+	ListAndReflectMachinePools(clusterID string) (mpl MachinePoolList, err error)
 
 	ReflectNodePoolList(result bytes.Buffer) (*NodePoolList, error)
 	ListAndReflectNodePools(clusterID string) (*NodePoolList, error)
 	ReflectNodePoolDescription(result bytes.Buffer) (npd *NodePoolDescription, err error)
 	DescribeAndReflectNodePool(clusterID string, name string) (*NodePoolDescription, error)
+	DescribeAndReflectMachinePool(clusterID string, name string) (*MachinePoolDescription, error)
 
 	RetrieveHelpForCreate() (bytes.Buffer, error)
 }
@@ -49,13 +51,14 @@ type MachinePool struct {
 	ID               string `json:"ID,omitempty"`
 	AutoScaling      string `json:"AUTOSCALING,omitempty"`
 	Replicas         string `json:"REPLICAS,omitempty"`
+	DiskSize         string `json:"DISK SIZE,omitempty"`
 	InstanceType     string `json:"INSTANCE TYPE,omitempty"`
 	Labels           string `json:"LABELS,omitempty"`
 	Taints           string `json:"TAINTS,omitempty"`
 	AvalaiblityZones string `json:"AVAILABILITY ZONES,omitempty"`
 	Subnets          string `json:"SUBNETS,omitempty"`
 	SpotInstances    string `json:"SPOT INSTANCES,omitempty"`
-	DiskSize         string `json:"DISK SIZE,omitempty"`
+	SecurityGroupIDs string `json:"SG IDs,omitempty"`
 }
 type MachinePoolList struct {
 	MachinePools []MachinePool `json:"MachinePools,omitempty"`
@@ -145,6 +148,15 @@ func (m *machinepoolService) DescribeMachinePool(clusterID string, mpID string) 
 	return describeMp.Run()
 }
 
+// DescribeAndReflectMachinePool
+func (m *machinepoolService) DescribeAndReflectMachinePool(clusterID string, mpID string) (*MachinePoolDescription, error) {
+	output, err := m.DescribeMachinePool(clusterID, mpID)
+	if err != nil {
+		return nil, err
+	}
+	return m.ReflectMachinePoolDescription(output)
+}
+
 // Delete MachinePool
 func (m *machinepoolService) DeleteMachinePool(clusterID string, machinePoolName string) (output bytes.Buffer, err error) {
 	output, err = m.client.Runner.
@@ -178,6 +190,18 @@ func (m *machinepoolService) ReflectMachinePoolList(result bytes.Buffer) (mpl Ma
 		}
 		mpl.MachinePools = append(mpl.MachinePools, *mp)
 	}
+	return mpl, err
+}
+
+// Pasrse the result of 'rosa list machinepool' to MachinePoolList struct
+func (m *machinepoolService) ListAndReflectMachinePools(clusterID string) (mpl MachinePoolList, err error) {
+	mpl = MachinePoolList{}
+	output, err := m.ListMachinePool(clusterID)
+	if err != nil {
+		return mpl, err
+	}
+
+	mpl, err = m.ReflectMachinePoolList(output)
 	return mpl, err
 }
 

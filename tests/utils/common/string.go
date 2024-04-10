@@ -77,3 +77,8 @@ func SplitMajorVersion(openshiftVersion string) string {
 	}
 	return strings.Join(splited[0:2], ".")
 }
+
+func ReplaceCommaWithCommaSpace(sourceValue string) string {
+	splited := ParseCommaSeparatedStrings(sourceValue)
+	return strings.Join(splited, ", ")
+}
