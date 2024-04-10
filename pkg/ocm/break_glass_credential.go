@@ -10,6 +10,8 @@ import (
 	errors "github.com/zgalor/weberr"
 )
 
+const pollKubeconfigInterval = 200 * time.Second
+
 func (c *Client) CreateBreakGlassCredential(clusterID string,
 	breakGlassCredential *cmv1.BreakGlassCredential) (*cmv1.BreakGlassCredential, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
@@ -64,7 +66,7 @@ func (c *Client) PollKubeconfig(clusterID string, credentialID string) (kubeconf
 	credentialClient := c.ocm.ClustersMgmt().V1().Clusters().
 		Cluster(clusterID).BreakGlassCredentials().BreakGlassCredential(credentialID)
 	response, err := credentialClient.Poll().
-		Interval(interval).
+		Interval(pollKubeconfigInterval).
 		StartContext(ctx)
 	if err != nil {
 		err = fmt.Errorf("Failed to poll kubeconfig for cluster '%s' with break glass credential '%s': %v",
