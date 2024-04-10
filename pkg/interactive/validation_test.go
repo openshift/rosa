@@ -78,11 +78,18 @@ var _ = Describe("Validation", func() {
 		})
 	})
 	Context("GitHub Hostname", func() {
-		It("Fails validation if hostname is 'https://github.com'", func() {
-			err := IsValidHostname("https://github.com")
+		It("Fails validation if hostname is 'https://domain.customer.com'", func() {
+			err := IsValidHostname("https://domain.customer.com")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring(
-				"'https://github.com' hostname must be a valid DNS subdomain or IP address"),
+				"'https://domain.customer.com' hostname must be a valid DNS subdomain or IP address"),
+			)
+		})
+		It("Fails validation if hostname is 'github.com'", func() {
+			err := IsValidHostname("github.com")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(
+				"'github.com' hostname cannot be equal to [*.]github.com"),
 			)
 		})
 		It("Passes validation if hostname is 'domain.customer.com'", func() {

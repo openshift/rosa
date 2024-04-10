@@ -25,6 +25,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation"
 	netutils "k8s.io/utils/net"
@@ -62,19 +63,21 @@ func IsURL(val interface{}) error {
 	return err
 }
 
+// IsValidHostname is same validation as in the Open Shift GitHub IDP CRD
+// Validates the hostname DNS1123 format
+// https://github.com/openshift/kubernetes/blob/91607f5d750ba4002f87d34a12ae1cfd45b45b81/openshift-kube-apiserver/admission/customresourcevalidation/oauth/helpers.go#L13
+// and denies any [*.]github.com hostnames
+// https://github.com/openshift/kubernetes/blob/258f1d5fb6491ba65fd8201c827e179432430627/openshift-kube-apiserver/admission/customresourcevalidation/oauth/validate_github.go#L49
+// nolint
 func IsValidHostname(val interface{}) error {
-	if !_isValidHostname(val.(string)) {
-		return fmt.Errorf(fmt.Sprintf("'%s' hostname must be a valid DNS subdomain or IP address", val.(string)))
+	hostname := val.(string)
+	if hostname == "github.com" || strings.HasSuffix(hostname, ".github.com") {
+		return fmt.Errorf(fmt.Sprintf("'%s' hostname cannot be equal to [*.]github.com", hostname))
+	}
+	if !(len(validation.IsDNS1123Subdomain(hostname)) == 0 || netutils.ParseIPSloppy(hostname) != nil) {
+		return fmt.Errorf(fmt.Sprintf("'%s' hostname must be a valid DNS subdomain or IP address", hostname))
 	}
 	return nil
-}
-
-// _isValidHostname is same validation as in the Open Shift GitHub IDP CRD
-// https://github.com/openshift/kubernetes/blob/91607f5d750ba4002f87d34a12ae1cfd45b45b81/openshift-kube-apiserver/admission/customresourcevalidation/oauth/helpers.go#L13
-//
-//nolint:lll
-func _isValidHostname(hostname string) bool {
-	return len(validation.IsDNS1123Subdomain(hostname)) == 0 || netutils.ParseIPSloppy(hostname) != nil
 }
 
 func IsURLHttps(val interface{}) error {
