@@ -45,6 +45,7 @@ func describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
 		"Current replicas:                      %s\n"+
 		"Instance type:                         %s\n"+
 		"Labels:                                %s\n"+
+		"Tags:                                  %s\n"+
 		"Taints:                                %s\n"+
 		"Availability zone:                     %s\n"+
 		"Subnet:                                %s\n"+
@@ -61,6 +62,7 @@ func describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
 		ocmOutput.PrintNodePoolCurrentReplicas(nodePool.Status()),
 		ocmOutput.PrintNodePoolInstanceType(nodePool.AWSNodePool()),
 		ocmOutput.PrintLabels(nodePool.Labels()),
+		ocmOutput.PrintUserAwsTags(nodePool.AWSNodePool().Tags()),
 		ocmOutput.PrintTaints(nodePool.Taints()),
 		nodePool.AvailabilityZone(),
 		nodePool.Subnet(),

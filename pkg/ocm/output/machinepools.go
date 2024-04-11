@@ -40,6 +40,18 @@ func PrintLabels(labels map[string]string) string {
 	return strings.Join(output, ", ")
 }
 
+func PrintUserAwsTags(tags map[string]string) string {
+	if len(tags) == 0 {
+		return ""
+	}
+	output := []string{}
+	for k, v := range tags {
+		output = append(output, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return strings.Join(output, ", ")
+}
+
 func PrintTaints(taints []*cmv1.Taint) string {
 	if len(taints) == 0 {
 		return ""
