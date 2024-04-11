@@ -96,6 +96,10 @@ var _ = Describe("Validation", func() {
 			err := IsValidHostname("domain.customer.com")
 			Expect(err).NotTo(HaveOccurred())
 		})
+		It("Passes validation if hostname is ''", func() {
+			err := IsValidHostname("")
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 })
