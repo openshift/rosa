@@ -224,7 +224,7 @@ func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
 	cmd.Stderr = cmd.Stdout
 
 	err = cmd.Run()
-	Logger.Infof("Get Combining Stdout and Stder is :\n%s", output.String())
+	Logger.Infof("Get Combining Stdout and Stder is : %s", output.String())
 
 	return output, err
 

@@ -34,6 +34,7 @@ type TestConfig struct {
 	ClusterDetailFile             string
 	ClusterInstallLogArtifactFile string
 	ClusterAdminFile              string
+	TestFocusFile                 string
 	GlobalENV                     *GlobalENVVariables
 }
 type GlobalENVVariables struct {
@@ -70,6 +71,7 @@ func init() {
 	Test.ClusterDetailFile = path.Join(Test.OutputDir, "cluster-detail.json")
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
+	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
 
 	waitingTime, err := strconv.Atoi(common.ReadENVWithDefaultValue("CLUSTER_TIMEOUT", "60"))
 	if err != nil {
